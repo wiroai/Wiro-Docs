@@ -1,8 +1,8 @@
 <div align="center">
 
 <img src="https://wiro.ai/images/logos/logo/logo.png" alt="Wiro" width="180" />
-
-<img src="https://wiro.ai/images/koala/accent-heavy-koala.png" alt="Wiro Koala mascot" width="140" />
+<br>
+<img src="https://wiro.ai/images/koala/accent-heavy-koala.png" alt="Wiro Koala mascot" width="60" />
 
 # Wiro API Documentation
 
