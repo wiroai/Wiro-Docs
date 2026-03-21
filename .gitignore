@@ -1,0 +1,5 @@
+.cursor/
+.DS_Store
+*.swp
+*.swo
+*~
