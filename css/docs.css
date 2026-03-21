@@ -270,6 +270,7 @@ button {
   top: 12px;
   left: 12px;
   z-index: 100;
+  transition: opacity 0.2s, visibility 0.2s;
   background: var(--white);
   border: 1px solid var(--fade-grey-dark-3);
   border-radius: 8px;
@@ -284,6 +285,12 @@ button {
 
 .docs-mobile-toggle i {
   font-size: 1.1rem;
+}
+
+.docs-mobile-toggle.is-nav-open {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 /* ------------------------------------------------------------------

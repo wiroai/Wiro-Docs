@@ -317,16 +317,21 @@ function initMobileNav() {
 
   menuToggle.addEventListener('click', (e) => {
     e.stopPropagation();
-    navWrapper.classList.toggle('is-open');
+    const open = navWrapper.classList.toggle('is-open');
+    menuToggle.classList.toggle('is-nav-open', open);
   });
 
   navWrapper.querySelectorAll('.docs-nav-link').forEach((link) => {
-    link.addEventListener('click', () => navWrapper.classList.remove('is-open'));
+    link.addEventListener('click', () => {
+      navWrapper.classList.remove('is-open');
+      menuToggle.classList.remove('is-nav-open');
+    });
   });
 
   document.addEventListener('click', (e) => {
     if (!navWrapper.contains(e.target) && !menuToggle.contains(e.target)) {
       navWrapper.classList.remove('is-open');
+      menuToggle.classList.remove('is-nav-open');
     }
   });
 }
