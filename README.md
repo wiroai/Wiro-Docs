@@ -1,8 +1,6 @@
 <div align="center">
 
 <img src="https://wiro.ai/images/logos/logo/logo.png" alt="Wiro" width="180" />
-<br>
-<img src="https://wiro.ai/images/koala/accent-heavy-koala.png" alt="Wiro Koala mascot" width="60" />
 
 # Wiro API Documentation
 
@@ -13,6 +11,8 @@
 [![LLM friendly](https://img.shields.io/badge/LLM-view--source%20OK-6f42c1?style=for-the-badge)](./llms.txt)
 
 [Live docs](https://wiro.ai/docs) · [Dashboard](https://wiro.ai/panel) · [Explore](https://wiro.ai/explore) · [Models](https://wiro.ai/models) · [LLMs.txt](./llms.txt)
+
+<img src="https://wiro.ai/images/koala/accent-heavy-koala.png" alt="Wiro Koala mascot" width="60" />
 
 </div>
 
