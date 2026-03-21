@@ -53,7 +53,10 @@ POST /Run/{owner-slug}/{model-slug}
 Content-Type: `application/json` (text inputs) or `multipart/form-data` (file inputs)
 
 Use JSON when model has no file parameters. Use multipart when model requires file uploads.
-For file parameters, you can send a URL instead using `{paramId}Url` suffix (e.g., `inputImageUrl` instead of `inputImage`).
+File parameter URL rules:
+- `fileinput`/`multifileinput`: use `{paramId}Url` suffix for URLs (e.g., `inputImageUrl`). Send empty `{paramId}` when using URL, empty `{paramId}Url` when uploading file.
+- `combinefileinput`: pass URLs directly in `{paramId}` — no suffix needed. Files and URLs share the same field.
+- Any file parameter also accepts a URL directly in `{paramId}` if `{paramId}Url` doesn't exist.
 
 All models support optional `callbackUrl` for webhook notifications on completion.
 

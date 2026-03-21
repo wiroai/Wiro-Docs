@@ -949,7 +949,7 @@
           <tr><td><code>range</code></td><td>Numeric value (slider)</td><td><code>width</code>, <code>height</code>, <code>scale</code>, <code>strength</code></td></tr>
           <tr><td><code>fileinput</code></td><td>Single file upload (1 file or 1 URL)</td><td><code>inputImage</code>, <code>inputAudio</code></td></tr>
           <tr><td><code>multifileinput</code></td><td>Multiple files (up to N files/URLs)</td><td><code>inputDocumentMultiple</code></td></tr>
-          <tr><td><code>combinefileinput</code></td><td>Mixed file + URL entries</td><td><code>inputImageClothes</code></td></tr>
+          <tr><td><code>combinefileinput</code></td><td>Up to N entries (files, URLs, or mixed)</td><td><code>inputImageClothes</code></td></tr>
         </tbody>
       </table>
     </div>
@@ -968,7 +968,7 @@
       </table>
     </div>
     <div class="info-callout">
-      <p><strong>Tip:</strong> If a <code>fileinput</code> parameter exists but you want to provide a URL instead of uploading a file, you can still use JSON. Pass the URL in a parameter named <code>{id}Url</code> (e.g., <code>inputImageUrl</code> instead of <code>inputImage</code>).</p>
+      <p><strong>Tip:</strong> For <code>fileinput</code> and <code>multifileinput</code> parameters, use the <code>{id}Url</code> suffix to send URLs (e.g., <code>inputImageUrl</code>). For <code>combinefileinput</code>, pass URLs directly in the original parameter — no suffix needed. You can also pass a URL directly to any file parameter (e.g., <code>inputImage</code>) if the <code>{id}Url</code> field doesn't exist.</p>
     </div>
   </section>
 
@@ -976,39 +976,67 @@
     <h2>File Upload Patterns</h2>
 
     <h3>Single File (fileinput)</h3>
-    <p>For parameters like <code>inputImage</code>, you can send either a file or a URL — not both:</p>
-    <pre><code># Option 1: Upload file
+    <p>For parameters like <code>inputImage</code>, send either a file or a URL. When using multipart, always include both the <code>{id}</code> and <code>{id}Url</code> fields — leave one empty:</p>
+    <pre><code># Option 1: Upload file — send file in {id}, empty {id}Url
 curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
   -H "x-api-key: YOUR_API_KEY" \
-  -F "inputImage=@/path/to/photo.jpg"
+  -F "inputImage=@/path/to/photo.jpg" \
+  -F "inputImageUrl="
 
-# Option 2: Send URL (use {id}Url suffix)
+# Option 2: Send URL via {id}Url — send empty {id}, URL in {id}Url
 curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
-  -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{"inputImageUrl": "https://example.com/photo.jpg"}'</code></pre>
+  -F "inputImage=" \
+  -F "inputImageUrl=https://example.com/photo.jpg"
+
+# Option 3: Pass URL directly in {id} (no {id}Url needed)
+curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -F "inputImage=https://example.com/photo.jpg"</code></pre>
+    <div class="info-callout">
+      <p><strong>Note:</strong> Option 3 is the simplest when you only have a URL. If the <code>{id}Url</code> field doesn't exist for a parameter, always use this approach.</p>
+    </div>
 
     <h3>Multiple Files (multifileinput)</h3>
-    <p>For parameters like <code>inputDocumentMultiple</code>, upload up to N files or provide comma-separated URLs:</p>
-    <pre><code># Upload multiple files
+    <p>For parameters like <code>inputDocumentMultiple</code>, upload up to N files, send comma-separated URLs, or mix both:</p>
+    <pre><code># Option 1: Upload multiple files — add empty {id}Url
 curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
   -H "x-api-key: YOUR_API_KEY" \
   -F "inputDocumentMultiple=@doc1.pdf" \
-  -F "inputDocumentMultiple=@doc2.pdf"
+  -F "inputDocumentMultiple=@doc2.pdf" \
+  -F "inputDocumentMultipleUrl="
 
-# Or provide URLs (comma-separated)
+# Option 2: Send URLs (comma-separated in {id}Url) — add empty {id}
 curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
-  -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{"inputDocumentMultipleUrl": "https://example.com/doc1.pdf,https://example.com/doc2.pdf"}'</code></pre>
+  -F "inputDocumentMultiple=" \
+  -F "inputDocumentMultipleUrl=https://example.com/doc1.pdf,https://example.com/doc2.pdf"
 
-    <h3>Mixed (combinefileinput)</h3>
-    <p>For parameters like <code>inputImageClothes</code>, you can mix files and URLs in the same request:</p>
-    <pre><code># Mix files and URLs
+# Option 3: Mixed — files in {id}, URLs in {id}Url
+curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -F "inputDocumentMultiple=@doc1.pdf" \
+  -F "inputDocumentMultipleUrl=https://example.com/doc2.pdf,https://example.com/doc3.pdf"</code></pre>
+
+    <h3>Combined (combinefileinput)</h3>
+    <p>For parameters like <code>inputImageClothes</code>, files and URLs go directly in the same <code>{id}</code> field — no <code>{id}Url</code> suffix:</p>
+    <pre><code># Option 1: Upload files — each as a separate {id} entry
 curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
   -H "x-api-key: YOUR_API_KEY" \
   -F "inputImageClothes=@shirt.jpg" \
-  -F "inputImageClothesUrl=https://example.com/pants.jpg"</code></pre>
+  -F "inputImageClothes=@pants.jpg"
+
+# Option 2: Send URLs — each directly in {id}
+curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -F "inputImageClothes=https://example.com/shirt.jpg" \
+  -F "inputImageClothes=https://example.com/pants.jpg"
+
+# Option 3: Mixed — files and URLs in the same {id} field
+curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -F "inputImageClothes=@shirt.jpg" \
+  -F "inputImageClothes=https://example.com/pants.jpg"</code></pre>
   </section>
 
   <section id="common-model-patterns">
@@ -1662,51 +1690,51 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
           <tbody>
             <tr>
               <td><code>task_queue</code></td>
-              <td>Task entered the queue</td>
+              <td>Task is waiting in the queue</td>
             </tr>
             <tr>
               <td><code>task_accept</code></td>
-              <td>Task accepted by the system</td>
+              <td>Task accepted by the worker</td>
             </tr>
             <tr>
               <td><code>task_assign</code></td>
-              <td>Task assigned to a worker</td>
+              <td>Task assigned a GPU and waiting in queue</td>
             </tr>
             <tr>
               <td><code>task_preprocess_start</code></td>
-              <td>Preprocessing has begun</td>
+              <td>Preprocessing has started</td>
             </tr>
             <tr>
               <td><code>task_preprocess_end</code></td>
-              <td>Preprocessing completed</td>
+              <td>Preprocessing has ended</td>
             </tr>
             <tr>
               <td><code>task_start</code></td>
-              <td>Model inference started</td>
+              <td>Task processing has started</td>
             </tr>
             <tr>
               <td><code>task_output</code></td>
-              <td>Partial/streaming output from the model</td>
+              <td>Streaming output log — <code>message</code> contains text or LLM response (<code>debugoutput</code>)</td>
             </tr>
             <tr>
               <td><code>task_error</code></td>
-              <td>A non-fatal error occurred during processing</td>
+              <td>Error log during processing — <code>message</code> contains error details (<code>debugoutput</code>)</td>
             </tr>
             <tr>
               <td><code>task_output_full</code></td>
-              <td>Complete output payload when the model finishes</td>
+              <td>Full output log when task completes — <code>message</code> contains complete <code>debugoutput</code></td>
             </tr>
             <tr>
               <td><code>task_error_full</code></td>
-              <td>Complete error payload on failure</td>
+              <td>Full error log when task fails — <code>message</code> contains complete error <code>debugoutput</code></td>
             </tr>
             <tr>
               <td><code>task_postprocess_start</code></td>
-              <td>Postprocessing has begun</td>
+              <td>Postprocessing has started</td>
             </tr>
             <tr>
               <td><code>task_postprocess_end</code></td>
-              <td>Postprocessing completed</td>
+              <td>Postprocessing completed — <code>message</code> contains output files array</td>
             </tr>
             <tr>
               <td><code>task_end</code></td>

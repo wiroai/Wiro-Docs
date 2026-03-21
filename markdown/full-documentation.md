@@ -408,7 +408,7 @@ Every model has its own set of input parameters. Use the `/Tool/Detail` endpoint
 | `range`            | Numeric value (slider)               | `width`, `height`, `scale`, `strength`    |
 | `fileinput`        | Single file upload (1 file or 1 URL) | `inputImage`, `inputAudio`                |
 | `multifileinput`   | Multiple files (up to N files/URLs)  | `inputDocumentMultiple`                   |
-| `combinefileinput` | Mixed file + URL entries             | `inputImageClothes`                       |
+| `combinefileinput` | Up to N entries (files, URLs, or mixed) | `inputImageClothes`                    |
 
 ## JSON vs Multipart
 
@@ -419,54 +419,82 @@ The content type depends on whether the model requires file inputs:
 | No file parameters  | `application/json`    | Text-only models (LLMs, image generation from prompt)       |
 | Has file parameters | `multipart/form-data` | Models that accept image, audio, video, or document uploads |
 
-> **Tip:** If a `fileinput` parameter exists but you want to provide a URL instead of uploading a file, you can still use JSON. Pass the URL in a parameter named `{id}Url` (e.g., `inputImageUrl` instead of `inputImage`).
+> **Tip:** For `fileinput` and `multifileinput` parameters, use the `{id}Url` suffix to send URLs (e.g., `inputImageUrl`). For `combinefileinput`, pass URLs directly in the original parameter — no suffix needed. You can also pass a URL directly to any file parameter (e.g., `inputImage`) if the `{id}Url` field doesn't exist.
 
 ## File Upload Patterns
 
 ### Single File (fileinput)
 
-For parameters like `inputImage`, you can send either a file or a URL — not both:
+For parameters like `inputImage`, send either a file or a URL. When using multipart, always include both the `{id}` and `{id}Url` fields — leave one empty:
 
 ```bash
-# Option 1: Upload file
+# Option 1: Upload file — send file in {id}, empty {id}Url
 curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
   -H "x-api-key: YOUR_API_KEY" \
-  -F "inputImage=@/path/to/photo.jpg"
+  -F "inputImage=@/path/to/photo.jpg" \
+  -F "inputImageUrl="
 
-# Option 2: Send URL (use {id}Url suffix)
+# Option 2: Send URL via {id}Url — send empty {id}, URL in {id}Url
 curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
-  -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{"inputImageUrl": "https://example.com/photo.jpg"}'
+  -F "inputImage=" \
+  -F "inputImageUrl=https://example.com/photo.jpg"
+
+# Option 3: Pass URL directly in {id} (no {id}Url needed)
+curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -F "inputImage=https://example.com/photo.jpg"
 ```
+
+> **Note:** Option 3 is the simplest when you only have a URL. If the `{id}Url` field doesn't exist for a parameter, always use this approach.
 
 ### Multiple Files (multifileinput)
 
-For parameters like `inputDocumentMultiple`, upload up to N files or provide comma-separated URLs:
+For parameters like `inputDocumentMultiple`, upload up to N files, send comma-separated URLs, or mix both:
 
 ```bash
-# Upload multiple files
+# Option 1: Upload multiple files — add empty {id}Url
 curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
   -H "x-api-key: YOUR_API_KEY" \
   -F "inputDocumentMultiple=@doc1.pdf" \
-  -F "inputDocumentMultiple=@doc2.pdf"
+  -F "inputDocumentMultiple=@doc2.pdf" \
+  -F "inputDocumentMultipleUrl="
 
-# Or provide URLs (comma-separated)
+# Option 2: Send URLs (comma-separated in {id}Url) — add empty {id}
 curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
-  -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{"inputDocumentMultipleUrl": "https://example.com/doc1.pdf,https://example.com/doc2.pdf"}'
+  -F "inputDocumentMultiple=" \
+  -F "inputDocumentMultipleUrl=https://example.com/doc1.pdf,https://example.com/doc2.pdf"
+
+# Option 3: Mixed — files in {id}, URLs in {id}Url
+curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -F "inputDocumentMultiple=@doc1.pdf" \
+  -F "inputDocumentMultipleUrl=https://example.com/doc2.pdf,https://example.com/doc3.pdf"
 ```
 
-### Mixed (combinefileinput)
+### Combined (combinefileinput)
 
-For parameters like `inputImageClothes`, you can mix files and URLs in the same request:
+For parameters like `inputImageClothes`, files and URLs go directly in the same `{id}` field — no `{id}Url` suffix:
 
 ```bash
+# Option 1: Upload files — each as a separate {id} entry
 curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
   -H "x-api-key: YOUR_API_KEY" \
   -F "inputImageClothes=@shirt.jpg" \
-  -F "inputImageClothesUrl=https://example.com/pants.jpg"
+  -F "inputImageClothes=@pants.jpg"
+
+# Option 2: Send URLs — each directly in {id}
+curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -F "inputImageClothes=https://example.com/shirt.jpg" \
+  -F "inputImageClothes=https://example.com/pants.jpg"
+
+# Option 3: Mixed — files and URLs in the same {id} field
+curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -F "inputImageClothes=@shirt.jpg" \
+  -F "inputImageClothes=https://example.com/pants.jpg"
 ```
 
 ## Common Model Patterns
@@ -832,20 +860,20 @@ Registration message format:
 
 | Message Type             | Description                                         |
 | ------------------------ | --------------------------------------------------- |
-| `task_queue`             | Task entered the queue                              |
-| `task_accept`            | Task accepted by the system                         |
-| `task_assign`            | Task assigned to a worker                           |
-| `task_preprocess_start`  | Preprocessing has begun                             |
-| `task_preprocess_end`    | Preprocessing completed                             |
-| `task_start`             | Model inference started                             |
-| `task_output`            | Partial/streaming output from the model             |
-| `task_error`             | A non-fatal error occurred during processing        |
-| `task_output_full`       | Complete output payload when the model finishes     |
-| `task_error_full`        | Complete error payload on failure                   |
-| `task_postprocess_start` | Postprocessing has begun                            |
-| `task_postprocess_end`   | Postprocessing completed                            |
-| `task_end`               | Task fully completed — safe to close the connection |
-| `task_cancel`            | Task was cancelled                                  |
+| `task_queue`             | Task is waiting in the queue                                                     |
+| `task_accept`            | Task accepted by the worker                                                      |
+| `task_assign`            | Task assigned a GPU and waiting in queue                                         |
+| `task_preprocess_start`  | Preprocessing has started                                                        |
+| `task_preprocess_end`    | Preprocessing has ended                                                          |
+| `task_start`             | Task processing has started                                                      |
+| `task_output`            | Streaming output log — `message` contains text or LLM response (`debugoutput`)   |
+| `task_error`             | Error log during processing — `message` contains error details (`debugoutput`)   |
+| `task_output_full`       | Full output log when task completes — `message` contains complete `debugoutput`  |
+| `task_error_full`        | Full error log when task fails — `message` contains complete error `debugoutput` |
+| `task_postprocess_start` | Postprocessing has started                                                       |
+| `task_postprocess_end`   | Postprocessing completed — `message` contains output files array                 |
+| `task_end`               | Task fully completed — safe to close the connection                              |
+| `task_cancel`            | Task was cancelled                                                               |
 
 ## Binary Frames
 
