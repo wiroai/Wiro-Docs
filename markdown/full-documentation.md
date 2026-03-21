@@ -109,11 +109,11 @@ SIGNATURE = HMAC-SHA256(key=API_KEY, message=API_SECRET + NONCE)
 
 #### Required Headers
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `x-api-key` | string | Yes | Your project API key |
-| `x-signature` | string | Yes | HMAC-SHA256(API_SECRET + NONCE, API_KEY) |
-| `x-nonce` | string | Yes | Unix timestamp or random integer |
+| Parameter     | Type   | Required | Description                              |
+| ------------- | ------ | -------- | ---------------------------------------- |
+| `x-api-key`   | string | Yes      | Your project API key                     |
+| `x-signature` | string | Yes      | HMAC-SHA256(API_SECRET + NONCE, API_KEY) |
+| `x-nonce`     | string | Yes      | Unix timestamp or random integer         |
 
 ## API Key Only Authentication
 
@@ -121,18 +121,18 @@ For server-side applications where you control the environment, you can use the 
 
 #### Required Headers
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `x-api-key` | string | Yes | Your project API key |
+| Parameter   | Type   | Required | Description          |
+| ----------- | ------ | -------- | -------------------- |
+| `x-api-key` | string | Yes      | Your project API key |
 
 ## Comparison
 
-| Feature | Signature-Based | API Key Only |
-|---------|----------------|--------------|
-| Security | High — secret never sent over the wire | Moderate — key sent in every request |
-| Complexity | Requires HMAC computation | Single header |
-| Best for | Client-side apps, mobile, public repos | Server-side, internal tools |
-| Replay protection | Yes (via nonce) | No |
+| Feature           | Signature-Based                        | API Key Only                         |
+| ----------------- | -------------------------------------- | ------------------------------------ |
+| Security          | High — secret never sent over the wire | Moderate — key sent in every request |
+| Complexity        | Requires HMAC computation              | Single header                        |
+| Best for          | Client-side apps, mobile, public repos | Server-side, internal tools          |
+| Replay protection | Yes (via nonce)                        | No                                   |
 
 ## How to Choose
 
@@ -194,18 +194,18 @@ Returns a paginated list of available models. Filter by categories, search by na
 
 #### Request Parameters
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `start` | string | No | Offset for pagination (default: "0") |
-| `limit` | string | No | Number of results to return (default: "20") |
-| `search` | string | No | Search query to filter models by name |
-| `sort` | string | No | Sort field: id, relevance |
-| `order` | string | No | Sort direction: ASC or DESC |
-| `categories` | string[] | No | Filter by categories (e.g. image-generation, llm, audio, video) |
-| `tags` | string[] | No | Filter by tags |
-| `slugowner` | string | No | Filter by model owner slug |
-| `hideworkflows` | boolean | No | Hide workflow models from results (recommended: true) |
-| `summary` | boolean | No | Return summarized model data (recommended for listings) |
+| Parameter       | Type     | Required | Description                                                     |
+| --------------- | -------- | -------- | --------------------------------------------------------------- |
+| `start`         | string   | No       | Offset for pagination (default: "0")                            |
+| `limit`         | string   | No       | Number of results to return (default: "20")                     |
+| `search`        | string   | No       | Search query to filter models by name                           |
+| `sort`          | string   | No       | Sort field: id, relevance                                       |
+| `order`         | string   | No       | Sort direction: ASC or DESC                                     |
+| `categories`    | string[] | No       | Filter by categories (e.g. image-generation, llm, audio, video) |
+| `tags`          | string[] | No       | Filter by tags                                                  |
+| `slugowner`     | string   | No       | Filter by model owner slug                                      |
+| `hideworkflows` | boolean  | No       | Hide workflow models from results (recommended: true)           |
+| `summary`       | boolean  | No       | Return summarized model data (recommended for listings)         |
 
 ### Response
 
@@ -249,11 +249,11 @@ Returns full details for a specific model, including its input parameters, prici
 
 #### Request Parameters
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `slugowner` | string | Yes | Model owner slug (e.g. stability-ai) |
-| `slugproject` | string | Yes | Model project slug (e.g. sdxl) |
-| `summary` | boolean | No | Return summarized data |
+| Parameter     | Type    | Required | Description                          |
+| ------------- | ------- | -------- | ------------------------------------ |
+| `slugowner`   | string  | Yes      | Model owner slug (e.g. stability-ai) |
+| `slugproject` | string  | Yes      | Model project slug (e.g. sdxl)       |
+| `summary`     | boolean | No       | Return summarized data               |
 
 ### Response
 
@@ -261,42 +261,44 @@ Returns full details for a specific model, including its input parameters, prici
 {
   "result": true,
   "errors": [],
-  "tool": [{
-    "id": "1611",
-    "title": "Virtual Try-on",
-    "slugowner": "wiro",
-    "slugproject": "Virtual Try-On",
-    "cleanslugowner": "wiro",
-    "cleanslugproject": "virtual-try-on",
-    "description": "Integrate the Wiro Virtual Try-On API...",
-    "image": "https://cdn.wiro.ai/uploads/models/...",
-    "computingtime": "10 seconds",
-    "readme": "<p>The Wiro Virtual Try-On AI model...</p>",
-    "categories": ["tool", "image-to-image", "image-editing"],
-    "parameters": null,
-    "inspire": [
-      {
-        "inputImageHuman": "https://cdn.wiro.ai/uploads/sampleinputs/...",
-        "inputImageClothes": ["https://cdn.wiro.ai/..."]
-      }
-    ],
-    "samples": ["https://cdn.wiro.ai/uploads/models/..."],
-    "tags": [],
-    "marketplace": 1,
-    "onlymembers": "1",
-    "dynamicprice": "[{\"inputs\":{},\"price\":0.09,\"priceMethod\":\"cpr\"}]",
-    "averagepoint": "5.00",
-    "commentcount": "1",
-    "ratedusercount": "3",
-    "taskstat": {
-      "runcount": 672,
-      "successcount": "254",
-      "errorcount": "198",
-      "lastruntime": "1774007585"
-    },
-    "seotitle": "AI Virtual Try-On: Integrate Realistic Apparel Fitting",
-    "seodescription": "Integrate the Wiro Virtual Try-On API..."
-  }]
+  "tool": [
+    {
+      "id": "1611",
+      "title": "Virtual Try-on",
+      "slugowner": "wiro",
+      "slugproject": "Virtual Try-On",
+      "cleanslugowner": "wiro",
+      "cleanslugproject": "virtual-try-on",
+      "description": "Integrate the Wiro Virtual Try-On API...",
+      "image": "https://cdn.wiro.ai/uploads/models/...",
+      "computingtime": "10 seconds",
+      "readme": "<p>The Wiro Virtual Try-On AI model...</p>",
+      "categories": ["tool", "image-to-image", "image-editing"],
+      "parameters": null,
+      "inspire": [
+        {
+          "inputImageHuman": "https://cdn.wiro.ai/uploads/sampleinputs/...",
+          "inputImageClothes": ["https://cdn.wiro.ai/..."]
+        }
+      ],
+      "samples": ["https://cdn.wiro.ai/uploads/models/..."],
+      "tags": [],
+      "marketplace": 1,
+      "onlymembers": "1",
+      "dynamicprice": "[{\"inputs\":{},\"price\":0.09,\"priceMethod\":\"cpr\"}]",
+      "averagepoint": "5.00",
+      "commentcount": "1",
+      "ratedusercount": "3",
+      "taskstat": {
+        "runcount": 672,
+        "successcount": "254",
+        "errorcount": "198",
+        "lastruntime": "1774007585"
+      },
+      "seotitle": "AI Virtual Try-On: Integrate Realistic Apparel Fitting",
+      "seodescription": "Integrate the Wiro Virtual Try-On API..."
+    }
+  ]
 }
 ```
 
@@ -330,10 +332,10 @@ Parameters vary by model. Use the [/Tool/Detail](#models) endpoint to discover w
 
 #### Common Parameters
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `callbackUrl` | string | No | URL to receive a POST webhook when the task completes |
-| `projectid` | string | No | Override the default project for billing (if you have multiple projects) |
+| Parameter     | Type   | Required | Description                                                              |
+| ------------- | ------ | -------- | ------------------------------------------------------------------------ |
+| `callbackUrl` | string | No       | URL to receive a POST webhook when the task completes                    |
+| `projectid`   | string | No       | Override the default project for billing (if you have multiple projects) |
 
 ## Response
 
@@ -398,23 +400,23 @@ Every model has its own set of input parameters. Use the `/Tool/Detail` endpoint
 
 ## Parameter Types
 
-| Type | Description | Example Parameters |
-|------|-------------|-------------------|
-| `text` | Single-line text input | URLs, names, short strings |
-| `textarea` | Multi-line text input | `prompt`, `negative_prompt`, descriptions |
-| `select` | Dropdown with predefined options | `outputType`, `language`, `style` |
-| `range` | Numeric value (slider) | `width`, `height`, `scale`, `strength` |
-| `fileinput` | Single file upload (1 file or 1 URL) | `inputImage`, `inputAudio` |
-| `multifileinput` | Multiple files (up to N files/URLs) | `inputDocumentMultiple` |
-| `combinefileinput` | Mixed file + URL entries | `inputImageClothes` |
+| Type               | Description                          | Example Parameters                        |
+| ------------------ | ------------------------------------ | ----------------------------------------- |
+| `text`             | Single-line text input               | URLs, names, short strings                |
+| `textarea`         | Multi-line text input                | `prompt`, `negative_prompt`, descriptions |
+| `select`           | Dropdown with predefined options     | `outputType`, `language`, `style`         |
+| `range`            | Numeric value (slider)               | `width`, `height`, `scale`, `strength`    |
+| `fileinput`        | Single file upload (1 file or 1 URL) | `inputImage`, `inputAudio`                |
+| `multifileinput`   | Multiple files (up to N files/URLs)  | `inputDocumentMultiple`                   |
+| `combinefileinput` | Mixed file + URL entries             | `inputImageClothes`                       |
 
 ## JSON vs Multipart
 
 The content type depends on whether the model requires file inputs:
 
-| Condition | Content-Type | When to Use |
-|-----------|-------------|-------------|
-| No file parameters | `application/json` | Text-only models (LLMs, image generation from prompt) |
+| Condition           | Content-Type          | When to Use                                                 |
+| ------------------- | --------------------- | ----------------------------------------------------------- |
+| No file parameters  | `application/json`    | Text-only models (LLMs, image generation from prompt)       |
 | Has file parameters | `multipart/form-data` | Models that accept image, audio, video, or document uploads |
 
 > **Tip:** If a `fileinput` parameter exists but you want to provide a URL instead of uploading a file, you can still use JSON. Pass the URL in a parameter named `{id}Url` (e.g., `inputImageUrl` instead of `inputImage`).
@@ -524,6 +526,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
 Realtime voice models accept configuration parameters (voice, system instructions, audio format, etc.) as JSON. Parameters vary per model — use `/Tool/Detail` to discover them. The actual audio interaction happens over [WebSocket](#/realtime-voice-conversation) after the task starts:
 
 Available realtime models:
+
 - [openai/gpt-realtime-mini](https://wiro.ai/models/openai/gpt-realtime-mini)
 - [openai/gpt-realtime](https://wiro.ai/models/openai/gpt-realtime)
 - [elevenlabs/realtime-conversational-ai](https://wiro.ai/models/elevenlabs/realtime-conversational-ai)
@@ -565,32 +568,32 @@ Every model run creates a task that progresses through a defined set of stages:
 
 ## Task Statuses
 
-| Status | Description |
-|--------|-------------|
-| `task_queue` | The task is queued and waiting to be picked up by an available worker. Emitted once when the task enters the queue. |
-| `task_accept` | A worker has accepted the task. The task is no longer in the general queue and is being prepared for execution. |
-| `task_assign` | The task has been assigned to a specific GPU. The model is being loaded into memory. This may take a few seconds depending on the model size. |
-| `task_preprocess_start` | Optional preprocessing has started. This includes operations like downloading input files from URLs, converting file types, and validating/formatting parameters before the model runs. Not all models require preprocessing. |
-| `task_preprocess_end` | Preprocessing completed. All inputs are ready and the model is about to start execution. |
-| `task_start` | The model command has started executing. Inference is now running on the GPU. |
-| `task_output` | The model is producing output. This event is emitted **multiple times** — each time the model writes to stdout, a new `task_output` message is sent via WebSocket. For LLM models, each token/chunk arrives as a separate `task_output` event, enabling real-time streaming. |
-| `task_error` | The model wrote to stderr. This is an **interim log event**, not a final failure — many models write warnings or debug info to stderr during normal operation. The task may still complete successfully. Always wait for `task_postprocess_end` to determine the actual result. |
-| `task_output_full` | The complete accumulated stdout log, sent once after the model process finishes. Contains the full output history in a single message. |
-| `task_output_error` | The complete accumulated stderr log, sent once after the model process finishes. |
-| `task_end` | The model process has exited. Emitted once. This fires **before** post-processing — do not use this event to determine success. Wait for `task_postprocess_end` instead. |
-| `task_postprocess_start` | Post-processing has started. The system is preparing the output files — encoding, uploading to CDN, and generating access URLs. |
-| `task_postprocess_end` | Post-processing completed. Check `pexit` to determine success: `"0"` = success, any other value = error. The `outputs` array contains the final files with CDN URLs, content types, and sizes. **This is the event you should listen for** to get the final results. |
-| `task_cancel` | The task was cancelled (if queued) or killed (if running) by the user. |
+| Status                   | Description                                                                                                                                                                                                                                                                     |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `task_queue`             | The task is queued and waiting to be picked up by an available worker. Emitted once when the task enters the queue.                                                                                                                                                             |
+| `task_accept`            | A worker has accepted the task. The task is no longer in the general queue and is being prepared for execution.                                                                                                                                                                 |
+| `task_assign`            | The task has been assigned to a specific GPU. The model is being loaded into memory. This may take a few seconds depending on the model size.                                                                                                                                   |
+| `task_preprocess_start`  | Optional preprocessing has started. This includes operations like downloading input files from URLs, converting file types, and validating/formatting parameters before the model runs. Not all models require preprocessing.                                                   |
+| `task_preprocess_end`    | Preprocessing completed. All inputs are ready and the model is about to start execution.                                                                                                                                                                                        |
+| `task_start`             | The model command has started executing. Inference is now running on the GPU.                                                                                                                                                                                                   |
+| `task_output`            | The model is producing output. This event is emitted **multiple times** — each time the model writes to stdout, a new `task_output` message is sent via WebSocket. For LLM models, each token/chunk arrives as a separate `task_output` event, enabling real-time streaming.    |
+| `task_error`             | The model wrote to stderr. This is an **interim log event**, not a final failure — many models write warnings or debug info to stderr during normal operation. The task may still complete successfully. Always wait for `task_postprocess_end` to determine the actual result. |
+| `task_output_full`       | The complete accumulated stdout log, sent once after the model process finishes. Contains the full output history in a single message.                                                                                                                                          |
+| `task_output_error`      | The complete accumulated stderr log, sent once after the model process finishes.                                                                                                                                                                                                |
+| `task_end`               | The model process has exited. Emitted once. This fires **before** post-processing — do not use this event to determine success. Wait for `task_postprocess_end` instead.                                                                                                        |
+| `task_postprocess_start` | Post-processing has started. The system is preparing the output files — encoding, uploading to CDN, and generating access URLs.                                                                                                                                                 |
+| `task_postprocess_end`   | Post-processing completed. Check `pexit` to determine success: `"0"` = success, any other value = error. The `outputs` array contains the final files with CDN URLs, content types, and sizes. **This is the event you should listen for** to get the final results.            |
+| `task_cancel`            | The task was cancelled (if queued) or killed (if running) by the user.                                                                                                                                                                                                          |
 
 ### Realtime Conversation Only
 
 The following statuses are exclusive to realtime conversation models (e.g. voice AI). They are not emitted for standard model runs.
 
-| Status | Description |
-|--------|-------------|
-| `task_stream_ready` | Realtime model is ready to receive audio/text input — you can start sending data |
-| `task_stream_end` | Realtime session has ended — the model finished speaking or the session was closed |
-| `task_cost` | Real-time cost update emitted during execution — shows the running cost of the task |
+| Status              | Description                                                                         |
+| ------------------- | ----------------------------------------------------------------------------------- |
+| `task_stream_ready` | Realtime model is ready to receive audio/text input — you can start sending data    |
+| `task_stream_end`   | Realtime session has ended — the model finished speaking or the session was closed  |
+| `task_cost`         | Real-time cost update emitted during execution — shows the running cost of the task |
 
 ## Determining Success or Failure
 
@@ -634,10 +637,10 @@ For real-time streaming of LLM responses, use [WebSocket](#websocket) instead of
 
 Retrieves the current status and output of a task. You can query by either `tasktoken` or `taskid`.
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `tasktoken` | string | No | The task token returned from the Run endpoint |
-| `taskid` | string | No | The task ID (alternative to tasktoken) |
+| Parameter   | Type   | Required | Description                                   |
+| ----------- | ------ | -------- | --------------------------------------------- |
+| `tasktoken` | string | No       | The task token returned from the Run endpoint |
+| `taskid`    | string | No       | The task ID (alternative to tasktoken)        |
 
 ### Response
 
@@ -646,24 +649,28 @@ Retrieves the current status and output of a task. You can query by either `task
   "result": true,
   "errors": [],
   "total": "1",
-  "tasklist": [{
-    "id": "534574",
-    "socketaccesstoken": "eDcCm5yyUfIvMFspTwww49OUfgXkQt",
-    "parameters": { "prompt": "Hello, world!" },
-    "status": "task_postprocess_end",
-    "pexit": "0",
-    "debugoutput": "",
-    "starttime": "1734513809",
-    "endtime": "1734513813",
-    "elapsedseconds": "6.0000",
-    "totalcost": "0.003510000000",
-    "outputs": [{
-      "name": "0.png",
-      "contenttype": "image/png",
-      "size": "202472",
-      "url": "https://cdn1.wiro.ai/.../0.png"
-    }]
-  }]
+  "tasklist": [
+    {
+      "id": "534574",
+      "socketaccesstoken": "eDcCm5yyUfIvMFspTwww49OUfgXkQt",
+      "parameters": { "prompt": "Hello, world!" },
+      "status": "task_postprocess_end",
+      "pexit": "0",
+      "debugoutput": "",
+      "starttime": "1734513809",
+      "endtime": "1734513813",
+      "elapsedseconds": "6.0000",
+      "totalcost": "0.003510000000",
+      "outputs": [
+        {
+          "name": "0.png",
+          "contenttype": "image/png",
+          "size": "202472",
+          "url": "https://cdn1.wiro.ai/.../0.png"
+        }
+      ]
+    }
+  ]
 }
 ```
 
@@ -671,17 +678,17 @@ Retrieves the current status and output of a task. You can query by either `task
 
 Cancels a task that is still in the `queue` stage. Tasks that have already been assigned to a worker cannot be cancelled — use Kill instead.
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `tasktoken` | string | Yes | The task token to cancel |
+| Parameter   | Type   | Required | Description              |
+| ----------- | ------ | -------- | ------------------------ |
+| `tasktoken` | string | Yes      | The task token to cancel |
 
 ## **POST** /Task/Kill
 
 Terminates a task that is currently running (any status after `assign`). The worker will stop processing and the task will move to `cancel` status.
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `tasktoken` | string | Yes | The task token to kill |
+| Parameter   | Type   | Required | Description            |
+| ----------- | ------ | -------- | ---------------------- |
+| `tasktoken` | string | Yes      | The task token to kill |
 
 ---
 
@@ -699,6 +706,7 @@ LLM (Large Language Model) requests on Wiro work differently from standard model
 - `pexit` is the primary success indicator (outputs will be empty)
 
 Available LLM models include:
+
 - [openai/gpt-5-2](https://wiro.ai/models/openai/gpt-5-2)
 - [openai/gpt-oss-20b](https://wiro.ai/models/openai/gpt-oss-20b)
 - [qwen/qwen3-5-27b](https://wiro.ai/models/qwen/qwen3-5-27b)
@@ -707,11 +715,11 @@ Available LLM models include:
 
 Wiro maintains conversation history per session. By sending a `session_id` and `user_id` parameters:
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `session_id` | string | No | UUID identifying the conversation session. Reuse for follow-up messages. |
-| `user_id` | string | No | UUID identifying the user. |
-| `prompt` | string | Yes | The user's message or question. |
+| Parameter    | Type   | Required | Description                                                              |
+| ------------ | ------ | -------- | ------------------------------------------------------------------------ |
+| `session_id` | string | No       | UUID identifying the conversation session. Reuse for follow-up messages. |
+| `user_id`    | string | No       | UUID identifying the user.                                               |
+| `prompt`     | string | Yes      | The user's message or question.                                          |
 
 ```json
 // First message — start a new session
@@ -752,11 +760,11 @@ When streaming via WebSocket, `task_output` messages for LLM models contain a st
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `message.thinking` | `string[]` | Array of reasoning/chain-of-thought chunks. May be empty. |
-| `message.answer` | `string[]` | Array of response chunks. This is the content to show the user. |
-| `message.raw` | `string` | Optional raw output before thinking/answer separation. |
+| Field              | Type       | Description                                                     |
+| ------------------ | ---------- | --------------------------------------------------------------- |
+| `message.thinking` | `string[]` | Array of reasoning/chain-of-thought chunks. May be empty.       |
+| `message.answer`   | `string[]` | Array of response chunks. This is the content to show the user. |
+| `message.raw`      | `string`   | Optional raw output before thinking/answer separation.          |
 
 > **Note:** Standard (non-LLM) models send `message` as a plain string. LLM models send it as a `{ thinking, answer }` object. Check the type before parsing.
 
@@ -777,12 +785,14 @@ If you don't need real-time streaming, poll `POST /Task/Detail` instead. The fin
 ```json
 {
   "result": true,
-  "tasklist": [{
-    "status": "task_postprocess_end",
-    "pexit": "0",
-    "debugoutput": "Quantum computing uses qubits that can exist in superposition...",
-    "outputs": []
-  }]
+  "tasklist": [
+    {
+      "status": "task_postprocess_end",
+      "pexit": "0",
+      "debugoutput": "Quantum computing uses qubits that can exist in superposition...",
+      "outputs": []
+    }
+  ]
 }
 ```
 
@@ -820,22 +830,22 @@ Registration message format:
 
 ## Message Types
 
-| Message Type | Description |
-|--------------|-------------|
-| `task_queue` | Task entered the queue |
-| `task_accept` | Task accepted by the system |
-| `task_assign` | Task assigned to a worker |
-| `task_preprocess_start` | Preprocessing has begun |
-| `task_preprocess_end` | Preprocessing completed |
-| `task_start` | Model inference started |
-| `task_output` | Partial/streaming output from the model |
-| `task_error` | A non-fatal error occurred during processing |
-| `task_output_full` | Complete output payload when the model finishes |
-| `task_error_full` | Complete error payload on failure |
-| `task_postprocess_start` | Postprocessing has begun |
-| `task_postprocess_end` | Postprocessing completed |
-| `task_end` | Task fully completed — safe to close the connection |
-| `task_cancel` | Task was cancelled |
+| Message Type             | Description                                         |
+| ------------------------ | --------------------------------------------------- |
+| `task_queue`             | Task entered the queue                              |
+| `task_accept`            | Task accepted by the system                         |
+| `task_assign`            | Task assigned to a worker                           |
+| `task_preprocess_start`  | Preprocessing has begun                             |
+| `task_preprocess_end`    | Preprocessing completed                             |
+| `task_start`             | Model inference started                             |
+| `task_output`            | Partial/streaming output from the model             |
+| `task_error`             | A non-fatal error occurred during processing        |
+| `task_output_full`       | Complete output payload when the model finishes     |
+| `task_error_full`        | Complete error payload on failure                   |
+| `task_postprocess_start` | Postprocessing has begun                            |
+| `task_postprocess_end`   | Postprocessing completed                            |
+| `task_end`               | Task fully completed — safe to close the connection |
+| `task_cancel`            | Task was cancelled                                  |
 
 ## Binary Frames
 
@@ -880,11 +890,13 @@ After running the task, connect to the WebSocket and register with `task_info` :
 ```javascript
 var ws = new WebSocket("wss://socket.wiro.ai/v1");
 
-ws.onopen = function() {
-  ws.send(JSON.stringify({
-    type: "task_info",
-    tasktoken: "YOUR_SOCKET_ACCESS_TOKEN"
-  }));
+ws.onopen = function () {
+  ws.send(
+    JSON.stringify({
+      type: "task_info",
+      tasktoken: "YOUR_SOCKET_ACCESS_TOKEN",
+    }),
+  );
 };
 ```
 
@@ -894,26 +906,26 @@ ws.onopen = function() {
 
 During a realtime session, you'll receive these WebSocket events:
 
-| Event | Description |
-|-------|-------------|
-| `task_stream_ready` | Session is ready — start sending microphone audio |
-| `task_stream_end` | AI finished speaking for this turn — you can speak again |
-| `task_cost` | Cost update with `turnCost` and `cumulativeCost` fields |
-| `task_output` | Transcript messages prefixed with `TRANSCRIPT_USER:` or `TRANSCRIPT_AI:` |
-| `task_end` | Session fully ended — close the connection |
+| Event               | Description                                                              |
+| ------------------- | ------------------------------------------------------------------------ |
+| `task_stream_ready` | Session is ready — start sending microphone audio                        |
+| `task_stream_end`   | AI finished speaking for this turn — you can speak again                 |
+| `task_cost`         | Cost update with `turnCost` and `cumulativeCost` fields                  |
+| `task_output`       | Transcript messages prefixed with `TRANSCRIPT_USER:` or `TRANSCRIPT_AI:` |
+| `task_end`          | Session fully ended — close the connection                               |
 
 ## Audio Format
 
 Both directions (microphone → server, server → client) use the same format:
 
-| Property | Value |
-|----------|-------|
-| Format | PCM (raw, uncompressed) |
-| Bit depth | 16-bit signed integer (Int16) |
-| Sample rate | 24,000 Hz (24 kHz) |
-| Channels | Mono (1 channel) |
-| Byte order | Little-endian |
-| Chunk size | 4,800 samples (200 ms) = 9,600 bytes |
+| Property    | Value                                |
+| ----------- | ------------------------------------ |
+| Format      | PCM (raw, uncompressed)              |
+| Bit depth   | 16-bit signed integer (Int16)        |
+| Sample rate | 24,000 Hz (24 kHz)                   |
+| Channels    | Mono (1 channel)                     |
+| Byte order  | Little-endian                        |
+| Chunk size  | 4,800 samples (200 ms) = 9,600 bytes |
 
 ### Binary Frame Format
 
@@ -997,10 +1009,10 @@ The Files API lets you organize and upload data that can be referenced in model 
 
 Creates a new folder to organize your uploaded files.
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `name` | string | Yes | Folder name |
-| `parentId` | string | No | Parent folder ID for nested structure (null for root) |
+| Parameter  | Type   | Required | Description                                           |
+| ---------- | ------ | -------- | ----------------------------------------------------- |
+| `name`     | string | Yes      | Folder name                                           |
+| `parentId` | string | No       | Parent folder ID for nested structure (null for root) |
 
 ### Response
 
@@ -1021,10 +1033,10 @@ Creates a new folder to organize your uploaded files.
 
 Uploads a file using `multipart/form-data`. You can optionally assign it to a folder.
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `file` | file | Yes | The file to upload (multipart form field) |
-| `folderId` | string | No | Target folder ID (uploads to root if omitted) |
+| Parameter  | Type   | Required | Description                                   |
+| ---------- | ------ | -------- | --------------------------------------------- |
+| `file`     | file   | Yes      | The file to upload (multipart form field)     |
+| `folderId` | string | No       | Target folder ID (uploads to root if omitted) |
 
 ### Response
 
@@ -1137,47 +1149,43 @@ while True:
 ### Node.js
 
 ```javascript
-const axios = require('axios');
+const axios = require("axios");
 
-const API_KEY = 'YOUR_API_KEY';
-const BASE_URL = 'https://api.wiro.ai/v1';
+const API_KEY = "YOUR_API_KEY";
+const BASE_URL = "https://api.wiro.ai/v1";
 
 const headers = {
-  'x-api-key': API_KEY,
-  'Content-Type': 'application/json'
+  "x-api-key": API_KEY,
+  "Content-Type": "application/json",
 };
 
 async function main() {
   // 1. Run a model
-  console.log('Starting model run...');
+  console.log("Starting model run...");
   const runResp = await axios.post(
     `${BASE_URL}/Run/{owner-slug}/{model-slug}`,
     {
-      prompt: 'A cyberpunk cityscape at night',
+      prompt: "A cyberpunk cityscape at night",
       width: 1024,
-      height: 1024
+      height: 1024,
     },
-    { headers }
+    { headers },
   );
   const taskToken = runResp.data.data.taskid;
-  console.log('Task ID:', taskToken);
+  console.log("Task ID:", taskToken);
 
   // 2. Poll for results
   while (true) {
-    const taskResp = await axios.post(
-      `${BASE_URL}/Task/Detail`,
-      { tasktoken: taskToken },
-      { headers }
-    );
+    const taskResp = await axios.post(`${BASE_URL}/Task/Detail`, { tasktoken: taskToken }, { headers });
     const { status, output } = taskResp.data.data;
-    console.log('Status:', status);
+    console.log("Status:", status);
 
-    if (status === 'end') {
-      console.log('Done! Output:', output);
+    if (status === "end") {
+      console.log("Done! Output:", output);
       break;
     }
-    if (status === 'error' || status === 'cancel') {
-      console.log('Task failed or cancelled');
+    if (status === "error" || status === "cancel") {
+      console.log("Task failed or cancelled");
       break;
     }
 
