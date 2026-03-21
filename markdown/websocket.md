@@ -30,20 +30,20 @@ Registration message format:
 
 | Message Type | Description |
 |--------------|-------------|
-| `task_queue` | Task is waiting in the queue |
-| `task_accept` | Task accepted by the worker |
-| `task_assign` | Task assigned a GPU and waiting in queue |
-| `task_preprocess_start` | Preprocessing has started |
-| `task_preprocess_end` | Preprocessing has ended |
-| `task_start` | Task processing has started |
-| `task_output` | Streaming output log — `message` contains text or LLM response (`debugoutput`) |
-| `task_error` | Error log during processing — `message` contains error details (`debugoutput`) |
-| `task_output_full` | Full output log when task completes — `message` contains complete `debugoutput` |
-| `task_error_full` | Full error log when task fails — `message` contains complete error `debugoutput` |
-| `task_postprocess_start` | Postprocessing has started |
-| `task_postprocess_end` | Postprocessing completed — `message` contains output files array |
-| `task_end` | Task fully completed — safe to close the connection |
-| `task_cancel` | Task was cancelled |
+| `task_queue` | The task is queued and waiting to be picked up by an available worker. |
+| `task_accept` | A worker has accepted the task. The task is no longer in the general queue and is being prepared for execution. |
+| `task_assign` | The task has been assigned to a specific GPU. The model is being loaded into memory. |
+| `task_preprocess_start` | Optional preprocessing has started (downloading input files from URLs, converting file types, validating parameters). |
+| `task_preprocess_end` | Preprocessing completed. All inputs are ready and the model is about to start execution. |
+| `task_start` | The model command has started executing. Inference is now running on the GPU. |
+| `task_output` | The model is producing output. Emitted **multiple times** — each stdout write sends a new message. For LLMs, each token/chunk arrives as a separate event for real-time streaming. |
+| `task_error` | The model wrote to stderr. This is an **interim log event**, not a final failure — many models write warnings to stderr during normal operation. The task may still succeed. |
+| `task_output_full` | The complete accumulated stdout log, sent once after the model process finishes. |
+| `task_output_error` | The complete accumulated stderr log, sent once after the model process finishes. |
+| `task_end` | The model process has exited. Fires **before** post-processing — do not use this to determine success. Wait for `task_postprocess_end` instead. |
+| `task_postprocess_start` | Post-processing has started. The system is preparing output files — encoding, uploading to CDN, generating access URLs. |
+| `task_postprocess_end` | Post-processing completed. Check `pexit` to determine success (`"0"` = success). The `outputs` array contains the final files. **This is the event to listen for.** |
+| `task_cancel` | The task was cancelled (if queued) or killed (if running) by the user. |
 
 ## Binary Frames
 

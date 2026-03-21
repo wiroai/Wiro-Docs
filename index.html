@@ -1690,59 +1690,59 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
           <tbody>
             <tr>
               <td><code>task_queue</code></td>
-              <td>Task is waiting in the queue</td>
+              <td>The task is queued and waiting to be picked up by an available worker.</td>
             </tr>
             <tr>
               <td><code>task_accept</code></td>
-              <td>Task accepted by the worker</td>
+              <td>A worker has accepted the task. The task is no longer in the general queue and is being prepared for execution.</td>
             </tr>
             <tr>
               <td><code>task_assign</code></td>
-              <td>Task assigned a GPU and waiting in queue</td>
+              <td>The task has been assigned to a specific GPU. The model is being loaded into memory.</td>
             </tr>
             <tr>
               <td><code>task_preprocess_start</code></td>
-              <td>Preprocessing has started</td>
+              <td>Optional preprocessing has started (downloading input files from URLs, converting file types, validating parameters).</td>
             </tr>
             <tr>
               <td><code>task_preprocess_end</code></td>
-              <td>Preprocessing has ended</td>
+              <td>Preprocessing completed. All inputs are ready and the model is about to start execution.</td>
             </tr>
             <tr>
               <td><code>task_start</code></td>
-              <td>Task processing has started</td>
+              <td>The model command has started executing. Inference is now running on the GPU.</td>
             </tr>
             <tr>
               <td><code>task_output</code></td>
-              <td>Streaming output log — <code>message</code> contains text or LLM response (<code>debugoutput</code>)</td>
+              <td>The model is producing output. Emitted <strong>multiple times</strong> — each stdout write sends a new message. For LLMs, each token/chunk arrives as a separate event for real-time streaming.</td>
             </tr>
             <tr>
               <td><code>task_error</code></td>
-              <td>Error log during processing — <code>message</code> contains error details (<code>debugoutput</code>)</td>
+              <td>The model wrote to stderr. This is an <strong>interim log event</strong>, not a final failure — many models write warnings to stderr during normal operation. The task may still succeed.</td>
             </tr>
             <tr>
               <td><code>task_output_full</code></td>
-              <td>Full output log when task completes — <code>message</code> contains complete <code>debugoutput</code></td>
+              <td>The complete accumulated stdout log, sent once after the model process finishes.</td>
             </tr>
             <tr>
-              <td><code>task_error_full</code></td>
-              <td>Full error log when task fails — <code>message</code> contains complete error <code>debugoutput</code></td>
-            </tr>
-            <tr>
-              <td><code>task_postprocess_start</code></td>
-              <td>Postprocessing has started</td>
-            </tr>
-            <tr>
-              <td><code>task_postprocess_end</code></td>
-              <td>Postprocessing completed — <code>message</code> contains output files array</td>
+              <td><code>task_output_error</code></td>
+              <td>The complete accumulated stderr log, sent once after the model process finishes.</td>
             </tr>
             <tr>
               <td><code>task_end</code></td>
-              <td>Task fully completed — safe to close the connection</td>
+              <td>The model process has exited. Fires <strong>before</strong> post-processing — do not use this to determine success. Wait for <code>task_postprocess_end</code> instead.</td>
+            </tr>
+            <tr>
+              <td><code>task_postprocess_start</code></td>
+              <td>Post-processing has started. The system is preparing output files — encoding, uploading to CDN, generating access URLs.</td>
+            </tr>
+            <tr>
+              <td><code>task_postprocess_end</code></td>
+              <td>Post-processing completed. Check <code>pexit</code> to determine success (<code>"0"</code> = success). The <code>outputs</code> array contains the final files. <strong>This is the event to listen for.</strong></td>
             </tr>
             <tr>
               <td><code>task_cancel</code></td>
-              <td>Task was cancelled</td>
+              <td>The task was cancelled (if queued) or killed (if running) by the user.</td>
             </tr>
           </tbody>
         </table>
