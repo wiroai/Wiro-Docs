@@ -39,7 +39,7 @@ Registration message format:
 | `task_output` | The model is producing output. Emitted **multiple times** — each stdout write sends a new message. For LLMs, each token/chunk arrives as a separate event for real-time streaming. |
 | `task_error` | The model wrote to stderr. This is an **interim log event**, not a final failure — many models write warnings to stderr during normal operation. The task may still succeed. |
 | `task_output_full` | The complete accumulated stdout log, sent once after the model process finishes. |
-| `task_output_error` | The complete accumulated stderr log, sent once after the model process finishes. |
+| `task_error_full` | The complete accumulated stderr log, sent once after the model process finishes. |
 | `task_end` | The model process has exited. Fires **before** post-processing — do not use this to determine success. Wait for `task_postprocess_end` instead. |
 | `task_postprocess_start` | Post-processing has started. The system is preparing output files — encoding, uploading to CDN, generating access URLs. |
 | `task_postprocess_end` | Post-processing completed. Check `pexit` to determine success (`"0"` = success). The `outputs` array contains the final files. **This is the event to listen for.** |
