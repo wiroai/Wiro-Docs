@@ -30,18 +30,18 @@ Registration message format:
 
 | Message Type | Description |
 |--------------|-------------|
-| `task_queue` | Task entered the queue |
-| `task_accept` | Task accepted by the system |
-| `task_assign` | Task assigned to a worker |
-| `task_preprocess_start` | Preprocessing has begun |
-| `task_preprocess_end` | Preprocessing completed |
-| `task_start` | Model inference started |
-| `task_output` | Partial/streaming output from the model |
-| `task_error` | A non-fatal error occurred during processing |
-| `task_output_full` | Complete output payload when the model finishes |
-| `task_error_full` | Complete error payload on failure |
-| `task_postprocess_start` | Postprocessing has begun |
-| `task_postprocess_end` | Postprocessing completed |
+| `task_queue` | Task is waiting in the queue |
+| `task_accept` | Task accepted by the worker |
+| `task_assign` | Task assigned a GPU and waiting in queue |
+| `task_preprocess_start` | Preprocessing has started |
+| `task_preprocess_end` | Preprocessing has ended |
+| `task_start` | Task processing has started |
+| `task_output` | Streaming output log — `message` contains text or LLM response (`debugoutput`) |
+| `task_error` | Error log during processing — `message` contains error details (`debugoutput`) |
+| `task_output_full` | Full output log when task completes — `message` contains complete `debugoutput` |
+| `task_error_full` | Full error log when task fails — `message` contains complete error `debugoutput` |
+| `task_postprocess_start` | Postprocessing has started |
+| `task_postprocess_end` | Postprocessing completed — `message` contains output files array |
 | `task_end` | Task fully completed — safe to close the connection |
 | `task_cancel` | Task was cancelled |
 
