@@ -1,0 +1,2279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Documentation - Wiro</title>
+  <meta name="description" content="Wiro API Documentation - Run 1000+ AI models through a unified API">
+  <meta property="og:title" content="Wiro API Documentation">
+  <meta property="og:description" content="Run 1000+ AI models through a unified API">
+  <meta property="og:url" content="https://wiro.ai/docs">
+  <link rel="icon" href="https://wiro.ai/favicon.ico">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700&family=Montserrat:wght@500;600;700;800;900&family=Fira+Code:wght@400;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://cdn.lineicons.com/4.0/lineicons.css" rel="stylesheet">
+  <link rel="stylesheet" href="css/docs.css">
+</head>
+<body>
+  <div class="docs-layout" id="app">
+    <!-- Mobile nav toggle -->
+    <button class="docs-mobile-toggle" id="mobileNavToggle">
+      <i class="lni lni-menu"></i>
+      <span>Menu</span>
+    </button>
+
+    <!-- Left navigation -->
+    <div class="docs-nav-wrapper" id="navWrapper">
+      <nav class="docs-nav" aria-label="Documentation navigation">
+        <div class="docs-nav-inner">
+          <div class="docs-nav-brand">
+            <a href="https://wiro.ai" class="docs-nav-logo">
+              <img src="https://wiro.ai/images/logos/logo/logo.png" alt="Wiro" height="25">
+            </a>
+            <span class="docs-nav-label">API Docs</span>
+            <button class="docs-theme-toggle" id="themeToggle" title="Toggle dark mode">
+              <i class="lni lni-night"></i>
+            </button>
+          </div>
+
+          <div class="docs-nav-group">
+            <div class="docs-nav-md-row">
+              <span class="docs-nav-md-label">Markdown</span>
+              <a href="markdown/full-documentation.md" target="_blank" class="docs-nav-md-btn">View</a>
+              <a href="markdown/full-documentation.md" download class="docs-nav-md-btn">Download</a>
+            </div>
+          </div>
+
+          <div class="docs-nav-group">
+            <h4 class="docs-nav-group-title">Getting Started</h4>
+            <ul class="docs-nav-links">
+              <li><a href="#/introduction" class="docs-nav-link" data-section="introduction"><i class="lni lni-home"></i><span>Introduction</span></a></li>
+              <li><a href="#/authentication" class="docs-nav-link" data-section="authentication"><i class="lni lni-lock-alt"></i><span>Authentication</span></a></li>
+              <li><a href="#/projects" class="docs-nav-link" data-section="projects"><i class="lni lni-folder"></i><span>Projects</span></a></li>
+            </ul>
+          </div>
+
+          <div class="docs-nav-group">
+            <h4 class="docs-nav-group-title">API Reference</h4>
+            <ul class="docs-nav-links">
+              <li><a href="#/models" class="docs-nav-link" data-section="models"><i class="lni lni-grid-alt"></i><span>Models</span></a></li>
+              <li><a href="#/run-a-model" class="docs-nav-link" data-section="run-a-model"><i class="lni lni-play"></i><span>Run a Model</span></a></li>
+              <li><a href="#/model-parameters" class="docs-nav-link" data-section="model-parameters"><i class="lni lni-cog"></i><span>Model Parameters</span></a></li>
+              <li><a href="#/tasks" class="docs-nav-link" data-section="tasks"><i class="lni lni-list"></i><span>Tasks</span></a></li>
+              <li><a href="#/llm-chat-streaming" class="docs-nav-link" data-section="llm-chat-streaming"><i class="lni lni-comments"></i><span>LLM & Chat Streaming</span></a></li>
+              <li><a href="#/websocket" class="docs-nav-link" data-section="websocket"><i class="lni lni-bolt"></i><span>WebSocket</span></a></li>
+              <li><a href="#/realtime-voice-conversation" class="docs-nav-link" data-section="realtime-voice-conversation"><i class="lni lni-mic"></i><span>Realtime Voice Conversation</span></a></li>
+              <li><a href="#/files" class="docs-nav-link" data-section="files"><i class="lni lni-upload"></i><span>Files</span></a></li>
+            </ul>
+          </div>
+
+          <div class="docs-nav-group">
+            <h4 class="docs-nav-group-title">Code Examples</h4>
+            <ul class="docs-nav-links">
+              <li><a href="#/code-examples" class="docs-nav-link" data-section="code-examples"><i class="lni lni-code"></i><span>Code Examples</span></a></li>
+              <li><a href="llms.txt" class="docs-nav-link" target="_blank" rel="noopener" title="LLMs.txt"><i class="lni lni-bulb"></i><span>LLMs.txt</span></a></li>
+            </ul>
+          </div>
+        </div>
+      </nav>
+    </div>
+
+    <!-- Main content area -->
+    <div class="docs-main">
+      <div class="docs-page">
+        <div class="docs-content-area">
+          <article class="docs-center">
+
+            <!-- ==================== INTRODUCTION ==================== -->
+            <div class="docs-page-section" data-page="introduction" style="display:block">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/introduction.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/introduction.md" download class="docs-section-md-btn">Download</a></div>
+  <h1>Introduction</h1>
+  <p class="section-subtitle">Everything you need to get started with the Wiro AI platform.</p>
+
+  <section id="what-is-wiro">
+    <h2>What is Wiro?</h2>
+    <p>
+      Wiro is an AI model marketplace and API platform that lets you run
+      <strong>1,000+ AI models</strong> through a single, unified API. Instead of managing infrastructure for each model provider, you make one API call to Wiro and we handle the rest.
+    </p>
+    <ul>
+      <li><strong>Unified API</strong> — one interface for all models (image generation, LLMs, audio, video, and more)</li>
+      <li><strong>Pay-per-use pricing</strong> — only pay for what you consume, no upfront commitments</li>
+      <li><strong>Real-time WebSocket updates</strong> — stream task progress and outputs live</li>
+      <li><strong>9 SDK languages</strong> — curl, Python, Node.js, PHP, C#, Swift, Dart, Kotlin, Go</li>
+    </ul>
+  </section>
+
+  <section id="base-url">
+    <h2>Base URL</h2>
+    <p>All API requests are made to:</p>
+    <pre><code>https://api.wiro.ai/v1</code></pre>
+    <p>WebSocket connections use:</p>
+    <pre><code>wss://socket.wiro.ai/v1</code></pre>
+  </section>
+
+  <section id="quick-start">
+    <h2>Quick Start</h2>
+    <ol>
+      <li><strong>Sign up</strong> at <a href="https://wiro.ai/auth/signup" class="docs-link">wiro.ai</a></li>
+      <li><strong>Create a project</strong> in the <a href="https://wiro.ai/panel/project/new" class="docs-link">Dashboard</a> to get your API key</li>
+      <li><strong>Pick a model</strong> from the <a href="https://wiro.ai/models" class="docs-link">marketplace</a></li>
+      <li><strong>Make your first API call</strong> — see <a href="#/code-examples" class="docs-link">Code Examples</a> for full end-to-end samples (or use the panel on the right)</li>
+    </ol>
+  </section>
+
+  <section id="response-format">
+    <h2>Response Format</h2>
+    <p>Every API response returns JSON with a consistent structure:</p>
+    <pre><code>{
+  "result": true,
+  "errors": [],
+  "data": { ... }
+}</code></pre>
+    <p>
+      When <code>result</code> is <code>false</code>, the <code>errors</code>
+      array contains human-readable messages describing what went wrong.
+    </p>
+  </section>
+
+  <section id="rate-limits">
+    <h2>Rate Limits &amp; Error Handling</h2>
+    <p>API requests are rate-limited per project. If you exceed the limit, the API returns a <code>429 Too Many Requests</code> status. Implement exponential backoff in your retry logic.</p>
+    <p>Common HTTP status codes:</p>
+    <ul>
+      <li><code>200</code> — Success</li>
+      <li><code>400</code> — Bad request (check parameters)</li>
+      <li><code>401</code> — Unauthorized (invalid or missing API key)</li>
+      <li><code>403</code> — Forbidden (signature mismatch or insufficient permissions)</li>
+      <li><code>429</code> — Rate limit exceeded</li>
+      <li><code>500</code> — Internal server error</li>
+    </ul>
+  </section>
+</article>
+
+<script type="application/json" class="code-examples-data">
+[
+  {
+    "label": "curl",
+    "language": "bash",
+    "code": "curl -X POST \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"prompt\": \"Hello, world!\"}'"
+  },
+  {
+    "label": "Python",
+    "language": "python",
+    "code": "import requests\n\nresponse = requests.post(\n    \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\",\n    headers={\"x-api-key\": \"YOUR_API_KEY\", \"Content-Type\": \"application/json\"},\n    json={\"prompt\": \"Hello, world!\"}\n)\nprint(response.json())"
+  },
+  {
+    "label": "Node.js",
+    "language": "javascript",
+    "code": "const axios = require('axios');\n\nconst response = await axios.post(\n  'https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}',\n  { prompt: 'Hello, world!' },\n  { headers: { 'x-api-key': 'YOUR_API_KEY', 'Content-Type': 'application/json' } }\n);\nconsole.log(response.data);"
+  },
+  {
+    "label": "PHP",
+    "language": "php",
+    "code": "<?php\n$ch = curl_init();\ncurl_setopt($ch, CURLOPT_URL, \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\");\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\n    \"Content-Type: application/json\",\n    \"x-api-key: YOUR_API_KEY\"\n]);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([\n    \"prompt\" => \"Hello, world!\"\n]));\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n$response = curl_exec($ch);\ncurl_close($ch);\necho $response;"
+  },
+  {
+    "label": "C#",
+    "language": "csharp",
+    "code": "using var client = new HttpClient();\nclient.DefaultRequestHeaders.Add(\"x-api-key\", \"YOUR_API_KEY\");\n\nvar content = new StringContent(\n    JsonSerializer.Serialize(new { prompt = \"Hello, world!\" }),\n    Encoding.UTF8, \"application/json\");\n\nvar response = await client.PostAsync(\n    \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\", content);\nvar result = await response.Content.ReadAsStringAsync();\nConsole.WriteLine(result);"
+  },
+  {
+    "label": "Go",
+    "language": "go",
+    "code": "package main\n\nimport (\n    \"bytes\"\n    \"encoding/json\"\n    \"fmt\"\n    \"net/http\"\n    \"io\"\n)\n\nfunc main() {\n    body, _ := json.Marshal(map[string]string{\n        \"prompt\": \"Hello, world!\",\n    })\n    req, _ := http.NewRequest(\"POST\",\n        \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\",\n        bytes.NewBuffer(body))\n    req.Header.Set(\"Content-Type\", \"application/json\")\n    req.Header.Set(\"x-api-key\", \"YOUR_API_KEY\")\n\n    resp, _ := http.DefaultClient.Do(req)\n    defer resp.Body.Close()\n    data, _ := io.ReadAll(resp.Body)\n    fmt.Println(string(data))\n}"
+  },
+  {
+    "label": "Swift",
+    "language": "swift",
+    "code": "import Foundation\n\nlet url = URL(string: \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\")!\nvar request = URLRequest(url: url)\nrequest.httpMethod = \"POST\"\nrequest.setValue(\"application/json\", forHTTPHeaderField: \"Content-Type\")\nrequest.setValue(\"YOUR_API_KEY\", forHTTPHeaderField: \"x-api-key\")\nrequest.httpBody = try! JSONSerialization.data(withJSONObject: [\n    \"prompt\": \"Hello, world!\"\n])\n\nlet (data, _) = try await URLSession.shared.data(for: request)\nprint(String(data: data, encoding: .utf8)!)"
+  },
+  {
+    "label": "Kotlin",
+    "language": "kotlin",
+    "code": "import java.net.HttpURLConnection\nimport java.net.URL\n\nval url = URL(\"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\")\nval conn = url.openConnection() as HttpURLConnection\nconn.requestMethod = \"POST\"\nconn.setRequestProperty(\"Content-Type\", \"application/json\")\nconn.setRequestProperty(\"x-api-key\", \"YOUR_API_KEY\")\nconn.doOutput = true\nconn.outputStream.write(\"\"\"{\"prompt\": \"Hello, world!\"}\"\"\".toByteArray())\n\nval response = conn.inputStream.bufferedReader().readText()\nprintln(response)"
+  },
+  {
+    "label": "Dart",
+    "language": "dart",
+    "code": "import 'dart:convert';\nimport 'package:http/http.dart' as http;\n\nfinal response = await http.post(\n  Uri.parse('https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}'),\n  headers: {\n    'Content-Type': 'application/json',\n    'x-api-key': 'YOUR_API_KEY',\n  },\n  body: jsonEncode({\n    'prompt': 'Hello, world!',\n  }),\n);\nprint(response.body);"
+  },
+  {
+    "label": "Response",
+    "language": "json",
+    "code": "{\n  \"result\": true,\n  \"errors\": [],\n  \"taskid\": \"2221\",\n  \"socketaccesstoken\": \"eDcCm5yyUfIvMFspTwww49OUfgXkQt\"\n}"
+  }
+]
+</script>
+            </div>
+
+            <!-- ==================== AUTHENTICATION ==================== -->
+            <div class="docs-page-section" data-page="authentication" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/authentication.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/authentication.md" download class="docs-section-md-btn">Download</a></div>
+  <h1>Authentication</h1>
+  <p class="section-subtitle">Secure your API requests with signature-based or simple key authentication.</p>
+
+  <section id="auth-overview">
+    <h2>Overview</h2>
+    <p>
+      Wiro supports two authentication methods. You choose the method when
+      <a href="https://wiro.ai/panel/project/new" class="docs-link">creating a project</a> — it cannot be changed afterward.
+    </p>
+
+    <div class="auth-method-toggle" id="authMethodToggle">
+      <button class="active" data-method="signature">Signature-Based (Recommended)</button>
+      <button data-method="simple">API Key Only (Simple)</button>
+    </div>
+  </section>
+
+  <section id="auth-signature" class="auth-content">
+    <h2>Signature-Based Authentication</h2>
+    <p>Uses HMAC-SHA256 to sign every request. The API secret never leaves your environment, making this method ideal for <strong>client-side applications</strong> where the key might be exposed.</p>
+
+    <h3>How it works</h3>
+    <ol>
+      <li>Generate a <strong>nonce</strong> (unix timestamp or random integer)</li>
+      <li>Concatenate: <code>API_SECRET + NONCE</code></li>
+      <li>Create an HMAC-SHA256 hash using your <code>API_KEY</code> as the secret key</li>
+      <li>Send the signature, nonce, and API key as headers</li>
+    </ol>
+
+    <pre><code>SIGNATURE = HMAC-SHA256(key=API_KEY, message=API_SECRET + NONCE)</code></pre>
+
+    <div class="docs-param-table">
+      <h4 class="docs-param-table-title">Required Headers</h4>
+      <div class="docs-param-table-wrapper">
+        <table>
+          <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code class="param-name">x-api-key</code></td><td><span class="param-type">string</span></td><td><span class="param-required is-required">Yes</span></td><td class="param-desc">Your project API key</td></tr>
+            <tr><td><code class="param-name">x-signature</code></td><td><span class="param-type">string</span></td><td><span class="param-required is-required">Yes</span></td><td class="param-desc">HMAC-SHA256(API_SECRET + NONCE, API_KEY)</td></tr>
+            <tr><td><code class="param-name">x-nonce</code></td><td><span class="param-type">string</span></td><td><span class="param-required is-required">Yes</span></td><td class="param-desc">Unix timestamp or random integer</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="auth-simple" class="auth-content" style="display:none">
+    <h2>API Key Only Authentication</h2>
+    <p>For server-side applications where you control the environment, you can use the simpler API-key-only method. Just include the <code>x-api-key</code> header — no signature required.</p>
+
+    <div class="docs-param-table">
+      <h4 class="docs-param-table-title">Required Headers</h4>
+      <div class="docs-param-table-wrapper">
+        <table>
+          <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code class="param-name">x-api-key</code></td><td><span class="param-type">string</span></td><td><span class="param-required is-required">Yes</span></td><td class="param-desc">Your project API key</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="auth-comparison">
+    <h2>Comparison</h2>
+    <div class="docs-comparison-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>Signature-Based</th>
+            <th>API Key Only</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Security</td>
+            <td>High — secret never sent over the wire</td>
+            <td>Moderate — key sent in every request</td>
+          </tr>
+          <tr>
+            <td>Complexity</td>
+            <td>Requires HMAC computation</td>
+            <td>Single header</td>
+          </tr>
+          <tr>
+            <td>Best for</td>
+            <td>Client-side apps, mobile, public repos</td>
+            <td>Server-side, internal tools</td>
+          </tr>
+          <tr>
+            <td>Replay protection</td>
+            <td>Yes (via nonce)</td>
+            <td>No</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="choosing-method">
+    <h2>How to Choose</h2>
+    <ul>
+      <li>Building a <strong>client-side</strong> or <strong>mobile</strong> app? Use <strong>Signature-Based</strong>.</li>
+      <li>Running a <strong>server-side</strong> backend with controlled access? <strong>API Key Only</strong> is simpler.</li>
+      <li>Unsure? Default to <strong>Signature-Based</strong> — it's always the safer option.</li>
+    </ul>
+  </section>
+</article>
+
+<script type="application/json" class="code-examples-data">
+{
+  "signature": [
+    {
+      "label": "curl",
+      "language": "bash",
+      "code": "export YOUR_API_KEY=\"your-api-key\"\nexport YOUR_API_SECRET=\"your-api-secret\"\nexport NONCE=$(date +%s)\nexport SIGNATURE=$(echo -n \"${YOUR_API_SECRET}${NONCE}\" | \\\n  openssl dgst -sha256 -hmac \"${YOUR_API_KEY}\")\n\ncurl -X POST \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: ${YOUR_API_KEY}\" \\\n  -H \"x-nonce: ${NONCE}\" \\\n  -H \"x-signature: ${SIGNATURE}\" \\\n  -d '{\"prompt\": \"Hello, world!\"}'"
+    },
+    {
+      "label": "Python",
+      "language": "python",
+      "code": "import hmac, hashlib, time, requests\n\nYOUR_API_KEY = \"your-api-key\"\nYOUR_API_SECRET = \"your-api-secret\"\n\nnonce = str(int(time.time()))\nmessage = YOUR_API_SECRET + nonce\nsignature = hmac.new(\n    YOUR_API_KEY.encode(),\n    message.encode(),\n    hashlib.sha256\n).hexdigest()\n\nresponse = requests.post(\n    \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\",\n    headers={\n        \"x-api-key\": YOUR_API_KEY,\n        \"x-nonce\": nonce,\n        \"x-signature\": signature,\n        \"Content-Type\": \"application/json\"\n    },\n    json={\"prompt\": \"Hello, world!\"}\n)\nprint(response.json())"
+    },
+    {
+      "label": "Node.js",
+      "language": "javascript",
+      "code": "const crypto = require(\"crypto\");\nconst axios = require(\"axios\");\n\nconst YOUR_API_KEY = \"your-api-key\";\nconst YOUR_API_SECRET = \"your-api-secret\";\n\nconst nonce = String(Date.now());\nconst signature = crypto\n  .createHmac(\"sha256\", YOUR_API_KEY)\n  .update(YOUR_API_SECRET + nonce)\n  .digest(\"hex\");\n\nconst response = await axios.post(\n  \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\",\n  { prompt: \"Hello, world!\" },\n  {\n    headers: {\n      \"x-api-key\": YOUR_API_KEY,\n      \"x-nonce\": nonce,\n      \"x-signature\": signature,\n      \"Content-Type\": \"application/json\"\n    }\n  }\n);\nconsole.log(response.data);"
+    },
+    {
+      "label": "PHP",
+      "language": "php",
+      "code": "<?php\n$apiKey = \"your-api-key\";\n$apiSecret = \"your-api-secret\";\n\n$nonce = (string)time();\n$message = $apiSecret . $nonce;\n$signature = hash_hmac(\"sha256\", $message, $apiKey);\n\n$ch = curl_init();\ncurl_setopt($ch, CURLOPT_URL,\n    \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\");\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\n    \"Content-Type: application/json\",\n    \"x-api-key: $apiKey\",\n    \"x-nonce: $nonce\",\n    \"x-signature: $signature\"\n]);\ncurl_setopt($ch, CURLOPT_POSTFIELDS,\n    json_encode([\"prompt\" => \"Hello, world!\"]));\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n$response = curl_exec($ch);\ncurl_close($ch);\necho $response;"
+    },
+    {
+      "label": "C#",
+      "language": "csharp",
+      "code": "using System.Security.Cryptography;\nusing System.Text;\n\nvar apiKey = \"your-api-key\";\nvar apiSecret = \"your-api-secret\";\n\nvar nonce = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();\nvar message = apiSecret + nonce;\nusing var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(apiKey));\nvar signature = Convert.ToHexString(\n    hmac.ComputeHash(Encoding.UTF8.GetBytes(message))).ToLower();\n\nusing var client = new HttpClient();\nclient.DefaultRequestHeaders.Add(\"x-api-key\", apiKey);\nclient.DefaultRequestHeaders.Add(\"x-nonce\", nonce);\nclient.DefaultRequestHeaders.Add(\"x-signature\", signature);\n\nvar content = new StringContent(\n    \"{\\\"prompt\\\":\\\"Hello, world!\\\"}\",\n    Encoding.UTF8, \"application/json\");\nvar response = await client.PostAsync(\n    \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\", content);\nConsole.WriteLine(await response.Content.ReadAsStringAsync());"
+    },
+    {
+      "label": "Go",
+      "language": "go",
+      "code": "package main\n\nimport (\n    \"crypto/hmac\"\n    \"crypto/sha256\"\n    \"encoding/hex\"\n    \"fmt\"\n    \"net/http\"\n    \"strconv\"\n    \"strings\"\n    \"time\"\n    \"io\"\n)\n\nfunc main() {\n    apiKey := \"your-api-key\"\n    apiSecret := \"your-api-secret\"\n\n    nonce := strconv.FormatInt(time.Now().Unix(), 10)\n    mac := hmac.New(sha256.New, []byte(apiKey))\n    mac.Write([]byte(apiSecret + nonce))\n    signature := hex.EncodeToString(mac.Sum(nil))\n\n    body := strings.NewReader(`{\"prompt\":\"Hello, world!\"}`)\n    req, _ := http.NewRequest(\"POST\",\n        \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\", body)\n    req.Header.Set(\"Content-Type\", \"application/json\")\n    req.Header.Set(\"x-api-key\", apiKey)\n    req.Header.Set(\"x-nonce\", nonce)\n    req.Header.Set(\"x-signature\", signature)\n\n    resp, _ := http.DefaultClient.Do(req)\n    defer resp.Body.Close()\n    data, _ := io.ReadAll(resp.Body)\n    fmt.Println(string(data))\n}"
+    },
+    {
+      "label": "Swift",
+      "language": "swift",
+      "code": "import Foundation\nimport CommonCrypto\n\nlet apiKey = \"your-api-key\"\nlet apiSecret = \"your-api-secret\"\n\nlet nonce = String(Int(Date().timeIntervalSince1970))\nlet message = (apiSecret + nonce).data(using: .utf8)!\nlet key = apiKey.data(using: .utf8)!\nvar hmac = [UInt8](repeating: 0, count: Int(CC_SHA256_DIGEST_LENGTH))\nmessage.withUnsafeBytes { msgPtr in\n    key.withUnsafeBytes { keyPtr in\n        CCHmac(CCHmacAlgorithm(kCCHmacAlgSHA256),\n               keyPtr.baseAddress, key.count,\n               msgPtr.baseAddress, message.count, &hmac)\n    }\n}\nlet signature = hmac.map { String(format: \"%02x\", $0) }.joined()\n\nvar request = URLRequest(url: URL(string:\n    \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\")!)\nrequest.httpMethod = \"POST\"\nrequest.setValue(\"application/json\", forHTTPHeaderField: \"Content-Type\")\nrequest.setValue(apiKey, forHTTPHeaderField: \"x-api-key\")\nrequest.setValue(nonce, forHTTPHeaderField: \"x-nonce\")\nrequest.setValue(signature, forHTTPHeaderField: \"x-signature\")\nrequest.httpBody = try! JSONSerialization.data(\n    withJSONObject: [\"prompt\": \"Hello, world!\"])\n\nlet (data, _) = try await URLSession.shared.data(for: request)\nprint(String(data: data, encoding: .utf8)!)"
+    },
+    {
+      "label": "Kotlin",
+      "language": "kotlin",
+      "code": "import javax.crypto.Mac\nimport javax.crypto.spec.SecretKeySpec\nimport java.net.HttpURLConnection\nimport java.net.URL\n\nval apiKey = \"your-api-key\"\nval apiSecret = \"your-api-secret\"\n\nval nonce = (System.currentTimeMillis() / 1000).toString()\nval mac = Mac.getInstance(\"HmacSHA256\")\nmac.init(SecretKeySpec(apiKey.toByteArray(), \"HmacSHA256\"))\nval signature = mac.doFinal((apiSecret + nonce).toByteArray())\n    .joinToString(\"\") { \"%02x\".format(it) }\n\nval conn = URL(\"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\")\n    .openConnection() as HttpURLConnection\nconn.requestMethod = \"POST\"\nconn.setRequestProperty(\"Content-Type\", \"application/json\")\nconn.setRequestProperty(\"x-api-key\", apiKey)\nconn.setRequestProperty(\"x-nonce\", nonce)\nconn.setRequestProperty(\"x-signature\", signature)\nconn.doOutput = true\nconn.outputStream.write(\"\"\"{\"prompt\":\"Hello, world!\"}\"\"\".toByteArray())\n\nprintln(conn.inputStream.bufferedReader().readText())"
+    },
+    {
+      "label": "Dart",
+      "language": "dart",
+      "code": "import 'dart:convert';\nimport 'package:crypto/crypto.dart';\nimport 'package:http/http.dart' as http;\n\nfinal apiKey = 'your-api-key';\nfinal apiSecret = 'your-api-secret';\n\nfinal nonce = (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString();\nfinal hmac = Hmac(sha256, utf8.encode(apiKey));\nfinal signature = hmac.convert(utf8.encode(apiSecret + nonce)).toString();\n\nfinal response = await http.post(\n  Uri.parse('https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}'),\n  headers: {\n    'Content-Type': 'application/json',\n    'x-api-key': apiKey,\n    'x-nonce': nonce,\n    'x-signature': signature,\n  },\n  body: jsonEncode({'prompt': 'Hello, world!'}),\n);\nprint(response.body);"
+    },
+    {
+      "label": "Response",
+      "language": "json",
+      "code": "{\n  \"result\": true,\n  \"errors\": [],\n  \"taskid\": \"2221\",\n  \"socketaccesstoken\": \"eDcCm5yyUfIvMFspTwww49OUfgXkQt\"\n}"
+    }
+  ],
+  "simple": [
+    {
+      "label": "curl",
+      "language": "bash",
+      "code": "export YOUR_API_KEY=\"your-api-key\"\n\ncurl -X POST \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: ${YOUR_API_KEY}\" \\\n  -d '{\"prompt\": \"Hello, world!\"}'"
+    },
+    {
+      "label": "Python",
+      "language": "python",
+      "code": "import requests\n\nYOUR_API_KEY = \"your-api-key\"\n\nresponse = requests.post(\n    \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\",\n    headers={\n        \"x-api-key\": YOUR_API_KEY,\n        \"Content-Type\": \"application/json\"\n    },\n    json={\"prompt\": \"Hello, world!\"}\n)\nprint(response.json())"
+    },
+    {
+      "label": "Node.js",
+      "language": "javascript",
+      "code": "const axios = require(\"axios\");\n\nconst YOUR_API_KEY = \"your-api-key\";\n\nconst response = await axios.post(\n  \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\",\n  { prompt: \"Hello, world!\" },\n  {\n    headers: {\n      \"x-api-key\": YOUR_API_KEY,\n      \"Content-Type\": \"application/json\"\n    }\n  }\n);\nconsole.log(response.data);"
+    },
+    {
+      "label": "PHP",
+      "language": "php",
+      "code": "<?php\n$apiKey = \"your-api-key\";\n\n$ch = curl_init();\ncurl_setopt($ch, CURLOPT_URL,\n    \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\");\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\n    \"Content-Type: application/json\",\n    \"x-api-key: $apiKey\"\n]);\ncurl_setopt($ch, CURLOPT_POSTFIELDS,\n    json_encode([\"prompt\" => \"Hello, world!\"]));\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n$response = curl_exec($ch);\ncurl_close($ch);\necho $response;"
+    },
+    {
+      "label": "C#",
+      "language": "csharp",
+      "code": "using var client = new HttpClient();\nclient.DefaultRequestHeaders.Add(\"x-api-key\", \"your-api-key\");\n\nvar content = new StringContent(\n    \"{\\\"prompt\\\":\\\"Hello, world!\\\"}\",\n    Encoding.UTF8, \"application/json\");\nvar response = await client.PostAsync(\n    \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\", content);\nConsole.WriteLine(await response.Content.ReadAsStringAsync());"
+    },
+    {
+      "label": "Go",
+      "language": "go",
+      "code": "package main\n\nimport (\n    \"fmt\"\n    \"net/http\"\n    \"strings\"\n    \"io\"\n)\n\nfunc main() {\n    body := strings.NewReader(`{\"prompt\":\"Hello, world!\"}`)\n    req, _ := http.NewRequest(\"POST\",\n        \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\", body)\n    req.Header.Set(\"Content-Type\", \"application/json\")\n    req.Header.Set(\"x-api-key\", \"your-api-key\")\n\n    resp, _ := http.DefaultClient.Do(req)\n    defer resp.Body.Close()\n    data, _ := io.ReadAll(resp.Body)\n    fmt.Println(string(data))\n}"
+    },
+    {
+      "label": "Swift",
+      "language": "swift",
+      "code": "import Foundation\n\nvar request = URLRequest(url: URL(string:\n    \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\")!)\nrequest.httpMethod = \"POST\"\nrequest.setValue(\"application/json\", forHTTPHeaderField: \"Content-Type\")\nrequest.setValue(\"your-api-key\", forHTTPHeaderField: \"x-api-key\")\nrequest.httpBody = try! JSONSerialization.data(\n    withJSONObject: [\"prompt\": \"Hello, world!\"])\n\nlet (data, _) = try await URLSession.shared.data(for: request)\nprint(String(data: data, encoding: .utf8)!)"
+    },
+    {
+      "label": "Kotlin",
+      "language": "kotlin",
+      "code": "import java.net.HttpURLConnection\nimport java.net.URL\n\nval conn = URL(\"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\")\n    .openConnection() as HttpURLConnection\nconn.requestMethod = \"POST\"\nconn.setRequestProperty(\"Content-Type\", \"application/json\")\nconn.setRequestProperty(\"x-api-key\", \"your-api-key\")\nconn.doOutput = true\nconn.outputStream.write(\"\"\"{\"prompt\":\"Hello, world!\"}\"\"\".toByteArray())\n\nprintln(conn.inputStream.bufferedReader().readText())"
+    },
+    {
+      "label": "Dart",
+      "language": "dart",
+      "code": "import 'dart:convert';\nimport 'package:http/http.dart' as http;\n\nfinal response = await http.post(\n  Uri.parse('https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}'),\n  headers: {\n    'Content-Type': 'application/json',\n    'x-api-key': 'your-api-key',\n  },\n  body: jsonEncode({'prompt': 'Hello, world!'}),\n);\nprint(response.body);"
+    },
+    {
+      "label": "Response",
+      "language": "json",
+      "code": "{\n  \"result\": true,\n  \"errors\": [],\n  \"taskid\": \"2221\",\n  \"socketaccesstoken\": \"eDcCm5yyUfIvMFspTwww49OUfgXkQt\"\n}"
+    }
+  ]
+}
+</script>
+            </div>
+
+            <!-- ==================== PROJECTS ==================== -->
+            <div class="docs-page-section" data-page="projects" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/projects.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/projects.md" download class="docs-section-md-btn">Download</a></div>
+  <h1>Projects</h1>
+  <p class="section-subtitle">Organize your API access, billing, and usage with projects.</p>
+
+  <section id="what-is-project">
+    <h2>What is a Project?</h2>
+    <p>A project is a container that holds your <strong>API keys</strong>, <strong>billing settings</strong>, and <strong>usage tracking</strong>. Each project gets its own API key and secret, letting you separate environments (development, staging, production) or different applications.</p>
+    <ul>
+      <li>Each project has its own API key and (optionally) API secret</li>
+      <li>Usage and billing are tracked per project</li>
+      <li>You can create multiple projects under one account</li>
+    </ul>
+  </section>
+
+  <section id="creating-project">
+    <h2>Creating a Project</h2>
+    <ol>
+      <li>Go to your <a href="https://wiro.ai/panel" class="docs-link">Dashboard</a></li>
+      <li>Navigate to <a href="https://wiro.ai/panel/project" class="docs-link">Projects</a></li>
+      <li>Click <a href="https://wiro.ai/panel/project/new" class="docs-link">New Project</a></li>
+      <li>Enter a project name</li>
+      <li>
+        Select your <a href="#/authentication" class="docs-link">authentication method</a>:
+        <ul>
+          <li><strong>Signature-Based</strong> — generates both an API key and API secret</li>
+          <li><strong>API Key Only</strong> — generates only an API key</li>
+        </ul>
+      </li>
+      <li>Click <strong>Create</strong></li>
+    </ol>
+  </section>
+
+  <section id="api-credentials">
+    <h2>API Credentials</h2>
+    <p>After creating a project, your API key (and secret, if signature-based) are displayed <strong>once</strong>. Copy and store them securely — you won't be able to view the secret again.</p>
+    <div class="info-callout">
+      <p><strong>Important:</strong> Treat your API secret like a password. Never commit it to version control or expose it in client-side code without signature-based authentication.</p>
+    </div>
+  </section>
+
+  <section id="managing-projects">
+    <h2>Managing Projects</h2>
+    <p>From the <a href="https://wiro.ai/panel/project" class="docs-link">Projects page</a> in your Dashboard, you can:</p>
+    <ul>
+      <li><strong>Update name</strong> — rename your project at any time</li>
+      <li><strong>Regenerate keys</strong> — invalidates existing keys and generates new ones</li>
+      <li><strong>View usage</strong> — see API calls, costs, and task history</li>
+      <li><strong>Delete project</strong> — permanently removes the project and revokes all keys</li>
+    </ul>
+    <p>Regenerating keys immediately invalidates the old ones. Update your application with the new credentials before the old ones stop working.</p>
+  </section>
+</article>
+
+<script type="application/json" class="code-examples-data">
+[
+  {
+    "label": "curl",
+    "language": "bash",
+    "code": "# Use your project API key in any request\ncurl -X POST \"https://api.wiro.ai/v1/Run/stability-ai/sdxl\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_PROJECT_API_KEY\" \\\n  -d '{\"prompt\": \"A sunset over mountains\"}'"
+  },
+  {
+    "label": "Python",
+    "language": "python",
+    "code": "import requests\n\nAPI_KEY = \"YOUR_PROJECT_API_KEY\"\n\nresponse = requests.post(\n    \"https://api.wiro.ai/v1/Run/stability-ai/sdxl\",\n    headers={\n        \"x-api-key\": API_KEY,\n        \"Content-Type\": \"application/json\"\n    },\n    json={\"prompt\": \"A sunset over mountains\"}\n)\nprint(response.json())"
+  },
+  {
+    "label": "Node.js",
+    "language": "javascript",
+    "code": "const axios = require('axios');\n\nconst API_KEY = 'YOUR_PROJECT_API_KEY';\n\nconst response = await axios.post(\n  'https://api.wiro.ai/v1/Run/stability-ai/sdxl',\n  { prompt: 'A sunset over mountains' },\n  {\n    headers: {\n      'x-api-key': API_KEY,\n      'Content-Type': 'application/json'\n    }\n  }\n);\nconsole.log(response.data);"
+  },
+  {
+    "label": "PHP",
+    "language": "php",
+    "code": "<?php\n$ch = curl_init();\ncurl_setopt($ch, CURLOPT_URL, \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\");\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\n    \"Content-Type: application/json\",\n    \"x-api-key: YOUR_PROJECT_API_KEY\"\n]);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([\n    \"prompt\" => \"A sunset over mountains\"\n]));\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n$response = curl_exec($ch);\ncurl_close($ch);\necho $response;"
+  },
+  {
+    "label": "C#",
+    "language": "csharp",
+    "code": "using var client = new HttpClient();\nclient.DefaultRequestHeaders.Add(\n    \"x-api-key\", \"YOUR_PROJECT_API_KEY\");\n\nvar content = new StringContent(\n    JsonSerializer.Serialize(new {\n        prompt = \"A sunset over mountains\"\n    }),\n    Encoding.UTF8, \"application/json\");\n\nvar response = await client.PostAsync(\n    \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\",\n    content);\nvar result = await response.Content\n    .ReadAsStringAsync();\nConsole.WriteLine(result);"
+  },
+  {
+    "label": "Go",
+    "language": "go",
+    "code": "package main\n\nimport (\n    \"bytes\"\n    \"encoding/json\"\n    \"fmt\"\n    \"net/http\"\n    \"io\"\n)\n\nfunc main() {\n    body, _ := json.Marshal(map[string]string{\n        \"prompt\": \"A sunset over mountains\",\n    })\n    req, _ := http.NewRequest(\"POST\",\n        \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\",\n        bytes.NewBuffer(body))\n    req.Header.Set(\"Content-Type\", \"application/json\")\n    req.Header.Set(\"x-api-key\", \"YOUR_PROJECT_API_KEY\")\n\n    resp, _ := http.DefaultClient.Do(req)\n    defer resp.Body.Close()\n    data, _ := io.ReadAll(resp.Body)\n    fmt.Println(string(data))\n}"
+  },
+  {
+    "label": "Swift",
+    "language": "swift",
+    "code": "import Foundation\n\nlet url = URL(string: \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\")!\nvar request = URLRequest(url: url)\nrequest.httpMethod = \"POST\"\nrequest.setValue(\"application/json\",\n    forHTTPHeaderField: \"Content-Type\")\nrequest.setValue(\"YOUR_PROJECT_API_KEY\",\n    forHTTPHeaderField: \"x-api-key\")\nrequest.httpBody = try! JSONSerialization.data(\n    withJSONObject: [\n        \"prompt\": \"A sunset over mountains\"\n    ])\n\nlet (data, _) = try await URLSession.shared\n    .data(for: request)\nprint(String(data: data, encoding: .utf8)!)"
+  },
+  {
+    "label": "Kotlin",
+    "language": "kotlin",
+    "code": "import java.net.HttpURLConnection\nimport java.net.URL\n\nval url = URL(\"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\")\nval conn = url.openConnection() as HttpURLConnection\nconn.requestMethod = \"POST\"\nconn.setRequestProperty(\"Content-Type\", \"application/json\")\nconn.setRequestProperty(\"x-api-key\", \"YOUR_PROJECT_API_KEY\")\nconn.doOutput = true\nconn.outputStream.write(\"\"\"{\"prompt\": \"A sunset over mountains\"}\"\"\".toByteArray())\n\nval response = conn.inputStream.bufferedReader().readText()\nprintln(response)"
+  },
+  {
+    "label": "Dart",
+    "language": "dart",
+    "code": "import 'dart:convert';\nimport 'package:http/http.dart' as http;\n\nfinal response = await http.post(\n  Uri.parse('https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}'),\n  headers: {\n    'Content-Type': 'application/json',\n    'x-api-key': 'YOUR_PROJECT_API_KEY',\n  },\n  body: jsonEncode({\n    'prompt': 'A sunset over mountains',\n  }),\n);\nprint(response.body);"
+  },
+  {
+    "label": "Response",
+    "language": "json",
+    "code": "{\n  \"result\": true,\n  \"errors\": [],\n  \"taskid\": \"2221\",\n  \"socketaccesstoken\": \"eDcCm5yyUfIvMFspTwww49OUfgXkQt\"\n}"
+  }
+]
+</script>
+            </div>
+
+            <!-- ==================== MODELS ==================== -->
+            <div class="docs-page-section" data-page="models" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/models.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/models.md" download class="docs-section-md-btn">Download</a></div>
+  <h1>Models</h1>
+  <p class="section-subtitle">Browse and discover AI models available on the Wiro platform.</p>
+
+  <section id="list-models">
+    <h2><span class="endpoint-badge post">POST</span> /Tool/List</h2>
+    <p>Returns a paginated list of available models. Filter by categories, search by name, and sort results.</p>
+
+    <div class="docs-param-table">
+      <h4 class="docs-param-table-title">Request Parameters</h4>
+      <div class="docs-param-table-wrapper">
+        <table>
+          <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code class="param-name">start</code></td><td><span class="param-type">string</span></td><td><span class="param-required">No</span></td><td class="param-desc">Offset for pagination (default: "0")</td></tr>
+            <tr><td><code class="param-name">limit</code></td><td><span class="param-type">string</span></td><td><span class="param-required">No</span></td><td class="param-desc">Number of results to return (default: "20")</td></tr>
+            <tr><td><code class="param-name">search</code></td><td><span class="param-type">string</span></td><td><span class="param-required">No</span></td><td class="param-desc">Search query to filter models by name</td></tr>
+            <tr><td><code class="param-name">sort</code></td><td><span class="param-type">string</span></td><td><span class="param-required">No</span></td><td class="param-desc">Sort field: id, relevance</td></tr>
+            <tr><td><code class="param-name">order</code></td><td><span class="param-type">string</span></td><td><span class="param-required">No</span></td><td class="param-desc">Sort direction: ASC or DESC</td></tr>
+            <tr><td><code class="param-name">categories</code></td><td><span class="param-type">string[]</span></td><td><span class="param-required">No</span></td><td class="param-desc">Filter by categories (e.g. image-generation, llm, audio, video)</td></tr>
+            <tr><td><code class="param-name">tags</code></td><td><span class="param-type">string[]</span></td><td><span class="param-required">No</span></td><td class="param-desc">Filter by tags</td></tr>
+            <tr><td><code class="param-name">slugowner</code></td><td><span class="param-type">string</span></td><td><span class="param-required">No</span></td><td class="param-desc">Filter by model owner slug</td></tr>
+            <tr><td><code class="param-name">hideworkflows</code></td><td><span class="param-type">boolean</span></td><td><span class="param-required">No</span></td><td class="param-desc">Hide workflow models from results (recommended: true)</td></tr>
+            <tr><td><code class="param-name">summary</code></td><td><span class="param-type">boolean</span></td><td><span class="param-required">No</span></td><td class="param-desc">Return summarized model data (recommended for listings)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <h3>Response</h3>
+    <pre><code>{
+  "result": true,
+  "errors": [],
+  "total": 2,
+  "tool": [
+    {
+      "id": "1611",
+      "title": "Virtual Try-on",
+      "slugowner": "wiro",
+      "slugproject": "Virtual Try-On",
+      "cleanslugowner": "wiro",
+      "cleanslugproject": "virtual-try-on",
+      "description": "Integrate the Wiro Virtual Try-On API...",
+      "image": "https://cdn.wiro.ai/uploads/models/...",
+      "computingtime": "10 seconds",
+      "categories": ["tool", "image-to-image", "image-editing"],
+      "tags": [],
+      "marketplace": 1,
+      "onlymembers": "1",
+      "averagepoint": "5.00",
+      "commentcount": "1",
+      "dynamicprice": "[{\"inputs\":{},\"price\":0.09,\"priceMethod\":\"cpr\"}]",
+      "taskstat": {
+        "runcount": 672,
+        "successcount": "254",
+        "errorcount": "198",
+        "lastruntime": "1774007585"
+      }
+    }
+  ]
+}</code></pre>
+  </section>
+
+  <section id="model-detail">
+    <h2><span class="endpoint-badge post">POST</span> /Tool/Detail</h2>
+    <p>Returns full details for a specific model, including its input parameters, pricing, categories, and configuration.</p>
+
+    <div class="docs-param-table">
+      <h4 class="docs-param-table-title">Request Parameters</h4>
+      <div class="docs-param-table-wrapper">
+        <table>
+          <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code class="param-name">slugowner</code></td><td><span class="param-type">string</span></td><td><span class="param-required is-required">Yes</span></td><td class="param-desc">Model owner slug (e.g. stability-ai)</td></tr>
+            <tr><td><code class="param-name">slugproject</code></td><td><span class="param-type">string</span></td><td><span class="param-required is-required">Yes</span></td><td class="param-desc">Model project slug (e.g. sdxl)</td></tr>
+            <tr><td><code class="param-name">summary</code></td><td><span class="param-type">boolean</span></td><td><span class="param-required">No</span></td><td class="param-desc">Return summarized data</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <h3>Response</h3>
+    <pre><code>{
+  "result": true,
+  "errors": [],
+  "tool": [{
+    "id": "1611",
+    "title": "Virtual Try-on",
+    "slugowner": "wiro",
+    "slugproject": "Virtual Try-On",
+    "cleanslugowner": "wiro",
+    "cleanslugproject": "virtual-try-on",
+    "description": "Integrate the Wiro Virtual Try-On API...",
+    "image": "https://cdn.wiro.ai/uploads/models/...",
+    "computingtime": "10 seconds",
+    "readme": "&lt;p&gt;The Wiro Virtual Try-On AI model...&lt;/p&gt;",
+    "categories": ["tool", "image-to-image", "image-editing"],
+    "parameters": null,
+    "inspire": [
+      {
+        "inputImageHuman": "https://cdn.wiro.ai/uploads/sampleinputs/...",
+        "inputImageClothes": ["https://cdn.wiro.ai/..."]
+      }
+    ],
+    "samples": ["https://cdn.wiro.ai/uploads/models/..."],
+    "tags": [],
+    "marketplace": 1,
+    "onlymembers": "1",
+    "dynamicprice": "[{\"inputs\":{},\"price\":0.09,\"priceMethod\":\"cpr\"}]",
+    "averagepoint": "5.00",
+    "commentcount": "1",
+    "ratedusercount": "3",
+    "taskstat": {
+      "runcount": 672,
+      "successcount": "254",
+      "errorcount": "198",
+      "lastruntime": "1774007585"
+    },
+    "seotitle": "AI Virtual Try-On: Integrate Realistic Apparel Fitting",
+    "seodescription": "Integrate the Wiro Virtual Try-On API..."
+  }]
+}</code></pre>
+  </section>
+
+  <section id="model-browser">
+    <h2>Model Browser</h2>
+    <p>Browse available models interactively. Click on a model to see its details on the model page.</p>
+
+    <div class="model-browser">
+      <div class="model-search">
+        <input type="text" id="modelSearch" placeholder="Search models..." class="model-search-input">
+      </div>
+      <div id="modelLoading" class="model-loading" style="display:none">Loading models...</div>
+      <div id="modelEmpty" class="model-empty" style="display:none">No models found.</div>
+      <div id="modelResults" class="model-grid"></div>
+    </div>
+  </section>
+</article>
+
+<script type="application/json" class="code-examples-data">
+[
+  {
+    "label": "curl (List)",
+    "language": "bash",
+    "code": "curl -X POST \"https://api.wiro.ai/v1/Tool/List\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"start\": \"0\",\n    \"limit\": \"20\",\n    \"search\": \"stable diffusion\",\n    \"sort\": \"id\",\n    \"order\": \"DESC\",\n    \"categories\": [\"image-generation\"],\n    \"hideworkflows\": true,\n    \"summary\": true\n  }'"
+  },
+  {
+    "label": "curl (Detail)",
+    "language": "bash",
+    "code": "curl -X POST \"https://api.wiro.ai/v1/Tool/Detail\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"slugowner\": \"stability-ai\",\n    \"slugproject\": \"sdxl\"\n  }'"
+  },
+  {
+    "label": "Python",
+    "language": "python",
+    "code": "import requests\n\nheaders = {\n    \"x-api-key\": \"YOUR_API_KEY\",\n    \"Content-Type\": \"application/json\"\n}\n\n# List models\nlist_resp = requests.post(\n    \"https://api.wiro.ai/v1/Tool/List\",\n    headers=headers,\n    json={\n        \"start\": \"0\",\n        \"limit\": \"20\",\n        \"search\": \"stable diffusion\",\n        \"categories\": [\"image-generation\"],\n        \"hideworkflows\": True,\n        \"summary\": True\n    }\n)\nmodels = list_resp.json()\n\n# Get model detail\ndetail_resp = requests.post(\n    \"https://api.wiro.ai/v1/Tool/Detail\",\n    headers=headers,\n    json={\n        \"slugowner\": \"stability-ai\",\n        \"slugproject\": \"sdxl\"\n    }\n)\nmodel = detail_resp.json()"
+  },
+  {
+    "label": "Node.js",
+    "language": "javascript",
+    "code": "const axios = require('axios');\n\nconst headers = {\n  'x-api-key': 'YOUR_API_KEY',\n  'Content-Type': 'application/json'\n};\n\n// List models\nconst listResp = await axios.post(\n  'https://api.wiro.ai/v1/Tool/List',\n  {\n    start: '0',\n    limit: '20',\n    search: 'stable diffusion',\n    categories: ['image-generation'],\n    hideworkflows: true,\n    summary: true\n  },\n  { headers }\n);\nconsole.log(listResp.data);\n\n// Get model detail\nconst detailResp = await axios.post(\n  'https://api.wiro.ai/v1/Tool/Detail',\n  { slugowner: 'stability-ai', slugproject: 'sdxl' },\n  { headers }\n);\nconsole.log(detailResp.data);"
+  },
+  {
+    "label": "PHP",
+    "language": "php",
+    "code": "<?php\n$ch = curl_init();\ncurl_setopt($ch, CURLOPT_URL, \"https://api.wiro.ai/v1/Tool/List\");\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\n    \"Content-Type: application/json\",\n    \"x-api-key: YOUR_API_KEY\"\n]);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([\n    \"start\" => \"0\",\n    \"limit\" => \"20\",\n    \"search\" => \"stable diffusion\",\n    \"categories\" => [\"image-generation\"],\n    \"hideworkflows\" => true,\n    \"summary\" => true\n]));\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n$response = curl_exec($ch);\ncurl_close($ch);\necho $response;"
+  },
+  {
+    "label": "C#",
+    "language": "csharp",
+    "code": "using var client = new HttpClient();\nclient.DefaultRequestHeaders.Add(\"x-api-key\", \"YOUR_API_KEY\");\n\nvar content = new StringContent(\n    JsonSerializer.Serialize(new {\n        start = \"0\",\n        limit = \"20\",\n        search = \"stable diffusion\",\n        categories = new[] { \"image-generation\" },\n        hideworkflows = true,\n        summary = true\n    }),\n    Encoding.UTF8, \"application/json\");\n\nvar response = await client.PostAsync(\n    \"https://api.wiro.ai/v1/Tool/List\", content);\nvar result = await response.Content.ReadAsStringAsync();\nConsole.WriteLine(result);"
+  },
+  {
+    "label": "Go",
+    "language": "go",
+    "code": "package main\n\nimport (\n    \"bytes\"\n    \"encoding/json\"\n    \"fmt\"\n    \"net/http\"\n    \"io\"\n)\n\nfunc main() {\n    body, _ := json.Marshal(map[string]interface{}{\n        \"start\":      \"0\",\n        \"limit\":      \"20\",\n        \"search\":     \"stable diffusion\",\n        \"categories\":    []string{\"image-generation\"},\n        \"hideworkflows\": true,\n        \"summary\":       true,\n    })\n    req, _ := http.NewRequest(\"POST\",\n        \"https://api.wiro.ai/v1/Tool/List\",\n        bytes.NewBuffer(body))\n    req.Header.Set(\"Content-Type\", \"application/json\")\n    req.Header.Set(\"x-api-key\", \"YOUR_API_KEY\")\n\n    resp, _ := http.DefaultClient.Do(req)\n    defer resp.Body.Close()\n    data, _ := io.ReadAll(resp.Body)\n    fmt.Println(string(data))\n}"
+  },
+  {
+    "label": "Swift",
+    "language": "swift",
+    "code": "import Foundation\n\nlet url = URL(string: \"https://api.wiro.ai/v1/Tool/List\")!\nvar request = URLRequest(url: url)\nrequest.httpMethod = \"POST\"\nrequest.setValue(\"application/json\",\n    forHTTPHeaderField: \"Content-Type\")\nrequest.setValue(\"YOUR_API_KEY\",\n    forHTTPHeaderField: \"x-api-key\")\nrequest.httpBody = try! JSONSerialization.data(\n    withJSONObject: [\n        \"start\": \"0\",\n        \"limit\": \"20\",\n        \"search\": \"stable diffusion\",\n        \"categories\": [\"image-generation\"],\n        \"hideworkflows\": true,\n        \"summary\": true\n    ])\n\nlet (data, _) = try await URLSession.shared\n    .data(for: request)\nprint(String(data: data, encoding: .utf8)!)"
+  },
+  {
+    "label": "Kotlin",
+    "language": "kotlin",
+    "code": "import java.net.HttpURLConnection\nimport java.net.URL\n\nval url = URL(\"https://api.wiro.ai/v1/Tool/List\")\nval conn = url.openConnection() as HttpURLConnection\nconn.requestMethod = \"POST\"\nconn.setRequestProperty(\"Content-Type\", \"application/json\")\nconn.setRequestProperty(\"x-api-key\", \"YOUR_API_KEY\")\nconn.doOutput = true\nconn.outputStream.write(\"\"\"{\n    \"start\": \"0\",\n    \"limit\": \"20\",\n    \"search\": \"stable diffusion\",\n    \"categories\": [\"image-generation\"],\n    \"hideworkflows\": true,\n    \"summary\": true\n}\"\"\".toByteArray())\n\nval response = conn.inputStream.bufferedReader().readText()\nprintln(response)"
+  },
+  {
+    "label": "Dart",
+    "language": "dart",
+    "code": "import 'dart:convert';\nimport 'package:http/http.dart' as http;\n\nfinal response = await http.post(\n  Uri.parse('https://api.wiro.ai/v1/Tool/List'),\n  headers: {\n    'Content-Type': 'application/json',\n    'x-api-key': 'YOUR_API_KEY',\n  },\n  body: jsonEncode({\n    'start': '0',\n    'limit': '20',\n    'search': 'stable diffusion',\n    'categories': ['image-generation'],\n    'hideworkflows': true,\n    'summary': true,\n  }),\n);\nprint(response.body);"
+  },
+  {
+    "label": "Response (List)",
+    "language": "json",
+    "code": "{\n  \"result\": true,\n  \"errors\": [],\n  \"total\": 2,\n  \"tool\": [{\n    \"id\": \"1611\",\n    \"title\": \"Virtual Try-on\",\n    \"slugowner\": \"wiro\",\n    \"slugproject\": \"Virtual Try-On\",\n    \"cleanslugowner\": \"wiro\",\n    \"cleanslugproject\": \"virtual-try-on\",\n    \"description\": \"Integrate the Wiro Virtual Try-On API...\",\n    \"image\": \"https://cdn.wiro.ai/uploads/models/...\",\n    \"categories\": [\"tool\", \"image-to-image\", \"image-editing\"],\n    \"tags\": [],\n    \"marketplace\": 1,\n    \"dynamicprice\": \"[{\\\"inputs\\\":{},\\\"price\\\":0.09}]\",\n    \"taskstat\": { \"runcount\": 672, \"successcount\": \"254\" }\n  }]\n}"
+  },
+  {
+    "label": "Response (Detail)",
+    "language": "json",
+    "code": "{\n  \"result\": true,\n  \"errors\": [],\n  \"tool\": [{\n    \"id\": \"1611\",\n    \"title\": \"Virtual Try-on\",\n    \"slugowner\": \"wiro\",\n    \"slugproject\": \"Virtual Try-On\",\n    \"cleanslugowner\": \"wiro\",\n    \"cleanslugproject\": \"virtual-try-on\",\n    \"description\": \"...\",\n    \"readme\": \"<p>...</p>\",\n    \"categories\": [\"tool\", \"image-to-image\", \"image-editing\"],\n    \"parameters\": null,\n    \"inspire\": [{ \"inputImageHuman\": \"https://...\", \"inputImageClothes\": [\"https://...\"] }],\n    \"samples\": [\"https://cdn.wiro.ai/uploads/models/...\"],\n    \"dynamicprice\": \"[{\\\"inputs\\\":{},\\\"price\\\":0.09,\\\"priceMethod\\\":\\\"cpr\\\"}]\",\n    \"averagepoint\": \"5.00\",\n    \"taskstat\": { \"runcount\": 672, \"successcount\": \"254\" },\n    \"seotitle\": \"AI Virtual Try-On: Integrate Realistic Apparel Fitting\"\n  }]\n}"
+  }
+]
+</script>
+            </div>
+
+            <!-- ==================== RUN ==================== -->
+            <div class="docs-page-section" data-page="run-a-model" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/run-a-model.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/run-a-model.md" download class="docs-section-md-btn">Download</a></div>
+  <h1>Run a Model</h1>
+  <p class="section-subtitle">Execute any AI model with a single API call and get real-time updates.</p>
+
+  <section id="run-endpoint">
+    <h2>
+      <span class="endpoint-badge post">POST</span>
+      /Run/{owner-slug}/{model-slug}
+    </h2>
+    <p>Starts an AI model run. The endpoint accepts model-specific parameters and returns a <strong>task ID</strong> you can use to track progress via <a href="#/tasks" class="docs-link">polling</a>, <a href="#/websocket" class="docs-link">WebSocket</a>, or <strong>webhook</strong> by providing a <code>callbackUrl</code> parameter — Wiro will POST the result to your URL when the task completes.</p>
+  </section>
+
+  <section id="content-types">
+    <h2>Content Types</h2>
+    <h3>JSON (application/json)</h3>
+    <p>Use JSON for text-based inputs — prompts, configuration, numeric parameters. This is the default and most common format.</p>
+
+    <h3>Multipart (multipart/form-data)</h3>
+    <p>
+      Use multipart when the model requires <strong>file inputs</strong>
+      (images, audio, documents). Include files as form fields and other parameters as text fields.
+    </p>
+  </section>
+
+  <section id="run-parameters">
+    <h2>Request Parameters</h2>
+    <p>
+      Parameters vary by model. Use the
+      <a href="#/models" class="docs-link">/Tool/Detail</a> endpoint to discover which parameters a model accepts. The following optional parameters apply to all runs:
+    </p>
+
+    <div class="docs-param-table">
+      <h4 class="docs-param-table-title">Common Parameters</h4>
+      <div class="docs-param-table-wrapper">
+        <table>
+          <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code class="param-name">callbackUrl</code></td><td><span class="param-type">string</span></td><td><span class="param-required">No</span></td><td class="param-desc">URL to receive a POST webhook when the task completes</td></tr>
+            <tr><td><code class="param-name">projectid</code></td><td><span class="param-type">string</span></td><td><span class="param-required">No</span></td><td class="param-desc">Override the default project for billing (if you have multiple projects)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="run-response">
+    <h2>Response</h2>
+    <p>A successful run returns a task ID and a WebSocket access token:</p>
+    <pre><code>{
+  "result": true,
+  "errors": [],
+  "taskid": "2221",
+  "socketaccesstoken": "eDcCm5yyUfIvMFspTwww49OUfgXkQt"
+}</code></pre>
+  </section>
+
+  <section id="run-flow">
+    <h2>Full Flow</h2>
+    <p>The typical workflow after calling the Run endpoint:</p>
+    <ol>
+      <li><strong>Run</strong> — call <code>POST /Run/{owner-slug}/{model-slug}</code> and receive a task ID</li>
+      <li><strong>Track</strong> — connect via WebSocket or poll <code>POST /Task/Detail</code></li>
+      <li><strong>Receive</strong> — get outputs as the model produces them (streaming or final)</li>
+      <li><strong>Complete</strong> — task reaches <code>end</code> status with full results</li>
+    </ol>
+    <p>
+      For real-time streaming, use the WebSocket connection with the
+      <code>socketaccesstoken</code> returned in the run response. For simpler integrations, poll the Task Detail endpoint every few seconds.
+    </p>
+  </section>
+</article>
+
+<script type="application/json" class="code-examples-data">
+[
+  {
+    "label": "curl (JSON)",
+    "language": "bash",
+    "code": "# Run a model with JSON body\ncurl -X POST \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"prompt\": \"A futuristic city at sunset\",\n    \"negative_prompt\": \"blurry, low quality\",\n    \"width\": 1024,\n    \"height\": 1024\n  }'"
+  },
+  {
+    "label": "curl (Multipart)",
+    "language": "bash",
+    "code": "# Run a model with file input (multipart)\ncurl -X POST \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -F \"image=@/path/to/photo.jpg\" \\\n  -F \"scale=4\""
+  },
+  {
+    "label": "Python",
+    "language": "python",
+    "code": "import requests\n\nheaders = {\n    \"x-api-key\": \"YOUR_API_KEY\",\n    \"Content-Type\": \"application/json\"\n}\n\n# JSON request\nresponse = requests.post(\n    \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\",\n    headers=headers,\n    json={\n        \"prompt\": \"A futuristic city at sunset\",\n        \"negative_prompt\": \"blurry, low quality\",\n        \"width\": 1024,\n        \"height\": 1024\n    }\n)\ndata = response.json()\ntask_id = data[\"data\"][\"taskid\"]\nsocket_token = data[\"data\"][\"socketaccesstoken\"]\nprint(f\"Task ID: {task_id}\")\n\n# Multipart request (file upload)\nfiles = {\"image\": open(\"photo.jpg\", \"rb\")}\nform_data = {\"scale\": \"4\"}\nresp_multi = requests.post(\n    \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\",\n    headers={\"x-api-key\": \"YOUR_API_KEY\"},\n    files=files,\n    data=form_data\n)"
+  },
+  {
+    "label": "Node.js",
+    "language": "javascript",
+    "code": "const axios = require('axios');\nconst FormData = require('form-data');\nconst fs = require('fs');\n\nconst headers = {\n  'x-api-key': 'YOUR_API_KEY',\n  'Content-Type': 'application/json'\n};\n\n// JSON request\nconst response = await axios.post(\n  'https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}',\n  {\n    prompt: 'A futuristic city at sunset',\n    negative_prompt: 'blurry, low quality',\n    width: 1024,\n    height: 1024\n  },\n  { headers }\n);\nconst { taskid, socketaccesstoken } = response.data.data;\nconsole.log('Task ID:', taskid);\n\n// Multipart request (file upload)\nconst form = new FormData();\nform.append('image', fs.createReadStream('photo.jpg'));\nform.append('scale', '4');\nconst multiResp = await axios.post(\n  'https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}',\n  form,\n  { headers: { 'x-api-key': 'YOUR_API_KEY', ...form.getHeaders() } }\n);"
+  },
+  {
+    "label": "PHP",
+    "language": "php",
+    "code": "<?php\n$ch = curl_init();\ncurl_setopt($ch, CURLOPT_URL, \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\");\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\n    \"Content-Type: application/json\",\n    \"x-api-key: YOUR_API_KEY\"\n]);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([\n    \"prompt\" => \"A futuristic city at sunset\",\n    \"negative_prompt\" => \"blurry, low quality\",\n    \"width\" => 1024,\n    \"height\" => 1024\n]));\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n$response = curl_exec($ch);\ncurl_close($ch);\necho $response;"
+  },
+  {
+    "label": "C#",
+    "language": "csharp",
+    "code": "using var client = new HttpClient();\nclient.DefaultRequestHeaders.Add(\"x-api-key\", \"YOUR_API_KEY\");\n\nvar content = new StringContent(\n    JsonSerializer.Serialize(new {\n        prompt = \"A futuristic city at sunset\",\n        negative_prompt = \"blurry, low quality\",\n        width = 1024,\n        height = 1024\n    }),\n    Encoding.UTF8, \"application/json\");\n\nvar response = await client.PostAsync(\n    \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\", content);\nvar result = await response.Content.ReadAsStringAsync();\nConsole.WriteLine(result);"
+  },
+  {
+    "label": "Go",
+    "language": "go",
+    "code": "package main\n\nimport (\n    \"bytes\"\n    \"encoding/json\"\n    \"fmt\"\n    \"net/http\"\n    \"io\"\n)\n\nfunc main() {\n    body, _ := json.Marshal(map[string]interface{}{\n        \"prompt\":          \"A futuristic city at sunset\",\n        \"negative_prompt\": \"blurry, low quality\",\n        \"width\":           1024,\n        \"height\":          1024,\n    })\n    req, _ := http.NewRequest(\"POST\",\n        \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\",\n        bytes.NewBuffer(body))\n    req.Header.Set(\"Content-Type\", \"application/json\")\n    req.Header.Set(\"x-api-key\", \"YOUR_API_KEY\")\n\n    resp, _ := http.DefaultClient.Do(req)\n    defer resp.Body.Close()\n    data, _ := io.ReadAll(resp.Body)\n    fmt.Println(string(data))\n}"
+  },
+  {
+    "label": "Swift",
+    "language": "swift",
+    "code": "import Foundation\n\nlet url = URL(string: \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\")!\nvar request = URLRequest(url: url)\nrequest.httpMethod = \"POST\"\nrequest.setValue(\"application/json\",\n    forHTTPHeaderField: \"Content-Type\")\nrequest.setValue(\"YOUR_API_KEY\",\n    forHTTPHeaderField: \"x-api-key\")\nrequest.httpBody = try! JSONSerialization.data(\n    withJSONObject: [\n        \"prompt\": \"A futuristic city at sunset\",\n        \"negative_prompt\": \"blurry, low quality\",\n        \"width\": 1024,\n        \"height\": 1024\n    ])\n\nlet (data, _) = try await URLSession.shared\n    .data(for: request)\nprint(String(data: data, encoding: .utf8)!)"
+  },
+  {
+    "label": "Kotlin",
+    "language": "kotlin",
+    "code": "import java.net.HttpURLConnection\nimport java.net.URL\n\nval url = URL(\"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\")\nval conn = url.openConnection() as HttpURLConnection\nconn.requestMethod = \"POST\"\nconn.setRequestProperty(\"Content-Type\", \"application/json\")\nconn.setRequestProperty(\"x-api-key\", \"YOUR_API_KEY\")\nconn.doOutput = true\nconn.outputStream.write(\"\"\"{\n    \"prompt\": \"A futuristic city at sunset\",\n    \"negative_prompt\": \"blurry, low quality\",\n    \"width\": 1024,\n    \"height\": 1024\n}\"\"\".toByteArray())\n\nval response = conn.inputStream.bufferedReader().readText()\nprintln(response)"
+  },
+  {
+    "label": "Dart",
+    "language": "dart",
+    "code": "import 'dart:convert';\nimport 'package:http/http.dart' as http;\n\nfinal response = await http.post(\n  Uri.parse('https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}'),\n  headers: {\n    'Content-Type': 'application/json',\n    'x-api-key': 'YOUR_API_KEY',\n  },\n  body: jsonEncode({\n    'prompt': 'A futuristic city at sunset',\n    'negative_prompt': 'blurry, low quality',\n    'width': 1024,\n    'height': 1024,\n  }),\n);\nprint(response.body);"
+  },
+  {
+    "label": "Response",
+    "language": "json",
+    "code": "{\n  \"result\": true,\n  \"errors\": [],\n  \"taskid\": \"2221\",\n  \"socketaccesstoken\": \"eDcCm5yyUfIvMFspTwww49OUfgXkQt\"\n}"
+  }
+]
+</script>
+            </div>
+
+            <!-- ==================== MODEL PARAMETERS ==================== -->
+            <div class="docs-page-section" data-page="model-parameters" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/model-parameters.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/model-parameters.md" download class="docs-section-md-btn">Download</a></div>
+  <h1>Model Parameters</h1>
+  <p class="section-subtitle">Understand parameter types, content types, and how to send inputs to any model.</p>
+
+  <section id="discovering-parameters">
+    <h2>Discovering Parameters</h2>
+    <p>Every model has its own set of input parameters. Use the <a href="#/models" class="docs-link">/Tool/Detail</a> endpoint to retrieve a model's parameter definitions. The response includes a <code>parameters</code> array where each item describes a parameter group with its items:</p>
+    <pre><code>{
+  "parameters": [
+    {
+      "title": "Input",
+      "items": [
+        {
+          "id": "prompt",
+          "type": "textarea",
+          "label": "Prompt",
+          "required": true,
+          "placeholder": "Describe what you want...",
+          "note": "Text description of the desired output"
+        },
+        {
+          "id": "inputImage",
+          "type": "fileinput",
+          "label": "Input Image",
+          "required": true,
+          "note": "Upload an image or provide a URL"
+        }
+      ]
+    }
+  ]
+}</code></pre>
+  </section>
+
+  <section id="parameter-types">
+    <h2>Parameter Types</h2>
+    <div class="docs-comparison-table">
+      <table>
+        <thead><tr><th>Type</th><th>Description</th><th>Example Parameters</th></tr></thead>
+        <tbody>
+          <tr><td><code>text</code></td><td>Single-line text input</td><td>URLs, names, short strings</td></tr>
+          <tr><td><code>textarea</code></td><td>Multi-line text input</td><td><code>prompt</code>, <code>negative_prompt</code>, descriptions</td></tr>
+          <tr><td><code>select</code></td><td>Dropdown with predefined options</td><td><code>outputType</code>, <code>language</code>, <code>style</code></td></tr>
+          <tr><td><code>range</code></td><td>Numeric value (slider)</td><td><code>width</code>, <code>height</code>, <code>scale</code>, <code>strength</code></td></tr>
+          <tr><td><code>fileinput</code></td><td>Single file upload (1 file or 1 URL)</td><td><code>inputImage</code>, <code>inputAudio</code></td></tr>
+          <tr><td><code>multifileinput</code></td><td>Multiple files (up to N files/URLs)</td><td><code>inputDocumentMultiple</code></td></tr>
+          <tr><td><code>combinefileinput</code></td><td>Mixed file + URL entries</td><td><code>inputImageClothes</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="content-type-selection">
+    <h2>JSON vs Multipart</h2>
+    <p>The content type of your request depends on whether the model requires file inputs:</p>
+    <div class="docs-comparison-table">
+      <table>
+        <thead><tr><th>Condition</th><th>Content-Type</th><th>When to Use</th></tr></thead>
+        <tbody>
+          <tr><td>No file parameters</td><td><code>application/json</code></td><td>Text-only models (LLMs, image generation from prompt)</td></tr>
+          <tr><td>Has file parameters</td><td><code>multipart/form-data</code></td><td>Models that accept image, audio, video, or document uploads</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="info-callout">
+      <p><strong>Tip:</strong> If a <code>fileinput</code> parameter exists but you want to provide a URL instead of uploading a file, you can still use JSON. Pass the URL in a parameter named <code>{id}Url</code> (e.g., <code>inputImageUrl</code> instead of <code>inputImage</code>).</p>
+    </div>
+  </section>
+
+  <section id="file-upload-patterns">
+    <h2>File Upload Patterns</h2>
+
+    <h3>Single File (fileinput)</h3>
+    <p>For parameters like <code>inputImage</code>, you can send either a file or a URL — not both:</p>
+    <pre><code># Option 1: Upload file
+curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -F "inputImage=@/path/to/photo.jpg"
+
+# Option 2: Send URL (use {id}Url suffix)
+curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{"inputImageUrl": "https://example.com/photo.jpg"}'</code></pre>
+
+    <h3>Multiple Files (multifileinput)</h3>
+    <p>For parameters like <code>inputDocumentMultiple</code>, upload up to N files or provide comma-separated URLs:</p>
+    <pre><code># Upload multiple files
+curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -F "inputDocumentMultiple=@doc1.pdf" \
+  -F "inputDocumentMultiple=@doc2.pdf"
+
+# Or provide URLs (comma-separated)
+curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{"inputDocumentMultipleUrl": "https://example.com/doc1.pdf,https://example.com/doc2.pdf"}'</code></pre>
+
+    <h3>Mixed (combinefileinput)</h3>
+    <p>For parameters like <code>inputImageClothes</code>, you can mix files and URLs in the same request:</p>
+    <pre><code># Mix files and URLs
+curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -F "inputImageClothes=@shirt.jpg" \
+  -F "inputImageClothesUrl=https://example.com/pants.jpg"</code></pre>
+  </section>
+
+  <section id="common-model-patterns">
+    <h2>Common Model Patterns</h2>
+
+    <h3>Image Generation (text-to-image)</h3>
+    <p>Models like Stable Diffusion, Flux — JSON body, no file uploads:</p>
+    <pre><code>{
+  "prompt": "A futuristic city at sunset",
+  "negative_prompt": "blurry, low quality",
+  "width": 1024,
+  "height": 1024
+}</code></pre>
+
+    <h3>Image-to-Image (upscaler, style transfer)</h3>
+    <p>Models that take an input image — multipart with file upload:</p>
+    <pre><code>curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -F "inputImage=@photo.jpg" \
+  -F "scale=4"</code></pre>
+
+    <h3>Virtual Try-On</h3>
+    <p>Multiple image inputs — multipart with multiple files:</p>
+    <pre><code>curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -F "inputImageHuman=@person.jpg" \
+  -F "inputImageClothes=@shirt.jpg"</code></pre>
+
+    <h3>LLM / Document Processing</h3>
+    <p>Text prompt with optional document uploads:</p>
+    <pre><code>curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -F "inputDocumentMultiple=@resume.pdf" \
+  -F "prompt=Extract the candidate name and skills" \
+  -F "outputType=json" \
+  -F "language=en"</code></pre>
+    <div class="info-callout">
+      <p><strong>Note:</strong> LLM responses are delivered via <code>debugoutput</code> in the task result, not in the <code>outputs</code> file array. See <a href="#/tasks" class="docs-link">Tasks</a> for details.</p>
+    </div>
+
+    <h3>Realtime Voice Conversation</h3>
+    <p>Realtime voice models accept configuration parameters (voice, system instructions, audio format, etc.) as JSON. Parameters vary per model — use <code>/Tool/Detail</code> to discover them. The actual audio interaction happens over <a href="#/realtime-voice-conversation" class="docs-link">Realtime Voice WebSocket</a> after the task starts:</p>
+    <pre><code>// Example: OpenAI GPT Realtime
+{
+  "voice": "marin",
+  "system_instructions": "You are a helpful voice assistant.",
+  "input_audio_format": "audio/pcm",
+  "output_audio_format": "audio/pcm",
+  "input_audio_rate": "24000",
+  "output_audio_rate": "24000"
+}</code></pre>
+  </section>
+
+  <section id="callback-url">
+    <h2>Webhook Callback</h2>
+    <p>All models support an optional <code>callbackUrl</code> parameter. When provided, Wiro will POST the task result to your URL when the task completes — no polling required:</p>
+    <pre><code>{
+  "prompt": "A sunset over mountains",
+  "callbackUrl": "https://your-server.com/webhook/wiro"
+}</code></pre>
+  </section>
+</article>
+
+<script type="application/json" class="code-examples-data">
+[
+  {
+    "label": "JSON (text)",
+    "language": "bash",
+    "code": "# Image generation — JSON body\ncurl -X POST \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"prompt\": \"A futuristic city at sunset\",\n    \"negative_prompt\": \"blurry, low quality\",\n    \"width\": 1024,\n    \"height\": 1024\n  }'"
+  },
+  {
+    "label": "Multipart (file)",
+    "language": "bash",
+    "code": "# Image upscaler — multipart with file\ncurl -X POST \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -F \"inputImage=@photo.jpg\" \\\n  -F \"scale=4\""
+  },
+  {
+    "label": "URL instead",
+    "language": "bash",
+    "code": "# Send URL instead of uploading file\ncurl -X POST \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"inputImageUrl\": \"https://example.com/photo.jpg\",\n    \"scale\": 4\n  }'"
+  },
+  {
+    "label": "Multi-file",
+    "language": "bash",
+    "code": "# Document processing — multiple files\ncurl -X POST \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -F \"inputDocumentMultiple=@doc1.pdf\" \\\n  -F \"inputDocumentMultiple=@doc2.pdf\" \\\n  -F \"prompt=Summarize these documents\" \\\n  -F \"outputType=json\""
+  },
+  {
+    "label": "Python",
+    "language": "python",
+    "code": "import requests\n\n# JSON request (text-only models)\nresponse = requests.post(\n    \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\",\n    headers={\n        \"x-api-key\": \"YOUR_API_KEY\",\n        \"Content-Type\": \"application/json\"\n    },\n    json={\n        \"prompt\": \"A futuristic city at sunset\",\n        \"width\": 1024,\n        \"height\": 1024\n    }\n)\n\n# Multipart request (file upload models)\nresponse = requests.post(\n    \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\",\n    headers={\"x-api-key\": \"YOUR_API_KEY\"},\n    files={\"inputImage\": open(\"photo.jpg\", \"rb\")},\n    data={\"scale\": \"4\"}\n)\n\n# URL instead of file upload\nresponse = requests.post(\n    \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\",\n    headers={\n        \"x-api-key\": \"YOUR_API_KEY\",\n        \"Content-Type\": \"application/json\"\n    },\n    json={\n        \"inputImageUrl\": \"https://example.com/photo.jpg\",\n        \"scale\": 4\n    }\n)"
+  },
+  {
+    "label": "Node.js",
+    "language": "javascript",
+    "code": "const axios = require('axios');\nconst FormData = require('form-data');\nconst fs = require('fs');\n\n// JSON request (text-only models)\nconst jsonResp = await axios.post(\n  'https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}',\n  {\n    prompt: 'A futuristic city at sunset',\n    width: 1024,\n    height: 1024\n  },\n  {\n    headers: {\n      'x-api-key': 'YOUR_API_KEY',\n      'Content-Type': 'application/json'\n    }\n  }\n);\n\n// Multipart request (file upload)\nconst form = new FormData();\nform.append('inputImage',\n  fs.createReadStream('photo.jpg'));\nform.append('scale', '4');\n\nconst fileResp = await axios.post(\n  'https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}',\n  form,\n  {\n    headers: {\n      'x-api-key': 'YOUR_API_KEY',\n      ...form.getHeaders()\n    }\n  }\n);"
+  },
+  {
+    "label": "Discover",
+    "language": "json",
+    "code": "{\n  \"parameters\": [\n    {\n      \"title\": \"Input\",\n      \"items\": [\n        {\n          \"id\": \"prompt\",\n          \"type\": \"textarea\",\n          \"label\": \"Prompt\",\n          \"required\": true,\n          \"placeholder\": \"Describe what you want...\"\n        },\n        {\n          \"id\": \"inputImage\",\n          \"type\": \"fileinput\",\n          \"label\": \"Input Image\",\n          \"required\": true\n        },\n        {\n          \"id\": \"width\",\n          \"type\": \"range\",\n          \"label\": \"Width\",\n          \"defaultvalue\": 1024,\n          \"minvalue\": \"256\",\n          \"maxvalue\": \"2048\"\n        },\n        {\n          \"id\": \"outputType\",\n          \"type\": \"select\",\n          \"label\": \"Output Type\",\n          \"options\": [\n            { \"value\": \"json\", \"label\": \"JSON\" },\n            { \"value\": \"text\", \"label\": \"Text\" }\n          ]\n        }\n      ]\n    }\n  ]\n}"
+  }
+]
+</script>
+            </div>
+
+            <!-- ==================== TASKS ==================== -->
+            <div class="docs-page-section" data-page="tasks" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/tasks.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/tasks.md" download class="docs-section-md-btn">Download</a></div>
+    <h1>Tasks</h1>
+    <p class="section-subtitle">Track, monitor, and control your AI model runs.</p>
+
+    <section id="task-lifecycle">
+      <h2>Task Lifecycle</h2>
+      <p>Every model run creates a task that progresses through a defined set of stages:</p>
+      <div class="lifecycle-flow">
+        <span class="lifecycle-step">task_queue</span>
+        <span class="lifecycle-arrow">&rarr;</span>
+        <span class="lifecycle-step">task_accept</span>
+        <span class="lifecycle-arrow">&rarr;</span>
+        <span class="lifecycle-step">task_assign</span>
+        <span class="lifecycle-arrow">&rarr;</span>
+        <span class="lifecycle-step">task_preprocess_start</span>
+        <span class="lifecycle-arrow">&rarr;</span>
+        <span class="lifecycle-step">task_preprocess_end</span>
+        <span class="lifecycle-arrow">&rarr;</span>
+        <span class="lifecycle-step">task_start</span>
+        <span class="lifecycle-arrow">&rarr;</span>
+        <span class="lifecycle-step">task_output</span>
+        <span class="lifecycle-arrow">&rarr;</span>
+        <span class="lifecycle-step">task_end</span>
+        <span class="lifecycle-arrow">&rarr;</span>
+        <span class="lifecycle-step">task_postprocess_start</span>
+        <span class="lifecycle-arrow">&rarr;</span>
+        <span class="lifecycle-step">task_postprocess_end</span>
+      </div>
+    </section>
+
+    <section id="task-statuses">
+      <h2>Task Statuses</h2>
+      <div class="status-table-wrapper">
+        <table class="status-table">
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>task_queue</code></td>
+              <td>The task is queued and waiting to be picked up by an available worker. Emitted once when the task enters the queue.</td>
+            </tr>
+            <tr>
+              <td><code>task_accept</code></td>
+              <td>A worker has accepted the task. The task is no longer in the general queue and is being prepared for execution.</td>
+            </tr>
+            <tr>
+              <td><code>task_assign</code></td>
+              <td>The task has been assigned to a specific GPU. The model is being loaded into memory. This may take a few seconds depending on the model size.</td>
+            </tr>
+            <tr>
+              <td><code>task_preprocess_start</code></td>
+              <td>Optional preprocessing has started. This includes operations like downloading input files from URLs, converting file types, and validating/formatting parameters before the model runs. Not all models require preprocessing.</td>
+            </tr>
+            <tr>
+              <td><code>task_preprocess_end</code></td>
+              <td>Preprocessing completed. All inputs are ready and the model is about to start execution.</td>
+            </tr>
+            <tr>
+              <td><code>task_start</code></td>
+              <td>The model command has started executing. Inference is now running on the GPU.</td>
+            </tr>
+            <tr>
+              <td><code>task_output</code></td>
+              <td>The model is producing output. This event is emitted <strong>multiple times</strong> — each time the model writes to stdout, a new <code>task_output</code> message is sent via WebSocket. For LLM models, each token/chunk arrives as a separate <code>task_output</code> event, enabling real-time streaming.</td>
+            </tr>
+            <tr>
+              <td><code>task_error</code></td>
+              <td>The model wrote to stderr. This is an <strong>interim log event</strong>, not a final failure — many models write warnings or debug info to stderr during normal operation. The task may still complete successfully. Always wait for <code>task_postprocess_end</code> to determine the actual result.</td>
+            </tr>
+            <tr>
+              <td><code>task_output_full</code></td>
+              <td>The complete accumulated stdout log, sent once after the model process finishes. Contains the full output history in a single message.</td>
+            </tr>
+            <tr>
+              <td><code>task_output_error</code></td>
+              <td>The complete accumulated stderr log, sent once after the model process finishes.</td>
+            </tr>
+            <tr>
+              <td><code>task_end</code></td>
+              <td>The model process has exited. Emitted once. This fires <strong>before</strong> post-processing — do not use this event to determine success. Wait for <code>task_postprocess_end</code> instead.</td>
+            </tr>
+            <tr>
+              <td><code>task_postprocess_start</code></td>
+              <td>Post-processing has started. The system is preparing the output files — encoding, uploading to CDN, and generating access URLs.</td>
+            </tr>
+            <tr>
+              <td><code>task_postprocess_end</code></td>
+              <td>Post-processing completed. Check <code>pexit</code> to determine success: <code>"0"</code> = success, any other value = error. The <code>outputs</code> array contains the final files with CDN URLs, content types, and sizes. <strong>This is the event you should listen for</strong> to get the final results.</td>
+            </tr>
+            <tr>
+              <td><code>task_cancel</code></td>
+              <td>The task was cancelled (if queued) or killed (if running) by the user.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Realtime Conversation Only</h3>
+      <p>The following statuses are exclusive to realtime conversation models (e.g. voice AI). They are not emitted for standard model runs.</p>
+      <div class="status-table-wrapper">
+        <table class="status-table">
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>task_stream_ready</code></td>
+              <td>Realtime model is ready to receive audio/text input — you can start sending data</td>
+            </tr>
+            <tr>
+              <td><code>task_stream_end</code></td>
+              <td>Realtime session has ended — the model finished speaking or the session was closed</td>
+            </tr>
+            <tr>
+              <td><code>task_cost</code></td>
+              <td>Real-time cost update emitted during execution — shows the running cost of the task</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="determining-success">
+      <h2>Determining Success or Failure</h2>
+      <p>Both successful and failed tasks reach <code>task_postprocess_end</code>. The status alone does not tell you whether the task succeeded. Wait for <code>task_postprocess_end</code> and then check <code>pexit</code> or <code>outputs</code> (or both) to determine the actual result:</p>
+
+      <ul>
+        <li><code>pexit</code> — the process exit code. <code>"0"</code> means success, any other value means the model encountered an error. This is the most reliable indicator.</li>
+        <li><code>outputs</code> — the output files array. For non-LLM models, a successful run populates this with CDN URLs. If it's empty or missing, the task likely failed.</li>
+      </ul>
+
+      <div class="info-callout">
+        <p><strong>Note:</strong> For <strong>LLM models</strong>, <code>outputs</code> will be empty even on success — the response text is delivered via <code>debugoutput</code> instead. Always use <code>pexit</code> as the primary success check.</p>
+      </div>
+
+      <pre><code>// Success (image/audio model): pexit "0", outputs present
+{
+  "pexit": "0",
+  "outputs": [{ "name": "0.png", "url": "https://cdn1.wiro.ai/..." }]
+}
+
+// Success (LLM model): pexit "0", outputs empty, response in debugoutput
+{
+  "pexit": "0",
+  "outputs": [],
+  "debugoutput": "Hello! How can I help you today?"
+}
+
+// Failure: pexit non-zero
+{
+  "pexit": "1",
+  "outputs": []
+}</code></pre>
+
+      <div class="info-callout">
+        <p><strong>Important:</strong> <code>task_error</code> events during execution are interim log messages, not final failures. A task can emit error logs and still complete successfully. Always wait for <code>task_postprocess_end</code> and check <code>pexit</code>.</p>
+      </div>
+    </section>
+
+    <section id="llm-models">
+      <h2>LLM Models</h2>
+      <p>For LLM (Large Language Model) requests, the model's response is written to <code>debugoutput</code> rather than the <code>outputs</code> file array. When polling with Task Detail, read the <code>debugoutput</code> field to get the LLM's text response.</p>
+      <p>For real-time streaming of LLM responses, use <a href="#/websocket" class="docs-link">WebSocket</a> instead of polling. Each <code>task_output</code> event delivers a chunk of the response as it's generated, giving your users an instant, token-by-token experience.</p>
+    </section>
+
+    <section id="task-detail">
+      <h2>
+        <span class="endpoint-badge post">POST</span>
+        /Task/Detail
+      </h2>
+      <p>Retrieves the current status and output of a task. You can query by either <code>tasktoken</code> or <code>taskid</code>.</p>
+
+      <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+        <thead>
+          <tr>
+            <th>Parameter</th>
+            <th>Type</th>
+            <th>Required</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>tasktoken</code></td>
+            <td>string</td>
+            <td>No</td>
+            <td>The task token returned from the Run endpoint</td>
+          </tr>
+          <tr>
+            <td><code>taskid</code></td>
+            <td>string</td>
+            <td>No</td>
+            <td>The task ID (alternative to tasktoken)</td>
+          </tr>
+        </tbody>
+      </table></div></div>
+
+      <h3>Response</h3>
+      <pre><code>{
+  "result": true,
+  "errors": [],
+  "total": "1",
+  "tasklist": [{
+    "id": "534574",
+    "socketaccesstoken": "eDcCm5yyUfIvMFspTwww49OUfgXkQt",
+    "parameters": { "prompt": "Hello, world!" },
+    "status": "task_postprocess_end",
+    "pexit": "0",
+    "debugoutput": "",
+    "starttime": "1734513809",
+    "endtime": "1734513813",
+    "elapsedseconds": "6.0000",
+    "totalcost": "0.003510000000",
+    "outputs": [{
+      "name": "0.png",
+      "contenttype": "image/png",
+      "size": "202472",
+      "url": "https://cdn1.wiro.ai/.../0.png"
+    }]
+  }]
+}</code></pre>
+    </section>
+
+    <section id="task-cancel">
+      <h2>
+        <span class="endpoint-badge post">POST</span>
+        /Task/Cancel
+      </h2>
+      <p>Cancels a task that is still in the <code>queue</code> stage. Tasks that have already been assigned to a worker cannot be cancelled — use Kill instead.</p>
+
+      <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+        <thead>
+          <tr>
+            <th>Parameter</th>
+            <th>Type</th>
+            <th>Required</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>tasktoken</code></td>
+            <td>string</td>
+            <td>Yes</td>
+            <td>The task token to cancel</td>
+          </tr>
+        </tbody>
+      </table></div></div>
+    </section>
+
+    <section id="task-kill">
+      <h2>
+        <span class="endpoint-badge post">POST</span>
+        /Task/Kill
+      </h2>
+      <p>
+        Terminates a task that is currently running (any status after
+        <code>assign</code>). The worker will stop processing and the task will move to <code>cancel</code> status.
+      </p>
+
+      <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+        <thead>
+          <tr>
+            <th>Parameter</th>
+            <th>Type</th>
+            <th>Required</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>tasktoken</code></td>
+            <td>string</td>
+            <td>Yes</td>
+            <td>The task token to kill</td>
+          </tr>
+        </tbody>
+      </table></div></div>
+    </section>
+  </article>
+
+<script type="application/json" class="code-examples-data">
+[
+  {
+    "label": "curl (Detail)",
+    "language": "bash",
+    "code": "# Get task details by task token\ncurl -X POST \"https://api.wiro.ai/v1/Task/Detail\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"tasktoken\": \"abc123-def456-ghi789\"}'\n\n# Or by task ID\ncurl -X POST \"https://api.wiro.ai/v1/Task/Detail\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"taskid\": \"task-id-here\"}'"
+  },
+  {
+    "label": "curl (Cancel/Kill)",
+    "language": "bash",
+    "code": "# Cancel a queued task\ncurl -X POST \"https://api.wiro.ai/v1/Task/Cancel\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"tasktoken\": \"abc123-def456-ghi789\"}'\n\n# Kill a running task\ncurl -X POST \"https://api.wiro.ai/v1/Task/Kill\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"tasktoken\": \"abc123-def456-ghi789\"}'"
+  },
+  {
+    "label": "Python",
+    "language": "python",
+    "code": "import requests, time\n\nheaders = {\n    \"x-api-key\": \"YOUR_API_KEY\",\n    \"Content-Type\": \"application/json\"\n}\n\ntask_token = \"abc123-def456-ghi789\"\n\n# Poll task detail until completion\nwhile True:\n    resp = requests.post(\n        \"https://api.wiro.ai/v1/Task/Detail\",\n        headers=headers,\n        json={\"tasktoken\": task_token}\n    )\n    task = resp.json()[\"data\"]\n    status = task[\"status\"]\n    print(f\"Status: {status}\")\n\n    if status == \"end\":\n        print(\"Output:\", task[\"output\"])\n        break\n    elif status in (\"error\", \"cancel\"):\n        print(\"Task failed or cancelled\")\n        break\n\n    time.sleep(3)\n\n# Cancel a queued task\nrequests.post(\n    \"https://api.wiro.ai/v1/Task/Cancel\",\n    headers=headers,\n    json={\"tasktoken\": task_token}\n)\n\n# Kill a running task\nrequests.post(\n    \"https://api.wiro.ai/v1/Task/Kill\",\n    headers=headers,\n    json={\"tasktoken\": task_token}\n)"
+  },
+  {
+    "label": "Node.js",
+    "language": "javascript",
+    "code": "const axios = require('axios');\n\nconst headers = {\n  'x-api-key': 'YOUR_API_KEY',\n  'Content-Type': 'application/json'\n};\n\nconst taskToken = 'abc123-def456-ghi789';\n\n// Poll task detail until completion\nasync function pollTask() {\n  while (true) {\n    const resp = await axios.post(\n      'https://api.wiro.ai/v1/Task/Detail',\n      { tasktoken: taskToken },\n      { headers }\n    );\n    const { status, output } = resp.data.data;\n    console.log('Status:', status);\n\n    if (status === 'end') {\n      console.log('Output:', output);\n      break;\n    }\n    if (status === 'error' || status === 'cancel') {\n      console.log('Task failed or cancelled');\n      break;\n    }\n\n    await new Promise(r => setTimeout(r, 3000));\n  }\n}\n\n// Cancel / Kill\nawait axios.post('https://api.wiro.ai/v1/Task/Cancel',\n  { tasktoken: taskToken }, { headers });\n\nawait axios.post('https://api.wiro.ai/v1/Task/Kill',\n  { tasktoken: taskToken }, { headers });"
+  },
+  {
+    "label": "PHP",
+    "language": "php",
+    "code": "<?php\n$ch = curl_init();\ncurl_setopt($ch, CURLOPT_URL, \"https://api.wiro.ai/v1/Task/Detail\");\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\n    \"Content-Type: application/json\",\n    \"x-api-key: YOUR_API_KEY\"\n]);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([\n    \"tasktoken\" => \"abc123-def456-ghi789\"\n]));\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n$response = curl_exec($ch);\ncurl_close($ch);\necho $response;"
+  },
+  {
+    "label": "C#",
+    "language": "csharp",
+    "code": "using var client = new HttpClient();\nclient.DefaultRequestHeaders.Add(\"x-api-key\", \"YOUR_API_KEY\");\n\nvar content = new StringContent(\n    JsonSerializer.Serialize(new {\n        tasktoken = \"abc123-def456-ghi789\"\n    }),\n    Encoding.UTF8, \"application/json\");\n\nvar response = await client.PostAsync(\n    \"https://api.wiro.ai/v1/Task/Detail\", content);\nvar result = await response.Content.ReadAsStringAsync();\nConsole.WriteLine(result);"
+  },
+  {
+    "label": "Go",
+    "language": "go",
+    "code": "package main\n\nimport (\n    \"bytes\"\n    \"encoding/json\"\n    \"fmt\"\n    \"net/http\"\n    \"io\"\n)\n\nfunc main() {\n    body, _ := json.Marshal(map[string]string{\n        \"tasktoken\": \"abc123-def456-ghi789\",\n    })\n    req, _ := http.NewRequest(\"POST\",\n        \"https://api.wiro.ai/v1/Task/Detail\",\n        bytes.NewBuffer(body))\n    req.Header.Set(\"Content-Type\", \"application/json\")\n    req.Header.Set(\"x-api-key\", \"YOUR_API_KEY\")\n\n    resp, _ := http.DefaultClient.Do(req)\n    defer resp.Body.Close()\n    data, _ := io.ReadAll(resp.Body)\n    fmt.Println(string(data))\n}"
+  },
+  {
+    "label": "Swift",
+    "language": "swift",
+    "code": "import Foundation\n\nlet url = URL(string: \"https://api.wiro.ai/v1/Task/Detail\")!\nvar request = URLRequest(url: url)\nrequest.httpMethod = \"POST\"\nrequest.setValue(\"application/json\",\n    forHTTPHeaderField: \"Content-Type\")\nrequest.setValue(\"YOUR_API_KEY\",\n    forHTTPHeaderField: \"x-api-key\")\nrequest.httpBody = try! JSONSerialization.data(\n    withJSONObject: [\n        \"tasktoken\": \"abc123-def456-ghi789\"\n    ])\n\nlet (data, _) = try await URLSession.shared\n    .data(for: request)\nprint(String(data: data, encoding: .utf8)!)"
+  },
+  {
+    "label": "Kotlin",
+    "language": "kotlin",
+    "code": "import java.net.HttpURLConnection\nimport java.net.URL\n\nval url = URL(\"https://api.wiro.ai/v1/Task/Detail\")\nval conn = url.openConnection() as HttpURLConnection\nconn.requestMethod = \"POST\"\nconn.setRequestProperty(\"Content-Type\", \"application/json\")\nconn.setRequestProperty(\"x-api-key\", \"YOUR_API_KEY\")\nconn.doOutput = true\nconn.outputStream.write(\"\"\"{\"tasktoken\": \"abc123-def456-ghi789\"}\"\"\".toByteArray())\n\nval response = conn.inputStream.bufferedReader().readText()\nprintln(response)"
+  },
+  {
+    "label": "Dart",
+    "language": "dart",
+    "code": "import 'dart:convert';\nimport 'package:http/http.dart' as http;\n\nfinal response = await http.post(\n  Uri.parse('https://api.wiro.ai/v1/Task/Detail'),\n  headers: {\n    'Content-Type': 'application/json',\n    'x-api-key': 'YOUR_API_KEY',\n  },\n  body: jsonEncode({\n    'tasktoken': 'abc123-def456-ghi789',\n  }),\n);\nprint(response.body);"
+  },
+  {
+    "label": "Response",
+    "language": "json",
+    "code": "{\n  \"result\": true,\n  \"errors\": [],\n  \"total\": \"1\",\n  \"tasklist\": [{\n    \"id\": \"534574\",\n    \"socketaccesstoken\": \"eDcCm5yyUfIvMFspTwww49OUfgXkQt\",\n    \"parameters\": { \"prompt\": \"Hello, world!\" },\n    \"status\": \"task_postprocess_end\",\n    \"starttime\": \"1734513809\",\n    \"endtime\": \"1734513813\",\n    \"elapsedseconds\": \"6.0000\",\n    \"totalcost\": \"0.003510000000\",\n    \"outputs\": [{\n      \"name\": \"0.png\",\n      \"contenttype\": \"image/png\",\n      \"size\": \"202472\",\n      \"url\": \"https://cdn1.wiro.ai/.../0.png\"\n    }]\n  }]\n}"
+  }
+]
+</script>
+            </div>
+
+            <!-- ==================== LLM STREAMING ==================== -->
+            <div class="docs-page-section" data-page="llm-chat-streaming" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/llm-chat-streaming.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/llm-chat-streaming.md" download class="docs-section-md-btn">Download</a></div>
+  <h1>LLM &amp; Chat Streaming</h1>
+  <p class="section-subtitle">Stream LLM responses in real time with thinking/answer separation, session history, and multi-turn conversations.</p>
+
+  <section id="llm-overview">
+    <h2>Overview</h2>
+    <p>LLM (Large Language Model) requests on Wiro work differently from standard model runs:</p>
+    <ul>
+      <li>Responses are delivered via <code>debugoutput</code>, not the <code>outputs</code> file array</li>
+      <li>Streaming <code>task_output</code> messages contain structured <code>thinking</code> and <code>answer</code> arrays — not plain strings</li>
+      <li>Multi-turn conversations are supported via <code>session_id</code> and <code>user_id</code> parameters</li>
+      <li><code>pexit</code> is the primary success indicator (outputs will be empty)</li>
+    </ul>
+    <p>Available LLM models include:</p>
+    <ul>
+      <li><a href="https://wiro.ai/models/openai/gpt-5-2" class="docs-link" target="_blank">openai/gpt-5-2</a> — GPT-5-2</li>
+      <li><a href="https://wiro.ai/models/openai/gpt-oss-20b" class="docs-link" target="_blank">openai/gpt-oss-20b</a> — GPT OSS 20B</li>
+      <li><a href="https://wiro.ai/models/qwen/qwen3-5-27b" class="docs-link" target="_blank">qwen/qwen3-5-27b</a> — Qwen 3.5 27B</li>
+    </ul>
+  </section>
+
+  <section id="llm-session">
+    <h2>Session &amp; Chat History</h2>
+    <p>Wiro maintains conversation history per session. By sending a <code>session_id</code>, the model remembers previous messages and can build on the context of the conversation. Combined with <code>user_id</code>, this enables fully stateful chat experiences:</p>
+    <div class="docs-param-table">
+      <div class="docs-param-table-wrapper">
+        <table>
+          <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code class="param-name">session_id</code></td><td><span class="param-type">string</span></td><td><span class="param-required">No</span></td><td class="param-desc">UUID identifying the conversation session. The server stores chat history per session — reuse the same ID for follow-up messages to maintain full context.</td></tr>
+            <tr><td><code class="param-name">user_id</code></td><td><span class="param-type">string</span></td><td><span class="param-required">No</span></td><td class="param-desc">UUID identifying the user. Allows the model to distinguish between different users sharing the same session or to personalize responses.</td></tr>
+            <tr><td><code class="param-name">prompt</code></td><td><span class="param-type">string</span></td><td><span class="param-required is-required">Yes</span></td><td class="param-desc">The user's message or question.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <pre><code>// First message — start a new session
+{
+  "prompt": "What is quantum computing?",
+  "session_id": "550e8400-e29b-41d4-a716-446655440000",
+  "user_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+}
+
+// Follow-up — reuse the same session_id
+{
+  "prompt": "Can you explain qubits in more detail?",
+  "session_id": "550e8400-e29b-41d4-a716-446655440000",
+  "user_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+}</code></pre>
+    <div class="info-callout">
+      <p><strong>Tip:</strong> Generate a new UUID for <code>session_id</code> when starting a fresh conversation. Reuse it for all follow-up messages — the server automatically stores and retrieves the full chat history for that session. To start a new conversation with no prior context, simply generate a new UUID.</p>
+    </div>
+  </section>
+
+  <section id="llm-thinking-answer">
+    <h2>Thinking &amp; Answer Phases</h2>
+    <p>Many LLM models separate their output into two phases:</p>
+    <ul>
+      <li><strong>Thinking</strong> — the model's internal reasoning process (chain-of-thought)</li>
+      <li><strong>Answer</strong> — the final response to the user</li>
+    </ul>
+    <p>When streaming via WebSocket, <code>task_output</code> messages for LLM models contain a structured object (not a plain string):</p>
+    <pre><code>// LLM task_output message format
+{
+  "type": "task_output",
+  "id": "534574",
+  "tasktoken": "eDcCm5yy...",
+  "message": {
+    "thinking": ["Let me analyze this step by step...", "The key factors are..."],
+    "answer": ["Quantum computing uses qubits that can exist in superposition..."]
+  }
+}</code></pre>
+    <p>Both <code>thinking</code> and <code>answer</code> are arrays of strings. Each element represents a chunk — they grow as the model streams its response. A model may alternate between thinking and answering multiple times.</p>
+    <div class="docs-comparison-table">
+      <table>
+        <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>message.thinking</code></td><td><code>string[]</code></td><td>Array of reasoning/chain-of-thought chunks. May be empty for models without thinking.</td></tr>
+          <tr><td><code>message.answer</code></td><td><code>string[]</code></td><td>Array of response chunks. This is the content to show the user.</td></tr>
+          <tr><td><code>message.raw</code></td><td><code>string</code></td><td>Optional raw output before thinking/answer separation.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="info-callout">
+      <p><strong>Note:</strong> Standard (non-LLM) models send <code>message</code> as a plain string. LLM models send it as a <code>{ thinking, answer }</code> object. Check the type before parsing.</p>
+    </div>
+  </section>
+
+  <section id="llm-streaming-flow">
+    <h2>Streaming Flow</h2>
+    <p>The complete flow for streaming an LLM response:</p>
+    <ol>
+      <li><strong>Run</strong> the model with <code>prompt</code>, <code>session_id</code>, and <code>user_id</code></li>
+      <li><strong>Connect</strong> to WebSocket and send <code>task_info</code></li>
+      <li><strong>Receive</strong> <code>task_output</code> messages — each contains the growing <code>thinking</code> and <code>answer</code> arrays</li>
+      <li><strong>Display</strong> the latest <code>answer</code> array content to the user (optionally show <code>thinking</code> in a collapsible section)</li>
+      <li><strong>Complete</strong> — on <code>task_postprocess_end</code>, check <code>pexit</code> for success</li>
+    </ol>
+    <p>Each <code>task_output</code> event contains the <strong>full accumulated</strong> thinking and answer arrays up to that point — not just the new chunk. Simply replace your displayed content with the latest arrays.</p>
+  </section>
+
+  <section id="llm-polling">
+    <h2>Polling Alternative</h2>
+    <p>If you don't need real-time streaming, you can poll <a href="#/tasks" class="docs-link">POST /Task/Detail</a> instead. The final response will be in the <code>debugoutput</code> field as a merged plain text string (thinking + answer combined):</p>
+    <pre><code>{
+  "result": true,
+  "tasklist": [{
+    "status": "task_postprocess_end",
+    "pexit": "0",
+    "debugoutput": "Quantum computing uses qubits that can exist in superposition...",
+    "outputs": []
+  }]
+}</code></pre>
+    <div class="info-callout">
+      <p><strong>Note:</strong> When polling, <code>debugoutput</code> contains the merged text. To access separate <code>thinking</code> and <code>answer</code> arrays, use WebSocket streaming instead.</p>
+    </div>
+  </section>
+</article>
+
+<script type="application/json" class="code-examples-data">
+[
+  {
+    "label": "JavaScript",
+    "language": "javascript",
+    "code": "// LLM Streaming via WebSocket\n\nconst socketToken = 'YOUR_SOCKET_ACCESS_TOKEN';\nconst ws = new WebSocket('wss://socket.wiro.ai/v1');\n\nlet thinking = [];\nlet answer = [];\n\nws.onopen = () => {\n  ws.send(JSON.stringify({\n    type: 'task_info',\n    tasktoken: socketToken\n  }));\n};\n\nws.onmessage = (event) => {\n  const msg = JSON.parse(event.data);\n\n  if (msg.type === 'task_output') {\n    // LLM messages have structured object\n    if (typeof msg.message === 'object' &&\n        msg.message.answer) {\n      thinking = msg.message.thinking || [];\n      answer = msg.message.answer || [];\n\n      // Display answer to user\n      console.log('Answer:', answer.join('\\n'));\n\n      // Optionally show thinking\n      if (thinking.length > 0) {\n        console.log('Thinking:', thinking.join('\\n'));\n      }\n    }\n  }\n\n  if (msg.type === 'task_postprocess_end') {\n    console.log('\\n--- Complete ---');\n    console.log('Final answer:', answer.join('\\n'));\n    ws.close();\n  }\n};"
+  },
+  {
+    "label": "Python",
+    "language": "python",
+    "code": "import asyncio\nimport json\nimport websockets\nimport requests\nimport uuid\n\nAPI_KEY = 'YOUR_API_KEY'\nSESSION_ID = str(uuid.uuid4())\nUSER_ID = str(uuid.uuid4())\n\n# 1. Run the LLM\nrun_resp = requests.post(\n    'https://api.wiro.ai/v1/Run/openai/gpt-5-2',\n    headers={\n        'x-api-key': API_KEY,\n        'Content-Type': 'application/json'\n    },\n    json={\n        'prompt': 'Explain quantum computing',\n        'session_id': SESSION_ID,\n        'user_id': USER_ID\n    }\n)\ndata = run_resp.json()\ntoken = data['socketaccesstoken']\n\n# 2. Stream response via WebSocket\nasync def stream():\n    async with websockets.connect(\n        'wss://socket.wiro.ai/v1'\n    ) as ws:\n        await ws.send(json.dumps({\n            'type': 'task_info',\n            'tasktoken': token\n        }))\n\n        async for raw in ws:\n            msg = json.loads(raw)\n\n            if msg['type'] == 'task_output':\n                m = msg.get('message', {})\n                if isinstance(m, dict):\n                    thinking = m.get('thinking', [])\n                    answer = m.get('answer', [])\n                    if answer:\n                        print('Answer:',\n                            '\\n'.join(answer))\n\n            if msg['type'] in (\n                'task_postprocess_end',\n                'task_end'\n            ):\n                print('Done')\n                break\n\nasyncio.run(stream())"
+  },
+  {
+    "label": "Node.js",
+    "language": "javascript",
+    "code": "const WebSocket = require('ws');\nconst axios = require('axios');\nconst { v4: uuid } = require('uuid');\n\nconst API_KEY = 'YOUR_API_KEY';\nconst SESSION_ID = uuid();\nconst USER_ID = uuid();\n\nasync function main() {\n  // 1. Run the LLM\n  const { data } = await axios.post(\n    'https://api.wiro.ai/v1/Run/openai/gpt-5-2',\n    {\n      prompt: 'Explain quantum computing',\n      session_id: SESSION_ID,\n      user_id: USER_ID\n    },\n    {\n      headers: {\n        'x-api-key': API_KEY,\n        'Content-Type': 'application/json'\n      }\n    }\n  );\n\n  // 2. Stream via WebSocket\n  const ws = new WebSocket('wss://socket.wiro.ai/v1');\n\n  ws.on('open', () => {\n    ws.send(JSON.stringify({\n      type: 'task_info',\n      tasktoken: data.socketaccesstoken\n    }));\n  });\n\n  ws.on('message', (raw) => {\n    const msg = JSON.parse(raw.toString());\n\n    if (msg.type === 'task_output') {\n      const m = msg.message;\n      if (typeof m === 'object' && m.answer) {\n        process.stdout.write(\n          '\\r' + m.answer.join(''));\n        if (m.thinking && m.thinking.length) {\n          // Thinking available separately\n        }\n      }\n    }\n\n    if (msg.type === 'task_postprocess_end'\n        || msg.type === 'task_end') {\n      console.log('\\nDone');\n      ws.close();\n    }\n  });\n}\n\nmain();"
+  },
+  {
+    "label": "Polling",
+    "language": "python",
+    "code": "import requests\nimport time\n\nAPI_KEY = 'YOUR_API_KEY'\n\n# 1. Run the LLM\nrun = requests.post(\n    'https://api.wiro.ai/v1/Run/openai/gpt-5-2',\n    headers={\n        'x-api-key': API_KEY,\n        'Content-Type': 'application/json'\n    },\n    json={'prompt': 'Explain quantum computing'}\n).json()\n\ntask_id = run['taskid']\n\n# 2. Poll until complete\nwhile True:\n    resp = requests.post(\n        'https://api.wiro.ai/v1/Task/Detail',\n        headers={\n            'x-api-key': API_KEY,\n            'Content-Type': 'application/json'\n        },\n        json={'taskid': task_id}\n    ).json()\n\n    task = resp['tasklist'][0]\n    status = task['status']\n    print(f'Status: {status}')\n\n    if status == 'task_postprocess_end':\n        if task['pexit'] == '0':\n            # LLM response is in debugoutput\n            print('Response:',\n                task['debugoutput'])\n        else:\n            print('Error: pexit =',\n                task['pexit'])\n        break\n\n    time.sleep(2)"
+  },
+  {
+    "label": "Message Format",
+    "language": "json",
+    "code": "{\n  \"_comment\": \"LLM task_output message (structured)\",\n  \"type\": \"task_output\",\n  \"id\": \"534574\",\n  \"tasktoken\": \"eDcCm5yy...\",\n  \"message\": {\n    \"thinking\": [\n      \"Let me break this down step by step...\",\n      \"The key concept here is superposition...\"\n    ],\n    \"answer\": [\n      \"Quantum computing is a type of computation that uses quantum-mechanical phenomena such as superposition and entanglement to perform operations on data.\"\n    ]\n  }\n}\n\n// Compare: Standard model task_output (plain string)\n// { \"type\": \"task_output\", \"message\": \"Processing step 1/10...\" }\n\n// Compare: Realtime voice task_output (transcript prefix)\n// { \"type\": \"task_output\", \"message\": \"TRANSCRIPT_AI:Hello!\" }"
+  }
+]
+</script>
+            </div>
+
+            <!-- ==================== WEBSOCKET ==================== -->
+            <div class="docs-page-section" data-page="websocket" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/websocket.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/websocket.md" download class="docs-section-md-btn">Download</a></div>
+    <h1>WebSocket</h1>
+    <p class="section-subtitle">Receive real-time task updates via a persistent WebSocket connection.</p>
+
+    <section id="ws-connection">
+      <h2>Connection URL</h2>
+      <pre><code>wss://socket.wiro.ai/v1</code></pre>
+      <p>
+        Connect to this URL after calling the Run endpoint. Use the
+        <code>socketaccesstoken</code> from the run response to register your session.
+      </p>
+    </section>
+
+    <section id="ws-flow">
+      <h2>Connection Flow</h2>
+      <ol>
+        <li><strong>Connect</strong> — open a WebSocket connection to <code>wss://socket.wiro.ai/v1</code></li>
+        <li><strong>Register</strong> — send a <code>task_info</code> message with your <code>tasktoken</code></li>
+        <li><strong>Receive</strong> — listen for messages as the task progresses through its lifecycle</li>
+        <li><strong>Close</strong> — disconnect after the <code>task_end</code> event</li>
+      </ol>
+      <p>Registration message format:</p>
+      <pre><code>{
+  "type": "task_info",
+  "tasktoken": "your-socket-access-token"
+}</code></pre>
+    </section>
+
+    <section id="ws-message-types">
+      <h2>Message Types</h2>
+      <div class="message-table-wrapper">
+        <table class="message-table">
+          <thead>
+            <tr>
+              <th>Message Type</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>task_queue</code></td>
+              <td>Task entered the queue</td>
+            </tr>
+            <tr>
+              <td><code>task_accept</code></td>
+              <td>Task accepted by the system</td>
+            </tr>
+            <tr>
+              <td><code>task_assign</code></td>
+              <td>Task assigned to a worker</td>
+            </tr>
+            <tr>
+              <td><code>task_preprocess_start</code></td>
+              <td>Preprocessing has begun</td>
+            </tr>
+            <tr>
+              <td><code>task_preprocess_end</code></td>
+              <td>Preprocessing completed</td>
+            </tr>
+            <tr>
+              <td><code>task_start</code></td>
+              <td>Model inference started</td>
+            </tr>
+            <tr>
+              <td><code>task_output</code></td>
+              <td>Partial/streaming output from the model</td>
+            </tr>
+            <tr>
+              <td><code>task_error</code></td>
+              <td>A non-fatal error occurred during processing</td>
+            </tr>
+            <tr>
+              <td><code>task_output_full</code></td>
+              <td>Complete output payload when the model finishes</td>
+            </tr>
+            <tr>
+              <td><code>task_error_full</code></td>
+              <td>Complete error payload on failure</td>
+            </tr>
+            <tr>
+              <td><code>task_postprocess_start</code></td>
+              <td>Postprocessing has begun</td>
+            </tr>
+            <tr>
+              <td><code>task_postprocess_end</code></td>
+              <td>Postprocessing completed</td>
+            </tr>
+            <tr>
+              <td><code>task_end</code></td>
+              <td>Task fully completed — safe to close the connection</td>
+            </tr>
+            <tr>
+              <td><code>task_cancel</code></td>
+              <td>Task was cancelled</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="ws-binary">
+      <h2>Binary Frames</h2>
+      <p>For <strong>realtime voice models</strong>, the WebSocket may send binary frames containing raw audio data. Check if the received message is a <code>Blob</code> (browser) or <code>Buffer</code> (Node.js) before parsing as JSON.</p>
+    </section>
+
+    <section id="ws-end-session">
+      <h2>Ending a Session</h2>
+      <p>For realtime/streaming models that maintain a persistent session, send a <code>task_session_end</code> message to gracefully terminate:</p>
+      <pre><code>{
+  "type": "task_session_end",
+  "tasktoken": "your-socket-access-token"
+}</code></pre>
+      <p>After sending this, wait for the <code>task_end</code> event before closing the connection.</p>
+    </section>
+  </article>
+
+<script type="application/json" class="code-examples-data">
+[
+  {
+    "label": "JavaScript",
+    "language": "javascript",
+    "code": "const taskToken = 'your-socket-access-token';\n\nconst ws = new WebSocket('wss://socket.wiro.ai/v1');\n\nws.onopen = () => {\n  console.log('Connected to Wiro WebSocket');\n  // Register with your task token\n  ws.send(JSON.stringify({\n    type: 'task_info',\n    tasktoken: taskToken\n  }));\n};\n\nws.onmessage = (event) => {\n  // Handle binary frames (realtime voice models)\n  if (event.data instanceof Blob) {\n    console.log('Received binary frame:', event.data.size, 'bytes');\n    return;\n  }\n\n  const msg = JSON.parse(event.data);\n  console.log('Event:', msg.type, msg);\n\n  switch (msg.type) {\n    case 'task_queue':\n      console.log('Task is queued...');\n      break;\n    case 'task_start':\n      console.log('Model inference started');\n      break;\n    case 'task_output':\n      console.log('Partial output:', msg.data);\n      break;\n    case 'task_output_full':\n      console.log('Full output:', msg.data);\n      break;\n    case 'task_error':\n      console.error('Error:', msg.data);\n      break;\n    case 'task_end':\n      console.log('Task completed!');\n      ws.close();\n      break;\n  }\n};\n\nws.onerror = (err) => {\n  console.error('WebSocket error:', err);\n};\n\nws.onclose = () => {\n  console.log('WebSocket disconnected');\n};"
+  },
+  {
+    "label": "Python",
+    "language": "python",
+    "code": "import asyncio\nimport websockets\nimport json\n\nasync def listen_task(socket_token):\n    uri = \"wss://socket.wiro.ai/v1\"\n\n    async with websockets.connect(uri) as ws:\n        # Register with task token\n        await ws.send(json.dumps({\n            \"type\": \"task_info\",\n            \"tasktoken\": socket_token\n        }))\n        print(\"Registered with WebSocket\")\n\n        async for message in ws:\n            if isinstance(message, bytes):\n                print(f\"Binary frame: {len(message)} bytes\")\n                continue\n\n            msg = json.loads(message)\n            print(f\"Event: {msg['type']}\")\n\n            if msg[\"type\"] == \"task_output\":\n                print(\"Partial output:\", msg.get(\"data\"))\n            elif msg[\"type\"] == \"task_output_full\":\n                print(\"Full output:\", msg.get(\"data\"))\n            elif msg[\"type\"] == \"task_error\":\n                print(\"Error:\", msg.get(\"data\"))\n            elif msg[\"type\"] == \"task_end\":\n                print(\"Task completed!\")\n                break\n\nasyncio.run(listen_task(\"your-socket-access-token\"))"
+  },
+  {
+    "label": "Node.js",
+    "language": "javascript",
+    "code": "const WebSocket = require('ws');\n\nconst socketToken = 'your-socket-access-token';\nconst ws = new WebSocket('wss://socket.wiro.ai/v1');\n\nws.on('open', () => {\n  console.log('Connected');\n  ws.send(JSON.stringify({\n    type: 'task_info',\n    tasktoken: socketToken\n  }));\n});\n\nws.on('message', (data, isBinary) => {\n  if (isBinary) {\n    console.log('Binary frame:', data.length, 'bytes');\n    return;\n  }\n\n  const msg = JSON.parse(data.toString());\n  console.log('Event:', msg.type);\n\n  if (msg.type === 'task_output_full') {\n    console.log('Full output:', msg.data);\n  }\n  if (msg.type === 'task_end') {\n    console.log('Done!');\n    ws.close();\n  }\n});\n\nws.on('error', console.error);\nws.on('close', () => console.log('Disconnected'));"
+  },
+  {
+    "label": "PHP",
+    "language": "php",
+    "code": "<?php\n// Requires: composer require textalk/websocket\nuse WebSocket\\Client;\n\n$client = new Client(\"wss://socket.wiro.ai/v1\");\n\n$client->send(json_encode([\n    \"type\" => \"task_info\",\n    \"tasktoken\" => \"your-socket-access-token\"\n]));\n\nwhile (true) {\n    $msg = json_decode($client->receive(), true);\n    echo \"Event: \" . $msg[\"type\"] . PHP_EOL;\n\n    if ($msg[\"type\"] === \"task_output_full\") {\n        echo \"Output: \" . json_encode($msg[\"data\"])\n            . PHP_EOL;\n    }\n    if ($msg[\"type\"] === \"task_end\") {\n        echo \"Done!\" . PHP_EOL;\n        break;\n    }\n}\n$client->close();"
+  },
+  {
+    "label": "C#",
+    "language": "csharp",
+    "code": "using System.Net.WebSockets;\nusing System.Text;\nusing System.Text.Json;\n\nusing var ws = new ClientWebSocket();\nawait ws.ConnectAsync(\n    new Uri(\"wss://socket.wiro.ai/v1\"),\n    CancellationToken.None);\n\nvar taskInfo = JsonSerializer.Serialize(new {\n    type = \"task_info\",\n    tasktoken = \"your-socket-access-token\"\n});\nawait ws.SendAsync(\n    Encoding.UTF8.GetBytes(taskInfo),\n    WebSocketMessageType.Text, true,\n    CancellationToken.None);\n\nvar buffer = new byte[4096];\nwhile (ws.State == WebSocketState.Open) {\n    var result = await ws.ReceiveAsync(\n        buffer, CancellationToken.None);\n    if (result.MessageType\n        == WebSocketMessageType.Binary) {\n        Console.WriteLine(\"Binary frame: \"\n            + result.Count + \" bytes\");\n        continue;\n    }\n    var message = Encoding.UTF8.GetString(\n        buffer, 0, result.Count);\n    using var doc = JsonDocument.Parse(message);\n    var type = doc.RootElement\n        .GetProperty(\"type\").GetString();\n    Console.WriteLine(\"Event: \" + type);\n\n    if (type == \"task_end\") {\n        Console.WriteLine(\"Done!\");\n        break;\n    }\n}"
+  },
+  {
+    "label": "Go",
+    "language": "go",
+    "code": "package main\n\nimport (\n    \"encoding/json\"\n    \"fmt\"\n    \"log\"\n    \"github.com/gorilla/websocket\"\n)\n\nfunc main() {\n    conn, _, err := websocket.DefaultDialer.Dial(\n        \"wss://socket.wiro.ai/v1\", nil)\n    if err != nil { log.Fatal(err) }\n    defer conn.Close()\n\n    reg, _ := json.Marshal(map[string]string{\n        \"type\":  \"task_info\",\n        \"tasktoken\": \"your-socket-access-token\",\n    })\n    conn.WriteMessage(websocket.TextMessage, reg)\n\n    for {\n        _, message, err := conn.ReadMessage()\n        if err != nil { break }\n        var msg map[string]interface{}\n        json.Unmarshal(message, &msg)\n        fmt.Println(\"Event:\", msg[\"type\"])\n\n        if msg[\"type\"] == \"task_end\" {\n            fmt.Println(\"Done!\")\n            break\n        }\n    }\n}"
+  },
+  {
+    "label": "Swift",
+    "language": "swift",
+    "code": "import Foundation\n\nlet url = URL(string: \"wss://socket.wiro.ai/v1\")!\nlet task = URLSession.shared.webSocketTask(with: url)\ntask.resume()\n\nlet regData = try! JSONSerialization.data(\n    withJSONObject: [\n        \"type\": \"task_info\",\n        \"tasktoken\": \"your-socket-access-token\"\n    ])\ntask.send(.string(\n    String(data: regData, encoding: .utf8)!\n)) { _ in }\n\nfunc receive() {\n    task.receive { result in\n        switch result {\n        case .success(let message):\n            switch message {\n            case .string(let text):\n                let msg = try! JSONSerialization\n                    .jsonObject(with: text.data(\n                        using: .utf8)!)\n                    as! [String: Any]\n                print(\"Event:\", msg[\"type\"] ?? \"\")\n                if msg[\"type\"] as? String == \"task_end\" {\n                    print(\"Done!\")\n                    return\n                }\n            case .data(let data):\n                print(\"Binary:\", data.count, \"bytes\")\n            @unknown default: break\n            }\n            receive()\n        case .failure(let error):\n            print(\"Error:\", error)\n        }\n    }\n}\nreceive()"
+  },
+  {
+    "label": "Kotlin",
+    "language": "kotlin",
+    "code": "// Requires: org.java-websocket:Java-WebSocket\nimport org.java_websocket.client.WebSocketClient\nimport org.java_websocket.handshake.ServerHandshake\nimport java.net.URI\nimport org.json.JSONObject\n\nval client = object : WebSocketClient(\n    URI(\"wss://socket.wiro.ai/v1\")) {\n    override fun onOpen(h: ServerHandshake) {\n        send(JSONObject(mapOf(\n            \"type\" to \"task_info\",\n            \"tasktoken\" to \"your-socket-access-token\"\n        )).toString())\n    }\n    override fun onMessage(message: String) {\n        val msg = JSONObject(message)\n        println(\"Event: \" + msg.getString(\"type\"))\n        if (msg.getString(\"type\") == \"task_end\") {\n            println(\"Done!\")\n            close()\n        }\n    }\n    override fun onClose(\n        code: Int, reason: String, remote: Boolean\n    ) { println(\"Disconnected\") }\n    override fun onError(ex: Exception) {\n        ex.printStackTrace()\n    }\n}\nclient.connect()"
+  },
+  {
+    "label": "Dart",
+    "language": "dart",
+    "code": "import 'dart:convert';\nimport 'package:web_socket_channel/web_socket_channel.dart';\n\nfinal channel = WebSocketChannel.connect(\n  Uri.parse('wss://socket.wiro.ai/v1'),\n);\n\nchannel.sink.add(jsonEncode({\n  'type': 'task_info',\n  'tasktoken': 'your-socket-access-token',\n}));\n\nchannel.stream.listen((message) {\n  final msg = jsonDecode(message);\n  print('Event: ' + msg['type'].toString());\n  if (msg['type'] == 'task_output_full') {\n    print('Output: ' + jsonEncode(msg['data']));\n  }\n  if (msg['type'] == 'task_end') {\n    print('Done!');\n    channel.sink.close();\n  }\n});"
+  },
+  {
+    "label": "Messages",
+    "language": "json",
+    "code": "// task_queue\n{\"type\": \"task_queue\", \"tasktoken\": \"eDcCm5yy...\"}\n\n// task_start\n{\"type\": \"task_start\", \"tasktoken\": \"eDcCm5yy...\"}\n\n// task_output (streaming log)\n{\"type\": \"task_output\", \"tasktoken\": \"eDcCm5yy...\", \"message\": \"Step 1/10...\"}\n\n// task_postprocess_end (outputs ready)\n{\"type\": \"task_postprocess_end\", \"tasktoken\": \"eDcCm5yy...\", \"message\": [\n  {\"name\": \"0.png\", \"url\": \"https://cdn1.wiro.ai/.../0.png\", \"size\": \"202472\"}\n]}\n\n// task_end\n{\"type\": \"task_end\", \"tasktoken\": \"eDcCm5yy...\"}"
+  }
+]
+</script>
+            </div>
+
+            <!-- ==================== REALTIME VOICE ==================== -->
+            <div class="docs-page-section" data-page="realtime-voice-conversation" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/realtime-voice-conversation.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/realtime-voice-conversation.md" download class="docs-section-md-btn">Download</a></div>
+  <h1>Realtime Voice</h1>
+  <p class="section-subtitle">Build interactive voice conversation apps with realtime AI models.</p>
+
+  <section id="realtime-overview">
+    <h2>Overview</h2>
+    <p>Realtime voice models enable two-way audio conversations with AI. Unlike standard model runs that process a single input and return a result, realtime sessions maintain a persistent WebSocket connection where you stream microphone audio and receive AI speech in real time.</p>
+    <p>The flow is:</p>
+    <ol>
+      <li><strong>Run</strong> the realtime model via <a href="#/run-a-model" class="docs-link">POST /Run</a> to get a <code>socketaccesstoken</code></li>
+      <li><strong>Connect</strong> to the WebSocket and send <code>task_info</code> with your token</li>
+      <li><strong>Wait</strong> for <code>task_stream_ready</code> — the model is ready to receive audio</li>
+      <li><strong>Stream</strong> microphone audio as binary frames</li>
+      <li><strong>Receive</strong> AI audio as binary frames and play them</li>
+      <li><strong>End</strong> the session with <code>task_session_end</code></li>
+    </ol>
+  </section>
+
+  <section id="realtime-run-params">
+    <h2>Run Parameters</h2>
+    <p>Each realtime model has its own set of parameters. Use <a href="#/models" class="docs-link">POST /Tool/Detail</a> to discover the exact parameters for a specific model. See <a href="#/model-parameters" class="docs-link">Model Parameters</a> for details on parameter types.</p>
+
+    <p>Available realtime conversation models include:</p>
+    <ul>
+      <li><a href="https://wiro.ai/models/openai/gpt-realtime-mini" class="docs-link" target="_blank">openai/gpt-realtime-mini</a> — GPT Mini Realtime Voice Assistant</li>
+      <li><a href="https://wiro.ai/models/openai/gpt-realtime" class="docs-link" target="_blank">openai/gpt-realtime</a> — GPT Realtime Voice Assistant</li>
+      <li><a href="https://wiro.ai/models/elevenlabs/realtime-conversational-ai" class="docs-link" target="_blank">elevenlabs/realtime-conversational-ai</a> — ElevenLabs Conversational AI</li>
+    </ul>
+
+    <p>Common parameters across realtime models typically include voice selection, system instructions, and audio format settings. Example run for an OpenAI realtime model:</p>
+    <pre><code>curl -X POST "https://api.wiro.ai/v1/Run/openai/gpt-realtime-mini" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "voice": "marin",
+    "system_instructions": "You are a friendly assistant.",
+    "input_audio_format": "audio/pcm",
+    "output_audio_format": "audio/pcm",
+    "input_audio_rate": "24000",
+    "output_audio_rate": "24000"
+  }'</code></pre>
+    <div class="info-callout">
+      <p><strong>Important:</strong> Parameters vary per model. Always check the model's detail page or use <code>/Tool/Detail</code> to get the exact parameter list before integrating.</p>
+    </div>
+  </section>
+
+  <section id="realtime-connection">
+    <h2>Connection &amp; Registration</h2>
+    <p>After running the task, connect to the WebSocket and register with <code>task_info</code>:</p>
+    <pre><code>var ws = new WebSocket("wss://socket.wiro.ai/v1");
+
+ws.onopen = function() {
+  ws.send(JSON.stringify({
+    type: "task_info",
+    tasktoken: "YOUR_SOCKET_ACCESS_TOKEN"
+  }));
+};</code></pre>
+    <div class="info-callout">
+      <p><strong>Note:</strong> Both standard and realtime models use <code>type: "task_info"</code> with <code>tasktoken</code> to register on the WebSocket.</p>
+    </div>
+  </section>
+
+  <section id="realtime-events">
+    <h2>Realtime Events</h2>
+    <p>During a realtime session, you'll receive these WebSocket events:</p>
+    <div class="status-table-wrapper">
+      <table class="status-table">
+        <thead>
+          <tr><th>Event</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>task_stream_ready</code></td><td>Session is ready — start sending microphone audio</td></tr>
+          <tr><td><code>task_stream_end</code></td><td>AI finished speaking for this turn — you can speak again</td></tr>
+          <tr><td><code>task_cost</code></td><td>Cost update with <code>turnCost</code> and <code>cumulativeCost</code> fields</td></tr>
+          <tr><td><code>task_output</code></td><td>Transcript messages prefixed with <code>TRANSCRIPT_USER:</code> or <code>TRANSCRIPT_AI:</code></td></tr>
+          <tr><td><code>task_end</code></td><td>Session fully ended — close the connection</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="realtime-audio-format">
+    <h2>Audio Format</h2>
+    <p>Both directions (microphone → server, server → client) use the same format:</p>
+    <div class="docs-comparison-table">
+      <table>
+        <thead><tr><th>Property</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>Format</td><td>PCM (raw, uncompressed)</td></tr>
+          <tr><td>Bit depth</td><td>16-bit signed integer (Int16)</td></tr>
+          <tr><td>Sample rate</td><td>24,000 Hz (24 kHz)</td></tr>
+          <tr><td>Channels</td><td>Mono (1 channel)</td></tr>
+          <tr><td>Byte order</td><td>Little-endian</td></tr>
+          <tr><td>Chunk size</td><td>4,800 samples (200 ms) = 9,600 bytes</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <h3>Binary Frame Format</h3>
+    <p>Every binary WebSocket frame (in both directions) is structured as:</p>
+    <pre><code>[tasktoken]|[PCM audio data]</code></pre>
+    <p>The pipe character <code>|</code> (0x7C) separates the token from the raw audio bytes.</p>
+  </section>
+
+  <section id="realtime-send-audio">
+    <h2>Sending Microphone Audio</h2>
+    <p>Capture microphone at 24 kHz using the Web Audio API with an AudioWorklet. Convert Float32 samples to Int16, prepend your task token, and send as a binary frame.</p>
+    <p>Key steps:</p>
+    <ol>
+      <li>Request microphone with <code>getUserMedia</code> (enable echo cancellation and noise suppression)</li>
+      <li>Create an <code>AudioContext</code> at 24,000 Hz sample rate</li>
+      <li>Use an AudioWorklet to buffer and convert samples to Int16</li>
+      <li>Send each chunk as <code>tasktoken|pcm_data</code> binary frame</li>
+    </ol>
+  </section>
+
+  <section id="realtime-receive-audio">
+    <h2>Receiving AI Audio</h2>
+    <p>AI responses arrive as binary WebSocket frames in the same PCM Int16 24 kHz format. To play them:</p>
+    <ol>
+      <li>Check if the message is a <code>Blob</code> (binary) before parsing as JSON</li>
+      <li>Find the pipe <code>|</code> separator and extract audio data after it</li>
+      <li>Convert Int16 → Float32 and create an <code>AudioBuffer</code></li>
+      <li>Schedule gapless playback using <code>AudioBufferSourceNode</code></li>
+    </ol>
+  </section>
+
+  <section id="realtime-transcripts">
+    <h2>Transcripts</h2>
+    <p>Both user and AI speech are transcribed automatically. Transcripts arrive as <code>task_output</code> messages with a string prefix:</p>
+    <ul>
+      <li><code>TRANSCRIPT_USER:</code> — what the user said</li>
+      <li><code>TRANSCRIPT_AI:</code> — what the AI said</li>
+    </ul>
+    <pre><code>// Example task_output message
+{
+  "type": "task_output",
+  "message": "TRANSCRIPT_USER:What's the weather like today?"
+}
+
+{
+  "type": "task_output",
+  "message": "TRANSCRIPT_AI:I'd be happy to help, but I don't have access to real-time weather data."
+}</code></pre>
+  </section>
+
+  <section id="realtime-end-session">
+    <h2>Ending a Session</h2>
+    <p>To gracefully end a realtime session, send <code>task_session_end</code>:</p>
+    <pre><code>{
+  "type": "task_session_end",
+  "tasktoken": "YOUR_SOCKET_ACCESS_TOKEN"
+}</code></pre>
+    <p>After sending this, the server will process any remaining audio, send final cost/transcript events, and then emit <code>task_end</code>. Wait for <code>task_end</code> before closing the WebSocket.</p>
+    <div class="info-callout">
+      <p><strong>Note:</strong> Use <code>task_session_end</code> to end the session. After sending this, wait for the <code>task_end</code> event before closing the WebSocket.</p>
+    </div>
+  </section>
+</article>
+
+<script type="application/json" class="code-examples-data">
+[
+  {
+    "label": "JavaScript",
+    "language": "javascript",
+    "code": "// Realtime Voice Session — Connect and Handle Events\n\nvar socketToken = 'YOUR_SOCKET_ACCESS_TOKEN';\nvar ws = new WebSocket('wss://socket.wiro.ai/v1');\n\nws.onopen = function() {\n  ws.send(JSON.stringify({ type: 'task_info', tasktoken: socketToken }));\n};\n\nws.onmessage = function(event) {\n  if (event.data instanceof Blob) {\n    handleAudioResponse(event.data);\n    return;\n  }\n\n  var msg = JSON.parse(event.data);\n\n  if (msg.type === 'task_stream_ready') {\n    console.log('Session ready — start microphone');\n    startMicrophone(ws, socketToken);\n  }\n\n  if (msg.type === 'task_stream_end') {\n    console.log('AI finished speaking');\n  }\n\n  if (msg.type === 'task_cost') {\n    console.log('Turn cost:', msg.turnCost,\n      'Total:', msg.cumulativeCost);\n  }\n\n  if (msg.type === 'task_output' &&\n      typeof msg.message === 'string') {\n    if (msg.message.startsWith('TRANSCRIPT_USER:')) {\n      console.log('You:', msg.message.substring(16));\n    }\n    if (msg.message.startsWith('TRANSCRIPT_AI:')) {\n      console.log('AI:', msg.message.substring(14));\n    }\n  }\n\n  if (msg.type === 'task_end') {\n    console.log('Session ended');\n    stopMicrophone();\n    ws.close();\n  }\n};\n\nfunction endSession() {\n  ws.send(JSON.stringify({\n    type: 'task_session_end',\n    tasktoken: socketToken\n  }));\n}"
+  },
+  {
+    "label": "Mic Capture",
+    "language": "javascript",
+    "code": "// Microphone capture at 24kHz PCM Int16\n// Binary frame: tasktoken|pcm_data\n\nvar audioCtx, workletNode, micStream;\n\nasync function startMicrophone(ws, token) {\n  micStream = await navigator.mediaDevices\n    .getUserMedia({\n      audio: {\n        echoCancellation: true,\n        noiseSuppression: true\n      }\n    });\n\n  audioCtx = new AudioContext({ sampleRate: 24000 });\n\n  // Inline AudioWorklet processor\n  var code = `\n    class P extends AudioWorkletProcessor {\n      constructor() { super(); this.buf = new Float32Array(0); }\n      process(inputs) {\n        var inp = inputs[0] && inputs[0][0];\n        if (!inp) return true;\n        var nb = new Float32Array(this.buf.length + inp.length);\n        nb.set(this.buf);\n        nb.set(inp, this.buf.length);\n        this.buf = nb;\n        while (this.buf.length >= 4800) {\n          var c = this.buf.slice(0, 4800);\n          this.buf = this.buf.slice(4800);\n          var i16 = new Int16Array(c.length);\n          for (var i = 0; i < c.length; i++) {\n            var s = Math.max(-1, Math.min(1, c[i]));\n            i16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;\n          }\n          this.port.postMessage(i16.buffer, [i16.buffer]);\n        }\n        return true;\n      }\n    }\n    registerProcessor('p', P);\n  `;\n  var blob = new Blob([code], { type: 'application/javascript' });\n  await audioCtx.audioWorklet.addModule(\n    URL.createObjectURL(blob)\n  );\n\n  var src = audioCtx.createMediaStreamSource(micStream);\n  workletNode = new AudioWorkletNode(audioCtx, 'p');\n  src.connect(workletNode);\n\n  workletNode.port.onmessage = function(e) {\n    var tokenBytes = new TextEncoder()\n      .encode(token + '|');\n    var frame = new Uint8Array(\n      tokenBytes.length + e.data.byteLength\n    );\n    frame.set(tokenBytes, 0);\n    frame.set(new Uint8Array(e.data), tokenBytes.length);\n    if (ws.readyState === 1) ws.send(frame.buffer);\n  };\n}\n\nfunction stopMicrophone() {\n  if (workletNode) workletNode.disconnect();\n  if (audioCtx) audioCtx.close();\n  if (micStream)\n    micStream.getTracks().forEach(t => t.stop());\n}"
+  },
+  {
+    "label": "Play Audio",
+    "language": "javascript",
+    "code": "// Receive and play AI audio (PCM Int16 24kHz)\n\nvar playCtx = new AudioContext({ sampleRate: 24000 });\nvar nextPlayTime = 0;\n\nfunction handleAudioResponse(blob) {\n  blob.arrayBuffer().then(function(buffer) {\n    var bytes = new Uint8Array(buffer);\n\n    // Find pipe separator\n    var pipeIndex = bytes.indexOf(0x7C);\n    if (pipeIndex < 0) return;\n\n    var audioData = buffer.slice(pipeIndex + 1);\n\n    // Convert Int16 → Float32\n    var int16 = new Int16Array(audioData);\n    var float32 = new Float32Array(int16.length);\n    for (var i = 0; i < int16.length; i++) {\n      float32[i] = int16[i] / 32768.0;\n    }\n\n    // Schedule gapless playback\n    var audioBuf = playCtx.createBuffer(\n      1, float32.length, 24000\n    );\n    audioBuf.getChannelData(0).set(float32);\n\n    var src = playCtx.createBufferSource();\n    src.buffer = audioBuf;\n    src.connect(playCtx.destination);\n\n    var now = playCtx.currentTime;\n    var t = Math.max(now, nextPlayTime);\n    src.start(t);\n    nextPlayTime = t + audioBuf.duration;\n  });\n}"
+  },
+  {
+    "label": "Python",
+    "language": "python",
+    "code": "import asyncio\nimport json\nimport struct\nimport websockets\nimport pyaudio\n\nSOCKET_TOKEN = 'YOUR_SOCKET_ACCESS_TOKEN'\nSAMPLE_RATE = 24000\nCHUNK = 4800  # 200ms\n\nasync def realtime_session():\n    uri = 'wss://socket.wiro.ai/v1'\n    async with websockets.connect(uri) as ws:\n        # Register\n        await ws.send(json.dumps({\n            'type': 'task_info',\n            'tasktoken': SOCKET_TOKEN\n        }))\n\n        # Audio setup\n        pa = pyaudio.PyAudio()\n        mic = pa.open(format=pyaudio.paInt16,\n            channels=1, rate=SAMPLE_RATE,\n            input=True, frames_per_buffer=CHUNK)\n        speaker = pa.open(format=pyaudio.paInt16,\n            channels=1, rate=SAMPLE_RATE,\n            output=True)\n\n        is_listening = False\n\n        async def send_audio():\n            while True:\n                if is_listening:\n                    data = mic.read(CHUNK,\n                        exception_on_overflow=False)\n                    token = SOCKET_TOKEN.encode() + b'|'\n                    await ws.send(token + data)\n                await asyncio.sleep(0.01)\n\n        async def receive():\n            nonlocal is_listening\n            async for msg in ws:\n                if isinstance(msg, bytes):\n                    pipe = msg.index(0x7C)\n                    speaker.write(msg[pipe+1:])\n                    continue\n                data = json.loads(msg)\n                t = data['type']\n                if t == 'task_stream_ready':\n                    print('Session ready')\n                    is_listening = True\n                elif t == 'task_stream_end':\n                    is_listening = False\n                elif t == 'task_cost':\n                    is_listening = True\n                    print(f'Cost: {data[\"cumulativeCost\"]}')\n                elif t == 'task_output':\n                    m = data.get('message', '')\n                    if m.startswith('TRANSCRIPT_USER:'):\n                        print(f'You: {m[16:]}')\n                    elif m.startswith('TRANSCRIPT_AI:'):\n                        print(f'AI: {m[14:]}')\n                elif t in ('task_end',\n                    'task_postprocess_end'):\n                    print('Session ended')\n                    break\n\n        await asyncio.gather(\n            send_audio(), receive())\n\nasyncio.run(realtime_session())"
+  },
+  {
+    "label": "Node.js",
+    "language": "javascript",
+    "code": "const WebSocket = require('ws');\nconst { spawn } = require('child_process');\n\nconst SOCKET_TOKEN = 'YOUR_SOCKET_ACCESS_TOKEN';\nconst ws = new WebSocket('wss://socket.wiro.ai/v1');\n\nws.on('open', () => {\n  ws.send(JSON.stringify({\n    type: 'task_info',\n    tasktoken: SOCKET_TOKEN\n  }));\n});\n\nws.on('message', (data, isBinary) => {\n  if (isBinary) {\n    const buf = Buffer.from(data);\n    const pipe = buf.indexOf(0x7C);\n    if (pipe > 0) {\n      const audio = buf.slice(pipe + 1);\n      // Play via speaker or save to file\n      console.log('Audio chunk:', audio.length, 'bytes');\n    }\n    return;\n  }\n\n  const msg = JSON.parse(data.toString());\n\n  if (msg.type === 'task_stream_ready') {\n    console.log('Session ready — start sending audio');\n    // Start mic capture and send as binary\n  }\n\n  if (msg.type === 'task_cost') {\n    console.log('Cost:', msg.cumulativeCost);\n  }\n\n  if (msg.type === 'task_output' &&\n      typeof msg.message === 'string') {\n    if (msg.message.startsWith('TRANSCRIPT_USER:'))\n      console.log('You:', msg.message.substring(16));\n    if (msg.message.startsWith('TRANSCRIPT_AI:'))\n      console.log('AI:', msg.message.substring(14));\n  }\n\n  if (msg.type === 'task_end') {\n    console.log('Done');\n    ws.close();\n  }\n});\n\n// End session\nfunction endSession() {\n  ws.send(JSON.stringify({\n    type: 'task_session_end',\n    tasktoken: SOCKET_TOKEN\n  }));\n}"
+  },
+  {
+    "label": "Format",
+    "language": "json",
+    "code": "{\n  \"audio_format\": {\n    \"codec\": \"PCM\",\n    \"bit_depth\": \"16-bit Int16\",\n    \"sample_rate\": 24000,\n    \"channels\": 1,\n    \"byte_order\": \"little-endian\"\n  },\n  \"binary_frame\": \"tasktoken|pcm_audio_data\",\n  \"recommended_chunk\": {\n    \"samples\": 4800,\n    \"duration_ms\": 200,\n    \"bytes\": 9600\n  },\n  \"events\": {\n    \"task_stream_ready\": \"Start sending audio\",\n    \"task_stream_end\": \"AI finished speaking\",\n    \"task_cost\": \"Cost per turn + cumulative\",\n    \"task_output\": \"TRANSCRIPT_USER: / TRANSCRIPT_AI:\",\n    \"task_session_end\": \"Send to end session\",\n    \"task_end\": \"Server ended session\"\n  }\n}"
+  }
+]
+</script>
+            </div>
+
+            <!-- ==================== FILES ==================== -->
+            <div class="docs-page-section" data-page="files" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/files.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/files.md" download class="docs-section-md-btn">Download</a></div>
+    <h1>Files</h1>
+    <p class="section-subtitle">Manage folders and upload files for use with AI models.</p>
+
+    <section id="files-overview">
+      <h2>Overview</h2>
+      <p>The Files API lets you organize and upload data that can be referenced in model runs. Common use cases include:</p>
+      <ul>
+        <li><strong>Training data</strong> — upload datasets for fine-tuning models</li>
+        <li><strong>File inputs</strong> — provide images, audio, or documents as model inputs</li>
+        <li><strong>Batch processing</strong> — store files for repeated use across multiple runs</li>
+      </ul>
+    </section>
+
+    <section id="folder-create">
+      <h2>
+        <span class="endpoint-badge post">POST</span>
+        /File/FolderCreate
+      </h2>
+      <p>Creates a new folder to organize your uploaded files.</p>
+
+      <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+        <thead>
+          <tr>
+            <th>Parameter</th>
+            <th>Type</th>
+            <th>Required</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>name</code></td>
+            <td>string</td>
+            <td>Yes</td>
+            <td>Folder name</td>
+          </tr>
+          <tr>
+            <td><code>parentId</code></td>
+            <td>string</td>
+            <td>No</td>
+            <td>Parent folder ID for nested structure (null for root)</td>
+          </tr>
+        </tbody>
+      </table></div></div>
+
+      <h3>Response</h3>
+      <pre><code>{
+  "result": true,
+  "errors": [],
+  "data": {
+    "id": "folder-abc123",
+    "name": "training-data",
+    "parentId": null,
+    "createdAt": "2025-01-15T10:00:00Z"
+  }
+}</code></pre>
+    </section>
+
+    <section id="file-upload">
+      <h2>
+        <span class="endpoint-badge post">POST</span>
+        /File/Upload
+      </h2>
+      <p>Uploads a file using <code>multipart/form-data</code>. You can optionally assign it to a folder.</p>
+
+      <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+        <thead>
+          <tr>
+            <th>Parameter</th>
+            <th>Type</th>
+            <th>Required</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>file</code></td>
+            <td>file</td>
+            <td>Yes</td>
+            <td>The file to upload (multipart form field)</td>
+          </tr>
+          <tr>
+            <td><code>folderId</code></td>
+            <td>string</td>
+            <td>No</td>
+            <td>Target folder ID (uploads to root if omitted)</td>
+          </tr>
+        </tbody>
+      </table></div></div>
+
+      <h3>Response</h3>
+      <pre><code>{
+  "result": true,
+  "errors": [],
+  "data": {
+    "id": "file-xyz789",
+    "name": "dataset.csv",
+    "size": 1048576,
+    "mimeType": "text/csv",
+    "folderId": "folder-abc123",
+    "url": "https://files.wiro.ai/...",
+    "createdAt": "2025-01-15T10:05:00Z"
+  }
+}</code></pre>
+    </section>
+
+    <section id="files-usage">
+      <h2>Using Files in Runs</h2>
+      <p>
+        Once uploaded, reference a file by its URL or ID in your model run parameters. For example, an image upscaler model might accept a
+        <code>imageUrl</code> parameter — pass the URL returned from the upload response.
+      </p>
+      <pre><code>{
+  "imageUrl": "https://files.wiro.ai/...",
+  "scale": 4
+}</code></pre>
+    </section>
+  </article>
+
+<script type="application/json" class="code-examples-data">
+[
+  {
+    "label": "curl (Folder)",
+    "language": "bash",
+    "code": "# Create a folder\ncurl -X POST \"https://api.wiro.ai/v1/File/FolderCreate\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"name\": \"training-data\",\n    \"parentId\": null\n  }'"
+  },
+  {
+    "label": "curl (Upload)",
+    "language": "bash",
+    "code": "# Upload a file\ncurl -X POST \"https://api.wiro.ai/v1/File/Upload\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -F \"file=@/path/to/dataset.csv\" \\\n  -F \"folderId=folder-id-here\""
+  },
+  {
+    "label": "Python",
+    "language": "python",
+    "code": "import requests\n\nheaders = {\n    \"x-api-key\": \"YOUR_API_KEY\",\n    \"Content-Type\": \"application/json\"\n}\n\n# Create a folder\nfolder_resp = requests.post(\n    \"https://api.wiro.ai/v1/File/FolderCreate\",\n    headers=headers,\n    json={\n        \"name\": \"training-data\",\n        \"parentId\": None\n    }\n)\nfolder_id = folder_resp.json()[\"data\"][\"id\"]\nprint(f\"Folder ID: {folder_id}\")\n\n# Upload a file\nwith open(\"dataset.csv\", \"rb\") as f:\n    upload_resp = requests.post(\n        \"https://api.wiro.ai/v1/File/Upload\",\n        headers={\"x-api-key\": \"YOUR_API_KEY\"},\n        files={\"file\": f},\n        data={\"folderId\": folder_id}\n    )\nprint(upload_resp.json())"
+  },
+  {
+    "label": "Node.js",
+    "language": "javascript",
+    "code": "const axios = require('axios');\nconst FormData = require('form-data');\nconst fs = require('fs');\n\nconst headers = {\n  'x-api-key': 'YOUR_API_KEY',\n  'Content-Type': 'application/json'\n};\n\n// Create a folder\nconst folderResp = await axios.post(\n  'https://api.wiro.ai/v1/File/FolderCreate',\n  { name: 'training-data', parentId: null },\n  { headers }\n);\nconst folderId = folderResp.data.data.id;\nconsole.log('Folder ID:', folderId);\n\n// Upload a file\nconst form = new FormData();\nform.append('file', fs.createReadStream('dataset.csv'));\nform.append('folderId', folderId);\n\nconst uploadResp = await axios.post(\n  'https://api.wiro.ai/v1/File/Upload',\n  form,\n  { headers: { 'x-api-key': 'YOUR_API_KEY', ...form.getHeaders() } }\n);\nconsole.log(uploadResp.data);"
+  },
+  {
+    "label": "PHP",
+    "language": "php",
+    "code": "<?php\n$ch = curl_init();\ncurl_setopt($ch, CURLOPT_URL, \"https://api.wiro.ai/v1/File/FolderCreate\");\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\n    \"Content-Type: application/json\",\n    \"x-api-key: YOUR_API_KEY\"\n]);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([\n    \"name\" => \"training-data\",\n    \"parentId\" => null\n]));\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n$response = curl_exec($ch);\ncurl_close($ch);\necho $response;"
+  },
+  {
+    "label": "C#",
+    "language": "csharp",
+    "code": "using var client = new HttpClient();\nclient.DefaultRequestHeaders.Add(\"x-api-key\", \"YOUR_API_KEY\");\n\nvar content = new StringContent(\n    JsonSerializer.Serialize(new {\n        name = \"training-data\",\n        parentId = (string?)null\n    }),\n    Encoding.UTF8, \"application/json\");\n\nvar response = await client.PostAsync(\n    \"https://api.wiro.ai/v1/File/FolderCreate\", content);\nvar result = await response.Content.ReadAsStringAsync();\nConsole.WriteLine(result);"
+  },
+  {
+    "label": "Go",
+    "language": "go",
+    "code": "package main\n\nimport (\n    \"bytes\"\n    \"encoding/json\"\n    \"fmt\"\n    \"net/http\"\n    \"io\"\n)\n\nfunc main() {\n    body, _ := json.Marshal(map[string]interface{}{\n        \"name\":     \"training-data\",\n        \"parentId\": nil,\n    })\n    req, _ := http.NewRequest(\"POST\",\n        \"https://api.wiro.ai/v1/File/FolderCreate\",\n        bytes.NewBuffer(body))\n    req.Header.Set(\"Content-Type\", \"application/json\")\n    req.Header.Set(\"x-api-key\", \"YOUR_API_KEY\")\n\n    resp, _ := http.DefaultClient.Do(req)\n    defer resp.Body.Close()\n    data, _ := io.ReadAll(resp.Body)\n    fmt.Println(string(data))\n}"
+  },
+  {
+    "label": "Swift",
+    "language": "swift",
+    "code": "import Foundation\n\nlet url = URL(string: \"https://api.wiro.ai/v1/File/FolderCreate\")!\nvar request = URLRequest(url: url)\nrequest.httpMethod = \"POST\"\nrequest.setValue(\"application/json\",\n    forHTTPHeaderField: \"Content-Type\")\nrequest.setValue(\"YOUR_API_KEY\",\n    forHTTPHeaderField: \"x-api-key\")\nrequest.httpBody = try! JSONSerialization.data(\n    withJSONObject: [\n        \"name\": \"training-data\",\n        \"parentId\": NSNull()\n    ])\n\nlet (data, _) = try await URLSession.shared\n    .data(for: request)\nprint(String(data: data, encoding: .utf8)!)"
+  },
+  {
+    "label": "Kotlin",
+    "language": "kotlin",
+    "code": "import java.net.HttpURLConnection\nimport java.net.URL\n\nval url = URL(\"https://api.wiro.ai/v1/File/FolderCreate\")\nval conn = url.openConnection() as HttpURLConnection\nconn.requestMethod = \"POST\"\nconn.setRequestProperty(\"Content-Type\", \"application/json\")\nconn.setRequestProperty(\"x-api-key\", \"YOUR_API_KEY\")\nconn.doOutput = true\nconn.outputStream.write(\"\"\"{\n    \"name\": \"training-data\",\n    \"parentId\": null\n}\"\"\".toByteArray())\n\nval response = conn.inputStream.bufferedReader().readText()\nprintln(response)"
+  },
+  {
+    "label": "Dart",
+    "language": "dart",
+    "code": "import 'dart:convert';\nimport 'package:http/http.dart' as http;\n\nfinal response = await http.post(\n  Uri.parse('https://api.wiro.ai/v1/File/FolderCreate'),\n  headers: {\n    'Content-Type': 'application/json',\n    'x-api-key': 'YOUR_API_KEY',\n  },\n  body: jsonEncode({\n    'name': 'training-data',\n    'parentId': null,\n  }),\n);\nprint(response.body);"
+  },
+  {
+    "label": "Response (Folder)",
+    "language": "json",
+    "code": "{\n  \"result\": true,\n  \"errors\": [],\n  \"list\": [{\n    \"id\": \"folder-id\",\n    \"name\": \"training-data\",\n    \"parentid\": \"root-folder-id\",\n    \"size\": 0,\n    \"isfolder\": true,\n    \"created\": \"1716276543\"\n  }]\n}"
+  },
+  {
+    "label": "Response (Upload)",
+    "language": "json",
+    "code": "{\n  \"result\": true,\n  \"errors\": [],\n  \"list\": [{\n    \"id\": \"file-id\",\n    \"name\": \"photo.jpg\",\n    \"parentid\": \"folder-id\",\n    \"size\": 33345,\n    \"isfolder\": false,\n    \"created\": \"1716276727\"\n  }]\n}"
+  }
+]
+</script>
+            </div>
+
+            <!-- ==================== EXAMPLES ==================== -->
+            <div class="docs-page-section" data-page="code-examples" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/code-examples.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/code-examples.md" download class="docs-section-md-btn">Download</a></div>
+    <h1>Code Examples</h1>
+    <p class="section-subtitle">Complete end-to-end examples in all 9 supported languages.</p>
+
+    <section id="examples-overview">
+      <h2>Overview</h2>
+      <p>Each example below demonstrates the full Wiro workflow: authenticate, run a model, poll for task completion, and retrieve the result. Choose your preferred language from the tabs.</p>
+      <ul>
+        <li><strong>curl</strong> — Shell scripting with bash</li>
+        <li><strong>Python</strong> — Using the <code>requests</code> library</li>
+        <li><strong>Node.js</strong> — Using <code>axios</code></li>
+        <li><strong>PHP</strong> — Using cURL functions</li>
+        <li><strong>C#</strong> — Using <code>HttpClient</code> (.NET 6+)</li>
+        <li><strong>Swift</strong> — Using async/await <code>URLSession</code></li>
+        <li><strong>Dart</strong> — Using the <code>http</code> package</li>
+        <li><strong>Kotlin</strong> — Using <code>java.net.http</code></li>
+        <li><strong>Go</strong> — Using the standard library <code>net/http</code></li>
+      </ul>
+    </section>
+
+    <section id="full-examples">
+      <h2>Full Examples</h2>
+      <p>Select a language tab to see the complete example. All examples perform the same steps:</p>
+      <ol>
+        <li>Set up authentication headers</li>
+        <li>Run a model (<code>POST /Run/{owner-slug}/{model-slug}</code>)</li>
+        <li>Poll the task status (<code>POST /Task/Detail</code>)</li>
+        <li>Print the final output</li>
+      </ol>
+
+    </section>
+  </article>
+
+<script type="application/json" class="code-examples-data">
+[
+  {
+    "label": "curl",
+    "language": "bash",
+    "code": "#!/bin/bash\n# Wiro API — End-to-End Example (curl)\n\nAPI_KEY=\"YOUR_API_KEY\"\nBASE_URL=\"https://api.wiro.ai/v1\"\n\n# 1. Run a model\necho \"Starting model run...\"\nRUN_RESPONSE=$(curl -s -X POST \"$BASE_URL/Run/{owner-slug}/{model-slug}\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: $API_KEY\" \\\n  -d '{\"prompt\": \"A cyberpunk cityscape at night\", \"width\": 1024, \"height\": 1024}')\n\nTASK_TOKEN=$(echo $RUN_RESPONSE | python3 -c \"import sys,json; print(json.load(sys.stdin)['data']['taskid'])\")\necho \"Task ID: $TASK_TOKEN\"\n\n# 2. Poll for results\nwhile true; do\n  TASK_RESPONSE=$(curl -s -X POST \"$BASE_URL/Task/Detail\" \\\n    -H \"Content-Type: application/json\" \\\n    -H \"x-api-key: $API_KEY\" \\\n    -d \"{\\\"tasktoken\\\": \\\"$TASK_TOKEN\\\"}\")\n\n  STATUS=$(echo $TASK_RESPONSE | python3 -c \"import sys,json; print(json.load(sys.stdin)['data']['status'])\")\n  echo \"Status: $STATUS\"\n\n  if [ \"$STATUS\" = \"end\" ]; then\n    echo \"Done! Output:\"\n    echo $TASK_RESPONSE | python3 -m json.tool\n    break\n  elif [ \"$STATUS\" = \"error\" ] || [ \"$STATUS\" = \"cancel\" ]; then\n    echo \"Task failed or cancelled\"\n    break\n  fi\n\n  sleep 3\ndone"
+  },
+  {
+    "label": "Python",
+    "language": "python",
+    "code": "import requests\nimport time\n\nAPI_KEY = \"YOUR_API_KEY\"\nBASE_URL = \"https://api.wiro.ai/v1\"\n\nheaders = {\n    \"x-api-key\": API_KEY,\n    \"Content-Type\": \"application/json\"\n}\n\n# 1. Run a model\nprint(\"Starting model run...\")\nrun_resp = requests.post(\n    f\"{BASE_URL}/Run/{owner-slug}/{model-slug}\",\n    headers=headers,\n    json={\n        \"prompt\": \"A cyberpunk cityscape at night\",\n        \"width\": 1024,\n        \"height\": 1024\n    }\n)\nrun_data = run_resp.json()\ntask_token = run_data[\"data\"][\"taskid\"]\nprint(f\"Task ID: {task_token}\")\n\n# 2. Poll for results\nwhile True:\n    task_resp = requests.post(\n        f\"{BASE_URL}/Task/Detail\",\n        headers=headers,\n        json={\"tasktoken\": task_token}\n    )\n    task = task_resp.json()[\"data\"]\n    status = task[\"status\"]\n    print(f\"Status: {status}\")\n\n    if status == \"end\":\n        print(\"Done! Output:\", task.get(\"output\"))\n        break\n    elif status in (\"error\", \"cancel\"):\n        print(\"Task failed or cancelled\")\n        break\n\n    time.sleep(3)"
+  },
+  {
+    "label": "Node.js",
+    "language": "javascript",
+    "code": "const axios = require('axios');\n\nconst API_KEY = 'YOUR_API_KEY';\nconst BASE_URL = 'https://api.wiro.ai/v1';\n\nconst headers = {\n  'x-api-key': API_KEY,\n  'Content-Type': 'application/json'\n};\n\nasync function main() {\n  // 1. Run a model\n  console.log('Starting model run...');\n  const runResp = await axios.post(\n    `${BASE_URL}/Run/{owner-slug}/{model-slug}`,\n    {\n      prompt: 'A cyberpunk cityscape at night',\n      width: 1024,\n      height: 1024\n    },\n    { headers }\n  );\n  const taskToken = runResp.data.data.taskid;\n  console.log('Task ID:', taskToken);\n\n  // 2. Poll for results\n  while (true) {\n    const taskResp = await axios.post(\n      `${BASE_URL}/Task/Detail`,\n      { tasktoken: taskToken },\n      { headers }\n    );\n    const { status, output } = taskResp.data.data;\n    console.log('Status:', status);\n\n    if (status === 'end') {\n      console.log('Done! Output:', output);\n      break;\n    }\n    if (status === 'error' || status === 'cancel') {\n      console.log('Task failed or cancelled');\n      break;\n    }\n\n    await new Promise(r => setTimeout(r, 3000));\n  }\n}\n\nmain();"
+  },
+  {
+    "label": "PHP",
+    "language": "php",
+    "code": "<?php\n$apiKey = 'YOUR_API_KEY';\n$baseUrl = 'https://api.wiro.ai/v1';\n\nfunction apiPost($url, $data, $apiKey) {\n    $ch = curl_init($url);\n    curl_setopt_array($ch, [\n        CURLOPT_POST => true,\n        CURLOPT_RETURNTRANSFER => true,\n        CURLOPT_HTTPHEADER => [\n            'Content-Type: application/json',\n            'x-api-key: ' . $apiKey,\n        ],\n        CURLOPT_POSTFIELDS => json_encode($data),\n    ]);\n    $response = curl_exec($ch);\n    curl_close($ch);\n    return json_decode($response, true);\n}\n\n// 1. Run a model\necho \"Starting model run...\\n\";\n$runResp = apiPost(\"$baseUrl/Run/{owner-slug}/{model-slug}\", [\n    'prompt' => 'A cyberpunk cityscape at night',\n    'width' => 1024,\n    'height' => 1024,\n], $apiKey);\n$taskToken = $runResp['data']['taskid'];\necho \"Task ID: $taskToken\\n\";\n\n// 2. Poll for results\nwhile (true) {\n    $taskResp = apiPost(\"$baseUrl/Task/Detail\", [\n        'tasktoken' => $taskToken,\n    ], $apiKey);\n    $status = $taskResp['data']['status'];\n    echo \"Status: $status\\n\";\n\n    if ($status === 'end') {\n        echo \"Done! Output:\\n\";\n        print_r($taskResp['data']['output']);\n        break;\n    }\n    if (in_array($status, ['error', 'cancel'])) {\n        echo \"Task failed or cancelled\\n\";\n        break;\n    }\n\n    sleep(3);\n}"
+  },
+  {
+    "label": "C#",
+    "language": "csharp",
+    "code": "using System.Net.Http.Json;\nusing System.Text.Json;\n\nvar apiKey = \"YOUR_API_KEY\";\nvar baseUrl = \"https://api.wiro.ai/v1\";\n\nusing var http = new HttpClient();\nhttp.DefaultRequestHeaders.Add(\"x-api-key\", apiKey);\n\n// 1. Run a model\nConsole.WriteLine(\"Starting model run...\");\nvar runResp = await http.PostAsJsonAsync($\"{baseUrl}/Run/{owner-slug}/{model-slug}\", new {\n    prompt = \"A cyberpunk cityscape at night\",\n    width = 1024,\n    height = 1024\n});\nvar runData = await runResp.Content.ReadFromJsonAsync<JsonElement>();\nvar taskToken = runData.GetProperty(\"data\").GetProperty(\"taskid\").GetString();\nConsole.WriteLine($\"Task ID: {taskToken}\");\n\n// 2. Poll for results\nwhile (true) {\n    var taskResp = await http.PostAsJsonAsync($\"{baseUrl}/Task/Detail\", new {\n        tasktoken = taskToken\n    });\n    var taskData = await taskResp.Content.ReadFromJsonAsync<JsonElement>();\n    var status = taskData.GetProperty(\"data\").GetProperty(\"status\").GetString();\n    Console.WriteLine($\"Status: {status}\");\n\n    if (status == \"end\") {\n        Console.WriteLine(\"Done!\");\n        Console.WriteLine(taskData.GetProperty(\"data\").GetProperty(\"output\").ToString());\n        break;\n    }\n    if (status == \"error\" || status == \"cancel\") {\n        Console.WriteLine(\"Task failed or cancelled\");\n        break;\n    }\n\n    await Task.Delay(3000);\n}"
+  },
+  {
+    "label": "Swift",
+    "language": "swift",
+    "code": "import Foundation\n\nlet apiKey = \"YOUR_API_KEY\"\nlet baseUrl = \"https://api.wiro.ai/v1\"\n\nfunc apiPost(_ endpoint: String, body: [String: Any]) async throws -> [String: Any] {\n    var request = URLRequest(url: URL(string: \"\\(baseUrl)\\(endpoint)\")!)\n    request.httpMethod = \"POST\"\n    request.addValue(\"application/json\", forHTTPHeaderField: \"Content-Type\")\n    request.addValue(apiKey, forHTTPHeaderField: \"x-api-key\")\n    request.httpBody = try JSONSerialization.data(withJSONObject: body)\n\n    let (data, _) = try await URLSession.shared.data(for: request)\n    return try JSONSerialization.jsonObject(with: data) as! [String: Any]\n}\n\n// 1. Run a model\nprint(\"Starting model run...\")\nlet runResp = try await apiPost(\"/Run/{owner-slug}/{model-slug}\", body: [\n    \"prompt\": \"A cyberpunk cityscape at night\",\n    \"width\": 1024,\n    \"height\": 1024\n])\nlet runData = runResp[\"data\"] as! [String: Any]\nlet taskToken = runData[\"taskid\"] as! String\nprint(\"Task ID: \\(taskToken)\")\n\n// 2. Poll for results\nwhile true {\n    let taskResp = try await apiPost(\"/Task/Detail\", body: [\"tasktoken\": taskToken])\n    let taskData = taskResp[\"data\"] as! [String: Any]\n    let status = taskData[\"status\"] as! String\n    print(\"Status: \\(status)\")\n\n    if status == \"end\" {\n        print(\"Done! Output: \\(taskData[\"output\"] ?? \"\")\")\n        break\n    }\n    if status == \"error\" || status == \"cancel\" {\n        print(\"Task failed or cancelled\")\n        break\n    }\n\n    try await Task.sleep(nanoseconds: 3_000_000_000)\n}"
+  },
+  {
+    "label": "Dart",
+    "language": "dart",
+    "code": "import 'dart:convert';\nimport 'package:http/http.dart' as http;\n\nconst apiKey = 'YOUR_API_KEY';\nconst baseUrl = 'https://api.wiro.ai/v1';\n\nFuture<Map<String, dynamic>> apiPost(String endpoint, Map<String, dynamic> body) async {\n  final response = await http.post(\n    Uri.parse('$baseUrl$endpoint'),\n    headers: {\n      'Content-Type': 'application/json',\n      'x-api-key': apiKey,\n    },\n    body: jsonEncode(body),\n  );\n  return jsonDecode(response.body);\n}\n\nFuture<void> main() async {\n  // 1. Run a model\n  print('Starting model run...');\n  final runResp = await apiPost('/Run/{owner-slug}/{model-slug}', {\n    'prompt': 'A cyberpunk cityscape at night',\n    'width': 1024,\n    'height': 1024,\n  });\n  final taskToken = runResp['data']['taskid'];\n  print('Task ID: $taskToken');\n\n  // 2. Poll for results\n  while (true) {\n    final taskResp = await apiPost('/Task/Detail', {'tasktoken': taskToken});\n    final status = taskResp['data']['status'];\n    print('Status: $status');\n\n    if (status == 'end') {\n      print('Done! Output: ${taskResp['data']['output']}');\n      break;\n    }\n    if (status == 'error' || status == 'cancel') {\n      print('Task failed or cancelled');\n      break;\n    }\n\n    await Future.delayed(Duration(seconds: 3));\n  }\n}"
+  },
+  {
+    "label": "Kotlin",
+    "language": "kotlin",
+    "code": "import java.net.URI\nimport java.net.http.HttpClient\nimport java.net.http.HttpRequest\nimport java.net.http.HttpResponse\nimport com.google.gson.Gson\nimport com.google.gson.JsonObject\n\nval apiKey = \"YOUR_API_KEY\"\nval baseUrl = \"https://api.wiro.ai/v1\"\nval client = HttpClient.newHttpClient()\nval gson = Gson()\n\nfun apiPost(endpoint: String, body: Map<String, Any?>): JsonObject {\n    val request = HttpRequest.newBuilder()\n        .uri(URI.create(\"$baseUrl$endpoint\"))\n        .header(\"Content-Type\", \"application/json\")\n        .header(\"x-api-key\", apiKey)\n        .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))\n        .build()\n    val response = client.send(request, HttpResponse.BodyHandlers.ofString())\n    return gson.fromJson(response.body(), JsonObject::class.java)\n}\n\nfun main() {\n    // 1. Run a model\n    println(\"Starting model run...\")\n    val runResp = apiPost(\"/Run/{owner-slug}/{model-slug}\", mapOf(\n        \"prompt\" to \"A cyberpunk cityscape at night\",\n        \"width\" to 1024,\n        \"height\" to 1024\n    ))\n    val taskToken = runResp.getAsJsonObject(\"data\").get(\"taskid\").asString\n    println(\"Task ID: $taskToken\")\n\n    // 2. Poll for results\n    while (true) {\n        val taskResp = apiPost(\"/Task/Detail\", mapOf(\"tasktoken\" to taskToken))\n        val taskData = taskResp.getAsJsonObject(\"data\")\n        val status = taskData.get(\"status\").asString\n        println(\"Status: $status\")\n\n        when (status) {\n            \"end\" -> {\n                println(\"Done! Output: ${taskData.get(\"output\")}\")\n                return\n            }\n            \"error\", \"cancel\" -> {\n                println(\"Task failed or cancelled\")\n                return\n            }\n        }\n\n        Thread.sleep(3000)\n    }\n}"
+  },
+  {
+    "label": "Go",
+    "language": "go",
+    "code": "package main\n\nimport (\n\t\"bytes\"\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"io\"\n\t\"net/http\"\n\t\"time\"\n)\n\nconst (\n\tapiKey  = \"YOUR_API_KEY\"\n\tbaseURL = \"https://api.wiro.ai/v1\"\n)\n\nfunc apiPost(endpoint string, body map[string]interface{}) (map[string]interface{}, error) {\n\tjsonBody, _ := json.Marshal(body)\n\treq, _ := http.NewRequest(\"POST\", baseURL+endpoint, bytes.NewBuffer(jsonBody))\n\treq.Header.Set(\"Content-Type\", \"application/json\")\n\treq.Header.Set(\"x-api-key\", apiKey)\n\n\tresp, err := http.DefaultClient.Do(req)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\tdefer resp.Body.Close()\n\n\tdata, _ := io.ReadAll(resp.Body)\n\tvar result map[string]interface{}\n\tjson.Unmarshal(data, &result)\n\treturn result, nil\n}\n\nfunc main() {\n\t// 1. Run a model\n\tfmt.Println(\"Starting model run...\")\n\trunResp, _ := apiPost(\"/Run/{owner-slug}/{model-slug}\", map[string]interface{}{\n\t\t\"prompt\": \"A cyberpunk cityscape at night\",\n\t\t\"width\":  1024,\n\t\t\"height\": 1024,\n\t})\n\trunData := runResp[\"data\"].(map[string]interface{})\n\ttaskToken := runData[\"taskid\"].(string)\n\tfmt.Printf(\"Task ID: %s\\n\", taskToken)\n\n\t// 2. Poll for results\n\tfor {\n\t\ttaskResp, _ := apiPost(\"/Task/Detail\", map[string]interface{}{\n\t\t\t\"tasktoken\": taskToken,\n\t\t})\n\t\ttaskData := taskResp[\"data\"].(map[string]interface{})\n\t\tstatus := taskData[\"status\"].(string)\n\t\tfmt.Printf(\"Status: %s\\n\", status)\n\n\t\tswitch status {\n\t\tcase \"end\":\n\t\t\tfmt.Printf(\"Done! Output: %v\\n\", taskData[\"output\"])\n\t\t\treturn\n\t\tcase \"error\", \"cancel\":\n\t\t\tfmt.Println(\"Task failed or cancelled\")\n\t\t\treturn\n\t\t}\n\n\t\ttime.Sleep(3 * time.Second)\n\t}\n}"
+  }
+]
+</script>
+            </div>
+
+            <nav class="docs-pagination" id="docsPagination"></nav>
+          </article>
+
+          <aside class="docs-right-panel" id="codePanel">
+            <button class="docs-code-drawer-close" id="codePanelClose">
+              <i class="lni lni-close"></i>
+            </button>
+            <div class="docs-right-sticky">
+              <div id="codePanelContent"></div>
+            </div>
+          </aside>
+
+          <button class="docs-code-drawer-toggle" id="codePanelToggle">
+            <i class="lni lni-code"></i>
+            <span>Code</span>
+          </button>
+          <div class="docs-code-drawer-overlay" id="codePanelOverlay"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

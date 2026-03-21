@@ -1,0 +1,250 @@
+# Wiro API Documentation
+
+> Base URL: https://api.wiro.ai/v1
+> WebSocket URL: wss://socket.wiro.ai/v1
+> Dashboard: https://wiro.ai/panel
+> Models: https://wiro.ai/models
+> Full interactive docs: https://wiro.ai/docs
+
+## Authentication
+
+Two methods (chosen when creating a project — cannot be changed afterward):
+
+### Signature-Based (Recommended)
+HMAC-SHA256 for enhanced security. Ideal for client-side/mobile apps.
+
+Headers:
+- `x-api-key`: Your project API key
+- `x-signature`: HMAC-SHA256(key=API_KEY, message=API_SECRET + NONCE)
+- `x-nonce`: Unix timestamp or random integer
+
+### API Key Only (Simple)
+Single header for server-side applications.
+
+Headers:
+- `x-api-key`: Your project API key
+
+## Projects
+
+Create a project at https://wiro.ai/panel/project/new to get API key and secret.
+Each project has its own API key, optional API secret, and usage tracking.
+
+## Endpoints
+
+### List Models
+POST /Tool/List
+
+```json
+{ "start": "0", "limit": "20", "search": "", "categories": ["image-generation"], "hideworkflows": true, "summary": true }
+```
+
+### Model Detail
+POST /Tool/Detail
+
+```json
+{ "slugowner": "stability-ai", "slugproject": "sdxl" }
+```
+
+Returns model info including `parameters` array with input definitions (types: text, textarea, select, range, fileinput, multifileinput, combinefileinput).
+
+### Run a Model
+POST /Run/{owner-slug}/{model-slug}
+
+Content-Type: `application/json` (text inputs) or `multipart/form-data` (file inputs)
+
+Use JSON when model has no file parameters. Use multipart when model requires file uploads.
+For file parameters, you can send a URL instead using `{paramId}Url` suffix (e.g., `inputImageUrl` instead of `inputImage`).
+
+All models support optional `callbackUrl` for webhook notifications on completion.
+
+JSON example:
+```json
+{ "prompt": "A futuristic city at sunset", "width": 1024, "height": 1024 }
+```
+
+Multipart example:
+```
+-F "inputImage=@photo.jpg" -F "scale=4"
+```
+
+Response:
+```json
+{ "result": true, "errors": [], "taskid": "2221", "socketaccesstoken": "eDcCm5yyUfIvMFspTwww49OUfgXkQt" }
+```
+
+### Task Detail
+POST /Task/Detail
+
+```json
+{ "tasktoken": "eDcCm5yyUfIvMFspTwww49OUfgXkQt" }
+```
+
+Or by ID: `{ "taskid": "534574" }`
+
+**Determining success:** Check `pexit` field. `"0"` = success, any other value = error. This is the most reliable indicator. For LLM models, the response is in `debugoutput` (not `outputs`).
+
+### Cancel Task (queued only)
+POST /Task/Cancel — `{ "tasktoken": "..." }`
+
+### Kill Task (running)
+POST /Task/Kill — `{ "tasktoken": "..." }`
+
+### Create Folder
+POST /File/FolderCreate — `{ "name": "my-folder", "parentId": null }`
+
+### Upload File
+POST /File/Upload (multipart/form-data) — Fields: `file`, `folderId`
+
+## Task Statuses
+
+task_queue → task_accept → task_assign → task_preprocess_start → task_preprocess_end → task_start → task_output → task_end → task_postprocess_start → task_postprocess_end
+
+Additional: task_error (interim log, not final failure), task_output_full, task_output_error, task_cancel
+
+Realtime only: task_stream_ready, task_stream_end, task_cost
+
+## WebSocket
+
+Connect: `wss://socket.wiro.ai/v1`
+
+Register task:
+```json
+{ "type": "task_info", "tasktoken": "YOUR_SOCKET_ACCESS_TOKEN" }
+```
+
+Receive status messages as the task progresses. Listen for `task_postprocess_end` to get final results.
+
+## LLM & Chat Streaming
+
+LLM responses are in `debugoutput`, not `outputs`. Streaming `task_output` messages contain structured objects:
+
+```json
+{ "type": "task_output", "message": { "thinking": ["reasoning..."], "answer": ["response text..."] } }
+```
+
+- `thinking`: chain-of-thought reasoning (may be empty)
+- `answer`: user-facing response
+- Both are arrays that grow with each streaming update
+
+### Multi-turn Conversations
+Use `session_id` (UUID) to maintain chat history across requests. Server stores conversation context per session.
+
+```json
+{ "prompt": "What is quantum computing?", "session_id": "550e8400-e29b-41d4-a716-446655440000", "user_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7" }
+```
+
+Reuse the same `session_id` for follow-ups. New UUID = fresh conversation.
+
+Available LLM models: https://wiro.ai/models (filter by LLM category)
+
+## Realtime Voice Conversation
+
+For two-way audio conversations with AI models.
+
+Flow: Run task → Connect WebSocket (task_info) → Wait for task_stream_ready → Stream mic audio as binary → Receive AI audio as binary → End with task_session_end
+
+Audio format: PCM Int16, 24kHz, mono. Binary frame: `tasktoken|pcm_audio_data`
+
+Events: task_stream_ready, task_stream_end, task_cost, task_output (TRANSCRIPT_USER:/TRANSCRIPT_AI: prefixes), task_end
+
+End session:
+```json
+{ "type": "task_session_end", "tasktoken": "YOUR_SOCKET_ACCESS_TOKEN" }
+```
+
+Parameters vary per model. Available realtime models:
+- https://wiro.ai/models/openai/gpt-realtime-mini
+- https://wiro.ai/models/openai/gpt-realtime
+- https://wiro.ai/models/elevenlabs/realtime-conversational-ai
+
+## Parameter Types
+
+| Type | Description |
+|------|-------------|
+| text | Single-line text |
+| textarea | Multi-line text (prompts) |
+| select | Dropdown options |
+| range | Numeric slider |
+| fileinput | Single file or URL |
+| multifileinput | Multiple files/URLs |
+| combinefileinput | Mixed file + URL |
+
+Use /Tool/Detail to discover parameters for any model.
+
+## Quick Start (curl)
+
+```bash
+export API_KEY="your-api-key"
+
+# Run a model
+curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: ${API_KEY}" \
+  -d '{"prompt": "Hello, world!"}'
+
+# Check result
+curl -X POST "https://api.wiro.ai/v1/Task/Detail" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: ${API_KEY}" \
+  -d '{"tasktoken": "TOKEN_FROM_RUN_RESPONSE"}'
+```
+
+## Quick Start (Python)
+
+```python
+import requests
+
+API_KEY = "your-api-key"
+headers = {"x-api-key": API_KEY, "Content-Type": "application/json"}
+
+# Run a model
+run = requests.post(
+    "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}",
+    headers=headers,
+    json={"prompt": "Hello, world!"}
+).json()
+
+# Check result
+detail = requests.post(
+    "https://api.wiro.ai/v1/Task/Detail",
+    headers=headers,
+    json={"tasktoken": run["socketaccesstoken"]}
+).json()
+print(detail)
+```
+
+## Quick Start (Node.js)
+
+```javascript
+const axios = require('axios');
+
+const API_KEY = 'your-api-key';
+const headers = { 'x-api-key': API_KEY, 'Content-Type': 'application/json' };
+
+// Run a model
+const run = await axios.post(
+  'https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}',
+  { prompt: 'Hello, world!' },
+  { headers }
+);
+
+// Check result
+const detail = await axios.post(
+  'https://api.wiro.ai/v1/Task/Detail',
+  { tasktoken: run.data.socketaccesstoken },
+  { headers }
+);
+console.log(detail.data);
+```
+
+## Supported Languages
+
+Code examples in 9 languages: curl, Python, Node.js, PHP, C#, Go, Swift, Kotlin, Dart
+
+## Links
+
+- Dashboard: https://wiro.ai/panel
+- Models: https://wiro.ai/models
+- Create Project: https://wiro.ai/panel/project/new
+- Full Documentation: https://wiro.ai/docs
+- Markdown (all sections): markdown/full-documentation.md
