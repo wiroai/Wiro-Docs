@@ -2,6 +2,8 @@
 
 <img src="https://wiro.ai/images/logos/logo/logo.png" alt="Wiro" width="180" />
 
+<img src="https://wiro.ai/images/koala/accent-heavy-koala.png" alt="Wiro Koala mascot" width="140" />
+
 # Wiro API Documentation
 
 **Open-source, static documentation for the [Wiro AI](https://wiro.ai) platform** — run **1,000+ models** through one unified API.
@@ -31,7 +33,7 @@
 - 🏠 **Single-page static site** — `index.html` + `css/` + `js/` (no build step)
 - 🌙 **Dark / light theme** with persistent toggle
 - 📱 **Responsive** sidebar + mobile drawer
-- **Code examples** panel in **9 languages** (curl, Python, Node.js, PHP, C#, Go, Swift, Kotlin, Dart)
+- 💻 **Code examples** panel in **9 languages** (curl, Python, Node.js, PHP, C#, Go, Swift, Kotlin, Dart)
 - 🧩 **Model browser** (list/search via API when deployed; CORS may limit localhost)
 - 📄 **Markdown per section** (`markdown/{slug}.md`) + full bundle: **`markdown/full-documentation.md`**
 - 📋 **`llms.txt`** — machine-readable summary for crawlers and tools
