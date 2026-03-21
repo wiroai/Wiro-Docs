@@ -1,4 +1,4 @@
-# Wiro API Documentation
+# LLMs.txt
 
 > Base URL: https://api.wiro.ai/v1
 > WebSocket URL: wss://socket.wiro.ai/v1
