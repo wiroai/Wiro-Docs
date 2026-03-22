@@ -1,6 +1,6 @@
 # FAQ
 
-Common questions about using the Wiro API.
+Common questions about using the Wiro API. If you can't find the answer here, [contact support](mailto:support@wiro.ai).
 
 ## How do I get an API key?
 
