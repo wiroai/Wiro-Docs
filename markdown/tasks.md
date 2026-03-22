@@ -6,7 +6,7 @@ Track, monitor, and control your AI model runs.
 
 Every model run creates a task that progresses through a defined set of stages:
 
-`task_queue` → `task_accept` → `task_assign` → `task_preprocess_start` → `task_preprocess_end` → `task_start` → `task_output` → `task_end` → `task_postprocess_start` → `task_postprocess_end`
+`task_queue` → `task_accept` → `task_preprocess_start` → `task_preprocess_end` → `task_assign` → `task_start` → `task_output` → `task_output_full` → `task_end` → `task_postprocess_start` → `task_postprocess_end`
 
 ## Task Statuses
 
@@ -14,9 +14,9 @@ Every model run creates a task that progresses through a defined set of stages:
 |--------|-------------|
 | `task_queue` | The task is queued and waiting to be picked up by an available worker. Emitted once when the task enters the queue. |
 | `task_accept` | A worker has accepted the task. The task is no longer in the general queue and is being prepared for execution. |
-| `task_assign` | The task has been assigned to a specific GPU. The model is being loaded into memory. This may take a few seconds depending on the model size. |
 | `task_preprocess_start` | Optional preprocessing has started. This includes operations like downloading input files from URLs, converting file types, and validating/formatting parameters before the model runs. Not all models require preprocessing. |
-| `task_preprocess_end` | Preprocessing completed. All inputs are ready and the model is about to start execution. |
+| `task_preprocess_end` | Preprocessing completed. All inputs are ready for GPU assignment. |
+| `task_assign` | The task has been assigned to a specific GPU. The model is being loaded into memory. This may take a few seconds depending on the model size. |
 | `task_start` | The model command has started executing. Inference is now running on the GPU. |
 | `task_output` | The model is producing output. This event is emitted **multiple times** — each time the model writes to stdout, a new `task_output` message is sent via WebSocket. For LLM models, each token/chunk arrives as a separate `task_output` event, enabling real-time streaming. |
 | `task_error` | The model wrote to stderr. This is an **interim log event**, not a final failure — many models write warnings or debug info to stderr during normal operation. The task may still complete successfully. Always wait for `task_postprocess_end` to determine the actual result. |
@@ -69,11 +69,35 @@ Both successful and failed tasks reach `task_postprocess_end`. The status alone 
 
 > **Important:** `task_error` events during execution are interim log messages, not final failures. A task can emit error logs and still complete successfully. Always wait for `task_postprocess_end` and check `pexit`.
 
+## Billing & Cost
+
+The `totalcost` field in the Task Detail response shows the actual cost charged for the run. **Only successful tasks are billed** — if `pexit` is non-zero (failure), the task is not charged and `totalcost` will be `"0"`.
+
+```json
+// Successful run — billed
+{
+  "status": "task_postprocess_end",
+  "pexit": "0",
+  "totalcost": "0.003510000000",
+  "elapsedseconds": "6.0000"
+}
+
+// Failed run — not billed
+{
+  "status": "task_postprocess_end",
+  "pexit": "1",
+  "totalcost": "0",
+  "elapsedseconds": "4.0000"
+}
+```
+
+Use the `totalcost` field to track spending per task. For more details on how costs are calculated, see [Pricing](/docs/pricing).
+
 ## LLM Models
 
 For LLM (Large Language Model) requests, the model's response is written to `debugoutput` rather than the `outputs` file array. When polling with Task Detail, read the `debugoutput` field to get the LLM's text response.
 
-For real-time streaming of LLM responses, use [WebSocket](#/websocket) instead of polling. Each `task_output` event delivers a chunk of the response as it's generated, giving your users an instant, token-by-token experience.
+For real-time streaming of LLM responses, use [WebSocket](/docs/websocket) instead of polling. Each `task_output` event delivers a chunk of the response as it's generated, giving your users an instant, token-by-token experience.
 
 ## **POST** /Task/Detail
 

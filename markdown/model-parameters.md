@@ -182,11 +182,11 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
   -F "language=en"
 ```
 
-> **Note:** LLM responses are delivered via `debugoutput` in the task result, not in the `outputs` file array. See [Tasks](#/tasks) for details.
+> **Note:** LLM responses are delivered via `debugoutput` in the task result, not in the `outputs` file array. See [Tasks](/docs/tasks) for details.
 
 ### Realtime Voice Conversation
 
-Realtime voice models accept configuration parameters (voice, system instructions, audio format, etc.) as JSON. Parameters vary per model — use `/Tool/Detail` to discover them. The actual audio interaction happens over [WebSocket](#/realtime-voice-conversation) after the task starts:
+Realtime voice models accept configuration parameters (voice, system instructions, audio format, etc.) as JSON. Parameters vary per model — use `/Tool/Detail` to discover them. The actual audio interaction happens over [WebSocket](/docs/realtime-voice-conversation) after the task starts:
 
 Available realtime models:
 - [openai/gpt-realtime-mini](https://wiro.ai/models/openai/gpt-realtime-mini)

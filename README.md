@@ -4,7 +4,7 @@
 
 # Wiro API Documentation
 
-**Open-source, static documentation for the [Wiro AI](https://wiro.ai) platform** — run **1,000+ models** through one unified API.
+**Open-source, static documentation for the [Wiro AI](https://wiro.ai) platform** — run **AI models** through one unified API.
 
 [![Static site](https://img.shields.io/badge/docs-static-00c38c?style=for-the-badge&logo=html5&logoColor=white)](https://github.com/wiroai/Wiro-Docs)
 [![API](https://img.shields.io/badge/API-v1-333?style=for-the-badge&logo=openapiinitiative&logoColor=white)](https://api.wiro.ai/v1)
@@ -44,18 +44,26 @@
 
 | Section | Hash route | Markdown |
 |---------|------------|----------|
-| Introduction | `#/introduction` | [introduction.md](./markdown/introduction.md) |
-| Authentication | `#/authentication` | [authentication.md](./markdown/authentication.md) |
-| Projects | `#/projects` | [projects.md](./markdown/projects.md) |
-| Models | `#/models` | [models.md](./markdown/models.md) |
-| Run a Model | `#/run-a-model` | [run-a-model.md](./markdown/run-a-model.md) |
-| Model Parameters | `#/model-parameters` | [model-parameters.md](./markdown/model-parameters.md) |
-| Tasks | `#/tasks` | [tasks.md](./markdown/tasks.md) |
-| LLM & Chat Streaming | `#/llm-chat-streaming` | [llm-chat-streaming.md](./markdown/llm-chat-streaming.md) |
-| WebSocket | `#/websocket` | [websocket.md](./markdown/websocket.md) |
-| Realtime Voice Conversation | `#/realtime-voice-conversation` | [realtime-voice-conversation.md](./markdown/realtime-voice-conversation.md) |
-| Files | `#/files` | [files.md](./markdown/files.md) |
-| Code Examples | `#/code-examples` | [code-examples.md](./markdown/code-examples.md) |
+| Introduction | `/docs/introduction` | [introduction.md](./markdown/introduction.md) |
+| Authentication | `/docs/authentication` | [authentication.md](./markdown/authentication.md) |
+| Projects | `/docs/projects` | [projects.md](./markdown/projects.md) |
+| Models | `/docs/models` | [models.md](./markdown/models.md) |
+| Run a Model | `/docs/run-a-model` | [run-a-model.md](./markdown/run-a-model.md) |
+| Model Parameters | `/docs/model-parameters` | [model-parameters.md](./markdown/model-parameters.md) |
+| Tasks | `/docs/tasks` | [tasks.md](./markdown/tasks.md) |
+| LLM & Chat Streaming | `/docs/llm-chat-streaming` | [llm-chat-streaming.md](./markdown/llm-chat-streaming.md) |
+| WebSocket | `/docs/websocket` | [websocket.md](./markdown/websocket.md) |
+| Realtime Voice Conversation | `/docs/realtime-voice-conversation` | [realtime-voice-conversation.md](./markdown/realtime-voice-conversation.md) |
+| Files | `/docs/files` | [files.md](./markdown/files.md) |
+| Concurrency Limits | `/docs/concurrency-limits` | [concurrency-limits.md](./markdown/concurrency-limits.md) |
+| Error Reference | `/docs/error-reference` | [error-reference.md](./markdown/error-reference.md) |
+| Code Examples | `/docs/code-examples` | [code-examples.md](./markdown/code-examples.md) |
+| Pricing | `/docs/pricing` | [pricing.md](./markdown/pricing.md) |
+| FAQ | `/docs/faq` | [faq.md](./markdown/faq.md) |
+| **Integrations** | | |
+| Wiro MCP Server | `/docs/wiro-mcp-server` | [wiro-mcp-server.md](./markdown/wiro-mcp-server.md) |
+| Self-Hosted MCP | `/docs/mcp-self-hosted` | [mcp-self-hosted.md](./markdown/mcp-self-hosted.md) |
+| n8n Wiro Integration | `/docs/n8n-wiro-integration` | [n8n-wiro-integration.md](./markdown/n8n-wiro-integration.md) |
 
 > **Full export:** [full-documentation.md](./markdown/full-documentation.md)
 
@@ -63,17 +71,20 @@
 
 ## 🚀 Run locally
 
-No install required — serve the folder over HTTP:
+Uses path-based routing (`/docs/files`, `/docs/tasks`). For local development, use the included SPA-aware server:
 
 ```bash
-# Python 3
-python3 -m http.server 8080
-
-# or Node (npx)
-npx --yes serve -p 8080
+node serve.js
 ```
 
-Open **http://localhost:8080** (or the printed URL). Hash routes look like `#/introduction`.
+Before running locally, set the base path to empty in `index.html`:
+```html
+<html lang="en" data-base-path="">
+```
+
+On production (Nginx with `try_files`), keep `data-base-path="/docs"`.
+
+Open **http://localhost:8080** (or the printed URL). Hash routes look like `/docs/introduction`.
 
 ---
 
@@ -103,7 +114,14 @@ Wiro-Docs/
     ├── websocket.md
     ├── realtime-voice-conversation.md
     ├── files.md
-    └── code-examples.md
+    ├── concurrency-limits.md
+    ├── error-reference.md
+    ├── code-examples.md
+    ├── pricing.md
+    ├── faq.md
+    ├── wiro-mcp-server.md
+    ├── mcp-self-hosted.md
+    └── n8n-wiro-integration.md
 ```
 
 ---
@@ -132,7 +150,7 @@ When you change **`index.html`** API content, update the matching **`markdown/{s
 
 ## 📜 License
 
-Documentation and code in this repository are provided to help you integrate with **Wiro**. For product terms and usage, see **[wiro.ai](https://wiro.ai)**.
+MIT — see [LICENSE](./LICENSE) for details.
 
 ---
 

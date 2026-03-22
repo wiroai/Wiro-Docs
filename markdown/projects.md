@@ -16,7 +16,7 @@ A project is a container that holds your **API keys**, **billing settings**, and
 2. Navigate to [Projects](https://wiro.ai/panel/project)
 3. Click [New Project](https://wiro.ai/panel/project/new)
 4. Enter a project name
-5. Select your [authentication method](#/authentication):
+5. Select your [authentication method](/docs/authentication):
    - **Signature-Based** — generates both an API key and API secret
    - **API Key Only** — generates only an API key
 6. Click **Create**

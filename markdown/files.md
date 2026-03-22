@@ -41,7 +41,11 @@ Uploads a file using `multipart/form-data`. You can optionally assign it to a fo
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `file` | file | Yes | The file to upload (multipart form field) |
-| `folderId` | string | No | Target folder ID (uploads to root if omitted) |
+| `folderid` | string | No | Target folder ID (uploads to user's default folder if omitted) |
+
+**File size limit:** 100 MB per file.
+
+**Supported file types:** Images (jpg, png, gif, jpeg, webp, heic), video (mp4, webm, mov), audio (mp3, wav, m4a), documents (pdf, csv, docx, xlsx, pptx, txt, md, epub), and ZIP archives (automatically extracted).
 
 ### Response
 
@@ -49,15 +53,16 @@ Uploads a file using `multipart/form-data`. You can optionally assign it to a fo
 {
   "result": true,
   "errors": [],
-  "data": {
-    "id": "file-xyz789",
+  "list": [{
+    "id": "file-id",
     "name": "dataset.csv",
-    "size": 1048576,
-    "mimeType": "text/csv",
-    "folderId": "folder-abc123",
-    "url": "https://files.wiro.ai/...",
-    "createdAt": "2025-01-15T10:05:00Z"
-  }
+    "contenttype": "text/csv",
+    "size": "1048576",
+    "parentid": "folder-id",
+    "url": "https://cdn1.wiro.ai/...",
+    "addedtime": "1716276727",
+    "accesskey": "..."
+  }]
 }
 ```
 

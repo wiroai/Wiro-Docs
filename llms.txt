@@ -96,13 +96,13 @@ POST /Task/Kill — `{ "tasktoken": "..." }`
 POST /File/FolderCreate — `{ "name": "my-folder", "parentId": null }`
 
 ### Upload File
-POST /File/Upload (multipart/form-data) — Fields: `file`, `folderId`
+POST /File/Upload (multipart/form-data) — Fields: `file`, `folderid`. Max 100MB. Response: `{ result, list: [{ id, name, contenttype, size, url, ... }] }`
 
 ## Task Statuses
 
-task_queue → task_accept → task_assign → task_preprocess_start → task_preprocess_end → task_start → task_output → task_end → task_postprocess_start → task_postprocess_end
+task_queue → task_accept → task_preprocess_start → task_preprocess_end → task_assign → task_start → task_output → task_output_full → task_end → task_postprocess_start → task_postprocess_end
 
-Additional: task_error (interim log, not final failure), task_output_full, task_error_full, task_cancel
+Additional: task_error (interim stderr log, not final failure), task_error_full (full stderr log), task_cancel
 
 Realtime only: task_stream_ready, task_stream_end, task_cost
 
@@ -170,7 +170,7 @@ Parameters vary per model. Available realtime models:
 | range | Numeric slider |
 | fileinput | Single file or URL |
 | multifileinput | Multiple files/URLs |
-| combinefileinput | Mixed file + URL |
+| combinefileinput | Up to N entries (files, URLs, or mixed) |
 
 Use /Tool/Detail to discover parameters for any model.
 
@@ -285,14 +285,14 @@ Wiro provides an MCP (Model Context Protocol) server for AI assistants.
 ### Hosted (mcp.wiro.ai)
 Endpoint: https://mcp.wiro.ai/v1
 Transport: Streamable HTTP (stateless)
-Auth: `Authorization: Bearer base64(apiKey:apiSecret)` (signature) or `Bearer base64(apiKey)` (apikey-only)
+Auth: `Authorization: Bearer apiKey:apiSecret` (signature) or `Bearer apiKey` (apikey-only) — plain text, no base64
 
 ### Self-Hosted (npx)
 ```json
 { "command": "npx", "args": ["-y", "@wiro-ai/wiro-mcp"], "env": { "WIRO_API_KEY": "...", "WIRO_API_SECRET": "..." } }
 ```
 
-### MCP Tools (10 total)
+### MCP Tools (11 total)
 - `search_models`: Search/browse models by keyword, category, or owner (POST /Tool/List)
 - `get_model_schema`: Get model parameters, types, and pricing (POST /Tool/Detail). Use clean model slug
 - `recommend_model`: Describe what you want to build, get models ranked by relevance (POST /Tool/List)
@@ -302,6 +302,7 @@ Auth: `Authorization: Bearer base64(apiKey:apiSecret)` (signature) or `Bearer ba
 - `get_task_price`: Get cost of a completed task — only successful tasks (pexit "0") are billed (POST /Task/Detail)
 - `cancel_task`: Cancel a queued task (POST /Task/Cancel)
 - `kill_task`: Kill a running task (POST /Task/Kill)
+- `upload_file`: Upload a file from URL to Wiro for model input (POST /File/Upload)
 - `search_docs`: Search Wiro documentation for guides, API references, and examples
 
 
@@ -311,8 +312,8 @@ Auth: `Authorization: Bearer base64(apiKey:apiSecret)` (signature) or `Bearer ba
 - Models: https://wiro.ai/models
 - Create Project: https://wiro.ai/panel/project/new
 - Full Documentation: https://wiro.ai/docs
-- MCP Server Docs: https://wiro.ai/docs#/mcp
-- MCP Self-Hosted: https://wiro.ai/docs#/mcp-self-hosted
+- MCP Server Docs: https://wiro.ai/docs/wiro-mcp-server
+- MCP Self-Hosted: https://wiro.ai/docs/mcp-self-hosted
 - MCP GitHub: https://github.com/wiroai/Wiro-MCP
 - MCP npm: https://www.npmjs.com/package/@wiro-ai/wiro-mcp
 - Markdown (all sections): markdown/full-documentation.md

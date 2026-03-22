@@ -1,6 +1,6 @@
 # Wiro API Documentation
 
-Complete API documentation for the Wiro AI platform — run 1,000+ AI models through a unified API.
+Complete API documentation for the Wiro AI platform — run AI models through a unified API.
 
 ## Table of Contents
 
@@ -29,7 +29,7 @@ Everything you need to get started with the Wiro AI platform.
 
 ## What is Wiro?
 
-Wiro is an AI model marketplace and API platform that lets you run **1,000+ AI models** through a single, unified API. Instead of managing infrastructure for each model provider, you make one API call to Wiro and we handle the rest.
+Wiro is an AI model marketplace and API platform that lets you run **AI models** through a single, unified API. Instead of managing infrastructure for each model provider, you make one API call to Wiro and we handle the rest.
 
 - **Unified API** — one interface for all models (image generation, LLMs, audio, video, and more)
 - **Pay-per-use pricing** — only pay for what you consume, no upfront commitments
@@ -551,11 +551,11 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
   -F "language=en"
 ```
 
-> **Note:** LLM responses are delivered via `debugoutput` in the task result, not in the `outputs` file array. See [Tasks](#/tasks) for details.
+> **Note:** LLM responses are delivered via `debugoutput` in the task result, not in the `outputs` file array. See [Tasks](/docs/tasks) for details.
 
 ### Realtime Voice Conversation
 
-Realtime voice models accept configuration parameters (voice, system instructions, audio format, etc.) as JSON. Parameters vary per model — use `/Tool/Detail` to discover them. The actual audio interaction happens over [WebSocket](#/realtime-voice-conversation) after the task starts:
+Realtime voice models accept configuration parameters (voice, system instructions, audio format, etc.) as JSON. Parameters vary per model — use `/Tool/Detail` to discover them. The actual audio interaction happens over [WebSocket](/docs/realtime-voice-conversation) after the task starts:
 
 Available realtime models:
 
@@ -596,26 +596,26 @@ Track, monitor, and control your AI model runs.
 
 Every model run creates a task that progresses through a defined set of stages:
 
-`task_queue` → `task_accept` → `task_assign` → `task_preprocess_start` → `task_preprocess_end` → `task_start` → `task_output` → `task_end` → `task_postprocess_start` → `task_postprocess_end`
+`task_queue` → `task_accept` → `task_preprocess_start` → `task_preprocess_end` → `task_assign` → `task_start` → `task_output` → `task_output_full` → `task_end` → `task_postprocess_start` → `task_postprocess_end`
 
 ## Task Statuses
 
-| Status                   | Description                                                                                                                                                                                                                                                                     |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `task_queue`             | The task is queued and waiting to be picked up by an available worker. Emitted once when the task enters the queue.                                                                                                                                                             |
-| `task_accept`            | A worker has accepted the task. The task is no longer in the general queue and is being prepared for execution.                                                                                                                                                                 |
-| `task_assign`            | The task has been assigned to a specific GPU. The model is being loaded into memory. This may take a few seconds depending on the model size.                                                                                                                                   |
-| `task_preprocess_start`  | Optional preprocessing has started. This includes operations like downloading input files from URLs, converting file types, and validating/formatting parameters before the model runs. Not all models require preprocessing.                                                   |
-| `task_preprocess_end`    | Preprocessing completed. All inputs are ready and the model is about to start execution.                                                                                                                                                                                        |
-| `task_start`             | The model command has started executing. Inference is now running on the GPU.                                                                                                                                                                                                   |
-| `task_output`            | The model is producing output. This event is emitted **multiple times** — each time the model writes to stdout, a new `task_output` message is sent via WebSocket. For LLM models, each token/chunk arrives as a separate `task_output` event, enabling real-time streaming.    |
-| `task_error`             | The model wrote to stderr. This is an **interim log event**, not a final failure — many models write warnings or debug info to stderr during normal operation. The task may still complete successfully. Always wait for `task_postprocess_end` to determine the actual result. |
-| `task_output_full`       | The complete accumulated stdout log, sent once after the model process finishes. Contains the full output history in a single message.                                                                                                                                          |
-| `task_error_full`      | The complete accumulated stderr log, sent once after the model process finishes.                                                                                                                                                                                                |
-| `task_end`               | The model process has exited. Emitted once. This fires **before** post-processing — do not use this event to determine success. Wait for `task_postprocess_end` instead.                                                                                                        |
-| `task_postprocess_start` | Post-processing has started. The system is preparing the output files — encoding, uploading to CDN, and generating access URLs.                                                                                                                                                 |
-| `task_postprocess_end`   | Post-processing completed. Check `pexit` to determine success: `"0"` = success, any other value = error. The `outputs` array contains the final files with CDN URLs, content types, and sizes. **This is the event you should listen for** to get the final results.            |
-| `task_cancel`            | The task was cancelled (if queued) or killed (if running) by the user.                                                                                                                                                                                                          |
+| Status | Description |
+|--------|-------------|
+| `task_queue` | The task is queued and waiting to be picked up by an available worker. Emitted once when the task enters the queue. |
+| `task_accept` | A worker has accepted the task. The task is no longer in the general queue and is being prepared for execution. |
+| `task_preprocess_start` | Optional preprocessing has started. This includes operations like downloading input files from URLs, converting file types, and validating/formatting parameters before the model runs. Not all models require preprocessing. |
+| `task_preprocess_end` | Preprocessing completed. All inputs are ready for GPU assignment. |
+| `task_assign` | The task has been assigned to a specific GPU. The model is being loaded into memory. This may take a few seconds depending on the model size. |
+| `task_start` | The model command has started executing. Inference is now running on the GPU. |
+| `task_output` | The model is producing output. This event is emitted **multiple times** — each time the model writes to stdout, a new `task_output` message is sent via WebSocket. For LLM models, each token/chunk arrives as a separate `task_output` event, enabling real-time streaming. |
+| `task_error` | The model wrote to stderr. This is an **interim log event**, not a final failure — many models write warnings or debug info to stderr during normal operation. The task may still complete successfully. Always wait for `task_postprocess_end` to determine the actual result. |
+| `task_output_full` | The complete accumulated stdout log, sent once after the model process finishes. Contains the full output history in a single message. |
+| `task_error_full` | The complete accumulated stderr log, sent once after the model process finishes. |
+| `task_end` | The model process has exited. Emitted once. This fires **before** post-processing — do not use this event to determine success. Wait for `task_postprocess_end` instead. |
+| `task_postprocess_start` | Post-processing has started. The system is preparing the output files — encoding, uploading to CDN, and generating access URLs. |
+| `task_postprocess_end` | Post-processing completed. Check `pexit` to determine success: `"0"` = success, any other value = error. The `outputs` array contains the final files with CDN URLs, content types, and sizes. **This is the event you should listen for** to get the final results. |
+| `task_cancel` | The task was cancelled (if queued) or killed (if running) by the user. |
 
 ### Realtime Conversation Only
 
@@ -849,7 +849,7 @@ Connect to this URL after calling the Run endpoint. Use the `socketaccesstoken` 
 1. **Connect** — open a WebSocket connection to `wss://socket.wiro.ai/v1`
 2. **Register** — send a `task_info` message with your `tasktoken`
 3. **Receive** — listen for messages as the task progresses through its lifecycle
-4. **Close** — disconnect after the `task_end` event
+4. **Close** — disconnect after the `task_postprocess_end` event (this is the final event with results)
 
 Registration message format:
 
@@ -864,20 +864,20 @@ Registration message format:
 
 | Message Type             | Description                                         |
 | ------------------------ | --------------------------------------------------- |
-| `task_queue`             | The task is queued and waiting to be picked up by an available worker. |
-| `task_accept`            | A worker has accepted the task. The task is no longer in the general queue and is being prepared for execution. |
-| `task_assign`            | The task has been assigned to a specific GPU. The model is being loaded into memory. |
-| `task_preprocess_start`  | Optional preprocessing has started (downloading input files from URLs, converting file types, validating parameters). |
-| `task_preprocess_end`    | Preprocessing completed. All inputs are ready and the model is about to start execution. |
-| `task_start`             | The model command has started executing. Inference is now running on the GPU. |
-| `task_output`            | The model is producing output. Emitted **multiple times** — each stdout write sends a new message. For LLMs, each token/chunk arrives as a separate event for real-time streaming. |
-| `task_error`             | The model wrote to stderr. This is an **interim log event**, not a final failure — many models write warnings to stderr during normal operation. The task may still succeed. |
-| `task_output_full`       | The complete accumulated stdout log, sent once after the model process finishes. |
-| `task_error_full`      | The complete accumulated stderr log, sent once after the model process finishes. |
-| `task_end`               | The model process has exited. Fires **before** post-processing — do not use this to determine success. Wait for `task_postprocess_end` instead. |
+| `task_queue` | The task is queued and waiting to be picked up by an available worker. |
+| `task_accept` | A worker has accepted the task and is preparing for execution. |
+| `task_preprocess_start` | Optional preprocessing has started (downloading input files from URLs, converting file types, validating parameters). |
+| `task_preprocess_end` | Preprocessing completed. All inputs are ready for GPU assignment. |
+| `task_assign` | The task has been assigned to a specific GPU. The model is being loaded into memory. |
+| `task_start` | The model command has started executing. Inference is now running on the GPU. |
+| `task_output` | The model is producing output. Emitted **multiple times** — each stdout write sends a new message. For LLMs, each token/chunk arrives as a separate event for real-time streaming. |
+| `task_error` | The model wrote to stderr. This is an **interim log event**, not a final failure — many models write warnings to stderr during normal operation. The task may still succeed. |
+| `task_output_full` | The complete accumulated stdout log, sent once after the model process finishes. |
+| `task_error_full` | The complete accumulated stderr log, sent once after the model process finishes. |
+| `task_end` | The model process has exited. Fires **before** post-processing — do not use this to determine success. Wait for `task_postprocess_end` instead. |
 | `task_postprocess_start` | Post-processing has started. The system is preparing output files — encoding, uploading to CDN, generating access URLs. |
-| `task_postprocess_end`   | Post-processing completed. Check `pexit` to determine success (`"0"` = success). The `outputs` array contains the final files. **This is the event to listen for.** |
-| `task_cancel`            | The task was cancelled (if queued) or killed (if running) by the user. |
+| `task_postprocess_end` | Post-processing completed. Check `pexit` to determine success (`"0"` = success). The `outputs` array contains the final files. **This is the event to listen for.** |
+| `task_cancel` | The task was cancelled (if queued) or killed (if running) by the user. |
 
 ## Binary Frames
 
@@ -885,7 +885,7 @@ For **realtime voice models**, the WebSocket may send binary frames containing r
 
 ## Ending a Session
 
-For realtime/streaming models that maintain a persistent session, send an `end_session` message to gracefully terminate:
+For realtime/streaming models that maintain a persistent session, send a `task_session_end` message to gracefully terminate:
 
 ```json
 {
@@ -942,7 +942,7 @@ During a realtime session, you'll receive these WebSocket events:
 | ------------------- | ------------------------------------------------------------------------ |
 | `task_stream_ready` | Session is ready — start sending microphone audio                        |
 | `task_stream_end`   | AI finished speaking for this turn — you can speak again                 |
-| `task_cost`         | Cost update with `turnCost` and `cumulativeCost` fields                  |
+| `task_cost`         | Cost update per turn — includes `turnCost`, `cumulativeCost`, and `usage` (raw cost breakdown from the model provider) |
 | `task_output`       | Transcript messages prefixed with `TRANSCRIPT_USER:` or `TRANSCRIPT_AI:` |
 | `task_end`          | Session fully ended — close the connection                               |
 
@@ -1021,7 +1021,9 @@ To gracefully end a realtime session, send `task_session_end`:
 
 After sending this, the server will process any remaining audio, send final cost/transcript events, and then emit `task_end`. Wait for `task_end` before closing the WebSocket.
 
-> **Note:** Realtime models use `task_session_end` (not `end_session` used by standard streaming models).
+> **Safety:** If the client disconnects without sending `task_session_end`, the server automatically terminates the session to prevent the pipeline from running indefinitely (and the provider from continuing to charge). Always send `task_session_end` explicitly for a clean shutdown.
+
+> **Insufficient balance:** If the wallet runs out of balance during a realtime session, the server automatically stops the session. You will still receive the final `task_cost` and `task_end` events.
 
 ---
 
@@ -1063,12 +1065,12 @@ Creates a new folder to organize your uploaded files.
 
 ## **POST** /File/Upload
 
-Uploads a file using `multipart/form-data`. You can optionally assign it to a folder.
+Uploads a file using `multipart/form-data`. You can optionally assign it to a folder. Max file size: 100 MB.
 
 | Parameter  | Type   | Required | Description                                   |
 | ---------- | ------ | -------- | --------------------------------------------- |
 | `file`     | file   | Yes      | The file to upload (multipart form field)     |
-| `folderId` | string | No       | Target folder ID (uploads to root if omitted) |
+| `folderid` | string | No       | Target folder ID (uploads to user's default folder if omitted) |
 
 ### Response
 
@@ -1076,15 +1078,16 @@ Uploads a file using `multipart/form-data`. You can optionally assign it to a fo
 {
   "result": true,
   "errors": [],
-  "data": {
-    "id": "file-xyz789",
+  "list": [{
+    "id": "file-id",
     "name": "dataset.csv",
-    "size": 1048576,
-    "mimeType": "text/csv",
-    "folderId": "folder-abc123",
-    "url": "https://files.wiro.ai/...",
-    "createdAt": "2025-01-15T10:05:00Z"
-  }
+    "contenttype": "text/csv",
+    "size": "1048576",
+    "parentid": "folder-id",
+    "url": "https://cdn1.wiro.ai/...",
+    "addedtime": "1716276727",
+    "accesskey": "..."
+  }]
 }
 ```
 
@@ -1098,6 +1101,36 @@ Once uploaded, reference a file by its URL or ID in your model run parameters. F
   "scale": 4
 }
 ```
+
+---
+
+# Pricing
+
+Understand how billing works for AI model runs on Wiro.
+
+## Billing Methods
+
+Fixed-rate: `cpr` (per request), `cps` (per second), `cpo` (per output), `cpt` (per token).
+Usage-based: `cp-pixel` (per pixel tier), `cp-audiosecondslength` (per audio second), `cp-promptlength` (per character), `cp-outputVideoLength` (per video second).
+Special: `cp-realtimeturn` (per realtime voice turn), `cp-readoutput` (model-reported cost).
+
+Fallback: when no `dynamicprice`, cost = elapsed_seconds × `cps`. `approximatelycost` = average_elapsed_seconds × cps.
+
+## Dynamic Pricing
+
+Many models have dynamic pricing — cost varies based on input parameters (e.g. resolution, duration). Returned in the `dynamicprice` field of Tool/List and Tool/Detail:
+
+```json
+[{"inputs": {"resolution": "720p", "duration": "5"}, "price": 0.13, "priceMethod": "cpr"}]
+```
+
+Empty `inputs` (`{}`) = flat rate for all configurations. Specific `inputs` = price for that parameter combination only.
+
+## What You Pay For
+
+Successful runs only (`pexit: "0"`). Cost recorded in `totalcost` field of Task/Detail. Server errors, queue time, and cancelled tasks are never billed.
+
+Pricing page: https://wiro.ai/product/pricing
 
 ---
 
@@ -1358,7 +1391,7 @@ done
 
 # MCP Server
 
-Connect AI coding assistants to Wiro's 70+ AI models via the Model Context Protocol.
+Connect AI coding assistants to Wiro's AI models via the Model Context Protocol.
 
 ## What is MCP?
 
@@ -1378,7 +1411,7 @@ Open MCP settings (`Cmd+Shift+P` → "Open MCP settings") and add:
     "wiro": {
       "url": "https://mcp.wiro.ai/v1",
       "headers": {
-        "Authorization": "Bearer BASE64_OF_APIKEY:APISECRET"
+        "Authorization": "Bearer YOUR_API_KEY:YOUR_API_SECRET"
       }
     }
   }
@@ -1390,7 +1423,7 @@ Open MCP settings (`Cmd+Shift+P` → "Open MCP settings") and add:
 ```bash
 claude mcp add --transport http wiro \
   https://mcp.wiro.ai/v1 \
-  --header "Authorization: Bearer BASE64_OF_APIKEY:APISECRET"
+  --header "Authorization: Bearer YOUR_API_KEY:YOUR_API_SECRET"
 ```
 
 ## Authentication
@@ -1405,12 +1438,17 @@ API Key Only: `Authorization: Bearer YOUR_API_KEY`
 
 | Tool | Description |
 |------|-------------|
-| `search_models` | Search models by keyword or category |
-| `get_model_schema` | Get parameter schema for any model (pass clean model slug) |
-| `run_model` | Run any model (pass clean model slug), wait or get task token |
+| `search_models` | Search models by keyword, category, or owner |
+| `get_model_schema` | Get parameter schema and pricing for any model |
+| `recommend_model` | Describe a task, get model recommendations by relevance |
+| `explore` | Browse curated models by category |
+| `run_model` | Run any model, wait or get task token |
 | `get_task` | Check task status and outputs |
+| `get_task_price` | Get the cost of a completed task |
 | `cancel_task` | Cancel a queued task |
 | `kill_task` | Kill a running task |
+| `upload_file` | Upload a file from URL for use as model input |
+| `search_docs` | Search Wiro documentation |
 
 ---
 

@@ -15,7 +15,7 @@ Connect to this URL after calling the Run endpoint. Use the `socketaccesstoken` 
 1. **Connect** — open a WebSocket connection to `wss://socket.wiro.ai/v1`
 2. **Register** — send a `task_info` message with your `tasktoken`
 3. **Receive** — listen for messages as the task progresses through its lifecycle
-4. **Close** — disconnect after the `task_end` event
+4. **Close** — disconnect after the `task_postprocess_end` event (this is the final event with results)
 
 Registration message format:
 
@@ -31,10 +31,10 @@ Registration message format:
 | Message Type | Description |
 |--------------|-------------|
 | `task_queue` | The task is queued and waiting to be picked up by an available worker. |
-| `task_accept` | A worker has accepted the task. The task is no longer in the general queue and is being prepared for execution. |
-| `task_assign` | The task has been assigned to a specific GPU. The model is being loaded into memory. |
+| `task_accept` | A worker has accepted the task and is preparing for execution. |
 | `task_preprocess_start` | Optional preprocessing has started (downloading input files from URLs, converting file types, validating parameters). |
-| `task_preprocess_end` | Preprocessing completed. All inputs are ready and the model is about to start execution. |
+| `task_preprocess_end` | Preprocessing completed. All inputs are ready for GPU assignment. |
+| `task_assign` | The task has been assigned to a specific GPU. The model is being loaded into memory. |
 | `task_start` | The model command has started executing. Inference is now running on the GPU. |
 | `task_output` | The model is producing output. Emitted **multiple times** — each stdout write sends a new message. For LLMs, each token/chunk arrives as a separate event for real-time streaming. |
 | `task_error` | The model wrote to stderr. This is an **interim log event**, not a final failure — many models write warnings to stderr during normal operation. The task may still succeed. |
@@ -51,7 +51,7 @@ For **realtime voice models**, the WebSocket may send binary frames containing r
 
 ## Ending a Session
 
-For realtime/streaming models that maintain a persistent session, send an `task_session_end` message to gracefully terminate:
+For realtime/streaming models that maintain a persistent session, send a `task_session_end` message to gracefully terminate:
 
 ```json
 {
@@ -98,13 +98,13 @@ ws.onmessage = (event) => {
       console.log('Model inference started');
       break;
     case 'task_output':
-      console.log('Partial output:', msg.data);
+      console.log('Partial output:', msg.message);
       break;
     case 'task_output_full':
-      console.log('Full output:', msg.data);
+      console.log('Full output:', msg.message);
       break;
     case 'task_error':
-      console.error('Error:', msg.data);
+      console.error('Error:', msg.message);
       break;
     case 'task_end':
       console.log('Task completed!');
@@ -149,11 +149,11 @@ async def listen_task(socket_token):
             print(f"Event: {msg['type']}")
 
             if msg["type"] == "task_output":
-                print("Partial output:", msg.get("data"))
+                print("Partial output:", msg.get("message"))
             elif msg["type"] == "task_output_full":
-                print("Full output:", msg.get("data"))
+                print("Full output:", msg.get("message"))
             elif msg["type"] == "task_error":
-                print("Error:", msg.get("data"))
+                print("Error:", msg.get("message"))
             elif msg["type"] == "task_end":
                 print("Task completed!")
                 break
@@ -187,7 +187,7 @@ ws.on('message', (data, isBinary) => {
   console.log('Event:', msg.type);
 
   if (msg.type === 'task_output_full') {
-    console.log('Full output:', msg.data);
+    console.log('Full output:', msg.message);
   }
   if (msg.type === 'task_end') {
     console.log('Done!');
@@ -218,7 +218,7 @@ while (true) {
     echo "Event: " . $msg["type"] . PHP_EOL;
 
     if ($msg["type"] === "task_output_full") {
-        echo "Output: " . json_encode($msg["data"])
+        echo "Output: " . json_encode($msg["message"])
             . PHP_EOL;
     }
     if ($msg["type"] === "task_end") {
@@ -413,7 +413,7 @@ channel.stream.listen((message) {
   final msg = jsonDecode(message);
   print('Event: ' + msg['type'].toString());
   if (msg['type'] == 'task_output_full') {
-    print('Output: ' + jsonEncode(msg['data']));
+    print('Output: ' + jsonEncode(msg['message']));
   }
   if (msg['type'] == 'task_end') {
     print('Done!');

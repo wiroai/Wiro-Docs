@@ -8,7 +8,7 @@ Realtime voice models enable two-way audio conversations with AI. Unlike standar
 
 The flow is:
 
-1. **Run** the realtime model via [POST /Run](#/run-a-model) to get a `socketaccesstoken`
+1. **Run** the realtime model via [POST /Run](/docs/run-a-model) to get a `socketaccesstoken`
 2. **Connect** to the WebSocket and send `task_info` with your token
 3. **Wait** for `task_stream_ready` — the model is ready to receive audio
 4. **Stream** microphone audio as binary frames
@@ -40,7 +40,7 @@ During a realtime session, you'll receive these WebSocket events:
 |-------|-------------|
 | `task_stream_ready` | Session is ready — start sending microphone audio |
 | `task_stream_end` | AI finished speaking for this turn — you can speak again |
-| `task_cost` | Cost update with `turnCost` and `cumulativeCost` fields |
+| `task_cost` | Cost update per turn — includes `turnCost`, `cumulativeCost`, and `usage` (raw cost breakdown from the model provider) |
 | `task_output` | Transcript messages prefixed with `TRANSCRIPT_USER:` or `TRANSCRIPT_AI:` |
 | `task_end` | Session fully ended — close the connection |
 
@@ -120,7 +120,9 @@ To gracefully end a realtime session, send `task_session_end`:
 
 After sending this, the server will process any remaining audio, send final cost/transcript events, and then emit `task_end`. Wait for `task_end` before closing the WebSocket.
 
-> **Note:** Realtime models use `task_session_end` (not `end_session` used by standard streaming models).
+> **Safety:** If the client disconnects without sending `task_session_end`, the server automatically terminates the session to prevent the pipeline from running indefinitely (and the provider from continuing to charge). Always send `task_session_end` explicitly for a clean shutdown.
+
+> **Insufficient balance:** If the wallet runs out of balance during a realtime session, the server automatically stops the session. You will still receive the final `task_cost` and `task_end` events.
 
 ## Code Examples
 

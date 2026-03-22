@@ -4,7 +4,7 @@ Execute any AI model with a single API call and get real-time updates.
 
 ## **POST** /Run/{owner-slug}/{model-slug}
 
-Starts an AI model run. The endpoint accepts model-specific parameters and returns a **task ID** you can use to track progress via [polling](#/tasks), [WebSocket](#/websocket), or **webhook** by providing a `callbackUrl` parameter — Wiro will POST the result to your URL when the task completes.
+Starts an AI model run. The endpoint accepts model-specific parameters and returns a **task ID** you can use to track progress via [polling](/docs/tasks), [WebSocket](/docs/websocket), or **webhook** by providing a `callbackUrl` parameter — Wiro will POST the result to your URL when the task completes.
 
 ## Content Types
 
@@ -18,7 +18,7 @@ Use multipart when the model requires **file inputs** (images, audio, documents)
 
 ## Request Parameters
 
-Parameters vary by model. Use the [/Tool/Detail](#/models) endpoint to discover which parameters a model accepts. The following optional parameters apply to all runs:
+Parameters vary by model. Use the [/Tool/Detail](/docs/models) endpoint to discover which parameters a model accepts. The following optional parameters apply to all runs:
 
 #### Common Parameters
 
