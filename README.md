@@ -33,10 +33,14 @@
 - 🏠 **Single-page static site** — `index.html` + `css/` + `js/` (no build step)
 - 🌙 **Dark / light theme** with persistent toggle
 - 📱 **Responsive** sidebar + mobile drawer
+- 🔍 **Full-text search** with `⌘K` shortcut, recent searches (localStorage), and keyboard navigation
+- 📑 **Table of contents** — auto-generated "On this page" panel with scroll spy
 - 💻 **Code examples** panel in **9 languages** (curl, Python, Node.js, PHP, C#, Go, Swift, Kotlin, Dart)
 - 🧩 **Model browser** (list/search via API when deployed; CORS may limit localhost)
 - 📄 **Markdown per section** (`markdown/{slug}.md`) + full bundle: **`markdown/full-documentation.md`**
 - 📋 **`llms.txt`** — machine-readable summary for crawlers and tools
+- 🔎 **SEO optimized** — per-page meta tags (OG, Twitter Card), JSON-LD structured data, SSR meta injection via `serve.js`
+- 🗺️ **Sitemap & robots.txt** for search engine crawlers
 
 ---
 
@@ -71,7 +75,7 @@
 
 ## 🚀 Run locally
 
-Uses path-based routing (`/docs/files`, `/docs/tasks`). For local development, use the included SPA-aware server:
+Uses path-based routing (`/docs/files`, `/docs/tasks`). The included Node server handles SPA fallback and SSR meta injection for SEO:
 
 ```bash
 node serve.js
@@ -82,9 +86,12 @@ Before running locally, set the base path to empty in `index.html`:
 <html lang="en" data-base-path="">
 ```
 
-On production (Nginx with `try_files`), keep `data-base-path="/docs"`.
+On production, use PM2 with the included ecosystem config:
+```bash
+pm2 startOrReload ecosystem.config.cjs --env prod
+```
 
-Open **http://localhost:8080** (or the printed URL). Hash routes look like `/docs/introduction`.
+Open **http://localhost:8000/docs/** (or the printed URL).
 
 ---
 
@@ -93,16 +100,21 @@ Open **http://localhost:8080** (or the printed URL). Hash routes look like `/doc
 ```
 Wiro-Docs/
 ├── README.md
+├── LICENSE
 ├── .gitignore
-├── index.html                 # All doc sections inline (LLM-friendly; hash routes #/…)
-├── llms.txt                   # Machine-readable API summary
+├── index.html                  # All doc sections inline (LLM-friendly)
+├── serve.js                    # Node server with SSR meta injection for SEO
+├── ecosystem.config.cjs        # PM2 config for production deployment
+├── llms.txt                    # Machine-readable API summary
+├── sitemap.xml                 # Sitemap with priorities and change frequencies
+├── robots.txt                  # Crawler directives with sitemap reference
 ├── css/
-│   └── docs.css               # Layout, theme (light/dark), typography, components
+│   └── docs.css                # Layout, theme (light/dark), typography, components
 ├── js/
-│   ├── app.js                 # Navigation, code panel, Shiki, markdown link sync
-│   └── helpers.js             # Model browser (Tool/List) + shared helpers
-└── markdown/                  # Must stay in sync with index.html (see Contributing)
-    ├── full-documentation.md  # All sections in one file
+│   ├── app.js                  # Navigation, search, TOC, code panel, Shiki
+│   └── helpers.js              # Model browser (Tool/List) + shared helpers
+└── markdown/                   # Must stay in sync with index.html (see Contributing)
+    ├── full-documentation.md
     ├── introduction.md
     ├── authentication.md
     ├── projects.md
@@ -114,11 +126,11 @@ Wiro-Docs/
     ├── websocket.md
     ├── realtime-voice-conversation.md
     ├── files.md
+    ├── pricing.md
     ├── concurrency-limits.md
     ├── error-reference.md
-    ├── code-examples.md
-    ├── pricing.md
     ├── faq.md
+    ├── code-examples.md
     ├── wiro-mcp-server.md
     ├── mcp-self-hosted.md
     └── n8n-wiro-integration.md
