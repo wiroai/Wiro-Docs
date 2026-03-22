@@ -104,6 +104,17 @@
             </div>
           </div>
 
+          <button class="docs-search-trigger" id="searchTrigger">
+            <i class="lni lni-search-alt"></i>
+            <span>Search...</span>
+            <kbd>⌘K</kbd>
+          </button>
+
+          <div class="docs-nav-external">
+            <a href="https://wiro.ai/explore" target="_blank" class="docs-nav-external-link"><i class="lni lni-layers"></i><span>Explore Models</span></a>
+            <a href="https://wiro.ai/blog" target="_blank" class="docs-nav-external-link"><i class="lni lni-star-empty"></i><span>Blog</span></a>
+          </div>
+
           <div class="docs-nav-group">
             <h4 class="docs-nav-group-title">Getting Started</h4>
             <ul class="docs-nav-links">
@@ -188,11 +199,11 @@
 
   <section id="quick-start">
     <h2>Quick Start</h2>
-    <ol>
-      <li><strong>Sign up</strong> at <a href="https://wiro.ai/auth/signup" class="docs-link">wiro.ai</a></li>
-      <li><strong>Create a project</strong> in the <a href="https://wiro.ai/panel/project/new" class="docs-link">Dashboard</a> to get your API key</li>
-      <li><strong>Pick a model</strong> from the <a href="https://wiro.ai/models" class="docs-link">marketplace</a></li>
-      <li><strong>Make your first API call</strong> — see <a href="/docs/code-examples" class="docs-link">Code Examples</a> for full end-to-end samples (or use the panel on the right)</li>
+    <ol class="docs-steps">
+      <li><strong>Sign up</strong> <span>Create an account at <a href="https://wiro.ai/auth/signup" class="docs-link">wiro.ai</a></span></li>
+      <li><strong>Create a project</strong> <span>Go to the <a href="https://wiro.ai/panel/project/new" class="docs-link">Dashboard</a> to get your API key</span></li>
+      <li><strong>Pick a model</strong> <span>Browse the <a href="https://wiro.ai/models" class="docs-link">marketplace</a> and choose a model</span></li>
+      <li><strong>Make your first API call</strong> <span>See <a href="/docs/code-examples" class="docs-link">Code Examples</a> for full end-to-end samples</span></li>
     </ol>
   </section>
 
@@ -306,11 +317,11 @@
     <p>Uses HMAC-SHA256 to sign every request. The API secret never leaves your environment, making this method ideal for <strong>client-side applications</strong> where the key might be exposed.</p>
 
     <h3>How it works</h3>
-    <ol>
-      <li>Generate a <strong>nonce</strong> (unix timestamp or random integer)</li>
-      <li>Concatenate: <code>API_SECRET + NONCE</code></li>
-      <li>Create an HMAC-SHA256 hash using your <code>API_KEY</code> as the secret key</li>
-      <li>Send the signature, nonce, and API key as headers</li>
+    <ol class="docs-steps">
+      <li><strong>Generate a nonce</strong> <span>Use a unix timestamp or random integer</span></li>
+      <li><strong>Concatenate</strong> <span>Combine: <code>API_SECRET + NONCE</code></span></li>
+      <li><strong>Create HMAC-SHA256 hash</strong> <span>Use your <code>API_KEY</code> as the secret key</span></li>
+      <li><strong>Send as headers</strong> <span>Include the signature, nonce, and API key in request headers</span></li>
     </ol>
 
     <pre><code>SIGNATURE = HMAC-SHA256(key=API_KEY, message=API_SECRET + NONCE)</code></pre>
@@ -523,19 +534,12 @@
 
   <section id="creating-project">
     <h2>Creating a Project</h2>
-    <ol>
-      <li>Go to your <a href="https://wiro.ai/panel" class="docs-link">Dashboard</a></li>
-      <li>Navigate to <a href="https://wiro.ai/panel/project" class="docs-link">Projects</a></li>
-      <li>Click <a href="https://wiro.ai/panel/project/new" class="docs-link">New Project</a></li>
-      <li>Enter a project name</li>
-      <li>
-        Select your <a href="/docs/authentication" class="docs-link">authentication method</a>:
-        <ul>
-          <li><strong>Signature-Based</strong> — generates both an API key and API secret</li>
-          <li><strong>API Key Only</strong> — generates only an API key</li>
-        </ul>
-      </li>
-      <li>Click <strong>Create</strong></li>
+    <ol class="docs-steps">
+      <li><strong>Go to the Dashboard</strong> <span>Navigate to <a href="https://wiro.ai/panel" class="docs-link">wiro.ai/panel</a></span></li>
+      <li><strong>Open Projects</strong> <span>Go to <a href="https://wiro.ai/panel/project" class="docs-link">Projects</a> and click <a href="https://wiro.ai/panel/project/new" class="docs-link">New Project</a></span></li>
+      <li><strong>Name your project</strong> <span>Enter a descriptive project name</span></li>
+      <li><strong>Select authentication method</strong> <span><strong style="font-size:0.92rem">Signature-Based</strong> — generates API key + secret &nbsp;|&nbsp; <strong style="font-size:0.92rem">API Key Only</strong> — generates only an API key</span></li>
+      <li><strong>Create</strong> <span>Click <strong style="font-size:0.92rem">Create</strong> and copy your credentials immediately</span></li>
     </ol>
   </section>
 
@@ -2665,7 +2669,7 @@ if (!data.result) {
 <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/faq.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/faq.md" download class="docs-section-md-btn">Download</a></div>
 
 <h1>FAQ</h1>
-<p class="section-subtitle">Common questions about using the Wiro API.</p>
+<p class="section-subtitle">Common questions about using the Wiro API. If you can't find the answer here, <a href="mailto:support@wiro.ai">contact support</a>.</p>
 
 <div class="faq-accordion">
 
@@ -3363,12 +3367,11 @@ node dist/index.js</code></pre>
 <p>Install the community node package in your n8n instance:</p>
 
 <h3>Via n8n UI (Recommended)</h3>
-<ol>
-  <li>Open your n8n instance</li>
-  <li>Go to <strong>Settings → Community Nodes</strong></li>
-  <li>Click <strong>Install a community node</strong></li>
-  <li>Enter: <code>@wiro-ai/n8n-nodes-wiroai</code></li>
-  <li>Click <strong>Install</strong></li>
+<ol class="docs-steps">
+  <li><strong>Open your n8n instance</strong> <span>Navigate to your self-hosted or cloud n8n dashboard</span></li>
+  <li><strong>Go to Settings</strong> <span>Open <strong style="font-size:0.92rem">Settings → Community Nodes</strong></span></li>
+  <li><strong>Install the node</strong> <span>Click <strong style="font-size:0.92rem">Install a community node</strong> and enter: <code>@wiro-ai/n8n-nodes-wiroai</code></span></li>
+  <li><strong>Confirm</strong> <span>Click <strong style="font-size:0.92rem">Install</strong> and wait for completion</span></li>
 </ol>
 
 <h3>Via Command Line</h3>
@@ -3379,15 +3382,10 @@ node dist/index.js</code></pre>
 <section id="n8n-authentication">
 <h2>Authentication</h2>
 <p>The node supports both <a href="/docs/authentication">Wiro authentication methods</a>:</p>
-<ol>
-  <li>Go to <strong>Credentials → Add new → Wiro API</strong> in n8n</li>
-  <li>Select your auth method:
-    <ul>
-      <li><strong>Signature-Based</strong> — enter API key + API secret (recommended)</li>
-      <li><strong>API Key Only</strong> — enter API key only</li>
-    </ul>
-  </li>
-  <li>Click <strong>Save</strong></li>
+<ol class="docs-steps">
+  <li><strong>Add credentials</strong> <span>Go to <strong style="font-size:0.92rem">Credentials → Add new → Wiro API</strong> in n8n</span></li>
+  <li><strong>Select auth method</strong> <span><strong style="font-size:0.92rem">Signature-Based</strong> — enter API key + secret (recommended) &nbsp;|&nbsp; <strong style="font-size:0.92rem">API Key Only</strong> — enter API key only</span></li>
+  <li><strong>Save</strong> <span>Click <strong style="font-size:0.92rem">Save</strong> to store your credentials</span></li>
 </ol>
 <p>Get your credentials at <a href="https://wiro.ai/panel/project/new" target="_blank">wiro.ai/panel/project</a>.</p>
 </section>
@@ -3457,6 +3455,7 @@ node dist/index.js</code></pre>
               <i class="lni lni-close"></i>
             </button>
             <div class="docs-right-sticky">
+              <div class="docs-toc" id="tocPanel"></div>
               <div id="codePanelContent"></div>
             </div>
           </aside>
@@ -3468,6 +3467,20 @@ node dist/index.js</code></pre>
           <div class="docs-code-drawer-overlay" id="codePanelOverlay"></div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div class="docs-search-overlay" id="searchOverlay">
+    <div class="docs-search-logo">
+      <img src="https://wiro.ai/images/logos/logo/logo.png" alt="Wiro" height="20">
+    </div>
+    <div class="docs-search-modal" id="searchModal">
+      <div class="docs-search-header">
+        <i class="lni lni-search-alt"></i>
+        <input type="text" class="docs-search-input" id="searchInput" placeholder="Search documentation..." autocomplete="off" spellcheck="false">
+        <kbd class="docs-search-esc">ESC</kbd>
+      </div>
+      <div class="docs-search-results" id="searchResults"></div>
     </div>
   </div>
 

@@ -293,9 +293,12 @@ function showSection(slug) {
   }
 
   renderPagination(slug);
+  buildToc(slug);
   closeCodeDrawer();
 
-  window.scrollTo({ top: 0, behavior: 'instant' });
+  const centerEl = document.querySelector('.docs-center');
+  if (centerEl) centerEl.scrollTo({ top: 0, behavior: 'instant' });
+  else window.scrollTo({ top: 0, behavior: 'instant' });
 
   initSectionFeatures(slug);
 }
@@ -348,6 +351,343 @@ function initAuthToggle() {
   });
 }
 
+
+let searchIndex = null;
+let searchSelectedIdx = -1;
+const RECENT_SEARCH_KEY = 'wiro-docs-recent-searches';
+const MAX_RECENT = 8;
+
+function getRecentSearches() {
+  try { return JSON.parse(localStorage.getItem(RECENT_SEARCH_KEY)) || []; }
+  catch { return []; }
+}
+
+function saveRecentSearch(entry) {
+  const recents = getRecentSearches();
+  const exists = recents.findIndex((r) => r.slug === entry.slug && r.headingId === entry.headingId);
+  if (exists !== -1) recents.splice(exists, 1);
+  recents.unshift({ slug: entry.slug, pageTitle: entry.pageTitle, headingId: entry.headingId, heading: entry.heading });
+  localStorage.setItem(RECENT_SEARCH_KEY, JSON.stringify(recents.slice(0, MAX_RECENT)));
+}
+
+function removeRecentSearch(index) {
+  const recents = getRecentSearches();
+  recents.splice(index, 1);
+  localStorage.setItem(RECENT_SEARCH_KEY, JSON.stringify(recents));
+}
+
+function renderRecentSearches() {
+  const container = document.getElementById('searchResults');
+  if (!container) return;
+
+  const recents = getRecentSearches();
+  if (recents.length === 0) {
+    container.innerHTML = '<div class="docs-search-empty">Type to search the documentation</div>';
+    searchSelectedIdx = -1;
+    return;
+  }
+
+  searchSelectedIdx = -1;
+  container.innerHTML =
+    '<div class="docs-search-recent-label">Recent searches</div>' +
+    recents
+      .map((r, i) => `<div class="docs-search-item" data-slug="${r.slug}" data-heading-id="${r.headingId || ''}">
+        <div class="docs-search-item-breadcrumb">${escapeHtml(r.pageTitle)} › ${escapeHtml(r.heading)}</div>
+        <div class="docs-search-item-title"><i class="lni lni-timer"></i> ${escapeHtml(r.heading)}</div>
+        <button class="docs-search-item-remove" data-recent-idx="${i}" title="Remove">×</button>
+      </div>`)
+      .join('');
+}
+
+function buildSearchIndex() {
+  const entries = [];
+
+  document.querySelectorAll('.docs-page-section[data-page]').forEach((section) => {
+    const slug = section.dataset.page;
+    const sectionObj = sections.find((s) => s.slug === slug);
+    if (!sectionObj) return;
+    const pageTitle = sectionObj.title;
+
+    section.querySelectorAll('h2, h3').forEach((heading) => {
+      const id = heading.id || (heading.parentElement && heading.parentElement.id);
+      const headingText = heading.textContent.trim();
+      if (!headingText) return;
+
+      let textParts = [];
+      let sibling = heading.nextElementSibling;
+      while (sibling && !['H1', 'H2', 'H3'].includes(sibling.tagName)) {
+        const t = sibling.textContent.trim();
+        if (t) textParts.push(t);
+        sibling = sibling.nextElementSibling;
+        if (textParts.join(' ').length > 300) break;
+      }
+
+      entries.push({
+        slug,
+        pageTitle,
+        headingId: id,
+        heading: headingText,
+        text: textParts.join(' ').slice(0, 300),
+        searchable: (headingText + ' ' + textParts.join(' ')).toLowerCase(),
+      });
+    });
+  });
+
+  searchIndex = entries;
+}
+
+function searchDocs(query) {
+  if (!searchIndex || !query) return [];
+  const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+
+  const results = [];
+  for (const entry of searchIndex) {
+    let score = 0;
+    let allMatch = true;
+    for (const term of terms) {
+      if (entry.searchable.includes(term)) {
+        if (entry.heading.toLowerCase().includes(term)) score += 10;
+        else score += 1;
+      } else {
+        allMatch = false;
+        break;
+      }
+    }
+    if (allMatch && score > 0) results.push({ ...entry, score });
+  }
+
+  results.sort((a, b) => b.score - a.score);
+  return results.slice(0, 15);
+}
+
+function highlightMatch(text, query) {
+  if (!query) return text;
+  const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+  let result = text;
+  for (const term of terms) {
+    const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    result = result.replace(regex, '<mark>$1</mark>');
+  }
+  return result;
+}
+
+function renderSearchResults(query) {
+  const container = document.getElementById('searchResults');
+  if (!container) return;
+
+  if (!query || query.length < 2) {
+    renderRecentSearches();
+    return;
+  }
+
+  const results = searchDocs(query);
+  if (results.length === 0) {
+    container.innerHTML = `<div class="docs-search-empty">No results for "${escapeHtml(query)}"</div>`;
+    searchSelectedIdx = -1;
+    return;
+  }
+
+  searchSelectedIdx = -1;
+  container.innerHTML = results
+    .map((r, i) => {
+      const snippet = r.text ? highlightMatch(r.text.slice(0, 120), query) : '';
+      return `<div class="docs-search-item" data-slug="${r.slug}" data-heading-id="${r.headingId || ''}">
+        <div class="docs-search-item-breadcrumb">${escapeHtml(r.pageTitle)}${r.headingId ? ' › ' + escapeHtml(r.heading) : ''}</div>
+        <div class="docs-search-item-title">${highlightMatch(r.heading, query)}</div>
+        ${snippet ? `<div class="docs-search-item-snippet">${snippet}</div>` : ''}
+      </div>`;
+    })
+    .join('');
+}
+
+function openSearch() {
+  const overlay = document.getElementById('searchOverlay');
+  const input = document.getElementById('searchInput');
+  if (!overlay) return;
+
+  if (!searchIndex) buildSearchIndex();
+
+  overlay.classList.add('is-open');
+  setTimeout(() => input && input.focus(), 50);
+  renderRecentSearches();
+}
+
+function closeSearch() {
+  const overlay = document.getElementById('searchOverlay');
+  const input = document.getElementById('searchInput');
+  if (overlay) overlay.classList.remove('is-open');
+  if (input) input.value = '';
+  searchSelectedIdx = -1;
+}
+
+function initSearch() {
+  const trigger = document.getElementById('searchTrigger');
+  const overlay = document.getElementById('searchOverlay');
+  const modal = document.getElementById('searchModal');
+  const input = document.getElementById('searchInput');
+
+  if (trigger) trigger.addEventListener('click', openSearch);
+
+  if (overlay) {
+    overlay.addEventListener('click', (e) => {
+      if (!modal.contains(e.target)) closeSearch();
+    });
+  }
+
+  if (input) {
+    let debounce = null;
+    input.addEventListener('input', () => {
+      clearTimeout(debounce);
+      debounce = setTimeout(() => renderSearchResults(input.value.trim()), 80);
+    });
+
+    input.addEventListener('keydown', (e) => {
+      const items = document.querySelectorAll('.docs-search-item');
+      if (!items.length) return;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        searchSelectedIdx = Math.min(searchSelectedIdx + 1, items.length - 1);
+        items.forEach((el, i) => el.classList.toggle('is-selected', i === searchSelectedIdx));
+        items[searchSelectedIdx]?.scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        searchSelectedIdx = Math.max(searchSelectedIdx - 1, 0);
+        items.forEach((el, i) => el.classList.toggle('is-selected', i === searchSelectedIdx));
+        items[searchSelectedIdx]?.scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'Enter' && searchSelectedIdx >= 0) {
+        e.preventDefault();
+        items[searchSelectedIdx]?.click();
+      }
+    });
+  }
+
+  document.addEventListener('click', (e) => {
+    const removeBtn = e.target.closest('.docs-search-item-remove');
+    if (removeBtn) {
+      e.stopPropagation();
+      const idx = parseInt(removeBtn.dataset.recentIdx, 10);
+      removeRecentSearch(idx);
+      renderRecentSearches();
+      return;
+    }
+
+    const item = e.target.closest('.docs-search-item');
+    if (!item) return;
+    const slug = item.dataset.slug;
+    const headingId = item.dataset.headingId;
+
+    const sectionObj = sections.find((s) => s.slug === slug);
+    if (sectionObj) {
+      saveRecentSearch({ slug, pageTitle: sectionObj.title, headingId, heading: item.querySelector('.docs-search-item-title')?.textContent?.trim() || sectionObj.title });
+    }
+
+    closeSearch();
+    navigateTo(slug);
+    if (headingId) {
+      setTimeout(() => {
+        const target = document.getElementById(headingId);
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault();
+      const isOpen = document.getElementById('searchOverlay')?.classList.contains('is-open');
+      if (isOpen) closeSearch();
+      else openSearch();
+    }
+    if (e.key === 'Escape') closeSearch();
+  });
+}
+
+let tocScrollHandler = null;
+
+function buildToc(slug) {
+  const tocPanel = document.getElementById('tocPanel');
+  if (!tocPanel) return;
+
+  const scrollContainer = document.querySelector('.docs-center') || window;
+  if (tocScrollHandler && tocScrollHandler._el) {
+    tocScrollHandler._el.removeEventListener('scroll', tocScrollHandler);
+    tocScrollHandler = null;
+  }
+
+  const activeEl = document.querySelector(`.docs-page-section[data-page="${slug}"]`);
+  if (!activeEl) {
+    tocPanel.innerHTML = '';
+    tocPanel.classList.remove('has-items');
+    return;
+  }
+
+  const headings = activeEl.querySelectorAll('h2[id], section[id] > h2');
+  if (headings.length < 2) {
+    tocPanel.innerHTML = '';
+    tocPanel.classList.remove('has-items');
+    return;
+  }
+
+  const items = [];
+  headings.forEach((h) => {
+    const id = h.id || (h.parentElement && h.parentElement.id);
+    if (!id) return;
+    items.push({ id, text: h.textContent.trim() });
+  });
+
+  if (items.length < 2) {
+    tocPanel.innerHTML = '';
+    tocPanel.classList.remove('has-items');
+    return;
+  }
+
+  let html = '<div class="docs-toc-title"><i class="lni lni-list"></i> On this page</div>';
+  html += '<ul class="docs-toc-list">';
+  items.forEach((item) => {
+    html += `<li class="docs-toc-item"><a href="#${item.id}" class="docs-toc-link" data-toc-id="${item.id}">${item.text}</a></li>`;
+  });
+  html += '</ul>';
+
+  tocPanel.innerHTML = html;
+  tocPanel.classList.add('has-items');
+
+  tocPanel.querySelectorAll('.docs-toc-link').forEach((link) => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      const target = document.getElementById(link.dataset.tocId);
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+
+  tocScrollHandler = () => updateTocActive(items, scrollContainer);
+  tocScrollHandler._el = scrollContainer;
+  scrollContainer.addEventListener('scroll', tocScrollHandler, { passive: true });
+  updateTocActive(items, scrollContainer);
+}
+
+function updateTocActive(items, container) {
+  const el = container === window ? document.documentElement : container;
+  const atBottom = Math.abs(el.scrollHeight - el.scrollTop - el.clientHeight) < 2;
+
+  let activeId = items[0]?.id;
+
+  if (atBottom) {
+    activeId = items[items.length - 1]?.id;
+  } else {
+    for (let i = items.length - 1; i >= 0; i--) {
+      const target = document.getElementById(items[i].id);
+      if (target && target.getBoundingClientRect().top <= 80) {
+        activeId = items[i].id;
+        break;
+      }
+    }
+  }
+
+  document.querySelectorAll('.docs-toc-link').forEach((link) => {
+    link.classList.toggle('is-active', link.dataset.tocId === activeId);
+  });
+}
 
 function initDarkMode() {
   const toggle = document.getElementById('themeToggle');
@@ -467,6 +807,7 @@ function init() {
   initDarkMode();
   initMobileNav();
   initCodeDrawer();
+  initSearch();
   initMarkdownSectionLinks();
   initLinkInterception();
 
