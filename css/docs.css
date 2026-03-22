@@ -11,17 +11,17 @@
   --primary-8: rgba(0, 195, 140, 0.08);
   --primary-6: rgba(0, 195, 140, 0.06);
   --primary-4: rgba(0, 195, 140, 0.04);
-  --primary-10: rgba(0, 195, 140, 0.10);
-  --primary-40: rgba(0, 195, 140, 0.40);
+  --primary-10: rgba(0, 195, 140, 0.1);
+  --primary-40: rgba(0, 195, 140, 0.4);
   --white: #fff;
   --dark-text: #283252;
   --light-text: #a2a5b9;
   --fade-grey: #ededed;
   --fade-grey-dark-3: #e6e6e6;
   --fade-grey-dark-4: #e3e3e3;
-  --font: 'Roboto', sans-serif;
-  --font-alt: 'Montserrat', sans-serif;
-  --mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+  --font: "Roboto", sans-serif;
+  --font-alt: "Montserrat", sans-serif;
+  --mono: "JetBrains Mono", "Fira Code", "Cascadia Code", Consolas, monospace;
   --code-bg: #0d1117;
   --code-text: #c9d1d9;
   --code-border: #21262d;
@@ -73,7 +73,12 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   margin: 0;
   font-size: inherit;
   font-weight: inherit;
@@ -83,7 +88,8 @@ p {
   margin: 0;
 }
 
-ul, ol {
+ul,
+ol {
   margin: 0;
   padding: 0;
   list-style: none;
@@ -241,6 +247,21 @@ button {
   transition: color 0.2s;
 }
 
+.nav-emoji-icon {
+  font-size: 1.1rem;
+  filter: grayscale(1);
+  opacity: 0.55;
+  transition:
+    filter 0.2s,
+    opacity 0.2s;
+}
+
+.docs-nav-link:hover .nav-emoji-icon,
+.docs-nav-link.active .nav-emoji-icon {
+  filter: grayscale(0);
+  opacity: 1;
+}
+
 .docs-nav-link:hover {
   color: var(--primary);
   background: var(--primary-4);
@@ -270,7 +291,9 @@ button {
   top: 12px;
   left: 12px;
   z-index: 100;
-  transition: opacity 0.2s, visibility 0.2s;
+  transition:
+    opacity 0.2s,
+    visibility 0.2s;
   background: var(--white);
   border: 1px solid var(--fade-grey-dark-3);
   border-radius: 8px;
@@ -319,6 +342,20 @@ button {
   max-width: 640px;
   border-left: 1px solid var(--fade-grey-dark-3);
   background: var(--fade-grey);
+  transition: width 0.2s, min-width 0.2s, opacity 0.2s;
+}
+
+.docs-right-panel.is-empty {
+  width: 0;
+  min-width: 0;
+  border-left: none;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.docs-center.no-code-panel {
+  max-width: 900px;
   flex-shrink: 0;
 }
 
@@ -592,6 +629,41 @@ button {
   color: inherit;
 }
 
+.docs-section table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  margin: 12px 0;
+}
+
+.docs-section table thead {
+  background: var(--fade-grey);
+}
+
+.docs-section table thead th {
+  text-align: left;
+  padding: 10px 14px;
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: var(--dark-text);
+  border-bottom: 1px solid var(--fade-grey-dark-3);
+}
+
+.docs-section table tbody tr {
+  border-bottom: 1px solid var(--fade-grey-dark-3);
+}
+
+.docs-section table tbody td {
+  padding: 10px 14px;
+  vertical-align: top;
+  color: var(--dark-text);
+  line-height: 1.5;
+}
+
+.docs-section table tbody td:first-child {
+  white-space: nowrap;
+}
+
 .endpoint-badge {
   display: inline-block;
   font-size: 0.75rem;
@@ -758,6 +830,10 @@ button {
   color: var(--dark-text);
 }
 
+.docs-comparison-table td:first-child {
+  white-space: nowrap;
+}
+
 /* ------------------------------------------------------------------
    12. Status table
    ------------------------------------------------------------------ */
@@ -809,6 +885,11 @@ button {
   vertical-align: top;
   color: var(--dark-text);
   line-height: 1.5;
+}
+
+.status-table td:first-child,
+.message-table td:first-child {
+  white-space: nowrap;
 }
 
 /* ------------------------------------------------------------------
@@ -942,6 +1023,195 @@ button {
 /* ------------------------------------------------------------------
    15. Docs link
    ------------------------------------------------------------------ */
+/* ------------------------------------------------------------------
+   15c. FAQ Accordion
+   ------------------------------------------------------------------ */
+.faq-accordion {
+  border: 1px solid var(--fade-grey-dark-3);
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 16px 0;
+}
+
+.faq-item {
+  border-bottom: 1px solid var(--fade-grey-dark-3);
+}
+
+.faq-item:last-child {
+  border-bottom: none;
+}
+
+.faq-question {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 16px 20px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--dark-text);
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.faq-question:hover {
+  background: var(--fade-grey);
+}
+
+.faq-question::after {
+  content: '\ea5f';
+  font-family: 'lineicons';
+  font-size: 0.7rem;
+  color: var(--light-text);
+  transition: transform 0.25s;
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+
+.faq-item.is-open .faq-question::after {
+  transform: rotate(180deg);
+}
+
+.faq-answer {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease, padding 0.3s ease;
+}
+
+.faq-item.is-open .faq-answer {
+  max-height: 600px;
+}
+
+.faq-answer-inner {
+  padding: 0 20px 16px;
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: var(--body-color);
+}
+
+.faq-answer-inner p {
+  margin-bottom: 8px;
+}
+
+.faq-answer-inner p:last-child {
+  margin-bottom: 0;
+}
+
+/* ------------------------------------------------------------------
+   15d. Links
+   ------------------------------------------------------------------ */
+.docs-section a {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 500;
+  transition: opacity 0.2s;
+}
+
+.docs-section a:hover {
+  opacity: 0.75;
+}
+
+.docs-section .docs-section-md-btn,
+.docs-section .docs-section-md-btn:hover {
+  opacity: 1;
+}
+
+/* ------------------------------------------------------------------
+   15b. Client setup cards
+   ------------------------------------------------------------------ */
+.mcp-client-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin: 16px 0 24px;
+}
+
+.mcp-client-card {
+  border: 1px solid var(--fade-grey-dark-3);
+  border-radius: 10px;
+  padding: 20px;
+  cursor: pointer;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.mcp-client-card:hover {
+  border-color: var(--primary);
+  box-shadow: 0 2px 12px rgba(0, 195, 140, 0.1);
+  opacity: 1;
+}
+
+.mcp-client-card,
+.mcp-client-card:hover {
+  font-weight: normal;
+}
+
+.mcp-client-card i {
+  font-size: 1.5rem;
+  color: var(--light-text);
+  display: block;
+  margin-bottom: 12px;
+  transition: color 0.2s;
+}
+
+.mcp-client-card:hover i {
+  color: var(--primary);
+}
+
+.mcp-client-card .mcp-client-logo {
+  height: 24px;
+  width: auto;
+  display: block;
+  margin-bottom: 12px;
+  filter: grayscale(1);
+  opacity: 0.5;
+  transition:
+    filter 0.2s,
+    opacity 0.2s;
+}
+
+.mcp-client-card:hover .mcp-client-logo {
+  filter: grayscale(0);
+  opacity: 1;
+}
+
+.is-dark .mcp-client-card .mcp-client-logo {
+  filter: grayscale(1) brightness(0) invert(1);
+  opacity: 0.45;
+}
+
+.is-dark .mcp-client-card:hover .mcp-client-logo {
+  filter: brightness(0) invert(1);
+  opacity: 1;
+}
+
+.is-dark .dark-invert-icon {
+  filter: brightness(0) invert(1);
+}
+
+.mcp-client-card strong {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--dark-text);
+  margin-bottom: 2px;
+}
+
+.mcp-client-card span {
+  font-size: 1rem;
+  color: var(--light-text);
+}
+
+@media (max-width: 560px) {
+  .mcp-client-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .docs-link {
   color: var(--primary);
   text-decoration: none;
@@ -953,6 +1223,7 @@ button {
 .docs-link:hover {
   border-bottom-style: solid;
   border-bottom-color: var(--primary);
+  opacity: 1;
 }
 
 /* ------------------------------------------------------------------
@@ -1105,7 +1376,9 @@ button {
   font-size: 0.85rem;
   cursor: pointer;
   color: var(--dark-text);
-  transition: background 0.2s, color 0.2s;
+  transition:
+    background 0.2s,
+    color 0.2s;
 }
 
 .playground-auth-toggle button.active {
@@ -1211,7 +1484,7 @@ button {
   padding: 16px;
   border-radius: 8px;
   overflow-x: auto;
-  font-family: 'Courier New', Courier, monospace;
+  font-family: "Courier New", Courier, monospace;
   font-size: 0.82rem;
   max-height: 400px;
   overflow-y: auto;
@@ -1337,7 +1610,9 @@ button {
   z-index: 1000;
   opacity: 0;
   transform: translateY(12px);
-  transition: opacity 0.3s, transform 0.3s;
+  transition:
+    opacity 0.3s,
+    transform 0.3s;
   pointer-events: none;
 }
 
@@ -1520,6 +1795,73 @@ button {
 
 .is-dark .status-table td,
 .is-dark .message-table td {
+  color: var(--dark-dark-text);
+}
+
+/* Generic section tables */
+.is-dark .docs-section table thead {
+  background: var(--dark-sidebar-light-4);
+}
+
+.is-dark .docs-section table thead th {
+  color: var(--dark-dark-text);
+  border-bottom-color: var(--dark-sidebar-light-8);
+}
+
+.is-dark .docs-section table tbody tr {
+  border-bottom-color: var(--dark-sidebar-light-8);
+}
+
+.is-dark .docs-section table tbody td {
+  color: var(--dark-dark-text);
+}
+
+/* Client setup cards */
+.is-dark .mcp-client-card {
+  border-color: var(--dark-sidebar-light-8);
+  background: var(--dark-sidebar-light-2);
+}
+
+.is-dark .mcp-client-card:hover {
+  border-color: var(--primary);
+}
+
+.is-dark .mcp-client-card strong {
+  color: var(--dark-dark-text);
+}
+
+.is-dark .mcp-client-card span {
+  color: var(--light-text);
+}
+
+/* FAQ Accordion */
+.is-dark .faq-accordion {
+  border-color: var(--dark-sidebar-light-8);
+}
+
+.is-dark .faq-item {
+  border-bottom-color: var(--dark-sidebar-light-8);
+}
+
+.is-dark .faq-question {
+  color: var(--dark-dark-text);
+}
+
+.is-dark .faq-question:hover {
+  background: var(--dark-sidebar-light-4);
+}
+
+.is-dark .faq-answer-inner {
+  color: var(--dark-dark-text);
+}
+
+/* Info callout */
+.is-dark .info-callout {
+  background: var(--dark-sidebar-light-4);
+  border-left-color: var(--primary);
+}
+
+.is-dark .info-callout p {
   color: var(--dark-dark-text);
 }
 
