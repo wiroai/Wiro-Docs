@@ -144,15 +144,7 @@ button {
   background: var(--white);
   z-index: 10;
   scrollbar-width: thin;
-}
-
-.docs-nav::-webkit-scrollbar {
-  width: 4px;
-}
-
-.docs-nav::-webkit-scrollbar-thumb {
-  background: var(--fade-grey-dark-4);
-  border-radius: 4px;
+  scrollbar-color: var(--fade-grey-dark-4) transparent;
 }
 
 .docs-nav-inner {
@@ -342,6 +334,8 @@ button {
   max-width: 620px;
   overflow-y: auto;
   height: 100%;
+  scrollbar-width: thin;
+  scrollbar-color: var(--fade-grey-dark-4) transparent;
 }
 
 .docs-right-panel {
@@ -353,6 +347,8 @@ button {
   transition: width 0.2s, min-width 0.2s, opacity 0.2s;
   overflow-y: auto;
   height: 100%;
+  scrollbar-width: thin;
+  scrollbar-color: var(--fade-grey-dark-4) transparent;
 }
 
 .docs-right-panel.is-empty {
@@ -2162,8 +2158,10 @@ button {
   border-right-color: var(--dark-sidebar-light-8);
 }
 
-.is-dark .docs-nav::-webkit-scrollbar-thumb {
-  background: var(--dark-sidebar-light-10);
+.is-dark .docs-nav,
+.is-dark .docs-center,
+.is-dark .docs-right-panel {
+  scrollbar-color: var(--dark-sidebar-light-10) transparent;
 }
 
 .is-dark .docs-nav-brand {
