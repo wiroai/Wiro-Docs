@@ -1,13 +1,23 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-base-path="/docs">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>var bp=document.documentElement.dataset.basePath;document.write('<base href="'+(bp!==undefined?bp:'/docs')+'/">')</script>
   <title>API Documentation - Wiro</title>
-  <meta name="description" content="Wiro API Documentation - Run 1000+ AI models through a unified API">
+  <meta name="description" content="Wiro API Documentation - Run AI models through a unified API. Video, image, audio, LLM, 3D and more with a single API key.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Wiro">
   <meta property="og:title" content="Wiro API Documentation">
-  <meta property="og:description" content="Run 1000+ AI models through a unified API">
+  <meta property="og:description" content="Run AI models through a unified API. Video, image, audio, LLM, 3D and more with a single API key.">
   <meta property="og:url" content="https://wiro.ai/docs">
+  <meta property="og:image" content="https://wiro.ai/images/illustrations/no-cover.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Wiro API Documentation">
+  <meta name="twitter:description" content="Run AI models through a unified API. Video, image, audio, LLM, 3D and more with a single API key.">
+  <meta name="twitter:image" content="https://wiro.ai/images/illustrations/no-cover.jpg">
+  <link rel="canonical" href="https://wiro.ai/docs/introduction">
+  <link rel="sitemap" type="application/xml" href="sitemap.xml">
   <link rel="apple-touch-icon" sizes="57x57" href="https://wiro.ai/images/favicon/apple-icon-57x57.png">
   <link rel="apple-touch-icon" sizes="60x60" href="https://wiro.ai/images/favicon/apple-icon-60x60.png">
   <link rel="apple-touch-icon" sizes="72x72" href="https://wiro.ai/images/favicon/apple-icon-72x72.png">
@@ -27,6 +37,42 @@
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700&family=Montserrat:wght@500;600;700;800;900&family=Fira+Code:wght@400;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link href="https://cdn.lineicons.com/4.0/lineicons.css" rel="stylesheet">
   <link rel="stylesheet" href="css/docs.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "name": "Wiro API Documentation",
+    "headline": "Wiro API Documentation — Run AI Models via a Unified API",
+    "description": "Complete API reference for Wiro. Run AI models — video, image, audio, LLM, 3D — through a single unified API with pay-per-use pricing.",
+    "url": "https://wiro.ai/docs",
+    "image": "https://wiro.ai/images/illustrations/no-cover.jpg",
+    "author": {
+      "@type": "Organization",
+      "name": "Wiro",
+      "url": "https://wiro.ai"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "Wiro",
+      "url": "https://wiro.ai",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://wiro.ai/images/logos/logo/logo.png"
+      }
+    },
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id": "https://wiro.ai/docs"
+    },
+    "about": {
+      "@type": "SoftwareApplication",
+      "name": "Wiro API",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "Any"
+    },
+    "inLanguage": "en"
+  }
+  </script>
 </head>
 <body>
   <div class="docs-layout" id="app">
@@ -61,30 +107,43 @@
           <div class="docs-nav-group">
             <h4 class="docs-nav-group-title">Getting Started</h4>
             <ul class="docs-nav-links">
-              <li><a href="#/introduction" class="docs-nav-link" data-section="introduction"><i class="lni lni-home"></i><span>Introduction</span></a></li>
-              <li><a href="#/authentication" class="docs-nav-link" data-section="authentication"><i class="lni lni-lock-alt"></i><span>Authentication</span></a></li>
-              <li><a href="#/projects" class="docs-nav-link" data-section="projects"><i class="lni lni-folder"></i><span>Projects</span></a></li>
+              <li><a href="/docs/introduction" class="docs-nav-link" data-section="introduction"><span class="nav-emoji-icon">🐨</span><span>Introduction</span></a></li>
+              <li><a href="/docs/authentication" class="docs-nav-link" data-section="authentication"><i class="lni lni-lock-alt"></i><span>Authentication</span></a></li>
+              <li><a href="/docs/projects" class="docs-nav-link" data-section="projects"><i class="lni lni-folder"></i><span>Projects</span></a></li>
             </ul>
           </div>
 
           <div class="docs-nav-group">
             <h4 class="docs-nav-group-title">API Reference</h4>
             <ul class="docs-nav-links">
-              <li><a href="#/models" class="docs-nav-link" data-section="models"><i class="lni lni-grid-alt"></i><span>Models</span></a></li>
-              <li><a href="#/run-a-model" class="docs-nav-link" data-section="run-a-model"><i class="lni lni-play"></i><span>Run a Model</span></a></li>
-              <li><a href="#/model-parameters" class="docs-nav-link" data-section="model-parameters"><i class="lni lni-cog"></i><span>Model Parameters</span></a></li>
-              <li><a href="#/tasks" class="docs-nav-link" data-section="tasks"><i class="lni lni-list"></i><span>Tasks</span></a></li>
-              <li><a href="#/llm-chat-streaming" class="docs-nav-link" data-section="llm-chat-streaming"><i class="lni lni-comments"></i><span>LLM & Chat Streaming</span></a></li>
-              <li><a href="#/websocket" class="docs-nav-link" data-section="websocket"><i class="lni lni-bolt"></i><span>WebSocket</span></a></li>
-              <li><a href="#/realtime-voice-conversation" class="docs-nav-link" data-section="realtime-voice-conversation"><i class="lni lni-mic"></i><span>Realtime Voice Conversation</span></a></li>
-              <li><a href="#/files" class="docs-nav-link" data-section="files"><i class="lni lni-upload"></i><span>Files</span></a></li>
+              <li><a href="/docs/models" class="docs-nav-link" data-section="models"><i class="lni lni-grid-alt"></i><span>Models</span></a></li>
+              <li><a href="/docs/run-a-model" class="docs-nav-link" data-section="run-a-model"><i class="lni lni-play"></i><span>Run a Model</span></a></li>
+              <li><a href="/docs/model-parameters" class="docs-nav-link" data-section="model-parameters"><i class="lni lni-cog"></i><span>Model Parameters</span></a></li>
+              <li><a href="/docs/tasks" class="docs-nav-link" data-section="tasks"><i class="lni lni-list"></i><span>Tasks</span></a></li>
+              <li><a href="/docs/llm-chat-streaming" class="docs-nav-link" data-section="llm-chat-streaming"><i class="lni lni-comments"></i><span>LLM & Chat Streaming</span></a></li>
+              <li><a href="/docs/websocket" class="docs-nav-link" data-section="websocket"><i class="lni lni-bolt"></i><span>WebSocket</span></a></li>
+              <li><a href="/docs/realtime-voice-conversation" class="docs-nav-link" data-section="realtime-voice-conversation"><i class="lni lni-mic"></i><span>Realtime Voice Conversation</span></a></li>
+              <li><a href="/docs/files" class="docs-nav-link" data-section="files"><i class="lni lni-upload"></i><span>Files</span></a></li>
+              <li><a href="/docs/pricing" class="docs-nav-link" data-section="pricing"><i class="lni lni-coin"></i><span>Pricing</span></a></li>
+              <li><a href="/docs/concurrency-limits" class="docs-nav-link" data-section="concurrency-limits"><i class="lni lni-timer"></i><span>Concurrency Limits</span></a></li>
+              <li><a href="/docs/error-reference" class="docs-nav-link" data-section="error-reference"><i class="lni lni-warning"></i><span>Error Reference</span></a></li>
+              <li><a href="/docs/faq" class="docs-nav-link" data-section="faq"><i class="lni lni-question-circle"></i><span>FAQ</span></a></li>
+            </ul>
+          </div>
+
+          <div class="docs-nav-group">
+            <h4 class="docs-nav-group-title">Integrations</h4>
+            <ul class="docs-nav-links">
+              <li><a href="/docs/wiro-mcp-server" class="docs-nav-link" data-section="wiro-mcp-server"><i class="lni lni-code-alt"></i><span>Wiro MCP Server</span></a></li>
+              <li><a href="/docs/mcp-self-hosted" class="docs-nav-link" data-section="mcp-self-hosted"><i class="lni lni-laptop"></i><span>Self-Hosted MCP</span></a></li>
+              <li><a href="/docs/n8n-wiro-integration" class="docs-nav-link" data-section="n8n-wiro-integration"><i class="lni lni-cog"></i><span>n8n Wiro Integration</span></a></li>
             </ul>
           </div>
 
           <div class="docs-nav-group">
             <h4 class="docs-nav-group-title">Code Examples</h4>
             <ul class="docs-nav-links">
-              <li><a href="#/code-examples" class="docs-nav-link" data-section="code-examples"><i class="lni lni-code"></i><span>Code Examples</span></a></li>
+              <li><a href="/docs/code-examples" class="docs-nav-link" data-section="code-examples"><i class="lni lni-code"></i><span>Code Examples</span></a></li>
               <li><a href="llms.txt" class="docs-nav-link" target="_blank" rel="noopener" title="LLMs.txt"><i class="lni lni-bulb"></i><span>LLMs.txt</span></a></li>
             </ul>
           </div>
@@ -109,7 +168,7 @@
     <h2>What is <img src="https://wiro.ai/images/logos/logo/logo.png" alt="Wiro" style="height:20px;vertical-align:-2px;display:inline;margin-right:2px">?</h2>
     <p>
       Wiro is an AI model marketplace and API platform that lets you run
-      <strong>1,000+ AI models</strong> through a single, unified API. Instead of managing infrastructure for each model provider, you make one API call to Wiro and we handle the rest.
+      <strong>AI models</strong> through a single, unified API. Instead of managing infrastructure for each model provider, you make one API call to Wiro and we handle the rest.
     </p>
     <ul>
       <li><strong>Unified API</strong> — one interface for all models (image generation, LLMs, audio, video, and more)</li>
@@ -133,7 +192,7 @@
       <li><strong>Sign up</strong> at <a href="https://wiro.ai/auth/signup" class="docs-link">wiro.ai</a></li>
       <li><strong>Create a project</strong> in the <a href="https://wiro.ai/panel/project/new" class="docs-link">Dashboard</a> to get your API key</li>
       <li><strong>Pick a model</strong> from the <a href="https://wiro.ai/models" class="docs-link">marketplace</a></li>
-      <li><strong>Make your first API call</strong> — see <a href="#/code-examples" class="docs-link">Code Examples</a> for full end-to-end samples (or use the panel on the right)</li>
+      <li><strong>Make your first API call</strong> — see <a href="/docs/code-examples" class="docs-link">Code Examples</a> for full end-to-end samples (or use the panel on the right)</li>
     </ol>
   </section>
 
@@ -470,7 +529,7 @@
       <li>Click <a href="https://wiro.ai/panel/project/new" class="docs-link">New Project</a></li>
       <li>Enter a project name</li>
       <li>
-        Select your <a href="#/authentication" class="docs-link">authentication method</a>:
+        Select your <a href="/docs/authentication" class="docs-link">authentication method</a>:
         <ul>
           <li><strong>Signature-Based</strong> — generates both an API key and API secret</li>
           <li><strong>API Key Only</strong> — generates only an API key</li>
@@ -777,7 +836,7 @@
       <span class="endpoint-badge post">POST</span>
       /Run/{owner-slug}/{model-slug}
     </h2>
-    <p>Starts an AI model run. The endpoint accepts model-specific parameters and returns a <strong>task ID</strong> you can use to track progress via <a href="#/tasks" class="docs-link">polling</a>, <a href="#/websocket" class="docs-link">WebSocket</a>, or <strong>webhook</strong> by providing a <code>callbackUrl</code> parameter — Wiro will POST the result to your URL when the task completes.</p>
+    <p>Starts an AI model run. The endpoint accepts model-specific parameters and returns a <strong>task ID</strong> you can use to track progress via <a href="/docs/tasks" class="docs-link">polling</a>, <a href="/docs/websocket" class="docs-link">WebSocket</a>, or <strong>webhook</strong> by providing a <code>callbackUrl</code> parameter — Wiro will POST the result to your URL when the task completes.</p>
   </section>
 
   <section id="content-types">
@@ -796,7 +855,7 @@
     <h2>Request Parameters</h2>
     <p>
       Parameters vary by model. Use the
-      <a href="#/models" class="docs-link">/Tool/Detail</a> endpoint to discover which parameters a model accepts. The following optional parameters apply to all runs:
+      <a href="/docs/models" class="docs-link">/Tool/Detail</a> endpoint to discover which parameters a model accepts. The following optional parameters apply to all runs:
     </p>
 
     <div class="docs-param-table">
@@ -910,7 +969,7 @@
 
   <section id="discovering-parameters">
     <h2>Discovering Parameters</h2>
-    <p>Every model has its own set of input parameters. Use the <a href="#/models" class="docs-link">/Tool/Detail</a> endpoint to retrieve a model's parameter definitions. The response includes a <code>parameters</code> array where each item describes a parameter group with its items:</p>
+    <p>Every model has its own set of input parameters. Use the <a href="/docs/models" class="docs-link">/Tool/Detail</a> endpoint to retrieve a model's parameter definitions. The response includes a <code>parameters</code> array where each item describes a parameter group with its items:</p>
     <pre><code>{
   "parameters": [
     {
@@ -1074,11 +1133,11 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
   -F "outputType=json" \
   -F "language=en"</code></pre>
     <div class="info-callout">
-      <p><strong>Note:</strong> LLM responses are delivered via <code>debugoutput</code> in the task result, not in the <code>outputs</code> file array. See <a href="#/tasks" class="docs-link">Tasks</a> for details.</p>
+      <p><strong>Note:</strong> LLM responses are delivered via <code>debugoutput</code> in the task result, not in the <code>outputs</code> file array. See <a href="/docs/tasks" class="docs-link">Tasks</a> for details.</p>
     </div>
 
     <h3>Realtime Voice Conversation</h3>
-    <p>Realtime voice models accept configuration parameters (voice, system instructions, audio format, etc.) as JSON. Parameters vary per model — use <code>/Tool/Detail</code> to discover them. The actual audio interaction happens over <a href="#/realtime-voice-conversation" class="docs-link">Realtime Voice WebSocket</a> after the task starts:</p>
+    <p>Realtime voice models accept configuration parameters (voice, system instructions, audio format, etc.) as JSON. Parameters vary per model — use <code>/Tool/Detail</code> to discover them. The actual audio interaction happens over <a href="/docs/realtime-voice-conversation" class="docs-link">Realtime Voice WebSocket</a> after the task starts:</p>
     <pre><code>// Example: OpenAI GPT Realtime
 {
   "voice": "marin",
@@ -1156,15 +1215,17 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
         <span class="lifecycle-arrow">&rarr;</span>
         <span class="lifecycle-step">task_accept</span>
         <span class="lifecycle-arrow">&rarr;</span>
-        <span class="lifecycle-step">task_assign</span>
-        <span class="lifecycle-arrow">&rarr;</span>
         <span class="lifecycle-step">task_preprocess_start</span>
         <span class="lifecycle-arrow">&rarr;</span>
         <span class="lifecycle-step">task_preprocess_end</span>
         <span class="lifecycle-arrow">&rarr;</span>
+        <span class="lifecycle-step">task_assign</span>
+        <span class="lifecycle-arrow">&rarr;</span>
         <span class="lifecycle-step">task_start</span>
         <span class="lifecycle-arrow">&rarr;</span>
         <span class="lifecycle-step">task_output</span>
+        <span class="lifecycle-arrow">&rarr;</span>
+        <span class="lifecycle-step">task_output_full</span>
         <span class="lifecycle-arrow">&rarr;</span>
         <span class="lifecycle-step">task_end</span>
         <span class="lifecycle-arrow">&rarr;</span>
@@ -1194,16 +1255,16 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
               <td>A worker has accepted the task. The task is no longer in the general queue and is being prepared for execution.</td>
             </tr>
             <tr>
-              <td><code>task_assign</code></td>
-              <td>The task has been assigned to a specific GPU. The model is being loaded into memory. This may take a few seconds depending on the model size.</td>
-            </tr>
-            <tr>
               <td><code>task_preprocess_start</code></td>
               <td>Optional preprocessing has started. This includes operations like downloading input files from URLs, converting file types, and validating/formatting parameters before the model runs. Not all models require preprocessing.</td>
             </tr>
             <tr>
               <td><code>task_preprocess_end</code></td>
-              <td>Preprocessing completed. All inputs are ready and the model is about to start execution.</td>
+              <td>Preprocessing completed. All inputs are ready for GPU assignment.</td>
+            </tr>
+            <tr>
+              <td><code>task_assign</code></td>
+              <td>The task has been assigned to a specific GPU. The model is being loaded into memory. This may take a few seconds depending on the model size.</td>
             </tr>
             <tr>
               <td><code>task_start</code></td>
@@ -1310,10 +1371,31 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
       </div>
     </section>
 
+    <section id="task-billing">
+      <h2>Billing &amp; Cost</h2>
+      <p>The <code>totalcost</code> field in the Task Detail response shows the actual cost charged for the run. <strong>Only successful tasks are billed</strong> — if <code>pexit</code> is non-zero (failure), the task is not charged and <code>totalcost</code> will be <code>"0"</code>.</p>
+<pre><code class="language-json">// Successful run — billed
+{
+  "status": "task_postprocess_end",
+  "pexit": "0",
+  "totalcost": "0.003510000000",
+  "elapsedseconds": "6.0000"
+}
+
+// Failed run — not billed
+{
+  "status": "task_postprocess_end",
+  "pexit": "1",
+  "totalcost": "0",
+  "elapsedseconds": "4.0000"
+}</code></pre>
+      <p>Use the <code>totalcost</code> field to track spending per task. For more details on how costs are calculated, see <a href="/docs/pricing">Pricing</a>.</p>
+    </section>
+
     <section id="llm-models">
       <h2>LLM Models</h2>
       <p>For LLM (Large Language Model) requests, the model's response is written to <code>debugoutput</code> rather than the <code>outputs</code> file array. When polling with Task Detail, read the <code>debugoutput</code> field to get the LLM's text response.</p>
-      <p>For real-time streaming of LLM responses, use <a href="#/websocket" class="docs-link">WebSocket</a> instead of polling. Each <code>task_output</code> event delivers a chunk of the response as it's generated, giving your users an instant, token-by-token experience.</p>
+      <p>For real-time streaming of LLM responses, use <a href="/docs/websocket" class="docs-link">WebSocket</a> instead of polling. Each <code>task_output</code> event delivers a chunk of the response as it's generated, giving your users an instant, token-by-token experience.</p>
     </section>
 
     <section id="task-detail">
@@ -1599,7 +1681,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
 
   <section id="llm-polling">
     <h2>Polling Alternative</h2>
-    <p>If you don't need real-time streaming, you can poll <a href="#/tasks" class="docs-link">POST /Task/Detail</a> instead. The final response will be in the <code>debugoutput</code> field as a merged plain text string (thinking + answer combined):</p>
+    <p>If you don't need real-time streaming, you can poll <a href="/docs/tasks" class="docs-link">POST /Task/Detail</a> instead. The final response will be in the <code>debugoutput</code> field as a merged plain text string (thinking + answer combined):</p>
     <pre><code>{
   "result": true,
   "tasklist": [{
@@ -1668,7 +1750,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
         <li><strong>Connect</strong> — open a WebSocket connection to <code>wss://socket.wiro.ai/v1</code></li>
         <li><strong>Register</strong> — send a <code>task_info</code> message with your <code>tasktoken</code></li>
         <li><strong>Receive</strong> — listen for messages as the task progresses through its lifecycle</li>
-        <li><strong>Close</strong> — disconnect after the <code>task_end</code> event</li>
+        <li><strong>Close</strong> — disconnect after the <code>task_postprocess_end</code> event (this is the final event with results)</li>
       </ol>
       <p>Registration message format:</p>
       <pre><code>{
@@ -1694,11 +1776,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
             </tr>
             <tr>
               <td><code>task_accept</code></td>
-              <td>A worker has accepted the task. The task is no longer in the general queue and is being prepared for execution.</td>
-            </tr>
-            <tr>
-              <td><code>task_assign</code></td>
-              <td>The task has been assigned to a specific GPU. The model is being loaded into memory.</td>
+              <td>A worker has accepted the task and is preparing for execution.</td>
             </tr>
             <tr>
               <td><code>task_preprocess_start</code></td>
@@ -1706,7 +1784,11 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
             </tr>
             <tr>
               <td><code>task_preprocess_end</code></td>
-              <td>Preprocessing completed. All inputs are ready and the model is about to start execution.</td>
+              <td>Preprocessing completed. All inputs are ready for GPU assignment.</td>
+            </tr>
+            <tr>
+              <td><code>task_assign</code></td>
+              <td>The task has been assigned to a specific GPU. The model is being loaded into memory.</td>
             </tr>
             <tr>
               <td><code>task_start</code></td>
@@ -1770,22 +1852,22 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
   {
     "label": "JavaScript",
     "language": "javascript",
-    "code": "const taskToken = 'your-socket-access-token';\n\nconst ws = new WebSocket('wss://socket.wiro.ai/v1');\n\nws.onopen = () => {\n  console.log('Connected to Wiro WebSocket');\n  // Register with your task token\n  ws.send(JSON.stringify({\n    type: 'task_info',\n    tasktoken: taskToken\n  }));\n};\n\nws.onmessage = (event) => {\n  // Handle binary frames (realtime voice models)\n  if (event.data instanceof Blob) {\n    console.log('Received binary frame:', event.data.size, 'bytes');\n    return;\n  }\n\n  const msg = JSON.parse(event.data);\n  console.log('Event:', msg.type, msg);\n\n  switch (msg.type) {\n    case 'task_queue':\n      console.log('Task is queued...');\n      break;\n    case 'task_start':\n      console.log('Model inference started');\n      break;\n    case 'task_output':\n      console.log('Partial output:', msg.data);\n      break;\n    case 'task_output_full':\n      console.log('Full output:', msg.data);\n      break;\n    case 'task_error':\n      console.error('Error:', msg.data);\n      break;\n    case 'task_end':\n      console.log('Task completed!');\n      ws.close();\n      break;\n  }\n};\n\nws.onerror = (err) => {\n  console.error('WebSocket error:', err);\n};\n\nws.onclose = () => {\n  console.log('WebSocket disconnected');\n};"
+    "code": "const taskToken = 'your-socket-access-token';\n\nconst ws = new WebSocket('wss://socket.wiro.ai/v1');\n\nws.onopen = () => {\n  console.log('Connected to Wiro WebSocket');\n  // Register with your task token\n  ws.send(JSON.stringify({\n    type: 'task_info',\n    tasktoken: taskToken\n  }));\n};\n\nws.onmessage = (event) => {\n  // Handle binary frames (realtime voice models)\n  if (event.data instanceof Blob) {\n    console.log('Received binary frame:', event.data.size, 'bytes');\n    return;\n  }\n\n  const msg = JSON.parse(event.data);\n  console.log('Event:', msg.type, msg);\n\n  switch (msg.type) {\n    case 'task_queue':\n      console.log('Task is queued...');\n      break;\n    case 'task_start':\n      console.log('Model inference started');\n      break;\n    case 'task_output':\n      console.log('Partial output:', msg.message);\n      break;\n    case 'task_output_full':\n      console.log('Full output:', msg.message);\n      break;\n    case 'task_error':\n      console.error('Error:', msg.message);\n      break;\n    case 'task_end':\n      console.log('Task completed!');\n      ws.close();\n      break;\n  }\n};\n\nws.onerror = (err) => {\n  console.error('WebSocket error:', err);\n};\n\nws.onclose = () => {\n  console.log('WebSocket disconnected');\n};"
   },
   {
     "label": "Python",
     "language": "python",
-    "code": "import asyncio\nimport websockets\nimport json\n\nasync def listen_task(socket_token):\n    uri = \"wss://socket.wiro.ai/v1\"\n\n    async with websockets.connect(uri) as ws:\n        # Register with task token\n        await ws.send(json.dumps({\n            \"type\": \"task_info\",\n            \"tasktoken\": socket_token\n        }))\n        print(\"Registered with WebSocket\")\n\n        async for message in ws:\n            if isinstance(message, bytes):\n                print(f\"Binary frame: {len(message)} bytes\")\n                continue\n\n            msg = json.loads(message)\n            print(f\"Event: {msg['type']}\")\n\n            if msg[\"type\"] == \"task_output\":\n                print(\"Partial output:\", msg.get(\"data\"))\n            elif msg[\"type\"] == \"task_output_full\":\n                print(\"Full output:\", msg.get(\"data\"))\n            elif msg[\"type\"] == \"task_error\":\n                print(\"Error:\", msg.get(\"data\"))\n            elif msg[\"type\"] == \"task_end\":\n                print(\"Task completed!\")\n                break\n\nasyncio.run(listen_task(\"your-socket-access-token\"))"
+    "code": "import asyncio\nimport websockets\nimport json\n\nasync def listen_task(socket_token):\n    uri = \"wss://socket.wiro.ai/v1\"\n\n    async with websockets.connect(uri) as ws:\n        # Register with task token\n        await ws.send(json.dumps({\n            \"type\": \"task_info\",\n            \"tasktoken\": socket_token\n        }))\n        print(\"Registered with WebSocket\")\n\n        async for message in ws:\n            if isinstance(message, bytes):\n                print(f\"Binary frame: {len(message)} bytes\")\n                continue\n\n            msg = json.loads(message)\n            print(f\"Event: {msg['type']}\")\n\n            if msg[\"type\"] == \"task_output\":\n                print(\"Partial output:\", msg.get(\"message\"))\n            elif msg[\"type\"] == \"task_output_full\":\n                print(\"Full output:\", msg.get(\"message\"))\n            elif msg[\"type\"] == \"task_error\":\n                print(\"Error:\", msg.get(\"message\"))\n            elif msg[\"type\"] == \"task_end\":\n                print(\"Task completed!\")\n                break\n\nasyncio.run(listen_task(\"your-socket-access-token\"))"
   },
   {
     "label": "Node.js",
     "language": "javascript",
-    "code": "const WebSocket = require('ws');\n\nconst socketToken = 'your-socket-access-token';\nconst ws = new WebSocket('wss://socket.wiro.ai/v1');\n\nws.on('open', () => {\n  console.log('Connected');\n  ws.send(JSON.stringify({\n    type: 'task_info',\n    tasktoken: socketToken\n  }));\n});\n\nws.on('message', (data, isBinary) => {\n  if (isBinary) {\n    console.log('Binary frame:', data.length, 'bytes');\n    return;\n  }\n\n  const msg = JSON.parse(data.toString());\n  console.log('Event:', msg.type);\n\n  if (msg.type === 'task_output_full') {\n    console.log('Full output:', msg.data);\n  }\n  if (msg.type === 'task_end') {\n    console.log('Done!');\n    ws.close();\n  }\n});\n\nws.on('error', console.error);\nws.on('close', () => console.log('Disconnected'));"
+    "code": "const WebSocket = require('ws');\n\nconst socketToken = 'your-socket-access-token';\nconst ws = new WebSocket('wss://socket.wiro.ai/v1');\n\nws.on('open', () => {\n  console.log('Connected');\n  ws.send(JSON.stringify({\n    type: 'task_info',\n    tasktoken: socketToken\n  }));\n});\n\nws.on('message', (data, isBinary) => {\n  if (isBinary) {\n    console.log('Binary frame:', data.length, 'bytes');\n    return;\n  }\n\n  const msg = JSON.parse(data.toString());\n  console.log('Event:', msg.type);\n\n  if (msg.type === 'task_output_full') {\n    console.log('Full output:', msg.message);\n  }\n  if (msg.type === 'task_end') {\n    console.log('Done!');\n    ws.close();\n  }\n});\n\nws.on('error', console.error);\nws.on('close', () => console.log('Disconnected'));"
   },
   {
     "label": "PHP",
     "language": "php",
-    "code": "<?php\n// Requires: composer require textalk/websocket\nuse WebSocket\\Client;\n\n$client = new Client(\"wss://socket.wiro.ai/v1\");\n\n$client->send(json_encode([\n    \"type\" => \"task_info\",\n    \"tasktoken\" => \"your-socket-access-token\"\n]));\n\nwhile (true) {\n    $msg = json_decode($client->receive(), true);\n    echo \"Event: \" . $msg[\"type\"] . PHP_EOL;\n\n    if ($msg[\"type\"] === \"task_output_full\") {\n        echo \"Output: \" . json_encode($msg[\"data\"])\n            . PHP_EOL;\n    }\n    if ($msg[\"type\"] === \"task_end\") {\n        echo \"Done!\" . PHP_EOL;\n        break;\n    }\n}\n$client->close();"
+    "code": "<?php\n// Requires: composer require textalk/websocket\nuse WebSocket\\Client;\n\n$client = new Client(\"wss://socket.wiro.ai/v1\");\n\n$client->send(json_encode([\n    \"type\" => \"task_info\",\n    \"tasktoken\" => \"your-socket-access-token\"\n]));\n\nwhile (true) {\n    $msg = json_decode($client->receive(), true);\n    echo \"Event: \" . $msg[\"type\"] . PHP_EOL;\n\n    if ($msg[\"type\"] === \"task_output_full\") {\n        echo \"Output: \" . json_encode($msg[\"message\"])\n            . PHP_EOL;\n    }\n    if ($msg[\"type\"] === \"task_end\") {\n        echo \"Done!\" . PHP_EOL;\n        break;\n    }\n}\n$client->close();"
   },
   {
     "label": "C#",
@@ -1810,7 +1892,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
   {
     "label": "Dart",
     "language": "dart",
-    "code": "import 'dart:convert';\nimport 'package:web_socket_channel/web_socket_channel.dart';\n\nfinal channel = WebSocketChannel.connect(\n  Uri.parse('wss://socket.wiro.ai/v1'),\n);\n\nchannel.sink.add(jsonEncode({\n  'type': 'task_info',\n  'tasktoken': 'your-socket-access-token',\n}));\n\nchannel.stream.listen((message) {\n  final msg = jsonDecode(message);\n  print('Event: ' + msg['type'].toString());\n  if (msg['type'] == 'task_output_full') {\n    print('Output: ' + jsonEncode(msg['data']));\n  }\n  if (msg['type'] == 'task_end') {\n    print('Done!');\n    channel.sink.close();\n  }\n});"
+    "code": "import 'dart:convert';\nimport 'package:web_socket_channel/web_socket_channel.dart';\n\nfinal channel = WebSocketChannel.connect(\n  Uri.parse('wss://socket.wiro.ai/v1'),\n);\n\nchannel.sink.add(jsonEncode({\n  'type': 'task_info',\n  'tasktoken': 'your-socket-access-token',\n}));\n\nchannel.stream.listen((message) {\n  final msg = jsonDecode(message);\n  print('Event: ' + msg['type'].toString());\n  if (msg['type'] == 'task_output_full') {\n    print('Output: ' + jsonEncode(msg['message']));\n  }\n  if (msg['type'] == 'task_end') {\n    print('Done!');\n    channel.sink.close();\n  }\n});"
   },
   {
     "label": "Messages",
@@ -1833,7 +1915,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
     <p>Realtime voice models enable two-way audio conversations with AI. Unlike standard model runs that process a single input and return a result, realtime sessions maintain a persistent WebSocket connection where you stream microphone audio and receive AI speech in real time.</p>
     <p>The flow is:</p>
     <ol>
-      <li><strong>Run</strong> the realtime model via <a href="#/run-a-model" class="docs-link">POST /Run</a> to get a <code>socketaccesstoken</code></li>
+      <li><strong>Run</strong> the realtime model via <a href="/docs/run-a-model" class="docs-link">POST /Run</a> to get a <code>socketaccesstoken</code></li>
       <li><strong>Connect</strong> to the WebSocket and send <code>task_info</code> with your token</li>
       <li><strong>Wait</strong> for <code>task_stream_ready</code> — the model is ready to receive audio</li>
       <li><strong>Stream</strong> microphone audio as binary frames</li>
@@ -1844,7 +1926,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
 
   <section id="realtime-run-params">
     <h2>Run Parameters</h2>
-    <p>Each realtime model has its own set of parameters. Use <a href="#/models" class="docs-link">POST /Tool/Detail</a> to discover the exact parameters for a specific model. See <a href="#/model-parameters" class="docs-link">Model Parameters</a> for details on parameter types.</p>
+    <p>Each realtime model has its own set of parameters. Use <a href="/docs/models" class="docs-link">POST /Tool/Detail</a> to discover the exact parameters for a specific model. See <a href="/docs/model-parameters" class="docs-link">Model Parameters</a> for details on parameter types.</p>
 
     <p>Available realtime conversation models include:</p>
     <ul>
@@ -1897,7 +1979,7 @@ ws.onopen = function() {
         <tbody>
           <tr><td><code>task_stream_ready</code></td><td>Session is ready — start sending microphone audio</td></tr>
           <tr><td><code>task_stream_end</code></td><td>AI finished speaking for this turn — you can speak again</td></tr>
-          <tr><td><code>task_cost</code></td><td>Cost update with <code>turnCost</code> and <code>cumulativeCost</code> fields</td></tr>
+          <tr><td><code>task_cost</code></td><td>Cost update per turn — includes <code>turnCost</code>, <code>cumulativeCost</code>, and <code>usage</code> (raw cost breakdown from the model provider)</td></tr>
           <tr><td><code>task_output</code></td><td>Transcript messages prefixed with <code>TRANSCRIPT_USER:</code> or <code>TRANSCRIPT_AI:</code></td></tr>
           <tr><td><code>task_end</code></td><td>Session fully ended — close the connection</td></tr>
         </tbody>
@@ -1978,7 +2060,10 @@ ws.onopen = function() {
 }</code></pre>
     <p>After sending this, the server will process any remaining audio, send final cost/transcript events, and then emit <code>task_end</code>. Wait for <code>task_end</code> before closing the WebSocket.</p>
     <div class="info-callout">
-      <p><strong>Note:</strong> Use <code>task_session_end</code> to end the session. After sending this, wait for the <code>task_end</code> event before closing the WebSocket.</p>
+      <p><strong>Safety:</strong> If the client disconnects without sending <code>task_session_end</code>, the server automatically terminates the session to prevent the pipeline from running indefinitely (and the provider from continuing to charge). Always send <code>task_session_end</code> explicitly for a clean shutdown.</p>
+    </div>
+    <div class="info-callout">
+      <p><strong>Insufficient balance:</strong> If the wallet runs out of balance during a realtime session, the server automatically stops the session. You will still receive the final <code>task_cost</code> and <code>task_end</code> events.</p>
     </div>
   </section>
 </article>
@@ -2105,27 +2190,31 @@ ws.onopen = function() {
             <td>The file to upload (multipart form field)</td>
           </tr>
           <tr>
-            <td><code>folderId</code></td>
+            <td><code>folderid</code></td>
             <td>string</td>
             <td>No</td>
-            <td>Target folder ID (uploads to root if omitted)</td>
+            <td>Target folder ID (uploads to user's default folder if omitted)</td>
           </tr>
         </tbody>
       </table></div></div>
+
+      <p><strong>File size limit:</strong> 100 MB per file.</p>
+      <p><strong>Supported file types:</strong> Images (jpg, png, gif, jpeg, webp, heic), video (mp4, webm, mov), audio (mp3, wav, m4a), documents (pdf, csv, docx, xlsx, pptx, txt, md, epub), and ZIP archives (automatically extracted).</p>
 
       <h3>Response</h3>
       <pre><code>{
   "result": true,
   "errors": [],
-  "data": {
-    "id": "file-xyz789",
+  "list": [{
+    "id": "file-id",
     "name": "dataset.csv",
-    "size": 1048576,
-    "mimeType": "text/csv",
-    "folderId": "folder-abc123",
-    "url": "https://files.wiro.ai/...",
-    "createdAt": "2025-01-15T10:05:00Z"
-  }
+    "contenttype": "text/csv",
+    "size": "1048576",
+    "parentid": "folder-id",
+    "url": "https://cdn1.wiro.ai/...",
+    "addedtime": "1716276727",
+    "accesskey": "..."
+  }]
 }</code></pre>
     </section>
 
@@ -2208,7 +2297,481 @@ ws.onopen = function() {
 </script>
             </div>
 
-            <!-- ==================== EXAMPLES ==================== -->
+            <!-- ==================== PRICING ==================== -->
+            <div class="docs-page-section" data-page="pricing" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/pricing.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/pricing.md" download class="docs-section-md-btn">Download</a></div>
+
+<h1>Pricing</h1>
+<p class="section-subtitle">Understand how billing works for AI model runs on Wiro.</p>
+
+<section id="pricing-overview">
+<h2>Overview</h2>
+<p>When you run an AI model through Wiro, you are billed based on the type of work performed. Each model has its own pricing, visible on the model's page in the <a href="https://wiro.ai/models" target="_blank">marketplace</a> and on the <a href="https://wiro.ai/product/pricing" target="_blank">pricing page</a>. You pay only for successful runs — server errors are never billed.</p>
+<p>Wiro uses a prepaid credit model. You <a href="https://wiro.ai/panel/billing" target="_blank">add credits</a> to your account and they are drawn down as you use models. Credits also determine your <a href="/docs/concurrency-limits">concurrency limit</a>.</p>
+</section>
+
+<section id="pricing-billing-methods">
+<h2>Billing Methods</h2>
+<p>Every model on Wiro uses one of the following billing methods. The method is set per model and determines how the cost is calculated.</p>
+
+<h3>Fixed-Rate Methods</h3>
+<table>
+<thead><tr><th>Billing Method</th><th>Code</th><th>How it works</th></tr></thead>
+<tbody>
+<tr><td><strong>Per Request</strong></td><td><code>cpr</code></td><td>Fixed cost per run, regardless of output. Most common for image generation, image editing, and simple models.</td></tr>
+<tr><td><strong>Per Second</strong></td><td><code>cps</code></td><td>Cost per second of processing time. When no dynamic pricing is set, this is the default — cost = elapsed seconds × cps rate.</td></tr>
+<tr><td><strong>Per Output</strong></td><td><code>cpo</code></td><td>Cost per output item generated. Multiple files = pay per file. No output = base price charged once.</td></tr>
+<tr><td><strong>Per Token</strong></td><td><code>cpt</code></td><td>Cost per token used. Total tokens (input + output) extracted from model's usage metadata. Used for LLM models.</td></tr>
+</tbody>
+</table>
+
+<h3>Usage-Based Methods</h3>
+<table>
+<thead><tr><th>Billing Method</th><th>Code</th><th>How it works</th></tr></thead>
+<tbody>
+<tr><td><strong>Per Pixel</strong></td><td><code>cp-pixel</code></td><td>Cost based on output resolution. Each 1,048,576 pixels (1024×1024) = one tier. Can include per-input-image costs (<code>priceInput</code>).</td></tr>
+<tr><td><strong>Per Audio Second</strong></td><td><code>cp-audiosecondslength</code></td><td>Cost per second of input audio duration. Duration measured via ffprobe.</td></tr>
+<tr><td><strong>Per Character</strong></td><td><code>cp-promptlength</code></td><td>Cost per character in the input prompt. Total = prompt length × price.</td></tr>
+<tr><td><strong>Per Video Second</strong></td><td><code>cp-outputVideoLength</code></td><td>Cost per second of generated output video. Duration measured via ffprobe.</td></tr>
+</tbody>
+</table>
+
+<h3>Special Methods</h3>
+<table>
+<thead><tr><th>Billing Method</th><th>Code</th><th>How it works</th></tr></thead>
+<tbody>
+<tr><td><strong>Per Realtime Turn</strong></td><td><code>cp-realtimeturn</code></td><td>For realtime voice models. Billing per conversation turn, deducted in real time during the session.</td></tr>
+<tr><td><strong>Model-Reported</strong></td><td><code>cp-readoutput</code></td><td>The model reports its own cost in stdout/stderr JSON output.</td></tr>
+</tbody>
+</table>
+</section>
+
+<section id="pricing-dynamic">
+<h2>Dynamic Pricing</h2>
+<p>Many models have <strong>dynamic pricing</strong> — the cost varies based on the input parameters you choose. For example, a video generation model might charge different rates depending on the resolution and duration you select.</p>
+<p>The pricing is returned in the <code>dynamicprice</code> field of the <a href="/docs/models">Tool/List</a> and <a href="/docs/models">Tool/Detail</a> API responses as a JSON array:</p>
+<pre><code class="language-json">[
+  {
+    "inputs": { "resolution": "720p", "duration": "5" },
+    "price": 0.13,
+    "priceMethod": "cpr"
+  },
+  {
+    "inputs": { "resolution": "1080p", "duration": "5" },
+    "price": 0.29,
+    "priceMethod": "cpr"
+  }
+]</code></pre>
+
+<h3>How Dynamic Pricing Works</h3>
+<p>Each entry in the <code>dynamicprice</code> array represents a pricing tier:</p>
+<table>
+<thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>inputs</code></td><td>object</td><td>The input parameter combination this price applies to. Empty <code>{}</code> means the price applies to all configurations.</td></tr>
+<tr><td><code>price</code></td><td>number</td><td>The cost in USD for this configuration.</td></tr>
+<tr><td><code>priceMethod</code></td><td>string</td><td>The billing method code (see tables above).</td></tr>
+<tr><td><code>priceExtra</code></td><td>number (optional)</td><td>Extra cost per additional tier. Used by <code>cp-pixel</code> — each additional 1MP tier costs this amount.</td></tr>
+<tr><td><code>priceInput</code></td><td>number (optional)</td><td>Per-input cost. Used by <code>cp-pixel</code> — each input image incurs this cost per 1MP tier.</td></tr>
+</tbody>
+</table>
+<p>When <code>inputs</code> contains specific parameter values (e.g. <code>"resolution": "720p"</code>), that price only applies when you run the model with those exact parameters. When <code>inputs</code> is empty (<code>{}</code>), it's a flat rate that applies regardless of input parameters.</p>
+<p>Input matching also supports <code>QUANTITY</code> values (e.g. <code>"QUANTITY:1"</code>, <code>"QUANTITY:3"</code>) for models where the number of input files affects pricing.</p>
+
+<h3>Example: Video Generation Pricing</h3>
+<p>A video model might have pricing tiers based on resolution and duration:</p>
+<table>
+<thead><tr><th>Resolution</th><th>Duration</th><th>Price</th></tr></thead>
+<tbody>
+<tr><td>480p</td><td>5 seconds</td><td>$0.06</td></tr>
+<tr><td>720p</td><td>5 seconds</td><td>$0.13</td></tr>
+<tr><td>1080p</td><td>5 seconds</td><td>$0.29</td></tr>
+<tr><td>480p</td><td>10 seconds</td><td>$0.12</td></tr>
+<tr><td>720p</td><td>10 seconds</td><td>$0.26</td></tr>
+<tr><td>1080p</td><td>10 seconds</td><td>$0.58</td></tr>
+</tbody>
+</table>
+
+<h3>Example: Simple Flat Pricing</h3>
+<p>An image generation model with a flat rate:</p>
+<pre><code class="language-json">[{ "inputs": {}, "price": 0.03, "priceMethod": "cpr" }]</code></pre>
+<p>This means every run costs $0.03, regardless of parameters.</p>
+</section>
+
+<section id="pricing-fallback">
+<h2>Fallback Pricing (Per-Second)</h2>
+<p>When a model does not have <code>dynamicprice</code> set, billing falls back to <strong>per-second pricing</strong>:</p>
+<pre><code>totalcost = elapsed_seconds × cps</code></pre>
+<p>Where <code>cps</code> (cost per second) is either the model's own rate or the queue group's default rate. The API also returns an <code>approximatelycost</code> field — an estimate based on the model's average run time:</p>
+<pre><code>approximatelycost = average_elapsed_seconds × cps</code></pre>
+<p>This gives you a rough idea of the expected cost before running the model.</p>
+</section>
+
+<section id="pricing-checking">
+<h2>Checking Prices</h2>
+
+<h3>Via the API</h3>
+<p>Pricing information is included in both the <a href="/docs/models">Tool/List</a> and <a href="/docs/models">Tool/Detail</a> responses in the <code>dynamicprice</code> field. Use <code>POST /Tool/Detail</code> with the model's <code>slugowner</code> and <code>slugproject</code> to get full pricing details.</p>
+
+<h3>Via MCP</h3>
+<p>When using the <a href="/docs/wiro-mcp-server">MCP server</a>, both <code>search_models</code> and <code>get_model_schema</code> tools return pricing information in their responses. Your AI assistant can check the cost before running a model.</p>
+
+<h3>Pricing Page</h3>
+<p>Browse and compare model prices interactively on the <a href="https://wiro.ai/product/pricing" target="_blank">pricing page</a>. Select a budget to see how many runs each model can perform.</p>
+</section>
+
+<section id="pricing-what-you-pay">
+<h2>What You Pay For</h2>
+<p>You are billed for successfully completed model runs. A run is successful when the task reaches <code>task_postprocess_end</code> status with <code>pexit</code> of <code>"0"</code>. The actual cost is recorded in the task's <code>totalcost</code> field, which you can retrieve via <a href="/docs/tasks">Task/Detail</a>.</p>
+</section>
+
+<section id="pricing-not-charged">
+<h2>What You Are Not Charged For</h2>
+<ul>
+<li><strong>Server errors</strong> — if a run fails due to a server-side error, no charge is incurred.</li>
+<li><strong>Queue time</strong> — time spent waiting in the queue before processing starts is free.</li>
+<li><strong>Cancelled tasks</strong> — tasks cancelled before processing completes are not billed.</li>
+</ul>
+</section>
+
+<section id="pricing-monitoring">
+<h2>Monitoring Your Spending</h2>
+<ul>
+<li>Check the <code>totalcost</code> field in <a href="/docs/tasks">Task/Detail</a> responses to see the cost of individual runs.</li>
+<li>View your overall balance, usage history, and billing details in the <a href="https://wiro.ai/panel/billing" target="_blank">Dashboard</a>.</li>
+<li>When using MCP, the <code>get_task</code> tool returns the cost of completed runs.</li>
+</ul>
+</section>
+
+</article>
+            </div>
+
+            <!-- ==================== CONCURRENCY LIMITS ==================== -->
+            <div class="docs-page-section" data-page="concurrency-limits" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/concurrency-limits.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/concurrency-limits.md" download class="docs-section-md-btn">Download</a></div>
+
+<h1>Concurrency Limits</h1>
+<p class="section-subtitle">Understand and manage how many requests you can run simultaneously on Wiro.</p>
+
+<section id="concurrency-overview">
+<h2>Overview</h2>
+<p>Concurrency limits control how many tasks your account can process at the same time. When you reach your limit, the API returns an error response with code <code>96</code>. You should wait for a running task to complete before submitting a new one, or add funds to increase your limit.</p>
+</section>
+
+<section id="concurrency-how-it-works">
+<h2>How It Works</h2>
+<p>Your concurrency limit is determined by your current account balance:</p>
+<ul>
+<li>When your balance is <strong>$250 or below</strong>, you can run concurrent tasks equal to <strong>10% of your current USD balance</strong> (minimum 1).</li>
+<li>When your balance is <strong>above $250</strong>, there is <strong>no concurrency limit</strong>.</li>
+</ul>
+
+<h3>Examples</h3>
+<table><thead><tr><th>Account Balance</th><th>Concurrent Task Limit</th></tr></thead><tbody>
+<tr><td>$10</td><td>1 concurrent task (minimum)</td></tr>
+<tr><td>$50</td><td>5 concurrent tasks</td></tr>
+<tr><td>$100</td><td>10 concurrent tasks</td></tr>
+<tr><td>$150</td><td>15 concurrent tasks</td></tr>
+<tr><td>$250</td><td>25 concurrent tasks</td></tr>
+<tr><td>$251+</td><td><strong>Unlimited</strong> (no limit applied)</td></tr>
+</tbody></table>
+
+<p>The formula: <code>max(1, floor(balance_usd * 0.10))</code>. Once your balance exceeds $250, all limits are removed.</p>
+</section>
+
+<section id="concurrency-what-counts">
+<h2>What Counts as Active</h2>
+<p>Only tasks that are actively being processed count toward your concurrency limit. A task is considered active from <code>task_queue</code> until it reaches a terminal status:</p>
+<ul>
+<li><code>task_postprocess_end</code> — task completed (success or failure)</li>
+<li><code>task_cancel</code> — task was cancelled or killed</li>
+</ul>
+<p>Once a task reaches either of these statuses, it no longer counts toward your limit.</p>
+</section>
+
+<section id="concurrency-api-response">
+<h2>API Response</h2>
+<p>When you hit the concurrency limit, the <code>POST /Run</code> endpoint returns an error with code <code>96</code>:</p>
+<pre><code class="language-json">{
+  "result": false,
+  "errors": [
+    {
+      "code": 96,
+      "message": "You have reached your concurrent task limit. With your current balance of $50.00, you can run up to 5 tasks at the same time. Add funds to increase your limit."
+    }
+  ]
+}</code></pre>
+<p>The error message includes your current balance and the calculated limit, so you know exactly how many concurrent tasks you can run.</p>
+
+<h3>Error Codes</h3>
+<table><thead><tr><th>Code</th><th>Meaning</th><th>Action</th></tr></thead><tbody>
+<tr><td><code>96</code></td><td>Concurrent task limit reached</td><td>Wait for a running task to finish, or <a href="https://wiro.ai/panel/billing" target="_blank">add funds</a></td></tr>
+<tr><td><code>97</code></td><td>Insufficient balance</td><td><a href="https://wiro.ai/panel/billing" target="_blank">Add funds</a> to your account</td></tr>
+</tbody></table>
+</section>
+
+<section id="concurrency-increasing">
+<h2>Increasing Your Limit</h2>
+<p>To increase your concurrency limit, simply <a href="https://wiro.ai/panel/billing" target="_blank">add credits to your account</a>. Your limit is recalculated automatically based on your current balance at the time of each run request.</p>
+<p>For enterprise needs or custom concurrency arrangements, <a href="mailto:support@wiro.ai">contact support</a>.</p>
+</section>
+
+<section id="concurrency-best-practices">
+<h2>Best Practices</h2>
+<ul>
+<li><strong>Check error code <code>96</code></strong> — if you get this error, wait for a running task to complete before submitting new ones.</li>
+<li><strong>Use <a href="/docs/websocket">WebSocket</a> for monitoring</strong> — instead of polling <code>/Task/Detail</code> repeatedly, connect via WebSocket to get real-time updates without extra API calls.</li>
+<li><strong>Use <code>wait=false</code> in MCP</strong> — for long-running models (video, 3D), submit with <code>wait=false</code> and check with <code>get_task</code> to avoid holding connections.</li>
+<li><strong>Implement exponential backoff</strong> — if polling task status, start at 3 seconds and increase the interval for longer tasks.</li>
+</ul>
+</section>
+
+</article>
+            </div>
+
+            <div class="docs-page-section" data-page="error-reference" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/error-reference.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/error-reference.md" download class="docs-section-md-btn">Download</a></div>
+
+<h1>Error Reference</h1>
+<p class="section-subtitle">Understand API error responses, error codes, and how to handle them.</p>
+
+<section id="error-format">
+<h2>Response Format</h2>
+<p>When an API request fails, the response includes <code>result: false</code> and an <code>errors</code> array:</p>
+<pre><code class="language-json">{
+  "result": false,
+  "errors": [
+    {
+      "code": 97,
+      "message": "Insufficient balance"
+    }
+  ]
+}</code></pre>
+<p>All API responses return HTTP <code>200</code> — use the <code>result</code> field and error <code>code</code> to determine success or failure.</p>
+</section>
+
+<section id="error-codes">
+<h2>Error Codes</h2>
+<p>Error codes indicate the category of the problem. Use these for conditional logic in your application.</p>
+<table><thead><tr><th>Code</th><th>Category</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>0</code></td><td>General</td><td>Server-side errors, validation failures, missing parameters</td></tr>
+<tr><td><code>1</code></td><td>Not Found / Client</td><td>Resource not found or not accessible</td></tr>
+<tr><td><code>96</code></td><td>Concurrency Limit</td><td>Too many concurrent tasks for your balance. See <a href="/docs/concurrency-limits">Concurrency Limits</a></td></tr>
+<tr><td><code>97</code></td><td>Insufficient Balance</td><td>Not enough funds to run the model</td></tr>
+<tr><td><code>98</code></td><td>Authentication Required</td><td>Sign in required to access this model</td></tr>
+<tr><td><code>99</code></td><td>Token Invalid</td><td>Bearer token missing, invalid, or expired</td></tr>
+</tbody></table>
+</section>
+
+<section id="error-auth">
+<h2>Authentication Errors</h2>
+<p>Returned when API key or bearer token authentication fails. All return HTTP <code>401</code>.</p>
+<table><thead><tr><th>Error</th><th>Code</th><th>Message</th></tr></thead><tbody>
+<tr><td>API key not found</td><td><code>0</code></td><td>Project authorization is not founded.</td></tr>
+<tr><td>Signature required</td><td><code>0</code></td><td>Project requires signature authentication. x-signature and x-nonce headers are required.</td></tr>
+<tr><td>Invalid signature</td><td><code>0</code></td><td>Project authorization is not valid.</td></tr>
+<tr><td>IP not allowed</td><td><code>0</code></td><td>Requested ip {ip} is not allowed.</td></tr>
+<tr><td>Bearer token missing</td><td><code>99</code></td><td>Authorization bearer token is not founded in headers.</td></tr>
+<tr><td>Bearer token invalid</td><td><code>99</code></td><td>Authorization bearer token is invalid.</td></tr>
+<tr><td>Bearer token expired</td><td><code>99</code></td><td>Authorization bearer token expired.</td></tr>
+<tr><td>Endpoint not found</td><td><code>0</code></td><td>Error parsing url. (HTTP 404)</td></tr>
+</tbody></table>
+</section>
+
+<section id="error-run">
+<h2>Run Errors</h2>
+<p>Returned by <code>POST /Run/{owner}/{model}</code>.</p>
+
+<h3>Balance & Limits</h3>
+<table><thead><tr><th>Error</th><th>Code</th><th>Message</th><th>Action</th></tr></thead><tbody>
+<tr><td>Insufficient balance</td><td><code>97</code></td><td>Insufficient balance</td><td><a href="https://wiro.ai/panel/billing" target="_blank">Add funds</a> — minimum $0.50 required ($10 for training)</td></tr>
+<tr><td>Concurrent task limit</td><td><code>96</code></td><td>You have reached your concurrent task limit. With your current balance of ${balance}, you can run up to {maxConcurrent} tasks at the same time.</td><td>Wait for a task to finish, or <a href="https://wiro.ai/panel/billing" target="_blank">add funds</a>. See <a href="/docs/concurrency-limits">Concurrency Limits</a></td></tr>
+<tr><td>Sign in required</td><td><code>98</code></td><td>sign in to run this model</td><td>Model requires a registered account</td></tr>
+</tbody></table>
+
+<h3>Validation Errors</h3>
+<table><thead><tr><th>Error</th><th>Code</th><th>Message</th></tr></thead><tbody>
+<tr><td>Missing parameter</td><td><code>0</code></td><td>Request parameter [{name}] required</td></tr>
+<tr><td>Invalid number</td><td><code>0</code></td><td>Request parameter [{name}] must be integer or float</td></tr>
+<tr><td>Out of range</td><td><code>0</code></td><td>Request parameter [{name}] must be between {min} and {max}</td></tr>
+<tr><td>File required</td><td><code>0</code></td><td>Request files [{name}] required</td></tr>
+<tr><td>Invalid request body</td><td><code>0</code></td><td>Request parameters are invalid.</td></tr>
+</tbody></table>
+
+<h3>Model Access Errors</h3>
+<table><thead><tr><th>Error</th><th>Code</th><th>Message</th></tr></thead><tbody>
+<tr><td>Model not accessible</td><td><code>1</code></td><td>tool-not-accessible</td></tr>
+<tr><td>Model not found</td><td><code>1</code></td><td>slug-owner-project-not-exist</td></tr>
+<tr><td>Account suspended</td><td><code>0</code></td><td>Your account has been suspended. Please contact support.</td></tr>
+<tr><td>Permission denied</td><td><code>0</code></td><td>You don't have any permission for this action.</td></tr>
+</tbody></table>
+</section>
+
+<section id="error-task">
+<h2>Task Errors</h2>
+<p>Returned by <code>POST /Task/Detail</code>, <code>POST /Task/Cancel</code>, and <code>POST /Task/Kill</code>.</p>
+<table><thead><tr><th>Error</th><th>Code</th><th>Message</th><th>Endpoint</th></tr></thead><tbody>
+<tr><td>Task not found</td><td><code>1</code></td><td>There is no task yet.</td><td>Detail, Cancel, Kill</td></tr>
+<tr><td>Missing identifier</td><td><code>0</code></td><td>taskid or socketaccesstoken is required</td><td>Detail</td></tr>
+<tr><td>Not cancellable</td><td><code>1</code></td><td>Task is not in a cancellable state.</td><td>Cancel</td></tr>
+<tr><td>Kill failed</td><td><code>1</code></td><td>Task could not be killed: {reason}</td><td>Kill</td></tr>
+<tr><td>Permission denied</td><td><code>0</code></td><td>You don't have any permission for this action.</td><td>All</td></tr>
+</tbody></table>
+</section>
+
+<section id="error-handling">
+<h2>Error Handling</h2>
+<p>Always check <code>result</code> first, then inspect the <code>code</code> in the errors array:</p>
+<pre><code class="language-javascript">const data = await response.json();
+
+if (!data.result) {
+  const error = data.errors[0];
+  switch (error.code) {
+    case 96:
+      console.log('Concurrent limit — wait for a task to finish');
+      break;
+    case 97:
+      console.log('Insufficient balance — add funds');
+      break;
+    case 98:
+      console.log('Sign in required');
+      break;
+    default:
+      console.log('Error:', error.message);
+  }
+}</code></pre>
+
+<h3>Retry Strategy</h3>
+<table><thead><tr><th>Code</th><th>Retryable</th><th>Strategy</th></tr></thead><tbody>
+<tr><td><code>0</code> (validation)</td><td>No</td><td>Fix the request parameters</td></tr>
+<tr><td><code>0</code> (server)</td><td>Yes</td><td>Retry with exponential backoff</td></tr>
+<tr><td><code>1</code></td><td>No</td><td>Check model slug or task token</td></tr>
+<tr><td><code>96</code></td><td>Yes</td><td>Wait for a running task to complete</td></tr>
+<tr><td><code>97</code></td><td>No</td><td>Add funds, then retry</td></tr>
+<tr><td><code>98</code></td><td>No</td><td>Sign in or use authenticated credentials</td></tr>
+<tr><td><code>99</code></td><td>No</td><td>Check your API key or bearer token</td></tr>
+</tbody></table>
+</section>
+
+</article>
+            </div>
+
+            <!-- ==================== FAQ ==================== -->
+            <div class="docs-page-section" data-page="faq" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/faq.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/faq.md" download class="docs-section-md-btn">Download</a></div>
+
+<h1>FAQ</h1>
+<p class="section-subtitle">Common questions about using the Wiro API.</p>
+
+<div class="faq-accordion">
+
+  <div class="faq-item">
+    <button class="faq-question">How do I get an API key?</button>
+    <div class="faq-answer"><div class="faq-answer-inner">
+      <p>Sign up at <a href="https://wiro.ai" target="_blank">wiro.ai</a>, then create a project at <a href="https://wiro.ai/panel/project/new" target="_blank">wiro.ai/panel/project</a>. Your API key (and secret, if signature-based) are displayed once — copy and store them securely.</p>
+    </div></div>
+  </div>
+
+  <div class="faq-item">
+    <button class="faq-question">Which authentication method should I use?</button>
+    <div class="faq-answer"><div class="faq-answer-inner">
+      <p><strong>Signature-Based</strong> is recommended — it uses HMAC-SHA256 so your API secret never leaves your environment. <strong>API Key Only</strong> is simpler and fine for server-side applications where you control the environment. See <a href="/docs/authentication">Authentication</a> for details.</p>
+    </div></div>
+  </div>
+
+  <div class="faq-item">
+    <button class="faq-question">Is there a rate limit?</button>
+    <div class="faq-answer"><div class="faq-answer-inner">
+      <p>Yes. Every account has a concurrency limit that controls how many tasks can run at the same time. The limit scales automatically based on your account balance. See <a href="/docs/concurrency-limits">Concurrency Limits</a> for the full table.</p>
+    </div></div>
+  </div>
+
+  <div class="faq-item">
+    <button class="faq-question">Do I pay for failed tasks?</button>
+    <div class="faq-answer"><div class="faq-answer-inner">
+      <p>No. If a task fails (non-zero <code>pexit</code>), you are not charged. Only successfully completed tasks are billed.</p>
+    </div></div>
+  </div>
+
+  <div class="faq-item">
+    <button class="faq-question">How do I check the cost before running a model?</button>
+    <div class="faq-answer"><div class="faq-answer-inner">
+      <p>Use the <a href="/docs/models">POST /Tool/Detail</a> endpoint — the response includes the model's pricing information. If you're using the <a href="/docs/wiro-mcp-server">MCP server</a>, the <code>search_models</code> and <code>get_model_schema</code> tools also return pricing.</p>
+    </div></div>
+  </div>
+
+  <div class="faq-item">
+    <button class="faq-question">How long are generated files stored?</button>
+    <div class="faq-answer"><div class="faq-answer-inner">
+      <p>Output files are stored on Wiro's CDN and available for a limited time. Download and store any files you need to keep long-term. See <a href="/docs/files">Files</a> for details on file management.</p>
+    </div></div>
+  </div>
+
+  <div class="faq-item">
+    <button class="faq-question">Are generated file URLs public?</button>
+    <div class="faq-answer"><div class="faq-answer-inner">
+      <p>Yes. Output URLs returned by Wiro are publicly accessible. Anyone with the URL can access the file. If you need private storage, download the files to your own infrastructure.</p>
+    </div></div>
+  </div>
+
+  <div class="faq-item">
+    <button class="faq-question">How do I get real-time task updates?</button>
+    <div class="faq-answer"><div class="faq-answer-inner">
+      <p>Connect to the <a href="/docs/websocket">WebSocket</a> at <code>wss://socket.wiro.ai/v1</code> and register with the <code>socketaccesstoken</code> from your run response. You'll receive events as the task progresses. For simpler integrations, you can poll the <a href="/docs/tasks">Task Detail</a> endpoint.</p>
+    </div></div>
+  </div>
+
+  <div class="faq-item">
+    <button class="faq-question">How do LLM responses work?</button>
+    <div class="faq-answer"><div class="faq-answer-inner">
+      <p>LLM models return their response in <code>debugoutput</code>, not in the <code>outputs</code> file array. For streaming, each token arrives as a separate <code>task_output</code> WebSocket event. See <a href="/docs/llm-chat-streaming">LLM &amp; Chat Streaming</a> for details.</p>
+    </div></div>
+  </div>
+
+  <div class="faq-item">
+    <button class="faq-question">Can I send a URL instead of uploading a file?</button>
+    <div class="faq-answer"><div class="faq-answer-inner">
+      <p>Yes. For <code>fileinput</code> and <code>multifileinput</code> parameters, use the <code>{id}Url</code> suffix (e.g., <code>inputImageUrl</code>). For <code>combinefileinput</code>, pass URLs directly in the original parameter. You can also pass a URL directly to any file parameter if the <code>{id}Url</code> field doesn't exist. See <a href="/docs/model-parameters">Model Parameters</a>.</p>
+    </div></div>
+  </div>
+
+  <div class="faq-item">
+    <button class="faq-question">What is pexit and how do I use it?</button>
+    <div class="faq-answer"><div class="faq-answer-inner">
+      <p><code>pexit</code> is the process exit code — <code>"0"</code> means success, any other value means failure. It's the most reliable way to determine if a task succeeded. Always check <code>pexit</code> in the <code>task_postprocess_end</code> event or Task Detail response. See <a href="/docs/tasks">Tasks</a>.</p>
+    </div></div>
+  </div>
+
+  <div class="faq-item">
+    <button class="faq-question">Does the MCP server cost extra?</button>
+    <div class="faq-answer"><div class="faq-answer-inner">
+      <p>No. The <a href="/docs/wiro-mcp-server">Wiro MCP server</a> is free. You only pay for the model runs you trigger, at standard pricing.</p>
+    </div></div>
+  </div>
+
+  <div class="faq-item">
+    <button class="faq-question">Can I use Wiro with n8n?</button>
+    <div class="faq-answer"><div class="faq-answer-inner">
+      <p>Yes. Install the <a href="/docs/n8n-wiro-integration">Wiro AI community node</a> in your n8n instance to access all Wiro models as drag-and-drop nodes in your workflows.</p>
+    </div></div>
+  </div>
+
+  <div class="faq-item">
+    <button class="faq-question">Can I use a webhook instead of polling?</button>
+    <div class="faq-answer"><div class="faq-answer-inner">
+      <p>Yes. All models support an optional <code>callbackUrl</code> parameter. When provided, Wiro will POST the task result to your URL when the task completes. See <a href="/docs/model-parameters">Webhook Callback</a> in Model Parameters.</p>
+    </div></div>
+  </div>
+
+</div>
+
+</article>
+            </div>
+
             <div class="docs-page-section" data-page="code-examples" style="display:none">
 <article class="docs-section">
 <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/code-examples.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/code-examples.md" download class="docs-section-md-btn">Download</a></div>
@@ -2293,6 +2856,597 @@ ws.onopen = function() {
   }
 ]
 </script>
+            </div>
+
+            <div class="docs-page-section" data-page="wiro-mcp-server" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/wiro-mcp-server.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/wiro-mcp-server.md" download class="docs-section-md-btn">Download</a></div>
+
+<h1>Wiro MCP Server</h1>
+<p class="section-subtitle">Connect AI coding assistants to Wiro's AI models via the Model Context Protocol.</p>
+
+<section id="mcp-what-is">
+<h2>What is MCP?</h2>
+<p><a href="https://modelcontextprotocol.io/" target="_blank">Model Context Protocol</a> (MCP) is an open standard that lets AI assistants use external tools directly. With the Wiro MCP server, your AI assistant can search models, run inference, track tasks, and upload files — all without leaving your editor.</p>
+<p>The hosted MCP server is available at <code>mcp.wiro.ai/v1</code> and works with any MCP-compatible client, including Cursor, Claude Code, Claude Desktop, and Windsurf. Every request uses your own API key — nothing is stored on the server.</p>
+<p>You need a Wiro API key to use the MCP server. If you don't have one yet, <a href="https://wiro.ai/panel/project/new" target="_blank">create a project here</a>.</p>
+
+<h3>Links</h3>
+<ul>
+  <li><a href="https://modelcontextprotocol.io/" target="_blank">Model Context Protocol (MCP)</a> — open standard specification</li>
+  <li><a href="https://github.com/wiroai/Wiro-MCP" target="_blank">GitHub: wiroai/Wiro-MCP</a> — source code &amp; self-hosting instructions</li>
+  <li><a href="https://www.npmjs.com/package/@wiro-ai/wiro-mcp" target="_blank">npm: @wiro-ai/wiro-mcp</a> — npm package</li>
+  <li><a href="https://wiro.ai/models" target="_blank">Wiro Model Catalog</a> — browse all available models</li>
+  <li><a href="https://wiro.ai/panel/project/new" target="_blank">Create API Key</a> — get started in seconds</li>
+</ul>
+</section>
+
+<section id="mcp-setup">
+<h2>Setup</h2>
+<p>Connect your AI assistant to Wiro's MCP server. Pick your client:</p>
+
+<div class="mcp-client-grid">
+  <a href="#mcp-setup-cursor" class="mcp-client-card" onclick="document.getElementById('mcp-setup-cursor').scrollIntoView({behavior:'smooth'});return false;">
+    <img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/cursor.svg" alt="Cursor" class="mcp-client-logo">
+    <strong>Cursor</strong>
+    <span>MCP settings JSON config</span>
+  </a>
+  <a href="#mcp-setup-claude-code" class="mcp-client-card" onclick="document.getElementById('mcp-setup-claude-code').scrollIntoView({behavior:'smooth'});return false;">
+    <img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/claude.svg" alt="Claude" class="mcp-client-logo">
+    <strong>Claude Code</strong>
+    <span>One command setup</span>
+  </a>
+  <a href="#mcp-setup-claude-desktop" class="mcp-client-card" onclick="document.getElementById('mcp-setup-claude-desktop').scrollIntoView({behavior:'smooth'});return false;">
+    <img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/claude.svg" alt="Claude" class="mcp-client-logo">
+    <strong>Claude Desktop</strong>
+    <span>JSON config setup</span>
+  </a>
+  <a href="#mcp-setup-windsurf" class="mcp-client-card" onclick="document.getElementById('mcp-setup-windsurf').scrollIntoView({behavior:'smooth'});return false;">
+    <img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/windsurf.svg" alt="Windsurf" class="mcp-client-logo">
+    <strong>Windsurf</strong>
+    <span>MCP settings config</span>
+  </a>
+  <a href="#mcp-setup-other" class="mcp-client-card" onclick="document.getElementById('mcp-setup-other').scrollIntoView({behavior:'smooth'});return false;">
+    <i class="lni lni-plug"></i>
+    <strong>Other Clients</strong>
+    <span>Any MCP-compatible tool</span>
+  </a>
+</div>
+
+<h3 id="mcp-setup-cursor">Cursor</h3>
+<ol>
+<li><strong>Open MCP Settings</strong> — Use <code>Cmd+Shift+P</code> (<code>Ctrl+Shift+P</code> on Windows) and search for <strong>"Open MCP settings"</strong>.</li>
+<li><strong>Add the Wiro server</strong> — Add the following to your <code>mcp.json</code> file:
+
+<p><strong>Signature Auth</strong> (if your project uses signature-based authentication):</p>
+<pre><code class="language-json">{
+  "mcpServers": {
+    "wiro": {
+      "url": "https://mcp.wiro.ai/v1",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_KEY:YOUR_API_SECRET"
+      }
+    }
+  }
+}</code></pre>
+
+<p><strong>API Key Only Auth</strong> (if your project uses API Key Only authentication):</p>
+<pre><code class="language-json">{
+  "mcpServers": {
+    "wiro": {
+      "url": "https://mcp.wiro.ai/v1",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_KEY"
+      }
+    }
+  }
+}</code></pre>
+</li>
+<li><strong>Restart Cursor</strong> — Save the file and restart Cursor to activate the connection.</li>
+</ol>
+
+<h3 id="mcp-setup-claude-code">Claude Code</h3>
+<p>Run this command in your terminal:</p>
+<pre><code class="language-bash">claude mcp add --transport http wiro \
+  https://mcp.wiro.ai/v1 \
+  --header "Authorization: Bearer YOUR_API_KEY:YOUR_API_SECRET"</code></pre>
+<p>That's it. Claude Code will now have access to all Wiro tools.</p>
+
+<h3 id="mcp-setup-claude-desktop">Claude Desktop</h3>
+<p>Add the following to your <code>claude_desktop_config.json</code>:</p>
+<pre><code class="language-json">{
+  "mcpServers": {
+    "wiro": {
+      "url": "https://mcp.wiro.ai/v1",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_KEY:YOUR_API_SECRET"
+      }
+    }
+  }
+}</code></pre>
+
+<h3 id="mcp-setup-windsurf">Windsurf</h3>
+<p>Open <strong>Settings → MCP</strong> and add a new server:</p>
+<pre><code class="language-json">{
+  "mcpServers": {
+    "wiro": {
+      "serverUrl": "https://mcp.wiro.ai/v1",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_KEY:YOUR_API_SECRET"
+      }
+    }
+  }
+}</code></pre>
+
+<h3 id="mcp-setup-other">Other MCP Clients</h3>
+<p>The Wiro MCP server uses the <strong>Streamable HTTP</strong> transport at:</p>
+<pre><code>https://mcp.wiro.ai/v1</code></pre>
+<p>Authentication is via the <code>Authorization</code> header:</p>
+<pre><code>Authorization: Bearer YOUR_API_KEY:YOUR_API_SECRET</code></pre>
+<p>Or for API Key Only auth: <code>Bearer YOUR_API_KEY</code></p>
+<p>Credentials are sent as plain text — no base64 encoding needed. Any MCP client that supports Streamable HTTP transport can connect.</p>
+</section>
+
+<section id="mcp-auth">
+<h2>Authentication</h2>
+<p>The MCP server supports both Wiro <a href="/docs/authentication">authentication types</a>. Your project's auth type determines what credentials you provide.</p>
+<h3>Signature-Based (Recommended)</h3>
+<p>More secure. Requires both API key and API secret. Pass them as plain text separated by a colon:</p>
+<pre><code>Authorization: Bearer YOUR_API_KEY:YOUR_API_SECRET</code></pre>
+<h3>API Key Only</h3>
+<p>Simpler. Only requires the API key:</p>
+<pre><code>Authorization: Bearer YOUR_API_KEY</code></pre>
+<p>No base64 encoding needed. Credentials are sent per-request and are never stored. The server is fully stateless.</p>
+</section>
+
+<section id="mcp-tools">
+<h2>Available Tools</h2>
+<p>The MCP server exposes 11 tools organized in four categories. Your AI assistant picks the right tool automatically.</p>
+<p><strong>Model slugs:</strong> Use the clean/lowercase format <code>owner/model</code> (e.g. <code>openai/sora-2</code>, <code>wiro/virtual-try-on</code>). These correspond to the <code>cleanslugowner/cleanslugproject</code> values returned by <code>search_models</code>.</p>
+<h3>Discovery</h3>
+<table><thead><tr><th>Tool</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>search_models</code></td><td>Search Wiro's model catalog by keyword, category, or owner</td></tr>
+<tr><td><code>get_model_schema</code></td><td>Get the full parameter schema and pricing for any model</td></tr>
+<tr><td><code>recommend_model</code></td><td>Describe what you want to build and get model recommendations ranked by relevance</td></tr>
+<tr><td><code>explore</code></td><td>Browse curated AI models organized by category — featured, recently added, popular</td></tr>
+</tbody></table>
+<h3>Execution</h3>
+<table><thead><tr><th>Tool</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>run_model</code></td><td>Run any model and wait for the result, or submit and get a task token</td></tr>
+</tbody></table>
+<h3>Task Management</h3>
+<table><thead><tr><th>Tool</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>get_task</code></td><td>Check task status, outputs, cost, and elapsed time</td></tr>
+<tr><td><code>get_task_price</code></td><td>Get the cost of a completed task — shows whether it was billed and the total charge</td></tr>
+<tr><td><code>cancel_task</code></td><td>Cancel a task still in the queue</td></tr>
+<tr><td><code>kill_task</code></td><td>Kill a task that is currently running</td></tr>
+</tbody></table>
+
+<h3>Utility</h3>
+<table><thead><tr><th>Tool</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>upload_file</code></td><td>Upload a file from a URL to Wiro for use as model input</td></tr>
+<tr><td><code>search_docs</code></td><td>Search the Wiro documentation for guides, API references, and examples</td></tr>
+</tbody></table>
+</section>
+
+<section id="mcp-examples">
+<h2>Examples</h2>
+<h3>Generate an image</h3>
+<blockquote>"Generate a photorealistic image of a mountain lake at golden hour"</blockquote>
+<p>The assistant will use <code>search_models</code> → <code>get_model_schema</code> → <code>run_model</code> and return the image URL.</p>
+<h3>Generate a video</h3>
+<blockquote>"Create a 5-second cinematic video of a drone shot over mountains using Kling V3"</blockquote>
+<p>The assistant will use <code>get_model_schema</code> → <code>run_model</code> (wait=false) → <code>get_task</code> to poll for the result.</p>
+<h3>Find models</h3>
+<blockquote>"What models are available for text-to-video?"</blockquote>
+<p>The assistant will call <code>search_models</code> with categories filter.</p>
+</section>
+
+<section id="mcp-how-it-works">
+<h2>How It Works</h2>
+<p>The MCP server is stateless. Each request is fully isolated:</p>
+<ol>
+<li>Your AI assistant sends a request to <code>mcp.wiro.ai/v1</code> with your credentials</li>
+<li>The server calls the <a href="https://wiro.ai/docs">Wiro API</a> on your behalf</li>
+<li>Results are returned to your assistant</li>
+</ol>
+<p>All tools are dynamic — they fetch model data at runtime. New models are instantly available via MCP.</p>
+</section>
+
+<section id="mcp-tool-reference">
+<h2>Tool Reference</h2>
+
+<h3>search_models</h3>
+<p>Search Wiro's model catalog by keyword, category, owner, or any combination. Calls <code>POST /Tool/List</code> on the Wiro API.</p>
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>search</code></td><td>string (optional)</td><td>Free-text search, e.g. <code>"flux"</code>, <code>"video generation"</code></td></tr>
+<tr><td><code>categories</code></td><td>string[] (optional)</td><td>Filter by category: <code>text-to-image</code>, <code>text-to-video</code>, <code>image-to-video</code>, <code>llm</code>, <code>text-to-speech</code>, <code>image-editing</code>, etc.</td></tr>
+<tr><td><code>slugowner</code></td><td>string (optional)</td><td>Filter by model owner slug, e.g. <code>"openai"</code>, <code>"stability-ai"</code>, <code>"klingai"</code></td></tr>
+<tr><td><code>start</code></td><td>number (optional)</td><td>Pagination offset (default 0)</td></tr>
+<tr><td><code>limit</code></td><td>number (optional)</td><td>Max results (default 20, max 100)</td></tr>
+</tbody></table>
+<p>Returns a list of models with their <code>cleanslugowner/cleanslugproject</code> (the slug you pass to other tools), title, description, categories, and pricing.</p>
+
+<h3>get_model_schema</h3>
+<p>Get the full parameter schema for a specific model. Calls <code>POST /Tool/Detail</code> on the Wiro API.</p>
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>model</code></td><td>string</td><td>Model slug using clean/lowercase format: <code>"owner/model"</code>. Use <code>cleanslugowner/cleanslugproject</code> from <code>search_models</code>. Examples: <code>"openai/sora-2"</code>, <code>"black-forest-labs/flux-2-pro"</code>, <code>"wiro/virtual-try-on"</code></td></tr>
+</tbody></table>
+<p>Returns the model's parameter groups, each containing items with <code>id</code>, <code>type</code> (text, textarea, select, range, fileinput, etc.), <code>label</code>, <code>required</code>, <code>options</code>, <code>default</code>, and <code>note</code>. Also includes pricing information. Use these to construct the <code>params</code> object for <code>run_model</code>.</p>
+
+<h3>recommend_model</h3>
+<p>Describe what you want to create and get model recommendations ranked by relevance. Calls <code>POST /Tool/List</code> on the Wiro API with relevance sorting.</p>
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>task</code></td><td>string</td><td>What you want to do, e.g. <code>"generate a photorealistic portrait"</code>, <code>"upscale an image to 4K"</code>, <code>"transcribe audio to text"</code></td></tr>
+</tbody></table>
+<p>Returns a list of recommended models with slugs, descriptions, categories, and pricing — sorted by relevance to your task.</p>
+
+<h3>explore</h3>
+<p>Browse curated AI models on Wiro, organized by category. Calls <code>POST /Tool/Explore</code> on the Wiro API. No parameters required.</p>
+<p>Returns models grouped into curated sections like "Recently Added", "Image Generation", "Video", etc. Each model includes its slug, description, categories, and rating. Use this to discover what's available without searching.</p>
+
+<h3>run_model</h3>
+<p>Run any AI model on Wiro. Calls <code>POST /Run/{owner}/{model}</code> on the Wiro API.</p>
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>model</code></td><td>string</td><td>Model slug in clean/lowercase format. Same as <code>get_model_schema</code>. Examples: <code>"openai/sora-2"</code>, <code>"klingai/kling-v3"</code></td></tr>
+<tr><td><code>params</code></td><td>object</td><td>Model-specific parameters as key-value pairs. Use <code>get_model_schema</code> to discover accepted fields. Common: <code>prompt</code>, <code>negativePrompt</code>, <code>width</code>, <code>height</code>, <code>aspectRatio</code></td></tr>
+<tr><td><code>wait</code></td><td>boolean (optional)</td><td>If <code>true</code> (default), polls <code>POST /Task/Detail</code> until the task completes and returns the result. If <code>false</code>, returns the task token immediately for async monitoring via <code>get_task</code>.</td></tr>
+<tr><td><code>timeout_seconds</code></td><td>number (optional)</td><td>Max seconds to wait (default 120, max 600). Only applies when <code>wait=true</code>.</td></tr>
+</tbody></table>
+<p>When <code>wait=true</code>, returns the final task result including <code>pexit</code> (exit code, <code>"0"</code> = success), <code>outputs</code> (CDN URLs for generated files), and <code>debugoutput</code> (LLM text responses).</p>
+<p>When <code>wait=false</code>, returns <code>taskid</code> and <code>tasktoken</code> — use <code>get_task</code> to check progress.</p>
+
+<h3>get_task</h3>
+<p>Check task status and get results. Calls <code>POST /Task/Detail</code> on the Wiro API.</p>
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>tasktoken</code></td><td>string (optional)</td><td>The task token returned from <code>run_model</code></td></tr>
+<tr><td><code>taskid</code></td><td>string (optional)</td><td>The task ID (alternative to tasktoken)</td></tr>
+</tbody></table>
+<p>Returns the task's current <code>status</code>, <code>pexit</code> (process exit code), <code>outputs</code> (file URLs), <code>debugoutput</code> (LLM responses), <code>elapsedseconds</code>, and <code>totalcost</code>.</p>
+<p><strong>Determining success:</strong> Check <code>pexit</code> — <code>"0"</code> means success, any other value means failure. For LLM models, the response text is in <code>debugoutput</code>, not <code>outputs</code>. See <a href="/docs/tasks">Tasks</a> for the full task lifecycle.</p>
+
+<h3>get_task_price</h3>
+<p>Get the cost of a completed task. Calls <code>POST /Task/Detail</code> on the Wiro API and returns billing information.</p>
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>tasktoken</code></td><td>string (optional)</td><td>The task token returned from <code>run_model</code></td></tr>
+<tr><td><code>taskid</code></td><td>string (optional)</td><td>The task ID (alternative to tasktoken)</td></tr>
+</tbody></table>
+<p>Returns the task's billing status, total cost, and duration. Only successful tasks (<code>pexit: "0"</code>) are billed — failed tasks show <code>$0</code> with a clear explanation that they were not charged.</p>
+
+<h3>cancel_task</h3>
+<p>Cancel a task that is still queued (before worker assignment). Calls <code>POST /Task/Cancel</code> on the Wiro API.</p>
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>tasktoken</code></td><td>string</td><td>The task token to cancel</td></tr>
+</tbody></table>
+<p>Tasks that have already been assigned to a worker cannot be cancelled — use <code>kill_task</code> instead.</p>
+
+<h3>kill_task</h3>
+<p>Kill a task that is currently running (after worker assignment). Calls <code>POST /Task/Kill</code> on the Wiro API.</p>
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>tasktoken</code></td><td>string</td><td>The task token to kill</td></tr>
+</tbody></table>
+<p>The worker will stop processing and the task will move to <code>task_cancel</code> status.</p>
+
+<h3>upload_file</h3>
+<p>Upload a file from a URL to Wiro for use as model input. Downloads the file and uploads it via <code>POST /File/Upload</code>.</p>
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>url</code></td><td>string</td><td>URL of the file to upload (image, audio, video, document)</td></tr>
+<tr><td><code>file_name</code></td><td>string (optional)</td><td>Custom filename. If not provided, derived from the URL.</td></tr>
+</tbody></table>
+<p>Returns the uploaded file's Wiro URL, which can be passed to any model parameter that accepts a file.</p>
+
+<h3>search_docs</h3>
+<p>Search the Wiro documentation for guides, API references, and code examples.</p>
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>query</code></td><td>string</td><td>What you're looking for, e.g. <code>"how to upload a file"</code>, <code>"websocket"</code>, <code>"authentication"</code>, <code>"LLM streaming"</code></td></tr>
+</tbody></table>
+<p>Returns relevant documentation sections matching your query.</p>
+</section>
+
+<section id="mcp-faq">
+<h2>FAQ</h2>
+<h3>What models can I use?</h3>
+<p>All models in the <a href="https://wiro.ai/models" target="_blank">Wiro catalog</a>.</p>
+<h3>Is my API key stored?</h3>
+<p>No. The server is fully stateless. Credentials are sent per-request and never stored.</p>
+<h3>Does it cost extra?</h3>
+<p>No. The MCP server is free. You pay for model runs at standard pricing.</p>
+<h3>Can I self-host?</h3>
+<p>Yes. See <a href="/docs/mcp-self-hosted">Self-Hosted MCP</a> for instructions.</p>
+</section>
+
+</article>
+            </div>
+
+            <div class="docs-page-section" data-page="mcp-self-hosted" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/mcp-self-hosted.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/mcp-self-hosted.md" download class="docs-section-md-btn">Download</a></div>
+
+<h1>Self-Hosted MCP</h1>
+<p class="section-subtitle">Run the Wiro MCP server locally on your own machine using npx.</p>
+
+<section id="self-hosted-quick-start">
+<h2>Quick Start</h2>
+<p>Add to your AI assistant's MCP config:</p>
+<pre><code class="language-json">{
+  "mcpServers": {
+    "wiro": {
+      "command": "npx",
+      "args": ["-y", "@wiro-ai/wiro-mcp"],
+      "env": {
+        "WIRO_API_KEY": "your-api-key",
+        "WIRO_API_SECRET": "your-api-secret"
+      }
+    }
+  }
+}</code></pre>
+<p>That's it. Your assistant now has access to all 70+ Wiro AI models.</p>
+</section>
+
+<section id="self-hosted-setup">
+<h2>Setup</h2>
+<p>Add the self-hosted MCP server to your AI assistant:</p>
+
+<div class="mcp-client-grid">
+  <a href="#sh-setup-cursor" class="mcp-client-card" onclick="document.getElementById('sh-setup-cursor').scrollIntoView({behavior:'smooth'});return false;">
+    <img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/cursor.svg" alt="Cursor" class="mcp-client-logo">
+    <strong>Cursor</strong>
+    <span>MCP settings JSON config</span>
+  </a>
+  <a href="#sh-setup-claude-code" class="mcp-client-card" onclick="document.getElementById('sh-setup-claude-code').scrollIntoView({behavior:'smooth'});return false;">
+    <img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/claude.svg" alt="Claude" class="mcp-client-logo">
+    <strong>Claude Code</strong>
+    <span>One command setup</span>
+  </a>
+  <a href="#sh-setup-claude-desktop" class="mcp-client-card" onclick="document.getElementById('sh-setup-claude-desktop').scrollIntoView({behavior:'smooth'});return false;">
+    <img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/claude.svg" alt="Claude" class="mcp-client-logo">
+    <strong>Claude Desktop</strong>
+    <span>JSON config setup</span>
+  </a>
+  <a href="#sh-setup-windsurf" class="mcp-client-card" onclick="document.getElementById('sh-setup-windsurf').scrollIntoView({behavior:'smooth'});return false;">
+    <img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/windsurf.svg" alt="Windsurf" class="mcp-client-logo">
+    <strong>Windsurf</strong>
+    <span>MCP settings config</span>
+  </a>
+  <a href="#sh-setup-other" class="mcp-client-card" onclick="document.getElementById('sh-setup-other').scrollIntoView({behavior:'smooth'});return false;">
+    <i class="lni lni-plug"></i>
+    <strong>Other Clients</strong>
+    <span>Any MCP-compatible tool</span>
+  </a>
+</div>
+
+<h3 id="sh-setup-cursor">Cursor</h3>
+<p>Open MCP settings (<code>Cmd+Shift+P</code> → "Open MCP settings") and add the config above.</p>
+<h3 id="sh-setup-claude-code">Claude Code</h3>
+<pre><code class="language-bash">claude mcp add wiro -- npx -y @wiro-ai/wiro-mcp</code></pre>
+<p>Then set <code>WIRO_API_KEY</code> and <code>WIRO_API_SECRET</code> environment variables.</p>
+<h3 id="sh-setup-claude-desktop">Claude Desktop</h3>
+<p>Add to <code>claude_desktop_config.json</code> using the Quick Start config above.</p>
+<h3 id="sh-setup-windsurf">Windsurf</h3>
+<p>Add to your MCP settings using the Quick Start config above.</p>
+<h3 id="sh-setup-other">Other Clients</h3>
+<p>Any MCP client that supports the <strong>stdio</strong> transport can run the self-hosted server. Use the Quick Start config with your client's MCP configuration format. The command is <code>npx -y @wiro-ai/wiro-mcp</code> with <code>WIRO_API_KEY</code> and <code>WIRO_API_SECRET</code> as environment variables.</p>
+</section>
+
+<section id="self-hosted-auth">
+<h2>Authentication</h2>
+<h3>Signature-Based (Recommended)</h3>
+<p>Provide both API key and secret:</p>
+<pre><code class="language-bash">WIRO_API_KEY=your-api-key
+WIRO_API_SECRET=your-api-secret</code></pre>
+<h3>API Key Only</h3>
+<p>Omit <code>WIRO_API_SECRET</code>:</p>
+<pre><code class="language-bash">WIRO_API_KEY=your-api-key</code></pre>
+</section>
+
+<section id="self-hosted-tools">
+<h2>Available Tools</h2>
+<p>The self-hosted server provides the same 11 tools as the <a href="/docs/wiro-mcp-server">hosted MCP server</a>. Your AI assistant picks the right tool automatically.</p>
+<p><strong>Model slugs:</strong> Use the clean/lowercase format <code>owner/model</code> (e.g. <code>openai/sora-2</code>, <code>wiro/virtual-try-on</code>). These correspond to <code>cleanslugowner/cleanslugproject</code> values returned by <code>search_models</code>.</p>
+
+<h3>Discovery</h3>
+<table><thead><tr><th>Tool</th><th>API Endpoint</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>search_models</code></td><td><code>POST /Tool/List</code></td><td>Search and browse AI models by keyword, category, or owner. Returns model slugs, titles, descriptions, categories, and pricing.</td></tr>
+<tr><td><code>get_model_schema</code></td><td><code>POST /Tool/Detail</code></td><td>Get full parameter schema and pricing for any model — parameter names, types, options, defaults, and required fields.</td></tr>
+<tr><td><code>recommend_model</code></td><td><code>POST /Tool/List</code></td><td>Describe what you want to build and get model recommendations ranked by relevance.</td></tr>
+<tr><td><code>explore</code></td><td><code>POST /Tool/Explore</code></td><td>Browse curated AI models organized by category. No parameters needed.</td></tr>
+</tbody></table>
+
+<h3>Execution</h3>
+<table><thead><tr><th>Tool</th><th>API Endpoint</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>run_model</code></td><td><code>POST /Run/{owner}/{model}</code></td><td>Run any model with parameters. With <code>wait=true</code> (default), polls until complete and returns outputs. With <code>wait=false</code>, returns task token for async monitoring.</td></tr>
+</tbody></table>
+
+<h3>Task Management</h3>
+<table><thead><tr><th>Tool</th><th>API Endpoint</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>get_task</code></td><td><code>POST /Task/Detail</code></td><td>Check task status, <code>pexit</code> (exit code), outputs (CDN URLs), <code>debugoutput</code> (LLM responses), elapsed time, and cost. <code>pexit="0"</code> means success.</td></tr>
+<tr><td><code>get_task_price</code></td><td><code>POST /Task/Detail</code></td><td>Get the cost of a completed task. Shows whether it was billed and the total charge. Only successful tasks (<code>pexit: "0"</code>) are billed.</td></tr>
+<tr><td><code>cancel_task</code></td><td><code>POST /Task/Cancel</code></td><td>Cancel a task still in queue (before worker assignment).</td></tr>
+<tr><td><code>kill_task</code></td><td><code>POST /Task/Kill</code></td><td>Kill a running task (after worker assignment). Task moves to <code>task_cancel</code> status.</td></tr>
+</tbody></table>
+
+<h3>Utility</h3>
+<table><thead><tr><th>Tool</th><th>API Endpoint</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>upload_file</code></td><td><code>POST /File/Upload</code></td><td>Upload a file from a URL to Wiro for use as model input.</td></tr>
+<tr><td><code>search_docs</code></td><td>Wiro Docs</td><td>Search the Wiro documentation for guides, API references, and examples.</td></tr>
+</tbody></table>
+
+<p>See the <a href="/docs/wiro-mcp-server">Wiro MCP Server</a> page for detailed parameter tables and examples.</p>
+</section>
+
+<section id="self-hosted-env">
+<h2>Environment Variables</h2>
+<table><thead><tr><th>Variable</th><th>Required</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>WIRO_API_KEY</code></td><td>Yes</td><td>Your Wiro project API key</td></tr>
+<tr><td><code>WIRO_API_SECRET</code></td><td>No</td><td>API secret (for signature auth)</td></tr>
+<tr><td><code>WIRO_API_BASE_URL</code></td><td>No</td><td>Override API URL (default: <code>https://api.wiro.ai/v1</code>)</td></tr>
+</tbody></table>
+</section>
+
+<section id="self-hosted-links">
+<h2>GitHub &amp; npm</h2>
+<ul>
+<li><strong>GitHub:</strong> <a href="https://github.com/wiroai/Wiro-MCP" target="_blank">github.com/wiroai/Wiro-MCP</a></li>
+<li><strong>npm:</strong> <a href="https://www.npmjs.com/package/@wiro-ai/wiro-mcp" target="_blank">@wiro-ai/wiro-mcp</a></li>
+</ul>
+<h3>Using as a Library</h3>
+<pre><code class="language-javascript">import { createMcpServer, WiroClient } from '@wiro-ai/wiro-mcp';
+
+const client = new WiroClient('your-api-key', 'your-api-secret');
+const server = createMcpServer(client);</code></pre>
+</section>
+
+<section id="self-hosted-server">
+<h2>Self-Hosting on Your Server</h2>
+<pre><code class="language-bash">git clone https://github.com/wiroai/Wiro-MCP.git
+cd Wiro-MCP
+npm install
+npm run build
+export WIRO_API_KEY="your-api-key"
+export WIRO_API_SECRET="your-api-secret"
+node dist/index.js</code></pre>
+<p>Requires Node.js 18 or later. <a href="https://wiro.ai/panel/project/new" target="_blank">Create a project</a> to get API keys.</p>
+</section>
+
+</article>
+            </div>
+
+            <!-- ==================== N8N INTEGRATION ==================== -->
+            <div class="docs-page-section" data-page="n8n-wiro-integration" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/n8n-wiro-integration.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/n8n-wiro-integration.md" download class="docs-section-md-btn">Download</a></div>
+
+<h1>n8n Wiro Integration</h1>
+<div style="margin:16px 0 20px;display:flex;align-items:center;gap:14px;">
+  <img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/n8n.svg" alt="n8n" style="height:36px;" class="dark-invert-icon">
+  <span style="font-size:1.5rem;color:var(--light-text);font-weight:300;">&times;</span>
+  <img src="https://wiro.ai/images/logos/logo/logo.png" alt="Wiro" style="height:16px;">
+</div>
+<p class="section-subtitle">Use all Wiro AI models directly in your n8n workflows — video, image, audio, LLM, 3D, and more.</p>
+
+<section id="n8n-overview">
+<h2>Overview</h2>
+<p><a href="https://n8n.io" target="_blank">n8n</a> is a powerful workflow automation platform. The <strong>Wiro AI community node</strong> gives you access to all Wiro AI models as individual nodes you can drag and drop into any workflow.</p>
+<p>Each model is a <strong>separate node</strong> — so you get dedicated parameters, descriptions, and output handling for every model without any configuration hassle.</p>
+
+<h3>Links</h3>
+<ul>
+  <li><a href="https://www.npmjs.com/package/@wiro-ai/n8n-nodes-wiroai" target="_blank">npm: @wiro-ai/n8n-nodes-wiroai</a></li>
+  <li><a href="https://github.com/wiroai/n8n-nodes-wiroai" target="_blank">GitHub: wiroai/n8n-nodes-wiroai</a></li>
+  <li><a href="https://docs.n8n.io/integrations/community-nodes/installation/" target="_blank">n8n Community Nodes Installation Guide</a></li>
+  <li><a href="https://wiro.ai/models" target="_blank">Wiro Model Catalog</a> — browse all available models</li>
+</ul>
+</section>
+
+<section id="n8n-categories">
+<h2>Available Model Categories</h2>
+<div class="docs-comparison-table">
+  <table>
+    <thead><tr><th>Category</th><th>Models</th><th>Examples</th></tr></thead>
+    <tbody>
+      <tr><td>Video Generation</td><td>Text-to-video, image-to-video</td><td>Sora 2, Veo 3, Kling V3, Seedance, Hailuo, PixVerse, Runway</td></tr>
+      <tr><td>Image Generation</td><td>Text-to-image, style transfer</td><td>Imagen V4, Flux 2 Pro, Seedream, Nano Banana, SDXL</td></tr>
+      <tr><td>Image Editing</td><td>Try-on, face swap, background removal</td><td>Virtual Try-On, Face Swap, Inpainting, Style Transfer</td></tr>
+      <tr><td>Audio &amp; Speech</td><td>TTS, STT, voice clone, music</td><td>ElevenLabs TTS, Gemini TTS, Whisper STT, Voice Clone</td></tr>
+      <tr><td>LLM Chat</td><td>Chat completion, RAG</td><td>GPT-5, Gemini 3, Qwen 3.5, RAG Chat</td></tr>
+      <tr><td>3D Generation</td><td>Image/text to 3D</td><td>Trellis 2, Hunyuan3D 2.1</td></tr>
+      <tr><td>Translation</td><td>Multi-language with image support</td><td>Gemma-based (4B, 12B, 27B)</td></tr>
+      <tr><td>E-Commerce</td><td>Product photos, ads, templates</td><td>Product Photoshoot, Shopify Templates, UGC Creator</td></tr>
+      <tr><td>HR Tools</td><td>CV analysis, job descriptions</td><td>CV Evaluator, Resume Parser, Culture Fit</td></tr>
+    </tbody>
+  </table>
+</div>
+</section>
+
+<section id="n8n-installation">
+<h2>Installation</h2>
+<p>Install the community node package in your n8n instance:</p>
+
+<h3>Via n8n UI (Recommended)</h3>
+<ol>
+  <li>Open your n8n instance</li>
+  <li>Go to <strong>Settings → Community Nodes</strong></li>
+  <li>Click <strong>Install a community node</strong></li>
+  <li>Enter: <code>@wiro-ai/n8n-nodes-wiroai</code></li>
+  <li>Click <strong>Install</strong></li>
+</ol>
+
+<h3>Via Command Line</h3>
+<pre><code class="language-bash">npm install @wiro-ai/n8n-nodes-wiroai</code></pre>
+<p>Restart n8n after installation.</p>
+</section>
+
+<section id="n8n-authentication">
+<h2>Authentication</h2>
+<p>The node supports both <a href="/docs/authentication">Wiro authentication methods</a>:</p>
+<ol>
+  <li>Go to <strong>Credentials → Add new → Wiro API</strong> in n8n</li>
+  <li>Select your auth method:
+    <ul>
+      <li><strong>Signature-Based</strong> — enter API key + API secret (recommended)</li>
+      <li><strong>API Key Only</strong> — enter API key only</li>
+    </ul>
+  </li>
+  <li>Click <strong>Save</strong></li>
+</ol>
+<p>Get your credentials at <a href="https://wiro.ai/panel/project/new" target="_blank">wiro.ai/panel/project</a>.</p>
+</section>
+
+<section id="n8n-usage">
+<h2>Usage</h2>
+<p>Each Wiro model appears as a separate node in the n8n node picker. Search for "Wiro" or the model name to find it.</p>
+
+<h3>Example: Generate a Video with Sora 2</h3>
+<ol>
+  <li>Add the <strong>Wiro - Sora 2 Pro</strong> node to your workflow</li>
+  <li>Connect your Wiro credentials</li>
+  <li>Set the parameters:
+    <ul>
+      <li><strong>Prompt:</strong> <code>A cat astronaut floating in space</code></li>
+      <li><strong>Seconds:</strong> <code>8</code></li>
+      <li><strong>Resolution:</strong> <code>1080p</code></li>
+    </ul>
+  </li>
+  <li>Run the workflow</li>
+</ol>
+<p>The node returns the task result with output URLs:</p>
+<pre><code class="language-json">{
+  "taskid": "abc123",
+  "status": "completed",
+  "url": "https://cdn1.wiro.ai/xyz/0.mp4"
+}</code></pre>
+
+<h3>Example: Transcribe Audio with Whisper</h3>
+<ol>
+  <li>Add the <strong>Wiro - Whisper Large 3</strong> node</li>
+  <li>Connect an audio file from a previous node or provide a URL</li>
+  <li>Select language and output format</li>
+  <li>Run — get the transcribed text</li>
+</ol>
+
+<h3>Example: LLM Chat with GPT-5</h3>
+<ol>
+  <li>Add the <strong>Wiro - GPT-5</strong> node</li>
+  <li>Set your prompt and system instructions</li>
+  <li>Run — get the AI response</li>
+</ol>
+</section>
+
+<section id="n8n-compatibility">
+<h2>Compatibility</h2>
+<div class="docs-comparison-table">
+  <table>
+    <thead><tr><th>Requirement</th><th>Version</th></tr></thead>
+    <tbody>
+      <tr><td>n8n</td><td>v1.0+</td></tr>
+      <tr><td>Node.js</td><td>v18+</td></tr>
+      <tr><td>Package</td><td><code>@wiro-ai/n8n-nodes-wiroai@latest</code></td></tr>
+    </tbody>
+  </table>
+</div>
+</section>
+
+</article>
             </div>
 
             <nav class="docs-pagination" id="docsPagination"></nav>
