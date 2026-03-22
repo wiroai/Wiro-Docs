@@ -668,16 +668,17 @@ function buildToc(slug) {
 
 function updateTocActive(items, container) {
   const el = container === window ? document.documentElement : container;
-  const atBottom = Math.abs(el.scrollHeight - el.scrollTop - el.clientHeight) < 2;
+  const atBottom = Math.abs(el.scrollHeight - el.scrollTop - el.clientHeight) < 5;
 
   let activeId = items[0]?.id;
 
   if (atBottom) {
     activeId = items[items.length - 1]?.id;
   } else {
+    const offsetTop = container === window ? 0 : container.getBoundingClientRect().top;
     for (let i = items.length - 1; i >= 0; i--) {
       const target = document.getElementById(items[i].id);
-      if (target && target.getBoundingClientRect().top <= 80) {
+      if (target && target.getBoundingClientRect().top <= offsetTop + 100) {
         activeId = items[i].id;
         break;
       }
