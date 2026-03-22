@@ -550,6 +550,10 @@ button {
 /* ------------------------------------------------------------------
    9. Section content
    ------------------------------------------------------------------ */
+.docs-section h1:first-of-type {
+  margin-top: 30px;
+}
+
 .docs-section h1 {
   font-size: 2rem;
   font-weight: 700;
