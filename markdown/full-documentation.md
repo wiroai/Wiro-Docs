@@ -15,7 +15,11 @@ Complete API documentation for the Wiro AI platform — run 1,000+ AI models thr
 9. [WebSocket](#websocket)
 10. [Realtime Voice](#realtime-voice)
 11. [Files](#files)
-12. [Code Examples](#code-examples)
+12. [Concurrency Limits](#concurrency-limits)
+13. [Error Reference](#error-reference)
+14. [Code Examples](#code-examples)
+15. [MCP Server](#mcp-server)
+16. [Self-Hosted MCP](#self-hosted-mcp)
 
 ---
 
@@ -1097,6 +1101,93 @@ Once uploaded, reference a file by its URL or ID in your model run parameters. F
 
 ---
 
+# Concurrency Limits
+
+Understand and manage how many requests you can run simultaneously on Wiro.
+
+## How It Works
+
+Your concurrency limit is determined by your current account balance:
+
+- When your balance is **$250 or below**, you can run concurrent tasks equal to **10% of your current USD balance** (minimum 1).
+- When your balance is **above $250**, there is **no concurrency limit**.
+
+| Account Balance | Concurrent Task Limit |
+|-----------------|----------------------|
+| $10 | 1 concurrent task (minimum) |
+| $50 | 5 concurrent tasks |
+| $100 | 10 concurrent tasks |
+| $150 | 15 concurrent tasks |
+| $250 | 25 concurrent tasks |
+| $251+ | **Unlimited** |
+
+Formula: `max(1, floor(balance_usd * 0.10))`. Error code `96` is returned when the limit is reached.
+
+### API Response
+
+When you hit the limit, the Run endpoint returns:
+
+```json
+{
+  "result": false,
+  "errors": [{ "code": 96, "message": "You have reached your concurrent task limit..." }]
+}
+```
+
+| Code | Meaning |
+|------|---------|
+| `96` | Concurrent task limit reached |
+| `97` | Insufficient balance |
+
+---
+
+# Error Reference
+
+Understand API error responses, error codes, and how to handle them.
+
+## Error Codes
+
+| Code | Category | Description |
+|------|----------|-------------|
+| `0` | General | Server-side errors, validation failures, missing parameters |
+| `1` | Not Found | Resource not found or not accessible |
+| `96` | Concurrency Limit | Too many concurrent tasks for your balance |
+| `97` | Insufficient Balance | Not enough funds to run the model |
+| `98` | Authentication Required | Sign in required to access this model |
+| `99` | Token Invalid | Bearer token missing, invalid, or expired |
+
+## Error Response Format
+
+```json
+{
+  "result": false,
+  "errors": [{ "code": 97, "message": "Insufficient balance" }]
+}
+```
+
+All API responses return HTTP `200`. Auth errors return HTTP `401`.
+
+## Run Errors (POST /Run)
+
+| Code | Message | Action |
+|------|---------|--------|
+| `96` | Concurrent task limit reached | Wait for task to finish or add funds |
+| `97` | Insufficient balance | Add funds ($0.50 min, $10 for training) |
+| `98` | Sign in required | Model requires registered account |
+| `0` | Parameter required/invalid | Fix request parameters |
+| `1` | Model not found/accessible | Check model slug |
+
+## Task Errors (POST /Task)
+
+| Code | Message | Endpoint |
+|------|---------|----------|
+| `1` | Task not found | Detail, Cancel, Kill |
+| `1` | Not cancellable | Cancel |
+| `1` | Kill failed | Kill |
+| `0` | Missing identifier | Detail |
+
+---
+
 # Code Examples
 
 Complete end-to-end examples in all 9 supported languages.
@@ -1262,3 +1353,97 @@ while true; do
   sleep 3
 done
 ```
+
+---
+
+# MCP Server
+
+Connect AI coding assistants to Wiro's 70+ AI models via the Model Context Protocol.
+
+## What is MCP?
+
+[Model Context Protocol](https://modelcontextprotocol.io/) (MCP) is an open standard that lets AI assistants use external tools directly. With the Wiro MCP server, your AI assistant can search models, run inference, track tasks, and upload files — all without leaving your editor.
+
+The hosted MCP server is available at `mcp.wiro.ai/v1` and works with any MCP-compatible client, including Cursor, Claude Code, Claude Desktop, and Windsurf.
+
+## Setup
+
+### Cursor
+
+Open MCP settings (`Cmd+Shift+P` → "Open MCP settings") and add:
+
+```json
+{
+  "mcpServers": {
+    "wiro": {
+      "url": "https://mcp.wiro.ai/v1",
+      "headers": {
+        "Authorization": "Bearer BASE64_OF_APIKEY:APISECRET"
+      }
+    }
+  }
+}
+```
+
+### Claude Code
+
+```bash
+claude mcp add --transport http wiro \
+  https://mcp.wiro.ai/v1 \
+  --header "Authorization: Bearer BASE64_OF_APIKEY:APISECRET"
+```
+
+## Authentication
+
+Signature-Based: `Authorization: Bearer YOUR_API_KEY:YOUR_API_SECRET`
+
+API Key Only: `Authorization: Bearer YOUR_API_KEY`
+
+## Available Tools
+
+**Model slugs:** Use the clean/lowercase format `owner/model` (e.g. `openai/sora-2`, `wiro/virtual-try-on`). These correspond to the `cleanslugowner/cleanslugproject` values returned by `search_models`.
+
+| Tool | Description |
+|------|-------------|
+| `search_models` | Search models by keyword or category |
+| `get_model_schema` | Get parameter schema for any model (pass clean model slug) |
+| `run_model` | Run any model (pass clean model slug), wait or get task token |
+| `get_task` | Check task status and outputs |
+| `cancel_task` | Cancel a queued task |
+| `kill_task` | Kill a running task |
+
+---
+
+# Self-Hosted MCP
+
+Run the Wiro MCP server locally on your own machine using npx.
+
+## Quick Start
+
+```json
+{
+  "mcpServers": {
+    "wiro": {
+      "command": "npx",
+      "args": ["-y", "@wiro-ai/wiro-mcp"],
+      "env": {
+        "WIRO_API_KEY": "your-api-key",
+        "WIRO_API_SECRET": "your-api-secret"
+      }
+    }
+  }
+}
+```
+
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `WIRO_API_KEY` | Yes | Your Wiro project API key |
+| `WIRO_API_SECRET` | No | API secret (for signature auth) |
+| `WIRO_API_BASE_URL` | No | Override API URL (default: `https://api.wiro.ai/v1`) |
+
+## GitHub & npm
+
+- GitHub: [github.com/wiroai/Wiro-MCP](https://github.com/wiroai/Wiro-MCP)
+- npm: [@wiro-ai/wiro-mcp](https://www.npmjs.com/package/@wiro-ai/wiro-mcp)
