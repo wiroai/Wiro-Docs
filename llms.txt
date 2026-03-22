@@ -102,7 +102,7 @@ POST /File/Upload (multipart/form-data) — Fields: `file`, `folderId`
 
 task_queue → task_accept → task_assign → task_preprocess_start → task_preprocess_end → task_start → task_output → task_end → task_postprocess_start → task_postprocess_end
 
-Additional: task_error (interim log, not final failure), task_output_full, task_output_error, task_cancel
+Additional: task_error (interim log, not final failure), task_output_full, task_error_full, task_cancel
 
 Realtime only: task_stream_ready, task_stream_end, task_cost
 
@@ -244,10 +244,75 @@ console.log(detail.data);
 
 Code examples in 9 languages: curl, Python, Node.js, PHP, C#, Go, Swift, Kotlin, Dart
 
+## Error Codes
+
+All API responses return HTTP 200. Check `result` field and error `code`:
+- Code 0: General/validation errors (missing params, server errors)
+- Code 1: Not found (model, task)
+- Code 96: Concurrent task limit reached
+- Code 97: Insufficient balance
+- Code 98: Authentication required (sign in)
+- Code 99: Bearer token invalid/expired
+
+Auth errors return HTTP 401: invalid API key, missing signature, IP not allowed.
+
+## Pricing
+
+Prepaid credits, pay-per-use. Pricing info in `dynamicprice` field of Tool/List and Tool/Detail responses.
+
+Billing methods:
+- Fixed-rate: cpr (per request), cps (per second), cpo (per output), cpt (per token)
+- Usage-based: cp-pixel (per pixel tier/1MP), cp-audiosecondslength (per audio second), cp-promptlength (per character), cp-outputVideoLength (per output video second)
+- Special: cp-realtimeturn (per realtime voice turn), cp-readoutput (model-reported cost)
+
+Dynamic pricing: `dynamicprice` field contains pricing tiers with `inputs` (parameter combo), `price` (USD), `priceMethod` (billing code), optional `priceExtra` and `priceInput`. Empty inputs = flat rate.
+
+Fallback: when no dynamicprice, cost = elapsed_seconds × cps. `approximatelycost` field = average run time × cps (pre-run estimate).
+
+Only successful runs billed (pexit "0"). Server errors, queue time, cancelled tasks = free.
+Pricing page: https://wiro.ai/product/pricing
+
+## Concurrency Limits
+
+Limits apply when balance is $250 or below. Concurrent tasks = max(1, floor(balance * 0.10)).
+Examples: $50 = 5 concurrent, $150 = 15 concurrent, $251+ = unlimited.
+Error code 96 returned when limit reached. Error code 97 for insufficient balance.
+
+## MCP Server
+
+Wiro provides an MCP (Model Context Protocol) server for AI assistants.
+
+### Hosted (mcp.wiro.ai)
+Endpoint: https://mcp.wiro.ai/v1
+Transport: Streamable HTTP (stateless)
+Auth: `Authorization: Bearer base64(apiKey:apiSecret)` (signature) or `Bearer base64(apiKey)` (apikey-only)
+
+### Self-Hosted (npx)
+```json
+{ "command": "npx", "args": ["-y", "@wiro-ai/wiro-mcp"], "env": { "WIRO_API_KEY": "...", "WIRO_API_SECRET": "..." } }
+```
+
+### MCP Tools (10 total)
+- `search_models`: Search/browse models by keyword, category, or owner (POST /Tool/List)
+- `get_model_schema`: Get model parameters, types, and pricing (POST /Tool/Detail). Use clean model slug
+- `recommend_model`: Describe what you want to build, get models ranked by relevance (POST /Tool/List)
+- `explore`: Browse curated models organized by category (POST /Tool/Explore). No parameters needed.
+- `run_model`: Run any model, wait for result or get task token (POST /Run/{cleanslugowner}/{cleanslugproject})
+- `get_task`: Check task status, outputs, cost (POST /Task/Detail)
+- `get_task_price`: Get cost of a completed task — only successful tasks (pexit "0") are billed (POST /Task/Detail)
+- `cancel_task`: Cancel a queued task (POST /Task/Cancel)
+- `kill_task`: Kill a running task (POST /Task/Kill)
+- `search_docs`: Search Wiro documentation for guides, API references, and examples
+
+
 ## Links
 
 - Dashboard: https://wiro.ai/panel
 - Models: https://wiro.ai/models
 - Create Project: https://wiro.ai/panel/project/new
 - Full Documentation: https://wiro.ai/docs
+- MCP Server Docs: https://wiro.ai/docs#/mcp
+- MCP Self-Hosted: https://wiro.ai/docs#/mcp-self-hosted
+- MCP GitHub: https://github.com/wiroai/Wiro-MCP
+- MCP npm: https://www.npmjs.com/package/@wiro-ai/wiro-mcp
 - Markdown (all sections): markdown/full-documentation.md
