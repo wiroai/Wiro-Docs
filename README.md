@@ -67,6 +67,7 @@
 | **Integrations** | | |
 | Wiro MCP Server | `/docs/wiro-mcp-server` | [wiro-mcp-server.md](./markdown/wiro-mcp-server.md) |
 | Self-Hosted MCP | `/docs/mcp-self-hosted` | [mcp-self-hosted.md](./markdown/mcp-self-hosted.md) |
+| Node.js Library | `/docs/nodejs-library` | [nodejs-library.md](./markdown/nodejs-library.md) |
 | n8n Wiro Integration | `/docs/n8n-wiro-integration` | [n8n-wiro-integration.md](./markdown/n8n-wiro-integration.md) |
 
 > **Full export:** [full-documentation.md](./markdown/full-documentation.md)
@@ -133,6 +134,7 @@ Wiro-Docs/
     ├── code-examples.md
     ├── wiro-mcp-server.md
     ├── mcp-self-hosted.md
+    ├── nodejs-library.md
     └── n8n-wiro-integration.md
 ```
 

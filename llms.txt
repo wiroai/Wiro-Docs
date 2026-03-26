@@ -95,7 +95,7 @@ POST /Task/Cancel — `{ "tasktoken": "..." }`
 POST /Task/Kill — `{ "tasktoken": "..." }`
 
 ### Create Folder
-POST /File/FolderCreate — `{ "name": "my-folder", "parentId": null }`
+POST /File/FolderCreate — `{ "name": "my-folder" }` (optional `parentid` for nested folders)
 
 ### Upload File
 POST /File/Upload (multipart/form-data) — Fields: `file`, `folderid`. Max 100MB. Response: `{ result, list: [{ id, name, contenttype, size, url, ... }] }`
@@ -310,6 +310,23 @@ Auth: `Authorization: Bearer apiKey:apiSecret` (signature) or `Bearer apiKey` (a
 - `search_docs`: Search Wiro documentation for guides, API references, and examples
 
 
+## Node.js Library
+
+Use `WiroClient` from `@wiro-ai/wiro-mcp/client` as a standalone API client in Node.js/TypeScript — no MCP required.
+
+```bash
+npm install @wiro-ai/wiro-mcp
+```
+
+```javascript
+import { WiroClient } from '@wiro-ai/wiro-mcp/client';
+const client = new WiroClient('API_KEY', 'API_SECRET');
+const run = await client.runModel('google/nano-banana-pro', { prompt: '...' });
+const result = await client.waitForTask(run.socketaccesstoken);
+```
+
+Methods: `searchModels()`, `getModelSchema()`, `explore()`, `runModel()`, `waitForTask()`, `getTask()`, `cancelTask()`, `killTask()`, `uploadFile()`.
+
 ## Links
 
 - Dashboard: https://wiro.ai/panel
@@ -318,6 +335,9 @@ Auth: `Authorization: Bearer apiKey:apiSecret` (signature) or `Bearer apiKey` (a
 - Full Documentation: https://wiro.ai/docs
 - MCP Server Docs: https://wiro.ai/docs/wiro-mcp-server
 - MCP Self-Hosted: https://wiro.ai/docs/mcp-self-hosted
+- Node.js Library: https://wiro.ai/docs/nodejs-library
+- n8n Integration: https://wiro.ai/docs/n8n-wiro-integration
+- FAQ: https://wiro.ai/docs/faq
 - MCP GitHub: https://github.com/wiroai/Wiro-MCP
 - MCP npm: https://www.npmjs.com/package/@wiro-ai/wiro-mcp
 - Markdown (all sections): markdown/full-documentation.md

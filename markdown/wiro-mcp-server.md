@@ -176,7 +176,7 @@ The MCP server exposes 11 tools organized in four categories. Your AI assistant 
 
 | Tool | What it does |
 |------|-------------|
-| `upload_file` | Upload a file from a URL to Wiro for use as model input |
+| `upload_file` | Upload a file from a URL to Wiro. Most models accept direct URLs without uploading first — use this for reuse across runs. |
 | `search_docs` | Search the Wiro documentation for guides, API references, and examples |
 
 ## Examples
@@ -235,6 +235,7 @@ Search Wiro's model catalog by keyword, category, owner, or any combination. Cal
 | `search` | string (optional) | Free-text search, e.g. `"flux"`, `"video generation"` |
 | `categories` | string[] (optional) | Filter by category: `text-to-image`, `text-to-video`, `image-to-video`, `llm`, `text-to-speech`, `image-editing`, etc. |
 | `slugowner` | string (optional) | Filter by model owner slug, e.g. `"openai"`, `"stability-ai"`, `"klingai"` |
+| `sort` | string (optional) | Sort by: `relevance`, `time`, `ratedusercount`, `commentcount`, `averagepoint` |
 | `start` | number (optional) | Pagination offset (default 0) |
 | `limit` | number (optional) | Max results (default 20, max 100) |
 
@@ -328,6 +329,8 @@ The worker will stop processing and the task will move to `task_cancel` status.
 ### upload_file
 
 Upload a file from a URL to Wiro for use as model input. Downloads the file and uploads it to Wiro's file system via `POST /File/Upload`.
+
+> **Tip:** Most models accept direct URLs in file parameters (e.g. `inputImage`, `inputImageUrl`) — you don't need to upload first. Use `upload_file` when you need to reuse the same file across multiple runs or when the model specifically requires a Wiro-hosted file. See [Model Parameters](/docs/model-parameters) for details.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|

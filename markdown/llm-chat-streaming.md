@@ -81,9 +81,9 @@ When streaming via WebSocket, `task_output` messages for LLM models contain a st
     "answer": ["Quantum computing uses qubits that can exist in superposition..."],
     "raw": "Quantum computing uses qubits that can exist in superposition...",
     "isThinking": false,
-    "speed": 48.5,
+    "speed": "48.5",
     "speedType": "t/s",
-    "elapsedTime": 3200
+    "elapsedTime": "3s"
   }
 }
 ```
@@ -95,9 +95,9 @@ When streaming via WebSocket, `task_output` messages for LLM models contain a st
 | `message.answer` | `string[]` | Array of response chunks. This is the content to show the user. |
 | `message.raw` | `string` | The full accumulated raw output text (thinking + answer merged). |
 | `message.isThinking` | `boolean` | `true` while the model is in the thinking phase, `false` during the answer phase. |
-| `message.speed` | `number` | Current generation speed (e.g. tokens per second). |
+| `message.speed` | `string` | Generation speed (e.g. "12.4"). |
 | `message.speedType` | `string` | Unit for speed, typically `"t/s"` (tokens per second). |
-| `message.elapsedTime` | `number` | Milliseconds elapsed since the model started generating. |
+| `message.elapsedTime` | `string` | Elapsed time since generation started (e.g. "3s", "1m 5s"). |
 
 > **Note:** Standard (non-LLM) models send `message` as a plain string. LLM models send it as a `{ thinking, answer }` object. Check the type before parsing.
 

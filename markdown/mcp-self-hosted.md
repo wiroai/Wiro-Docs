@@ -21,7 +21,7 @@ Add to your AI assistant's MCP config:
 }
 ```
 
-That's it. Your assistant now has access to all 70+ Wiro AI models.
+That's it. Your assistant now has access to all Wiro AI models.
 
 ## Setup
 
@@ -130,7 +130,7 @@ The self-hosted server provides the same 11 tools as the [hosted MCP server](/do
 
 | Tool | API Endpoint | What it does |
 |------|-------------|-------------|
-| `upload_file` | `POST /File/Upload` | Upload a file from a URL to Wiro for use as model input. |
+| `upload_file` | `POST /File/Upload` | Upload a file from a URL to Wiro. Most models accept direct URLs without uploading first. |
 | `search_docs` | Wiro Docs | Search the Wiro documentation for guides, API references, and examples. |
 
 See the [Wiro MCP Server](/docs/wiro-mcp-server) page for detailed parameter tables and examples.

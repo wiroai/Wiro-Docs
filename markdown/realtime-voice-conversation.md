@@ -42,7 +42,7 @@ During a realtime session, you'll receive these WebSocket events:
 | `task_stream_end` | AI finished speaking for this turn — you can speak again |
 | `task_cost` | Cost update per turn — includes `turnCost`, `cumulativeCost`, and `usage` (raw cost breakdown from the model provider) |
 | `task_output` | Transcript messages prefixed with `TRANSCRIPT_USER:` or `TRANSCRIPT_AI:` |
-| `task_end` | Session fully ended — close the connection |
+| `task_end` | The model process has exited. Post-processing follows — wait for `task_postprocess_end` to close the connection. |
 
 ## Audio Format
 
@@ -118,7 +118,7 @@ To gracefully end a realtime session, send `task_session_end`:
 }
 ```
 
-After sending this, the server will process any remaining audio, send final cost/transcript events, and then emit `task_end`. Wait for `task_end` before closing the WebSocket.
+After sending this, the server will process any remaining audio, send final cost/transcript events, and then emit `task_postprocess_end`. Wait for `task_postprocess_end` before closing the WebSocket.
 
 > **Safety:** If the client disconnects without sending `task_session_end`, the server automatically terminates the session to prevent the pipeline from running indefinitely (and the provider from continuing to charge). Always send `task_session_end` explicitly for a clean shutdown.
 

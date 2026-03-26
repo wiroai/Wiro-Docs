@@ -16,8 +16,8 @@ Creates a new folder to organize your uploaded files.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `name` | string | Yes | Folder name |
-| `parentId` | string | No | Parent folder ID for nested structure (null for root) |
+| `name` | string | Yes | Folder name (letters, numbers, hyphens, underscores only) |
+| `parentid` | string | No | Parent folder ID for nested structure (omit for root) |
 
 ### Response
 
@@ -25,12 +25,14 @@ Creates a new folder to organize your uploaded files.
 {
   "result": true,
   "errors": [],
-  "data": {
+  "list": [{
     "id": "folder-abc123",
     "name": "training-data",
-    "parentId": null,
-    "createdAt": "2025-01-15T10:00:00Z"
-  }
+    "parentid": "root-folder-id",
+    "size": "0",
+    "contenttype": "",
+    "addedtime": "1716276543"
+  }]
 }
 ```
 
@@ -68,11 +70,13 @@ Uploads a file using `multipart/form-data`. You can optionally assign it to a fo
 
 ## Using Files in Runs
 
-Once uploaded, reference a file by its URL or ID in your model run parameters. For example, an image upscaler model might accept a `imageUrl` parameter — pass the URL returned from the upload response.
+Once uploaded, reference a file by its URL in your model run parameters. For example, an image upscaler model might accept an `inputImageUrl` parameter — pass the URL returned from the upload response.
+
+You don't always need to upload files first. Most models accept direct URLs in their file parameters — you can pass any publicly accessible URL. See [Model Parameters](/docs/model-parameters) for details on `fileinput`, `multifileinput`, and `combinefileinput` patterns.
 
 ```json
 {
-  "imageUrl": "https://files.wiro.ai/...",
+  "inputImageUrl": "https://cdn1.wiro.ai/...",
   "scale": 4
 }
 ```
@@ -82,24 +86,21 @@ Once uploaded, reference a file by its URL or ID in your model run parameters. F
 ### curl (Folder)
 
 ```bash
-# Create a folder
 curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "name": "training-data",
-    "parentId": null
+    "name": "training-data"
   }'
 ```
 
 ### curl (Upload)
 
 ```bash
-# Upload a file
 curl -X POST "https://api.wiro.ai/v1/File/Upload" \
   -H "x-api-key: YOUR_API_KEY" \
   -F "file=@/path/to/dataset.csv" \
-  -F "folderId=folder-id-here"
+  -F "folderid=folder-id-here"
 ```
 
 ### Python
@@ -117,11 +118,10 @@ folder_resp = requests.post(
     "https://api.wiro.ai/v1/File/FolderCreate",
     headers=headers,
     json={
-        "name": "training-data",
-        "parentId": None
+        "name": "training-data"
     }
 )
-folder_id = folder_resp.json()["data"]["id"]
+folder_id = folder_resp.json()["list"][0]["id"]
 print(f"Folder ID: {folder_id}")
 
 # Upload a file
@@ -130,9 +130,10 @@ with open("dataset.csv", "rb") as f:
         "https://api.wiro.ai/v1/File/Upload",
         headers={"x-api-key": "YOUR_API_KEY"},
         files={"file": f},
-        data={"folderId": folder_id}
+        data={"folderid": folder_id}
     )
-print(upload_resp.json())
+file_url = upload_resp.json()["list"][0]["url"]
+print(f"File URL: {file_url}")
 ```
 
 ### Node.js
@@ -150,23 +151,24 @@ const headers = {
 // Create a folder
 const folderResp = await axios.post(
   'https://api.wiro.ai/v1/File/FolderCreate',
-  { name: 'training-data', parentId: null },
+  { name: 'training-data' },
   { headers }
 );
-const folderId = folderResp.data.data.id;
+const folderId = folderResp.data.list[0].id;
 console.log('Folder ID:', folderId);
 
 // Upload a file
 const form = new FormData();
 form.append('file', fs.createReadStream('dataset.csv'));
-form.append('folderId', folderId);
+form.append('folderid', folderId);
 
 const uploadResp = await axios.post(
   'https://api.wiro.ai/v1/File/Upload',
   form,
   { headers: { 'x-api-key': 'YOUR_API_KEY', ...form.getHeaders() } }
 );
-console.log(uploadResp.data);
+const fileUrl = uploadResp.data.list[0].url;
+console.log('File URL:', fileUrl);
 ```
 
 ### PHP
@@ -181,8 +183,7 @@ curl_setopt($ch, CURLOPT_HTTPHEADER, [
     "x-api-key: YOUR_API_KEY"
 ]);
 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
-    "name" => "training-data",
-    "parentId" => null
+    "name" => "training-data"
 ]));
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 $response = curl_exec($ch);
@@ -198,8 +199,7 @@ client.DefaultRequestHeaders.Add("x-api-key", "YOUR_API_KEY");
 
 var content = new StringContent(
     JsonSerializer.Serialize(new {
-        name = "training-data",
-        parentId = (string?)null
+        name = "training-data"
     }),
     Encoding.UTF8, "application/json");
 
@@ -224,8 +224,7 @@ import (
 
 func main() {
     body, _ := json.Marshal(map[string]interface{}{
-        "name":     "training-data",
-        "parentId": nil,
+        "name": "training-data",
     })
     req, _ := http.NewRequest("POST",
         "https://api.wiro.ai/v1/File/FolderCreate",
@@ -254,8 +253,7 @@ request.setValue("YOUR_API_KEY",
     forHTTPHeaderField: "x-api-key")
 request.httpBody = try! JSONSerialization.data(
     withJSONObject: [
-        "name": "training-data",
-        "parentId": NSNull()
+        "name": "training-data"
     ])
 
 let (data, _) = try await URLSession.shared
@@ -276,8 +274,7 @@ conn.setRequestProperty("Content-Type", "application/json")
 conn.setRequestProperty("x-api-key", "YOUR_API_KEY")
 conn.doOutput = true
 conn.outputStream.write("""{
-    "name": "training-data",
-    "parentId": null
+    "name": "training-data"
 }""".toByteArray())
 
 val response = conn.inputStream.bufferedReader().readText()
@@ -298,42 +295,7 @@ final response = await http.post(
   },
   body: jsonEncode({
     'name': 'training-data',
-    'parentId': null,
   }),
 );
 print(response.body);
-```
-
-### Response (Folder)
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "list": [{
-    "id": "folder-id",
-    "name": "training-data",
-    "parentid": "root-folder-id",
-    "size": 0,
-    "isfolder": true,
-    "created": "1716276543"
-  }]
-}
-```
-
-### Response (Upload)
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "list": [{
-    "id": "file-id",
-    "name": "photo.jpg",
-    "parentid": "folder-id",
-    "size": 33345,
-    "isfolder": false,
-    "created": "1716276727"
-  }]
-}
 ```

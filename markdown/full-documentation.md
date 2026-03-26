@@ -18,8 +18,12 @@ Complete API documentation for the Wiro AI platform — run AI models through a 
 12. [Concurrency Limits](#concurrency-limits)
 13. [Error Reference](#error-reference)
 14. [Code Examples](#code-examples)
-15. [MCP Server](#mcp-server)
-16. [Self-Hosted MCP](#self-hosted-mcp)
+15. [Pricing](#pricing)
+16. [FAQ](#faq)
+17. [MCP Server](#mcp-server)
+18. [Self-Hosted MCP](#self-hosted-mcp)
+19. [Node.js Library](#nodejs-library)
+20. [n8n Wiro Integration](#n8n-wiro-integration)
 
 ---
 
@@ -841,9 +845,9 @@ When streaming via WebSocket, `task_output` messages for LLM models contain a st
     "answer": ["Quantum computing uses qubits that can exist in superposition..."],
     "raw": "Quantum computing uses qubits that can exist in superposition...",
     "isThinking": false,
-    "speed": 48.5,
+    "speed": "48.5",
     "speedType": "t/s",
-    "elapsedTime": 3200
+    "elapsedTime": "3s"
   }
 }
 ```
@@ -855,9 +859,9 @@ When streaming via WebSocket, `task_output` messages for LLM models contain a st
 | `message.answer`      | `string[]` | Array of response chunks. This is the content to show the user. |
 | `message.raw`         | `string`   | The full accumulated raw output text (thinking + answer merged). |
 | `message.isThinking`  | `boolean`  | `true` while the model is in the thinking phase, `false` during the answer phase. |
-| `message.speed`       | `number`   | Current generation speed (e.g. tokens per second).              |
+| `message.speed`       | `string`   | Generation speed (e.g. "12.4").                                 |
 | `message.speedType`   | `string`   | Unit for speed, typically `"t/s"` (tokens per second).          |
-| `message.elapsedTime` | `number`   | Milliseconds elapsed since the model started generating.        |
+| `message.elapsedTime` | `string`   | Elapsed time since generation started (e.g. "3s", "1m 5s").    |
 
 > **Note:** Standard (non-LLM) models send `message` as a plain string. LLM models send it as a `{ thinking, answer }` object. Check the type before parsing.
 
@@ -946,6 +950,64 @@ Registration message format:
 | `task_postprocess_end` | Post-processing completed. Check `pexit` to determine success (`"0"` = success). The `outputs` array contains the final files. **This is the event to listen for.** |
 | `task_cancel` | The task was cancelled (if queued) or killed (if running) by the user. |
 
+### Message Format
+
+Every WebSocket message is a JSON object with this base structure:
+
+```json
+{
+  "type": "task_accept",
+  "id": "534574",
+  "tasktoken": "eDcCm5yyUfIvMFspTwww49OUfgXkQt",
+  "message": null,
+  "result": true
+}
+```
+
+The `type` field indicates the status. The `message` field varies by type — it's `null` for lifecycle events, a string or object for output events, and an array for the final result.
+
+### Lifecycle Events
+
+Lifecycle events (`task_accept`, `task_preprocess_start`, `task_preprocess_end`, `task_assign`, `task_start`, `task_end`, `task_postprocess_start`) have `message: null`.
+
+### Output Events
+
+**Standard models** — `message` is a progress object or plain string:
+
+```json
+{
+  "type": "task_output",
+  "id": "534574",
+  "tasktoken": "eDcCm5yy...",
+  "message": {
+    "type": "progressGenerate",
+    "task": "Generate",
+    "percentage": "60",
+    "stepCurrent": "6",
+    "stepTotal": "10",
+    "speed": "1.2",
+    "speedType": "it/s",
+    "elapsedTime": "5s",
+    "remainingTime": "3s"
+  },
+  "result": true
+}
+```
+
+**LLM models** — `message` is a structured object with thinking/answer arrays (see LLM & Chat Streaming section).
+
+### Full Output Events
+
+`task_output_full` and `task_error_full` are sent once after the process exits. `message` is `{ raw: "..." }` for standard models, or `{ raw, thinking, answer }` for LLM models.
+
+### Final Result
+
+`task_postprocess_end` — `message` contains the `outputs` array (file URLs for standard models, structured raw content for LLM models).
+
+### Realtime Events
+
+`task_stream_ready`, `task_stream_end` have no `message` field. `task_cost` includes `turnCost`, `cumulativeCost`, and `usage` fields.
+
 ## Binary Frames
 
 For **realtime voice models**, the WebSocket may send binary frames containing raw audio data. Check if the received message is a `Blob` (browser) or `Buffer` (Node.js) before parsing as JSON.
@@ -961,7 +1023,7 @@ For realtime/streaming models that maintain a persistent session, send a `task_s
 }
 ```
 
-After sending this, wait for the `task_end` event before closing the connection.
+After sending this, wait for the `task_postprocess_end` event before closing the connection. This is the final event that contains the complete results.
 
 ---
 
@@ -1011,7 +1073,7 @@ During a realtime session, you'll receive these WebSocket events:
 | `task_stream_end`   | AI finished speaking for this turn — you can speak again                 |
 | `task_cost`         | Cost update per turn — includes `turnCost`, `cumulativeCost`, and `usage` (raw cost breakdown from the model provider) |
 | `task_output`       | Transcript messages prefixed with `TRANSCRIPT_USER:` or `TRANSCRIPT_AI:` |
-| `task_end`          | Session fully ended — close the connection                               |
+| `task_end`          | The model process has exited. Post-processing follows — wait for `task_postprocess_end` to close the connection. |
 
 ## Audio Format
 
@@ -1086,7 +1148,7 @@ To gracefully end a realtime session, send `task_session_end`:
 }
 ```
 
-After sending this, the server will process any remaining audio, send final cost/transcript events, and then emit `task_end`. Wait for `task_end` before closing the WebSocket.
+After sending this, the server will process any remaining audio, send final cost/transcript events, and then emit `task_postprocess_end`. Wait for `task_postprocess_end` before closing the WebSocket.
 
 > **Safety:** If the client disconnects without sending `task_session_end`, the server automatically terminates the session to prevent the pipeline from running indefinitely (and the provider from continuing to charge). Always send `task_session_end` explicitly for a clean shutdown.
 
@@ -1112,8 +1174,8 @@ Creates a new folder to organize your uploaded files.
 
 | Parameter  | Type   | Required | Description                                           |
 | ---------- | ------ | -------- | ----------------------------------------------------- |
-| `name`     | string | Yes      | Folder name                                           |
-| `parentId` | string | No       | Parent folder ID for nested structure (null for root) |
+| `name`     | string | Yes      | Folder name (letters, numbers, hyphens, underscores only) |
+| `parentid` | string | No       | Parent folder ID for nested structure (omit for root) |
 
 ### Response
 
@@ -1121,12 +1183,14 @@ Creates a new folder to organize your uploaded files.
 {
   "result": true,
   "errors": [],
-  "data": {
+  "list": [{
     "id": "folder-abc123",
     "name": "training-data",
-    "parentId": null,
-    "createdAt": "2025-01-15T10:00:00Z"
-  }
+    "parentid": "root-folder-id",
+    "size": "0",
+    "contenttype": "",
+    "addedtime": "1716276543"
+  }]
 }
 ```
 
@@ -1552,3 +1616,91 @@ Run the Wiro MCP server locally on your own machine using npx.
 
 - GitHub: [github.com/wiroai/Wiro-MCP](https://github.com/wiroai/Wiro-MCP)
 - npm: [@wiro-ai/wiro-mcp](https://www.npmjs.com/package/@wiro-ai/wiro-mcp)
+
+---
+
+# Node.js Library
+
+Use Wiro AI models directly in your Node.js or TypeScript projects with a simple API client.
+
+## Overview
+
+The [`@wiro-ai/wiro-mcp`](https://www.npmjs.com/package/@wiro-ai/wiro-mcp) package exports a `WiroClient` class that you can use as a standalone API client — no MCP setup required. It handles authentication, model discovery, execution, task polling, and file uploads.
+
+## Installation
+
+```bash
+npm install @wiro-ai/wiro-mcp
+```
+
+## Quick Start
+
+```javascript
+import { WiroClient } from '@wiro-ai/wiro-mcp/client';
+
+const client = new WiroClient('YOUR_API_KEY', 'YOUR_API_SECRET');
+
+const run = await client.runModel('google/nano-banana-pro', {
+  prompt: 'A futuristic city at sunset',
+  aspectRatio: '16:9',
+  resolution: '2K'
+});
+
+const result = await client.waitForTask(run.socketaccesstoken);
+const task = result.tasklist[0];
+
+if (task.pexit === '0') {
+  console.log('Output:', task.outputs[0].url);
+}
+```
+
+## Available Methods
+
+| Method | Description |
+|--------|-------------|
+| `searchModels(params?)` | Search and browse models by keyword, category, or owner. |
+| `getModelSchema(model)` | Get full parameter schema and pricing for a model. |
+| `explore()` | Browse curated models organized by category. |
+| `runModel(model, params)` | Run a model. Returns task ID and socket access token. |
+| `waitForTask(tasktoken, timeoutMs?)` | Poll until the task completes. Default timeout: 120s. |
+| `getTask({ tasktoken?, taskid? })` | Get current task status and outputs. |
+| `cancelTask(tasktoken)` | Cancel a queued task. |
+| `killTask(tasktoken)` | Kill a running task. |
+| `uploadFile(url, fileName?)` | Upload a file from URL for use as model input. |
+
+---
+
+# FAQ
+
+Common questions about using the Wiro API.
+
+**How do I get an API key?** Sign up at wiro.ai, then create a project at wiro.ai/panel/project. Your API key (and secret, if signature-based) are displayed once — copy and store them securely.
+
+**Which authentication method should I use?** Signature-Based is recommended for client-side apps. API Key Only is simpler for server-side.
+
+**Do I pay for failed tasks?** No. Only successfully completed tasks (pexit "0") are billed.
+
+**How do LLM responses work?** LLM models return their response in `outputs` (structured, with `contenttype: "raw"` containing `prompt`, `raw`, `thinking`, `answer`) and as merged text in `debugoutput`.
+
+**Can I send a URL instead of uploading a file?** Yes. Most models accept direct URLs in file parameters. For `combinefileinput`, pass an array of URLs directly. See Model Parameters.
+
+**Can I use a webhook instead of polling?** Yes. All models support an optional `callbackUrl` parameter.
+
+---
+
+# n8n Wiro Integration
+
+Use all Wiro AI models directly in your n8n workflows — video, image, audio, LLM, 3D, and more.
+
+The **Wiro AI community node** (`@wiro-ai/n8n-nodes-wiroai`) gives you access to all Wiro AI models as individual nodes you can drag and drop into any workflow.
+
+## Installation
+
+Install via n8n UI: **Settings → Community Nodes → Install → `@wiro-ai/n8n-nodes-wiroai`**
+
+Or via command line: `npm install @wiro-ai/n8n-nodes-wiroai`
+
+## Links
+
+- [npm: @wiro-ai/n8n-nodes-wiroai](https://www.npmjs.com/package/@wiro-ai/n8n-nodes-wiroai)
+- [GitHub: wiroai/n8n-nodes-wiroai](https://github.com/wiroai/n8n-nodes-wiroai)
