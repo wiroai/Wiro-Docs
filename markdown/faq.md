@@ -36,7 +36,7 @@ Connect to the [WebSocket](/docs/websocket) at `wss://socket.wiro.ai/v1` and reg
 
 ## How do LLM responses work?
 
-LLM models return their response in `debugoutput`, not in the `outputs` file array. For streaming, each token arrives as a separate `task_output` WebSocket event. See [LLM & Chat Streaming](/docs/llm-chat-streaming) for details.
+LLM models return their response in both places: `outputs` contains a structured entry with `contenttype: "raw"` (with `prompt`, `raw`, `thinking`, and `answer` fields), and `debugoutput` contains the merged plain text. For streaming, each token arrives as a separate `task_output` WebSocket event. See [LLM & Chat Streaming](/docs/llm-chat-streaming) for details.
 
 ## Can I send a URL instead of uploading a file?
 

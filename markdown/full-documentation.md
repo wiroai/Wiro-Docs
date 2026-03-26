@@ -551,7 +551,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
   -F "language=en"
 ```
 
-> **Note:** LLM responses are delivered via `debugoutput` in the task result, not in the `outputs` file array. See [Tasks](/docs/tasks) for details.
+> **Note:** LLM responses are available as structured content in `outputs` (with `contenttype: "raw"` containing `prompt`, `raw`, `thinking`, and `answer` fields) and as merged plain text in `debugoutput`. See [Tasks](/docs/tasks) for details.
 
 ### Realtime Voice Conversation
 
@@ -634,7 +634,7 @@ Both successful and failed tasks reach `task_postprocess_end`. The status alone 
 - `pexit` — the process exit code. `"0"` means success, any other value means the model encountered an error. This is the most reliable indicator.
 - `outputs` — the output files array. For non-LLM models, a successful run populates this with CDN URLs. If it's empty or missing, the task likely failed.
 
-> **Note:** For **LLM models**, `outputs` will be empty even on success — the response text is delivered via `debugoutput` instead. Always use `pexit` as the primary success check.
+> **Note:** For **LLM models**, `outputs` contains a structured entry with `contenttype: "raw"` and the response broken into `prompt`, `raw`, `thinking`, and `answer` fields. The merged plain text is also available in `debugoutput`. Always use `pexit` as the primary success check.
 
 ```json
 // Success (image/audio model): pexit "0", outputs present
@@ -643,10 +643,18 @@ Both successful and failed tasks reach `task_postprocess_end`. The status alone 
   "outputs": [{ "name": "0.png", "url": "https://cdn1.wiro.ai/..." }]
 }
 
-// Success (LLM model): pexit "0", outputs empty, response in debugoutput
+// Success (LLM model): pexit "0", structured response in outputs + merged text in debugoutput
 {
   "pexit": "0",
-  "outputs": [],
+  "outputs": [{
+    "contenttype": "raw",
+    "content": {
+      "prompt": "Hello!",
+      "raw": "Hello! How can I help you today?",
+      "thinking": [],
+      "answer": ["Hello! How can I help you today?"]
+    }
+  }],
   "debugoutput": "Hello! How can I help you today?"
 }
 
@@ -661,7 +669,7 @@ Both successful and failed tasks reach `task_postprocess_end`. The status alone 
 
 ## LLM Models
 
-For LLM (Large Language Model) requests, the model's response is written to `debugoutput` rather than the `outputs` file array. When polling with Task Detail, read the `debugoutput` field to get the LLM's text response.
+For LLM (Large Language Model) requests, the model's response is available in two places: `outputs` contains a structured entry with `contenttype: "raw"` and the response broken into `prompt`, `raw`, `thinking`, and `answer` fields; `debugoutput` contains the merged plain text. When polling with Task Detail, use either field depending on whether you need structured or plain-text access.
 
 For real-time streaming of LLM responses, use [WebSocket](#websocket) instead of polling. Each `task_output` event delivers a chunk of the response as it's generated, giving your users an instant, token-by-token experience.
 
@@ -732,10 +740,10 @@ Stream LLM responses in real time with thinking/answer separation, session histo
 
 LLM (Large Language Model) requests on Wiro work differently from standard model runs:
 
-- Responses are delivered via `debugoutput`, not the `outputs` file array
+- Responses are available as structured content in `outputs` (with `contenttype: "raw"`) and as merged plain text in `debugoutput`
 - Streaming `task_output` messages contain structured `thinking` and `answer` arrays — not plain strings
 - Multi-turn conversations are supported via `session_id` and `user_id` parameters
-- `pexit` is the primary success indicator (outputs will be empty)
+- `pexit` is the primary success indicator
 
 Available LLM models include:
 
@@ -778,6 +786,23 @@ Many LLM models separate their output into two phases:
 - **Thinking** — the model's internal reasoning process (chain-of-thought)
 - **Answer** — the final response to the user
 
+A model may alternate between thinking and answering multiple times during a single response. The arrays are indexed in pairs — `thinking[0]` corresponds to `answer[0]`, `thinking[1]` to `answer[1]`, and so on:
+
+```json
+{
+  "thinking": [
+    "Let me break this into parts...",
+    "Now let me verify my reasoning..."
+  ],
+  "answer": [
+    "Quantum computing uses qubits...",
+    "To summarize: qubits can be 0, 1, or..."
+  ]
+}
+```
+
+Each `task_output` event contains the **full accumulated** arrays up to that point — not just the new chunk. Simply replace your displayed content with the latest arrays. Use `isThinking` to show a "thinking" indicator in your UI while the model reasons.
+
 When streaming via WebSocket, `task_output` messages for LLM models contain a structured object:
 
 ```json
@@ -786,17 +811,28 @@ When streaming via WebSocket, `task_output` messages for LLM models contain a st
   "id": "534574",
   "tasktoken": "eDcCm5yy...",
   "message": {
+    "type": "answer",
     "thinking": ["Let me analyze this step by step...", "The key factors are..."],
-    "answer": ["Quantum computing uses qubits that can exist in superposition..."]
+    "answer": ["Quantum computing uses qubits that can exist in superposition..."],
+    "raw": "Quantum computing uses qubits that can exist in superposition...",
+    "isThinking": false,
+    "speed": 48.5,
+    "speedType": "t/s",
+    "elapsedTime": 3200
   }
 }
 ```
 
 | Field              | Type       | Description                                                     |
 | ------------------ | ---------- | --------------------------------------------------------------- |
-| `message.thinking` | `string[]` | Array of reasoning/chain-of-thought chunks. May be empty.       |
-| `message.answer`   | `string[]` | Array of response chunks. This is the content to show the user. |
-| `message.raw`      | `string`   | Optional raw output before thinking/answer separation.          |
+| `message.type`        | `string`   | Phase indicator: `"thinking"` during reasoning, `"answer"` during response. |
+| `message.thinking`    | `string[]` | Array of reasoning/chain-of-thought chunks. May be empty.       |
+| `message.answer`      | `string[]` | Array of response chunks. This is the content to show the user. |
+| `message.raw`         | `string`   | The full accumulated raw output text (thinking + answer merged). |
+| `message.isThinking`  | `boolean`  | `true` while the model is in the thinking phase, `false` during the answer phase. |
+| `message.speed`       | `number`   | Current generation speed (e.g. tokens per second).              |
+| `message.speedType`   | `string`   | Unit for speed, typically `"t/s"` (tokens per second).          |
+| `message.elapsedTime` | `number`   | Milliseconds elapsed since the model started generating.        |
 
 > **Note:** Standard (non-LLM) models send `message` as a plain string. LLM models send it as a `{ thinking, answer }` object. Check the type before parsing.
 
@@ -808,11 +844,9 @@ When streaming via WebSocket, `task_output` messages for LLM models contain a st
 4. **Display** the latest `answer` array content to the user (optionally show `thinking` in a collapsible section)
 5. **Complete** — on `task_postprocess_end`, check `pexit` for success
 
-Each `task_output` event contains the **full accumulated** thinking and answer arrays — not just the new chunk. Simply replace your displayed content with the latest arrays.
-
 ## Polling Alternative
 
-If you don't need real-time streaming, poll `POST /Task/Detail` instead. The final response will be in `debugoutput` as merged plain text:
+If you don't need real-time streaming, poll `POST /Task/Detail` instead. The final response is available in both `outputs` (structured) and `debugoutput` (merged plain text):
 
 ```json
 {
@@ -822,13 +856,21 @@ If you don't need real-time streaming, poll `POST /Task/Detail` instead. The fin
       "status": "task_postprocess_end",
       "pexit": "0",
       "debugoutput": "Quantum computing uses qubits that can exist in superposition...",
-      "outputs": []
+      "outputs": [{
+        "contenttype": "raw",
+        "content": {
+          "prompt": "What is quantum computing?",
+          "raw": "Quantum computing uses qubits that can exist in superposition...",
+          "thinking": [],
+          "answer": ["Quantum computing uses qubits that can exist in superposition..."]
+        }
+      }]
     }
   ]
 }
 ```
 
-> **Note:** When polling, `debugoutput` contains the merged text. To access separate `thinking` and `answer` arrays, use WebSocket streaming instead.
+> **Note:** When polling, `outputs` contains the structured response with separate `thinking` and `answer` fields, while `debugoutput` contains the merged plain text. For real-time token-by-token delivery, use WebSocket streaming instead.
 
 ---
 

@@ -182,7 +182,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
   -F "language=en"
 ```
 
-> **Note:** LLM responses are delivered via `debugoutput` in the task result, not in the `outputs` file array. See [Tasks](/docs/tasks) for details.
+> **Note:** LLM responses are available as structured content in `outputs` (with `contenttype: "raw"` containing `prompt`, `raw`, `thinking`, and `answer` fields) and as merged plain text in `debugoutput`. See [Tasks](/docs/tasks) for details.
 
 ### Realtime Voice Conversation
 

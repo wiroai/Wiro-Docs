@@ -292,7 +292,7 @@ Check task status and get results. Calls `POST /Task/Detail` on the Wiro API.
 
 Returns the task's current `status`, `pexit` (process exit code), `outputs` (file URLs), `debugoutput` (LLM responses), `elapsedseconds`, and `totalcost`.
 
-**Determining success:** Check `pexit` — `"0"` means success, any other value means failure. For LLM models, the response text is in `debugoutput`, not `outputs`. See [Tasks](/docs/tasks) for the full task lifecycle.
+**Determining success:** Check `pexit` — `"0"` means success, any other value means failure. For LLM models, the response is available as structured content in `outputs` (with `contenttype: "raw"`) and as merged plain text in `debugoutput`. See [Tasks](/docs/tasks) for the full task lifecycle.
 
 ### get_task_price
 

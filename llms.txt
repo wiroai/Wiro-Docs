@@ -84,7 +84,7 @@ POST /Task/Detail
 
 Or by ID: `{ "taskid": "534574" }`
 
-**Determining success:** Check `pexit` field. `"0"` = success, any other value = error. This is the most reliable indicator. For LLM models, the response is in `debugoutput` (not `outputs`).
+**Determining success:** Check `pexit` field. `"0"` = success, any other value = error. This is the most reliable indicator. For LLM models, the response is available as structured content in `outputs` (with `contenttype: "raw"` containing `prompt`, `raw`, `thinking`, `answer`) and as merged plain text in `debugoutput`.
 
 ### Cancel Task (queued only)
 POST /Task/Cancel — `{ "tasktoken": "..." }`
@@ -119,15 +119,17 @@ Receive status messages as the task progresses. Listen for `task_postprocess_end
 
 ## LLM & Chat Streaming
 
-LLM responses are in `debugoutput`, not `outputs`. Streaming `task_output` messages contain structured objects:
+LLM responses are available in both `outputs` (structured, with `contenttype: "raw"`) and `debugoutput` (merged plain text). Streaming `task_output` messages contain structured objects:
 
 ```json
-{ "type": "task_output", "message": { "thinking": ["reasoning..."], "answer": ["response text..."] } }
+{ "type": "task_output", "message": { "raw": "full text...", "thinking": ["reasoning..."], "answer": ["response text..."], "isThinking": false, "speed": "12.4", "speedType": "words/s", "elapsedTime": "3s" } }
 ```
 
+- `raw`: full accumulated output including thinking tags
 - `thinking`: chain-of-thought reasoning (may be empty)
 - `answer`: user-facing response
-- Both are arrays that grow with each streaming update
+- `isThinking`: whether the model is currently in a thinking phase
+- Both `thinking` and `answer` are arrays that grow with each streaming update
 
 ### Multi-turn Conversations
 Use `session_id` (UUID) to maintain chat history across requests. Server stores conversation context per session.

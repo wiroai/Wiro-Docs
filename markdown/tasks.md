@@ -44,7 +44,7 @@ Both successful and failed tasks reach `task_postprocess_end`. The status alone 
 - `pexit` — the process exit code. `"0"` means success, any other value means the model encountered an error. This is the most reliable indicator.
 - `outputs` — the output files array. For non-LLM models, a successful run populates this with CDN URLs. If it's empty or missing, the task likely failed.
 
-> **Note:** For **LLM models**, `outputs` will be empty even on success — the response text is delivered via `debugoutput` instead. Always use `pexit` as the primary success check.
+> **Note:** For **LLM models**, `outputs` contains a structured entry with `contenttype: "raw"` and the response broken into `prompt`, `raw`, `thinking`, and `answer` fields. The merged plain text is also available in `debugoutput`. Always use `pexit` as the primary success check.
 
 ```json
 // Success (image/audio model): pexit "0", outputs present
@@ -53,10 +53,18 @@ Both successful and failed tasks reach `task_postprocess_end`. The status alone 
   "outputs": [{ "name": "0.png", "url": "https://cdn1.wiro.ai/..." }]
 }
 
-// Success (LLM model): pexit "0", outputs empty, response in debugoutput
+// Success (LLM model): pexit "0", structured response in outputs + merged text in debugoutput
 {
   "pexit": "0",
-  "outputs": [],
+  "outputs": [{
+    "contenttype": "raw",
+    "content": {
+      "prompt": "Hello!",
+      "raw": "Hello! How can I help you today?",
+      "thinking": [],
+      "answer": ["Hello! How can I help you today?"]
+    }
+  }],
   "debugoutput": "Hello! How can I help you today?"
 }
 
@@ -95,7 +103,7 @@ Use the `totalcost` field to track spending per task. For more details on how co
 
 ## LLM Models
 
-For LLM (Large Language Model) requests, the model's response is written to `debugoutput` rather than the `outputs` file array. When polling with Task Detail, read the `debugoutput` field to get the LLM's text response.
+For LLM (Large Language Model) requests, the model's response is available in two places: `outputs` contains a structured entry with `contenttype: "raw"` and the response broken into `prompt`, `raw`, `thinking`, and `answer` fields; `debugoutput` contains the merged plain text. When polling with Task Detail, use either field depending on whether you need structured or plain-text access.
 
 For real-time streaming of LLM responses, use [WebSocket](/docs/websocket) instead of polling. Each `task_output` event delivers a chunk of the response as it's generated, giving your users an instant, token-by-token experience.
 

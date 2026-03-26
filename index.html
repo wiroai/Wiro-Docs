@@ -1137,7 +1137,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
   -F "outputType=json" \
   -F "language=en"</code></pre>
     <div class="info-callout">
-      <p><strong>Note:</strong> LLM responses are delivered via <code>debugoutput</code> in the task result, not in the <code>outputs</code> file array. See <a href="/docs/tasks" class="docs-link">Tasks</a> for details.</p>
+      <p><strong>Note:</strong> LLM responses are delivered as structured content in the <code>outputs</code> array (with <code>contenttype: "raw"</code>) and as merged plain text in <code>debugoutput</code>. See <a href="/docs/tasks" class="docs-link">Tasks</a> for details.</p>
     </div>
 
     <h3>Realtime Voice Conversation</h3>
@@ -1344,24 +1344,32 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
 
       <ul>
         <li><code>pexit</code> — the process exit code. <code>"0"</code> means success, any other value means the model encountered an error. This is the most reliable indicator.</li>
-        <li><code>outputs</code> — the output files array. For non-LLM models, a successful run populates this with CDN URLs. If it's empty or missing, the task likely failed.</li>
+        <li><code>outputs</code> — the output array. For non-LLM models, this contains CDN file URLs. For LLM models, this contains a structured entry with <code>contenttype: "raw"</code> holding the response text, thinking, and answer arrays. If it's empty or missing, the task likely failed.</li>
       </ul>
 
       <div class="info-callout">
-        <p><strong>Note:</strong> For <strong>LLM models</strong>, <code>outputs</code> will be empty even on success — the response text is delivered via <code>debugoutput</code> instead. Always use <code>pexit</code> as the primary success check.</p>
+        <p><strong>Note:</strong> For <strong>LLM models</strong>, <code>outputs</code> contains a single entry with <code>contenttype: "raw"</code> and a <code>content</code> object holding <code>prompt</code>, <code>raw</code>, <code>thinking</code>, and <code>answer</code>. The merged plain text is also available in <code>debugoutput</code>. Always use <code>pexit</code> as the primary success check.</p>
       </div>
 
-      <pre><code>// Success (image/audio model): pexit "0", outputs present
+      <pre><code>// Success (image/audio model): pexit "0", file outputs with CDN URLs
 {
   "pexit": "0",
-  "outputs": [{ "name": "0.png", "url": "https://cdn1.wiro.ai/..." }]
+  "outputs": [{ "name": "0.png", "contenttype": "image/png", "url": "https://cdn1.wiro.ai/..." }]
 }
 
-// Success (LLM model): pexit "0", outputs empty, response in debugoutput
+// Success (LLM model): pexit "0", structured raw content in outputs
 {
   "pexit": "0",
-  "outputs": [],
-  "debugoutput": "Hello! How can I help you today?"
+  "debugoutput": "Hello! How can I help you today?",
+  "outputs": [{
+    "contenttype": "raw",
+    "content": {
+      "prompt": "Say hello",
+      "raw": "Hello! How can I help you today?",
+      "thinking": [],
+      "answer": ["Hello! How can I help you today?"]
+    }
+  }]
 }
 
 // Failure: pexit non-zero
@@ -1398,7 +1406,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
 
     <section id="llm-models">
       <h2>LLM Models</h2>
-      <p>For LLM (Large Language Model) requests, the model's response is written to <code>debugoutput</code> rather than the <code>outputs</code> file array. When polling with Task Detail, read the <code>debugoutput</code> field to get the LLM's text response.</p>
+      <p>For LLM (Large Language Model) requests, the model's response is available in two places: as merged plain text in <code>debugoutput</code>, and as a structured entry in the <code>outputs</code> array with <code>contenttype: "raw"</code>. The structured output includes separate <code>thinking</code> and <code>answer</code> arrays alongside the original <code>prompt</code> and full <code>raw</code> text.</p>
       <p>For real-time streaming of LLM responses, use <a href="/docs/websocket" class="docs-link">WebSocket</a> instead of polling. Each <code>task_output</code> event delivers a chunk of the response as it's generated, giving your users an instant, token-by-token experience.</p>
     </section>
 
@@ -1590,10 +1598,10 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
     <h2>Overview</h2>
     <p>LLM (Large Language Model) requests on Wiro work differently from standard model runs:</p>
     <ul>
-      <li>Responses are delivered via <code>debugoutput</code>, not the <code>outputs</code> file array</li>
+      <li>Responses are available as structured content in the <code>outputs</code> array (<code>contenttype: "raw"</code>) and as merged text in <code>debugoutput</code></li>
       <li>Streaming <code>task_output</code> messages contain structured <code>thinking</code> and <code>answer</code> arrays — not plain strings</li>
       <li>Multi-turn conversations are supported via <code>session_id</code> and <code>user_id</code> parameters</li>
-      <li><code>pexit</code> is the primary success indicator (outputs will be empty)</li>
+      <li><code>pexit</code> is the primary success indicator</li>
     </ul>
     <p>Available LLM models include:</p>
     <ul>
@@ -1650,23 +1658,46 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
   "id": "534574",
   "tasktoken": "eDcCm5yy...",
   "message": {
+    "type": "progressGenerate",
+    "task": "Generate",
+    "speed": "12.4",
+    "speedType": "words/s",
+    "raw": "&lt;think&gt;Let me analyze...&lt;/think&gt;Quantum computing uses qubits...",
     "thinking": ["Let me analyze this step by step...", "The key factors are..."],
-    "answer": ["Quantum computing uses qubits that can exist in superposition..."]
+    "answer": ["Quantum computing uses qubits that can exist in superposition..."],
+    "isThinking": false,
+    "elapsedTime": "3s"
   }
 }</code></pre>
-    <p>Both <code>thinking</code> and <code>answer</code> are arrays of strings. Each element represents a chunk — they grow as the model streams its response. A model may alternate between thinking and answering multiple times.</p>
+    <p>Both <code>thinking</code> and <code>answer</code> are arrays of strings. A model may alternate between thinking and answering multiple times during a single response. The arrays are indexed in pairs — <code>thinking[0]</code> corresponds to <code>answer[0]</code>, <code>thinking[1]</code> to <code>answer[1]</code>, and so on:</p>
+    <pre><code>// Multi-turn thinking/answer cycle
+{
+  "thinking": [
+    "Let me break this into parts...",        // thinking[0]
+    "Now let me verify my reasoning..."       // thinking[1]
+  ],
+  "answer": [
+    "Quantum computing uses qubits...",       // answer[0] — response after thinking[0]
+    "To summarize: qubits can be 0, 1, or..." // answer[1] — response after thinking[1]
+  ]
+}</code></pre>
+    <p>Each <code>task_output</code> event contains the <strong>full accumulated</strong> arrays up to that point — not just the new chunk. Simply replace your displayed content with the latest arrays. Use <code>isThinking</code> to show a "thinking" indicator in your UI while the model reasons.</p>
     <div class="docs-comparison-table">
       <table>
         <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
         <tbody>
+          <tr><td><code>message.raw</code></td><td><code>string</code></td><td>Full accumulated raw output including thinking tags.</td></tr>
           <tr><td><code>message.thinking</code></td><td><code>string[]</code></td><td>Array of reasoning/chain-of-thought chunks. May be empty for models without thinking.</td></tr>
           <tr><td><code>message.answer</code></td><td><code>string[]</code></td><td>Array of response chunks. This is the content to show the user.</td></tr>
-          <tr><td><code>message.raw</code></td><td><code>string</code></td><td>Optional raw output before thinking/answer separation.</td></tr>
+          <tr><td><code>message.isThinking</code></td><td><code>boolean</code></td><td>Whether the model is currently in a thinking phase.</td></tr>
+          <tr><td><code>message.speed</code></td><td><code>string</code></td><td>Generation speed (e.g. "12.4").</td></tr>
+          <tr><td><code>message.speedType</code></td><td><code>string</code></td><td>Speed unit (e.g. "words/s").</td></tr>
+          <tr><td><code>message.elapsedTime</code></td><td><code>string</code></td><td>Elapsed time since generation started (e.g. "3s", "1m 5s").</td></tr>
         </tbody>
       </table>
     </div>
     <div class="info-callout">
-      <p><strong>Note:</strong> Standard (non-LLM) models send <code>message</code> as a plain string. LLM models send it as a <code>{ thinking, answer }</code> object. Check the type before parsing.</p>
+      <p><strong>Note:</strong> Standard (non-LLM) models send <code>message</code> as a progress object or plain string. LLM models send it as a structured object with <code>thinking</code>, <code>answer</code>, and metadata fields. Check the <code>message.type</code> to distinguish.</p>
     </div>
   </section>
 
@@ -1680,23 +1711,30 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
       <li><strong>Display</strong> the latest <code>answer</code> array content to the user (optionally show <code>thinking</code> in a collapsible section)</li>
       <li><strong>Complete</strong> — on <code>task_postprocess_end</code>, check <code>pexit</code> for success</li>
     </ol>
-    <p>Each <code>task_output</code> event contains the <strong>full accumulated</strong> thinking and answer arrays up to that point — not just the new chunk. Simply replace your displayed content with the latest arrays.</p>
   </section>
 
   <section id="llm-polling">
     <h2>Polling Alternative</h2>
-    <p>If you don't need real-time streaming, you can poll <a href="/docs/tasks" class="docs-link">POST /Task/Detail</a> instead. The final response will be in the <code>debugoutput</code> field as a merged plain text string (thinking + answer combined):</p>
+    <p>If you don't need real-time streaming, you can poll <a href="/docs/tasks" class="docs-link">POST /Task/Detail</a> instead. The response includes both <code>debugoutput</code> (merged plain text) and a structured entry in <code>outputs</code> with separate <code>thinking</code> and <code>answer</code> arrays:</p>
     <pre><code>{
   "result": true,
   "tasklist": [{
     "status": "task_postprocess_end",
     "pexit": "0",
     "debugoutput": "Quantum computing uses qubits that can exist in superposition...",
-    "outputs": []
+    "outputs": [{
+      "contenttype": "raw",
+      "content": {
+        "prompt": "What is quantum computing?",
+        "raw": "Quantum computing uses qubits that can exist in superposition...",
+        "thinking": [],
+        "answer": ["Quantum computing uses qubits that can exist in superposition..."]
+      }
+    }]
   }]
 }</code></pre>
     <div class="info-callout">
-      <p><strong>Note:</strong> When polling, <code>debugoutput</code> contains the merged text. To access separate <code>thinking</code> and <code>answer</code> arrays, use WebSocket streaming instead.</p>
+      <p><strong>Note:</strong> <code>debugoutput</code> contains the merged plain text (thinking + answer combined). The <code>outputs</code> array provides the structured breakdown with separate <code>thinking</code> and <code>answer</code> arrays. For real-time token streaming, use WebSocket instead.</p>
     </div>
   </section>
 </article>
@@ -1721,12 +1759,12 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
   {
     "label": "Polling",
     "language": "python",
-    "code": "import requests\nimport time\n\nAPI_KEY = 'YOUR_API_KEY'\n\n# 1. Run the LLM\nrun = requests.post(\n    'https://api.wiro.ai/v1/Run/openai/gpt-5-2',\n    headers={\n        'x-api-key': API_KEY,\n        'Content-Type': 'application/json'\n    },\n    json={'prompt': 'Explain quantum computing'}\n).json()\n\ntask_id = run['taskid']\n\n# 2. Poll until complete\nwhile True:\n    resp = requests.post(\n        'https://api.wiro.ai/v1/Task/Detail',\n        headers={\n            'x-api-key': API_KEY,\n            'Content-Type': 'application/json'\n        },\n        json={'taskid': task_id}\n    ).json()\n\n    task = resp['tasklist'][0]\n    status = task['status']\n    print(f'Status: {status}')\n\n    if status == 'task_postprocess_end':\n        if task['pexit'] == '0':\n            # LLM response is in debugoutput\n            print('Response:',\n                task['debugoutput'])\n        else:\n            print('Error: pexit =',\n                task['pexit'])\n        break\n\n    time.sleep(2)"
+    "code": "import requests\nimport time\n\nAPI_KEY = 'YOUR_API_KEY'\n\n# 1. Run the LLM\nrun = requests.post(\n    'https://api.wiro.ai/v1/Run/openai/gpt-5-2',\n    headers={\n        'x-api-key': API_KEY,\n        'Content-Type': 'application/json'\n    },\n    json={'prompt': 'Explain quantum computing'}\n).json()\n\ntask_id = run['taskid']\n\n# 2. Poll until complete\nwhile True:\n    resp = requests.post(\n        'https://api.wiro.ai/v1/Task/Detail',\n        headers={\n            'x-api-key': API_KEY,\n            'Content-Type': 'application/json'\n        },\n        json={'taskid': task_id}\n    ).json()\n\n    task = resp['tasklist'][0]\n    status = task['status']\n    print(f'Status: {status}')\n\n    if status == 'task_postprocess_end':\n        if task['pexit'] == '0':\n            # Merged text in debugoutput\n            print('Response:',\n                task['debugoutput'])\n            # Structured output with thinking/answer\n            out = task['outputs'][0]\n            if out['contenttype'] == 'raw':\n                print('Thinking:',\n                    out['content']['thinking'])\n                print('Answer:',\n                    out['content']['answer'])\n        else:\n            print('Error: pexit =',\n                task['pexit'])\n        break\n\n    time.sleep(2)"
   },
   {
     "label": "Message Format",
     "language": "json",
-    "code": "{\n  \"_comment\": \"LLM task_output message (structured)\",\n  \"type\": \"task_output\",\n  \"id\": \"534574\",\n  \"tasktoken\": \"eDcCm5yy...\",\n  \"message\": {\n    \"thinking\": [\n      \"Let me break this down step by step...\",\n      \"The key concept here is superposition...\"\n    ],\n    \"answer\": [\n      \"Quantum computing is a type of computation that uses quantum-mechanical phenomena such as superposition and entanglement to perform operations on data.\"\n    ]\n  }\n}\n\n// Compare: Standard model task_output (plain string)\n// { \"type\": \"task_output\", \"message\": \"Processing step 1/10...\" }\n\n// Compare: Realtime voice task_output (transcript prefix)\n// { \"type\": \"task_output\", \"message\": \"TRANSCRIPT_AI:Hello!\" }"
+    "code": "{\n  \"_comment\": \"LLM task_output message (structured)\",\n  \"type\": \"task_output\",\n  \"id\": \"534574\",\n  \"tasktoken\": \"eDcCm5yy...\",\n  \"message\": {\n    \"type\": \"progressGenerate\",\n    \"task\": \"Generate\",\n    \"speed\": \"12.4\",\n    \"speedType\": \"words/s\",\n    \"raw\": \"<think>Let me break this down...</think>Quantum computing is...\",\n    \"thinking\": [\n      \"Let me break this down step by step...\",\n      \"The key concept here is superposition...\"\n    ],\n    \"answer\": [\n      \"Quantum computing is a type of computation...\",\n      \"To summarize: it uses qubits that can be 0, 1, or both.\"\n    ],\n    \"isThinking\": false,\n    \"elapsedTime\": \"3s\"\n  }\n}\n\n// thinking[0] -> answer[0], thinking[1] -> answer[1]\n// The model can think and answer multiple times\n\n// Compare: Standard model task_output (progress object)\n// { \"type\": \"task_output\", \"message\": \"Processing step 1/10...\" }\n\n// Compare: Realtime voice task_output (transcript prefix)\n// { \"type\": \"task_output\", \"message\": \"TRANSCRIPT_AI:Hello!\" }"
   }
 ]
 </script>
@@ -2732,7 +2770,7 @@ if (!data.result) {
   <div class="faq-item">
     <button class="faq-question">How do LLM responses work?</button>
     <div class="faq-answer"><div class="faq-answer-inner">
-      <p>LLM models return their response in <code>debugoutput</code>, not in the <code>outputs</code> file array. For streaming, each token arrives as a separate <code>task_output</code> WebSocket event. See <a href="/docs/llm-chat-streaming">LLM &amp; Chat Streaming</a> for details.</p>
+      <p>LLM models return their response in two places: as merged text in <code>debugoutput</code>, and as a structured entry in the <code>outputs</code> array with <code>contenttype: "raw"</code> containing separate <code>thinking</code> and <code>answer</code> arrays. For streaming, each token arrives as a separate <code>task_output</code> WebSocket event. See <a href="/docs/llm-chat-streaming">LLM &amp; Chat Streaming</a> for details.</p>
     </div></div>
   </div>
 
@@ -3107,7 +3145,7 @@ if (!data.result) {
 <tr><td><code>taskid</code></td><td>string (optional)</td><td>The task ID (alternative to tasktoken)</td></tr>
 </tbody></table>
 <p>Returns the task's current <code>status</code>, <code>pexit</code> (process exit code), <code>outputs</code> (file URLs), <code>debugoutput</code> (LLM responses), <code>elapsedseconds</code>, and <code>totalcost</code>.</p>
-<p><strong>Determining success:</strong> Check <code>pexit</code> — <code>"0"</code> means success, any other value means failure. For LLM models, the response text is in <code>debugoutput</code>, not <code>outputs</code>. See <a href="/docs/tasks">Tasks</a> for the full task lifecycle.</p>
+<p><strong>Determining success:</strong> Check <code>pexit</code> — <code>"0"</code> means success, any other value means failure. For LLM models, the response is available as structured content in <code>outputs</code> (with <code>contenttype: "raw"</code>) and as merged text in <code>debugoutput</code>. See <a href="/docs/tasks">Tasks</a> for the full task lifecycle.</p>
 
 <h3>get_task_price</h3>
 <p>Get the cost of a completed task. Calls <code>POST /Task/Detail</code> on the Wiro API and returns billing information.</p>
