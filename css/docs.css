@@ -331,7 +331,7 @@ button {
   flex: 1;
   min-width: 0;
   padding: 20px 20px;
-  max-width: 620px;
+  max-width: 780px;
   overflow-y: auto;
   height: 100%;
   scrollbar-width: thin;
@@ -1643,26 +1643,39 @@ button {
    15b. Client setup cards
    ------------------------------------------------------------------ */
 .mcp-client-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  display: flex;
+  gap: 8px;
   margin: 16px 0 24px;
+}
+
+.mcp-client-grid .mcp-client-card {
+  flex: 1;
+  min-width: 0;
 }
 
 .mcp-client-card {
   border: 1px solid var(--fade-grey-dark-3);
-  border-radius: 10px;
-  padding: 20px;
+  border-radius: 8px;
+  padding: 12px 14px;
   cursor: pointer;
-  transition:
-    border-color 0.2s,
-    box-shadow 0.2s;
+  flex-shrink: 0;
+  text-align: center;
+  min-width: 0;
+  transition: border-color 0.2s;
 }
 
-.mcp-client-card:hover {
+.mcp-client-card:hover,
+.mcp-client-card.is-active {
   border-color: var(--primary);
-  box-shadow: 0 2px 12px rgba(0, 195, 140, 0.1);
-  opacity: 1;
+}
+
+
+.mcp-setup-panel {
+  display: none;
+}
+
+.mcp-setup-panel.is-visible {
+  display: block;
 }
 
 .mcp-client-card,
@@ -1671,14 +1684,15 @@ button {
 }
 
 .mcp-client-card i {
-  font-size: 1.5rem;
+  font-size: 1.4rem;
   color: var(--light-text);
   display: block;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   transition: color 0.2s;
 }
 
-.mcp-client-card:hover i {
+.mcp-client-card:hover i,
+.mcp-client-card.is-active i {
   color: var(--primary);
 }
 
@@ -1686,7 +1700,7 @@ button {
   height: 24px;
   width: auto;
   display: block;
-  margin-bottom: 12px;
+  margin: 0 auto 8px;
   filter: grayscale(1);
   opacity: 0.5;
   transition:
@@ -1694,7 +1708,8 @@ button {
     opacity 0.2s;
 }
 
-.mcp-client-card:hover .mcp-client-logo {
+.mcp-client-card:hover .mcp-client-logo,
+.mcp-client-card.is-active .mcp-client-logo {
   filter: grayscale(0);
   opacity: 1;
 }
@@ -1704,7 +1719,8 @@ button {
   opacity: 0.45;
 }
 
-.is-dark .mcp-client-card:hover .mcp-client-logo {
+.is-dark .mcp-client-card:hover .mcp-client-logo,
+.is-dark .mcp-client-card.is-active .mcp-client-logo {
   filter: brightness(0) invert(1);
   opacity: 1;
 }
@@ -1715,15 +1731,15 @@ button {
 
 .mcp-client-card strong {
   display: block;
-  font-size: 1.25rem;
+  font-size: 0.95rem;
   font-weight: 600;
   color: var(--dark-text);
-  margin-bottom: 2px;
+  margin-bottom: 0;
+  white-space: nowrap;
 }
 
 .mcp-client-card span {
-  font-size: 1rem;
-  color: var(--light-text);
+  display: none;
 }
 
 @media (max-width: 560px) {
@@ -2344,7 +2360,8 @@ button {
   background: var(--dark-sidebar-light-2);
 }
 
-.is-dark .mcp-client-card:hover {
+.is-dark .mcp-client-card:hover,
+.is-dark .mcp-client-card.is-active {
   border-color: var(--primary);
 }
 

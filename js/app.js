@@ -19,10 +19,11 @@ const sections = [
   { slug: 'code-examples', title: 'Code Examples', description: 'Ready-to-use Wiro API code examples in 9 languages: cURL, Python, Node.js, PHP, C#, Go, Swift, Kotlin, and Dart.' },
   { slug: 'wiro-mcp-server', title: 'Wiro MCP Server', description: 'Connect AI coding assistants like Cursor, Claude, and Windsurf to all Wiro models using the Model Context Protocol (MCP) server.' },
   { slug: 'mcp-self-hosted', title: 'Self-Hosted MCP', description: 'Run the Wiro MCP server locally on your machine. Full control over configuration, environment variables, and model access for AI assistants.' },
+  { slug: 'nodejs-library', title: 'Node.js Library', description: 'Use Wiro AI models directly in Node.js and TypeScript projects. Install @wiro-ai/wiro-mcp and use WiroClient for model discovery, execution, task polling, and file uploads.' },
   { slug: 'n8n-wiro-integration', title: 'n8n Wiro Integration', description: 'Use all Wiro AI models as drag-and-drop nodes in n8n workflows. Install the community node for video, image, audio, LLM, and 3D automation.' },
 ];
 
-const SHIKI_LANGS = ['bash', 'python', 'javascript', 'json', 'php', 'csharp', 'go', 'swift', 'kotlin', 'dart'];
+const SHIKI_LANGS = ['bash', 'python', 'javascript', 'typescript', 'json', 'php', 'csharp', 'go', 'swift', 'kotlin', 'dart'];
 
 let highlighter = null;
 let currentSlug = null;
@@ -48,6 +49,7 @@ async function initHighlighter() {
           renderCodePanel(parsed);
         }
       }
+      highlightInlineCode(currentSlug);
     }
   } catch (e) {
     console.warn('Shiki failed to load, using plain text fallback:', e);
@@ -307,6 +309,72 @@ function initSectionFeatures(slug) {
   if (slug === 'authentication') initAuthToggle();
   if (slug === 'models') initModelBrowser();
   if (slug === 'faq') initFaqAccordion();
+  initSetupToggle(slug);
+  highlightInlineCode(slug);
+}
+
+function initSetupToggle(slug) {
+  const section = document.querySelector(`.docs-page-section[data-page="${slug}"]`);
+  if (!section) return;
+
+  section.querySelectorAll('.mcp-client-grid[data-toggle-group]').forEach((grid) => {
+    if (grid.dataset.toggleInit) return;
+    grid.dataset.toggleInit = '1';
+
+    const groupName = grid.dataset.toggleGroup;
+    const panels = section.querySelector(`[data-toggle-panels="${groupName}"]`);
+    if (!panels) return;
+
+    grid.querySelectorAll('.mcp-client-card[data-toggle-target]').forEach((card) => {
+      card.addEventListener('click', (e) => {
+        e.preventDefault();
+        const targetId = card.dataset.toggleTarget;
+
+        grid.querySelectorAll('.mcp-client-card').forEach((c) => c.classList.remove('is-active'));
+        card.classList.add('is-active');
+
+        panels.querySelectorAll('.mcp-setup-panel').forEach((p) => p.classList.remove('is-visible'));
+        const target = panels.querySelector(`#${targetId}`);
+        if (target) target.classList.add('is-visible');
+      });
+    });
+  });
+}
+
+function highlightInlineCode(slug) {
+  if (!highlighter) return;
+  const section = document.querySelector(`.docs-page-section[data-page="${slug}"]`);
+  if (!section) return;
+
+  section.querySelectorAll('pre > code').forEach((block) => {
+    if (block.closest('.docs-code-rendered')) return;
+    if (block.dataset.highlighted) return;
+
+    const raw = block.textContent;
+    const lang = detectLang(raw);
+    if (!lang || !SHIKI_LANGS.includes(lang)) return;
+
+    const html = highlighter.codeToHtml(raw, { lang, theme: 'github-dark' });
+    const wrapper = block.closest('pre');
+    wrapper.outerHTML = html;
+  });
+}
+
+function detectLang(code) {
+  const trimmed = code.trim();
+  if (trimmed.startsWith('{') || trimmed.startsWith('[') || (trimmed.startsWith('//') && trimmed.includes('{'))) return 'json';
+  if (trimmed.startsWith('curl ') || trimmed.startsWith('#!/bin') || trimmed.startsWith('npm ') || trimmed.startsWith('git ') || trimmed.startsWith('export ') || trimmed.startsWith('claude ')) return 'bash';
+  if (/^#\s/.test(trimmed) && trimmed.includes('curl ')) return 'bash';
+  if (trimmed.startsWith('import ') && trimmed.includes('from ')) return trimmed.includes('import type ') ? 'typescript' : 'javascript';
+  if (trimmed.startsWith('const ') || trimmed.startsWith('let ') || trimmed.startsWith('var ') || trimmed.startsWith('async ') || trimmed.startsWith('function ')) return 'javascript';
+  if (trimmed.startsWith('import requests') || trimmed.startsWith('import asyncio') || /^(def |class |from |async def )/.test(trimmed)) return 'python';
+  if (trimmed.startsWith('<?php')) return 'php';
+  if (trimmed.startsWith('package main')) return 'go';
+  if (trimmed.startsWith('using ') || trimmed.startsWith('var client = new Http')) return 'csharp';
+  if (trimmed.startsWith('import Foundation')) return 'swift';
+  if (trimmed.startsWith("import 'dart:")) return 'dart';
+  if (trimmed.startsWith('import java.') || /^val \w+ =/.test(trimmed)) return 'kotlin';
+  return null;
 }
 
 let faqInitialized = false;
