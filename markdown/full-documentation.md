@@ -640,7 +640,12 @@ Both successful and failed tasks reach `task_postprocess_end`. The status alone 
 // Success (image/audio model): pexit "0", outputs present
 {
   "pexit": "0",
-  "outputs": [{ "name": "0.png", "url": "https://cdn1.wiro.ai/..." }]
+  "outputs": [{
+    "name": "0.png",
+    "contenttype": "image/png",
+    "size": "202472",
+    "url": "https://cdn1.wiro.ai/.../0.png"
+  }]
 }
 
 // Success (LLM model): pexit "0", structured response in outputs + merged text in debugoutput

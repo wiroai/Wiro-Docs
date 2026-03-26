@@ -1354,7 +1354,12 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
       <pre><code>// Success (image/audio model): pexit "0", file outputs with CDN URLs
 {
   "pexit": "0",
-  "outputs": [{ "name": "0.png", "contenttype": "image/png", "url": "https://cdn1.wiro.ai/..." }]
+  "outputs": [{
+    "name": "0.png",
+    "contenttype": "image/png",
+    "size": "202472",
+    "url": "https://cdn1.wiro.ai/.../0.png"
+  }]
 }
 
 // Success (LLM model): pexit "0", structured raw content in outputs
