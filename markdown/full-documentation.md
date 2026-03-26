@@ -701,6 +701,9 @@ Retrieves the current status and output of a task. You can query by either `task
       "endtime": "1734513813",
       "elapsedseconds": "6.0000",
       "totalcost": "0.003510000000",
+      "modeldescription": "FLUX.2 [dev] is a 32 billion parameter rectified flow transformer...",
+      "modelslugowner": "wiro",
+      "modelslugproject": "flux-2-dev",
       "outputs": [
         {
           "name": "0.png",
@@ -713,6 +716,23 @@ Retrieves the current status and output of a task. You can query by either `task
   ]
 }
 ```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `string` | Task ID. |
+| `socketaccesstoken` | `string` | Token to connect via WebSocket. |
+| `parameters` | `object` | The input parameters sent in the run request. |
+| `status` | `string` | Current task status (see Task Lifecycle). |
+| `pexit` | `string` | Process exit code. `"0"` = success. |
+| `debugoutput` | `string` | Accumulated stdout. For LLM models, contains the merged response text. |
+| `starttime` | `string` | Unix timestamp when execution started. |
+| `endtime` | `string` | Unix timestamp when execution ended. |
+| `elapsedseconds` | `string` | Total execution time in seconds. |
+| `totalcost` | `string` | Actual cost charged for the run in USD. |
+| `modeldescription` | `string` | Description of the model that was executed. |
+| `modelslugowner` | `string` | Model owner slug (e.g. `"google"`, `"wiro"`). |
+| `modelslugproject` | `string` | Model project slug (e.g. `"nano-banana-pro"`). |
+| `outputs` | `array` | Output files (CDN URLs) or structured LLM content (`contenttype: "raw"`). |
 
 ## **POST** /Task/Cancel
 

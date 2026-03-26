@@ -84,6 +84,8 @@ POST /Task/Detail
 
 Or by ID: `{ "taskid": "534574" }`
 
+Response includes: `id`, `status`, `pexit`, `debugoutput`, `outputs`, `elapsedseconds`, `totalcost`, `modeldescription`, `modelslugowner`, `modelslugproject`.
+
 **Determining success:** Check `pexit` field. `"0"` = success, any other value = error. This is the most reliable indicator. For LLM models, the response is available as structured content in `outputs` (with `contenttype: "raw"` containing `prompt`, `raw`, `thinking`, `answer`) and as merged plain text in `debugoutput`.
 
 ### Cancel Task (queued only)
