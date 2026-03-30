@@ -34,6 +34,12 @@ const sections = [
   { slug: 'mcp-self-hosted', title: 'Self-Hosted MCP', description: 'Run the Wiro MCP server locally on your machine. Full control over configuration, environment variables, and model access for AI assistants.' },
   { slug: 'nodejs-library', title: 'Node.js Library', description: 'Use Wiro AI models directly in Node.js and TypeScript projects. Install @wiro-ai/wiro-mcp and use WiroClient for model discovery, execution, task polling, and file uploads.' },
   { slug: 'n8n-wiro-integration', title: 'n8n Wiro Integration', description: 'Use all Wiro AI models as drag-and-drop nodes in n8n workflows. Install the community node for video, image, audio, LLM, and 3D automation.' },
+  { slug: 'agent-overview', title: 'Agent Overview', description: 'Deploy and manage autonomous AI agents with the Wiro Agent API. Browse the agent catalog, deploy instances, configure credentials, and control agent lifecycle.' },
+  { slug: 'agent-messaging', title: 'Agent Messaging', description: 'Send messages to AI agents and receive streaming responses. Manage conversation sessions, poll message status, and handle async agent interactions.' },
+  { slug: 'agent-websocket', title: 'Agent WebSocket', description: 'Receive real-time agent response streaming via WebSocket. Subscribe to agent events and display thinking, answer, and performance metrics live.' },
+  { slug: 'agent-webhooks', title: 'Agent Webhooks', description: 'Receive agent response notifications via HTTP webhooks. Configure callback URLs for async message processing with automatic retries.' },
+  { slug: 'agent-credentials', title: 'Agent Credentials & OAuth', description: 'Configure agent credentials via API keys or OAuth flows. Connect third-party services like Twitter, Google Ads, Meta Ads, HubSpot, and more.' },
+  { slug: 'agent-use-cases', title: 'Agent Use Cases', description: 'Learn how to build products with Wiro Agents. Deploy agents for your customers, integrate OAuth flows, and create multi-agent workflows.' },
 ];
 
 const sectionMap = Object.fromEntries(sections.map(s => [s.slug, s]));

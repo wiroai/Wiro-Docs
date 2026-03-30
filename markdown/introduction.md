@@ -10,6 +10,7 @@ Wiro is an AI model marketplace and API platform that lets you run **AI models**
 - **Pay-per-use pricing** — only pay for what you consume, no upfront commitments
 - **Real-time WebSocket updates** — stream task progress and outputs live
 - **9 SDK languages** — curl, Python, Node.js, PHP, C#, Swift, Dart, Kotlin, Go
+- **AI Agents** — deploy and manage autonomous AI agents that connect to third-party services, maintain conversation memory, and automate workflows via API
 
 ## Base URL
 
@@ -31,6 +32,7 @@ wss://socket.wiro.ai/v1
 2. **Create a project** in the [Dashboard](https://wiro.ai/panel/project/new) to get your API key
 3. **Pick a model** from the [marketplace](https://wiro.ai/models)
 4. **Make your first API call** — see [Code Examples](/docs/code-examples) for full end-to-end samples
+5. **Deploy an AI Agent** — browse the [agent catalog](https://wiro.ai/agents), deploy an instance, and interact via the [Agent API](/docs/agent-overview)
 
 ## Response Format
 

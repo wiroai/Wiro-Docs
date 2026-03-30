@@ -57,3 +57,19 @@ Yes. Install the [Wiro AI community node](/docs/n8n-wiro-integration) in your n8
 ## Can I use a webhook instead of polling?
 
 Yes. All models support an optional `callbackUrl` parameter. When provided, Wiro will POST the task result to your URL when the task completes. See [Webhook Callback](/docs/model-parameters) in Model Parameters.
+
+### What are Wiro Agents?
+
+Wiro Agents are autonomous AI assistants that you deploy and manage via the API. Unlike single model runs, agents can connect to third-party services (Twitter, Google Ads, HubSpot, etc.), maintain conversation memory across sessions, and run scheduled tasks automatically. See the [Agent Overview](/docs/agent-overview) for details.
+
+### How do I deploy an agent?
+
+Browse the [agent catalog](https://wiro.ai/agents), subscribe to a plan, and deploy via `POST /UserAgent/Deploy`. After deployment, configure credentials and start the agent. See [Agent Overview](/docs/agent-overview) for the full lifecycle.
+
+### Can I build my own product with Wiro Agents?
+
+Yes. Use the Agent Messaging API to send messages programmatically, receive streaming responses via WebSocket, and get async notifications via webhooks. You can build white-label chat interfaces, webhook-driven pipelines, and multi-agent workflows. See [Agent Use Cases](/docs/agent-use-cases).
+
+### How do I connect third-party services to an agent?
+
+Agents connect to services like Twitter, Instagram, Google Ads, and HubSpot via OAuth or API keys. Use the `/UserAgentOAuth/{Provider}Connect` endpoints to initiate OAuth flows, or set API keys via `/UserAgent/Update`. See [Agent Credentials & OAuth](/docs/agent-credentials).

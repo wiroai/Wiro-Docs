@@ -655,3 +655,9 @@ channel.stream.listen((message) {
 // task_end
 {"type": "task_end", "tasktoken": "eDcCm5yy..."}
 ```
+
+## Agent WebSocket Events
+
+The same WebSocket connection also supports **AI Agent** real-time streaming. Instead of `task_info`, register with `agent_info` and an `agenttoken` to receive agent response events.
+
+For full documentation on agent events (`agent_subscribed`, `agent_output`, `agent_end`, and more), see [Agent WebSocket](/docs/agent-websocket).

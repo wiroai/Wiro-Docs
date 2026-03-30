@@ -69,6 +69,13 @@
 | Self-Hosted MCP | `/docs/mcp-self-hosted` | [mcp-self-hosted.md](./markdown/mcp-self-hosted.md) |
 | Node.js Library | `/docs/nodejs-library` | [nodejs-library.md](./markdown/nodejs-library.md) |
 | n8n Wiro Integration | `/docs/n8n-wiro-integration` | [n8n-wiro-integration.md](./markdown/n8n-wiro-integration.md) |
+| **AI Agents** | | |
+| Agent Overview | `/docs/agent-overview` | [agent-overview.md](./markdown/agent-overview.md) |
+| Agent Messaging | `/docs/agent-messaging` | [agent-messaging.md](./markdown/agent-messaging.md) |
+| Agent WebSocket | `/docs/agent-websocket` | [agent-websocket.md](./markdown/agent-websocket.md) |
+| Agent Webhooks | `/docs/agent-webhooks` | [agent-webhooks.md](./markdown/agent-webhooks.md) |
+| Agent Credentials & OAuth | `/docs/agent-credentials` | [agent-credentials.md](./markdown/agent-credentials.md) |
+| Agent Use Cases | `/docs/agent-use-cases` | [agent-use-cases.md](./markdown/agent-use-cases.md) |
 
 > **Full export:** [full-documentation.md](./markdown/full-documentation.md)
 
@@ -135,7 +142,13 @@ Wiro-Docs/
     ├── wiro-mcp-server.md
     ├── mcp-self-hosted.md
     ├── nodejs-library.md
-    └── n8n-wiro-integration.md
+    ├── n8n-wiro-integration.md
+    ├── agent-overview.md
+    ├── agent-messaging.md
+    ├── agent-websocket.md
+    ├── agent-webhooks.md
+    ├── agent-credentials.md
+    └── agent-use-cases.md
 ```
 
 ---

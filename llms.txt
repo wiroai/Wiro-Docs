@@ -100,6 +100,28 @@ POST /File/FolderCreate — `{ "name": "my-folder" }` (optional `parentid` for n
 ### Upload File
 POST /File/Upload (multipart/form-data) — Fields: `file`, `folderid`. Max 100MB. Response: `{ result, list: [{ id, name, contenttype, size, url, ... }] }`
 
+## Agent Endpoints
+
+POST /Agent/List - List available agent templates (public, no auth required)
+POST /Agent/Detail - Get agent template details by guid or slug (public)
+POST /UserAgent/Deploy - Deploy a new agent instance
+POST /UserAgent/MyAgents - List your deployed agent instances
+POST /UserAgent/Detail - Get agent instance details
+POST /UserAgent/Update - Update agent configuration and credentials
+POST /UserAgent/Start - Start an agent instance
+POST /UserAgent/Stop - Stop an agent instance
+POST /UserAgent/Logs - Get agent container logs
+POST /UserAgent/CreateExtraCreditCheckout - Purchase extra credits
+POST /UserAgent/Message/Send - Send a message to an agent (async, returns agenttoken)
+POST /UserAgent/Message/Detail - Get message details by guid or agenttoken
+POST /UserAgent/Message/History - Get conversation history with pagination
+POST /UserAgent/Message/Sessions - List conversation sessions
+POST /UserAgent/Message/DeleteSession - Delete a session and messages
+POST /UserAgent/Message/Cancel - Cancel an in-progress message
+POST /UserAgentOAuth/{Provider}Connect - Start OAuth flow for a provider
+POST /UserAgentOAuth/{Provider}Disconnect - Disconnect OAuth provider
+POST /UserAgentOAuth/{Provider}Status - Check OAuth connection status
+
 ## Task Statuses
 
 task_queue → task_accept → task_preprocess_start → task_preprocess_end → task_assign → task_start → task_output → task_output_full → task_end → task_postprocess_start → task_postprocess_end
