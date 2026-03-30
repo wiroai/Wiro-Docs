@@ -3990,6 +3990,1904 @@ import type {
 </article>
             </div>
 
+
+            <!-- ==================== AGENT OVERVIEW ==================== -->
+            <div class="docs-page-section" data-page="agent-overview" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/agent-overview.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/agent-overview.md" download class="docs-section-md-btn">Download</a></div>
+
+<h1>Agent Overview</h1>
+<p class="section-subtitle">Deploy and manage autonomous AI agents through a single API.</p>
+
+<section id="what-are-agents">
+<h2>What are Wiro Agents?</h2>
+<p>Wiro Agents are autonomous AI assistants that run persistently in isolated containers. Unlike one-shot model runs, agents maintain conversation memory, connect to external services, and use tools to complete tasks on your behalf — all managed through the API.</p>
+<p>The system has two layers:</p>
+<ul>
+<li><strong>Agent templates</strong> (the catalog) — Pre-built agent definitions published by Wiro. Each template defines the agent's capabilities, required credentials, tools, and pricing. Browse the catalog with <code>POST /Agent/List</code>.</li>
+<li><strong>UserAgent instances</strong> (your deployments) — When you deploy an agent template, Wiro creates a personal instance tied to your account. Each instance runs in its own container with its own credentials, configuration, conversation history, and billing.</li>
+</ul>
+<p>Every instance is fully isolated. Your credentials, conversations, and data are never shared with other users.</p>
+</section>
+
+<section id="base-url">
+<h2>Base URL</h2>
+<pre><code>https://api.wiro.ai/v1</code></pre>
+</section>
+
+<section id="authentication">
+<h2>Authentication</h2>
+<p>Agents use the same authentication as the rest of the Wiro API. Include your key in every request:</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Method</th><th>Header</th></tr></thead>
+<tbody>
+<tr><td>API Key</td><td><code>x-api-key: YOUR_API_KEY</code></td></tr>
+<tr><td>Bearer Token</td><td><code>Authorization: Bearer YOUR_API_KEY</code></td></tr>
+</tbody>
+</table></div></div>
+<p><strong>Public endpoints</strong> — <code>Agent/List</code> and <code>Agent/Detail</code> are catalog endpoints and do not require authentication. You can browse available agents without an API key.</p>
+<p><strong>Authenticated endpoints</strong> — All <code>UserAgent/*</code> endpoints (Deploy, MyAgents, Detail, Update, Start, Stop, Logs, CreateExtraCreditCheckout) require a valid API key.</p>
+<p>For full details, see <a href="/docs/authentication">Authentication</a>.</p>
+</section>
+
+<section id="agent-lifecycle">
+<h2>Agent Lifecycle</h2>
+<p>Deploying and running an agent follows this flow:</p>
+<ol>
+<li><strong>Browse</strong> — call <code>POST /Agent/List</code> to discover available agents in the catalog</li>
+<li><strong>Subscribe</strong> — purchase a Starter or Pro plan for the agent via Stripe checkout</li>
+<li><strong>Deploy</strong> — call <code>POST /UserAgent/Deploy</code> with the agent's guid and a title</li>
+<li><strong>Configure</strong> — if the agent requires credentials (API keys, OAuth tokens), call <code>POST /UserAgent/Update</code> to provide them. See <a href="/docs/agent-credentials">Agent Credentials</a> for details</li>
+<li><strong>Start</strong> — call <code>POST /UserAgent/Start</code> to queue the agent for launch</li>
+<li><strong>Running</strong> — the agent's container starts and the agent becomes available for conversation</li>
+<li><strong>Chat</strong> — send messages via <code>POST /UserAgent/SendMessage</code>. See <a href="/docs/agent-messaging">Agent Messaging</a> for the full messaging API</li>
+</ol>
+</section>
+
+<section id="useragent-statuses">
+<h2>UserAgent Statuses</h2>
+<p>Every deployed agent instance has a numeric status that reflects its current state:</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Status</th><th>Name</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>0</code></td><td>Stopped</td><td>Agent is not running. Call Start to launch it.</td></tr>
+<tr><td><code>1</code></td><td>Stopping</td><td>Agent is shutting down. Wait for it to reach Stopped before taking action.</td></tr>
+<tr><td><code>2</code></td><td>Queued</td><td>Agent is queued and waiting for a worker to pick it up.</td></tr>
+<tr><td><code>3</code></td><td>Starting</td><td>A worker has accepted the agent and is spinning up the container.</td></tr>
+<tr><td><code>4</code></td><td>Running</td><td>Agent is live and ready to receive messages.</td></tr>
+<tr><td><code>5</code></td><td>Error</td><td>Agent encountered an error during execution. Call Start to retry.</td></tr>
+<tr><td><code>6</code></td><td>Setup Required</td><td>Agent needs credentials or configuration before it can start. Call Update to provide them.</td></tr>
+</tbody>
+</table></div></div>
+
+<h3>Automatic Restart (restartafter)</h3>
+<p>When you update an agent's configuration while it is <strong>Running</strong> (status <code>3</code> or <code>4</code>), the system automatically triggers a restart cycle: the agent is moved to <strong>Stopping</strong> (status <code>1</code>) with <code>restartafter</code> set to <code>true</code>. Once the container fully stops, the system automatically re-queues it, applying the new configuration on startup.</p>
+<p>This means you can update credentials or settings on a running agent without manually stopping and starting it.</p>
+</section>
+
+<section id="endpoints">
+<h2>Endpoints</h2>
+
+<h3>Browse the Catalog</h3>
+
+<h4><strong>POST</strong> /Agent/List</h4>
+<p>Lists available agents in the catalog. This is a <strong>public endpoint</strong> — no authentication required.</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>search</code></td><td>string</td><td>No</td><td>Full-text search across agent titles and descriptions</td></tr>
+<tr><td><code>category</code></td><td>string</td><td>No</td><td>Filter by category (e.g. <code>"productivity"</code>, <code>"social-media"</code>)</td></tr>
+<tr><td><code>sort</code></td><td>string</td><td>No</td><td>Sort column: <code>id</code>, <code>title</code>, <code>slug</code>, <code>status</code>, <code>createdat</code>, <code>updatedat</code>, <code>totalrun</code>, <code>activerun</code>. Default: <code>id</code></td></tr>
+<tr><td><code>order</code></td><td>string</td><td>No</td><td>Sort direction: <code>ASC</code> or <code>DESC</code>. Default: <code>DESC</code></td></tr>
+<tr><td><code>limit</code></td><td>number</td><td>No</td><td>Results per page (max 1000). Default: <code>20</code></td></tr>
+<tr><td><code>start</code></td><td>number</td><td>No</td><td>Offset for pagination. Default: <code>0</code></td></tr>
+</tbody>
+</table></div></div>
+
+<h5>Response</h5>
+<pre><code class="language-json">{
+  "result": true,
+  "errors": [],
+  "total": 12,
+  "agents": [
+    {
+      "id": 5,
+      "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "title": "Instagram Manager",
+      "slug": "instagram-manager",
+      "headline": "Automate your Instagram presence with AI",
+      "description": "An autonomous agent that manages your Instagram account...",
+      "cover": "instagram-manager-cover.webp",
+      "categories": ["social-media", "marketing"],
+      "samples": ["instagram-manager-sample-1.webp"],
+      "pricing": {
+        "starter": { "price": 9, "credits": 1000 },
+        "pro": { "price": 29, "credits": 5000 }
+      },
+      "status": 1,
+      "totalrun": 342,
+      "activerun": 18,
+      "createdat": "1711929600",
+      "updatedat": "1714521600"
+    }
+  ]
+}</code></pre>
+
+<h4><strong>POST</strong> /Agent/Detail</h4>
+<p>Retrieves full details for a single agent by guid or slug. This is a <strong>public endpoint</strong> — no authentication required.</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>guid</code></td><td>string</td><td>No*</td><td>Agent guid</td></tr>
+<tr><td><code>slug</code></td><td>string</td><td>No*</td><td>Agent slug (e.g. <code>"instagram-manager"</code>)</td></tr>
+</tbody>
+</table></div></div>
+<div class="info-callout"><strong>Note:</strong> You must provide either <code>guid</code> or <code>slug</code>. If both are provided, <code>slug</code> takes priority.</div>
+
+<h5>Response</h5>
+<pre><code class="language-json">{
+  "result": true,
+  "errors": [],
+  "agents": [
+    {
+      "id": 5,
+      "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "title": "Instagram Manager",
+      "slug": "instagram-manager",
+      "headline": "Automate your Instagram presence with AI",
+      "description": "An autonomous agent that manages your Instagram account...",
+      "cover": "instagram-manager-cover.webp",
+      "categories": ["social-media", "marketing"],
+      "samples": ["instagram-manager-sample-1.webp"],
+      "pricing": {
+        "starter": { "price": 9, "credits": 1000 },
+        "pro": { "price": 29, "credits": 5000 }
+      },
+      "skills": ["post_image", "reply_comment", "schedule_post"],
+      "ratelimit": { "monthlyCredits": 1000 },
+      "configuration": {
+        "credentials": {
+          "instagram_username": { "label": "Instagram Username", "type": "text", "required": true, "value": "" },
+          "instagram_password": { "label": "Instagram Password", "type": "password", "required": true, "value": "" }
+        }
+      },
+      "status": 1,
+      "totalrun": 342,
+      "activerun": 18,
+      "createdat": "1711929600",
+      "updatedat": "1714521600"
+    }
+  ]
+}</code></pre>
+
+<h3>Deploy &amp; Manage</h3>
+<p>All endpoints below require authentication.</p>
+
+<h4><strong>POST</strong> /UserAgent/Deploy</h4>
+<p>Creates a new agent instance from a catalog template. The agent is automatically queued to start (status <code>2</code>).</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>agentguid</code></td><td>string</td><td>Yes</td><td>The guid of the agent template from the catalog</td></tr>
+<tr><td><code>title</code></td><td>string</td><td>Yes</td><td>Display name for your instance</td></tr>
+<tr><td><code>description</code></td><td>string</td><td>No</td><td>Optional description</td></tr>
+<tr><td><code>configuration</code></td><td>object</td><td>No</td><td>Initial credential values. Format: <code>{ "credentials": { "key": "value" } }</code></td></tr>
+</tbody>
+</table></div></div>
+
+<h5>Response</h5>
+<pre><code class="language-json">{
+  "result": true,
+  "errors": [],
+  "useragents": [
+    {
+      "id": 47,
+      "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+      "agentid": 5,
+      "title": "My Instagram Bot",
+      "description": null,
+      "configuration": {
+        "credentials": {
+          "instagram_username": { "label": "Instagram Username", "type": "text", "required": true, "value": "" },
+          "instagram_password": { "label": "Instagram Password", "type": "password", "required": true, "value": "••••••" }
+        }
+      },
+      "status": 2,
+      "createdat": "1714608000",
+      "updatedat": "1714608000",
+      "queuedat": "1714608000"
+    }
+  ]
+}</code></pre>
+
+<h4><strong>POST</strong> /UserAgent/MyAgents</h4>
+<p>Lists all agent instances deployed under your account.</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>sort</code></td><td>string</td><td>No</td><td>Sort column: <code>id</code>, <code>title</code>, <code>status</code>, <code>createdat</code>, <code>updatedat</code>, <code>startedat</code>, <code>runningat</code>, <code>stopdat</code>. Default: <code>id</code></td></tr>
+<tr><td><code>order</code></td><td>string</td><td>No</td><td>Sort direction: <code>ASC</code> or <code>DESC</code>. Default: <code>DESC</code></td></tr>
+<tr><td><code>limit</code></td><td>number</td><td>No</td><td>Results per page (max 1000). Default: <code>20</code></td></tr>
+<tr><td><code>start</code></td><td>number</td><td>No</td><td>Offset for pagination. Default: <code>0</code></td></tr>
+<tr><td><code>category</code></td><td>string</td><td>No</td><td>Filter by category</td></tr>
+</tbody>
+</table></div></div>
+
+<h5>Response</h5>
+<pre><code class="language-json">{
+  "result": true,
+  "errors": [],
+  "useragents": [
+    {
+      "id": 47,
+      "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+      "agentid": 5,
+      "title": "My Instagram Bot",
+      "status": 4,
+      "setuprequired": false,
+      "subscription": {
+        "plan": "agent-instagram-manager-pro",
+        "status": "active",
+        "amount": 29,
+        "currency": "usd",
+        "currentperiodend": 1717200000,
+        "renewaldate": "2026-06-01T00:00:00.000Z",
+        "daysremaining": 62,
+        "pendingdowngrade": null
+      },
+      "agent": {
+        "id": 5,
+        "title": "Instagram Manager",
+        "slug": "instagram-manager",
+        "cover": "instagram-manager-cover.webp",
+        "categories": ["social-media", "marketing"],
+        "pricing": {
+          "starter": { "price": 9, "credits": 1000 },
+          "pro": { "price": 29, "credits": 5000 }
+        }
+      },
+      "extracredits": 0,
+      "extracreditsexpiry": null,
+      "createdat": "1714608000",
+      "updatedat": "1714694400",
+      "startedat": "1714694400",
+      "runningat": "1714694410"
+    }
+  ]
+}</code></pre>
+
+<h4><strong>POST</strong> /UserAgent/Detail</h4>
+<p>Retrieves full details for a single deployed agent instance, including subscription info and Stripe portal URLs.</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>guid</code></td><td>string</td><td>Yes</td><td>Your UserAgent instance guid</td></tr>
+</tbody>
+</table></div></div>
+
+<h5>Response</h5>
+<pre><code class="language-json">{
+  "result": true,
+  "errors": [],
+  "useragents": [
+    {
+      "id": 47,
+      "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+      "agentid": 5,
+      "title": "My Instagram Bot",
+      "status": 4,
+      "setuprequired": false,
+      "configuration": {
+        "credentials": {
+          "instagram_username": { "label": "Instagram Username", "type": "text", "required": true, "value": "myaccount" },
+          "instagram_password": { "label": "Instagram Password", "type": "password", "required": true, "value": "••••••" }
+        }
+      },
+      "subscription": {
+        "plan": "agent-instagram-manager-pro",
+        "status": "active",
+        "amount": 29,
+        "currency": "usd",
+        "currentperiodend": 1717200000,
+        "renewaldate": "2026-06-01T00:00:00.000Z",
+        "daysremaining": 62,
+        "pendingdowngrade": null
+      },
+      "agent": {
+        "id": 5,
+        "title": "Instagram Manager",
+        "slug": "instagram-manager",
+        "cover": "instagram-manager-cover.webp",
+        "pricing": {
+          "starter": { "price": 9, "credits": 1000 },
+          "pro": { "price": 29, "credits": 5000 }
+        }
+      },
+      "extracredits": 2000,
+      "extracreditsexpiry": 1730419200,
+      "stripeportalurl": "https://billing.stripe.com/p/session/...",
+      "stripeupdateurl": "https://billing.stripe.com/p/session/...",
+      "stripecancelurl": "https://billing.stripe.com/p/session/...",
+      "createdat": "1714608000",
+      "updatedat": "1714694400",
+      "startedat": "1714694400",
+      "runningat": "1714694410"
+    }
+  ]
+}</code></pre>
+
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>guid</code></td><td><code>string</code></td><td>Unique identifier for this agent instance.</td></tr>
+<tr><td><code>agentid</code></td><td><code>number</code></td><td>The catalog agent ID this instance was deployed from.</td></tr>
+<tr><td><code>title</code></td><td><code>string</code></td><td>Display name you gave this instance.</td></tr>
+<tr><td><code>status</code></td><td><code>number</code></td><td>Current status code (see UserAgent Statuses).</td></tr>
+<tr><td><code>setuprequired</code></td><td><code>boolean</code></td><td><code>true</code> if credentials are missing or incomplete.</td></tr>
+<tr><td><code>configuration</code></td><td><code>object</code></td><td>Credential fields with values (passwords are masked).</td></tr>
+<tr><td><code>subscription</code></td><td><code>object|null</code></td><td>Active subscription info, or <code>null</code> if no subscription.</td></tr>
+<tr><td><code>agent</code></td><td><code>object</code></td><td>Parent agent template info (title, slug, cover, pricing).</td></tr>
+<tr><td><code>extracredits</code></td><td><code>number</code></td><td>Remaining extra credits purchased for this instance.</td></tr>
+<tr><td><code>extracreditsexpiry</code></td><td><code>number|null</code></td><td>Unix timestamp when the earliest extra credit pack expires.</td></tr>
+<tr><td><code>stripeportalurl</code></td><td><code>string</code></td><td>Stripe billing portal URL (only present with active subscription).</td></tr>
+<tr><td><code>stripeupdateurl</code></td><td><code>string</code></td><td>Stripe plan upgrade URL (only present on Starter plans).</td></tr>
+<tr><td><code>stripecancelurl</code></td><td><code>string</code></td><td>Stripe cancellation URL (only present with active subscription).</td></tr>
+</tbody>
+</table></div></div>
+
+<h4><strong>POST</strong> /UserAgent/Update</h4>
+<p>Updates an agent instance's configuration, title, or description. If the agent is currently running, this triggers an automatic restart to apply the new settings.</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>guid</code></td><td>string</td><td>Yes</td><td>Your UserAgent instance guid</td></tr>
+<tr><td><code>title</code></td><td>string</td><td>No</td><td>New display name</td></tr>
+<tr><td><code>description</code></td><td>string</td><td>No</td><td>New description</td></tr>
+<tr><td><code>configuration</code></td><td>object</td><td>No</td><td>Updated credentials. Format: <code>{ "credentials": { "key": "value" } }</code></td></tr>
+</tbody>
+</table></div></div>
+<div class="info-callout"><strong>Note:</strong> If the agent's status is <code>6</code> (Setup Required) and the update completes all required credentials, the status automatically changes to <code>0</code> (Stopped), allowing you to start it.</div>
+
+<h5>Response</h5>
+<p>Returns the same structure as <code>UserAgent/Detail</code>.</p>
+
+<h4><strong>POST</strong> /UserAgent/Start</h4>
+<p>Starts a stopped agent instance. The agent is moved to Queued (status <code>2</code>) and will be picked up by a worker.</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>guid</code></td><td>string</td><td>Yes</td><td>Your UserAgent instance guid</td></tr>
+</tbody>
+</table></div></div>
+
+<h5>Response</h5>
+<pre><code class="language-json">{
+  "result": true,
+  "errors": []
+}</code></pre>
+<p>Start will fail with a descriptive error if:</p>
+<ul>
+<li>The agent is already running or queued</li>
+<li>The agent is currently stopping</li>
+<li>Setup is incomplete (status <code>6</code>)</li>
+<li>No active subscription exists</li>
+<li>No credits remain (monthly or extra)</li>
+</ul>
+
+<h4><strong>POST</strong> /UserAgent/Stop</h4>
+<p>Stops a running agent instance. If the agent is Queued (status <code>2</code>), it is immediately set to Stopped. If it is Starting or Running (status <code>3</code>/<code>4</code>), it moves to Stopping (status <code>1</code>) and the container is shut down gracefully.</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>guid</code></td><td>string</td><td>Yes</td><td>Your UserAgent instance guid</td></tr>
+</tbody>
+</table></div></div>
+
+<h5>Response</h5>
+<pre><code class="language-json">{
+  "result": true,
+  "errors": []
+}</code></pre>
+
+<h4><strong>POST</strong> /UserAgent/Logs</h4>
+<p>Retrieves container logs from the running agent instance. The agent must be assigned to a worker.</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>useragentGuid</code></td><td>string</td><td>Yes</td><td>Your UserAgent instance guid</td></tr>
+<tr><td><code>lines</code></td><td>number</td><td>No</td><td>Number of log lines to return (max 100,000). Default: <code>2000</code></td></tr>
+</tbody>
+</table></div></div>
+
+<h5>Response</h5>
+<pre><code class="language-json">{
+  "result": true,
+  "logs": "2026-03-30T10:00:01Z [agent] Connected to Instagram API\n2026-03-30T10:00:02Z [agent] Listening for new messages...\n",
+  "errors": []
+}</code></pre>
+
+<h4><strong>POST</strong> /UserAgent/CreateExtraCreditCheckout</h4>
+<p>Creates a Stripe checkout session to purchase additional credits. Only available for <strong>Pro plan</strong> subscribers.</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>useragentGuid</code></td><td>string</td><td>Yes</td><td>Your UserAgent instance guid</td></tr>
+<tr><td><code>pack</code></td><td>string</td><td>Yes</td><td>Credit pack: <code>package1</code>, <code>package2</code>, or <code>package3</code></td></tr>
+</tbody>
+</table></div></div>
+
+<h5>Response</h5>
+<pre><code class="language-json">{
+  "result": true,
+  "url": "https://checkout.stripe.com/c/pay/cs_live_...",
+  "errors": []
+}</code></pre>
+<p>Redirect the user to the returned <code>url</code> to complete the purchase. Credits are added immediately after payment and expire 6 months after purchase.</p>
+</section>
+
+<section id="agent-pricing">
+<h2>Agent Pricing</h2>
+<p>Agent pricing is subscription-based, billed monthly through Stripe.</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Feature</th><th>Starter</th><th>Pro</th></tr></thead>
+<tbody>
+<tr><td>Monthly price</td><td>Varies by agent (e.g. $9/mo)</td><td>Varies by agent (e.g. $29/mo)</td></tr>
+<tr><td>Monthly credits</td><td>Included (e.g. 1,000)</td><td>Included (e.g. 5,000)</td></tr>
+<tr><td>Extra credit packs</td><td>Not available</td><td>Available (expire in 6 months)</td></tr>
+<tr><td>Plan upgrade</td><td>Upgrade to Pro anytime</td><td>—</td></tr>
+</tbody>
+</table></div></div>
+<p>Each agent in the catalog defines its own pricing tiers in the <code>pricing</code> field. Check the <code>Agent/Detail</code> response for exact prices and credit amounts.</p>
+<p>Credits are consumed per message or action, depending on the agent type. When monthly credits run out, the agent cannot be started until credits are renewed (next billing cycle) or extra credits are purchased.</p>
+</section>
+
+<section id="error-messages">
+<h2>Error Messages</h2>
+<p>Agent-specific errors you may encounter:</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Error</th><th>When</th></tr></thead>
+<tbody>
+<tr><td><code>Agent not found</code></td><td>The <code>agentguid</code> or <code>slug</code> does not match any catalog agent</td></tr>
+<tr><td><code>User agent not found</code></td><td>The <code>guid</code> does not match any of your deployed instances</td></tr>
+<tr><td><code>Agent not found or inactive</code></td><td>The catalog agent exists but is disabled</td></tr>
+<tr><td><code>Active subscription required to start agent. Please renew your subscription.</code></td><td>No active Stripe subscription for this instance</td></tr>
+<tr><td><code>Agent setup is not complete. Please fill in your credentials before starting.</code></td><td>Status is <code>6</code> — call Update to provide required credentials</td></tr>
+<tr><td><code>Agent is already running</code></td><td>Start called on an agent with status <code>3</code> or <code>4</code></td></tr>
+<tr><td><code>Agent is already queued to start</code></td><td>Start called on an agent with status <code>2</code></td></tr>
+<tr><td><code>Agent is already stopped</code></td><td>Stop called on an agent with status <code>0</code></td></tr>
+<tr><td><code>Agent is currently stopping, please wait</code></td><td>Start called on an agent with status <code>1</code></td></tr>
+<tr><td><code>Agent is in error state, use Start to retry</code></td><td>Stop called on an agent with status <code>5</code></td></tr>
+<tr><td><code>No credits available. Please renew your subscription or purchase extra credits.</code></td><td>Monthly and extra credits are both exhausted</td></tr>
+<tr><td><code>Extra credits are available only for Pro plan subscribers. Please upgrade your plan.</code></td><td>CreateExtraCreditCheckout called on a Starter plan</td></tr>
+</tbody>
+</table></div></div>
+</section>
+
+<section id="whats-next">
+<h2>What's Next</h2>
+<ul>
+<li><a href="/docs/agent-messaging">Agent Messaging</a> — Send messages and receive responses from running agents</li>
+<li><a href="/docs/agent-credentials">Agent Credentials</a> — Configure OAuth and API key credentials for your agent</li>
+<li><a href="/docs/authentication">Authentication</a> — API key setup and authentication methods</li>
+<li><a href="/docs/pricing">Pricing</a> — General pricing information</li>
+</ul>
+</section>
+
+</article>
+
+<script type="application/json" class="code-examples-data">
+[
+  {
+    "label": "curl",
+    "language": "bash",
+    "code": "# List available agents (no auth required)\ncurl -X POST \"https://api.wiro.ai/v1/Agent/List\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"limit\": 10}'\n\n# Get agent details by slug (no auth required)\ncurl -X POST \"https://api.wiro.ai/v1/Agent/Detail\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"slug\": \"instagram-manager\"}'\n\n# Deploy a new agent instance\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/Deploy\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"agentguid\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n    \"title\": \"My Instagram Bot\"\n  }'\n\n# Start an agent\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/Start\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"guid\": \"f8e7d6c5-b4a3-2190-fedc-ba0987654321\"}'\n\n# Get agent instance details\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/Detail\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"guid\": \"f8e7d6c5-b4a3-2190-fedc-ba0987654321\"}'\n\n# Update credentials on a running agent (triggers automatic restart)\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/Update\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"guid\": \"f8e7d6c5-b4a3-2190-fedc-ba0987654321\",\n    \"configuration\": {\n      \"credentials\": {\n        \"instagram_username\": \"new_account\",\n        \"instagram_password\": \"new_password\"\n      }\n    }\n  }'\n\n# Stop an agent\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/Stop\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"guid\": \"f8e7d6c5-b4a3-2190-fedc-ba0987654321\"}'\n\n# Get container logs\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/Logs\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"useragentGuid\": \"f8e7d6c5-b4a3-2190-fedc-ba0987654321\", \"lines\": 500}' "
+  },
+  {
+    "label": "Python",
+    "language": "python",
+    "code": "import requests\n\nheaders = {\n    \"x-api-key\": \"YOUR_API_KEY\",\n    \"Content-Type\": \"application/json\"\n}\n\n# List available agents (no auth required)\ncatalog = requests.post(\n    \"https://api.wiro.ai/v1/Agent/List\",\n    json={\"limit\": 10}\n).json()\nfor agent in catalog[\"agents\"]:\n    print(f\"{agent['title']} ({agent['slug']})\")\n\n# Get agent details by slug\ndetail = requests.post(\n    \"https://api.wiro.ai/v1/Agent/Detail\",\n    json={\"slug\": \"instagram-manager\"}\n).json()\nagent = detail[\"agents\"][0]\nprint(f\"Credentials needed: {list(agent['configuration']['credentials'].keys())}\")\n\n# Deploy a new instance\ndeploy = requests.post(\n    \"https://api.wiro.ai/v1/UserAgent/Deploy\",\n    headers=headers,\n    json={\n        \"agentguid\": agent[\"guid\"],\n        \"title\": \"My Instagram Bot\"\n    }\n).json()\ninstance_guid = deploy[\"useragents\"][0][\"guid\"]\nprint(f\"Deployed: {instance_guid}\")\n\n# Update credentials\nrequests.post(\n    \"https://api.wiro.ai/v1/UserAgent/Update\",\n    headers=headers,\n    json={\n        \"guid\": instance_guid,\n        \"configuration\": {\n            \"credentials\": {\n                \"instagram_username\": \"myaccount\",\n                \"instagram_password\": \"mypassword\"\n            }\n        }\n    }\n)\n\n# Start the agent\nrequests.post(\n    \"https://api.wiro.ai/v1/UserAgent/Start\",\n    headers=headers,\n    json={\"guid\": instance_guid}\n)\n\n# Check status\nimport time\nwhile True:\n    resp = requests.post(\n        \"https://api.wiro.ai/v1/UserAgent/Detail\",\n        headers=headers,\n        json={\"guid\": instance_guid}\n    ).json()\n    status = resp[\"useragents\"][0][\"status\"]\n    print(f\"Status: {status}\")\n    if status == 4:\n        print(\"Agent is running!\")\n        break\n    if status == 5:\n        print(\"Agent errored\")\n        break\n    time.sleep(5)\n\n# List your deployed agents\nmy_agents = requests.post(\n    \"https://api.wiro.ai/v1/UserAgent/MyAgents\",\n    headers=headers,\n    json={\"limit\": 50}\n).json()\nfor ua in my_agents[\"useragents\"]:\n    print(f\"{ua['title']} - status: {ua['status']}\")\n\n# Stop the agent\nrequests.post(\n    \"https://api.wiro.ai/v1/UserAgent/Stop\",\n    headers=headers,\n    json={\"guid\": instance_guid}\n)"
+  },
+  {
+    "label": "Node.js",
+    "language": "javascript",
+    "code": "const axios = require('axios');\n\nconst headers = {\n  'x-api-key': 'YOUR_API_KEY',\n  'Content-Type': 'application/json'\n};\n\nasync function main() {\n  // List available agents (no auth required)\n  const catalog = await axios.post(\n    'https://api.wiro.ai/v1/Agent/List',\n    { limit: 10 }\n  );\n  catalog.data.agents.forEach(a => console.log(`${a.title} (${a.slug})`));\n\n  // Get agent details by slug\n  const detail = await axios.post(\n    'https://api.wiro.ai/v1/Agent/Detail',\n    { slug: 'instagram-manager' }\n  );\n  const agent = detail.data.agents[0];\n\n  // Deploy a new instance\n  const deploy = await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/Deploy',\n    { agentguid: agent.guid, title: 'My Instagram Bot' },\n    { headers }\n  );\n  const instanceGuid = deploy.data.useragents[0].guid;\n  console.log('Deployed:', instanceGuid);\n\n  // Update credentials\n  await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/Update',\n    {\n      guid: instanceGuid,\n      configuration: {\n        credentials: {\n          instagram_username: 'myaccount',\n          instagram_password: 'mypassword'\n        }\n      }\n    },\n    { headers }\n  );\n\n  // Start the agent\n  await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/Start',\n    { guid: instanceGuid },\n    { headers }\n  );\n\n  // Poll until running\n  while (true) {\n    const resp = await axios.post(\n      'https://api.wiro.ai/v1/UserAgent/Detail',\n      { guid: instanceGuid },\n      { headers }\n    );\n    const status = resp.data.useragents[0].status;\n    console.log('Status:', status);\n    if (status === 4) { console.log('Agent is running!'); break; }\n    if (status === 5) { console.log('Agent errored'); break; }\n    await new Promise(r => setTimeout(r, 5000));\n  }\n\n  // Stop the agent\n  await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/Stop',\n    { guid: instanceGuid },\n    { headers }\n  );\n}\n\nmain();"
+  },
+  {
+    "label": "PHP",
+    "language": "php",
+    "code": "<?php\n$apiKey = \"YOUR_API_KEY\";\n\n// List available agents (no auth required)\n$ch = curl_init();\ncurl_setopt($ch, CURLOPT_URL, \"https://api.wiro.ai/v1/Agent/List\");\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\"Content-Type: application/json\"]);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([\"limit\" => 10]));\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n$catalog = json_decode(curl_exec($ch), true);\ncurl_close($ch);\n\n// Deploy a new instance\n$ch = curl_init();\ncurl_setopt($ch, CURLOPT_URL, \"https://api.wiro.ai/v1/UserAgent/Deploy\");\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\n    \"Content-Type: application/json\",\n    \"x-api-key: $apiKey\"\n]);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([\n    \"agentguid\" => \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n    \"title\" => \"My Instagram Bot\"\n]));\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n$deploy = json_decode(curl_exec($ch), true);\ncurl_close($ch);\necho \"Deployed: \" . $deploy[\"useragents\"][0][\"guid\"];"
+  },
+  {
+    "label": "C#",
+    "language": "csharp",
+    "code": "using var client = new HttpClient();\nclient.DefaultRequestHeaders.Add(\"x-api-key\", \"YOUR_API_KEY\");\n\n// Deploy a new instance\nvar deployContent = new StringContent(\n    JsonSerializer.Serialize(new {\n        agentguid = \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n        title = \"My Instagram Bot\"\n    }),\n    Encoding.UTF8, \"application/json\");\n\nvar deployResp = await client.PostAsync(\n    \"https://api.wiro.ai/v1/UserAgent/Deploy\", deployContent);\nvar deployResult = await deployResp.Content.ReadAsStringAsync();\nConsole.WriteLine(deployResult);\n\n// Start the agent\nvar startContent = new StringContent(\n    JsonSerializer.Serialize(new {\n        guid = \"f8e7d6c5-b4a3-2190-fedc-ba0987654321\"\n    }),\n    Encoding.UTF8, \"application/json\");\n\nvar startResp = await client.PostAsync(\n    \"https://api.wiro.ai/v1/UserAgent/Start\", startContent);\nConsole.WriteLine(await startResp.Content.ReadAsStringAsync());"
+  },
+  {
+    "label": "Go",
+    "language": "go",
+    "code": "package main\n\nimport (\n    \"bytes\"\n    \"encoding/json\"\n    \"fmt\"\n    \"net/http\"\n    \"io\"\n)\n\nfunc main() {\n    // Deploy a new instance\n    body, _ := json.Marshal(map[string]interface{}{\n        \"agentguid\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n        \"title\":     \"My Instagram Bot\",\n    })\n    req, _ := http.NewRequest(\"POST\",\n        \"https://api.wiro.ai/v1/UserAgent/Deploy\",\n        bytes.NewBuffer(body))\n    req.Header.Set(\"Content-Type\", \"application/json\")\n    req.Header.Set(\"x-api-key\", \"YOUR_API_KEY\")\n\n    resp, _ := http.DefaultClient.Do(req)\n    defer resp.Body.Close()\n    data, _ := io.ReadAll(resp.Body)\n    fmt.Println(string(data))\n}"
+  },
+  {
+    "label": "Swift",
+    "language": "swift",
+    "code": "import Foundation\n\nlet url = URL(string: \"https://api.wiro.ai/v1/UserAgent/Deploy\")!\nvar request = URLRequest(url: url)\nrequest.httpMethod = \"POST\"\nrequest.setValue(\"application/json\",\n    forHTTPHeaderField: \"Content-Type\")\nrequest.setValue(\"YOUR_API_KEY\",\n    forHTTPHeaderField: \"x-api-key\")\nrequest.httpBody = try! JSONSerialization.data(\n    withJSONObject: [\n        \"agentguid\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n        \"title\": \"My Instagram Bot\"\n    ])\n\nlet (data, _) = try await URLSession.shared\n    .data(for: request)\nprint(String(data: data, encoding: .utf8)!)"
+  },
+  {
+    "label": "Kotlin",
+    "language": "kotlin",
+    "code": "import java.net.HttpURLConnection\nimport java.net.URL\n\nval url = URL(\"https://api.wiro.ai/v1/UserAgent/Deploy\")\nval conn = url.openConnection() as HttpURLConnection\nconn.requestMethod = \"POST\"\nconn.setRequestProperty(\"Content-Type\", \"application/json\")\nconn.setRequestProperty(\"x-api-key\", \"YOUR_API_KEY\")\nconn.doOutput = true\nconn.outputStream.write(\"\"\"{\n    \"agentguid\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n    \"title\": \"My Instagram Bot\"\n}\"\"\".toByteArray())\n\nval response = conn.inputStream.bufferedReader().readText()\nprintln(response)"
+  },
+  {
+    "label": "Dart",
+    "language": "dart",
+    "code": "import 'dart:convert';\nimport 'package:http/http.dart' as http;\n\nfinal response = await http.post(\n  Uri.parse('https://api.wiro.ai/v1/UserAgent/Deploy'),\n  headers: {\n    'Content-Type': 'application/json',\n    'x-api-key': 'YOUR_API_KEY',\n  },\n  body: jsonEncode({\n    'agentguid': 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',\n    'title': 'My Instagram Bot',\n  }),\n);\nprint(response.body);"
+  }
+]
+</script>
+            </div>
+
+            <!-- ==================== AGENT MESSAGING ==================== -->
+            <div class="docs-page-section" data-page="agent-messaging" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/agent-messaging.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/agent-messaging.md" download class="docs-section-md-btn">Download</a></div>
+
+<h1>Agent Messaging</h1>
+<p class="section-subtitle">Send messages to AI agents and receive streaming responses in real time.</p>
+
+<section id="how-it-works">
+<h2>How It Works</h2>
+<p>Agent messaging follows the same async pattern as <a href="/docs/run-a-model">model runs</a>:</p>
+<ol>
+<li><strong>Send</strong> a message via REST → get an <code>agenttoken</code> immediately</li>
+<li><strong>Subscribe</strong> to <a href="/docs/agent-websocket">WebSocket</a> with the <code>agenttoken</code> → receive streaming response chunks</li>
+<li><strong>Or poll</strong> via the Detail endpoint to check status and fetch the completed response</li>
+<li><strong>Or set</strong> a <code>callbackurl</code> to receive a webhook notification when the agent finishes</li>
+</ol>
+<p>This decoupled design means your application never blocks waiting for the agent to think. Send the message, hand the <code>agenttoken</code> to your frontend, and stream the response as it arrives.</p>
+</section>
+
+<section id="message-lifecycle">
+<h2>Message Lifecycle</h2>
+<p>Every agent message progresses through a defined set of stages:</p>
+<p><code>agent_queue</code> → <code>agent_start</code> → <code>agent_output</code> → <code>agent_end</code></p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Status</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>agent_queue</code></td><td>The message is queued and waiting to be picked up by the agent worker. Emitted once when the message enters the queue.</td></tr>
+<tr><td><code>agent_start</code></td><td>The agent has accepted the message and begun processing. The underlying LLM call is being prepared.</td></tr>
+<tr><td><code>agent_output</code></td><td>The agent is producing output. This event is emitted <strong>multiple times</strong> — each chunk of the response arrives as a separate <code>agent_output</code> event via WebSocket, enabling real-time streaming.</td></tr>
+<tr><td><code>agent_end</code></td><td>The agent has finished generating the response. The full output is available in the <code>response</code> and <code>debugoutput</code> fields. <strong>This is the event you should listen for</strong> to get the final result.</td></tr>
+<tr><td><code>agent_error</code></td><td>The agent encountered an error during processing. The <code>debugoutput</code> field contains the error message.</td></tr>
+<tr><td><code>agent_cancel</code></td><td>The message was cancelled by the user before completion. Only messages in <code>agent_queue</code>, <code>agent_start</code>, or <code>agent_output</code> status can be cancelled.</td></tr>
+</tbody>
+</table></div></div>
+</section>
+
+<section id="useragent-message-send">
+<h2><strong>POST</strong> /UserAgent/Message/Send</h2>
+<p>Sends a user message to a deployed agent. The agent must be in running state (status <code>4</code>). Returns immediately with an <code>agenttoken</code> that you use to track the response via WebSocket, polling, or webhook.</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>useragentguid</code></td><td>string</td><td>Yes</td><td>The agent instance GUID (from Deploy or MyAgents).</td></tr>
+<tr><td><code>message</code></td><td>string</td><td>Yes</td><td>The user message text to send to the agent.</td></tr>
+<tr><td><code>sessionkey</code></td><td>string</td><td>No</td><td>Session identifier for conversation continuity. Defaults to <code>"default"</code>.</td></tr>
+<tr><td><code>callbackurl</code></td><td>string</td><td>No</td><td>Webhook URL — the system will POST the final response to this URL when the agent finishes.</td></tr>
+</tbody>
+</table></div></div>
+
+<h3>Response</h3>
+<pre><code class="language-json">{
+  "result": true,
+  "errors": [],
+  "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
+  "status": "agent_queue"
+}</code></pre>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>messageguid</code></td><td><code>string</code></td><td>Unique identifier for this message. Use it with Detail, History, or Cancel.</td></tr>
+<tr><td><code>agenttoken</code></td><td><code>string</code></td><td>Token for WebSocket subscription and polling. Equivalent to <code>tasktoken</code> in model runs.</td></tr>
+<tr><td><code>status</code></td><td><code>string</code></td><td>Initial status — always <code>"agent_queue"</code> on success.</td></tr>
+</tbody>
+</table></div></div>
+</section>
+
+<section id="useragent-message-detail">
+<h2><strong>POST</strong> /UserAgent/Message/Detail</h2>
+<p>Retrieves the current status and content of a single message. You can query by either <code>messageguid</code> or <code>agenttoken</code>.</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>messageguid</code></td><td>string</td><td>No</td><td>The message GUID returned from Send.</td></tr>
+<tr><td><code>agenttoken</code></td><td>string</td><td>No</td><td>The agent token returned from Send (alternative to messageguid).</td></tr>
+</tbody>
+</table></div></div>
+<div class="info-callout"><strong>Note:</strong> You must provide at least one of <code>messageguid</code> or <code>agenttoken</code>.</div>
+
+<h3>Response</h3>
+<pre><code class="language-json">{
+  "result": true,
+  "errors": [],
+  "data": {
+    "guid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+    "sessionkey": "default",
+    "content": "What are the latest trends in AI?",
+    "response": "Here are the key AI trends for 2026...",
+    "debugoutput": "Here are the key AI trends for 2026...",
+    "status": "agent_end",
+    "metadata": "{\"thinking\":[],\"answer\":[\"Here are the key AI trends for 2026...\"],\"raw\":\"Here are the key AI trends for 2026...\"}",
+    "createdat": "1743350400",
+    "startedat": "1743350401",
+    "endedat": "1743350408"
+  }
+}</code></pre>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>guid</code></td><td><code>string</code></td><td>Message GUID.</td></tr>
+<tr><td><code>sessionkey</code></td><td><code>string</code></td><td>The session this message belongs to.</td></tr>
+<tr><td><code>content</code></td><td><code>string</code></td><td>The original user message.</td></tr>
+<tr><td><code>response</code></td><td><code>string</code></td><td>The agent's full response text. Empty until <code>agent_end</code>.</td></tr>
+<tr><td><code>debugoutput</code></td><td><code>string</code></td><td>Accumulated output text. Updated during streaming, contains the full response after completion.</td></tr>
+<tr><td><code>status</code></td><td><code>string</code></td><td>Current message status (see Message Lifecycle).</td></tr>
+<tr><td><code>metadata</code></td><td><code>string</code></td><td>JSON string containing structured response data — <code>thinking</code>, <code>answer</code>, <code>raw</code>, speed metrics, and token/word counts.</td></tr>
+<tr><td><code>createdat</code></td><td><code>string</code></td><td>Unix timestamp when the message was created.</td></tr>
+<tr><td><code>startedat</code></td><td><code>string</code></td><td>Unix timestamp when the agent started processing.</td></tr>
+<tr><td><code>endedat</code></td><td><code>string</code></td><td>Unix timestamp when processing completed.</td></tr>
+</tbody>
+</table></div></div>
+</section>
+
+<section id="useragent-message-history">
+<h2><strong>POST</strong> /UserAgent/Message/History</h2>
+<p>Retrieves conversation history for a specific agent and session. Messages are returned <strong>newest-first</strong> with cursor-based pagination.</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>useragentguid</code></td><td>string</td><td>Yes</td><td>The agent instance GUID.</td></tr>
+<tr><td><code>sessionkey</code></td><td>string</td><td>No</td><td>Session identifier. Defaults to <code>"default"</code>.</td></tr>
+<tr><td><code>limit</code></td><td>number</td><td>No</td><td>Maximum number of messages to return. Defaults to <code>50</code>, max <code>200</code>.</td></tr>
+<tr><td><code>before</code></td><td>string</td><td>No</td><td>Message GUID to use as cursor — returns only messages created before this one. Omit for the most recent messages.</td></tr>
+</tbody>
+</table></div></div>
+
+<h3>Response</h3>
+<pre><code class="language-json">{
+  "result": true,
+  "errors": [],
+  "data": {
+    "messages": [
+      {
+        "guid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+        "content": "What are the latest trends in AI?",
+        "response": "Here are the key AI trends for 2026...",
+        "debugoutput": "Here are the key AI trends for 2026...",
+        "status": "agent_end",
+        "metadata": "{}",
+        "createdat": "1743350400"
+      }
+    ],
+    "count": 2,
+    "hasmore": false
+  }
+}</code></pre>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>messages</code></td><td><code>array</code></td><td>Array of message objects, newest first.</td></tr>
+<tr><td><code>count</code></td><td><code>number</code></td><td>Number of messages in this page.</td></tr>
+<tr><td><code>hasmore</code></td><td><code>boolean</code></td><td><code>true</code> if there are older messages available. Pass the last message's <code>guid</code> as <code>before</code> to fetch the next page.</td></tr>
+</tbody>
+</table></div></div>
+
+<h3>Pagination</h3>
+<pre><code>// Page 1: most recent messages
+POST /UserAgent/Message/History { "useragentguid": "...", "limit": 50 }
+
+// Page 2: pass the last message's guid as cursor
+POST /UserAgent/Message/History { "useragentguid": "...", "limit": 50, "before": "a1b2c3d4-..." }</code></pre>
+</section>
+
+<section id="useragent-message-sessions">
+<h2><strong>POST</strong> /UserAgent/Message/Sessions</h2>
+<p>Lists all conversation sessions for an agent. Returns each session's key, message count, last activity time, and the most recent message content.</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>useragentguid</code></td><td>string</td><td>Yes</td><td>The agent instance GUID.</td></tr>
+</tbody>
+</table></div></div>
+
+<h3>Response</h3>
+<pre><code class="language-json">{
+  "result": true,
+  "errors": [],
+  "data": {
+    "sessions": [
+      {
+        "sessionkey": "default",
+        "messagecount": "24",
+        "updatedat": "1743350400",
+        "lastmessage": "What are the latest trends in AI?"
+      },
+      {
+        "sessionkey": "user-42-support",
+        "messagecount": "8",
+        "updatedat": "1743349200",
+        "lastmessage": "How do I reset my password?"
+      }
+    ]
+  }
+}</code></pre>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>sessionkey</code></td><td><code>string</code></td><td>The session identifier.</td></tr>
+<tr><td><code>messagecount</code></td><td><code>string</code></td><td>Total number of messages in this session.</td></tr>
+<tr><td><code>updatedat</code></td><td><code>string</code></td><td>Unix timestamp of the last activity in this session.</td></tr>
+<tr><td><code>lastmessage</code></td><td><code>string</code></td><td>The content (user message) of the most recent message.</td></tr>
+</tbody>
+</table></div></div>
+</section>
+
+<section id="useragent-message-deletesession">
+<h2><strong>POST</strong> /UserAgent/Message/DeleteSession</h2>
+<p>Deletes a session and <strong>all its messages</strong> permanently. This action cannot be undone.</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>useragentguid</code></td><td>string</td><td>Yes</td><td>The agent instance GUID.</td></tr>
+<tr><td><code>sessionkey</code></td><td>string</td><td>Yes</td><td>The session key to delete.</td></tr>
+</tbody>
+</table></div></div>
+
+<h3>Response</h3>
+<pre><code class="language-json">{
+  "result": true,
+  "errors": []
+}</code></pre>
+</section>
+
+<section id="useragent-message-cancel">
+<h2><strong>POST</strong> /UserAgent/Message/Cancel</h2>
+<p>Cancels an in-progress message. Only messages in <code>agent_queue</code>, <code>agent_start</code>, or <code>agent_output</code> status can be cancelled. Messages that have already reached <code>agent_end</code>, <code>agent_error</code>, or <code>agent_cancel</code> cannot be cancelled.</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>messageguid</code></td><td>string</td><td>No</td><td>The message GUID to cancel.</td></tr>
+<tr><td><code>agenttoken</code></td><td>string</td><td>No</td><td>The agent token to cancel (alternative to messageguid).</td></tr>
+</tbody>
+</table></div></div>
+<div class="info-callout"><strong>Note:</strong> You must provide at least one of <code>messageguid</code> or <code>agenttoken</code>.</div>
+
+<h3>Response</h3>
+<pre><code class="language-json">{
+  "result": true,
+  "errors": []
+}</code></pre>
+<p>On success, the message status changes to <code>agent_cancel</code> and all subscribed WebSocket clients receive an <code>agent_cancel</code> event.</p>
+</section>
+
+<section id="session-management">
+<h2>Session Management</h2>
+<p>Sessions let you maintain separate conversation threads with the same agent:</p>
+<ul>
+<li>Each <code>sessionkey</code> represents a separate conversation — the agent remembers context within a session</li>
+<li>The default session key is <code>"default"</code> if you don't specify one</li>
+<li>Use unique session keys per end-user for multi-tenant applications (e.g. <code>"user-42"</code>, <code>"customer-abc"</code>)</li>
+<li>Sessions persist across API calls — send the same <code>sessionkey</code> to continue a conversation</li>
+<li>Delete a session with <code>/UserAgent/Message/DeleteSession</code> to clear history and free resources</li>
+</ul>
+<pre><code class="language-json">// User A's conversation
+{ "useragentguid": "...", "message": "Hello!", "sessionkey": "user-alice" }
+
+// User B's separate conversation with the same agent
+{ "useragentguid": "...", "message": "Hello!", "sessionkey": "user-bob" }</code></pre>
+</section>
+
+<section id="thinking-answer-separation">
+<h2>Thinking &amp; Answer Separation</h2>
+<p>Agent responses may include thinking blocks where the underlying model reasons through the problem before answering. The system automatically parses <code>&lt;think&gt;...&lt;/think&gt;</code> tags and separates the output into structured arrays:</p>
+<pre><code class="language-json">{
+  "thinking": ["Let me analyze the user's question...", "The key factors are..."],
+  "answer": ["Based on my analysis, here are the main points..."],
+  "isThinking": false,
+  "raw": "&lt;think&gt;Let me analyze the user's question...&lt;/think&gt;Based on my analysis, here are the main points..."
+}</code></pre>
+<ul>
+<li><code>thinking</code> — array of reasoning/chain-of-thought blocks. May be empty if the model doesn't use thinking.</li>
+<li><code>answer</code> — array of response chunks. This is the content to show the user.</li>
+<li><code>isThinking</code> — <code>true</code> while the model is still in a thinking phase (the <code>&lt;think&gt;</code> tag is open but not yet closed), <code>false</code> during the answer phase.</li>
+<li><code>raw</code> — the full accumulated raw output text including think tags.</li>
+</ul>
+<p>Each <code>agent_output</code> WebSocket event contains the <strong>full accumulated</strong> arrays up to that point — not just the new chunk. Simply replace your displayed content with the latest arrays. Use <code>isThinking</code> to show a "thinking" indicator in your UI while the model reasons.</p>
+<div class="info-callout"><strong>Tip:</strong> Display thinking content in a collapsible section so users can optionally inspect the model's reasoning process.</div>
+</section>
+
+<section id="tracking-a-message">
+<h2>Tracking a Message</h2>
+<p>There are three ways to track message progress after sending:</p>
+
+<h3>1. WebSocket (Recommended)</h3>
+<p>Connect to WebSocket and subscribe with the <code>agenttoken</code> for real-time streaming. Each <code>agent_output</code> event delivers the growing response as it's generated.</p>
+<pre><code class="language-json">// Subscribe to agent message updates
+{ "type": "agent_info", "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb" }
+
+// Server confirms subscription with current status
+{ "type": "agent_subscribed", "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb", "status": "agent_queue", "result": true }</code></pre>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>message.type</code></td><td><code>string</code></td><td>Always <code>"progressGenerate"</code> for agent output events.</td></tr>
+<tr><td><code>message.speed</code></td><td><code>string</code></td><td>Generation speed (e.g. <code>"12.4"</code>).</td></tr>
+<tr><td><code>message.speedType</code></td><td><code>string</code></td><td>Unit for speed — <code>"words/s"</code> (words per second).</td></tr>
+<tr><td><code>message.elapsedTime</code></td><td><code>string</code></td><td>Elapsed time since generation started (e.g. <code>"3.2s"</code>).</td></tr>
+<tr><td><code>message.tokenCount</code></td><td><code>number</code></td><td>Number of tokens generated so far.</td></tr>
+<tr><td><code>message.wordCount</code></td><td><code>number</code></td><td>Number of words generated so far.</td></tr>
+<tr><td><code>message.raw</code></td><td><code>string</code></td><td>Full accumulated raw output text.</td></tr>
+<tr><td><code>message.thinking</code></td><td><code>string[]</code></td><td>Array of thinking/reasoning blocks.</td></tr>
+<tr><td><code>message.answer</code></td><td><code>string[]</code></td><td>Array of answer blocks — the content to display.</td></tr>
+<tr><td><code>message.isThinking</code></td><td><code>boolean</code></td><td><code>true</code> while the model is in thinking phase.</td></tr>
+</tbody>
+</table></div></div>
+
+<h3>2. Polling via Detail</h3>
+<p>If you don't need real-time streaming, poll <code>POST /UserAgent/Message/Detail</code> at regular intervals until the status reaches a terminal state (<code>agent_end</code>, <code>agent_error</code>, or <code>agent_cancel</code>).</p>
+
+<h3>3. Webhook Callback</h3>
+<p>Pass a <code>callbackurl</code> when sending the message. The system will POST the final result to your URL when the agent finishes (up to 3 retry attempts):</p>
+<pre><code class="language-json">// Webhook payload delivered to your callbackurl
+{
+  "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "status": "agent_end",
+  "content": "What are the latest trends in AI?",
+  "response": "Here are the key AI trends for 2026...",
+  "endedat": "1743350408"
+}</code></pre>
+</section>
+
+</article>
+
+<script type="application/json" class="code-examples-data">
+[
+  {
+    "label": "curl",
+    "language": "bash",
+    "code": "# Send a message\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/Message/Send\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"useragentguid\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n    \"message\": \"What are the latest trends in AI?\",\n    \"sessionkey\": \"user-42\"\n  }'\n\n# Get message detail\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/Message/Detail\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"agenttoken\": \"aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb\"}'\n\n# Get conversation history\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/Message/History\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"useragentguid\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n    \"sessionkey\": \"user-42\",\n    \"limit\": 50\n  }'\n\n# List sessions\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/Message/Sessions\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"useragentguid\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\"}'\n\n# Delete a session\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/Message/DeleteSession\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"useragentguid\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n    \"sessionkey\": \"user-42\"\n  }'\n\n# Cancel an in-progress message\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/Message/Cancel\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"agenttoken\": \"aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb\"}' "
+  },
+  {
+    "label": "Python",
+    "language": "python",
+    "code": "import requests\nimport time\n\nheaders = {\n    \"x-api-key\": \"YOUR_API_KEY\",\n    \"Content-Type\": \"application/json\"\n}\n\nagent_guid = \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\"\n\n# Send a message\nsend_resp = requests.post(\n    \"https://api.wiro.ai/v1/UserAgent/Message/Send\",\n    headers=headers,\n    json={\n        \"useragentguid\": agent_guid,\n        \"message\": \"What are the latest trends in AI?\",\n        \"sessionkey\": \"user-42\"\n    }\n)\nsend_data = send_resp.json()\nagent_token = send_data[\"agenttoken\"]\nmessage_guid = send_data[\"messageguid\"]\nprint(f\"Message queued: {message_guid}\")\n\n# Poll until completion\nwhile True:\n    detail_resp = requests.post(\n        \"https://api.wiro.ai/v1/UserAgent/Message/Detail\",\n        headers=headers,\n        json={\"agenttoken\": agent_token}\n    )\n    msg = detail_resp.json()[\"data\"]\n    status = msg[\"status\"]\n    print(f\"Status: {status}\")\n\n    if status == \"agent_end\":\n        print(\"Response:\", msg[\"response\"])\n        break\n    elif status in (\"agent_error\", \"agent_cancel\"):\n        print(\"Failed or cancelled:\", msg[\"debugoutput\"])\n        break\n\n    time.sleep(2)\n\n# Get conversation history\nhistory_resp = requests.post(\n    \"https://api.wiro.ai/v1/UserAgent/Message/History\",\n    headers=headers,\n    json={\"useragentguid\": agent_guid, \"sessionkey\": \"user-42\", \"limit\": 50}\n)\nmessages = history_resp.json()[\"data\"][\"messages\"]\nfor m in messages:\n    print(f\"[{m['status']}] {m['content'][:60]}...\")\n\n# List sessions\nsessions_resp = requests.post(\n    \"https://api.wiro.ai/v1/UserAgent/Message/Sessions\",\n    headers=headers,\n    json={\"useragentguid\": agent_guid}\n)\nfor s in sessions_resp.json()[\"data\"][\"sessions\"]:\n    print(f\"Session: {s['sessionkey']} ({s['messagecount']} messages)\")"
+  },
+  {
+    "label": "Node.js",
+    "language": "javascript",
+    "code": "const axios = require('axios');\n\nconst headers = {\n  'x-api-key': 'YOUR_API_KEY',\n  'Content-Type': 'application/json'\n};\n\nconst agentGuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';\n\nasync function sendAndPoll() {\n  // Send a message\n  const sendResp = await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/Message/Send',\n    {\n      useragentguid: agentGuid,\n      message: 'What are the latest trends in AI?',\n      sessionkey: 'user-42'\n    },\n    { headers }\n  );\n\n  const { agenttoken, messageguid } = sendResp.data;\n  console.log('Message queued:', messageguid);\n\n  // Poll until completion\n  while (true) {\n    const detailResp = await axios.post(\n      'https://api.wiro.ai/v1/UserAgent/Message/Detail',\n      { agenttoken },\n      { headers }\n    );\n    const { status, response, debugoutput } = detailResp.data.data;\n    console.log('Status:', status);\n\n    if (status === 'agent_end') {\n      console.log('Response:', response);\n      break;\n    }\n    if (status === 'agent_error' || status === 'agent_cancel') {\n      console.log('Failed or cancelled:', debugoutput);\n      break;\n    }\n\n    await new Promise(r => setTimeout(r, 2000));\n  }\n}\n\nsendAndPoll();"
+  },
+  {
+    "label": "PHP",
+    "language": "php",
+    "code": "<?php\n$headers = [\n    \"Content-Type: application/json\",\n    \"x-api-key: YOUR_API_KEY\"\n];\n\n$agentGuid = \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\";\n\n// Send a message\n$ch = curl_init(\"https://api.wiro.ai/v1/UserAgent/Message/Send\");\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_HTTPHEADER, $headers);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([\n    \"useragentguid\" => $agentGuid,\n    \"message\" => \"What are the latest trends in AI?\",\n    \"sessionkey\" => \"user-42\"\n]));\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n$response = json_decode(curl_exec($ch), true);\ncurl_close($ch);\n\n$agentToken = $response[\"agenttoken\"];\n\n// Poll for result\ndo {\n    sleep(2);\n    $ch = curl_init(\"https://api.wiro.ai/v1/UserAgent/Message/Detail\");\n    curl_setopt($ch, CURLOPT_POST, true);\n    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);\n    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([\"agenttoken\" => $agentToken]));\n    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n    $detail = json_decode(curl_exec($ch), true);\n    curl_close($ch);\n\n    $status = $detail[\"data\"][\"status\"];\n} while (!in_array($status, [\"agent_end\", \"agent_error\", \"agent_cancel\"]));\n\necho $detail[\"data\"][\"response\"];"
+  },
+  {
+    "label": "C#",
+    "language": "csharp",
+    "code": "using var client = new HttpClient();\nclient.DefaultRequestHeaders.Add(\"x-api-key\", \"YOUR_API_KEY\");\n\nvar agentGuid = \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\";\n\n// Send a message\nvar sendContent = new StringContent(\n    JsonSerializer.Serialize(new {\n        useragentguid = agentGuid,\n        message = \"What are the latest trends in AI?\",\n        sessionkey = \"user-42\"\n    }),\n    Encoding.UTF8, \"application/json\");\n\nvar sendResponse = await client.PostAsync(\n    \"https://api.wiro.ai/v1/UserAgent/Message/Send\", sendContent);\nvar sendResult = JsonSerializer.Deserialize<JsonElement>(\n    await sendResponse.Content.ReadAsStringAsync());\nvar agentToken = sendResult.GetProperty(\"agenttoken\").GetString();\n\n// Poll for result\nwhile (true) {\n    await Task.Delay(2000);\n    var detailContent = new StringContent(\n        JsonSerializer.Serialize(new { agenttoken = agentToken }),\n        Encoding.UTF8, \"application/json\");\n    var detailResponse = await client.PostAsync(\n        \"https://api.wiro.ai/v1/UserAgent/Message/Detail\", detailContent);\n    var detail = JsonSerializer.Deserialize<JsonElement>(\n        await detailResponse.Content.ReadAsStringAsync());\n    var status = detail.GetProperty(\"data\").GetProperty(\"status\").GetString();\n\n    if (status == \"agent_end\") {\n        Console.WriteLine(detail.GetProperty(\"data\").GetProperty(\"response\").GetString());\n        break;\n    }\n    if (status is \"agent_error\" or \"agent_cancel\") break;\n}"
+  },
+  {
+    "label": "Go",
+    "language": "go",
+    "code": "package main\n\nimport (\n    \"bytes\"\n    \"encoding/json\"\n    \"fmt\"\n    \"io\"\n    \"net/http\"\n    \"time\"\n)\n\nfunc main() {\n    agentGuid := \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\"\n\n    // Send a message\n    sendBody, _ := json.Marshal(map[string]string{\n        \"useragentguid\": agentGuid,\n        \"message\":       \"What are the latest trends in AI?\",\n        \"sessionkey\":    \"user-42\",\n    })\n    req, _ := http.NewRequest(\"POST\",\n        \"https://api.wiro.ai/v1/UserAgent/Message/Send\",\n        bytes.NewBuffer(sendBody))\n    req.Header.Set(\"Content-Type\", \"application/json\")\n    req.Header.Set(\"x-api-key\", \"YOUR_API_KEY\")\n\n    resp, _ := http.DefaultClient.Do(req)\n    defer resp.Body.Close()\n    var sendResult map[string]interface{}\n    json.NewDecoder(resp.Body).Decode(&sendResult)\n    agentToken := sendResult[\"agenttoken\"].(string)\n\n    // Poll for result\n    for {\n        time.Sleep(2 * time.Second)\n        detailBody, _ := json.Marshal(map[string]string{\n            \"agenttoken\": agentToken,\n        })\n        req, _ := http.NewRequest(\"POST\",\n            \"https://api.wiro.ai/v1/UserAgent/Message/Detail\",\n            bytes.NewBuffer(detailBody))\n        req.Header.Set(\"Content-Type\", \"application/json\")\n        req.Header.Set(\"x-api-key\", \"YOUR_API_KEY\")\n\n        resp, _ := http.DefaultClient.Do(req)\n        body, _ := io.ReadAll(resp.Body)\n        resp.Body.Close()\n\n        var detail map[string]interface{}\n        json.Unmarshal(body, &detail)\n        data := detail[\"data\"].(map[string]interface{})\n        status := data[\"status\"].(string)\n\n        if status == \"agent_end\" {\n            fmt.Println(data[\"response\"])\n            break\n        }\n        if status == \"agent_error\" || status == \"agent_cancel\" {\n            fmt.Println(\"Failed:\", data[\"debugoutput\"])\n            break\n        }\n    }\n}"
+  }
+]
+</script>
+            </div>
+
+            <!-- ==================== AGENT WEBSOCKET ==================== -->
+            <div class="docs-page-section" data-page="agent-websocket" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/agent-websocket.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/agent-websocket.md" download class="docs-section-md-btn">Download</a></div>
+
+<h1>Agent WebSocket</h1>
+<p class="section-subtitle">Receive real-time agent response streaming via a persistent WebSocket connection.</p>
+
+<section id="connection-url">
+<h2>Connection URL</h2>
+<pre><code>wss://socket.wiro.ai/v1</code></pre>
+<p>Connect to this URL after calling the <a href="/docs/agent-messaging">Message / Send</a> endpoint. Use the <code>agenttoken</code> from the send response to subscribe to the agent session. This is the same WebSocket server used for model tasks — you can subscribe to both task events and agent events on the same connection.</p>
+</section>
+
+<section id="connection-flow">
+<h2>Connection Flow</h2>
+<ol>
+<li><strong>Connect</strong> — open a WebSocket connection to <code>wss://socket.wiro.ai/v1</code></li>
+<li><strong>Subscribe</strong> — send an <code>agent_info</code> message with your <code>agenttoken</code></li>
+<li><strong>Receive</strong> — listen for <code>agent_output</code> events as the agent streams its response</li>
+<li><strong>Complete</strong> — the <code>agent_end</code> event fires when the response is finished</li>
+<li><strong>Close</strong> — disconnect after processing the final response</li>
+</ol>
+<p>Subscribe message format:</p>
+<pre><code class="language-json">{
+  "type": "agent_info",
+  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb"
+}</code></pre>
+</section>
+
+<section id="event-types">
+<h2>Event Types</h2>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Event Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>agent_subscribed</code></td><td>Subscription confirmed. The server acknowledges your <code>agenttoken</code> and returns the current status. If the agent already started before you subscribed, accumulated text is included.</td></tr>
+<tr><td><code>agent_start</code></td><td>The agent has started processing your message. The underlying model is now generating a response.</td></tr>
+<tr><td><code>agent_output</code></td><td>A streaming response chunk. Emitted <strong>multiple times</strong> — each chunk contains the full accumulated text so far, plus real-time performance metrics.</td></tr>
+<tr><td><code>agent_end</code></td><td>Response complete. Contains the final accumulated text with total metrics. This is the event to listen for.</td></tr>
+<tr><td><code>agent_error</code></td><td>An error occurred during processing. The <code>message</code> field may be a plain string or a structured progress object depending on the error type.</td></tr>
+<tr><td><code>agent_cancel</code></td><td>The message was cancelled by the user before the agent finished responding.</td></tr>
+</tbody>
+</table></div></div>
+</section>
+
+<section id="message-format">
+<h2>Message Format</h2>
+<p>Every WebSocket message is a JSON object with this base structure:</p>
+<pre><code class="language-json">{
+  "type": "agent_output",
+  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
+  "message": { ... },
+  "result": true
+}</code></pre>
+<p>The <code>type</code> field indicates the event. The <code>message</code> field varies by type — it's an empty string for lifecycle events, a structured progress object for output events, and a string or object for errors.</p>
+
+<h3>agent_subscribed</h3>
+<p>Sent immediately after the server accepts your subscription. The <code>status</code> field reflects where the agent currently is in its lifecycle.</p>
+<pre><code class="language-json">{
+  "type": "agent_subscribed",
+  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
+  "status": "agent_queue",
+  "debugoutput": "",
+  "result": true
+}</code></pre>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Status</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>agent_queue</code></td><td>Message is queued, waiting for the agent to pick it up.</td></tr>
+<tr><td><code>agent_start</code></td><td>Agent has started processing.</td></tr>
+<tr><td><code>agent_output</code></td><td>Agent is actively streaming. <code>debugoutput</code> will contain accumulated text.</td></tr>
+<tr><td><code>agent_end</code></td><td>Agent already finished. <code>debugoutput</code> contains the complete response.</td></tr>
+</tbody>
+</table></div></div>
+
+<h3>agent_start</h3>
+<p>Signals that the agent has begun generating a response:</p>
+<pre><code class="language-json">{
+  "type": "agent_start",
+  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
+  "message": "",
+  "result": true
+}</code></pre>
+
+<h3>agent_output (streaming)</h3>
+<p>Emitted multiple times as the agent generates its response. Each event contains the <strong>full accumulated text</strong> up to that point (not just the delta), along with real-time performance metrics:</p>
+<pre><code class="language-json">{
+  "type": "agent_output",
+  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
+  "message": {
+    "type": "progressGenerate",
+    "task": "Generate",
+    "speed": "12.5",
+    "speedType": "words/s",
+    "elapsedTime": "2.4s",
+    "tokenCount": 35,
+    "wordCount": 28,
+    "raw": "Here is the accumulated response text so far...",
+    "thinking": [],
+    "answer": ["Here is the accumulated response text so far..."],
+    "isThinking": false
+  },
+  "result": true
+}</code></pre>
+<p>The <code>raw</code> field contains the full response as a single string. The <code>answer</code> array contains the same text split into segments. To display streaming text, replace your UI content with <code>raw</code> (or join <code>answer</code>) on each event.</p>
+
+<h3>agent_end</h3>
+<p>Fires when the agent finishes responding. The structure is identical to <code>agent_output</code> — the <code>message</code> contains the final complete text with total metrics:</p>
+<pre><code class="language-json">{
+  "type": "agent_end",
+  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
+  "message": {
+    "type": "progressGenerate",
+    "task": "Generate",
+    "speed": "14.2",
+    "speedType": "words/s",
+    "elapsedTime": "8.1s",
+    "tokenCount": 156,
+    "wordCount": 118,
+    "raw": "The complete agent response text...",
+    "thinking": [],
+    "answer": ["The complete agent response text..."],
+    "isThinking": false
+  },
+  "result": true
+}</code></pre>
+
+<h3>agent_error</h3>
+<p>An error occurred during processing. The <code>message</code> field can take two forms:</p>
+<p><strong>String error</strong> — a human-readable error description:</p>
+<pre><code class="language-json">{
+  "type": "agent_error",
+  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
+  "message": "Bridge timeout",
+  "result": false
+}</code></pre>
+<p>Common string errors include <code>"Bridge timeout"</code>, <code>"OpenClaw returned HTTP 500"</code>, and <code>"Model not available"</code>.</p>
+
+<h3>agent_cancel</h3>
+<p>Sent when the user cancels a message before the agent completes its response:</p>
+<pre><code class="language-json">{
+  "type": "agent_cancel",
+  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
+  "message": "The operation was aborted.",
+  "result": false
+}</code></pre>
+</section>
+
+<section id="the-result-field">
+<h2>The <code>result</code> Field</h2>
+<p>Every event includes a <code>result</code> boolean:</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Value</th><th>Events</th></tr></thead>
+<tbody>
+<tr><td><code>true</code></td><td><code>agent_subscribed</code>, <code>agent_start</code>, <code>agent_output</code>, <code>agent_end</code></td></tr>
+<tr><td><code>false</code></td><td><code>agent_error</code>, <code>agent_cancel</code></td></tr>
+</tbody>
+</table></div></div>
+<p>Use <code>result</code> to quickly determine whether the event represents a successful state. When <code>result</code> is <code>false</code>, inspect <code>message</code> for error details or cancellation context.</p>
+</section>
+
+<section id="streaming-metrics">
+<h2>Streaming Metrics</h2>
+<p>Each <code>agent_output</code> and <code>agent_end</code> event includes real-time performance data in the <code>message</code> object:</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>speed</code></td><td>string</td><td>Current generation speed (e.g. <code>"12.5"</code>).</td></tr>
+<tr><td><code>speedType</code></td><td>string</td><td>Speed unit — always <code>"words/s"</code> for agent responses.</td></tr>
+<tr><td><code>elapsedTime</code></td><td>string</td><td>Wall-clock time since the stream started (e.g. <code>"2.4s"</code>).</td></tr>
+<tr><td><code>tokenCount</code></td><td>number</td><td>Total tokens generated so far.</td></tr>
+<tr><td><code>wordCount</code></td><td>number</td><td>Total words in the accumulated response.</td></tr>
+</tbody>
+</table></div></div>
+<p>These metrics update with every <code>agent_output</code> event, allowing you to display a live speed indicator or progress bar in your UI.</p>
+</section>
+
+<section id="thinking-model-support">
+<h2>Thinking Model Support</h2>
+<p>When the agent is backed by a thinking-capable model (e.g. DeepSeek-R1, QwQ), the response may include thinking blocks alongside the answer:</p>
+<pre><code class="language-json">{
+  "type": "agent_output",
+  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
+  "message": {
+    "type": "progressGenerate",
+    "raw": "&lt;think&gt;Let me work through this step by step...&lt;/think&gt;Based on my analysis...",
+    "thinking": ["Let me work through this step by step..."],
+    "answer": ["Based on my analysis..."],
+    "isThinking": true
+  },
+  "result": true
+}</code></pre>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Field</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>isThinking</code></td><td><code>true</code> while the model is in a thinking phase, <code>false</code> when emitting the answer.</td></tr>
+<tr><td><code>thinking</code></td><td>Array of thinking block text segments. Empty if the model does not use thinking.</td></tr>
+<tr><td><code>answer</code></td><td>Array of answer text segments. This is the user-facing response.</td></tr>
+<tr><td><code>raw</code></td><td>The unprocessed output including <code>&lt;think&gt;</code> tags. Use <code>thinking</code> and <code>answer</code> instead for display.</td></tr>
+</tbody>
+</table></div></div>
+<p><strong>Rendering guidance:</strong></p>
+<ul>
+<li>While <code>isThinking</code> is <code>true</code>, show a "Thinking..." indicator or render the <code>thinking</code> text in a collapsible block.</li>
+<li>When <code>isThinking</code> becomes <code>false</code>, the model has finished reasoning and is now producing the answer.</li>
+<li>On <code>agent_end</code>, join the <code>answer</code> array for the final display text.</li>
+</ul>
+</section>
+
+<section id="full-integration-example">
+<h2>Full Integration Example</h2>
+<p>A typical integration follows this pattern: call the REST API to send a message, then subscribe via WebSocket to stream the response.</p>
+<p><strong>Step 1 — Send a message via REST:</strong></p>
+<pre><code class="language-bash">curl -X POST https://api.wiro.ai/v1/agent/message/send \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agentguid": "your-agent-guid",
+    "message": "Explain quantum computing in simple terms",
+    "conversationguid": "optional-conversation-id"
+  }'</code></pre>
+<p><strong>Step 2 — Subscribe via WebSocket:</strong></p>
+<pre><code class="language-javascript">const ws = new WebSocket('wss://socket.wiro.ai/v1');
+
+ws.onopen = () => {
+  ws.send(JSON.stringify({
+    type: 'agent_info',
+    agenttoken: 'aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb'
+  }));
+};</code></pre>
+<p><strong>Step 3 — Handle streaming events:</strong></p>
+<pre><code>→  agent_subscribed  { status: "agent_queue" }
+→  agent_start       { message: "" }
+→  agent_output      { message: { raw: "Quantum", wordCount: 1 } }
+→  agent_output      { message: { raw: "Quantum computing uses", wordCount: 3 } }
+→  agent_output      { message: { raw: "Quantum computing uses qubits...", wordCount: 28 } }
+→  agent_end         { message: { raw: "Quantum computing uses qubits that...", wordCount: 118 } }</code></pre>
+<p>Each <code>agent_output</code> contains the full accumulated text. Replace (don't append) your display content on each event.</p>
+</section>
+
+<section id="quick-reference">
+<h2>Quick Reference</h2>
+<pre><code class="language-json">// Subscribe
+{"type": "agent_info", "agenttoken": "aB3xK9..."}
+
+// agent_subscribed
+{"type": "agent_subscribed", "agenttoken": "aB3xK9...", "status": "agent_queue", "result": true}
+
+// agent_start
+{"type": "agent_start", "agenttoken": "aB3xK9...", "message": "", "result": true}
+
+// agent_output (streaming — emitted multiple times)
+{"type": "agent_output", "agenttoken": "aB3xK9...", "message": {"raw": "Accumulated text...", "speed": "12.5", "wordCount": 28}, "result": true}
+
+// agent_end (final response)
+{"type": "agent_end", "agenttoken": "aB3xK9...", "message": {"raw": "Complete response...", "speed": "14.2", "wordCount": 118}, "result": true}
+
+// agent_error
+{"type": "agent_error", "agenttoken": "aB3xK9...", "message": "Bridge timeout", "result": false}
+
+// agent_cancel
+{"type": "agent_cancel", "agenttoken": "aB3xK9...", "message": "The operation was aborted.", "result": false}</code></pre>
+</section>
+
+</article>
+
+<script type="application/json" class="code-examples-data">
+[
+  {
+    "label": "JavaScript",
+    "language": "javascript",
+    "code": "const agentToken = 'your-agent-token';\n\nconst ws = new WebSocket('wss://socket.wiro.ai/v1');\n\nws.onopen = () => {\n  console.log('Connected');\n  ws.send(JSON.stringify({\n    type: 'agent_info',\n    agenttoken: agentToken\n  }));\n};\n\nws.onmessage = (event) => {\n  const msg = JSON.parse(event.data);\n  console.log('Event:', msg.type);\n\n  if (msg.type === 'agent_output') {\n    console.log('Streaming:', msg.message?.raw);\n  }\n  if (msg.type === 'agent_end') {\n    console.log('Final:', msg.message?.raw);\n    ws.close();\n  }\n  if (msg.type === 'agent_error') {\n    console.error('Error:', msg.message);\n    ws.close();\n  }\n};\n\nws.onerror = (err) => console.error('WebSocket error:', err);\nws.onclose = () => console.log('Disconnected');"
+  },
+  {
+    "label": "Python",
+    "language": "python",
+    "code": "import asyncio\nimport websockets\nimport json\n\nasync def listen_agent(agent_token):\n    uri = \"wss://socket.wiro.ai/v1\"\n\n    async with websockets.connect(uri) as ws:\n        await ws.send(json.dumps({\n            \"type\": \"agent_info\",\n            \"agenttoken\": agent_token\n        }))\n        print(\"Subscribed to agent session\")\n\n        async for message in ws:\n            msg = json.loads(message)\n            print(f\"Event: {msg['type']}\")\n\n            if msg[\"type\"] == \"agent_output\":\n                print(\"Streaming:\", msg[\"message\"].get(\"raw\"))\n            elif msg[\"type\"] == \"agent_end\":\n                print(\"Final:\", msg[\"message\"].get(\"raw\"))\n                break\n            elif msg[\"type\"] in (\"agent_error\", \"agent_cancel\"):\n                print(\"Error:\", msg.get(\"message\"))\n                break\n\nasyncio.run(listen_agent(\"your-agent-token\"))"
+  },
+  {
+    "label": "Node.js",
+    "language": "javascript",
+    "code": "const WebSocket = require('ws');\n\nconst ws = new WebSocket('wss://socket.wiro.ai/v1');\n\nws.on('open', () => {\n  ws.send(JSON.stringify({\n    type: 'agent_info',\n    agenttoken: 'your-agent-token'\n  }));\n});\n\nws.on('message', (data) => {\n  const msg = JSON.parse(data.toString());\n  console.log('Event:', msg.type);\n\n  if (msg.type === 'agent_output') {\n    console.log('Streaming:', msg.message?.raw);\n  }\n  if (msg.type === 'agent_end') {\n    console.log('Final:', msg.message?.raw);\n    ws.close();\n  }\n});\n\nws.on('error', console.error);\nws.on('close', () => console.log('Disconnected'));"
+  },
+  {
+    "label": "PHP",
+    "language": "php",
+    "code": "<?php\n// Requires: composer require textalk/websocket\nuse WebSocket\\Client;\n\n$client = new Client(\"wss://socket.wiro.ai/v1\");\n\n$client->send(json_encode([\n    \"type\" => \"agent_info\",\n    \"agenttoken\" => \"your-agent-token\"\n]));\n\nwhile (true) {\n    $msg = json_decode($client->receive(), true);\n    echo \"Event: \" . $msg[\"type\"] . PHP_EOL;\n\n    if ($msg[\"type\"] === \"agent_output\") {\n        echo \"Streaming: \" . ($msg[\"message\"][\"raw\"] ?? \"\") . PHP_EOL;\n    }\n    if ($msg[\"type\"] === \"agent_end\") {\n        echo \"Final: \" . ($msg[\"message\"][\"raw\"] ?? \"\") . PHP_EOL;\n        break;\n    }\n}\n$client->close();"
+  },
+  {
+    "label": "C#",
+    "language": "csharp",
+    "code": "using System.Net.WebSockets;\nusing System.Text;\nusing System.Text.Json;\n\nusing var ws = new ClientWebSocket();\nawait ws.ConnectAsync(\n    new Uri(\"wss://socket.wiro.ai/v1\"),\n    CancellationToken.None);\n\nvar subscribe = JsonSerializer.Serialize(new {\n    type = \"agent_info\",\n    agenttoken = \"your-agent-token\"\n});\nawait ws.SendAsync(\n    Encoding.UTF8.GetBytes(subscribe),\n    WebSocketMessageType.Text, true,\n    CancellationToken.None);\n\nvar buffer = new byte[8192];\nwhile (ws.State == WebSocketState.Open) {\n    var result = await ws.ReceiveAsync(\n        buffer, CancellationToken.None);\n    var json = Encoding.UTF8.GetString(\n        buffer, 0, result.Count);\n    using var doc = JsonDocument.Parse(json);\n    var type = doc.RootElement\n        .GetProperty(\"type\").GetString();\n    Console.WriteLine(\"Event: \" + type);\n\n    if (type == \"agent_end\") {\n        Console.WriteLine(\"Done!\");\n        break;\n    }\n}"
+  },
+  {
+    "label": "Go",
+    "language": "go",
+    "code": "package main\n\nimport (\n    \"encoding/json\"\n    \"fmt\"\n    \"log\"\n    \"github.com/gorilla/websocket\"\n)\n\nfunc main() {\n    conn, _, err := websocket.DefaultDialer.Dial(\n        \"wss://socket.wiro.ai/v1\", nil)\n    if err != nil { log.Fatal(err) }\n    defer conn.Close()\n\n    sub, _ := json.Marshal(map[string]string{\n        \"type\":       \"agent_info\",\n        \"agenttoken\": \"your-agent-token\",\n    })\n    conn.WriteMessage(websocket.TextMessage, sub)\n\n    for {\n        _, message, err := conn.ReadMessage()\n        if err != nil { break }\n        var msg map[string]interface{}\n        json.Unmarshal(message, &msg)\n        fmt.Println(\"Event:\", msg[\"type\"])\n\n        if msg[\"type\"] == \"agent_end\" {\n            fmt.Println(\"Done!\")\n            break\n        }\n    }\n}"
+  },
+  {
+    "label": "Swift",
+    "language": "swift",
+    "code": "import Foundation\n\nlet url = URL(string: \"wss://socket.wiro.ai/v1\")!\nlet task = URLSession.shared.webSocketTask(with: url)\ntask.resume()\n\nlet subData = try! JSONSerialization.data(\n    withJSONObject: [\n        \"type\": \"agent_info\",\n        \"agenttoken\": \"your-agent-token\"\n    ])\ntask.send(.string(\n    String(data: subData, encoding: .utf8)!\n)) { _ in }\n\nfunc receive() {\n    task.receive { result in\n        switch result {\n        case .success(let message):\n            switch message {\n            case .string(let text):\n                let msg = try! JSONSerialization\n                    .jsonObject(with: text.data(\n                        using: .utf8)!)\n                    as! [String: Any]\n                print(\"Event:\", msg[\"type\"] ?? \"\")\n                if msg[\"type\"] as? String == \"agent_end\" {\n                    print(\"Done!\")\n                    return\n                }\n            case .data(let data):\n                print(\"Binary:\", data.count, \"bytes\")\n            @unknown default: break\n            }\n            receive()\n        case .failure(let error):\n            print(\"Error:\", error)\n        }\n    }\n}\nreceive()"
+  },
+  {
+    "label": "Kotlin",
+    "language": "kotlin",
+    "code": "// Requires: org.java-websocket:Java-WebSocket\nimport org.java_websocket.client.WebSocketClient\nimport org.java_websocket.handshake.ServerHandshake\nimport java.net.URI\nimport org.json.JSONObject\n\nval client = object : WebSocketClient(\n    URI(\"wss://socket.wiro.ai/v1\")) {\n    override fun onOpen(h: ServerHandshake) {\n        send(JSONObject(mapOf(\n            \"type\" to \"agent_info\",\n            \"agenttoken\" to \"your-agent-token\"\n        )).toString())\n    }\n    override fun onMessage(message: String) {\n        val msg = JSONObject(message)\n        println(\"Event: \" + msg.getString(\"type\"))\n        if (msg.getString(\"type\") == \"agent_end\") {\n            println(\"Done!\")\n            close()\n        }\n    }\n    override fun onClose(\n        code: Int, reason: String, remote: Boolean\n    ) { println(\"Disconnected\") }\n    override fun onError(ex: Exception) {\n        ex.printStackTrace()\n    }\n}\nclient.connect()"
+  },
+  {
+    "label": "Dart",
+    "language": "dart",
+    "code": "import 'dart:convert';\nimport 'package:web_socket_channel/web_socket_channel.dart';\n\nfinal channel = WebSocketChannel.connect(\n  Uri.parse('wss://socket.wiro.ai/v1'),\n);\n\nchannel.sink.add(jsonEncode({\n  'type': 'agent_info',\n  'agenttoken': 'your-agent-token',\n}));\n\nchannel.stream.listen((message) {\n  final msg = jsonDecode(message);\n  print('Event: ' + msg['type'].toString());\n  if (msg['type'] == 'agent_output') {\n    print('Streaming: ' + (msg['message']?['raw'] ?? ''));\n  }\n  if (msg['type'] == 'agent_end') {\n    print('Done!');\n    channel.sink.close();\n  }\n});"
+  }
+]
+</script>
+            </div>
+
+            <!-- ==================== AGENT WEBHOOKS ==================== -->
+            <div class="docs-page-section" data-page="agent-webhooks" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/agent-webhooks.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/agent-webhooks.md" download class="docs-section-md-btn">Download</a></div>
+
+<h1>Agent Webhooks</h1>
+<p class="section-subtitle">Receive agent response notifications via HTTP callbacks.</p>
+
+<section id="how-it-works">
+<h2>How It Works</h2>
+<p>When you send a message to an agent via <code>POST /UserAgent/Message/Send</code>, include a <code>callbackurl</code> parameter. Once the agent finishes processing — whether it completes successfully, encounters an error, or the message is cancelled — Wiro sends a POST request to your URL with the result.</p>
+<p>This lets you build fully asynchronous workflows: fire a message and let your backend handle the response whenever it arrives, without polling or maintaining a WebSocket connection.</p>
+</section>
+
+<section id="setting-a-callback-url">
+<h2>Setting a Callback URL</h2>
+<p>Include <code>callbackurl</code> in your message request body:</p>
+<pre><code class="language-json">POST /UserAgent/Message/Send
+{
+  "useragentguid": "your-useragent-guid",
+  "message": "What are today's trending topics?",
+  "sessionkey": "user-123",
+  "callbackurl": "https://your-server.com/webhooks/agent-response"
+}</code></pre>
+<p>The callback URL is stored per-message. You can use different URLs for different messages, or omit it entirely if you prefer polling or WebSocket.</p>
+</section>
+
+<section id="callback-payload">
+<h2>Callback Payload</h2>
+<p>When the agent finishes, Wiro sends a POST request to your <code>callbackurl</code> with <code>Content-Type: application/json</code>:</p>
+<pre><code class="language-json">{
+  "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "status": "agent_end",
+  "content": "What are today's trending topics?",
+  "response": "Here are today's trending topics...",
+  "endedat": 1712050004
+}</code></pre>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>messageguid</code></td><td>string</td><td>The unique identifier of the message</td></tr>
+<tr><td><code>status</code></td><td>string</td><td>Final status of the message (see below)</td></tr>
+<tr><td><code>content</code></td><td>string</td><td>The original message you sent</td></tr>
+<tr><td><code>response</code></td><td>string</td><td>The agent's full response text</td></tr>
+<tr><td><code>endedat</code></td><td>number</td><td>Unix timestamp (UTC) when processing finished</td></tr>
+</tbody>
+</table></div></div>
+</section>
+
+<section id="status-values">
+<h2>Status Values</h2>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Status</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>agent_end</code></td><td>Agent completed successfully</td></tr>
+<tr><td><code>agent_error</code></td><td>An error occurred during processing</td></tr>
+<tr><td><code>agent_cancel</code></td><td>Message was cancelled before completion</td></tr>
+</tbody>
+</table></div></div>
+</section>
+
+<section id="retry-policy">
+<h2>Retry Policy</h2>
+<p>Wiro attempts to deliver each webhook up to <strong>3 times</strong>:</p>
+<ul>
+<li>First attempt is immediate when the agent finishes</li>
+<li>2-second delay between retries</li>
+<li>Your endpoint must return <strong>HTTP 200</strong> to acknowledge receipt</li>
+<li>Any non-200 response triggers a retry</li>
+<li>After 3 failed attempts, the webhook is abandoned and the failure is logged server-side</li>
+</ul>
+<p>The message result is always persisted in the database regardless of webhook delivery. You can retrieve it at any time via <code>POST /UserAgent/Message/Detail</code>.</p>
+</section>
+
+<section id="security-considerations">
+<h2>Security Considerations</h2>
+<ul>
+<li>Webhook calls do not include authentication headers — verify incoming requests by checking the <code>messageguid</code> against your own records</li>
+<li>Always use <strong>HTTPS</strong> endpoints in production</li>
+<li>Validate the payload structure before processing</li>
+<li>Consider returning 200 immediately and processing the payload asynchronously to avoid timeouts</li>
+</ul>
+</section>
+
+<section id="code-examples">
+<h2>Code Examples</h2>
+
+<h3>Webhook Receiver — Node.js (Express)</h3>
+<pre><code class="language-javascript">const express = require('express');
+const app = express();
+app.use(express.json());
+
+app.post('/webhooks/agent-response', (req, res) => {
+  const { messageguid, status, content, response, endedat } = req.body;
+
+  if (status === 'agent_end') {
+    console.log(`Agent completed: ${messageguid}`);
+    console.log(`Response: ${response}`);
+  } else if (status === 'agent_error') {
+    console.error(`Agent error for ${messageguid}: ${response}`);
+  } else if (status === 'agent_cancel') {
+    console.log(`Agent cancelled: ${messageguid}`);
+  }
+
+  res.sendStatus(200);
+});
+
+app.listen(3000);</code></pre>
+
+<h3>Webhook Receiver — Python (Flask)</h3>
+<pre><code class="language-python">from flask import Flask, request, jsonify
+
+app = Flask(__name__)
+
+@app.route('/webhooks/agent-response', methods=['POST'])
+def agent_webhook():
+    data = request.json
+    messageguid = data.get('messageguid')
+    status = data.get('status')
+    response_text = data.get('response')
+
+    if status == 'agent_end':
+        print(f"Agent completed: {messageguid}")
+        print(f"Response: {response_text}")
+    elif status == 'agent_error':
+        print(f"Agent error for {messageguid}: {response_text}")
+    elif status == 'agent_cancel':
+        print(f"Agent cancelled: {messageguid}")
+
+    return jsonify({"ok": True}), 200
+
+if __name__ == '__main__':
+    app.run(port=3000)</code></pre>
+
+<h3>Webhook Receiver — PHP</h3>
+<pre><code class="language-php">&lt;?php
+$payload = json_decode(file_get_contents('php://input'), true);
+
+$messageguid = $payload['messageguid'] ?? '';
+$status = $payload['status'] ?? '';
+$response = $payload['response'] ?? '';
+
+if ($status === 'agent_end') {
+    error_log("Agent completed: $messageguid");
+    error_log("Response: $response");
+} elseif ($status === 'agent_error') {
+    error_log("Agent error for $messageguid: $response");
+} elseif ($status === 'agent_cancel') {
+    error_log("Agent cancelled: $messageguid");
+}
+
+http_response_code(200);
+echo json_encode(['ok' =&gt; true]);</code></pre>
+
+<h3>Sending a Message with Callback — curl</h3>
+<pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "message": "Summarize today'\''s news",
+    "sessionkey": "user-123",
+    "callbackurl": "https://your-server.com/webhooks/agent-response"
+  }'</code></pre>
+</section>
+
+</article>
+
+            </div>
+
+            <!-- ==================== AGENT CREDENTIALS ==================== -->
+            <div class="docs-page-section" data-page="agent-credentials" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/agent-credentials.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/agent-credentials.md" download class="docs-section-md-btn">Download</a></div>
+
+<h1>Agent Credentials &amp; OAuth</h1>
+<p class="section-subtitle">Configure third-party service connections for your agent instances.</p>
+
+<section id="overview">
+<h2>Overview</h2>
+<p>Agents connect to external services — social media platforms, ad networks, email tools, CRMs — via two methods:</p>
+<ol>
+<li><strong>API Key credentials</strong> — set directly via <code>POST /UserAgent/Update</code></li>
+<li><strong>OAuth credentials</strong> — redirect-based authorization flow via <code>POST /UserAgentOAuth/{Provider}Connect</code></li>
+</ol>
+<p>API keys are simple key-value pairs you provide. OAuth requires a browser redirect where the end user authorizes access on the provider's site, and Wiro handles the token exchange server-side.</p>
+</section>
+
+<section id="setting-api-key-credentials">
+<h2>Setting API Key Credentials</h2>
+<p>Use <code>POST /UserAgent/Update</code> with <code>configuration.credentials</code> in the request body to set API keys for services that don't require OAuth.</p>
+
+<h3>Example: Setting a Brevo API Key</h3>
+<pre><code class="language-json">POST /UserAgent/Update
+{
+  "guid": "your-useragent-guid",
+  "configuration": {
+    "credentials": {
+      "brevo": {
+        "apiKey": "xkeysib-abc123..."
+      }
+    }
+  }
+}</code></pre>
+
+<h3>Example: Setting WordPress Credentials</h3>
+<pre><code class="language-json">POST /UserAgent/Update
+{
+  "guid": "your-useragent-guid",
+  "configuration": {
+    "credentials": {
+      "wordpress": {
+        "siteUrl": "https://your-site.com",
+        "username": "admin",
+        "applicationPassword": "xxxx xxxx xxxx xxxx"
+      }
+    }
+  }
+}</code></pre>
+
+<h3>API Key Credential Types</h3>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Service</th><th>Key Fields</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td><code>brevo</code></td><td><code>apiKey</code></td><td>Brevo (formerly Sendinblue) email API</td></tr>
+<tr><td><code>sendgrid</code></td><td><code>apiKey</code></td><td>SendGrid email delivery</td></tr>
+<tr><td><code>wordpress</code></td><td><code>siteUrl</code>, <code>username</code>, <code>applicationPassword</code></td><td>WordPress REST API</td></tr>
+<tr><td><code>firebase</code></td><td><code>serviceAccountKey</code></td><td>Firebase Admin SDK</td></tr>
+<tr><td><code>gmail</code></td><td><code>serviceAccountKey</code>, <code>delegatedEmail</code></td><td>Gmail API via service account</td></tr>
+<tr><td><code>apollo</code></td><td><code>apiKey</code></td><td>Apollo.io lead database</td></tr>
+<tr><td><code>lemlist</code></td><td><code>apiKey</code></td><td>Lemlist outreach campaigns</td></tr>
+<tr><td><code>telegram</code></td><td><code>botToken</code></td><td>Telegram Bot API</td></tr>
+<tr><td><code>newsletter</code></td><td><code>testEmail</code></td><td>Test email address for previews</td></tr>
+</tbody>
+</table></div></div>
+<p>All credential fields are optional — only set the ones your agent requires. The agent's configuration template defines which credentials are available.</p>
+</section>
+
+<section id="oauth-authorization-flow">
+<h2>OAuth Authorization Flow</h2>
+<p>For services that require user authorization (social media accounts, ad platforms, CRMs), Wiro implements a full OAuth flow. Your backend initiates the flow, the user authorizes in their browser, and Wiro stores the tokens securely.</p>
+
+<h3>Supported OAuth Providers</h3>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Provider</th><th>Connect Endpoint</th><th>Redirect Success Params</th><th>Redirect Error Params</th></tr></thead>
+<tbody>
+<tr><td>Twitter/X</td><td><code>XConnect</code></td><td><code>x_connected=true&amp;x_username=...</code></td><td><code>x_error=...</code></td></tr>
+<tr><td>TikTok</td><td><code>TikTokConnect</code></td><td><code>tiktok_connected=true&amp;tiktok_username=...</code></td><td><code>tiktok_error=...</code></td></tr>
+<tr><td>Instagram</td><td><code>IGConnect</code></td><td><code>ig_connected=true&amp;ig_username=...</code></td><td><code>ig_error=...</code></td></tr>
+<tr><td>Facebook</td><td><code>FBConnect</code></td><td><code>fb_connected=true&amp;fb_page_name=...</code></td><td><code>fb_error=...</code></td></tr>
+<tr><td>LinkedIn</td><td><code>LIConnect</code></td><td><code>li_connected=true&amp;li_name=...</code></td><td><code>li_error=...</code></td></tr>
+<tr><td>Google Ads</td><td><code>GAdsConnect</code></td><td><code>gads_connected=true&amp;gads_email=...</code></td><td><code>gads_error=...</code></td></tr>
+<tr><td>Meta Ads</td><td><code>MetaAdsConnect</code></td><td><code>metaads_connected=true</code></td><td><code>metaads_error=...</code></td></tr>
+<tr><td>HubSpot</td><td><code>HubSpotConnect</code></td><td><code>hubspot_connected=true</code></td><td><code>hubspot_error=...</code></td></tr>
+<tr><td>Mailchimp</td><td><code>MailchimpConnect</code></td><td><code>mailchimp_connected=true</code></td><td><code>mailchimp_error=...</code></td></tr>
+</tbody>
+</table></div></div>
+
+<h3>Flow Diagram</h3>
+<pre><code>Your Backend                  Wiro API                Provider              User's Browser
+     |                            |                       |                        |
+     |  POST /{Provider}Connect   |                       |                        |
+     |---------------------------&gt;|                       |                        |
+     |  { authorizeUrl }          |                       |                        |
+     |&lt;---------------------------|                       |                        |
+     |                            |                       |                        |
+     |  Redirect user to authorizeUrl                     |                        |
+     |-------------------------------------------------------&gt;                    |
+     |                            |                       |   User authorizes      |
+     |                            |                       |&lt;-----------------------|
+     |                            |   Callback + code     |                        |
+     |                            |&lt;----------------------|                        |
+     |                            |   Exchange for tokens |                        |
+     |                            |----------------------&gt;|                        |
+     |                            |   Tokens stored       |                        |
+     |                            |                       |                        |
+     |                            |   Redirect to your redirectUrl                 |
+     |&lt;-------------------------------------------------------------------|        |
+     |  ?provider_connected=true  |                       |                        |</code></pre>
+<ol>
+<li>Your backend calls <code>POST /UserAgentOAuth/{Provider}Connect</code></li>
+<li>Wiro returns an <code>authorizeUrl</code></li>
+<li>You redirect the user's browser to <code>authorizeUrl</code></li>
+<li>User authorizes on the provider's consent screen</li>
+<li>Provider redirects to Wiro's callback (server-to-server token exchange happens here)</li>
+<li>Wiro redirects the user to your <code>redirectUrl</code> with success or error query parameters</li>
+</ol>
+
+<h3>Connect Endpoint</h3>
+<h4><strong>POST</strong> /UserAgentOAuth/{Provider}Connect</h4>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>userAgentGuid</code></td><td>string</td><td>Yes</td><td>The agent instance GUID</td></tr>
+<tr><td><code>redirectUrl</code></td><td>string</td><td>Yes</td><td>Where to redirect after OAuth completes (HTTPS or localhost)</td></tr>
+<tr><td><code>authMethod</code></td><td>string</td><td>No</td><td><code>"wiro"</code> (default) or <code>"own"</code></td></tr>
+</tbody>
+</table></div></div>
+
+<h5>Response</h5>
+<pre><code class="language-json">{
+  "result": true,
+  "authorizeUrl": "https://x.com/i/oauth2/authorize?response_type=code&client_id=...",
+  "errors": []
+}</code></pre>
+
+<h3>Auth Methods</h3>
+<h4><code>"wiro"</code> (default)</h4>
+<p>Uses Wiro's pre-configured OAuth app credentials. This is the simplest approach — one-click connect with no additional setup.</p>
+
+<h4><code>"own"</code></h4>
+<p>Uses your own OAuth app credentials stored in the agent's configuration. Before calling Connect with <code>authMethod: "own"</code>, set your app credentials via <code>POST /UserAgent/Update</code>:</p>
+<pre><code class="language-json">POST /UserAgent/Update
+{
+  "guid": "your-useragent-guid",
+  "configuration": {
+    "credentials": {
+      "twitter": {
+        "clientId": "your-twitter-client-id",
+        "clientSecret": "your-twitter-client-secret"
+      }
+    }
+  }
+}</code></pre>
+<p>When using <code>"own"</code> mode, you must register Wiro's callback URL in your OAuth app settings on the provider's developer portal. The callback URL format is:</p>
+<pre><code>https://api.wiro.ai/v1/UserAgentOAuth/{Provider}Callback</code></pre>
+<div class="info-callout"><strong>Note:</strong> LinkedIn currently only supports <code>"own"</code> auth method. Wiro mode for LinkedIn is coming soon.</div>
+
+<h3>Status Check</h3>
+<p>Check whether a provider is connected for a given agent instance.</p>
+<h4><strong>POST</strong> /UserAgentOAuth/{Provider}Status</h4>
+<pre><code class="language-json">{
+  "userAgentGuid": "your-useragent-guid"
+}</code></pre>
+
+<h5>Response</h5>
+<pre><code class="language-json">{
+  "result": true,
+  "connected": true,
+  "username": "johndoe",
+  "connectedAt": "2025-04-01T12:00:00.000Z",
+  "tokenExpiresAt": "2025-04-01T14:00:00.000Z",
+  "refreshTokenExpiresAt": "2025-10-01T12:00:00.000Z",
+  "errors": []
+}</code></pre>
+<p>The <code>username</code> field name varies by provider: <code>xUsername</code> for Twitter/X, <code>tiktokUsername</code> for TikTok, <code>igUsername</code> for Instagram, <code>fbPageName</code> for Facebook, and so on.</p>
+
+<h3>Disconnect</h3>
+<p>Revoke access and remove stored tokens for a provider.</p>
+<h4><strong>POST</strong> /UserAgentOAuth/{Provider}Disconnect</h4>
+<pre><code class="language-json">{
+  "userAgentGuid": "your-useragent-guid"
+}</code></pre>
+
+<h5>Response</h5>
+<pre><code class="language-json">{
+  "result": true,
+  "errors": []
+}</code></pre>
+<p>Wiro attempts to revoke the token on the provider's side before clearing it from the configuration. The agent restarts automatically if it was running.</p>
+
+<h3>Token Refresh</h3>
+<p>Manually trigger a token refresh for a connected provider.</p>
+<h4><strong>POST</strong> /UserAgentOAuth/TokenRefresh</h4>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>userAgentGuid</code></td><td>string</td><td>Yes</td><td>The agent instance GUID</td></tr>
+<tr><td><code>provider</code></td><td>string</td><td>Yes</td><td>One of: <code>twitter</code>, <code>tiktok</code>, <code>instagram</code>, <code>facebook</code>, <code>linkedin</code>, <code>googleads</code>, <code>metaads</code>, <code>hubspot</code></td></tr>
+</tbody>
+</table></div></div>
+<div class="info-callout"><strong>Note:</strong> Mailchimp is not included — its tokens do not expire.</div>
+
+<h5>Response</h5>
+<pre><code class="language-json">{
+  "result": true,
+  "accessToken": "new-access-token...",
+  "refreshToken": "new-refresh-token...",
+  "errors": []
+}</code></pre>
+<p>The agent restarts automatically after a token refresh if it was running.</p>
+
+<h3>Extra Provider Endpoints</h3>
+
+<h4>Google Ads — Set Customer ID</h4>
+<p>After connecting Google Ads via OAuth, you must set the Google Ads customer ID to target:</p>
+<h5><strong>POST</strong> /UserAgentOAuth/GAdsSetCustomerId</h5>
+<pre><code class="language-json">{
+  "userAgentGuid": "your-useragent-guid",
+  "customerId": "123-456-7890"
+}</code></pre>
+
+<h4>Meta Ads — Set Ad Account</h4>
+<p>After connecting Meta Ads via OAuth, set the ad account to manage:</p>
+<h5><strong>POST</strong> /UserAgentOAuth/MetaAdsSetAdAccount</h5>
+<pre><code class="language-json">{
+  "userAgentGuid": "your-useragent-guid",
+  "adAccountId": "act_123456789",
+  "adAccountName": "My Ad Account"
+}</code></pre>
+</section>
+
+<section id="security">
+<h2>Security</h2>
+<ul>
+<li><strong>Tokens are stored server-side</strong> in the agent instance configuration and are never exposed in API responses</li>
+<li>The <code>redirectUrl</code> receives only connection status parameters — no tokens, no secrets</li>
+<li>API responses from Status, Detail, and Update endpoints are sanitized: <code>accessToken</code>, <code>refreshToken</code>, <code>clientSecret</code>, and <code>appSecret</code> fields are stripped before returning</li>
+<li>OAuth state parameters use a 15-minute TTL cache to prevent replay attacks</li>
+<li>Redirect URLs must be HTTPS (or localhost for development)</li>
+</ul>
+</section>
+
+<section id="for-third-party-developers">
+<h2>For Third-Party Developers</h2>
+<p>If you're building a product on top of Wiro agents and need your customers to connect their own accounts (e.g., their Twitter, their Google Ads), here's the recommended flow:</p>
+
+<h3>Architecture</h3>
+<ol>
+<li><strong>Deploy</strong> an agent instance per customer via <code>POST /UserAgent/Deploy</code></li>
+<li><strong>Connect</strong> — your backend calls <code>POST /UserAgentOAuth/{Provider}Connect</code> with the customer's <code>userAgentGuid</code> and a <code>redirectUrl</code> pointing back to your app</li>
+<li><strong>Redirect</strong> — send your customer's browser to the returned <code>authorizeUrl</code></li>
+<li><strong>Authorize</strong> — customer logs in and authorizes on the provider</li>
+<li><strong>Return</strong> — customer lands back on your <code>redirectUrl</code> with success/error query parameters</li>
+<li><strong>Verify</strong> — call <code>POST /UserAgentOAuth/{Provider}Status</code> to confirm connection</li>
+</ol>
+<p>Your customers never interact with Wiro directly. The entire flow happens through your app, and Wiro handles token management behind the scenes.</p>
+
+<h3>Handling the Redirect in Your App</h3>
+<pre><code class="language-javascript">// Express route handling the OAuth redirect
+app.get('/settings/social', (req, res) => {
+  const provider = req.query.provider;
+
+  if (req.query.x_connected === 'true') {
+    const username = req.query.x_username;
+    return res.redirect(`/dashboard?connected=${provider}&username=${username}`);
+  }
+
+  if (req.query.x_error) {
+    const error = req.query.x_error;
+    return res.redirect(`/dashboard?error=${provider}&reason=${error}`);
+  }
+});</code></pre>
+
+<h3>Error Values</h3>
+<p>OAuth redirect error parameters follow the pattern <code>{provider_prefix}_error</code>. Possible values:</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Error</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>authorization_denied</code></td><td>User declined the authorization</td></tr>
+<tr><td><code>token_exchange_failed</code></td><td>Provider accepted the code but token exchange failed</td></tr>
+<tr><td><code>useragent_not_found</code></td><td>The agent instance GUID is invalid or unauthorized</td></tr>
+<tr><td><code>invalid_config</code></td><td>Agent configuration doesn't have credentials for this provider</td></tr>
+<tr><td><code>internal_error</code></td><td>Unexpected server error during callback processing</td></tr>
+</tbody>
+</table></div></div>
+</section>
+
+</article>
+
+<script type="application/json" class="code-examples-data">
+[
+  {
+    "label": "curl",
+    "language": "bash",
+    "code": "# Connect Twitter/X via OAuth\ncurl -X POST \"https://api.wiro.ai/v1/UserAgentOAuth/XConnect\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"userAgentGuid\": \"customer-useragent-guid\",\n    \"redirectUrl\": \"https://your-app.com/settings/social?provider=twitter\",\n    \"authMethod\": \"wiro\"\n  }'\n\n# Check connection status\ncurl -X POST \"https://api.wiro.ai/v1/UserAgentOAuth/XStatus\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"userAgentGuid\": \"customer-useragent-guid\"\n  }'\n\n# Disconnect a provider\ncurl -X POST \"https://api.wiro.ai/v1/UserAgentOAuth/XDisconnect\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"userAgentGuid\": \"customer-useragent-guid\"\n  }' "
+  },
+  {
+    "label": "Python",
+    "language": "python",
+    "code": "import requests\n\nheaders = {\n    \"x-api-key\": \"YOUR_API_KEY\",\n    \"Content-Type\": \"application/json\"\n}\n\nresponse = requests.post(\n    \"https://api.wiro.ai/v1/UserAgentOAuth/XConnect\",\n    headers=headers,\n    json={\n        \"userAgentGuid\": \"customer-useragent-guid\",\n        \"redirectUrl\": \"https://your-app.com/settings/social?provider=twitter\",\n        \"authMethod\": \"wiro\"\n    }\n)\ndata = response.json()\nauthorize_url = data.get(\"authorizeUrl\")\n# Redirect your customer's browser to authorize_url"
+  },
+  {
+    "label": "Node.js",
+    "language": "javascript",
+    "code": "const axios = require('axios');\n\nconst headers = {\n  'x-api-key': 'YOUR_API_KEY',\n  'Content-Type': 'application/json'\n};\n\nconst response = await axios.post(\n  'https://api.wiro.ai/v1/UserAgentOAuth/XConnect',\n  {\n    userAgentGuid: 'customer-useragent-guid',\n    redirectUrl: 'https://your-app.com/settings/social?provider=twitter',\n    authMethod: 'wiro'\n  },\n  { headers }\n);\nconst { authorizeUrl } = response.data;\n// Redirect your customer's browser to authorizeUrl"
+  }
+]
+</script>
+            </div>
+
+            <!-- ==================== AGENT USE CASES ==================== -->
+            <div class="docs-page-section" data-page="agent-use-cases" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/agent-use-cases.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/agent-use-cases.md" download class="docs-section-md-btn">Download</a></div>
+
+<h1>Agent Use Cases</h1>
+<p class="section-subtitle">Build products with autonomous AI agents using the Wiro API.</p>
+
+<section id="two-deployment-patterns">
+<h2>Two Deployment Patterns</h2>
+<p>Every product built on Wiro agents follows one of two patterns. Choosing the right one depends on whether your users need to connect their own third-party accounts.</p>
+
+<h3>Pattern 1: Instance Per Customer</h3>
+<p>Most agents interact with external services — posting to social media, managing ad campaigns, sending emails. These require OAuth tokens or API keys that belong to the end user. Deploy a <strong>separate agent instance</strong> for each of your customers.</p>
+<p><strong>Why:</strong> Each customer connects their own accounts. Credentials are bound to the instance, isolated from other customers.</p>
+<p><strong>How:</strong> Call <code>POST /UserAgent/Deploy</code> once per customer, then use the <a href="/docs/agent-credentials">OAuth flow</a> to connect their accounts.</p>
+
+<h4>Real-World Examples</h4>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Your Product</th><th>Agent Type</th><th>Why Per-Customer</th></tr></thead>
+<tbody>
+<tr><td>Digital marketing agency dashboard</td><td>Social Manager</td><td>Each client connects their own Twitter, Instagram, Facebook, TikTok, LinkedIn</td></tr>
+<tr><td>Mobile app company</td><td>App Review Support</td><td>Each app has its own App Store / Google Play credentials</td></tr>
+<tr><td>E-commerce platform</td><td>Google Ads Manager + Meta Ads Manager</td><td>Each advertiser connects their own ad accounts</td></tr>
+<tr><td>Marketing SaaS</td><td>Newsletter Manager</td><td>Each customer connects their own Brevo/SendGrid/Mailchimp</td></tr>
+<tr><td>Sales platform</td><td>Lead Gen Manager</td><td>Each sales team connects their own Apollo/Lemlist</td></tr>
+<tr><td>Content agency tool</td><td>Blog Content Editor</td><td>Each client connects their own WordPress site</td></tr>
+<tr><td>App publisher platform</td><td>App Event Manager</td><td>Each app has its own Firebase project</td></tr>
+<tr><td>Customer engagement tool</td><td>Social Manager</td><td>Each brand manages their own social presence</td></tr>
+</tbody>
+</table></div></div>
+
+<h3>Pattern 2: Session Per User</h3>
+<p>For conversational agents that don't need per-user credentials. One agent instance serves many users, each identified by a unique <code>sessionkey</code> that isolates their conversation history.</p>
+<p><strong>Why:</strong> No third-party accounts to connect. The agent answers questions using its built-in knowledge or pre-configured data sources.</p>
+<p><strong>How:</strong> Deploy one instance via <code>POST /UserAgent/Deploy</code>, then send messages with different <code>sessionkey</code> values per user.</p>
+
+<h4>Real-World Examples</h4>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Your Product</th><th>Use Case</th><th>Why Sessions</th></tr></thead>
+<tbody>
+<tr><td>Knowledge base chatbot</td><td>Answer questions from documentation</td><td>No per-user credentials needed</td></tr>
+<tr><td>Product recommendation advisor</td><td>Suggest products based on conversation</td><td>Same catalog for all users</td></tr>
+<tr><td>Internal company assistant</td><td>HR policies, IT help, onboarding</td><td>Shared knowledge base</td></tr>
+<tr><td>Customer support bot</td><td>Handle common support questions</td><td>No external service connections</td></tr>
+</tbody>
+</table></div></div>
+
+<h3>When to Use Which</h3>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Question</th><th>Instance Per Customer</th><th>Session Per User</th></tr></thead>
+<tbody>
+<tr><td>Does each user connect their own social/ad/email accounts?</td><td>Yes</td><td>No</td></tr>
+<tr><td>Do credentials differ between users?</td><td>Yes</td><td>No</td></tr>
+<tr><td>Is conversation the primary interaction?</td><td>Sometimes</td><td>Always</td></tr>
+<tr><td>Does the agent perform actions on behalf of the user?</td><td>Yes</td><td>Rarely</td></tr>
+<tr><td>How many instances do you need?</td><td>One per customer</td><td>One total (or a few)</td></tr>
+</tbody>
+</table></div></div>
+</section>
+
+<section id="building-your-product">
+<h2>Building Your Product</h2>
+
+<h3>White-Label Chat</h3>
+<p>Build a fully branded chat experience with no Wiro UI visible to your users.</p>
+<ol>
+<li>Deploy an agent via <code>POST /UserAgent/Deploy</code></li>
+<li>Start the agent with <code>POST /UserAgent/Start</code></li>
+<li>Build your own chat UI</li>
+<li>Send messages via <code>POST /UserAgent/Message/Send</code></li>
+<li>Stream responses in real-time via <a href="/docs/agent-websocket">WebSocket</a> using the <code>agenttoken</code></li>
+<li>Manage conversation history with <code>POST /UserAgent/Message/History</code></li>
+</ol>
+<pre><code class="language-bash"># Deploy
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "agentguid": "agent-template-guid",
+    "title": "Customer Support Bot"
+  }'
+
+# Send a message
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "deployed-useragent-guid",
+    "message": "How do I reset my password?",
+    "sessionkey": "user-456"
+  }'</code></pre>
+
+<h3>Webhook-Driven Pipelines</h3>
+<p>For backend-to-backend integrations where you don't need real-time streaming.</p>
+<ol>
+<li>Send a message with a <code>callbackurl</code></li>
+<li>Continue processing other work</li>
+<li>Receive the agent's response via HTTP POST to your webhook endpoint</li>
+<li>Chain the result into your next workflow step</li>
+</ol>
+<p>See <a href="/docs/agent-webhooks">Agent Webhooks</a> for payload format and retry policy.</p>
+
+<h3>Scheduled Automation</h3>
+<p>Combine agents with cron jobs for recurring tasks.</p>
+<pre><code>Cron (every Monday 9am)
+  → POST /UserAgent/Message/Send (with callbackurl)
+    → Agent processes the task
+      → Webhook fires to your server
+        → Your server emails the report / posts to Slack / updates dashboard</code></pre>
+<p>This pattern works well for weekly social media content planning, daily ad performance reviews, monthly newsletter generation, and automated lead enrichment pipelines.</p>
+
+<h3>Multi-Agent Orchestration</h3>
+<p>Deploy multiple specialized agents and coordinate them from your backend.</p>
+<pre><code>Your Backend
+  ├── Research Agent → "Find trending topics in AI this week"
+  │     ↓ webhook response
+  ├── Writing Agent → "Write a blog post about: {research results}"
+  │     ↓ webhook response
+  └── Publishing Agent → "Publish this post to WordPress and share on social media"</code></pre>
+<p>Each agent is an independent instance with its own credentials. Your backend passes output from one agent as input to the next.</p>
+</section>
+
+<section id="available-agents">
+<h2>Available Agents</h2>
+<p>Wiro provides pre-built agent templates you can deploy immediately. Each agent specializes in a specific domain and comes with the relevant skills and credential slots pre-configured.</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Agent</th><th>What It Does</th><th>Credentials</th></tr></thead>
+<tbody>
+<tr><td><strong>Social Manager</strong></td><td>Create, schedule, and publish social media content</td><td>Twitter/X, Instagram, Facebook, TikTok, LinkedIn (OAuth)</td></tr>
+<tr><td><strong>Google Ads Manager</strong></td><td>Create and optimize Google Ads campaigns</td><td>Google Ads (OAuth)</td></tr>
+<tr><td><strong>Meta Ads Manager</strong></td><td>Manage Facebook and Instagram ad campaigns</td><td>Meta Ads (OAuth), Facebook (OAuth)</td></tr>
+<tr><td><strong>Newsletter Manager</strong></td><td>Design and send email newsletters</td><td>Brevo, SendGrid, or Mailchimp (API key or OAuth)</td></tr>
+<tr><td><strong>Lead Gen Manager</strong></td><td>Find and enrich leads, run outreach sequences</td><td>Apollo, Lemlist (API key)</td></tr>
+<tr><td><strong>Blog Content Editor</strong></td><td>Write and publish blog posts</td><td>WordPress (API key)</td></tr>
+<tr><td><strong>App Review Support</strong></td><td>Monitor and respond to app store reviews</td><td>App Store, Google Play (API key)</td></tr>
+<tr><td><strong>App Event Manager</strong></td><td>Track and manage mobile app events</td><td>Firebase (API key)</td></tr>
+<tr><td><strong>HubSpot Manager</strong></td><td>Manage CRM contacts, deals, and workflows</td><td>HubSpot (OAuth)</td></tr>
+</tbody>
+</table></div></div>
+
+<h3>Deploying an Agent</h3>
+<pre><code class="language-python">import requests
+
+headers = {
+    "x-api-key": "YOUR_API_KEY",
+    "Content-Type": "application/json"
+}
+
+# List available agents
+agents = requests.post(
+    "https://api.wiro.ai/v1/Agent/List",
+    headers=headers,
+    json={}
+)
+print(agents.json())
+
+# Deploy an instance
+deploy = requests.post(
+    "https://api.wiro.ai/v1/UserAgent/Deploy",
+    headers=headers,
+    json={
+        "agentguid": "social-manager-agent-guid",
+        "title": "Acme Corp Social Media"
+    }
+)
+useragent_guid = deploy.json()["useragents"][0]["guid"]
+
+# Connect Twitter via OAuth
+connect = requests.post(
+    "https://api.wiro.ai/v1/UserAgentOAuth/XConnect",
+    headers=headers,
+    json={
+        "userAgentGuid": useragent_guid,
+        "redirectUrl": "https://your-app.com/settings?connected=twitter"
+    }
+)
+authorize_url = connect.json()["authorizeUrl"]
+
+# Start the agent
+requests.post(
+    "https://api.wiro.ai/v1/UserAgent/Start",
+    headers=headers,
+    json={"guid": useragent_guid}
+)
+
+# Send a message
+message = requests.post(
+    "https://api.wiro.ai/v1/UserAgent/Message/Send",
+    headers=headers,
+    json={
+        "useragentguid": useragent_guid,
+        "message": "Create a thread about our new product launch",
+        "sessionkey": "campaign-q2"
+    }
+)
+print(message.json())</code></pre>
+<p>Browse available agents and their capabilities at <a href="/docs/models">Agent/List</a> or in the <a href="https://wiro.ai/agents" target="_blank">Wiro dashboard</a>.</p>
+</section>
+
+</article>
+
+            </div>
+
             <nav class="docs-pagination" id="docsPagination"></nav>
           </article>
 
