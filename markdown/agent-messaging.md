@@ -19,6 +19,8 @@ Every agent message progresses through a defined set of stages:
 
 `agent_queue` → `agent_start` → `agent_output` → `agent_end`
 
+### Message Statuses
+
 | Status | Description |
 |--------|-------------|
 | `agent_queue` | The message is queued and waiting to be picked up by the agent worker. Emitted once when the message enters the queue. |
@@ -76,6 +78,7 @@ Retrieves the current status and content of a single message. You can query by e
   "errors": [],
   "data": {
     "guid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+    "uuid": "user-uuid-here",
     "sessionkey": "default",
     "content": "What are the latest trends in AI?",
     "response": "Here are the key AI trends for 2026...",
@@ -92,6 +95,7 @@ Retrieves the current status and content of a single message. You can query by e
 | Field | Type | Description |
 |-------|------|-------------|
 | `guid` | `string` | Message GUID. |
+| `uuid` | `string` | The account UUID of the user who sent the message. |
 | `sessionkey` | `string` | The session this message belongs to. |
 | `content` | `string` | The original user message. |
 | `response` | `string` | The agent's full response text. Empty until `agent_end`. |
@@ -140,7 +144,7 @@ Retrieves conversation history for a specific agent and session. Messages are re
         "createdat": "1743350300"
       }
     ],
-    "count": 2,
+    "count": 1,
     "hasmore": false
   }
 }
@@ -376,7 +380,9 @@ Pass a `callbackurl` when sending the message. The system will POST the final re
   "status": "agent_end",
   "content": "What are the latest trends in AI?",
   "response": "Here are the key AI trends for 2026...",
-  "endedat": "1743350408"
+  "debugoutput": "Here are the key AI trends for 2026...",
+  "metadata": { "type": "progressGenerate", "raw": "...", "thinking": [], "answer": ["..."] },
+  "endedat": 1743350408
 }
 ```
 

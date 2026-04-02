@@ -30,7 +30,7 @@ Agents use the same authentication as the rest of the Wiro API. Include your key
 
 **Public endpoints** — `Agent/List` and `Agent/Detail` are catalog endpoints and do not require authentication. You can browse available agents without an API key.
 
-**Authenticated endpoints** — All `UserAgent/*` endpoints (Deploy, MyAgents, Detail, Update, Start, Stop, Logs, CreateExtraCreditCheckout) require a valid API key.
+**Authenticated endpoints** — All `UserAgent/*` endpoints (Deploy, MyAgents, Detail, Update, Start, Stop, CreateExtraCreditCheckout, CancelSubscription, UpgradePlan, RenewSubscription) require a valid API key.
 
 For full details, see [Authentication](/docs/authentication).
 
@@ -39,12 +39,12 @@ For full details, see [Authentication](/docs/authentication).
 Deploying and running an agent follows this flow:
 
 1. **Browse** — call `POST /Agent/List` to discover available agents in the catalog
-2. **Subscribe** — purchase a Starter or Pro plan for the agent via Stripe checkout
+2. **Subscribe** — subscribe to a Starter or Pro plan using your prepaid wallet balance
 3. **Deploy** — call `POST /UserAgent/Deploy` with the agent's guid and a title
 4. **Configure** — if the agent requires credentials (API keys, OAuth tokens), call `POST /UserAgent/Update` to provide them. See [Agent Credentials](/docs/agent-credentials) for details
 5. **Start** — call `POST /UserAgent/Start` to queue the agent for launch
 6. **Running** — the agent's container starts and the agent becomes available for conversation
-7. **Chat** — send messages via `POST /UserAgent/SendMessage`. See [Agent Messaging](/docs/agent-messaging) for the full messaging API
+7. **Chat** — send messages via `POST /UserAgent/Message/Send`. See [Agent Messaging](/docs/agent-messaging) for the full messaging API
 
 ## UserAgent Statuses
 
@@ -62,7 +62,7 @@ Every deployed agent instance has a numeric status that reflects its current sta
 
 ### Automatic Restart (restartafter)
 
-When you update an agent's configuration while it is **Running** (status `3` or `4`), the system automatically triggers a restart cycle: the agent is moved to **Stopping** (status `1`) with `restartafter` set to `true`. Once the container fully stops, the system automatically re-queues it, applying the new configuration on startup.
+When you update an agent's configuration while it is **starting** (status `3`) or **running** (status `4`), the system automatically triggers a restart cycle: the agent is moved to **Stopping** (status `1`) with `restartafter` set to `true`. Once the container fully stops, the system automatically re-queues it, applying the new configuration on startup.
 
 This means you can update credentials or settings on a running agent without manually stopping and starting it.
 
@@ -98,16 +98,15 @@ Lists available agents in the catalog. This is a **public endpoint** — no auth
       "slug": "instagram-manager",
       "headline": "Automate your Instagram presence with AI",
       "description": "An autonomous agent that manages your Instagram account...",
-      "cover": "instagram-manager-cover.webp",
+      "cover": "https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp",
       "categories": ["social-media", "marketing"],
-      "samples": ["instagram-manager-sample-1.webp"],
+      "samples": ["https://cdn.wiro.ai/uploads/agents/instagram-manager-sample-1.webp"],
       "pricing": {
         "starter": { "price": 9, "credits": 1000 },
         "pro": { "price": 29, "credits": 5000 }
       },
+      "skills": ["post_image", "reply_comment", "schedule_post"],
       "status": 1,
-      "totalrun": 342,
-      "activerun": 18,
       "createdat": "1711929600",
       "updatedat": "1714521600"
     }
@@ -140,24 +139,27 @@ Retrieves full details for a single agent by guid or slug. This is a **public en
       "slug": "instagram-manager",
       "headline": "Automate your Instagram presence with AI",
       "description": "An autonomous agent that manages your Instagram account...",
-      "cover": "instagram-manager-cover.webp",
+      "cover": "https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp",
       "categories": ["social-media", "marketing"],
-      "samples": ["instagram-manager-sample-1.webp"],
+      "samples": ["https://cdn.wiro.ai/uploads/agents/instagram-manager-sample-1.webp"],
       "pricing": {
         "starter": { "price": 9, "credits": 1000 },
         "pro": { "price": 29, "credits": 5000 }
       },
       "skills": ["post_image", "reply_comment", "schedule_post"],
-      "ratelimit": { "monthlyCredits": 1000 },
+      "ratelimit": { "actionTypes": { "message": 10, "create": 5 } },
       "configuration": {
         "credentials": {
-          "instagram_username": { "label": "Instagram Username", "type": "text", "required": true, "value": "" },
-          "instagram_password": { "label": "Instagram Password", "type": "password", "required": true, "value": "" }
+          "instagram": {
+            "_editable": { "authMethod": true },
+            "optional": false,
+            "authMethod": "",
+            "igUsername": "",
+            "connectedAt": ""
+          }
         }
       },
       "status": 1,
-      "totalrun": 342,
-      "activerun": 18,
       "createdat": "1711929600",
       "updatedat": "1714521600"
     }
@@ -171,7 +173,7 @@ All endpoints below require authentication.
 
 #### **POST** /UserAgent/Deploy
 
-Creates a new agent instance from a catalog template. The agent is automatically queued to start (status `2`).
+Creates a new agent instance from a catalog template. The agent is created with status `6` (Setup Required). After deploying, call `UserAgent/Detail` to see which credentials are needed, provide them via `UserAgent/Update`, then call `UserAgent/Start` to launch the agent. The subscription cost is deducted from your prepaid wallet immediately.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -179,6 +181,8 @@ Creates a new agent instance from a catalog template. The agent is automatically
 | `title` | string | Yes | Display name for your instance |
 | `description` | string | No | Optional description |
 | `configuration` | object | No | Initial credential values. Format: `{ "credentials": { "key": "value" } }` |
+| `useprepaid` | boolean | Yes | Set to `true` to pay from wallet balance. Requires `plan`. |
+| `plan` | string | Yes | Plan tier: `"starter"` or `"pro"`. Required when `useprepaid` is `true`. |
 
 ##### Response
 
@@ -195,14 +199,53 @@ Creates a new agent instance from a catalog template. The agent is automatically
       "description": null,
       "configuration": {
         "credentials": {
-          "instagram_username": { "label": "Instagram Username", "type": "text", "required": true, "value": "" },
-          "instagram_password": { "label": "Instagram Password", "type": "password", "required": true, "value": "••••••" }
+          "instagram": {
+            "_editable": { "authMethod": true },
+            "optional": false,
+            "authMethod": "",
+            "igUsername": "",
+            "connectedAt": ""
+          }
         }
       },
       "status": 2,
       "createdat": "1714608000",
       "updatedat": "1714608000",
       "queuedat": "1714608000"
+    }
+  ]
+}
+```
+
+##### Prepaid Deploy
+
+When `useprepaid` is `true`, the wallet is charged immediately. The response includes the created agent with status `6`:
+
+```json
+// Request
+{
+  "agentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "title": "My Lead Gen Agent",
+  "useprepaid": true,
+  "plan": "starter"
+}
+// Response
+{
+  "result": true,
+  "errors": [],
+  "useragents": [
+    {
+      "guid": "new-guid-here",
+      "title": "My Lead Gen Agent",
+      "status": 6,
+      "setuprequired": true,
+      "subscription": {
+        "plan": "agent-starter",
+        "status": "active",
+        "amount": 49,
+        "currency": "usd",
+        "provider": "prepaid"
+      }
     }
   ]
 }
@@ -242,13 +285,14 @@ Lists all agent instances deployed under your account.
         "currentperiodend": 1717200000,
         "renewaldate": "2026-06-01T00:00:00.000Z",
         "daysremaining": 62,
-        "pendingdowngrade": null
+        "pendingdowngrade": null,
+        "provider": "prepaid"
       },
       "agent": {
         "id": 5,
         "title": "Instagram Manager",
         "slug": "instagram-manager",
-        "cover": "instagram-manager-cover.webp",
+        "cover": "https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp",
         "categories": ["social-media", "marketing"],
         "pricing": {
           "starter": { "price": 9, "credits": 1000 },
@@ -268,7 +312,7 @@ Lists all agent instances deployed under your account.
 
 #### **POST** /UserAgent/Detail
 
-Retrieves full details for a single deployed agent instance, including subscription info and Stripe portal URLs.
+Retrieves full details for a single deployed agent instance, including subscription info.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -290,8 +334,13 @@ Retrieves full details for a single deployed agent instance, including subscript
       "setuprequired": false,
       "configuration": {
         "credentials": {
-          "instagram_username": { "label": "Instagram Username", "type": "text", "required": true, "value": "myaccount" },
-          "instagram_password": { "label": "Instagram Password", "type": "password", "required": true, "value": "••••••" }
+          "instagram": {
+            "_editable": { "authMethod": true },
+            "optional": false,
+            "authMethod": "wiro",
+            "igUsername": "myaccount",
+            "connectedAt": "2025-04-01T12:00:00.000Z"
+          }
         }
       },
       "subscription": {
@@ -302,13 +351,14 @@ Retrieves full details for a single deployed agent instance, including subscript
         "currentperiodend": 1717200000,
         "renewaldate": "2026-06-01T00:00:00.000Z",
         "daysremaining": 62,
-        "pendingdowngrade": null
+        "pendingdowngrade": null,
+        "provider": "prepaid"
       },
       "agent": {
         "id": 5,
         "title": "Instagram Manager",
         "slug": "instagram-manager",
-        "cover": "instagram-manager-cover.webp",
+        "cover": "https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp",
         "pricing": {
           "starter": { "price": 9, "credits": 1000 },
           "pro": { "price": 29, "credits": 5000 }
@@ -316,9 +366,6 @@ Retrieves full details for a single deployed agent instance, including subscript
       },
       "extracredits": 2000,
       "extracreditsexpiry": 1730419200,
-      "stripeportalurl": "https://billing.stripe.com/p/session/...",
-      "stripeupdateurl": "https://billing.stripe.com/p/session/...",
-      "stripecancelurl": "https://billing.stripe.com/p/session/...",
       "createdat": "1714608000",
       "updatedat": "1714694400",
       "startedat": "1714694400",
@@ -340,9 +387,7 @@ Retrieves full details for a single deployed agent instance, including subscript
 | `agent` | `object` | Parent agent template info (title, slug, cover, pricing). |
 | `extracredits` | `number` | Remaining extra credits purchased for this instance. |
 | `extracreditsexpiry` | `number\|null` | Unix timestamp when the earliest extra credit pack expires. |
-| `stripeportalurl` | `string` | Stripe billing portal URL (only present with active subscription). |
-| `stripeupdateurl` | `string` | Stripe plan upgrade URL (only present on Starter plans). |
-| `stripecancelurl` | `string` | Stripe cancellation URL (only present with active subscription). |
+| `subscription.provider` | `string` | Payment provider (`"prepaid"`). |
 
 #### **POST** /UserAgent/Update
 
@@ -353,13 +398,14 @@ Updates an agent instance's configuration, title, or description. If the agent i
 | `guid` | string | Yes | Your UserAgent instance guid |
 | `title` | string | No | New display name |
 | `description` | string | No | New description |
+| `categories` | array | No | Updated categories. Cannot be empty if provided. |
 | `configuration` | object | No | Updated credentials. Format: `{ "credentials": { "key": "value" } }` |
 
 > **Note:** If the agent's status is `6` (Setup Required) and the update completes all required credentials, the status automatically changes to `0` (Stopped), allowing you to start it.
 
 ##### Response
 
-Returns the same structure as `UserAgent/Detail`.
+Returns the updated agent instance with setuprequired flag and agent summary. Does not include subscription — use UserAgent/Detail for the full view.
 
 #### **POST** /UserAgent/Start
 
@@ -402,49 +448,107 @@ Stops a running agent instance. If the agent is Queued (status `2`), it is immed
 }
 ```
 
-#### **POST** /UserAgent/Logs
-
-Retrieves container logs from the running agent instance. The agent must be assigned to a worker.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `useragentGuid` | string | Yes | Your UserAgent instance guid |
-| `lines` | number | No | Number of log lines to return (max 100,000). Default: `2000` |
-
-##### Response
-
-```json
-{
-  "result": true,
-  "logs": "2026-03-30T10:00:01Z [agent] Connected to Instagram API\n2026-03-30T10:00:02Z [agent] Listening for new messages...\n",
-  "errors": []
-}
-```
-
 #### **POST** /UserAgent/CreateExtraCreditCheckout
 
-Creates a Stripe checkout session to purchase additional credits. Only available for **Pro plan** subscribers.
+Purchases additional credits for a Pro plan agent. Deducts from your prepaid wallet balance.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentGuid` | string | Yes | Your UserAgent instance guid |
 | `pack` | string | Yes | Credit pack: `package1`, `package2`, or `package3` |
+| `useprepaid` | boolean | Yes | Set to `true` to pay from wallet balance. No redirect needed. |
+
+##### Response
+
+```json
+// Request
+{"useragentGuid": "your-guid", "pack": "package2", "useprepaid": true}
+// Response
+{"result": true, "url": null, "errors": []}
+```
+
+When `result` is `true`, the credits are added immediately from your wallet balance. Credits expire 6 months after purchase.
+
+#### **POST** /UserAgent/CancelSubscription
+
+Cancels a subscription at the end of the current billing period. The agent remains active until the period ends.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `guid` | string | Yes | Your UserAgent instance guid |
 
 ##### Response
 
 ```json
 {
   "result": true,
-  "url": "https://checkout.stripe.com/c/pay/cs_live_...",
+  "cancelsAt": 1717200000,
   "errors": []
 }
 ```
 
-Redirect the user to the returned `url` to complete the purchase. Credits are added immediately after payment and expire 6 months after purchase.
+The `cancelsAt` field is the Unix timestamp when the subscription will expire. The agent continues running until this date. You can reverse the cancellation by calling RenewSubscription before the period ends.
+
+#### **POST** /UserAgent/UpgradePlan
+
+Upgrades a Starter subscription to Pro. The prorated cost for the remaining days is deducted from your wallet.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `guid` | string | Yes | Your UserAgent instance guid |
+| `plan` | string | Yes | Target plan: `"pro"` (only starter-to-pro upgrade is supported) |
+
+##### Response
+
+```json
+{
+  "result": true,
+  "plan": "agent-pro",
+  "proratedCharge": 11.33,
+  "newMonthlyCredits": 5000,
+  "errors": []
+}
+```
+
+Downgrades are not supported. To change from Pro to Starter, cancel and re-deploy.
+
+#### **POST** /UserAgent/RenewSubscription
+
+Renews an expired subscription or reverses a pending cancellation. The renewal cost is deducted from your wallet.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `guid` | string | Yes | Your UserAgent instance guid |
+
+##### Response (renewal)
+
+```json
+{
+  "result": true,
+  "action": "renewed",
+  "plan": "agent-starter",
+  "amount": 49,
+  "errors": []
+}
+```
+
+##### Response (undo cancel)
+
+When called on an active subscription with a pending cancellation:
+
+```json
+{
+  "result": true,
+  "action": "undo-cancel",
+  "errors": []
+}
+```
+
+After renewal, the agent status is reset to `0` (Stopped). Call Start to launch it again. Monthly credits are refreshed for the new billing period.
 
 ## Agent Pricing
 
-Agent pricing is subscription-based, billed monthly through Stripe.
+Agent pricing is subscription-based, billed monthly. Subscriptions are paid from your prepaid wallet balance:
 
 | Feature | Starter | Pro |
 |---------|---------|-----|
@@ -454,6 +558,10 @@ Agent pricing is subscription-based, billed monthly through Stripe.
 | Plan upgrade | Upgrade to Pro anytime | — |
 
 Each agent in the catalog defines its own pricing tiers in the `pricing` field. Check the `Agent/Detail` response for exact prices and credit amounts.
+
+### Payment Method
+
+All subscriptions use your **prepaid wallet balance**. The cost is deducted immediately when you deploy or renew. Subscriptions renew automatically if your wallet has sufficient balance; otherwise the subscription expires. Manage subscriptions through the CancelSubscription, UpgradePlan, and RenewSubscription endpoints.
 
 Credits are consumed per message or action, depending on the agent type. When monthly credits run out, the agent cannot be started until credits are renewed (next billing cycle) or extra credits are purchased.
 
@@ -466,7 +574,7 @@ Agent-specific errors you may encounter:
 | `Agent not found` | The `agentguid` or `slug` does not match any catalog agent |
 | `User agent not found` | The `guid` does not match any of your deployed instances |
 | `Agent not found or inactive` | The catalog agent exists but is disabled |
-| `Active subscription required to start agent. Please renew your subscription.` | No active Stripe subscription for this instance |
+| `Active subscription required to start agent. Please renew your subscription.` | No active subscription for this instance |
 | `Agent setup is not complete. Please fill in your credentials before starting.` | Status is `6` — call Update to provide required credentials |
 | `Agent is already running` | Start called on an agent with status `3` or `4` |
 | `Agent is already queued to start` | Start called on an agent with status `2` |
@@ -475,6 +583,23 @@ Agent-specific errors you may encounter:
 | `Agent is in error state, use Start to retry` | Stop called on an agent with status `5` |
 | `No credits available. Please renew your subscription or purchase extra credits.` | Monthly and extra credits are both exhausted |
 | `Extra credits are available only for Pro plan subscribers. Please upgrade your plan.` | CreateExtraCreditCheckout called on a Starter plan |
+| `Invalid pack. Choose package1, package2, or package3.` | CreateExtraCreditCheckout with invalid pack |
+| `Active subscription required to purchase extra credits.` | CreateExtraCreditCheckout without subscription |
+| `Extra credit pack not available for this agent.` | Agent pricing doesn't define the pack |
+| `Categories cannot be empty` | Update with empty categories |
+| `Agent not found or access denied` | Message endpoint with invalid useragentguid |
+| `Agent is not running. Current status: {n}` | Message/Send when not running |
+| `Message not found` | Detail/Cancel with invalid messageguid |
+| `Message cannot be cancelled (status: {status})` | Cancel on completed message |
+| `Invalid redirect URL` | OAuth Connect with non-HTTPS URL |
+| `Subscription is already active` | RenewSubscription called when subscription is already active without pending cancel |
+| `No expired subscription found to renew` | RenewSubscription called with no expired subscription |
+| `Insufficient wallet balance. Required: $X, Available: $Y` | Prepaid operation with insufficient funds |
+| `Cannot downgrade from Pro to Starter. Cancel your subscription instead.` | UpgradePlan with downgrade attempt |
+| `Subscription cancellation scheduled` | CancelSubscription success |
+| `Valid plan required when using prepaid (starter or pro)` | Deploy with useprepaid but missing/invalid plan |
+| `Pricing not available for this plan` | Deploy with useprepaid for agent without pricing |
+| `Renewal pricing not available` | RenewSubscription for agent with zero pricing |
 
 ## Code Examples
 
@@ -491,14 +616,40 @@ curl -X POST "https://api.wiro.ai/v1/Agent/Detail" \
   -H "Content-Type: application/json" \
   -d '{"slug": "instagram-manager"}'
 
-# Deploy a new agent instance
+# Deploy a new agent instance (prepaid)
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "agentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    "title": "My Instagram Bot"
+    "title": "My Instagram Bot",
+    "useprepaid": true,
+    "plan": "starter"
   }'
+
+# Cancel a subscription (cancels at end of billing period)
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CancelSubscription" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{"guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321"}'
+
+# Upgrade starter to pro
+curl -X POST "https://api.wiro.ai/v1/UserAgent/UpgradePlan" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{"guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "plan": "pro"}'
+
+# Renew expired subscription
+curl -X POST "https://api.wiro.ai/v1/UserAgent/RenewSubscription" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{"guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321"}'
+
+# Buy extra credits with prepaid wallet
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CreateExtraCreditCheckout" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{"useragentGuid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "pack": "package1", "useprepaid": true}'
 
 # Start an agent
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
@@ -520,8 +671,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
     "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
     "configuration": {
       "credentials": {
-        "instagram_username": "new_account",
-        "instagram_password": "new_password"
+        "instagram": { "authMethod": "wiro" }
       }
     }
   }'
@@ -531,12 +681,6 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Stop" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{"guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321"}'
-
-# Get container logs
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Logs" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{"useragentGuid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "lines": 500}'
 ```
 
 ### Python
@@ -571,7 +715,9 @@ deploy = requests.post(
     headers=headers,
     json={
         "agentguid": agent["guid"],
-        "title": "My Instagram Bot"
+        "title": "My Instagram Bot",
+        "useprepaid": True,
+        "plan": "starter"
     }
 ).json()
 instance_guid = deploy["useragents"][0]["guid"]
@@ -585,8 +731,7 @@ requests.post(
         "guid": instance_guid,
         "configuration": {
             "credentials": {
-                "instagram_username": "myaccount",
-                "instagram_password": "mypassword"
+                "instagram": { "authMethod": "wiro" }
             }
         }
     }
@@ -662,7 +807,7 @@ async function main() {
   // Deploy a new instance
   const deploy = await axios.post(
     'https://api.wiro.ai/v1/UserAgent/Deploy',
-    { agentguid: agent.guid, title: 'My Instagram Bot' },
+    { agentguid: agent.guid, title: 'My Instagram Bot', useprepaid: true, plan: 'starter' },
     { headers }
   );
   const instanceGuid = deploy.data.useragents[0].guid;
@@ -675,8 +820,7 @@ async function main() {
       guid: instanceGuid,
       configuration: {
         credentials: {
-          instagram_username: 'myaccount',
-          instagram_password: 'mypassword'
+          instagram: { authMethod: 'wiro' }
         }
       }
     },
@@ -741,7 +885,9 @@ curl_setopt($ch, CURLOPT_HTTPHEADER, [
 ]);
 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
     "agentguid" => "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    "title" => "My Instagram Bot"
+    "title" => "My Instagram Bot",
+    "useprepaid" => true,
+    "plan" => "starter"
 ]));
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 $deploy = json_decode(curl_exec($ch), true);
@@ -759,7 +905,9 @@ client.DefaultRequestHeaders.Add("x-api-key", "YOUR_API_KEY");
 var deployContent = new StringContent(
     JsonSerializer.Serialize(new {
         agentguid = "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-        title = "My Instagram Bot"
+        title = "My Instagram Bot",
+        useprepaid = true,
+        plan = "starter"
     }),
     Encoding.UTF8, "application/json");
 
@@ -796,8 +944,10 @@ import (
 func main() {
     // Deploy a new instance
     body, _ := json.Marshal(map[string]interface{}{
-        "agentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-        "title":     "My Instagram Bot",
+        "agentguid":  "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "title":      "My Instagram Bot",
+        "useprepaid": true,
+        "plan":       "starter",
     })
     req, _ := http.NewRequest("POST",
         "https://api.wiro.ai/v1/UserAgent/Deploy",
@@ -827,7 +977,9 @@ request.setValue("YOUR_API_KEY",
 request.httpBody = try! JSONSerialization.data(
     withJSONObject: [
         "agentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-        "title": "My Instagram Bot"
+        "title": "My Instagram Bot",
+        "useprepaid": true,
+        "plan": "starter"
     ])
 
 let (data, _) = try await URLSession.shared
@@ -849,7 +1001,9 @@ conn.setRequestProperty("x-api-key", "YOUR_API_KEY")
 conn.doOutput = true
 conn.outputStream.write("""{
     "agentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    "title": "My Instagram Bot"
+    "title": "My Instagram Bot",
+    "useprepaid": true,
+    "plan": "starter"
 }""".toByteArray())
 
 val response = conn.inputStream.bufferedReader().readText()
@@ -871,6 +1025,8 @@ final response = await http.post(
   body: jsonEncode({
     'agentguid': 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
     'title': 'My Instagram Bot',
+    'useprepaid': true,
+    'plan': 'starter',
   }),
 );
 print(response.body);

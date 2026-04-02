@@ -8,7 +8,7 @@ Receive real-time agent response streaming via a persistent WebSocket connection
 wss://socket.wiro.ai/v1
 ```
 
-Connect to this URL after calling the [Message / Send](/docs/agent-message-send) endpoint. Use the `agenttoken` from the send response to subscribe to the agent session. This is the same WebSocket server used for model tasks — you can subscribe to both task events and agent events on the same connection.
+Connect to this URL after calling the [Message / Send](/docs/agent-messaging) endpoint. Use the `agenttoken` from the send response to subscribe to the agent session. This is the same WebSocket server used for model tasks — you can subscribe to both task events and agent events on the same connection.
 
 ## Connection Flow
 
@@ -75,6 +75,9 @@ Possible `status` values:
 | `agent_start` | Agent has started processing. |
 | `agent_output` | Agent is actively streaming. `debugoutput` will contain accumulated text. |
 | `agent_end` | Agent already finished. `debugoutput` contains the complete response. |
+| `agent_error` | Agent encountered an error. `debugoutput` may contain partial output. |
+| `agent_cancel` | Message was cancelled. `debugoutput` may contain partial output. |
+| `unknown` | Status could not be determined. Treat as an error. |
 
 ### agent_start
 
@@ -264,13 +267,13 @@ A typical integration follows this pattern: call the REST API to send a message,
 **Step 1 — Send a message via REST:**
 
 ```bash
-curl -X POST https://api.wiro.ai/v1/agent/message/send \
-  -H "Authorization: Bearer YOUR_API_KEY" \
+curl -X POST https://api.wiro.ai/v1/UserAgent/Message/Send \
+  -H "x-api-key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "agentguid": "your-agent-guid",
+    "useragentguid": "your-useragent-guid",
     "message": "Explain quantum computing in simple terms",
-    "conversationguid": "optional-conversation-id"
+    "sessionkey": "user-42"
   }'
 ```
 
@@ -278,8 +281,11 @@ The response includes an `agenttoken`:
 
 ```json
 {
-  "success": true,
-  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb"
+  "result": true,
+  "errors": [],
+  "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
+  "status": "agent_queue"
 }
 ```
 

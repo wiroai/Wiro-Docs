@@ -74,7 +74,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "agentguid": "agent-template-guid",
-    "title": "Customer Support Bot"
+    "title": "Customer Support Bot",
+    "useprepaid": true,
+    "plan": "starter"
   }'
 
 # Send a message
@@ -180,7 +182,9 @@ deploy = requests.post(
     headers=headers,
     json={
         "agentguid": "social-manager-agent-guid",
-        "title": "Acme Corp Social Media"
+        "title": "Acme Corp Social Media",
+        "useprepaid": True,
+        "plan": "starter"
     }
 )
 useragent_guid = deploy.json()["useragents"][0]["guid"]

@@ -13,9 +13,9 @@ API keys are simple key-value pairs you provide. OAuth requires a browser redire
 
 ## Setting API Key Credentials
 
-Use `POST /UserAgent/Update` with `configuration.credentials` in the request body to set API keys for services that don't require OAuth.
+Use `POST /UserAgent/Update` with `configuration.credentials` to set API keys for services that don't require OAuth. Each credential group is a key in the `credentials` object — you only need to set the ones your agent requires.
 
-### Example: Setting a Brevo API Key
+### Request Format
 
 ```json
 POST /UserAgent/Update
@@ -23,15 +23,68 @@ POST /UserAgent/Update
   "guid": "your-useragent-guid",
   "configuration": {
     "credentials": {
-      "brevo": {
-        "apiKey": "xkeysib-abc123..."
+      "<service>": {
+        "<field>": "value"
       }
     }
   }
 }
 ```
 
-### Example: Setting WordPress Credentials
+> **Important:** You can only update fields marked as `_editable: true` in the configuration. Attempting to set a non-editable field will be silently ignored. Use `POST /UserAgent/Detail` to see which fields are editable.
+
+### Credential Configuration by Agent
+
+Each agent requires different credentials. Find your agent below to see exactly which credentials to configure and the complete `POST /UserAgent/Update` request.
+
+#### Social Manager
+
+Manages social media accounts — posts, replies, scheduling across Twitter/X, Instagram, Facebook, LinkedIn, TikTok. OAuth providers are connected separately via the [OAuth flow](#oauth-authorization-flow).
+
+| Service | Type | Fields |
+|---------|------|--------|
+| `twitter` | OAuth | Connected via `XConnect`. Set `authMethod` to `"wiro"` or `"own"`. |
+| `instagram` | OAuth | Connected via `IGConnect`. |
+| `facebook` | OAuth | Connected via `FBConnect`. |
+| `linkedin` | OAuth | Connected via `LIConnect`. Also set `organizationId`. |
+| `tiktok` | OAuth | Connected via `TikTokConnect`. |
+| `gmail` | API Key | `account`, `appPassword` |
+| `telegram` | API Key | `botToken`, `allowedUsers`, `sessionMode` |
+
+```json
+POST /UserAgent/Update
+{
+  "guid": "your-useragent-guid",
+  "configuration": {
+    "credentials": {
+      "gmail": {
+        "account": "agent@company.com",
+        "appPassword": "xxxx xxxx xxxx xxxx"
+      },
+      "telegram": {
+        "botToken": "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11",
+        "allowedUsers": ["761381461"],
+        "sessionMode": [
+          { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
+          { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
+        ]
+      }
+    }
+  }
+}
+```
+
+> **Note:** Social media accounts (Twitter, Instagram, etc.) are connected via the [OAuth flow](#oauth-authorization-flow), not via Update. Use Update only for `gmail` and `telegram` credentials.
+
+#### Blog Content Editor
+
+Publishes blog posts to WordPress, monitors a Gmail inbox for content requests.
+
+| Service | Fields | Description |
+|---------|--------|-------------|
+| `wordpress` | `url`, `user`, `appPassword` | WordPress site URL, username, and application password |
+| `gmail` | `account`, `appPassword` | Gmail address + Google App Password for inbox monitoring |
+| `telegram` | `botToken`, `allowedUsers`, `sessionMode` | Telegram bot for operator notifications |
 
 ```json
 POST /UserAgent/Update
@@ -40,34 +93,336 @@ POST /UserAgent/Update
   "configuration": {
     "credentials": {
       "wordpress": {
-        "siteUrl": "https://your-site.com",
-        "username": "admin",
-        "applicationPassword": "xxxx xxxx xxxx xxxx"
+        "url": "https://blog.example.com",
+        "user": "WiroBlogAgent",
+        "appPassword": "xxxx xxxx xxxx xxxx"
+      },
+      "gmail": {
+        "account": "agent@company.com",
+        "appPassword": "xxxx xxxx xxxx xxxx"
+      },
+      "telegram": {
+        "botToken": "123456:ABC-DEF1234ghIkl",
+        "allowedUsers": ["761381461"],
+        "sessionMode": [
+          { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
+          { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
+        ]
       }
     }
   }
 }
 ```
 
-### API Key Credential Types
+#### App Review Support
 
-| Service | Key Fields | Notes |
-|---------|-----------|-------|
-| `brevo` | `apiKey` | Brevo (formerly Sendinblue) email API |
-| `sendgrid` | `apiKey` | SendGrid email delivery |
-| `wordpress` | `siteUrl`, `username`, `applicationPassword` | WordPress REST API |
-| `firebase` | `serviceAccountKey` | Firebase Admin SDK |
-| `gmail` | `serviceAccountKey`, `delegatedEmail` | Gmail API via service account |
-| `apollo` | `apiKey` | Apollo.io lead database |
-| `lemlist` | `apiKey` | Lemlist outreach campaigns |
-| `telegram` | `botToken` | Telegram Bot API |
-| `newsletter` | `testEmail` | Test email address for previews |
+Monitors and replies to App Store and Google Play reviews.
 
-All credential fields are optional — only set the ones your agent requires. The agent's configuration template defines which credentials are available.
+| Service | Fields | Description |
+|---------|--------|-------------|
+| `appstore` | `keyId`, `issuerId`, `privateKeyBase64`, `appIds`, `supportEmail` | App Store Connect API credentials |
+| `googleplay` | `serviceAccountJsonBase64`, `packageNames`, `supportEmail` | Google Play service account |
+| `telegram` | `botToken`, `allowedUsers`, `sessionMode` | Telegram bot for operator notifications |
+
+```json
+POST /UserAgent/Update
+{
+  "guid": "your-useragent-guid",
+  "configuration": {
+    "credentials": {
+      "appstore": {
+        "keyId": "ABC1234DEF",
+        "issuerId": "12345678-1234-1234-1234-123456789012",
+        "privateKeyBase64": "LS0tLS1CRUdJTi...",
+        "appIds": ["6479306352"],
+        "supportEmail": "support@company.com"
+      },
+      "googleplay": {
+        "serviceAccountJsonBase64": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii...",
+        "packageNames": ["com.example.app"],
+        "supportEmail": "support@company.com"
+      },
+      "telegram": {
+        "botToken": "123456:ABC-DEF1234ghIkl",
+        "allowedUsers": ["761381461"],
+        "sessionMode": [
+          { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
+          { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
+        ]
+      }
+    }
+  }
+}
+```
+
+#### App Event Manager
+
+Suggests and creates App Store in-app events based on holidays and trends.
+
+| Service | Fields | Description |
+|---------|--------|-------------|
+| `appstore` | `keyId`, `issuerId`, `privateKeyBase64`, `appIds` | App Store Connect API credentials |
+| `telegram` | `botToken`, `allowedUsers`, `sessionMode` | Telegram bot for operator notifications |
+
+```json
+POST /UserAgent/Update
+{
+  "guid": "your-useragent-guid",
+  "configuration": {
+    "credentials": {
+      "appstore": {
+        "keyId": "ABC1234DEF",
+        "issuerId": "12345678-1234-1234-1234-123456789012",
+        "privateKeyBase64": "LS0tLS1CRUdJTi...",
+        "appIds": ["6479306352"]
+      },
+      "telegram": {
+        "botToken": "123456:ABC-DEF1234ghIkl",
+        "allowedUsers": ["761381461"],
+        "sessionMode": [
+          { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
+          { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
+        ]
+      }
+    }
+  }
+}
+```
+
+#### Push Notification Manager
+
+Sends targeted push notifications via Firebase Cloud Messaging.
+
+| Service | Fields | Description |
+|---------|--------|-------------|
+| `firebase` | `accounts[]` | Array of Firebase projects. Each: `appName`, `serviceAccountJsonBase64`, `apps` (platform + id), `topics` (key→description object) |
+| `telegram` | `botToken`, `allowedUsers`, `sessionMode` | Telegram bot for operator notifications |
+
+```json
+POST /UserAgent/Update
+{
+  "guid": "your-useragent-guid",
+  "configuration": {
+    "credentials": {
+      "firebase": {
+        "accounts": [{
+          "appName": "My App",
+          "serviceAccountJsonBase64": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii...",
+          "apps": [
+            { "platform": "ios", "id": "6479306352" },
+            { "platform": "android", "id": "com.example.app" }
+          ],
+          "topics": { "locale_en": "English users", "tier_paid": "Paid subscribers" }
+        }]
+      },
+      "telegram": {
+        "botToken": "123456:ABC-DEF1234ghIkl",
+        "allowedUsers": ["761381461"],
+        "sessionMode": [
+          { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
+          { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
+        ]
+      }
+    }
+  }
+}
+```
+
+#### Newsletter Manager
+
+Creates and sends newsletters via Brevo, SendGrid, HubSpot, or Mailchimp.
+
+| Service | Type | Fields |
+|---------|------|--------|
+| `brevo` | API Key | `apiKey` |
+| `sendgrid` | API Key | `apiKey` |
+| `hubspot` | OAuth | Connected via `HubSpotConnect` |
+| `mailchimp` | OAuth/Key | OAuth via `MailchimpConnect` or set `apiKey` directly |
+| `newsletter` | Config | `testEmail` |
+| `telegram` | API Key | `botToken`, `allowedUsers`, `sessionMode` |
+
+```json
+POST /UserAgent/Update
+{
+  "guid": "your-useragent-guid",
+  "configuration": {
+    "credentials": {
+      "brevo": { "apiKey": "xkeysib-abc123..." },
+      "sendgrid": { "apiKey": "SG.xxxx..." },
+      "newsletter": { "testEmail": "test@company.com" },
+      "telegram": {
+        "botToken": "123456:ABC-DEF1234ghIkl",
+        "allowedUsers": ["761381461"],
+        "sessionMode": [
+          { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
+          { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
+        ]
+      }
+    }
+  }
+}
+```
+
+> **Note:** HubSpot and Mailchimp are connected via [OAuth](#oauth-authorization-flow). Mailchimp also accepts a direct `apiKey` without OAuth.
+
+#### Lead Gen Manager
+
+Finds leads and manages outreach campaigns via Apollo.io, Lemlist, and HubSpot.
+
+| Service | Type | Fields |
+|---------|------|--------|
+| `apollo` | API Key | `apiKey`, `masterApiKey` (optional, for sequences) |
+| `lemlist` | API Key | `apiKey` |
+| `hubspot` | OAuth | Connected via `HubSpotConnect` |
+| `telegram` | API Key | `botToken`, `allowedUsers`, `sessionMode` |
+
+```json
+POST /UserAgent/Update
+{
+  "guid": "your-useragent-guid",
+  "configuration": {
+    "credentials": {
+      "apollo": {
+        "apiKey": "your-apollo-api-key",
+        "masterApiKey": "your-master-key"
+      },
+      "lemlist": { "apiKey": "your-lemlist-key" },
+      "telegram": {
+        "botToken": "123456:ABC-DEF1234ghIkl",
+        "allowedUsers": ["761381461"],
+        "sessionMode": [
+          { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
+          { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
+        ]
+      }
+    }
+  }
+}
+```
+
+#### Google Ads Manager
+
+Manages Google Ads campaigns, keywords, and ad copy.
+
+| Service | Type | Fields |
+|---------|------|--------|
+| `googleads` | OAuth | Connected via `GAdsConnect`. Then set `customerId` via `GAdsSetCustomerId`. |
+| `website` | Config | `urls` — array of `{ websiteName, url }` |
+| `appstore` | Config | `apps` — array of `{ appName, appId }` |
+| `googleplay` | Config | `apps` — array of `{ appName, packageName }` |
+| `telegram` | API Key | `botToken`, `allowedUsers`, `sessionMode` |
+
+```json
+POST /UserAgent/Update
+{
+  "guid": "your-useragent-guid",
+  "configuration": {
+    "credentials": {
+      "website": {
+        "urls": [{ "websiteName": "Main Site", "url": "https://example.com" }]
+      },
+      "appstore": {
+        "apps": [{ "appName": "My iOS App", "appId": "6479306352" }]
+      },
+      "googleplay": {
+        "apps": [{ "appName": "My Android App", "packageName": "com.example.app" }]
+      },
+      "telegram": {
+        "botToken": "123456:ABC-DEF1234ghIkl",
+        "allowedUsers": ["761381461"],
+        "sessionMode": [
+          { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
+          { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
+        ]
+      }
+    }
+  }
+}
+```
+
+> **Note:** Google Ads is connected via [OAuth](#oauth-authorization-flow). After connecting, set the customer ID via `POST /UserAgentOAuth/GAdsSetCustomerId`.
+
+#### Meta Ads Manager
+
+Manages Meta (Facebook/Instagram) ad campaigns and creatives.
+
+| Service | Type | Fields |
+|---------|------|--------|
+| `metaads` | OAuth | Connected via `MetaAdsConnect`. Then set ad account via `MetaAdsSetAdAccount`. |
+| `website` | Config | `urls` — array of `{ websiteName, url }` |
+| `appstore` | Config | `apps` — array of `{ appName, appId }` |
+| `googleplay` | Config | `apps` — array of `{ appName, packageName }` |
+| `telegram` | API Key | `botToken`, `allowedUsers`, `sessionMode` |
+
+```json
+POST /UserAgent/Update
+{
+  "guid": "your-useragent-guid",
+  "configuration": {
+    "credentials": {
+      "website": {
+        "urls": [{ "websiteName": "Landing Page", "url": "https://example.com" }]
+      },
+      "appstore": {
+        "apps": [{ "appName": "My iOS App", "appId": "6479306352" }]
+      },
+      "googleplay": {
+        "apps": [{ "appName": "My Android App", "packageName": "com.example.app" }]
+      },
+      "telegram": {
+        "botToken": "123456:ABC-DEF1234ghIkl",
+        "allowedUsers": ["761381461"],
+        "sessionMode": [
+          { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
+          { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
+        ]
+      }
+    }
+  }
+}
+```
+
+> **Note:** Meta Ads is connected via [OAuth](#oauth-authorization-flow). After connecting, set the ad account via `POST /UserAgentOAuth/MetaAdsSetAdAccount`.
+
+### Credential Field Reference
+
+Quick reference for all credential field names across services:
+
+| Service Key | Editable Fields |
+|-------------|-----------------|
+| `telegram` | `botToken`, `allowedUsers`, `sessionMode` |
+| `wordpress` | `url`, `user`, `appPassword` |
+| `gmail` | `account`, `appPassword` |
+| `brevo` | `apiKey` |
+| `sendgrid` | `apiKey` |
+| `apollo` | `apiKey`, `masterApiKey` |
+| `lemlist` | `apiKey` |
+| `newsletter` | `testEmail` |
+| `appstore` | `keyId`, `issuerId`, `privateKeyBase64`, `appIds` — or `apps` array for ads agents |
+| `googleplay` | `serviceAccountJsonBase64`, `packageNames` — or `apps` array for ads agents |
+| `firebase` | `accounts[]`: `appName`, `serviceAccountJsonBase64`, `apps`, `topics` |
+| `website` | `urls` array of `{ websiteName, url }` |
+| `twitter` | OAuth — `authMethod` (own: + `clientId`, `clientSecret`) |
+| `instagram` | OAuth — `authMethod` (own: + `appId`, `appSecret`) |
+| `facebook` | OAuth — `authMethod` (own: + `appId`, `appSecret`) |
+| `linkedin` | OAuth — `authMethod`, `organizationId` (own: + `clientId`, `clientSecret`) |
+| `tiktok` | OAuth — `authMethod` (own: + `clientKey`, `clientSecret`) |
+| `googleads` | OAuth — `authMethod` (own: + `clientId`, `clientSecret`, `developerToken`, `managerCustomerId`) |
+| `metaads` | OAuth — `authMethod` (own: + `appId`, `appSecret`) |
+| `hubspot` | OAuth — `authMethod` (own: + `clientId`, `clientSecret`) |
+| `mailchimp` | OAuth — `authMethod`, `apiKey` (own: + `clientId`, `clientSecret`) |
+
+### Setup Required State
+
+If an agent has required (non-optional) credentials that haven't been filled in, the agent is in **Setup Required** state (status `6`) and cannot be started. After setting all required credentials via Update, the status automatically changes to `0` (Stopped) and you can call Start.
+
+Check the `setuprequired` boolean in `UserAgent/Detail` or `UserAgent/MyAgents` responses to determine if credentials still need to be configured.
 
 ## OAuth Authorization Flow
 
-For services that require user authorization (social media accounts, ad platforms, CRMs), Wiro implements a full OAuth flow. Your backend initiates the flow, the user authorizes in their browser, and Wiro stores the tokens securely.
+For services that require user authorization (social media accounts, ad platforms, CRMs), Wiro implements a full OAuth flow. The entire process is **fully white-label** — your end-users interact only with your app and the provider's consent screen. They never see or visit wiro.ai at any point.
+
+> **Key point:** The `redirectUrl` you pass to the Connect endpoint is **your own URL**. After authorization, users are redirected back to your app — not to Wiro. Any HTTPS URL is accepted. Use `http://localhost` or `http://127.0.0.1` for development.
 
 ### Supported OAuth Providers
 
@@ -76,44 +431,53 @@ For services that require user authorization (social media accounts, ad platform
 | Twitter/X | `XConnect` | `x_connected=true&x_username=...` | `x_error=...` |
 | TikTok | `TikTokConnect` | `tiktok_connected=true&tiktok_username=...` | `tiktok_error=...` |
 | Instagram | `IGConnect` | `ig_connected=true&ig_username=...` | `ig_error=...` |
-| Facebook | `FBConnect` | `fb_connected=true&fb_page_name=...` | `fb_error=...` |
+| Facebook | `FBConnect` | `fb_connected=true&fb_pagename=...` | `fb_error=...` |
 | LinkedIn | `LIConnect` | `li_connected=true&li_name=...` | `li_error=...` |
-| Google Ads | `GAdsConnect` | `gads_connected=true&gads_email=...` | `gads_error=...` |
-| Meta Ads | `MetaAdsConnect` | `metaads_connected=true` | `metaads_error=...` |
-| HubSpot | `HubSpotConnect` | `hubspot_connected=true` | `hubspot_error=...` |
-| Mailchimp | `MailchimpConnect` | `mailchimp_connected=true` | `mailchimp_error=...` |
+| Google Ads | `GAdsConnect` | `gads_connected=true&gads_accounts=[...]` | `gads_error=...` |
+| Meta Ads | `MetaAdsConnect` | `metaads_connected=true&metaads_accounts=[...]` | `metaads_error=...` |
+| HubSpot | `HubSpotConnect` | `hubspot_connected=true&hubspot_portal=...&hubspot_name=...` | `hubspot_error=...` |
+| Mailchimp | `MailchimpConnect` | `mailchimp_connected=true&mailchimp_account=...` | `mailchimp_error=...` |
 
 ### Flow Diagram
 
 ```
-Your Backend                  Wiro API                Provider              User's Browser
-     |                            |                       |                        |
-     |  POST /{Provider}Connect   |                       |                        |
-     |--------------------------->|                       |                        |
-     |  { authorizeUrl }          |                       |                        |
-     |<---------------------------|                       |                        |
-     |                            |                       |                        |
-     |  Redirect user to authorizeUrl                     |                        |
-     |------------------------------------------------------->                    |
-     |                            |                       |   User authorizes      |
-     |                            |                       |<-----------------------|
-     |                            |   Callback + code     |                        |
-     |                            |<----------------------|                        |
-     |                            |   Exchange for tokens |                        |
-     |                            |---------------------->|                        |
-     |                            |   Tokens stored       |                        |
-     |                            |                       |                        |
-     |                            |   Redirect to your redirectUrl                 |
-     |<-------------------------------------------------------------------|        |
-     |  ?provider_connected=true  |                       |                        |
+Your App (Frontend)           Your Backend              Wiro API              Provider (e.g. Twitter)
+       |                            |                       |                        |
+  (1)  | "Connect Twitter" click    |                       |                        |
+       |--------------------------->|                       |                        |
+       |                            |  POST /XConnect       |                        |
+  (2)  |                            |--> { userAgentGuid,   |                        |
+       |                            |      redirectUrl,     |                        |
+       |                            |      authMethod }     |                        |
+       |                            |                       |                        |
+  (3)  |                            |<-- { authorizeUrl }   |                        |
+       |                            |                       |                        |
+  (4)  |<--- redirect to authorizeUrl                       |                        |
+       |--------------------------------------------------------> User sees Twitter  |
+       |                            |                       |    consent screen      |
+  (5)  |                            |                       |<-- User clicks Allow   |
+       |                            |                       |                        |
+  (6)  |                            |   (invisible callback)|                        |
+       |                            |   Wiro exchanges code |<-----------------------|
+       |                            |   for tokens, saves   |                        |
+       |                            |   them to agent config|                        |
+       |                            |                       |                        |
+  (7)  |<------- 302 redirect to YOUR redirectUrl ----------------------------------|
+       | https://your-app.com/settings?x_connected=true&x_username=johndoe          |
+       |                            |                       |                        |
 ```
 
-1. Your backend calls `POST /UserAgentOAuth/{Provider}Connect`
-2. Wiro returns an `authorizeUrl`
-3. You redirect the user's browser to `authorizeUrl`
-4. User authorizes on the provider's consent screen
-5. Provider redirects to Wiro's callback (server-to-server token exchange happens here)
-6. Wiro redirects the user to your `redirectUrl` with success or error query parameters
+### What the User Sees
+
+| Step | User Sees | URL |
+|------|-----------|-----|
+| 1 | Your app — "Connect Twitter" button | `https://your-app.com/settings` |
+| 2–3 | (Backend API call — invisible to user) | — |
+| 4–5 | Provider's consent screen (Twitter, TikTok, etc.) | `https://x.com/i/oauth2/authorize?...` |
+| 6 | (Wiro's server-side callback — invisible 302 redirect) | — |
+| 7 | Your app — "Connected!" confirmation | `https://your-app.com/settings?x_connected=true` |
+
+**Your users never visit wiro.ai.** The only pages they see are your app and the provider's authorization screen.
 
 ### Connect Endpoint
 
@@ -135,17 +499,44 @@ Your Backend                  Wiro API                Provider              User
 }
 ```
 
-### Auth Methods
+### Auth Methods — `"wiro"` vs `"own"`
 
-#### `"wiro"` (default)
+Both modes produce the **same white-label user experience**. The only difference is whose OAuth app credentials are used for the authorization flow:
 
-Uses Wiro's pre-configured OAuth app credentials. This is the simplest approach — one-click connect with no additional setup.
+|  | `"wiro"` (default) | `"own"` |
+|--|---------------------|---------|
+| **OAuth app credentials** | Wiro's pre-configured app | Your own app from the provider's developer portal |
+| **Setup required** | None — just call Connect | Create an app on the provider, set credentials via Update, register Wiro's callback URL |
+| **Consent screen branding** | Shows "Wiro" as the app name | Shows **your app name** and branding |
+| **Redirect after auth** | To your `redirectUrl` | To your `redirectUrl` |
+| **User sees wiro.ai?** | No | No |
+| **Token management** | Automatic by Wiro | Automatic by Wiro |
+| **Best for** | Quick setup, prototyping, most use cases | Custom branding on consent screen, custom scopes |
 
-#### `"own"`
+> **Recommendation:** Start with `"wiro"` mode. It works out of the box with no configuration. Switch to `"own"` only if you need your brand name on the provider's consent screen or require custom OAuth scopes/permissions.
 
-Uses your own OAuth app credentials stored in the agent's configuration. Before calling Connect with `authMethod: "own"`, set your app credentials via `POST /UserAgent/Update`:
+To use `"own"` mode, first set your app credentials via `POST /UserAgent/Update`, then call Connect with `authMethod: "own"`. Each provider requires different credential field names:
+
+#### "own" Mode Credentials per Provider
+
+| Provider | Credential Key | Required Fields | Request Example |
+|----------|---------------|-----------------|-----------------|
+| Twitter/X | `twitter` | `clientId`, `clientSecret` | `"twitter": { "clientId": "your-client-id", "clientSecret": "your-client-secret" }` |
+| TikTok | `tiktok` | `clientKey`, `clientSecret` | `"tiktok": { "clientKey": "your-client-key", "clientSecret": "your-client-secret" }` |
+| Instagram | `instagram` | `appId`, `appSecret` | `"instagram": { "appId": "your-app-id", "appSecret": "your-app-secret" }` |
+| Facebook | `facebook` | `appId`, `appSecret` | `"facebook": { "appId": "your-app-id", "appSecret": "your-app-secret" }` |
+| LinkedIn | `linkedin` | `clientId`, `clientSecret`, `organizationId` | `"linkedin": { "clientId": "your-client-id", "clientSecret": "your-client-secret", "organizationId": "your-org-id" }` |
+| Google Ads | `googleads` | `clientId`, `clientSecret`, `developerToken`, `managerCustomerId` | `"googleads": { "clientId": "your-client-id", "clientSecret": "your-client-secret", "developerToken": "your-dev-token", "managerCustomerId": "123-456-7890" }` |
+| Meta Ads | `metaads` | `appId`, `appSecret` | `"metaads": { "appId": "your-app-id", "appSecret": "your-app-secret" }` |
+| HubSpot | `hubspot` | `clientId`, `clientSecret` | `"hubspot": { "clientId": "your-client-id", "clientSecret": "your-client-secret" }` |
+| Mailchimp | `mailchimp` | `clientId`, `clientSecret` (or `apiKey` without OAuth) | `"mailchimp": { "clientId": "your-client-id", "clientSecret": "your-client-secret" }` |
+
+> **Note:** Field names differ per provider (e.g. TikTok uses `clientKey` not `clientId`, Instagram/Facebook use `appId`/`appSecret` not `clientId`/`clientSecret`). Always use the exact field names from the table above.
+
+#### "own" Mode Full Flow
 
 ```json
+// Step 1: Set your app credentials
 POST /UserAgent/Update
 {
   "guid": "your-useragent-guid",
@@ -158,15 +549,24 @@ POST /UserAgent/Update
     }
   }
 }
+
+// Step 2: Initiate OAuth with authMethod: "own"
+POST /UserAgentOAuth/XConnect
+{
+  "userAgentGuid": "your-useragent-guid",
+  "redirectUrl": "https://your-app.com/callback",
+  "authMethod": "own"
+}
+
+// Step 3: Redirect user to the returned authorizeUrl
+// Step 4: User authorizes → redirected back to your redirectUrl
 ```
 
-When using `"own"` mode, you must register Wiro's callback URL in your OAuth app settings on the provider's developer portal. The callback URL format is:
+When using `"own"` mode, you must register Wiro's callback URL in your OAuth app settings on the provider's developer portal:
 
 ```
 https://api.wiro.ai/v1/UserAgentOAuth/{Provider}Callback
 ```
-
-> **Note:** LinkedIn currently only supports `"own"` auth method. Wiro mode for LinkedIn is coming soon.
 
 ### Status Check
 
@@ -174,11 +574,9 @@ Check whether a provider is connected for a given agent instance.
 
 **POST** /UserAgentOAuth/{Provider}Status
 
-```json
-{
-  "userAgentGuid": "your-useragent-guid"
-}
-```
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `userAgentGuid` | string | Yes | The agent instance GUID |
 
 #### Response
 
@@ -194,7 +592,15 @@ Check whether a provider is connected for a given agent instance.
 }
 ```
 
-The `username` field name varies by provider: `xUsername` for Twitter/X, `tiktokUsername` for TikTok, `igUsername` for Instagram, `fbPageName` for Facebook, and so on.
+| Field | Description | Providers |
+|-------|-------------|-----------|
+| `connected` | Whether the provider is connected | All |
+| `username` | Connected account name or identifier | Most providers |
+| `linkedinName` | LinkedIn profile name (replaces `username`) | LinkedIn only |
+| `customerId` | Google Ads customer ID (replaces `username`) | Google Ads only |
+| `connectedAt` | ISO timestamp of when the account was connected | All |
+| `tokenExpiresAt` | ISO timestamp of access token expiry | All except Mailchimp |
+| `refreshTokenExpiresAt` | ISO timestamp of refresh token expiry | Twitter/X, TikTok, LinkedIn |
 
 ### Disconnect
 
@@ -202,11 +608,9 @@ Revoke access and remove stored tokens for a provider.
 
 **POST** /UserAgentOAuth/{Provider}Disconnect
 
-```json
-{
-  "userAgentGuid": "your-useragent-guid"
-}
-```
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `userAgentGuid` | string | Yes | The agent instance GUID |
 
 #### Response
 
@@ -224,13 +628,6 @@ Wiro attempts to revoke the token on the provider's side before clearing it from
 Manually trigger a token refresh for a connected provider.
 
 **POST** /UserAgentOAuth/TokenRefresh
-
-```json
-{
-  "userAgentGuid": "your-useragent-guid",
-  "provider": "twitter"
-}
-```
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -260,10 +657,18 @@ After connecting Google Ads via OAuth, you must set the Google Ads customer ID t
 
 **POST** /UserAgentOAuth/GAdsSetCustomerId
 
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `userAgentGuid` | string | Yes | The agent instance GUID |
+| `customerId` | string | Yes | Google Ads customer ID (e.g. `"123-456-7890"`). Non-digit characters are stripped automatically. |
+
+##### Response
+
 ```json
 {
-  "userAgentGuid": "your-useragent-guid",
-  "customerId": "123-456-7890"
+  "result": true,
+  "customerId": "1234567890",
+  "errors": []
 }
 ```
 
@@ -273,17 +678,60 @@ After connecting Meta Ads via OAuth, set the ad account to manage:
 
 **POST** /UserAgentOAuth/MetaAdsSetAdAccount
 
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `userAgentGuid` | string | Yes | The agent instance GUID |
+| `adAccountId` | string | Yes | Meta Ads account ID (e.g. `"act_123456789"`). The `act_` prefix is stripped automatically. |
+| `adAccountName` | string | No | Display name for the ad account |
+
+##### Response
+
 ```json
 {
-  "userAgentGuid": "your-useragent-guid",
-  "adAccountId": "act_123456789",
-  "adAccountName": "My Ad Account"
+  "result": true,
+  "errors": []
 }
 ```
 
+## Custom Skills Configuration
+
+Some agents support configurable skills — automated tasks that the agent can perform on a schedule or on demand. You can enable/disable skills, set their execution interval, and edit their parameters via `POST /UserAgent/Update`.
+
+### Request Format
+
+```json
+POST /UserAgent/Update
+{
+  "guid": "your-useragent-guid",
+  "configuration": {
+    "custom_skills": [
+      {
+        "key": "daily_post",
+        "enabled": true,
+        "interval": "0 9 * * *",
+        "value": "Post about trending tech topics",
+        "description": "Daily automated post at 9 AM"
+      }
+    ]
+  }
+}
+```
+
+### Skill Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `key` | string | The unique identifier of the skill. Must match an existing skill defined in the agent template. |
+| `enabled` | boolean | Whether the skill is active. Set `false` to disable without removing. |
+| `interval` | string \| null | Cron expression for scheduled execution (e.g. `"0 */6 * * *"` for every 6 hours). Set `null` for on-demand only. |
+| `value` | string | User-configurable parameter for the skill (only if `_editable: true`). |
+| `description` | string | User-configurable description (only if `_editable: true`). |
+
+> **Note:** You can only update skills that exist in the agent's template. New skills cannot be added — only the `enabled`, `interval`, `value`, and `description` fields can be modified. The `value` and `description` fields are editable only if the skill's `_editable` flag is `true`.
+
 ## Security
 
-- **Tokens are stored server-side** in the agent instance configuration and are never exposed in API responses
+- **Tokens are stored server-side** in the agent instance configuration. The `TokenRefresh` endpoint returns new tokens — all other endpoints (Status, Detail, Update) sanitize token fields before responding.
 - The `redirectUrl` receives only connection status parameters — no tokens, no secrets
 - API responses from Status, Detail, and Update endpoints are sanitized: `accessToken`, `refreshToken`, `clientSecret`, and `appSecret` fields are stripped before returning
 - OAuth state parameters use a 15-minute TTL cache to prevent replay attacks
@@ -304,93 +752,7 @@ If you're building a product on top of Wiro agents and need your customers to co
 
 Your customers never interact with Wiro directly. The entire flow happens through your app, and Wiro handles token management behind the scenes.
 
-### Code Examples
-
-#### Connect — curl
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/XConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "userAgentGuid": "customer-useragent-guid",
-    "redirectUrl": "https://your-app.com/settings/social?provider=twitter",
-    "authMethod": "wiro"
-  }'
-```
-
-#### Connect — Python
-
-```python
-import requests
-
-headers = {
-    "x-api-key": "YOUR_API_KEY",
-    "Content-Type": "application/json"
-}
-
-response = requests.post(
-    "https://api.wiro.ai/v1/UserAgentOAuth/XConnect",
-    headers=headers,
-    json={
-        "userAgentGuid": "customer-useragent-guid",
-        "redirectUrl": "https://your-app.com/settings/social?provider=twitter",
-        "authMethod": "wiro"
-    }
-)
-data = response.json()
-authorize_url = data.get("authorizeUrl")
-# Redirect your customer's browser to authorize_url
-```
-
-#### Connect — Node.js
-
-```javascript
-const axios = require('axios');
-
-const headers = {
-  'x-api-key': 'YOUR_API_KEY',
-  'Content-Type': 'application/json'
-};
-
-const response = await axios.post(
-  'https://api.wiro.ai/v1/UserAgentOAuth/XConnect',
-  {
-    userAgentGuid: 'customer-useragent-guid',
-    redirectUrl: 'https://your-app.com/settings/social?provider=twitter',
-    authMethod: 'wiro'
-  },
-  { headers }
-);
-const { authorizeUrl } = response.data;
-// Redirect your customer's browser to authorizeUrl
-```
-
-#### Status Check — curl
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/XStatus" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "userAgentGuid": "customer-useragent-guid"
-  }'
-```
-
-#### Disconnect — curl
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/XDisconnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "userAgentGuid": "customer-useragent-guid"
-  }'
-```
-
-#### Handling the Redirect in Your App
-
-When the user returns to your `redirectUrl`, check the query parameters:
+### Handling the Redirect in Your App
 
 ```javascript
 // Express route handling the OAuth redirect
@@ -399,13 +761,11 @@ app.get('/settings/social', (req, res) => {
 
   if (req.query.x_connected === 'true') {
     const username = req.query.x_username;
-    // Twitter connected successfully — update your UI
     return res.redirect(`/dashboard?connected=${provider}&username=${username}`);
   }
 
   if (req.query.x_error) {
     const error = req.query.x_error;
-    // authorization_denied, token_exchange_failed, useragent_not_found, invalid_config, internal_error
     return res.redirect(`/dashboard?error=${provider}&reason=${error}`);
   }
 });

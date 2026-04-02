@@ -185,6 +185,39 @@ Terminates a task that is currently running (any status after `assign`). The wor
 |-----------|------|----------|-------------|
 | `tasktoken` | string | Yes | The task token to kill |
 
+## **POST** /Task/InputOutputDelete
+
+Deletes all output files and input files associated with a completed task. Removes files from S3 storage, local filesystem, and the database. Also invalidates CloudFront CDN cache so deleted files stop being served immediately.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `tasktoken` | string | Yes | The task token (socketaccesstoken) |
+
+The task must be in a terminal state (`task_postprocess_end` or `task_cancel`). Only the task owner can delete files. Shared sample input files (`/sampleinputs/`) are automatically excluded from deletion.
+
+### Response
+
+```json
+{
+  "result": true,
+  "errors": []
+}
+```
+
+After deletion:
+- Output files are removed from S3 and CDN cache
+- Input files uploaded by the user are removed from S3 and local storage
+- The task's `outputfolderid` is set to `"0"` (Task Detail will return empty outputs)
+- Task record and parameters are preserved — only the files are deleted
+- Calling the endpoint again on the same task returns `result: true` immediately (idempotent)
+
+### Errors
+
+| Error | When |
+|-------|------|
+| `task-not-exist` | Invalid tasktoken or unauthorized |
+| `Task must be completed or cancelled before deleting files` | Task is still running |
+
 ## Code Examples
 
 ### curl (Detail)
@@ -203,7 +236,7 @@ curl -X POST "https://api.wiro.ai/v1/Task/Detail" \
   -d '{"taskid": "task-id-here"}'
 ```
 
-### curl (Cancel/Kill)
+### curl (Cancel/Kill/InputOutputDelete)
 
 ```bash
 # Cancel a queued task
@@ -214,6 +247,12 @@ curl -X POST "https://api.wiro.ai/v1/Task/Cancel" \
 
 # Kill a running task
 curl -X POST "https://api.wiro.ai/v1/Task/Kill" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{"tasktoken": "abc123-def456-ghi789"}'
+
+# Delete task input and output files
+curl -X POST "https://api.wiro.ai/v1/Task/InputOutputDelete" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{"tasktoken": "abc123-def456-ghi789"}'

@@ -1,10 +1,51 @@
-# LLMs.txt
+# Wiro API Integration
 
-> Base URL: https://api.wiro.ai/v1
-> WebSocket URL: wss://socket.wiro.ai/v1
-> Dashboard: https://wiro.ai/panel
-> Models: https://wiro.ai/models
-> Full interactive docs: https://wiro.ai/docs
+> Wiro is a unified API platform for running AI models (video, image, audio, LLM, 3D) and deploying autonomous AI agents through a single API. Pay-per-use pricing, real-time streaming via WebSocket, webhook callbacks, and 9-language code examples.
+
+- Base URL: `https://api.wiro.ai/v1`
+- WebSocket: `wss://socket.wiro.ai/v1`
+- Dashboard: https://wiro.ai/panel
+- Models: https://wiro.ai/models
+- Full docs: https://wiro.ai/docs
+
+## Docs
+
+- [Introduction](https://wiro.ai/docs/introduction): Platform overview and getting started
+- [Authentication](https://wiro.ai/docs/authentication): API key and HMAC signature auth methods
+- [Run a Model](https://wiro.ai/docs/run-a-model): Execute any AI model with a single POST call
+- [Tasks](https://wiro.ai/docs/tasks): Track model runs, check status, get outputs
+- [WebSocket](https://wiro.ai/docs/websocket): Real-time streaming for model outputs
+- [LLM & Chat Streaming](https://wiro.ai/docs/llm-chat-streaming): Token-by-token LLM response streaming
+- [Realtime Voice](https://wiro.ai/docs/realtime-voice-conversation): Two-way audio conversations with AI
+- [Files](https://wiro.ai/docs/files): Upload files for model inputs
+- [Pricing](https://wiro.ai/docs/pricing): Pay-per-use credit system
+- [Error Reference](https://wiro.ai/docs/error-reference): Error codes and troubleshooting
+
+## Agent API Docs
+
+- [Agent Overview](https://wiro.ai/docs/agent-overview): Deploy and manage autonomous AI agents
+- [Agent Messaging](https://wiro.ai/docs/agent-messaging): Send messages and stream agent responses
+- [Agent WebSocket](https://wiro.ai/docs/agent-websocket): Real-time agent response streaming
+- [Agent Webhooks](https://wiro.ai/docs/agent-webhooks): Receive agent responses via HTTP callbacks
+- [Agent Credentials](https://wiro.ai/docs/agent-credentials): Configure OAuth and API key credentials
+- [Agent Skills](https://wiro.ai/docs/agent-skills): Configure preferences and scheduled automation tasks
+- [Agent Use Cases](https://wiro.ai/docs/agent-use-cases): Deployment patterns and architecture guides
+
+## Integrations
+
+- [MCP Server](https://wiro.ai/docs/wiro-mcp-server): Model Context Protocol server for AI assistants
+- [Self-Hosted MCP](https://wiro.ai/docs/mcp-self-hosted): Run MCP server locally via npx
+- [Node.js Library](https://wiro.ai/docs/nodejs-library): Standalone API client for Node.js/TypeScript
+- [n8n Integration](https://wiro.ai/docs/n8n-wiro-integration): Wiro AI nodes for n8n workflows
+
+## Optional
+
+- [Model Parameters](https://wiro.ai/docs/model-parameters): Parameter types and input formatting
+- [Concurrency Limits](https://wiro.ai/docs/concurrency-limits): Task limits based on balance
+- [Code Examples](https://wiro.ai/docs/code-examples): Examples in 9 languages
+- [FAQ](https://wiro.ai/docs/faq): Frequently asked questions
+
+---
 
 ## Authentication
 
@@ -94,6 +135,10 @@ POST /Task/Cancel — `{ "tasktoken": "..." }`
 ### Kill Task (running)
 POST /Task/Kill — `{ "tasktoken": "..." }`
 
+### Delete Task Files (completed/cancelled only)
+POST /Task/InputOutputDelete — `{ "tasktoken": "..." }`
+Deletes all output and input files for a completed task from S3, local storage, and database. Invalidates CDN cache. Task must be in terminal state (task_postprocess_end or task_cancel). Idempotent. Errors: `task-not-exist`, `Task must be completed or cancelled before deleting files`.
+
 ### Create Folder
 POST /File/FolderCreate — `{ "name": "my-folder" }` (optional `parentid` for nested folders)
 
@@ -104,14 +149,16 @@ POST /File/Upload (multipart/form-data) — Fields: `file`, `folderid`. Max 100M
 
 POST /Agent/List - List available agent templates (public, no auth required)
 POST /Agent/Detail - Get agent template details by guid or slug (public)
-POST /UserAgent/Deploy - Deploy a new agent instance
+POST /UserAgent/Deploy - Deploy a new agent instance (supports prepaid wallet)
 POST /UserAgent/MyAgents - List your deployed agent instances
 POST /UserAgent/Detail - Get agent instance details
 POST /UserAgent/Update - Update agent configuration and credentials
 POST /UserAgent/Start - Start an agent instance
 POST /UserAgent/Stop - Stop an agent instance
-POST /UserAgent/Logs - Get agent container logs
-POST /UserAgent/CreateExtraCreditCheckout - Purchase extra credits
+POST /UserAgent/CreateExtraCreditCheckout - Purchase extra credits (supports prepaid wallet)
+POST /UserAgent/CancelSubscription - Cancel a prepaid subscription at period end
+POST /UserAgent/UpgradePlan - Upgrade prepaid plan (starter → pro, prorated)
+POST /UserAgent/RenewSubscription - Renew expired prepaid subscription or undo cancel
 POST /UserAgent/Message/Send - Send a message to an agent (async, returns agenttoken)
 POST /UserAgent/Message/Detail - Get message details by guid or agenttoken
 POST /UserAgent/Message/History - Get conversation history with pagination
@@ -349,17 +396,74 @@ const result = await client.waitForTask(run.socketaccesstoken);
 
 Methods: `searchModels()`, `getModelSchema()`, `explore()`, `runModel()`, `waitForTask()`, `getTask()`, `cancelTask()`, `killTask()`, `uploadFile()`.
 
+## Agent API
+
+Autonomous AI agents in isolated containers. Two layers: Agent templates (catalog) and UserAgent instances (your deployments). Same auth (`x-api-key`).
+
+Lifecycle: Browse → Subscribe (prepaid wallet) → Deploy → Configure credentials → Start → Running → Chat
+
+Statuses: 0=Stopped, 1=Stopping, 2=Queued, 3=Starting, 4=Running, 5=Error, 6=Setup Required
+
+### Catalog (Public, No Auth)
+
+POST /Agent/List — `{ search, category, sort, order, limit, start }` → `{ result, total, agents: [{ guid, title, slug, headline, cover, categories, pricing, skills, status }] }`
+POST /Agent/Detail — `{ guid }` or `{ slug }` → same plus `ratelimit`, `configuration.credentials`
+
+### Management (Auth Required)
+
+POST /UserAgent/Deploy — `{ agentguid, title, useprepaid?, plan? }` → `{ result, useragents: [{ guid, status }] }`. When `useprepaid: true`, pass `plan` ("starter" or "pro") to pay from wallet. Deducts plan price and creates a 30-day subscription.
+POST /UserAgent/MyAgents — `{ sort, order, limit, start }` → `{ result, useragents: [{ guid, title, status, setuprequired, subscription, agent, extracredits }] }`
+POST /UserAgent/Detail — `{ guid }` → full instance + subscription. Subscription includes `provider` ("prepaid").
+POST /UserAgent/Update — `{ guid, title?, description?, categories?, configuration? }` → Only `_editable` fields accepted. Running agents restart.
+POST /UserAgent/Start — `{ guid }` → Queues agent (status 2). Requires subscription + credits.
+POST /UserAgent/Stop — `{ guid }` → Stops or moves to Stopping.
+POST /UserAgent/CreateExtraCreditCheckout — `{ useragentGuid, pack, useprepaid? }` → `{ result }`. Pro plan only. Deducts pack price from wallet and activates credits immediately.
+POST /UserAgent/CancelSubscription — `{ guid }` → `{ result, cancelsAt }`. Sets subscription to cancel at period end (not immediate).
+POST /UserAgent/UpgradePlan — `{ guid, plan }` → `{ result, plan, proratedCharge, newMonthlyCredits }`. Upgrades starter → pro with prorated wallet charge for remaining days.
+POST /UserAgent/RenewSubscription — `{ guid }` → `{ result, action, plan?, amount? }`. If active with pending cancel: undoes cancel (`action: "undo-cancel"`). If expired: charges wallet and creates new 30-day subscription (`action: "renewed"`).
+
+### Messaging
+
+POST /UserAgent/Message/Send — `{ useragentguid, message, sessionkey?, callbackurl? }` → `{ result, messageguid, agenttoken, status: "agent_queue" }`
+POST /UserAgent/Message/Detail — `{ messageguid }` or `{ agenttoken }` → `{ result, data: { guid, sessionkey, content, response, debugoutput, status, metadata, createdat, startedat, endedat } }`
+POST /UserAgent/Message/History — `{ useragentguid, sessionkey?, limit?, before? }` → `{ result, data: { messages, count, hasmore } }`
+POST /UserAgent/Message/Sessions — `{ useragentguid }` → `{ result, data: { sessions: [{ sessionkey, messagecount, updatedat, lastmessage }] } }`
+POST /UserAgent/Message/DeleteSession — `{ useragentguid, sessionkey }`
+POST /UserAgent/Message/Cancel — `{ messageguid }` or `{ agenttoken }`. Only cancellable in agent_queue/agent_start/agent_output.
+
+Message statuses: agent_queue → agent_start → agent_output (multiple) → agent_end. Also: agent_error, agent_cancel.
+
+### Agent WebSocket
+
+Same server: wss://socket.wiro.ai/v1. Subscribe: `{ "type": "agent_info", "agenttoken": "..." }`
+
+Events: agent_subscribed (status + debugoutput), agent_start, agent_output (streaming: raw, thinking, answer, isThinking, speed, tokenCount, wordCount), agent_end (final), agent_error (string or object), agent_cancel.
+
+`result: true` for success events, `false` for error/cancel. Output contains full accumulated text (replace, don't append).
+
+### Agent Webhooks
+
+Include `callbackurl` in Message/Send. Wiro POSTs when agent finishes:
+`{ messageguid, status, content, response, debugoutput, metadata: { raw, thinking, answer, speed, wordCount, ... }, endedat }`
+For error/cancel: `metadata` is `{}`. Retry: 3 attempts, 2s delay. Must return HTTP 200.
+
+### Credentials
+
+API Key: Set via Update `configuration.credentials.<service>`. Services: brevo (apiKey), sendgrid (apiKey), wordpress (url, user, appPassword), firebase (accounts array with appName, serviceAccountJsonBase64, apps, topics), gmail (account, appPassword), apollo (apiKey, masterApiKey), lemlist (apiKey), telegram (botToken, allowedUsers, sessionMode), website (urls array of {websiteName, url}), appstore (keyId, issuerId, privateKeyBase64, appIds — or apps array for ads agents), googleplay (serviceAccountJsonBase64, packageNames — or apps array for ads agents), newsletter (testEmail).
+
+OAuth: POST /UserAgentOAuth/{Provider}Connect — `{ userAgentGuid, redirectUrl, authMethod: "wiro"|"own" }` → `{ authorizeUrl }`. White-label: user sees only your app + provider consent screen, never wiro.ai.
+Providers: X, TikTok, Instagram, Facebook, LinkedIn, Google Ads, Meta Ads, HubSpot, Mailchimp.
+POST /UserAgentOAuth/{Provider}Status — `{ userAgentGuid }` → `{ connected, username, connectedAt, tokenExpiresAt }`
+POST /UserAgentOAuth/{Provider}Disconnect — `{ userAgentGuid }`
+POST /UserAgentOAuth/TokenRefresh — `{ userAgentGuid, provider }` → `{ accessToken, refreshToken }`
+
 ## Links
 
-- Dashboard: https://wiro.ai/panel
-- Models: https://wiro.ai/models
-- Create Project: https://wiro.ai/panel/project/new
-- Full Documentation: https://wiro.ai/docs
-- MCP Server Docs: https://wiro.ai/docs/wiro-mcp-server
-- MCP Self-Hosted: https://wiro.ai/docs/mcp-self-hosted
-- Node.js Library: https://wiro.ai/docs/nodejs-library
-- n8n Integration: https://wiro.ai/docs/n8n-wiro-integration
-- FAQ: https://wiro.ai/docs/faq
-- MCP GitHub: https://github.com/wiroai/Wiro-MCP
-- MCP npm: https://www.npmjs.com/package/@wiro-ai/wiro-mcp
-- Markdown (all sections): markdown/full-documentation.md
+- [Wiro Platform](https://wiro.ai): Main website
+- [Dashboard](https://wiro.ai/panel): Manage projects and API keys
+- [Create Project](https://wiro.ai/panel/project/new): Get API key and secret
+- [Explore Models](https://wiro.ai/models): Browse all available AI models
+- [Full Documentation](https://wiro.ai/docs): Interactive API documentation
+- [Full Markdown Export](https://raw.githubusercontent.com/wiroai/Wiro-Docs/main/markdown/full-documentation.md): All docs in a single markdown file
+- [MCP GitHub](https://github.com/wiroai/Wiro-MCP): MCP server source code
+- [MCP npm](https://www.npmjs.com/package/@wiro-ai/wiro-mcp): MCP server package

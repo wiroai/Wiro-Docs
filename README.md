@@ -75,6 +75,7 @@
 | Agent WebSocket | `/docs/agent-websocket` | [agent-websocket.md](./markdown/agent-websocket.md) |
 | Agent Webhooks | `/docs/agent-webhooks` | [agent-webhooks.md](./markdown/agent-webhooks.md) |
 | Agent Credentials & OAuth | `/docs/agent-credentials` | [agent-credentials.md](./markdown/agent-credentials.md) |
+| Agent Skills | `/docs/agent-skills` | [agent-skills.md](./markdown/agent-skills.md) |
 | Agent Use Cases | `/docs/agent-use-cases` | [agent-use-cases.md](./markdown/agent-use-cases.md) |
 
 > **Full export:** [full-documentation.md](./markdown/full-documentation.md)
@@ -148,6 +149,7 @@ Wiro-Docs/
     ├── agent-websocket.md
     ├── agent-webhooks.md
     ├── agent-credentials.md
+    ├── agent-skills.md
     └── agent-use-cases.md
 ```
 

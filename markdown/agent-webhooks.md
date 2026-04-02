@@ -26,33 +26,101 @@ The callback URL is stored per-message. You can use different URLs for different
 
 ## Callback Payload
 
-When the agent finishes, Wiro sends a POST request to your `callbackurl` with `Content-Type: application/json`:
+When the agent finishes, Wiro sends a **POST** request to your `callbackurl` with `Content-Type: application/json`. The payload contains the complete message result including structured metadata.
+
+### Successful Completion (`agent_end`)
 
 ```json
 {
   "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
   "status": "agent_end",
   "content": "What are today's trending topics?",
-  "response": "Here are today's trending topics...",
+  "response": "Here are today's trending topics in tech...",
+  "debugoutput": "Here are today's trending topics in tech...",
+  "metadata": {
+    "type": "progressGenerate",
+    "task": "Generate",
+    "speed": "14.2",
+    "speedType": "words/s",
+    "elapsedTime": "8.1s",
+    "tokenCount": 156,
+    "wordCount": 118,
+    "raw": "Here are today's trending topics in tech...",
+    "thinking": [],
+    "answer": ["Here are today's trending topics in tech..."],
+    "isThinking": false
+  },
   "endedat": 1712050004
 }
 ```
 
+### Error (`agent_error`)
+
+```json
+{
+  "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "status": "agent_error",
+  "content": "What are today's trending topics?",
+  "response": "Could not resolve agent endpoint",
+  "debugoutput": "Could not resolve agent endpoint",
+  "metadata": {},
+  "endedat": 1712050004
+}
+```
+
+### Cancelled (`agent_cancel`)
+
+```json
+{
+  "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "status": "agent_cancel",
+  "content": "What are today's trending topics?",
+  "response": "The operation was aborted.",
+  "debugoutput": "The operation was aborted.",
+  "metadata": {},
+  "endedat": 1712050004
+}
+```
+
+### Field Reference
+
 | Field | Type | Description |
 |-------|------|-------------|
-| `messageguid` | string | The unique identifier of the message |
-| `status` | string | Final status of the message (see below) |
-| `content` | string | The original message you sent |
-| `response` | string | The agent's full response text |
-| `endedat` | number | Unix timestamp (UTC) when processing finished |
+| `messageguid` | string | Unique identifier of the message. Use this to correlate with your records. |
+| `status` | string | Final status: `agent_end`, `agent_error`, or `agent_cancel`. |
+| `content` | string | The original user message you sent. |
+| `response` | string | The agent's full response text on success. For errors, contains the error message. For cancellation, contains the abort reason. |
+| `debugoutput` | string | Same as `response` — the full accumulated output text. Included for consistency with the polling API. |
+| `metadata` | object | Structured response data. Contains thinking/answer separation, performance metrics, and raw text. Empty object (`{}`) for error and cancel statuses. |
+| `endedat` | number | Unix timestamp (UTC seconds) when processing finished. |
+
+### The `metadata` Object
+
+On successful completion (`agent_end`), the `metadata` object contains the structured response with thinking/answer separation and real-time metrics:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `type` | string | Always `"progressGenerate"`. |
+| `task` | string | Always `"Generate"`. |
+| `raw` | string | The complete response text including any `<think>` tags. |
+| `thinking` | array | Array of reasoning/chain-of-thought blocks extracted from `<think>...</think>` tags. Empty if the model doesn't use thinking. |
+| `answer` | array | Array of response segments — the content to show the user. |
+| `isThinking` | boolean | Always `false` in webhooks (streaming is complete). |
+| `speed` | string | Final generation speed (e.g. `"14.2"`). |
+| `speedType` | string | Speed unit — `"words/s"`. |
+| `elapsedTime` | string | Total generation time (e.g. `"8.1s"`). |
+| `tokenCount` | number | Total tokens generated. |
+| `wordCount` | number | Total words in the response. |
+
+For `agent_error` and `agent_cancel`, `metadata` is an empty object `{}`. Always check `status` before accessing metadata fields.
 
 ## Status Values
 
-| Status | Description |
-|--------|-------------|
-| `agent_end` | Agent completed successfully |
-| `agent_error` | An error occurred during processing |
-| `agent_cancel` | Message was cancelled before completion |
+| Status | Description | `response` contains | `metadata` contains |
+|--------|-------------|---------------------|---------------------|
+| `agent_end` | Agent completed successfully | Full response text | Structured data with thinking, answer, metrics |
+| `agent_error` | An error occurred during processing | Error message string | Empty object `{}` |
+| `agent_cancel` | Message was cancelled before completion | Cancellation reason | Empty object `{}` |
 
 ## Retry Policy
 

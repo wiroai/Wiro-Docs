@@ -145,11 +145,12 @@
           <div class="docs-nav-group">
             <h4 class="docs-nav-group-title">Agent API Reference</h4>
             <ul class="docs-nav-links">
-              <li><a href="/docs/agent-overview" class="docs-nav-link" data-section="agent-overview"><i class="lni lni-robot"></i><span>Agent Overview</span></a></li>
-              <li><a href="/docs/agent-messaging" class="docs-nav-link" data-section="agent-messaging"><i class="lni lni-comments-alt"></i><span>Agent Messaging</span></a></li>
+              <li><a href="/docs/agent-overview" class="docs-nav-link" data-section="agent-overview"><i class="lni lni-control-panel"></i><span>Agent Overview</span></a></li>
+              <li><a href="/docs/agent-messaging" class="docs-nav-link" data-section="agent-messaging"><i class="lni lni-comments-reply"></i><span>Agent Messaging</span></a></li>
               <li><a href="/docs/agent-websocket" class="docs-nav-link" data-section="agent-websocket"><i class="lni lni-bolt"></i><span>Agent WebSocket</span></a></li>
               <li><a href="/docs/agent-webhooks" class="docs-nav-link" data-section="agent-webhooks"><i class="lni lni-link"></i><span>Agent Webhooks</span></a></li>
               <li><a href="/docs/agent-credentials" class="docs-nav-link" data-section="agent-credentials"><i class="lni lni-key"></i><span>Agent Credentials & OAuth</span></a></li>
+              <li><a href="/docs/agent-skills" class="docs-nav-link" data-section="agent-skills"><i class="lni lni-pencil-alt"></i><span>Agent Skills</span></a></li>
               <li><a href="/docs/agent-use-cases" class="docs-nav-link" data-section="agent-use-cases"><i class="lni lni-bulb"></i><span>Agent Use Cases</span></a></li>
             </ul>
           </div>
@@ -1567,6 +1568,73 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
         </tbody>
       </table></div></div>
     </section>
+
+    <section id="task-inputoutputdelete">
+      <h2>
+        <span class="endpoint-badge post">POST</span>
+        /Task/InputOutputDelete
+      </h2>
+      <p>
+        Deletes all output files and input files associated with a completed task. Removes files from S3 storage, local filesystem, and the database. Also invalidates CloudFront CDN cache so deleted files stop being served immediately.
+      </p>
+      <p>
+        The task must be in a terminal state (<code>task_postprocess_end</code> or <code>task_cancel</code>). Only the task owner can delete files. Shared sample input files (<code>/sampleinputs/</code>) are automatically excluded from deletion.
+      </p>
+
+      <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+        <thead>
+          <tr>
+            <th>Parameter</th>
+            <th>Type</th>
+            <th>Required</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>tasktoken</code></td>
+            <td>string</td>
+            <td>Yes</td>
+            <td>The task token (socketaccesstoken)</td>
+          </tr>
+        </tbody>
+      </table></div></div>
+
+      <h3>Response</h3>
+      <pre><code class="language-json">{
+  "result": true,
+  "errors": []
+}</code></pre>
+
+      <p>After deletion:</p>
+      <ul>
+        <li>Output files are removed from S3 and CDN cache</li>
+        <li>Input files uploaded by the user are removed from S3 and local storage</li>
+        <li>The task's <code>outputfolderid</code> is set to <code>"0"</code> (Task Detail will return empty outputs)</li>
+        <li>Task record and parameters are preserved — only the files are deleted</li>
+        <li>Calling the endpoint again on the same task returns <code>result: true</code> immediately (idempotent)</li>
+      </ul>
+
+      <h3>Errors</h3>
+      <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+        <thead>
+          <tr>
+            <th>Error</th>
+            <th>When</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>task-not-exist</code></td>
+            <td>Invalid tasktoken or unauthorized</td>
+          </tr>
+          <tr>
+            <td><code>Task must be completed or cancelled before deleting files</code></td>
+            <td>Task is still running</td>
+          </tr>
+        </tbody>
+      </table></div></div>
+    </section>
   </article>
 
 <script type="application/json" class="code-examples-data">
@@ -1577,9 +1645,9 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
     "code": "# Get task details by task token\ncurl -X POST \"https://api.wiro.ai/v1/Task/Detail\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"tasktoken\": \"abc123-def456-ghi789\"}'\n\n# Or by task ID\ncurl -X POST \"https://api.wiro.ai/v1/Task/Detail\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"taskid\": \"task-id-here\"}'"
   },
   {
-    "label": "curl (Cancel/Kill)",
+    "label": "curl (Cancel/Kill/InputOutputDelete)",
     "language": "bash",
-    "code": "# Cancel a queued task\ncurl -X POST \"https://api.wiro.ai/v1/Task/Cancel\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"tasktoken\": \"abc123-def456-ghi789\"}'\n\n# Kill a running task\ncurl -X POST \"https://api.wiro.ai/v1/Task/Kill\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"tasktoken\": \"abc123-def456-ghi789\"}'"
+    "code": "# Cancel a queued task\ncurl -X POST \"https://api.wiro.ai/v1/Task/Cancel\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"tasktoken\": \"abc123-def456-ghi789\"}'\n\n# Kill a running task\ncurl -X POST \"https://api.wiro.ai/v1/Task/Kill\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"tasktoken\": \"abc123-def456-ghi789\"}'\n\n# Delete task input and output files\ncurl -X POST \"https://api.wiro.ai/v1/Task/InputOutputDelete\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"tasktoken\": \"abc123-def456-ghi789\"}'"
   },
   {
     "label": "Python",
@@ -2883,12 +2951,13 @@ ws.onopen = function() {
 
 <section id="error-task">
 <h2>Task Errors</h2>
-<p>Returned by <code>POST /Task/Detail</code>, <code>POST /Task/Cancel</code>, and <code>POST /Task/Kill</code>.</p>
+<p>Returned by <code>POST /Task/Detail</code>, <code>POST /Task/Cancel</code>, <code>POST /Task/Kill</code>, and <code>POST /Task/InputOutputDelete</code>.</p>
 <table><thead><tr><th>Error</th><th>Code</th><th>Message</th><th>Endpoint</th></tr></thead><tbody>
-<tr><td>Task not found</td><td><code>1</code></td><td>There is no task yet.</td><td>Detail, Cancel, Kill</td></tr>
+<tr><td>Task not found</td><td><code>1</code></td><td>There is no task yet.</td><td>Detail, Cancel, Kill, InputOutputDelete</td></tr>
 <tr><td>Missing identifier</td><td><code>0</code></td><td>taskid or socketaccesstoken is required</td><td>Detail</td></tr>
 <tr><td>Not cancellable</td><td><code>1</code></td><td>Task is not in a cancellable state.</td><td>Cancel</td></tr>
 <tr><td>Kill failed</td><td><code>1</code></td><td>Task could not be killed: {reason}</td><td>Kill</td></tr>
+<tr><td>Task not completed</td><td><code>1</code></td><td>Task must be completed or cancelled before deleting files</td><td>InputOutputDelete</td></tr>
 <tr><td>Permission denied</td><td><code>0</code></td><td>You don't have any permission for this action.</td><td>All</td></tr>
 </tbody></table>
 </section>
@@ -4010,12 +4079,12 @@ import type {
 <p>Every instance is fully isolated. Your credentials, conversations, and data are never shared with other users.</p>
 </section>
 
-<section id="base-url">
+<section id="agent-base-url">
 <h2>Base URL</h2>
 <pre><code>https://api.wiro.ai/v1</code></pre>
 </section>
 
-<section id="authentication">
+<section id="agent-authentication">
 <h2>Authentication</h2>
 <p>Agents use the same authentication as the rest of the Wiro API. Include your key in every request:</p>
 <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
@@ -4026,7 +4095,7 @@ import type {
 </tbody>
 </table></div></div>
 <p><strong>Public endpoints</strong> — <code>Agent/List</code> and <code>Agent/Detail</code> are catalog endpoints and do not require authentication. You can browse available agents without an API key.</p>
-<p><strong>Authenticated endpoints</strong> — All <code>UserAgent/*</code> endpoints (Deploy, MyAgents, Detail, Update, Start, Stop, Logs, CreateExtraCreditCheckout) require a valid API key.</p>
+<p><strong>Authenticated endpoints</strong> — All <code>UserAgent/*</code> endpoints (Deploy, MyAgents, Detail, Update, Start, Stop, CreateExtraCreditCheckout, CancelSubscription, UpgradePlan, RenewSubscription) require a valid API key.</p>
 <p>For full details, see <a href="/docs/authentication">Authentication</a>.</p>
 </section>
 
@@ -4035,12 +4104,11 @@ import type {
 <p>Deploying and running an agent follows this flow:</p>
 <ol>
 <li><strong>Browse</strong> — call <code>POST /Agent/List</code> to discover available agents in the catalog</li>
-<li><strong>Subscribe</strong> — purchase a Starter or Pro plan for the agent via Stripe checkout</li>
-<li><strong>Deploy</strong> — call <code>POST /UserAgent/Deploy</code> with the agent's guid and a title</li>
+<li><strong>Deploy</strong> — call <code>POST /UserAgent/Deploy</code> with the agent's guid, title, <code>useprepaid: true</code>, and <code>plan</code> (<code>"starter"</code> or <code>"pro"</code>). The subscription cost is deducted from your wallet immediately.</li>
 <li><strong>Configure</strong> — if the agent requires credentials (API keys, OAuth tokens), call <code>POST /UserAgent/Update</code> to provide them. See <a href="/docs/agent-credentials">Agent Credentials</a> for details</li>
 <li><strong>Start</strong> — call <code>POST /UserAgent/Start</code> to queue the agent for launch</li>
 <li><strong>Running</strong> — the agent's container starts and the agent becomes available for conversation</li>
-<li><strong>Chat</strong> — send messages via <code>POST /UserAgent/SendMessage</code>. See <a href="/docs/agent-messaging">Agent Messaging</a> for the full messaging API</li>
+<li><strong>Chat</strong> — send messages via <code>POST /UserAgent/Message/Send</code>. See <a href="/docs/agent-messaging">Agent Messaging</a> for the full messaging API</li>
 </ol>
 </section>
 
@@ -4068,9 +4136,7 @@ import type {
 <section id="endpoints">
 <h2>Endpoints</h2>
 
-<h3>Browse the Catalog</h3>
-
-<h4><strong>POST</strong> /Agent/List</h4>
+<h2><span class="endpoint-badge post">POST</span> /Agent/List</h2>
 <p>Lists available agents in the catalog. This is a <strong>public endpoint</strong> — no authentication required.</p>
 <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
 <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
@@ -4084,7 +4150,7 @@ import type {
 </tbody>
 </table></div></div>
 
-<h5>Response</h5>
+<h3>Response</h3>
 <pre><code class="language-json">{
   "result": true,
   "errors": [],
@@ -4097,23 +4163,22 @@ import type {
       "slug": "instagram-manager",
       "headline": "Automate your Instagram presence with AI",
       "description": "An autonomous agent that manages your Instagram account...",
-      "cover": "instagram-manager-cover.webp",
+      "cover": "https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp",
       "categories": ["social-media", "marketing"],
-      "samples": ["instagram-manager-sample-1.webp"],
+      "samples": ["https://cdn.wiro.ai/uploads/agents/instagram-manager-sample-1.webp"],
       "pricing": {
         "starter": { "price": 9, "credits": 1000 },
         "pro": { "price": 29, "credits": 5000 }
       },
+      "skills": ["post_image", "reply_comment", "schedule_post"],
       "status": 1,
-      "totalrun": 342,
-      "activerun": 18,
       "createdat": "1711929600",
       "updatedat": "1714521600"
     }
   ]
 }</code></pre>
 
-<h4><strong>POST</strong> /Agent/Detail</h4>
+<h2><span class="endpoint-badge post">POST</span> /Agent/Detail</h2>
 <p>Retrieves full details for a single agent by guid or slug. This is a <strong>public endpoint</strong> — no authentication required.</p>
 <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
 <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
@@ -4124,7 +4189,7 @@ import type {
 </table></div></div>
 <div class="info-callout"><strong>Note:</strong> You must provide either <code>guid</code> or <code>slug</code>. If both are provided, <code>slug</code> takes priority.</div>
 
-<h5>Response</h5>
+<h3>Response</h3>
 <pre><code class="language-json">{
   "result": true,
   "errors": [],
@@ -4136,35 +4201,35 @@ import type {
       "slug": "instagram-manager",
       "headline": "Automate your Instagram presence with AI",
       "description": "An autonomous agent that manages your Instagram account...",
-      "cover": "instagram-manager-cover.webp",
+      "cover": "https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp",
       "categories": ["social-media", "marketing"],
-      "samples": ["instagram-manager-sample-1.webp"],
+      "samples": ["https://cdn.wiro.ai/uploads/agents/instagram-manager-sample-1.webp"],
       "pricing": {
         "starter": { "price": 9, "credits": 1000 },
         "pro": { "price": 29, "credits": 5000 }
       },
       "skills": ["post_image", "reply_comment", "schedule_post"],
-      "ratelimit": { "monthlyCredits": 1000 },
+      "ratelimit": { "actionTypes": { "message": 10, "create": 5 } },
       "configuration": {
         "credentials": {
-          "instagram_username": { "label": "Instagram Username", "type": "text", "required": true, "value": "" },
-          "instagram_password": { "label": "Instagram Password", "type": "password", "required": true, "value": "" }
+          "instagram": {
+            "_editable": { "authMethod": true },
+            "optional": false,
+            "authMethod": "",
+            "igUsername": "",
+            "connectedAt": ""
+          }
         }
       },
       "status": 1,
-      "totalrun": 342,
-      "activerun": 18,
       "createdat": "1711929600",
       "updatedat": "1714521600"
     }
   ]
 }</code></pre>
 
-<h3>Deploy &amp; Manage</h3>
-<p>All endpoints below require authentication.</p>
-
-<h4><strong>POST</strong> /UserAgent/Deploy</h4>
-<p>Creates a new agent instance from a catalog template. The agent is automatically queued to start (status <code>2</code>).</p>
+<h2><span class="endpoint-badge post">POST</span> /UserAgent/Deploy</h2>
+<p>Creates a new agent instance from a catalog template. The agent is created with status <code>6</code> (Setup Required). After deploying, call <code>UserAgent/Detail</code> to see which credentials are needed, provide them via <code>UserAgent/Update</code>, then call <code>UserAgent/Start</code> to launch the agent. The subscription cost is deducted from your prepaid wallet immediately.</p>
 <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
 <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
 <tbody>
@@ -4172,10 +4237,21 @@ import type {
 <tr><td><code>title</code></td><td>string</td><td>Yes</td><td>Display name for your instance</td></tr>
 <tr><td><code>description</code></td><td>string</td><td>No</td><td>Optional description</td></tr>
 <tr><td><code>configuration</code></td><td>object</td><td>No</td><td>Initial credential values. Format: <code>{ "credentials": { "key": "value" } }</code></td></tr>
+<tr><td><code>useprepaid</code></td><td>boolean</td><td>Yes</td><td>Set to <code>true</code> to pay from wallet balance. Cost is deducted immediately.</td></tr>
+<tr><td><code>plan</code></td><td>string</td><td>Yes</td><td>Plan tier: <code>"starter"</code> or <code>"pro"</code>. Check <code>Agent/Detail</code> pricing for available plans and prices.</td></tr>
 </tbody>
 </table></div></div>
 
-<h5>Response</h5>
+<h3>Request</h3>
+<pre><code class="language-json">POST /UserAgent/Deploy
+{
+  "agentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "title": "My Instagram Bot",
+  "useprepaid": true,
+  "plan": "starter"
+}</code></pre>
+
+<h3>Response</h3>
 <pre><code class="language-json">{
   "result": true,
   "errors": [],
@@ -4185,22 +4261,22 @@ import type {
       "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
       "agentid": 5,
       "title": "My Instagram Bot",
-      "description": null,
-      "configuration": {
-        "credentials": {
-          "instagram_username": { "label": "Instagram Username", "type": "text", "required": true, "value": "" },
-          "instagram_password": { "label": "Instagram Password", "type": "password", "required": true, "value": "••••••" }
-        }
+      "status": 6,
+      "setuprequired": true,
+      "subscription": {
+        "plan": "agent-starter",
+        "status": "active",
+        "amount": 49,
+        "currency": "usd",
+        "provider": "prepaid"
       },
-      "status": 2,
       "createdat": "1714608000",
-      "updatedat": "1714608000",
-      "queuedat": "1714608000"
+      "updatedat": "1714608000"
     }
   ]
 }</code></pre>
 
-<h4><strong>POST</strong> /UserAgent/MyAgents</h4>
+<h2><span class="endpoint-badge post">POST</span> /UserAgent/MyAgents</h2>
 <p>Lists all agent instances deployed under your account.</p>
 <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
 <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
@@ -4213,7 +4289,7 @@ import type {
 </tbody>
 </table></div></div>
 
-<h5>Response</h5>
+<h3>Response</h3>
 <pre><code class="language-json">{
   "result": true,
   "errors": [],
@@ -4233,13 +4309,14 @@ import type {
         "currentperiodend": 1717200000,
         "renewaldate": "2026-06-01T00:00:00.000Z",
         "daysremaining": 62,
-        "pendingdowngrade": null
+        "pendingdowngrade": null,
+        "provider": "prepaid"
       },
       "agent": {
         "id": 5,
         "title": "Instagram Manager",
         "slug": "instagram-manager",
-        "cover": "instagram-manager-cover.webp",
+        "cover": "https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp",
         "categories": ["social-media", "marketing"],
         "pricing": {
           "starter": { "price": 9, "credits": 1000 },
@@ -4256,8 +4333,8 @@ import type {
   ]
 }</code></pre>
 
-<h4><strong>POST</strong> /UserAgent/Detail</h4>
-<p>Retrieves full details for a single deployed agent instance, including subscription info and Stripe portal URLs.</p>
+<h2><span class="endpoint-badge post">POST</span> /UserAgent/Detail</h2>
+<p>Retrieves full details for a single deployed agent instance, including subscription info.</p>
 <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
 <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
 <tbody>
@@ -4265,7 +4342,7 @@ import type {
 </tbody>
 </table></div></div>
 
-<h5>Response</h5>
+<h3>Response</h3>
 <pre><code class="language-json">{
   "result": true,
   "errors": [],
@@ -4279,8 +4356,13 @@ import type {
       "setuprequired": false,
       "configuration": {
         "credentials": {
-          "instagram_username": { "label": "Instagram Username", "type": "text", "required": true, "value": "myaccount" },
-          "instagram_password": { "label": "Instagram Password", "type": "password", "required": true, "value": "••••••" }
+          "instagram": {
+            "_editable": { "authMethod": true },
+            "optional": false,
+            "authMethod": "wiro",
+            "igUsername": "myaccount",
+            "connectedAt": "2025-04-01T12:00:00.000Z"
+          }
         }
       },
       "subscription": {
@@ -4291,13 +4373,14 @@ import type {
         "currentperiodend": 1717200000,
         "renewaldate": "2026-06-01T00:00:00.000Z",
         "daysremaining": 62,
-        "pendingdowngrade": null
+        "pendingdowngrade": null,
+        "provider": "prepaid"
       },
       "agent": {
         "id": 5,
         "title": "Instagram Manager",
         "slug": "instagram-manager",
-        "cover": "instagram-manager-cover.webp",
+        "cover": "https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp",
         "pricing": {
           "starter": { "price": 9, "credits": 1000 },
           "pro": { "price": 29, "credits": 5000 }
@@ -4305,9 +4388,6 @@ import type {
       },
       "extracredits": 2000,
       "extracreditsexpiry": 1730419200,
-      "stripeportalurl": "https://billing.stripe.com/p/session/...",
-      "stripeupdateurl": "https://billing.stripe.com/p/session/...",
-      "stripecancelurl": "https://billing.stripe.com/p/session/...",
       "createdat": "1714608000",
       "updatedat": "1714694400",
       "startedat": "1714694400",
@@ -4329,14 +4409,12 @@ import type {
 <tr><td><code>agent</code></td><td><code>object</code></td><td>Parent agent template info (title, slug, cover, pricing).</td></tr>
 <tr><td><code>extracredits</code></td><td><code>number</code></td><td>Remaining extra credits purchased for this instance.</td></tr>
 <tr><td><code>extracreditsexpiry</code></td><td><code>number|null</code></td><td>Unix timestamp when the earliest extra credit pack expires.</td></tr>
-<tr><td><code>stripeportalurl</code></td><td><code>string</code></td><td>Stripe billing portal URL (only present with active subscription).</td></tr>
-<tr><td><code>stripeupdateurl</code></td><td><code>string</code></td><td>Stripe plan upgrade URL (only present on Starter plans).</td></tr>
-<tr><td><code>stripecancelurl</code></td><td><code>string</code></td><td>Stripe cancellation URL (only present with active subscription).</td></tr>
+<tr><td><code>subscription.provider</code></td><td><code>string</code></td><td>Payment provider (<code>"prepaid"</code>).</td></tr>
 </tbody>
 </table></div></div>
 
-<h4><strong>POST</strong> /UserAgent/Update</h4>
-<p>Updates an agent instance's configuration, title, or description. If the agent is currently running, this triggers an automatic restart to apply the new settings.</p>
+<h2><span class="endpoint-badge post">POST</span> /UserAgent/Update</h2>
+<p>Updates an agent instance's configuration, title, description, or categories. If the agent is currently starting (status <code>3</code>) or running (status <code>4</code>), this triggers an automatic restart to apply the new settings.</p>
 <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
 <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
 <tbody>
@@ -4344,14 +4422,15 @@ import type {
 <tr><td><code>title</code></td><td>string</td><td>No</td><td>New display name</td></tr>
 <tr><td><code>description</code></td><td>string</td><td>No</td><td>New description</td></tr>
 <tr><td><code>configuration</code></td><td>object</td><td>No</td><td>Updated credentials. Format: <code>{ "credentials": { "key": "value" } }</code></td></tr>
+<tr><td><code>categories</code></td><td>array</td><td>No</td><td>Updated categories. Cannot be empty if provided.</td></tr>
 </tbody>
 </table></div></div>
 <div class="info-callout"><strong>Note:</strong> If the agent's status is <code>6</code> (Setup Required) and the update completes all required credentials, the status automatically changes to <code>0</code> (Stopped), allowing you to start it.</div>
 
-<h5>Response</h5>
-<p>Returns the same structure as <code>UserAgent/Detail</code>.</p>
+<h3>Response</h3>
+<p>Returns the updated agent instance with <code>setuprequired</code> flag and <code>agent</code> summary. Does not include <code>subscription</code> — use <code>UserAgent/Detail</code> for the full view.</p>
 
-<h4><strong>POST</strong> /UserAgent/Start</h4>
+<h2><span class="endpoint-badge post">POST</span> /UserAgent/Start</h2>
 <p>Starts a stopped agent instance. The agent is moved to Queued (status <code>2</code>) and will be picked up by a worker.</p>
 <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
 <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
@@ -4360,7 +4439,7 @@ import type {
 </tbody>
 </table></div></div>
 
-<h5>Response</h5>
+<h3>Response</h3>
 <pre><code class="language-json">{
   "result": true,
   "errors": []
@@ -4374,7 +4453,7 @@ import type {
 <li>No credits remain (monthly or extra)</li>
 </ul>
 
-<h4><strong>POST</strong> /UserAgent/Stop</h4>
+<h2><span class="endpoint-badge post">POST</span> /UserAgent/Stop</h2>
 <p>Stops a running agent instance. If the agent is Queued (status <code>2</code>), it is immediately set to Stopped. If it is Starting or Running (status <code>3</code>/<code>4</code>), it moves to Stopping (status <code>1</code>) and the container is shut down gracefully.</p>
 <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
 <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
@@ -4383,51 +4462,107 @@ import type {
 </tbody>
 </table></div></div>
 
-<h5>Response</h5>
+<h3>Response</h3>
 <pre><code class="language-json">{
   "result": true,
   "errors": []
 }</code></pre>
 
-<h4><strong>POST</strong> /UserAgent/Logs</h4>
-<p>Retrieves container logs from the running agent instance. The agent must be assigned to a worker.</p>
-<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
-<thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
-<tbody>
-<tr><td><code>useragentGuid</code></td><td>string</td><td>Yes</td><td>Your UserAgent instance guid</td></tr>
-<tr><td><code>lines</code></td><td>number</td><td>No</td><td>Number of log lines to return (max 100,000). Default: <code>2000</code></td></tr>
-</tbody>
-</table></div></div>
-
-<h5>Response</h5>
-<pre><code class="language-json">{
-  "result": true,
-  "logs": "2026-03-30T10:00:01Z [agent] Connected to Instagram API\n2026-03-30T10:00:02Z [agent] Listening for new messages...\n",
-  "errors": []
-}</code></pre>
-
-<h4><strong>POST</strong> /UserAgent/CreateExtraCreditCheckout</h4>
-<p>Creates a Stripe checkout session to purchase additional credits. Only available for <strong>Pro plan</strong> subscribers.</p>
+<h2><span class="endpoint-badge post">POST</span> /UserAgent/CreateExtraCreditCheckout</h2>
+<p>Purchases additional credits for a Pro plan agent. Deducts from your prepaid wallet balance.</p>
 <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
 <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
 <tbody>
 <tr><td><code>useragentGuid</code></td><td>string</td><td>Yes</td><td>Your UserAgent instance guid</td></tr>
 <tr><td><code>pack</code></td><td>string</td><td>Yes</td><td>Credit pack: <code>package1</code>, <code>package2</code>, or <code>package3</code></td></tr>
+<tr><td><code>useprepaid</code></td><td>boolean</td><td>Yes</td><td>Set to <code>true</code> to pay from wallet balance. Credits added immediately.</td></tr>
 </tbody>
 </table></div></div>
 
-<h5>Response</h5>
+<h3>Request</h3>
+<pre><code class="language-json">POST /UserAgent/CreateExtraCreditCheckout
+{
+  "useragentGuid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+  "pack": "package2",
+  "useprepaid": true
+}</code></pre>
+
+<h3>Response</h3>
 <pre><code class="language-json">{
   "result": true,
-  "url": "https://checkout.stripe.com/c/pay/cs_live_...",
+  "url": null,
   "errors": []
 }</code></pre>
-<p>Redirect the user to the returned <code>url</code> to complete the purchase. Credits are added immediately after payment and expire 6 months after purchase.</p>
+<p>Credits are added immediately from your wallet balance. <code>url</code> is <code>null</code> for prepaid purchases. Credits expire 6 months after purchase.</p>
+
+<h2><span class="endpoint-badge post">POST</span> /UserAgent/CancelSubscription</h2>
+<p>Cancels a subscription at the end of the current billing period. The agent remains active until the period ends.</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>guid</code></td><td>string</td><td>Yes</td><td>Your UserAgent instance guid</td></tr>
+</tbody>
+</table></div></div>
+
+<h3>Response</h3>
+<pre><code class="language-json">{
+  "result": true,
+  "cancelsAt": 1717200000,
+  "errors": []
+}</code></pre>
+<p>The <code>cancelsAt</code> field is the Unix timestamp when the subscription will expire. The agent continues running until this date. You can reverse the cancellation by calling RenewSubscription before the period ends.</p>
+
+<h2><span class="endpoint-badge post">POST</span> /UserAgent/UpgradePlan</h2>
+<p>Upgrades a Starter subscription to Pro. The prorated cost for the remaining days is deducted from your wallet.</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>guid</code></td><td>string</td><td>Yes</td><td>Your UserAgent instance guid</td></tr>
+<tr><td><code>plan</code></td><td>string</td><td>Yes</td><td>Target plan: <code>"pro"</code> (only starter-to-pro upgrade is supported)</td></tr>
+</tbody>
+</table></div></div>
+
+<h3>Response</h3>
+<pre><code class="language-json">{
+  "result": true,
+  "plan": "agent-pro",
+  "proratedCharge": 11.33,
+  "newMonthlyCredits": 5000,
+  "errors": []
+}</code></pre>
+<p>Downgrades are not supported. To change from Pro to Starter, cancel and re-deploy.</p>
+
+<h2><span class="endpoint-badge post">POST</span> /UserAgent/RenewSubscription</h2>
+<p>Renews an expired subscription or reverses a pending cancellation. The renewal cost is deducted from your wallet.</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>guid</code></td><td>string</td><td>Yes</td><td>Your UserAgent instance guid</td></tr>
+</tbody>
+</table></div></div>
+
+<h3>Response (renewal)</h3>
+<pre><code class="language-json">{
+  "result": true,
+  "action": "renewed",
+  "plan": "agent-starter",
+  "amount": 49,
+  "errors": []
+}</code></pre>
+
+<h3>Response (undo cancel)</h3>
+<p>When called on an active subscription with a pending cancellation:</p>
+<pre><code class="language-json">{
+  "result": true,
+  "action": "undo-cancel",
+  "errors": []
+}</code></pre>
+<p>After renewal, the agent status is reset to <code>0</code> (Stopped). Call Start to launch it again. Monthly credits are refreshed for the new billing period.</p>
 </section>
 
 <section id="agent-pricing">
 <h2>Agent Pricing</h2>
-<p>Agent pricing is subscription-based, billed monthly through Stripe.</p>
+<p>Agent pricing is subscription-based, billed monthly. Two payment methods are available:</p>
 <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
 <thead><tr><th>Feature</th><th>Starter</th><th>Pro</th></tr></thead>
 <tbody>
@@ -4438,6 +4573,9 @@ import type {
 </tbody>
 </table></div></div>
 <p>Each agent in the catalog defines its own pricing tiers in the <code>pricing</code> field. Check the <code>Agent/Detail</code> response for exact prices and credit amounts.</p>
+
+<h3>Payment Method</h3>
+<p>All subscriptions use your <strong>prepaid wallet balance</strong>. The cost is deducted immediately when you deploy or renew. Subscriptions renew automatically if your wallet has sufficient balance; otherwise the subscription expires. Manage subscriptions through the CancelSubscription, UpgradePlan, and RenewSubscription endpoints.</p>
 <p>Credits are consumed per message or action, depending on the agent type. When monthly credits run out, the agent cannot be started until credits are renewed (next billing cycle) or extra credits are purchased.</p>
 </section>
 
@@ -4450,7 +4588,7 @@ import type {
 <tr><td><code>Agent not found</code></td><td>The <code>agentguid</code> or <code>slug</code> does not match any catalog agent</td></tr>
 <tr><td><code>User agent not found</code></td><td>The <code>guid</code> does not match any of your deployed instances</td></tr>
 <tr><td><code>Agent not found or inactive</code></td><td>The catalog agent exists but is disabled</td></tr>
-<tr><td><code>Active subscription required to start agent. Please renew your subscription.</code></td><td>No active Stripe subscription for this instance</td></tr>
+<tr><td><code>Active subscription required to start agent. Please renew your subscription.</code></td><td>No active subscription for this instance</td></tr>
 <tr><td><code>Agent setup is not complete. Please fill in your credentials before starting.</code></td><td>Status is <code>6</code> — call Update to provide required credentials</td></tr>
 <tr><td><code>Agent is already running</code></td><td>Start called on an agent with status <code>3</code> or <code>4</code></td></tr>
 <tr><td><code>Agent is already queued to start</code></td><td>Start called on an agent with status <code>2</code></td></tr>
@@ -4459,6 +4597,23 @@ import type {
 <tr><td><code>Agent is in error state, use Start to retry</code></td><td>Stop called on an agent with status <code>5</code></td></tr>
 <tr><td><code>No credits available. Please renew your subscription or purchase extra credits.</code></td><td>Monthly and extra credits are both exhausted</td></tr>
 <tr><td><code>Extra credits are available only for Pro plan subscribers. Please upgrade your plan.</code></td><td>CreateExtraCreditCheckout called on a Starter plan</td></tr>
+<tr><td><code>Invalid pack. Choose package1, package2, or package3.</code></td><td>CreateExtraCreditCheckout with invalid pack</td></tr>
+<tr><td><code>Active subscription required to purchase extra credits.</code></td><td>CreateExtraCreditCheckout without subscription</td></tr>
+<tr><td><code>Extra credit pack not available for this agent.</code></td><td>Agent pricing doesn't define the pack</td></tr>
+<tr><td><code>Categories cannot be empty</code></td><td>Update with empty categories</td></tr>
+<tr><td><code>Agent not found or access denied</code></td><td>Message endpoint with invalid useragentguid</td></tr>
+<tr><td><code>Agent is not running. Current status: {n}</code></td><td>Message/Send when not running</td></tr>
+<tr><td><code>Message not found</code></td><td>Detail/Cancel with invalid messageguid</td></tr>
+<tr><td><code>Message cannot be cancelled (status: {status})</code></td><td>Cancel on completed message</td></tr>
+<tr><td><code>Invalid redirect URL</code></td><td>OAuth Connect with non-HTTPS URL</td></tr>
+<tr><td><code>Subscription is already active</code></td><td>RenewSubscription called when subscription is already active without pending cancel</td></tr>
+<tr><td><code>No expired subscription found to renew</code></td><td>RenewSubscription called with no expired subscription</td></tr>
+<tr><td><code>Insufficient wallet balance. Required: $X, Available: $Y</code></td><td>Prepaid operation with insufficient funds</td></tr>
+<tr><td><code>Cannot downgrade from Pro to Starter. Cancel your subscription instead.</code></td><td>UpgradePlan with downgrade attempt</td></tr>
+<tr><td><code>Subscription cancellation scheduled</code></td><td>CancelSubscription success</td></tr>
+<tr><td><code>Valid plan required when using prepaid (starter or pro)</code></td><td>Deploy with useprepaid but missing/invalid plan</td></tr>
+<tr><td><code>Pricing not available for this plan</code></td><td>Deploy with useprepaid for agent without pricing</td></tr>
+<tr><td><code>Renewal pricing not available</code></td><td>RenewSubscription for agent with zero pricing</td></tr>
 </tbody>
 </table></div></div>
 </section>
@@ -4480,47 +4635,47 @@ import type {
   {
     "label": "curl",
     "language": "bash",
-    "code": "# List available agents (no auth required)\ncurl -X POST \"https://api.wiro.ai/v1/Agent/List\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"limit\": 10}'\n\n# Get agent details by slug (no auth required)\ncurl -X POST \"https://api.wiro.ai/v1/Agent/Detail\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"slug\": \"instagram-manager\"}'\n\n# Deploy a new agent instance\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/Deploy\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"agentguid\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n    \"title\": \"My Instagram Bot\"\n  }'\n\n# Start an agent\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/Start\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"guid\": \"f8e7d6c5-b4a3-2190-fedc-ba0987654321\"}'\n\n# Get agent instance details\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/Detail\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"guid\": \"f8e7d6c5-b4a3-2190-fedc-ba0987654321\"}'\n\n# Update credentials on a running agent (triggers automatic restart)\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/Update\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"guid\": \"f8e7d6c5-b4a3-2190-fedc-ba0987654321\",\n    \"configuration\": {\n      \"credentials\": {\n        \"instagram_username\": \"new_account\",\n        \"instagram_password\": \"new_password\"\n      }\n    }\n  }'\n\n# Stop an agent\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/Stop\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"guid\": \"f8e7d6c5-b4a3-2190-fedc-ba0987654321\"}'\n\n# Get container logs\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/Logs\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"useragentGuid\": \"f8e7d6c5-b4a3-2190-fedc-ba0987654321\", \"lines\": 500}' "
+    "code": "# List available agents (no auth required)\ncurl -X POST \"https://api.wiro.ai/v1/Agent/List\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"limit\": 10}'\n\n# Get agent details by slug (no auth required)\ncurl -X POST \"https://api.wiro.ai/v1/Agent/Detail\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"slug\": \"instagram-manager\"}'\n\n# Deploy a new agent instance (prepaid)\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/Deploy\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"agentguid\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n    \"title\": \"My Instagram Bot\",\n    \"useprepaid\": true,\n    \"plan\": \"starter\"\n  }'\n\n# Cancel a subscription (cancels at end of billing period)\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/CancelSubscription\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"guid\": \"f8e7d6c5-b4a3-2190-fedc-ba0987654321\"}'\n\n# Upgrade starter to pro\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/UpgradePlan\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"guid\": \"f8e7d6c5-b4a3-2190-fedc-ba0987654321\", \"plan\": \"pro\"}'\n\n# Renew expired subscription\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/RenewSubscription\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"guid\": \"f8e7d6c5-b4a3-2190-fedc-ba0987654321\"}'\n\n# Buy extra credits with prepaid wallet\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/CreateExtraCreditCheckout\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"useragentGuid\": \"f8e7d6c5-b4a3-2190-fedc-ba0987654321\", \"pack\": \"package1\", \"useprepaid\": true}'\n\n# Start an agent\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/Start\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"guid\": \"f8e7d6c5-b4a3-2190-fedc-ba0987654321\"}'\n\n# Get agent instance details\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/Detail\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"guid\": \"f8e7d6c5-b4a3-2190-fedc-ba0987654321\"}'\n\n# Update credentials on a running agent (triggers automatic restart)\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/Update\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"guid\": \"f8e7d6c5-b4a3-2190-fedc-ba0987654321\",\n    \"configuration\": {\n      \"credentials\": {\n        \"instagram\": { \"authMethod\": \"wiro\" }\n      }\n    }\n  }'\n\n# Stop an agent\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/Stop\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"guid\": \"f8e7d6c5-b4a3-2190-fedc-ba0987654321\"}'"
   },
   {
     "label": "Python",
     "language": "python",
-    "code": "import requests\n\nheaders = {\n    \"x-api-key\": \"YOUR_API_KEY\",\n    \"Content-Type\": \"application/json\"\n}\n\n# List available agents (no auth required)\ncatalog = requests.post(\n    \"https://api.wiro.ai/v1/Agent/List\",\n    json={\"limit\": 10}\n).json()\nfor agent in catalog[\"agents\"]:\n    print(f\"{agent['title']} ({agent['slug']})\")\n\n# Get agent details by slug\ndetail = requests.post(\n    \"https://api.wiro.ai/v1/Agent/Detail\",\n    json={\"slug\": \"instagram-manager\"}\n).json()\nagent = detail[\"agents\"][0]\nprint(f\"Credentials needed: {list(agent['configuration']['credentials'].keys())}\")\n\n# Deploy a new instance\ndeploy = requests.post(\n    \"https://api.wiro.ai/v1/UserAgent/Deploy\",\n    headers=headers,\n    json={\n        \"agentguid\": agent[\"guid\"],\n        \"title\": \"My Instagram Bot\"\n    }\n).json()\ninstance_guid = deploy[\"useragents\"][0][\"guid\"]\nprint(f\"Deployed: {instance_guid}\")\n\n# Update credentials\nrequests.post(\n    \"https://api.wiro.ai/v1/UserAgent/Update\",\n    headers=headers,\n    json={\n        \"guid\": instance_guid,\n        \"configuration\": {\n            \"credentials\": {\n                \"instagram_username\": \"myaccount\",\n                \"instagram_password\": \"mypassword\"\n            }\n        }\n    }\n)\n\n# Start the agent\nrequests.post(\n    \"https://api.wiro.ai/v1/UserAgent/Start\",\n    headers=headers,\n    json={\"guid\": instance_guid}\n)\n\n# Check status\nimport time\nwhile True:\n    resp = requests.post(\n        \"https://api.wiro.ai/v1/UserAgent/Detail\",\n        headers=headers,\n        json={\"guid\": instance_guid}\n    ).json()\n    status = resp[\"useragents\"][0][\"status\"]\n    print(f\"Status: {status}\")\n    if status == 4:\n        print(\"Agent is running!\")\n        break\n    if status == 5:\n        print(\"Agent errored\")\n        break\n    time.sleep(5)\n\n# List your deployed agents\nmy_agents = requests.post(\n    \"https://api.wiro.ai/v1/UserAgent/MyAgents\",\n    headers=headers,\n    json={\"limit\": 50}\n).json()\nfor ua in my_agents[\"useragents\"]:\n    print(f\"{ua['title']} - status: {ua['status']}\")\n\n# Stop the agent\nrequests.post(\n    \"https://api.wiro.ai/v1/UserAgent/Stop\",\n    headers=headers,\n    json={\"guid\": instance_guid}\n)"
+    "code": "import requests\n\nheaders = {\n    \"x-api-key\": \"YOUR_API_KEY\",\n    \"Content-Type\": \"application/json\"\n}\n\n# List available agents (no auth required)\ncatalog = requests.post(\n    \"https://api.wiro.ai/v1/Agent/List\",\n    json={\"limit\": 10}\n).json()\nfor agent in catalog[\"agents\"]:\n    print(f\"{agent['title']} ({agent['slug']})\")\n\n# Get agent details by slug\ndetail = requests.post(\n    \"https://api.wiro.ai/v1/Agent/Detail\",\n    json={\"slug\": \"instagram-manager\"}\n).json()\nagent = detail[\"agents\"][0]\nprint(f\"Credentials needed: {list(agent['configuration']['credentials'].keys())}\")\n\n# Deploy a new instance\ndeploy = requests.post(\n    \"https://api.wiro.ai/v1/UserAgent/Deploy\",\n    headers=headers,\n    json={\n        \"agentguid\": agent[\"guid\"],\n        \"title\": \"My Instagram Bot\",\n        \"useprepaid\": True,\n        \"plan\": \"starter\"\n    }\n).json()\ninstance_guid = deploy[\"useragents\"][0][\"guid\"]\nprint(f\"Deployed: {instance_guid}\")\n\n# Update credentials\nrequests.post(\n    \"https://api.wiro.ai/v1/UserAgent/Update\",\n    headers=headers,\n    json={\n        \"guid\": instance_guid,\n        \"configuration\": {\n            \"credentials\": {\n                \"instagram\": {\n                    \"authMethod\": \"wiro\"\n                }\n            }\n        }\n    }\n)\n\n# Start the agent\nrequests.post(\n    \"https://api.wiro.ai/v1/UserAgent/Start\",\n    headers=headers,\n    json={\"guid\": instance_guid}\n)\n\n# Check status\nimport time\nwhile True:\n    resp = requests.post(\n        \"https://api.wiro.ai/v1/UserAgent/Detail\",\n        headers=headers,\n        json={\"guid\": instance_guid}\n    ).json()\n    status = resp[\"useragents\"][0][\"status\"]\n    print(f\"Status: {status}\")\n    if status == 4:\n        print(\"Agent is running!\")\n        break\n    if status == 5:\n        print(\"Agent errored\")\n        break\n    time.sleep(5)\n\n# List your deployed agents\nmy_agents = requests.post(\n    \"https://api.wiro.ai/v1/UserAgent/MyAgents\",\n    headers=headers,\n    json={\"limit\": 50}\n).json()\nfor ua in my_agents[\"useragents\"]:\n    print(f\"{ua['title']} - status: {ua['status']}\")\n\n# Stop the agent\nrequests.post(\n    \"https://api.wiro.ai/v1/UserAgent/Stop\",\n    headers=headers,\n    json={\"guid\": instance_guid}\n)"
   },
   {
     "label": "Node.js",
     "language": "javascript",
-    "code": "const axios = require('axios');\n\nconst headers = {\n  'x-api-key': 'YOUR_API_KEY',\n  'Content-Type': 'application/json'\n};\n\nasync function main() {\n  // List available agents (no auth required)\n  const catalog = await axios.post(\n    'https://api.wiro.ai/v1/Agent/List',\n    { limit: 10 }\n  );\n  catalog.data.agents.forEach(a => console.log(`${a.title} (${a.slug})`));\n\n  // Get agent details by slug\n  const detail = await axios.post(\n    'https://api.wiro.ai/v1/Agent/Detail',\n    { slug: 'instagram-manager' }\n  );\n  const agent = detail.data.agents[0];\n\n  // Deploy a new instance\n  const deploy = await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/Deploy',\n    { agentguid: agent.guid, title: 'My Instagram Bot' },\n    { headers }\n  );\n  const instanceGuid = deploy.data.useragents[0].guid;\n  console.log('Deployed:', instanceGuid);\n\n  // Update credentials\n  await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/Update',\n    {\n      guid: instanceGuid,\n      configuration: {\n        credentials: {\n          instagram_username: 'myaccount',\n          instagram_password: 'mypassword'\n        }\n      }\n    },\n    { headers }\n  );\n\n  // Start the agent\n  await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/Start',\n    { guid: instanceGuid },\n    { headers }\n  );\n\n  // Poll until running\n  while (true) {\n    const resp = await axios.post(\n      'https://api.wiro.ai/v1/UserAgent/Detail',\n      { guid: instanceGuid },\n      { headers }\n    );\n    const status = resp.data.useragents[0].status;\n    console.log('Status:', status);\n    if (status === 4) { console.log('Agent is running!'); break; }\n    if (status === 5) { console.log('Agent errored'); break; }\n    await new Promise(r => setTimeout(r, 5000));\n  }\n\n  // Stop the agent\n  await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/Stop',\n    { guid: instanceGuid },\n    { headers }\n  );\n}\n\nmain();"
+    "code": "const axios = require('axios');\n\nconst headers = {\n  'x-api-key': 'YOUR_API_KEY',\n  'Content-Type': 'application/json'\n};\n\nasync function main() {\n  // List available agents (no auth required)\n  const catalog = await axios.post(\n    'https://api.wiro.ai/v1/Agent/List',\n    { limit: 10 }\n  );\n  catalog.data.agents.forEach(a => console.log(`${a.title} (${a.slug})`));\n\n  // Get agent details by slug\n  const detail = await axios.post(\n    'https://api.wiro.ai/v1/Agent/Detail',\n    { slug: 'instagram-manager' }\n  );\n  const agent = detail.data.agents[0];\n\n  // Deploy a new instance\n  const deploy = await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/Deploy',\n    { agentguid: agent.guid, title: 'My Instagram Bot', useprepaid: true, plan: 'starter' },\n    { headers }\n  );\n  const instanceGuid = deploy.data.useragents[0].guid;\n  console.log('Deployed:', instanceGuid);\n\n  // Update credentials\n  await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/Update',\n    {\n      guid: instanceGuid,\n      configuration: {\n        credentials: {\n          instagram: {\n            authMethod: 'wiro'\n          }\n        }\n      }\n    },\n    { headers }\n  );\n\n  // Start the agent\n  await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/Start',\n    { guid: instanceGuid },\n    { headers }\n  );\n\n  // Poll until running\n  while (true) {\n    const resp = await axios.post(\n      'https://api.wiro.ai/v1/UserAgent/Detail',\n      { guid: instanceGuid },\n      { headers }\n    );\n    const status = resp.data.useragents[0].status;\n    console.log('Status:', status);\n    if (status === 4) { console.log('Agent is running!'); break; }\n    if (status === 5) { console.log('Agent errored'); break; }\n    await new Promise(r => setTimeout(r, 5000));\n  }\n\n  // Stop the agent\n  await axios.post(\n    'https://api.wiro.ai/v1/UserAgent/Stop',\n    { guid: instanceGuid },\n    { headers }\n  );\n}\n\nmain();"
   },
   {
     "label": "PHP",
     "language": "php",
-    "code": "<?php\n$apiKey = \"YOUR_API_KEY\";\n\n// List available agents (no auth required)\n$ch = curl_init();\ncurl_setopt($ch, CURLOPT_URL, \"https://api.wiro.ai/v1/Agent/List\");\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\"Content-Type: application/json\"]);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([\"limit\" => 10]));\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n$catalog = json_decode(curl_exec($ch), true);\ncurl_close($ch);\n\n// Deploy a new instance\n$ch = curl_init();\ncurl_setopt($ch, CURLOPT_URL, \"https://api.wiro.ai/v1/UserAgent/Deploy\");\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\n    \"Content-Type: application/json\",\n    \"x-api-key: $apiKey\"\n]);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([\n    \"agentguid\" => \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n    \"title\" => \"My Instagram Bot\"\n]));\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n$deploy = json_decode(curl_exec($ch), true);\ncurl_close($ch);\necho \"Deployed: \" . $deploy[\"useragents\"][0][\"guid\"];"
+    "code": "<?php\n$apiKey = \"YOUR_API_KEY\";\n\n// List available agents (no auth required)\n$ch = curl_init();\ncurl_setopt($ch, CURLOPT_URL, \"https://api.wiro.ai/v1/Agent/List\");\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\"Content-Type: application/json\"]);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([\"limit\" => 10]));\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n$catalog = json_decode(curl_exec($ch), true);\ncurl_close($ch);\n\n// Deploy a new instance\n$ch = curl_init();\ncurl_setopt($ch, CURLOPT_URL, \"https://api.wiro.ai/v1/UserAgent/Deploy\");\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\n    \"Content-Type: application/json\",\n    \"x-api-key: $apiKey\"\n]);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([\n    \"agentguid\" => \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n    \"title\" => \"My Instagram Bot\",\n    \"useprepaid\" => true,\n    \"plan\" => \"starter\"\n]));\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n$deploy = json_decode(curl_exec($ch), true);\ncurl_close($ch);\necho \"Deployed: \" . $deploy[\"useragents\"][0][\"guid\"];"
   },
   {
     "label": "C#",
     "language": "csharp",
-    "code": "using var client = new HttpClient();\nclient.DefaultRequestHeaders.Add(\"x-api-key\", \"YOUR_API_KEY\");\n\n// Deploy a new instance\nvar deployContent = new StringContent(\n    JsonSerializer.Serialize(new {\n        agentguid = \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n        title = \"My Instagram Bot\"\n    }),\n    Encoding.UTF8, \"application/json\");\n\nvar deployResp = await client.PostAsync(\n    \"https://api.wiro.ai/v1/UserAgent/Deploy\", deployContent);\nvar deployResult = await deployResp.Content.ReadAsStringAsync();\nConsole.WriteLine(deployResult);\n\n// Start the agent\nvar startContent = new StringContent(\n    JsonSerializer.Serialize(new {\n        guid = \"f8e7d6c5-b4a3-2190-fedc-ba0987654321\"\n    }),\n    Encoding.UTF8, \"application/json\");\n\nvar startResp = await client.PostAsync(\n    \"https://api.wiro.ai/v1/UserAgent/Start\", startContent);\nConsole.WriteLine(await startResp.Content.ReadAsStringAsync());"
+    "code": "using var client = new HttpClient();\nclient.DefaultRequestHeaders.Add(\"x-api-key\", \"YOUR_API_KEY\");\n\n// Deploy a new instance\nvar deployContent = new StringContent(\n    JsonSerializer.Serialize(new {\n        agentguid = \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n        title = \"My Instagram Bot\",\n        useprepaid = true,\n        plan = \"starter\"\n    }),\n    Encoding.UTF8, \"application/json\");\n\nvar deployResp = await client.PostAsync(\n    \"https://api.wiro.ai/v1/UserAgent/Deploy\", deployContent);\nvar deployResult = await deployResp.Content.ReadAsStringAsync();\nConsole.WriteLine(deployResult);\n\n// Start the agent\nvar startContent = new StringContent(\n    JsonSerializer.Serialize(new {\n        guid = \"f8e7d6c5-b4a3-2190-fedc-ba0987654321\"\n    }),\n    Encoding.UTF8, \"application/json\");\n\nvar startResp = await client.PostAsync(\n    \"https://api.wiro.ai/v1/UserAgent/Start\", startContent);\nConsole.WriteLine(await startResp.Content.ReadAsStringAsync());"
   },
   {
     "label": "Go",
     "language": "go",
-    "code": "package main\n\nimport (\n    \"bytes\"\n    \"encoding/json\"\n    \"fmt\"\n    \"net/http\"\n    \"io\"\n)\n\nfunc main() {\n    // Deploy a new instance\n    body, _ := json.Marshal(map[string]interface{}{\n        \"agentguid\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n        \"title\":     \"My Instagram Bot\",\n    })\n    req, _ := http.NewRequest(\"POST\",\n        \"https://api.wiro.ai/v1/UserAgent/Deploy\",\n        bytes.NewBuffer(body))\n    req.Header.Set(\"Content-Type\", \"application/json\")\n    req.Header.Set(\"x-api-key\", \"YOUR_API_KEY\")\n\n    resp, _ := http.DefaultClient.Do(req)\n    defer resp.Body.Close()\n    data, _ := io.ReadAll(resp.Body)\n    fmt.Println(string(data))\n}"
+    "code": "package main\n\nimport (\n    \"bytes\"\n    \"encoding/json\"\n    \"fmt\"\n    \"net/http\"\n    \"io\"\n)\n\nfunc main() {\n    // Deploy a new instance\n    body, _ := json.Marshal(map[string]interface{}{\n        \"agentguid\":  \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n        \"title\":      \"My Instagram Bot\",\n        \"useprepaid\": true,\n        \"plan\":       \"starter\",\n    })\n    req, _ := http.NewRequest(\"POST\",\n        \"https://api.wiro.ai/v1/UserAgent/Deploy\",\n        bytes.NewBuffer(body))\n    req.Header.Set(\"Content-Type\", \"application/json\")\n    req.Header.Set(\"x-api-key\", \"YOUR_API_KEY\")\n\n    resp, _ := http.DefaultClient.Do(req)\n    defer resp.Body.Close()\n    data, _ := io.ReadAll(resp.Body)\n    fmt.Println(string(data))\n}"
   },
   {
     "label": "Swift",
     "language": "swift",
-    "code": "import Foundation\n\nlet url = URL(string: \"https://api.wiro.ai/v1/UserAgent/Deploy\")!\nvar request = URLRequest(url: url)\nrequest.httpMethod = \"POST\"\nrequest.setValue(\"application/json\",\n    forHTTPHeaderField: \"Content-Type\")\nrequest.setValue(\"YOUR_API_KEY\",\n    forHTTPHeaderField: \"x-api-key\")\nrequest.httpBody = try! JSONSerialization.data(\n    withJSONObject: [\n        \"agentguid\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n        \"title\": \"My Instagram Bot\"\n    ])\n\nlet (data, _) = try await URLSession.shared\n    .data(for: request)\nprint(String(data: data, encoding: .utf8)!)"
+    "code": "import Foundation\n\nlet url = URL(string: \"https://api.wiro.ai/v1/UserAgent/Deploy\")!\nvar request = URLRequest(url: url)\nrequest.httpMethod = \"POST\"\nrequest.setValue(\"application/json\",\n    forHTTPHeaderField: \"Content-Type\")\nrequest.setValue(\"YOUR_API_KEY\",\n    forHTTPHeaderField: \"x-api-key\")\nrequest.httpBody = try! JSONSerialization.data(\n    withJSONObject: [\n        \"agentguid\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n        \"title\": \"My Instagram Bot\",\n        \"useprepaid\": true,\n        \"plan\": \"starter\"\n    ])\n\nlet (data, _) = try await URLSession.shared\n    .data(for: request)\nprint(String(data: data, encoding: .utf8)!)"
   },
   {
     "label": "Kotlin",
     "language": "kotlin",
-    "code": "import java.net.HttpURLConnection\nimport java.net.URL\n\nval url = URL(\"https://api.wiro.ai/v1/UserAgent/Deploy\")\nval conn = url.openConnection() as HttpURLConnection\nconn.requestMethod = \"POST\"\nconn.setRequestProperty(\"Content-Type\", \"application/json\")\nconn.setRequestProperty(\"x-api-key\", \"YOUR_API_KEY\")\nconn.doOutput = true\nconn.outputStream.write(\"\"\"{\n    \"agentguid\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n    \"title\": \"My Instagram Bot\"\n}\"\"\".toByteArray())\n\nval response = conn.inputStream.bufferedReader().readText()\nprintln(response)"
+    "code": "import java.net.HttpURLConnection\nimport java.net.URL\n\nval url = URL(\"https://api.wiro.ai/v1/UserAgent/Deploy\")\nval conn = url.openConnection() as HttpURLConnection\nconn.requestMethod = \"POST\"\nconn.setRequestProperty(\"Content-Type\", \"application/json\")\nconn.setRequestProperty(\"x-api-key\", \"YOUR_API_KEY\")\nconn.doOutput = true\nconn.outputStream.write(\"\"\"{\n    \"agentguid\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n    \"title\": \"My Instagram Bot\",\n    \"useprepaid\": true,\n    \"plan\": \"starter\"\n}\"\"\".toByteArray())\n\nval response = conn.inputStream.bufferedReader().readText()\nprintln(response)"
   },
   {
     "label": "Dart",
     "language": "dart",
-    "code": "import 'dart:convert';\nimport 'package:http/http.dart' as http;\n\nfinal response = await http.post(\n  Uri.parse('https://api.wiro.ai/v1/UserAgent/Deploy'),\n  headers: {\n    'Content-Type': 'application/json',\n    'x-api-key': 'YOUR_API_KEY',\n  },\n  body: jsonEncode({\n    'agentguid': 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',\n    'title': 'My Instagram Bot',\n  }),\n);\nprint(response.body);"
+    "code": "import 'dart:convert';\nimport 'package:http/http.dart' as http;\n\nfinal response = await http.post(\n  Uri.parse('https://api.wiro.ai/v1/UserAgent/Deploy'),\n  headers: {\n    'Content-Type': 'application/json',\n    'x-api-key': 'YOUR_API_KEY',\n  },\n  body: jsonEncode({\n    'agentguid': 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',\n    'title': 'My Instagram Bot',\n    'useprepaid': true,\n    'plan': 'starter',\n  }),\n);\nprint(response.body);"
   }
 ]
 </script>
@@ -4534,7 +4689,7 @@ import type {
 <h1>Agent Messaging</h1>
 <p class="section-subtitle">Send messages to AI agents and receive streaming responses in real time.</p>
 
-<section id="how-it-works">
+<section id="messaging-how-it-works">
 <h2>How It Works</h2>
 <p>Agent messaging follows the same async pattern as <a href="/docs/run-a-model">model runs</a>:</p>
 <ol>
@@ -4549,22 +4704,57 @@ import type {
 <section id="message-lifecycle">
 <h2>Message Lifecycle</h2>
 <p>Every agent message progresses through a defined set of stages:</p>
-<p><code>agent_queue</code> → <code>agent_start</code> → <code>agent_output</code> → <code>agent_end</code></p>
-<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
-<thead><tr><th>Status</th><th>Description</th></tr></thead>
-<tbody>
-<tr><td><code>agent_queue</code></td><td>The message is queued and waiting to be picked up by the agent worker. Emitted once when the message enters the queue.</td></tr>
-<tr><td><code>agent_start</code></td><td>The agent has accepted the message and begun processing. The underlying LLM call is being prepared.</td></tr>
-<tr><td><code>agent_output</code></td><td>The agent is producing output. This event is emitted <strong>multiple times</strong> — each chunk of the response arrives as a separate <code>agent_output</code> event via WebSocket, enabling real-time streaming.</td></tr>
-<tr><td><code>agent_end</code></td><td>The agent has finished generating the response. The full output is available in the <code>response</code> and <code>debugoutput</code> fields. <strong>This is the event you should listen for</strong> to get the final result.</td></tr>
-<tr><td><code>agent_error</code></td><td>The agent encountered an error during processing. The <code>debugoutput</code> field contains the error message.</td></tr>
-<tr><td><code>agent_cancel</code></td><td>The message was cancelled by the user before completion. Only messages in <code>agent_queue</code>, <code>agent_start</code>, or <code>agent_output</code> status can be cancelled.</td></tr>
-</tbody>
-</table></div></div>
+<div class="lifecycle-flow">
+  <span class="lifecycle-step">agent_queue</span>
+  <span class="lifecycle-arrow">&rarr;</span>
+  <span class="lifecycle-step">agent_start</span>
+  <span class="lifecycle-arrow">&rarr;</span>
+  <span class="lifecycle-step">agent_output</span>
+  <span class="lifecycle-arrow">&rarr;</span>
+  <span class="lifecycle-step">agent_end</span>
+</div>
+
+<h3>Message Statuses</h3>
+<div class="status-table-wrapper">
+  <table class="status-table">
+    <thead>
+      <tr>
+        <th>Status</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>agent_queue</code></td>
+        <td>The message is queued and waiting to be picked up by the agent worker. Emitted once when the message enters the queue.</td>
+      </tr>
+      <tr>
+        <td><code>agent_start</code></td>
+        <td>The agent has accepted the message and begun processing. The underlying LLM call is being prepared.</td>
+      </tr>
+      <tr>
+        <td><code>agent_output</code></td>
+        <td>The agent is producing output. This event is emitted <strong>multiple times</strong> — each chunk of the response arrives as a separate <code>agent_output</code> event via WebSocket, enabling real-time streaming.</td>
+      </tr>
+      <tr>
+        <td><code>agent_end</code></td>
+        <td>The agent has finished generating the response. The full output is available in the <code>response</code> and <code>debugoutput</code> fields. <strong>This is the event you should listen for</strong> to get the final result.</td>
+      </tr>
+      <tr>
+        <td><code>agent_error</code></td>
+        <td>The agent encountered an error during processing. The <code>debugoutput</code> field contains the error message.</td>
+      </tr>
+      <tr>
+        <td><code>agent_cancel</code></td>
+        <td>The message was cancelled by the user before completion. Only messages in <code>agent_queue</code>, <code>agent_start</code>, or <code>agent_output</code> status can be cancelled.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
 </section>
 
 <section id="useragent-message-send">
-<h2><strong>POST</strong> /UserAgent/Message/Send</h2>
+<h2><span class="endpoint-badge post">POST</span> /UserAgent/Message/Send</h2>
 <p>Sends a user message to a deployed agent. The agent must be in running state (status <code>4</code>). Returns immediately with an <code>agenttoken</code> that you use to track the response via WebSocket, polling, or webhook.</p>
 <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
 <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
@@ -4595,7 +4785,7 @@ import type {
 </section>
 
 <section id="useragent-message-detail">
-<h2><strong>POST</strong> /UserAgent/Message/Detail</h2>
+<h2><span class="endpoint-badge post">POST</span> /UserAgent/Message/Detail</h2>
 <p>Retrieves the current status and content of a single message. You can query by either <code>messageguid</code> or <code>agenttoken</code>.</p>
 <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
 <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
@@ -4612,6 +4802,7 @@ import type {
   "errors": [],
   "data": {
     "guid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+    "uuid": "user-uuid-here",
     "sessionkey": "default",
     "content": "What are the latest trends in AI?",
     "response": "Here are the key AI trends for 2026...",
@@ -4627,6 +4818,7 @@ import type {
 <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
 <tbody>
 <tr><td><code>guid</code></td><td><code>string</code></td><td>Message GUID.</td></tr>
+<tr><td><code>uuid</code></td><td><code>string</code></td><td>The account UUID of the user who sent the message.</td></tr>
 <tr><td><code>sessionkey</code></td><td><code>string</code></td><td>The session this message belongs to.</td></tr>
 <tr><td><code>content</code></td><td><code>string</code></td><td>The original user message.</td></tr>
 <tr><td><code>response</code></td><td><code>string</code></td><td>The agent's full response text. Empty until <code>agent_end</code>.</td></tr>
@@ -4641,7 +4833,7 @@ import type {
 </section>
 
 <section id="useragent-message-history">
-<h2><strong>POST</strong> /UserAgent/Message/History</h2>
+<h2><span class="endpoint-badge post">POST</span> /UserAgent/Message/History</h2>
 <p>Retrieves conversation history for a specific agent and session. Messages are returned <strong>newest-first</strong> with cursor-based pagination.</p>
 <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
 <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
@@ -4669,7 +4861,7 @@ import type {
         "createdat": "1743350400"
       }
     ],
-    "count": 2,
+    "count": 1,
     "hasmore": false
   }
 }</code></pre>
@@ -4691,7 +4883,7 @@ POST /UserAgent/Message/History { "useragentguid": "...", "limit": 50, "before":
 </section>
 
 <section id="useragent-message-sessions">
-<h2><strong>POST</strong> /UserAgent/Message/Sessions</h2>
+<h2><span class="endpoint-badge post">POST</span> /UserAgent/Message/Sessions</h2>
 <p>Lists all conversation sessions for an agent. Returns each session's key, message count, last activity time, and the most recent message content.</p>
 <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
 <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
@@ -4733,7 +4925,7 @@ POST /UserAgent/Message/History { "useragentguid": "...", "limit": 50, "before":
 </section>
 
 <section id="useragent-message-deletesession">
-<h2><strong>POST</strong> /UserAgent/Message/DeleteSession</h2>
+<h2><span class="endpoint-badge post">POST</span> /UserAgent/Message/DeleteSession</h2>
 <p>Deletes a session and <strong>all its messages</strong> permanently. This action cannot be undone.</p>
 <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
 <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
@@ -4751,7 +4943,7 @@ POST /UserAgent/Message/History { "useragentguid": "...", "limit": 50, "before":
 </section>
 
 <section id="useragent-message-cancel">
-<h2><strong>POST</strong> /UserAgent/Message/Cancel</h2>
+<h2><span class="endpoint-badge post">POST</span> /UserAgent/Message/Cancel</h2>
 <p>Cancels an in-progress message. Only messages in <code>agent_queue</code>, <code>agent_start</code>, or <code>agent_output</code> status can be cancelled. Messages that have already reached <code>agent_end</code>, <code>agent_error</code>, or <code>agent_cancel</code> cannot be cancelled.</p>
 <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
 <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
@@ -4781,10 +4973,18 @@ POST /UserAgent/Message/History { "useragentguid": "...", "limit": 50, "before":
 <li>Delete a session with <code>/UserAgent/Message/DeleteSession</code> to clear history and free resources</li>
 </ul>
 <pre><code class="language-json">// User A's conversation
-{ "useragentguid": "...", "message": "Hello!", "sessionkey": "user-alice" }
+{
+  "useragentguid": "...",
+  "message": "Hello!",
+  "sessionkey": "user-alice"
+}
 
 // User B's separate conversation with the same agent
-{ "useragentguid": "...", "message": "Hello!", "sessionkey": "user-bob" }</code></pre>
+{
+  "useragentguid": "...",
+  "message": "Hello!",
+  "sessionkey": "user-bob"
+}</code></pre>
 </section>
 
 <section id="thinking-answer-separation">
@@ -4844,7 +5044,9 @@ POST /UserAgent/Message/History { "useragentguid": "...", "limit": 50, "before":
   "status": "agent_end",
   "content": "What are the latest trends in AI?",
   "response": "Here are the key AI trends for 2026...",
-  "endedat": "1743350408"
+  "debugoutput": "Here are the key AI trends for 2026...",
+  "metadata": { "type": "progressGenerate", "raw": "...", "thinking": [], "answer": ["..."] },
+  "endedat": 1743350408
 }</code></pre>
 </section>
 
@@ -4958,6 +5160,9 @@ POST /UserAgent/Message/History { "useragentguid": "...", "limit": 50, "before":
 <tr><td><code>agent_start</code></td><td>Agent has started processing.</td></tr>
 <tr><td><code>agent_output</code></td><td>Agent is actively streaming. <code>debugoutput</code> will contain accumulated text.</td></tr>
 <tr><td><code>agent_end</code></td><td>Agent already finished. <code>debugoutput</code> contains the complete response.</td></tr>
+<tr><td><code>agent_error</code></td><td>Agent encountered an error. <code>debugoutput</code> contains the error message.</td></tr>
+<tr><td><code>agent_cancel</code></td><td>Message was cancelled before completion.</td></tr>
+<tr><td><code>unknown</code></td><td>The <code>agenttoken</code> was not found in the database.</td></tr>
 </tbody>
 </table></div></div>
 
@@ -5015,14 +5220,29 @@ POST /UserAgent/Message/History { "useragentguid": "...", "limit": 50, "before":
 
 <h3>agent_error</h3>
 <p>An error occurred during processing. The <code>message</code> field can take two forms:</p>
-<p><strong>String error</strong> — a human-readable error description:</p>
+<p><strong>String error</strong> — a human-readable error description from exceptions:</p>
 <pre><code class="language-json">{
   "type": "agent_error",
   "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
-  "message": "Bridge timeout",
+  "message": "Could not resolve agent endpoint",
   "result": false
 }</code></pre>
-<p>Common string errors include <code>"Bridge timeout"</code>, <code>"OpenClaw returned HTTP 500"</code>, and <code>"Model not available"</code>.</p>
+<p>Common string errors include <code>"Could not resolve agent endpoint"</code>, <code>"OpenClaw returned HTTP 500"</code>, and <code>"The operation was aborted."</code>.</p>
+<p><strong>Structured error</strong> — when the model returns an invalid response (e.g. <code>"..."</code> or <code>"Error: internal error"</code>), the message contains the same <code>progressGenerate</code> object as <code>agent_output</code>:</p>
+<pre><code class="language-json">{
+  "type": "agent_error",
+  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
+  "message": {
+    "type": "progressGenerate",
+    "task": "Generate",
+    "raw": "...",
+    "thinking": [],
+    "answer": ["..."],
+    "isThinking": false
+  },
+  "result": false
+}</code></pre>
+<p>Always check the type of <code>message</code> — handle both <code>string</code> and <code>object</code> forms in your client.</p>
 
 <h3>agent_cancel</h3>
 <p>Sent when the user cancels a message before the agent completes its response:</p>
@@ -5099,13 +5319,13 @@ POST /UserAgent/Message/History { "useragentguid": "...", "limit": 50, "before":
 <h2>Full Integration Example</h2>
 <p>A typical integration follows this pattern: call the REST API to send a message, then subscribe via WebSocket to stream the response.</p>
 <p><strong>Step 1 — Send a message via REST:</strong></p>
-<pre><code class="language-bash">curl -X POST https://api.wiro.ai/v1/agent/message/send \
-  -H "Authorization: Bearer YOUR_API_KEY" \
+<pre><code class="language-bash">curl -X POST https://api.wiro.ai/v1/UserAgent/Message/Send \
+  -H "x-api-key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "agentguid": "your-agent-guid",
+    "useragentguid": "your-useragent-guid",
     "message": "Explain quantum computing in simple terms",
-    "conversationguid": "optional-conversation-id"
+    "sessionkey": "user-42"
   }'</code></pre>
 <p><strong>Step 2 — Subscribe via WebSocket:</strong></p>
 <pre><code class="language-javascript">const ws = new WebSocket('wss://socket.wiro.ai/v1');
@@ -5129,25 +5349,77 @@ ws.onopen = () => {
 <section id="quick-reference">
 <h2>Quick Reference</h2>
 <pre><code class="language-json">// Subscribe
-{"type": "agent_info", "agenttoken": "aB3xK9..."}
+{
+  "type": "agent_info",
+  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb"
+}
 
 // agent_subscribed
-{"type": "agent_subscribed", "agenttoken": "aB3xK9...", "status": "agent_queue", "result": true}
+{
+  "type": "agent_subscribed",
+  "agenttoken": "aB3xK9...",
+  "status": "agent_queue",
+  "debugoutput": "",
+  "result": true
+}
 
 // agent_start
-{"type": "agent_start", "agenttoken": "aB3xK9...", "message": "", "result": true}
+{
+  "type": "agent_start",
+  "agenttoken": "aB3xK9...",
+  "message": "",
+  "result": true
+}
 
 // agent_output (streaming — emitted multiple times)
-{"type": "agent_output", "agenttoken": "aB3xK9...", "message": {"raw": "Accumulated text...", "speed": "12.5", "wordCount": 28}, "result": true}
+{
+  "type": "agent_output",
+  "agenttoken": "aB3xK9...",
+  "message": {
+    "raw": "Accumulated text so far...",
+    "thinking": [],
+    "answer": ["Accumulated text so far..."],
+    "isThinking": false,
+    "speed": "12.5",
+    "speedType": "words/s",
+    "tokenCount": 35,
+    "wordCount": 28
+  },
+  "result": true
+}
 
 // agent_end (final response)
-{"type": "agent_end", "agenttoken": "aB3xK9...", "message": {"raw": "Complete response...", "speed": "14.2", "wordCount": 118}, "result": true}
+{
+  "type": "agent_end",
+  "agenttoken": "aB3xK9...",
+  "message": {
+    "raw": "Complete response text...",
+    "thinking": [],
+    "answer": ["Complete response text..."],
+    "isThinking": false,
+    "speed": "14.2",
+    "speedType": "words/s",
+    "tokenCount": 156,
+    "wordCount": 118
+  },
+  "result": true
+}
 
 // agent_error
-{"type": "agent_error", "agenttoken": "aB3xK9...", "message": "Bridge timeout", "result": false}
+{
+  "type": "agent_error",
+  "agenttoken": "aB3xK9...",
+  "message": "Bridge timeout",
+  "result": false
+}
 
 // agent_cancel
-{"type": "agent_cancel", "agenttoken": "aB3xK9...", "message": "The operation was aborted.", "result": false}</code></pre>
+{
+  "type": "agent_cancel",
+  "agenttoken": "aB3xK9...",
+  "message": "The operation was aborted.",
+  "result": false
+}</code></pre>
 </section>
 
 </article>
@@ -5211,7 +5483,7 @@ ws.onopen = () => {
 <h1>Agent Webhooks</h1>
 <p class="section-subtitle">Receive agent response notifications via HTTP callbacks.</p>
 
-<section id="how-it-works">
+<section id="webhooks-how-it-works">
 <h2>How It Works</h2>
 <p>When you send a message to an agent via <code>POST /UserAgent/Message/Send</code>, include a <code>callbackurl</code> parameter. Once the agent finishes processing — whether it completes successfully, encounters an error, or the message is cancelled — Wiro sends a POST request to your URL with the result.</p>
 <p>This lets you build fully asynchronous workflows: fire a message and let your backend handle the response whenever it arrives, without polling or maintaining a WebSocket connection.</p>
@@ -5232,36 +5504,100 @@ ws.onopen = () => {
 
 <section id="callback-payload">
 <h2>Callback Payload</h2>
-<p>When the agent finishes, Wiro sends a POST request to your <code>callbackurl</code> with <code>Content-Type: application/json</code>:</p>
+<p>When the agent finishes, Wiro sends a <strong>POST</strong> request to your <code>callbackurl</code> with <code>Content-Type: application/json</code>. The payload contains the complete message result including structured metadata:</p>
+
+<h3>Successful Completion (<code>agent_end</code>)</h3>
 <pre><code class="language-json">{
   "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
   "status": "agent_end",
   "content": "What are today's trending topics?",
-  "response": "Here are today's trending topics...",
+  "response": "Here are today's trending topics in tech...",
+  "debugoutput": "Here are today's trending topics in tech...",
+  "metadata": {
+    "type": "progressGenerate",
+    "task": "Generate",
+    "speed": "14.2",
+    "speedType": "words/s",
+    "elapsedTime": "8.1s",
+    "tokenCount": 156,
+    "wordCount": 118,
+    "raw": "Here are today's trending topics in tech...",
+    "thinking": [],
+    "answer": ["Here are today's trending topics in tech..."],
+    "isThinking": false
+  },
   "endedat": 1712050004
 }</code></pre>
+
+<h3>Error (<code>agent_error</code>)</h3>
+<pre><code class="language-json">{
+  "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "status": "agent_error",
+  "content": "What are today's trending topics?",
+  "response": "Could not resolve agent endpoint",
+  "debugoutput": "Could not resolve agent endpoint",
+  "metadata": {},
+  "endedat": 1712050004
+}</code></pre>
+
+<h3>Cancelled (<code>agent_cancel</code>)</h3>
+<pre><code class="language-json">{
+  "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "status": "agent_cancel",
+  "content": "What are today's trending topics?",
+  "response": "The operation was aborted.",
+  "debugoutput": "The operation was aborted.",
+  "metadata": {},
+  "endedat": 1712050004
+}</code></pre>
+
+<h3>Field Reference</h3>
 <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
 <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
 <tbody>
-<tr><td><code>messageguid</code></td><td>string</td><td>The unique identifier of the message</td></tr>
-<tr><td><code>status</code></td><td>string</td><td>Final status of the message (see below)</td></tr>
-<tr><td><code>content</code></td><td>string</td><td>The original message you sent</td></tr>
-<tr><td><code>response</code></td><td>string</td><td>The agent's full response text</td></tr>
-<tr><td><code>endedat</code></td><td>number</td><td>Unix timestamp (UTC) when processing finished</td></tr>
+<tr><td><code>messageguid</code></td><td>string</td><td>Unique identifier of the message. Use this to correlate with your records.</td></tr>
+<tr><td><code>status</code></td><td>string</td><td>Final status: <code>agent_end</code>, <code>agent_error</code>, or <code>agent_cancel</code>.</td></tr>
+<tr><td><code>content</code></td><td>string</td><td>The original user message you sent.</td></tr>
+<tr><td><code>response</code></td><td>string</td><td>The agent's full response text on success. For errors, contains the error message. For cancellation, contains the abort reason.</td></tr>
+<tr><td><code>debugoutput</code></td><td>string</td><td>Same as <code>response</code> — the full accumulated output text. Included for consistency with the polling API.</td></tr>
+<tr><td><code>metadata</code></td><td>object</td><td>Structured response data. Contains thinking/answer separation, performance metrics, and raw text. Empty object (<code>{}</code>) for error and cancel statuses.</td></tr>
+<tr><td><code>endedat</code></td><td>number</td><td>Unix timestamp (UTC seconds) when processing finished.</td></tr>
 </tbody>
 </table></div></div>
+
+<h3>The <code>metadata</code> Object</h3>
+<p>On successful completion (<code>agent_end</code>), the <code>metadata</code> object contains the structured response with thinking/answer separation and real-time metrics:</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>type</code></td><td>string</td><td>Always <code>"progressGenerate"</code>.</td></tr>
+<tr><td><code>task</code></td><td>string</td><td>Always <code>"Generate"</code>.</td></tr>
+<tr><td><code>raw</code></td><td>string</td><td>The complete response text including any <code>&lt;think&gt;</code> tags.</td></tr>
+<tr><td><code>thinking</code></td><td>array</td><td>Array of reasoning/chain-of-thought blocks extracted from <code>&lt;think&gt;...&lt;/think&gt;</code> tags. Empty if the model doesn't use thinking.</td></tr>
+<tr><td><code>answer</code></td><td>array</td><td>Array of response segments — the content to show the user.</td></tr>
+<tr><td><code>isThinking</code></td><td>boolean</td><td>Always <code>false</code> in webhooks (streaming is complete).</td></tr>
+<tr><td><code>speed</code></td><td>string</td><td>Final generation speed (e.g. <code>"14.2"</code>).</td></tr>
+<tr><td><code>speedType</code></td><td>string</td><td>Speed unit — <code>"words/s"</code>.</td></tr>
+<tr><td><code>elapsedTime</code></td><td>string</td><td>Total generation time (e.g. <code>"8.1s"</code>).</td></tr>
+<tr><td><code>tokenCount</code></td><td>number</td><td>Total tokens generated.</td></tr>
+<tr><td><code>wordCount</code></td><td>number</td><td>Total words in the response.</td></tr>
+</tbody>
+</table></div></div>
+<p>For <code>agent_error</code> and <code>agent_cancel</code>, <code>metadata</code> is an empty object <code>{}</code>. Always check <code>status</code> before accessing metadata fields.</p>
 </section>
 
 <section id="status-values">
 <h2>Status Values</h2>
-<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
-<thead><tr><th>Status</th><th>Description</th></tr></thead>
+<div class="status-table-wrapper">
+<table class="status-table">
+<thead><tr><th>Status</th><th>Description</th><th><code>response</code> contains</th><th><code>metadata</code> contains</th></tr></thead>
 <tbody>
-<tr><td><code>agent_end</code></td><td>Agent completed successfully</td></tr>
-<tr><td><code>agent_error</code></td><td>An error occurred during processing</td></tr>
-<tr><td><code>agent_cancel</code></td><td>Message was cancelled before completion</td></tr>
+<tr><td><code>agent_end</code></td><td>Agent completed successfully</td><td>Full response text</td><td>Structured data with thinking, answer, metrics</td></tr>
+<tr><td><code>agent_error</code></td><td>An error occurred during processing</td><td>Error message string</td><td>Empty object <code>{}</code></td></tr>
+<tr><td><code>agent_cancel</code></td><td>Message was cancelled before completion</td><td>Cancellation reason</td><td>Empty object <code>{}</code></td></tr>
 </tbody>
-</table></div></div>
+</table>
+</div>
 </section>
 
 <section id="retry-policy">
@@ -5289,88 +5625,35 @@ ws.onopen = () => {
 
 <section id="code-examples">
 <h2>Code Examples</h2>
-
-<h3>Webhook Receiver — Node.js (Express)</h3>
-<pre><code class="language-javascript">const express = require('express');
-const app = express();
-app.use(express.json());
-
-app.post('/webhooks/agent-response', (req, res) => {
-  const { messageguid, status, content, response, endedat } = req.body;
-
-  if (status === 'agent_end') {
-    console.log(`Agent completed: ${messageguid}`);
-    console.log(`Response: ${response}`);
-  } else if (status === 'agent_error') {
-    console.error(`Agent error for ${messageguid}: ${response}`);
-  } else if (status === 'agent_cancel') {
-    console.log(`Agent cancelled: ${messageguid}`);
-  }
-
-  res.sendStatus(200);
-});
-
-app.listen(3000);</code></pre>
-
-<h3>Webhook Receiver — Python (Flask)</h3>
-<pre><code class="language-python">from flask import Flask, request, jsonify
-
-app = Flask(__name__)
-
-@app.route('/webhooks/agent-response', methods=['POST'])
-def agent_webhook():
-    data = request.json
-    messageguid = data.get('messageguid')
-    status = data.get('status')
-    response_text = data.get('response')
-
-    if status == 'agent_end':
-        print(f"Agent completed: {messageguid}")
-        print(f"Response: {response_text}")
-    elif status == 'agent_error':
-        print(f"Agent error for {messageguid}: {response_text}")
-    elif status == 'agent_cancel':
-        print(f"Agent cancelled: {messageguid}")
-
-    return jsonify({"ok": True}), 200
-
-if __name__ == '__main__':
-    app.run(port=3000)</code></pre>
-
-<h3>Webhook Receiver — PHP</h3>
-<pre><code class="language-php">&lt;?php
-$payload = json_decode(file_get_contents('php://input'), true);
-
-$messageguid = $payload['messageguid'] ?? '';
-$status = $payload['status'] ?? '';
-$response = $payload['response'] ?? '';
-
-if ($status === 'agent_end') {
-    error_log("Agent completed: $messageguid");
-    error_log("Response: $response");
-} elseif ($status === 'agent_error') {
-    error_log("Agent error for $messageguid: $response");
-} elseif ($status === 'agent_cancel') {
-    error_log("Agent cancelled: $messageguid");
-}
-
-http_response_code(200);
-echo json_encode(['ok' =&gt; true]);</code></pre>
-
-<h3>Sending a Message with Callback — curl</h3>
-<pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "message": "Summarize today'\''s news",
-    "sessionkey": "user-123",
-    "callbackurl": "https://your-server.com/webhooks/agent-response"
-  }'</code></pre>
+<p>Below are complete webhook receiver implementations and a sample request with a callback URL. Select your language from the code panel.</p>
 </section>
 
 </article>
 
+<script type="application/json" class="code-examples-data">
+[
+  {
+    "label": "curl",
+    "language": "bash",
+    "code": "# Send a message with a callback URL\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/Message/Send\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"useragentguid\": \"your-useragent-guid\",\n    \"message\": \"Summarize today'\\''s news\",\n    \"sessionkey\": \"user-123\",\n    \"callbackurl\": \"https://your-server.com/webhooks/agent-response\"\n  }'"
+  },
+  {
+    "label": "Node.js",
+    "language": "javascript",
+    "code": "// Webhook Receiver — Express\nconst express = require('express');\nconst app = express();\napp.use(express.json());\n\napp.post('/webhooks/agent-response', (req, res) => {\n  const { messageguid, status, response, metadata } = req.body;\n\n  if (status === 'agent_end') {\n    console.log(`Agent completed: ${messageguid}`);\n    console.log(`Response: ${response}`);\n\n    // Access structured data from metadata\n    if (metadata && metadata.answer) {\n      console.log(`Answer: ${metadata.answer.join('')}`);\n      console.log(`Speed: ${metadata.speed} ${metadata.speedType}`);\n      console.log(`Tokens: ${metadata.tokenCount}, Words: ${metadata.wordCount}`);\n    }\n    if (metadata && metadata.thinking && metadata.thinking.length > 0) {\n      console.log(`Thinking steps: ${metadata.thinking.length}`);\n    }\n  } else if (status === 'agent_error') {\n    console.error(`Agent error for ${messageguid}: ${response}`);\n  } else if (status === 'agent_cancel') {\n    console.log(`Agent cancelled: ${messageguid}`);\n  }\n\n  // Always respond 200 immediately\n  res.sendStatus(200);\n});\n\napp.listen(3000);"
+  },
+  {
+    "label": "Python",
+    "language": "python",
+    "code": "# Webhook Receiver — Flask\nfrom flask import Flask, request, jsonify\n\napp = Flask(__name__)\n\n@app.route('/webhooks/agent-response', methods=['POST'])\ndef agent_webhook():\n    data = request.json\n    messageguid = data.get('messageguid')\n    status = data.get('status')\n    response_text = data.get('response')\n    metadata = data.get('metadata', {})\n\n    if status == 'agent_end':\n        print(f\"Agent completed: {messageguid}\")\n        print(f\"Response: {response_text}\")\n\n        # Access structured data from metadata\n        answer = metadata.get('answer', [])\n        thinking = metadata.get('thinking', [])\n        print(f\"Answer parts: {len(answer)}\")\n        print(f\"Speed: {metadata.get('speed')} {metadata.get('speedType')}\")\n        print(f\"Tokens: {metadata.get('tokenCount')}, Words: {metadata.get('wordCount')}\")\n        if thinking:\n            print(f\"Thinking steps: {len(thinking)}\")\n    elif status == 'agent_error':\n        print(f\"Agent error for {messageguid}: {response_text}\")\n    elif status == 'agent_cancel':\n        print(f\"Agent cancelled: {messageguid}\")\n\n    return jsonify({\"ok\": True}), 200\n\nif __name__ == '__main__':\n    app.run(port=3000)"
+  },
+  {
+    "label": "PHP",
+    "language": "php",
+    "code": "<?php\n// Webhook Receiver\n$payload = json_decode(file_get_contents('php://input'), true);\n\n$messageguid = $payload['messageguid'] ?? '';\n$status = $payload['status'] ?? '';\n$response = $payload['response'] ?? '';\n$metadata = $payload['metadata'] ?? [];\n\nif ($status === 'agent_end') {\n    error_log(\"Agent completed: $messageguid\");\n    error_log(\"Response: $response\");\n\n    // Access structured data from metadata\n    $answer = $metadata['answer'] ?? [];\n    $thinking = $metadata['thinking'] ?? [];\n    error_log(\"Speed: \" . ($metadata['speed'] ?? '') . \" \" . ($metadata['speedType'] ?? ''));\n    error_log(\"Tokens: \" . ($metadata['tokenCount'] ?? 0) . \", Words: \" . ($metadata['wordCount'] ?? 0));\n    if (!empty($thinking)) {\n        error_log(\"Thinking steps: \" . count($thinking));\n    }\n} elseif ($status === 'agent_error') {\n    error_log(\"Agent error for $messageguid: $response\");\n} elseif ($status === 'agent_cancel') {\n    error_log(\"Agent cancelled: $messageguid\");\n}\n\nhttp_response_code(200);\necho json_encode(['ok' => true]);"
+  }
+]
+</script>
             </div>
 
             <!-- ==================== AGENT CREDENTIALS ==================== -->
@@ -5383,67 +5666,448 @@ echo json_encode(['ok' =&gt; true]);</code></pre>
 
 <section id="overview">
 <h2>Overview</h2>
-<p>Agents connect to external services — social media platforms, ad networks, email tools, CRMs — via two methods:</p>
+<p>After deploying an agent, call <code>POST /UserAgent/Detail</code> to see its full configuration. The response includes:</p>
+<ul>
+<li><code>configuration.credentials</code> — which services the agent connects to and which fields are editable (<code>_editable: true</code>)</li>
+<li><code>configuration.custom_skills</code> — configurable automated tasks the agent can run on a schedule</li>
+<li><code>setuprequired</code> — whether credentials still need to be filled before the agent can start</li>
+</ul>
+<p>Use this response to build your credential form or automate setup. Then update credentials and skills via <code>POST /UserAgent/Update</code>.</p>
+
+<h3>Two Types of Credentials</h3>
 <ol>
-<li><strong>API Key credentials</strong> — set directly via <code>POST /UserAgent/Update</code></li>
-<li><strong>OAuth credentials</strong> — redirect-based authorization flow via <code>POST /UserAgentOAuth/{Provider}Connect</code></li>
+<li><strong>API Key credentials</strong> — set directly via <code>POST /UserAgent/Update</code> (Telegram, WordPress, Gmail, Brevo, etc.)</li>
+<li><strong>OAuth credentials</strong> — redirect-based authorization flow via <code>POST /UserAgentOAuth/{Provider}Connect</code> (Twitter, Instagram, Facebook, Google Ads, etc.)</li>
 </ol>
-<p>API keys are simple key-value pairs you provide. OAuth requires a browser redirect where the end user authorizes access on the provider's site, and Wiro handles the token exchange server-side.</p>
 </section>
 
 <section id="setting-api-key-credentials">
-<h2>Setting API Key Credentials</h2>
-<p>Use <code>POST /UserAgent/Update</code> with <code>configuration.credentials</code> in the request body to set API keys for services that don't require OAuth.</p>
+<h2>Setting Credentials &amp; Skills</h2>
+<p>Use <code>POST /UserAgent/Update</code> with <code>configuration</code> to set credentials and custom skills. You can update <code>credentials</code>, <code>custom_skills</code>, or both in a single request.</p>
 
-<h3>Example: Setting a Brevo API Key</h3>
+<h3>Request Format</h3>
 <pre><code class="language-json">POST /UserAgent/Update
 {
   "guid": "your-useragent-guid",
   "configuration": {
     "credentials": {
-      "brevo": {
-        "apiKey": "xkeysib-abc123..."
+      "&lt;service&gt;": {
+        "&lt;field&gt;": "value"
+      }
+    },
+    "custom_skills": [
+      { "key": "skill-name", "enabled": true, "interval": "0 9 * * *" }
+    ]
+  }
+}</code></pre>
+<div class="info-callout"><strong>Tip:</strong> Call <code>POST /UserAgent/Detail</code> first to see which fields are available and editable (<code>_editable: true</code>). Only editable fields can be set — non-editable fields are silently ignored.</div>
+
+<h3>Credential Configuration by Agent</h3>
+<p>Each agent requires different credentials. Select your agent below to see exactly which credentials to configure and the complete <code>POST /UserAgent/Update</code> request.</p>
+
+<div class="content-tabs">
+<input type="radio" name="cred-tabs" id="ct-social" checked>
+<input type="radio" name="cred-tabs" id="ct-blog">
+<input type="radio" name="cred-tabs" id="ct-appreview">
+<input type="radio" name="cred-tabs" id="ct-appevent">
+<input type="radio" name="cred-tabs" id="ct-push">
+<input type="radio" name="cred-tabs" id="ct-nlmanager">
+<input type="radio" name="cred-tabs" id="ct-leadgen">
+<input type="radio" name="cred-tabs" id="ct-googleads">
+<input type="radio" name="cred-tabs" id="ct-metaads">
+
+<div class="content-tabs-nav">
+  <label for="ct-social">Social Manager</label>
+  <label for="ct-blog">Blog Editor</label>
+  <label for="ct-appreview">App Review</label>
+  <label for="ct-appevent">App Events</label>
+  <label for="ct-push">Push Notifications</label>
+  <label for="ct-nlmanager">Newsletter</label>
+  <label for="ct-leadgen">Lead Gen</label>
+  <label for="ct-googleads">Google Ads</label>
+  <label for="ct-metaads">Meta Ads</label>
+</div>
+
+<div class="content-tab-panel" data-tab="social">
+<p>Manages social media accounts — posts, replies, scheduling across Twitter/X, Instagram, Facebook, LinkedIn, TikTok. OAuth providers are connected separately via the <a href="#oauth-authorization-flow">OAuth flow</a>.</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Service</th><th>Type</th><th>Fields</th></tr></thead>
+<tbody>
+<tr><td><code>twitter</code></td><td>OAuth</td><td>Connected via <code>XConnect</code>. Set <code>authMethod</code> to <code>"wiro"</code> or <code>"own"</code>.</td></tr>
+<tr><td><code>instagram</code></td><td>OAuth</td><td>Connected via <code>IGConnect</code>.</td></tr>
+<tr><td><code>facebook</code></td><td>OAuth</td><td>Connected via <code>FBConnect</code>.</td></tr>
+<tr><td><code>linkedin</code></td><td>OAuth</td><td>Connected via <code>LIConnect</code>. Also set <code>organizationId</code>.</td></tr>
+<tr><td><code>tiktok</code></td><td>OAuth</td><td>Connected via <code>TikTokConnect</code>.</td></tr>
+<tr><td><code>gmail</code></td><td>API Key</td><td><code>account</code>, <code>appPassword</code></td></tr>
+<tr><td><code>telegram</code></td><td>API Key</td><td><code>botToken</code>, <code>allowedUsers</code>, <code>sessionMode</code></td></tr>
+</tbody>
+</table></div></div>
+<pre><code class="language-json">POST /UserAgent/Update
+{
+  "guid": "your-useragent-guid",
+  "configuration": {
+    "credentials": {
+      "gmail": {
+        "account": "agent@company.com",
+        "appPassword": "xxxx xxxx xxxx xxxx"
+      },
+      "telegram": {
+        "botToken": "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11",
+        "allowedUsers": ["761381461"],
+        "sessionMode": [
+          { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
+          { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
+        ]
       }
     }
   }
 }</code></pre>
+<div class="info-callout"><strong>Note:</strong> Social media accounts (Twitter, Instagram, etc.) are connected via the <a href="#oauth-authorization-flow">OAuth flow</a>, not via Update. Use Update only for <code>gmail</code> and <code>telegram</code> credentials.</div>
+</div>
 
-<h3>Example: Setting WordPress Credentials</h3>
+<div class="content-tab-panel" data-tab="blog">
+<p>Publishes blog posts to WordPress, monitors a Gmail inbox for content requests.</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Service</th><th>Fields</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>wordpress</code></td><td><code>url</code>, <code>user</code>, <code>appPassword</code></td><td>WordPress site URL, username, and application password</td></tr>
+<tr><td><code>gmail</code></td><td><code>account</code>, <code>appPassword</code></td><td>Gmail address + Google App Password for inbox monitoring</td></tr>
+<tr><td><code>telegram</code></td><td><code>botToken</code>, <code>allowedUsers</code>, <code>sessionMode</code></td><td>Telegram bot for operator notifications</td></tr>
+</tbody>
+</table></div></div>
 <pre><code class="language-json">POST /UserAgent/Update
 {
   "guid": "your-useragent-guid",
   "configuration": {
     "credentials": {
       "wordpress": {
-        "siteUrl": "https://your-site.com",
-        "username": "admin",
-        "applicationPassword": "xxxx xxxx xxxx xxxx"
+        "url": "https://blog.example.com",
+        "user": "WiroBlogAgent",
+        "appPassword": "xxxx xxxx xxxx xxxx"
+      },
+      "gmail": {
+        "account": "agent@company.com",
+        "appPassword": "xxxx xxxx xxxx xxxx"
+      },
+      "telegram": {
+        "botToken": "123456:ABC-DEF1234ghIkl",
+        "allowedUsers": ["761381461"],
+        "sessionMode": [
+          { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
+          { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
+        ]
       }
     }
   }
 }</code></pre>
+</div>
 
-<h3>API Key Credential Types</h3>
+<div class="content-tab-panel" data-tab="appreview">
+<p>Monitors and replies to App Store and Google Play reviews.</p>
 <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
-<thead><tr><th>Service</th><th>Key Fields</th><th>Notes</th></tr></thead>
+<thead><tr><th>Service</th><th>Fields</th><th>Description</th></tr></thead>
 <tbody>
-<tr><td><code>brevo</code></td><td><code>apiKey</code></td><td>Brevo (formerly Sendinblue) email API</td></tr>
-<tr><td><code>sendgrid</code></td><td><code>apiKey</code></td><td>SendGrid email delivery</td></tr>
-<tr><td><code>wordpress</code></td><td><code>siteUrl</code>, <code>username</code>, <code>applicationPassword</code></td><td>WordPress REST API</td></tr>
-<tr><td><code>firebase</code></td><td><code>serviceAccountKey</code></td><td>Firebase Admin SDK</td></tr>
-<tr><td><code>gmail</code></td><td><code>serviceAccountKey</code>, <code>delegatedEmail</code></td><td>Gmail API via service account</td></tr>
-<tr><td><code>apollo</code></td><td><code>apiKey</code></td><td>Apollo.io lead database</td></tr>
-<tr><td><code>lemlist</code></td><td><code>apiKey</code></td><td>Lemlist outreach campaigns</td></tr>
-<tr><td><code>telegram</code></td><td><code>botToken</code></td><td>Telegram Bot API</td></tr>
-<tr><td><code>newsletter</code></td><td><code>testEmail</code></td><td>Test email address for previews</td></tr>
+<tr><td><code>appstore</code></td><td><code>keyId</code>, <code>issuerId</code>, <code>privateKeyBase64</code>, <code>appIds</code>, <code>supportEmail</code></td><td>App Store Connect API credentials</td></tr>
+<tr><td><code>googleplay</code></td><td><code>serviceAccountJsonBase64</code>, <code>packageNames</code>, <code>supportEmail</code></td><td>Google Play service account</td></tr>
+<tr><td><code>telegram</code></td><td><code>botToken</code>, <code>allowedUsers</code>, <code>sessionMode</code></td><td>Telegram bot for operator notifications</td></tr>
 </tbody>
 </table></div></div>
-<p>All credential fields are optional — only set the ones your agent requires. The agent's configuration template defines which credentials are available.</p>
+<pre><code class="language-json">POST /UserAgent/Update
+{
+  "guid": "your-useragent-guid",
+  "configuration": {
+    "credentials": {
+      "appstore": {
+        "keyId": "ABC1234DEF",
+        "issuerId": "12345678-1234-1234-1234-123456789012",
+        "privateKeyBase64": "LS0tLS1CRUdJTi...",
+        "appIds": ["6479306352"],
+        "supportEmail": "support@company.com"
+      },
+      "googleplay": {
+        "serviceAccountJsonBase64": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii...",
+        "packageNames": ["com.example.app"],
+        "supportEmail": "support@company.com"
+      },
+      "telegram": {
+        "botToken": "123456:ABC-DEF1234ghIkl",
+        "allowedUsers": ["761381461"],
+        "sessionMode": [
+          { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
+          { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
+        ]
+      }
+    }
+  }
+}</code></pre>
+</div>
+
+<div class="content-tab-panel" data-tab="appevent">
+<p>Suggests and creates App Store in-app events based on holidays and trends.</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Service</th><th>Fields</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>appstore</code></td><td><code>keyId</code>, <code>issuerId</code>, <code>privateKeyBase64</code>, <code>appIds</code></td><td>App Store Connect API credentials</td></tr>
+<tr><td><code>telegram</code></td><td><code>botToken</code>, <code>allowedUsers</code>, <code>sessionMode</code></td><td>Telegram bot for operator notifications</td></tr>
+</tbody>
+</table></div></div>
+<pre><code class="language-json">POST /UserAgent/Update
+{
+  "guid": "your-useragent-guid",
+  "configuration": {
+    "credentials": {
+      "appstore": {
+        "keyId": "ABC1234DEF",
+        "issuerId": "12345678-1234-1234-1234-123456789012",
+        "privateKeyBase64": "LS0tLS1CRUdJTi...",
+        "appIds": ["6479306352"]
+      },
+      "telegram": {
+        "botToken": "123456:ABC-DEF1234ghIkl",
+        "allowedUsers": ["761381461"],
+        "sessionMode": [
+          { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
+          { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
+        ]
+      }
+    }
+  }
+}</code></pre>
+</div>
+
+<div class="content-tab-panel" data-tab="push">
+<p>Sends targeted push notifications via Firebase Cloud Messaging.</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Service</th><th>Fields</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>firebase</code></td><td><code>accounts[]</code></td><td>Array of Firebase projects. Each: <code>appName</code>, <code>serviceAccountJsonBase64</code>, <code>apps</code> (platform + id), <code>topics</code> (array of <code>{topicKey, topicDesc}</code>)</td></tr>
+<tr><td><code>telegram</code></td><td><code>botToken</code>, <code>allowedUsers</code>, <code>sessionMode</code></td><td>Telegram bot for operator notifications</td></tr>
+</tbody>
+</table></div></div>
+<pre><code class="language-json">POST /UserAgent/Update
+{
+  "guid": "your-useragent-guid",
+  "configuration": {
+    "credentials": {
+      "firebase": {
+        "accounts": [{
+          "appName": "My App",
+          "serviceAccountJsonBase64": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii...",
+          "apps": [
+            { "platform": "ios", "id": "6479306352" },
+            { "platform": "android", "id": "com.example.app" }
+          ],
+          "topics": [
+            { "topicKey": "locale_en", "topicDesc": "English-speaking users" },
+            { "topicKey": "tier_paid", "topicDesc": "Paid subscribers" }
+          ]
+        }]
+      },
+      "telegram": {
+        "botToken": "123456:ABC-DEF1234ghIkl",
+        "allowedUsers": ["761381461"],
+        "sessionMode": [
+          { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
+          { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
+        ]
+      }
+    }
+  }
+}</code></pre>
+</div>
+
+<div class="content-tab-panel" data-tab="nlmanager">
+<p>Creates and sends newsletters via Brevo, SendGrid, HubSpot, or Mailchimp.</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Service</th><th>Type</th><th>Fields</th></tr></thead>
+<tbody>
+<tr><td><code>brevo</code></td><td>API Key</td><td><code>apiKey</code></td></tr>
+<tr><td><code>sendgrid</code></td><td>API Key</td><td><code>apiKey</code></td></tr>
+<tr><td><code>hubspot</code></td><td>OAuth</td><td>Connected via <code>HubSpotConnect</code></td></tr>
+<tr><td><code>mailchimp</code></td><td>OAuth/Key</td><td>OAuth via <code>MailchimpConnect</code> or set <code>apiKey</code> directly</td></tr>
+<tr><td><code>newsletter</code></td><td>Config</td><td><code>testEmail</code></td></tr>
+<tr><td><code>telegram</code></td><td>API Key</td><td><code>botToken</code>, <code>allowedUsers</code>, <code>sessionMode</code></td></tr>
+</tbody>
+</table></div></div>
+<pre><code class="language-json">POST /UserAgent/Update
+{
+  "guid": "your-useragent-guid",
+  "configuration": {
+    "credentials": {
+      "brevo": { "apiKey": "xkeysib-abc123..." },
+      "sendgrid": { "apiKey": "SG.xxxx..." },
+      "newsletter": { "testEmail": "test@company.com" },
+      "telegram": {
+        "botToken": "123456:ABC-DEF1234ghIkl",
+        "allowedUsers": ["761381461"],
+        "sessionMode": [
+          { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
+          { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
+        ]
+      }
+    }
+  }
+}</code></pre>
+<div class="info-callout"><strong>Note:</strong> HubSpot and Mailchimp are connected via <a href="#oauth-authorization-flow">OAuth</a>. Mailchimp also accepts a direct <code>apiKey</code> without OAuth.</div>
+</div>
+
+<div class="content-tab-panel" data-tab="leadgen">
+<p>Finds leads and manages outreach campaigns via Apollo.io, Lemlist, and HubSpot.</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Service</th><th>Type</th><th>Fields</th></tr></thead>
+<tbody>
+<tr><td><code>apollo</code></td><td>API Key</td><td><code>apiKey</code>, <code>masterApiKey</code> (optional, for sequences)</td></tr>
+<tr><td><code>lemlist</code></td><td>API Key</td><td><code>apiKey</code></td></tr>
+<tr><td><code>hubspot</code></td><td>OAuth</td><td>Connected via <code>HubSpotConnect</code></td></tr>
+<tr><td><code>telegram</code></td><td>API Key</td><td><code>botToken</code>, <code>allowedUsers</code>, <code>sessionMode</code></td></tr>
+</tbody>
+</table></div></div>
+<pre><code class="language-json">POST /UserAgent/Update
+{
+  "guid": "your-useragent-guid",
+  "configuration": {
+    "credentials": {
+      "apollo": {
+        "apiKey": "your-apollo-api-key",
+        "masterApiKey": "your-master-key"
+      },
+      "lemlist": { "apiKey": "your-lemlist-key" },
+      "telegram": {
+        "botToken": "123456:ABC-DEF1234ghIkl",
+        "allowedUsers": ["761381461"],
+        "sessionMode": [
+          { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
+          { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
+        ]
+      }
+    }
+  }
+}</code></pre>
+</div>
+
+<div class="content-tab-panel" data-tab="googleads">
+<p>Manages Google Ads campaigns, keywords, and ad copy.</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Service</th><th>Type</th><th>Fields</th></tr></thead>
+<tbody>
+<tr><td><code>googleads</code></td><td>OAuth + Config</td><td>OAuth via <code>GAdsConnect</code>, then set <code>customerId</code> via <code>GAdsSetCustomerId</code>. Also set <code>developerToken</code> and <code>managerCustomerId</code> for "own" mode.</td></tr>
+<tr><td><code>website</code></td><td>Config</td><td><code>urls</code> — array of <code>{ websiteName, url }</code></td></tr>
+<tr><td><code>appstore</code></td><td>Config</td><td><code>apps</code> — array of <code>{ appName, appId }</code></td></tr>
+<tr><td><code>googleplay</code></td><td>Config</td><td><code>apps</code> — array of <code>{ appName, packageName }</code></td></tr>
+<tr><td><code>telegram</code></td><td>API Key</td><td><code>botToken</code>, <code>allowedUsers</code>, <code>sessionMode</code></td></tr>
+</tbody>
+</table></div></div>
+<pre><code class="language-json">POST /UserAgent/Update
+{
+  "guid": "your-useragent-guid",
+  "configuration": {
+    "credentials": {
+      "website": {
+        "urls": [{ "websiteName": "Main Site", "url": "https://example.com" }]
+      },
+      "appstore": {
+        "apps": [{ "appName": "My iOS App", "appId": "6479306352" }]
+      },
+      "googleplay": {
+        "apps": [{ "appName": "My Android App", "packageName": "com.example.app" }]
+      },
+      "telegram": {
+        "botToken": "123456:ABC-DEF1234ghIkl",
+        "allowedUsers": ["761381461"],
+        "sessionMode": [
+          { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
+          { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
+        ]
+      }
+    }
+  }
+}</code></pre>
+<div class="info-callout"><strong>Note:</strong> Google Ads is connected via <a href="#oauth-authorization-flow">OAuth</a>. After connecting, set the customer ID via <code>POST /UserAgentOAuth/GAdsSetCustomerId</code>.</div>
+</div>
+
+<div class="content-tab-panel" data-tab="metaads">
+<p>Manages Meta (Facebook/Instagram) ad campaigns and creatives.</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Service</th><th>Type</th><th>Fields</th></tr></thead>
+<tbody>
+<tr><td><code>metaads</code></td><td>OAuth + Config</td><td>OAuth via <code>MetaAdsConnect</code>, then set ad account via <code>MetaAdsSetAdAccount</code>. Also set <code>pageId</code> for Facebook page association.</td></tr>
+<tr><td><code>website</code></td><td>Config</td><td><code>urls</code> — array of <code>{ websiteName, url }</code></td></tr>
+<tr><td><code>appstore</code></td><td>Config</td><td><code>apps</code> — array of <code>{ appName, appId }</code></td></tr>
+<tr><td><code>googleplay</code></td><td>Config</td><td><code>apps</code> — array of <code>{ appName, packageName }</code></td></tr>
+<tr><td><code>telegram</code></td><td>API Key</td><td><code>botToken</code>, <code>allowedUsers</code>, <code>sessionMode</code></td></tr>
+</tbody>
+</table></div></div>
+<pre><code class="language-json">POST /UserAgent/Update
+{
+  "guid": "your-useragent-guid",
+  "configuration": {
+    "credentials": {
+      "website": {
+        "urls": [{ "websiteName": "Landing Page", "url": "https://example.com" }]
+      },
+      "appstore": {
+        "apps": [{ "appName": "My iOS App", "appId": "6479306352" }]
+      },
+      "googleplay": {
+        "apps": [{ "appName": "My Android App", "packageName": "com.example.app" }]
+      },
+      "telegram": {
+        "botToken": "123456:ABC-DEF1234ghIkl",
+        "allowedUsers": ["761381461"],
+        "sessionMode": [
+          { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
+          { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
+        ]
+      }
+    }
+  }
+}</code></pre>
+<div class="info-callout"><strong>Note:</strong> Meta Ads is connected via <a href="#oauth-authorization-flow">OAuth</a>. After connecting, set the ad account via <code>POST /UserAgentOAuth/MetaAdsSetAdAccount</code>.</div>
+</div>
+
+</div>
+
+<h3>Credential Field Reference</h3>
+<p>Quick reference for all credential field names across services:</p>
+<div class="status-table-wrapper">
+<table class="status-table">
+<thead><tr><th>Service Key</th><th>Editable Fields</th></tr></thead>
+<tbody>
+<tr><td><code>telegram</code></td><td><code>botToken</code>, <code>allowedUsers</code>, <code>sessionMode</code></td></tr>
+<tr><td><code>wordpress</code></td><td><code>url</code>, <code>user</code>, <code>appPassword</code></td></tr>
+<tr><td><code>gmail</code></td><td><code>account</code>, <code>appPassword</code></td></tr>
+<tr><td><code>brevo</code></td><td><code>apiKey</code></td></tr>
+<tr><td><code>sendgrid</code></td><td><code>apiKey</code></td></tr>
+<tr><td><code>apollo</code></td><td><code>apiKey</code>, <code>masterApiKey</code></td></tr>
+<tr><td><code>lemlist</code></td><td><code>apiKey</code></td></tr>
+<tr><td><code>newsletter</code></td><td><code>testEmail</code></td></tr>
+<tr><td><code>appstore</code></td><td><code>keyId</code>, <code>issuerId</code>, <code>privateKeyBase64</code>, <code>appIds</code> — or <code>apps</code> array for ads agents</td></tr>
+<tr><td><code>googleplay</code></td><td><code>serviceAccountJsonBase64</code>, <code>packageNames</code> — or <code>apps</code> array for ads agents</td></tr>
+<tr><td><code>firebase</code></td><td><code>accounts[]</code>: <code>appName</code>, <code>serviceAccountJsonBase64</code>, <code>apps</code> [{platform,id}], <code>topics</code> [{topicKey,topicDesc}]</td></tr>
+<tr><td><code>website</code></td><td><code>urls</code> array of <code>{ websiteName, url }</code></td></tr>
+<tr><td><code>twitter</code></td><td>OAuth — <code>authMethod</code> (own: + <code>clientId</code>, <code>clientSecret</code>)</td></tr>
+<tr><td><code>instagram</code></td><td>OAuth — <code>authMethod</code> (own: + <code>appId</code>, <code>appSecret</code>)</td></tr>
+<tr><td><code>facebook</code></td><td>OAuth — <code>authMethod</code> (own: + <code>appId</code>, <code>appSecret</code>)</td></tr>
+<tr><td><code>linkedin</code></td><td>OAuth — <code>authMethod</code>, <code>organizationId</code> (own: + <code>clientId</code>, <code>clientSecret</code>)</td></tr>
+<tr><td><code>tiktok</code></td><td>OAuth — <code>authMethod</code> (own: + <code>clientKey</code>, <code>clientSecret</code>)</td></tr>
+<tr><td><code>googleads</code></td><td>OAuth — <code>authMethod</code>, <code>customerId</code>, <code>developerToken</code>, <code>managerCustomerId</code> (own: + <code>clientId</code>, <code>clientSecret</code>)</td></tr>
+<tr><td><code>metaads</code></td><td>OAuth — <code>authMethod</code>, <code>adAccountId</code>, <code>pageId</code> (own: + <code>appId</code>, <code>appSecret</code>)</td></tr>
+<tr><td><code>hubspot</code></td><td>OAuth — <code>authMethod</code> (own: + <code>clientId</code>, <code>clientSecret</code>)</td></tr>
+<tr><td><code>mailchimp</code></td><td>OAuth — <code>authMethod</code>, <code>apiKey</code> (own: + <code>clientId</code>, <code>clientSecret</code>)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Setup Required State</h3>
+<p>If an agent has required (non-optional) credentials that haven't been filled in, the agent is in <strong>Setup Required</strong> state (status <code>6</code>) and cannot be started. After setting all required credentials via Update, the status automatically changes to <code>0</code> (Stopped) and you can call Start.</p>
+<p>Check the <code>setuprequired</code> boolean in <code>UserAgent/Detail</code> or <code>UserAgent/MyAgents</code> responses to determine if credentials still need to be configured.</p>
 </section>
 
 <section id="oauth-authorization-flow">
 <h2>OAuth Authorization Flow</h2>
-<p>For services that require user authorization (social media accounts, ad platforms, CRMs), Wiro implements a full OAuth flow. Your backend initiates the flow, the user authorizes in their browser, and Wiro stores the tokens securely.</p>
+<p>For services that require user authorization (social media accounts, ad platforms, CRMs), Wiro implements a full OAuth flow. The entire process is <strong>fully white-label</strong> — your end-users interact only with your app and the provider's consent screen. They never see or visit wiro.ai at any point.</p>
+
+<div class="info-callout"><strong>Key point:</strong> The <code>redirectUrl</code> you pass to the Connect endpoint is <strong>your own URL</strong>. After authorization, users are redirected back to your app — not to Wiro. Any HTTPS URL is accepted. Use <code>http://localhost</code> or <code>http://127.0.0.1</code> for development.</div>
 
 <h3>Supported OAuth Providers</h3>
 <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
@@ -5452,47 +6116,58 @@ echo json_encode(['ok' =&gt; true]);</code></pre>
 <tr><td>Twitter/X</td><td><code>XConnect</code></td><td><code>x_connected=true&amp;x_username=...</code></td><td><code>x_error=...</code></td></tr>
 <tr><td>TikTok</td><td><code>TikTokConnect</code></td><td><code>tiktok_connected=true&amp;tiktok_username=...</code></td><td><code>tiktok_error=...</code></td></tr>
 <tr><td>Instagram</td><td><code>IGConnect</code></td><td><code>ig_connected=true&amp;ig_username=...</code></td><td><code>ig_error=...</code></td></tr>
-<tr><td>Facebook</td><td><code>FBConnect</code></td><td><code>fb_connected=true&amp;fb_page_name=...</code></td><td><code>fb_error=...</code></td></tr>
+<tr><td>Facebook</td><td><code>FBConnect</code></td><td><code>fb_connected=true&amp;fb_pagename=...</code></td><td><code>fb_error=...</code></td></tr>
 <tr><td>LinkedIn</td><td><code>LIConnect</code></td><td><code>li_connected=true&amp;li_name=...</code></td><td><code>li_error=...</code></td></tr>
-<tr><td>Google Ads</td><td><code>GAdsConnect</code></td><td><code>gads_connected=true&amp;gads_email=...</code></td><td><code>gads_error=...</code></td></tr>
-<tr><td>Meta Ads</td><td><code>MetaAdsConnect</code></td><td><code>metaads_connected=true</code></td><td><code>metaads_error=...</code></td></tr>
-<tr><td>HubSpot</td><td><code>HubSpotConnect</code></td><td><code>hubspot_connected=true</code></td><td><code>hubspot_error=...</code></td></tr>
-<tr><td>Mailchimp</td><td><code>MailchimpConnect</code></td><td><code>mailchimp_connected=true</code></td><td><code>mailchimp_error=...</code></td></tr>
+<tr><td>Google Ads</td><td><code>GAdsConnect</code></td><td><code>gads_connected=true&amp;gads_accounts=[...]</code></td><td><code>gads_error=...</code></td></tr>
+<tr><td>Meta Ads</td><td><code>MetaAdsConnect</code></td><td><code>metaads_connected=true&amp;metaads_accounts=[...]</code></td><td><code>metaads_error=...</code></td></tr>
+<tr><td>HubSpot</td><td><code>HubSpotConnect</code></td><td><code>hubspot_connected=true&amp;hubspot_portal=...&amp;hubspot_name=...</code></td><td><code>hubspot_error=...</code></td></tr>
+<tr><td>Mailchimp</td><td><code>MailchimpConnect</code></td><td><code>mailchimp_connected=true&amp;mailchimp_account=...</code></td><td><code>mailchimp_error=...</code></td></tr>
 </tbody>
 </table></div></div>
 
 <h3>Flow Diagram</h3>
-<pre><code>Your Backend                  Wiro API                Provider              User's Browser
-     |                            |                       |                        |
-     |  POST /{Provider}Connect   |                       |                        |
-     |---------------------------&gt;|                       |                        |
-     |  { authorizeUrl }          |                       |                        |
-     |&lt;---------------------------|                       |                        |
-     |                            |                       |                        |
-     |  Redirect user to authorizeUrl                     |                        |
-     |-------------------------------------------------------&gt;                    |
-     |                            |                       |   User authorizes      |
-     |                            |                       |&lt;-----------------------|
-     |                            |   Callback + code     |                        |
-     |                            |&lt;----------------------|                        |
-     |                            |   Exchange for tokens |                        |
-     |                            |----------------------&gt;|                        |
-     |                            |   Tokens stored       |                        |
-     |                            |                       |                        |
-     |                            |   Redirect to your redirectUrl                 |
-     |&lt;-------------------------------------------------------------------|        |
-     |  ?provider_connected=true  |                       |                        |</code></pre>
-<ol>
-<li>Your backend calls <code>POST /UserAgentOAuth/{Provider}Connect</code></li>
-<li>Wiro returns an <code>authorizeUrl</code></li>
-<li>You redirect the user's browser to <code>authorizeUrl</code></li>
-<li>User authorizes on the provider's consent screen</li>
-<li>Provider redirects to Wiro's callback (server-to-server token exchange happens here)</li>
-<li>Wiro redirects the user to your <code>redirectUrl</code> with success or error query parameters</li>
-</ol>
+<pre><code>Your App (Frontend)           Your Backend              Wiro API              Provider (e.g. Twitter)
+       |                            |                       |                        |
+  (1)  | "Connect Twitter" click    |                       |                        |
+       |---------------------------&gt;|                       |                        |
+       |                            |  POST /XConnect       |                        |
+  (2)  |                            |--&gt; { userAgentGuid,   |                        |
+       |                            |      redirectUrl,     |                        |
+       |                            |      authMethod }     |                        |
+       |                            |                       |                        |
+  (3)  |                            |&lt;-- { authorizeUrl }   |                        |
+       |                            |                       |                        |
+  (4)  |&lt;--- redirect to authorizeUrl                       |                        |
+       |--------------------------------------------------------&gt; User sees Twitter  |
+       |                            |                       |    consent screen      |
+  (5)  |                            |                       |&lt;-- User clicks Allow   |
+       |                            |                       |                        |
+  (6)  |                            |   (invisible callback)|                        |
+       |                            |   Wiro exchanges code |&lt;-----------------------|
+       |                            |   for tokens, saves   |                        |
+       |                            |   them to agent config|                        |
+       |                            |                       |                        |
+  (7)  |&lt;------- 302 redirect to YOUR redirectUrl ----------------------------------|
+       | https://your-app.com/settings?x_connected=true&amp;x_username=johndoe          |
+       |                            |                       |                        |</code></pre>
+
+<h3>What the User Sees</h3>
+<div class="status-table-wrapper">
+<table class="status-table">
+<thead><tr><th>Step</th><th>User Sees</th><th>URL</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Your app — "Connect Twitter" button</td><td><code>https://your-app.com/settings</code></td></tr>
+<tr><td>2–3</td><td>(Backend API call — invisible to user)</td><td>—</td></tr>
+<tr><td>4–5</td><td>Provider's consent screen (Twitter, TikTok, etc.)</td><td><code>https://x.com/i/oauth2/authorize?...</code></td></tr>
+<tr><td>6</td><td>(Wiro's server-side callback — invisible 302 redirect)</td><td>—</td></tr>
+<tr><td>7</td><td>Your app — "Connected!" confirmation</td><td><code>https://your-app.com/settings?x_connected=true</code></td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Your users never visit wiro.ai.</strong> The only pages they see are your app and the provider's authorization screen.</p>
 
 <h3>Connect Endpoint</h3>
-<h4><strong>POST</strong> /UserAgentOAuth/{Provider}Connect</h4>
+<h2><span class="endpoint-badge post">POST</span> /UserAgentOAuth/{Provider}Connect</h2>
 <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
 <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
 <tbody>
@@ -5502,20 +6177,130 @@ echo json_encode(['ok' =&gt; true]);</code></pre>
 </tbody>
 </table></div></div>
 
-<h5>Response</h5>
+<h3>Response</h3>
 <pre><code class="language-json">{
   "result": true,
   "authorizeUrl": "https://x.com/i/oauth2/authorize?response_type=code&client_id=...",
   "errors": []
 }</code></pre>
 
-<h3>Auth Methods</h3>
-<h4><code>"wiro"</code> (default)</h4>
-<p>Uses Wiro's pre-configured OAuth app credentials. This is the simplest approach — one-click connect with no additional setup.</p>
+<h3>Auth Methods — <code>"wiro"</code> vs <code>"own"</code></h3>
+<p>Both modes produce the <strong>same white-label user experience</strong>. The only difference is whose OAuth app credentials are used for the authorization flow:</p>
+<div class="status-table-wrapper">
+<table class="status-table">
+<thead><tr><th></th><th><code>"wiro"</code> (default)</th><th><code>"own"</code></th></tr></thead>
+<tbody>
+<tr><td><strong>OAuth app credentials</strong></td><td>Wiro's pre-configured app</td><td>Your own app from the provider's developer portal</td></tr>
+<tr><td><strong>Setup required</strong></td><td>None — just call Connect</td><td>Create an app on the provider, set credentials via Update, register Wiro's callback URL</td></tr>
+<tr><td><strong>Consent screen branding</strong></td><td>Shows "Wiro" as the app name</td><td>Shows <strong>your app name</strong> and branding</td></tr>
+<tr><td><strong>Redirect after auth</strong></td><td>To your <code>redirectUrl</code></td><td>To your <code>redirectUrl</code></td></tr>
+<tr><td><strong>User sees wiro.ai?</strong></td><td>No</td><td>No</td></tr>
+<tr><td><strong>Token management</strong></td><td>Automatic by Wiro</td><td>Automatic by Wiro</td></tr>
+<tr><td><strong>Best for</strong></td><td>Quick setup, prototyping, most use cases</td><td>Custom branding on consent screen, custom scopes</td></tr>
+</tbody>
+</table>
+</div>
+<div class="info-callout"><strong>Recommendation:</strong> Start with <code>"wiro"</code> mode. It works out of the box with no configuration. Switch to <code>"own"</code> only if you need your brand name on the provider's consent screen or require custom OAuth scopes/permissions.</div>
+<p>To use <code>"own"</code> mode, first set your app credentials via <code>POST /UserAgent/Update</code>, then call Connect with <code>authMethod: "own"</code>. Each provider requires different credential field names:</p>
 
-<h4><code>"own"</code></h4>
-<p>Uses your own OAuth app credentials stored in the agent's configuration. Before calling Connect with <code>authMethod: "own"</code>, set your app credentials via <code>POST /UserAgent/Update</code>:</p>
-<pre><code class="language-json">POST /UserAgent/Update
+<h4>"own" Mode Credentials per Provider</h4>
+<div class="status-table-wrapper">
+<table class="status-table">
+<thead><tr><th>Provider</th><th>Credential Key</th><th>Required Fields</th><th>Request Example</th></tr></thead>
+<tbody>
+<tr>
+  <td>Twitter/X</td>
+  <td><code>twitter</code></td>
+  <td><code>clientId</code>, <code>clientSecret</code></td>
+  <td><pre><code class="language-json">"twitter": {
+  "clientId": "your-client-id",
+  "clientSecret": "your-client-secret"
+}</code></pre></td>
+</tr>
+<tr>
+  <td>TikTok</td>
+  <td><code>tiktok</code></td>
+  <td><code>clientKey</code>, <code>clientSecret</code></td>
+  <td><pre><code class="language-json">"tiktok": {
+  "clientKey": "your-client-key",
+  "clientSecret": "your-client-secret"
+}</code></pre></td>
+</tr>
+<tr>
+  <td>Instagram</td>
+  <td><code>instagram</code></td>
+  <td><code>appId</code>, <code>appSecret</code></td>
+  <td><pre><code class="language-json">"instagram": {
+  "appId": "your-app-id",
+  "appSecret": "your-app-secret"
+}</code></pre></td>
+</tr>
+<tr>
+  <td>Facebook</td>
+  <td><code>facebook</code></td>
+  <td><code>appId</code>, <code>appSecret</code></td>
+  <td><pre><code class="language-json">"facebook": {
+  "appId": "your-app-id",
+  "appSecret": "your-app-secret"
+}</code></pre></td>
+</tr>
+<tr>
+  <td>LinkedIn</td>
+  <td><code>linkedin</code></td>
+  <td><code>clientId</code>, <code>clientSecret</code>, <code>organizationId</code></td>
+  <td><pre><code class="language-json">"linkedin": {
+  "clientId": "your-client-id",
+  "clientSecret": "your-client-secret",
+  "organizationId": "your-org-id"
+}</code></pre></td>
+</tr>
+<tr>
+  <td>Google Ads</td>
+  <td><code>googleads</code></td>
+  <td><code>clientId</code>, <code>clientSecret</code>, <code>developerToken</code>, <code>managerCustomerId</code></td>
+  <td><pre><code class="language-json">"googleads": {
+  "clientId": "your-client-id",
+  "clientSecret": "your-client-secret",
+  "developerToken": "your-dev-token",
+  "managerCustomerId": "123-456-7890"
+}</code></pre></td>
+</tr>
+<tr>
+  <td>Meta Ads</td>
+  <td><code>metaads</code></td>
+  <td><code>appId</code>, <code>appSecret</code></td>
+  <td><pre><code class="language-json">"metaads": {
+  "appId": "your-app-id",
+  "appSecret": "your-app-secret"
+}</code></pre></td>
+</tr>
+<tr>
+  <td>HubSpot</td>
+  <td><code>hubspot</code></td>
+  <td><code>clientId</code>, <code>clientSecret</code></td>
+  <td><pre><code class="language-json">"hubspot": {
+  "clientId": "your-client-id",
+  "clientSecret": "your-client-secret"
+}</code></pre></td>
+</tr>
+<tr>
+  <td>Mailchimp</td>
+  <td><code>mailchimp</code></td>
+  <td><code>clientId</code>, <code>clientSecret</code> (or <code>apiKey</code> without OAuth)</td>
+  <td><pre><code class="language-json">"mailchimp": {
+  "clientId": "your-client-id",
+  "clientSecret": "your-client-secret"
+}</code></pre></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="info-callout"><strong>Note:</strong> Field names differ per provider (e.g. TikTok uses <code>clientKey</code> not <code>clientId</code>, Instagram/Facebook use <code>appId</code>/<code>appSecret</code> not <code>clientId</code>/<code>clientSecret</code>). Always use the exact field names from the table above.</div>
+
+
+<h4>"own" Mode Full Flow</h4>
+<pre><code class="language-json">// Step 1: Set your app credentials
+POST /UserAgent/Update
 {
   "guid": "your-useragent-guid",
   "configuration": {
@@ -5526,19 +6311,32 @@ echo json_encode(['ok' =&gt; true]);</code></pre>
       }
     }
   }
-}</code></pre>
-<p>When using <code>"own"</code> mode, you must register Wiro's callback URL in your OAuth app settings on the provider's developer portal. The callback URL format is:</p>
+}
+
+// Step 2: Initiate OAuth with authMethod: "own"
+POST /UserAgentOAuth/XConnect
+{
+  "userAgentGuid": "your-useragent-guid",
+  "redirectUrl": "https://your-app.com/callback",
+  "authMethod": "own"
+}
+
+// Step 3: Redirect user to the returned authorizeUrl
+// Step 4: User authorizes → redirected back to your redirectUrl</code></pre>
+<p>When using <code>"own"</code> mode, you must register Wiro's callback URL in your OAuth app settings on the provider's developer portal:</p>
 <pre><code>https://api.wiro.ai/v1/UserAgentOAuth/{Provider}Callback</code></pre>
-<div class="info-callout"><strong>Note:</strong> LinkedIn currently only supports <code>"own"</code> auth method. Wiro mode for LinkedIn is coming soon.</div>
 
 <h3>Status Check</h3>
 <p>Check whether a provider is connected for a given agent instance.</p>
-<h4><strong>POST</strong> /UserAgentOAuth/{Provider}Status</h4>
-<pre><code class="language-json">{
-  "userAgentGuid": "your-useragent-guid"
-}</code></pre>
+<h2><span class="endpoint-badge post">POST</span> /UserAgentOAuth/{Provider}Status</h2>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>userAgentGuid</code></td><td>string</td><td>Yes</td><td>The agent instance GUID</td></tr>
+</tbody>
+</table></div></div>
 
-<h5>Response</h5>
+<h3>Response</h3>
 <pre><code class="language-json">{
   "result": true,
   "connected": true,
@@ -5548,16 +6346,30 @@ echo json_encode(['ok' =&gt; true]);</code></pre>
   "refreshTokenExpiresAt": "2025-10-01T12:00:00.000Z",
   "errors": []
 }</code></pre>
-<p>The <code>username</code> field name varies by provider: <code>xUsername</code> for Twitter/X, <code>tiktokUsername</code> for TikTok, <code>igUsername</code> for Instagram, <code>fbPageName</code> for Facebook, and so on.</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Field</th><th>Description</th><th>Providers</th></tr></thead>
+<tbody>
+<tr><td><code>connected</code></td><td>Whether the provider is connected</td><td>All</td></tr>
+<tr><td><code>username</code></td><td>Connected account name or identifier</td><td>Most providers</td></tr>
+<tr><td><code>linkedinName</code></td><td>LinkedIn profile name (replaces <code>username</code>)</td><td>LinkedIn only</td></tr>
+<tr><td><code>customerId</code></td><td>Google Ads customer ID (replaces <code>username</code>)</td><td>Google Ads only</td></tr>
+<tr><td><code>connectedAt</code></td><td>ISO timestamp of when the account was connected</td><td>All</td></tr>
+<tr><td><code>tokenExpiresAt</code></td><td>ISO timestamp of access token expiry</td><td>All except Mailchimp</td></tr>
+<tr><td><code>refreshTokenExpiresAt</code></td><td>ISO timestamp of refresh token expiry</td><td>Twitter/X, TikTok, LinkedIn</td></tr>
+</tbody>
+</table></div></div>
 
 <h3>Disconnect</h3>
 <p>Revoke access and remove stored tokens for a provider.</p>
-<h4><strong>POST</strong> /UserAgentOAuth/{Provider}Disconnect</h4>
-<pre><code class="language-json">{
-  "userAgentGuid": "your-useragent-guid"
-}</code></pre>
+<h2><span class="endpoint-badge post">POST</span> /UserAgentOAuth/{Provider}Disconnect</h2>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>userAgentGuid</code></td><td>string</td><td>Yes</td><td>The agent instance GUID</td></tr>
+</tbody>
+</table></div></div>
 
-<h5>Response</h5>
+<h3>Response</h3>
 <pre><code class="language-json">{
   "result": true,
   "errors": []
@@ -5566,7 +6378,7 @@ echo json_encode(['ok' =&gt; true]);</code></pre>
 
 <h3>Token Refresh</h3>
 <p>Manually trigger a token refresh for a connected provider.</p>
-<h4><strong>POST</strong> /UserAgentOAuth/TokenRefresh</h4>
+<h2><span class="endpoint-badge post">POST</span> /UserAgentOAuth/TokenRefresh</h2>
 <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
 <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
 <tbody>
@@ -5576,7 +6388,7 @@ echo json_encode(['ok' =&gt; true]);</code></pre>
 </table></div></div>
 <div class="info-callout"><strong>Note:</strong> Mailchimp is not included — its tokens do not expire.</div>
 
-<h5>Response</h5>
+<h3>Response</h3>
 <pre><code class="language-json">{
   "result": true,
   "accessToken": "new-access-token...",
@@ -5589,26 +6401,48 @@ echo json_encode(['ok' =&gt; true]);</code></pre>
 
 <h4>Google Ads — Set Customer ID</h4>
 <p>After connecting Google Ads via OAuth, you must set the Google Ads customer ID to target:</p>
-<h5><strong>POST</strong> /UserAgentOAuth/GAdsSetCustomerId</h5>
+<h2><span class="endpoint-badge post">POST</span> /UserAgentOAuth/GAdsSetCustomerId</h2>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>userAgentGuid</code></td><td>string</td><td>Yes</td><td>The agent instance GUID</td></tr>
+<tr><td><code>customerId</code></td><td>string</td><td>Yes</td><td>Google Ads customer ID (e.g. <code>"123-456-7890"</code>). Non-digit characters are stripped automatically.</td></tr>
+</tbody>
+</table></div></div>
+<h3>Response</h3>
 <pre><code class="language-json">{
-  "userAgentGuid": "your-useragent-guid",
-  "customerId": "123-456-7890"
+  "result": true,
+  "customerId": "1234567890",
+  "errors": []
 }</code></pre>
 
 <h4>Meta Ads — Set Ad Account</h4>
 <p>After connecting Meta Ads via OAuth, set the ad account to manage:</p>
-<h5><strong>POST</strong> /UserAgentOAuth/MetaAdsSetAdAccount</h5>
+<h2><span class="endpoint-badge post">POST</span> /UserAgentOAuth/MetaAdsSetAdAccount</h2>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>userAgentGuid</code></td><td>string</td><td>Yes</td><td>The agent instance GUID</td></tr>
+<tr><td><code>adAccountId</code></td><td>string</td><td>Yes</td><td>Meta Ads account ID (e.g. <code>"act_123456789"</code>). The <code>act_</code> prefix is stripped automatically.</td></tr>
+<tr><td><code>adAccountName</code></td><td>string</td><td>No</td><td>Display name for the ad account</td></tr>
+</tbody>
+</table></div></div>
+<h3>Response</h3>
 <pre><code class="language-json">{
-  "userAgentGuid": "your-useragent-guid",
-  "adAccountId": "act_123456789",
-  "adAccountName": "My Ad Account"
+  "result": true,
+  "errors": []
 }</code></pre>
+</section>
+
+<section id="custom-skills-link">
+<h2>Custom Skills</h2>
+<p>Agents support configurable skills — preferences and scheduled tasks. See the dedicated <a href="/docs/agent-skills" class="docs-link">Agent Skills</a> page for the complete guide with examples.</p>
 </section>
 
 <section id="security">
 <h2>Security</h2>
 <ul>
-<li><strong>Tokens are stored server-side</strong> in the agent instance configuration and are never exposed in API responses</li>
+<li><strong>Tokens are stored server-side</strong> in the agent instance configuration. The <code>TokenRefresh</code> endpoint returns new tokens — all other endpoints (Status, Detail, Update) sanitize token fields before responding.</li>
 <li>The <code>redirectUrl</code> receives only connection status parameters — no tokens, no secrets</li>
 <li>API responses from Status, Detail, and Update endpoints are sanitized: <code>accessToken</code>, <code>refreshToken</code>, <code>clientSecret</code>, and <code>appSecret</code> fields are stripped before returning</li>
 <li>OAuth state parameters use a 15-minute TTL cache to prevent replay attacks</li>
@@ -5666,22 +6500,571 @@ app.get('/settings/social', (req, res) => {
 <script type="application/json" class="code-examples-data">
 [
   {
-    "label": "curl",
+    "label": "API Keys (curl)",
     "language": "bash",
-    "code": "# Connect Twitter/X via OAuth\ncurl -X POST \"https://api.wiro.ai/v1/UserAgentOAuth/XConnect\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"userAgentGuid\": \"customer-useragent-guid\",\n    \"redirectUrl\": \"https://your-app.com/settings/social?provider=twitter\",\n    \"authMethod\": \"wiro\"\n  }'\n\n# Check connection status\ncurl -X POST \"https://api.wiro.ai/v1/UserAgentOAuth/XStatus\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"userAgentGuid\": \"customer-useragent-guid\"\n  }'\n\n# Disconnect a provider\ncurl -X POST \"https://api.wiro.ai/v1/UserAgentOAuth/XDisconnect\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"userAgentGuid\": \"customer-useragent-guid\"\n  }' "
+    "code": "# Set Brevo API key\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/Update\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{ \"guid\": \"your-useragent-guid\",\n    \"configuration\": { \"credentials\": {\n      \"brevo\": { \"apiKey\": \"xkeysib-abc123...\" }\n  }}}'\n\n# Set WordPress credentials\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/Update\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{ \"guid\": \"your-useragent-guid\",\n    \"configuration\": { \"credentials\": {\n      \"wordpress\": {\n        \"url\": \"https://blog.example.com\",\n        \"user\": \"WiroBlogAgent\",\n        \"appPassword\": \"xxxx xxxx xxxx xxxx\"\n      }\n  }}}'\n\n# Set Telegram bot token\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/Update\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{ \"guid\": \"your-useragent-guid\",\n    \"configuration\": { \"credentials\": {\n      \"telegram\": {\n        \"botToken\": \"123456:ABC-DEF1234ghIkl\",\n        \"allowedUsers\": [\"761381461\"],\n        \"sessionMode\": [{\"value\":\"private\",\"text\":\"Private\",\"selected\":true},{\"value\":\"collaborative\",\"text\":\"Collaborative\",\"selected\":false}]\n      }\n  }}}'\n\n# Set multiple credentials at once\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/Update\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{ \"guid\": \"your-useragent-guid\",\n    \"configuration\": { \"credentials\": {\n      \"brevo\": { \"apiKey\": \"xkeysib-abc123...\" },\n      \"sendgrid\": { \"apiKey\": \"SG.xxxx...\" },\n      \"telegram\": {\n        \"botToken\": \"123456:ABC-DEF...\",\n        \"allowedUsers\": [\"761381461\"],\n        \"sessionMode\": [{\"value\":\"private\",\"text\":\"Private\",\"selected\":true},{\"value\":\"collaborative\",\"text\":\"Collaborative\",\"selected\":false}]\n      }\n  }}}'"
+  },
+  {
+    "label": "OAuth (curl)",
+    "language": "bash",
+    "code": "# Connect Twitter/X via OAuth\ncurl -X POST \"https://api.wiro.ai/v1/UserAgentOAuth/XConnect\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"userAgentGuid\": \"your-useragent-guid\",\n    \"redirectUrl\": \"https://your-app.com/settings?provider=twitter\",\n    \"authMethod\": \"wiro\"\n  }'\n\n# Check connection status\ncurl -X POST \"https://api.wiro.ai/v1/UserAgentOAuth/XStatus\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{ \"userAgentGuid\": \"your-useragent-guid\" }'\n\n# Disconnect\ncurl -X POST \"https://api.wiro.ai/v1/UserAgentOAuth/XDisconnect\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{ \"userAgentGuid\": \"your-useragent-guid\" }'\n\n# Refresh token\ncurl -X POST \"https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{ \"userAgentGuid\": \"your-useragent-guid\", \"provider\": \"twitter\" }'"
   },
   {
     "label": "Python",
     "language": "python",
-    "code": "import requests\n\nheaders = {\n    \"x-api-key\": \"YOUR_API_KEY\",\n    \"Content-Type\": \"application/json\"\n}\n\nresponse = requests.post(\n    \"https://api.wiro.ai/v1/UserAgentOAuth/XConnect\",\n    headers=headers,\n    json={\n        \"userAgentGuid\": \"customer-useragent-guid\",\n        \"redirectUrl\": \"https://your-app.com/settings/social?provider=twitter\",\n        \"authMethod\": \"wiro\"\n    }\n)\ndata = response.json()\nauthorize_url = data.get(\"authorizeUrl\")\n# Redirect your customer's browser to authorize_url"
+    "code": "import requests\n\nheaders = {\n    \"x-api-key\": \"YOUR_API_KEY\",\n    \"Content-Type\": \"application/json\"\n}\nguid = \"your-useragent-guid\"\n\n# --- API Key Credentials ---\n\n# Set Brevo\nrequests.post(\"https://api.wiro.ai/v1/UserAgent/Update\", headers=headers,\n    json={\"guid\": guid, \"configuration\": {\"credentials\": {\n        \"brevo\": {\"apiKey\": \"xkeysib-abc123...\"}\n    }}})\n\n# Set WordPress\nrequests.post(\"https://api.wiro.ai/v1/UserAgent/Update\", headers=headers,\n    json={\"guid\": guid, \"configuration\": {\"credentials\": {\n        \"wordpress\": {\n            \"url\": \"https://blog.example.com\",\n            \"user\": \"WiroBlogAgent\",\n            \"appPassword\": \"xxxx xxxx xxxx xxxx\"\n        }\n    }}})\n\n# Set Gmail\nrequests.post(\"https://api.wiro.ai/v1/UserAgent/Update\", headers=headers,\n    json={\"guid\": guid, \"configuration\": {\"credentials\": {\n        \"gmail\": {\n            \"account\": \"agent@company.com\",\n            \"appPassword\": \"xxxx xxxx xxxx xxxx\"\n        }\n    }}})\n\n# Set Telegram\nrequests.post(\"https://api.wiro.ai/v1/UserAgent/Update\", headers=headers,\n    json={\"guid\": guid, \"configuration\": {\"credentials\": {\n        \"telegram\": {\n            \"botToken\": \"123456:ABC-DEF1234ghIkl\",\n            \"allowedUsers\": [\"761381461\"],\n            \"sessionMode\": [{\"value\":\"private\",\"text\":\"Private\",\"selected\":true},{\"value\":\"collaborative\",\"text\":\"Collaborative\",\"selected\":false}]\n        }\n    }}})\n\n# --- OAuth ---\n\n# Connect Twitter\nresp = requests.post(\"https://api.wiro.ai/v1/UserAgentOAuth/XConnect\",\n    headers=headers,\n    json={\n        \"userAgentGuid\": guid,\n        \"redirectUrl\": \"https://your-app.com/settings?provider=twitter\",\n        \"authMethod\": \"wiro\"\n    })\nauthorize_url = resp.json().get(\"authorizeUrl\")\n# Redirect customer's browser to authorize_url\n\n# Check status\nstatus = requests.post(\"https://api.wiro.ai/v1/UserAgentOAuth/XStatus\",\n    headers=headers, json={\"userAgentGuid\": guid}).json()\nprint(f\"Connected: {status['connected']}, Username: {status.get('username')}\")"
   },
   {
     "label": "Node.js",
     "language": "javascript",
-    "code": "const axios = require('axios');\n\nconst headers = {\n  'x-api-key': 'YOUR_API_KEY',\n  'Content-Type': 'application/json'\n};\n\nconst response = await axios.post(\n  'https://api.wiro.ai/v1/UserAgentOAuth/XConnect',\n  {\n    userAgentGuid: 'customer-useragent-guid',\n    redirectUrl: 'https://your-app.com/settings/social?provider=twitter',\n    authMethod: 'wiro'\n  },\n  { headers }\n);\nconst { authorizeUrl } = response.data;\n// Redirect your customer's browser to authorizeUrl"
+    "code": "const axios = require('axios');\n\nconst headers = {\n  'x-api-key': 'YOUR_API_KEY',\n  'Content-Type': 'application/json'\n};\nconst guid = 'your-useragent-guid';\nconst base = 'https://api.wiro.ai/v1';\n\n// --- API Key Credentials ---\n\n// Set Brevo\nawait axios.post(`${base}/UserAgent/Update`, {\n  guid,\n  configuration: { credentials: {\n    brevo: { apiKey: 'xkeysib-abc123...' }\n  }}\n}, { headers });\n\n// Set WordPress\nawait axios.post(`${base}/UserAgent/Update`, {\n  guid,\n  configuration: { credentials: {\n    wordpress: {\n      url: 'https://blog.example.com',\n      user: 'WiroBlogAgent',\n      appPassword: 'xxxx xxxx xxxx xxxx'\n    }\n  }}\n}, { headers });\n\n// Set Telegram\nawait axios.post(`${base}/UserAgent/Update`, {\n  guid,\n  configuration: { credentials: {\n    telegram: {\n      botToken: '123456:ABC-DEF1234ghIkl',\n      allowedUsers: ['761381461'],\n      sessionMode: [{value:'private',text:'Private',selected:true},{value:'collaborative',text:'Collaborative',selected:false}]\n    }\n  }}\n}, { headers });\n\n// Set multiple at once\nawait axios.post(`${base}/UserAgent/Update`, {\n  guid,\n  configuration: { credentials: {\n    brevo: { apiKey: 'xkeysib-abc123...' },\n    sendgrid: { apiKey: 'SG.xxxx...' },\n    telegram: {\n      botToken: '123456:ABC-DEF...',\n      allowedUsers: ['761381461'],\n      sessionMode: [{value:'private',text:'Private',selected:true},{value:'collaborative',text:'Collaborative',selected:false}]\n    }\n  }}\n}, { headers });\n\n// --- OAuth ---\n\n// Connect Twitter\nconst { data } = await axios.post(\n  `${base}/UserAgentOAuth/XConnect`,\n  {\n    userAgentGuid: guid,\n    redirectUrl: 'https://your-app.com/settings?provider=twitter',\n    authMethod: 'wiro'\n  },\n  { headers }\n);\nconst { authorizeUrl } = data;\n// Redirect customer's browser to authorizeUrl\n\n// Check status\nconst status = await axios.post(\n  `${base}/UserAgentOAuth/XStatus`,\n  { userAgentGuid: guid },\n  { headers }\n);\nconsole.log('Connected:', status.data.connected);"
   }
 ]
 </script>
+            </div>
+
+            <!-- ==================== AGENT USE CASES ==================== -->
+            <!-- ==================== AGENT SKILLS ==================== -->
+            <div class="docs-page-section" data-page="agent-skills" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/agent-skills.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/agent-skills.md" download class="docs-section-md-btn">Download</a></div>
+
+<h1>Agent Skills</h1>
+<p class="section-subtitle">Configure agent behavior with editable preferences and scheduled automation tasks.</p>
+
+<section id="skills-overview">
+<h2>Overview</h2>
+<p>Every agent has a set of <strong>custom skills</strong> that define its behavior. Skills come in two types:</p>
+<div class="status-table-wrapper">
+<table class="status-table">
+<thead><tr><th>Type</th><th>Has Interval</th><th>Purpose</th><th>What You Can Change</th></tr></thead>
+<tbody>
+<tr><td><strong>Preferences</strong></td><td>No (<code>null</code>)</td><td>Instructions that shape agent behavior — tone, style, targeting rules, content strategy</td><td><code>value</code>, <code>description</code>, <code>enabled</code></td></tr>
+<tr><td><strong>Scheduled Tasks</strong></td><td>Yes (cron)</td><td>Automated actions that run on a schedule — scanning, reporting, dispatching</td><td><code>enabled</code>, <code>interval</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Call <code>POST /UserAgent/Detail</code> to discover an agent's skills. They appear in <code>configuration.custom_skills</code>.</p>
+</section>
+
+<section id="skills-discovering">
+<h2>Discovering Skills</h2>
+<pre><code class="language-json">POST /UserAgent/Detail
+{
+  "guid": "your-useragent-guid"
+}
+
+// Response → configuration.custom_skills:
+[
+  {
+    "key": "content-tone",
+    "value": "## Voice\nShort punchy lines, developer-friendly...",
+    "description": "Brand voice, hashtags, and posting style",
+    "enabled": true,
+    "interval": null,
+    "_editable": true
+  },
+  {
+    "key": "content-scanner",
+    "value": "",
+    "description": "What content to find and post about",
+    "enabled": true,
+    "interval": "0 * * * *",
+    "_editable": false
+  }
+]</code></pre>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>key</code></td><td>string</td><td>Unique skill identifier. Use this in Update requests.</td></tr>
+<tr><td><code>value</code></td><td>string</td><td>Skill instructions/content. Visible only when <code>_editable: true</code> — otherwise empty string.</td></tr>
+<tr><td><code>description</code></td><td>string</td><td>Human-readable description of what the skill does.</td></tr>
+<tr><td><code>enabled</code></td><td>boolean</td><td>Whether the skill is active.</td></tr>
+<tr><td><code>interval</code></td><td>string | null</td><td>Cron expression for scheduled execution, or <code>null</code> for preference-only skills.</td></tr>
+<tr><td><code>_editable</code></td><td>boolean</td><td>If <code>true</code>, you can modify <code>value</code> and <code>description</code>. If <code>false</code>, only <code>enabled</code> and <code>interval</code> can be changed.</td></tr>
+</tbody>
+</table></div></div>
+</section>
+
+<section id="skills-updating-preferences">
+<h2>Updating Preferences</h2>
+<p>Preference skills (<code>_editable: true</code>, <code>interval: null</code>) let you customize the agent's behavior by editing its instructions. Every agent has one — it controls tone, style, targeting, and strategy. Select your agent below to see its preference skill and a complete update request.</p>
+
+<div class="content-tabs">
+<input type="radio" name="skill-tabs" id="sk-social" checked>
+<input type="radio" name="skill-tabs" id="sk-blog">
+<input type="radio" name="skill-tabs" id="sk-appreview">
+<input type="radio" name="skill-tabs" id="sk-appevent">
+<input type="radio" name="skill-tabs" id="sk-push">
+<input type="radio" name="skill-tabs" id="sk-nlmanager">
+<input type="radio" name="skill-tabs" id="sk-leadgen">
+<input type="radio" name="skill-tabs" id="sk-googleads">
+<input type="radio" name="skill-tabs" id="sk-metaads">
+
+<div class="content-tabs-nav">
+  <label for="sk-social">Social Manager</label>
+  <label for="sk-blog">Blog Editor</label>
+  <label for="sk-appreview">App Review</label>
+  <label for="sk-appevent">App Events</label>
+  <label for="sk-push">Push Notifications</label>
+  <label for="sk-nlmanager">Newsletter</label>
+  <label for="sk-leadgen">Lead Gen</label>
+  <label for="sk-googleads">Google Ads</label>
+  <label for="sk-metaads">Meta Ads</label>
+</div>
+
+<div class="content-tab-panel" data-tab="sk-social">
+<p>Skill key: <code>content-tone</code> — Controls brand voice, hashtags, and posting style per platform.</p>
+<pre><code class="language-json">POST /UserAgent/Update
+{
+  "guid": "your-social-manager-guid",
+  "configuration": {
+    "custom_skills": [
+      {
+        "key": "content-tone",
+        "value": "## Voice\nProfessional and informative. No slang.\n\n## Hashtags\nMax 3 per post. Always include #AI and #WiroAI.\n\n## Posting Style\nEvery post must include a link.\nUse bullet points for features.\n\n## Platform Rules\n- Twitter: Thread format for long content\n- Instagram: Carousel with square images only\n- LinkedIn: Professional tone, no emojis\n- TikTok: Short captions, trending sounds"
+      }
+    ]
+  }
+}</code></pre>
+<details><summary><strong>Preview: what the agent sees</strong></summary>
+<div class="skill-value-preview">
+<h4>Voice</h4>
+Professional and informative. No slang.
+
+<h4>Hashtags</h4>
+Max 3 per post. Always include #AI and #WiroAI.
+
+<h4>Posting Style</h4>
+Every post must include a link.
+Use bullet points for features.
+
+<h4>Platform Rules</h4>
+- Twitter: Thread format for long content
+- Instagram: Carousel with square images only
+- LinkedIn: Professional tone, no emojis
+- TikTok: Short captions, trending sounds
+</div>
+</details>
+<p>The <code>value</code> is markdown-formatted text. Use <code>##</code> headings to organize sections. The agent reads these instructions before every action.</p>
+</div>
+
+<div class="content-tab-panel" data-tab="sk-blog">
+<p>Skill key: <code>content-strategy</code> — Controls writing style, topics, research rules, and blog categories.</p>
+<pre><code class="language-json">POST /UserAgent/Update
+{
+  "guid": "your-blog-editor-guid",
+  "configuration": {
+    "custom_skills": [
+      {
+        "key": "content-strategy",
+        "value": "## Writing Style\n- Short simple sentences. Max 15-20 words.\n- Use active voice.\n- No filler phrases.\n\n## Topics\n- AI model comparisons\n- Prompt engineering tutorials\n- Industry trend analysis\n\n## Blog Types\nRotate between: Single Review, VS Comparison, Category Roundup, Prompt Showcase\n\n## WordPress Categories\nUse: AI, Tutorial, Comparison, News"
+      }
+    ]
+  }
+}</code></pre>
+<details><summary><strong>Preview: what the agent sees</strong></summary>
+<div class="skill-value-preview">
+<h4>Writing Style</h4>
+<ul>
+<li>Short simple sentences. Max 15-20 words.</li>
+<li>Use active voice.</li>
+<li>No filler phrases.</li>
+</ul>
+<h4>Topics</h4>
+<ul>
+<li>AI model comparisons</li>
+<li>Prompt engineering tutorials</li>
+<li>Industry trend analysis</li>
+</ul>
+<h4>Blog Types</h4>
+<p>Rotate between: Single Review, VS Comparison, Category Roundup, Prompt Showcase</p>
+<h4>WordPress Categories</h4>
+<p>Use: AI, Tutorial, Comparison, News</p>
+</div>
+</details>
+</div>
+
+<div class="content-tab-panel" data-tab="sk-appreview">
+<p>Skill key: <code>review-preferences</code> — Controls response tone, support channels, and custom rules for review replies.</p>
+<pre><code class="language-json">POST /UserAgent/Update
+{
+  "guid": "your-app-review-guid",
+  "configuration": {
+    "custom_skills": [
+      {
+        "key": "review-preferences",
+        "value": "## Response Tone\nCasual and natural. Not corporate.\nShow empathy for negative reviews.\n\n## Support Channels\nDirect users to: support@company.com\nFor billing: billing@company.com\n\n## Rules\n- Always thank 5-star reviewers\n- For bugs: acknowledge and promise investigation\n- Never argue with users\n- Max response length: 3 sentences"
+      }
+    ]
+  }
+}</code></pre>
+<details><summary><strong>Preview: what the agent sees</strong></summary>
+<div class="skill-value-preview">
+<h4>Response Tone</h4>
+<p>Casual and natural. Not corporate. Show empathy for negative reviews.</p>
+<h4>Support Channels</h4>
+<p>Direct users to: support@company.com<br>For billing: billing@company.com</p>
+<h4>Rules</h4>
+<ul>
+<li>Always thank 5-star reviewers</li>
+<li>For bugs: acknowledge and promise investigation</li>
+<li>Never argue with users</li>
+<li>Max response length: 3 sentences</li>
+</ul>
+</div>
+</details>
+</div>
+
+<div class="content-tab-panel" data-tab="sk-appevent">
+<p>Skill key: <code>event-preferences</code> — Controls target regions, holiday priorities, and event style.</p>
+<pre><code class="language-json">POST /UserAgent/Update
+{
+  "guid": "your-app-event-guid",
+  "configuration": {
+    "custom_skills": [
+      {
+        "key": "event-preferences",
+        "value": "## Target Regions\nUS, TR, DE, GB\n\n## Holiday Priorities\nHigh: New Year, Black Friday, Christmas\nMedium: Valentine's Day, Halloween\nSkip: Regional holidays outside target regions\n\n## Event Style\nShort punchy titles (max 30 chars).\nAction-oriented descriptions.\nAlways tie events to app features."
+      }
+    ]
+  }
+}</code></pre>
+<details><summary><strong>Preview: what the agent sees</strong></summary>
+<div class="skill-value-preview">
+<h4>Target Regions</h4>
+<p>US, TR, DE, GB</p>
+<h4>Holiday Priorities</h4>
+<p>High: New Year, Black Friday, Christmas<br>Medium: Valentine's Day, Halloween<br>Skip: Regional holidays outside target regions</p>
+<h4>Event Style</h4>
+<p>Short punchy titles (max 30 chars). Action-oriented descriptions.</p>
+</div>
+</details>
+</div>
+
+<div class="content-tab-panel" data-tab="sk-push">
+<p>Skill key: <code>push-preferences</code> — Controls push notification tone, language, targeting, and holiday choices.</p>
+<pre><code class="language-json">POST /UserAgent/Update
+{
+  "guid": "your-push-agent-guid",
+  "configuration": {
+    "custom_skills": [
+      {
+        "key": "push-preferences",
+        "value": "## Push Tone\nFriendly and casual.\nTurkish for locale_tr users, English for locale_en.\n\n## Emoji Usage\nMax 1 emoji per push.\n\n## Holiday Preferences\nFocus on: New Year, Ramadan, Republic Day\nSkip: Valentine's Day, Halloween\n\n## Targeting\nAlways segment by locale.\nSend paid-tier users a premium version.\nFree users get engagement-focused pushes."
+      }
+    ]
+  }
+}</code></pre>
+<details><summary><strong>Preview: what the agent sees</strong></summary>
+<div class="skill-value-preview">
+<h4>Push Tone</h4>
+<p>Friendly and casual. Turkish for locale_tr users, English for locale_en.</p>
+<h4>Emoji Usage</h4>
+<p>Max 1 emoji per push.</p>
+<h4>Holiday Preferences</h4>
+<p>Focus on: New Year, Ramadan, Republic Day<br>Skip: Valentine's Day, Halloween</p>
+<h4>Targeting</h4>
+<p>Always segment by locale. Premium version for paid users.</p>
+</div>
+</details>
+</div>
+
+<div class="content-tab-panel" data-tab="sk-nlmanager">
+<p>Skill key: <code>newsletter-strategy</code> — Controls newsletter topics, tone, audience, frequency, and branding.</p>
+<pre><code class="language-json">POST /UserAgent/Update
+{
+  "guid": "your-newsletter-guid",
+  "configuration": {
+    "custom_skills": [
+      {
+        "key": "newsletter-strategy",
+        "value": "## Topics\nAI industry news, product updates, tutorials.\nPull content from: https://wiro.ai/blog\n\n## Tone\nFriendly and educational.\nUse first person plural (we, our).\n\n## Frequency\nWeekly on Mondays.\n\n## Branding\nSubject line prefix: [Wiro Weekly]\nAlways include unsubscribe link.\nMax 3 sections per newsletter."
+      }
+    ]
+  }
+}</code></pre>
+<details><summary><strong>Preview: what the agent sees</strong></summary>
+<div class="skill-value-preview">
+<h4>Topics</h4>
+<p>AI industry news, product updates, tutorials. Pull from: wiro.ai/blog</p>
+<h4>Tone</h4>
+<p>Friendly and educational. First person plural.</p>
+<h4>Frequency</h4>
+<p>Weekly on Mondays.</p>
+<h4>Branding</h4>
+<p>Subject line prefix: [Wiro Weekly]. Max 3 sections per newsletter.</p>
+</div>
+</details>
+</div>
+
+<div class="content-tab-panel" data-tab="sk-leadgen">
+<p>Skill key: <code>lead-strategy</code> — Controls ICP definition, outreach tone, email templates, and scoring rules.</p>
+<pre><code class="language-json">POST /UserAgent/Update
+{
+  "guid": "your-leadgen-guid",
+  "configuration": {
+    "custom_skills": [
+      {
+        "key": "lead-strategy",
+        "value": "## Our Business\nCompany: Acme Corp\nProduct: AI-powered CRM\nWebsite: https://acme.com\nValue Proposition: 10x faster lead qualification\n\n## Ideal Customer Profile\nIndustry: SaaS, FinTech\nCompany size: 50-500 employees\nJob titles: VP Sales, Head of Growth, CTO\nLocation: US, UK, Germany\n\n## Outreach Tone\nCasual but professional.\nReference their recent LinkedIn posts.\nKeep emails under 100 words.\n\n## Disqualifiers\nCompanies with fewer than 10 employees.\nAgencies and consultancies."
+      }
+    ]
+  }
+}</code></pre>
+<details><summary><strong>Preview: what the agent sees</strong></summary>
+<div class="skill-value-preview">
+<h4>Our Business</h4>
+<p>Company: Acme Corp<br>Product: AI-powered CRM<br>Website: acme.com</p>
+<h4>Ideal Customer Profile</h4>
+<p>Industry: SaaS, FinTech. Size: 50-500. Titles: VP Sales, CTO. Location: US, UK, Germany.</p>
+<h4>Outreach Tone</h4>
+<p>Casual but professional. Reference LinkedIn posts. Under 100 words.</p>
+<h4>Disqualifiers</h4>
+<p>Under 10 employees. Agencies and consultancies.</p>
+</div>
+</details>
+</div>
+
+<div class="content-tab-panel" data-tab="sk-googleads">
+<p>Skill key: <code>ad-strategy</code> — Controls target audience, budget goals, KPI thresholds, and ad creative preferences.</p>
+<pre><code class="language-json">POST /UserAgent/Update
+{
+  "guid": "your-google-ads-guid",
+  "configuration": {
+    "custom_skills": [
+      {
+        "key": "ad-strategy",
+        "value": "## Target Audience\nCountries: US, GB, DE\nLanguages: English\nAge range: 25-54\nInterests: Technology, AI, SaaS\n\n## Budget & Goals\nMonthly budget limit: $5,000\nTarget CPA: $25\nTarget ROAS: 4.0\n\n## Creative Preferences\nTone: Professional, benefit-focused\nAlways include pricing in ads\nUse numbers and statistics in headlines\n\n## Negative Keywords\nfree, cheap, tutorial, how to"
+      }
+    ]
+  }
+}</code></pre>
+<details><summary><strong>Preview: what the agent sees</strong></summary>
+<div class="skill-value-preview">
+<h4>Target Audience</h4>
+<p>Countries: US, GB, DE. Age: 25-54. Interests: Technology, AI, SaaS.</p>
+<h4>Budget &amp; Goals</h4>
+<p>Monthly limit: $5,000. Target CPA: $25. Target ROAS: 4.0.</p>
+<h4>Creative Preferences</h4>
+<p>Professional, benefit-focused. Include pricing. Use numbers in headlines.</p>
+<h4>Negative Keywords</h4>
+<p>free, cheap, tutorial, how to</p>
+</div>
+</details>
+</div>
+
+<div class="content-tab-panel" data-tab="sk-metaads">
+<p>Skill key: <code>ad-strategy</code> — Controls target audience, budget goals, KPI thresholds, and creative preferences for Meta campaigns.</p>
+<pre><code class="language-json">POST /UserAgent/Update
+{
+  "guid": "your-meta-ads-guid",
+  "configuration": {
+    "custom_skills": [
+      {
+        "key": "ad-strategy",
+        "value": "## Target Audience\nCountries: US, GB, DE\nLanguages: English\nAge range: 25-54\n\n## Budget & Goals\nMonthly budget limit: $5,000\nTarget CPA: $20\n\n## Creative Preferences\nVisual style: Clean, minimal, product-focused\nUse carousel ads for feature showcases\nVideo ads max 15 seconds\n\n## Campaign Types\nConversions: Main budget (70%)\nRetargeting: Website visitors (20%)\nBrand awareness: Lookalike audiences (10%)"
+      }
+    ]
+  }
+}</code></pre>
+<details><summary><strong>Preview: what the agent sees</strong></summary>
+<div class="skill-value-preview">
+<h4>Target Audience</h4>
+<p>Countries: US, GB, DE. Age: 25-54.</p>
+<h4>Budget &amp; Goals</h4>
+<p>Monthly limit: $5,000. Target CPA: $20.</p>
+<h4>Creative Preferences</h4>
+<p>Clean, minimal, product-focused. Carousel for features. Video max 15s.</p>
+<h4>Campaign Types</h4>
+<p>Conversions: 70%. Retargeting: 20%. Brand awareness: 10%.</p>
+</div>
+</details>
+</div>
+
+</div>
+</section>
+
+<section id="skills-managing-scheduled">
+<h2>Managing Scheduled Tasks</h2>
+<p>Scheduled tasks run automatically on a cron schedule. You can enable/disable them and change their frequency.</p>
+
+<h3>Example: Change scanner frequency</h3>
+<pre><code class="language-json">POST /UserAgent/Update
+{
+  "guid": "your-useragent-guid",
+  "configuration": {
+    "custom_skills": [
+      { "key": "review-scanner", "enabled": true, "interval": "0 */4 * * *" },
+      { "key": "content-scanner", "enabled": false }
+    ]
+  }
+}</code></pre>
+<p>This changes <code>review-scanner</code> to run every 4 hours and disables <code>content-scanner</code> entirely.</p>
+
+<h3>Common Cron Expressions</h3>
+<div class="status-table-wrapper">
+<table class="status-table">
+<thead><tr><th>Expression</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>*/30 * * * *</code></td><td>Every 30 minutes</td></tr>
+<tr><td><code>0 * * * *</code></td><td>Every hour</td></tr>
+<tr><td><code>0 */2 * * *</code></td><td>Every 2 hours</td></tr>
+<tr><td><code>0 */4 * * *</code></td><td>Every 4 hours</td></tr>
+<tr><td><code>0 */6 * * *</code></td><td>Every 6 hours</td></tr>
+<tr><td><code>0 9 * * *</code></td><td>Daily at 9:00 AM UTC</td></tr>
+<tr><td><code>0 10 * * *</code></td><td>Daily at 10:00 AM UTC</td></tr>
+<tr><td><code>0 9 * * 1</code></td><td>Every Monday at 9:00 AM UTC</td></tr>
+<tr><td><code>0 10 * * 3</code></td><td>Every Wednesday at 10:00 AM UTC</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section id="skills-full-example">
+<h2>Full Example: Push Notification Manager</h2>
+<p>Complete flow — fetch skills, then update preferences and schedules in one request.</p>
+
+<p><strong>Step 1 — Discover skills:</strong></p>
+<pre><code class="language-json">POST /UserAgent/Detail
+{
+  "guid": "your-push-agent-guid"
+}
+
+// Response → configuration.custom_skills:
+[
+  {
+    "key": "push-preferences",
+    "value": "## Push Tone\nWrite like a mobile growth expert...",
+    "description": "Push notification style, language, and targeting preferences",
+    "enabled": true,
+    "interval": null,
+    "_editable": true
+  },
+  {
+    "key": "push-scanner",
+    "value": "",
+    "description": "Scan holidays and craft push notification suggestions",
+    "enabled": true,
+    "interval": "0 9 * * *",
+    "_editable": false
+  },
+  {
+    "key": "push-dispatcher",
+    "value": "",
+    "description": "Send queued push notifications on schedule",
+    "enabled": true,
+    "interval": "0 * * * *",
+    "_editable": false
+  }
+]</code></pre>
+
+<p><strong>Step 2 — Update everything in one request:</strong></p>
+<pre><code class="language-json">POST /UserAgent/Update
+{
+  "guid": "your-push-agent-guid",
+  "configuration": {
+    "custom_skills": [
+      {
+        "key": "push-preferences",
+        "value": "## Push Tone\nFriendly and casual. Turkish for locale_tr, English for locale_en.\n\n## Holiday Preferences\nFocus on: New Year, Ramadan, Republic Day.\nSkip: Valentine's Day, Halloween.\n\n## Targeting\nAlways segment by locale. Premium version for paid users."
+      },
+      {
+        "key": "push-scanner",
+        "enabled": true,
+        "interval": "0 9 * * 1"
+      },
+      {
+        "key": "push-dispatcher",
+        "interval": "0 */2 * * *"
+      }
+    ]
+  }
+}</code></pre>
+<p>This single request:</p>
+<ol>
+<li><strong>push-preferences</strong> — rewrites targeting rules (editable skill, <code>value</code> updated)</li>
+<li><strong>push-scanner</strong> — changes from daily to Mondays only (<code>interval</code> updated)</li>
+<li><strong>push-dispatcher</strong> — changes from hourly to every 2 hours (<code>interval</code> updated)</li>
+</ol>
+</section>
+
+<section id="skills-per-agent">
+<h2>Available Skills by Agent</h2>
+
+<h3>Preferences (Editable Instructions)</h3>
+<p>Every agent has exactly one editable preference skill that controls its behavior:</p>
+<div class="status-table-wrapper">
+<table class="status-table">
+<thead><tr><th>Agent</th><th>Skill Key</th><th>What It Controls</th></tr></thead>
+<tbody>
+<tr><td>Social Manager</td><td><code>content-tone</code></td><td>Brand voice, hashtags, posting style per platform</td></tr>
+<tr><td>Blog Content Editor</td><td><code>content-strategy</code></td><td>Writing style, topics, research rules, blog types</td></tr>
+<tr><td>App Review Support</td><td><code>review-preferences</code></td><td>Response tone, support channels, custom rules</td></tr>
+<tr><td>App Event Manager</td><td><code>event-preferences</code></td><td>Event regions, holiday priorities, style</td></tr>
+<tr><td>Push Notification</td><td><code>push-preferences</code></td><td>Push tone, language, targeting, holiday choices</td></tr>
+<tr><td>Newsletter Manager</td><td><code>newsletter-strategy</code></td><td>Topics, tone, audience, frequency, branding</td></tr>
+<tr><td>Lead Gen Manager</td><td><code>lead-strategy</code></td><td>ICP definition, outreach tone, scoring rules</td></tr>
+<tr><td>Google Ads Manager</td><td><code>ad-strategy</code></td><td>Target audience, budget goals, KPI thresholds</td></tr>
+<tr><td>Meta Ads Manager</td><td><code>ad-strategy</code></td><td>Target audience, budget goals, creative preferences</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Scheduled Tasks</h3>
+<p>Automated tasks that run on a cron schedule. Toggle <code>enabled</code> and adjust <code>interval</code>:</p>
+<div class="status-table-wrapper">
+<table class="status-table">
+<thead><tr><th>Agent</th><th>Task Key</th><th>Description</th><th>Default Schedule</th></tr></thead>
+<tbody>
+<tr><td>Social Manager</td><td><code>content-scanner</code></td><td>Scan for new AI models and prepare posts</td><td>Hourly</td></tr>
+<tr><td>Social Manager</td><td><code>gmail-checker</code></td><td>Check inbox for content requests</td><td>Every 30 min</td></tr>
+<tr><td>Blog Content</td><td><code>blog-scanner</code></td><td>Discover blog topics and write content</td><td>Daily 9 AM</td></tr>
+<tr><td>Blog Content</td><td><code>gmail-checker</code></td><td>Check inbox for blog topic requests</td><td>Every 30 min</td></tr>
+<tr><td>App Review</td><td><code>review-scanner</code></td><td>Scan stores for new reviews</td><td>Every 2 hours</td></tr>
+<tr><td>App Event</td><td><code>app-event-scanner</code></td><td>Scan holidays, suggest App Store events</td><td>Monday 9 AM</td></tr>
+<tr><td>Push Notification</td><td><code>push-scanner</code></td><td>Scan holidays, craft push suggestions</td><td>Daily 9 AM</td></tr>
+<tr><td>Push Notification</td><td><code>push-dispatcher</code></td><td>Send queued push notifications</td><td>Hourly</td></tr>
+<tr><td>Newsletter</td><td><code>newsletter-sender</code></td><td>Create and send scheduled newsletters</td><td>Monday 9 AM</td></tr>
+<tr><td>Newsletter</td><td><code>subscriber-scanner</code></td><td>Daily subscriber list health check</td><td>Daily 10 AM</td></tr>
+<tr><td>Lead Gen</td><td><code>prospect-scanner</code></td><td>Weekly prospect search and scoring</td><td>Monday 10 AM</td></tr>
+<tr><td>Lead Gen</td><td><code>outreach-reporter</code></td><td>Daily outreach performance report</td><td>Daily 9 AM</td></tr>
+<tr><td>Lead Gen</td><td><code>reply-handler</code></td><td>Check replies, analyze sentiment</td><td>Every 4 hours</td></tr>
+<tr><td>Google Ads</td><td><code>performance-reporter</code></td><td>Daily performance report</td><td>Daily 9 AM</td></tr>
+<tr><td>Google Ads</td><td><code>competitor-scanner</code></td><td>Weekly competitor analysis</td><td>Monday 10 AM</td></tr>
+<tr><td>Google Ads</td><td><code>holiday-ad-planner</code></td><td>Scan holidays, suggest ad campaigns</td><td>Wednesday 10 AM</td></tr>
+<tr><td>Meta Ads</td><td><code>performance-reporter</code></td><td>Daily performance report</td><td>Daily 9 AM</td></tr>
+<tr><td>Meta Ads</td><td><code>audience-scanner</code></td><td>Weekly audience analysis</td><td>Monday 10 AM</td></tr>
+<tr><td>Meta Ads</td><td><code>holiday-ad-planner</code></td><td>Scan holidays, suggest campaigns</td><td>Wednesday 10 AM</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section id="skills-api-rules">
+<h2>Update Rules</h2>
+<div class="status-table-wrapper">
+<table class="status-table">
+<thead><tr><th>Field</th><th>Editable Skills (<code>_editable: true</code>)</th><th>System Skills (<code>_editable: false</code>)</th></tr></thead>
+<tbody>
+<tr><td><code>key</code></td><td>Read-only (used for lookup)</td><td>Read-only</td></tr>
+<tr><td><code>enabled</code></td><td>Can toggle on/off</td><td>Can toggle on/off</td></tr>
+<tr><td><code>interval</code></td><td>Can change cron schedule</td><td>Can change cron schedule</td></tr>
+<tr><td><code>value</code></td><td>Can rewrite instructions</td><td>Ignored (hidden in API response)</td></tr>
+<tr><td><code>description</code></td><td>Can update description</td><td>Ignored</td></tr>
+<tr><td><code>_editable</code></td><td>Read-only</td><td>Read-only</td></tr>
+</tbody>
+</table>
+</div>
+<ul>
+<li>Include only the fields you want to change — omitted fields keep their current values</li>
+<li>New skills cannot be added — only existing skills (matched by <code>key</code>) can be updated</li>
+<li>Send empty string <code>""</code> for <code>interval</code> to clear the schedule (becomes <code>null</code>)</li>
+<li>You can update credentials and skills in the same <code>POST /UserAgent/Update</code> request</li>
+</ul>
+</section>
+
+</article>
             </div>
 
             <!-- ==================== AGENT USE CASES ==================== -->
@@ -5764,7 +7147,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "agentguid": "agent-template-guid",
-    "title": "Customer Support Bot"
+    "title": "Customer Support Bot",
+    "useprepaid": true,
+    "plan": "starter"
   }'
 
 # Send a message
@@ -5847,7 +7232,9 @@ deploy = requests.post(
     headers=headers,
     json={
         "agentguid": "social-manager-agent-guid",
-        "title": "Acme Corp Social Media"
+        "title": "Acme Corp Social Media",
+        "useprepaid": True,
+        "plan": "starter"
     }
 )
 useragent_guid = deploy.json()["useragents"][0]["guid"]
