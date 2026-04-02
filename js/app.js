@@ -26,6 +26,7 @@ const sections = [
   { slug: 'agent-websocket', title: 'Agent WebSocket', description: 'Receive real-time agent response streaming via WebSocket. Subscribe to agent events and display thinking, answer, and performance metrics live.' },
   { slug: 'agent-webhooks', title: 'Agent Webhooks', description: 'Receive agent response notifications via HTTP webhooks. Configure callback URLs for async message processing with automatic retries.' },
   { slug: 'agent-credentials', title: 'Agent Credentials & OAuth', description: 'Configure agent credentials via API keys or OAuth flows. Connect third-party services like Twitter, Google Ads, Meta Ads, HubSpot, and more.' },
+  { slug: 'agent-skills', title: 'Agent Skills', description: 'Configure custom skills, editable preferences, and scheduled tasks for Wiro agents via UserAgent/Detail and UserAgent/Update.' },
   { slug: 'agent-use-cases', title: 'Agent Use Cases', description: 'Learn how to build products with Wiro Agents. Deploy agents for your customers, integrate OAuth flows, and create multi-agent workflows.' },
 ];
 
@@ -357,7 +358,8 @@ function highlightInlineCode(slug) {
     if (block.dataset.highlighted) return;
 
     const raw = block.textContent;
-    const lang = detectLang(raw);
+    const classLang = [...block.classList].find(c => c.startsWith('language-'))?.replace('language-', '') || null;
+    const lang = (classLang && SHIKI_LANGS.includes(classLang)) ? classLang : detectLang(raw);
     if (!lang || !SHIKI_LANGS.includes(lang)) return;
 
     const html = highlighter.codeToHtml(raw, { lang, theme: 'github-dark' });
@@ -368,7 +370,7 @@ function highlightInlineCode(slug) {
 
 function detectLang(code) {
   const trimmed = code.trim();
-  if (trimmed.startsWith('{') || trimmed.startsWith('[') || (trimmed.startsWith('//') && trimmed.includes('{'))) return 'json';
+  if (trimmed.startsWith('{') || trimmed.startsWith('[') || (trimmed.startsWith('//') && trimmed.includes('{')) || (trimmed.startsWith('POST ') && trimmed.includes('{'))) return 'json';
   if (trimmed.startsWith('curl ') || trimmed.startsWith('#!/bin') || trimmed.startsWith('npm ') || trimmed.startsWith('git ') || trimmed.startsWith('export ') || trimmed.startsWith('claude ')) return 'bash';
   if (/^#\s/.test(trimmed) && trimmed.includes('curl ')) return 'bash';
   if (trimmed.startsWith('import ') && trimmed.includes('from ')) return trimmed.includes('import type ') ? 'typescript' : 'javascript';

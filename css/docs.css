@@ -344,7 +344,10 @@ button {
   max-width: 640px;
   border-left: 1px solid var(--fade-grey-dark-3);
   background: var(--fade-grey);
-  transition: width 0.2s, min-width 0.2s, opacity 0.2s;
+  transition:
+    width 0.2s,
+    min-width 0.2s,
+    opacity 0.2s;
   overflow-y: auto;
   height: 100%;
   scrollbar-width: thin;
@@ -589,17 +592,17 @@ button {
 
 .docs-section ul {
   list-style: disc;
-  margin: 0 0 14px 20px;
+  margin: 0 0 0 15px;
 }
 
 .docs-section ol {
   list-style: decimal;
-  margin: 0 0 14px 20px;
+  margin: 0 0 0 15px;
 }
 
 .docs-section li {
   font-size: 1.05rem;
-  line-height: 1.7;
+  line-height: 1.8;
   color: var(--body-color);
   margin-bottom: 4px;
 }
@@ -662,7 +665,7 @@ button {
   padding: 10px 14px;
   vertical-align: top;
   color: var(--dark-text);
-  line-height: 1.5;
+  line-height: 1.8;
 }
 
 .docs-section table tbody td:first-child {
@@ -970,7 +973,9 @@ button {
   text-decoration: none;
   border: 1px solid var(--fade-grey-dark-3);
   border-radius: 6px;
-  transition: color 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
 }
 
 .docs-nav-external-link i {
@@ -1116,7 +1121,9 @@ button {
   font-size: 0.9rem;
   color: var(--dark-text);
   text-decoration: none;
-  transition: color 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
   border-left: 2px solid transparent;
   margin-left: -2px;
 }
@@ -1164,7 +1171,9 @@ button {
   color: var(--light-text);
   font-size: 0.88rem;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
 }
 
 .docs-search-trigger:hover {
@@ -1219,8 +1228,14 @@ button {
 }
 
 @keyframes searchSlideIn {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .docs-search-logo {
@@ -1365,7 +1380,9 @@ button {
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: opacity 0.15s, background 0.15s;
+  transition:
+    opacity 0.15s,
+    background 0.15s;
 }
 
 .docs-search-item:hover .docs-search-item-remove {
@@ -1494,7 +1511,7 @@ button {
 }
 
 .docs-steps li::after {
-  content: '';
+  content: "";
   position: absolute;
   left: 17px;
   top: 36px;
@@ -1582,8 +1599,8 @@ button {
 }
 
 .faq-question::after {
-  content: '\ea5f';
-  font-family: 'lineicons';
+  content: "\ea5f";
+  font-family: "lineicons";
   font-size: 0.7rem;
   color: var(--light-text);
   transition: transform 0.25s;
@@ -1598,7 +1615,9 @@ button {
 .faq-answer {
   max-height: 0;
   overflow: hidden;
-  transition: max-height 0.3s ease, padding 0.3s ease;
+  transition:
+    max-height 0.3s ease,
+    padding 0.3s ease;
 }
 
 .faq-item.is-open .faq-answer {
@@ -1668,7 +1687,6 @@ button {
 .mcp-client-card.is-active {
   border-color: var(--primary);
 }
-
 
 .mcp-setup-panel {
   display: none;
@@ -2035,6 +2053,198 @@ button {
 }
 
 /* ------------------------------------------------------------------
+   17c. Content tabs (CSS-only)
+   ------------------------------------------------------------------ */
+.content-tabs {
+  margin: 16px 0;
+}
+
+.content-tabs input[type="radio"] {
+  display: none;
+}
+
+.content-tabs-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  border-bottom: 2px solid var(--fade-grey-dark-3);
+  margin-bottom: 0;
+}
+
+.content-tabs-nav label {
+  padding: 10px 18px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--light-text);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+  white-space: nowrap;
+}
+
+.content-tabs-nav label:hover {
+  color: var(--primary);
+}
+
+.content-tab-panel {
+  display: none;
+  padding: 16px 0;
+}
+
+/* Active states - each radio activates its panel */
+#ct-social:checked ~ .content-tabs-nav label[for="ct-social"],
+#ct-blog:checked ~ .content-tabs-nav label[for="ct-blog"],
+#ct-appreview:checked ~ .content-tabs-nav label[for="ct-appreview"],
+#ct-appevent:checked ~ .content-tabs-nav label[for="ct-appevent"],
+#ct-push:checked ~ .content-tabs-nav label[for="ct-push"],
+#ct-nlmanager:checked ~ .content-tabs-nav label[for="ct-nlmanager"],
+#ct-leadgen:checked ~ .content-tabs-nav label[for="ct-leadgen"],
+#ct-googleads:checked ~ .content-tabs-nav label[for="ct-googleads"],
+#ct-metaads:checked ~ .content-tabs-nav label[for="ct-metaads"] {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+#ct-social:checked ~ .content-tab-panel[data-tab="social"],
+#ct-blog:checked ~ .content-tab-panel[data-tab="blog"],
+#ct-appreview:checked ~ .content-tab-panel[data-tab="appreview"],
+#ct-appevent:checked ~ .content-tab-panel[data-tab="appevent"],
+#ct-push:checked ~ .content-tab-panel[data-tab="push"],
+#ct-nlmanager:checked ~ .content-tab-panel[data-tab="nlmanager"],
+#ct-leadgen:checked ~ .content-tab-panel[data-tab="leadgen"],
+#ct-googleads:checked ~ .content-tab-panel[data-tab="googleads"],
+#ct-metaads:checked ~ .content-tab-panel[data-tab="metaads"] {
+  display: block;
+}
+
+/* Skill value preview */
+.docs-section details {
+  margin: 12px 0;
+  border: 1px solid var(--fade-grey-dark-3);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.docs-section details summary {
+  padding: 10px 16px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--primary);
+  background: var(--fade-grey-light);
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s;
+}
+
+.docs-section details summary::-webkit-details-marker {
+  display: none;
+}
+
+.docs-section details summary::before {
+  content: "▶";
+  font-size: 0.65rem;
+  transition: transform 0.2s;
+}
+
+.docs-section details[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.docs-section details summary:hover {
+  background: var(--fade-grey);
+}
+
+.skill-value-preview {
+  padding: 14px 16px;
+  font-size: 0.85rem;
+  line-height: 1.2;
+  color: var(--body-color);
+  white-space: pre-line;
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.skill-value-preview h4 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin: 12px 0 4px;
+  padding-bottom: 3px;
+  border-bottom: 1px solid var(--fade-grey-dark-3);
+}
+
+.skill-value-preview h4:first-child {
+  margin-top: 0;
+}
+
+.is-dark .docs-section details {
+  border-color: var(--dark-sidebar-light-8);
+}
+
+.is-dark .docs-section details summary {
+  background: var(--dark-sidebar-light-4);
+  color: var(--primary);
+}
+
+.is-dark .docs-section details summary:hover {
+  background: var(--dark-sidebar-light-6);
+}
+
+.is-dark .skill-value-preview {
+  color: var(--dark-dark-text);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.is-dark .skill-value-preview h4 {
+  color: var(--primary);
+  border-bottom-color: var(--dark-sidebar-light-8);
+}
+
+/* Skills tabs */
+#sk-social:checked ~ .content-tabs-nav label[for="sk-social"],
+#sk-blog:checked ~ .content-tabs-nav label[for="sk-blog"],
+#sk-appreview:checked ~ .content-tabs-nav label[for="sk-appreview"],
+#sk-appevent:checked ~ .content-tabs-nav label[for="sk-appevent"],
+#sk-push:checked ~ .content-tabs-nav label[for="sk-push"],
+#sk-nlmanager:checked ~ .content-tabs-nav label[for="sk-nlmanager"],
+#sk-leadgen:checked ~ .content-tabs-nav label[for="sk-leadgen"],
+#sk-googleads:checked ~ .content-tabs-nav label[for="sk-googleads"],
+#sk-metaads:checked ~ .content-tabs-nav label[for="sk-metaads"] {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+#sk-social:checked ~ .content-tab-panel[data-tab="sk-social"],
+#sk-blog:checked ~ .content-tab-panel[data-tab="sk-blog"],
+#sk-appreview:checked ~ .content-tab-panel[data-tab="sk-appreview"],
+#sk-appevent:checked ~ .content-tab-panel[data-tab="sk-appevent"],
+#sk-push:checked ~ .content-tab-panel[data-tab="sk-push"],
+#sk-nlmanager:checked ~ .content-tab-panel[data-tab="sk-nlmanager"],
+#sk-leadgen:checked ~ .content-tab-panel[data-tab="sk-leadgen"],
+#sk-googleads:checked ~ .content-tab-panel[data-tab="sk-googleads"],
+#sk-metaads:checked ~ .content-tab-panel[data-tab="sk-metaads"] {
+  display: block;
+}
+
+/* Dark mode */
+.is-dark .content-tabs-nav {
+  border-bottom-color: var(--dark-sidebar-light-8);
+}
+
+.is-dark .content-tabs-nav label {
+  color: #94a3b8;
+}
+
+.is-dark .content-tabs-nav label:hover {
+  color: var(--primary);
+}
+
+/* ------------------------------------------------------------------
    18. Lifecycle flow
    ------------------------------------------------------------------ */
 .lifecycle-flow {
@@ -2229,7 +2439,10 @@ button {
 /* Section headings & text */
 .is-dark .docs-section h1,
 .is-dark .docs-section h2,
-.is-dark .docs-section h3 {
+.is-dark .docs-section h3,
+.is-dark .docs-section h4,
+.is-dark .docs-section h5,
+.is-dark .docs-section h6 {
   color: #e2e8f0;
 }
 
@@ -2394,14 +2607,32 @@ button {
   color: var(--dark-dark-text);
 }
 
+/* Inline code (dark) */
+.is-dark .docs-section code {
+  background: rgba(0, 195, 140, 0.15);
+  color: #2ee6a8;
+}
+
+.is-dark .docs-section pre code {
+  background: none;
+  color: inherit;
+}
+
 /* Info callout */
 .is-dark .info-callout {
   background: var(--dark-sidebar-light-4);
   border-left-color: var(--primary);
 }
 
-.is-dark .info-callout p {
+.is-dark .info-callout,
+.is-dark .info-callout p,
+.is-dark .info-callout strong {
   color: var(--dark-dark-text);
+}
+
+.is-dark .info-callout code {
+  background: rgba(0, 195, 140, 0.2);
+  color: #2ee6a8;
 }
 
 /* Auth toggle */
