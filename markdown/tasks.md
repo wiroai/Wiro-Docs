@@ -27,9 +27,9 @@ Every model run creates a task that progresses through a defined set of stages:
 | `task_postprocess_end` | Post-processing completed. Check `pexit` to determine success: `"0"` = success, any other value = error. The `outputs` array contains the final files with CDN URLs, content types, and sizes. **This is the event you should listen for** to get the final results. |
 | `task_cancel` | The task was cancelled (if queued) or killed (if running) by the user. |
 
-### Realtime Conversation Only
+### Realtime Sessions
 
-The following statuses are exclusive to realtime conversation models (e.g. voice AI). They are not emitted for standard model runs.
+The following statuses are exclusive to realtime models (voice conversation, text-to-speech, and speech-to-text). They are not emitted for standard model runs.
 
 | Status | Description |
 |--------|-------------|

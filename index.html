@@ -134,6 +134,8 @@
               <li><a href="/docs/llm-chat-streaming" class="docs-nav-link" data-section="llm-chat-streaming"><i class="lni lni-comments"></i><span>LLM & Chat Streaming</span></a></li>
               <li><a href="/docs/websocket" class="docs-nav-link" data-section="websocket"><i class="lni lni-bolt"></i><span>WebSocket</span></a></li>
               <li><a href="/docs/realtime-voice-conversation" class="docs-nav-link" data-section="realtime-voice-conversation"><i class="lni lni-mic"></i><span>Realtime Voice Conversation</span></a></li>
+              <li><a href="/docs/realtime-text-to-speech" class="docs-nav-link" data-section="realtime-text-to-speech"><i class="lni lni-volume"></i><span>Realtime Text to Speech</span></a></li>
+              <li><a href="/docs/realtime-speech-to-text" class="docs-nav-link" data-section="realtime-speech-to-text"><i class="lni lni-microphone"></i><span>Realtime Speech to Text</span></a></li>
               <li><a href="/docs/files" class="docs-nav-link" data-section="files"><i class="lni lni-upload"></i><span>Files</span></a></li>
               <li><a href="/docs/pricing" class="docs-nav-link" data-section="pricing"><i class="lni lni-coin"></i><span>Pricing</span></a></li>
               <li><a href="/docs/concurrency-limits" class="docs-nav-link" data-section="concurrency-limits"><i class="lni lni-timer"></i><span>Concurrency Limits</span></a></li>
@@ -2435,6 +2437,38 @@ ws.onopen = function() {
   }
 ]
 </script>
+            </div>
+
+            <!-- ==================== REALTIME TTS ==================== -->
+            <div class="docs-page-section" data-page="realtime-text-to-speech" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/realtime-text-to-speech.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/realtime-text-to-speech.md" download class="docs-section-md-btn">Download</a></div>
+  <h1>Realtime Text to Speech</h1>
+  <p class="section-subtitle">Stream text-to-speech audio in real time using Wiro realtime TTS models.</p>
+
+  <section id="realtime-tts-overview">
+    <h2>Overview</h2>
+    <p>Realtime TTS models convert text into streaming audio. Unlike standard TTS that returns a complete audio file, realtime TTS streams synthesized speech via WebSocket as it generates — enabling instant playback without waiting for the full audio to be produced.</p>
+    <p>No microphone is needed — you simply submit text and receive audio.</p>
+    <p>See the <a href="markdown/realtime-text-to-speech.md" target="_blank">full documentation</a> for complete details, audio format specification, and code examples in JavaScript, Python, and Node.js.</p>
+  </section>
+</article>
+            </div>
+
+            <!-- ==================== REALTIME STT ==================== -->
+            <div class="docs-page-section" data-page="realtime-speech-to-text" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/realtime-speech-to-text.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/realtime-speech-to-text.md" download class="docs-section-md-btn">Download</a></div>
+  <h1>Realtime Speech to Text</h1>
+  <p class="section-subtitle">Stream microphone audio and receive live transcription via WebSocket.</p>
+
+  <section id="realtime-stt-overview">
+    <h2>Overview</h2>
+    <p>Realtime STT models transcribe audio in real time. Stream microphone audio via WebSocket and receive progressive text transcription as the user speaks — enabling live dictation, captioning, and transcription applications.</p>
+    <p>No audio playback is needed — you send microphone audio and receive text.</p>
+    <p>See the <a href="markdown/realtime-speech-to-text.md" target="_blank">full documentation</a> for complete details, audio format specification, and code examples in JavaScript, Python, and Node.js.</p>
+  </section>
+</article>
             </div>
 
             <!-- ==================== FILES ==================== -->

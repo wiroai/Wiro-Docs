@@ -227,10 +227,10 @@ Sent once after the process exits. Contains the complete accumulated log:
 
 ### Realtime Events
 
-These events are exclusive to [realtime voice models](/docs/realtime-voice-conversation):
+These events are exclusive to realtime models ([voice conversation](/docs/realtime-voice-conversation), [text-to-speech](/docs/realtime-text-to-speech), and [speech-to-text](/docs/realtime-speech-to-text)):
 
 ```json
-// Session is ready — start sending audio
+// Session is ready — start sending audio/text
 {
   "type": "task_stream_ready",
   "id": "534574",
@@ -238,7 +238,7 @@ These events are exclusive to [realtime voice models](/docs/realtime-voice-conve
   "result": true
 }
 
-// AI finished speaking for this turn
+// The model finished producing output for this turn
 {
   "type": "task_stream_end",
   "id": "534574",
@@ -260,11 +260,11 @@ These events are exclusive to [realtime voice models](/docs/realtime-voice-conve
 
 ## Binary Frames
 
-For **realtime voice models**, the WebSocket may send binary frames containing raw audio data. Check if the received message is a `Blob` (browser) or `Buffer` (Node.js) before parsing as JSON.
+For **realtime models** (voice conversation, text-to-speech, and speech-to-text), the WebSocket may send binary frames containing raw audio data. Check if the received message is a `Blob` (browser) or `Buffer` (Node.js) before parsing as JSON.
 
 ## Ending a Session
 
-For realtime/streaming models that maintain a persistent session, send a `task_session_end` message to gracefully terminate:
+For realtime models that maintain a persistent session, send a `task_session_end` message to gracefully terminate:
 
 ```json
 {

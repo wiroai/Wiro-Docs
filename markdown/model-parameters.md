@@ -205,6 +205,39 @@ Available realtime models:
 }
 ```
 
+### Realtime Text to Speech
+
+Realtime TTS models stream synthesized audio back over [WebSocket](/docs/realtime-text-to-speech) as binary frames. Text is required. Reference audio is optional for voice cloning.
+
+Available realtime TTS models:
+- [wiro/moss-tts](https://wiro.ai/models/wiro/moss-tts)
+
+```json
+{
+  "text": "Hello, this is a test of real-time text to speech.",
+  "inputAudio": "",
+  "temperature": 0.8,
+  "topP": 0.6,
+  "topK": 30,
+  "repetitionPenalty": 1.1,
+  "repetitionWindow": 50,
+  "maxLength": 3000
+}
+```
+
+### Realtime Speech to Text
+
+Realtime STT models transcribe audio streamed from the microphone over [WebSocket](/docs/realtime-speech-to-text). No text input needed — audio is streamed from the microphone. The `transcriptionDelay` controls the speed vs accuracy trade-off.
+
+Available realtime STT models:
+- [wiro/voxtral-mini-realtime](https://wiro.ai/models/wiro/voxtral-mini-realtime)
+
+```json
+{
+  "transcriptionDelay": "balanced"
+}
+```
+
 ## Webhook Callback
 
 All models support an optional `callbackUrl` parameter. When provided, Wiro will POST the task result to your URL when the task completes — no polling required:

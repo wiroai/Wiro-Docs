@@ -1,23 +1,25 @@
-# Realtime Voice
+# Realtime Speech to Text
 
-Build interactive voice conversation apps with realtime AI models.
+Transcribe live microphone audio into text in real time using streaming ASR models.
 
 ## Overview
 
-Realtime voice models enable two-way audio conversations with AI. Unlike standard model runs that process a single input and return a result, realtime sessions maintain a persistent WebSocket connection where you stream microphone audio and receive AI speech in real time.
+Realtime speech-to-text models convert streaming audio into text transcripts as the user speaks. Unlike [Realtime Voice Conversation](/docs/realtime-voice-conversation) which produces two-way audio, this mode is **audio in → text out** only. There is no AI audio playback — the server returns transcript strings over the WebSocket.
 
 The flow is:
 
 1. **Run** the realtime model via [POST /Run](/docs/run-a-model) to get a `socketaccesstoken`
 2. **Connect** to the WebSocket and send `task_info` with your token
 3. **Wait** for `task_stream_ready` — the model is ready to receive audio
-4. **Stream** microphone audio as binary frames
-5. **Receive** AI audio as binary frames and play them
+4. **Stream** microphone audio as binary frames (client → server)
+5. **Receive** transcript text as `task_output` messages with `TRANSCRIPT_USER:` prefix
 6. **End** the session with `task_session_end`
+
+> **Key difference from Voice Conversation:** No binary audio is sent back from the server. All server → client messages are JSON text events.
 
 ## Connection & Registration
 
-After running the task, connect to the WebSocket and register with `task_info` :
+After running the task, connect to the WebSocket and register with `task_info`:
 
 ```javascript
 var ws = new WebSocket("wss://socket.wiro.ai/v1");
@@ -34,22 +36,22 @@ ws.onopen = function() {
 
 ## Realtime Events
 
-During a realtime session, you'll receive these WebSocket events:
+During a realtime speech-to-text session, you'll receive these WebSocket events:
 
 | Event | Direction | Description |
 |-------|-----------|-------------|
 | `task_stream_ready` | server → client | Session is ready — start sending microphone audio |
-| `task_stream_end` | server → client | AI finished speaking for this turn — you can speak again |
-| `task_cost` | server → client | Cost update per turn — includes `turnCost`, `cumulativeCost`, and `usage` (raw cost breakdown from the model provider) |
-| `task_output` | server → client | Transcript messages prefixed with `TRANSCRIPT_USER:` or `TRANSCRIPT_AI:` |
-| `task_end` | server → client | The model process has exited. Post-processing follows — wait for `task_postprocess_end` to close the connection. |
-| `task_postprocess_end` | server → client | Post-processing complete — safe to close the WebSocket connection |
-| `task_session_end` | client → server | Gracefully end the session |
-| `task_session_interrupt` | client → server | Interrupt AI speech — stops playback and lets the user speak |
+| `task_output` | server → client | Transcript text prefixed with `TRANSCRIPT_USER:` |
+| `task_stream_end` | server → client | Transcription stream has ended — no more transcripts will arrive |
+| `task_cost` | server → client | Cost update — includes `turnCost`, `cumulativeCost`, and `usage` breakdown |
+| `task_end` | server → client | The model process has exited. Post-processing follows — wait for `task_postprocess_end` before closing. |
+| `task_postprocess_end` | server → client | Post-processing complete — safe to close the WebSocket now. |
+
+> Unlike voice conversation, there are no binary audio frames from the server. Every server message is a JSON text event.
 
 ## Audio Format
 
-Both directions (microphone → server, server → client) use the same format:
+Audio flows in one direction only: **client → server**.
 
 | Property | Value |
 |----------|-------|
@@ -60,19 +62,21 @@ Both directions (microphone → server, server → client) use the same format:
 | Byte order | Little-endian |
 | Chunk size | 4,800 samples (200 ms) = 9,600 bytes |
 
+> The server internally resamples to the model's native rate (e.g. 16 kHz for Voxtral). Always send at 24 kHz — the server handles conversion.
+
 ### Binary Frame Format
 
-Every binary WebSocket frame (in both directions) is structured as:
+Every binary WebSocket frame sent from the client is structured as:
 
 ```
 [tasktoken]|[PCM audio data]
 ```
 
-The pipe character `|` (0x7C) separates the token from the raw audio bytes.
+The pipe character `|` (0x7C) separates the token from the raw audio bytes. There are no binary frames from the server — all responses are JSON text.
 
 ## Sending Microphone Audio
 
-Capture microphone at 24 kHz using the Web Audio API with an AudioWorklet. Convert Float32 samples to Int16, prepend your task token, and send as a binary frame.
+Capture microphone audio at 24 kHz using the Web Audio API with an AudioWorklet. Convert Float32 samples to Int16, prepend your task token, and send as a binary frame.
 
 Key steps:
 
@@ -80,25 +84,15 @@ Key steps:
 2. Create an `AudioContext` at 24,000 Hz sample rate
 3. Use an AudioWorklet to buffer and convert samples to Int16
 4. Send each chunk as `tasktoken|pcm_data` binary frame
+5. Continue sending until you end the session
 
-## Receiving AI Audio
-
-AI responses arrive as binary WebSocket frames in the same PCM Int16 24 kHz format. To play them:
-
-1. Check if the message is a `Blob` (binary) before parsing as JSON
-2. Find the pipe `|` separator and extract audio data after it
-3. Convert Int16 → Float32 and create an `AudioBuffer`
-4. Schedule gapless playback using `AudioBufferSourceNode`
+> **Tip:** You can send audio continuously — the model handles silence detection and only returns transcripts when speech is detected.
 
 ## Transcripts
 
-Both user and AI speech are transcribed automatically. Transcripts arrive as `task_output` messages with a string prefix:
-
-- `TRANSCRIPT_USER:` — what the user said
-- `TRANSCRIPT_AI:` — what the AI said
+Transcripts arrive as `task_output` messages with the `TRANSCRIPT_USER:` prefix. Each message contains a segment of transcribed speech:
 
 ```json
-// Example task_output message
 {
   "type": "task_output",
   "message": "TRANSCRIPT_USER:What's the weather like today?"
@@ -106,29 +100,29 @@ Both user and AI speech are transcribed automatically. Transcripts arrive as `ta
 
 {
   "type": "task_output",
-  "message": "TRANSCRIPT_AI:I'd be happy to help, but I don't have access to real-time weather data."
+  "message": "TRANSCRIPT_USER:I need to book a flight to New York."
 }
 ```
 
-## Interrupting AI Speech
+### Progressive Results
 
-While the AI is speaking, you can interrupt it to take over the conversation. Send `task_session_interrupt`:
+Transcripts arrive progressively as words and phrases are recognized — not just at segment boundaries. The model streams `TRANSCRIPT_USER:` messages word-by-word as speech is detected, so the client can display live, incremental results. To build a full transcript, concatenate all received messages:
 
-```json
-{
-  "type": "task_session_interrupt",
-  "tasktoken": "YOUR_SOCKET_ACCESS_TOKEN"
+```javascript
+var fullTranscript = [];
+
+// Inside your message handler
+if (msg.type === 'task_output' &&
+    typeof msg.message === 'string' &&
+    msg.message.startsWith('TRANSCRIPT_USER:')) {
+  var segment = msg.message.substring(16);
+  fullTranscript.push(segment);
+  console.log('Segment:', segment);
+  console.log('Full:', fullTranscript.join(' '));
 }
 ```
 
-When the server receives this:
-- The AI immediately stops generating audio
-- A final `task_stream_end` is sent for the interrupted turn
-- The session continues — the user can speak and the AI will respond to the next input
-
-On the client side, stop audio playback immediately when the user triggers an interrupt. This gives instant feedback (AI voice cuts off) while the server processes the signal.
-
-> **Tip:** Some models support natural interruption — if the user starts speaking while the AI is talking, the model may stop on its own. The explicit `task_session_interrupt` signal provides a reliable, manual interrupt for all models.
+> **Note:** Unlike voice conversation, there is no `TRANSCRIPT_AI:` prefix. All transcripts are user speech.
 
 ## Ending a Session
 
@@ -141,7 +135,7 @@ To gracefully end a realtime session, send `task_session_end`:
 }
 ```
 
-After sending this, the server will process any remaining audio, send final cost/transcript events, and then emit `task_postprocess_end`. Wait for `task_postprocess_end` before closing the WebSocket.
+After sending this, the server processes any remaining buffered audio, sends final transcript and cost events, and then emits `task_postprocess_end`. Wait for `task_postprocess_end` before closing the WebSocket.
 
 > **Safety:** If the client disconnects without sending `task_session_end`, the server automatically terminates the session to prevent the pipeline from running indefinitely (and the provider from continuing to charge). Always send `task_session_end` explicitly for a clean shutdown.
 
@@ -152,21 +146,17 @@ After sending this, the server will process any remaining audio, send final cost
 ### JavaScript
 
 ```javascript
-// Realtime Voice Session — Connect and Handle Events
+// Realtime Speech-to-Text — Connect and Receive Transcripts
 
 var socketToken = 'YOUR_SOCKET_ACCESS_TOKEN';
 var ws = new WebSocket('wss://socket.wiro.ai/v1');
+var fullTranscript = [];
 
 ws.onopen = function() {
   ws.send(JSON.stringify({ type: 'task_info', tasktoken: socketToken }));
 };
 
 ws.onmessage = function(event) {
-  if (event.data instanceof Blob) {
-    handleAudioResponse(event.data);
-    return;
-  }
-
   var msg = JSON.parse(event.data);
 
   if (msg.type === 'task_stream_ready') {
@@ -174,8 +164,16 @@ ws.onmessage = function(event) {
     startMicrophone(ws, socketToken);
   }
 
+  if (msg.type === 'task_output' &&
+      typeof msg.message === 'string' &&
+      msg.message.startsWith('TRANSCRIPT_USER:')) {
+    var text = msg.message.substring(16);
+    fullTranscript.push(text);
+    console.log('Transcript:', text);
+  }
+
   if (msg.type === 'task_stream_end') {
-    console.log('AI finished speaking — listening');
+    console.log('Transcription stream ended');
   }
 
   if (msg.type === 'task_cost') {
@@ -183,33 +181,17 @@ ws.onmessage = function(event) {
       'Total:', msg.cumulativeCost);
   }
 
-  if (msg.type === 'task_output' &&
-      typeof msg.message === 'string') {
-    if (msg.message.startsWith('TRANSCRIPT_USER:')) {
-      console.log('You:', msg.message.substring(16));
-    }
-    if (msg.message.startsWith('TRANSCRIPT_AI:')) {
-      console.log('AI:', msg.message.substring(14));
-    }
-  }
-
   if (msg.type === 'task_end') {
-    console.log('Model process exited — waiting for post-processing');
+    console.log('Model process ended — waiting for post-processing');
   }
 
   if (msg.type === 'task_postprocess_end') {
-    console.log('Session ended');
+    console.log('Session complete');
+    console.log('Full transcript:', fullTranscript.join(' '));
     stopMicrophone();
     ws.close();
   }
 };
-
-function interruptAI() {
-  ws.send(JSON.stringify({
-    type: 'task_session_interrupt',
-    tasktoken: socketToken
-  }));
-}
 
 function endSession() {
   ws.send(JSON.stringify({
@@ -238,7 +220,6 @@ async function startMicrophone(ws, token) {
 
   audioCtx = new AudioContext({ sampleRate: 24000 });
 
-  // Inline AudioWorklet processor
   var code = `
     class P extends AudioWorkletProcessor {
       constructor() { super(); this.buf = new Float32Array(0); }
@@ -262,7 +243,7 @@ async function startMicrophone(ws, token) {
         return true;
       }
     }
-    registerProcessor('p', P);
+    registerProcessor('pcm-24k-processor', P);
   `;
   var blob = new Blob([code], { type: 'application/javascript' });
   await audioCtx.audioWorklet.addModule(
@@ -270,7 +251,7 @@ async function startMicrophone(ws, token) {
   );
 
   var src = audioCtx.createMediaStreamSource(micStream);
-  workletNode = new AudioWorkletNode(audioCtx, 'p');
+  workletNode = new AudioWorkletNode(audioCtx, 'pcm-24k-processor');
   src.connect(workletNode);
 
   workletNode.port.onmessage = function(e) {
@@ -293,49 +274,6 @@ function stopMicrophone() {
 }
 ```
 
-### Play Audio
-
-```javascript
-// Receive and play AI audio (PCM Int16 24kHz)
-
-var playCtx = new AudioContext({ sampleRate: 24000 });
-var nextPlayTime = 0;
-
-function handleAudioResponse(blob) {
-  blob.arrayBuffer().then(function(buffer) {
-    var bytes = new Uint8Array(buffer);
-
-    // Find pipe separator
-    var pipeIndex = bytes.indexOf(0x7C);
-    if (pipeIndex < 0) return;
-
-    var audioData = buffer.slice(pipeIndex + 1);
-
-    // Convert Int16 → Float32
-    var int16 = new Int16Array(audioData);
-    var float32 = new Float32Array(int16.length);
-    for (var i = 0; i < int16.length; i++) {
-      float32[i] = int16[i] / 32768.0;
-    }
-
-    // Schedule gapless playback
-    var audioBuf = playCtx.createBuffer(
-      1, float32.length, 24000
-    );
-    audioBuf.getChannelData(0).set(float32);
-
-    var src = playCtx.createBufferSource();
-    src.buffer = audioBuf;
-    src.connect(playCtx.destination);
-
-    var now = playCtx.currentTime;
-    var t = Math.max(now, nextPlayTime);
-    src.start(t);
-    nextPlayTime = t + audioBuf.duration;
-  });
-}
-```
-
 ### Python
 
 ```python
@@ -348,29 +286,24 @@ SOCKET_TOKEN = 'YOUR_SOCKET_ACCESS_TOKEN'
 SAMPLE_RATE = 24000
 CHUNK = 4800  # 200ms
 
-async def realtime_session():
+async def realtime_stt_session():
     uri = 'wss://socket.wiro.ai/v1'
     async with websockets.connect(uri) as ws:
-        # Register
         await ws.send(json.dumps({
             'type': 'task_info',
             'tasktoken': SOCKET_TOKEN
         }))
 
-        # Audio setup
         pa = pyaudio.PyAudio()
         mic = pa.open(format=pyaudio.paInt16,
             channels=1, rate=SAMPLE_RATE,
             input=True, frames_per_buffer=CHUNK)
-        speaker = pa.open(format=pyaudio.paInt16,
-            channels=1, rate=SAMPLE_RATE,
-            output=True)
 
         is_listening = False
-        done = asyncio.Event()
+        full_transcript = []
 
         async def send_audio():
-            while not done.is_set():
+            while True:
                 if is_listening:
                     data = mic.read(CHUNK,
                         exception_on_overflow=False)
@@ -381,37 +314,43 @@ async def realtime_session():
         async def receive():
             nonlocal is_listening
             async for msg in ws:
-                if isinstance(msg, bytes):
-                    pipe = msg.find(0x7C)
-                    if pipe == -1:
-                        continue
-                    speaker.write(msg[pipe+1:])
-                    continue
                 data = json.loads(msg)
                 t = data['type']
                 if t == 'task_stream_ready':
-                    print('Session ready')
+                    print('Session ready — sending audio')
                     is_listening = True
                 elif t == 'task_stream_end':
-                    print('AI finished speaking')
-                    is_listening = True
+                    print('Transcription stream ended')
+                    is_listening = False
                 elif t == 'task_cost':
                     print(f'Cost: {data["cumulativeCost"]}')
                 elif t == 'task_output':
                     m = data.get('message', '')
                     if m.startswith('TRANSCRIPT_USER:'):
-                        print(f'You: {m[16:]}')
-                    elif m.startswith('TRANSCRIPT_AI:'):
-                        print(f'AI: {m[14:]}')
-                elif t == 'task_postprocess_end':
+                        text = m[16:]
+                        full_transcript.append(text)
+                        print(f'Transcript: {text}')
+                elif t in ('task_end',
+                    'task_postprocess_end'):
                     print('Session ended')
-                    done.set()
+                    print(f'Full: {" ".join(full_transcript)}')
                     break
 
-        await asyncio.gather(
-            send_audio(), receive())
+        sender = asyncio.create_task(send_audio())
+        try:
+            await receive()
+        finally:
+            sender.cancel()
+            try:
+                await sender
+            except asyncio.CancelledError:
+                pass
 
-asyncio.run(realtime_session())
+        mic.stop_stream()
+        mic.close()
+        pa.terminate()
+
+asyncio.run(realtime_stt_session())
 ```
 
 ### Node.js
@@ -421,6 +360,7 @@ const WebSocket = require('ws');
 
 const SOCKET_TOKEN = 'YOUR_SOCKET_ACCESS_TOKEN';
 const ws = new WebSocket('wss://socket.wiro.ai/v1');
+const fullTranscript = [];
 
 ws.on('open', () => {
   ws.send(JSON.stringify({
@@ -430,47 +370,69 @@ ws.on('open', () => {
 });
 
 ws.on('message', (data, isBinary) => {
-  if (isBinary) {
-    const buf = Buffer.from(data);
-    const pipe = buf.indexOf(0x7C);
-    if (pipe !== -1) {
-      const audio = buf.slice(pipe + 1);
-      // Play via speaker or save to file
-      console.log('Audio chunk:', audio.length, 'bytes');
-    }
-    return;
-  }
-
   const msg = JSON.parse(data.toString());
 
   if (msg.type === 'task_stream_ready') {
     console.log('Session ready — start sending audio');
-    // Start mic capture and send as binary
+    startAudioCapture(ws, SOCKET_TOKEN);
+  }
+
+  if (msg.type === 'task_output' &&
+      typeof msg.message === 'string' &&
+      msg.message.startsWith('TRANSCRIPT_USER:')) {
+    const text = msg.message.substring(16);
+    fullTranscript.push(text);
+    console.log('Transcript:', text);
+  }
+
+  if (msg.type === 'task_stream_end') {
+    console.log('Transcription stream ended');
   }
 
   if (msg.type === 'task_cost') {
     console.log('Cost:', msg.cumulativeCost);
   }
 
-  if (msg.type === 'task_output' &&
-      typeof msg.message === 'string') {
-    if (msg.message.startsWith('TRANSCRIPT_USER:'))
-      console.log('You:', msg.message.substring(16));
-    if (msg.message.startsWith('TRANSCRIPT_AI:'))
-      console.log('AI:', msg.message.substring(14));
-  }
-
   if (msg.type === 'task_end') {
-    console.log('Model process exited — waiting for post-processing');
+    console.log('Model process ended — waiting for post-processing');
   }
 
   if (msg.type === 'task_postprocess_end') {
     console.log('Done');
+    console.log('Full transcript:', fullTranscript.join(' '));
     ws.close();
   }
 });
 
-// End session
+// NOTE: arecord is Linux-only (ALSA). Alternatives:
+//   macOS: sox — spawn('sox', ['-d', '-t', 'raw', '-r', '24000', '-b', '16', '-c', '1', '-e', 'signed', '-L', '-'])
+//   Windows: sox or ffmpeg — spawn('ffmpeg', ['-f', 'dshow', '-i', 'audio=Microphone', '-ar', '24000', '-ac', '1', '-f', 's16le', '-'])
+function startAudioCapture(ws, token) {
+  const { spawn } = require('child_process');
+  const rec = spawn('arecord', [
+    '-f', 'S16_LE', '-r', '24000',
+    '-c', '1', '-t', 'raw', '-'
+  ]);
+
+  const CHUNK_BYTES = 9600;
+  let buffer = Buffer.alloc(0);
+
+  rec.stdout.on('data', (chunk) => {
+    buffer = Buffer.concat([buffer, chunk]);
+    while (buffer.length >= CHUNK_BYTES) {
+      const pcm = buffer.slice(0, CHUNK_BYTES);
+      buffer = buffer.slice(CHUNK_BYTES);
+      const tokenBuf = Buffer.from(token + '|');
+      const frame = Buffer.concat([tokenBuf, pcm]);
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(frame);
+      }
+    }
+  });
+
+  ws.on('close', () => rec.kill());
+}
+
 function endSession() {
   ws.send(JSON.stringify({
     type: 'task_session_end',
@@ -490,7 +452,10 @@ function endSession() {
     "channels": 1,
     "byte_order": "little-endian"
   },
-  "binary_frame": "tasktoken|pcm_audio_data",
+  "binary_frame": {
+    "direction": "client → server only",
+    "format": "tasktoken|pcm_audio_data"
+  },
   "recommended_chunk": {
     "samples": 4800,
     "duration_ms": 200,
@@ -498,13 +463,17 @@ function endSession() {
   },
   "events": {
     "task_stream_ready": "Start sending audio",
-    "task_stream_end": "AI finished speaking",
+    "task_stream_end": "Transcription stream ended",
     "task_cost": "Cost per turn + cumulative",
-    "task_output": "TRANSCRIPT_USER: / TRANSCRIPT_AI:",
-    "task_session_interrupt": "Send to interrupt AI speech",
+    "task_output": "TRANSCRIPT_USER:<transcribed text>",
     "task_session_end": "Send to end session",
     "task_end": "Server ended session",
     "task_postprocess_end": "Post-processing complete — safe to close"
+  },
+  "output": {
+    "transcript_prefix": "TRANSCRIPT_USER:",
+    "audio_playback": false,
+    "server_binary_frames": false
   }
 }
 ```

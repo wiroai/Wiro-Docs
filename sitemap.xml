@@ -51,6 +51,16 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://wiro.ai/docs/realtime-text-to-speech</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://wiro.ai/docs/realtime-speech-to-text</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://wiro.ai/docs/files</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
