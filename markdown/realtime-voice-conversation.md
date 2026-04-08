@@ -36,13 +36,15 @@ ws.onopen = function() {
 
 During a realtime session, you'll receive these WebSocket events:
 
-| Event | Description |
-|-------|-------------|
-| `task_stream_ready` | Session is ready — start sending microphone audio |
-| `task_stream_end` | AI finished speaking for this turn — you can speak again |
-| `task_cost` | Cost update per turn — includes `turnCost`, `cumulativeCost`, and `usage` (raw cost breakdown from the model provider) |
-| `task_output` | Transcript messages prefixed with `TRANSCRIPT_USER:` or `TRANSCRIPT_AI:` |
-| `task_end` | The model process has exited. Post-processing follows — wait for `task_postprocess_end` to close the connection. |
+| Event | Direction | Description |
+|-------|-----------|-------------|
+| `task_stream_ready` | server → client | Session is ready — start sending microphone audio |
+| `task_stream_end` | server → client | AI finished speaking for this turn — you can speak again |
+| `task_cost` | server → client | Cost update per turn — includes `turnCost`, `cumulativeCost`, and `usage` (raw cost breakdown from the model provider) |
+| `task_output` | server → client | Transcript messages prefixed with `TRANSCRIPT_USER:` or `TRANSCRIPT_AI:` |
+| `task_end` | server → client | The model process has exited. Post-processing follows — wait for `task_postprocess_end` to close the connection. |
+| `task_session_end` | client → server | Gracefully end the session |
+| `task_session_interrupt` | client → server | Interrupt AI speech — stops playback and lets the user speak |
 
 ## Audio Format
 
@@ -107,6 +109,26 @@ Both user and AI speech are transcribed automatically. Transcripts arrive as `ta
 }
 ```
 
+## Interrupting AI Speech
+
+While the AI is speaking, you can interrupt it to take over the conversation. Send `task_session_interrupt`:
+
+```json
+{
+  "type": "task_session_interrupt",
+  "tasktoken": "YOUR_SOCKET_ACCESS_TOKEN"
+}
+```
+
+When the server receives this:
+- The AI immediately stops generating audio
+- A final `task_stream_end` is sent for the interrupted turn
+- The session continues — the user can speak and the AI will respond to the next input
+
+On the client side, stop audio playback immediately when the user triggers an interrupt. This gives instant feedback (AI voice cuts off) while the server processes the signal.
+
+> **Tip:** Some models support natural interruption — if the user starts speaking while the AI is talking, the model may stop on its own. The explicit `task_session_interrupt` signal provides a reliable, manual interrupt for all models.
+
 ## Ending a Session
 
 To gracefully end a realtime session, send `task_session_end`:
@@ -152,7 +174,7 @@ ws.onmessage = function(event) {
   }
 
   if (msg.type === 'task_stream_end') {
-    console.log('AI finished speaking');
+    console.log('AI finished speaking — listening');
   }
 
   if (msg.type === 'task_cost') {
@@ -176,6 +198,13 @@ ws.onmessage = function(event) {
     ws.close();
   }
 };
+
+function interruptAI() {
+  ws.send(JSON.stringify({
+    type: 'task_session_interrupt',
+    tasktoken: socketToken
+  }));
+}
 
 function endSession() {
   ws.send(JSON.stringify({
@@ -357,9 +386,9 @@ async def realtime_session():
                     print('Session ready')
                     is_listening = True
                 elif t == 'task_stream_end':
-                    is_listening = False
-                elif t == 'task_cost':
+                    print('AI finished speaking')
                     is_listening = True
+                elif t == 'task_cost':
                     print(f'Cost: {data["cumulativeCost"]}')
                 elif t == 'task_output':
                     m = data.get('message', '')
@@ -462,6 +491,7 @@ function endSession() {
     "task_stream_end": "AI finished speaking",
     "task_cost": "Cost per turn + cumulative",
     "task_output": "TRANSCRIPT_USER: / TRANSCRIPT_AI:",
+    "task_session_interrupt": "Send to interrupt AI speech",
     "task_session_end": "Send to end session",
     "task_end": "Server ended session"
   }
