@@ -68,7 +68,7 @@ Build a fully branded chat experience with no Wiro UI visible to your users.
 6. Manage conversation history with `POST /UserAgent/Message/History`
 
 ```bash
-# Deploy
+# Deploy (pinned: false keeps your dashboard clean when deploying for end users)
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
@@ -76,7 +76,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
     "agentguid": "agent-template-guid",
     "title": "Customer Support Bot",
     "useprepaid": true,
-    "plan": "starter"
+    "plan": "starter",
+    "pinned": false
   }'
 
 # Send a message
@@ -176,7 +177,7 @@ agents = requests.post(
 )
 print(agents.json())
 
-# Deploy an instance
+# Deploy an instance (pinned: False for programmatic deployments)
 deploy = requests.post(
     "https://api.wiro.ai/v1/UserAgent/Deploy",
     headers=headers,
@@ -184,7 +185,8 @@ deploy = requests.post(
         "agentguid": "social-manager-agent-guid",
         "title": "Acme Corp Social Media",
         "useprepaid": True,
-        "plan": "starter"
+        "plan": "starter",
+        "pinned": False
     }
 )
 useragent_guid = deploy.json()["useragents"][0]["guid"]

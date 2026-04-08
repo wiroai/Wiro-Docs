@@ -411,7 +411,7 @@ POST /Agent/Detail — `{ guid }` or `{ slug }` → same plus `ratelimit`, `conf
 
 ### Management (Auth Required)
 
-POST /UserAgent/Deploy — `{ agentguid, title, useprepaid?, plan? }` → `{ result, useragents: [{ guid, status }] }`. When `useprepaid: true`, pass `plan` ("starter" or "pro") to pay from wallet. Deducts plan price and creates a 30-day subscription.
+POST /UserAgent/Deploy — `{ agentguid, title, useprepaid?, plan?, pinned? }` → `{ result, useragents: [{ guid, status, pinned }] }`. When `useprepaid: true`, pass `plan` ("starter" or "pro") to pay from wallet. Deducts plan price and creates a 30-day subscription. Set `pinned: false` for bulk/programmatic deployments to avoid cluttering the pinned list.
 POST /UserAgent/MyAgents — `{ sort, order, limit, start }` → `{ result, useragents: [{ guid, title, status, setuprequired, subscription, agent, extracredits }] }`
 POST /UserAgent/Detail — `{ guid }` → full instance + subscription. Subscription includes `provider` ("prepaid").
 POST /UserAgent/Update — `{ guid, title?, description?, categories?, configuration? }` → Only `_editable` fields accepted. Running agents restart.

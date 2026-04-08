@@ -183,6 +183,7 @@ Creates a new agent instance from a catalog template. The agent is created with 
 | `configuration` | object | No | Initial credential values. Format: `{ "credentials": { "key": "value" } }` |
 | `useprepaid` | boolean | Yes | Set to `true` to pay from wallet balance. Requires `plan`. |
 | `plan` | string | Yes | Plan tier: `"starter"` or `"pro"`. Required when `useprepaid` is `true`. |
+| `pinned` | boolean | No | Whether the agent appears in the pinned agents list. Defaults to `true`. Set to `false` when deploying agents programmatically for end users (e.g. bulk provisioning). |
 
 ##### Response
 
@@ -227,7 +228,8 @@ When `useprepaid` is `true`, the wallet is charged immediately. The response inc
   "agentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "title": "My Lead Gen Agent",
   "useprepaid": true,
-  "plan": "starter"
+  "plan": "starter",
+  "pinned": false
 }
 // Response
 {
@@ -238,6 +240,7 @@ When `useprepaid` is `true`, the wallet is charged immediately. The response inc
       "guid": "new-guid-here",
       "title": "My Lead Gen Agent",
       "status": 6,
+      "pinned": false,
       "setuprequired": true,
       "subscription": {
         "plan": "agent-starter",
@@ -250,6 +253,8 @@ When `useprepaid` is `true`, the wallet is charged immediately. The response inc
   ]
 }
 ```
+
+> **Tip:** When deploying agents programmatically for your end users (e.g. one instance per customer), set `"pinned": false` to keep your own dashboard clean. Users can pin agents manually later.
 
 #### **POST** /UserAgent/MyAgents
 
@@ -616,7 +621,7 @@ curl -X POST "https://api.wiro.ai/v1/Agent/Detail" \
   -H "Content-Type: application/json" \
   -d '{"slug": "instagram-manager"}'
 
-# Deploy a new agent instance (prepaid)
+# Deploy a new agent instance (prepaid, pinned by default)
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
@@ -625,6 +630,18 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
     "title": "My Instagram Bot",
     "useprepaid": true,
     "plan": "starter"
+  }'
+
+# Deploy for an end user (unpinned, won't clutter your dashboard)
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "agentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "title": "Customer #1234 Bot",
+    "useprepaid": true,
+    "plan": "starter",
+    "pinned": false
   }'
 
 # Cancel a subscription (cancels at end of billing period)
