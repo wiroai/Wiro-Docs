@@ -408,8 +408,15 @@ async def realtime_session():
                     done.set()
                     break
 
-        await asyncio.gather(
-            send_audio(), receive())
+        sender = asyncio.create_task(send_audio())
+        try:
+            await receive()
+        finally:
+            sender.cancel()
+            try:
+                await sender
+            except asyncio.CancelledError:
+                pass
 
 asyncio.run(realtime_session())
 ```
