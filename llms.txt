@@ -31,6 +31,13 @@
 - [Agent Skills](https://wiro.ai/docs/agent-skills): Configure preferences and scheduled automation tasks
 - [Agent Use Cases](https://wiro.ai/docs/agent-use-cases): Deployment patterns and architecture guides
 
+## Organizations & Teams
+
+- [Overview](https://wiro.ai/docs/organizations-overview): Workspace hierarchy — personal, organization, and team contexts
+- [Managing Teams](https://wiro.ai/docs/organizations-managing-teams): Create organizations, invite members, roles, transfers
+- [Team Billing](https://wiro.ai/docs/organizations-billing): Team wallets, spend limits, model access controls, budget alerts
+- [Team API Access](https://wiro.ai/docs/organizations-api-access): Context resolution via API keys, resource filtering, agent context guards
+
 ## Integrations
 
 - [MCP Server](https://wiro.ai/docs/wiro-mcp-server): Model Context Protocol server for AI assistants
@@ -456,6 +463,39 @@ Providers: X, TikTok, Instagram, Facebook, LinkedIn, Google Ads, Meta Ads, HubSp
 POST /UserAgentOAuth/{Provider}Status — `{ userAgentGuid }` → `{ connected, username, connectedAt, tokenExpiresAt }`
 POST /UserAgentOAuth/{Provider}Disconnect — `{ userAgentGuid }`
 POST /UserAgentOAuth/TokenRefresh — `{ userAgentGuid, provider }` → `{ accessToken, refreshToken }`
+
+## Organizations & Teams
+
+Wiro supports personal and team workspaces. Personal is the default. Organizations group teams; teams hold projects, agents, and wallets.
+
+Context resolution: API key determines context automatically. Team project API key → team context. Personal project API key → personal context. No extra headers needed.
+
+Roles: Owner (org creator — full control), Admin (team settings, invites, transfers), Member (run models, message agents, view spending).
+
+Endpoints:
+- POST /Organization/Create — `{ name }` → creates org, caller becomes owner
+- POST /Organization/List — returns all orgs with teams, roles, wallet balances
+- POST /Organization/Remove — `{ organizationguid }` — soft-delete, transfers agents+projects to owner personal
+- POST /Organization/Restore — `{ organizationguid }` — reactivates org, teams, accepted members
+- POST /Team/Create — `{ organizationguid, name }` — creates team with own wallet
+- POST /Team/Update — `{ teamguid, name?, spendlimit?, modelaccess?, allowedmodelids?, blockedmodelids? }`
+- POST /Team/Remove — `{ teamguid }` — owner only, transfers agents+projects to personal
+- POST /Team/Member/Invite — `{ teamguid, email, role }` — sends email invite, expires 7 days
+- POST /Team/Member/Accept — `{ token }` — accept invite link
+- POST /Team/Member/List — `{ teamguid }` → members with roles, statuses, avatars
+- POST /Team/Member/Remove — `{ teamguid, useruuid }`
+- POST /Team/Member/UpdateRole — `{ teamguid, useruuid, role }`
+- POST /Team/TransferAgent — `{ useragentguid, targetteamguid }` — empty string for personal
+- POST /Team/TransferProject — `{ projectapikey, targetteamguid }` — empty string for personal
+- POST /Team/SpendingSummary — `{ teamguid }` → teamTotal, playgroundTotal, apiTotal, memberSpent, limits
+
+Model access: `modelaccess` field — `"all"` (default, no restrictions), `"allowlist"` (only allowedmodelids), `"blocklist"` (block blockedmodelids). Checked at /Run endpoint only.
+
+Spend limits: Team-level (spendlimit on team) and member-level (spendlimit on member). Budget alert email at 80%.
+
+Agent context guards: Agent operations (Message/Send, Deploy, ExtraCredit, Cancel/Renew/Upgrade) enforce context match — project team must equal agent team. Mismatch returns error.
+
+Resource isolation: Project/List, UserAgent/MyAgents, Task/List, Task/Stat, Wallet/List, Coupon/UserList all filter by active context.
 
 ## Links
 
