@@ -116,4 +116,8 @@
   <url><loc>https://wiro.ai/docs/agent-webhooks</loc></url>
   <url><loc>https://wiro.ai/docs/agent-credentials</loc></url>
   <url><loc>https://wiro.ai/docs/agent-use-cases</loc></url>
+  <url><loc>https://wiro.ai/docs/organizations-overview</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://wiro.ai/docs/organizations-managing-teams</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://wiro.ai/docs/organizations-billing</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://wiro.ai/docs/organizations-api-access</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
 </urlset>
