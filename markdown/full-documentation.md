@@ -6438,9 +6438,9 @@ POST /v1/Task/Stat
 
 In team context, this filters tasks by `teamguid` and only shows team projects. In personal context, it filters by your UUID and excludes team tasks.
 
-## Balance Transfer
+## Credit Transfer
 
-Transfer balance between your personal wallet and team wallets. Useful for moving team budgets around or recovering personal funds.
+Transfer credit between your personal wallet and team wallets. Useful for moving team budgets around or recovering personal funds.
 
 ### How It Works
 
@@ -6457,11 +6457,11 @@ Transfers preserve the original deposit structure — expiry dates, coupon track
 
 ### Permissions
 
-Only organization owners and team admins can transfer balances. The same user must control both source and target workspaces.
+Only organization owners and team admins can transfer credit. The same user must control both source and target workspaces.
 
-### Configuring Balance Transfer
+### Configuring Credit Transfer
 
-#### **POST** /Team/TransferBalance
+#### **POST** /Team/TransferCredit
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|

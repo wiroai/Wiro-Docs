@@ -7611,9 +7611,9 @@ Organization (created by you)
 <p>All team members can view the spending summary.</p>
 </section>
 
-<section id="balance-transfer">
-<h2>Balance Transfer</h2>
-<p>Transfer balance between your personal wallet and team wallets. Useful for moving team budgets around or recovering personal funds.</p>
+<section id="credit-transfer">
+<h2>Credit Transfer</h2>
+<p>Transfer credit between your personal wallet and team wallets. Useful for moving team budgets around or recovering personal funds.</p>
 
 <h3>How It Works</h3>
 <p>Transfers preserve the original deposit structure — expiry dates, coupon tracking, and store revenue are all maintained. Each deposit type is transferred as a separate transaction on the target wallet with its original expiry time.</p>
@@ -7629,9 +7629,9 @@ Organization (created by you)
 <p>When transferring a mixed amount, the target wallet receives <strong>multiple separate deposits</strong> — one per pool — each with its own expiry date.</p>
 
 <h3>Permissions</h3>
-<p>Only organization owners and team admins can transfer balances. The same user must control both source and target workspaces.</p>
+<p>Only organization owners and team admins can transfer credit. The same user must control both source and target workspaces.</p>
 
-<h4><strong>POST</strong> /Team/TransferBalance</h4>
+<h4><strong>POST</strong> /Team/TransferCredit</h4>
 <table><thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>amount</code></td><td>number</td><td>Yes</td><td>Transfer amount in USD</td></tr>
 <tr><td><code>sourceteamguid</code></td><td>string</td><td>No</td><td>Source team guid. Empty/omit for personal wallet</td></tr>

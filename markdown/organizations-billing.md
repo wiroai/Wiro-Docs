@@ -213,9 +213,9 @@ The task statistics endpoint provides time-series data for task execution within
 
 In team context, this filters tasks by `teamguid` and only shows team projects. In personal context, it filters by your UUID and excludes team tasks.
 
-## Balance Transfer
+## Credit Transfer
 
-Transfer balance between your personal wallet and team wallets. Useful for moving team budgets around or recovering personal funds.
+Transfer credit between your personal wallet and team wallets. Useful for moving team budgets around or recovering personal funds.
 
 ### How It Works
 
@@ -238,15 +238,15 @@ If you had transferred $600, the target would receive **two separate deposits** 
 
 ### Permissions
 
-Only organization owners and team admins can transfer balances. The same user must control both source and target workspaces:
+Only organization owners and team admins can transfer credit. The same user must control both source and target workspaces:
 
 - Personal to team: you must be admin/owner of the target team
 - Team to personal: you must be admin/owner of the source team
 - Team to team: you must be admin/owner of both teams
 
-### Configuring Balance Transfer
+### Configuring Credit Transfer
 
-#### **POST** /Team/TransferBalance
+#### **POST** /Team/TransferCredit
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
