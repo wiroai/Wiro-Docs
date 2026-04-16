@@ -7362,10 +7362,13 @@ Organization (created by you)
 
 <h3>Workspaces and Context</h3>
 <p>When you make an API request or use the dashboard, you operate in one of two contexts:</p>
-<table><thead><tr><th>Context</th><th>Resources you see</th><th>Wallet charged</th><th>How to activate</th></tr></thead><tbody>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Context</th><th>Resources you see</th><th>Wallet charged</th><th>How to activate</th></tr></thead>
+<tbody>
 <tr><td><strong>Personal</strong></td><td>Your personal projects, agents, tasks</td><td>Your personal wallet</td><td>Default — use a personal project API key</td></tr>
 <tr><td><strong>Team</strong></td><td>Team projects, team agents, team tasks</td><td>Team wallet</td><td>Use a team project API key</td></tr>
-</tbody></table>
+</tbody>
+</table></div></div>
 <p>Switching context changes which projects, agents, and wallet you interact with. Resources in one context are isolated from the other — personal agents cannot see team projects, and team agents cannot access personal resources.</p>
 
 <h3>Resource Isolation</h3>
@@ -7391,23 +7394,29 @@ Organization (created by you)
 <section id="organizations-vs-teams">
 <h2>Organizations vs Teams</h2>
 <p>An <strong>organization</strong> is a management container — it does not hold resources directly. All resources (projects, agents, wallets) live inside <strong>teams</strong>.</p>
-<table><thead><tr><th>Feature</th><th>Organization</th><th>Team</th></tr></thead><tbody>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Feature</th><th>Organization</th><th>Team</th></tr></thead>
+<tbody>
 <tr><td>Holds projects and agents</td><td>No</td><td>Yes</td></tr>
 <tr><td>Has a wallet</td><td>No</td><td>Yes</td></tr>
 <tr><td>Has members</td><td>No (members belong to teams)</td><td>Yes</td></tr>
 <tr><td>Can be created by</td><td>Any user</td><td>Organization owner</td></tr>
 <tr><td>Can be deleted by</td><td>Organization owner</td><td>Organization owner</td></tr>
 <tr><td>Can be restored</td><td>Yes (by owner)</td><td>Yes (when org is restored)</td></tr>
-</tbody></table>
+</tbody>
+</table></div></div>
 </section>
 
 <section id="roles">
 <h2>Roles</h2>
-<table><thead><tr><th>Role</th><th>Scope</th><th>Permissions</th></tr></thead><tbody>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Role</th><th>Scope</th><th>Permissions</th></tr></thead>
+<tbody>
 <tr><td><strong>Owner</strong></td><td>Organization</td><td>Create/delete teams, manage all team members, delete/restore organization, transfer agents and projects</td></tr>
 <tr><td><strong>Admin</strong></td><td>Team</td><td>Manage team settings (spend limits, model access), invite/remove members, transfer agents and projects</td></tr>
 <tr><td><strong>Member</strong></td><td>Team</td><td>Use team resources (run models, send agent messages), view spending summaries</td></tr>
-</tbody></table>
+</tbody>
+</table></div></div>
 </section>
 
 <section id="getting-started">
@@ -7444,83 +7453,118 @@ Organization (created by you)
 <p class="section-subtitle">Create organizations, invite members, and manage roles and permissions.</p>
 
 <section id="creating-an-organization">
-<h2>Creating an Organization</h2>
-<ol>
-<li>Go to your <a href="https://wiro.ai/panel/organization" target="_blank">Dashboard</a></li>
-<li>Click <strong>Create Organization</strong></li>
-<li>Enter an organization name</li>
-<li>Click <strong>Create</strong></li>
-</ol>
-<p>You become the organization <strong>owner</strong> automatically. Only you can create teams, delete the organization, or restore it after deletion.</p>
+<h2>
+  <span class="endpoint-badge post">POST</span>
+  /Organization/Create
+</h2>
+<p>Creates a new organization. The caller automatically becomes the organization <strong>owner</strong> — only the owner can create teams, delete the organization, or restore it after deletion.</p>
 
-<h4><strong>POST</strong> /Organization/Create</h4>
-<table><thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead><tbody>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
 <tr><td><code>name</code></td><td>string</td><td>Yes</td><td>Organization name</td></tr>
-</tbody></table>
+</tbody>
+</table></div></div>
+
+<p>You can also create organizations from the <a href="https://wiro.ai/panel/organization" target="_blank">Dashboard</a>.</p>
 </section>
 
 <section id="creating-a-team">
-<h2>Creating a Team</h2>
-<p>Only the organization owner can create teams.</p>
-<h4><strong>POST</strong> /Team/Create</h4>
-<table><thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead><tbody>
+<h2>
+  <span class="endpoint-badge post">POST</span>
+  /Team/Create
+</h2>
+<p>Creates a team inside an organization. Only the organization owner can create teams. The team is created with its own wallet (starting at $0.00) and the caller is automatically added as an admin.</p>
+
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
 <tr><td><code>organizationguid</code></td><td>string</td><td>Yes</td><td>Organization guid</td></tr>
 <tr><td><code>name</code></td><td>string</td><td>Yes</td><td>Team name</td></tr>
-</tbody></table>
+</tbody>
+</table></div></div>
 </section>
 
 <section id="inviting-members">
-<h2>Inviting Members</h2>
-<p>Organization owners and team admins can invite new members via email. Invitations expire after 7 days and can be resent.</p>
-<h4><strong>POST</strong> /Team/Member/Invite</h4>
-<table><thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead><tbody>
+<h2>
+  <span class="endpoint-badge post">POST</span>
+  /Team/Member/Invite
+</h2>
+<p>Sends an email invitation to add a new member to the team. Invitations expire after 7 days and can be resent. Organization owners and team admins can invite members.</p>
+
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
 <tr><td><code>teamguid</code></td><td>string</td><td>Yes</td><td>Team guid</td></tr>
 <tr><td><code>email</code></td><td>string</td><td>Yes</td><td>Invitee email address</td></tr>
 <tr><td><code>role</code></td><td>string</td><td>Yes</td><td>Role: <code>"admin"</code> or <code>"member"</code></td></tr>
-</tbody></table>
+</tbody>
+</table></div></div>
 
 <h3>Invitation States</h3>
-<table><thead><tr><th>Status</th><th>Description</th></tr></thead><tbody>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Status</th><th>Description</th></tr></thead>
+<tbody>
 <tr><td><code>pending</code></td><td>Invitation sent, waiting for the user to accept</td></tr>
 <tr><td><code>active</code></td><td>User accepted the invitation and is an active member</td></tr>
 <tr><td><code>removed</code></td><td>Member was removed or invitation was cancelled</td></tr>
-</tbody></table>
+</tbody>
+</table></div></div>
 </section>
 
 <section id="member-roles">
 <h2>Member Roles</h2>
-<table><thead><tr><th>Role</th><th>Run models</th><th>Message agents</th><th>View spending</th><th>Manage settings</th><th>Invite members</th><th>Delete team</th></tr></thead><tbody>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Role</th><th>Run models</th><th>Message agents</th><th>View spending</th><th>Manage settings</th><th>Invite members</th><th>Delete team</th></tr></thead>
+<tbody>
 <tr><td><strong>Owner</strong></td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
 <tr><td><strong>Admin</strong></td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td><td>No</td></tr>
 <tr><td><strong>Member</strong></td><td>Yes</td><td>Yes</td><td>Yes</td><td>No</td><td>No</td><td>No</td></tr>
-</tbody></table>
+</tbody>
+</table></div></div>
 </section>
 
 <section id="transferring-agents">
-<h2>Transferring Agents</h2>
-<h4><strong>POST</strong> /Team/TransferAgent</h4>
-<table><thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead><tbody>
+<h2>
+  <span class="endpoint-badge post">POST</span>
+  /Team/TransferAgent
+</h2>
+<p>Transfers an agent instance between workspaces — personal to team, team to personal, or team to team. Active subscriptions and credit purchases move with the agent. The agent is restarted with the new context.</p>
+
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
 <tr><td><code>useragentguid</code></td><td>string</td><td>Yes</td><td>Agent instance guid</td></tr>
 <tr><td><code>targetteamguid</code></td><td>string</td><td>Yes</td><td>Target team guid, or empty string <code>""</code> for personal</td></tr>
-</tbody></table>
-<p>Active subscriptions and credit purchases move with the agent. The agent is restarted with the new context.</p>
+</tbody>
+</table></div></div>
 </section>
 
 <section id="transferring-projects">
-<h2>Transferring Projects</h2>
-<h4><strong>POST</strong> /Team/TransferProject</h4>
-<table><thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead><tbody>
+<h2>
+  <span class="endpoint-badge post">POST</span>
+  /Team/TransferProject
+</h2>
+<p>Transfers a project between workspaces. Future tasks on the project are billed to the new workspace's wallet.</p>
+
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
 <tr><td><code>projectapikey</code></td><td>string</td><td>Yes</td><td>Project API key</td></tr>
 <tr><td><code>targetteamguid</code></td><td>string</td><td>Yes</td><td>Target team guid, or empty string <code>""</code> for personal</td></tr>
-</tbody></table>
+</tbody>
+</table></div></div>
+
 <blockquote><p><strong>Important:</strong> Agents can only access projects in the same workspace. Transferring a project may break agent workflows that depend on it.</p></blockquote>
 </section>
 
 <section id="deleting-restoring">
-<h2>Deleting & Restoring</h2>
-<p>Only the organization owner can delete teams and organizations. Deleting transfers all agents and projects to the owner's personal workspace.</p>
-<p>Deleted organizations can be restored by the owner. This reactivates the organization, all its teams, and previously accepted members.</p>
-<h4><strong>POST</strong> /Organization/Restore</h4>
+<h2>
+  <span class="endpoint-badge post">POST</span>
+  /Organization/Restore
+</h2>
+<p>Restores a soft-deleted organization. Only the organization owner can delete or restore organizations.</p>
+<p>Deleting an organization transfers all its teams' agents and projects to the owner's personal workspace. Restoring reactivates the organization, all its teams, and previously accepted members.</p>
 </section>
 
 <section id="whats-next-managing">
@@ -7551,30 +7595,43 @@ Organization (created by you)
 
 <section id="spend-limits">
 <h2>Spend Limits</h2>
-<table><thead><tr><th>Limit Type</th><th>Set by</th><th>Applies to</th><th>Effect when reached</th></tr></thead><tbody>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Limit Type</th><th>Set by</th><th>Applies to</th><th>Effect when reached</th></tr></thead>
+<tbody>
 <tr><td>Team spend limit</td><td>Admin / Owner</td><td>Entire team</td><td>All tasks rejected for all members</td></tr>
 <tr><td>Member spend limit</td><td>Admin / Owner</td><td>Individual member</td><td>Tasks rejected for that member only</td></tr>
-</tbody></table>
+</tbody>
+</table></div></div>
 <p>When a team's total spending reaches 80% of the team spend limit, admins receive an email alert.</p>
 </section>
 
 <section id="model-access-controls">
-<h2>Model Access Controls</h2>
-<p>Team admins can restrict which AI models team members are allowed to run. Every team has a <code>modelaccess</code> setting with three modes:</p>
-<table><thead><tr><th>Mode</th><th><code>modelaccess</code> value</th><th>Behavior</th></tr></thead><tbody>
-<tr><td><strong>All Models</strong></td><td><code>"all"</code></td><td>No restrictions. Team members can run any model. This is the default.</td></tr>
-<tr><td><strong>Allowlist</strong></td><td><code>"allowlist"</code></td><td>Only models in <code>allowedmodelids</code> can be run. All others are blocked.</td></tr>
-<tr><td><strong>Blocklist</strong></td><td><code>"blocklist"</code></td><td>Models in <code>blockedmodelids</code> cannot be run. All others are allowed.</td></tr>
-</tbody></table>
-<p>You configure one mode at a time. Setting <code>modelaccess</code> back to <code>"all"</code> removes all restrictions.</p>
+<h2>
+  <span class="endpoint-badge post">POST</span>
+  /Team/Update
+</h2>
+<p>Updates team settings, including model access controls. Team admins can restrict which AI models team members are allowed to run by setting <code>modelaccess</code> to one of three modes.</p>
 
-<h4><strong>POST</strong> /Team/Update</h4>
-<table><thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead><tbody>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
 <tr><td><code>teamguid</code></td><td>string</td><td>Yes</td><td>Team guid</td></tr>
 <tr><td><code>modelaccess</code></td><td>string</td><td>No</td><td>Access mode: <code>"all"</code>, <code>"allowlist"</code>, or <code>"blocklist"</code>. Default: <code>"all"</code></td></tr>
 <tr><td><code>allowedmodelids</code></td><td>array</td><td>No</td><td>List of model IDs that are allowed. Used when <code>modelaccess</code> is <code>"allowlist"</code>.</td></tr>
 <tr><td><code>blockedmodelids</code></td><td>array</td><td>No</td><td>List of model IDs that are blocked. Used when <code>modelaccess</code> is <code>"blocklist"</code>.</td></tr>
-</tbody></table>
+</tbody>
+</table></div></div>
+
+<h3>Access Modes</h3>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Mode</th><th><code>modelaccess</code> value</th><th>Behavior</th></tr></thead>
+<tbody>
+<tr><td><strong>All Models</strong></td><td><code>"all"</code></td><td>No restrictions. Team members can run any model. This is the default.</td></tr>
+<tr><td><strong>Allowlist</strong></td><td><code>"allowlist"</code></td><td>Only models in <code>allowedmodelids</code> can be run. All others are blocked.</td></tr>
+<tr><td><strong>Blocklist</strong></td><td><code>"blocklist"</code></td><td>Models in <code>blockedmodelids</code> cannot be run. All others are allowed.</td></tr>
+</tbody>
+</table></div></div>
+<p>You configure one mode at a time. Setting <code>modelaccess</code> back to <code>"all"</code> removes all restrictions.</p>
 
 <h3>Where Access Controls Are Enforced</h3>
 <p>Model access is checked at the <code>/Run</code> endpoint — when a team member submits a task using a team project API key. Access controls do <strong>not</strong> affect browsing the model catalog or personal projects.</p>
@@ -7592,9 +7649,13 @@ Organization (created by you)
 </section>
 
 <section id="spending-tracking">
-<h2>Spending Tracking</h2>
-<h4><strong>POST</strong> /Team/SpendingSummary</h4>
-<p>Returns team totals, your individual spending, and limit information:</p>
+<h2>
+  <span class="endpoint-badge post">POST</span>
+  /Team/SpendingSummary
+</h2>
+<p>Returns team totals, your individual spending, and limit information. All team members can view the spending summary.</p>
+
+<h3>Response</h3>
 <pre><code class="language-json">{
   "result": true,
   "teamTotal": 45.23,
@@ -7608,12 +7669,35 @@ Organization (created by you)
   "spendLimit": 500.00,
   "memberSpendLimit": 100.00
 }</code></pre>
-<p>All team members can view the spending summary.</p>
 </section>
 
 <section id="credit-transfer">
-<h2>Credit Transfer</h2>
-<p>Transfer credit between your personal wallet and team wallets. Useful for moving team budgets around or recovering personal funds.</p>
+<h2>
+  <span class="endpoint-badge post">POST</span>
+  /Team/TransferCredit
+</h2>
+<p>Transfers credit between your personal wallet and team wallets. Useful for moving team budgets around or recovering personal funds. Only organization owners and team admins can transfer credit, and the same user must control both source and target workspaces.</p>
+
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>amount</code></td><td>number</td><td>Yes</td><td>Transfer amount in USD</td></tr>
+<tr><td><code>sourceteamguid</code></td><td>string</td><td>No</td><td>Source team guid. Empty/omit for personal wallet</td></tr>
+<tr><td><code>targetteamguid</code></td><td>string</td><td>No</td><td>Target team guid. Empty/omit for personal wallet</td></tr>
+</tbody>
+</table></div></div>
+
+<h3>Response</h3>
+<pre><code class="language-json">{
+  "result": true,
+  "errors": [],
+  "transferred": {
+    "total": 100,
+    "gifted": 50,
+    "store": 0,
+    "amount": 50
+  }
+}</code></pre>
 
 <h3>How It Works</h3>
 <p>Transfers preserve the original deposit structure — expiry dates, coupon tracking, and store revenue are all maintained. Each deposit type is transferred as a separate transaction on the target wallet with its original expiry time.</p>
@@ -7627,27 +7711,6 @@ Organization (created by you)
 </ol>
 
 <p>When transferring a mixed amount, the target wallet receives <strong>multiple separate deposits</strong> — one per pool — each with its own expiry date.</p>
-
-<h3>Permissions</h3>
-<p>Only organization owners and team admins can transfer credit. The same user must control both source and target workspaces.</p>
-
-<h4><strong>POST</strong> /Team/TransferCredit</h4>
-<table><thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead><tbody>
-<tr><td><code>amount</code></td><td>number</td><td>Yes</td><td>Transfer amount in USD</td></tr>
-<tr><td><code>sourceteamguid</code></td><td>string</td><td>No</td><td>Source team guid. Empty/omit for personal wallet</td></tr>
-<tr><td><code>targetteamguid</code></td><td>string</td><td>No</td><td>Target team guid. Empty/omit for personal wallet</td></tr>
-</tbody></table>
-
-<pre><code class="language-json">{
-  "result": true,
-  "errors": [],
-  "transferred": {
-    "total": 100,
-    "gifted": 50,
-    "store": 0,
-    "amount": 50
-  }
-}</code></pre>
 
 <h3>Transaction History</h3>
 <p>Both wallets receive audit transactions: <code>TRANSFER OUT</code> on source, <code>TRANSFER IN</code> on target. These are for display only and don't affect balance calculations or expiry.</p>
@@ -7663,11 +7726,14 @@ Organization (created by you)
 
 <section id="coupons">
 <h2>Coupons</h2>
-<table><thead><tr><th>Coupon Scope</th><th>Who can redeem</th><th>Wallet credited</th></tr></thead><tbody>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Coupon Scope</th><th>Who can redeem</th><th>Wallet credited</th></tr></thead>
+<tbody>
 <tr><td><strong>Everyone</strong></td><td>Any user</td><td>The redeemer's active wallet (personal or team)</td></tr>
 <tr><td><strong>Team</strong></td><td>Only members of the specified team</td><td>The team wallet</td></tr>
 <tr><td><strong>User</strong></td><td>Only the specified user</td><td>The user's personal wallet</td></tr>
-</tbody></table>
+</tbody>
+</table></div></div>
 </section>
 
 <section id="whats-next-billing">
@@ -7710,26 +7776,32 @@ curl -X POST "https://api.wiro.ai/v1/Run/google/nano-banana" \
 
 <section id="filtered-endpoints">
 <h2>What Gets Filtered by Context</h2>
-<table><thead><tr><th>Endpoint</th><th>Personal context returns</th><th>Team context returns</th></tr></thead><tbody>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Endpoint</th><th>Personal context returns</th><th>Team context returns</th></tr></thead>
+<tbody>
 <tr><td><code>Project/List</code></td><td>Personal projects only</td><td>Team projects only</td></tr>
 <tr><td><code>UserAgent/MyAgents</code></td><td>Personal agents only</td><td>Team agents only</td></tr>
 <tr><td><code>Task/List</code></td><td>Personal tasks only</td><td>Team tasks only</td></tr>
 <tr><td><code>Task/Stat</code></td><td>Personal task statistics</td><td>Team task statistics</td></tr>
 <tr><td><code>Wallet/List</code></td><td>Personal wallet</td><td>Team wallet</td></tr>
 <tr><td><code>Wallet/TransactionList</code></td><td>Personal transactions</td><td>Team transactions</td></tr>
-</tbody></table>
+</tbody>
+</table></div></div>
 </section>
 
 <section id="agent-context-guards">
 <h2>Agent Context Guards</h2>
 <p>Wiro enforces strict context isolation for agent operations. Your current workspace context must match the agent's workspace:</p>
-<table><thead><tr><th>Your context</th><th>Agent's workspace</th><th>Result</th></tr></thead><tbody>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Your context</th><th>Agent's workspace</th><th>Result</th></tr></thead>
+<tbody>
 <tr><td>Personal</td><td>Personal</td><td>Allowed</td></tr>
 <tr><td>Team A</td><td>Team A</td><td>Allowed</td></tr>
 <tr><td>Personal</td><td>Team A</td><td><strong>Blocked</strong></td></tr>
 <tr><td>Team A</td><td>Personal</td><td><strong>Blocked</strong></td></tr>
 <tr><td>Team A</td><td>Team B</td><td><strong>Blocked</strong></td></tr>
-</tbody></table>
+</tbody>
+</table></div></div>
 
 <h3>Protected Endpoints</h3>
 <p>Context guards are enforced on: <code>Message/Send</code>, <code>Message/History</code>, <code>Message/Sessions</code>, <code>Message/Delete</code>, <code>Deploy</code>, <code>CreateExtraCreditCheckout</code>, <code>CancelSubscription</code>, <code>RenewSubscription</code>, <code>UpgradePlan</code>.</p>

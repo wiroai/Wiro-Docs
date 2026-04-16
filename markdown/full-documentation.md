@@ -5890,20 +5890,9 @@ For step-by-step instructions, see [Managing Teams](/docs/organizations-managing
 
 Create organizations, invite members, and manage roles and permissions.
 
-## Creating an Organization
+## **POST** /Organization/Create
 
-1. Go to your [Dashboard](https://wiro.ai/panel/organization)
-2. Click **Create Organization**
-3. Enter an organization name
-4. Click **Create**
-
-You become the organization **owner** automatically. Only you can create teams, delete the organization, or restore it after deletion.
-
-### API
-
-```
-POST /v1/Organization/Create
-```
+Creates a new organization. The caller automatically becomes the organization **owner** — only the owner can create teams, delete the organization, or restore it after deletion.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -5922,22 +5911,11 @@ POST /v1/Organization/Create
 }
 ```
 
-## Creating a Team
+You can also create organizations from the [Dashboard](https://wiro.ai/panel/organization).
 
-Only the organization owner can create teams.
+## **POST** /Team/Create
 
-1. Go to your [Organization page](https://wiro.ai/panel/organization)
-2. Click **Create Team** next to the organization
-3. Enter a team name
-4. Click **Create**
-
-The team is created with its own wallet (starting at $0.00). You are automatically added as an admin.
-
-### API
-
-```
-POST /v1/Team/Create
-```
+Creates a team inside an organization. Only the organization owner can create teams. The team is created with its own wallet (starting at $0.00) and the caller is automatically added as an admin.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -5958,22 +5936,9 @@ POST /v1/Team/Create
 }
 ```
 
-## Inviting Members
+## **POST** /Team/Member/Invite
 
-Organization owners and team admins can invite new members via email.
-
-1. Go to the team's **Members** page
-2. Click **Invite Member**
-3. Enter the invitee's email address and select a role (**Admin** or **Member**)
-4. Click **Send Invite**
-
-The invitee receives an email with a link to accept the invitation. Invitations expire after 7 days. If an invitation expires, you can resend it.
-
-### API
-
-```
-POST /v1/Team/Member/Invite
-```
+Sends an email invitation to add a new member to the team. Invitations expire after 7 days and can be resent. Organization owners and team admins can invite members.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -6002,13 +5967,9 @@ POST /v1/Team/Member/Invite
 | `active` | User accepted the invitation and is an active member |
 | `removed` | Member was removed or invitation was cancelled |
 
-### Accepting an Invitation
+## **POST** /Team/Member/Accept
 
 When a user clicks the invitation link, they are directed to the Wiro dashboard. If they already have an account, they are added to the team immediately. If not, they are prompted to sign up first.
-
-```
-POST /v1/Team/Member/Accept
-```
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -6024,13 +5985,9 @@ POST /v1/Team/Member/Accept
 
 The organization owner is always an implicit admin of every team in the organization. The owner role cannot be transferred.
 
-## Listing Members
+## **POST** /Team/Member/List
 
-### API
-
-```
-POST /v1/Team/Member/List
-```
+Lists all members of a team, including pending invitations.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -6060,28 +6017,18 @@ POST /v1/Team/Member/List
 }
 ```
 
-## Removing Members
+## **POST** /Team/Member/Remove
 
-Organization owners and team admins can remove members. A removed member immediately loses access to the team's resources.
-
-```
-POST /v1/Team/Member/Remove
-```
+Removes a member from the team. Organization owners and team admins can remove members. A removed member immediately loses access to the team's resources. Removed members can be re-invited later if needed.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `teamguid` | string | Yes | Team guid |
 | `useruuid` | string | Yes | UUID of the member to remove |
 
-Removed members can be re-invited later if needed.
+## **POST** /Team/Member/UpdateRole
 
-## Updating Member Roles
-
-Team admins and the organization owner can change a member's role between **admin** and **member**.
-
-```
-POST /v1/Team/Member/UpdateRole
-```
+Updates a member's role. Team admins and the organization owner can change a member's role between **admin** and **member**.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -6089,9 +6036,9 @@ POST /v1/Team/Member/UpdateRole
 | `useruuid` | string | Yes | UUID of the member |
 | `role` | string | Yes | New role: `"admin"` or `"member"` |
 
-## Deleting a Team
+## **POST** /Team/Remove
 
-Only the organization owner can delete a team. Deleting a team:
+Deletes a team. Only the organization owner can delete a team. Deleting a team:
 
 - Soft-deletes the team (sets status to `0`)
 - Removes all team members
@@ -6101,49 +6048,33 @@ Only the organization owner can delete a team. Deleting a team:
 
 The team's wallet balance is not automatically transferred. Contact support if you need to recover the balance.
 
-```
-POST /v1/Team/Remove
-```
-
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `teamguid` | string | Yes | Team guid |
 
-## Deleting an Organization
+## **POST** /Organization/Remove
 
-Only the organization owner can delete an organization. This soft-deletes the organization and all its teams, following the same process as deleting each team individually.
-
-```
-POST /v1/Organization/Remove
-```
+Deletes an organization. Only the organization owner can delete an organization. This soft-deletes the organization and all its teams, following the same process as deleting each team individually.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `organizationguid` | string | Yes | Organization guid |
 
-## Restoring an Organization
+## **POST** /Organization/Restore
 
-Deleted organizations can be restored by the owner. Restoring an organization:
+Restores a soft-deleted organization. Restoring an organization:
 
 - Reactivates the organization and all its teams
 - Restores previously accepted members to active status
 - Expired or cancelled invitations remain removed (they must be re-invited)
 
-```
-POST /v1/Organization/Restore
-```
-
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `organizationguid` | string | Yes | Organization guid |
 
-## Listing Organizations
+## **POST** /Organization/List
 
 Returns all organizations you belong to, including active and deleted ones.
-
-```
-POST /v1/Organization/List
-```
 
 ```json
 // Response
@@ -6170,13 +6101,9 @@ POST /v1/Organization/List
 }
 ```
 
-## Transferring Agents
+## **POST** /Team/TransferAgent
 
-Agents can be transferred between your personal workspace and teams. You must be an admin in both the source and target context.
-
-```
-POST /v1/Team/TransferAgent
-```
+Transfers an agent instance between workspaces — personal to team, team to personal, or team to team. You must be an admin in both the source and target context.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -6189,13 +6116,9 @@ When an agent is transferred:
 - The agent is restarted with the new context
 - Future billing is charged to the new workspace's wallet
 
-## Transferring Projects
+## **POST** /Team/TransferProject
 
-Projects can be transferred the same way as agents.
-
-```
-POST /v1/Team/TransferProject
-```
+Transfers a project between workspaces. Future tasks on the project are billed to the new workspace's wallet.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -6208,6 +6131,10 @@ When a project is transferred:
 - Future tasks using this project's API key are billed to the new workspace
 
 > **Important:** Agents can only access projects in the same workspace. Transferring a project may break agent workflows that depend on it.
+
+## Transferring Credit
+
+Credit can be transferred between your personal wallet and team wallets. Transfers preserve original deposit expiry dates and coupon tracking. See [Team Billing & Spending → Credit Transfer](/docs/organizations-billing) for full details.
 
 ## What's Next
 
@@ -6237,67 +6164,34 @@ To fund a team wallet, switch to the team context in the dashboard and navigate 
 
 ### Checking the Balance
 
-The team wallet balance is visible on the [Organization page](https://wiro.ai/panel/organization) next to each team, and on the team's wallet page. Use the Wallet API in team context:
-
-#### **POST** /Wallet/List
-
-When called with a team project API key, this returns the team wallet balances instead of your personal wallet.
+The team wallet balance is visible on the [Organization page](https://wiro.ai/panel/organization) next to each team, and on the team's wallet page. When calling `/Wallet/List` with a team project API key, this returns the team wallet balances instead of your personal wallet.
 
 ## Spend Limits
 
 Admins can set spend limits at two levels to control costs:
-
-### Team-Level Spend Limit
-
-A cap on total spending across all team members combined. When the team's total spending reaches this limit, new tasks are rejected.
-
-### Member-Level Spend Limit
-
-A cap on how much an individual member can spend within the team. This is useful for giving different team members different budgets.
 
 | Limit Type | Set by | Applies to | Effect when reached |
 |-----------|--------|------------|---------------------|
 | Team spend limit | Admin / Owner | Entire team | All tasks rejected for all members |
 | Member spend limit | Admin / Owner | Individual member | Tasks rejected for that member only |
 
-Spend limits are configured in the team settings page or via the API:
+When a team's total spending reaches 80% of the team spend limit, admins receive an email alert. This gives you time to increase the limit or pause operations before tasks start failing.
 
-```
-POST /v1/Team/Update
-```
+Team-level limits are set via `/Team/Update` (see below). Member-level limits are set via `/Team/Member/UpdateRole` with the `spendlimit` parameter.
+
+## **POST** /Team/Update
+
+Updates team settings, including model access controls and team-level spend limit. Team admins can restrict which AI models team members are allowed to run by setting `modelaccess` to one of three modes.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `teamguid` | string | Yes | Team guid |
 | `spendlimit` | number | No | Team-level spend limit in USD. Set to `0` or `null` to remove. |
-
-Member-level spend limits are configured per member:
-
-```
-POST /v1/Team/Member/UpdateRole
-```
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `teamguid` | string | Yes | Team guid |
-| `useruuid` | string | Yes | Member UUID |
-| `spendlimit` | number | No | Member-level spend limit in USD. Set to `0` or `null` to remove. |
-
-### Budget Alerts
-
-When a team's total spending reaches 80% of the team spend limit, admins receive an email alert. This gives you time to increase the limit or pause operations before tasks start failing.
-
-## Model Access Controls
-
-Team admins can restrict which AI models team members are allowed to run. This is useful for:
-
-- **Cost control** — block expensive models to prevent unexpected charges
-- **Compliance** — limit usage to approved models only
-- **Focus** — restrict the team to models relevant to their work
+| `modelaccess` | string | No | Access mode: `"all"`, `"allowlist"`, or `"blocklist"`. Default: `"all"` |
+| `allowedmodelids` | array | No | List of model IDs that are allowed. Used when `modelaccess` is `"allowlist"`. |
+| `blockedmodelids` | array | No | List of model IDs that are blocked. Used when `modelaccess` is `"blocklist"`. |
 
 ### Access Modes
-
-Every team has a `modelaccess` setting that determines how model restrictions work. There are three modes:
 
 | Mode | `modelaccess` value | Behavior |
 |------|---------------------|----------|
@@ -6306,17 +6200,6 @@ Every team has a `modelaccess` setting that determines how model restrictions wo
 | **Blocklist** | `"blocklist"` | Models in `blockedmodelids` cannot be run. All others are allowed. |
 
 You configure one mode at a time. Setting `modelaccess` to `"allowlist"` ignores any `blockedmodelids`, and vice versa. Setting it back to `"all"` removes all restrictions regardless of the model ID lists.
-
-### Configuring Model Access
-
-#### **POST** /Team/Update
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `teamguid` | string | Yes | Team guid |
-| `modelaccess` | string | No | Access mode: `"all"`, `"allowlist"`, or `"blocklist"`. Default: `"all"` |
-| `allowedmodelids` | array | No | List of model IDs that are allowed. Used when `modelaccess` is `"allowlist"`. |
-| `blockedmodelids` | array | No | List of model IDs that are blocked. Used when `modelaccess` is `"blocklist"`. |
 
 Model IDs are the numeric IDs from the model catalog. You can get them from the [Models](/docs/models) endpoint or the dashboard.
 
@@ -6332,6 +6215,8 @@ Model IDs are the numeric IDs from the model catalog. You can get them from the 
 }
 ```
 
+Team members can only run models 598, 412, and 305. All other models are blocked.
+
 **Blocklist — block specific expensive models:**
 
 ```json
@@ -6341,6 +6226,8 @@ Model IDs are the numeric IDs from the model catalog. You can get them from the 
   "blockedmodelids": [721, 650]
 }
 ```
+
+Team members can run any model except 721 and 650.
 
 **Remove all restrictions:**
 
@@ -6360,7 +6247,7 @@ Access controls do **not** affect:
 - Viewing model details and pricing
 - Personal projects (only team context is restricted)
 
-### What Happens When a Model Is Blocked
+### Error Response
 
 When a team member tries to run a restricted model, the Run endpoint returns an error and the task is not created:
 
@@ -6376,15 +6263,9 @@ When a team member tries to run a restricted model, the Run endpoint returns an 
 }
 ```
 
-## Spending Tracking
+## **POST** /Team/SpendingSummary
 
-### Team Spending Summary
-
-The team spending summary endpoint provides an overview of costs broken down by category:
-
-```
-POST /v1/Team/SpendingSummary
-```
+Returns team totals, your individual spending, and limit information. All team members can view the spending summary.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -6416,58 +6297,26 @@ POST /v1/Team/SpendingSummary
 | `spendLimit` | Team-level spend limit (null if not set) |
 | `memberSpendLimit` | Your personal spend limit within the team (null if not set) |
 
-All team members can view the spending summary. This allows members to monitor their own usage relative to their limit.
+For project-level breakdown, call `/Project/UsageSummary` in team context. For time-series task execution data, call `/Task/Stat` in team context — both automatically filter by the active workspace.
 
-### Project Usage
+## **POST** /Team/TransferCredit
 
-The project usage endpoint shows spending broken down by project within the active workspace:
-
-```
-POST /v1/Project/UsageSummary
-```
-
-When called in a team context, this returns only team projects and their spending from the team wallet. In personal context, it returns only personal projects.
-
-### Task Statistics
-
-The task statistics endpoint provides time-series data for task execution within the active workspace:
-
-```
-POST /v1/Task/Stat
-```
-
-In team context, this filters tasks by `teamguid` and only shows team projects. In personal context, it filters by your UUID and excludes team tasks.
-
-## Credit Transfer
-
-Transfer credit between your personal wallet and team wallets. Useful for moving team budgets around or recovering personal funds.
-
-### How It Works
-
-Transfers preserve the original deposit structure — expiry dates, coupon tracking, and store revenue are all maintained. Each deposit type (coupon, store revenue, regular deposit) is transferred as a separate transaction on the target wallet with its original expiry time.
-
-**Consumption order (matches task billing):**
-
-1. Tracked coupons (model-specific first, then universal, FIFO)
-2. Untracked gifted (checklist rewards, pooled)
-3. Store revenue
-4. Regular amount (deposits)
-
-**Expiry is preserved:** When you transfer $600 from a wallet containing a $500 coupon (30-day expiry) and $500 deposit (365-day expiry), the target receives two separate deposits — $500 coupon and $100 deposit — each with its own expiry date.
-
-### Permissions
-
-Only organization owners and team admins can transfer credit. The same user must control both source and target workspaces.
-
-### Configuring Credit Transfer
-
-#### **POST** /Team/TransferCredit
+Transfers credit between your personal wallet and team wallets. Useful for moving team budgets around or recovering personal funds. Only organization owners and team admins can transfer credit, and the same user must control both source and target workspaces.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `amount` | number | Yes | Transfer amount in USD |
 | `sourceteamguid` | string | No | Source team guid. Empty/omit for personal wallet |
 | `targetteamguid` | string | No | Target team guid. Empty/omit for personal wallet |
+
+```json
+// Request (personal to team)
+{
+  "amount": 100,
+  "sourceteamguid": "",
+  "targetteamguid": "0d9aade4-d31b-4b97-88f3-a90482f080ea"
+}
+```
 
 ```json
 // Response
@@ -6482,6 +6331,29 @@ Only organization owners and team admins can transfer credit. The same user must
   }
 }
 ```
+
+The `transferred` object shows how the amount was split across pools:
+- `gifted` — from coupon and checklist credits
+- `store` — from marketplace store revenue
+- `amount` — from regular deposits
+
+Permissions:
+- Personal to team: you must be admin/owner of the target team
+- Team to personal: you must be admin/owner of the source team
+- Team to team: you must be admin/owner of both teams
+
+### How It Works
+
+Transfers preserve the original deposit structure — expiry dates, coupon tracking, and store revenue are all maintained. Each deposit type (coupon, store revenue, regular deposit) is transferred as a separate transaction on the target wallet with its original expiry time.
+
+**Consumption order (matches task billing):**
+
+1. Tracked coupons (model-specific first, then universal, FIFO)
+2. Untracked gifted (checklist rewards, pooled)
+3. Store revenue
+4. Regular amount (deposits)
+
+**Expiry is preserved:** When you transfer $600 from a wallet containing a $500 coupon (30-day expiry) and $500 deposit (365-day expiry), the target receives two separate deposits — $500 coupon and $100 deposit — each with its own expiry date.
 
 Transaction history receives audit entries (`TRANSFER OUT` on source, `TRANSFER IN` on target) which don't affect balance calculations.
 

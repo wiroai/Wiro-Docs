@@ -2,16 +2,9 @@
 
 Create organizations, invite members, and manage roles and permissions.
 
-## Creating an Organization
+## **POST** /Organization/Create
 
-1. Go to your [Dashboard](https://wiro.ai/panel/organization)
-2. Click **Create Organization**
-3. Enter an organization name
-4. Click **Create**
-
-You become the organization **owner** automatically. Only you can create teams, delete the organization, or restore it after deletion.
-
-#### **POST** /Organization/Create
+Creates a new organization. The caller automatically becomes the organization **owner** — only the owner can create teams, delete the organization, or restore it after deletion.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -30,18 +23,11 @@ You become the organization **owner** automatically. Only you can create teams, 
 }
 ```
 
-## Creating a Team
+You can also create organizations from the [Dashboard](https://wiro.ai/panel/organization).
 
-Only the organization owner can create teams.
+## **POST** /Team/Create
 
-1. Go to your [Organization page](https://wiro.ai/panel/organization)
-2. Click **Create Team** next to the organization
-3. Enter a team name
-4. Click **Create**
-
-The team is created with its own wallet (starting at $0.00). You are automatically added as an admin.
-
-#### **POST** /Team/Create
+Creates a team inside an organization. Only the organization owner can create teams. The team is created with its own wallet (starting at $0.00) and the caller is automatically added as an admin.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -62,18 +48,9 @@ The team is created with its own wallet (starting at $0.00). You are automatical
 }
 ```
 
-## Inviting Members
+## **POST** /Team/Member/Invite
 
-Organization owners and team admins can invite new members via email.
-
-1. Go to the team's **Members** page
-2. Click **Invite Member**
-3. Enter the invitee's email address and select a role (**Admin** or **Member**)
-4. Click **Send Invite**
-
-The invitee receives an email with a link to accept the invitation. Invitations expire after 7 days. If an invitation expires, you can resend it.
-
-#### **POST** /Team/Member/Invite
+Sends an email invitation to add a new member to the team. Invitations expire after 7 days and can be resent. Organization owners and team admins can invite members.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -102,11 +79,9 @@ The invitee receives an email with a link to accept the invitation. Invitations 
 | `active` | User accepted the invitation and is an active member |
 | `removed` | Member was removed or invitation was cancelled |
 
-### Accepting an Invitation
+## **POST** /Team/Member/Accept
 
 When a user clicks the invitation link, they are directed to the Wiro dashboard. If they already have an account, they are added to the team immediately. If not, they are prompted to sign up first.
-
-#### **POST** /Team/Member/Accept
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -122,9 +97,9 @@ When a user clicks the invitation link, they are directed to the Wiro dashboard.
 
 The organization owner is always an implicit admin of every team in the organization. The owner role cannot be transferred.
 
-## Listing Members
+## **POST** /Team/Member/List
 
-#### **POST** /Team/Member/List
+Lists all members of a team, including pending invitations.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -154,24 +129,18 @@ The organization owner is always an implicit admin of every team in the organiza
 }
 ```
 
-## Removing Members
+## **POST** /Team/Member/Remove
 
-Organization owners and team admins can remove members. A removed member immediately loses access to the team's resources.
-
-#### **POST** /Team/Member/Remove
+Removes a member from the team. Organization owners and team admins can remove members. A removed member immediately loses access to the team's resources. Removed members can be re-invited later if needed.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `teamguid` | string | Yes | Team guid |
 | `useruuid` | string | Yes | UUID of the member to remove |
 
-Removed members can be re-invited later if needed.
+## **POST** /Team/Member/UpdateRole
 
-## Updating Member Roles
-
-Team admins and the organization owner can change a member's role between **admin** and **member**.
-
-#### **POST** /Team/Member/UpdateRole
+Updates a member's role. Team admins and the organization owner can change a member's role between **admin** and **member**.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -179,9 +148,9 @@ Team admins and the organization owner can change a member's role between **admi
 | `useruuid` | string | Yes | UUID of the member |
 | `role` | string | Yes | New role: `"admin"` or `"member"` |
 
-## Deleting a Team
+## **POST** /Team/Remove
 
-Only the organization owner can delete a team. Deleting a team:
+Deletes a team. Only the organization owner can delete a team. Deleting a team:
 
 - Soft-deletes the team (sets status to `0`)
 - Removes all team members
@@ -191,41 +160,33 @@ Only the organization owner can delete a team. Deleting a team:
 
 The team's wallet balance is not automatically transferred. Contact support if you need to recover the balance.
 
-#### **POST** /Team/Remove
-
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `teamguid` | string | Yes | Team guid |
 
-## Deleting an Organization
+## **POST** /Organization/Remove
 
-Only the organization owner can delete an organization. This soft-deletes the organization and all its teams, following the same process as deleting each team individually.
-
-#### **POST** /Organization/Remove
+Deletes an organization. Only the organization owner can delete an organization. This soft-deletes the organization and all its teams, following the same process as deleting each team individually.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `organizationguid` | string | Yes | Organization guid |
 
-## Restoring an Organization
+## **POST** /Organization/Restore
 
-Deleted organizations can be restored by the owner. Restoring an organization:
+Restores a soft-deleted organization. Restoring an organization:
 
 - Reactivates the organization and all its teams
 - Restores previously accepted members to active status
 - Expired or cancelled invitations remain removed (they must be re-invited)
 
-#### **POST** /Organization/Restore
-
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `organizationguid` | string | Yes | Organization guid |
 
-## Listing Organizations
+## **POST** /Organization/List
 
 Returns all organizations you belong to, including active and deleted ones.
-
-#### **POST** /Organization/List
 
 ```json
 // Response
@@ -252,11 +213,9 @@ Returns all organizations you belong to, including active and deleted ones.
 }
 ```
 
-## Transferring Agents
+## **POST** /Team/TransferAgent
 
-Agents can be transferred between your personal workspace and teams. You must be an admin in both the source and target context.
-
-#### **POST** /Team/TransferAgent
+Transfers an agent instance between workspaces — personal to team, team to personal, or team to team. You must be an admin in both the source and target context.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -269,11 +228,9 @@ When an agent is transferred:
 - The agent is restarted with the new context
 - Future billing is charged to the new workspace's wallet
 
-## Transferring Projects
+## **POST** /Team/TransferProject
 
-Projects can be transferred the same way as agents.
-
-#### **POST** /Team/TransferProject
+Transfers a project between workspaces. Future tasks on the project are billed to the new workspace's wallet.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
