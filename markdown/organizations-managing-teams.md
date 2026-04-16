@@ -287,6 +287,10 @@ When a project is transferred:
 
 > **Important:** Agents can only access projects in the same workspace. Transferring a project may break agent workflows that depend on it.
 
+## Transferring Balance
+
+Wallet balance can be transferred between your personal wallet and team wallets. Transfers preserve original deposit expiry dates and coupon tracking. See [Team Billing & Spending → Balance Transfer](/docs/organizations-billing) for full details.
+
 ## What's Next
 
 - [Organizations & Teams Overview](/docs/organizations-overview) — Concepts and workspace hierarchy

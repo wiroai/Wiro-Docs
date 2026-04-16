@@ -213,6 +213,90 @@ The task statistics endpoint provides time-series data for task execution within
 
 In team context, this filters tasks by `teamguid` and only shows team projects. In personal context, it filters by your UUID and excludes team tasks.
 
+## Balance Transfer
+
+Transfer balance between your personal wallet and team wallets. Useful for moving team budgets around or recovering personal funds.
+
+### How It Works
+
+Transfers preserve the original deposit structure — expiry dates, coupon tracking, and store revenue are all maintained. Each deposit type (coupon, store revenue, regular deposit) is transferred as a separate transaction on the target wallet with its original expiry time.
+
+**Consumption order (matches task billing):**
+
+1. Tracked coupons (model-specific first, then universal, FIFO)
+2. Untracked gifted (checklist rewards, pooled)
+3. Store revenue
+4. Regular amount (deposits)
+
+**Expiry is preserved:**
+
+When you transfer $500 from a wallet containing a $500 coupon (30-day expiry) and $500 deposit (365-day expiry), the target wallet receives:
+- `DEPOSIT (COUPON)` $500 with the original 30-day expiry
+- (Nothing from the deposit, since coupon came first)
+
+If you had transferred $600, the target would receive **two separate deposits** — $500 coupon and $100 deposit — each with its own expiry date.
+
+### Permissions
+
+Only organization owners and team admins can transfer balances. The same user must control both source and target workspaces:
+
+- Personal to team: you must be admin/owner of the target team
+- Team to personal: you must be admin/owner of the source team
+- Team to team: you must be admin/owner of both teams
+
+### Configuring Balance Transfer
+
+#### **POST** /Team/TransferBalance
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `amount` | number | Yes | Transfer amount in USD |
+| `sourceteamguid` | string | No | Source team guid. Empty/omit for personal wallet |
+| `targetteamguid` | string | No | Target team guid. Empty/omit for personal wallet |
+
+```json
+// Request (personal to team)
+{
+  "amount": 100,
+  "sourceteamguid": "",
+  "targetteamguid": "0d9aade4-d31b-4b97-88f3-a90482f080ea"
+}
+```
+
+```json
+// Response
+{
+  "result": true,
+  "errors": [],
+  "transferred": {
+    "total": 100,
+    "gifted": 50,
+    "store": 0,
+    "amount": 50
+  }
+}
+```
+
+The `transferred` object shows how the amount was split across pools:
+- `gifted` — from coupon and checklist credits
+- `store` — from marketplace store revenue
+- `amount` — from regular deposits
+
+### Transaction History
+
+Both wallets receive audit transactions:
+- Source: `TRANSFER OUT` transaction with description like "Transfer to Engineering Team"
+- Target: `TRANSFER IN` transaction with description like "Transfer from Personal"
+
+These audit transactions do not affect balance calculations or expiry — they are for display only. The actual balance changes come from updated deposit amounts (source) and new deposit records (target).
+
+### Important Behaviors
+
+- **Auto-pay may trigger:** If the source is your personal wallet and transferring reduces `wallet.amount` below your auto-pay threshold, Stripe may charge you automatically. The UI warns you before confirming.
+- **Agent subscriptions may fail renewal:** If the source has active prepaid agent subscriptions, transferring too much can leave insufficient balance for renewal. Agents will expire on their renewal date.
+- **Expired deposits are not transferred:** Only deposits with `expirytime > now` (and `expiryconfirmed = 0`) are eligible.
+- **Partial transfers preserve FIFO:** When a deposit is partially transferred, its `amount` is reduced on the source. Expiry cron later sees the reduced amount and expires remaining unused credit correctly.
+
 ## Coupons
 
 Coupons can be scoped to a specific team, a specific user, or available to everyone:

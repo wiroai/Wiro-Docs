@@ -487,6 +487,7 @@ Endpoints:
 - POST /Team/Member/UpdateRole — `{ teamguid, useruuid, role }`
 - POST /Team/TransferAgent — `{ useragentguid, targetteamguid }` — empty string for personal
 - POST /Team/TransferProject — `{ projectapikey, targetteamguid }` — empty string for personal
+- POST /Team/TransferBalance — `{ amount, sourceteamguid, targetteamguid }` — transfer credit between wallets, preserves expiry
 - POST /Team/SpendingSummary — `{ teamguid }` → teamTotal, playgroundTotal, apiTotal, memberSpent, limits
 
 Model access: `modelaccess` field — `"all"` (default, no restrictions), `"allowlist"` (only allowedmodelids), `"blocklist"` (block blockedmodelids). Checked at /Run endpoint only.

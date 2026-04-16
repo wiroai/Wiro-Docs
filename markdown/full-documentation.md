@@ -6438,6 +6438,60 @@ POST /v1/Task/Stat
 
 In team context, this filters tasks by `teamguid` and only shows team projects. In personal context, it filters by your UUID and excludes team tasks.
 
+## Balance Transfer
+
+Transfer balance between your personal wallet and team wallets. Useful for moving team budgets around or recovering personal funds.
+
+### How It Works
+
+Transfers preserve the original deposit structure — expiry dates, coupon tracking, and store revenue are all maintained. Each deposit type (coupon, store revenue, regular deposit) is transferred as a separate transaction on the target wallet with its original expiry time.
+
+**Consumption order (matches task billing):**
+
+1. Tracked coupons (model-specific first, then universal, FIFO)
+2. Untracked gifted (checklist rewards, pooled)
+3. Store revenue
+4. Regular amount (deposits)
+
+**Expiry is preserved:** When you transfer $600 from a wallet containing a $500 coupon (30-day expiry) and $500 deposit (365-day expiry), the target receives two separate deposits — $500 coupon and $100 deposit — each with its own expiry date.
+
+### Permissions
+
+Only organization owners and team admins can transfer balances. The same user must control both source and target workspaces.
+
+### Configuring Balance Transfer
+
+#### **POST** /Team/TransferBalance
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `amount` | number | Yes | Transfer amount in USD |
+| `sourceteamguid` | string | No | Source team guid. Empty/omit for personal wallet |
+| `targetteamguid` | string | No | Target team guid. Empty/omit for personal wallet |
+
+```json
+// Response
+{
+  "result": true,
+  "errors": [],
+  "transferred": {
+    "total": 100,
+    "gifted": 50,
+    "store": 0,
+    "amount": 50
+  }
+}
+```
+
+Transaction history receives audit entries (`TRANSFER OUT` on source, `TRANSFER IN` on target) which don't affect balance calculations.
+
+**Important behaviors:**
+
+- Auto-pay may trigger if transferring reduces your personal `wallet.amount` below threshold
+- Active agent subscriptions may fail renewal if transferring leaves insufficient balance
+- Expired deposits are not transferred (only active deposits)
+- Partial transfers preserve FIFO expiry correctly
+
 ## Coupons
 
 Coupons can be scoped to a specific team, a specific user, or available to everyone:
