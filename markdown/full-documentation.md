@@ -2165,14 +2165,87 @@ Retrieves full details for a single deployed agent instance, including subscript
 }
 ```
 
-> **Prepaid vs Stripe:** The above example is a **prepaid** instance (`subscription.provider: "prepaid"`) and omits the `stripeportalurl` / `stripeupdateurl` / `stripecancelurl` fields. Those three URLs appear only when the subscription provider is `"stripe"` (the panel/UI deploy path); prepaid instances never carry them. Example Stripe response:
->
-> ```json
-> "subscription": { "provider": "stripe", "plan": "agent-pro", ... },
-> "stripeportalurl": "https://billing.stripe.com/p/session/xxxxxxxx",
-> "stripeupdateurl": "https://billing.stripe.com/p/session/xxxxxxxx/subscriptions/update",
-> "stripecancelurl": "https://billing.stripe.com/p/session/xxxxxxxx/subscriptions/cancel"
-> ```
+**Prepaid vs Stripe:** The above example is a **prepaid** instance (`subscription.provider: "prepaid"`) and omits the `stripeportalurl` / `stripeupdateurl` / `stripecancelurl` fields. Those three URLs appear only when the subscription provider is `"stripe"` (the panel/UI deploy path); prepaid instances never carry them.
+
+##### Response — Stripe-subscription instance
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "useragents": [
+    {
+      "id": 48,
+      "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "uuid": "your-user-uuid",
+      "agentid": 5,
+      "title": "Stripe-subscribed Instagram Bot",
+      "status": 4,
+      "pinned": true,
+      "setuprequired": false,
+      "configuration": {
+        "credentials": {
+          "instagram": {
+            "_editable": { "authMethod": true },
+            "optional": false,
+            "authMethod": "wiro",
+            "igUsername": "myaccount",
+            "connectedAt": "2025-04-01T12:00:00.000Z"
+          }
+        },
+        "custom_skills": [
+          {
+            "key": "content-tone",
+            "description": "Content strategy, brand voice, and posting rules",
+            "value": "## Brand Voice\nTone: friendly\nTarget Audience: ...",
+            "enabled": true,
+            "interval": null,
+            "_editable": true
+          },
+          {
+            "key": "content-scanner",
+            "description": "Content discovery with rotating strategies",
+            "value": "",
+            "enabled": true,
+            "interval": "0 */4 * * *",
+            "_editable": false
+          }
+        ],
+        "skills": { "instagram-post": true, "wiro-generator": true }
+      },
+      "subscription": {
+        "plan": "agent-pro",
+        "status": "active",
+        "amount": 29,
+        "currency": "usd",
+        "currentperiodend": 1717200000,
+        "renewaldate": "2026-06-01T00:00:00.000Z",
+        "daysremaining": 62,
+        "pendingdowngrade": null,
+        "provider": "stripe"
+      },
+      "agent": {
+        "id": 5,
+        "title": "Instagram Manager",
+        "slug": "instagram-manager",
+        "pricing": {
+          "starter": { "price": 9, "credits": 1000 },
+          "pro": { "price": 29, "credits": 5000 }
+        }
+      },
+      "extracredits": 0,
+      "extracreditsexpiry": null,
+      "stripeportalurl": "https://billing.stripe.com/p/session/xxxxxxxx",
+      "stripeupdateurl": "https://billing.stripe.com/p/session/xxxxxxxx/subscriptions/update",
+      "stripecancelurl": "https://billing.stripe.com/p/session/xxxxxxxx/subscriptions/cancel",
+      "createdat": 1714608000,
+      "updatedat": 1714694400,
+      "startedat": 1714694400,
+      "runningat": 1714694410
+    }
+  ]
+}
+```
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -2207,7 +2280,67 @@ Updates an agent instance's configuration, title, or description. If the agent i
 
 ##### Response
 
-Returns the updated agent instance with setuprequired flag and agent summary. Does not include subscription — use UserAgent/Detail for the full view.
+```json
+{
+  "result": true,
+  "errors": [],
+  "useragents": [
+    {
+      "id": 47,
+      "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+      "uuid": "your-user-uuid",
+      "agentid": 5,
+      "title": "My Instagram Bot",
+      "description": null,
+      "status": 0,
+      "pinned": false,
+      "setuprequired": false,
+      "configuration": {
+        "credentials": {
+          "instagram": {
+            "_editable": { "authMethod": true },
+            "authMethod": "wiro",
+            "igUsername": "myaccount",
+            "connectedAt": "2025-04-01T12:00:00.000Z"
+          }
+        },
+        "custom_skills": [
+          {
+            "key": "content-tone",
+            "description": "Content strategy, brand voice, and posting rules",
+            "value": "## Brand Voice\nTone: friendly\nTarget Audience: ...",
+            "enabled": true,
+            "interval": null,
+            "_editable": true
+          },
+          {
+            "key": "content-scanner",
+            "description": "Content discovery with rotating strategies",
+            "value": "",
+            "enabled": true,
+            "interval": "0 */4 * * *",
+            "_editable": false
+          }
+        ],
+        "skills": { "instagram-post": true }
+      },
+      "agent": {
+        "id": 5,
+        "title": "Instagram Manager",
+        "slug": "instagram-manager",
+        "pricing": {
+          "starter": { "price": 9, "credits": 1000 },
+          "pro": { "price": 29, "credits": 5000 }
+        }
+      },
+      "createdat": 1714608000,
+      "updatedat": 1714694400
+    }
+  ]
+}
+```
+
+> Returns the updated agent instance with the `setuprequired` flag and agent summary. Does **not** include `subscription` — use `UserAgent/Detail` for the full view.
 
 #### **POST** /UserAgent/Start
 
@@ -2222,7 +2355,8 @@ Starts a stopped agent instance. The agent is moved to Queued (status `2`) and w
 ```json
 {
   "result": true,
-  "errors": []
+  "errors": [],
+  "useragents": []
 }
 ```
 
@@ -2246,7 +2380,8 @@ Stops a running agent instance. If the agent is Queued (status `2`), it is immed
 ```json
 {
   "result": true,
-  "errors": []
+  "errors": [],
+  "useragents": []
 }
 ```
 
@@ -3005,7 +3140,19 @@ Retrieves conversation history for a specific agent and session. Messages are re
         "response": "Here are the key AI trends for 2026...",
         "debugoutput": "Here are the key AI trends for 2026...",
         "status": "agent_end",
-        "metadata": { "type": "progressGenerate", "task": "Generate", "speed": "14.2", "speedType": "words/s", "elapsedTime": "8.1s", "tokenCount": 105, "wordCount": 118, "raw": "Here are the key AI trends for 2026...", "thinking": [], "answer": ["Here are the key AI trends for 2026..."], "isThinking": false },
+        "metadata": {
+          "type": "progressGenerate",
+          "task": "Generate",
+          "speed": "14.2",
+          "speedType": "words/s",
+          "elapsedTime": "8.1s",
+          "tokenCount": 105,
+          "wordCount": 118,
+          "raw": "Here are the key AI trends for 2026...",
+          "thinking": [],
+          "answer": ["Here are the key AI trends for 2026..."],
+          "isThinking": false
+        },
         "attachments": [],
         "deletestatus": 0,
         "createdat": "1743350400"
@@ -3038,12 +3185,23 @@ Retrieves conversation history for a specific agent and session. Messages are re
 
 To paginate through a long conversation:
 
-```
-// Page 1: most recent messages
-POST /UserAgent/Message/History { "useragentguid": "...", "limit": 50 }
+**Page 1** — most recent messages:
 
-// Page 2: pass the last message's guid as cursor
-POST /UserAgent/Message/History { "useragentguid": "...", "limit": 50, "before": "a1b2c3d4-..." }
+```json
+{
+  "useragentguid": "...",
+  "limit": 50
+}
+```
+
+**Page 2** — pass the last message's `guid` as cursor:
+
+```json
+{
+  "useragentguid": "...",
+  "limit": 50,
+  "before": "a1b2c3d4-..."
+}
 ```
 
 ## **POST** /UserAgent/Message/Sessions
@@ -3145,12 +3303,24 @@ Sessions let you maintain separate conversation threads with the same agent:
 - Sessions persist across API calls — send the same `sessionkey` to continue a conversation
 - Delete a session with `/UserAgent/Message/DeleteSession` to clear history and free resources
 
-```json
-// User A's conversation
-{ "useragentguid": "...", "message": "Hello!", "sessionkey": "user-alice" }
+User A's conversation:
 
-// User B's separate conversation with the same agent
-{ "useragentguid": "...", "message": "Hello!", "sessionkey": "user-bob" }
+```json
+{
+  "useragentguid": "...",
+  "message": "Hello!",
+  "sessionkey": "user-alice"
+}
+```
+
+User B's separate conversation with the same agent:
+
+```json
+{
+  "useragentguid": "...",
+  "message": "Hello!",
+  "sessionkey": "user-bob"
+}
 ```
 
 ## Thinking & Answer Separation
@@ -3183,14 +3353,29 @@ There are three ways to track message progress after sending:
 
 Connect to WebSocket and subscribe with the `agenttoken` for real-time streaming. Each `agent_output` event delivers the growing response as it's generated.
 
+**1. Subscribe to agent message updates:**
+
 ```json
-// Subscribe to agent message updates
-{ "type": "agent_info", "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb" }
+{
+  "type": "agent_info",
+  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb"
+}
+```
 
-// Server confirms subscription with current status
-{ "type": "agent_subscribed", "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb", "status": "agent_queue", "result": true }
+**2. Server confirms subscription with current status:**
 
-// Streaming output event
+```json
+{
+  "type": "agent_subscribed",
+  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
+  "status": "agent_queue",
+  "result": true
+}
+```
+
+**3. Streaming output event** (emitted multiple times — replace your displayed content with `message.answer` on each event):
+
+```json
 {
   "type": "agent_output",
   "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
@@ -3209,8 +3394,11 @@ Connect to WebSocket and subscribe with the `agenttoken` for real-time streaming
   },
   "result": true
 }
+```
 
-// Final event
+**4. Final event** (agent_end — terminal):
+
+```json
 {
   "type": "agent_end",
   "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
@@ -3261,17 +3449,30 @@ POST /UserAgent/Message/Detail { "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb" 
 Pass a `callbackurl` when sending the message. The system will POST the final result to your URL when the agent finishes (up to 3 retry attempts):
 
 ```json
-// Webhook payload delivered to your callbackurl
 {
   "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
   "status": "agent_end",
   "content": "What are the latest trends in AI?",
   "response": "Here are the key AI trends for 2026...",
   "debugoutput": "Here are the key AI trends for 2026...",
-  "metadata": { "type": "progressGenerate", "raw": "...", "thinking": [], "answer": ["..."] },
+  "metadata": {
+    "type": "progressGenerate",
+    "task": "Generate",
+    "speed": "14.2",
+    "speedType": "words/s",
+    "elapsedTime": "8.1s",
+    "tokenCount": 105,
+    "wordCount": 118,
+    "raw": "Here are the key AI trends for 2026...",
+    "thinking": [],
+    "answer": ["Here are the key AI trends for 2026..."],
+    "isThinking": false
+  },
   "endedat": 1743350408
 }
 ```
+
+> Payload delivered to your `callbackurl`. `metadata` is decoded into a JSON object.
 
 ## Code Examples
 
@@ -3718,8 +3919,9 @@ Sent immediately after the server accepts your subscription. The `status` field 
 - If the agenttoken is **valid and pending/active** (known to the server, not yet finished), `debugoutput` is always present — an empty string `""` if nothing has streamed yet, or the accumulated text so far.
 - If the agenttoken is **unknown** (typo, expired, already cleaned up from the buffer), `debugoutput` is **omitted entirely** from the payload (no field at all). Always use `"debugoutput" in payload` or `payload.debugoutput !== undefined` to distinguish unknown-token from empty-output, rather than relying on truthiness.
 
+**Valid token, queued** — `debugoutput` present and empty:
+
 ```json
-// Valid token, queued — debugoutput present and empty
 {
   "type": "agent_subscribed",
   "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
@@ -3727,8 +3929,11 @@ Sent immediately after the server accepts your subscription. The `status` field 
   "debugoutput": "",
   "result": true
 }
+```
 
-// Unknown token — status is "unknown" and no debugoutput field
+**Unknown token** — `status` is `"unknown"` and no `debugoutput` field:
+
+```json
 {
   "type": "agent_subscribed",
   "agenttoken": "wrongtoken123",
@@ -4305,30 +4510,99 @@ channel.stream.listen((message) {
 
 ## Quick Reference
 
+**Subscribe frame (client → server):**
+
 ```json
-// Subscribe
-{"type": "agent_info", "agenttoken": "aB3xK9..."}
+{
+  "type": "agent_info",
+  "agenttoken": "aB3xK9..."
+}
+```
 
-// agent_subscribed (valid token — debugoutput present)
-{"type": "agent_subscribed", "agenttoken": "aB3xK9...", "status": "agent_queue", "debugoutput": "", "result": true}
+**`agent_subscribed` — valid token** (empty `debugoutput`):
 
-// agent_subscribed (unknown token — status "unknown", debugoutput field omitted)
-{"type": "agent_subscribed", "agenttoken": "wrongtoken", "status": "unknown", "result": true}
+```json
+{
+  "type": "agent_subscribed",
+  "agenttoken": "aB3xK9...",
+  "status": "agent_queue",
+  "debugoutput": "",
+  "result": true
+}
+```
 
-// agent_start
-{"type": "agent_start", "agenttoken": "aB3xK9...", "message": "", "result": true}
+**`agent_subscribed` — unknown token** (`status: "unknown"`, no `debugoutput`):
 
-// agent_output (streaming — emitted multiple times)
-{"type": "agent_output", "agenttoken": "aB3xK9...", "message": {"raw": "Accumulated text...", "speed": "12.5", "wordCount": 28}, "result": true}
+```json
+{
+  "type": "agent_subscribed",
+  "agenttoken": "wrongtoken",
+  "status": "unknown",
+  "result": true
+}
+```
 
-// agent_end (final response)
-{"type": "agent_end", "agenttoken": "aB3xK9...", "message": {"raw": "Complete response...", "speed": "14.2", "wordCount": 118}, "result": true}
+**`agent_start`:**
 
-// agent_error
-{"type": "agent_error", "agenttoken": "aB3xK9...", "message": "Bridge timeout", "result": false}
+```json
+{
+  "type": "agent_start",
+  "agenttoken": "aB3xK9...",
+  "message": "",
+  "result": true
+}
+```
 
-// agent_cancel (active-processing abort only — queued-state cancels don't broadcast)
-{"type": "agent_cancel", "agenttoken": "aB3xK9...", "message": "AbortError", "result": false}
+**`agent_output`** — streaming partials, emitted multiple times:
+
+```json
+{
+  "type": "agent_output",
+  "agenttoken": "aB3xK9...",
+  "message": {
+    "raw": "Accumulated text...",
+    "speed": "12.5",
+    "wordCount": 28
+  },
+  "result": true
+}
+```
+
+**`agent_end`** — final response:
+
+```json
+{
+  "type": "agent_end",
+  "agenttoken": "aB3xK9...",
+  "message": {
+    "raw": "Complete response...",
+    "speed": "14.2",
+    "wordCount": 118
+  },
+  "result": true
+}
+```
+
+**`agent_error`:**
+
+```json
+{
+  "type": "agent_error",
+  "agenttoken": "aB3xK9...",
+  "message": "Bridge timeout",
+  "result": false
+}
+```
+
+**`agent_cancel`** — active-processing abort only; queued-state cancels don't broadcast:
+
+```json
+{
+  "type": "agent_cancel",
+  "agenttoken": "aB3xK9...",
+  "message": "AbortError",
+  "result": false
+}
 ```
 
 ## Connection Keep-Alive
@@ -9288,11 +9562,19 @@ Call `POST /UserAgent/Detail` to discover an agent's skills. They appear in `con
 
 ## Discovering Skills
 
-```json
-POST /UserAgent/Detail
-{ "guid": "your-useragent-guid" }
+Call `POST /UserAgent/Detail` to fetch the agent instance. The skill array lives under `configuration.custom_skills`.
 
-// Response → configuration.custom_skills:
+**Request:**
+
+```json
+{
+  "guid": "your-useragent-guid"
+}
+```
+
+**Response** (`configuration.custom_skills` excerpt):
+
+```json
 [
   {
     "key": "content-tone",
@@ -9386,13 +9668,19 @@ Scheduled tasks run automatically on a cron schedule. Toggle `enabled` and adjus
 ### Example: Change scanner frequency
 
 ```json
-POST /UserAgent/Update
 {
   "guid": "your-useragent-guid",
   "configuration": {
     "custom_skills": [
-      { "key": "review-scanner", "enabled": true, "interval": "0 */4 * * *" },
-      { "key": "content-scanner", "enabled": false }
+      {
+        "key": "review-scanner",
+        "enabled": true,
+        "interval": "0 */4 * * *"
+      },
+      {
+        "key": "content-scanner",
+        "enabled": false
+      }
     ]
   }
 }
@@ -9414,13 +9702,19 @@ POST /UserAgent/Update
 
 Complete flow — fetch skills, then update preferences and schedules in one request.
 
-**Step 1 — Discover skills:**
+**Step 1 — Discover skills.**
+
+Call `POST /UserAgent/Detail` with the agent instance GUID:
 
 ```json
-POST /UserAgent/Detail
-{ "guid": "your-push-agent-guid" }
+{
+  "guid": "your-push-agent-guid"
+}
+```
 
-// Response → configuration.custom_skills:
+Response excerpt (`configuration.custom_skills`):
+
+```json
 [
   {
     "key": "push-preferences",

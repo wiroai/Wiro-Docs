@@ -1445,16 +1445,15 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
     <section id="task-billing">
       <h2>Billing &amp; Cost</h2>
       <p>The <code>totalcost</code> field in the Task Detail response shows the actual cost charged for the run. <strong>Only successful tasks are billed</strong> — if <code>pexit</code> is non-zero (failure), the task is not charged and <code>totalcost</code> will be <code>"0"</code>.</p>
-<pre><code class="language-json">// Successful run — billed
-{
+<p><strong>Successful run — billed:</strong></p>
+<pre><code class="language-json">{
   "status": "task_postprocess_end",
   "pexit": "0",
   "totalcost": "0.003510000000",
   "elapsedseconds": "6.0000"
-}
-
-// Failed run — not billed
-{
+}</code></pre>
+<p><strong>Failed run — not billed:</strong></p>
+<pre><code class="language-json">{
   "status": "task_postprocess_end",
   "pexit": "1",
   "totalcost": "0",
@@ -4440,8 +4439,22 @@ import type {
           }
         },
         "custom_skills": [
-          { "key": "content-tone", "description": "Brand voice + posting rules", "value": "## Brand Voice\nTone: friendly\n...", "enabled": true, "interval": null, "_editable": true },
-          { "key": "content-scanner", "description": "Content discovery cron", "value": "", "enabled": true, "interval": "0 */4 * * *", "_editable": false }
+          {
+            "key": "content-tone",
+            "description": "Content strategy, brand voice, and posting rules",
+            "value": "## Brand Voice\nTone: friendly\nTarget Audience: ...",
+            "enabled": true,
+            "interval": null,
+            "_editable": true
+          },
+          {
+            "key": "content-scanner",
+            "description": "Content discovery with rotating strategies",
+            "value": "",
+            "enabled": true,
+            "interval": "0 */4 * * *",
+            "_editable": false
+          }
         ],
         "skills": { "instagram-post": true, "wiro-generator": true },
         "rateLimit": {
@@ -4494,7 +4507,36 @@ import type {
       "title": "Stripe-subscribed Instagram Bot",
       "status": 4,
       "setuprequired": false,
-      "configuration": { /* same sanitized shape as prepaid response */ },
+      "configuration": {
+        "credentials": {
+          "instagram": {
+            "_editable": { "authMethod": true },
+            "optional": false,
+            "authMethod": "wiro",
+            "igUsername": "myaccount",
+            "connectedAt": "2025-04-01T12:00:00.000Z"
+          }
+        },
+        "custom_skills": [
+          {
+            "key": "content-tone",
+            "description": "Content strategy, brand voice, and posting rules",
+            "value": "## Brand Voice\nTone: friendly\nTarget Audience: ...",
+            "enabled": true,
+            "interval": null,
+            "_editable": true
+          },
+          {
+            "key": "content-scanner",
+            "description": "Content discovery with rotating strategies",
+            "value": "",
+            "enabled": true,
+            "interval": "0 */4 * * *",
+            "_editable": false
+          }
+        ],
+        "skills": { "instagram-post": true, "wiro-generator": true }
+      },
       "subscription": {
         "plan": "agent-pro",
         "status": "active",
@@ -4506,7 +4548,15 @@ import type {
         "pendingdowngrade": null,
         "provider": "stripe"
       },
-      "agent": { /* agent summary */ },
+      "agent": {
+        "id": 5,
+        "title": "Instagram Manager",
+        "slug": "instagram-manager",
+        "pricing": {
+          "starter": { "price": 9, "credits": 1000 },
+          "pro": { "price": 29, "credits": 5000 }
+        }
+      },
       "extracredits": 0,
       "extracreditsexpiry": null,
       "stripeportalurl": "https://billing.stripe.com/p/session/xxxxxxxx",
@@ -4997,12 +5047,36 @@ import type {
         "response": "Here are the key AI trends for 2026...",
         "debugoutput": "Here are the key AI trends for 2026...",
         "status": "agent_end",
+        "metadata": {
+          "type": "progressGenerate",
+          "task": "Generate",
+          "speed": "14.2",
+          "speedType": "words/s",
+          "elapsedTime": "8.1s",
+          "tokenCount": 105,
+          "wordCount": 118,
+          "raw": "Here are the key AI trends for 2026...",
+          "thinking": [],
+          "answer": ["Here are the key AI trends for 2026..."],
+          "isThinking": false
+        },
+        "attachments": [],
+        "deletestatus": 0,
+        "createdat": "1743350400"
+      },
+      {
+        "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "content": "Tell me more about multimodal models",
+        "response": "Multimodal models combine...",
+        "debugoutput": "Multimodal models combine...",
+        "status": "agent_end",
         "metadata": {},
         "attachments": [],
-        "createdat": "1743350400"
+        "deletestatus": 0,
+        "createdat": "1743350300"
       }
     ],
-    "count": 1,
+    "count": 2,
     "hasmore": false
   }
 }</code></pre>
@@ -5016,11 +5090,17 @@ import type {
 </table></div></div>
 
 <h3>Pagination</h3>
-<pre><code>// Page 1: most recent messages
-POST /UserAgent/Message/History { "useragentguid": "...", "limit": 50 }
-
-// Page 2: pass the last message's guid as cursor
-POST /UserAgent/Message/History { "useragentguid": "...", "limit": 50, "before": "a1b2c3d4-..." }</code></pre>
+<p><strong>Page 1</strong> — most recent messages:</p>
+<pre><code class="language-json">{
+  "useragentguid": "...",
+  "limit": 50
+}</code></pre>
+<p><strong>Page 2</strong> — pass the last message's <code>guid</code> as cursor:</p>
+<pre><code class="language-json">{
+  "useragentguid": "...",
+  "limit": 50,
+  "before": "a1b2c3d4-..."
+}</code></pre>
 </section>
 
 <section id="useragent-message-sessions">
@@ -5120,15 +5200,14 @@ POST /UserAgent/Message/History { "useragentguid": "...", "limit": 50, "before":
 <li>Sessions persist across API calls — send the same <code>sessionkey</code> to continue a conversation</li>
 <li>Delete a session with <code>/UserAgent/Message/DeleteSession</code> to clear history and free resources</li>
 </ul>
-<pre><code class="language-json">// User A's conversation
-{
+<p><strong>User A's conversation:</strong></p>
+<pre><code class="language-json">{
   "useragentguid": "...",
   "message": "Hello!",
   "sessionkey": "user-alice"
-}
-
-// User B's separate conversation with the same agent
-{
+}</code></pre>
+<p><strong>User B's separate conversation with the same agent:</strong></p>
+<pre><code class="language-json">{
   "useragentguid": "...",
   "message": "Hello!",
   "sessionkey": "user-bob"
@@ -5160,11 +5239,56 @@ POST /UserAgent/Message/History { "useragentguid": "...", "limit": 50, "before":
 
 <h3>1. WebSocket (Recommended)</h3>
 <p>Connect to WebSocket and subscribe with the <code>agenttoken</code> for real-time streaming. Each <code>agent_output</code> event delivers the growing response as it's generated.</p>
-<pre><code class="language-json">// Subscribe to agent message updates
-{ "type": "agent_info", "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb" }
-
-// Server confirms subscription with current status
-{ "type": "agent_subscribed", "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb", "status": "agent_queue", "result": true }</code></pre>
+<p><strong>1. Subscribe to agent message updates:</strong></p>
+<pre><code class="language-json">{
+  "type": "agent_info",
+  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb"
+}</code></pre>
+<p><strong>2. Server confirms subscription with current status:</strong></p>
+<pre><code class="language-json">{
+  "type": "agent_subscribed",
+  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
+  "status": "agent_queue",
+  "result": true
+}</code></pre>
+<p><strong>3. Streaming output event</strong> (emitted multiple times — replace your displayed content with <code>message.answer</code> on each event):</p>
+<pre><code class="language-json">{
+  "type": "agent_output",
+  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
+  "message": {
+    "type": "progressGenerate",
+    "task": "Generate",
+    "speed": "12.4",
+    "speedType": "words/s",
+    "elapsedTime": "3.2s",
+    "tokenCount": 156,
+    "wordCount": 42,
+    "raw": "Here are the key AI trends...",
+    "thinking": [],
+    "answer": ["Here are the key AI trends..."],
+    "isThinking": false
+  },
+  "result": true
+}</code></pre>
+<p><strong>4. Final event</strong> (<code>agent_end</code> — terminal):</p>
+<pre><code class="language-json">{
+  "type": "agent_end",
+  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
+  "message": {
+    "type": "progressGenerate",
+    "task": "Generate",
+    "speed": "14.2",
+    "speedType": "words/s",
+    "elapsedTime": "8.1s",
+    "tokenCount": 412,
+    "wordCount": 115,
+    "raw": "Here are the key AI trends for 2026...",
+    "thinking": [],
+    "answer": ["Here are the key AI trends for 2026..."],
+    "isThinking": false
+  },
+  "result": true
+}</code></pre>
 <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
 <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
 <tbody>
@@ -5186,16 +5310,28 @@ POST /UserAgent/Message/History { "useragentguid": "...", "limit": 50, "before":
 
 <h3>3. Webhook Callback</h3>
 <p>Pass a <code>callbackurl</code> when sending the message. The system will POST the final result to your URL when the agent finishes (up to 3 retry attempts):</p>
-<pre><code class="language-json">// Webhook payload delivered to your callbackurl
-{
+<pre><code class="language-json">{
   "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
   "status": "agent_end",
   "content": "What are the latest trends in AI?",
   "response": "Here are the key AI trends for 2026...",
   "debugoutput": "Here are the key AI trends for 2026...",
-  "metadata": { "type": "progressGenerate", "raw": "...", "thinking": [], "answer": ["..."] },
+  "metadata": {
+    "type": "progressGenerate",
+    "task": "Generate",
+    "speed": "14.2",
+    "speedType": "words/s",
+    "elapsedTime": "8.1s",
+    "tokenCount": 105,
+    "wordCount": 118,
+    "raw": "Here are the key AI trends for 2026...",
+    "thinking": [],
+    "answer": ["Here are the key AI trends for 2026..."],
+    "isThinking": false
+  },
   "endedat": 1743350408
 }</code></pre>
+<p class="docs-note">Payload delivered to your <code>callbackurl</code>. <code>metadata</code> is decoded into a JSON object.</p>
 </section>
 
 </article>
@@ -5298,17 +5434,16 @@ POST /UserAgent/Message/History { "useragentguid": "...", "limit": 50, "before":
 <li>If the agenttoken is <strong>valid and pending/active</strong> (known to the server, not yet finished), <code>debugoutput</code> is always present — an empty string <code>""</code> if nothing has streamed yet, or the accumulated text so far.</li>
 <li>If the agenttoken is <strong>unknown</strong> (typo, expired, already cleaned up from the buffer), <code>debugoutput</code> is <strong>omitted entirely</strong> from the payload (no field at all). Always use <code>"debugoutput" in payload</code> or <code>payload.debugoutput !== undefined</code> to distinguish unknown-token from empty-output, rather than relying on truthiness.</li>
 </ul>
-<pre><code class="language-json">// Valid token, queued — debugoutput present and empty
-{
+<p><strong>Valid token, queued</strong> — <code>debugoutput</code> present and empty:</p>
+<pre><code class="language-json">{
   "type": "agent_subscribed",
   "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
   "status": "agent_queue",
   "debugoutput": "",
   "result": true
-}
-
-// Unknown token — status is "unknown" and no debugoutput field
-{
+}</code></pre>
+<p><strong>Unknown token</strong> — <code>status</code> is <code>"unknown"</code> and no <code>debugoutput</code> field:</p>
+<pre><code class="language-json">{
   "type": "agent_subscribed",
   "agenttoken": "wrongtoken123",
   "status": "unknown",
@@ -5509,31 +5644,35 @@ ws.onopen = () => {
 
 <section id="quick-reference">
 <h2>Quick Reference</h2>
-<pre><code class="language-json">// Subscribe
-{
+<p><strong>Subscribe frame (client → server):</strong></p>
+<pre><code class="language-json">{
   "type": "agent_info",
-  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb"
-}
-
-// agent_subscribed
-{
+  "agenttoken": "aB3xK9..."
+}</code></pre>
+<p><strong><code>agent_subscribed</code> — valid token</strong> (empty <code>debugoutput</code>):</p>
+<pre><code class="language-json">{
   "type": "agent_subscribed",
   "agenttoken": "aB3xK9...",
   "status": "agent_queue",
   "debugoutput": "",
   "result": true
-}
-
-// agent_start
-{
+}</code></pre>
+<p><strong><code>agent_subscribed</code> — unknown token</strong> (<code>status: "unknown"</code>, no <code>debugoutput</code>):</p>
+<pre><code class="language-json">{
+  "type": "agent_subscribed",
+  "agenttoken": "wrongtoken",
+  "status": "unknown",
+  "result": true
+}</code></pre>
+<p><strong><code>agent_start</code>:</strong></p>
+<pre><code class="language-json">{
   "type": "agent_start",
   "agenttoken": "aB3xK9...",
   "message": "",
   "result": true
-}
-
-// agent_output (streaming — emitted multiple times)
-{
+}</code></pre>
+<p><strong><code>agent_output</code></strong> — streaming partials, emitted multiple times:</p>
+<pre><code class="language-json">{
   "type": "agent_output",
   "agenttoken": "aB3xK9...",
   "message": {
@@ -5547,10 +5686,9 @@ ws.onopen = () => {
     "wordCount": 28
   },
   "result": true
-}
-
-// agent_end (final response)
-{
+}</code></pre>
+<p><strong><code>agent_end</code></strong> — final response:</p>
+<pre><code class="language-json">{
   "type": "agent_end",
   "agenttoken": "aB3xK9...",
   "message": {
@@ -5564,21 +5702,19 @@ ws.onopen = () => {
     "wordCount": 118
   },
   "result": true
-}
-
-// agent_error
-{
+}</code></pre>
+<p><strong><code>agent_error</code>:</strong></p>
+<pre><code class="language-json">{
   "type": "agent_error",
   "agenttoken": "aB3xK9...",
   "message": "Bridge timeout",
   "result": false
-}
-
-// agent_cancel
-{
+}</code></pre>
+<p><strong><code>agent_cancel</code></strong> — active-processing abort only; queued-state cancels don't broadcast:</p>
+<pre><code class="language-json">{
   "type": "agent_cancel",
   "agenttoken": "aB3xK9...",
-  "message": "The operation was aborted.",
+  "message": "AbortError",
   "result": false
 }</code></pre>
 </section>
@@ -5895,7 +6031,11 @@ ws.onopen = () => {
       }
     },
     "custom_skills": [
-      { "key": "skill-name", "enabled": true, "interval": "0 9 * * *" }
+      {
+        "key": "skill-name",
+        "enabled": true,
+        "interval": "0 9 * * *"
+      }
     ]
   }
 }</code></pre>
@@ -6498,9 +6638,8 @@ ws.onopen = () => {
 
 
 <h4>"own" Mode Full Flow</h4>
-<pre><code class="language-json">// Step 1: Set your app credentials
-POST /UserAgent/Update
-{
+<p><strong>Step 1 — Set your app credentials:</strong></p>
+<pre><code class="language-json">{
   "guid": "your-useragent-guid",
   "configuration": {
     "credentials": {
@@ -6510,18 +6649,15 @@ POST /UserAgent/Update
       }
     }
   }
-}
-
-// Step 2: Initiate OAuth with authMethod: "own"
-POST /UserAgentOAuth/XConnect
-{
+}</code></pre>
+<p><strong>Step 2 — Initiate OAuth with <code>authMethod: "own"</code>:</strong></p>
+<pre><code class="language-json">{
   "userAgentGuid": "your-useragent-guid",
   "redirectUrl": "https://your-app.com/callback",
   "authMethod": "own"
-}
-
-// Step 3: Redirect user to the returned authorizeUrl
-// Step 4: User authorizes → redirected back to your redirectUrl</code></pre>
+}</code></pre>
+<p><strong>Step 3 —</strong> Redirect the user to the <code>authorizeUrl</code> returned by the Connect endpoint.</p>
+<p><strong>Step 4 —</strong> The provider sends the user back to your <code>redirectUrl</code> with <code>?result=true</code> (or <code>?result=false&amp;error=...</code>) once consent is complete.</p>
 <p>When using <code>"own"</code> mode, you must register Wiro's callback URL in your OAuth app settings on the provider's developer portal:</p>
 <pre><code>https://api.wiro.ai/v1/UserAgentOAuth/{Provider}Callback</code></pre>
 
@@ -6766,13 +6902,13 @@ app.get('/settings/social', (req, res) => {
 
 <section id="skills-discovering">
 <h2>Discovering Skills</h2>
-<pre><code class="language-json">POST /UserAgent/Detail
-{
+<p>Call <code>POST /UserAgent/Detail</code> to fetch the agent instance. The skill array lives under <code>configuration.custom_skills</code>.</p>
+<p><strong>Request:</strong></p>
+<pre><code class="language-json">{
   "guid": "your-useragent-guid"
-}
-
-// Response → configuration.custom_skills:
-[
+}</code></pre>
+<p><strong>Response</strong> (<code>configuration.custom_skills</code> excerpt):</p>
+<pre><code class="language-json">[
   {
     "key": "content-tone",
     "value": "## Voice\nShort punchy lines, developer-friendly...",
@@ -7146,14 +7282,12 @@ Use bullet points for features.
 <h2>Full Example: Push Notification Manager</h2>
 <p>Complete flow — fetch skills, then update preferences and schedules in one request.</p>
 
-<p><strong>Step 1 — Discover skills:</strong></p>
-<pre><code class="language-json">POST /UserAgent/Detail
-{
+<p><strong>Step 1 — Discover skills.</strong> Call <code>POST /UserAgent/Detail</code> with the agent instance GUID:</p>
+<pre><code class="language-json">{
   "guid": "your-push-agent-guid"
-}
-
-// Response → configuration.custom_skills:
-[
+}</code></pre>
+<p>Response excerpt (<code>configuration.custom_skills</code>):</p>
+<pre><code class="language-json">[
   {
     "key": "push-preferences",
     "value": "## Push Tone\nWrite like a mobile growth expert...",

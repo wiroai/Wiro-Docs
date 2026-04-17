@@ -445,7 +445,52 @@ The Stripe path (panel/UI deploy flow) adds three billing portal URLs; prepaid i
       "status": 4,
       "pinned": true,
       "setuprequired": false,
-      "configuration": { /* same sanitized shape as above */ },
+      "configuration": {
+        "credentials": {
+          "instagram": {
+            "_editable": { "authMethod": true },
+            "optional": false,
+            "authMethod": "wiro",
+            "igUsername": "myaccount",
+            "connectedAt": "2025-04-01T12:00:00.000Z"
+          },
+          "openai": {
+            "_editable": { "apiKey": false, "model": false, "fallbacks": false, "cronModel": false },
+            "optional": false,
+            "model": "openai/gpt-5.2",
+            "fallbacks": "openai/gpt-5-mini",
+            "cronModel": "openai/gpt-5-mini"
+          }
+        },
+        "custom_skills": [
+          {
+            "key": "content-tone",
+            "description": "Content strategy, brand voice, and posting rules",
+            "value": "## Brand Voice\nTone: friendly\nTarget Audience: ...",
+            "enabled": true,
+            "interval": null,
+            "_editable": true
+          },
+          {
+            "key": "content-scanner",
+            "description": "Content discovery with rotating strategies",
+            "value": "",
+            "enabled": true,
+            "interval": "0 */4 * * *",
+            "_editable": false
+          }
+        ],
+        "skills": {
+          "twitterx-post": true,
+          "instagram-post": true,
+          "wiro-generator": true
+        },
+        "rateLimit": {
+          "monthlyCredits": 5000,
+          "extraCredits": 2000,
+          "actionTypes": { "message": 10, "create": 60, "modify": 20, "regenerate": 20 }
+        }
+      },
       "subscription": {
         "plan": "agent-pro",
         "status": "active",
@@ -457,7 +502,17 @@ The Stripe path (panel/UI deploy flow) adds three billing portal URLs; prepaid i
         "pendingdowngrade": null,
         "provider": "stripe"
       },
-      "agent": { /* agent summary */ },
+      "agent": {
+        "id": 5,
+        "title": "Instagram Manager",
+        "slug": "instagram-manager",
+        "cover": "https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp",
+        "categories": ["social-media", "marketing"],
+        "pricing": {
+          "starter": { "price": 9, "credits": 1000 },
+          "pro": { "price": 29, "credits": 5000 }
+        }
+      },
       "extracredits": 0,
       "extracreditsexpiry": null,
       "stripeportalurl": "https://billing.stripe.com/p/session/xxxxxxxx",
@@ -521,15 +576,42 @@ Updates an agent instance's configuration, title, or description. If the agent i
       "pinned": false,
       "setuprequired": false,
       "configuration": {
-        "credentials": { "instagram": { "_editable": { "authMethod": true }, "authMethod": "wiro", "igUsername": "myaccount", "connectedAt": "2025-04-01T12:00:00.000Z" } },
-        "custom_skills": [ /* same shape as Detail */ ],
+        "credentials": {
+          "instagram": {
+            "_editable": { "authMethod": true },
+            "authMethod": "wiro",
+            "igUsername": "myaccount",
+            "connectedAt": "2025-04-01T12:00:00.000Z"
+          }
+        },
+        "custom_skills": [
+          {
+            "key": "content-tone",
+            "description": "Content strategy, brand voice, and posting rules",
+            "value": "## Brand Voice\nTone: friendly\nTarget Audience: ...",
+            "enabled": true,
+            "interval": null,
+            "_editable": true
+          },
+          {
+            "key": "content-scanner",
+            "description": "Content discovery with rotating strategies",
+            "value": "",
+            "enabled": true,
+            "interval": "0 */4 * * *",
+            "_editable": false
+          }
+        ],
         "skills": { "instagram-post": true }
       },
       "agent": {
         "id": 5,
         "title": "Instagram Manager",
         "slug": "instagram-manager",
-        "pricing": { "starter": { "price": 9, "credits": 1000 }, "pro": { "price": 29, "credits": 5000 } }
+        "pricing": {
+          "starter": { "price": 9, "credits": 1000 },
+          "pro": { "price": 29, "credits": 5000 }
+        }
       },
       "createdat": 1714608000,
       "updatedat": 1714694400
@@ -595,22 +677,36 @@ Purchases additional credits for a Pro plan agent.
 | `pack` | string | Yes | Credit pack: `package1`, `package2`, or `package3` |
 | `useprepaid` | boolean | No | Set to `true` to pay from wallet balance (no redirect, credits added immediately). Omit or `false` to get a Stripe checkout URL instead. |
 
+##### Request
+
+```json
+{
+  "useragentGuid": "your-guid",
+  "pack": "package2",
+  "useprepaid": true
+}
+```
+
 ##### Response (prepaid)
 
 ```json
-// Request
-{"useragentGuid": "your-guid", "pack": "package2", "useprepaid": true}
-// Response
-{"result": true, "url": null, "errors": []}
+{
+  "result": true,
+  "url": null,
+  "errors": []
+}
 ```
 
 ##### Response (Stripe checkout)
 
+Omit `useprepaid` (or set it to `false`) to get a Stripe Checkout URL instead.
+
 ```json
-// Request
-{"useragentGuid": "your-guid", "pack": "package2"}
-// Response
-{"result": true, "url": "https://checkout.stripe.com/c/pay/...", "errors": []}
+{
+  "result": true,
+  "url": "https://checkout.stripe.com/c/pay/...",
+  "errors": []
+}
 ```
 
 When `useprepaid: true` succeeds, credits are added immediately from your wallet balance. When `useprepaid` is omitted, the returned `url` is a Stripe Checkout session you redirect the user to. Credits expire 6 months after purchase regardless of payment method.

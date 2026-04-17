@@ -154,7 +154,19 @@ Retrieves conversation history for a specific agent and session. Messages are re
         "response": "Here are the key AI trends for 2026...",
         "debugoutput": "Here are the key AI trends for 2026...",
         "status": "agent_end",
-        "metadata": { "type": "progressGenerate", "task": "Generate", "speed": "14.2", "speedType": "words/s", "elapsedTime": "8.1s", "tokenCount": 105, "wordCount": 118, "raw": "Here are the key AI trends for 2026...", "thinking": [], "answer": ["Here are the key AI trends for 2026..."], "isThinking": false },
+        "metadata": {
+          "type": "progressGenerate",
+          "task": "Generate",
+          "speed": "14.2",
+          "speedType": "words/s",
+          "elapsedTime": "8.1s",
+          "tokenCount": 105,
+          "wordCount": 118,
+          "raw": "Here are the key AI trends for 2026...",
+          "thinking": [],
+          "answer": ["Here are the key AI trends for 2026..."],
+          "isThinking": false
+        },
         "attachments": [],
         "deletestatus": 0,
         "createdat": "1743350400"
@@ -187,12 +199,23 @@ Retrieves conversation history for a specific agent and session. Messages are re
 
 To paginate through a long conversation:
 
-```
-// Page 1: most recent messages
-POST /UserAgent/Message/History { "useragentguid": "...", "limit": 50 }
+**Page 1** — most recent messages:
 
-// Page 2: pass the last message's guid as cursor
-POST /UserAgent/Message/History { "useragentguid": "...", "limit": 50, "before": "a1b2c3d4-..." }
+```json
+{
+  "useragentguid": "...",
+  "limit": 50
+}
+```
+
+**Page 2** — pass the last message's `guid` as cursor:
+
+```json
+{
+  "useragentguid": "...",
+  "limit": 50,
+  "before": "a1b2c3d4-..."
+}
 ```
 
 ## **POST** /UserAgent/Message/Sessions
@@ -294,12 +317,24 @@ Sessions let you maintain separate conversation threads with the same agent:
 - Sessions persist across API calls — send the same `sessionkey` to continue a conversation
 - Delete a session with `/UserAgent/Message/DeleteSession` to clear history and free resources
 
-```json
-// User A's conversation
-{ "useragentguid": "...", "message": "Hello!", "sessionkey": "user-alice" }
+User A's conversation:
 
-// User B's separate conversation with the same agent
-{ "useragentguid": "...", "message": "Hello!", "sessionkey": "user-bob" }
+```json
+{
+  "useragentguid": "...",
+  "message": "Hello!",
+  "sessionkey": "user-alice"
+}
+```
+
+User B's separate conversation with the same agent:
+
+```json
+{
+  "useragentguid": "...",
+  "message": "Hello!",
+  "sessionkey": "user-bob"
+}
 ```
 
 ## Thinking & Answer Separation
@@ -332,14 +367,29 @@ There are three ways to track message progress after sending:
 
 Connect to WebSocket and subscribe with the `agenttoken` for real-time streaming. Each `agent_output` event delivers the growing response as it's generated.
 
+**1. Subscribe to agent message updates:**
+
 ```json
-// Subscribe to agent message updates
-{ "type": "agent_info", "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb" }
+{
+  "type": "agent_info",
+  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb"
+}
+```
 
-// Server confirms subscription with current status
-{ "type": "agent_subscribed", "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb", "status": "agent_queue", "result": true }
+**2. Server confirms subscription with current status:**
 
-// Streaming output event
+```json
+{
+  "type": "agent_subscribed",
+  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
+  "status": "agent_queue",
+  "result": true
+}
+```
+
+**3. Streaming output event** (emitted multiple times — replace your displayed content with `message.answer` on each event):
+
+```json
 {
   "type": "agent_output",
   "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
@@ -358,8 +408,11 @@ Connect to WebSocket and subscribe with the `agenttoken` for real-time streaming
   },
   "result": true
 }
+```
 
-// Final event
+**4. Final event** (agent_end — terminal):
+
+```json
 {
   "type": "agent_end",
   "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
@@ -410,17 +463,30 @@ POST /UserAgent/Message/Detail { "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb" 
 Pass a `callbackurl` when sending the message. The system will POST the final result to your URL when the agent finishes (up to 3 retry attempts):
 
 ```json
-// Webhook payload delivered to your callbackurl
 {
   "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
   "status": "agent_end",
   "content": "What are the latest trends in AI?",
   "response": "Here are the key AI trends for 2026...",
   "debugoutput": "Here are the key AI trends for 2026...",
-  "metadata": { "type": "progressGenerate", "raw": "...", "thinking": [], "answer": ["..."] },
+  "metadata": {
+    "type": "progressGenerate",
+    "task": "Generate",
+    "speed": "14.2",
+    "speedType": "words/s",
+    "elapsedTime": "8.1s",
+    "tokenCount": 105,
+    "wordCount": 118,
+    "raw": "Here are the key AI trends for 2026...",
+    "thinking": [],
+    "answer": ["Here are the key AI trends for 2026..."],
+    "isThinking": false
+  },
   "endedat": 1743350408
 }
 ```
+
+> Payload delivered to your `callbackurl`. `metadata` is decoded into a JSON object.
 
 ## Code Examples
 

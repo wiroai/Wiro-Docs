@@ -60,8 +60,9 @@ Sent immediately after the server accepts your subscription. The `status` field 
 - If the agenttoken is **valid and pending/active** (known to the server, not yet finished), `debugoutput` is always present — an empty string `""` if nothing has streamed yet, or the accumulated text so far.
 - If the agenttoken is **unknown** (typo, expired, already cleaned up from the buffer), `debugoutput` is **omitted entirely** from the payload (no field at all). Always use `"debugoutput" in payload` or `payload.debugoutput !== undefined` to distinguish unknown-token from empty-output, rather than relying on truthiness.
 
+**Valid token, queued** — `debugoutput` present and empty:
+
 ```json
-// Valid token, queued — debugoutput present and empty
 {
   "type": "agent_subscribed",
   "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
@@ -69,8 +70,11 @@ Sent immediately after the server accepts your subscription. The `status` field 
   "debugoutput": "",
   "result": true
 }
+```
 
-// Unknown token — status is "unknown" and no debugoutput field
+**Unknown token** — `status` is `"unknown"` and no `debugoutput` field:
+
+```json
 {
   "type": "agent_subscribed",
   "agenttoken": "wrongtoken123",
@@ -649,30 +653,99 @@ channel.stream.listen((message) {
 
 ## Quick Reference
 
+**Subscribe frame (client → server):**
+
 ```json
-// Subscribe
-{"type": "agent_info", "agenttoken": "aB3xK9..."}
+{
+  "type": "agent_info",
+  "agenttoken": "aB3xK9..."
+}
+```
 
-// agent_subscribed (valid token — debugoutput present)
-{"type": "agent_subscribed", "agenttoken": "aB3xK9...", "status": "agent_queue", "debugoutput": "", "result": true}
+**`agent_subscribed` — valid token** (empty `debugoutput`):
 
-// agent_subscribed (unknown token — status "unknown", debugoutput field omitted)
-{"type": "agent_subscribed", "agenttoken": "wrongtoken", "status": "unknown", "result": true}
+```json
+{
+  "type": "agent_subscribed",
+  "agenttoken": "aB3xK9...",
+  "status": "agent_queue",
+  "debugoutput": "",
+  "result": true
+}
+```
 
-// agent_start
-{"type": "agent_start", "agenttoken": "aB3xK9...", "message": "", "result": true}
+**`agent_subscribed` — unknown token** (`status: "unknown"`, no `debugoutput`):
 
-// agent_output (streaming — emitted multiple times)
-{"type": "agent_output", "agenttoken": "aB3xK9...", "message": {"raw": "Accumulated text...", "speed": "12.5", "wordCount": 28}, "result": true}
+```json
+{
+  "type": "agent_subscribed",
+  "agenttoken": "wrongtoken",
+  "status": "unknown",
+  "result": true
+}
+```
 
-// agent_end (final response)
-{"type": "agent_end", "agenttoken": "aB3xK9...", "message": {"raw": "Complete response...", "speed": "14.2", "wordCount": 118}, "result": true}
+**`agent_start`:**
 
-// agent_error
-{"type": "agent_error", "agenttoken": "aB3xK9...", "message": "Bridge timeout", "result": false}
+```json
+{
+  "type": "agent_start",
+  "agenttoken": "aB3xK9...",
+  "message": "",
+  "result": true
+}
+```
 
-// agent_cancel (active-processing abort only — queued-state cancels don't broadcast)
-{"type": "agent_cancel", "agenttoken": "aB3xK9...", "message": "AbortError", "result": false}
+**`agent_output`** — streaming partials, emitted multiple times:
+
+```json
+{
+  "type": "agent_output",
+  "agenttoken": "aB3xK9...",
+  "message": {
+    "raw": "Accumulated text...",
+    "speed": "12.5",
+    "wordCount": 28
+  },
+  "result": true
+}
+```
+
+**`agent_end`** — final response:
+
+```json
+{
+  "type": "agent_end",
+  "agenttoken": "aB3xK9...",
+  "message": {
+    "raw": "Complete response...",
+    "speed": "14.2",
+    "wordCount": 118
+  },
+  "result": true
+}
+```
+
+**`agent_error`:**
+
+```json
+{
+  "type": "agent_error",
+  "agenttoken": "aB3xK9...",
+  "message": "Bridge timeout",
+  "result": false
+}
+```
+
+**`agent_cancel`** — active-processing abort only; queued-state cancels don't broadcast:
+
+```json
+{
+  "type": "agent_cancel",
+  "agenttoken": "aB3xK9...",
+  "message": "AbortError",
+  "result": false
+}
 ```
 
 ## Connection Keep-Alive

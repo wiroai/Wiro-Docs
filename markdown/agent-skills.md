@@ -15,11 +15,19 @@ Call `POST /UserAgent/Detail` to discover an agent's skills. They appear in `con
 
 ## Discovering Skills
 
-```json
-POST /UserAgent/Detail
-{ "guid": "your-useragent-guid" }
+Call `POST /UserAgent/Detail` to fetch the agent instance. The skill array lives under `configuration.custom_skills`.
 
-// Response → configuration.custom_skills:
+**Request:**
+
+```json
+{
+  "guid": "your-useragent-guid"
+}
+```
+
+**Response** (`configuration.custom_skills` excerpt):
+
+```json
 [
   {
     "key": "content-tone",
@@ -55,10 +63,11 @@ POST /UserAgent/Detail
 
 Preference skills (`_editable: true`, `interval: null`) let you customize the agent's behavior by editing its instructions.
 
+Send a `POST /UserAgent/Update` request with only the preference skills you want to change. Unmodified skills are preserved (the payload is **merged** with the existing config).
+
 ### Example: Social Manager — Brand Voice
 
 ```json
-POST /UserAgent/Update
 {
   "guid": "your-social-manager-guid",
   "configuration": {
@@ -75,7 +84,6 @@ POST /UserAgent/Update
 ### Example: Push Notification Manager — Targeting Preferences
 
 ```json
-POST /UserAgent/Update
 {
   "guid": "your-push-agent-guid",
   "configuration": {
@@ -92,7 +100,6 @@ POST /UserAgent/Update
 ### Example: Lead Gen Manager — ICP Definition
 
 ```json
-POST /UserAgent/Update
 {
   "guid": "your-leadgen-guid",
   "configuration": {
@@ -113,13 +120,19 @@ Scheduled tasks run automatically on a cron schedule. Toggle `enabled` and adjus
 ### Example: Change scanner frequency
 
 ```json
-POST /UserAgent/Update
 {
   "guid": "your-useragent-guid",
   "configuration": {
     "custom_skills": [
-      { "key": "review-scanner", "enabled": true, "interval": "0 */4 * * *" },
-      { "key": "content-scanner", "enabled": false }
+      {
+        "key": "review-scanner",
+        "enabled": true,
+        "interval": "0 */4 * * *"
+      },
+      {
+        "key": "content-scanner",
+        "enabled": false
+      }
     ]
   }
 }
@@ -141,13 +154,19 @@ POST /UserAgent/Update
 
 Complete flow — fetch skills, then update preferences and schedules in one request.
 
-**Step 1 — Discover skills:**
+**Step 1 — Discover skills.**
+
+Call `POST /UserAgent/Detail` with the agent instance GUID:
 
 ```json
-POST /UserAgent/Detail
-{ "guid": "your-push-agent-guid" }
+{
+  "guid": "your-push-agent-guid"
+}
+```
 
-// Response → configuration.custom_skills:
+Response excerpt (`configuration.custom_skills`):
+
+```json
 [
   {
     "key": "push-preferences",
@@ -176,10 +195,11 @@ POST /UserAgent/Detail
 ]
 ```
 
-**Step 2 — Update everything in one request:**
+**Step 2 — Update everything in one request.**
+
+`POST /UserAgent/Update`:
 
 ```json
-POST /UserAgent/Update
 {
   "guid": "your-push-agent-guid",
   "configuration": {
