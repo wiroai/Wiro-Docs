@@ -70,11 +70,11 @@ Sent immediately after the server accepts your subscription. The `status` field 
   "result": true
 }
 
-// Unknown token — no debugoutput field
+// Unknown token — status is "unknown" and no debugoutput field
 {
   "type": "agent_subscribed",
   "agenttoken": "wrongtoken123",
-  "status": "agent_queue",
+  "status": "unknown",
   "result": true
 }
 ```
@@ -656,8 +656,8 @@ channel.stream.listen((message) {
 // agent_subscribed (valid token — debugoutput present)
 {"type": "agent_subscribed", "agenttoken": "aB3xK9...", "status": "agent_queue", "debugoutput": "", "result": true}
 
-// agent_subscribed (unknown token — debugoutput field omitted)
-{"type": "agent_subscribed", "agenttoken": "wrongtoken", "status": "agent_queue", "result": true}
+// agent_subscribed (unknown token — status "unknown", debugoutput field omitted)
+{"type": "agent_subscribed", "agenttoken": "wrongtoken", "status": "unknown", "result": true}
 
 // agent_start
 {"type": "agent_start", "agenttoken": "aB3xK9...", "message": "", "result": true}

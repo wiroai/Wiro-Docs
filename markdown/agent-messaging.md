@@ -106,7 +106,7 @@ Retrieves the current status and content of a single message. You can query by e
 | `response` | `string` | The agent's full response text. Empty until `agent_end`. |
 | `debugoutput` | `string` | Accumulated output text. Updated during streaming, contains the full response after completion. |
 | `status` | `string` | Current message status (see Message Lifecycle). |
-| `metadata` | `string` | JSON string containing structured response data — `thinking`, `answer`, `raw`, speed metrics, and token/word counts. |
+| `metadata` | `string` (JSON) | **JSON-encoded string** — parse client-side with `JSON.parse`. Populated from the agent bridge on `agent_end`. Fields: `type` (event type, e.g. `"agent_end"`), `task` (user input summary), `speed` (tokens/sec), `speedType` (`"token"`), `elapsedTime` (ms), `tokenCount`, `wordCount`, `raw` (full output), `thinking` (array of `<think>` blocks), `answer` (array of post-think answer chunks), `isThinking` (false when answer finalized). Empty object `{}` for `agent_error` and `agent_cancel`. |
 | `attachments` | `string` (JSON) | Present only if the message was sent via multipart with files. Returned as a **JSON-encoded string** (not a parsed array) — parse it client-side with `JSON.parse` to get the array of `{filename, url, size, contentType}` entries. Identical shape in `Message/History` rows. |
 | `deletestatus` | `number` | Internal flag. `0` for normal messages. |
 | `createdat` | `string` | Unix timestamp when the message was created. |
@@ -219,12 +219,14 @@ Lists all conversation sessions for an agent. Returns each session's key, messag
 
 ## **POST** /UserAgent/Message/DeleteSession
 
-Deletes a session and **all its messages** permanently. This action cannot be undone.
+Deletes messages in the given session for the **calling user**. This action cannot be undone.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | The agent instance GUID. |
 | `sessionkey` | string | Yes | The session key to delete. |
+
+> **Scope of deletion:** The API matches on both `useragentguid` + `sessionkey` **and** the caller's `uuid`, so only messages the calling user sent/received in this session are removed. In **collaborative** team mode (`teamSessionMode: "collaborative"`, Telegram group-shared sessions), other team members' messages in the same `sessionkey` remain intact — each member must call `DeleteSession` to clear their own share. Admin callers (platform owner) are not subject to this scoping. For private (per-user) sessions this distinction doesn't matter — the caller is the only owner.
 
 ### Response
 

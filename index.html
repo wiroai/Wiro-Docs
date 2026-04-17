@@ -4303,24 +4303,21 @@ import type {
 
 <h2><span class="endpoint-badge post">POST</span> /UserAgent/Deploy</h2>
 <p>Creates a new agent instance from a catalog template.</p>
-<p>Deploy has two modes depending on <code>useprepaid</code>:</p>
-<ul>
-<li><strong>Normal deploy</strong> (default, <code>useprepaid</code> omitted or <code>false</code>): instance is queued for immediate launch — status <code>2</code> (Queued). Any <code>configuration.credentials</code> and <code>configuration.custom_skills</code> you pass in the body are merged into the instance's config using <code>mergeUserConfig</code> (only fields marked <code>_editable: true</code> in the template are written; unknown keys are ignored).</li>
-<li><strong>Prepaid deploy</strong> (<code>useprepaid: true</code> + <code>plan</code>): wallet is charged immediately, instance is created in status <code>6</code> (Setup Required). <strong><code>configuration.credentials</code> and <code>configuration.custom_skills</code> in the prepaid deploy body are ignored</strong> — you must call <code>POST /UserAgent/Update</code> separately after deploy to set credentials and customize skills. After credentials are complete, status auto-transitions to <code>0</code> (Stopped) and you can call <code>UserAgent/Start</code>.</li>
-</ul>
+<div class="info-callout"><strong>For API integrations, always pass <code>useprepaid: true</code> + <code>plan</code>.</strong> This is the only deploy mode that's fully programmatic — the subscription cost is deducted from your prepaid wallet immediately and the instance is created server-side in one call. Omitting <code>useprepaid</code> triggers the Stripe checkout flow (the panel's deploy path), which requires a user-facing browser redirect to Stripe's hosted checkout and is not suitable for API integrations. The section below assumes prepaid deploy.</div>
+<p>Prepaid deploy (<code>useprepaid: true</code> + <code>plan</code>) charges your wallet immediately and creates the instance in status <code>6</code> (Setup Required). <strong><code>configuration.credentials</code> and <code>configuration.custom_skills</code> passed in the Deploy body are ignored on prepaid deploy</strong> — after deploy, call <code>POST /UserAgent/Update</code> to set credentials and (optionally) customize skill content. Once credentials are complete, status auto-transitions to <code>0</code> (Stopped) and you can call <code>UserAgent/Start</code>.</p>
 <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
 <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
 <tbody>
 <tr><td><code>agentguid</code></td><td>string</td><td>Yes</td><td>The guid of the agent template from the catalog.</td></tr>
 <tr><td><code>title</code></td><td>string</td><td>Yes</td><td>Display name for your instance.</td></tr>
 <tr><td><code>description</code></td><td>string</td><td>No</td><td>Optional description.</td></tr>
-<tr><td><code>configuration</code></td><td>object</td><td>No</td><td>Initial values (normal deploy only — ignored in prepaid deploy). Shape: <code>{ "credentials": { ... }, "custom_skills": [...] }</code>. Both sub-fields are optional; either (or both) can be provided. <code>mergeUserConfig</code> only writes fields that are <code>_editable: true</code> in the template and silently ignores the rest.</td></tr>
-<tr><td><code>useprepaid</code></td><td>boolean</td><td>No</td><td>Set to <code>true</code> to pay from wallet balance. Requires <code>plan</code>. Defaults to <code>false</code> (normal deploy).</td></tr>
-<tr><td><code>plan</code></td><td>string</td><td>Conditional</td><td>Plan tier: <code>"starter"</code> or <code>"pro"</code>. Required when <code>useprepaid</code> is <code>true</code>.</td></tr>
-<tr><td><code>pinned</code></td><td>boolean</td><td>No</td><td><strong>Prepaid deploy only.</strong> Whether the agent appears in the pinned agents list (defaults to <code>true</code>). Normal deploy ignores this parameter — instances are always pinned on creation. To unpin a normal-deploy agent, call <code>POST /UserAgent/Pin</code> afterwards.</td></tr>
+<tr><td><code>useprepaid</code></td><td>boolean</td><td><strong>Yes (for API use)</strong></td><td>Pass <code>true</code> to pay from wallet balance in a single server-side call. Omitting this (or passing <code>false</code>) activates the Stripe checkout flow — the response redirects to Stripe's hosted checkout UI, which only works for interactive browser sessions, not API integrations.</td></tr>
+<tr><td><code>plan</code></td><td>string</td><td>Yes</td><td>Plan tier: <code>"starter"</code> or <code>"pro"</code>. Check <code>POST /Agent/Detail</code> → <code>agent.pricing</code> for each tier's credit allowance and price.</td></tr>
+<tr><td><code>pinned</code></td><td>boolean</td><td>No</td><td>Whether the agent appears in the pinned agents list (defaults to <code>true</code>). Pass <code>false</code> when deploying agents programmatically for end users (e.g. bulk provisioning) so they don't clutter your admin dashboard.</td></tr>
 </tbody>
 </table></div></div>
-<p><strong>Headers:</strong> Standard authentication (<code>x-api-key</code> or <code>x-nonce</code> + <code>x-signature</code>). For <strong>team-scoped agents</strong> (when an end user deploys via a team project), pass <code>teamGUID: &lt;team-guid&gt;</code> as an additional request header — the API validates the caller is a member of that team before writing the instance row. Personal deployments omit this header.</p>
+<p><strong>Headers:</strong> Standard API authentication — <code>x-api-key</code> for key-based projects, or <code>x-nonce</code> + <code>x-signature</code> for signature-based projects (see <a href="/docs/authentication">Authentication</a>). For <strong>team-scoped deploys</strong> (when an end user deploys via a team project), pass <code>teamGUID: &lt;team-guid&gt;</code> as an additional request header; the API validates the caller is a member of that team before writing the instance row. Personal deployments omit this header.</p>
+<p class="docs-callout"><em><strong>Panel/UI note:</strong> the non-prepaid Deploy mode (omit <code>useprepaid</code>) exists for the Wiro dashboard's interactive deploy flow where end users pay via Stripe subscription with a browser redirect. That path also accepts <code>configuration.credentials</code> and <code>configuration.custom_skills</code> in the body (merged via <code>mergeUserConfig</code>), but API integrations should always use prepaid deploy and set credentials with a follow-up <code>UserAgent/Update</code> call.</em></p>
 
 <h3>Request</h3>
 <pre><code class="language-json">POST /UserAgent/Deploy
@@ -4342,19 +4339,13 @@ import type {
       "agentid": 5,
       "title": "My Instagram Bot",
       "status": 6,
-      "setuprequired": true,
-      "subscription": {
-        "plan": "agent-starter",
-        "status": "active",
-        "amount": 49,
-        "currency": "usd",
-        "provider": "prepaid"
-      },
-      "createdat": "1714608000",
-      "updatedat": "1714608000"
+      "pinned": false,
+      "createdat": 1714608000,
+      "updatedat": 1714608000
     }
   ]
 }</code></pre>
+<div class="info-callout"><strong>Note:</strong> The Deploy response returns only the raw <code>useragents</code> row (with sanitized <code>configuration</code>). It does <strong>not</strong> include <code>setuprequired</code> or <code>subscription</code> — those are Detail-level fields assembled from joined tables. A prepaid subscription row (<code>agent-&lt;plan&gt;</code>, provider <code>prepaid</code>) is inserted server-side during prepaid deploy; call <code>POST /UserAgent/Detail</code> with the returned <code>guid</code> to see <code>setuprequired</code>, <code>subscription</code>, and <code>stripe*url</code> fields (if applicable).</div>
 
 <h2><span class="endpoint-badge post">POST</span> /UserAgent/MyAgents</h2>
 <p>Lists all agent instances deployed under your account.</p>
@@ -4656,7 +4647,7 @@ import type {
 
 <h3>Payment Method</h3>
 <p>All subscriptions use your <strong>prepaid wallet balance</strong>. The cost is deducted immediately when you deploy or renew. Subscriptions renew automatically if your wallet has sufficient balance; otherwise the subscription expires. Manage subscriptions through the CancelSubscription, UpgradePlan, and RenewSubscription endpoints.</p>
-<p>Credits are consumed per message or action, depending on the agent type. When monthly credits run out, the agent cannot be started until credits are renewed (next billing cycle) or extra credits are purchased.</p>
+<p>Credits are consumed by the agent runtime (container) as it processes messages and generates content — <strong>not</strong> at <code>Message/Send</code> time. Each <code>configuration.rateLimit.actionTypes</code> entry (message, create, modify, regenerate) defines how many credits a specific action costs; the container reports usage back to Wiro asynchronously. The API-side check is gating only: <code>POST /UserAgent/Start</code> refuses to launch if <code>monthlyCredits + extraCredits &lt;= 0</code>. During an active session, monthly credits are deducted first; once they hit zero, extra credits (purchased via <code>CreateExtraCreditCheckout</code>) are used. When both pools are empty, the agent responds <code>[SYSTEM_CREDIT_LIMIT_REACHED]</code> and stops processing further actions. Credits reset on each billing cycle or when extra credits are topped up.</p>
 </section>
 
 <section id="error-messages">
@@ -5006,7 +4997,8 @@ POST /UserAgent/Message/History { "useragentguid": "...", "limit": 50, "before":
 
 <section id="useragent-message-deletesession">
 <h2><span class="endpoint-badge post">POST</span> /UserAgent/Message/DeleteSession</h2>
-<p>Deletes a session and <strong>all its messages</strong> permanently. This action cannot be undone.</p>
+<p>Deletes messages in the given session for the <strong>calling user</strong>. This action cannot be undone.</p>
+<p class="docs-callout"><strong>Scope:</strong> the API matches on <code>useragentguid</code> + <code>sessionkey</code> <strong>and</strong> the caller's <code>uuid</code>, so only messages the calling user sent/received in this session are removed. In <strong>collaborative</strong> team mode (<code>teamSessionMode: "collaborative"</code>, Telegram group-shared sessions), other team members' messages in the same <code>sessionkey</code> remain intact — each member must call <code>DeleteSession</code> to clear their own share.</p>
 <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
 <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
 <tbody>
@@ -5245,11 +5237,11 @@ POST /UserAgent/Message/History { "useragentguid": "...", "limit": 50, "before":
   "result": true
 }
 
-// Unknown token — no debugoutput field
+// Unknown token — status is "unknown" and no debugoutput field
 {
   "type": "agent_subscribed",
   "agenttoken": "wrongtoken123",
-  "status": "agent_queue",
+  "status": "unknown",
   "result": true
 }</code></pre>
 <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>

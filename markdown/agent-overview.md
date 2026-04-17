@@ -176,22 +176,46 @@ All endpoints below require authentication.
 
 Creates a new agent instance from a catalog template.
 
-Deploy has two modes depending on `useprepaid`:
+> **For API integrations, always pass `useprepaid: true` + `plan`.** This is the only deploy mode that's fully programmatic — the subscription cost is deducted from your prepaid wallet immediately and the instance is created server-side in one call. Omitting `useprepaid` triggers the Stripe checkout flow (the panel's deploy path), which requires a user-facing browser redirect to Stripe's hosted checkout and is not suitable for API integrations. The sections below assume prepaid deploy.
 
-- **Normal deploy** (default, `useprepaid` omitted or `false`): instance is queued for immediate launch — status `2` (Queued). Any `configuration.credentials` and `configuration.custom_skills` you pass in the body are merged into the instance's config using `mergeUserConfig` (only fields marked `_editable: true` in the template are written; unknown keys are ignored).
-- **Prepaid deploy** (`useprepaid: true` + `plan`): wallet is charged immediately, instance is created in status `6` (Setup Required). **`configuration.credentials` and `configuration.custom_skills` in the prepaid deploy body are ignored** — you must call `POST /UserAgent/Update` separately after deploy to set credentials and customize skills. After credentials are complete, status auto-transitions to `0` (Stopped) and you can call `UserAgent/Start`.
+Prepaid deploy (`useprepaid: true` + `plan`) charges your wallet immediately and creates the instance in status `6` (Setup Required). **`configuration.credentials` and `configuration.custom_skills` passed in the Deploy body are ignored on prepaid deploy** — after deploy, call `POST /UserAgent/Update` to set credentials and (optionally) customize skill content. Once credentials are complete, status auto-transitions to `0` (Stopped) and you can call `UserAgent/Start`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `agentguid` | string | Yes | The guid of the agent template from the catalog. |
 | `title` | string | Yes | Display name for your instance. |
 | `description` | string | No | Optional description. |
-| `configuration` | object | No | Initial values (normal deploy only — ignored in prepaid deploy). Shape: `{ "credentials": { ... }, "custom_skills": [...] }`. Both sub-fields are optional; either (or both) can be provided. `mergeUserConfig` only writes fields that are `_editable: true` in the template and silently ignores the rest. |
-| `useprepaid` | boolean | No | Set to `true` to pay from wallet balance. Requires `plan`. Defaults to `false` (normal deploy). |
-| `plan` | string | Conditional | Plan tier: `"starter"` or `"pro"`. Required when `useprepaid` is `true`. |
-| `pinned` | boolean | No | **Prepaid deploy only.** Whether the agent appears in the pinned agents list (defaults to `true`). Normal deploy ignores this parameter — instances are always pinned on creation. To unpin a normal-deploy agent, call `POST /UserAgent/Pin` afterwards. |
+| `useprepaid` | boolean | **Yes (for API use)** | Pass `true` to pay from wallet balance in a single server-side call. Omitting this (or passing `false`) activates the Stripe checkout flow — the response redirects to Stripe's hosted checkout UI, which only works for interactive browser sessions, not API integrations. |
+| `plan` | string | Yes | Plan tier: `"starter"` or `"pro"`. Check `POST /Agent/Detail` → `agent.pricing` for each tier's credit allowance and price. |
+| `pinned` | boolean | No | Whether the agent appears in the pinned agents list (defaults to `true`). Pass `false` when deploying agents programmatically for end users (e.g. bulk provisioning) so they don't clutter your admin dashboard. |
 
-**Headers:** Standard authentication (`x-api-key` or `x-nonce` + `x-signature`). For **team-scoped agents** (when an end user deploys via a team project), pass `teamGUID: <team-guid>` as an additional request header — the API validates the caller is a member of that team before writing the instance row. Personal deployments omit this header.
+**Headers:** Standard API authentication — `x-api-key` for key-based projects, or `x-nonce` + `x-signature` for signature-based projects (see [Authentication](/docs/authentication)). For **team-scoped deploys** (when an end user deploys via a team project), pass `teamGUID: <team-guid>` as an additional request header; the API validates the caller is a member of that team before writing the instance row. Personal deployments omit this header.
+
+> **`teamGUID` header usage across endpoints** — the requirement differs per endpoint:
+>
+> | Endpoint | `teamGUID` header |
+> |----------|-------------------|
+> | `UserAgent/Deploy` | Pass when deploying into a team project; validated against team membership before insert |
+> | `UserAgent/Message/Send`, `Message/Detail`, `Message/History`, `Message/Sessions`, `Message/Cancel`, `Message/DeleteSession` | **Required for team agents.** Messaging endpoints call `validateAgentContext(teamGUID, ...)` and reject if the header is missing or doesn't match a team the caller belongs to |
+> | `UserAgent/Detail`, `UserAgent/Update`, `UserAgent/Start`, `UserAgent/Stop`, `UserAgent/MyAgents` | Optional — these endpoints fall back to "am I a member of this agent's team?" check, so the header isn't strictly needed if your user already has team membership. Passing it is still recommended for explicitness and to avoid ambiguity on multi-team users |
+> | `CancelSubscription`, `CreateExtraCreditCheckout`, `UpgradePlan`, `RenewSubscription` | **Required for team agents** — subscription/billing operations also validate team context explicitly |
+>
+> Personal (non-team) agents ignore this header. If you see `"You are not a member of this team"` or `"Agent not found"` errors on messaging endpoints, you're likely missing the header on a team agent.
+
+> **Panel/UI note:** the non-prepaid Deploy mode (omit `useprepaid`) exists for the Wiro dashboard's interactive deploy flow where end users pay via Stripe subscription with a browser redirect. That path also accepts `configuration.credentials` and `configuration.custom_skills` in the body (merged via `mergeUserConfig`), but API integrations should always use prepaid deploy and set credentials with a follow-up `UserAgent/Update` call.
+
+##### Request (recommended API pattern)
+
+```json
+POST /UserAgent/Deploy
+{
+  "agentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "title": "My Instagram Bot",
+  "useprepaid": true,
+  "plan": "starter",
+  "pinned": false
+}
+```
 
 ##### Response
 
@@ -203,7 +227,9 @@ Deploy has two modes depending on `useprepaid`:
     {
       "id": 47,
       "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+      "uuid": "your-user-uuid",
       "agentid": 5,
+      "teamguid": null,
       "title": "My Instagram Bot",
       "description": null,
       "configuration": {
@@ -217,46 +243,22 @@ Deploy has two modes depending on `useprepaid`:
           }
         }
       },
-      "status": 2,
-      "createdat": "1714608000",
-      "updatedat": "1714608000",
-      "queuedat": "1714608000"
-    }
-  ]
-}
-```
-
-##### Prepaid Deploy
-
-When `useprepaid` is `true`, the wallet is charged immediately and the agent is created with status `6` (Setup Required). Any `configuration.credentials` passed in the request body are **ignored** in prepaid deploy — call `POST /UserAgent/Update` separately to set credentials.
-
-```json
-// Request
-{
-  "agentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  "title": "My Lead Gen Agent",
-  "useprepaid": true,
-  "plan": "starter",
-  "pinned": false
-}
-// Response
-{
-  "result": true,
-  "errors": [],
-  "useragents": [
-    {
-      "guid": "new-guid-here",
-      "title": "My Lead Gen Agent",
       "status": 6,
       "pinned": false,
-      "configuration": { /* sanitized, editable-only */ },
-      "createdat": "1714608000"
+      "createdat": 1714608000,
+      "updatedat": 1714608000
     }
   ]
 }
 ```
 
-> **Note:** The Deploy response returns the raw useragent row — it does **not** include `setuprequired` or `subscription`. To read those, call `POST /UserAgent/Detail` with the returned `guid`. An `agent-<plan>` subscription row is inserted server-side on prepaid deploy; Detail surfaces it under `subscription.provider = "prepaid"`.
+> **Note:** The Deploy response returns only the raw `useragents` row (with sanitized `configuration`). It does **not** include `setuprequired` or `subscription` — those are Detail-level fields assembled from joined tables. A prepaid subscription row (`agent-<plan>`, provider `prepaid`) is inserted server-side during prepaid deploy; call `POST /UserAgent/Detail` with the returned `guid` to see `setuprequired`, `subscription`, and `stripe*url` fields (if applicable).
+
+The instance starts in status `6` (Setup Required). Next steps for the API integration flow:
+
+1. Call `POST /UserAgent/Update` with the credentials the template declares. Inspect `configuration.credentials` in the Deploy response for the schema, or call `POST /UserAgent/Detail` with `type: "full"` first to see the complete credential list with `_editable` flags.
+2. Once all non-optional credentials are populated, the server automatically flips status to `0` (Stopped).
+3. Call `POST /UserAgent/Start` to launch the agent (status progresses `3` → `4`, Running).
 
 > **Tip:** When deploying agents programmatically for your end users (e.g. one instance per customer), set `"pinned": false` to keep your own dashboard clean. Users can pin agents manually later.
 
@@ -406,7 +408,7 @@ Retrieves full details for a single deployed agent instance, including subscript
 
 #### **POST** /UserAgent/Update
 
-Updates an agent instance's configuration, title, or description. If the agent is currently running, this triggers an automatic restart to apply the new settings.
+Updates an agent instance's configuration, title, or description. If the agent is currently **starting (status `3`)** or **running (status `4`)**, this triggers an automatic restart to apply the new settings (the agent is moved to Stopping with `restartafter: true`, and re-queued after it fully stops).
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -589,7 +591,7 @@ Each agent in the catalog defines its own pricing tiers in the `pricing` field. 
 
 All subscriptions use your **prepaid wallet balance**. The cost is deducted immediately when you deploy or renew. Subscriptions renew automatically if your wallet has sufficient balance; otherwise the subscription expires. Manage subscriptions through the CancelSubscription, UpgradePlan, and RenewSubscription endpoints.
 
-Credits are consumed per message or action, depending on the agent type. When monthly credits run out, the agent cannot be started until credits are renewed (next billing cycle) or extra credits are purchased.
+Credits are consumed by the agent runtime (container) as it processes messages and generates content — not at `Message/Send` time. Each `configuration.rateLimit.actionTypes` entry (message, create, modify, regenerate) defines how many credits a specific action costs; the container reports usage back to Wiro asynchronously. The API-side check is gating only: `POST /UserAgent/Start` refuses to launch if `monthlyCredits + extraCredits <= 0`. During an active session, monthly credits are deducted first; once they hit zero, extra credits (purchased via `CreateExtraCreditCheckout`) are used. When both pools are empty, the agent responds `[SYSTEM_CREDIT_LIMIT_REACHED]` and stops processing further actions. Credits reset on each billing cycle (next `currentperiodend`) or when extra credits are topped up.
 
 ## Error Messages
 

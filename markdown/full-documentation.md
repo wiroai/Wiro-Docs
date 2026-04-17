@@ -1929,22 +1929,22 @@ All endpoints below require authentication.
 
 Creates a new agent instance from a catalog template.
 
-Deploy has two modes depending on `useprepaid`:
+> **For API integrations, always pass `useprepaid: true` + `plan`.** This is the only deploy mode that's fully programmatic — the subscription cost is deducted from your prepaid wallet immediately and the instance is created server-side in one call. Omitting `useprepaid` triggers the Stripe checkout flow (the panel's deploy path), which requires a user-facing browser redirect to Stripe's hosted checkout and is not suitable for API integrations. The sections below assume prepaid deploy.
 
-- **Normal deploy** (default, `useprepaid` omitted or `false`): instance is queued for immediate launch — status `2` (Queued). Any `configuration.credentials` and `configuration.custom_skills` you pass in the body are merged into the instance's config using `mergeUserConfig` (only fields marked `_editable: true` in the template are written; unknown keys are ignored).
-- **Prepaid deploy** (`useprepaid: true` + `plan`): wallet is charged immediately, instance is created in status `6` (Setup Required). **`configuration.credentials` and `configuration.custom_skills` in the prepaid deploy body are ignored** — you must call `POST /UserAgent/Update` separately after deploy to set credentials and customize skills. After credentials are complete, status auto-transitions to `0` (Stopped) and you can call `UserAgent/Start`.
+Prepaid deploy (`useprepaid: true` + `plan`) charges your wallet immediately and creates the instance in status `6` (Setup Required). **`configuration.credentials` and `configuration.custom_skills` passed in the Deploy body are ignored on prepaid deploy** — after deploy, call `POST /UserAgent/Update` to set credentials and (optionally) customize skill content. Once credentials are complete, status auto-transitions to `0` (Stopped) and you can call `UserAgent/Start`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `agentguid` | string | Yes | The guid of the agent template from the catalog. |
 | `title` | string | Yes | Display name for your instance. |
 | `description` | string | No | Optional description. |
-| `configuration` | object | No | Initial values (normal deploy only — ignored in prepaid deploy). Shape: `{ "credentials": { ... }, "custom_skills": [...] }`. Both sub-fields are optional; either (or both) can be provided. `mergeUserConfig` only writes fields that are `_editable: true` in the template and silently ignores the rest. |
-| `useprepaid` | boolean | No | Set to `true` to pay from wallet balance. Requires `plan`. Defaults to `false` (normal deploy). |
-| `plan` | string | Conditional | Plan tier: `"starter"` or `"pro"`. Required when `useprepaid` is `true`. |
-| `pinned` | boolean | No | **Prepaid deploy only.** Whether the agent appears in the pinned agents list (defaults to `true`). Normal deploy ignores this parameter — instances are always pinned on creation. To unpin a normal-deploy agent, call `POST /UserAgent/Pin` afterwards. |
+| `useprepaid` | boolean | **Yes (for API use)** | Pass `true` to pay from wallet balance in a single server-side call. Omitting this (or passing `false`) activates the Stripe checkout flow — the response redirects to Stripe's hosted checkout UI, which only works for interactive browser sessions, not API integrations. |
+| `plan` | string | Yes | Plan tier: `"starter"` or `"pro"`. Check `POST /Agent/Detail` → `agent.pricing` for each tier's credit allowance and price. |
+| `pinned` | boolean | No | Whether the agent appears in the pinned agents list (defaults to `true`). Pass `false` when deploying agents programmatically for end users (e.g. bulk provisioning) so they don't clutter your admin dashboard. |
 
-**Headers:** Standard authentication (`x-api-key` or `x-nonce` + `x-signature`). For **team-scoped agents** (when an end user deploys via a team project), pass `teamGUID: <team-guid>` as an additional request header — the API validates the caller is a member of that team before writing the instance row. Personal deployments omit this header.
+**Headers:** Standard API authentication — `x-api-key` for key-based projects, or `x-nonce` + `x-signature` for signature-based projects (see [Authentication](/docs/authentication)). For **team-scoped deploys** (when an end user deploys via a team project), pass `teamGUID: <team-guid>` as an additional request header; the API validates the caller is a member of that team before writing the instance row. Personal deployments omit this header.
+
+> **Panel/UI note:** the non-prepaid Deploy mode (omit `useprepaid`) exists for the Wiro dashboard's interactive deploy flow where end users pay via Stripe subscription with a browser redirect. That path also accepts `configuration.credentials` and `configuration.custom_skills` in the body (merged via `mergeUserConfig`), but API integrations should always use prepaid deploy and set credentials with a follow-up `UserAgent/Update` call.
 
 ##### Response
 
@@ -2002,18 +2002,14 @@ When `useprepaid` is `true`, the wallet is charged immediately. The response inc
       "title": "My Lead Gen Agent",
       "status": 6,
       "pinned": false,
-      "setuprequired": true,
-      "subscription": {
-        "plan": "agent-starter",
-        "status": "active",
-        "amount": 49,
-        "currency": "usd",
-        "provider": "prepaid"
-      }
+      "createdat": 1714608000,
+      "updatedat": 1714608000
     }
   ]
 }
 ```
+
+> **Note:** The Deploy response returns only the raw `useragents` row (with sanitized `configuration`). It does **not** include `setuprequired` or `subscription` — those are Detail-level fields assembled from joined tables. A prepaid subscription row (`agent-<plan>`, provider `prepaid`) is inserted server-side during prepaid deploy; call `POST /UserAgent/Detail` with the returned `guid` to see `setuprequired`, `subscription`, and `stripe*url` fields (if applicable).
 
 > **Tip:** When deploying agents programmatically for your end users (e.g. one instance per customer), set `"pinned": false` to keep your own dashboard clean. Users can pin agents manually later.
 
@@ -2132,6 +2128,9 @@ Retrieves full details for a single deployed agent instance, including subscript
       },
       "extracredits": 2000,
       "extracreditsexpiry": 1730419200,
+      "stripeportalurl": "https://billing.stripe.com/p/session/...",
+      "stripeupdateurl": "https://billing.stripe.com/p/session/.../subscriptions/update",
+      "stripecancelurl": "https://billing.stripe.com/p/session/.../subscriptions/cancel",
       "createdat": "1714608000",
       "updatedat": "1714694400",
       "startedat": "1714694400",
@@ -2148,16 +2147,19 @@ Retrieves full details for a single deployed agent instance, including subscript
 | `title` | `string` | Display name you gave this instance. |
 | `status` | `number` | Current status code (see UserAgent Statuses). |
 | `setuprequired` | `boolean` | `true` if credentials are missing or incomplete. |
-| `configuration` | `object` | Credential fields with values (passwords are masked). |
+| `configuration` | `object` | Sanitized `{ credentials, custom_skills, skills, agent_skills }` — non-editable sensitive fields (OAuth access tokens, platform `wiro.apiKey`, `openai.apiKey`, etc.) are hidden. Use this to see current credential values (user-editable ones populated, platform-managed ones blank) and custom_skills with their `_editable` flags. |
 | `subscription` | `object\|null` | Active subscription info, or `null` if no subscription. |
 | `agent` | `object` | Parent agent template info (title, slug, cover, pricing). |
 | `extracredits` | `number` | Remaining extra credits purchased for this instance. |
 | `extracreditsexpiry` | `number\|null` | Unix timestamp when the earliest extra credit pack expires. |
-| `subscription.provider` | `string` | Payment provider (`"prepaid"`). |
+| `stripeportalurl` | `string\|undefined` | **Stripe-only.** One-shot Stripe billing portal session URL. Only present when `subscription.provider === "stripe"` and the subscription is active. Omitted for prepaid instances. |
+| `stripeupdateurl` | `string\|undefined` | **Stripe-only.** Deep link into the billing portal's subscription-update flow. Same conditions as `stripeportalurl`. |
+| `stripecancelurl` | `string\|undefined` | **Stripe-only.** Deep link into the billing portal's cancellation flow. Use this URL for the "Cancel subscription" button on Stripe subscriptions — do NOT call `POST /UserAgent/CancelSubscription` (it returns an error telling you to use the portal). |
+| `subscription.provider` | `string` | Payment provider: `"prepaid"` (credits wallet) or `"stripe"` (subscription). |
 
 #### **POST** /UserAgent/Update
 
-Updates an agent instance's configuration, title, or description. If the agent is currently running, this triggers an automatic restart to apply the new settings.
+Updates an agent instance's configuration, title, or description. If the agent is currently **starting (status `3`)** or **running (status `4`)**, this triggers an automatic restart to apply the new settings (the agent is moved to Stopping with `restartafter: true`, and re-queued after it fully stops).
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -2329,7 +2331,7 @@ Each agent in the catalog defines its own pricing tiers in the `pricing` field. 
 
 All subscriptions use your **prepaid wallet balance**. The cost is deducted immediately when you deploy or renew. Subscriptions renew automatically if your wallet has sufficient balance; otherwise the subscription expires. Manage subscriptions through the CancelSubscription, UpgradePlan, and RenewSubscription endpoints.
 
-Credits are consumed per message or action, depending on the agent type. When monthly credits run out, the agent cannot be started until credits are renewed (next billing cycle) or extra credits are purchased.
+Credits are consumed by the agent runtime (container) as it processes messages and generates content — not at `Message/Send` time. Each `configuration.rateLimit.actionTypes` entry (message, create, modify, regenerate) defines how many credits a specific action costs; the container reports usage back to Wiro asynchronously. The API-side check is gating only: `POST /UserAgent/Start` refuses to launch if `monthlyCredits + extraCredits <= 0`. During an active session, monthly credits are deducted first; once they hit zero, extra credits (purchased via `CreateExtraCreditCheckout`) are used. When both pools are empty, the agent responds `[SYSTEM_CREDIT_LIMIT_REACHED]` and stops processing further actions. Credits reset on each billing cycle (next `currentperiodend`) or when extra credits are topped up.
 
 ## Error Messages
 
@@ -3033,7 +3035,9 @@ Lists all conversation sessions for an agent. Returns each session's key, messag
 
 ## **POST** /UserAgent/Message/DeleteSession
 
-Deletes a session and **all its messages** permanently. This action cannot be undone.
+Deletes messages in the given session for the **calling user**. This action cannot be undone.
+
+Scope: the API matches on `useragentguid` + `sessionkey` **and** the caller's `uuid`, so only messages the calling user sent/received in this session are removed. In **collaborative** team mode (`teamSessionMode: "collaborative"`, Telegram group-shared sessions), other team members' messages in the same `sessionkey` remain intact — each member must call `DeleteSession` to clear their own share.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -3671,11 +3675,11 @@ Sent immediately after the server accepts your subscription. The `status` field 
   "result": true
 }
 
-// Unknown token — no debugoutput field
+// Unknown token — status is "unknown" and no debugoutput field
 {
   "type": "agent_subscribed",
   "agenttoken": "wrongtoken123",
-  "status": "agent_queue",
+  "status": "unknown",
   "result": true
 }
 ```
@@ -4255,8 +4259,8 @@ channel.stream.listen((message) {
 // agent_subscribed (valid token — debugoutput present)
 {"type": "agent_subscribed", "agenttoken": "aB3xK9...", "status": "agent_queue", "debugoutput": "", "result": true}
 
-// agent_subscribed (unknown token — debugoutput field omitted)
-{"type": "agent_subscribed", "agenttoken": "wrongtoken", "status": "agent_queue", "result": true}
+// agent_subscribed (unknown token — status "unknown", debugoutput field omitted)
+{"type": "agent_subscribed", "agenttoken": "wrongtoken", "status": "unknown", "result": true}
 
 // agent_start
 {"type": "agent_start", "agenttoken": "aB3xK9...", "message": "", "result": true}
