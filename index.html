@@ -6747,7 +6747,7 @@ app.get('/settings/social', (req, res) => {
     "custom_skills": [
       {
         "key": "content-tone",
-        "value": "## Voice\nProfessional and informative. No slang.\n\n## Hashtags\nMax 3 per post. Always include #AI and #WiroAI.\n\n## Posting Style\nEvery post must include a link.\nUse bullet points for features.\n\n## Platform Rules\n- Twitter: Thread format for long content\n- Instagram: Carousel with square images only\n- LinkedIn: Professional tone, no emojis\n- TikTok: Short captions, trending sounds"
+        "value": "## Brand Voice\nTone: Professional and informative. No slang.\nTarget Audience: Developers and product managers\nHashtag Strategy: Max 3 per post. Always include #AI and #YourBrand.\n\n## Content Sources\nPrimary Source: https://your-site.com/blog/feed.xml\nCTA URL Pattern: https://your-site.com/posts/{slug}\n\n## Posting Style\nEvery post must include a link.\nUse bullet points for features.\n\n## Platform Rules\n- Twitter: Thread format for long content\n- Instagram: Carousel with square images only\n- LinkedIn: Professional tone, no emojis\n- TikTok: Short captions, trending sounds"
       }
     ]
   }
@@ -6758,7 +6758,11 @@ app.get('/settings/social', (req, res) => {
 Professional and informative. No slang.
 
 <h4>Hashtags</h4>
-Max 3 per post. Always include #AI and #WiroAI.
+Max 3 per post. Always include #AI and #YourBrand.
+
+<h4>Content Sources</h4>
+Primary Source: https://your-site.com/blog/feed.xml
+CTA URL Pattern: https://your-site.com/posts/{slug}
 
 <h4>Posting Style</h4>
 Every post must include a link.
@@ -6904,7 +6908,7 @@ Use bullet points for features.
     "custom_skills": [
       {
         "key": "newsletter-strategy",
-        "value": "## Topics\nAI industry news, product updates, tutorials.\nPull content from: https://wiro.ai/blog\n\n## Tone\nFriendly and educational.\nUse first person plural (we, our).\n\n## Frequency\nWeekly on Mondays.\n\n## Branding\nSubject line prefix: [Wiro Weekly]\nAlways include unsubscribe link.\nMax 3 sections per newsletter."
+        "value": "## Topics\nIndustry news, product updates, tutorials.\nPull content from: https://your-site.com/blog/feed.xml\n\n## Tone\nFriendly and educational.\nUse first person plural (we, our).\n\n## Frequency\nWeekly on Mondays.\n\n## Branding\nSubject line prefix: [YourBrand Weekly]\nAlways include unsubscribe link.\nMax 3 sections per newsletter."
       }
     ]
   }
@@ -6912,13 +6916,13 @@ Use bullet points for features.
 <details><summary><strong>Preview: what the agent sees</strong></summary>
 <div class="skill-value-preview">
 <h4>Topics</h4>
-<p>AI industry news, product updates, tutorials. Pull from: wiro.ai/blog</p>
+<p>Industry news, product updates, tutorials. Pull from your own blog or source feed.</p>
 <h4>Tone</h4>
 <p>Friendly and educational. First person plural.</p>
 <h4>Frequency</h4>
 <p>Weekly on Mondays.</p>
 <h4>Branding</h4>
-<p>Subject line prefix: [Wiro Weekly]. Max 3 sections per newsletter.</p>
+<p>Subject line prefix: [YourBrand Weekly]. Max 3 sections per newsletter.</p>
 </div>
 </details>
 </div>
@@ -7142,25 +7146,28 @@ Use bullet points for features.
 <table class="status-table">
 <thead><tr><th>Agent</th><th>Task Key</th><th>Description</th><th>Default Schedule</th></tr></thead>
 <tbody>
-<tr><td>Social Manager</td><td><code>content-scanner</code></td><td>Scan for new AI models and prepare posts</td><td>Hourly</td></tr>
-<tr><td>Social Manager</td><td><code>gmail-checker</code></td><td>Check inbox for content requests</td><td>Every 30 min</td></tr>
-<tr><td>Blog Content</td><td><code>blog-scanner</code></td><td>Discover blog topics and write content</td><td>Daily 9 AM</td></tr>
+<tr><td>Social Manager</td><td><code>content-scanner</code></td><td>Content discovery + draft generation (reads <code>cs-content-tone</code>)</td><td>Every 4 hours</td></tr>
+<tr><td>Social Manager</td><td><code>gmail-checker</code></td><td>Check inbox for content requests (disabled by default)</td><td>Every 30 min</td></tr>
+<tr><td>Social Manager</td><td><code>drive-scanner</code></td><td>Google Drive asset scanning (disabled by default)</td><td>Daily 10 AM</td></tr>
+<tr><td>Blog Content</td><td><code>blog-scanner</code></td><td>Discover blog topics and write content (reads <code>cs-content-strategy</code>)</td><td>Daily 9 AM</td></tr>
 <tr><td>Blog Content</td><td><code>gmail-checker</code></td><td>Check inbox for blog topic requests</td><td>Every 30 min</td></tr>
-<tr><td>App Review</td><td><code>review-scanner</code></td><td>Scan stores for new reviews</td><td>Every 2 hours</td></tr>
-<tr><td>App Event</td><td><code>app-event-scanner</code></td><td>Scan holidays, suggest App Store events</td><td>Monday 9 AM</td></tr>
-<tr><td>Push Notification</td><td><code>push-scanner</code></td><td>Scan holidays, craft push suggestions</td><td>Daily 9 AM</td></tr>
+<tr><td>App Review</td><td><code>review-scanner</code></td><td>Scan stores for new reviews (reads <code>cs-review-preferences</code>)</td><td>Every 2 hours</td></tr>
+<tr><td>App Event</td><td><code>app-event-scanner</code></td><td>Scan holidays, suggest App Store events (reads <code>cs-event-preferences</code>)</td><td>Monday 9 AM</td></tr>
+<tr><td>Push Notification</td><td><code>push-scanner</code></td><td>Scan holidays, craft push suggestions (reads <code>cs-push-preferences</code>)</td><td>Daily 9 AM</td></tr>
 <tr><td>Push Notification</td><td><code>push-dispatcher</code></td><td>Send queued push notifications</td><td>Hourly</td></tr>
-<tr><td>Newsletter</td><td><code>newsletter-sender</code></td><td>Create and send scheduled newsletters</td><td>Monday 9 AM</td></tr>
+<tr><td>Newsletter</td><td><code>newsletter-sender</code></td><td>Create and send scheduled newsletters (reads <code>cs-newsletter-strategy</code>)</td><td>Monday 9 AM</td></tr>
 <tr><td>Newsletter</td><td><code>subscriber-scanner</code></td><td>Daily subscriber list health check</td><td>Daily 10 AM</td></tr>
-<tr><td>Lead Gen</td><td><code>prospect-scanner</code></td><td>Weekly prospect search and scoring</td><td>Monday 10 AM</td></tr>
+<tr><td>Lead Gen</td><td><code>prospect-scanner</code></td><td>Weekly prospect search and scoring (reads <code>cs-lead-strategy</code>)</td><td>Monday 10 AM</td></tr>
 <tr><td>Lead Gen</td><td><code>outreach-reporter</code></td><td>Daily outreach performance report</td><td>Daily 9 AM</td></tr>
 <tr><td>Lead Gen</td><td><code>reply-handler</code></td><td>Check replies, analyze sentiment</td><td>Every 4 hours</td></tr>
-<tr><td>Google Ads</td><td><code>performance-reporter</code></td><td>Daily performance report</td><td>Daily 9 AM</td></tr>
+<tr><td>Google Ads</td><td><code>performance-reporter</code></td><td>Daily performance report (reads <code>cs-ad-strategy</code>)</td><td>Daily 9 AM</td></tr>
 <tr><td>Google Ads</td><td><code>competitor-scanner</code></td><td>Weekly competitor analysis</td><td>Monday 10 AM</td></tr>
 <tr><td>Google Ads</td><td><code>holiday-ad-planner</code></td><td>Scan holidays, suggest ad campaigns</td><td>Wednesday 10 AM</td></tr>
-<tr><td>Meta Ads</td><td><code>performance-reporter</code></td><td>Daily performance report</td><td>Daily 9 AM</td></tr>
+<tr><td>Google Ads</td><td><code>drive-scanner</code></td><td>Google Drive creative asset scanning (disabled by default)</td><td>Daily 10 AM</td></tr>
+<tr><td>Meta Ads</td><td><code>performance-reporter</code></td><td>Daily performance report (reads <code>cs-ad-strategy</code>)</td><td>Daily 9 AM</td></tr>
 <tr><td>Meta Ads</td><td><code>audience-scanner</code></td><td>Weekly audience analysis</td><td>Monday 10 AM</td></tr>
 <tr><td>Meta Ads</td><td><code>holiday-ad-planner</code></td><td>Scan holidays, suggest campaigns</td><td>Wednesday 10 AM</td></tr>
+<tr><td>Meta Ads</td><td><code>drive-scanner</code></td><td>Google Drive creative asset scanning (disabled by default)</td><td>Daily 10 AM</td></tr>
 </tbody>
 </table>
 </div>
@@ -7187,6 +7194,21 @@ Use bullet points for features.
 <li>Send empty string <code>""</code> for <code>interval</code> to clear the schedule (becomes <code>null</code>)</li>
 <li>You can update credentials and skills in the same <code>POST /UserAgent/Update</code> request</li>
 </ul>
+
+<h3>What happens when Wiro updates an agent template</h3>
+<p>Skills occasionally evolve on Wiro's side — new skills, renamed keys, improved cron instructions. Deployed instances are reconciled with the latest template without destroying your edits:</p>
+<div class="status-table-wrapper">
+<table class="status-table">
+<thead><tr><th>Skill type</th><th>Behavior on template update</th></tr></thead>
+<tbody>
+<tr><td>Editable preference (<code>_editable: true</code>, <code>interval: null</code>)</td><td>Your <code>value</code> is <strong>preserved</strong>. New placeholder fields appear only on fresh deploys, not on existing instances.</td></tr>
+<tr><td>Scheduled cron (<code>_editable: false</code>, <code>interval</code> set)</td><td>The <code>value</code> is <strong>overwritten</strong> from the new template. Your <code>interval</code> and <code>enabled</code> flags are kept.</td></tr>
+<tr><td>New skill added upstream</td><td>Added to your instance with default <code>value</code>, <code>enabled</code>, <code>interval</code>.</td></tr>
+<tr><td>Skill removed upstream</td><td>Removed from your instance on the next reconciliation.</td></tr>
+</tbody>
+</table>
+</div>
+<p>This means your <code>UserAgent/Update</code> preference edits are durable across template upgrades, while Wiro can push improvements to the scanning/reporting workflows without you having to re-deploy.</p>
 </section>
 
 </article>

@@ -23,24 +23,24 @@ POST /UserAgent/Detail
 [
   {
     "key": "content-tone",
-    "value": "## Voice\nShort punchy lines, developer-friendly...",
-    "description": "Brand voice, hashtags, and posting style",
+    "value": "## Brand Voice\nTone: friendly\nTarget Audience: ...\n\n## Content Sources\nPrimary Source: https://your-site.com/feed.xml\n...",
+    "description": "Content strategy, brand voice, and posting rules",
     "enabled": true,
     "interval": null,
     "_editable": true
   },
   {
-    "key": "scheduled-scanner",
+    "key": "content-scanner",
     "value": "",
-    "description": "Scan external source and prepare drafts",
+    "description": "Content discovery with rotating strategies",
     "enabled": true,
-    "interval": "0 * * * *",
+    "interval": "0 */4 * * *",
     "_editable": false
   }
 ]
 ```
 
-> The exact key names depend on the agent template. For example, Wiro's own Social Manager template seeds a `wiromodel-scanner` cron that scans wiro.ai for newly released AI models — that's a Wiro-specific content scanner, not a generic one. Your deployed instance may have different keys; always fetch `POST /UserAgent/Detail` to see the real list.
+> The exact key names depend on the agent template. Always fetch `POST /UserAgent/Detail` to see the real list for your deployed instance — skill keys, their default cron schedules, and even the set of skills can evolve as templates are updated.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -65,7 +65,7 @@ POST /UserAgent/Update
     "custom_skills": [
       {
         "key": "content-tone",
-        "value": "## Voice\nProfessional and informative. No slang.\n\n## Hashtags\nMax 3 per post. Always include #AI and #WiroAI.\n\n## Posting Style\nEvery post must include a link. Use bullet points for features."
+        "value": "## Brand Voice\nTone: Professional and informative. No slang.\nTarget Audience: Developers and product managers\nKey Topics: Developer tools, APIs, product updates\nHashtag Strategy: Max 3 per post. Always include #AI and #YourBrand.\n\n## Content Sources\nPrimary Source: https://your-site.com/blog/feed.xml\nSort Order: newest first\nCTA URL Pattern: https://your-site.com/posts/{slug}\n\n## Post Format\nCaption Style: short hook, 3 emoji bullet points, CTA line\nSignature Phrase: \"Build faster with YourBrand\"\n"
       }
     ]
   }
@@ -229,29 +229,47 @@ This single request:
 
 ### Scheduled Tasks
 
-> Scheduled task keys are defined **per agent template** and are not universal. The table below lists the typical intent for each agent, but actual keys in your deployed instance come from the template (for example, Wiro's Social Manager template uses `wiromodel-scanner` to scan wiro.ai for new models — a Wiro-specific task). Always fetch `POST /UserAgent/Detail` to get the exact keys and values.
+> Scheduled task keys are defined **per agent template** and may be updated over time. The table below reflects the current keys and default cron expressions shipped with Wiro's built-in agent templates, but the source of truth for any specific deployed agent is always `POST /UserAgent/Detail` → `configuration.custom_skills`.
 
-| Agent | Typical Task Intent | Default Schedule |
-|-------|---------------------|------------------|
-| Social Manager | Content discovery + draft generation | Hourly |
-| Social Manager | Inbox monitoring for incoming requests | Every 30 min |
-| Blog Content | Topic discovery + article drafting | Daily 9 AM |
-| Blog Content | Inbox monitoring for topic requests | Every 30 min |
-| App Review Support | Store scanning for new reviews | Every 2 hours |
-| App Event Manager | Holiday scanning + event suggestions | Monday 9 AM |
-| Push Notification | Notification content preparation | Daily 9 AM |
-| Push Notification | Dispatching queued notifications | Hourly |
-| Newsletter Manager | Newsletter drafting and sending | Monday 9 AM |
-| Newsletter Manager | Subscriber list health checks | Daily 10 AM |
-| Lead Gen Manager | Prospect discovery and scoring | Monday 10 AM |
-| Lead Gen Manager | Outreach performance reporting | Daily 9 AM |
-| Lead Gen Manager | Reply analysis | Every 4 hours |
-| Google Ads Manager | Performance reporting | Daily 9 AM |
-| Google Ads Manager | Competitor analysis | Monday 10 AM |
-| Google Ads Manager | Holiday campaign planning | Wednesday 10 AM |
-| Meta Ads Manager | Performance reporting | Daily 9 AM |
-| Meta Ads Manager | Audience analysis | Monday 10 AM |
-| Meta Ads Manager | Holiday campaign planning | Wednesday 10 AM |
+| Agent | Skill Key | Cron | What It Does |
+|-------|-----------|------|--------------|
+| Social Manager | `content-scanner` | `0 */4 * * *` | Content discovery + draft generation (reads `cs-content-tone`) |
+| Social Manager | `gmail-checker` | `*/30 * * * *` | Inbox monitoring for incoming requests (disabled by default) |
+| Social Manager | `drive-scanner` | `0 10 * * *` | Google Drive asset scanning (disabled by default) |
+| Blog Content Editor | `blog-scanner` | `0 9 * * *` | Topic discovery + article drafting (reads `cs-content-strategy`) |
+| Blog Content Editor | `gmail-checker` | `*/30 * * * *` | Inbox monitoring for topic requests |
+| App Review Support | `review-scanner` | `0 */2 * * *` | Store scanning for new reviews (reads `cs-review-preferences`) |
+| App Event Manager | `app-event-scanner` | `0 9 * * 1` | Holiday scanning + event suggestions (reads `cs-event-preferences`) |
+| Push Notification Manager | `push-scanner` | `0 9 * * *` | Notification content preparation (reads `cs-push-preferences`) |
+| Push Notification Manager | `push-dispatcher` | `0 * * * *` | Dispatching queued notifications |
+| Newsletter Manager | `newsletter-sender` | `0 9 * * 1` | Newsletter drafting and sending (reads `cs-newsletter-strategy`) |
+| Newsletter Manager | `subscriber-scanner` | `0 10 * * *` | Subscriber list health checks |
+| Lead Gen Manager | `prospect-scanner` | `0 10 * * 1` | Prospect discovery and scoring (reads `cs-lead-strategy`) |
+| Lead Gen Manager | `outreach-reporter` | `0 9 * * *` | Outreach performance reporting |
+| Lead Gen Manager | `reply-handler` | `0 */4 * * *` | Reply analysis |
+| Google Ads Manager | `performance-reporter` | `0 9 * * *` | Performance reporting (reads `cs-ad-strategy`) |
+| Google Ads Manager | `competitor-scanner` | `0 10 * * 1` | Competitor analysis |
+| Google Ads Manager | `holiday-ad-planner` | `0 10 * * 3` | Holiday campaign planning |
+| Google Ads Manager | `drive-scanner` | `0 10 * * *` | Google Drive creative asset scanning (disabled by default) |
+| Meta Ads Manager | `performance-reporter` | `0 9 * * *` | Performance reporting (reads `cs-ad-strategy`) |
+| Meta Ads Manager | `audience-scanner` | `0 10 * * 1` | Audience analysis |
+| Meta Ads Manager | `holiday-ad-planner` | `0 10 * * 3` | Holiday campaign planning |
+| Meta Ads Manager | `drive-scanner` | `0 10 * * *` | Google Drive creative asset scanning (disabled by default) |
+
+### How Preference and Scheduled Skills Work Together
+
+Each scheduled cron skill reads its paired preference skill at runtime. The mechanism:
+
+1. `POST /UserAgent/Update` writes your preference `value` into `custom_skills[key=<preference-key>]` (for example `content-tone`).
+2. When the container starts, each `custom_skills` entry is materialized as a local skill at `skills/cs-<key>/SKILL.md` inside the agent workspace.
+3. The scheduled cron skill's `value` (shipped in the template, not user-editable) references its paired preference via the `cs-<preference-key>` slug, for example:
+   ```
+   0. Read the cs-content-tone skill first — follow ALL its rules.
+   1. ...
+   ```
+4. At each cron tick, the agent LLM reads `cs-content-tone`, applies your instructions, then executes the scan/report/dispatch workflow.
+
+This means **your editable preference becomes the single place to customize agent behavior** (brand voice, target audience, content sources, holiday markets, etc.), and the non-editable cron skill is a thin orchestration layer that defers to your preference.
 
 ### Skill → Integration Mapping
 
@@ -322,3 +340,16 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Detail" \
 - New skills cannot be added — only existing skills (matched by `key`) can be updated
 - Send empty string `""` for `interval` to clear the schedule (becomes `null`)
 - You can update credentials and skills in the same `POST /UserAgent/Update` request
+
+### What happens when Wiro updates an agent template
+
+Skills occasionally evolve on Wiro's side — new skills, renamed keys, improved cron instructions. Deployed instances are reconciled with the latest template without destroying your edits:
+
+| Skill type | Behavior on template update |
+|------------|-----------------------------|
+| Editable preference (`_editable: true`, `interval: null`) | Your `value` is **preserved**. If the new template adds fields to the placeholder structure, they appear only on fresh deploys, not on existing instances. |
+| Scheduled cron (`_editable: false`, `interval` set) | The `value` (cron instructions) is **overwritten** from the new template. Your custom `interval` and `enabled` flags are kept. |
+| New skill added upstream | Added to your instance with default `value`, `enabled`, `interval`. |
+| Skill removed upstream | Removed from your instance on the next reconciliation. |
+
+This means your `UserAgent/Update` preference edits are durable across template upgrades, while Wiro can push improvements to the scanning/reporting workflows without you having to re-deploy.
