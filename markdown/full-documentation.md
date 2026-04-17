@@ -5840,7 +5840,7 @@ Response: `{ result: true, accessToken: "...", refreshToken: "", errors: [] }`. 
 
 ## Using the Skill
 
-Enable `metaads-manage` on the agent — see [Agent Skills](/docs/agent-skills#enabling-skills). Example scheduled run:
+Enable `metaads-manage` on the agent — see [Agent Skills](/docs/agent-skills#enabling-skills). Adjust the cron of the built-in `performance-reporter` task (Meta Ads Manager) with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for `_editable: false` skills:
 
 ```json
 {
@@ -5850,13 +5850,14 @@ Enable `metaads-manage` on the agent — see [Agent Skills](/docs/agent-skills#e
       {
         "key": "performance-reporter",
         "enabled": true,
-        "interval": "0 9 * * *",
-        "value": "Summarize yesterday's spend and CPA by campaign"
+        "interval": "0 9 * * *"
       }
     ]
   }
 }
 ```
+
+To change **what** the reporter includes (thresholds, reporting preferences, holiday markets), edit the paired preference skill `ad-strategy` instead — see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preferences).
 
 ## Troubleshooting
 
@@ -6217,21 +6218,24 @@ Uses `fb_exchange_token` under the hood. See [Automatic token refresh](/docs/age
 
 ## Using the Skill
 
+Once the Facebook Page is connected (page selected via `FBSetPage`), the agent's scheduled tasks use the `facebookpage-post` platform skill to publish text, photo, and video posts to the Page. To adjust the cron of the built-in `content-scanner` task (Social Manager), send an Update with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for `_editable: false` skills:
+
 ```json
 {
   "guid": "your-useragent-guid",
   "configuration": {
     "custom_skills": [
       {
-        "key": "daily-announcement",
+        "key": "content-scanner",
         "enabled": true,
-        "interval": "0 9 * * *",
-        "value": "Share a highlight from yesterday's product updates"
+        "interval": "0 */4 * * *"
       }
     ]
   }
 }
 ```
+
+To change **what** the scheduled task posts (topics, tone, content angle), edit the paired preference skill `content-tone` instead — see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preferences).
 
 ## Troubleshooting
 
@@ -6526,21 +6530,24 @@ Uses `grant_type=ig_refresh_token` with the current access token (Instagram has 
 
 ## Using the Skill
 
+Once the Instagram Business account is connected, the agent's scheduled tasks use the `instagram-post` platform skill to publish feed carousels, reels, and stories. To adjust the cron of the built-in `content-scanner` task (Social Manager), send an Update with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for `_editable: false` skills:
+
 ```json
 {
   "guid": "your-useragent-guid",
   "configuration": {
     "custom_skills": [
       {
-        "key": "daily-reel",
+        "key": "content-scanner",
         "enabled": true,
-        "interval": "0 10 * * *",
-        "value": "Publish a reel highlighting today's most engaging topic"
+        "interval": "0 */4 * * *"
       }
     ]
   }
 }
 ```
+
+To change **what** the scheduled task posts (topics, tone, hashtag rules, caption style), edit the paired preference skill `content-tone` instead — see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preferences).
 
 ## Troubleshooting
 
@@ -6816,21 +6823,24 @@ Uses the stored refresh token. Returns new access + refresh tokens. See [Automat
 
 ## Using the Skill
 
+Once the LinkedIn Company Page is connected (organization ID persisted), the agent's scheduled tasks use the `linkedin-post` platform skill to publish text, image, and video posts to the Company Page. To adjust the cron of the built-in `content-scanner` task (Social Manager), send an Update with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for `_editable: false` skills:
+
 ```json
 {
   "guid": "your-useragent-guid",
   "configuration": {
     "custom_skills": [
       {
-        "key": "weekly-announcement",
+        "key": "content-scanner",
         "enabled": true,
-        "interval": "0 10 * * 1",
-        "value": "Publish a weekly company update highlighting last week's wins"
+        "interval": "0 */4 * * *"
       }
     ]
   }
 }
 ```
+
+To change **what** the scheduled task posts (topics, tone, audience angle), edit the paired preference skill `content-tone` instead — see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preferences).
 
 ## Troubleshooting
 
@@ -7099,21 +7109,24 @@ Uses `grant_type=refresh_token`. Returns new access + refresh tokens. See [Autom
 
 ## Using the Skill
 
+Once the X account is connected, the agent's existing scheduled tasks use the `twitterx-post` platform skill to publish. To adjust the cron of the built-in `content-scanner` task (Social Manager), send an Update with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for `_editable: false` skills:
+
 ```json
 {
   "guid": "your-useragent-guid",
   "configuration": {
     "custom_skills": [
       {
-        "key": "daily-summary",
+        "key": "content-scanner",
         "enabled": true,
-        "interval": "0 17 * * *",
-        "value": "Post a daily AI trends summary thread"
+        "interval": "0 */4 * * *"
       }
     ]
   }
 }
 ```
+
+To change **what** the scheduled task posts (topics, tone, hashtag rules), edit the paired preference skill `content-tone` instead — see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preferences).
 
 ## Troubleshooting
 
@@ -7648,8 +7661,7 @@ See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
       {
         "key": "performance-reporter",
         "enabled": true,
-        "interval": "0 9 * * *",
-        "value": "Daily performance report with top 5 keywords"
+        "interval": "0 9 * * *"
       }
     ]
   }
@@ -8158,8 +8170,7 @@ Clears credentials (no remote revoke — Mailchimp doesn't expose a revoke endpo
       {
         "key": "subscriber-scanner",
         "enabled": true,
-        "interval": "0 10 * * *",
-        "value": "Check subscriber list health and flag anomalies"
+        "interval": "0 10 * * *"
       }
     ]
   }
@@ -9958,7 +9969,9 @@ Send a `POST /UserAgent/Update` request with only the preference skills you want
 
 ## Managing Scheduled Tasks
 
-Scheduled tasks run automatically on a cron schedule. Toggle `enabled` and adjust `interval`.
+Scheduled tasks (`_editable: false`, non-null `interval`) run automatically on a cron schedule.
+
+> **Only `enabled` and `interval` are writable for scheduled tasks.** `value` and `description` fields sent for a non-editable skill are **silently ignored** — the task body is template-controlled and re-materialised on every container restart from the instance JSON. To change **what** a scheduled task does, edit the paired preference skill (`cs-<slug>`, `_editable: true`) that the cron reads at runtime.
 
 ### Example: Change scanner frequency
 

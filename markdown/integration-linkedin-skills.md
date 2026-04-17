@@ -230,21 +230,24 @@ Uses the stored refresh token. Returns new access + refresh tokens. See [Automat
 
 ## Using the Skill
 
+Once the LinkedIn Company Page is connected (organization ID persisted), the agent's scheduled tasks use the `linkedin-post` platform skill to publish text, image, and video posts to the Company Page. To adjust the cron of the built-in `content-scanner` task (Social Manager), send an Update with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for `_editable: false` skills:
+
 ```json
 {
   "guid": "your-useragent-guid",
   "configuration": {
     "custom_skills": [
       {
-        "key": "weekly-announcement",
+        "key": "content-scanner",
         "enabled": true,
-        "interval": "0 10 * * 1",
-        "value": "Publish a weekly company update highlighting last week's wins"
+        "interval": "0 */4 * * *"
       }
     ]
   }
 }
 ```
+
+To change **what** the scheduled task posts (topics, tone, audience angle), edit the paired preference skill `content-tone` instead — see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preferences).
 
 ## Troubleshooting
 

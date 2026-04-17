@@ -115,7 +115,9 @@ Send a `POST /UserAgent/Update` request with only the preference skills you want
 
 ## Managing Scheduled Tasks
 
-Scheduled tasks run automatically on a cron schedule. Toggle `enabled` and adjust `interval`.
+Scheduled tasks (`_editable: false`, non-null `interval`) run automatically on a cron schedule.
+
+> **Only `enabled` and `interval` are writable for scheduled tasks.** `value` and `description` fields sent for a non-editable skill are **silently ignored** — the task body is template-controlled and re-materialised on every container restart from the instance JSON. To change **what** a scheduled task does, edit the paired preference skill (`cs-<slug>`, `_editable: true`) that the cron reads at runtime.
 
 ### Example: Change scanner frequency
 

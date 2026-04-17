@@ -363,7 +363,7 @@ Response: `{ result: true, accessToken: "...", refreshToken: "", errors: [] }`. 
 
 ## Using the Skill
 
-Enable `metaads-manage` on the agent — see [Agent Skills](/docs/agent-skills#enabling-skills). Example scheduled run:
+Enable `metaads-manage` on the agent — see [Agent Skills](/docs/agent-skills#enabling-skills). Adjust the cron of the built-in `performance-reporter` task (Meta Ads Manager) with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for `_editable: false` skills:
 
 ```json
 {
@@ -373,13 +373,14 @@ Enable `metaads-manage` on the agent — see [Agent Skills](/docs/agent-skills#e
       {
         "key": "performance-reporter",
         "enabled": true,
-        "interval": "0 9 * * *",
-        "value": "Summarize yesterday's spend and CPA by campaign"
+        "interval": "0 9 * * *"
       }
     ]
   }
 }
 ```
+
+To change **what** the reporter includes (thresholds, reporting preferences, holiday markets), edit the paired preference skill `ad-strategy` instead — see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preferences).
 
 ## Troubleshooting
 

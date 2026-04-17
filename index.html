@@ -7467,7 +7467,8 @@ Use bullet points for features.
 
 <section id="skills-managing-scheduled">
 <h2>Managing Scheduled Tasks</h2>
-<p>Scheduled tasks run automatically on a cron schedule. You can enable/disable them and change their frequency.</p>
+<p>Scheduled tasks (<code>_editable: false</code>, non-null <code>interval</code>) run automatically on a cron schedule.</p>
+<blockquote><p><strong>Only <code>enabled</code> and <code>interval</code> are writable for scheduled tasks.</strong> <code>value</code> and <code>description</code> fields sent for a non-editable skill are <strong>silently ignored</strong> — the task body is template-controlled and re-materialised on every container restart from the instance JSON. To change <strong>what</strong> a scheduled task does, edit the paired preference skill (<code>cs-&lt;slug&gt;</code>, <code>_editable: true</code>) that the cron reads at runtime.</p></blockquote>
 
 <h3>Example: Change scanner frequency</h3>
 <pre><code class="language-json">{

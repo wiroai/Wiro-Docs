@@ -243,21 +243,24 @@ Uses `grant_type=ig_refresh_token` with the current access token (Instagram has 
 
 ## Using the Skill
 
+Once the Instagram Business account is connected, the agent's scheduled tasks use the `instagram-post` platform skill to publish feed carousels, reels, and stories. To adjust the cron of the built-in `content-scanner` task (Social Manager), send an Update with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for `_editable: false` skills:
+
 ```json
 {
   "guid": "your-useragent-guid",
   "configuration": {
     "custom_skills": [
       {
-        "key": "daily-reel",
+        "key": "content-scanner",
         "enabled": true,
-        "interval": "0 10 * * *",
-        "value": "Publish a reel highlighting today's most engaging topic"
+        "interval": "0 */4 * * *"
       }
     ]
   }
 }
 ```
+
+To change **what** the scheduled task posts (topics, tone, hashtag rules, caption style), edit the paired preference skill `content-tone` instead — see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preferences).
 
 ## Troubleshooting
 

@@ -225,21 +225,24 @@ Uses `grant_type=refresh_token`. Returns new access + refresh tokens. See [Autom
 
 ## Using the Skill
 
+Once the X account is connected, the agent's existing scheduled tasks use the `twitterx-post` platform skill to publish. To adjust the cron of the built-in `content-scanner` task (Social Manager), send an Update with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for `_editable: false` skills:
+
 ```json
 {
   "guid": "your-useragent-guid",
   "configuration": {
     "custom_skills": [
       {
-        "key": "daily-summary",
+        "key": "content-scanner",
         "enabled": true,
-        "interval": "0 17 * * *",
-        "value": "Post a daily AI trends summary thread"
+        "interval": "0 */4 * * *"
       }
     ]
   }
 }
 ```
+
+To change **what** the scheduled task posts (topics, tone, hashtag rules), edit the paired preference skill `content-tone` instead — see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preferences).
 
 ## Troubleshooting
 

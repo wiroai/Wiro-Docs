@@ -257,6 +257,8 @@ See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
 
 ## Using the Skill
 
+Once Google Ads is connected and `customerId` is persisted, the agent's scheduled tasks use the `googleads-manage` platform skill to pull metrics and manage campaigns. Adjust the cron of the built-in `performance-reporter` task (Google Ads Manager) with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for `_editable: false` skills:
+
 ```json
 {
   "guid": "your-useragent-guid",
@@ -265,13 +267,14 @@ See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
       {
         "key": "performance-reporter",
         "enabled": true,
-        "interval": "0 9 * * *",
-        "value": "Daily performance report with top 5 keywords"
+        "interval": "0 9 * * *"
       }
     ]
   }
 }
 ```
+
+To change **what** the reporter includes (wasted-spend threshold, target ROAS, reporting preferences), edit the paired preference skill `ad-strategy` instead — see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preferences).
 
 ## Troubleshooting
 

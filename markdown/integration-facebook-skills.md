@@ -313,21 +313,24 @@ Uses `fb_exchange_token` under the hood. See [Automatic token refresh](/docs/age
 
 ## Using the Skill
 
+Once the Facebook Page is connected (page selected via `FBSetPage`), the agent's scheduled tasks use the `facebookpage-post` platform skill to publish text, photo, and video posts to the Page. To adjust the cron of the built-in `content-scanner` task (Social Manager), send an Update with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for `_editable: false` skills:
+
 ```json
 {
   "guid": "your-useragent-guid",
   "configuration": {
     "custom_skills": [
       {
-        "key": "daily-announcement",
+        "key": "content-scanner",
         "enabled": true,
-        "interval": "0 9 * * *",
-        "value": "Share a highlight from yesterday's product updates"
+        "interval": "0 */4 * * *"
       }
     ]
   }
 }
 ```
+
+To change **what** the scheduled task posts (topics, tone, content angle), edit the paired preference skill `content-tone` instead — see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preferences).
 
 ## Troubleshooting
 
