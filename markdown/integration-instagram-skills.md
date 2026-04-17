@@ -227,6 +227,8 @@ Clears Instagram credentials (no remote revoke).
 
 ### POST /UserAgentOAuth/TokenRefresh
 
+> Running agents refresh the Instagram token automatically via the daily maintenance cron. Use this only for debugging or manual overrides.
+
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -H "Content-Type: application/json" \
@@ -234,7 +236,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -d '{ "userAgentGuid": "your-useragent-guid", "provider": "instagram" }'
 ```
 
-Uses `grant_type=ig_refresh_token` with the current access token (no separate refresh token). Wiro auto-refreshes.
+Uses `grant_type=ig_refresh_token` with the current access token (Instagram has no separate refresh token). See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
 
 ## Using the Skill
 

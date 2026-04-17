@@ -347,7 +347,7 @@ Response: `{ "result": true, "errors": [] }`. Running agents restart automatical
 
 ### POST /UserAgentOAuth/TokenRefresh
 
-Force-refresh the Meta long-lived token using `fb_exchange_token`. Wiro auto-refreshes before expiry, so manual calls are rarely needed.
+> **You don't normally need to call this.** Running agents refresh their Meta Ads token automatically via `fb_exchange_token` on a daily maintenance cron. Use this endpoint only for debugging or forcing a new token immediately.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
@@ -359,7 +359,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   }'
 ```
 
-Response: `{ result: true, accessToken: "...", refreshToken: "", errors: [] }`.
+Response: `{ result: true, accessToken: "...", refreshToken: "", errors: [] }`. See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh) for the full cron schedule.
 
 ## Using the Skill
 
@@ -403,7 +403,7 @@ Facebook shows a yellow banner in Development Mode. This is expected and **not a
 
 ### Token keeps expiring
 
-Long-lived Meta tokens last ~60 days. Wiro auto-refreshes them before they expire. If you do see `tokenExpiresAt` in the past, force a refresh with `POST /UserAgentOAuth/TokenRefresh`. If that also fails, the user must redo OAuth.
+Long-lived Meta tokens last ~60 days. The agent's daily maintenance cron refreshes them automatically via `fb_exchange_token`. If you see `tokenExpiresAt` in the past and the agent is running, the refresh cron either failed or hasn't run yet — check agent logs. If you can't wait, force a refresh manually with `POST /UserAgentOAuth/TokenRefresh`. If that also fails (typically a 190-series Graph error), the user must redo OAuth from Step 8.
 
 ## Multi-Tenant Architecture
 

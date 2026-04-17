@@ -198,7 +198,7 @@ Response (note the non-standard field name — **`customerId`** instead of `user
 }
 ```
 
-- Access token lifetime: **1 hour** (short). Wiro auto-refreshes.
+- Access token lifetime: **1 hour** (short). The agent runs a background refresh cron every 45 minutes.
 - No `refreshTokenExpiresAt` — Google's refresh tokens don't expire in typical use (unless revoked).
 
 ```bash
@@ -241,12 +241,16 @@ Clears Google Ads credentials (no remote revoke).
 
 ### POST /UserAgentOAuth/TokenRefresh
 
+> Running agents refresh the Google Ads token automatically **every 45 minutes** (access tokens last 1 hour). Use this only for debugging.
+
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{ "userAgentGuid": "your-useragent-guid", "provider": "googleads" }'
 ```
+
+See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
 
 ## Using the Skill
 

@@ -228,7 +228,7 @@ Response: `{ "result": true, "errors": [] }`. The agent restarts automatically i
 
 ### POST /UserAgentOAuth/TokenRefresh
 
-Force-refresh the provider's access token.
+> **API users don't normally call this endpoint.** Wiro's agent runtime refreshes tokens automatically via this endpoint itself — see [Automatic token refresh](#automatic-token-refresh) below. TokenRefresh is exposed publicly mainly for debugging and manual overrides.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -239,18 +239,41 @@ Force-refresh the provider's access token.
 
 Response: `{ result: true, accessToken, refreshToken, errors }`.
 
-Wiro auto-refreshes before expiry, so manual TokenRefresh calls are rarely needed. Hardcoded token TTLs:
+### Automatic token refresh
 
-| Provider | Access Token | Refresh Token |
-|----------|--------------|----------------|
+Every running agent container runs background cron jobs that call `POST /UserAgentOAuth/TokenRefresh` against this API on a schedule tuned to each provider's token lifetime. There is **nothing to set up** — as long as the agent is running, tokens are kept fresh.
+
+Refresh cadence inside the agent container:
+
+| Provider | Cron interval | Token lifetime |
+|----------|---------------|----------------|
+| HubSpot | every 20 min | 30 min |
+| Google Ads | every 45 min | 1 hour |
+| Google Drive | every 45 min | 1 hour |
+| Twitter / X | every 90 min | 2 hours |
+| Instagram, Facebook, Meta Ads, LinkedIn, TikTok | once per day | 1–60 days |
+| Mailchimp | never (tokens don't expire) | — |
+
+An initial refresh also runs on every container startup, so tokens are always current by the time the first skill call goes out.
+
+**You should manually call TokenRefresh only if:**
+
+- You're debugging a stuck integration and want to force a new token immediately.
+- The agent has been stopped for longer than the token lifetime and you want to pre-warm tokens before Start.
+- You want to verify the refresh logic end-to-end for a provider.
+
+Hardcoded token TTLs that Wiro stores after each refresh:
+
+| Provider | Access Token `tokenExpiresAt` | Refresh Token |
+|----------|--------------------------------|----------------|
 | Twitter / X | 2 hours | ~180 days |
 | TikTok | 1 day | ~1 year |
-| Instagram | 60 days | N/A (no refresh token; refreshes with current token) |
-| Facebook | 60 days | N/A (no refresh token; refreshes via `fb_exchange_token`) |
-| LinkedIn | 60 days | From token response (~1 year typical) |
-| Google Ads | 1 hour | Long-lived (no expiry) |
+| Instagram | 60 days | N/A (refreshes with current access token via `ig_refresh_token`) |
+| Facebook | 60 days | N/A (refreshes via `fb_exchange_token`) |
+| LinkedIn | 60 days | From provider response (~1 year typical) |
+| Google Ads | 1 hour | Long-lived (no expiry in typical use) |
 | Meta Ads | 60 days | N/A |
-| HubSpot | **30 minutes** | Long-lived |
+| HubSpot | 30 minutes | Long-lived |
 | Google Drive | 1 hour | Long-lived |
 | Mailchimp | No expiry | N/A |
 

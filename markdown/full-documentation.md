@@ -4726,7 +4726,7 @@ Response: `{ "result": true, "errors": [] }`. The agent restarts automatically i
 
 ### POST /UserAgentOAuth/TokenRefresh
 
-Force-refresh the provider's access token.
+> **API users don't normally call this endpoint.** Wiro's agent runtime refreshes tokens automatically via this endpoint itself — see [Automatic token refresh](#automatic-token-refresh) below. TokenRefresh is exposed publicly mainly for debugging and manual overrides.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -4737,18 +4737,41 @@ Force-refresh the provider's access token.
 
 Response: `{ result: true, accessToken, refreshToken, errors }`.
 
-Wiro auto-refreshes before expiry, so manual TokenRefresh calls are rarely needed. Hardcoded token TTLs:
+### Automatic token refresh
 
-| Provider | Access Token | Refresh Token |
-|----------|--------------|----------------|
+Every running agent container runs background cron jobs that call `POST /UserAgentOAuth/TokenRefresh` against this API on a schedule tuned to each provider's token lifetime. There is **nothing to set up** — as long as the agent is running, tokens are kept fresh.
+
+Refresh cadence inside the agent container:
+
+| Provider | Cron interval | Token lifetime |
+|----------|---------------|----------------|
+| HubSpot | every 20 min | 30 min |
+| Google Ads | every 45 min | 1 hour |
+| Google Drive | every 45 min | 1 hour |
+| Twitter / X | every 90 min | 2 hours |
+| Instagram, Facebook, Meta Ads, LinkedIn, TikTok | once per day | 1–60 days |
+| Mailchimp | never (tokens don't expire) | — |
+
+An initial refresh also runs on every container startup, so tokens are always current by the time the first skill call goes out.
+
+**You should manually call TokenRefresh only if:**
+
+- You're debugging a stuck integration and want to force a new token immediately.
+- The agent has been stopped for longer than the token lifetime and you want to pre-warm tokens before Start.
+- You want to verify the refresh logic end-to-end for a provider.
+
+Hardcoded token TTLs that Wiro stores after each refresh:
+
+| Provider | Access Token `tokenExpiresAt` | Refresh Token |
+|----------|--------------------------------|----------------|
 | Twitter / X | 2 hours | ~180 days |
 | TikTok | 1 day | ~1 year |
-| Instagram | 60 days | N/A (no refresh token; refreshes with current token) |
-| Facebook | 60 days | N/A (no refresh token; refreshes via `fb_exchange_token`) |
-| LinkedIn | 60 days | From token response (~1 year typical) |
-| Google Ads | 1 hour | Long-lived (no expiry) |
+| Instagram | 60 days | N/A (refreshes with current access token via `ig_refresh_token`) |
+| Facebook | 60 days | N/A (refreshes via `fb_exchange_token`) |
+| LinkedIn | 60 days | From provider response (~1 year typical) |
+| Google Ads | 1 hour | Long-lived (no expiry in typical use) |
 | Meta Ads | 60 days | N/A |
-| HubSpot | **30 minutes** | Long-lived |
+| HubSpot | 30 minutes | Long-lived |
 | Google Drive | 1 hour | Long-lived |
 | Mailchimp | No expiry | N/A |
 
@@ -5237,7 +5260,7 @@ Response: `{ "result": true, "errors": [] }`. Running agents restart automatical
 
 ### POST /UserAgentOAuth/TokenRefresh
 
-Force-refresh the Meta long-lived token using `fb_exchange_token`. Wiro auto-refreshes before expiry, so manual calls are rarely needed.
+> **You don't normally need to call this.** Running agents refresh their Meta Ads token automatically via `fb_exchange_token` on a daily maintenance cron. Use this endpoint only for debugging or forcing a new token immediately.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
@@ -5249,7 +5272,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   }'
 ```
 
-Response: `{ result: true, accessToken: "...", refreshToken: "", errors: [] }`.
+Response: `{ result: true, accessToken: "...", refreshToken: "", errors: [] }`. See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh) for the full cron schedule.
 
 ## Using the Skill
 
@@ -5293,7 +5316,7 @@ Facebook shows a yellow banner in Development Mode. This is expected and **not a
 
 ### Token keeps expiring
 
-Long-lived Meta tokens last ~60 days. Wiro auto-refreshes them before they expire. If you do see `tokenExpiresAt` in the past, force a refresh with `POST /UserAgentOAuth/TokenRefresh`. If that also fails, the user must redo OAuth.
+Long-lived Meta tokens last ~60 days. The agent's daily maintenance cron refreshes them automatically via `fb_exchange_token`. If you see `tokenExpiresAt` in the past and the agent is running, the refresh cron either failed or hasn't run yet — check agent logs. If you can't wait, force a refresh manually with `POST /UserAgentOAuth/TokenRefresh`. If that also fails (typically a 190-series Graph error), the user must redo OAuth from Step 8.
 
 ## Multi-Tenant Architecture
 
@@ -5614,6 +5637,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/FBDisconnect" \
 
 ### POST /UserAgentOAuth/TokenRefresh
 
+> Running agents refresh the Facebook page token automatically via the daily maintenance cron. Use this only for debugging or manual overrides.
+
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -H "Content-Type: application/json" \
@@ -5621,7 +5646,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -d '{ "userAgentGuid": "your-useragent-guid", "provider": "facebook" }'
 ```
 
-Uses `fb_exchange_token` under the hood. Wiro auto-refreshes before expiry.
+Uses `fb_exchange_token` under the hood. See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
 
 ## Using the Skill
 
@@ -5918,6 +5943,8 @@ Clears Instagram credentials (no remote revoke).
 
 ### POST /UserAgentOAuth/TokenRefresh
 
+> Running agents refresh the Instagram token automatically via the daily maintenance cron. Use this only for debugging or manual overrides.
+
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -H "Content-Type: application/json" \
@@ -5925,7 +5952,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -d '{ "userAgentGuid": "your-useragent-guid", "provider": "instagram" }'
 ```
 
-Uses `grant_type=ig_refresh_token` with the current access token (no separate refresh token). Wiro auto-refreshes.
+Uses `grant_type=ig_refresh_token` with the current access token (Instagram has no separate refresh token). See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
 
 ## Using the Skill
 
@@ -6203,6 +6230,8 @@ Clears LinkedIn credentials (no remote revoke).
 
 ### POST /UserAgentOAuth/TokenRefresh
 
+> Running agents refresh the LinkedIn token automatically via the daily maintenance cron. Use this only for debugging or manual overrides.
+
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -H "Content-Type: application/json" \
@@ -6210,7 +6239,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -d '{ "userAgentGuid": "your-useragent-guid", "provider": "linkedin" }'
 ```
 
-Uses the stored refresh token. Returns new access + refresh tokens.
+Uses the stored refresh token. Returns new access + refresh tokens. See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
 
 ## Using the Skill
 
@@ -6481,6 +6510,8 @@ Calls X's revoke endpoint (`POST https://api.x.com/2/oauth2/revoke`) with Basic 
 
 ### POST /UserAgentOAuth/TokenRefresh
 
+> Running agents refresh the X token automatically **every 90 minutes** (a dedicated background cron) because X access tokens only last 2 hours. Use this endpoint only for debugging or manual overrides.
+
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -H "Content-Type: application/json" \
@@ -6488,7 +6519,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -d '{ "userAgentGuid": "your-useragent-guid", "provider": "twitter" }'
 ```
 
-Uses `grant_type=refresh_token`. Returns new access + refresh tokens.
+Uses `grant_type=refresh_token`. Returns new access + refresh tokens. See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
 
 ## Using the Skill
 
@@ -6525,7 +6556,7 @@ Free-tier X Developer apps have strict per-app rate limits. For production, move
 
 ### Token expires every 2 hours
 
-Access token lifetime is unusually short. Wiro refreshes automatically before expiry using the stored refresh token. If refresh fails (e.g. user revoked the app in X settings), reconnect is required.
+Access token lifetime is unusually short. Wiro's agent runs a dedicated background cron every 90 minutes to refresh X tokens before they expire. If the refresh cron hits a wall (e.g. user revoked the app in X settings, or X flagged the app), the next skill call fails with a 401 — reconnect is required.
 
 ## Multi-Tenant Architecture
 
@@ -6727,12 +6758,16 @@ Calls TikTok's revoke endpoint (`POST https://open.tiktokapis.com/v2/oauth/revok
 
 ### POST /UserAgentOAuth/TokenRefresh
 
+> Running agents refresh the TikTok token automatically via the daily maintenance cron (access token lifetime is 1 day). Use this only for debugging.
+
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{ "userAgentGuid": "your-useragent-guid", "provider": "tiktok" }'
 ```
+
+See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
 
 ## Troubleshooting
 
@@ -6963,7 +6998,7 @@ Response (note the non-standard field name — **`customerId`** instead of `user
 }
 ```
 
-- Access token lifetime: **1 hour** (short). Wiro auto-refreshes.
+- Access token lifetime: **1 hour** (short). The agent runs a background refresh cron every 45 minutes.
 - No `refreshTokenExpiresAt` — Google's refresh tokens don't expire in typical use (unless revoked).
 
 ```bash
@@ -7006,12 +7041,16 @@ Clears Google Ads credentials (no remote revoke).
 
 ### POST /UserAgentOAuth/TokenRefresh
 
+> Running agents refresh the Google Ads token automatically **every 45 minutes** (access tokens last 1 hour). Use this only for debugging.
+
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{ "userAgentGuid": "your-useragent-guid", "provider": "googleads" }'
 ```
+
+See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
 
 ## Using the Skill
 
@@ -7214,7 +7253,7 @@ Response:
 }
 ```
 
-> **HubSpot tokens expire in 30 minutes.** This is the shortest token lifetime of any Wiro integration. Wiro auto-refreshes before expiry. If you see stale tokens, force a refresh via `POST /UserAgentOAuth/TokenRefresh`.
+> **HubSpot tokens expire in 30 minutes.** This is the shortest token lifetime of any Wiro integration. Every running agent has a dedicated background cron that refreshes HubSpot tokens **every 20 minutes** — you never need to call TokenRefresh from your own app. If you see stale tokens despite the agent being running, check agent logs for refresh failures.
 
 Note: `username` in the response is actually the **portalId as a string** (not `portalName`) — this is backend behavior. `hubspot_name` is only set on the callback URL, not re-surfaced by `Status`.
 
@@ -7249,6 +7288,8 @@ Clears HubSpot credentials (no remote revoke).
 
 ### POST /UserAgentOAuth/TokenRefresh
 
+> Running agents refresh HubSpot tokens automatically **every 20 minutes** (tokens last 30 minutes). Use this endpoint only for debugging.
+
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -H "Content-Type: application/json" \
@@ -7256,7 +7297,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -d '{ "userAgentGuid": "your-useragent-guid", "provider": "hubspot" }'
 ```
 
-Returns new access + refresh tokens.
+Returns new access + refresh tokens. See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
 
 ## Using the Skill
 
@@ -7293,7 +7334,11 @@ Usually a missing scope. Look up the specific HubSpot API endpoint you're hittin
 
 ### Token expired error at runtime
 
-HubSpot's 30-minute token lifetime means refresh is critical. Wiro's auto-refresh should handle this; if you see persistent failures, verify the refresh token wasn't revoked in HubSpot's app management UI.
+HubSpot's 30-minute token lifetime makes refresh critical. The agent container runs the HubSpot refresh cron every 20 minutes, so stale tokens should only appear if:
+
+- The agent is stopped (status 0/1/6). Start it: `POST /UserAgent/Start`.
+- The refresh token was revoked in HubSpot's app management UI. User must reconnect.
+- The refresh cron itself is failing — check agent logs via dashboard or support.
 
 ## Multi-Tenant Architecture
 
@@ -7763,7 +7808,7 @@ Response:
 }
 ```
 
-- Access token lifetime: **1 hour** (short). Wiro auto-refreshes with the stored refresh token.
+- Access token lifetime: **1 hour** (short). The agent runs a background refresh cron every 45 minutes.
 - No `refreshTokenExpiresAt` — Google refresh tokens don't normally expire.
 - `folders` shows the currently selected folders (unique to Google Drive Status).
 
@@ -7819,12 +7864,16 @@ Clears Google Drive credentials (no remote revoke).
 
 ### POST /UserAgentOAuth/TokenRefresh
 
+> Running agents refresh Google Drive tokens automatically **every 45 minutes** (access tokens last 1 hour). Use this only for debugging.
+
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{ "userAgentGuid": "your-useragent-guid", "provider": "googledrive" }'
 ```
+
+See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
 
 ## Using the Skill
 

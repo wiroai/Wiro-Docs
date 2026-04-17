@@ -145,7 +145,7 @@ Response:
 }
 ```
 
-> **HubSpot tokens expire in 30 minutes.** This is the shortest token lifetime of any Wiro integration. Wiro auto-refreshes before expiry. If you see stale tokens, force a refresh via `POST /UserAgentOAuth/TokenRefresh`.
+> **HubSpot tokens expire in 30 minutes.** This is the shortest token lifetime of any Wiro integration. Every running agent has a dedicated background cron that refreshes HubSpot tokens **every 20 minutes** — you never need to call TokenRefresh from your own app. If you see stale tokens despite the agent being running, check agent logs for refresh failures.
 
 Note: `username` in the response is actually the **portalId as a string** (not `portalName`) — this is backend behavior. `hubspot_name` is only set on the callback URL, not re-surfaced by `Status`.
 
@@ -180,6 +180,8 @@ Clears HubSpot credentials (no remote revoke).
 
 ### POST /UserAgentOAuth/TokenRefresh
 
+> Running agents refresh HubSpot tokens automatically **every 20 minutes** (tokens last 30 minutes). Use this endpoint only for debugging.
+
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -H "Content-Type: application/json" \
@@ -187,7 +189,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -d '{ "userAgentGuid": "your-useragent-guid", "provider": "hubspot" }'
 ```
 
-Returns new access + refresh tokens.
+Returns new access + refresh tokens. See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
 
 ## Using the Skill
 
@@ -224,7 +226,11 @@ Usually a missing scope. Look up the specific HubSpot API endpoint you're hittin
 
 ### Token expired error at runtime
 
-HubSpot's 30-minute token lifetime means refresh is critical. Wiro's auto-refresh should handle this; if you see persistent failures, verify the refresh token wasn't revoked in HubSpot's app management UI.
+HubSpot's 30-minute token lifetime makes refresh critical. The agent container runs the HubSpot refresh cron every 20 minutes, so stale tokens should only appear if:
+
+- The agent is stopped (status 0/1/6). Start it: `POST /UserAgent/Start`.
+- The refresh token was revoked in HubSpot's app management UI. User must reconnect.
+- The refresh cron itself is failing — check agent logs via dashboard or support.
 
 ## Multi-Tenant Architecture
 

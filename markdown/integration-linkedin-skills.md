@@ -214,6 +214,8 @@ Clears LinkedIn credentials (no remote revoke).
 
 ### POST /UserAgentOAuth/TokenRefresh
 
+> Running agents refresh the LinkedIn token automatically via the daily maintenance cron. Use this only for debugging or manual overrides.
+
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -H "Content-Type: application/json" \
@@ -221,7 +223,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -d '{ "userAgentGuid": "your-useragent-guid", "provider": "linkedin" }'
 ```
 
-Uses the stored refresh token. Returns new access + refresh tokens.
+Uses the stored refresh token. Returns new access + refresh tokens. See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
 
 ## Using the Skill
 

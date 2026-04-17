@@ -488,7 +488,7 @@ OAuth: POST /UserAgentOAuth/{Provider}Connect — `{ userAgentGuid, redirectUrl,
 Providers: X, TikTok, Instagram, Facebook, LinkedIn, Google Ads, Meta Ads, HubSpot, Mailchimp, Google Drive.
 POST /UserAgentOAuth/{Provider}Status — `{ userAgentGuid }` → `{ connected, username, connectedAt, tokenExpiresAt }`
 POST /UserAgentOAuth/{Provider}Disconnect — `{ userAgentGuid }`
-POST /UserAgentOAuth/TokenRefresh — `{ userAgentGuid, provider }` → `{ accessToken, refreshToken }`
+POST /UserAgentOAuth/TokenRefresh — `{ userAgentGuid, provider }` → `{ accessToken, refreshToken }`. API users typically don't call this — every running agent container runs its own token refresh cron jobs (20 min for HubSpot, 45 min for Google Ads/Drive, 90 min for Twitter/X, daily for others) that call this endpoint internally. Manual calls are for debugging only. Not supported for Mailchimp (tokens don't expire).
 
 Post-callback selection endpoints (provider-specific):
 POST /UserAgentOAuth/MetaAdsSetAdAccount — `{ userAgentGuid, adAccountId, adAccountName? }` → pick ad account after Meta Ads OAuth

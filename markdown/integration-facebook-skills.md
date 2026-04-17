@@ -297,6 +297,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/FBDisconnect" \
 
 ### POST /UserAgentOAuth/TokenRefresh
 
+> Running agents refresh the Facebook page token automatically via the daily maintenance cron. Use this only for debugging or manual overrides.
+
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -H "Content-Type: application/json" \
@@ -304,7 +306,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -d '{ "userAgentGuid": "your-useragent-guid", "provider": "facebook" }'
 ```
 
-Uses `fb_exchange_token` under the hood. Wiro auto-refreshes before expiry.
+Uses `fb_exchange_token` under the hood. See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
 
 ## Using the Skill
 
