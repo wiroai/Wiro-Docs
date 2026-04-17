@@ -261,13 +261,15 @@ This single request:
 Each scheduled cron skill reads its paired preference skill at runtime. The mechanism:
 
 1. `POST /UserAgent/Update` writes your preference `value` into `custom_skills[key=<preference-key>]` (for example `content-tone`).
-2. When the container starts, each `custom_skills` entry is materialized as a local skill at `skills/cs-<key>/SKILL.md` inside the agent workspace.
-3. The scheduled cron skill's `value` (shipped in the template, not user-editable) references its paired preference via the `cs-<preference-key>` slug, for example:
+2. When the container starts, each `custom_skills` entry is materialized as a local skill at `skills/cs-<slug>/SKILL.md` inside the agent workspace.
+3. The scheduled cron skill's `value` (shipped in the template, not user-editable) references its paired preference via the `cs-<slug>` path, for example:
    ```
    0. Read the cs-content-tone skill first — follow ALL its rules.
    1. ...
    ```
 4. At each cron tick, the agent LLM reads `cs-content-tone`, applies your instructions, then executes the scan/report/dispatch workflow.
+
+> **Slug normalization:** the `<slug>` in `cs-<slug>` is NOT the raw `key` — the container normalizes each key to lowercase and replaces any run of non-alphanumeric characters with a single `-` (leading/trailing dashes are trimmed). In practice, stick to lowercase keys like `content-tone`, `push-preferences`, `lead-strategy` and the slug will match 1:1 with the key. If your key contains uppercase, underscores, or other punctuation, inspect the normalized folder name under `skills/` (via the agent's internal `read` tool on `SKILL.md`) to confirm the exact reference string the LLM should use.
 
 This means **your editable preference becomes the single place to customize agent behavior** (brand voice, target audience, content sources, holiday markets, etc.), and the non-editable cron skill is a thin orchestration layer that defers to your preference.
 

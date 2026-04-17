@@ -64,7 +64,7 @@ Build a fully branded chat experience with no Wiro UI visible to your users.
 2. Start the agent with `POST /UserAgent/Start`
 3. Build your own chat UI
 4. Send messages via `POST /UserAgent/Message/Send`
-5. Stream responses in real-time via [WebSocket](/docs/websocket) using the `agenttoken`
+5. Stream responses in real-time via [Agent WebSocket](/docs/agent-websocket) using the `agenttoken`
 6. Manage conversation history with `POST /UserAgent/Message/History`
 
 ```bash
@@ -150,14 +150,16 @@ Wiro provides pre-built agent templates you can deploy immediately. Each agent s
 | Agent | What It Does | Credentials |
 |-------|-------------|-------------|
 | **Social Manager** | Create, schedule, and publish social media content | Twitter/X, Instagram, Facebook, TikTok, LinkedIn (OAuth) |
-| **Google Ads Manager** | Create and optimize Google Ads campaigns | Google Ads (OAuth) |
-| **Meta Ads Manager** | Manage Facebook and Instagram ad campaigns | Meta Ads (OAuth), Facebook (OAuth) |
-| **Newsletter Manager** | Design and send email newsletters | Brevo, SendGrid, or Mailchimp (API key or OAuth) |
-| **Lead Gen Manager** | Find and enrich leads, run outreach sequences | Apollo, Lemlist (API key) |
-| **Blog Content Editor** | Write and publish blog posts | WordPress (API key) |
-| **App Review Support** | Monitor and respond to app store reviews | App Store, Google Play (API key) |
-| **App Event Manager** | Track and manage mobile app events | Firebase (API key) |
-| **HubSpot Manager** | Manage CRM contacts, deals, and workflows | HubSpot (OAuth) |
+| **Blog Content Editor** | Write and publish blog posts (WordPress draft + publish workflow) | WordPress (App Password), Gmail (optional, for inbox requests) |
+| **Google Ads Manager** | Create and optimize Google Ads campaigns, daily performance reports | Google Ads (OAuth), Calendarific (platform-managed), Google Drive (optional) |
+| **Meta Ads Manager** | Manage Facebook and Instagram ad campaigns, audience analysis | Meta Ads (OAuth), Calendarific (platform-managed), Google Drive (optional) |
+| **Newsletter Manager** | Design and send email newsletters to subscriber lists | Brevo, SendGrid, Mailchimp, HubSpot (any one — API key or OAuth) |
+| **Lead Gen Manager** | Find and enrich leads, run multi-channel outreach, analyze replies | Apollo (API key), Lemlist (API key), HubSpot (optional, for CRM sync) |
+| **App Review Support** | Monitor app store reviews, draft responses in operator's tone | App Store Connect (private key JWT), Google Play (service account) |
+| **App Event Manager** | Scan global holidays, suggest and create App Store in-app events | App Store Connect (JWT), Calendarific (platform-managed) |
+| **Push Notification Manager** | Craft locale- and timezone-aware push notifications, queue dispatch | Firebase (service account JSON per app), Calendarific (platform-managed) |
+
+> The list above matches the 9 agent templates currently deployed in production. The exact set can evolve over time; fetch `POST /Agent/List` for the live catalog.
 
 ### Deploying an Agent
 

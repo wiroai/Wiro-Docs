@@ -284,7 +284,7 @@ Lists all agent instances deployed under your account.
       "status": 4,
       "setuprequired": false,
       "subscription": {
-        "plan": "agent-instagram-manager-pro",
+        "plan": "agent-pro",
         "status": "active",
         "amount": 29,
         "currency": "usd",
@@ -350,7 +350,7 @@ Retrieves full details for a single deployed agent instance, including subscript
         }
       },
       "subscription": {
-        "plan": "agent-instagram-manager-pro",
+        "plan": "agent-pro",
         "status": "active",
         "amount": 29,
         "currency": "usd",

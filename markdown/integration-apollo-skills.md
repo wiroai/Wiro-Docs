@@ -72,7 +72,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 | Field | Type | Description |
 |-------|------|-------------|
 | `apiKey` | string | Primary Apollo API key. |
-| `masterApiKey` | string (optional) | Master API key for sequence management. |
+| `masterApiKey` | string (optional) | Master API key for people search + sequence management. |
 
 ## Runtime Behavior
 
@@ -81,16 +81,28 @@ Env vars (exported **only when `apollo-sales` skill is enabled** and `apiKey` is
 - `APOLLO_API_KEY` ← `credentials.apollo.apiKey`
 - `APOLLO_MASTER_KEY` ← `credentials.apollo.masterApiKey` (only if set)
 
-Auth: `x-api-key: $APOLLO_API_KEY` header (or `$APOLLO_MASTER_KEY` for sequence endpoints).
+**Endpoint-based key selection** — the `apollo-sales` skill picks the header per endpoint:
+
+| Endpoint group | Header | Env var |
+|----------------|--------|---------|
+| People Search (`POST /mixed_people/api_search`) | `x-api-key: $APOLLO_MASTER_KEY` | **Requires `masterApiKey`** |
+| Sequence management (create sequence, add contacts, start/pause) | `x-api-key: $APOLLO_MASTER_KEY` | **Requires `masterApiKey`** |
+| People enrichment (`POST /people/match`) | `x-api-key: $APOLLO_API_KEY` | `apiKey` sufficient |
+| Organization lookup | `x-api-key: $APOLLO_API_KEY` | `apiKey` sufficient |
+| Email verification | `x-api-key: $APOLLO_API_KEY` | `apiKey` sufficient |
+
 Base URL: `https://api.apollo.io/api/v1`.
 
 Rate limits: Apollo enforces strict per-key limits; 429 responses require 60s backoff.
+
+**If `masterApiKey` is missing:** People search and sequence endpoints return **401 Unauthorized** with `"error": "Invalid Api Key"`. This is expected — even though `apiKey` works for other endpoints, Apollo's master-only endpoints reject the regular key. Add `masterApiKey` via `POST /UserAgent/Update` and the same agent can immediately use master-only endpoints (no restart needed if the cron picks up env changes on next run).
 
 ## Troubleshooting
 
 - **403 Forbidden:** Plan doesn't include API access. Upgrade to Professional tier or higher.
 - **429 Too Many Requests:** Rate limit hit. Space prospecting runs or request higher tier from Apollo support.
-- **Sequence enrollment fails:** Missing `masterApiKey`. Add it and retry.
+- **401 on `mixed_people/api_search`:** Missing `masterApiKey`. Add it (workspace admins: Apollo → Admin → API keys).
+- **Sequence enrollment fails:** Missing `masterApiKey`. Same fix — master key is required for write operations on sequences.
 
 ## Related
 

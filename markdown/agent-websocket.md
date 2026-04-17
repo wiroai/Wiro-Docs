@@ -55,14 +55,26 @@ The `type` field indicates the event. The `message` field varies by type — it'
 
 ### agent_subscribed
 
-Sent immediately after the server accepts your subscription. The `status` field reflects where the agent currently is in its lifecycle. If the agent already began streaming before you connected, `debugoutput` contains any accumulated text. If the agenttoken is unknown or has no pending message, `debugoutput` is omitted entirely from the payload.
+Sent immediately after the server accepts your subscription. The `status` field reflects where the agent currently is in its lifecycle.
+
+- If the agenttoken is **valid and pending/active** (known to the server, not yet finished), `debugoutput` is always present — an empty string `""` if nothing has streamed yet, or the accumulated text so far.
+- If the agenttoken is **unknown** (typo, expired, already cleaned up from the buffer), `debugoutput` is **omitted entirely** from the payload (no field at all). Always use `"debugoutput" in payload` or `payload.debugoutput !== undefined` to distinguish unknown-token from empty-output, rather than relying on truthiness.
 
 ```json
+// Valid token, queued — debugoutput present and empty
 {
   "type": "agent_subscribed",
   "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
   "status": "agent_queue",
   "debugoutput": "",
+  "result": true
+}
+
+// Unknown token — no debugoutput field
+{
+  "type": "agent_subscribed",
+  "agenttoken": "wrongtoken123",
+  "status": "agent_queue",
   "result": true
 }
 ```

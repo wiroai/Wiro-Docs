@@ -70,6 +70,8 @@ Call `HubSpotConnect` without `authMethod`, redirect, parse `hubspot_connected=t
    - `crm.objects.deals.write`
    - `crm.objects.owners.read`
    - `crm.schemas.contacts.read`
+   - `content`
+   - `transactional-email`
    - `files`
 
 4. Save.
@@ -222,8 +224,9 @@ Returns new access + refresh tokens. See [Automatic token refresh](/docs/agent-c
 
 | Error code | Meaning | What to do |
 |------------|---------|------------|
+| `missing_params` | Callback hit without `state` or `code`. | User didn't complete consent; restart the flow. |
 | `authorization_denied` | User cancelled, or missing scopes. | Verify scope list in the HubSpot app's Auth tab. |
-| `session_expired` | State cache expired. | Restart. |
+| `session_expired` | State cache expired (15 min TTL). | Restart the OAuth flow. |
 | `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy; verify URL. |
 | `useragent_not_found` | Invalid guid. | Use `POST /UserAgent/MyAgents`. |
 | `invalid_config` | No `credentials.hubspot` block. | Update with `clientId` + `clientSecret`. |

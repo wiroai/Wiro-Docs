@@ -221,6 +221,36 @@ Response:
 - No `refreshTokenExpiresAt` — Google refresh tokens don't normally expire.
 - `folders` shows the currently selected folders (unique to Google Drive Status).
 
+## Agent Runtime Usage (inside the container)
+
+Once the OAuth flow is done and `GoogleDriveSetFolder` has persisted the folder selection, the agent container runs independently of the Wiro API — the `google-drive` platform skill (loaded from `skills/google-drive/SKILL.md`) reads env vars and talks to Google's REST APIs directly.
+
+**Env vars exported by `docker/start.sh`** (only when `skills.google-drive` is enabled and a Drive `accessToken` exists):
+
+| Env var | Source | Notes |
+|---------|--------|-------|
+| `GDRIVE_CLIENT_ID` | `credentials.googledrive.clientId` | For token refresh |
+| `GDRIVE_CLIENT_SECRET` | `credentials.googledrive.clientSecret` | For token refresh |
+| `GDRIVE_ACCESS_TOKEN` | `credentials.googledrive.accessToken` | **Auto-refreshed by the container every 45 minutes** via `POST /UserAgentOAuth/TokenRefresh` (short-lived: Google access tokens expire in 1 hour) |
+| `GDRIVE_REFRESH_TOKEN` | `credentials.googledrive.refreshToken` | Passed to the refresh cron |
+| `GDRIVE_FOLDERS` | `credentials.googledrive.folders` | JSON array of `[{id, name}]` — the user-selected folders from `GoogleDriveSetFolder` |
+
+**How cron skills access the token:** There is **no `gdrive-token` helper command**. The agent reads the pre-refreshed token directly from the env var:
+
+```
+exec command="echo $GDRIVE_ACCESS_TOKEN"
+```
+
+Then uses it in curl calls as `Authorization: Bearer $GDRIVE_ACCESS_TOKEN`. If an API call returns 401, the agent re-reads `$GDRIVE_ACCESS_TOKEN` (the 45-minute cron may have just refreshed it). See the full SKILL.md ([skills/google-drive/SKILL.md](https://github.com/wiroai/Wiro-Agent/blob/main/WiroAgent/.openclaw/workspace/skills/google-drive/SKILL.md)) for all endpoint examples.
+
+**Checking folder selection in cron scripts:** Since `GDRIVE_FOLDERS` is a JSON array (not a single ID), cron skills check it like this:
+
+```
+exec command="echo $GDRIVE_FOLDERS"
+```
+
+Empty output or `[]` means the user hasn't selected any folder yet — the scan should notify the operator and stop instead of iterating over an empty list.
+
 ### Step 9: Start the agent
 
 ```bash

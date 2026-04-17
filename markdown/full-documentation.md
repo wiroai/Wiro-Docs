@@ -2036,7 +2036,7 @@ Lists all agent instances deployed under your account.
       "status": 4,
       "setuprequired": false,
       "subscription": {
-        "plan": "agent-instagram-manager-pro",
+        "plan": "agent-pro",
         "status": "active",
         "amount": 29,
         "currency": "usd",
@@ -2102,7 +2102,7 @@ Retrieves full details for a single deployed agent instance, including subscript
         }
       },
       "subscription": {
-        "plan": "agent-instagram-manager-pro",
+        "plan": "agent-pro",
         "status": "active",
         "amount": 29,
         "currency": "usd",
@@ -3639,14 +3639,26 @@ The `type` field indicates the event. The `message` field varies by type — it'
 
 ### agent_subscribed
 
-Sent immediately after the server accepts your subscription. The `status` field reflects where the agent currently is in its lifecycle. If the agent already began streaming before you connected, `debugoutput` contains any accumulated text.
+Sent immediately after the server accepts your subscription. The `status` field reflects where the agent currently is in its lifecycle.
+
+- If the agenttoken is **valid and pending/active** (known to the server, not yet finished), `debugoutput` is always present — an empty string `""` if nothing has streamed yet, or the accumulated text so far.
+- If the agenttoken is **unknown** (typo, expired, already cleaned up from the buffer), `debugoutput` is **omitted entirely** from the payload (no field at all). Always use `"debugoutput" in payload` or `payload.debugoutput !== undefined` to distinguish unknown-token from empty-output, rather than relying on truthiness.
 
 ```json
+// Valid token, queued — debugoutput present and empty
 {
   "type": "agent_subscribed",
   "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
   "status": "agent_queue",
   "debugoutput": "",
+  "result": true
+}
+
+// Unknown token — no debugoutput field
+{
+  "type": "agent_subscribed",
+  "agenttoken": "wrongtoken123",
+  "status": "agent_queue",
   "result": true
 }
 ```
@@ -4327,6 +4339,8 @@ When the agent finishes, Wiro sends a **POST** request to your `callbackurl` wit
   "endedat": 1712050004
 }
 ```
+
+> **When the cancel webhook fires:** `agent_cancel` is delivered **only when the agent bridge catches an `AbortError`** during active processing — i.e. the message had already started on the agent side and was aborted mid-flight (via `POST /UserAgent/Message/Cancel` or an upstream timeout). For messages cancelled **before** they reach the bridge (still queued, or an instant `Message/Cancel` that beats dispatching), the message is marked `agent_cancel` in the database and returned as such in `POST /UserAgent/Message/Detail`, but **no webhook is fired** — there was no processing attempt to report on. Use `Message/Detail` or the `agent_statusupdate` WebSocket event as the canonical source of truth for cancellation, and treat the webhook as a best-effort "processing was interrupted" signal.
 
 ### Field Reference
 
@@ -6619,7 +6633,7 @@ The TikTok integration uses TikTok's OAuth 2.0 with the Content Posting API.
 
 ## Wiro Mode
 
-Call `TikTokConnect` without `authMethod`, redirect, parse `tiktok_connected=true&tiktok_username=<handle>`.
+Call `TikTokConnect` without `authMethod`, redirect, parse `tiktok_connected=true&tiktok_username=<display_name>` (display name, not the `@handle`).
 
 ## Complete Integration Walkthrough — Own Mode
 
@@ -6728,7 +6742,7 @@ Response:
 {
   "result": true,
   "connected": true,
-  "username": "creator_handle",
+  "username": "Creator Display Name",
   "connectedAt": "2026-04-17T12:00:00.000Z",
   "tokenExpiresAt": "2026-04-18T12:00:00.000Z",
   "refreshTokenExpiresAt": "2027-04-17T12:00:00.000Z",
@@ -6738,7 +6752,7 @@ Response:
 
 - Access token: ~1 day (86400s).
 - Refresh token: ~1 year (31536000s).
-- `username` = TikTok handle without `@`.
+- `username` = TikTok **display name** (the creator's public display name as set in their profile), NOT the `@handle`. The handle/URL username is not exposed by TikTok's OAuth `user/info/` endpoint, so Wiro stores `display_name` and returns it as `username`.
 
 ### Step 10: Start the agent
 
@@ -6761,7 +6775,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ### GET /UserAgentOAuth/TikTokCallback
 
-Query params: `tiktok_connected=true&tiktok_username=<handle>` or `tiktok_error=<code>`.
+Query params: `tiktok_connected=true&tiktok_username=<display_name>` or `tiktok_error=<code>`. `tiktok_username` is TikTok's display name (from the OAuth `user/info/` endpoint's `display_name` field), not the `@handle`.
 
 ### POST /UserAgentOAuth/TikTokStatus
 
@@ -7195,6 +7209,8 @@ Call `HubSpotConnect` without `authMethod`, redirect, parse `hubspot_connected=t
    - `crm.objects.deals.write`
    - `crm.objects.owners.read`
    - `crm.schemas.contacts.read`
+   - `content`
+   - `transactional-email`
    - `files`
 
 4. Save.
@@ -7347,8 +7363,9 @@ Returns new access + refresh tokens. See [Automatic token refresh](/docs/agent-c
 
 | Error code | Meaning | What to do |
 |------------|---------|------------|
+| `missing_params` | Callback hit without `state` or `code`. | User didn't complete consent; restart the flow. |
 | `authorization_denied` | User cancelled, or missing scopes. | Verify scope list in the HubSpot app's Auth tab. |
-| `session_expired` | State cache expired. | Restart. |
+| `session_expired` | State cache expired (15 min TTL). | Restart the OAuth flow. |
 | `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy; verify URL. |
 | `useragent_not_found` | Invalid guid. | Use `POST /UserAgent/MyAgents`. |
 | `invalid_config` | No `credentials.hubspot` block. | Update with `clientId` + `clientSecret`. |
@@ -7561,6 +7578,8 @@ Query params: `mailchimp_connected=true&mailchimp_account=<name>` or `mailchimp_
 ### POST /UserAgentOAuth/MailchimpStatus
 
 Response fields: `connected`, `username` (= accountName), `connectedAt`. **No `tokenExpiresAt`, no `refreshTokenExpiresAt`** — tokens don't expire.
+
+> **API key-only mode caveat:** `connected` is computed from `authMethod in {wiro, own}` **and** a non-empty `accessToken`. If you set up Mailchimp via direct API key (no OAuth), `authMethod` and `accessToken` stay empty and `MailchimpStatus.connected` returns `false` — even though the agent runtime is fully functional (the `mailchimp-email` skill reads `$MAILCHIMP_API_KEY` directly via `start.sh`). Don't use `MailchimpStatus.connected` as the source of truth for API key setups; instead, check that `credentials.mailchimp.apiKey` is non-empty in `POST /UserAgent/Detail`.
 
 ### POST /UserAgentOAuth/MailchimpDisconnect
 
@@ -7842,6 +7861,36 @@ Response:
 - No `refreshTokenExpiresAt` — Google refresh tokens don't normally expire.
 - `folders` shows the currently selected folders (unique to Google Drive Status).
 
+## Agent Runtime Usage (inside the container)
+
+Once the OAuth flow is done and `GoogleDriveSetFolder` has persisted the folder selection, the agent container runs independently of the Wiro API — the `google-drive` platform skill (loaded from `skills/google-drive/SKILL.md`) reads env vars and talks to Google's REST APIs directly.
+
+**Env vars exported by `docker/start.sh`** (only when `skills.google-drive` is enabled and a Drive `accessToken` exists):
+
+| Env var | Source | Notes |
+|---------|--------|-------|
+| `GDRIVE_CLIENT_ID` | `credentials.googledrive.clientId` | For token refresh |
+| `GDRIVE_CLIENT_SECRET` | `credentials.googledrive.clientSecret` | For token refresh |
+| `GDRIVE_ACCESS_TOKEN` | `credentials.googledrive.accessToken` | **Auto-refreshed by the container every 45 minutes** via `POST /UserAgentOAuth/TokenRefresh` (short-lived: Google access tokens expire in 1 hour) |
+| `GDRIVE_REFRESH_TOKEN` | `credentials.googledrive.refreshToken` | Passed to the refresh cron |
+| `GDRIVE_FOLDERS` | `credentials.googledrive.folders` | JSON array of `[{id, name}]` — the user-selected folders from `GoogleDriveSetFolder` |
+
+**How cron skills access the token:** There is **no `gdrive-token` helper command**. The agent reads the pre-refreshed token directly from the env var:
+
+```
+exec command="echo $GDRIVE_ACCESS_TOKEN"
+```
+
+Then uses it in curl calls as `Authorization: Bearer $GDRIVE_ACCESS_TOKEN`. If an API call returns 401, the agent re-reads `$GDRIVE_ACCESS_TOKEN` (the 45-minute cron may have just refreshed it). See the full SKILL.md for all endpoint examples.
+
+**Checking folder selection in cron scripts:** Since `GDRIVE_FOLDERS` is a JSON array (not a single ID), cron skills check it like this:
+
+```
+exec command="echo $GDRIVE_FOLDERS"
+```
+
+Empty output or `[]` means the user hasn't selected any folder yet — the scan should notify the operator and stop instead of iterating over an empty list.
+
 ### Step 9: Start the agent
 
 ```bash
@@ -8005,7 +8054,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
   }'
 ```
 
-Only `account` and `appPassword` are editable. The template also has an `interval` field alongside the credential, but the actual polling cadence is driven by the agent's **scheduled skill** (typically `gmail-checker` or `gmail-check` in `custom_skills`) — not by `credentials.gmail.interval`. To change how often the inbox is polled, update the relevant skill's `interval` via `POST /UserAgent/Update` as described in [Agent Skills](/docs/agent-skills#managing-scheduled-tasks).
+Only `account` and `appPassword` are editable. `credentials.gmail.interval` (when present in some templates) is NOT used by `start.sh` and NOT wired to the runtime. The actual polling cadence comes from the scheduled skill `gmail-checker` under `custom_skills[]` (a cron wrapper that invokes the built-in `gmail-check` platform skill). To change how often the inbox is polled, update `custom_skills[key="gmail-checker"].interval` via `POST /UserAgent/Update` — see [Agent Skills](/docs/agent-skills#managing-scheduled-tasks).
+
+> **Naming:** the **platform skill** (the IMAP-speaking module loaded from `skills/gmail-check/SKILL.md`) is `gmail-check`. The **cron wrapper** (an entry in `custom_skills[]` that schedules inbox polling and references `gmail-check` internally) is `gmail-checker`. When `skills.gmail-check` is disabled on the template, the cron wrapper early-returns with `HEARTBEAT_OK`.
 
 ### Step 4: Start the agent
 
@@ -8807,7 +8858,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 | Field | Type | Description |
 |-------|------|-------------|
 | `apiKey` | string | Primary Apollo API key. |
-| `masterApiKey` | string (optional) | Master API key for sequence management. |
+| `masterApiKey` | string (optional) | Master API key for people search + sequence management. |
 
 ## Runtime Behavior
 
@@ -8816,16 +8867,28 @@ Env vars (exported **only when `apollo-sales` skill is enabled** and `apiKey` is
 - `APOLLO_API_KEY` ← `credentials.apollo.apiKey`
 - `APOLLO_MASTER_KEY` ← `credentials.apollo.masterApiKey` (only if set)
 
-Auth: `x-api-key: $APOLLO_API_KEY` header (or `$APOLLO_MASTER_KEY` for sequence endpoints).
+**Endpoint-based key selection** — the `apollo-sales` skill picks the header per endpoint:
+
+| Endpoint group | Header | Env var |
+|----------------|--------|---------|
+| People Search (`POST /mixed_people/api_search`) | `x-api-key: $APOLLO_MASTER_KEY` | **Requires `masterApiKey`** |
+| Sequence management (create sequence, add contacts, start/pause) | `x-api-key: $APOLLO_MASTER_KEY` | **Requires `masterApiKey`** |
+| People enrichment (`POST /people/match`) | `x-api-key: $APOLLO_API_KEY` | `apiKey` sufficient |
+| Organization lookup | `x-api-key: $APOLLO_API_KEY` | `apiKey` sufficient |
+| Email verification | `x-api-key: $APOLLO_API_KEY` | `apiKey` sufficient |
+
 Base URL: `https://api.apollo.io/api/v1`.
 
 Rate limits: Apollo enforces strict per-key limits; 429 responses require 60s backoff.
+
+**If `masterApiKey` is missing:** People search and sequence endpoints return **401 Unauthorized** with `"error": "Invalid Api Key"`. This is expected — even though `apiKey` works for other endpoints, Apollo's master-only endpoints reject the regular key. Add `masterApiKey` via `POST /UserAgent/Update` and the same agent can immediately use master-only endpoints (no restart needed if the cron picks up env changes on next run).
 
 ## Troubleshooting
 
 - **403 Forbidden:** Plan doesn't include API access. Upgrade to Professional tier or higher.
 - **429 Too Many Requests:** Rate limit hit. Space prospecting runs or request higher tier from Apollo support.
-- **Sequence enrollment fails:** Missing `masterApiKey`. Add it and retry.
+- **401 on `mixed_people/api_search`:** Missing `masterApiKey`. Add it (workspace admins: Apollo → Admin → API keys).
+- **Sequence enrollment fails:** Missing `masterApiKey`. Same fix — master key is required for write operations on sequences.
 
 ## Related
 
@@ -9387,13 +9450,15 @@ This single request:
 Each scheduled cron skill reads its paired preference skill at runtime. The mechanism:
 
 1. `POST /UserAgent/Update` writes your preference `value` into `custom_skills[key=<preference-key>]` (for example `content-tone`).
-2. When the container starts, each `custom_skills` entry is materialized as a local skill at `skills/cs-<key>/SKILL.md` inside the agent workspace.
-3. The scheduled cron skill's `value` (shipped in the template, not user-editable) references its paired preference via the `cs-<preference-key>` slug, for example:
+2. When the container starts, each `custom_skills` entry is materialized as a local skill at `skills/cs-<slug>/SKILL.md` inside the agent workspace.
+3. The scheduled cron skill's `value` (shipped in the template, not user-editable) references its paired preference via the `cs-<slug>` path, for example:
    ```
    0. Read the cs-content-tone skill first — follow ALL its rules.
    1. ...
    ```
 4. At each cron tick, the agent LLM reads `cs-content-tone`, applies your instructions, then executes the scan/report/dispatch workflow.
+
+> **Slug normalization:** the `<slug>` in `cs-<slug>` is NOT the raw `key` — the container normalizes each key to lowercase and replaces any run of non-alphanumeric characters with a single `-` (leading/trailing dashes are trimmed). In practice, stick to lowercase keys like `content-tone`, `push-preferences`, `lead-strategy` and the slug will match 1:1 with the key. If your key contains uppercase, underscores, or other punctuation, inspect the normalized folder name under `skills/` (via the agent's internal `read` tool on `SKILL.md`) to confirm the exact reference string the LLM should use.
 
 This means **your editable preference becomes the single place to customize agent behavior** (brand voice, target audience, content sources, holiday markets, etc.), and the non-editable cron skill is a thin orchestration layer that defers to your preference.
 
@@ -9546,7 +9611,7 @@ Build a fully branded chat experience with no Wiro UI visible to your users.
 2. Start the agent with `POST /UserAgent/Start`
 3. Build your own chat UI
 4. Send messages via `POST /UserAgent/Message/Send`
-5. Stream responses in real-time via [WebSocket](/docs/websocket) using the `agenttoken`
+5. Stream responses in real-time via [Agent WebSocket](/docs/agent-websocket) using the `agenttoken`
 6. Manage conversation history with `POST /UserAgent/Message/History`
 
 ```bash
@@ -9632,14 +9697,16 @@ Wiro provides pre-built agent templates you can deploy immediately. Each agent s
 | Agent | What It Does | Credentials |
 |-------|-------------|-------------|
 | **Social Manager** | Create, schedule, and publish social media content | Twitter/X, Instagram, Facebook, TikTok, LinkedIn (OAuth) |
-| **Google Ads Manager** | Create and optimize Google Ads campaigns | Google Ads (OAuth) |
-| **Meta Ads Manager** | Manage Facebook and Instagram ad campaigns | Meta Ads (OAuth), Facebook (OAuth) |
-| **Newsletter Manager** | Design and send email newsletters | Brevo, SendGrid, or Mailchimp (API key or OAuth) |
-| **Lead Gen Manager** | Find and enrich leads, run outreach sequences | Apollo, Lemlist (API key) |
-| **Blog Content Editor** | Write and publish blog posts | WordPress (API key) |
-| **App Review Support** | Monitor and respond to app store reviews | App Store, Google Play (API key) |
-| **App Event Manager** | Track and manage mobile app events | Firebase (API key) |
-| **HubSpot Manager** | Manage CRM contacts, deals, and workflows | HubSpot (OAuth) |
+| **Blog Content Editor** | Write and publish blog posts (WordPress draft + publish workflow) | WordPress (App Password), Gmail (optional, for inbox requests) |
+| **Google Ads Manager** | Create and optimize Google Ads campaigns, daily performance reports | Google Ads (OAuth), Calendarific (platform-managed), Google Drive (optional) |
+| **Meta Ads Manager** | Manage Facebook and Instagram ad campaigns, audience analysis | Meta Ads (OAuth), Calendarific (platform-managed), Google Drive (optional) |
+| **Newsletter Manager** | Design and send email newsletters to subscriber lists | Brevo, SendGrid, Mailchimp, HubSpot (any one — API key or OAuth) |
+| **Lead Gen Manager** | Find and enrich leads, run multi-channel outreach, analyze replies | Apollo (API key), Lemlist (API key), HubSpot (optional, for CRM sync) |
+| **App Review Support** | Monitor app store reviews, draft responses in operator's tone | App Store Connect (private key JWT), Google Play (service account) |
+| **App Event Manager** | Scan global holidays, suggest and create App Store in-app events | App Store Connect (JWT), Calendarific (platform-managed) |
+| **Push Notification Manager** | Craft locale- and timezone-aware push notifications, queue dispatch | Firebase (service account JSON per app), Calendarific (platform-managed) |
+
+> The list above matches the 9 agent templates currently deployed in production. The exact set can evolve over time; fetch `POST /Agent/List` for the live catalog.
 
 ### Deploying an Agent
 

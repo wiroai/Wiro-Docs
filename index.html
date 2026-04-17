@@ -4374,7 +4374,7 @@ import type {
       "status": 4,
       "setuprequired": false,
       "subscription": {
-        "plan": "agent-instagram-manager-pro",
+        "plan": "agent-pro",
         "status": "active",
         "amount": 29,
         "currency": "usd",
@@ -4438,7 +4438,7 @@ import type {
         }
       },
       "subscription": {
-        "plan": "agent-instagram-manager-pro",
+        "plan": "agent-pro",
         "status": "active",
         "amount": 29,
         "currency": "usd",
@@ -5218,11 +5218,24 @@ POST /UserAgent/Message/History { "useragentguid": "...", "limit": 50, "before":
 
 <h3>agent_subscribed</h3>
 <p>Sent immediately after the server accepts your subscription. The <code>status</code> field reflects where the agent currently is in its lifecycle.</p>
-<pre><code class="language-json">{
+<ul>
+<li>If the agenttoken is <strong>valid and pending/active</strong> (known to the server, not yet finished), <code>debugoutput</code> is always present — an empty string <code>""</code> if nothing has streamed yet, or the accumulated text so far.</li>
+<li>If the agenttoken is <strong>unknown</strong> (typo, expired, already cleaned up from the buffer), <code>debugoutput</code> is <strong>omitted entirely</strong> from the payload (no field at all). Always use <code>"debugoutput" in payload</code> or <code>payload.debugoutput !== undefined</code> to distinguish unknown-token from empty-output, rather than relying on truthiness.</li>
+</ul>
+<pre><code class="language-json">// Valid token, queued — debugoutput present and empty
+{
   "type": "agent_subscribed",
   "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
   "status": "agent_queue",
   "debugoutput": "",
+  "result": true
+}
+
+// Unknown token — no debugoutput field
+{
+  "type": "agent_subscribed",
+  "agenttoken": "wrongtoken123",
+  "status": "agent_queue",
   "result": true
 }</code></pre>
 <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
@@ -5622,6 +5635,8 @@ ws.onopen = () => {
   "metadata": {},
   "endedat": 1712050004
 }</code></pre>
+
+<p class="docs-callout"><strong>When the cancel webhook fires:</strong> <code>agent_cancel</code> is delivered <strong>only when the agent bridge catches an <code>AbortError</code></strong> during active processing — i.e. the message had already started on the agent side and was aborted mid-flight (via <code>POST /UserAgent/Message/Cancel</code> or an upstream timeout). For messages cancelled <strong>before</strong> they reach the bridge (still queued, or an instant <code>Message/Cancel</code> that beats dispatching), the message is marked <code>agent_cancel</code> in the database and returned as such in <code>POST /UserAgent/Message/Detail</code>, but <strong>no webhook is fired</strong>. Use <code>Message/Detail</code> or the <code>agent_statusupdate</code> WebSocket event as the canonical source of truth for cancellation, and treat the webhook as a best-effort "processing was interrupted" signal.</p>
 
 <h3>Field Reference</h3>
 <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
@@ -7802,16 +7817,17 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
 <thead><tr><th>Agent</th><th>What It Does</th><th>Credentials</th></tr></thead>
 <tbody>
 <tr><td><strong>Social Manager</strong></td><td>Create, schedule, and publish social media content</td><td>Twitter/X, Instagram, Facebook, TikTok, LinkedIn (OAuth)</td></tr>
-<tr><td><strong>Google Ads Manager</strong></td><td>Create and optimize Google Ads campaigns</td><td>Google Ads (OAuth)</td></tr>
-<tr><td><strong>Meta Ads Manager</strong></td><td>Manage Facebook and Instagram ad campaigns</td><td>Meta Ads (OAuth), Facebook (OAuth)</td></tr>
-<tr><td><strong>Newsletter Manager</strong></td><td>Design and send email newsletters</td><td>Brevo, SendGrid, or Mailchimp (API key or OAuth)</td></tr>
-<tr><td><strong>Lead Gen Manager</strong></td><td>Find and enrich leads, run outreach sequences</td><td>Apollo, Lemlist (API key)</td></tr>
-<tr><td><strong>Blog Content Editor</strong></td><td>Write and publish blog posts</td><td>WordPress (API key)</td></tr>
-<tr><td><strong>App Review Support</strong></td><td>Monitor and respond to app store reviews</td><td>App Store, Google Play (API key)</td></tr>
-<tr><td><strong>App Event Manager</strong></td><td>Track and manage mobile app events</td><td>Firebase (API key)</td></tr>
-<tr><td><strong>HubSpot Manager</strong></td><td>Manage CRM contacts, deals, and workflows</td><td>HubSpot (OAuth)</td></tr>
+<tr><td><strong>Blog Content Editor</strong></td><td>Write and publish blog posts (WordPress draft + publish workflow)</td><td>WordPress (App Password), Gmail (optional, for inbox requests)</td></tr>
+<tr><td><strong>Google Ads Manager</strong></td><td>Create and optimize Google Ads campaigns, daily performance reports</td><td>Google Ads (OAuth), Calendarific (platform-managed), Google Drive (optional)</td></tr>
+<tr><td><strong>Meta Ads Manager</strong></td><td>Manage Facebook and Instagram ad campaigns, audience analysis</td><td>Meta Ads (OAuth), Calendarific (platform-managed), Google Drive (optional)</td></tr>
+<tr><td><strong>Newsletter Manager</strong></td><td>Design and send email newsletters to subscriber lists</td><td>Brevo, SendGrid, Mailchimp, HubSpot (any one — API key or OAuth)</td></tr>
+<tr><td><strong>Lead Gen Manager</strong></td><td>Find and enrich leads, run multi-channel outreach, analyze replies</td><td>Apollo (API key), Lemlist (API key), HubSpot (optional, for CRM sync)</td></tr>
+<tr><td><strong>App Review Support</strong></td><td>Monitor app store reviews, draft responses in operator's tone</td><td>App Store Connect (private key JWT), Google Play (service account)</td></tr>
+<tr><td><strong>App Event Manager</strong></td><td>Scan global holidays, suggest and create App Store in-app events</td><td>App Store Connect (JWT), Calendarific (platform-managed)</td></tr>
+<tr><td><strong>Push Notification Manager</strong></td><td>Craft locale- and timezone-aware push notifications, queue dispatch</td><td>Firebase (service account JSON per app), Calendarific (platform-managed)</td></tr>
 </tbody>
 </table></div></div>
+<p class="docs-callout"><em>The list above matches the 9 agent templates currently deployed in production. The exact set can evolve over time; fetch <code>POST /Agent/List</code> for the live catalog.</em></p>
 
 <h3>Deploying an Agent</h3>
 <pre><code class="language-python">import requests

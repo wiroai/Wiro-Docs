@@ -179,6 +179,8 @@ Query params: `mailchimp_connected=true&mailchimp_account=<name>` or `mailchimp_
 
 Response fields: `connected`, `username` (= accountName), `connectedAt`. **No `tokenExpiresAt`, no `refreshTokenExpiresAt`** — tokens don't expire.
 
+> **API key-only mode caveat:** `connected` is computed from `authMethod in {wiro, own}` **and** a non-empty `accessToken`. If you set up Mailchimp via direct API key (no OAuth), `authMethod` and `accessToken` stay empty and `MailchimpStatus.connected` returns `false` — even though the agent runtime is fully functional (the `mailchimp-email` skill reads `$MAILCHIMP_API_KEY` directly via `start.sh`). Don't use `MailchimpStatus.connected` as the source of truth for API key setups; instead, check that `credentials.mailchimp.apiKey` is non-empty in `POST /UserAgent/Detail`.
+
 ### POST /UserAgentOAuth/MailchimpDisconnect
 
 Clears credentials (no remote revoke — Mailchimp doesn't expose a revoke endpoint for OAuth tokens).

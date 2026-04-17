@@ -31,7 +31,7 @@ The TikTok integration uses TikTok's OAuth 2.0 with the Content Posting API.
 
 ## Wiro Mode
 
-Call `TikTokConnect` without `authMethod`, redirect, parse `tiktok_connected=true&tiktok_username=<handle>`.
+Call `TikTokConnect` without `authMethod`, redirect, parse `tiktok_connected=true&tiktok_username=<display_name>` (display name, not the `@handle`).
 
 ## Complete Integration Walkthrough — Own Mode
 
@@ -140,7 +140,7 @@ Response:
 {
   "result": true,
   "connected": true,
-  "username": "creator_handle",
+  "username": "Creator Display Name",
   "connectedAt": "2026-04-17T12:00:00.000Z",
   "tokenExpiresAt": "2026-04-18T12:00:00.000Z",
   "refreshTokenExpiresAt": "2027-04-17T12:00:00.000Z",
@@ -150,7 +150,7 @@ Response:
 
 - Access token: ~1 day (86400s).
 - Refresh token: ~1 year (31536000s).
-- `username` = TikTok handle without `@`.
+- `username` = TikTok **display name** (the creator's public display name as set in their profile), NOT the `@handle`. The handle/URL username is not exposed by TikTok's OAuth `user/info/` endpoint, so Wiro stores `display_name` and returns it as `username`.
 
 ### Step 10: Start the agent
 
@@ -173,7 +173,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ### GET /UserAgentOAuth/TikTokCallback
 
-Query params: `tiktok_connected=true&tiktok_username=<handle>` or `tiktok_error=<code>`.
+Query params: `tiktok_connected=true&tiktok_username=<display_name>` or `tiktok_error=<code>`. `tiktok_username` is TikTok's display name (from the OAuth `user/info/` endpoint's `display_name` field), not the `@handle`.
 
 ### POST /UserAgentOAuth/TikTokStatus
 
