@@ -83,7 +83,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ## Runtime Behavior
 
-Env vars inside the agent container:
+Env vars inside the agent container (exported **only when `wordpress-post` skill is enabled** and `url` is set):
 
 - `WORDPRESS_URL` ← `credentials.wordpress.url`
 - `WORDPRESS_USER` ← `credentials.wordpress.user`

@@ -176,6 +176,10 @@ Response:
 ```json
 {
   "result": true,
+  "folders": [
+    { "id": "1AbC", "name": "Agent Outputs" },
+    { "id": "2XyZ", "name": "2025 Q1" }
+  ],
   "errors": []
 }
 ```
@@ -184,7 +188,7 @@ Requirements:
 
 - `folders` must be a non-empty array.
 - Each item needs `id`; `name` is optional (falls back to empty string).
-- Maximum **5** folders per agent. Extras are truncated.
+- Maximum **5** folders per agent. Sending more than 5 fails with `Maximum 5 folders allowed` — the request is rejected, not truncated.
 
 Triggers agent restart if running.
 
@@ -255,9 +259,9 @@ Response: `{ result, folders: [{id, name}], errors }`.
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `userAgentGuid` | string | Yes | Agent instance GUID. |
-| `folders` | object[] | Yes | Array of `{ id, name? }`. Max 5 items. |
+| `folders` | object[] | Yes | Array of `{ id, name? }`. Max 5 items; sending more returns `Maximum 5 folders allowed`. |
 
-Response: `{ result: true, errors: [] }` + agent restart.
+Response: `{ result: true, folders: [{id, name}], errors: [] }`. Triggers agent restart if running.
 
 ### POST /UserAgentOAuth/GoogleDriveStatus
 

@@ -135,8 +135,8 @@ After the token exchange, Wiro queries `customers:listAccessibleCustomers` and f
 https://your-app.com/settings/integrations?gads_connected=true&gads_accounts=%5B%7B%22id%22%3A%221234567890%22%2C%22name%22%3A%22My%20Client%22%7D%5D
 ```
 
-- `gads_accounts` is only populated when a developer token is available.
-- Each entry: `{ id, name, status }` (status may be empty string).
+- `gads_accounts` is only populated when a developer token is available. If the callback finishes without accessible customers, `gads_accounts` is omitted entirely (not an empty array).
+- Each entry: `{ id, name, status }` — `status` comes from the Google Ads API customer status (e.g. `"ENABLED"`, `"CANCELLED"`) and may be an empty string if the per-customer lookup failed.
 
 ```javascript
 const params = new URLSearchParams(window.location.search);
@@ -274,6 +274,7 @@ See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
 
 | Error code | Meaning | What to do |
 |------------|---------|------------|
+| `missing_params` | Callback hit without `state` or `code`. | Start a new flow from Step 5. |
 | `authorization_denied` | User cancelled, or consent screen in Testing and the user isn't a test user. | Add test user or publish consent screen. |
 | `session_expired` | State cache expired. | Restart. |
 | `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy; verify URL. |

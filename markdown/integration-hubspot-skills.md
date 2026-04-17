@@ -52,20 +52,29 @@ Call `HubSpotConnect` without `authMethod`, redirect, parse `hubspot_connected=t
    https://api.wiro.ai/v1/UserAgentOAuth/HubSpotCallback
    ```
 
-3. Under **Scopes**, select what your agent needs. Typical:
+3. **Scopes** — Wiro requests a fixed scope string plus optional_scopes (verified against `api-useragent-oauth.js` L2551-L2556). Enable **all** of the following in your HubSpot app's Auth tab:
 
-   | Scope | Why |
-   |-------|-----|
-   | `crm.objects.contacts.read` | Read contacts. |
-   | `crm.objects.contacts.write` | Create/update contacts. |
-   | `crm.objects.companies.read` / `.write` | Companies. |
-   | `crm.objects.deals.read` / `.write` | Deals. |
-   | `crm.objects.owners.read` | Pipeline owners. |
-   | `crm.schemas.contacts.read` | Custom contact fields. |
+   **Required `scope` (mandatory — OAuth fails if any is missing):**
+
+   - `crm.objects.contacts.read`
+   - `crm.objects.contacts.write`
+   - `crm.lists.read`
+   - `crm.lists.write`
+   - `oauth`
+
+   **`optional_scope` (granted on consent if enabled, otherwise skipped — Wiro doesn't fail if missing):**
+
+   - `crm.objects.companies.read`
+   - `crm.objects.companies.write`
+   - `crm.objects.deals.read`
+   - `crm.objects.deals.write`
+   - `crm.objects.owners.read`
+   - `crm.schemas.contacts.read`
+   - `files`
 
 4. Save.
 
-> Wiro's authorizeUrl encodes a long space-separated scope list matching HubSpot's CRM scopes — check your agent's needs and select only the required ones on the HubSpot side. Extra scopes you enable but don't need won't break anything; missing scopes cause runtime 403 errors.
+> Wiro's authorize URL is built with this exact scope list — you cannot customize it per integration. Enabling additional scopes in your HubSpot app beyond this set has no effect (Wiro won't request them). If a required scope is missing from your app's configuration, the consent screen will error.
 
 ### Step 3: Copy Client ID and Client Secret
 

@@ -114,6 +114,8 @@ On successful completion (`agent_end`), the `metadata` object contains the struc
 
 For `agent_error` and `agent_cancel`, `metadata` is an empty object `{}`. Always check `status` before accessing metadata fields.
 
+> **Note:** For `agent_error`, the webhook's `response` / `debugoutput` contain the **raw error** from the agent runtime (useful for debugging). The same message may be **sanitized to a user-facing string** when you read it back via `POST /UserAgent/Message/Detail`, so the two can differ. Log the webhook payload if you need the original.
+
 ## Status Values
 
 | Status | Description | `response` contains | `metadata` contains |
@@ -245,4 +247,4 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
 }
 ```
 
-The `agenttoken` can be used to track the message via [WebSocket](/docs/websocket) for real-time streaming, while the webhook delivers the final result to your server.
+The `agenttoken` can be used to track the message via [Agent WebSocket](/docs/agent-websocket) for real-time streaming, while the webhook delivers the final result to your server.

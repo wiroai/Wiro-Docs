@@ -93,7 +93,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 | `appName` | string | Yes | Display name for this project. |
 | `serviceAccountJsonBase64` | string | Yes | Base64-encoded service account JSON. |
 | `apps` | object[] | Yes | `{ platform: "ios" \| "android", id: string }`. `id` is App Store ID for iOS, package name for Android. |
-| `topics` | object[] | Yes | `{ topicKey, topicDesc }`. Topics you've subscribed clients to on the device side. |
+| `topics` | object[] \| object | Yes | Either an array of `{ topicKey, topicDesc }` or a flat object map `{ topicKey: topicDesc, ... }`. Both are accepted; the runtime converts arrays into the map form. Topics you've subscribed clients to on the device side. |
 | `projectId` | string | **No** (derived from service account) | Read from the decoded JSON. |
 
 ### Multi-project setups
@@ -117,7 +117,7 @@ Wiro's merge logic uses positional indexes — sending `accounts[2]` while the t
 
 ## Runtime Behavior
 
-Env vars per account index `idx`:
+Env vars (exported **only when `firebase-push` skill is enabled** and `accounts` is non-empty) per account index `idx`:
 
 - `FIREBASE_APP_COUNT` — total accounts
 - `FIREBASE_{idx}_PROJECT_ID` — from decoded service account JSON
@@ -137,7 +137,7 @@ Base URL: `https://fcm.googleapis.com/v1/projects/<PROJECT_ID>/messages:send`
 
 - **"invalid JWT signature":** Service account JSON corrupt or truncated. Re-export from Firebase Console and re-encode.
 - **No devices receive notifications:** Verify topics are subscribed on the client side and the topic name matches exactly. Check `FIREBASE_{idx}_TOPICS` logs.
-- **Rate limits:** FCM defaults to ~1,800 messages/min per project. Contact Google Cloud support to raise for broadcast use cases.
+- **Rate limits:** FCM supports up to **600,000 messages/minute per project** for HTTP v1 API (see the `firebase-push` skill for topic/condition specifics). Higher volumes require a support request to Google Cloud.
 
 ## Related
 

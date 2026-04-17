@@ -6,10 +6,12 @@ Connect your agent to Brevo (formerly Sendinblue) for transactional and marketin
 
 The Brevo integration uses Brevo API v3 with an `api-key` header (not Bearer).
 
-**Used by:**
+**Skills that use this integration:**
 
-- `newsletter-compose` (agents that use Brevo as the ESP)
-- Custom agents needing email sending
+- `brevo-email` — Campaign, template, and contact management via Brevo API v3
+- `newsletter-compose` — uses Brevo as the ESP when enabled alongside
+
+**Other:** Custom agents can call the Brevo API via whatever skill invokes `BREVO_API_KEY`.
 
 **Agents that typically enable this integration:**
 
@@ -70,7 +72,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ## Runtime Behavior
 
-Env vars:
+Env vars (exported **only when `brevo-email` skill is enabled** and `apiKey` is set):
 
 - `BREVO_API_KEY` ← `credentials.brevo.apiKey`
 

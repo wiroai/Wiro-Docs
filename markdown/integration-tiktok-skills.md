@@ -120,8 +120,10 @@ Response:
 
 ### Step 8: Handle the callback
 
-Success: `?tiktok_connected=true&tiktok_username=<handle>`.
+Success: `?tiktok_connected=true&tiktok_username=<display_name>`.
 Error: `?tiktok_error=<code>`.
+
+> `tiktok_username` in the callback is populated from TikTok's `display_name` field (the creator's public display name), not the handle. The handle/username as it appears in URLs is not exposed by TikTok's OAuth user info endpoint.
 
 ### Step 9: Verify
 
@@ -198,6 +200,7 @@ See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
 
 | Error code | Meaning | What to do |
 |------------|---------|------------|
+| `missing_params` | Callback hit without `state` or `code`. | Start a new OAuth flow. |
 | `authorization_denied` | User cancelled, or scopes not enabled. | Verify scope configuration. |
 | `session_expired` | 15-min state cache expired. | Restart OAuth. |
 | `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy; verify URL. |

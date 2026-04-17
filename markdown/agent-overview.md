@@ -188,7 +188,7 @@ Deploy has two modes depending on `useprepaid`:
 | `configuration` | object | No | Initial credential values (normal deploy only — ignored in prepaid deploy). Format: `{ "credentials": { "key": "value" } }` |
 | `useprepaid` | boolean | No | Set to `true` to pay from wallet balance. Requires `plan`. Defaults to `false` (normal deploy). |
 | `plan` | string | Conditional | Plan tier: `"starter"` or `"pro"`. Required when `useprepaid` is `true`. |
-| `pinned` | boolean | No | Whether the agent appears in the pinned agents list. Defaults to `true`. Set to `false` when deploying programmatically for end users (bulk provisioning). |
+| `pinned` | boolean | No | **Prepaid deploy only.** Whether the agent appears in the pinned agents list (defaults to `true`). Normal deploy ignores this parameter — instances are always pinned on creation. To unpin a normal-deploy agent, call `POST /UserAgent/Pin` afterwards. |
 
 ##### Response
 
@@ -225,7 +225,7 @@ Deploy has two modes depending on `useprepaid`:
 
 ##### Prepaid Deploy
 
-When `useprepaid` is `true`, the wallet is charged immediately. The response includes the created agent with status `6`:
+When `useprepaid` is `true`, the wallet is charged immediately and the agent is created with status `6` (Setup Required). Any `configuration.credentials` passed in the request body are **ignored** in prepaid deploy — call `POST /UserAgent/Update` separately to set credentials.
 
 ```json
 // Request
@@ -246,18 +246,14 @@ When `useprepaid` is `true`, the wallet is charged immediately. The response inc
       "title": "My Lead Gen Agent",
       "status": 6,
       "pinned": false,
-      "setuprequired": true,
-      "subscription": {
-        "plan": "agent-starter",
-        "status": "active",
-        "amount": 49,
-        "currency": "usd",
-        "provider": "prepaid"
-      }
+      "configuration": { /* sanitized, editable-only */ },
+      "createdat": "1714608000"
     }
   ]
 }
 ```
+
+> **Note:** The Deploy response returns the raw useragent row — it does **not** include `setuprequired` or `subscription`. To read those, call `POST /UserAgent/Detail` with the returned `guid`. An `agent-<plan>` subscription row is inserted server-side on prepaid deploy; Detail surfaces it under `subscription.provider = "prepaid"`.
 
 > **Tip:** When deploying agents programmatically for your end users (e.g. one instance per customer), set `"pinned": false` to keep your own dashboard clean. Users can pin agents manually later.
 
@@ -419,7 +415,7 @@ Returns the updated agent instance with setuprequired flag and agent summary. Do
 
 #### **POST** /UserAgent/Start
 
-Starts a stopped agent instance. The agent is moved to Queued (status `2`) and will be picked up by a worker.
+Starts a stopped agent instance. The agent is moved to Queued (status `2`) and picked up by a worker. Also valid for agents in Error state (`5`) — Start re-queues them for another launch attempt.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -460,15 +456,15 @@ Stops a running agent instance. If the agent is Queued (status `2`), it is immed
 
 #### **POST** /UserAgent/CreateExtraCreditCheckout
 
-Purchases additional credits for a Pro plan agent. Deducts from your prepaid wallet balance.
+Purchases additional credits for a Pro plan agent.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentGuid` | string | Yes | Your UserAgent instance guid |
 | `pack` | string | Yes | Credit pack: `package1`, `package2`, or `package3` |
-| `useprepaid` | boolean | Yes | Set to `true` to pay from wallet balance. No redirect needed. |
+| `useprepaid` | boolean | No | Set to `true` to pay from wallet balance (no redirect, credits added immediately). Omit or `false` to get a Stripe checkout URL instead. |
 
-##### Response
+##### Response (prepaid)
 
 ```json
 // Request
@@ -477,11 +473,22 @@ Purchases additional credits for a Pro plan agent. Deducts from your prepaid wal
 {"result": true, "url": null, "errors": []}
 ```
 
-When `result` is `true`, the credits are added immediately from your wallet balance. Credits expire 6 months after purchase.
+##### Response (Stripe checkout)
+
+```json
+// Request
+{"useragentGuid": "your-guid", "pack": "package2"}
+// Response
+{"result": true, "url": "https://checkout.stripe.com/c/pay/...", "errors": []}
+```
+
+When `useprepaid: true` succeeds, credits are added immediately from your wallet balance. When `useprepaid` is omitted, the returned `url` is a Stripe Checkout session you redirect the user to. Credits expire 6 months after purchase regardless of payment method.
 
 #### **POST** /UserAgent/CancelSubscription
 
-Cancels a subscription at the end of the current billing period. The agent remains active until the period ends.
+Cancels a **prepaid** subscription at the end of the current billing period. The agent remains active until the period ends.
+
+**Stripe subscriptions must be cancelled via the Stripe billing portal** — calling this endpoint on a Stripe-backed subscription returns `Stripe subscriptions must be cancelled via Stripe portal`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -606,7 +613,7 @@ Agent-specific errors you may encounter:
 | `No expired subscription found to renew` | RenewSubscription called with no expired subscription |
 | `Insufficient wallet balance. Required: $X, Available: $Y` | Prepaid operation with insufficient funds |
 | `Cannot downgrade from Pro to Starter. Cancel your subscription instead.` | UpgradePlan with downgrade attempt |
-| `Subscription cancellation scheduled` | CancelSubscription success |
+| `Stripe subscriptions must be cancelled via Stripe portal` | CancelSubscription called on a Stripe-backed subscription |
 | `Valid plan required when using prepaid (starter or pro)` | Deploy with useprepaid but missing/invalid plan |
 | `Pricing not available for this plan` | Deploy with useprepaid for agent without pricing |
 | `Renewal pricing not available` | RenewSubscription for agent with zero pricing |

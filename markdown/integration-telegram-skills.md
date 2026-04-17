@@ -103,7 +103,11 @@ Env vars inside the agent container:
 
 - `TELEGRAM_BOT_TOKEN` ← `credentials.telegram.botToken`
 - `GATEWAY_TOKEN` ← internal gateway token
-- `allowedUsers` is rendered into the agent's runtime config as a comma-separated allow-list
+
+`allowedUsers` is **not** an env var. It's serialized two ways during container startup:
+
+1. **JSON file** `/.../credentials/telegram-allowFrom.json` — the full array, used by the gateway to filter incoming messages.
+2. **Template substitution** — `__TELEGRAM_ALLOW_FROM__` in `openclaw.json` (JSON array) and `__TELEGRAM_CHAT_ID__` in `AGENTS.md` (CSV) are replaced at runtime.
 
 The Telegram integration plugin inside the agent is **disabled automatically** if `allowedUsers` is empty or `botToken` is missing — no messages flow.
 

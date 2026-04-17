@@ -61,7 +61,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
   }'
 ```
 
-Only `account` and `appPassword` are editable. The agent template also has `interval` (cron expression for polling frequency) but it's `_editable: false` by default — Wiro's team sets it based on the agent's needs. If your agent needs a custom cadence, contact support.
+Only `account` and `appPassword` are editable. The template also has an `interval` field alongside the credential, but the actual polling cadence is driven by the agent's **scheduled skill** (typically `gmail-checker` or `gmail-check` in `custom_skills`) — not by `credentials.gmail.interval`. To change how often the inbox is polled, update the relevant skill's `interval` via `POST /UserAgent/Update` as described in [Agent Skills](/docs/agent-skills#managing-scheduled-tasks).
 
 ### Step 4: Start the agent
 
@@ -88,7 +88,7 @@ The `gmail-check` skill uses IMAP:
 - Auth: `--user "$GMAIL_ACCOUNT:$GMAIL_APP_PASSWORD"` (Basic-style)
 - Polls on the configured `interval`, processes new messages per agent rules
 
-Env vars inside the agent container:
+Env vars inside the agent container (exported **only when `gmail-check` skill is enabled** and `account` is set):
 
 - `GMAIL_ACCOUNT` ← `credentials.gmail.account`
 - `GMAIL_APP_PASSWORD` ← `credentials.gmail.appPassword`

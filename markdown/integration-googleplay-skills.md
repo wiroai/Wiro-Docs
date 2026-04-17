@@ -118,6 +118,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 Env vars exported **only when `googleplay-reviews` skill is enabled** (not metadata alone):
 
 - `GOOGLE_PLAY_PACKAGE_NAMES` ← `packageNames.join(",")`
+- `GOOGLE_PLAY_SUPPORT_EMAIL` ← `supportEmail`
 
 Secret file:
 

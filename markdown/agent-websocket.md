@@ -55,7 +55,7 @@ The `type` field indicates the event. The `message` field varies by type — it'
 
 ### agent_subscribed
 
-Sent immediately after the server accepts your subscription. The `status` field reflects where the agent currently is in its lifecycle. If the agent already began streaming before you connected, `debugoutput` contains any accumulated text.
+Sent immediately after the server accepts your subscription. The `status` field reflects where the agent currently is in its lifecycle. If the agent already began streaming before you connected, `debugoutput` contains any accumulated text. If the agenttoken is unknown or has no pending message, `debugoutput` is omitted entirely from the payload.
 
 ```json
 {

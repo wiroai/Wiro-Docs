@@ -35,7 +35,7 @@ The Apollo integration uses Apollo's `x-api-key` header authentication.
 
 ### Step 2 (optional): Get a Master API Key
 
-Some Apollo plans require a separate **Master API Key** for sequence management. Find it in **Admin → API keys** (workspace admins only).
+Some Apollo plans require a separate **Master API Key** for the `mixed_people/api_search` endpoint (people search) and for sequence management. Find it in **Admin → API keys** (workspace admins only). Enrichment, lookups, and basic read operations use the standard `apiKey`.
 
 ### Step 3: Save to Wiro
 
@@ -56,7 +56,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
   }'
 ```
 
-`masterApiKey` is optional — omit if your agent only does lead search/enrichment without sequence management.
+`masterApiKey` is optional — omit if your agent only does enrichment and lookups. Required for people search (`mixed_people/api_search`) and sequence management.
 
 ### Step 4: Start the agent
 
@@ -76,7 +76,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ## Runtime Behavior
 
-Env vars:
+Env vars (exported **only when `apollo-sales` skill is enabled** and `apiKey` is set):
 
 - `APOLLO_API_KEY` ← `credentials.apollo.apiKey`
 - `APOLLO_MASTER_KEY` ← `credentials.apollo.masterApiKey` (only if set)

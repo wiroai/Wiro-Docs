@@ -30,9 +30,9 @@ POST /UserAgent/Detail
     "_editable": true
   },
   {
-    "key": "content-scanner",
+    "key": "wiromodel-scanner",
     "value": "",
-    "description": "What content to find and post about",
+    "description": "Scan for new Wiro models and draft social posts",
     "enabled": true,
     "interval": "0 * * * *",
     "_editable": false
@@ -117,7 +117,7 @@ POST /UserAgent/Update
   "configuration": {
     "custom_skills": [
       { "key": "review-scanner", "enabled": true, "interval": "0 */4 * * *" },
-      { "key": "content-scanner", "enabled": false }
+      { "key": "wiromodel-scanner", "enabled": false }
     ]
   }
 }
@@ -209,6 +209,8 @@ This single request:
 
 > **Integration setup guides:** Every skill below that needs a third-party connection links to a dedicated integration page with the full OAuth / API key walkthrough, required scopes or permissions, callback URL, troubleshooting, and multi-tenant architecture notes. See the [Integration Catalog](/docs/agent-credentials#integration-catalog) for the full list.
 
+> **Discovery is canonical.** Skill keys evolve as agent templates are updated. To see the exact keys for a specific agent instance, always fetch `POST /UserAgent/Detail` first — the `configuration.custom_skills` array is the source of truth. The tables below reflect current intended keys but may lag behind the latest agent template revisions; `mergeUserConfig` silently ignores Update requests for keys that don't exist on the instance.
+
 ### Preferences (Editable Instructions)
 
 | Agent | Skill Key | What It Controls |
@@ -266,8 +268,8 @@ Skills that depend on third-party credentials. Follow the linked integration pag
 | `gmail-check` | `gmail` (App Password) | [Gmail Skills](/docs/integration-gmail-skills) |
 | `firebase-push` | `firebase` (Service account) | [Firebase Skills](/docs/integration-firebase-skills) |
 | `wordpress-post` | `wordpress` (App Password) | [WordPress Skills](/docs/integration-wordpress-skills) |
-| `appstore-reviews`, `appstore-metadata`, `appstore-events` | `appstore` (API key) | [App Store Skills](/docs/integration-appstore-skills) |
-| `googleplay-reviews`, `googleplay-metadata` | `googleplay` (Service account) | [Google Play Skills](/docs/integration-googleplay-skills) |
+| `appstore-reviews`, `appstore-metadata`, `appstore-events` | `appstore` (API key) | [App Store Skills](/docs/integration-appstore-skills) — env vars export only when `appstore-reviews` OR `appstore-events` is enabled; metadata-only setups need one of them as well |
+| `googleplay-reviews`, `googleplay-metadata` | `googleplay` (Service account) | [Google Play Skills](/docs/integration-googleplay-skills) — env vars export only when `googleplay-reviews` is enabled; metadata-only setups need it too |
 | `apollo-sales` | `apollo` (API key) | [Apollo Skills](/docs/integration-apollo-skills) |
 | `lemlist-outreach` | `lemlist` (API key) | [Lemlist Skills](/docs/integration-lemlist-skills) |
 | `calendarific`, `wiro-generator`, OpenAI-backed skills | Platform-managed | No setup needed — see [Platform-Managed Credentials](/docs/agent-credentials#platform-managed-credentials) |

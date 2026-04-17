@@ -4582,7 +4582,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
 
 - Only fields marked `_editable: true` in the agent template are accepted. Non-editable fields are silently ignored.
 - Credential groups that don't exist in the template cannot be added — you can only update keys the agent declares.
-- Array credentials (`firebase.accounts`, `appstore.apps`, etc.) use positional indexing. Sending more indices than the template has creates new entries cloned from the template shape, constrained to template-editable fields.
+- Array credentials (`firebase.accounts`, `appstore.apps`, etc.) use positional indexing. Sending more indices than the template has creates new entries cloned from the template shape, constrained to template-editable fields. **Sending fewer indices truncates the array** — if the agent has 3 Firebase accounts and you send only 2, the third is removed.
 - Use `POST /UserAgent/Detail` to inspect the `_editable` map for each credential group.
 
 ### Prepaid deploy gotcha
@@ -4688,10 +4688,13 @@ Provider-specific paths: `MetaAdsCallback`, `FBCallback`, `IGCallback`, `LICallb
 | Mailchimp | `mailchimp_connected=true&mailchimp_account=...` | `mailchimp_error=...` |
 | Google Drive | `gdrive_connected=true&gdrive_folders=[...]` | `gdrive_error=...` |
 
+> **Conditional params:** `gads_accounts` and `gdrive_folders` are omitted from the redirect when the provider returns zero items (for example, no accessible Google Ads customers, or a developer token is missing in Wiro mode). `fb_pages` is always present on success — Facebook returns `fb_error=no_pages` instead when the user has no administered Pages.
+
 Common error codes across providers:
 
 | Code | Meaning |
 |------|---------|
+| `missing_params` | Callback hit without `state` or `code`. |
 | `authorization_denied` | User cancelled, or (Meta Dev Mode) not in App Roles. |
 | `session_expired` | 15-minute OAuth state cache expired. |
 | `token_exchange_failed` | Wrong Client/App Secret or redirect URI mismatch. |
@@ -4699,7 +4702,14 @@ Common error codes across providers:
 | `invalid_config` | Agent has no credentials block for the provider. |
 | `internal_error` | Unexpected server error. |
 
-Each integration page lists any provider-specific error codes.
+Provider-specific codes:
+
+| Code | Provider | Meaning |
+|------|----------|---------|
+| `no_pages` | Facebook | OAuth succeeded but the user administers no Pages. |
+| `template_not_found` | Google Ads (Wiro mode) | Wiro's shared template doesn't have `googleads` credentials; switch to own mode. |
+
+> The `useragent_not_found` error value (snake_case) appears in redirect URLs. The same condition surfaces as `"User agent not found or unauthorized"` in JSON responses from Connect/Disconnect endpoints.
 
 ## Generic OAuth Endpoints
 
@@ -4733,7 +4743,7 @@ Response: `{ "result": true, "errors": [] }`. The agent restarts automatically i
 | `userAgentGuid` | string | Yes | Agent instance GUID. |
 | `provider` | string | Yes | One of: `twitter`, `tiktok`, `instagram`, `facebook`, `linkedin`, `googleads`, `metaads`, `hubspot`, `googledrive`. |
 
-**Mailchimp is not supported** — its tokens don't expire. Calling TokenRefresh with `provider: "mailchimp"` returns an error.
+**Mailchimp is not supported** — its tokens don't expire. Calling TokenRefresh with `provider: "mailchimp"` returns `Invalid provider`.
 
 Response: `{ result: true, accessToken, refreshToken, errors }`.
 
@@ -6543,6 +6553,7 @@ Uses `grant_type=refresh_token`. Returns new access + refresh tokens. See [Autom
 
 | Error code | Meaning | What to do |
 |------------|---------|------------|
+| `missing_params` | Callback reached without `state` or `code`. | Start a new flow from Step 6. |
 | `authorization_denied` | User cancelled, or OAuth 2.0 not enabled in app settings. | Verify OAuth 2.0 setup (Step 2); retry. |
 | `session_expired` | 15-min state cache expired (includes PKCE verifier). | Call `XConnect` again. |
 | `token_exchange_failed` | Wrong Client Secret, redirect URI mismatch, or lost PKCE verifier. | Re-copy Client Secret; verify URL; start over. |
@@ -6695,8 +6706,10 @@ Response:
 
 ### Step 8: Handle the callback
 
-Success: `?tiktok_connected=true&tiktok_username=<handle>`.
+Success: `?tiktok_connected=true&tiktok_username=<display_name>`.
 Error: `?tiktok_error=<code>`.
+
+> `tiktok_username` in the callback is populated from TikTok's `display_name` field (the creator's public display name), not the handle. The handle/username as it appears in URLs is not exposed by TikTok's OAuth user info endpoint.
 
 ### Step 9: Verify
 
@@ -6773,6 +6786,7 @@ See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
 
 | Error code | Meaning | What to do |
 |------------|---------|------------|
+| `missing_params` | Callback hit without `state` or `code`. | Start a new OAuth flow. |
 | `authorization_denied` | User cancelled, or scopes not enabled. | Verify scope configuration. |
 | `session_expired` | 15-min state cache expired. | Restart OAuth. |
 | `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy; verify URL. |
@@ -6935,8 +6949,8 @@ After the token exchange, Wiro queries `customers:listAccessibleCustomers` and f
 https://your-app.com/settings/integrations?gads_connected=true&gads_accounts=%5B%7B%22id%22%3A%221234567890%22%2C%22name%22%3A%22My%20Client%22%7D%5D
 ```
 
-- `gads_accounts` is only populated when a developer token is available.
-- Each entry: `{ id, name, status }` (status may be empty string).
+- `gads_accounts` is only populated when a developer token is available. If the callback finishes without accessible customers, `gads_accounts` is omitted entirely (not an empty array).
+- Each entry: `{ id, name, status }` — `status` comes from the Google Ads API customer status (e.g. `"ENABLED"`, `"CANCELLED"`) and may be an empty string if the per-customer lookup failed.
 
 ```javascript
 const params = new URLSearchParams(window.location.search);
@@ -7074,6 +7088,7 @@ See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
 
 | Error code | Meaning | What to do |
 |------------|---------|------------|
+| `missing_params` | Callback hit without `state` or `code`. | Start a new flow from Step 5. |
 | `authorization_denied` | User cancelled, or consent screen in Testing and the user isn't a test user. | Add test user or publish consent screen. |
 | `session_expired` | State cache expired. | Restart. |
 | `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy; verify URL. |
@@ -7160,20 +7175,29 @@ Call `HubSpotConnect` without `authMethod`, redirect, parse `hubspot_connected=t
    https://api.wiro.ai/v1/UserAgentOAuth/HubSpotCallback
    ```
 
-3. Under **Scopes**, select what your agent needs. Typical:
+3. **Scopes** — Wiro requests a fixed scope string plus optional_scopes (verified against `api-useragent-oauth.js` L2551-L2556). Enable **all** of the following in your HubSpot app's Auth tab:
 
-   | Scope | Why |
-   |-------|-----|
-   | `crm.objects.contacts.read` | Read contacts. |
-   | `crm.objects.contacts.write` | Create/update contacts. |
-   | `crm.objects.companies.read` / `.write` | Companies. |
-   | `crm.objects.deals.read` / `.write` | Deals. |
-   | `crm.objects.owners.read` | Pipeline owners. |
-   | `crm.schemas.contacts.read` | Custom contact fields. |
+   **Required `scope` (mandatory — OAuth fails if any is missing):**
+
+   - `crm.objects.contacts.read`
+   - `crm.objects.contacts.write`
+   - `crm.lists.read`
+   - `crm.lists.write`
+   - `oauth`
+
+   **`optional_scope` (granted on consent if enabled, otherwise skipped — Wiro doesn't fail if missing):**
+
+   - `crm.objects.companies.read`
+   - `crm.objects.companies.write`
+   - `crm.objects.deals.read`
+   - `crm.objects.deals.write`
+   - `crm.objects.owners.read`
+   - `crm.schemas.contacts.read`
+   - `files`
 
 4. Save.
 
-> Wiro's authorizeUrl encodes a long space-separated scope list matching HubSpot's CRM scopes — check your agent's needs and select only the required ones on the HubSpot side. Extra scopes you enable but don't need won't break anything; missing scopes cause runtime 403 errors.
+> Wiro's authorize URL is built with this exact scope list — you cannot customize it per integration. Enabling additional scopes in your HubSpot app beyond this set has no effect (Wiro won't request them). If a required scope is missing from your app's configuration, the consent screen will error.
 
 ### Step 3: Copy Client ID and Client Secret
 
@@ -7771,6 +7795,10 @@ Response:
 ```json
 {
   "result": true,
+  "folders": [
+    { "id": "1AbC", "name": "Agent Outputs" },
+    { "id": "2XyZ", "name": "2025 Q1" }
+  ],
   "errors": []
 }
 ```
@@ -7779,7 +7807,7 @@ Requirements:
 
 - `folders` must be a non-empty array.
 - Each item needs `id`; `name` is optional (falls back to empty string).
-- Maximum **5** folders per agent. Extras are truncated.
+- Maximum **5** folders per agent. Sending more than 5 fails with `Maximum 5 folders allowed` — the request is rejected, not truncated.
 
 Triggers agent restart if running.
 
@@ -7850,9 +7878,9 @@ Response: `{ result, folders: [{id, name}], errors }`.
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `userAgentGuid` | string | Yes | Agent instance GUID. |
-| `folders` | object[] | Yes | Array of `{ id, name? }`. Max 5 items. |
+| `folders` | object[] | Yes | Array of `{ id, name? }`. Max 5 items; sending more returns `Maximum 5 folders allowed`. |
 
-Response: `{ result: true, errors: [] }` + agent restart.
+Response: `{ result: true, folders: [{id, name}], errors: [] }`. Triggers agent restart if running.
 
 ### POST /UserAgentOAuth/GoogleDriveStatus
 
@@ -7975,7 +8003,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
   }'
 ```
 
-Only `account` and `appPassword` are editable. The agent template also has `interval` (cron expression for polling frequency) but it's `_editable: false` by default — Wiro's team sets it based on the agent's needs. If your agent needs a custom cadence, contact support.
+Only `account` and `appPassword` are editable. The template also has an `interval` field alongside the credential, but the actual polling cadence is driven by the agent's **scheduled skill** (typically `gmail-checker` or `gmail-check` in `custom_skills`) — not by `credentials.gmail.interval`. To change how often the inbox is polled, update the relevant skill's `interval` via `POST /UserAgent/Update` as described in [Agent Skills](/docs/agent-skills#managing-scheduled-tasks).
 
 ### Step 4: Start the agent
 
@@ -8002,7 +8030,7 @@ The `gmail-check` skill uses IMAP:
 - Auth: `--user "$GMAIL_ACCOUNT:$GMAIL_APP_PASSWORD"` (Basic-style)
 - Polls on the configured `interval`, processes new messages per agent rules
 
-Env vars inside the agent container:
+Env vars inside the agent container (exported **only when `gmail-check` skill is enabled** and `account` is set):
 
 - `GMAIL_ACCOUNT` ← `credentials.gmail.account`
 - `GMAIL_APP_PASSWORD` ← `credentials.gmail.appPassword`
@@ -8126,7 +8154,11 @@ Env vars inside the agent container:
 
 - `TELEGRAM_BOT_TOKEN` ← `credentials.telegram.botToken`
 - `GATEWAY_TOKEN` ← internal gateway token
-- `allowedUsers` is rendered into the agent's runtime config as a comma-separated allow-list
+
+`allowedUsers` is **not** an env var. It's serialized two ways during container startup:
+
+1. **JSON file** `/.../credentials/telegram-allowFrom.json` — the full array, used by the gateway to filter incoming messages.
+2. **Template substitution** — `__TELEGRAM_ALLOW_FROM__` in `openclaw.json` (JSON array) and `__TELEGRAM_CHAT_ID__` in `AGENTS.md` (CSV) are replaced at runtime.
 
 The Telegram integration plugin inside the agent is **disabled automatically** if `allowedUsers` is empty or `botToken` is missing — no messages flow.
 
@@ -8240,7 +8272,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 | `appName` | string | Yes | Display name for this project. |
 | `serviceAccountJsonBase64` | string | Yes | Base64-encoded service account JSON. |
 | `apps` | object[] | Yes | `{ platform: "ios" \| "android", id: string }`. `id` is App Store ID for iOS, package name for Android. |
-| `topics` | object[] | Yes | `{ topicKey, topicDesc }`. Topics you've subscribed clients to on the device side. |
+| `topics` | object[] \| object | Yes | Either an array of `{ topicKey, topicDesc }` or a flat object map `{ topicKey: topicDesc, ... }`. Both are accepted; the runtime converts arrays into the map form. Topics you've subscribed clients to on the device side. |
 | `projectId` | string | **No** (derived from service account) | Read from the decoded JSON. |
 
 ### Multi-project setups
@@ -8264,7 +8296,7 @@ Wiro's merge logic uses positional indexes — sending `accounts[2]` while the t
 
 ## Runtime Behavior
 
-Env vars per account index `idx`:
+Env vars (exported **only when `firebase-push` skill is enabled** and `accounts` is non-empty) per account index `idx`:
 
 - `FIREBASE_APP_COUNT` — total accounts
 - `FIREBASE_{idx}_PROJECT_ID` — from decoded service account JSON
@@ -8284,7 +8316,7 @@ Base URL: `https://fcm.googleapis.com/v1/projects/<PROJECT_ID>/messages:send`
 
 - **"invalid JWT signature":** Service account JSON corrupt or truncated. Re-export from Firebase Console and re-encode.
 - **No devices receive notifications:** Verify topics are subscribed on the client side and the topic name matches exactly. Check `FIREBASE_{idx}_TOPICS` logs.
-- **Rate limits:** FCM defaults to ~1,800 messages/min per project. Contact Google Cloud support to raise for broadcast use cases.
+- **Rate limits:** FCM supports up to **600,000 messages/minute per project** for HTTP v1 API (see the `firebase-push` skill for topic/condition specifics). Higher volumes require a support request to Google Cloud.
 
 ## Related
 
@@ -8379,7 +8411,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ## Runtime Behavior
 
-Env vars inside the agent container:
+Env vars inside the agent container (exported **only when `wordpress-post` skill is enabled** and `url` is set):
 
 - `WORDPRESS_URL` ← `credentials.wordpress.url`
 - `WORDPRESS_USER` ← `credentials.wordpress.user`
@@ -8674,6 +8706,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 Env vars exported **only when `googleplay-reviews` skill is enabled** (not metadata alone):
 
 - `GOOGLE_PLAY_PACKAGE_NAMES` ← `packageNames.join(",")`
+- `GOOGLE_PLAY_SUPPORT_EMAIL` ← `supportEmail`
 
 Secret file:
 
@@ -8735,7 +8768,7 @@ The Apollo integration uses Apollo's `x-api-key` header authentication.
 
 ### Step 2 (optional): Get a Master API Key
 
-Some Apollo plans require a separate **Master API Key** for sequence management. Find it in **Admin → API keys** (workspace admins only).
+Some Apollo plans require a separate **Master API Key** for the `mixed_people/api_search` endpoint (people search) and for sequence management. Find it in **Admin → API keys** (workspace admins only). Enrichment, lookups, and basic read operations use the standard `apiKey`.
 
 ### Step 3: Save to Wiro
 
@@ -8756,7 +8789,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
   }'
 ```
 
-`masterApiKey` is optional — omit if your agent only does lead search/enrichment without sequence management.
+`masterApiKey` is optional — omit if your agent only does enrichment and lookups. Required for people search (`mixed_people/api_search`) and sequence management.
 
 ### Step 4: Start the agent
 
@@ -8776,7 +8809,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ## Runtime Behavior
 
-Env vars:
+Env vars (exported **only when `apollo-sales` skill is enabled** and `apiKey` is set):
 
 - `APOLLO_API_KEY` ← `credentials.apollo.apiKey`
 - `APOLLO_MASTER_KEY` ← `credentials.apollo.masterApiKey` (only if set)
@@ -8870,7 +8903,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ## Runtime Behavior
 
-Env vars:
+Env vars (exported **only when `lemlist-outreach` skill is enabled** and `apiKey` is set):
 
 - `LEMLIST_API_KEY` ← `credentials.lemlist.apiKey`
 
@@ -8901,10 +8934,12 @@ Connect your agent to Brevo (formerly Sendinblue) for transactional and marketin
 
 The Brevo integration uses Brevo API v3 with an `api-key` header (not Bearer).
 
-**Used by:**
+**Skills that use this integration:**
 
-- `newsletter-compose` (agents that use Brevo as the ESP)
-- Custom agents needing email sending
+- `brevo-email` — Campaign, template, and contact management via Brevo API v3
+- `newsletter-compose` — uses Brevo as the ESP when enabled alongside
+
+**Other:** Custom agents can call the Brevo API via whatever skill invokes `BREVO_API_KEY`.
 
 **Agents that typically enable this integration:**
 
@@ -8965,7 +9000,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ## Runtime Behavior
 
-Env vars:
+Env vars (exported **only when `brevo-email` skill is enabled** and `apiKey` is set):
 
 - `BREVO_API_KEY` ← `credentials.brevo.apiKey`
 
@@ -8996,10 +9031,12 @@ Connect your agent to Twilio SendGrid for transactional and marketing email deli
 
 The SendGrid integration uses standard Bearer authentication with a SendGrid API key.
 
-**Used by:**
+**Skills that use this integration:**
 
-- `newsletter-compose` (agents that use SendGrid as the ESP)
-- Custom agents needing email sending
+- `sendgrid-email` — Marketing and transactional email via SendGrid v3 API
+- `newsletter-compose` — uses SendGrid as the ESP when enabled alongside
+
+**Other:** Custom agents can call the SendGrid API via whatever skill invokes `SENDGRID_API_KEY`.
 
 **Agents that typically enable this integration:**
 
@@ -9063,7 +9100,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ## Runtime Behavior
 
-Env vars:
+Env vars (exported **only when `sendgrid-email` skill is enabled** and `apiKey` is set):
 
 - `SENDGRID_API_KEY` ← `credentials.sendgrid.apiKey`
 
@@ -9117,9 +9154,9 @@ POST /UserAgent/Detail
     "_editable": true
   },
   {
-    "key": "content-scanner",
+    "key": "wiromodel-scanner",
     "value": "",
-    "description": "What content to find and post about",
+    "description": "Scan for new Wiro models and draft social posts",
     "enabled": true,
     "interval": "0 * * * *",
     "_editable": false
@@ -9204,7 +9241,7 @@ POST /UserAgent/Update
   "configuration": {
     "custom_skills": [
       { "key": "review-scanner", "enabled": true, "interval": "0 */4 * * *" },
-      { "key": "content-scanner", "enabled": false }
+      { "key": "wiromodel-scanner", "enabled": false }
     ]
   }
 }
@@ -9294,6 +9331,10 @@ This single request:
 
 ## Available Skills by Agent
 
+> **Integration setup guides:** Every skill below that needs a third-party connection links to a dedicated integration page with the full OAuth / API key walkthrough, required scopes or permissions, callback URL, troubleshooting, and multi-tenant architecture notes. See the [Integration Catalog](/docs/agent-credentials#integration-catalog) for the full list.
+
+> **Discovery is canonical.** Skill keys evolve as agent templates are updated. To see the exact keys for a specific agent instance, always fetch `POST /UserAgent/Detail` first — the `configuration.custom_skills` array is the source of truth. The tables below reflect current intended keys but may lag behind the latest agent template revisions; `mergeUserConfig` silently ignores Update requests for keys that don't exist on the instance.
+
 ### Preferences (Editable Instructions)
 
 | Agent | Skill Key | What It Controls |
@@ -9332,6 +9373,35 @@ This single request:
 | Meta Ads | `audience-scanner` | Audience analysis | Monday 10 AM |
 | Meta Ads | `holiday-ad-planner` | Holiday campaigns | Wednesday 10 AM |
 
+### Skill → Integration Mapping
+
+Skills that depend on third-party credentials. Follow the linked integration page for provider setup, OAuth walkthrough, and troubleshooting.
+
+| Skill | Credentials Required | Integration Guide |
+|-------|---------------------|-------------------|
+| `metaads-manage` | `metaads` (OAuth) | [Meta Ads Skills](/docs/integration-metaads-skills) |
+| `facebookpage-post` | `facebook` (OAuth) | [Facebook Page Skills](/docs/integration-facebook-skills) |
+| `instagram-post` | `instagram` (OAuth) | [Instagram Skills](/docs/integration-instagram-skills) |
+| `linkedin-post` | `linkedin` (OAuth) | [LinkedIn Skills](/docs/integration-linkedin-skills) |
+| `twitterx-post` | `twitter` (OAuth) | [Twitter / X Skills](/docs/integration-twitter-skills) |
+| `tiktok-post` | `tiktok` (OAuth) | [TikTok Skills](/docs/integration-tiktok-skills) |
+| `googleads-manage` | `googleads` (OAuth) | [Google Ads Skills](/docs/integration-googleads-skills) |
+| `hubspot-crm` | `hubspot` (OAuth) | [HubSpot Skills](/docs/integration-hubspot-skills) |
+| `mailchimp-email` | `mailchimp` (OAuth or API key) | [Mailchimp Skills](/docs/integration-mailchimp-skills) |
+| `google-drive` | `googledrive` (OAuth) | [Google Drive Skills](/docs/integration-googledrive-skills) |
+| `gmail-check` | `gmail` (App Password) | [Gmail Skills](/docs/integration-gmail-skills) |
+| `firebase-push` | `firebase` (Service account) | [Firebase Skills](/docs/integration-firebase-skills) |
+| `wordpress-post` | `wordpress` (App Password) | [WordPress Skills](/docs/integration-wordpress-skills) |
+| `appstore-reviews`, `appstore-metadata`, `appstore-events` | `appstore` (API key) | [App Store Skills](/docs/integration-appstore-skills) — env vars export only when `appstore-reviews` OR `appstore-events` is enabled; metadata-only setups need one of them as well |
+| `googleplay-reviews`, `googleplay-metadata` | `googleplay` (Service account) | [Google Play Skills](/docs/integration-googleplay-skills) — env vars export only when `googleplay-reviews` is enabled; metadata-only setups need it too |
+| `apollo-sales` | `apollo` (API key) | [Apollo Skills](/docs/integration-apollo-skills) |
+| `lemlist-outreach` | `lemlist` (API key) | [Lemlist Skills](/docs/integration-lemlist-skills) |
+| `calendarific`, `wiro-generator`, OpenAI-backed skills | Platform-managed | No setup needed — see [Platform-Managed Credentials](/docs/agent-credentials#platform-managed-credentials) |
+
+Agents use `telegram` for operator notifications — see [Telegram Skills](/docs/integration-telegram-skills). Email sending across `brevo` and `sendgrid` — see [Brevo Skills](/docs/integration-brevo-skills) and [SendGrid Skills](/docs/integration-sendgrid-skills).
+
+> **Restart behavior:** Updating `custom_skills` on a running agent (status 3 or 4) triggers an automatic restart (`restartafter: true`) so the new skill configuration is picked up on the next daemon cycle. Same as credential updates.
+
 ## Update Rules
 
 | Field | Editable Skills (`_editable: true`) | System Skills (`_editable: false`) |
@@ -9348,8 +9418,6 @@ This single request:
 - Send empty string `""` for `interval` to clear the schedule (becomes `null`)
 - You can update credentials and skills in the same `POST /UserAgent/Update` request
 
----
-
 # Agent Use Cases
 
 Build products with autonomous AI agents using the Wiro API.
@@ -9364,7 +9432,7 @@ Most agents interact with external services — posting to social media, managin
 
 **Why:** Each customer connects their own accounts. Credentials are bound to the instance, isolated from other customers.
 
-**How:** Call `POST /UserAgent/Deploy` once per customer, then use the [OAuth flow](#agent-credentials--oauth) to connect their accounts.
+**How:** Call `POST /UserAgent/Deploy` once per customer, then use the [OAuth flow](/docs/agent-credentials) to connect their accounts.
 
 #### Real-World Examples
 
@@ -9416,11 +9484,11 @@ Build a fully branded chat experience with no Wiro UI visible to your users.
 2. Start the agent with `POST /UserAgent/Start`
 3. Build your own chat UI
 4. Send messages via `POST /UserAgent/Message/Send`
-5. Stream responses in real-time via [WebSocket](#agent-websocket) using the `agenttoken`
+5. Stream responses in real-time via [WebSocket](/docs/websocket) using the `agenttoken`
 6. Manage conversation history with `POST /UserAgent/Message/History`
 
 ```bash
-# Deploy
+# Deploy (pinned: false keeps your dashboard clean when deploying for end users)
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
@@ -9428,7 +9496,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
     "agentguid": "agent-template-guid",
     "title": "Customer Support Bot",
     "useprepaid": true,
-    "plan": "starter"
+    "plan": "starter",
+    "pinned": false
   }'
 
 # Send a message
@@ -9451,7 +9520,7 @@ For backend-to-backend integrations where you don't need real-time streaming.
 3. Receive the agent's response via HTTP POST to your webhook endpoint
 4. Chain the result into your next workflow step
 
-See [Agent Webhooks](#agent-webhooks) for payload format and retry policy.
+See [Agent Webhooks](/docs/agent-webhooks) for payload format and retry policy.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
@@ -9528,7 +9597,7 @@ agents = requests.post(
 )
 print(agents.json())
 
-# Deploy an instance
+# Deploy an instance (pinned: False for programmatic deployments)
 deploy = requests.post(
     "https://api.wiro.ai/v1/UserAgent/Deploy",
     headers=headers,
@@ -9536,7 +9605,8 @@ deploy = requests.post(
         "agentguid": "social-manager-agent-guid",
         "title": "Acme Corp Social Media",
         "useprepaid": True,
-        "plan": "starter"
+        "plan": "starter",
+        "pinned": False
     }
 )
 useragent_guid = deploy.json()["useragents"][0]["guid"]
@@ -9573,9 +9643,7 @@ message = requests.post(
 print(message.json())
 ```
 
-Browse available agents and their capabilities at [Agent/List](#agent-overview) or in the [Wiro dashboard](https://wiro.ai/agents).
-
----
+Browse available agents and their capabilities via [POST /Agent/List](/docs/agent-overview#post-agentlist) or in the [Wiro dashboard](https://wiro.ai/agents).
 
 # Organizations & Teams
 

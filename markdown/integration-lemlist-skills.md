@@ -68,7 +68,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ## Runtime Behavior
 
-Env vars:
+Env vars (exported **only when `lemlist-outreach` skill is enabled** and `apiKey` is set):
 
 - `LEMLIST_API_KEY` ← `credentials.lemlist.apiKey`
 

@@ -6,10 +6,12 @@ Connect your agent to Twilio SendGrid for transactional and marketing email deli
 
 The SendGrid integration uses standard Bearer authentication with a SendGrid API key.
 
-**Used by:**
+**Skills that use this integration:**
 
-- `newsletter-compose` (agents that use SendGrid as the ESP)
-- Custom agents needing email sending
+- `sendgrid-email` — Marketing and transactional email via SendGrid v3 API
+- `newsletter-compose` — uses SendGrid as the ESP when enabled alongside
+
+**Other:** Custom agents can call the SendGrid API via whatever skill invokes `SENDGRID_API_KEY`.
 
 **Agents that typically enable this integration:**
 
@@ -73,7 +75,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ## Runtime Behavior
 
-Env vars:
+Env vars (exported **only when `sendgrid-email` skill is enabled** and `apiKey` is set):
 
 - `SENDGRID_API_KEY` ← `credentials.sendgrid.apiKey`
 

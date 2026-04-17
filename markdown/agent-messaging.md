@@ -7,7 +7,7 @@ Send messages to AI agents and receive streaming responses in real time.
 Agent messaging follows the same async pattern as [model runs](/docs/run-a-model):
 
 1. **Send** a message via REST → get an `agenttoken` immediately
-2. **Subscribe** to [WebSocket](/docs/websocket) with the `agenttoken` → receive streaming response chunks
+2. **Subscribe** to [Agent WebSocket](/docs/agent-websocket) with the `agenttoken` → receive streaming response chunks
 3. **Or poll** via the Detail endpoint to check status and fetch the completed response
 4. **Or set** a `callbackurl` to receive a webhook notification when the agent finishes
 
@@ -34,12 +34,15 @@ Every agent message progresses through a defined set of stages:
 
 Sends a user message to a deployed agent. The agent must be in running state (status `4`). Returns immediately with an `agenttoken` that you use to track the response via WebSocket, polling, or webhook.
 
+Accepts either `application/json` (text-only) or `multipart/form-data` (text + file attachments). When sending files, the `message` field can be empty — the agent receives the attachments and any accompanying text.
+
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | The agent instance GUID (from Deploy or MyAgents). |
-| `message` | string | Yes | The user message text to send to the agent. |
+| `message` | string | Conditional | The user message text. Required unless sending files via multipart. |
 | `sessionkey` | string | No | Session identifier for conversation continuity. Defaults to `"default"`. |
 | `callbackurl` | string | No | Webhook URL — the system will POST the final response to this URL when the agent finishes. |
+| `attachment` / `attachments[]` | file | No | Multipart only — one or more file attachments that the agent can process. |
 
 ### Response
 
@@ -102,9 +105,11 @@ Retrieves the current status and content of a single message. You can query by e
 | `debugoutput` | `string` | Accumulated output text. Updated during streaming, contains the full response after completion. |
 | `status` | `string` | Current message status (see Message Lifecycle). |
 | `metadata` | `string` | JSON string containing structured response data — `thinking`, `answer`, `raw`, speed metrics, and token/word counts. |
+| `attachments` | `array` | Present only if the message was sent via multipart with files. Array of file metadata objects. |
+| `deletestatus` | `number` | Internal flag. `0` for normal messages. |
 | `createdat` | `string` | Unix timestamp when the message was created. |
 | `startedat` | `string` | Unix timestamp when the agent started processing. |
-| `endedat` | `string` | Unix timestamp when processing completed. |
+| `endedat` | `string` | Unix timestamp when processing completed. May be empty for `agent_cancel` (cancel only sets `status` and `updatedat`). |
 
 ## **POST** /UserAgent/Message/History
 
@@ -116,6 +121,8 @@ Retrieves conversation history for a specific agent and session. Messages are re
 | `sessionkey` | string | No | Session identifier. Defaults to `"default"`. |
 | `limit` | number | No | Maximum number of messages to return. Defaults to `50`, max `200`. |
 | `before` | string | No | Message GUID to use as cursor — returns only messages created before this one. Omit for the most recent messages. |
+
+> **Team agents:** If the agent's `teamSessionMode` is `collaborative`, History returns messages from **all team members** in the session. In the default `private` mode, History only returns messages sent by the caller's own `uuid`. Same applies to `Sessions` listing.
 
 ### Response
 
@@ -144,7 +151,7 @@ Retrieves conversation history for a specific agent and session. Messages are re
         "createdat": "1743350300"
       }
     ],
-    "count": 1,
+    "count": 2,
     "hasmore": false
   }
 }

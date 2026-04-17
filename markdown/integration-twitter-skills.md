@@ -242,6 +242,7 @@ Uses `grant_type=refresh_token`. Returns new access + refresh tokens. See [Autom
 
 | Error code | Meaning | What to do |
 |------------|---------|------------|
+| `missing_params` | Callback reached without `state` or `code`. | Start a new flow from Step 6. |
 | `authorization_denied` | User cancelled, or OAuth 2.0 not enabled in app settings. | Verify OAuth 2.0 setup (Step 2); retry. |
 | `session_expired` | 15-min state cache expired (includes PKCE verifier). | Call `XConnect` again. |
 | `token_exchange_failed` | Wrong Client Secret, redirect URI mismatch, or lost PKCE verifier. | Re-copy Client Secret; verify URL; start over. |

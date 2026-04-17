@@ -84,7 +84,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
 
 - Only fields marked `_editable: true` in the agent template are accepted. Non-editable fields are silently ignored.
 - Credential groups that don't exist in the template cannot be added — you can only update keys the agent declares.
-- Array credentials (`firebase.accounts`, `appstore.apps`, etc.) use positional indexing. Sending more indices than the template has creates new entries cloned from the template shape, constrained to template-editable fields.
+- Array credentials (`firebase.accounts`, `appstore.apps`, etc.) use positional indexing. Sending more indices than the template has creates new entries cloned from the template shape, constrained to template-editable fields. **Sending fewer indices truncates the array** — if the agent has 3 Firebase accounts and you send only 2, the third is removed.
 - Use `POST /UserAgent/Detail` to inspect the `_editable` map for each credential group.
 
 ### Prepaid deploy gotcha
@@ -190,10 +190,13 @@ Provider-specific paths: `MetaAdsCallback`, `FBCallback`, `IGCallback`, `LICallb
 | Mailchimp | `mailchimp_connected=true&mailchimp_account=...` | `mailchimp_error=...` |
 | Google Drive | `gdrive_connected=true&gdrive_folders=[...]` | `gdrive_error=...` |
 
+> **Conditional params:** `gads_accounts` and `gdrive_folders` are omitted from the redirect when the provider returns zero items (for example, no accessible Google Ads customers, or a developer token is missing in Wiro mode). `fb_pages` is always present on success — Facebook returns `fb_error=no_pages` instead when the user has no administered Pages.
+
 Common error codes across providers:
 
 | Code | Meaning |
 |------|---------|
+| `missing_params` | Callback hit without `state` or `code`. |
 | `authorization_denied` | User cancelled, or (Meta Dev Mode) not in App Roles. |
 | `session_expired` | 15-minute OAuth state cache expired. |
 | `token_exchange_failed` | Wrong Client/App Secret or redirect URI mismatch. |
@@ -201,7 +204,14 @@ Common error codes across providers:
 | `invalid_config` | Agent has no credentials block for the provider. |
 | `internal_error` | Unexpected server error. |
 
-Each integration page lists any provider-specific error codes.
+Provider-specific codes:
+
+| Code | Provider | Meaning |
+|------|----------|---------|
+| `no_pages` | Facebook | OAuth succeeded but the user administers no Pages. |
+| `template_not_found` | Google Ads (Wiro mode) | Wiro's shared template doesn't have `googleads` credentials; switch to own mode. |
+
+> The `useragent_not_found` error value (snake_case) appears in redirect URLs. The same condition surfaces as `"User agent not found or unauthorized"` in JSON responses from Connect/Disconnect endpoints.
 
 ## Generic OAuth Endpoints
 
@@ -235,7 +245,7 @@ Response: `{ "result": true, "errors": [] }`. The agent restarts automatically i
 | `userAgentGuid` | string | Yes | Agent instance GUID. |
 | `provider` | string | Yes | One of: `twitter`, `tiktok`, `instagram`, `facebook`, `linkedin`, `googleads`, `metaads`, `hubspot`, `googledrive`. |
 
-**Mailchimp is not supported** — its tokens don't expire. Calling TokenRefresh with `provider: "mailchimp"` returns an error.
+**Mailchimp is not supported** — its tokens don't expire. Calling TokenRefresh with `provider: "mailchimp"` returns `Invalid provider`.
 
 Response: `{ result: true, accessToken, refreshToken, errors }`.
 
