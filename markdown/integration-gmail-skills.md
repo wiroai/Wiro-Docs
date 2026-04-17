@@ -82,6 +82,20 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 | `appPassword` | string | Yes | 16-character Google App Password. Spaces allowed. |
 | `interval` | cron string | **No** (template-controlled) | Polling frequency. Example: `*/8 * * * *` (every 8 minutes). |
 
+## Credentials schema (as returned by `POST /UserAgent/Detail`)
+
+```json
+"gmail": {
+  "optional": true,
+  "account": "",
+  "appPassword": "",
+  "_editable": {
+    "account": true,
+    "appPassword": true
+  }
+}
+```
+
 ## Runtime Behavior
 
 The `gmail-check` skill uses IMAP:

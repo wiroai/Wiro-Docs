@@ -90,11 +90,11 @@ Retrieves the current status and content of a single message. You can query by e
     "debugoutput": "Here are the key AI trends for 2026...",
     "status": "agent_end",
     "metadata": {
-      "type": "agent_end",
-      "task": "What are the latest trends in AI?",
+      "type": "progressGenerate",
+      "task": "Generate",
       "speed": "14.2",
-      "speedType": "token",
-      "elapsedTime": 7430,
+      "speedType": "words/s",
+      "elapsedTime": "8.1s",
       "tokenCount": 105,
       "wordCount": 118,
       "raw": "Here are the key AI trends for 2026...",
@@ -103,6 +103,7 @@ Retrieves the current status and content of a single message. You can query by e
       "isThinking": false
     },
     "attachments": [],
+    "deletestatus": 0,
     "createdat": "1743350400",
     "startedat": "1743350401",
     "endedat": "1743350408"
@@ -119,8 +120,8 @@ Retrieves the current status and content of a single message. You can query by e
 | `response` | `string` | The agent's full response text. Empty until `agent_end`. |
 | `debugoutput` | `string` | Accumulated output text. Updated during streaming, contains the full response after completion. |
 | `status` | `string` | Current message status (see Message Lifecycle). |
-| `metadata` | `object` | Parsed JSON object (API returns it already decoded). Populated from the agent bridge on `agent_end`. Fields: `type` (event type, e.g. `"agent_end"`), `task` (user input summary), `speed` (tokens/sec), `speedType` (`"token"`), `elapsedTime` (ms), `tokenCount`, `wordCount`, `raw` (full output), `thinking` (array of `<think>` blocks), `answer` (array of post-think answer chunks), `isThinking` (false when answer finalized). Empty object `{}` for `agent_error`, `agent_cancel`, or when the bridge hasn't finished yet. |
-| `attachments` | `array` | Present only if the message was sent via multipart with files. Array of `{url, name, type, size}` entries — each file metadata is already URL-resolved server-side (no further lookup needed). Absent when the message had no attachments. Identical shape in `Message/History` rows. |
+| `metadata` | `object` | Parsed JSON object (API returns it already decoded). Populated from the agent bridge on `agent_end`. Fields produced by the bridge's `finalMessage` builder: `type` — always the literal `"progressGenerate"` (not the message status); `task` — always the literal `"Generate"`; `speed` — numeric words-per-second value (e.g. `14.2`); `speedType` — always `"words/s"`; `elapsedTime` — human string with unit, e.g. `"8.1s"` (NOT a number); `tokenCount`, `wordCount` — integers; `raw` — the full accumulated response text; `thinking` — array of reasoning blocks extracted from `<think>...</think>`; `answer` — array of answer chunks stripped of `<think>`; `isThinking` — always `false` in the final payload. Empty object `{}` for `agent_error`, `agent_cancel`, or when the bridge hasn't finished yet. Message status lives in the top-level `status` field — don't read it from `metadata.type`. |
+| `attachments` | `array` | Always present as an array — empty `[]` for text-only messages. When the message was sent via multipart with files, each entry is a resolved `{url, name, type, size}` object (no further file-lookup needed). Identical shape in `Message/History` rows. |
 | `deletestatus` | `number` | Internal flag. `0` for normal messages. |
 | `createdat` | `string` | Unix timestamp when the message was created. |
 | `startedat` | `string` | Unix timestamp when the agent started processing. |
@@ -153,8 +154,9 @@ Retrieves conversation history for a specific agent and session. Messages are re
         "response": "Here are the key AI trends for 2026...",
         "debugoutput": "Here are the key AI trends for 2026...",
         "status": "agent_end",
-        "metadata": { "type": "agent_end", "raw": "Here are the key AI trends for 2026...", "thinking": [], "answer": ["Here are the key AI trends for 2026..."], "isThinking": false },
+        "metadata": { "type": "progressGenerate", "task": "Generate", "speed": "14.2", "speedType": "words/s", "elapsedTime": "8.1s", "tokenCount": 105, "wordCount": 118, "raw": "Here are the key AI trends for 2026...", "thinking": [], "answer": ["Here are the key AI trends for 2026..."], "isThinking": false },
         "attachments": [],
+        "deletestatus": 0,
         "createdat": "1743350400"
       },
       {
@@ -165,6 +167,7 @@ Retrieves conversation history for a specific agent and session. Messages are re
         "status": "agent_end",
         "metadata": {},
         "attachments": [],
+        "deletestatus": 0,
         "createdat": "1743350300"
       }
     ],

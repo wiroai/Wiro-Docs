@@ -4413,7 +4413,7 @@ import type {
 </tbody>
 </table></div></div>
 
-<h3>Response</h3>
+<h3>Response — prepaid instance (the API deploy pattern)</h3>
 <pre><code class="language-json">{
   "result": true,
   "errors": [],
@@ -4421,9 +4421,13 @@ import type {
     {
       "id": 47,
       "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+      "uuid": "your-user-uuid",
       "agentid": 5,
+      "teamguid": null,
       "title": "My Instagram Bot",
+      "description": null,
       "status": 4,
+      "pinned": false,
       "setuprequired": false,
       "configuration": {
         "credentials": {
@@ -4434,6 +4438,16 @@ import type {
             "igUsername": "myaccount",
             "connectedAt": "2025-04-01T12:00:00.000Z"
           }
+        },
+        "custom_skills": [
+          { "key": "content-tone", "description": "Brand voice + posting rules", "value": "## Brand Voice\nTone: friendly\n...", "enabled": true, "interval": null, "_editable": true },
+          { "key": "content-scanner", "description": "Content discovery cron", "value": "", "enabled": true, "interval": "0 */4 * * *", "_editable": false }
+        ],
+        "skills": { "instagram-post": true, "wiro-generator": true },
+        "rateLimit": {
+          "monthlyCredits": 5000,
+          "extraCredits": 2000,
+          "actionTypes": { "message": 10, "create": 60, "modify": 20, "regenerate": 20 }
         }
       },
       "subscription": {
@@ -4459,10 +4473,47 @@ import type {
       },
       "extracredits": 2000,
       "extracreditsexpiry": 1730419200,
-      "createdat": "1714608000",
-      "updatedat": "1714694400",
-      "startedat": "1714694400",
-      "runningat": "1714694410"
+      "createdat": 1714608000,
+      "updatedat": 1714694400,
+      "startedat": 1714694400,
+      "runningat": 1714694410
+    }
+  ]
+}</code></pre>
+
+<h3>Response — Stripe-subscription instance</h3>
+<p>The Stripe path (panel/UI deploy flow) adds three billing portal URLs; prepaid instances don't have these fields at all.</p>
+<pre><code class="language-json">{
+  "result": true,
+  "errors": [],
+  "useragents": [
+    {
+      "id": 48,
+      "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "agentid": 5,
+      "title": "Stripe-subscribed Instagram Bot",
+      "status": 4,
+      "setuprequired": false,
+      "configuration": { /* same sanitized shape as prepaid response */ },
+      "subscription": {
+        "plan": "agent-pro",
+        "status": "active",
+        "amount": 29,
+        "currency": "usd",
+        "currentperiodend": 1717200000,
+        "renewaldate": "2026-06-01T00:00:00.000Z",
+        "daysremaining": 62,
+        "pendingdowngrade": null,
+        "provider": "stripe"
+      },
+      "agent": { /* agent summary */ },
+      "extracredits": 0,
+      "extracreditsexpiry": null,
+      "stripeportalurl": "https://billing.stripe.com/p/session/xxxxxxxx",
+      "stripeupdateurl": "https://billing.stripe.com/p/session/xxxxxxxx/subscriptions/update",
+      "stripecancelurl": "https://billing.stripe.com/p/session/xxxxxxxx/subscriptions/cancel",
+      "createdat": 1714608000,
+      "updatedat": 1714694400
     }
   ]
 }</code></pre>
@@ -4475,12 +4526,15 @@ import type {
 <tr><td><code>title</code></td><td><code>string</code></td><td>Display name you gave this instance.</td></tr>
 <tr><td><code>status</code></td><td><code>number</code></td><td>Current status code (see UserAgent Statuses).</td></tr>
 <tr><td><code>setuprequired</code></td><td><code>boolean</code></td><td><code>true</code> if credentials are missing or incomplete.</td></tr>
-<tr><td><code>configuration</code></td><td><code>object</code></td><td>Credential fields with values (passwords are masked).</td></tr>
+<tr><td><code>configuration</code></td><td><code>object</code></td><td>Sanitized <code>{ credentials, custom_skills, skills, agent_skills }</code> — non-editable sensitive fields (OAuth access tokens, platform <code>wiro.apiKey</code>, <code>openai.apiKey</code>, etc.) are hidden.</td></tr>
 <tr><td><code>subscription</code></td><td><code>object|null</code></td><td>Active subscription info, or <code>null</code> if no subscription.</td></tr>
 <tr><td><code>agent</code></td><td><code>object</code></td><td>Parent agent template info (title, slug, cover, pricing).</td></tr>
 <tr><td><code>extracredits</code></td><td><code>number</code></td><td>Remaining extra credits purchased for this instance.</td></tr>
 <tr><td><code>extracreditsexpiry</code></td><td><code>number|null</code></td><td>Unix timestamp when the earliest extra credit pack expires.</td></tr>
-<tr><td><code>subscription.provider</code></td><td><code>string</code></td><td>Payment provider (<code>"prepaid"</code>).</td></tr>
+<tr><td><code>stripeportalurl</code></td><td><code>string|undefined</code></td><td><strong>Stripe-only.</strong> One-shot Stripe billing portal session URL. Only present when <code>subscription.provider === "stripe"</code>. Omitted for prepaid.</td></tr>
+<tr><td><code>stripeupdateurl</code></td><td><code>string|undefined</code></td><td><strong>Stripe-only.</strong> Deep link into plan-update flow. Same conditions as <code>stripeportalurl</code>.</td></tr>
+<tr><td><code>stripecancelurl</code></td><td><code>string|undefined</code></td><td><strong>Stripe-only.</strong> Deep link into cancellation flow. Use this URL for the "Cancel subscription" button — do NOT call <code>POST /UserAgent/CancelSubscription</code> on Stripe subscriptions.</td></tr>
+<tr><td><code>subscription.provider</code></td><td><code>string</code></td><td>Payment provider: <code>"prepaid"</code> (credits wallet) or <code>"stripe"</code> (subscription).</td></tr>
 </tbody>
 </table></div></div>
 
@@ -4880,11 +4934,11 @@ import type {
     "debugoutput": "Here are the key AI trends for 2026...",
     "status": "agent_end",
     "metadata": {
-      "type": "agent_end",
-      "task": "What are the latest trends in AI?",
+      "type": "progressGenerate",
+      "task": "Generate",
       "speed": "14.2",
-      "speedType": "token",
-      "elapsedTime": 7430,
+      "speedType": "words/s",
+      "elapsedTime": "8.1s",
       "tokenCount": 105,
       "wordCount": 118,
       "raw": "Here are the key AI trends for 2026...",
@@ -4893,6 +4947,7 @@ import type {
       "isThinking": false
     },
     "attachments": [],
+    "deletestatus": 0,
     "createdat": "1743350400",
     "startedat": "1743350401",
     "endedat": "1743350408"
@@ -5651,11 +5706,12 @@ ws.onopen = () => {
   "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
   "status": "agent_cancel",
   "content": "What are today's trending topics?",
-  "response": "The operation was aborted.",
-  "debugoutput": "The operation was aborted.",
+  "response": "AbortError",
+  "debugoutput": "AbortError",
   "metadata": {},
   "endedat": 1712050004
 }</code></pre>
+<p class="docs-callout">The <code>response</code> and <code>debugoutput</code> fields contain the raw abort reason from the runtime — typically <code>"AbortError"</code> or a short technical string. Do not rely on a specific fixed user-facing message; use <code>status === "agent_cancel"</code> as the signal.</p>
 
 <p class="docs-callout"><strong>When the cancel webhook fires:</strong> <code>agent_cancel</code> is delivered <strong>only when the agent bridge catches an <code>AbortError</code></strong> during active processing — i.e. the message had already started on the agent side and was aborted mid-flight (via <code>POST /UserAgent/Message/Cancel</code> or an upstream timeout). For messages cancelled <strong>before</strong> they reach the bridge (still queued, or an instant <code>Message/Cancel</code> that beats dispatching), the message is marked <code>agent_cancel</code> in the database and returned as such in <code>POST /UserAgent/Message/Detail</code>, but <strong>no webhook is fired</strong>. Use <code>POST /UserAgent/Message/Detail</code> (checking <code>status === "agent_cancel"</code>) as the canonical source of truth for cancellation; WebSocket subscribers receive the <code>agent_cancel</code> event only on active-processing aborts (same condition as the webhook). Treat the webhook as a best-effort "processing was interrupted" signal.</p>
 

@@ -204,10 +204,9 @@ Prepaid deploy (`useprepaid: true` + `plan`) charges your wallet immediately and
 
 > **Panel/UI note:** the non-prepaid Deploy mode (omit `useprepaid`) exists for the Wiro dashboard's interactive deploy flow where end users pay via Stripe subscription with a browser redirect. That path also accepts `configuration.credentials` and `configuration.custom_skills` in the body (merged via `mergeUserConfig`), but API integrations should always use prepaid deploy and set credentials with a follow-up `UserAgent/Update` call.
 
-##### Request (recommended API pattern)
+##### Request body (recommended API pattern)
 
 ```json
-POST /UserAgent/Deploy
 {
   "agentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "title": "My Instagram Bot",
@@ -274,6 +273,8 @@ Lists all agent instances deployed under your account.
 | `start` | number | No | Offset for pagination. Default: `0` |
 | `category` | string | No | Filter by category |
 
+> **Pagination:** the response does not include a `total` count. To know if there are more pages, call with `limit: 20` and inspect the returned array length — if it equals your `limit`, paginate further by incrementing `start` (e.g. `start: 20, 40, 60, ...`) until you get fewer rows than your `limit`.
+
 ##### Response
 
 ```json
@@ -329,7 +330,7 @@ Retrieves full details for a single deployed agent instance, including subscript
 |-----------|------|----------|-------------|
 | `guid` | string | Yes | Your UserAgent instance guid |
 
-##### Response
+##### Response — prepaid instance (the API deploy pattern)
 
 ```json
 {
@@ -339,9 +340,13 @@ Retrieves full details for a single deployed agent instance, including subscript
     {
       "id": 47,
       "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+      "uuid": "your-user-uuid",
       "agentid": 5,
+      "teamguid": null,
       "title": "My Instagram Bot",
+      "description": null,
       "status": 4,
+      "pinned": false,
       "setuprequired": false,
       "configuration": {
         "credentials": {
@@ -351,7 +356,42 @@ Retrieves full details for a single deployed agent instance, including subscript
             "authMethod": "wiro",
             "igUsername": "myaccount",
             "connectedAt": "2025-04-01T12:00:00.000Z"
+          },
+          "openai": {
+            "_editable": { "apiKey": false, "model": false, "fallbacks": false, "cronModel": false },
+            "optional": false,
+            "model": "openai/gpt-5.2",
+            "fallbacks": "openai/gpt-5-mini",
+            "cronModel": "openai/gpt-5-mini"
           }
+        },
+        "custom_skills": [
+          {
+            "key": "content-tone",
+            "description": "Content strategy, brand voice, and posting rules",
+            "value": "## Brand Voice\nTone: friendly\nTarget Audience: ...",
+            "enabled": true,
+            "interval": null,
+            "_editable": true
+          },
+          {
+            "key": "content-scanner",
+            "description": "Content discovery with rotating strategies",
+            "value": "",
+            "enabled": true,
+            "interval": "0 */4 * * *",
+            "_editable": false
+          }
+        ],
+        "skills": {
+          "twitterx-post": true,
+          "instagram-post": true,
+          "wiro-generator": true
+        },
+        "rateLimit": {
+          "monthlyCredits": 5000,
+          "extraCredits": 2000,
+          "actionTypes": { "message": 10, "create": 60, "modify": 20, "regenerate": 20 }
         }
       },
       "subscription": {
@@ -370,6 +410,7 @@ Retrieves full details for a single deployed agent instance, including subscript
         "title": "Instagram Manager",
         "slug": "instagram-manager",
         "cover": "https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp",
+        "categories": ["social-media", "marketing"],
         "pricing": {
           "starter": { "price": 9, "credits": 1000 },
           "pro": { "price": 29, "credits": 5000 }
@@ -377,13 +418,55 @@ Retrieves full details for a single deployed agent instance, including subscript
       },
       "extracredits": 2000,
       "extracreditsexpiry": 1730419200,
-      "stripeportalurl": "https://billing.stripe.com/p/session/...",
-      "stripeupdateurl": "https://billing.stripe.com/p/session/.../subscriptions/update",
-      "stripecancelurl": "https://billing.stripe.com/p/session/.../subscriptions/cancel",
-      "createdat": "1714608000",
-      "updatedat": "1714694400",
-      "startedat": "1714694400",
-      "runningat": "1714694410"
+      "createdat": 1714608000,
+      "updatedat": 1714694400,
+      "startedat": 1714694400,
+      "runningat": 1714694410
+    }
+  ]
+}
+```
+
+##### Response — Stripe-subscription instance
+
+The Stripe path (panel/UI deploy flow) adds three billing portal URLs; prepaid instances don't have these fields at all.
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "useragents": [
+    {
+      "id": 48,
+      "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "uuid": "your-user-uuid",
+      "agentid": 5,
+      "title": "Stripe-subscribed Instagram Bot",
+      "status": 4,
+      "pinned": true,
+      "setuprequired": false,
+      "configuration": { /* same sanitized shape as above */ },
+      "subscription": {
+        "plan": "agent-pro",
+        "status": "active",
+        "amount": 29,
+        "currency": "usd",
+        "currentperiodend": 1717200000,
+        "renewaldate": "2026-06-01T00:00:00.000Z",
+        "daysremaining": 62,
+        "pendingdowngrade": null,
+        "provider": "stripe"
+      },
+      "agent": { /* agent summary */ },
+      "extracredits": 0,
+      "extracreditsexpiry": null,
+      "stripeportalurl": "https://billing.stripe.com/p/session/xxxxxxxx",
+      "stripeupdateurl": "https://billing.stripe.com/p/session/xxxxxxxx/subscriptions/update",
+      "stripecancelurl": "https://billing.stripe.com/p/session/xxxxxxxx/subscriptions/cancel",
+      "createdat": 1714608000,
+      "updatedat": 1714694400,
+      "startedat": 1714694400,
+      "runningat": 1714694410
     }
   ]
 }
@@ -422,7 +505,40 @@ Updates an agent instance's configuration, title, or description. If the agent i
 
 ##### Response
 
-Returns the updated agent instance with setuprequired flag and agent summary. Does not include subscription — use UserAgent/Detail for the full view.
+```json
+{
+  "result": true,
+  "errors": [],
+  "useragents": [
+    {
+      "id": 47,
+      "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+      "uuid": "your-user-uuid",
+      "agentid": 5,
+      "title": "My Instagram Bot",
+      "description": null,
+      "status": 0,
+      "pinned": false,
+      "setuprequired": false,
+      "configuration": {
+        "credentials": { "instagram": { "_editable": { "authMethod": true }, "authMethod": "wiro", "igUsername": "myaccount", "connectedAt": "2025-04-01T12:00:00.000Z" } },
+        "custom_skills": [ /* same shape as Detail */ ],
+        "skills": { "instagram-post": true }
+      },
+      "agent": {
+        "id": 5,
+        "title": "Instagram Manager",
+        "slug": "instagram-manager",
+        "pricing": { "starter": { "price": 9, "credits": 1000 }, "pro": { "price": 29, "credits": 5000 } }
+      },
+      "createdat": 1714608000,
+      "updatedat": 1714694400
+    }
+  ]
+}
+```
+
+Returns the updated instance (same `configuration` sanitization as `Detail`) plus the `setuprequired` flag and `agent` summary. No `subscription` — call `UserAgent/Detail` for that.
 
 #### **POST** /UserAgent/Start
 
@@ -437,11 +553,14 @@ Starts a stopped agent instance. The agent is moved to Queued (status `2`) and p
 ```json
 {
   "result": true,
-  "errors": []
+  "errors": [],
+  "useragents": []
 }
 ```
 
-Start will fail with a descriptive error if:
+> `useragents` is always returned (empty array on Start) because the endpoint uses the shared `UserAgentResultModel` — just `result` and `errors` carry the outcome here.
+
+Start will fail (returns `{ "result": false, "errors": [...] }`) if:
 - The agent is already running or queued
 - The agent is currently stopping
 - Setup is incomplete (status `6`)
@@ -461,7 +580,8 @@ Stops a running agent instance. If the agent is Queued (status `2`), it is immed
 ```json
 {
   "result": true,
-  "errors": []
+  "errors": [],
+  "useragents": []
 }
 ```
 

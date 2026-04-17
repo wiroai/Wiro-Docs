@@ -81,6 +81,22 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 | `user` | string | WordPress username the Application Password belongs to. |
 | `appPassword` | string | 24-character Application Password. |
 
+## Credentials schema (as returned by `POST /UserAgent/Detail`)
+
+```json
+"wordpress": {
+  "optional": false,
+  "url": "",
+  "user": "",
+  "appPassword": "",
+  "_editable": {
+    "url": true,
+    "user": true,
+    "appPassword": true
+  }
+}
+```
+
 ## Runtime Behavior
 
 Env vars inside the agent container (exported **only when `wordpress-post` skill is enabled** and `url` is set):

@@ -70,6 +70,16 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 |-------|------|-------------|
 | `apiKey` | string | Brevo v3 API key (starts with `xkeysib-`). |
 
+## Credentials schema (as returned by `POST /UserAgent/Detail`)
+
+```json
+"brevo": {
+  "optional": true,
+  "apiKey": "",
+  "_editable": { "apiKey": true }
+}
+```
+
 ## Runtime Behavior
 
 Env vars (exported **only when `brevo-email` skill is enabled** and `apiKey` is set):

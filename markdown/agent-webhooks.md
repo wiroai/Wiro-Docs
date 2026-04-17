@@ -75,12 +75,14 @@ When the agent finishes, Wiro sends a **POST** request to your `callbackurl` wit
   "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
   "status": "agent_cancel",
   "content": "What are today's trending topics?",
-  "response": "The operation was aborted.",
-  "debugoutput": "The operation was aborted.",
+  "response": "AbortError",
+  "debugoutput": "AbortError",
   "metadata": {},
   "endedat": 1712050004
 }
 ```
+
+> The `response` and `debugoutput` fields contain the raw abort reason from the runtime — typically `"AbortError"` or a short technical string. Do not rely on a specific fixed user-facing message; use `status === "agent_cancel"` as the signal.
 
 > **When the cancel webhook fires:** `agent_cancel` is delivered **only when the agent bridge catches an `AbortError`** during active processing — i.e. the message had already started on the agent side and was aborted mid-flight (via `POST /UserAgent/Message/Cancel` or an upstream timeout). For messages cancelled **before** they reach the bridge (still queued, or an instant `Message/Cancel` that beats dispatching), the message is marked `agent_cancel` in the database and returned as such in `POST /UserAgent/Message/Detail`, but **no webhook is fired** — there was no processing attempt to report on. Use `POST /UserAgent/Message/Detail` (checking `status === "agent_cancel"`) as the canonical source of truth for cancellation; WebSocket subscribers receive the `agent_cancel` event only on active-processing aborts (same condition as the webhook). Treat the webhook as a best-effort "processing was interrupted" signal.
 

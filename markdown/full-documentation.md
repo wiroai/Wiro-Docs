@@ -2090,9 +2090,13 @@ Retrieves full details for a single deployed agent instance, including subscript
     {
       "id": 47,
       "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+      "uuid": "your-user-uuid",
       "agentid": 5,
+      "teamguid": null,
       "title": "My Instagram Bot",
+      "description": null,
       "status": 4,
+      "pinned": false,
       "setuprequired": false,
       "configuration": {
         "credentials": {
@@ -2103,6 +2107,30 @@ Retrieves full details for a single deployed agent instance, including subscript
             "igUsername": "myaccount",
             "connectedAt": "2025-04-01T12:00:00.000Z"
           }
+        },
+        "custom_skills": [
+          {
+            "key": "content-tone",
+            "description": "Content strategy, brand voice, and posting rules",
+            "value": "## Brand Voice\nTone: friendly\nTarget Audience: ...",
+            "enabled": true,
+            "interval": null,
+            "_editable": true
+          },
+          {
+            "key": "content-scanner",
+            "description": "Content discovery with rotating strategies",
+            "value": "",
+            "enabled": true,
+            "interval": "0 */4 * * *",
+            "_editable": false
+          }
+        ],
+        "skills": { "instagram-post": true, "wiro-generator": true },
+        "rateLimit": {
+          "monthlyCredits": 5000,
+          "extraCredits": 2000,
+          "actionTypes": { "message": 10, "create": 60, "modify": 20, "regenerate": 20 }
         }
       },
       "subscription": {
@@ -2128,17 +2156,23 @@ Retrieves full details for a single deployed agent instance, including subscript
       },
       "extracredits": 2000,
       "extracreditsexpiry": 1730419200,
-      "stripeportalurl": "https://billing.stripe.com/p/session/...",
-      "stripeupdateurl": "https://billing.stripe.com/p/session/.../subscriptions/update",
-      "stripecancelurl": "https://billing.stripe.com/p/session/.../subscriptions/cancel",
-      "createdat": "1714608000",
-      "updatedat": "1714694400",
-      "startedat": "1714694400",
-      "runningat": "1714694410"
+      "createdat": 1714608000,
+      "updatedat": 1714694400,
+      "startedat": 1714694400,
+      "runningat": 1714694410
     }
   ]
 }
 ```
+
+> **Prepaid vs Stripe:** The above example is a **prepaid** instance (`subscription.provider: "prepaid"`) and omits the `stripeportalurl` / `stripeupdateurl` / `stripecancelurl` fields. Those three URLs appear only when the subscription provider is `"stripe"` (the panel/UI deploy path); prepaid instances never carry them. Example Stripe response:
+>
+> ```json
+> "subscription": { "provider": "stripe", "plan": "agent-pro", ... },
+> "stripeportalurl": "https://billing.stripe.com/p/session/xxxxxxxx",
+> "stripeupdateurl": "https://billing.stripe.com/p/session/xxxxxxxx/subscriptions/update",
+> "stripecancelurl": "https://billing.stripe.com/p/session/xxxxxxxx/subscriptions/cancel"
+> ```
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -2910,11 +2944,11 @@ Retrieves the current status and content of a single message. You can query by e
     "debugoutput": "Here are the key AI trends for 2026...",
     "status": "agent_end",
     "metadata": {
-      "type": "agent_end",
-      "task": "What are the latest trends in AI?",
+      "type": "progressGenerate",
+      "task": "Generate",
       "speed": "14.2",
-      "speedType": "token",
-      "elapsedTime": 7430,
+      "speedType": "words/s",
+      "elapsedTime": "8.1s",
       "tokenCount": 105,
       "wordCount": 118,
       "raw": "Here are the key AI trends for 2026...",
@@ -2923,6 +2957,7 @@ Retrieves the current status and content of a single message. You can query by e
       "isThinking": false
     },
     "attachments": [],
+    "deletestatus": 0,
     "createdat": "1743350400",
     "startedat": "1743350401",
     "endedat": "1743350408"
@@ -2939,8 +2974,8 @@ Retrieves the current status and content of a single message. You can query by e
 | `response` | `string` | The agent's full response text. Empty until `agent_end`. |
 | `debugoutput` | `string` | Accumulated output text. Updated during streaming, contains the full response after completion. |
 | `status` | `string` | Current message status (see Message Lifecycle). |
-| `metadata` | `object` | Parsed JSON object (API returns it already decoded). Populated from the agent bridge on `agent_end`. Fields: `type` (event type, e.g. `"agent_end"`), `task` (user input summary), `speed` (tokens/sec), `speedType` (`"token"`), `elapsedTime` (ms), `tokenCount`, `wordCount`, `raw` (full output), `thinking` (array of `<think>` blocks), `answer` (array of post-think answer chunks), `isThinking` (false when answer finalized). Empty object `{}` for `agent_error`, `agent_cancel`, or when the bridge hasn't finished yet. |
-| `attachments` | `array` | Present only if the message was sent via multipart with files. Array of `{url, name, type, size}` entries — each file metadata is already URL-resolved server-side (no further lookup needed). Absent when the message had no attachments. Identical shape in `Message/History` rows. |
+| `metadata` | `object` | Parsed JSON object (API returns it already decoded). Populated from the agent bridge on `agent_end`. Fields produced by the bridge's `finalMessage` builder: `type` — always the literal `"progressGenerate"` (not the message status); `task` — always the literal `"Generate"`; `speed` — numeric words-per-second value (e.g. `14.2`); `speedType` — always `"words/s"`; `elapsedTime` — human string with unit, e.g. `"8.1s"` (NOT a number); `tokenCount`, `wordCount` — integers; `raw` — the full accumulated response text; `thinking` — array of reasoning blocks extracted from `<think>...</think>`; `answer` — array of answer chunks stripped of `<think>`; `isThinking` — always `false` in the final payload. Empty object `{}` for `agent_error`, `agent_cancel`, or when the bridge hasn't finished yet. Message status lives in the top-level `status` field — don't read it from `metadata.type`. |
+| `attachments` | `array` | Always present as an array — empty `[]` for text-only messages. When the message was sent via multipart with files, each entry is a resolved `{url, name, type, size}` object (no further file-lookup needed). Identical shape in `Message/History` rows. |
 | `createdat` | `string` | Unix timestamp when the message was created. |
 | `startedat` | `string` | Unix timestamp when the agent started processing. |
 | `endedat` | `string` | Unix timestamp when processing completed. |
@@ -2970,8 +3005,9 @@ Retrieves conversation history for a specific agent and session. Messages are re
         "response": "Here are the key AI trends for 2026...",
         "debugoutput": "Here are the key AI trends for 2026...",
         "status": "agent_end",
-        "metadata": { "type": "agent_end", "raw": "Here are the key AI trends for 2026...", "thinking": [], "answer": ["Here are the key AI trends for 2026..."], "isThinking": false },
+        "metadata": { "type": "progressGenerate", "task": "Generate", "speed": "14.2", "speedType": "words/s", "elapsedTime": "8.1s", "tokenCount": 105, "wordCount": 118, "raw": "Here are the key AI trends for 2026...", "thinking": [], "answer": ["Here are the key AI trends for 2026..."], "isThinking": false },
         "attachments": [],
+        "deletestatus": 0,
         "createdat": "1743350400"
       },
       {
@@ -2982,6 +3018,7 @@ Retrieves conversation history for a specific agent and session. Messages are re
         "status": "agent_end",
         "metadata": {},
         "attachments": [],
+        "deletestatus": 0,
         "createdat": "1743350300"
       }
     ],
@@ -4377,12 +4414,14 @@ When the agent finishes, Wiro sends a **POST** request to your `callbackurl` wit
   "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
   "status": "agent_cancel",
   "content": "What are today's trending topics?",
-  "response": "The operation was aborted.",
-  "debugoutput": "The operation was aborted.",
+  "response": "AbortError",
+  "debugoutput": "AbortError",
   "metadata": {},
   "endedat": 1712050004
 }
 ```
+
+> The `response` and `debugoutput` fields contain the raw abort reason from the runtime — typically `"AbortError"` or a short technical string. Do not rely on a specific fixed user-facing message; use `status === "agent_cancel"` as the signal.
 
 > **When the cancel webhook fires:** `agent_cancel` is delivered **only when the agent bridge catches an `AbortError`** during active processing — i.e. the message had already started on the agent side and was aborted mid-flight (via `POST /UserAgent/Message/Cancel` or an upstream timeout). For messages cancelled **before** they reach the bridge (still queued, or an instant `Message/Cancel` that beats dispatching), the message is marked `agent_cancel` in the database and returned as such in `POST /UserAgent/Message/Detail`, but **no webhook is fired** — there was no processing attempt to report on. Use `POST /UserAgent/Message/Detail` (checking `status === "agent_cancel"`) as the canonical source of truth for cancellation; WebSocket subscribers receive the `agent_cancel` event only on active-processing aborts (same condition as the webhook). Treat the webhook as a best-effort "processing was interrupted" signal.
 

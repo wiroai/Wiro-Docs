@@ -73,6 +73,16 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 |-------|------|-------------|
 | `apiKey` | string | SendGrid API key (starts with `SG.`). |
 
+## Credentials schema (as returned by `POST /UserAgent/Detail`)
+
+```json
+"sendgrid": {
+  "optional": true,
+  "apiKey": "",
+  "_editable": { "apiKey": true }
+}
+```
+
 ## Runtime Behavior
 
 Env vars (exported **only when `sendgrid-email` skill is enabled** and `apiKey` is set):

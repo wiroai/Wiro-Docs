@@ -74,6 +74,20 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 | `apiKey` | string | Primary Apollo API key. |
 | `masterApiKey` | string (optional) | Master API key for people search + sequence management. |
 
+## Credentials schema (as returned by `POST /UserAgent/Detail`)
+
+```json
+"apollo": {
+  "optional": true,
+  "apiKey": "",
+  "masterApiKey": "",
+  "_editable": {
+    "apiKey": true,
+    "masterApiKey": true
+  }
+}
+```
+
 ## Runtime Behavior
 
 Env vars (exported **only when `apollo-sales` skill is enabled** and `apiKey` is set):
