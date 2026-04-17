@@ -253,25 +253,28 @@ Skills that depend on third-party credentials. Follow the linked integration pag
 
 | Skill | Credentials Required | Integration Guide |
 |-------|---------------------|-------------------|
-| `metaads-manage` | `metaads` (OAuth) | [Meta Ads](/docs/integration-metaads) |
-| `facebookpage-post` | `facebook` (OAuth) | [Facebook Page](/docs/integration-facebook) |
-| `instagram-post` | `instagram` (OAuth) | [Instagram](/docs/integration-instagram) |
-| `linkedin-post` | `linkedin` (OAuth) | [LinkedIn](/docs/integration-linkedin) |
-| `twitterx-post` | `twitter` (OAuth) | [Twitter / X](/docs/integration-twitter) |
-| `tiktok-post` | `tiktok` (OAuth) | [TikTok](/docs/integration-tiktok) |
-| `googleads-manage` | `googleads` (OAuth) | [Google Ads](/docs/integration-googleads) |
-| `hubspot-crm` | `hubspot` (OAuth) | [HubSpot](/docs/integration-hubspot) |
-| `mailchimp-email` | `mailchimp` (OAuth or API key) | [Mailchimp](/docs/integration-mailchimp) |
-| `google-drive` | `googledrive` (OAuth) | [Google Drive](/docs/integration-googledrive) |
-| `gmail-check` | `gmail` (App Password) | [Gmail](/docs/integration-gmail) |
-| `firebase-push` | `firebase` (Service account) | [Firebase](/docs/integration-firebase) |
-| `wordpress-post` | `wordpress` (App Password) | [WordPress](/docs/integration-wordpress) |
-| `appstore-reviews`, `appstore-metadata`, `appstore-events` | `appstore` (API key) | [App Store Connect](/docs/integration-appstore) |
-| `googleplay-reviews`, `googleplay-metadata` | `googleplay` (Service account) | [Google Play](/docs/integration-googleplay) |
-| `apollo-sales` | `apollo` (API key) | [Apollo](/docs/integration-apollo) |
-| `lemlist-outreach` | `lemlist` (API key) | [Lemlist](/docs/integration-lemlist) |
+| `metaads-manage` | `metaads` (OAuth) | [Meta Ads Skills](/docs/integration-metaads-skills) |
+| `facebookpage-post` | `facebook` (OAuth) | [Facebook Page Skills](/docs/integration-facebook-skills) |
+| `instagram-post` | `instagram` (OAuth) | [Instagram Skills](/docs/integration-instagram-skills) |
+| `linkedin-post` | `linkedin` (OAuth) | [LinkedIn Skills](/docs/integration-linkedin-skills) |
+| `twitterx-post` | `twitter` (OAuth) | [Twitter / X Skills](/docs/integration-twitter-skills) |
+| `tiktok-post` | `tiktok` (OAuth) | [TikTok Skills](/docs/integration-tiktok-skills) |
+| `googleads-manage` | `googleads` (OAuth) | [Google Ads Skills](/docs/integration-googleads-skills) |
+| `hubspot-crm` | `hubspot` (OAuth) | [HubSpot Skills](/docs/integration-hubspot-skills) |
+| `mailchimp-email` | `mailchimp` (OAuth or API key) | [Mailchimp Skills](/docs/integration-mailchimp-skills) |
+| `google-drive` | `googledrive` (OAuth) | [Google Drive Skills](/docs/integration-googledrive-skills) |
+| `gmail-check` | `gmail` (App Password) | [Gmail Skills](/docs/integration-gmail-skills) |
+| `firebase-push` | `firebase` (Service account) | [Firebase Skills](/docs/integration-firebase-skills) |
+| `wordpress-post` | `wordpress` (App Password) | [WordPress Skills](/docs/integration-wordpress-skills) |
+| `appstore-reviews`, `appstore-metadata`, `appstore-events` | `appstore` (API key) | [App Store Skills](/docs/integration-appstore-skills) |
+| `googleplay-reviews`, `googleplay-metadata` | `googleplay` (Service account) | [Google Play Skills](/docs/integration-googleplay-skills) |
+| `apollo-sales` | `apollo` (API key) | [Apollo Skills](/docs/integration-apollo-skills) |
+| `lemlist-outreach` | `lemlist` (API key) | [Lemlist Skills](/docs/integration-lemlist-skills) |
+| `calendarific`, `wiro-generator`, OpenAI-backed skills | Platform-managed | No setup needed — see [Platform-Managed Credentials](/docs/agent-credentials#platform-managed-credentials) |
 
-Agents use `telegram` for operator notifications — see [Telegram](/docs/integration-telegram). Email sending across `brevo` and `sendgrid` — see [Brevo](/docs/integration-brevo) and [SendGrid](/docs/integration-sendgrid).
+Agents use `telegram` for operator notifications — see [Telegram Skills](/docs/integration-telegram-skills). Email sending across `brevo` and `sendgrid` — see [Brevo Skills](/docs/integration-brevo-skills) and [SendGrid Skills](/docs/integration-sendgrid-skills).
+
+> **Restart behavior:** Updating `custom_skills` on a running agent (status 3 or 4) triggers an automatic restart (`restartafter: true`) so the new skill configuration is picked up on the next daemon cycle. Same as credential updates.
 
 ## Update Rules
 

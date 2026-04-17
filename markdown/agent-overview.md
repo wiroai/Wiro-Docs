@@ -173,17 +173,22 @@ All endpoints below require authentication.
 
 #### **POST** /UserAgent/Deploy
 
-Creates a new agent instance from a catalog template. The agent is created with status `6` (Setup Required). After deploying, call `UserAgent/Detail` to see which credentials are needed, provide them via `UserAgent/Update`, then call `UserAgent/Start` to launch the agent. The subscription cost is deducted from your prepaid wallet immediately.
+Creates a new agent instance from a catalog template.
+
+Deploy has two modes depending on `useprepaid`:
+
+- **Normal deploy** (default, `useprepaid` omitted or `false`): instance is queued for immediate launch — status `2` (Queued). Any `configuration.credentials` you pass in the body are merged into the instance's config.
+- **Prepaid deploy** (`useprepaid: true` + `plan`): wallet is charged immediately, instance is created in status `6` (Setup Required). **`configuration.credentials` in the prepaid deploy body is ignored** — you must call `POST /UserAgent/Update` separately to set credentials. After credentials are complete, status auto-transitions to `0` (Stopped) and you can call `UserAgent/Start`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `agentguid` | string | Yes | The guid of the agent template from the catalog |
 | `title` | string | Yes | Display name for your instance |
 | `description` | string | No | Optional description |
-| `configuration` | object | No | Initial credential values. Format: `{ "credentials": { "key": "value" } }` |
-| `useprepaid` | boolean | Yes | Set to `true` to pay from wallet balance. Requires `plan`. |
-| `plan` | string | Yes | Plan tier: `"starter"` or `"pro"`. Required when `useprepaid` is `true`. |
-| `pinned` | boolean | No | Whether the agent appears in the pinned agents list. Defaults to `true`. Set to `false` when deploying agents programmatically for end users (e.g. bulk provisioning). |
+| `configuration` | object | No | Initial credential values (normal deploy only — ignored in prepaid deploy). Format: `{ "credentials": { "key": "value" } }` |
+| `useprepaid` | boolean | No | Set to `true` to pay from wallet balance. Requires `plan`. Defaults to `false` (normal deploy). |
+| `plan` | string | Conditional | Plan tier: `"starter"` or `"pro"`. Required when `useprepaid` is `true`. |
+| `pinned` | boolean | No | Whether the agent appears in the pinned agents list. Defaults to `true`. Set to `false` when deploying programmatically for end users (bulk provisioning). |
 
 ##### Response
 

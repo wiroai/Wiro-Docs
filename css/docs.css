@@ -215,6 +215,40 @@ button {
   margin-bottom: 4px;
 }
 
+.docs-nav-group-submenu {
+  padding: 0;
+}
+
+.docs-nav-group-submenu > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  user-select: none;
+  padding-right: 24px;
+}
+
+.docs-nav-group-submenu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.docs-nav-group-submenu > summary::after {
+  content: "›";
+  font-size: 1.2rem;
+  line-height: 1;
+  color: var(--light-text);
+  transition: transform 0.15s ease;
+}
+
+.docs-nav-group-submenu[open] > summary::after {
+  transform: rotate(90deg);
+}
+
+.docs-nav-group-submenu > ul {
+  margin-top: 4px;
+}
+
 .docs-nav-links {
   list-style: none;
   padding: 0;

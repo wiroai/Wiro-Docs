@@ -34,28 +34,28 @@
 ## Integration Guides
 
 OAuth integrations:
-- [Meta Ads](https://wiro.ai/docs/integration-metaads): own-mode setup, no App Review needed (Dev Mode + App Roles)
-- [Facebook Page](https://wiro.ai/docs/integration-facebook): OAuth + multi-page selection via FBSetPage
-- [Instagram](https://wiro.ai/docs/integration-instagram): Business account + Facebook Page linkage required
-- [LinkedIn](https://wiro.ai/docs/integration-linkedin): Company Page publishing + Community Management API
-- [Twitter / X](https://wiro.ai/docs/integration-twitter): OAuth 2.0 PKCE, one-click Wiro mode available
-- [TikTok](https://wiro.ai/docs/integration-tiktok): Content Posting API
-- [Google Ads](https://wiro.ai/docs/integration-googleads): Developer Token + MCC + customer ID selection
-- [HubSpot](https://wiro.ai/docs/integration-hubspot): CRM object management
-- [Mailchimp](https://wiro.ai/docs/integration-mailchimp): OAuth or direct API key
-- [Google Drive](https://wiro.ai/docs/integration-googledrive): Scoped folder access via drive.file
+- [Meta Ads](https://wiro.ai/docs/integration-metaads-skills): own-mode setup, no App Review needed (Dev Mode + App Roles)
+- [Facebook Page](https://wiro.ai/docs/integration-facebook-skills): OAuth + multi-page selection via FBSetPage
+- [Instagram](https://wiro.ai/docs/integration-instagram-skills): Business account + Facebook Page linkage required
+- [LinkedIn](https://wiro.ai/docs/integration-linkedin-skills): Company Page publishing + Community Management API
+- [Twitter / X](https://wiro.ai/docs/integration-twitter-skills): OAuth 2.0 PKCE, one-click Wiro mode available
+- [TikTok](https://wiro.ai/docs/integration-tiktok-skills): Content Posting API
+- [Google Ads](https://wiro.ai/docs/integration-googleads-skills): Developer Token + MCC + customer ID selection
+- [HubSpot](https://wiro.ai/docs/integration-hubspot-skills): CRM object management
+- [Mailchimp](https://wiro.ai/docs/integration-mailchimp-skills): OAuth or direct API key
+- [Google Drive](https://wiro.ai/docs/integration-googledrive-skills): Scoped folder access via drive.file
 
 API key integrations:
-- [Gmail](https://wiro.ai/docs/integration-gmail): App Password via IMAP/SMTP
-- [Telegram](https://wiro.ai/docs/integration-telegram): Bot Token + allowed users
-- [Firebase](https://wiro.ai/docs/integration-firebase): FCM push notifications via service account
-- [WordPress](https://wiro.ai/docs/integration-wordpress): Application Password over REST API
-- [App Store Connect](https://wiro.ai/docs/integration-appstore): ES256 API key + .p8 private key
-- [Google Play](https://wiro.ai/docs/integration-googleplay): Service account + Play Console permissions
-- [Apollo.io](https://wiro.ai/docs/integration-apollo): Lead gen + sequence management
-- [Lemlist](https://wiro.ai/docs/integration-lemlist): Cold email campaign management
-- [Brevo](https://wiro.ai/docs/integration-brevo): Transactional + marketing email
-- [SendGrid](https://wiro.ai/docs/integration-sendgrid): Transactional + marketing email
+- [Gmail](https://wiro.ai/docs/integration-gmail-skills): App Password via IMAP/SMTP
+- [Telegram](https://wiro.ai/docs/integration-telegram-skills): Bot Token + allowed users
+- [Firebase](https://wiro.ai/docs/integration-firebase-skills): FCM push notifications via service account
+- [WordPress](https://wiro.ai/docs/integration-wordpress-skills): Application Password over REST API
+- [App Store Connect](https://wiro.ai/docs/integration-appstore-skills): ES256 API key + .p8 private key
+- [Google Play](https://wiro.ai/docs/integration-googleplay-skills): Service account + Play Console permissions
+- [Apollo.io](https://wiro.ai/docs/integration-apollo-skills): Lead gen + sequence management
+- [Lemlist](https://wiro.ai/docs/integration-lemlist-skills): Cold email campaign management
+- [Brevo](https://wiro.ai/docs/integration-brevo-skills): Transactional + marketing email
+- [SendGrid](https://wiro.ai/docs/integration-sendgrid-skills): Transactional + marketing email
 
 ## Organizations & Teams
 

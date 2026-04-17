@@ -78,26 +78,26 @@
 | Agent Skills | `/docs/agent-skills` | [agent-skills.md](./markdown/agent-skills.md) |
 | Agent Use Cases | `/docs/agent-use-cases` | [agent-use-cases.md](./markdown/agent-use-cases.md) |
 | **Integrations** | | |
-| Meta Ads | `/docs/integration-metaads` | [integration-metaads.md](./markdown/integration-metaads.md) |
-| Facebook Page | `/docs/integration-facebook` | [integration-facebook.md](./markdown/integration-facebook.md) |
-| Instagram | `/docs/integration-instagram` | [integration-instagram.md](./markdown/integration-instagram.md) |
-| LinkedIn | `/docs/integration-linkedin` | [integration-linkedin.md](./markdown/integration-linkedin.md) |
-| Twitter / X | `/docs/integration-twitter` | [integration-twitter.md](./markdown/integration-twitter.md) |
-| TikTok | `/docs/integration-tiktok` | [integration-tiktok.md](./markdown/integration-tiktok.md) |
-| Google Ads | `/docs/integration-googleads` | [integration-googleads.md](./markdown/integration-googleads.md) |
-| HubSpot | `/docs/integration-hubspot` | [integration-hubspot.md](./markdown/integration-hubspot.md) |
-| Mailchimp | `/docs/integration-mailchimp` | [integration-mailchimp.md](./markdown/integration-mailchimp.md) |
-| Google Drive | `/docs/integration-googledrive` | [integration-googledrive.md](./markdown/integration-googledrive.md) |
-| Gmail | `/docs/integration-gmail` | [integration-gmail.md](./markdown/integration-gmail.md) |
-| Telegram | `/docs/integration-telegram` | [integration-telegram.md](./markdown/integration-telegram.md) |
-| Firebase | `/docs/integration-firebase` | [integration-firebase.md](./markdown/integration-firebase.md) |
-| WordPress | `/docs/integration-wordpress` | [integration-wordpress.md](./markdown/integration-wordpress.md) |
-| App Store Connect | `/docs/integration-appstore` | [integration-appstore.md](./markdown/integration-appstore.md) |
-| Google Play | `/docs/integration-googleplay` | [integration-googleplay.md](./markdown/integration-googleplay.md) |
-| Apollo | `/docs/integration-apollo` | [integration-apollo.md](./markdown/integration-apollo.md) |
-| Lemlist | `/docs/integration-lemlist` | [integration-lemlist.md](./markdown/integration-lemlist.md) |
-| Brevo | `/docs/integration-brevo` | [integration-brevo.md](./markdown/integration-brevo.md) |
-| SendGrid | `/docs/integration-sendgrid` | [integration-sendgrid.md](./markdown/integration-sendgrid.md) |
+| Meta Ads | `/docs/integration-metaads-skills` | [integration-metaads-skills.md](./markdown/integration-metaads-skills.md) |
+| Facebook Page | `/docs/integration-facebook-skills` | [integration-facebook-skills.md](./markdown/integration-facebook-skills.md) |
+| Instagram | `/docs/integration-instagram-skills` | [integration-instagram-skills.md](./markdown/integration-instagram-skills.md) |
+| LinkedIn | `/docs/integration-linkedin-skills` | [integration-linkedin-skills.md](./markdown/integration-linkedin-skills.md) |
+| Twitter / X | `/docs/integration-twitter-skills` | [integration-twitter-skills.md](./markdown/integration-twitter-skills.md) |
+| TikTok | `/docs/integration-tiktok-skills` | [integration-tiktok-skills.md](./markdown/integration-tiktok-skills.md) |
+| Google Ads | `/docs/integration-googleads-skills` | [integration-googleads-skills.md](./markdown/integration-googleads-skills.md) |
+| HubSpot | `/docs/integration-hubspot-skills` | [integration-hubspot-skills.md](./markdown/integration-hubspot-skills.md) |
+| Mailchimp | `/docs/integration-mailchimp-skills` | [integration-mailchimp-skills.md](./markdown/integration-mailchimp-skills.md) |
+| Google Drive | `/docs/integration-googledrive-skills` | [integration-googledrive-skills.md](./markdown/integration-googledrive-skills.md) |
+| Gmail | `/docs/integration-gmail-skills` | [integration-gmail-skills.md](./markdown/integration-gmail-skills.md) |
+| Telegram | `/docs/integration-telegram-skills` | [integration-telegram-skills.md](./markdown/integration-telegram-skills.md) |
+| Firebase | `/docs/integration-firebase-skills` | [integration-firebase-skills.md](./markdown/integration-firebase-skills.md) |
+| WordPress | `/docs/integration-wordpress-skills` | [integration-wordpress-skills.md](./markdown/integration-wordpress-skills.md) |
+| App Store Connect | `/docs/integration-appstore-skills` | [integration-appstore-skills.md](./markdown/integration-appstore-skills.md) |
+| Google Play | `/docs/integration-googleplay-skills` | [integration-googleplay-skills.md](./markdown/integration-googleplay-skills.md) |
+| Apollo | `/docs/integration-apollo-skills` | [integration-apollo-skills.md](./markdown/integration-apollo-skills.md) |
+| Lemlist | `/docs/integration-lemlist-skills` | [integration-lemlist-skills.md](./markdown/integration-lemlist-skills.md) |
+| Brevo | `/docs/integration-brevo-skills` | [integration-brevo-skills.md](./markdown/integration-brevo-skills.md) |
+| SendGrid | `/docs/integration-sendgrid-skills` | [integration-sendgrid-skills.md](./markdown/integration-sendgrid-skills.md) |
 
 > **Full export:** [full-documentation.md](./markdown/full-documentation.md)
 
@@ -172,26 +172,26 @@ Wiro-Docs/
     ├── agent-credentials.md
     ├── agent-skills.md
     ├── agent-use-cases.md
-    ├── integration-metaads.md
-    ├── integration-facebook.md
-    ├── integration-instagram.md
-    ├── integration-linkedin.md
-    ├── integration-twitter.md
-    ├── integration-tiktok.md
-    ├── integration-googleads.md
-    ├── integration-hubspot.md
-    ├── integration-mailchimp.md
-    ├── integration-googledrive.md
-    ├── integration-gmail.md
-    ├── integration-telegram.md
-    ├── integration-firebase.md
-    ├── integration-wordpress.md
-    ├── integration-appstore.md
-    ├── integration-googleplay.md
-    ├── integration-apollo.md
-    ├── integration-lemlist.md
-    ├── integration-brevo.md
-    └── integration-sendgrid.md
+    ├── integration-metaads-skills.md
+    ├── integration-facebook-skills.md
+    ├── integration-instagram-skills.md
+    ├── integration-linkedin-skills.md
+    ├── integration-twitter-skills.md
+    ├── integration-tiktok-skills.md
+    ├── integration-googleads-skills.md
+    ├── integration-hubspot-skills.md
+    ├── integration-mailchimp-skills.md
+    ├── integration-googledrive-skills.md
+    ├── integration-gmail-skills.md
+    ├── integration-telegram-skills.md
+    ├── integration-firebase-skills.md
+    ├── integration-wordpress-skills.md
+    ├── integration-appstore-skills.md
+    ├── integration-googleplay-skills.md
+    ├── integration-apollo-skills.md
+    ├── integration-lemlist-skills.md
+    ├── integration-brevo-skills.md
+    └── integration-sendgrid-skills.md
 ```
 
 ---

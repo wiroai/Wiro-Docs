@@ -1,10 +1,10 @@
 # Lemlist Integration
 
-Connect your agents to Lemlist for cold email outreach and campaign orchestration.
+Connect your agent to Lemlist for cold email outreach and campaign orchestration.
 
 ## Overview
 
-The Lemlist integration uses Lemlist's API key for managing campaigns, leads, and custom variables.
+The Lemlist integration uses HTTP Basic Authentication with an empty username and the API key as the password.
 
 **Skills that use this integration:**
 
@@ -18,21 +18,20 @@ The Lemlist integration uses Lemlist's API key for managing campaigns, leads, an
 
 | Mode | Status | Notes |
 |------|--------|-------|
-| API key | Available | Standard Lemlist API key. |
+| API Key | Available | Lemlist API key (Gold tier or higher). |
 
 ## Prerequisites
 
-- **A Wiro API key** — see [Authentication](/docs/authentication).
-- **A deployed agent** — see [Agent Overview](/docs/agent-overview).
-- **A Lemlist account** (Gold tier or higher for full API access).
+- **A Wiro API key** — [Authentication](/docs/authentication).
+- **A deployed agent** — [Agent Overview](/docs/agent-overview).
+- **A Lemlist account** on Gold tier or higher for full API access.
 
 ## Setup
 
 ### Step 1: Get an API key
 
-1. Sign in to [app.lemlist.com](https://app.lemlist.com/).
-2. Go to **Settings → Integrations → API**.
-3. Click **Generate** (or copy existing). Keys look like `AbCdEfGhIjKlMnOp`.
+1. [app.lemlist.com](https://app.lemlist.com/) → **Settings → Integrations → API**.
+2. Click **Generate** (or copy existing). Keys look like `AbCdEfGhIjKlMnOp`.
 
 ### Step 2: Save to Wiro
 
@@ -67,11 +66,22 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 |-------|------|-------------|
 | `apiKey` | string | Lemlist API key. |
 
+## Runtime Behavior
+
+Env vars:
+
+- `LEMLIST_API_KEY` ← `credentials.lemlist.apiKey`
+
+Auth: **Basic auth with empty username** — `--user ":$LEMLIST_API_KEY"`. (Lemlist treats the API key as the password, with no username.)
+Base URL: `https://api.lemlist.com/api`.
+
+Rate limits: ~20 requests per 2 seconds; 429 requires backoff.
+
 ## Troubleshooting
 
-- **401 Unauthorized:** Key revoked in Lemlist settings. Regenerate.
-- **403 on campaign operations:** Plan tier lacks API write access. Check Lemlist plan.
-- **Email address not found:** Lead must exist in at least one campaign before some endpoints work — upload them first.
+- **401 Unauthorized:** API key revoked in Lemlist settings. Regenerate.
+- **403 on campaign operations:** Plan tier lacks API write access. Upgrade.
+- **Email address not found:** Lead must exist in at least one campaign before some endpoints work — upload leads first.
 
 ## Related
 

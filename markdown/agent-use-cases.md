@@ -223,4 +223,4 @@ message = requests.post(
 print(message.json())
 ```
 
-Browse available agents and their capabilities at [Agent/List](/docs/models) or in the [Wiro dashboard](https://wiro.ai/agents).
+Browse available agents and their capabilities via [POST /Agent/List](/docs/agent-overview#post-agentlist) or in the [Wiro dashboard](https://wiro.ai/agents).

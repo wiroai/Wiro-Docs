@@ -9,7 +9,7 @@ Wiro agents connect to external services — social platforms, ad networks, emai
 1. **API Key credentials** — set directly via `POST /UserAgent/Update`.
 2. **OAuth credentials** — redirect-based authorization via `POST /UserAgentOAuth/{Provider}Connect`, where Wiro handles token exchange server-side.
 
-Each external service Wiro talks to is documented as its own **integration page** with the full setup walkthrough, API reference, troubleshooting, and multi-tenant architecture notes. Use the catalog below to jump to the one you need.
+Each external service is documented as its own **integration page** with the complete setup walkthrough, API reference, troubleshooting, and multi-tenant architecture notes. Use the catalog below to jump to the one you need.
 
 ## Integration Catalog
 
@@ -17,37 +17,51 @@ Each external service Wiro talks to is documented as its own **integration page*
 
 | Integration | Auth Modes | Setup Guide |
 |-------------|------------|-------------|
-| Meta Ads | Own only (Wiro mode coming soon) | [Meta Ads integration](/docs/integration-metaads) |
-| Facebook Page | Own only (Wiro mode coming soon) | [Facebook Page integration](/docs/integration-facebook) |
-| Instagram | Own only (Wiro mode coming soon) | [Instagram integration](/docs/integration-instagram) |
-| LinkedIn | Own only (Wiro mode coming soon) | [LinkedIn integration](/docs/integration-linkedin) |
-| Twitter / X | Wiro + Own | [Twitter integration](/docs/integration-twitter) |
-| TikTok | Wiro + Own | [TikTok integration](/docs/integration-tiktok) |
-| Google Ads | Wiro + Own | [Google Ads integration](/docs/integration-googleads) |
-| HubSpot | Wiro + Own | [HubSpot integration](/docs/integration-hubspot) |
-| Mailchimp | Wiro + Own + API key | [Mailchimp integration](/docs/integration-mailchimp) |
-| Google Drive | Wiro + Own | [Google Drive integration](/docs/integration-googledrive) |
+| Meta Ads | Own only (Wiro mode coming soon) | [Meta Ads Skills](/docs/integration-metaads-skills) |
+| Facebook Page | Own only (Wiro mode coming soon) | [Facebook Page Skills](/docs/integration-facebook-skills) |
+| Instagram | Own only (Wiro mode coming soon) | [Instagram Skills](/docs/integration-instagram-skills) |
+| LinkedIn | Own only (Wiro mode coming soon) | [LinkedIn Skills](/docs/integration-linkedin-skills) |
+| Twitter / X | Wiro + Own | [Twitter Skills](/docs/integration-twitter-skills) |
+| TikTok | Wiro + Own | [TikTok Skills](/docs/integration-tiktok-skills) |
+| Google Ads | Wiro + Own | [Google Ads Skills](/docs/integration-googleads-skills) |
+| HubSpot | Wiro + Own | [HubSpot Skills](/docs/integration-hubspot-skills) |
+| Mailchimp | Wiro + Own + API Key | [Mailchimp Skills](/docs/integration-mailchimp-skills) |
+| Google Drive | Wiro + Own | [Google Drive Skills](/docs/integration-googledrive-skills) |
 
-> **Meta Platforms availability:** While Wiro's shared Meta App is under review by Meta, the Meta Ads, Facebook Page, and Instagram integrations must be connected using your **own Meta Developer App**. No App Review is required — Development Mode + App Roles is sufficient. See each integration page for step-by-step setup.
+> **Meta Platforms availability:** While Wiro's shared Meta App is under review by Meta, the Meta Ads, Facebook Page, and Instagram integrations must be connected using your own Meta Developer App in Development Mode. No App Review is required — users who are listed in your app's Roles (Testers/Developers) can connect without review. See each integration page for step-by-step setup.
 
 ### API Key Integrations
 
 | Integration | Setup Guide |
 |-------------|-------------|
-| Gmail | [Gmail integration](/docs/integration-gmail) |
-| Telegram | [Telegram integration](/docs/integration-telegram) |
-| Firebase | [Firebase integration](/docs/integration-firebase) |
-| WordPress | [WordPress integration](/docs/integration-wordpress) |
-| App Store Connect | [App Store integration](/docs/integration-appstore) |
-| Google Play | [Google Play integration](/docs/integration-googleplay) |
-| Apollo | [Apollo integration](/docs/integration-apollo) |
-| Lemlist | [Lemlist integration](/docs/integration-lemlist) |
-| Brevo | [Brevo integration](/docs/integration-brevo) |
-| SendGrid | [SendGrid integration](/docs/integration-sendgrid) |
+| Gmail | [Gmail Skills](/docs/integration-gmail-skills) |
+| Telegram | [Telegram Skills](/docs/integration-telegram-skills) |
+| Firebase | [Firebase Skills](/docs/integration-firebase-skills) |
+| WordPress | [WordPress Skills](/docs/integration-wordpress-skills) |
+| App Store Connect | [App Store Skills](/docs/integration-appstore-skills) |
+| Google Play | [Google Play Skills](/docs/integration-googleplay-skills) |
+| Apollo | [Apollo Skills](/docs/integration-apollo-skills) |
+| Lemlist | [Lemlist Skills](/docs/integration-lemlist-skills) |
+| Brevo | [Brevo Skills](/docs/integration-brevo-skills) |
+| SendGrid | [SendGrid Skills](/docs/integration-sendgrid-skills) |
+
+## Platform-Managed Credentials
+
+Some credentials are **managed by Wiro on your behalf** — you don't provide them, you can't see them in API responses, and attempts to set them via `POST /UserAgent/Update` are silently ignored:
+
+- **OpenAI** — Wiro uses its own OpenAI account to power the LLM brain of every agent. You never need to supply an OpenAI key.
+- **Wiro platform** (`credentials.wiro.apiKey`) — pre-configured for agents that use the Wiro Generator skill (image/video model runs on Wiro).
+- **Calendarific** — pre-configured for agents that use the Calendarific skill (holiday/special-date lookups).
+
+These are `_editable: false` in the agent template. When you read `POST /UserAgent/Detail`, they don't appear in the `configuration.credentials` response — they're filtered out server-side. If your agent needs them, they're already wired up.
 
 ## Setting API Key Credentials
 
-Use `POST /UserAgent/Update` with `configuration.credentials.<service>` to set credentials. Each integration page above documents the exact field names for that service.
+Use `POST /UserAgent/Update` with `configuration.credentials.<service>`. Each integration page above documents the exact field names and shape.
+
+### Per-group update pattern
+
+Wiro's backend merges credential updates **per group**. Only the fields you send are written, and other credential groups are untouched. The Wiro Dashboard follows this pattern exactly — each credential card is saved independently.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
@@ -66,18 +80,22 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
   }'
 ```
 
-### Merge behavior
+### Merge rules (verified against agent-helper.js)
 
-`UserAgent/Update` **merges** credential fields. Only fields you send are updated; existing fields (including OAuth tokens Wiro writes server-side) are preserved.
+- Only fields marked `_editable: true` in the agent template are accepted. Non-editable fields are silently ignored.
+- Credential groups that don't exist in the template cannot be added — you can only update keys the agent declares.
+- Array credentials (`firebase.accounts`, `appstore.apps`, etc.) use positional indexing. Sending more indices than the template has creates new entries cloned from the template shape, constrained to template-editable fields.
+- Use `POST /UserAgent/Detail` to inspect the `_editable` map for each credential group.
 
-- Only fields marked `_editable: true` are accepted. Non-editable fields are silently ignored. Use `POST /UserAgent/Detail` to inspect `_editable` flags.
-- Credential keys that do not already exist in the agent template cannot be added — you can only update keys the agent declares.
+### Prepaid deploy gotcha
+
+If you called `POST /UserAgent/Deploy` with `useprepaid: true`, the `credentials` you passed in the Deploy body were **not** saved — prepaid deploy writes only a template placeholder. You must call `POST /UserAgent/Update` separately to set credentials before initiating OAuth or starting the agent.
 
 ## OAuth Authorization Flow
 
 For services that require user authorization, Wiro implements a full OAuth redirect flow. The entire process is **fully white-label** — your end users interact only with your app and the provider's consent screen. They never see or visit wiro.ai.
 
-> The `redirectUrl` you pass to the Connect endpoint is **your own URL**. After authorization, users are redirected back to your app with status query parameters. HTTPS is required; `http://localhost` and `http://127.0.0.1` are allowed for development.
+> The `redirectUrl` you pass to Connect is **your own URL**. After authorization, users are redirected back to your app with status query parameters. HTTPS is required; `http://localhost` and `http://127.0.0.1` are allowed for development only.
 
 ### Generic flow
 
@@ -100,39 +118,52 @@ Your App (Frontend)           Your Backend              Wiro API              Pr
        |        ?{provider}_connected=true&...                                     |
 ```
 
-### Connect endpoint (common shape)
-
-**POST** `/UserAgentOAuth/{Provider}Connect`
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | Agent instance GUID. |
-| `redirectUrl` | string | Yes | Where to redirect after OAuth completes. |
-| `authMethod` | string | No | `"wiro"` (default) or `"own"`. See integration page for availability. |
-
-Response:
-
-```json
-{
-  "result": true,
-  "authorizeUrl": "https://provider.example.com/oauth/authorize?...",
-  "errors": []
-}
-```
-
 ### Auth Methods — `"wiro"` vs `"own"`
 
 |  | `"wiro"` | `"own"` |
 |--|---------|---------|
 | **OAuth app credentials** | Wiro's pre-configured app | Your own app on the provider's developer portal |
-| **Setup required** | None — just call Connect | Create an app on the provider, save credentials via Update, register Wiro's callback URL |
+| **Setup required** | None — just call Connect | Create app on provider, save credentials via Update, register Wiro's callback URL |
 | **Consent screen branding** | Shows "Wiro" as the app name | Shows **your app name** |
 | **Redirect after auth** | To your `redirectUrl` | To your `redirectUrl` |
 | **User sees wiro.ai?** | No | No |
 | **Token management** | Automatic by Wiro | Automatic by Wiro |
-| **Best for** | Quick setup when available | Custom branding, bypassing long review processes |
+| **Best for** | Quick setup when available | Custom branding or bypassing review processes |
 
-For the full own-mode credential field names and provider-specific setup, see the individual integration page.
+### Own Mode = 2-Step API Flow
+
+Own mode requires two sequential calls before initiating OAuth:
+
+```bash
+# Step 1: Save your provider app credentials + authMethod
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "guid": "your-useragent-guid",
+    "configuration": {
+      "credentials": {
+        "twitter": {
+          "clientId": "YOUR_CLIENT_ID",
+          "clientSecret": "YOUR_CLIENT_SECRET",
+          "authMethod": "own"
+        }
+      }
+    }
+  }'
+
+# Step 2: Initiate OAuth
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/XConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "userAgentGuid": "your-useragent-guid",
+    "redirectUrl": "https://your-app.com/callback",
+    "authMethod": "own"
+  }'
+```
+
+For Wiro mode: skip Step 1, just call Step 2 with `authMethod: "wiro"` (or omit — it defaults to `"wiro"`).
 
 ### Callback URL pattern (own mode)
 
@@ -146,64 +177,45 @@ Provider-specific paths: `MetaAdsCallback`, `FBCallback`, `IGCallback`, `LICallb
 
 ### Callback success & error parameters
 
-After OAuth completes, Wiro redirects users to your `redirectUrl` with provider-specific query parameters:
-
 | Provider | Success Params | Error Param |
 |----------|---------------|-------------|
 | Twitter / X | `x_connected=true&x_username=...` | `x_error=...` |
 | TikTok | `tiktok_connected=true&tiktok_username=...` | `tiktok_error=...` |
 | Instagram | `ig_connected=true&ig_username=...` | `ig_error=...` |
-| Facebook | `fb_connected=true&fb_pagename=...&fb_pages=[...]` | `fb_error=...` |
+| Facebook | `fb_connected=true&fb_pages=[...]` | `fb_error=...` |
 | LinkedIn | `li_connected=true&li_name=...` | `li_error=...` |
 | Google Ads | `gads_connected=true&gads_accounts=[...]` | `gads_error=...` |
 | Meta Ads | `metaads_connected=true&metaads_accounts=[...]` | `metaads_error=...` |
 | HubSpot | `hubspot_connected=true&hubspot_portal=...&hubspot_name=...` | `hubspot_error=...` |
 | Mailchimp | `mailchimp_connected=true&mailchimp_account=...` | `mailchimp_error=...` |
+| Google Drive | `gdrive_connected=true&gdrive_folders=[...]` | `gdrive_error=...` |
 
-Error values follow the pattern `{provider}_error=<code>`. Common codes across all providers:
+Common error codes across providers:
 
 | Code | Meaning |
 |------|---------|
-| `authorization_denied` | User cancelled, or in Meta Development Mode the user is not added under App Roles. |
-| `session_expired` | 15-minute state cache expired. |
-| `token_exchange_failed` | Wrong App Secret or redirect URI mismatch. |
+| `authorization_denied` | User cancelled, or (Meta Dev Mode) not in App Roles. |
+| `session_expired` | 15-minute OAuth state cache expired. |
+| `token_exchange_failed` | Wrong Client/App Secret or redirect URI mismatch. |
 | `useragent_not_found` | Invalid or unauthorized `userAgentGuid`. |
 | `invalid_config` | Agent has no credentials block for the provider. |
 | `internal_error` | Unexpected server error. |
 
-See each integration page for provider-specific error details and remediation.
+Each integration page lists any provider-specific error codes.
 
-### Generic OAuth Endpoints
+## Generic OAuth Endpoints
 
-These endpoints work the same way across every OAuth provider. Replace `{Provider}` with the integration code (`MetaAds`, `FB`, `IG`, `LI`, `X`, `TikTok`, `GAds`, `HubSpot`, `Mailchimp`).
+All integrations share these three endpoints. Replace `{Provider}` with the integration code (`MetaAds`, `FB`, `IG`, `LI`, `X`, `TikTok`, `GAds`, `HubSpot`, `Mailchimp`, `GoogleDrive`).
 
-#### **POST** /UserAgentOAuth/{Provider}Status
-
-Check the current connection state.
+### POST /UserAgentOAuth/{Provider}Status
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `userAgentGuid` | string | Yes | Agent instance GUID. |
 
-Response:
+Response shape varies per provider (e.g. `username` vs `linkedinName` vs `customerId`). See each integration page. Common fields: `connected`, `connectedAt`, `tokenExpiresAt`.
 
-```json
-{
-  "result": true,
-  "connected": true,
-  "username": "connected-account-name",
-  "connectedAt": "2026-04-17T12:00:00.000Z",
-  "tokenExpiresAt": "2026-06-16T12:00:00.000Z",
-  "refreshTokenExpiresAt": "2026-10-17T12:00:00.000Z",
-  "errors": []
-}
-```
-
-Some providers use integration-specific field names instead of `username` (e.g. `linkedinName`, `customerId`). Refer to the relevant integration page.
-
-#### **POST** /UserAgentOAuth/{Provider}Disconnect
-
-Revoke access and clear stored credentials.
+### POST /UserAgentOAuth/{Provider}Disconnect
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/{Provider}Disconnect" \
@@ -212,86 +224,167 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/{Provider}Disconnect" \
   -d '{ "userAgentGuid": "your-useragent-guid" }'
 ```
 
-Response: `{ "result": true, "errors": [] }`. The agent restarts automatically if it was running.
+Response: `{ "result": true, "errors": [] }`. The agent restarts automatically if it was running. Twitter/X and TikTok additionally call the provider's revoke endpoint; other providers only clear the stored credentials (the token remains valid on the provider side until it expires).
 
-#### **POST** /UserAgentOAuth/TokenRefresh
+### POST /UserAgentOAuth/TokenRefresh
 
-Force-refresh the provider's access token. Wiro auto-refreshes before expiry, so manual refresh is rarely needed.
+Force-refresh the provider's access token.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `userAgentGuid` | string | Yes | Agent instance GUID. |
 | `provider` | string | Yes | One of: `twitter`, `tiktok`, `instagram`, `facebook`, `linkedin`, `googleads`, `metaads`, `hubspot`, `googledrive`. |
 
-```json
-{
-  "result": true,
-  "accessToken": "new-access-token...",
-  "refreshToken": "new-refresh-token...",
-  "errors": []
-}
-```
+**Mailchimp is not supported** — its tokens don't expire. Calling TokenRefresh with `provider: "mailchimp"` returns an error.
 
-Mailchimp tokens do not expire and are not included.
+Response: `{ result: true, accessToken, refreshToken, errors }`.
 
-### Provider-Specific Post-Callback Endpoints
+Wiro auto-refreshes before expiry, so manual TokenRefresh calls are rarely needed. Hardcoded token TTLs:
 
-Some integrations require a second step after the callback to finalize the connection. These are documented on their respective integration pages:
+| Provider | Access Token | Refresh Token |
+|----------|--------------|----------------|
+| Twitter / X | 2 hours | ~180 days |
+| TikTok | 1 day | ~1 year |
+| Instagram | 60 days | N/A (no refresh token; refreshes with current token) |
+| Facebook | 60 days | N/A (no refresh token; refreshes via `fb_exchange_token`) |
+| LinkedIn | 60 days | From token response (~1 year typical) |
+| Google Ads | 1 hour | Long-lived (no expiry) |
+| Meta Ads | 60 days | N/A |
+| HubSpot | **30 minutes** | Long-lived |
+| Google Drive | 1 hour | Long-lived |
+| Mailchimp | No expiry | N/A |
 
-| Endpoint | Purpose | Integration |
-|----------|---------|-------------|
-| `POST /UserAgentOAuth/MetaAdsSetAdAccount` | Pick the ad account to manage. | [Meta Ads](/docs/integration-metaads) |
-| `POST /UserAgentOAuth/FBSetPage` | Pick the Facebook Page (multi-page accounts). | [Facebook Page](/docs/integration-facebook) |
-| `POST /UserAgentOAuth/GAdsSetCustomerId` | Pick the Google Ads customer ID. | [Google Ads](/docs/integration-googleads) |
+## Provider-Specific Post-Callback Endpoints
+
+Some integrations require a secondary step after the OAuth callback to finalize the connection. These are documented in full on each integration page.
+
+### Meta Ads — Set Ad Account
+
+After `MetaAdsCallback`, the user must choose an ad account:
+
+**POST** `/UserAgentOAuth/MetaAdsSetAdAccount`
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `userAgentGuid` | string | Yes | Agent instance GUID. |
+| `adAccountId` | string | Yes | Ad account ID without `act_` prefix (prefix stripped automatically). |
+| `adAccountName` | string | No | Display name shown in dashboards. |
+
+See [Meta Ads Skills](/docs/integration-metaads-skills).
+
+### Facebook Page — Set Page
+
+After `FBCallback`, the connection is incomplete until the user chooses a Page:
+
+**POST** `/UserAgentOAuth/FBSetPage`
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `userAgentGuid` | string | Yes | Agent instance GUID. |
+| `pageId` | string | Yes | A page ID from the `fb_pages` callback array. |
+| `pageName` | string | No | Display name override. |
+
+Must be called within 15 minutes of the callback (pending cache TTL). See [Facebook Page Skills](/docs/integration-facebook-skills).
+
+### Google Ads — Set Customer ID
+
+After `GAdsCallback`, pick an accessible customer:
+
+**POST** `/UserAgentOAuth/GAdsSetCustomerId`
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `userAgentGuid` | string | Yes | Agent instance GUID. |
+| `customerId` | string | Yes | 10-digit customer ID (dashes stripped). |
+
+See [Google Ads Skills](/docs/integration-googleads-skills).
+
+### Google Drive — List / Set Folders
+
+After `GoogleDriveCallback`, list subfolders and set selections:
+
+**POST** `/UserAgentOAuth/GoogleDriveListFolder` — browse folder contents by `parentId`.
+
+**POST** `/UserAgentOAuth/GoogleDriveSetFolder` — persist up to 5 selected folders (singular endpoint name, array payload).
+
+See [Google Drive Skills](/docs/integration-googledrive-skills).
+
+## Web UI Behaviors (Wiro Dashboard)
+
+If you're comparing against the Wiro Dashboard, here's what happens under the hood for parity with the API:
+
+- **Per-group save**: Each credential card has its own Save button. Saving a card calls `POST /UserAgent/Update` with only that group's fields.
+- **Own mode 2-step**: When a user clicks "Connect" in own mode, the Dashboard first calls Update to save `appId`/`appSecret` + `authMethod: "own"`, then calls the Connect endpoint with `authMethod: "own"`. API users must make both calls explicitly.
+- **Full-page redirect, not popup**: `window.location.href = authorizeUrl` — no popup windows (avoids third-party cookie issues).
+- **No manual token refresh button**: Refresh is fully automatic. `TokenRefresh` exists for debugging only.
+- **LLM Markdown feature**: The Dashboard includes an "LLM Markdown" tab that generates a ready-to-paste prompt for AI assistants summarizing every credential field the agent needs. Useful for API users building their own configuration UIs — see the per-integration help texts for equivalent guidance.
+- **No format validation**: Wiro doesn't validate email/URL formats server-side. Malformed values fail at runtime inside the skill when it tries to use them.
+- **Credential groups that are all-readonly are hidden**: If every field in a group has `_editable: false`, the entire group is omitted from `POST /UserAgent/Detail` responses. This is how platform-managed credentials (OpenAI, Wiro, Calendarific) stay invisible.
 
 ## Setup Required State
 
-If an agent has required (non-optional) credentials that have not been filled in, the agent is in **Setup Required** state (status `6`) and cannot be started. After setting all required credentials via Update, the status automatically changes to `0` (Stopped) and you can call `POST /UserAgent/Start`.
+If an agent has required credentials not yet filled in, it's in **Setup Required** state (`status: 6`). It can't be started until credentials are complete.
 
-Check the `setuprequired` boolean in `UserAgent/Detail` or `UserAgent/MyAgents` responses to determine if credentials still need to be configured.
+- Fresh normal deploy → status `2` (Queued) immediately.
+- Fresh prepaid deploy → status `6` (Setup Required) — fill credentials, then call Start.
+- `setuprequired` flag in `UserAgent/Detail` / `UserAgent/MyAgents` combines `status === 6` with whether all required credential fields are populated.
 
 ## Security
 
-- **Tokens are stored server-side** in the agent instance configuration. The `TokenRefresh` endpoint returns new tokens — all other endpoints (Status, Detail, Update) sanitize token fields before responding.
+- **Tokens are stored server-side** in the agent instance configuration. `TokenRefresh` returns new tokens; Status, Detail, and Update endpoints strip `accessToken`, `refreshToken`, `clientSecret`, and `appSecret` before responding.
 - The `redirectUrl` receives only connection status parameters — no tokens, no secrets.
-- API responses from Status, Detail, and Update endpoints are sanitized: `accessToken`, `refreshToken`, `clientSecret`, and `appSecret` fields are stripped before returning.
 - OAuth state parameters use a 15-minute TTL cache to prevent replay attacks.
-- Redirect URLs must be HTTPS (or localhost / 127.0.0.1 for development).
+- Redirect URLs must be HTTPS (or localhost/127.0.0.1 for development).
+- Facebook Page tokens are cached server-side for 15 minutes after the OAuth callback; clients only see `{id, name}` pairs. Page access tokens never leave the server.
 
 ## For Third-Party Developers
 
-If you are building a product on top of Wiro agents and need your customers to connect their own accounts, the recommended flow is:
+If you're building a product on top of Wiro agents and need your customers to connect their own accounts:
 
 1. **Deploy** an agent instance per customer via `POST /UserAgent/Deploy`.
 2. **Connect** — your backend calls `POST /UserAgentOAuth/{Provider}Connect` with the customer's `userAgentGuid` and a `redirectUrl` pointing back to your app.
 3. **Redirect** — send the customer's browser to the returned `authorizeUrl`.
 4. **Authorize** — customer authorizes on the provider's consent screen.
-5. **Return** — customer lands back on your `redirectUrl` with success/error query parameters.
-6. **Verify** — call `POST /UserAgentOAuth/{Provider}Status` to confirm.
+5. **Return** — customer lands on your `redirectUrl` with success/error query parameters.
+6. **Finalize** — for Meta Ads, Facebook, Google Ads, Google Drive: call the appropriate SetAdAccount/SetPage/SetCustomerId/SetFolder endpoint.
+7. **Verify** — call `POST /UserAgentOAuth/{Provider}Status`.
 
-Each integration page includes a dedicated **Multi-Tenant Architecture** section covering per-provider rate limits, token isolation, and White-Label consent screen configuration.
+Each integration page includes a **Multi-Tenant Architecture** section covering per-provider rate limits, token isolation, and white-label consent screen configuration.
 
 ### Handling the OAuth redirect in your app
 
 ```javascript
-// Express route that receives the OAuth return
 app.get('/settings/integrations', (req, res) => {
   if (req.query.x_connected === 'true') {
     return res.redirect(`/dashboard?connected=twitter&username=${req.query.x_username}`)
   }
+
   if (req.query.metaads_connected === 'true') {
     const accounts = JSON.parse(decodeURIComponent(req.query.metaads_accounts || '[]'))
-    // Show account picker or auto-select if only one
     return res.redirect(`/dashboard/meta-ads?accounts=${encodeURIComponent(JSON.stringify(accounts))}`)
   }
+
   if (req.query.fb_connected === 'true') {
     const pages = JSON.parse(decodeURIComponent(req.query.fb_pages || '[]'))
-    return pages.length > 1
-      ? res.redirect(`/dashboard/facebook?pick=${encodeURIComponent(JSON.stringify(pages))}`)
-      : res.redirect('/dashboard?connected=facebook')
+    // Facebook always requires FBSetPage to finalize
+    return res.redirect(`/dashboard/facebook?pick=${encodeURIComponent(JSON.stringify(pages))}`)
   }
-  const err = Object.keys(req.query).find((k) => k.endsWith('_error'))
-  if (err) return res.redirect(`/dashboard?error=${err}&reason=${req.query[err]}`)
+
+  if (req.query.gads_connected === 'true') {
+    const customers = JSON.parse(decodeURIComponent(req.query.gads_accounts || '[]'))
+    return res.redirect(`/dashboard/google-ads?pick=${encodeURIComponent(JSON.stringify(customers))}`)
+  }
+
+  if (req.query.gdrive_connected === 'true') {
+    const folders = JSON.parse(decodeURIComponent(req.query.gdrive_folders || '[]'))
+    return res.redirect(`/dashboard/drive?pick=${encodeURIComponent(JSON.stringify(folders))}`)
+  }
+
+  const errKey = Object.keys(req.query).find((k) => k.endsWith('_error'))
+  if (errKey) {
+    return res.redirect(`/dashboard?error=${errKey}&reason=${req.query[errKey]}`)
+  }
+
   res.redirect('/dashboard')
 })
 ```

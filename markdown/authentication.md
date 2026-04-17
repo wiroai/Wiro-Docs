@@ -512,3 +512,19 @@ print(response.body);
   "socketaccesstoken": "eDcCm5yyUfIvMFspTwww49OUfgXkQt"
 }
 ```
+
+## Using Auth with Agent Endpoints
+
+The same authentication headers work for every `UserAgent/*` and `UserAgentOAuth/*` endpoint. Example:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: ${YOUR_API_KEY}" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "message": "What are the latest campaign insights?"
+  }'
+```
+
+Signature-based projects add `x-nonce` and `x-signature` exactly as shown in the Run example — the signing algorithm is identical. See [Agent Overview](/docs/agent-overview) for the full agent API reference.

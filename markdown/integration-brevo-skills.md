@@ -1,12 +1,15 @@
 # Brevo Integration
 
-Connect your agents to Brevo (formerly Sendinblue) for transactional and marketing email delivery.
+Connect your agent to Brevo (formerly Sendinblue) for transactional and marketing email.
 
 ## Overview
 
-The Brevo integration uses a Brevo API v3 key for sending transactional emails, managing contact lists, and running email campaigns.
+The Brevo integration uses Brevo API v3 with an `api-key` header (not Bearer).
 
-**Used by:** `newsletter-compose` and custom agents needing email sending.
+**Used by:**
+
+- `newsletter-compose` (agents that use Brevo as the ESP)
+- Custom agents needing email sending
 
 **Agents that typically enable this integration:**
 
@@ -16,22 +19,21 @@ The Brevo integration uses a Brevo API v3 key for sending transactional emails, 
 
 | Mode | Status | Notes |
 |------|--------|-------|
-| API key (v3) | Available | Standard Brevo API v3 key. |
+| API Key (v3) | Available | Standard Brevo API v3 keys. |
 
 ## Prerequisites
 
-- **A Wiro API key** — see [Authentication](/docs/authentication).
-- **A deployed agent** — see [Agent Overview](/docs/agent-overview).
+- **A Wiro API key** — [Authentication](/docs/authentication).
+- **A deployed agent** — [Agent Overview](/docs/agent-overview).
 - **A Brevo account** (free tier works for low volume).
 
 ## Setup
 
 ### Step 1: Get an API key
 
-1. Sign in to [app.brevo.com](https://app.brevo.com/).
-2. Click your profile (top right) → **SMTP & API → API Keys tab**.
-3. Click **Generate a new API key**, name it "Wiro agent".
-4. Copy the key (starts with `xkeysib-`).
+1. [app.brevo.com](https://app.brevo.com/) → profile (top right) → **SMTP & API → API Keys**.
+2. **Generate a new API key**, name "Wiro agent".
+3. Copy the key (starts with `xkeysib-`).
 
 ### Step 2: Save to Wiro
 
@@ -66,11 +68,22 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 |-------|------|-------------|
 | `apiKey` | string | Brevo v3 API key (starts with `xkeysib-`). |
 
+## Runtime Behavior
+
+Env vars:
+
+- `BREVO_API_KEY` ← `credentials.brevo.apiKey`
+
+Auth: **Header `api-key: $BREVO_API_KEY`** — not Bearer. This is Brevo's documented auth pattern.
+Base URL: `https://api.brevo.com/v3/`.
+
+Rate limits: ~10 req/s on free plan; higher on paid tiers.
+
 ## Troubleshooting
 
-- **401 Unauthorized:** Key was revoked or deleted. Generate a new one.
-- **Emails go to spam:** Verify your sending domain under Brevo → Senders & IP → Domains. Set up SPF, DKIM, DMARC records as instructed.
-- **Rate limit (429):** Brevo free tier is 300 emails/day. Upgrade plan if you exceed.
+- **401 Unauthorized:** Key revoked or deleted. Generate a new one.
+- **Emails go to spam:** Verify sending domain under Brevo → **Senders & IP → Domains**. Set up SPF, DKIM, DMARC.
+- **Rate limit (429):** Free tier is 300 emails/day. Upgrade plan.
 
 ## Related
 
