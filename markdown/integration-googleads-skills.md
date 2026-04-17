@@ -247,7 +247,10 @@ Clears Google Ads credentials (no remote revoke).
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "userAgentGuid": "your-useragent-guid", "provider": "googleads" }'
+  -d '{
+    "userAgentGuid": "your-useragent-guid",
+    "provider": "googleads"
+  }'
 ```
 
 See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).

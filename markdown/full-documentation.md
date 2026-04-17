@@ -4625,8 +4625,9 @@ This lets you build fully asynchronous workflows: fire a message and let your ba
 
 Include `callbackurl` in your message request body:
 
+`POST /UserAgent/Message/Send`:
+
 ```json
-POST /UserAgent/Message/Send
 {
   "useragentguid": "your-useragent-guid",
   "message": "What are today's trending topics?",
@@ -6027,7 +6028,10 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/FBDisconnect" \
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "userAgentGuid": "your-useragent-guid", "provider": "facebook" }'
+  -d '{
+    "userAgentGuid": "your-useragent-guid",
+    "provider": "facebook"
+  }'
 ```
 
 Uses `fb_exchange_token` under the hood. See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
@@ -6333,7 +6337,10 @@ Clears Instagram credentials (no remote revoke).
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "userAgentGuid": "your-useragent-guid", "provider": "instagram" }'
+  -d '{
+    "userAgentGuid": "your-useragent-guid",
+    "provider": "instagram"
+  }'
 ```
 
 Uses `grant_type=ig_refresh_token` with the current access token (Instagram has no separate refresh token). See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
@@ -6620,7 +6627,10 @@ Clears LinkedIn credentials (no remote revoke).
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "userAgentGuid": "your-useragent-guid", "provider": "linkedin" }'
+  -d '{
+    "userAgentGuid": "your-useragent-guid",
+    "provider": "linkedin"
+  }'
 ```
 
 Uses the stored refresh token. Returns new access + refresh tokens. See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
@@ -6900,7 +6910,10 @@ Calls X's revoke endpoint (`POST https://api.x.com/2/oauth2/revoke`) with Basic 
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "userAgentGuid": "your-useragent-guid", "provider": "twitter" }'
+  -d '{
+    "userAgentGuid": "your-useragent-guid",
+    "provider": "twitter"
+  }'
 ```
 
 Uses `grant_type=refresh_token`. Returns new access + refresh tokens. See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
@@ -7151,7 +7164,10 @@ Calls TikTok's revoke endpoint (`POST https://open.tiktokapis.com/v2/oauth/revok
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "userAgentGuid": "your-useragent-guid", "provider": "tiktok" }'
+  -d '{
+    "userAgentGuid": "your-useragent-guid",
+    "provider": "tiktok"
+  }'
 ```
 
 See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
@@ -7435,7 +7451,10 @@ Clears Google Ads credentials (no remote revoke).
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "userAgentGuid": "your-useragent-guid", "provider": "googleads" }'
+  -d '{
+    "userAgentGuid": "your-useragent-guid",
+    "provider": "googleads"
+  }'
 ```
 
 See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
@@ -7694,7 +7713,10 @@ Clears HubSpot credentials (no remote revoke).
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "userAgentGuid": "your-useragent-guid", "provider": "hubspot" }'
+  -d '{
+    "userAgentGuid": "your-useragent-guid",
+    "provider": "hubspot"
+  }'
 ```
 
 Returns new access + refresh tokens. See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
@@ -8140,8 +8162,14 @@ Response:
 {
   "result": true,
   "folders": [
-    { "id": "2XyZ", "name": "2025 Q1" },
-    { "id": "3MnO", "name": "Archive" }
+    {
+      "id": "2XyZ",
+      "name": "2025 Q1"
+    },
+    {
+      "id": "3MnO",
+      "name": "Archive"
+    }
   ],
   "errors": []
 }
@@ -8161,8 +8189,14 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GoogleDriveSetFolder" \
   -d '{
     "userAgentGuid": "your-useragent-guid",
     "folders": [
-      { "id": "1AbC", "name": "Agent Outputs" },
-      { "id": "2XyZ", "name": "2025 Q1" }
+      {
+        "id": "1AbC",
+        "name": "Agent Outputs"
+      },
+      {
+        "id": "2XyZ",
+        "name": "2025 Q1"
+      }
     ]
   }'
 ```
@@ -8175,8 +8209,14 @@ Response:
 {
   "result": true,
   "folders": [
-    { "id": "1AbC", "name": "Agent Outputs" },
-    { "id": "2XyZ", "name": "2025 Q1" }
+    {
+      "id": "1AbC",
+      "name": "Agent Outputs"
+    },
+    {
+      "id": "2XyZ",
+      "name": "2025 Q1"
+    }
   ],
   "errors": []
 }
@@ -8206,8 +8246,14 @@ Response:
   "result": true,
   "connected": true,
   "folders": [
-    { "id": "1AbC", "name": "Agent Outputs" },
-    { "id": "2XyZ", "name": "2025 Q1" }
+    {
+      "id": "1AbC",
+      "name": "Agent Outputs"
+    },
+    {
+      "id": "2XyZ",
+      "name": "2025 Q1"
+    }
   ],
   "connectedAt": "2026-04-17T12:00:00.000Z",
   "tokenExpiresAt": "2026-04-17T13:00:00.000Z",
@@ -8307,7 +8353,10 @@ Clears Google Drive credentials (no remote revoke).
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "userAgentGuid": "your-useragent-guid", "provider": "googledrive" }'
+  -d '{
+    "userAgentGuid": "your-useragent-guid",
+    "provider": "googledrive"
+  }'
 ```
 
 See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
@@ -8515,8 +8564,16 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
           "botToken": "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11",
           "allowedUsers": ["761381461", "987654321"],
           "sessionMode": [
-            { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
-            { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
+            {
+              "value": "private",
+              "text": "Private — each user has their own conversation",
+              "selected": true
+            },
+            {
+              "value": "collaborative",
+              "text": "Collaborative — all users share the same conversation",
+              "selected": false
+            }
           ]
         }
       }
@@ -8547,8 +8604,16 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ```json
 [
-  { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
-  { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
+  {
+    "value": "private",
+    "text": "Private — each user has their own conversation",
+    "selected": true
+  },
+  {
+    "value": "collaborative",
+    "text": "Collaborative — all users share the same conversation",
+    "selected": false
+  }
 ]
 ```
 
@@ -8650,12 +8715,24 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
               "appName": "My App",
               "serviceAccountJsonBase64": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii...",
               "apps": [
-                { "platform": "ios", "id": "6479306352" },
-                { "platform": "android", "id": "com.example.app" }
+                {
+                  "platform": "ios",
+                  "id": "6479306352"
+                },
+                {
+                  "platform": "android",
+                  "id": "com.example.app"
+                }
               ],
               "topics": [
-                { "topicKey": "locale_en", "topicDesc": "English users" },
-                { "topicKey": "tier_paid", "topicDesc": "Paid subscribers" }
+                {
+                  "topicKey": "locale_en",
+                  "topicDesc": "English users"
+                },
+                {
+                  "topicKey": "tier_paid",
+                  "topicDesc": "Paid subscribers"
+                }
               ]
             }
           ]
@@ -8695,8 +8772,38 @@ Add more entries to `accounts[]` to manage multiple Firebase projects from one a
   "credentials": {
     "firebase": {
       "accounts": [
-        { "appName": "Consumer App", "serviceAccountJsonBase64": "...", "apps": [...], "topics": [...] },
-        { "appName": "Business App", "serviceAccountJsonBase64": "...", "apps": [...], "topics": [...] }
+        {
+          "appName": "Consumer App",
+          "serviceAccountJsonBase64": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii...",
+          "apps": [
+            {
+              "platform": "ios",
+              "id": "6479306352"
+            }
+          ],
+          "topics": [
+            {
+              "topicKey": "locale_en",
+              "topicDesc": "English users"
+            }
+          ]
+        },
+        {
+          "appName": "Business App",
+          "serviceAccountJsonBase64": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii...",
+          "apps": [
+            {
+              "platform": "android",
+              "id": "com.example.business"
+            }
+          ],
+          "topics": [
+            {
+              "topicKey": "tier_paid",
+              "topicDesc": "Paid subscribers"
+            }
+          ]
+        }
       ]
     }
   }
@@ -8946,7 +9053,10 @@ Used by **Meta Ads Manager** and **Google Ads Manager** (for cross-platform crea
   "credentials": {
     "appstore": {
       "apps": [
-        { "appName": "My iOS App", "appId": "6479306352" }
+        {
+          "appName": "My iOS App",
+          "appId": "6479306352"
+        }
       ]
     }
   }
@@ -9096,7 +9206,10 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
   "credentials": {
     "googleplay": {
       "apps": [
-        { "appName": "My Android App", "packageName": "com.example.app" }
+        {
+          "appName": "My Android App",
+          "packageName": "com.example.app"
+        }
       ]
     }
   }
@@ -9612,8 +9725,9 @@ Preference skills (`_editable: true`, `interval: null`) let you customize the ag
 
 ### Example: Social Manager — Brand Voice
 
+Send a `POST /UserAgent/Update` request with only the preference skills you want to change:
+
 ```json
-POST /UserAgent/Update
 {
   "guid": "your-social-manager-guid",
   "configuration": {
@@ -9629,8 +9743,9 @@ POST /UserAgent/Update
 
 ### Example: Push Notification Manager — Targeting Preferences
 
+`POST /UserAgent/Update`:
+
 ```json
-POST /UserAgent/Update
 {
   "guid": "your-push-agent-guid",
   "configuration": {
@@ -9646,8 +9761,9 @@ POST /UserAgent/Update
 
 ### Example: Lead Gen Manager — ICP Definition
 
+`POST /UserAgent/Update`:
+
 ```json
-POST /UserAgent/Update
 {
   "guid": "your-leadgen-guid",
   "configuration": {
@@ -9743,10 +9859,11 @@ Response excerpt (`configuration.custom_skills`):
 ]
 ```
 
-**Step 2 — Update everything in one request:**
+**Step 2 — Update everything in one request.**
+
+`POST /UserAgent/Update`:
 
 ```json
-POST /UserAgent/Update
 {
   "guid": "your-push-agent-guid",
   "configuration": {

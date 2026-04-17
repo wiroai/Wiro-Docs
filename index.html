@@ -4319,8 +4319,7 @@ import type {
 <p class="docs-callout"><em><strong>Panel/UI note:</strong> the non-prepaid Deploy mode (omit <code>useprepaid</code>) exists for the Wiro dashboard's interactive deploy flow where end users pay via Stripe subscription with a browser redirect. That path also accepts <code>configuration.credentials</code> and <code>configuration.custom_skills</code> in the body (merged via <code>mergeUserConfig</code>), but API integrations should always use prepaid deploy and set credentials with a follow-up <code>UserAgent/Update</code> call.</em></p>
 
 <h3>Request</h3>
-<pre><code class="language-json">POST /UserAgent/Deploy
-{
+<pre><code class="language-json">{
   "agentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "title": "My Instagram Bot",
   "useprepaid": true,
@@ -4655,8 +4654,7 @@ import type {
 </table></div></div>
 
 <h3>Request</h3>
-<pre><code class="language-json">POST /UserAgent/CreateExtraCreditCheckout
-{
+<pre><code class="language-json">{
   "useragentGuid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
   "pack": "package2",
   "useprepaid": true
@@ -5789,8 +5787,7 @@ ws.onopen = () => {
 <section id="setting-a-callback-url">
 <h2>Setting a Callback URL</h2>
 <p>Include <code>callbackurl</code> in your message request body:</p>
-<pre><code class="language-json">POST /UserAgent/Message/Send
-{
+<pre><code class="language-json">{
   "useragentguid": "your-useragent-guid",
   "message": "What are today's trending topics?",
   "sessionkey": "user-123",
@@ -6021,8 +6018,7 @@ ws.onopen = () => {
 <p>Use <code>POST /UserAgent/Update</code> with <code>configuration</code> to set credentials and custom skills. You can update <code>credentials</code>, <code>custom_skills</code>, or both in a single request.</p>
 
 <h3>Request Format</h3>
-<pre><code class="language-json">POST /UserAgent/Update
-{
+<pre><code class="language-json">{
   "guid": "your-useragent-guid",
   "configuration": {
     "credentials": {
@@ -6081,8 +6077,7 @@ ws.onopen = () => {
 <tr><td><code>telegram</code></td><td>API Key</td><td><code>botToken</code>, <code>allowedUsers</code>, <code>sessionMode</code></td></tr>
 </tbody>
 </table></div></div>
-<pre><code class="language-json">POST /UserAgent/Update
-{
+<pre><code class="language-json">{
   "guid": "your-useragent-guid",
   "configuration": {
     "credentials": {
@@ -6094,8 +6089,16 @@ ws.onopen = () => {
         "botToken": "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11",
         "allowedUsers": ["761381461"],
         "sessionMode": [
-          { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
-          { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
+          {
+            "value": "private",
+            "text": "Private — each user has their own conversation",
+            "selected": true
+          },
+          {
+            "value": "collaborative",
+            "text": "Collaborative — all users share the same conversation",
+            "selected": false
+          }
         ]
       }
     }
@@ -6114,8 +6117,7 @@ ws.onopen = () => {
 <tr><td><code>telegram</code></td><td><code>botToken</code>, <code>allowedUsers</code>, <code>sessionMode</code></td><td>Telegram bot for operator notifications</td></tr>
 </tbody>
 </table></div></div>
-<pre><code class="language-json">POST /UserAgent/Update
-{
+<pre><code class="language-json">{
   "guid": "your-useragent-guid",
   "configuration": {
     "credentials": {
@@ -6132,8 +6134,16 @@ ws.onopen = () => {
         "botToken": "123456:ABC-DEF1234ghIkl",
         "allowedUsers": ["761381461"],
         "sessionMode": [
-          { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
-          { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
+          {
+            "value": "private",
+            "text": "Private — each user has their own conversation",
+            "selected": true
+          },
+          {
+            "value": "collaborative",
+            "text": "Collaborative — all users share the same conversation",
+            "selected": false
+          }
         ]
       }
     }
@@ -6151,8 +6161,7 @@ ws.onopen = () => {
 <tr><td><code>telegram</code></td><td><code>botToken</code>, <code>allowedUsers</code>, <code>sessionMode</code></td><td>Telegram bot for operator notifications</td></tr>
 </tbody>
 </table></div></div>
-<pre><code class="language-json">POST /UserAgent/Update
-{
+<pre><code class="language-json">{
   "guid": "your-useragent-guid",
   "configuration": {
     "credentials": {
@@ -6172,8 +6181,16 @@ ws.onopen = () => {
         "botToken": "123456:ABC-DEF1234ghIkl",
         "allowedUsers": ["761381461"],
         "sessionMode": [
-          { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
-          { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
+          {
+            "value": "private",
+            "text": "Private — each user has their own conversation",
+            "selected": true
+          },
+          {
+            "value": "collaborative",
+            "text": "Collaborative — all users share the same conversation",
+            "selected": false
+          }
         ]
       }
     }
@@ -6190,8 +6207,7 @@ ws.onopen = () => {
 <tr><td><code>telegram</code></td><td><code>botToken</code>, <code>allowedUsers</code>, <code>sessionMode</code></td><td>Telegram bot for operator notifications</td></tr>
 </tbody>
 </table></div></div>
-<pre><code class="language-json">POST /UserAgent/Update
-{
+<pre><code class="language-json">{
   "guid": "your-useragent-guid",
   "configuration": {
     "credentials": {
@@ -6205,8 +6221,16 @@ ws.onopen = () => {
         "botToken": "123456:ABC-DEF1234ghIkl",
         "allowedUsers": ["761381461"],
         "sessionMode": [
-          { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
-          { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
+          {
+            "value": "private",
+            "text": "Private — each user has their own conversation",
+            "selected": true
+          },
+          {
+            "value": "collaborative",
+            "text": "Collaborative — all users share the same conversation",
+            "selected": false
+          }
         ]
       }
     }
@@ -6223,31 +6247,52 @@ ws.onopen = () => {
 <tr><td><code>telegram</code></td><td><code>botToken</code>, <code>allowedUsers</code>, <code>sessionMode</code></td><td>Telegram bot for operator notifications</td></tr>
 </tbody>
 </table></div></div>
-<pre><code class="language-json">POST /UserAgent/Update
-{
+<pre><code class="language-json">{
   "guid": "your-useragent-guid",
   "configuration": {
     "credentials": {
       "firebase": {
-        "accounts": [{
-          "appName": "My App",
-          "serviceAccountJsonBase64": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii...",
-          "apps": [
-            { "platform": "ios", "id": "6479306352" },
-            { "platform": "android", "id": "com.example.app" }
-          ],
-          "topics": [
-            { "topicKey": "locale_en", "topicDesc": "English-speaking users" },
-            { "topicKey": "tier_paid", "topicDesc": "Paid subscribers" }
-          ]
-        }]
+        "accounts": [
+          {
+            "appName": "My App",
+            "serviceAccountJsonBase64": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii...",
+            "apps": [
+              {
+                "platform": "ios",
+                "id": "6479306352"
+              },
+              {
+                "platform": "android",
+                "id": "com.example.app"
+              }
+            ],
+            "topics": [
+              {
+                "topicKey": "locale_en",
+                "topicDesc": "English-speaking users"
+              },
+              {
+                "topicKey": "tier_paid",
+                "topicDesc": "Paid subscribers"
+              }
+            ]
+          }
+        ]
       },
       "telegram": {
         "botToken": "123456:ABC-DEF1234ghIkl",
         "allowedUsers": ["761381461"],
         "sessionMode": [
-          { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
-          { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
+          {
+            "value": "private",
+            "text": "Private — each user has their own conversation",
+            "selected": true
+          },
+          {
+            "value": "collaborative",
+            "text": "Collaborative — all users share the same conversation",
+            "selected": false
+          }
         ]
       }
     }
@@ -6268,8 +6313,7 @@ ws.onopen = () => {
 <tr><td><code>telegram</code></td><td>API Key</td><td><code>botToken</code>, <code>allowedUsers</code>, <code>sessionMode</code></td></tr>
 </tbody>
 </table></div></div>
-<pre><code class="language-json">POST /UserAgent/Update
-{
+<pre><code class="language-json">{
   "guid": "your-useragent-guid",
   "configuration": {
     "credentials": {
@@ -6280,8 +6324,16 @@ ws.onopen = () => {
         "botToken": "123456:ABC-DEF1234ghIkl",
         "allowedUsers": ["761381461"],
         "sessionMode": [
-          { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
-          { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
+          {
+            "value": "private",
+            "text": "Private — each user has their own conversation",
+            "selected": true
+          },
+          {
+            "value": "collaborative",
+            "text": "Collaborative — all users share the same conversation",
+            "selected": false
+          }
         ]
       }
     }
@@ -6301,8 +6353,7 @@ ws.onopen = () => {
 <tr><td><code>telegram</code></td><td>API Key</td><td><code>botToken</code>, <code>allowedUsers</code>, <code>sessionMode</code></td></tr>
 </tbody>
 </table></div></div>
-<pre><code class="language-json">POST /UserAgent/Update
-{
+<pre><code class="language-json">{
   "guid": "your-useragent-guid",
   "configuration": {
     "credentials": {
@@ -6315,8 +6366,16 @@ ws.onopen = () => {
         "botToken": "123456:ABC-DEF1234ghIkl",
         "allowedUsers": ["761381461"],
         "sessionMode": [
-          { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
-          { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
+          {
+            "value": "private",
+            "text": "Private — each user has their own conversation",
+            "selected": true
+          },
+          {
+            "value": "collaborative",
+            "text": "Collaborative — all users share the same conversation",
+            "selected": false
+          }
         ]
       }
     }
@@ -6336,26 +6395,48 @@ ws.onopen = () => {
 <tr><td><code>telegram</code></td><td>API Key</td><td><code>botToken</code>, <code>allowedUsers</code>, <code>sessionMode</code></td></tr>
 </tbody>
 </table></div></div>
-<pre><code class="language-json">POST /UserAgent/Update
-{
+<pre><code class="language-json">{
   "guid": "your-useragent-guid",
   "configuration": {
     "credentials": {
       "website": {
-        "urls": [{ "websiteName": "Main Site", "url": "https://example.com" }]
+        "urls": [
+          {
+            "websiteName": "Main Site",
+            "url": "https://example.com"
+          }
+        ]
       },
       "appstore": {
-        "apps": [{ "appName": "My iOS App", "appId": "6479306352" }]
+        "apps": [
+          {
+            "appName": "My iOS App",
+            "appId": "6479306352"
+          }
+        ]
       },
       "googleplay": {
-        "apps": [{ "appName": "My Android App", "packageName": "com.example.app" }]
+        "apps": [
+          {
+            "appName": "My Android App",
+            "packageName": "com.example.app"
+          }
+        ]
       },
       "telegram": {
         "botToken": "123456:ABC-DEF1234ghIkl",
         "allowedUsers": ["761381461"],
         "sessionMode": [
-          { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
-          { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
+          {
+            "value": "private",
+            "text": "Private — each user has their own conversation",
+            "selected": true
+          },
+          {
+            "value": "collaborative",
+            "text": "Collaborative — all users share the same conversation",
+            "selected": false
+          }
         ]
       }
     }
@@ -6376,26 +6457,48 @@ ws.onopen = () => {
 <tr><td><code>telegram</code></td><td>API Key</td><td><code>botToken</code>, <code>allowedUsers</code>, <code>sessionMode</code></td></tr>
 </tbody>
 </table></div></div>
-<pre><code class="language-json">POST /UserAgent/Update
-{
+<pre><code class="language-json">{
   "guid": "your-useragent-guid",
   "configuration": {
     "credentials": {
       "website": {
-        "urls": [{ "websiteName": "Landing Page", "url": "https://example.com" }]
+        "urls": [
+          {
+            "websiteName": "Landing Page",
+            "url": "https://example.com"
+          }
+        ]
       },
       "appstore": {
-        "apps": [{ "appName": "My iOS App", "appId": "6479306352" }]
+        "apps": [
+          {
+            "appName": "My iOS App",
+            "appId": "6479306352"
+          }
+        ]
       },
       "googleplay": {
-        "apps": [{ "appName": "My Android App", "packageName": "com.example.app" }]
+        "apps": [
+          {
+            "appName": "My Android App",
+            "packageName": "com.example.app"
+          }
+        ]
       },
       "telegram": {
         "botToken": "123456:ABC-DEF1234ghIkl",
         "allowedUsers": ["761381461"],
         "sessionMode": [
-          { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
-          { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
+          {
+            "value": "private",
+            "text": "Private — each user has their own conversation",
+            "selected": true
+          },
+          {
+            "value": "collaborative",
+            "text": "Collaborative — all users share the same conversation",
+            "selected": false
+          }
         ]
       }
     }
@@ -6968,8 +7071,7 @@ app.get('/settings/social', (req, res) => {
 
 <div class="content-tab-panel" data-tab="sk-social">
 <p>Skill key: <code>content-tone</code> — Controls brand voice, hashtags, and posting style per platform.</p>
-<pre><code class="language-json">POST /UserAgent/Update
-{
+<pre><code class="language-json">{
   "guid": "your-social-manager-guid",
   "configuration": {
     "custom_skills": [
@@ -7008,8 +7110,7 @@ Use bullet points for features.
 
 <div class="content-tab-panel" data-tab="sk-blog">
 <p>Skill key: <code>content-strategy</code> — Controls writing style, topics, research rules, and blog categories.</p>
-<pre><code class="language-json">POST /UserAgent/Update
-{
+<pre><code class="language-json">{
   "guid": "your-blog-editor-guid",
   "configuration": {
     "custom_skills": [
@@ -7044,8 +7145,7 @@ Use bullet points for features.
 
 <div class="content-tab-panel" data-tab="sk-appreview">
 <p>Skill key: <code>review-preferences</code> — Controls response tone, support channels, and custom rules for review replies.</p>
-<pre><code class="language-json">POST /UserAgent/Update
-{
+<pre><code class="language-json">{
   "guid": "your-app-review-guid",
   "configuration": {
     "custom_skills": [
@@ -7075,8 +7175,7 @@ Use bullet points for features.
 
 <div class="content-tab-panel" data-tab="sk-appevent">
 <p>Skill key: <code>event-preferences</code> — Controls target regions, holiday priorities, and event style.</p>
-<pre><code class="language-json">POST /UserAgent/Update
-{
+<pre><code class="language-json">{
   "guid": "your-app-event-guid",
   "configuration": {
     "custom_skills": [
@@ -7101,8 +7200,7 @@ Use bullet points for features.
 
 <div class="content-tab-panel" data-tab="sk-push">
 <p>Skill key: <code>push-preferences</code> — Controls push notification tone, language, targeting, and holiday choices.</p>
-<pre><code class="language-json">POST /UserAgent/Update
-{
+<pre><code class="language-json">{
   "guid": "your-push-agent-guid",
   "configuration": {
     "custom_skills": [
@@ -7129,8 +7227,7 @@ Use bullet points for features.
 
 <div class="content-tab-panel" data-tab="sk-nlmanager">
 <p>Skill key: <code>newsletter-strategy</code> — Controls newsletter topics, tone, audience, frequency, and branding.</p>
-<pre><code class="language-json">POST /UserAgent/Update
-{
+<pre><code class="language-json">{
   "guid": "your-newsletter-guid",
   "configuration": {
     "custom_skills": [
@@ -7157,8 +7254,7 @@ Use bullet points for features.
 
 <div class="content-tab-panel" data-tab="sk-leadgen">
 <p>Skill key: <code>lead-strategy</code> — Controls ICP definition, outreach tone, email templates, and scoring rules.</p>
-<pre><code class="language-json">POST /UserAgent/Update
-{
+<pre><code class="language-json">{
   "guid": "your-leadgen-guid",
   "configuration": {
     "custom_skills": [
@@ -7185,8 +7281,7 @@ Use bullet points for features.
 
 <div class="content-tab-panel" data-tab="sk-googleads">
 <p>Skill key: <code>ad-strategy</code> — Controls target audience, budget goals, KPI thresholds, and ad creative preferences.</p>
-<pre><code class="language-json">POST /UserAgent/Update
-{
+<pre><code class="language-json">{
   "guid": "your-google-ads-guid",
   "configuration": {
     "custom_skills": [
@@ -7213,8 +7308,7 @@ Use bullet points for features.
 
 <div class="content-tab-panel" data-tab="sk-metaads">
 <p>Skill key: <code>ad-strategy</code> — Controls target audience, budget goals, KPI thresholds, and creative preferences for Meta campaigns.</p>
-<pre><code class="language-json">POST /UserAgent/Update
-{
+<pre><code class="language-json">{
   "guid": "your-meta-ads-guid",
   "configuration": {
     "custom_skills": [
@@ -7247,13 +7341,19 @@ Use bullet points for features.
 <p>Scheduled tasks run automatically on a cron schedule. You can enable/disable them and change their frequency.</p>
 
 <h3>Example: Change scanner frequency</h3>
-<pre><code class="language-json">POST /UserAgent/Update
-{
+<pre><code class="language-json">{
   "guid": "your-useragent-guid",
   "configuration": {
     "custom_skills": [
-      { "key": "review-scanner", "enabled": true, "interval": "0 */4 * * *" },
-      { "key": "content-scanner", "enabled": false }
+      {
+        "key": "review-scanner",
+        "enabled": true,
+        "interval": "0 */4 * * *"
+      },
+      {
+        "key": "content-scanner",
+        "enabled": false
+      }
     ]
   }
 }</code></pre>
@@ -7315,8 +7415,7 @@ Use bullet points for features.
 ]</code></pre>
 
 <p><strong>Step 2 — Update everything in one request:</strong></p>
-<pre><code class="language-json">POST /UserAgent/Update
-{
+<pre><code class="language-json">{
   "guid": "your-push-agent-guid",
   "configuration": {
     "custom_skills": [

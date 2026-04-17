@@ -10,10 +10,9 @@ This lets you build fully asynchronous workflows: fire a message and let your ba
 
 ## Setting a Callback URL
 
-Include `callbackurl` in your message request body:
+Include `callbackurl` in your message request body. `POST /UserAgent/Message/Send`:
 
 ```json
-POST /UserAgent/Message/Send
 {
   "useragentguid": "your-useragent-guid",
   "message": "What are today's trending topics?",

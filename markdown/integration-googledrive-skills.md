@@ -142,8 +142,14 @@ Response:
 {
   "result": true,
   "folders": [
-    { "id": "2XyZ", "name": "2025 Q1" },
-    { "id": "3MnO", "name": "Archive" }
+    {
+      "id": "2XyZ",
+      "name": "2025 Q1"
+    },
+    {
+      "id": "3MnO",
+      "name": "Archive"
+    }
   ],
   "errors": []
 }
@@ -163,8 +169,14 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GoogleDriveSetFolder" \
   -d '{
     "userAgentGuid": "your-useragent-guid",
     "folders": [
-      { "id": "1AbC", "name": "Agent Outputs" },
-      { "id": "2XyZ", "name": "2025 Q1" }
+      {
+        "id": "1AbC",
+        "name": "Agent Outputs"
+      },
+      {
+        "id": "2XyZ",
+        "name": "2025 Q1"
+      }
     ]
   }'
 ```
@@ -177,8 +189,14 @@ Response:
 {
   "result": true,
   "folders": [
-    { "id": "1AbC", "name": "Agent Outputs" },
-    { "id": "2XyZ", "name": "2025 Q1" }
+    {
+      "id": "1AbC",
+      "name": "Agent Outputs"
+    },
+    {
+      "id": "2XyZ",
+      "name": "2025 Q1"
+    }
   ],
   "errors": []
 }
@@ -208,8 +226,14 @@ Response:
   "result": true,
   "connected": true,
   "folders": [
-    { "id": "1AbC", "name": "Agent Outputs" },
-    { "id": "2XyZ", "name": "2025 Q1" }
+    {
+      "id": "1AbC",
+      "name": "Agent Outputs"
+    },
+    {
+      "id": "2XyZ",
+      "name": "2025 Q1"
+    }
   ],
   "connectedAt": "2026-04-17T12:00:00.000Z",
   "tokenExpiresAt": "2026-04-17T13:00:00.000Z",
@@ -309,7 +333,10 @@ Clears Google Drive credentials (no remote revoke).
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "userAgentGuid": "your-useragent-guid", "provider": "googledrive" }'
+  -d '{
+    "userAgentGuid": "your-useragent-guid",
+    "provider": "googledrive"
+  }'
 ```
 
 See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).

@@ -215,7 +215,10 @@ Calls X's revoke endpoint (`POST https://api.x.com/2/oauth2/revoke`) with Basic 
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "userAgentGuid": "your-useragent-guid", "provider": "twitter" }'
+  -d '{
+    "userAgentGuid": "your-useragent-guid",
+    "provider": "twitter"
+  }'
 ```
 
 Uses `grant_type=refresh_token`. Returns new access + refresh tokens. See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).

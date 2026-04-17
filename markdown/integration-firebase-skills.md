@@ -54,22 +54,34 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
     "guid": "your-useragent-guid",
     "configuration": {
       "credentials": {
-        "firebase": {
-          "accounts": [
+    "firebase": {
+      "accounts": [
+        {
+          "appName": "My App",
+          "serviceAccountJsonBase64": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii...",
+          "apps": [
             {
-              "appName": "My App",
-              "serviceAccountJsonBase64": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii...",
-              "apps": [
-                { "platform": "ios", "id": "6479306352" },
-                { "platform": "android", "id": "com.example.app" }
-              ],
-              "topics": [
-                { "topicKey": "locale_en", "topicDesc": "English users" },
-                { "topicKey": "tier_paid", "topicDesc": "Paid subscribers" }
-              ]
+              "platform": "ios",
+              "id": "6479306352"
+            },
+            {
+              "platform": "android",
+              "id": "com.example.app"
+            }
+          ],
+          "topics": [
+            {
+              "topicKey": "locale_en",
+              "topicDesc": "English users"
+            },
+            {
+              "topicKey": "tier_paid",
+              "topicDesc": "Paid subscribers"
             }
           ]
         }
+      ]
+    }
       }
     }
   }'
@@ -105,8 +117,38 @@ Add more entries to `accounts[]` to manage multiple Firebase projects from one a
   "credentials": {
     "firebase": {
       "accounts": [
-        { "appName": "Consumer App", "serviceAccountJsonBase64": "...", "apps": [...], "topics": [...] },
-        { "appName": "Business App", "serviceAccountJsonBase64": "...", "apps": [...], "topics": [...] }
+        {
+          "appName": "Consumer App",
+          "serviceAccountJsonBase64": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii...",
+          "apps": [
+            {
+              "platform": "ios",
+              "id": "6479306352"
+            }
+          ],
+          "topics": [
+            {
+              "topicKey": "locale_en",
+              "topicDesc": "English users"
+            }
+          ]
+        },
+        {
+          "appName": "Business App",
+          "serviceAccountJsonBase64": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii...",
+          "apps": [
+            {
+              "platform": "android",
+              "id": "com.example.business"
+            }
+          ],
+          "topics": [
+            {
+              "topicKey": "tier_paid",
+              "topicDesc": "Paid subscribers"
+            }
+          ]
+        }
       ]
     }
   }

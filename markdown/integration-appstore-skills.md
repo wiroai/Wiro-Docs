@@ -98,7 +98,10 @@ Used by **Meta Ads Manager** and **Google Ads Manager** (for cross-platform crea
   "credentials": {
     "appstore": {
       "apps": [
-        { "appName": "My iOS App", "appId": "6479306352" }
+        {
+          "appName": "My iOS App",
+          "appId": "6479306352"
+        }
       ]
     }
   }

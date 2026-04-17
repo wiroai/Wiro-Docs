@@ -53,8 +53,16 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
           "botToken": "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11",
           "allowedUsers": ["761381461", "987654321"],
           "sessionMode": [
-            { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
-            { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
+            {
+              "value": "private",
+              "text": "Private — each user has their own conversation",
+              "selected": true
+            },
+            {
+              "value": "collaborative",
+              "text": "Collaborative — all users share the same conversation",
+              "selected": false
+            }
           ]
         }
       }
@@ -85,8 +93,16 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ```json
 [
-  { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
-  { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
+  {
+    "value": "private",
+    "text": "Private — each user has their own conversation",
+    "selected": true
+  },
+  {
+    "value": "collaborative",
+    "text": "Collaborative — all users share the same conversation",
+    "selected": false
+  }
 ]
 ```
 

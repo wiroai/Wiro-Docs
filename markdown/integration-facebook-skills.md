@@ -303,7 +303,10 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/FBDisconnect" \
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "userAgentGuid": "your-useragent-guid", "provider": "facebook" }'
+  -d '{
+    "userAgentGuid": "your-useragent-guid",
+    "provider": "facebook"
+  }'
 ```
 
 Uses `fb_exchange_token` under the hood. See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).

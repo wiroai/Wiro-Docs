@@ -97,7 +97,10 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
   "credentials": {
     "googleplay": {
       "apps": [
-        { "appName": "My Android App", "packageName": "com.example.app" }
+        {
+          "appName": "My Android App",
+          "packageName": "com.example.app"
+        }
       ]
     }
   }
