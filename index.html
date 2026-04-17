@@ -5708,6 +5708,41 @@ ws.onopen = () => {
 <h1>Agent Credentials &amp; OAuth</h1>
 <p class="section-subtitle">Configure third-party service connections for your agent instances.</p>
 
+<div class="info-callout"><strong>New:</strong> Per-integration setup guides now live on their own pages — OAuth walkthrough, API reference, troubleshooting, and multi-tenant architecture notes for every supported provider. See the <strong>Integration Catalog</strong> below.</div>
+
+<section id="integration-catalog">
+<h2>Integration Catalog</h2>
+<h3>OAuth Integrations</h3>
+<ul>
+<li><a href="/docs/integration-metaads">Meta Ads</a> — own mode only (Wiro mode coming soon). End-to-end setup with no App Review required.</li>
+<li><a href="/docs/integration-facebook">Facebook Page</a> — own mode only (Wiro mode coming soon). Includes multi-page selection via <code>FBSetPage</code>.</li>
+<li><a href="/docs/integration-instagram">Instagram</a> — own mode only (Wiro mode coming soon). Requires Instagram Business Account linked to a Facebook Page.</li>
+<li><a href="/docs/integration-linkedin">LinkedIn</a> — own mode only (Wiro mode coming soon). Company Page publishing.</li>
+<li><a href="/docs/integration-twitter">Twitter / X</a> — Wiro mode + own mode. OAuth 2.0 PKCE.</li>
+<li><a href="/docs/integration-tiktok">TikTok</a> — Wiro mode + own mode. Content Posting API.</li>
+<li><a href="/docs/integration-googleads">Google Ads</a> — Wiro mode + own mode. MCC + customer ID selection.</li>
+<li><a href="/docs/integration-hubspot">HubSpot</a> — Wiro mode + own mode. CRM object management.</li>
+<li><a href="/docs/integration-mailchimp">Mailchimp</a> — Wiro mode + own mode + direct API key.</li>
+<li><a href="/docs/integration-googledrive">Google Drive</a> — Wiro mode + own mode. Scoped folder access.</li>
+</ul>
+
+<h3>API Key Integrations</h3>
+<ul>
+<li><a href="/docs/integration-gmail">Gmail</a> — App Password via IMAP/SMTP.</li>
+<li><a href="/docs/integration-telegram">Telegram</a> — Bot Token + allowed users.</li>
+<li><a href="/docs/integration-firebase">Firebase</a> — FCM service account JSON.</li>
+<li><a href="/docs/integration-wordpress">WordPress</a> — Application Password + REST API.</li>
+<li><a href="/docs/integration-appstore">App Store Connect</a> — ES256 API key + .p8 private key.</li>
+<li><a href="/docs/integration-googleplay">Google Play</a> — Service account + Play Console permissions.</li>
+<li><a href="/docs/integration-apollo">Apollo</a> — API key + optional master key.</li>
+<li><a href="/docs/integration-lemlist">Lemlist</a> — API key.</li>
+<li><a href="/docs/integration-brevo">Brevo</a> — API key.</li>
+<li><a href="/docs/integration-sendgrid">SendGrid</a> — API key.</li>
+</ul>
+
+<div class="info-callout"><strong>Meta Platforms availability:</strong> While Wiro's shared Meta App is under review by Meta, the Meta Ads, Facebook Page, and Instagram integrations must be connected using your own Meta Developer App. No App Review is required — Development Mode + App Roles is sufficient. See each integration page for step-by-step setup.</div>
+</section>
+
 <section id="overview">
 <h2>Overview</h2>
 <p>After deploying an agent, call <code>POST /UserAgent/Detail</code> to see its full configuration. The response includes:</p>
@@ -6476,6 +6511,24 @@ POST /UserAgentOAuth/XConnect
   "result": true,
   "errors": []
 }</code></pre>
+
+<h4>Facebook Page — Set Page (Multi-Page Selection)</h4>
+<p>When the OAuth callback returns multiple Facebook Pages in <code>fb_pages</code>, let the user pick one and persist the choice with this endpoint. Call within 15 minutes of the callback (page list is cached server-side with 15-minute TTL).</p>
+<h2><span class="endpoint-badge post">POST</span> /UserAgentOAuth/FBSetPage</h2>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>userAgentGuid</code></td><td>string</td><td>Yes</td><td>The agent instance GUID</td></tr>
+<tr><td><code>pageId</code></td><td>string</td><td>Yes</td><td>ID of the Facebook Page selected from <code>fb_pages</code>.</td></tr>
+<tr><td><code>pageName</code></td><td>string</td><td>No</td><td>Display name to store. If omitted, Wiro uses the name from the cached page list.</td></tr>
+</tbody>
+</table></div></div>
+<h3>Response</h3>
+<pre><code class="language-json">{
+  "result": true,
+  "errors": []
+}</code></pre>
+<p>Wiro automatically persists the selected page's access token (stored server-side only) and restarts the agent if it was running. See the <a href="/docs/integration-facebook">Facebook Page integration guide</a> for the full flow.</p>
 </section>
 
 <section id="custom-skills-link">
@@ -7108,6 +7161,462 @@ Use bullet points for features.
 </ul>
 </section>
 
+</article>
+            </div>
+
+            <!-- ==================== INTEGRATION: META ADS ==================== -->
+            <div class="docs-page-section" data-page="integration-metaads" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/integration-metaads.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/integration-metaads.md" download class="docs-section-md-btn">Download</a></div>
+
+<h1>Meta Ads Integration</h1>
+<p class="section-subtitle">Connect agents to Meta's advertising platform for campaign, ad set, and creative management.</p>
+
+<div class="info-callout"><strong>Mode availability:</strong> Own mode only — Wiro mode coming soon while Meta reviews Wiro's shared app. Own mode does <strong>not</strong> require App Review when connecting users are added to your Meta Developer App's Roles as Testers/Developers (Development Mode).</div>
+
+<section id="overview">
+<h2>Overview</h2>
+<ul>
+<li><strong>Skill:</strong> <code>metaads-manage</code> (campaign/ad set/creative CRUD, insights reporting)</li>
+<li><strong>Credentials key:</strong> <code>metaads</code></li>
+<li><strong>OAuth endpoint:</strong> <code>POST /UserAgentOAuth/MetaAdsConnect</code></li>
+<li><strong>Post-callback selection:</strong> <code>POST /UserAgentOAuth/MetaAdsSetAdAccount</code></li>
+<li><strong>Callback URL:</strong> <code>https://api.wiro.ai/v1/UserAgentOAuth/MetaAdsCallback</code></li>
+<li><strong>Required Meta permissions:</strong> <code>ads_management</code>, <code>ads_read</code>, <code>business_management</code>, <code>pages_show_list</code>, <code>pages_read_engagement</code></li>
+</ul>
+<p>For the full 12-step walkthrough — Meta Developer App creation, product configuration, redirect URI setup, permissions request, App Roles for multi-tenant users, credential save, OAuth flow, callback parsing, ad account selection, token lifetime, troubleshooting, and multi-tenant architecture — see the <a href="markdown/integration-metaads.md" target="_blank">full markdown guide</a>.</p>
+</section>
+</article>
+            </div>
+
+            <!-- ==================== INTEGRATION: FACEBOOK PAGE ==================== -->
+            <div class="docs-page-section" data-page="integration-facebook" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/integration-facebook.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/integration-facebook.md" download class="docs-section-md-btn">Download</a></div>
+
+<h1>Facebook Page Integration</h1>
+<p class="section-subtitle">Connect agents to a Facebook Page for publishing posts, photos, and videos.</p>
+
+<div class="info-callout"><strong>Mode availability:</strong> Own mode only — Wiro mode coming soon while Meta reviews Wiro's shared app. Development Mode + App Roles bypasses App Review.</div>
+
+<div class="info-callout"><strong>Multi-page selection:</strong> If the user administers more than one Facebook Page, the OAuth callback returns a <code>fb_pages</code> JSON array. Use <code>POST /UserAgentOAuth/FBSetPage</code> within 15 minutes to persist the selection — page access tokens are cached server-side during that window.</div>
+
+<section id="overview">
+<h2>Overview</h2>
+<ul>
+<li><strong>Skill:</strong> <code>facebookpage-post</code></li>
+<li><strong>Credentials key:</strong> <code>facebook</code></li>
+<li><strong>OAuth endpoint:</strong> <code>POST /UserAgentOAuth/FBConnect</code></li>
+<li><strong>Post-callback selection:</strong> <code>POST /UserAgentOAuth/FBSetPage</code> (new)</li>
+<li><strong>Callback URL:</strong> <code>https://api.wiro.ai/v1/UserAgentOAuth/FBCallback</code></li>
+<li><strong>Callback params:</strong> <code>fb_connected=true&amp;fb_pagename=...&amp;fb_pages=[{id,name},...]</code></li>
+<li><strong>Required Meta permissions:</strong> <code>pages_show_list</code>, <code>pages_manage_posts</code>, <code>pages_read_engagement</code>, <code>pages_manage_metadata</code>, <code>pages_manage_engagement</code>, <code>business_management</code></li>
+</ul>
+<p>For the full 10-step walkthrough and multi-page selection flow, see the <a href="markdown/integration-facebook.md" target="_blank">full markdown guide</a>.</p>
+</section>
+</article>
+            </div>
+
+            <!-- ==================== INTEGRATION: INSTAGRAM ==================== -->
+            <div class="docs-page-section" data-page="integration-instagram" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/integration-instagram.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/integration-instagram.md" download class="docs-section-md-btn">Download</a></div>
+
+<h1>Instagram Integration</h1>
+<p class="section-subtitle">Connect agents to an Instagram Business Account for publishing posts, reels, stories, and carousels.</p>
+
+<div class="info-callout"><strong>Mode availability:</strong> Own mode only — Wiro mode coming soon while Meta reviews Wiro's shared app.</div>
+
+<div class="info-callout"><strong>Prerequisite:</strong> Instagram Business (or Creator) account linked to a Facebook Page the connecting user administers. Personal Instagram accounts cannot be connected via the Graph API.</div>
+
+<section id="overview">
+<h2>Overview</h2>
+<ul>
+<li><strong>Skill:</strong> <code>instagram-post</code></li>
+<li><strong>Credentials key:</strong> <code>instagram</code></li>
+<li><strong>OAuth endpoint:</strong> <code>POST /UserAgentOAuth/IGConnect</code></li>
+<li><strong>Callback URL:</strong> <code>https://api.wiro.ai/v1/UserAgentOAuth/IGCallback</code></li>
+<li><strong>Callback params:</strong> <code>ig_connected=true&amp;ig_username=...</code></li>
+<li><strong>Required Meta permissions:</strong> <code>instagram_business_basic</code>, <code>instagram_business_content_publish</code>, <code>instagram_business_manage_messages</code>, <code>instagram_business_manage_comments</code>, <code>pages_show_list</code>, <code>pages_read_engagement</code>, <code>business_management</code></li>
+</ul>
+<p>See the <a href="markdown/integration-instagram.md" target="_blank">full markdown guide</a> for Instagram Business Account linkage steps, OAuth walkthrough, and troubleshooting.</p>
+</section>
+</article>
+            </div>
+
+            <!-- ==================== INTEGRATION: LINKEDIN ==================== -->
+            <div class="docs-page-section" data-page="integration-linkedin" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/integration-linkedin.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/integration-linkedin.md" download class="docs-section-md-btn">Download</a></div>
+
+<h1>LinkedIn Integration</h1>
+<p class="section-subtitle">Connect agents to a LinkedIn Company Page for publishing posts and articles.</p>
+
+<div class="info-callout"><strong>Mode availability:</strong> Own mode only — Wiro mode coming soon.</div>
+
+<section id="overview">
+<h2>Overview</h2>
+<ul>
+<li><strong>Skill:</strong> <code>linkedin-post</code></li>
+<li><strong>Credentials key:</strong> <code>linkedin</code></li>
+<li><strong>Extra required field:</strong> <code>organizationId</code> (numeric Company Page ID)</li>
+<li><strong>OAuth endpoint:</strong> <code>POST /UserAgentOAuth/LIConnect</code></li>
+<li><strong>Callback URL:</strong> <code>https://api.wiro.ai/v1/UserAgentOAuth/LICallback</code></li>
+<li><strong>Callback params:</strong> <code>li_connected=true&amp;li_name=...</code></li>
+<li><strong>Required scopes:</strong> <code>openid</code>, <code>profile</code>, <code>email</code>, <code>w_member_social</code>, <code>w_organization_social</code>, <code>r_organization_social</code>, <code>rw_organization_admin</code></li>
+</ul>
+<p>See the <a href="markdown/integration-linkedin.md" target="_blank">full markdown guide</a> for LinkedIn Developer App creation, Community Management API approval workflow, and troubleshooting.</p>
+</section>
+</article>
+            </div>
+
+            <!-- ==================== INTEGRATION: TWITTER / X ==================== -->
+            <div class="docs-page-section" data-page="integration-twitter" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/integration-twitter.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/integration-twitter.md" download class="docs-section-md-btn">Download</a></div>
+
+<h1>Twitter / X Integration</h1>
+<p class="section-subtitle">Connect agents to an X account for posting, reading timelines, and replying to mentions.</p>
+
+<div class="info-callout"><strong>Mode availability:</strong> Wiro mode (one-click) + own mode. OAuth 2.0 with PKCE.</div>
+
+<section id="overview">
+<h2>Overview</h2>
+<ul>
+<li><strong>Skill:</strong> <code>twitterx-post</code></li>
+<li><strong>Credentials key:</strong> <code>twitter</code></li>
+<li><strong>OAuth endpoint:</strong> <code>POST /UserAgentOAuth/XConnect</code></li>
+<li><strong>Callback URL:</strong> <code>https://api.wiro.ai/v1/UserAgentOAuth/XCallback</code></li>
+<li><strong>Callback params:</strong> <code>x_connected=true&amp;x_username=...</code></li>
+<li><strong>Required scopes:</strong> <code>tweet.read</code>, <code>tweet.write</code>, <code>users.read</code>, <code>offline.access</code></li>
+</ul>
+<p>See the <a href="markdown/integration-twitter.md" target="_blank">full markdown guide</a> for own-mode X Developer app setup and troubleshooting.</p>
+</section>
+</article>
+            </div>
+
+            <!-- ==================== INTEGRATION: TIKTOK ==================== -->
+            <div class="docs-page-section" data-page="integration-tiktok" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/integration-tiktok.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/integration-tiktok.md" download class="docs-section-md-btn">Download</a></div>
+
+<h1>TikTok Integration</h1>
+<p class="section-subtitle">Connect agents to a TikTok account for publishing videos.</p>
+
+<div class="info-callout"><strong>Mode availability:</strong> Wiro mode (one-click) + own mode.</div>
+
+<section id="overview">
+<h2>Overview</h2>
+<ul>
+<li><strong>Skill:</strong> <code>tiktok-post</code></li>
+<li><strong>Credentials key:</strong> <code>tiktok</code></li>
+<li><strong>Own-mode fields:</strong> <code>clientKey</code>, <code>clientSecret</code> (TikTok uses "key" not "ID")</li>
+<li><strong>OAuth endpoint:</strong> <code>POST /UserAgentOAuth/TikTokConnect</code></li>
+<li><strong>Callback URL:</strong> <code>https://api.wiro.ai/v1/UserAgentOAuth/TikTokCallback</code></li>
+<li><strong>Callback params:</strong> <code>tiktok_connected=true&amp;tiktok_username=...</code></li>
+</ul>
+<p>See the <a href="markdown/integration-tiktok.md" target="_blank">full markdown guide</a> for TikTok for Developers app setup.</p>
+</section>
+</article>
+            </div>
+
+            <!-- ==================== INTEGRATION: GOOGLE ADS ==================== -->
+            <div class="docs-page-section" data-page="integration-googleads" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/integration-googleads.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/integration-googleads.md" download class="docs-section-md-btn">Download</a></div>
+
+<h1>Google Ads Integration</h1>
+<p class="section-subtitle">Connect agents to Google Ads for campaign management, keyword research, and ad copy optimization.</p>
+
+<div class="info-callout"><strong>Mode availability:</strong> Wiro mode + own mode. Own mode requires a Google Cloud project, Developer Token, and MCC manager customer ID.</div>
+
+<section id="overview">
+<h2>Overview</h2>
+<ul>
+<li><strong>Skill:</strong> <code>googleads-manage</code></li>
+<li><strong>Credentials key:</strong> <code>googleads</code></li>
+<li><strong>Own-mode fields:</strong> <code>clientId</code>, <code>clientSecret</code>, <code>developerToken</code>, <code>managerCustomerId</code></li>
+<li><strong>OAuth endpoint:</strong> <code>POST /UserAgentOAuth/GAdsConnect</code></li>
+<li><strong>Post-callback selection:</strong> <code>POST /UserAgentOAuth/GAdsSetCustomerId</code></li>
+<li><strong>Callback URL:</strong> <code>https://api.wiro.ai/v1/UserAgentOAuth/GAdsCallback</code></li>
+<li><strong>Callback params:</strong> <code>gads_connected=true&amp;gads_accounts=[{id,name},...]</code></li>
+</ul>
+<p>See the <a href="markdown/integration-googleads.md" target="_blank">full markdown guide</a> for Google Cloud + Developer Token setup.</p>
+</section>
+</article>
+            </div>
+
+            <!-- ==================== INTEGRATION: HUBSPOT ==================== -->
+            <div class="docs-page-section" data-page="integration-hubspot" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/integration-hubspot.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/integration-hubspot.md" download class="docs-section-md-btn">Download</a></div>
+
+<h1>HubSpot Integration</h1>
+<p class="section-subtitle">Connect agents to HubSpot for contact, deal, and engagement management.</p>
+
+<div class="info-callout"><strong>Mode availability:</strong> Wiro mode + own mode.</div>
+
+<section id="overview">
+<h2>Overview</h2>
+<ul>
+<li><strong>Skill:</strong> <code>hubspot-crm</code></li>
+<li><strong>Credentials key:</strong> <code>hubspot</code></li>
+<li><strong>OAuth endpoint:</strong> <code>POST /UserAgentOAuth/HubSpotConnect</code></li>
+<li><strong>Callback URL:</strong> <code>https://api.wiro.ai/v1/UserAgentOAuth/HubSpotCallback</code></li>
+<li><strong>Callback params:</strong> <code>hubspot_connected=true&amp;hubspot_portal=&lt;id&gt;&amp;hubspot_name=...</code></li>
+<li><strong>Typical scopes:</strong> <code>crm.objects.contacts.read</code>/<code>write</code>, <code>crm.objects.companies.read</code>/<code>write</code>, <code>crm.objects.deals.read</code>/<code>write</code></li>
+</ul>
+<p>See the <a href="markdown/integration-hubspot.md" target="_blank">full markdown guide</a> for HubSpot Developer app creation and scope configuration.</p>
+</section>
+</article>
+            </div>
+
+            <!-- ==================== INTEGRATION: MAILCHIMP ==================== -->
+            <div class="docs-page-section" data-page="integration-mailchimp" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/integration-mailchimp.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/integration-mailchimp.md" download class="docs-section-md-btn">Download</a></div>
+
+<h1>Mailchimp Integration</h1>
+<p class="section-subtitle">Connect agents to Mailchimp for newsletter and audience management.</p>
+
+<div class="info-callout"><strong>Mode availability:</strong> Wiro mode + own mode + direct API key. Mailchimp is the only integration that supports all three.</div>
+
+<section id="overview">
+<h2>Overview</h2>
+<ul>
+<li><strong>Skill:</strong> <code>mailchimp-email</code></li>
+<li><strong>Credentials key:</strong> <code>mailchimp</code></li>
+<li><strong>OAuth endpoint:</strong> <code>POST /UserAgentOAuth/MailchimpConnect</code></li>
+<li><strong>Callback URL:</strong> <code>https://api.wiro.ai/v1/UserAgentOAuth/MailchimpCallback</code></li>
+<li><strong>API key path:</strong> set <code>credentials.mailchimp.apiKey</code> via <code>POST /UserAgent/Update</code></li>
+<li><strong>Token refresh:</strong> not needed — Mailchimp tokens do not expire</li>
+</ul>
+<p>See the <a href="markdown/integration-mailchimp.md" target="_blank">full markdown guide</a> for OAuth setup and API key alternatives.</p>
+</section>
+</article>
+            </div>
+
+            <!-- ==================== INTEGRATION: GOOGLE DRIVE ==================== -->
+            <div class="docs-page-section" data-page="integration-googledrive" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/integration-googledrive.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/integration-googledrive.md" download class="docs-section-md-btn">Download</a></div>
+
+<h1>Google Drive Integration</h1>
+<p class="section-subtitle">Connect agents to Google Drive for scoped file storage access.</p>
+
+<div class="info-callout"><strong>Mode availability:</strong> Wiro mode + own mode. Uses the narrow <code>drive.file</code> scope — agent only sees files it creates or folders the user explicitly picks.</div>
+
+<section id="overview">
+<h2>Overview</h2>
+<ul>
+<li><strong>Skill:</strong> <code>google-drive</code></li>
+<li><strong>Credentials key:</strong> <code>googledrive</code></li>
+<li><strong>OAuth endpoint:</strong> <code>POST /UserAgentOAuth/GoogleDriveConnect</code></li>
+<li><strong>Callback URL:</strong> <code>https://api.wiro.ai/v1/UserAgentOAuth/GoogleDriveCallback</code></li>
+<li><strong>Folder selection:</strong> up to 5 folders per agent, scoped to the <code>drive.file</code> permission</li>
+</ul>
+<p>See the <a href="markdown/integration-googledrive.md" target="_blank">full markdown guide</a>.</p>
+</section>
+</article>
+            </div>
+
+            <!-- ==================== INTEGRATION: GMAIL ==================== -->
+            <div class="docs-page-section" data-page="integration-gmail" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/integration-gmail.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/integration-gmail.md" download class="docs-section-md-btn">Download</a></div>
+
+<h1>Gmail Integration</h1>
+<p class="section-subtitle">Connect agents to a Gmail inbox using a Google App Password (IMAP/SMTP).</p>
+
+<section id="overview">
+<h2>Overview</h2>
+<ul>
+<li><strong>Skill:</strong> <code>gmail-check</code> (also used by email-sending skills)</li>
+<li><strong>Credentials key:</strong> <code>gmail</code></li>
+<li><strong>Fields:</strong> <code>account</code> (full Gmail address), <code>appPassword</code> (16-char Google App Password)</li>
+<li><strong>Prereq:</strong> 2-Step Verification enabled on the Google account</li>
+</ul>
+<p>See the <a href="markdown/integration-gmail.md" target="_blank">full markdown guide</a>.</p>
+</section>
+</article>
+            </div>
+
+            <!-- ==================== INTEGRATION: TELEGRAM ==================== -->
+            <div class="docs-page-section" data-page="integration-telegram" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/integration-telegram.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/integration-telegram.md" download class="docs-section-md-btn">Download</a></div>
+
+<h1>Telegram Integration</h1>
+<p class="section-subtitle">Connect agents to a Telegram bot for two-way messaging with operators or end users.</p>
+
+<section id="overview">
+<h2>Overview</h2>
+<ul>
+<li><strong>Credentials key:</strong> <code>telegram</code></li>
+<li><strong>Fields:</strong> <code>botToken</code> (from BotFather), <code>allowedUsers</code> (array of Telegram user IDs), <code>sessionMode</code> (Private or Collaborative)</li>
+</ul>
+<p>See the <a href="markdown/integration-telegram.md" target="_blank">full markdown guide</a> for bot creation, user ID discovery, and session mode details.</p>
+</section>
+</article>
+            </div>
+
+            <!-- ==================== INTEGRATION: FIREBASE ==================== -->
+            <div class="docs-page-section" data-page="integration-firebase" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/integration-firebase.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/integration-firebase.md" download class="docs-section-md-btn">Download</a></div>
+
+<h1>Firebase Integration</h1>
+<p class="section-subtitle">Connect agents to Firebase Cloud Messaging for targeted push notifications.</p>
+
+<section id="overview">
+<h2>Overview</h2>
+<ul>
+<li><strong>Skill:</strong> <code>firebase-push</code></li>
+<li><strong>Credentials key:</strong> <code>firebase</code></li>
+<li><strong>Fields:</strong> <code>accounts[]</code> — each with <code>appName</code>, <code>serviceAccountJsonBase64</code>, <code>apps</code> (platform+id), <code>topics</code></li>
+</ul>
+<p>See the <a href="markdown/integration-firebase.md" target="_blank">full markdown guide</a>.</p>
+</section>
+</article>
+            </div>
+
+            <!-- ==================== INTEGRATION: WORDPRESS ==================== -->
+            <div class="docs-page-section" data-page="integration-wordpress" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/integration-wordpress.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/integration-wordpress.md" download class="docs-section-md-btn">Download</a></div>
+
+<h1>WordPress Integration</h1>
+<p class="section-subtitle">Connect agents to a WordPress site for blog post and page publishing via REST API.</p>
+
+<section id="overview">
+<h2>Overview</h2>
+<ul>
+<li><strong>Skill:</strong> <code>wordpress-post</code></li>
+<li><strong>Credentials key:</strong> <code>wordpress</code></li>
+<li><strong>Fields:</strong> <code>url</code>, <code>user</code>, <code>appPassword</code></li>
+<li><strong>Prereq:</strong> WordPress 5.6+ with Application Passwords enabled</li>
+</ul>
+<p>See the <a href="markdown/integration-wordpress.md" target="_blank">full markdown guide</a>.</p>
+</section>
+</article>
+            </div>
+
+            <!-- ==================== INTEGRATION: APP STORE ==================== -->
+            <div class="docs-page-section" data-page="integration-appstore" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/integration-appstore.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/integration-appstore.md" download class="docs-section-md-btn">Download</a></div>
+
+<h1>App Store Connect Integration</h1>
+<p class="section-subtitle">Connect agents to App Store Connect for review monitoring, metadata management, and in-app events.</p>
+
+<section id="overview">
+<h2>Overview</h2>
+<ul>
+<li><strong>Skills:</strong> <code>appstore-reviews</code>, <code>appstore-metadata</code>, <code>appstore-events</code></li>
+<li><strong>Credentials key:</strong> <code>appstore</code></li>
+<li><strong>Fields:</strong> <code>keyId</code>, <code>issuerId</code>, <code>privateKeyBase64</code>, <code>appIds</code> (or <code>apps</code> array for ads agents), <code>supportEmail</code></li>
+<li><strong>Auth:</strong> ES256 JWT signing with .p8 private key</li>
+</ul>
+<p>See the <a href="markdown/integration-appstore.md" target="_blank">full markdown guide</a>.</p>
+</section>
+</article>
+            </div>
+
+            <!-- ==================== INTEGRATION: GOOGLE PLAY ==================== -->
+            <div class="docs-page-section" data-page="integration-googleplay" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/integration-googleplay.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/integration-googleplay.md" download class="docs-section-md-btn">Download</a></div>
+
+<h1>Google Play Integration</h1>
+<p class="section-subtitle">Connect agents to the Google Play Developer API for review monitoring and metadata management.</p>
+
+<section id="overview">
+<h2>Overview</h2>
+<ul>
+<li><strong>Skills:</strong> <code>googleplay-reviews</code>, <code>googleplay-metadata</code></li>
+<li><strong>Credentials key:</strong> <code>googleplay</code></li>
+<li><strong>Fields:</strong> <code>serviceAccountJsonBase64</code>, <code>packageNames</code> (or <code>apps</code> for ads agents), <code>supportEmail</code></li>
+</ul>
+<p>See the <a href="markdown/integration-googleplay.md" target="_blank">full markdown guide</a> for service account + Play Console linkage.</p>
+</section>
+</article>
+            </div>
+
+            <!-- ==================== INTEGRATION: APOLLO ==================== -->
+            <div class="docs-page-section" data-page="integration-apollo" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/integration-apollo.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/integration-apollo.md" download class="docs-section-md-btn">Download</a></div>
+
+<h1>Apollo.io Integration</h1>
+<p class="section-subtitle">Connect agents to Apollo.io for lead generation, prospecting, and email sequence enrollment.</p>
+
+<section id="overview">
+<h2>Overview</h2>
+<ul>
+<li><strong>Skill:</strong> <code>apollo-sales</code></li>
+<li><strong>Credentials key:</strong> <code>apollo</code></li>
+<li><strong>Fields:</strong> <code>apiKey</code>, <code>masterApiKey</code> (optional, for sequence management)</li>
+</ul>
+<p>See the <a href="markdown/integration-apollo.md" target="_blank">full markdown guide</a>.</p>
+</section>
+</article>
+            </div>
+
+            <!-- ==================== INTEGRATION: LEMLIST ==================== -->
+            <div class="docs-page-section" data-page="integration-lemlist" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/integration-lemlist.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/integration-lemlist.md" download class="docs-section-md-btn">Download</a></div>
+
+<h1>Lemlist Integration</h1>
+<p class="section-subtitle">Connect agents to Lemlist for cold email outreach and campaign orchestration.</p>
+
+<section id="overview">
+<h2>Overview</h2>
+<ul>
+<li><strong>Skill:</strong> <code>lemlist-outreach</code></li>
+<li><strong>Credentials key:</strong> <code>lemlist</code></li>
+<li><strong>Fields:</strong> <code>apiKey</code></li>
+</ul>
+<p>See the <a href="markdown/integration-lemlist.md" target="_blank">full markdown guide</a>.</p>
+</section>
+</article>
+            </div>
+
+            <!-- ==================== INTEGRATION: BREVO ==================== -->
+            <div class="docs-page-section" data-page="integration-brevo" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/integration-brevo.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/integration-brevo.md" download class="docs-section-md-btn">Download</a></div>
+
+<h1>Brevo Integration</h1>
+<p class="section-subtitle">Connect agents to Brevo (formerly Sendinblue) for transactional and marketing email.</p>
+
+<section id="overview">
+<h2>Overview</h2>
+<ul>
+<li><strong>Credentials key:</strong> <code>brevo</code></li>
+<li><strong>Fields:</strong> <code>apiKey</code> (starts with <code>xkeysib-</code>)</li>
+</ul>
+<p>See the <a href="markdown/integration-brevo.md" target="_blank">full markdown guide</a>.</p>
+</section>
+</article>
+            </div>
+
+            <!-- ==================== INTEGRATION: SENDGRID ==================== -->
+            <div class="docs-page-section" data-page="integration-sendgrid" style="display:none">
+<article class="docs-section">
+<div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/integration-sendgrid.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/integration-sendgrid.md" download class="docs-section-md-btn">Download</a></div>
+
+<h1>SendGrid Integration</h1>
+<p class="section-subtitle">Connect agents to Twilio SendGrid for transactional and marketing email delivery.</p>
+
+<section id="overview">
+<h2>Overview</h2>
+<ul>
+<li><strong>Credentials key:</strong> <code>sendgrid</code></li>
+<li><strong>Fields:</strong> <code>apiKey</code> (starts with <code>SG.</code>)</li>
+</ul>
+<p>See the <a href="markdown/integration-sendgrid.md" target="_blank">full markdown guide</a>.</p>
+</section>
 </article>
             </div>
 

@@ -27,9 +27,35 @@
 - [Agent Messaging](https://wiro.ai/docs/agent-messaging): Send messages and stream agent responses
 - [Agent WebSocket](https://wiro.ai/docs/agent-websocket): Real-time agent response streaming
 - [Agent Webhooks](https://wiro.ai/docs/agent-webhooks): Receive agent responses via HTTP callbacks
-- [Agent Credentials](https://wiro.ai/docs/agent-credentials): Configure OAuth and API key credentials
+- [Agent Credentials](https://wiro.ai/docs/agent-credentials): Integration catalog hub + generic OAuth flow
 - [Agent Skills](https://wiro.ai/docs/agent-skills): Configure preferences and scheduled automation tasks
 - [Agent Use Cases](https://wiro.ai/docs/agent-use-cases): Deployment patterns and architecture guides
+
+## Integration Guides
+
+OAuth integrations:
+- [Meta Ads](https://wiro.ai/docs/integration-metaads): own-mode setup, no App Review needed (Dev Mode + App Roles)
+- [Facebook Page](https://wiro.ai/docs/integration-facebook): OAuth + multi-page selection via FBSetPage
+- [Instagram](https://wiro.ai/docs/integration-instagram): Business account + Facebook Page linkage required
+- [LinkedIn](https://wiro.ai/docs/integration-linkedin): Company Page publishing + Community Management API
+- [Twitter / X](https://wiro.ai/docs/integration-twitter): OAuth 2.0 PKCE, one-click Wiro mode available
+- [TikTok](https://wiro.ai/docs/integration-tiktok): Content Posting API
+- [Google Ads](https://wiro.ai/docs/integration-googleads): Developer Token + MCC + customer ID selection
+- [HubSpot](https://wiro.ai/docs/integration-hubspot): CRM object management
+- [Mailchimp](https://wiro.ai/docs/integration-mailchimp): OAuth or direct API key
+- [Google Drive](https://wiro.ai/docs/integration-googledrive): Scoped folder access via drive.file
+
+API key integrations:
+- [Gmail](https://wiro.ai/docs/integration-gmail): App Password via IMAP/SMTP
+- [Telegram](https://wiro.ai/docs/integration-telegram): Bot Token + allowed users
+- [Firebase](https://wiro.ai/docs/integration-firebase): FCM push notifications via service account
+- [WordPress](https://wiro.ai/docs/integration-wordpress): Application Password over REST API
+- [App Store Connect](https://wiro.ai/docs/integration-appstore): ES256 API key + .p8 private key
+- [Google Play](https://wiro.ai/docs/integration-googleplay): Service account + Play Console permissions
+- [Apollo.io](https://wiro.ai/docs/integration-apollo): Lead gen + sequence management
+- [Lemlist](https://wiro.ai/docs/integration-lemlist): Cold email campaign management
+- [Brevo](https://wiro.ai/docs/integration-brevo): Transactional + marketing email
+- [SendGrid](https://wiro.ai/docs/integration-sendgrid): Transactional + marketing email
 
 ## Organizations & Teams
 
@@ -459,10 +485,17 @@ For error/cancel: `metadata` is `{}`. Retry: 3 attempts, 2s delay. Must return H
 API Key: Set via Update `configuration.credentials.<service>`. Services: brevo (apiKey), sendgrid (apiKey), wordpress (url, user, appPassword), firebase (accounts array with appName, serviceAccountJsonBase64, apps, topics), gmail (account, appPassword), apollo (apiKey, masterApiKey), lemlist (apiKey), telegram (botToken, allowedUsers, sessionMode), website (urls array of {websiteName, url}), appstore (keyId, issuerId, privateKeyBase64, appIds — or apps array for ads agents), googleplay (serviceAccountJsonBase64, packageNames — or apps array for ads agents), newsletter (testEmail).
 
 OAuth: POST /UserAgentOAuth/{Provider}Connect — `{ userAgentGuid, redirectUrl, authMethod: "wiro"|"own" }` → `{ authorizeUrl }`. White-label: user sees only your app + provider consent screen, never wiro.ai.
-Providers: X, TikTok, Instagram, Facebook, LinkedIn, Google Ads, Meta Ads, HubSpot, Mailchimp.
+Providers: X, TikTok, Instagram, Facebook, LinkedIn, Google Ads, Meta Ads, HubSpot, Mailchimp, Google Drive.
 POST /UserAgentOAuth/{Provider}Status — `{ userAgentGuid }` → `{ connected, username, connectedAt, tokenExpiresAt }`
 POST /UserAgentOAuth/{Provider}Disconnect — `{ userAgentGuid }`
 POST /UserAgentOAuth/TokenRefresh — `{ userAgentGuid, provider }` → `{ accessToken, refreshToken }`
+
+Post-callback selection endpoints (provider-specific):
+POST /UserAgentOAuth/MetaAdsSetAdAccount — `{ userAgentGuid, adAccountId, adAccountName? }` → pick ad account after Meta Ads OAuth
+POST /UserAgentOAuth/FBSetPage — `{ userAgentGuid, pageId, pageName? }` → pick Facebook Page after OAuth (multi-page accounts). Backend caches pending pages for 15 minutes; client-side only receives `{id, name}` pairs via `fb_pages` query param.
+POST /UserAgentOAuth/GAdsSetCustomerId — `{ userAgentGuid, customerId }` → pick Google Ads customer ID
+
+Meta Platforms (Meta Ads, Facebook Page, Instagram): wiro mode coming soon while shared app pending Meta review. Use own mode with your own Meta Developer App in Development Mode — no App Review required when users connecting are added to the app's Roles as Testers/Developers.
 
 ## Organizations & Teams
 

@@ -1052,6 +1052,6 @@ print(response.body);
 ## What's Next
 
 - [Agent Messaging](/docs/agent-messaging) — Send messages and receive responses from running agents
-- [Agent Credentials](/docs/agent-credentials) — Configure OAuth and API key credentials for your agent
+- [Agent Credentials](/docs/agent-credentials) — Integration catalog hub: 20+ dedicated per-provider setup guides (Meta Ads, Facebook, Instagram, LinkedIn, Twitter, and more)
 - [Authentication](/docs/authentication) — API key setup and authentication methods
 - [Pricing](/docs/pricing) — General pricing information

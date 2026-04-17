@@ -77,6 +77,27 @@
 | Agent Credentials & OAuth | `/docs/agent-credentials` | [agent-credentials.md](./markdown/agent-credentials.md) |
 | Agent Skills | `/docs/agent-skills` | [agent-skills.md](./markdown/agent-skills.md) |
 | Agent Use Cases | `/docs/agent-use-cases` | [agent-use-cases.md](./markdown/agent-use-cases.md) |
+| **Integrations** | | |
+| Meta Ads | `/docs/integration-metaads` | [integration-metaads.md](./markdown/integration-metaads.md) |
+| Facebook Page | `/docs/integration-facebook` | [integration-facebook.md](./markdown/integration-facebook.md) |
+| Instagram | `/docs/integration-instagram` | [integration-instagram.md](./markdown/integration-instagram.md) |
+| LinkedIn | `/docs/integration-linkedin` | [integration-linkedin.md](./markdown/integration-linkedin.md) |
+| Twitter / X | `/docs/integration-twitter` | [integration-twitter.md](./markdown/integration-twitter.md) |
+| TikTok | `/docs/integration-tiktok` | [integration-tiktok.md](./markdown/integration-tiktok.md) |
+| Google Ads | `/docs/integration-googleads` | [integration-googleads.md](./markdown/integration-googleads.md) |
+| HubSpot | `/docs/integration-hubspot` | [integration-hubspot.md](./markdown/integration-hubspot.md) |
+| Mailchimp | `/docs/integration-mailchimp` | [integration-mailchimp.md](./markdown/integration-mailchimp.md) |
+| Google Drive | `/docs/integration-googledrive` | [integration-googledrive.md](./markdown/integration-googledrive.md) |
+| Gmail | `/docs/integration-gmail` | [integration-gmail.md](./markdown/integration-gmail.md) |
+| Telegram | `/docs/integration-telegram` | [integration-telegram.md](./markdown/integration-telegram.md) |
+| Firebase | `/docs/integration-firebase` | [integration-firebase.md](./markdown/integration-firebase.md) |
+| WordPress | `/docs/integration-wordpress` | [integration-wordpress.md](./markdown/integration-wordpress.md) |
+| App Store Connect | `/docs/integration-appstore` | [integration-appstore.md](./markdown/integration-appstore.md) |
+| Google Play | `/docs/integration-googleplay` | [integration-googleplay.md](./markdown/integration-googleplay.md) |
+| Apollo | `/docs/integration-apollo` | [integration-apollo.md](./markdown/integration-apollo.md) |
+| Lemlist | `/docs/integration-lemlist` | [integration-lemlist.md](./markdown/integration-lemlist.md) |
+| Brevo | `/docs/integration-brevo` | [integration-brevo.md](./markdown/integration-brevo.md) |
+| SendGrid | `/docs/integration-sendgrid` | [integration-sendgrid.md](./markdown/integration-sendgrid.md) |
 
 > **Full export:** [full-documentation.md](./markdown/full-documentation.md)
 
@@ -150,7 +171,27 @@ Wiro-Docs/
     ├── agent-webhooks.md
     ├── agent-credentials.md
     ├── agent-skills.md
-    └── agent-use-cases.md
+    ├── agent-use-cases.md
+    ├── integration-metaads.md
+    ├── integration-facebook.md
+    ├── integration-instagram.md
+    ├── integration-linkedin.md
+    ├── integration-twitter.md
+    ├── integration-tiktok.md
+    ├── integration-googleads.md
+    ├── integration-hubspot.md
+    ├── integration-mailchimp.md
+    ├── integration-googledrive.md
+    ├── integration-gmail.md
+    ├── integration-telegram.md
+    ├── integration-firebase.md
+    ├── integration-wordpress.md
+    ├── integration-appstore.md
+    ├── integration-googleplay.md
+    ├── integration-apollo.md
+    ├── integration-lemlist.md
+    ├── integration-brevo.md
+    └── integration-sendgrid.md
 ```
 
 ---

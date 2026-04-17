@@ -4495,645 +4495,231 @@ The `agenttoken` can be used to track the message via [WebSocket](#agent-websock
 
 ---
 
+
 # Agent Credentials & OAuth
 
 Configure third-party service connections for your agent instances.
 
 ## Overview
 
-Agents connect to external services — social media platforms, ad networks, email tools, CRMs — via two methods:
+Wiro agents connect to external services — social platforms, ad networks, email tools, CRMs — through two credential methods:
 
-1. **API Key credentials** — set directly via `POST /UserAgent/Update`
-2. **OAuth credentials** — redirect-based authorization flow via `POST /UserAgentOAuth/{Provider}Connect`
+1. **API Key credentials** — set directly via `POST /UserAgent/Update`.
+2. **OAuth credentials** — redirect-based authorization via `POST /UserAgentOAuth/{Provider}Connect`, where Wiro handles token exchange server-side.
 
-API keys are simple key-value pairs you provide. OAuth requires a browser redirect where the end user authorizes access on the provider's site, and Wiro handles the token exchange server-side.
+Each external service Wiro talks to is documented as its own **integration page** with the full setup walkthrough, API reference, troubleshooting, and multi-tenant architecture notes. Use the catalog below to jump to the one you need.
+
+## Integration Catalog
+
+### OAuth Integrations
+
+| Integration | Auth Modes | Setup Guide |
+|-------------|------------|-------------|
+| Meta Ads | Own only (Wiro mode coming soon) | [Meta Ads integration](/docs/integration-metaads) |
+| Facebook Page | Own only (Wiro mode coming soon) | [Facebook Page integration](/docs/integration-facebook) |
+| Instagram | Own only (Wiro mode coming soon) | [Instagram integration](/docs/integration-instagram) |
+| LinkedIn | Own only (Wiro mode coming soon) | [LinkedIn integration](/docs/integration-linkedin) |
+| Twitter / X | Wiro + Own | [Twitter integration](/docs/integration-twitter) |
+| TikTok | Wiro + Own | [TikTok integration](/docs/integration-tiktok) |
+| Google Ads | Wiro + Own | [Google Ads integration](/docs/integration-googleads) |
+| HubSpot | Wiro + Own | [HubSpot integration](/docs/integration-hubspot) |
+| Mailchimp | Wiro + Own + API key | [Mailchimp integration](/docs/integration-mailchimp) |
+| Google Drive | Wiro + Own | [Google Drive integration](/docs/integration-googledrive) |
+
+> **Meta Platforms availability:** While Wiro's shared Meta App is under review by Meta, the Meta Ads, Facebook Page, and Instagram integrations must be connected using your **own Meta Developer App**. No App Review is required — Development Mode + App Roles is sufficient. See each integration page for step-by-step setup.
+
+### API Key Integrations
+
+| Integration | Setup Guide |
+|-------------|-------------|
+| Gmail | [Gmail integration](/docs/integration-gmail) |
+| Telegram | [Telegram integration](/docs/integration-telegram) |
+| Firebase | [Firebase integration](/docs/integration-firebase) |
+| WordPress | [WordPress integration](/docs/integration-wordpress) |
+| App Store Connect | [App Store integration](/docs/integration-appstore) |
+| Google Play | [Google Play integration](/docs/integration-googleplay) |
+| Apollo | [Apollo integration](/docs/integration-apollo) |
+| Lemlist | [Lemlist integration](/docs/integration-lemlist) |
+| Brevo | [Brevo integration](/docs/integration-brevo) |
+| SendGrid | [SendGrid integration](/docs/integration-sendgrid) |
 
 ## Setting API Key Credentials
 
-Use `POST /UserAgent/Update` with `configuration.credentials` to set API keys for services that don't require OAuth. Each credential group is a key in the `credentials` object — you only need to set the ones your agent requires.
+Use `POST /UserAgent/Update` with `configuration.credentials.<service>` to set credentials. Each integration page above documents the exact field names for that service.
 
-### Request Format
-
-```json
-POST /UserAgent/Update
-{
-  "guid": "your-useragent-guid",
-  "configuration": {
-    "credentials": {
-      "<service>": {
-        "<field>": "value"
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "guid": "your-useragent-guid",
+    "configuration": {
+      "credentials": {
+        "gmail": {
+          "account": "agent@company.com",
+          "appPassword": "xxxx xxxx xxxx xxxx"
+        }
       }
     }
-  }
-}
+  }'
 ```
 
-> **Important:** You can only update fields marked as `_editable: true` in the configuration. Attempting to set a non-editable field will be silently ignored. Use `POST /UserAgent/Detail` to see which fields are editable.
+### Merge behavior
 
-### Credential Configuration by Agent
+`UserAgent/Update` **merges** credential fields. Only fields you send are updated; existing fields (including OAuth tokens Wiro writes server-side) are preserved.
 
-Each agent requires different credentials. Find your agent below to see exactly which credentials to configure and the complete `POST /UserAgent/Update` request.
-
-#### Social Manager
-
-Manages social media accounts — posts, replies, scheduling across Twitter/X, Instagram, Facebook, LinkedIn, TikTok. OAuth providers are connected separately via the [OAuth flow](#oauth-authorization-flow).
-
-| Service | Type | Fields |
-|---------|------|--------|
-| `twitter` | OAuth | Connected via `XConnect`. Set `authMethod` to `"wiro"` or `"own"`. |
-| `instagram` | OAuth | Connected via `IGConnect`. |
-| `facebook` | OAuth | Connected via `FBConnect`. |
-| `linkedin` | OAuth | Connected via `LIConnect`. Also set `organizationId`. |
-| `tiktok` | OAuth | Connected via `TikTokConnect`. |
-| `gmail` | API Key | `account`, `appPassword` |
-| `telegram` | API Key | `botToken`, `allowedUsers`, `sessionMode` |
-
-```json
-POST /UserAgent/Update
-{
-  "guid": "your-useragent-guid",
-  "configuration": {
-    "credentials": {
-      "gmail": {
-        "account": "agent@company.com",
-        "appPassword": "xxxx xxxx xxxx xxxx"
-      },
-      "telegram": {
-        "botToken": "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11",
-        "allowedUsers": ["761381461"],
-        "sessionMode": [
-          { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
-          { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
-        ]
-      }
-    }
-  }
-}
-```
-
-> **Note:** Social media accounts (Twitter, Instagram, etc.) are connected via the [OAuth flow](#oauth-authorization-flow), not via Update. Use Update only for `gmail` and `telegram` credentials.
-
-#### Blog Content Editor
-
-Publishes blog posts to WordPress, monitors a Gmail inbox for content requests.
-
-| Service | Fields | Description |
-|---------|--------|-------------|
-| `wordpress` | `url`, `user`, `appPassword` | WordPress site URL, username, and application password |
-| `gmail` | `account`, `appPassword` | Gmail address + Google App Password for inbox monitoring |
-| `telegram` | `botToken`, `allowedUsers`, `sessionMode` | Telegram bot for operator notifications |
-
-```json
-POST /UserAgent/Update
-{
-  "guid": "your-useragent-guid",
-  "configuration": {
-    "credentials": {
-      "wordpress": {
-        "url": "https://blog.example.com",
-        "user": "WiroBlogAgent",
-        "appPassword": "xxxx xxxx xxxx xxxx"
-      },
-      "gmail": {
-        "account": "agent@company.com",
-        "appPassword": "xxxx xxxx xxxx xxxx"
-      },
-      "telegram": {
-        "botToken": "123456:ABC-DEF1234ghIkl",
-        "allowedUsers": ["761381461"],
-        "sessionMode": [
-          { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
-          { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
-        ]
-      }
-    }
-  }
-}
-```
-
-#### App Review Support
-
-Monitors and replies to App Store and Google Play reviews.
-
-| Service | Fields | Description |
-|---------|--------|-------------|
-| `appstore` | `keyId`, `issuerId`, `privateKeyBase64`, `appIds`, `supportEmail` | App Store Connect API credentials |
-| `googleplay` | `serviceAccountJsonBase64`, `packageNames`, `supportEmail` | Google Play service account |
-| `telegram` | `botToken`, `allowedUsers`, `sessionMode` | Telegram bot for operator notifications |
-
-```json
-POST /UserAgent/Update
-{
-  "guid": "your-useragent-guid",
-  "configuration": {
-    "credentials": {
-      "appstore": {
-        "keyId": "ABC1234DEF",
-        "issuerId": "12345678-1234-1234-1234-123456789012",
-        "privateKeyBase64": "LS0tLS1CRUdJTi...",
-        "appIds": ["6479306352"],
-        "supportEmail": "support@company.com"
-      },
-      "googleplay": {
-        "serviceAccountJsonBase64": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii...",
-        "packageNames": ["com.example.app"],
-        "supportEmail": "support@company.com"
-      },
-      "telegram": {
-        "botToken": "123456:ABC-DEF1234ghIkl",
-        "allowedUsers": ["761381461"],
-        "sessionMode": [
-          { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
-          { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
-        ]
-      }
-    }
-  }
-}
-```
-
-#### App Event Manager
-
-Suggests and creates App Store in-app events based on holidays and trends.
-
-| Service | Fields | Description |
-|---------|--------|-------------|
-| `appstore` | `keyId`, `issuerId`, `privateKeyBase64`, `appIds` | App Store Connect API credentials |
-| `telegram` | `botToken`, `allowedUsers`, `sessionMode` | Telegram bot for operator notifications |
-
-```json
-POST /UserAgent/Update
-{
-  "guid": "your-useragent-guid",
-  "configuration": {
-    "credentials": {
-      "appstore": {
-        "keyId": "ABC1234DEF",
-        "issuerId": "12345678-1234-1234-1234-123456789012",
-        "privateKeyBase64": "LS0tLS1CRUdJTi...",
-        "appIds": ["6479306352"]
-      },
-      "telegram": {
-        "botToken": "123456:ABC-DEF1234ghIkl",
-        "allowedUsers": ["761381461"],
-        "sessionMode": [
-          { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
-          { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
-        ]
-      }
-    }
-  }
-}
-```
-
-#### Push Notification Manager
-
-Sends targeted push notifications via Firebase Cloud Messaging.
-
-| Service | Fields | Description |
-|---------|--------|-------------|
-| `firebase` | `accounts[]` | Array of Firebase projects. Each: `appName`, `serviceAccountJsonBase64`, `apps` (platform + id), `topics` (key→description object) |
-| `telegram` | `botToken`, `allowedUsers`, `sessionMode` | Telegram bot for operator notifications |
-
-```json
-POST /UserAgent/Update
-{
-  "guid": "your-useragent-guid",
-  "configuration": {
-    "credentials": {
-      "firebase": {
-        "accounts": [{
-          "appName": "My App",
-          "serviceAccountJsonBase64": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii...",
-          "apps": [
-            { "platform": "ios", "id": "6479306352" },
-            { "platform": "android", "id": "com.example.app" }
-          ],
-          "topics": { "locale_en": "English users", "tier_paid": "Paid subscribers" }
-        }]
-      },
-      "telegram": {
-        "botToken": "123456:ABC-DEF1234ghIkl",
-        "allowedUsers": ["761381461"],
-        "sessionMode": [
-          { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
-          { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
-        ]
-      }
-    }
-  }
-}
-```
-
-#### Newsletter Manager
-
-Creates and sends newsletters via Brevo, SendGrid, HubSpot, or Mailchimp.
-
-| Service | Type | Fields |
-|---------|------|--------|
-| `brevo` | API Key | `apiKey` |
-| `sendgrid` | API Key | `apiKey` |
-| `hubspot` | OAuth | Connected via `HubSpotConnect` |
-| `mailchimp` | OAuth/Key | OAuth via `MailchimpConnect` or set `apiKey` directly |
-| `newsletter` | Config | `testEmail` |
-| `telegram` | API Key | `botToken`, `allowedUsers`, `sessionMode` |
-
-```json
-POST /UserAgent/Update
-{
-  "guid": "your-useragent-guid",
-  "configuration": {
-    "credentials": {
-      "brevo": { "apiKey": "xkeysib-abc123..." },
-      "sendgrid": { "apiKey": "SG.xxxx..." },
-      "newsletter": { "testEmail": "test@company.com" },
-      "telegram": {
-        "botToken": "123456:ABC-DEF1234ghIkl",
-        "allowedUsers": ["761381461"],
-        "sessionMode": [
-          { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
-          { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
-        ]
-      }
-    }
-  }
-}
-```
-
-> **Note:** HubSpot and Mailchimp are connected via [OAuth](#oauth-authorization-flow). Mailchimp also accepts a direct `apiKey` without OAuth.
-
-#### Lead Gen Manager
-
-Finds leads and manages outreach campaigns via Apollo.io, Lemlist, and HubSpot.
-
-| Service | Type | Fields |
-|---------|------|--------|
-| `apollo` | API Key | `apiKey`, `masterApiKey` (optional, for sequences) |
-| `lemlist` | API Key | `apiKey` |
-| `hubspot` | OAuth | Connected via `HubSpotConnect` |
-| `telegram` | API Key | `botToken`, `allowedUsers`, `sessionMode` |
-
-```json
-POST /UserAgent/Update
-{
-  "guid": "your-useragent-guid",
-  "configuration": {
-    "credentials": {
-      "apollo": {
-        "apiKey": "your-apollo-api-key",
-        "masterApiKey": "your-master-key"
-      },
-      "lemlist": { "apiKey": "your-lemlist-key" },
-      "telegram": {
-        "botToken": "123456:ABC-DEF1234ghIkl",
-        "allowedUsers": ["761381461"],
-        "sessionMode": [
-          { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
-          { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
-        ]
-      }
-    }
-  }
-}
-```
-
-#### Google Ads Manager
-
-Manages Google Ads campaigns, keywords, and ad copy.
-
-| Service | Type | Fields |
-|---------|------|--------|
-| `googleads` | OAuth | Connected via `GAdsConnect`. Then set `customerId` via `GAdsSetCustomerId`. |
-| `website` | Config | `urls` — array of `{ websiteName, url }` |
-| `appstore` | Config | `apps` — array of `{ appName, appId }` |
-| `googleplay` | Config | `apps` — array of `{ appName, packageName }` |
-| `telegram` | API Key | `botToken`, `allowedUsers`, `sessionMode` |
-
-```json
-POST /UserAgent/Update
-{
-  "guid": "your-useragent-guid",
-  "configuration": {
-    "credentials": {
-      "website": {
-        "urls": [{ "websiteName": "Main Site", "url": "https://example.com" }]
-      },
-      "appstore": {
-        "apps": [{ "appName": "My iOS App", "appId": "6479306352" }]
-      },
-      "googleplay": {
-        "apps": [{ "appName": "My Android App", "packageName": "com.example.app" }]
-      },
-      "telegram": {
-        "botToken": "123456:ABC-DEF1234ghIkl",
-        "allowedUsers": ["761381461"],
-        "sessionMode": [
-          { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
-          { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
-        ]
-      }
-    }
-  }
-}
-```
-
-> **Note:** Google Ads is connected via [OAuth](#oauth-authorization-flow). After connecting, set the customer ID via `POST /UserAgentOAuth/GAdsSetCustomerId`.
-
-#### Meta Ads Manager
-
-Manages Meta (Facebook/Instagram) ad campaigns and creatives.
-
-| Service | Type | Fields |
-|---------|------|--------|
-| `metaads` | OAuth | Connected via `MetaAdsConnect`. Then set ad account via `MetaAdsSetAdAccount`. |
-| `website` | Config | `urls` — array of `{ websiteName, url }` |
-| `appstore` | Config | `apps` — array of `{ appName, appId }` |
-| `googleplay` | Config | `apps` — array of `{ appName, packageName }` |
-| `telegram` | API Key | `botToken`, `allowedUsers`, `sessionMode` |
-
-```json
-POST /UserAgent/Update
-{
-  "guid": "your-useragent-guid",
-  "configuration": {
-    "credentials": {
-      "website": {
-        "urls": [{ "websiteName": "Landing Page", "url": "https://example.com" }]
-      },
-      "appstore": {
-        "apps": [{ "appName": "My iOS App", "appId": "6479306352" }]
-      },
-      "googleplay": {
-        "apps": [{ "appName": "My Android App", "packageName": "com.example.app" }]
-      },
-      "telegram": {
-        "botToken": "123456:ABC-DEF1234ghIkl",
-        "allowedUsers": ["761381461"],
-        "sessionMode": [
-          { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
-          { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
-        ]
-      }
-    }
-  }
-}
-```
-
-> **Note:** Meta Ads is connected via [OAuth](#oauth-authorization-flow). After connecting, set the ad account via `POST /UserAgentOAuth/MetaAdsSetAdAccount`.
-
-### Credential Field Reference
-
-Quick reference for all credential field names across services:
-
-| Service Key | Editable Fields |
-|-------------|-----------------|
-| `telegram` | `botToken`, `allowedUsers`, `sessionMode` |
-| `wordpress` | `url`, `user`, `appPassword` |
-| `gmail` | `account`, `appPassword` |
-| `brevo` | `apiKey` |
-| `sendgrid` | `apiKey` |
-| `apollo` | `apiKey`, `masterApiKey` |
-| `lemlist` | `apiKey` |
-| `newsletter` | `testEmail` |
-| `appstore` | `keyId`, `issuerId`, `privateKeyBase64`, `appIds` — or `apps` array for ads agents |
-| `googleplay` | `serviceAccountJsonBase64`, `packageNames` — or `apps` array for ads agents |
-| `firebase` | `accounts[]`: `appName`, `serviceAccountJsonBase64`, `apps`, `topics` |
-| `website` | `urls` array of `{ websiteName, url }` |
-| `twitter` | OAuth — `authMethod` (own: + `clientId`, `clientSecret`) |
-| `instagram` | OAuth — `authMethod` (own: + `appId`, `appSecret`) |
-| `facebook` | OAuth — `authMethod` (own: + `appId`, `appSecret`) |
-| `linkedin` | OAuth — `authMethod`, `organizationId` (own: + `clientId`, `clientSecret`) |
-| `tiktok` | OAuth — `authMethod` (own: + `clientKey`, `clientSecret`) |
-| `googleads` | OAuth — `authMethod` (own: + `clientId`, `clientSecret`, `developerToken`, `managerCustomerId`) |
-| `metaads` | OAuth — `authMethod` (own: + `appId`, `appSecret`) |
-| `hubspot` | OAuth — `authMethod` (own: + `clientId`, `clientSecret`) |
-| `mailchimp` | OAuth — `authMethod`, `apiKey` (own: + `clientId`, `clientSecret`) |
-
-### Setup Required State
-
-If an agent has required (non-optional) credentials that haven't been filled in, the agent is in **Setup Required** state (status `6`) and cannot be started. After setting all required credentials via Update, the status automatically changes to `0` (Stopped) and you can call Start.
-
-Check the `setuprequired` boolean in `UserAgent/Detail` or `UserAgent/MyAgents` responses to determine if credentials still need to be configured.
+- Only fields marked `_editable: true` are accepted. Non-editable fields are silently ignored. Use `POST /UserAgent/Detail` to inspect `_editable` flags.
+- Credential keys that do not already exist in the agent template cannot be added — you can only update keys the agent declares.
 
 ## OAuth Authorization Flow
 
-For services that require user authorization (social media accounts, ad platforms, CRMs), Wiro implements a full OAuth flow. The entire process is **fully white-label** — your end-users interact only with your app and the provider's consent screen. They never see or visit wiro.ai at any point.
+For services that require user authorization, Wiro implements a full OAuth redirect flow. The entire process is **fully white-label** — your end users interact only with your app and the provider's consent screen. They never see or visit wiro.ai.
 
-> **Key point:** The `redirectUrl` you pass to the Connect endpoint is **your own URL**. After authorization, users are redirected back to your app — not to Wiro. Any HTTPS URL is accepted. Use `http://localhost` or `http://127.0.0.1` for development.
+> The `redirectUrl` you pass to the Connect endpoint is **your own URL**. After authorization, users are redirected back to your app with status query parameters. HTTPS is required; `http://localhost` and `http://127.0.0.1` are allowed for development.
 
-### Supported OAuth Providers
-
-| Provider | Connect Endpoint | Redirect Success Params | Redirect Error Params |
-|----------|-----------------|------------------------|----------------------|
-| Twitter/X | `XConnect` | `x_connected=true&x_username=...` | `x_error=...` |
-| TikTok | `TikTokConnect` | `tiktok_connected=true&tiktok_username=...` | `tiktok_error=...` |
-| Instagram | `IGConnect` | `ig_connected=true&ig_username=...` | `ig_error=...` |
-| Facebook | `FBConnect` | `fb_connected=true&fb_pagename=...` | `fb_error=...` |
-| LinkedIn | `LIConnect` | `li_connected=true&li_name=...` | `li_error=...` |
-| Google Ads | `GAdsConnect` | `gads_connected=true&gads_accounts=[...]` | `gads_error=...` |
-| Meta Ads | `MetaAdsConnect` | `metaads_connected=true&metaads_accounts=[...]` | `metaads_error=...` |
-| HubSpot | `HubSpotConnect` | `hubspot_connected=true&hubspot_portal=...&hubspot_name=...` | `hubspot_error=...` |
-| Mailchimp | `MailchimpConnect` | `mailchimp_connected=true&mailchimp_account=...` | `mailchimp_error=...` |
-
-### Flow Diagram
+### Generic flow
 
 ```
-Your App (Frontend)           Your Backend              Wiro API              Provider (e.g. Twitter)
-       |                            |                       |                        |
-  (1)  | "Connect Twitter" click    |                       |                        |
-       |--------------------------->|                       |                        |
-       |                            |  POST /XConnect       |                        |
-  (2)  |                            |--> { userAgentGuid,   |                        |
-       |                            |      redirectUrl,     |                        |
-       |                            |      authMethod }     |                        |
-       |                            |                       |                        |
-  (3)  |                            |<-- { authorizeUrl }   |                        |
-       |                            |                       |                        |
-  (4)  |<--- redirect to authorizeUrl                       |                        |
-       |--------------------------------------------------------> User sees Twitter  |
-       |                            |                       |    consent screen      |
-  (5)  |                            |                       |<-- User clicks Allow   |
-       |                            |                       |                        |
-  (6)  |                            |   (invisible callback)|                        |
-       |                            |   Wiro exchanges code |<-----------------------|
-       |                            |   for tokens, saves   |                        |
-       |                            |   them to agent config|                        |
-       |                            |                       |                        |
-  (7)  |<------- 302 redirect to YOUR redirectUrl ----------------------------------|
-       | https://your-app.com/settings?x_connected=true&x_username=johndoe          |
-       |                            |                       |                        |
+Your App (Frontend)           Your Backend              Wiro API              Provider
+       |                            |                       |                      |
+  (1)  | "Connect X" click          |                       |                      |
+       |--------------------------->|                       |                      |
+  (2)  |                            |  POST /{P}Connect --> |                      |
+       |                            |  { userAgentGuid,     |                      |
+       |                            |    redirectUrl,       |                      |
+       |                            |    authMethod }       |                      |
+  (3)  |                            |<-- { authorizeUrl }   |                      |
+  (4)  |<--- redirect to authorizeUrl -------------------------------------------->|
+  (5)  |                            |                       |<-- User clicks Allow |
+  (6)  |                            |  (invisible callback) |                      |
+       |                            |  Wiro exchanges code  |<---------------------|
+       |                            |  for tokens, saves    |                      |
+  (7)  |<------- 302 to YOUR redirectUrl --------------------------------------->  |
+       |        ?{provider}_connected=true&...                                     |
 ```
 
-### What the User Sees
+### Connect endpoint (common shape)
 
-| Step | User Sees | URL |
-|------|-----------|-----|
-| 1 | Your app — "Connect Twitter" button | `https://your-app.com/settings` |
-| 2–3 | (Backend API call — invisible to user) | — |
-| 4–5 | Provider's consent screen (Twitter, TikTok, etc.) | `https://x.com/i/oauth2/authorize?...` |
-| 6 | (Wiro's server-side callback — invisible 302 redirect) | — |
-| 7 | Your app — "Connected!" confirmation | `https://your-app.com/settings?x_connected=true` |
-
-**Your users never visit wiro.ai.** The only pages they see are your app and the provider's authorization screen.
-
-### Connect Endpoint
-
-**POST** /UserAgentOAuth/{Provider}Connect
+**POST** `/UserAgentOAuth/{Provider}Connect`
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | The agent instance GUID |
-| `redirectUrl` | string | Yes | Where to redirect after OAuth completes (HTTPS or localhost) |
-| `authMethod` | string | No | `"wiro"` (default) or `"own"` |
+| `userAgentGuid` | string | Yes | Agent instance GUID. |
+| `redirectUrl` | string | Yes | Where to redirect after OAuth completes. |
+| `authMethod` | string | No | `"wiro"` (default) or `"own"`. See integration page for availability. |
 
-#### Response
+Response:
 
 ```json
 {
   "result": true,
-  "authorizeUrl": "https://x.com/i/oauth2/authorize?response_type=code&client_id=...",
+  "authorizeUrl": "https://provider.example.com/oauth/authorize?...",
   "errors": []
 }
 ```
 
 ### Auth Methods — `"wiro"` vs `"own"`
 
-Both modes produce the **same white-label user experience**. The only difference is whose OAuth app credentials are used for the authorization flow:
-
-|  | `"wiro"` (default) | `"own"` |
-|--|---------------------|---------|
-| **OAuth app credentials** | Wiro's pre-configured app | Your own app from the provider's developer portal |
-| **Setup required** | None — just call Connect | Create an app on the provider, set credentials via Update, register Wiro's callback URL |
-| **Consent screen branding** | Shows "Wiro" as the app name | Shows **your app name** and branding |
+|  | `"wiro"` | `"own"` |
+|--|---------|---------|
+| **OAuth app credentials** | Wiro's pre-configured app | Your own app on the provider's developer portal |
+| **Setup required** | None — just call Connect | Create an app on the provider, save credentials via Update, register Wiro's callback URL |
+| **Consent screen branding** | Shows "Wiro" as the app name | Shows **your app name** |
 | **Redirect after auth** | To your `redirectUrl` | To your `redirectUrl` |
 | **User sees wiro.ai?** | No | No |
 | **Token management** | Automatic by Wiro | Automatic by Wiro |
-| **Best for** | Quick setup, prototyping, most use cases | Custom branding on consent screen, custom scopes |
+| **Best for** | Quick setup when available | Custom branding, bypassing long review processes |
 
-> **Recommendation:** Start with `"wiro"` mode. It works out of the box with no configuration. Switch to `"own"` only if you need your brand name on the provider's consent screen or require custom OAuth scopes/permissions.
+For the full own-mode credential field names and provider-specific setup, see the individual integration page.
 
-To use `"own"` mode, first set your app credentials via `POST /UserAgent/Update`, then call Connect with `authMethod: "own"`. Each provider requires different credential field names:
+### Callback URL pattern (own mode)
 
-#### "own" Mode Credentials per Provider
-
-| Provider | Credential Key | Required Fields | Request Example |
-|----------|---------------|-----------------|-----------------|
-| Twitter/X | `twitter` | `clientId`, `clientSecret` | `"twitter": { "clientId": "your-client-id", "clientSecret": "your-client-secret" }` |
-| TikTok | `tiktok` | `clientKey`, `clientSecret` | `"tiktok": { "clientKey": "your-client-key", "clientSecret": "your-client-secret" }` |
-| Instagram | `instagram` | `appId`, `appSecret` | `"instagram": { "appId": "your-app-id", "appSecret": "your-app-secret" }` |
-| Facebook | `facebook` | `appId`, `appSecret` | `"facebook": { "appId": "your-app-id", "appSecret": "your-app-secret" }` |
-| LinkedIn | `linkedin` | `clientId`, `clientSecret`, `organizationId` | `"linkedin": { "clientId": "your-client-id", "clientSecret": "your-client-secret", "organizationId": "your-org-id" }` |
-| Google Ads | `googleads` | `clientId`, `clientSecret`, `developerToken`, `managerCustomerId` | `"googleads": { "clientId": "your-client-id", "clientSecret": "your-client-secret", "developerToken": "your-dev-token", "managerCustomerId": "123-456-7890" }` |
-| Meta Ads | `metaads` | `appId`, `appSecret` | `"metaads": { "appId": "your-app-id", "appSecret": "your-app-secret" }` |
-| HubSpot | `hubspot` | `clientId`, `clientSecret` | `"hubspot": { "clientId": "your-client-id", "clientSecret": "your-client-secret" }` |
-| Mailchimp | `mailchimp` | `clientId`, `clientSecret` (or `apiKey` without OAuth) | `"mailchimp": { "clientId": "your-client-id", "clientSecret": "your-client-secret" }` |
-
-> **Note:** Field names differ per provider (e.g. TikTok uses `clientKey` not `clientId`, Instagram/Facebook use `appId`/`appSecret` not `clientId`/`clientSecret`). Always use the exact field names from the table above.
-
-#### "own" Mode Full Flow
-
-```json
-// Step 1: Set your app credentials
-POST /UserAgent/Update
-{
-  "guid": "your-useragent-guid",
-  "configuration": {
-    "credentials": {
-      "twitter": {
-        "clientId": "your-twitter-client-id",
-        "clientSecret": "your-twitter-client-secret"
-      }
-    }
-  }
-}
-
-// Step 2: Initiate OAuth with authMethod: "own"
-POST /UserAgentOAuth/XConnect
-{
-  "userAgentGuid": "your-useragent-guid",
-  "redirectUrl": "https://your-app.com/callback",
-  "authMethod": "own"
-}
-
-// Step 3: Redirect user to the returned authorizeUrl
-// Step 4: User authorizes → redirected back to your redirectUrl
-```
-
-When using `"own"` mode, you must register Wiro's callback URL in your OAuth app settings on the provider's developer portal:
+Register this URL in your OAuth app settings on the provider's developer portal:
 
 ```
 https://api.wiro.ai/v1/UserAgentOAuth/{Provider}Callback
 ```
 
-### Status Check
+Provider-specific paths: `MetaAdsCallback`, `FBCallback`, `IGCallback`, `LICallback`, `XCallback`, `TikTokCallback`, `GAdsCallback`, `HubSpotCallback`, `MailchimpCallback`, `GoogleDriveCallback`.
 
-Check whether a provider is connected for a given agent instance.
+### Callback success & error parameters
 
-**POST** /UserAgentOAuth/{Provider}Status
+After OAuth completes, Wiro redirects users to your `redirectUrl` with provider-specific query parameters:
+
+| Provider | Success Params | Error Param |
+|----------|---------------|-------------|
+| Twitter / X | `x_connected=true&x_username=...` | `x_error=...` |
+| TikTok | `tiktok_connected=true&tiktok_username=...` | `tiktok_error=...` |
+| Instagram | `ig_connected=true&ig_username=...` | `ig_error=...` |
+| Facebook | `fb_connected=true&fb_pagename=...&fb_pages=[...]` | `fb_error=...` |
+| LinkedIn | `li_connected=true&li_name=...` | `li_error=...` |
+| Google Ads | `gads_connected=true&gads_accounts=[...]` | `gads_error=...` |
+| Meta Ads | `metaads_connected=true&metaads_accounts=[...]` | `metaads_error=...` |
+| HubSpot | `hubspot_connected=true&hubspot_portal=...&hubspot_name=...` | `hubspot_error=...` |
+| Mailchimp | `mailchimp_connected=true&mailchimp_account=...` | `mailchimp_error=...` |
+
+Error values follow the pattern `{provider}_error=<code>`. Common codes across all providers:
+
+| Code | Meaning |
+|------|---------|
+| `authorization_denied` | User cancelled, or in Meta Development Mode the user is not added under App Roles. |
+| `session_expired` | 15-minute state cache expired. |
+| `token_exchange_failed` | Wrong App Secret or redirect URI mismatch. |
+| `useragent_not_found` | Invalid or unauthorized `userAgentGuid`. |
+| `invalid_config` | Agent has no credentials block for the provider. |
+| `internal_error` | Unexpected server error. |
+
+See each integration page for provider-specific error details and remediation.
+
+### Generic OAuth Endpoints
+
+These endpoints work the same way across every OAuth provider. Replace `{Provider}` with the integration code (`MetaAds`, `FB`, `IG`, `LI`, `X`, `TikTok`, `GAds`, `HubSpot`, `Mailchimp`).
+
+#### **POST** /UserAgentOAuth/{Provider}Status
+
+Check the current connection state.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | The agent instance GUID |
+| `userAgentGuid` | string | Yes | Agent instance GUID. |
 
-#### Response
+Response:
 
 ```json
 {
   "result": true,
   "connected": true,
-  "username": "johndoe",
-  "connectedAt": "2025-04-01T12:00:00.000Z",
-  "tokenExpiresAt": "2025-04-01T14:00:00.000Z",
-  "refreshTokenExpiresAt": "2025-10-01T12:00:00.000Z",
+  "username": "connected-account-name",
+  "connectedAt": "2026-04-17T12:00:00.000Z",
+  "tokenExpiresAt": "2026-06-16T12:00:00.000Z",
+  "refreshTokenExpiresAt": "2026-10-17T12:00:00.000Z",
   "errors": []
 }
 ```
 
-| Field | Description | Providers |
-|-------|-------------|-----------|
-| `connected` | Whether the provider is connected | All |
-| `username` | Connected account name or identifier | Most providers |
-| `linkedinName` | LinkedIn profile name (replaces `username`) | LinkedIn only |
-| `customerId` | Google Ads customer ID (replaces `username`) | Google Ads only |
-| `connectedAt` | ISO timestamp of when the account was connected | All |
-| `tokenExpiresAt` | ISO timestamp of access token expiry | All except Mailchimp |
-| `refreshTokenExpiresAt` | ISO timestamp of refresh token expiry | Twitter/X, TikTok, LinkedIn |
+Some providers use integration-specific field names instead of `username` (e.g. `linkedinName`, `customerId`). Refer to the relevant integration page.
 
-### Disconnect
+#### **POST** /UserAgentOAuth/{Provider}Disconnect
 
-Revoke access and remove stored tokens for a provider.
+Revoke access and clear stored credentials.
 
-**POST** /UserAgentOAuth/{Provider}Disconnect
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | The agent instance GUID |
-
-#### Response
-
-```json
-{
-  "result": true,
-  "errors": []
-}
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/{Provider}Disconnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "userAgentGuid": "your-useragent-guid" }'
 ```
 
-Wiro attempts to revoke the token on the provider's side before clearing it from the configuration. The agent restarts automatically if it was running.
+Response: `{ "result": true, "errors": [] }`. The agent restarts automatically if it was running.
 
-### Token Refresh
+#### **POST** /UserAgentOAuth/TokenRefresh
 
-Manually trigger a token refresh for a connected provider.
-
-**POST** /UserAgentOAuth/TokenRefresh
+Force-refresh the provider's access token. Wiro auto-refreshes before expiry, so manual refresh is rarely needed.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | The agent instance GUID |
-| `provider` | string | Yes | One of: `twitter`, `tiktok`, `instagram`, `facebook`, `linkedin`, `googleads`, `metaads`, `hubspot` |
-
-> **Note:** Mailchimp is not included — its tokens do not expire.
-
-#### Response
+| `userAgentGuid` | string | Yes | Agent instance GUID. |
+| `provider` | string | Yes | One of: `twitter`, `tiktok`, `instagram`, `facebook`, `linkedin`, `googleads`, `metaads`, `hubspot`, `googledrive`. |
 
 ```json
 {
@@ -5144,44 +4730,300 @@ Manually trigger a token refresh for a connected provider.
 }
 ```
 
-The agent restarts automatically after a token refresh if it was running.
+Mailchimp tokens do not expire and are not included.
 
-### Extra Provider Endpoints
+### Provider-Specific Post-Callback Endpoints
 
-#### Google Ads — Set Customer ID
+Some integrations require a second step after the callback to finalize the connection. These are documented on their respective integration pages:
 
-After connecting Google Ads via OAuth, you must set the Google Ads customer ID to target:
+| Endpoint | Purpose | Integration |
+|----------|---------|-------------|
+| `POST /UserAgentOAuth/MetaAdsSetAdAccount` | Pick the ad account to manage. | [Meta Ads](/docs/integration-metaads) |
+| `POST /UserAgentOAuth/FBSetPage` | Pick the Facebook Page (multi-page accounts). | [Facebook Page](/docs/integration-facebook) |
+| `POST /UserAgentOAuth/GAdsSetCustomerId` | Pick the Google Ads customer ID. | [Google Ads](/docs/integration-googleads) |
 
-**POST** /UserAgentOAuth/GAdsSetCustomerId
+## Setup Required State
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | The agent instance GUID |
-| `customerId` | string | Yes | Google Ads customer ID (e.g. `"123-456-7890"`). Non-digit characters are stripped automatically. |
+If an agent has required (non-optional) credentials that have not been filled in, the agent is in **Setup Required** state (status `6`) and cannot be started. After setting all required credentials via Update, the status automatically changes to `0` (Stopped) and you can call `POST /UserAgent/Start`.
 
-##### Response
+Check the `setuprequired` boolean in `UserAgent/Detail` or `UserAgent/MyAgents` responses to determine if credentials still need to be configured.
+
+## Security
+
+- **Tokens are stored server-side** in the agent instance configuration. The `TokenRefresh` endpoint returns new tokens — all other endpoints (Status, Detail, Update) sanitize token fields before responding.
+- The `redirectUrl` receives only connection status parameters — no tokens, no secrets.
+- API responses from Status, Detail, and Update endpoints are sanitized: `accessToken`, `refreshToken`, `clientSecret`, and `appSecret` fields are stripped before returning.
+- OAuth state parameters use a 15-minute TTL cache to prevent replay attacks.
+- Redirect URLs must be HTTPS (or localhost / 127.0.0.1 for development).
+
+## For Third-Party Developers
+
+If you are building a product on top of Wiro agents and need your customers to connect their own accounts, the recommended flow is:
+
+1. **Deploy** an agent instance per customer via `POST /UserAgent/Deploy`.
+2. **Connect** — your backend calls `POST /UserAgentOAuth/{Provider}Connect` with the customer's `userAgentGuid` and a `redirectUrl` pointing back to your app.
+3. **Redirect** — send the customer's browser to the returned `authorizeUrl`.
+4. **Authorize** — customer authorizes on the provider's consent screen.
+5. **Return** — customer lands back on your `redirectUrl` with success/error query parameters.
+6. **Verify** — call `POST /UserAgentOAuth/{Provider}Status` to confirm.
+
+Each integration page includes a dedicated **Multi-Tenant Architecture** section covering per-provider rate limits, token isolation, and White-Label consent screen configuration.
+
+### Handling the OAuth redirect in your app
+
+```javascript
+// Express route that receives the OAuth return
+app.get('/settings/integrations', (req, res) => {
+  if (req.query.x_connected === 'true') {
+    return res.redirect(`/dashboard?connected=twitter&username=${req.query.x_username}`)
+  }
+  if (req.query.metaads_connected === 'true') {
+    const accounts = JSON.parse(decodeURIComponent(req.query.metaads_accounts || '[]'))
+    // Show account picker or auto-select if only one
+    return res.redirect(`/dashboard/meta-ads?accounts=${encodeURIComponent(JSON.stringify(accounts))}`)
+  }
+  if (req.query.fb_connected === 'true') {
+    const pages = JSON.parse(decodeURIComponent(req.query.fb_pages || '[]'))
+    return pages.length > 1
+      ? res.redirect(`/dashboard/facebook?pick=${encodeURIComponent(JSON.stringify(pages))}`)
+      : res.redirect('/dashboard?connected=facebook')
+  }
+  const err = Object.keys(req.query).find((k) => k.endsWith('_error'))
+  if (err) return res.redirect(`/dashboard?error=${err}&reason=${req.query[err]}`)
+  res.redirect('/dashboard')
+})
+```
+
+
+# Meta Ads Integration
+
+Connect your agents to Meta's advertising platform to manage campaigns, ad sets, creatives, and insights across Facebook and Instagram ads.
+
+## Overview
+
+The Meta Ads integration powers agents that work with the Meta Marketing API — creating and managing campaigns, pulling performance insights, managing creatives, and analyzing ad account data.
+
+**Skills that use this integration:**
+
+- `metaads-manage` — Campaign/ad set/creative management, insights reporting
+- `ads-manager-common` — Shared ads helpers (used together with `metaads-manage` and `googleads-manage`)
+
+**Agents that typically enable this integration:**
+
+- Meta Ads Manager
+- Any custom agent that needs paid-media capabilities on Meta
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| `"wiro"` | Coming soon | Wiro's shared Meta App is under review by Meta. |
+| `"own"` | Available now | You create your own Meta Developer App and connect it to Wiro. No App Review required when using Development Mode + App Roles. |
+
+> **Why own mode only right now?** Meta's approval process for multi-tenant apps that request `ads_management` is long and strict. While our shared app is pending, you can skip this bottleneck entirely by using your own Meta Developer App in Development Mode — App Review is **not needed** as long as every user who connects is listed under your app's Roles.
+
+## Prerequisites
+
+Before you start, make sure you have:
+
+- **A Wiro API key** — see [Authentication](/docs/authentication) for how to issue keys and sign requests.
+- **A deployed agent** — see [Agent Overview](/docs/agent-overview) and call `POST /UserAgent/Deploy` first. You need the returned `useragentguid` for every step below.
+- **A Meta Business account** — create one at [business.facebook.com](https://business.facebook.com/) if you do not already manage an ad account through Meta Business Suite.
+- **A Meta Developer account** — same login as Facebook; visit [developers.facebook.com](https://developers.facebook.com/) once and accept the developer terms.
+- **An HTTPS callback URL** that your backend controls (for example `https://your-app.com/settings/integrations`). `http://localhost` and `http://127.0.0.1` are accepted only for local development.
+
+## Complete Integration Walkthrough
+
+This is the end-to-end flow. All curl examples are real — they match the endpoints and payloads produced by Wiro in production.
+
+### Step 1: Create a Meta Developer App
+
+1. Go to [developers.facebook.com/apps](https://developers.facebook.com/apps) and click **Create app**.
+2. Choose **"Other"** as the use case, then **"Business"** as the app type.
+3. Set an **App display name** (your customers may see this on the consent screen — use your company or product name).
+4. Enter an **App contact email**.
+5. Select the **Meta Business Account** that owns the ad accounts you plan to manage, then click **Create app**.
+
+You are now on the app dashboard. The app is in **Development Mode** by default — leave it there. Do not switch it to Live Mode; Development Mode is exactly what lets you skip App Review.
+
+### Step 2: Add the Marketing API product
+
+1. From the left sidebar of your app dashboard, click **Add product**.
+2. Find **"Marketing API"** and click **Set up**.
+3. No additional configuration is required inside Marketing API itself — just adding the product unlocks the `ads_*` permissions.
+
+### Step 3: Add "Facebook Login for Business" and configure the redirect URI
+
+Meta Ads OAuth uses Facebook Login under the hood. You must add Facebook Login for Business and register Wiro's callback URL.
+
+1. Click **Add product** again.
+2. Find **"Facebook Login for Business"** and click **Set up**.
+3. In the left sidebar, go to **Facebook Login for Business → Settings**.
+4. Scroll to **Valid OAuth Redirect URIs** and add:
+
+   ```
+   https://api.wiro.ai/v1/UserAgentOAuth/MetaAdsCallback
+   ```
+
+5. Click **Save changes** at the bottom of the page.
+
+> This is the single most common place where own-mode setups fail. The redirect URI must be **exact** — no trailing slash, HTTPS scheme, same capitalization.
+
+### Step 4: Note the required permissions
+
+Wiro requests the following scopes during OAuth:
+
+| Permission | Why it is needed |
+|------------|------------------|
+| `ads_management` | Create, update, and pause campaigns, ad sets, and ads. |
+| `ads_read` | Read insights, performance metrics, and account metadata. |
+| `business_management` | Query business assets (ad accounts, pages) linked to the user. |
+| `pages_show_list` | List Facebook pages tied to the ad account (needed for creatives that reference a page). |
+| `pages_read_engagement` | Read engagement on those pages when relevant to ads. |
+
+These permissions normally require App Review in Live Mode. In Development Mode they work **without App Review** for any Facebook user who is listed under your app's Roles (see Step 6).
+
+You do not need to request Advanced Access. Standard Access is sufficient for Development Mode users.
+
+### Step 5: Copy your App ID and App Secret
+
+1. In the app dashboard, go to **App settings → Basic**.
+2. Copy the **App ID**.
+3. Click **Show** next to **App Secret** and copy it. Treat this value like a password — never expose it client-side.
+
+### Step 6: Add other Facebook accounts as Testers or Developers (only if needed)
+
+- **If you are connecting your own Facebook account** (the one that created the app), skip this step. You are already the app Admin and can authorize immediately.
+- **If your end users are different Facebook accounts** (typical for a SaaS product), each of them must be added to the app Roles before they can authorize in Development Mode.
+
+To add a user:
+
+1. Go to **App Roles → Roles** in the left sidebar.
+2. Click **Add People** and enter the person's Facebook name or email.
+3. Pick **Testers** (recommended) or **Developers** and send the invite.
+4. The invited user accepts the invite at [facebook.com/settings → Business Integrations](https://www.facebook.com/settings?tab=business_tools). Once accepted, they can complete the OAuth flow against your app.
+
+When App Review is eventually required (only if you decide to go Live Mode), this step becomes unnecessary — but for Development Mode it is mandatory for anyone who is not the app Admin.
+
+### Step 7: Save your App ID and App Secret to Wiro
+
+Push your credentials into the target agent's configuration. Wiro merges credential updates — fields you do not send are preserved, so OAuth tokens attached later will not be wiped.
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "guid": "your-useragent-guid",
+    "configuration": {
+      "credentials": {
+        "metaads": {
+          "appId": "YOUR_META_APP_ID",
+          "appSecret": "YOUR_META_APP_SECRET"
+        }
+      }
+    }
+  }'
+```
+
+Successful response (abbreviated):
 
 ```json
 {
   "result": true,
-  "customerId": "1234567890",
+  "useragents": [
+    {
+      "guid": "your-useragent-guid",
+      "setuprequired": false,
+      "status": 0
+    }
+  ],
   "errors": []
 }
 ```
 
-#### Meta Ads — Set Ad Account
+> The `_editable` flag on each credential field controls whether your update is accepted. For OAuth credentials (`appId`, `appSecret`, `authMethod`) these are editable by default. If you see a silent no-op, call `POST /UserAgent/Detail` and inspect `configuration.credentials.metaads._editable` — only fields marked `true` are writable.
 
-After connecting Meta Ads via OAuth, set the ad account to manage:
+### Step 8: Initiate OAuth
 
-**POST** /UserAgentOAuth/MetaAdsSetAdAccount
+Ask Wiro to start a Meta OAuth flow on behalf of this agent. Include `authMethod: "own"` so Wiro uses the `appId`/`appSecret` you just saved instead of its own shared app.
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | The agent instance GUID |
-| `adAccountId` | string | Yes | Meta Ads account ID (e.g. `"act_123456789"`). The `act_` prefix is stripped automatically. |
-| `adAccountName` | string | No | Display name for the ad account |
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/MetaAdsConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "userAgentGuid": "your-useragent-guid",
+    "redirectUrl": "https://your-app.com/settings/integrations",
+    "authMethod": "own"
+  }'
+```
 
-##### Response
+Response:
+
+```json
+{
+  "result": true,
+  "authorizeUrl": "https://www.facebook.com/v25.0/dialog/oauth?client_id=...&redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FUserAgentOAuth%2FMetaAdsCallback&state=...&scope=ads_management,ads_read,business_management,pages_show_list,pages_read_engagement",
+  "errors": []
+}
+```
+
+Redirect the end user's browser to `authorizeUrl`. Full-page redirect is recommended over a popup — some browsers block third-party cookies in popups, which can break OAuth sessions.
+
+> **State TTL:** Wiro caches the OAuth state for **15 minutes**. If the user takes longer to complete consent, the flow returns `session_expired` and you must restart from this step.
+
+### Step 9: Handle the callback
+
+After the user consents on Facebook, Meta sends them back to Wiro's callback URL. Wiro exchanges the code for a long-lived token, fetches the user's ad accounts, writes tokens into the agent config, and finally redirects the user to **your** `redirectUrl` with query parameters.
+
+**Success** — the URL looks like:
+
+```
+https://your-app.com/settings/integrations?metaads_connected=true&metaads_accounts=%5B%7B%22id%22%3A%22123456789%22%2C%22name%22%3A%22My%20Ad%20Account%22%7D%5D
+```
+
+`metaads_accounts` is a URL-encoded JSON array. Each element has `id` (with the `act_` prefix stripped) and `name`. Only ad accounts with `account_status === 1` (active) are included.
+
+Parse it like this:
+
+```javascript
+const params = new URLSearchParams(window.location.search);
+
+if (params.get("metaads_connected") === "true") {
+  const accountsJson = params.get("metaads_accounts");
+  const accounts = JSON.parse(decodeURIComponent(accountsJson || "[]"));
+  // accounts === [{ id: "123456789", name: "My Ad Account" }, ...]
+  if (accounts.length === 0) {
+    showError("No active ad accounts found on this Meta user.");
+  } else if (accounts.length === 1) {
+    await setAdAccount(accounts[0]);
+  } else {
+    presentAccountPicker(accounts);
+  }
+} else if (params.get("metaads_error")) {
+  handleError(params.get("metaads_error"));
+}
+```
+
+**Error** — redirected URL contains `metaads_error=<code>`. See [Troubleshooting](#troubleshooting) for each code and how to recover.
+
+### Step 10: Persist the ad account selection
+
+Wiro does not automatically pick an ad account for you — you must tell it which one to use. Call `MetaAdsSetAdAccount`:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/MetaAdsSetAdAccount" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "userAgentGuid": "your-useragent-guid",
+    "adAccountId": "123456789",
+    "adAccountName": "My Ad Account"
+  }'
+```
+
+Response:
 
 ```json
 {
@@ -5190,97 +5032,3412 @@ After connecting Meta Ads via OAuth, set the ad account to manage:
 }
 ```
 
-## Custom Skills Configuration
+Notes:
 
-Some agents support configurable skills — automated tasks that the agent can perform on a schedule or on demand. You can enable/disable skills, set their execution interval, and edit their parameters via `POST /UserAgent/Update`.
+- Pass the ad account ID **without** the `act_` prefix. If you include it, Wiro strips it automatically.
+- `adAccountName` is optional but recommended — it surfaces in the dashboard and logs.
+- If the agent was already running, Wiro restarts it so the new ad account ID takes effect immediately. No additional Start call is needed.
 
-### Request Format
+### Step 11: Verify the connection
+
+Confirm everything is wired up correctly:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/MetaAdsStatus" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "userAgentGuid": "your-useragent-guid" }'
+```
+
+Response:
 
 ```json
-POST /UserAgent/Update
+{
+  "result": true,
+  "connected": true,
+  "username": "My Ad Account",
+  "connectedAt": "2026-04-17T12:00:00.000Z",
+  "tokenExpiresAt": "2026-06-16T12:00:00.000Z",
+  "errors": []
+}
+```
+
+`username` is the saved ad account name. `tokenExpiresAt` is the long-lived token expiry (~60 days from connection).
+
+### Step 12: Start the agent if it is not running
+
+If this agent was freshly deployed and has only just received its first credentials, it may still be in Stopped state (`status: 0`). Kick it off:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+```
+
+Check the `setuprequired` flag in `POST /UserAgent/Detail`: if it is still `true`, some other credential on this agent is missing and Start will refuse. See [Agent Credentials — Setup Required State](/docs/agent-credentials#setup-required-state).
+
+Agents that were already running when you connected Meta Ads restart automatically — you do not need to call Start.
+
+## API Reference
+
+All endpoints under this section require the standard Wiro authentication headers (`x-api-key`, optionally `x-nonce` + `x-signature` when the project is in signature mode). See [Authentication](/docs/authentication).
+
+### **POST** /UserAgentOAuth/MetaAdsConnect
+
+Initiate the Meta Ads OAuth flow and receive a `authorizeUrl`.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `userAgentGuid` | string | Yes | Agent instance GUID. |
+| `redirectUrl` | string | Yes | HTTPS URL where the user is returned after consent. `http://localhost` / `http://127.0.0.1` are allowed in dev. |
+| `authMethod` | string | No | `"wiro"` (default) or `"own"`. Use `"own"` while Wiro's shared app is pending. |
+
+Response:
+
+```json
+{
+  "result": true,
+  "authorizeUrl": "https://www.facebook.com/v25.0/dialog/oauth?...",
+  "errors": []
+}
+```
+
+If `result: false`, inspect `errors[0].message` — common failures include `Missing userAgentGuid`, `Missing redirectUrl`, `Invalid redirect URL`, `User agent not found or unauthorized`, and `Meta Ads credentials not configured` (own mode without prior Update).
+
+### **GET** /UserAgentOAuth/MetaAdsCallback
+
+Server-side callback invoked by Facebook. You do not call this directly — you just need to know which query parameters Wiro appends to **your** `redirectUrl` after the callback completes.
+
+| Param | Meaning |
+|-------|---------|
+| `metaads_connected=true` | OAuth finished successfully. |
+| `metaads_accounts=<URL-encoded JSON>` | Array of `{ id, name }` for active ad accounts on the user. |
+| `metaads_error=<code>` | OAuth failed. Codes listed in [Troubleshooting](#troubleshooting). |
+
+### **POST** /UserAgentOAuth/MetaAdsSetAdAccount
+
+Persist the ad account the agent should operate on.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `userAgentGuid` | string | Yes | Agent instance GUID. |
+| `adAccountId` | string | Yes | Ad account ID without the `act_` prefix. If included, the prefix is stripped server-side. |
+| `adAccountName` | string | No | Display name shown in dashboards and logs. |
+
+Response:
+
+```json
+{ "result": true, "errors": [] }
+```
+
+### **POST** /UserAgentOAuth/MetaAdsStatus
+
+Check the current Meta Ads connection state for an agent.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `userAgentGuid` | string | Yes | Agent instance GUID. |
+
+Response fields:
+
+| Field | Description |
+|-------|-------------|
+| `connected` | `true` once credentials and an ad account are both set. |
+| `username` | The selected ad account name. |
+| `connectedAt` | ISO timestamp of connection. |
+| `tokenExpiresAt` | Long-lived token expiry (~60 days from connection). |
+
+### **POST** /UserAgentOAuth/MetaAdsDisconnect
+
+Revoke and clear Meta Ads credentials for the agent. The agent restarts automatically if it was running.
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/MetaAdsDisconnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "userAgentGuid": "your-useragent-guid" }'
+```
+
+Response: `{ "result": true, "errors": [] }`
+
+### **POST** /UserAgentOAuth/TokenRefresh
+
+Force-refresh the Meta long-lived token. Wiro auto-refreshes before expiry, so you typically do not need to call this manually. Use it if your agent has been idle for weeks and you want to warm up the token before a burst of API calls.
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "userAgentGuid": "your-useragent-guid",
+    "provider": "metaads"
+  }'
+```
+
+Response:
+
+```json
+{
+  "result": true,
+  "accessToken": "EAAG...",
+  "errors": []
+}
+```
+
+## Using the Skill
+
+Once credentials are connected and the ad account is set, Meta Ads capabilities are exposed through the `metaads-manage` skill inside the agent runtime. To enable it or configure scheduled runs (for example a daily performance report), see [Agent Skills](/docs/agent-skills#enabling-skills) and use `POST /UserAgent/Update` with the `custom_skills` array.
+
+Typical skills configuration block:
+
+```json
 {
   "guid": "your-useragent-guid",
   "configuration": {
     "custom_skills": [
       {
-        "key": "daily_post",
+        "key": "performance-reporter",
         "enabled": true,
         "interval": "0 9 * * *",
-        "value": "Post about trending tech topics",
-        "description": "Daily automated post at 9 AM"
+        "value": "Summarize yesterday's spend and CPA by campaign"
       }
     ]
   }
 }
 ```
 
-### Skill Fields
+## Troubleshooting
+
+Every OAuth failure redirects to your `redirectUrl` with a `metaads_error=<code>` query parameter. Use this table to diagnose and recover.
+
+| Error code | Meaning | What to do |
+|------------|---------|------------|
+| `missing_params` | The callback was hit without a `state` or `code`. | Do not hit the callback URL directly. Start a new OAuth flow from Step 8. |
+| `session_expired` | More than 15 minutes passed between `MetaAdsConnect` and the consent screen callback. | Call `MetaAdsConnect` again to issue a fresh state. |
+| `authorization_denied` | The user clicked **Cancel** on the consent screen, or Facebook returned an `error=access_denied`. In Development Mode this also happens when the user is not listed under App Roles. | Add the user as a Tester under App Roles (Step 6), ask them to accept the invite, then retry. |
+| `token_exchange_failed` | Facebook rejected the token exchange. Usually a wrong `App Secret`, a revoked app, or a mismatch between the redirect URI in your code and the one registered in Facebook Login for Business → Settings. | Re-copy the App Secret from Settings → Basic, double-check the redirect URI string, and retry. |
+| `useragent_not_found` | The `userAgentGuid` in `MetaAdsConnect` was wrong or does not belong to the API key's user. | Fetch the correct guid with `POST /UserAgent/MyAgents`. |
+| `invalid_config` | The agent has no `credentials.metaads` block at all. | Call `POST /UserAgent/Update` to add at least `metaads.appId` and `metaads.appSecret`, then retry `MetaAdsConnect`. |
+| `internal_error` | Unexpected server error during callback handling. | Retry once. If it persists, contact Wiro support with the timestamp and your `userAgentGuid`. |
+
+### "App not verified" warning on consent
+
+In Development Mode, Facebook shows a yellow "This app is not approved by Facebook yet" banner on the consent screen. This is expected and **not** a blocker — users listed under App Roles can still click **Continue** and finish authorization. Users who are not in App Roles will see a hard block and cannot proceed.
+
+### Credentials were saved but `Status` returns `connected: false`
+
+`connected: true` requires both a saved OAuth token **and** a selected ad account. If you skipped Step 10 (`MetaAdsSetAdAccount`), the Status endpoint will report `connected: false` until you pick an account.
+
+### Token keeps expiring
+
+Long-lived Meta tokens last ~60 days. Wiro auto-refreshes them before they expire, so you rarely need to intervene. If you do see `tokenExpiresAt` in the past, call `POST /UserAgentOAuth/TokenRefresh` with `provider: "metaads"` to force a refresh. If that fails, the user must redo the OAuth flow (Step 8 onwards).
+
+## Multi-Tenant Architecture
+
+If you are building a SaaS product where many of your customers each connect their own Meta Ads account through **your** Wiro-powered backend, here is the recommended shape:
+
+1. **One Meta Developer App** per Wiro-integrating product, not per customer. The same `appId`/`appSecret` pair can serve unlimited customers.
+2. **One Wiro agent instance per customer.** Call `POST /UserAgent/Deploy` every time a new customer signs up, then follow Steps 7–11 of the walkthrough above for that customer's `userAgentGuid`.
+3. **Wiro tokens are isolated per agent instance.** Customer A's Meta token is never visible to Customer B — they live under different `useragentguid`s.
+4. **Your consent screen carries your branding.** Users see *your* App display name on Facebook's consent screen, not "Wiro". Keep the display name clean and trustworthy — Meta occasionally flags apps with generic names.
+5. **Add each customer to App Roles → Testers** until you go Live Mode. This is a manual step today; automate it by having customers submit their Facebook user ID during onboarding and adding them via the Meta Business API or Roles UI.
+6. **Rate limits are per app, not per customer.** The Marketing API's tier (Development vs Standard vs Advanced) governs aggregate call volume. High-volume partners should plan for tier upgrades; see Meta's [Rate Limiting](https://developers.facebook.com/docs/graph-api/overview/rate-limiting) docs.
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials) — overview of all integration options.
+- [Agent Overview](/docs/agent-overview) — deploying, starting, and lifecycle of agents.
+- [Agent Skills](/docs/agent-skills) — configuring the `metaads-manage` skill and scheduled runs.
+- [Facebook Page integration](/docs/integration-facebook) — often used alongside Meta Ads for creatives that reference a page.
+- [Instagram integration](/docs/integration-instagram) — for Instagram-placement ads and organic posting.
+- [Meta for Developers — Marketing API](https://developers.facebook.com/docs/marketing-apis/) — official reference.
+
+
+# Facebook Page Integration
+
+Connect your agents to a Facebook Page so they can publish posts, photos, and videos on your behalf.
+
+## Overview
+
+The Facebook Page integration lets an agent act as an admin on a Page — publishing text, image, and video posts, reading engagement data, and managing scheduled content.
+
+**Skills that use this integration:**
+
+- `facebookpage-post` — Publish posts and media to a Facebook Page
+
+**Agents that typically enable this integration:**
+
+- Social Manager
+- Any custom agent that needs to post to a Facebook Page
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| `"wiro"` | Coming soon | Wiro's shared Meta App is under review by Meta. |
+| `"own"` | Available now | Use your own Meta Developer App in Development Mode — no App Review required. |
+
+> **Why own mode only right now?** Meta's approval for apps that request Page publishing permissions is strict. While Wiro's shared app is pending, own mode with your own Meta App is the immediate path. Every user who connects must be listed under your app's Roles — Development Mode handles permissions for them without App Review.
+
+## Prerequisites
+
+- **A Wiro API key** — see [Authentication](/docs/authentication).
+- **A deployed agent** — see [Agent Overview](/docs/agent-overview), call `POST /UserAgent/Deploy` and keep the returned `useragentguid`.
+- **A Meta Business account** — [business.facebook.com](https://business.facebook.com/).
+- **A Meta Developer account** — [developers.facebook.com](https://developers.facebook.com/).
+- **At least one Facebook Page where the end user is an admin** — the OAuth flow will list every Page the user administers.
+- **An HTTPS callback URL** for your backend. `http://localhost` and `http://127.0.0.1` are allowed in development.
+
+## Complete Integration Walkthrough
+
+### Step 1: Create a Meta Developer App
+
+Same as for Meta Ads — you can reuse a single Meta App for Facebook Page, Instagram, **and** Meta Ads.
+
+1. Go to [developers.facebook.com/apps](https://developers.facebook.com/apps) and click **Create app**.
+2. Choose **"Other"** → **"Business"**.
+3. Enter an **App display name** (shown on the consent screen), an **App contact email**, and select your **Meta Business Account**.
+4. Click **Create app**. Leave it in **Development Mode**.
+
+### Step 2: Add "Facebook Login for Business"
+
+1. From the app dashboard, click **Add product**.
+2. Find **"Facebook Login for Business"** and click **Set up**.
+3. Go to **Facebook Login for Business → Settings**.
+4. Under **Valid OAuth Redirect URIs**, add:
+
+   ```
+   https://api.wiro.ai/v1/UserAgentOAuth/FBCallback
+   ```
+
+5. Click **Save changes**.
+
+> The redirect URI must match **exactly** — HTTPS scheme, no trailing slash, exact case.
+
+### Step 3: Note the required permissions
+
+Wiro requests these scopes during OAuth:
+
+| Permission | Why it is needed |
+|------------|------------------|
+| `pages_show_list` | Enumerate the Pages the user administers. |
+| `pages_manage_posts` | Publish text, link, photo, and video posts to a Page. |
+| `pages_read_engagement` | Read likes, comments, shares on the Page's posts. |
+| `pages_manage_metadata` | Webhook subscriptions for real-time events. |
+| `pages_manage_engagement` | Reply to comments, hide/delete comments. |
+| `business_management` | Query business assets the user has access to. |
+
+In Development Mode these permissions work without App Review for any Facebook user added to your app's Roles.
+
+### Step 4: Copy your App ID and App Secret
+
+Go to **App settings → Basic**. Copy the **App ID**, click **Show** next to **App Secret** and copy that too.
+
+### Step 5: Add other Facebook accounts as Testers (only if needed)
+
+- Connecting your own Facebook account? You are the app Admin, no action needed.
+- Connecting a different account (e.g. a customer's)? Add them under **App Roles → Roles → Add People → Testers**. The user accepts at [facebook.com/settings → Business Integrations](https://www.facebook.com/settings?tab=business_tools).
+
+### Step 6: Save your credentials to Wiro
+
+Push the `appId` and `appSecret` into the agent's Facebook credential group. Wiro merges updates, so later OAuth tokens written by the callback will not overwrite these fields.
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "guid": "your-useragent-guid",
+    "configuration": {
+      "credentials": {
+        "facebook": {
+          "appId": "YOUR_META_APP_ID",
+          "appSecret": "YOUR_META_APP_SECRET"
+        }
+      }
+    }
+  }'
+```
+
+### Step 7: Initiate OAuth
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/FBConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "userAgentGuid": "your-useragent-guid",
+    "redirectUrl": "https://your-app.com/settings/integrations",
+    "authMethod": "own"
+  }'
+```
+
+Response:
+
+```json
+{
+  "result": true,
+  "authorizeUrl": "https://www.facebook.com/v25.0/dialog/oauth?client_id=...&redirect_uri=...&scope=pages_show_list,pages_manage_posts,pages_read_engagement,pages_manage_metadata,pages_manage_engagement,business_management",
+  "errors": []
+}
+```
+
+Redirect the user's browser to `authorizeUrl`. The state has a **15-minute TTL** — if the user takes longer to finish consent, start over.
+
+### Step 8: Handle the callback and select a Page
+
+After consent, Wiro exchanges the code, fetches all Pages the user administers, caches them server-side, and redirects the user back to **your** `redirectUrl`.
+
+**Success URL** looks like:
+
+```
+https://your-app.com/settings/integrations?fb_connected=true&fb_pagename=My%20Page&fb_pages=%5B%7B%22id%22%3A%22123%22%2C%22name%22%3A%22My%20Page%22%7D%2C%7B%22id%22%3A%22456%22%2C%22name%22%3A%22Another%20Page%22%7D%5D
+```
+
+Query parameters:
+
+| Param | Meaning |
+|-------|---------|
+| `fb_connected=true` | OAuth finished successfully. |
+| `fb_pagename` | Name of the Page Wiro auto-selected as default (the first Page returned by Meta). Kept for backward compatibility. |
+| `fb_pages` | URL-encoded JSON array of **every** Page the user administers: `[{ id, name }, ...]`. Only the ID and display name are returned — page access tokens stay server-side. |
+
+#### Decide how to handle the list
+
+```javascript
+const params = new URLSearchParams(window.location.search);
+
+if (params.get("fb_connected") === "true") {
+  const pages = JSON.parse(decodeURIComponent(params.get("fb_pages") || "[]"));
+
+  if (pages.length === 0) {
+    showError("This Facebook user does not administer any Pages.");
+  } else if (pages.length === 1) {
+    // Already selected server-side; you can optionally call FBSetPage
+    // to confirm, but it's not required.
+    showSuccess(`Connected to ${pages[0].name}`);
+  } else {
+    // Let the user choose
+    presentPagePicker(pages);
+  }
+} else if (params.get("fb_error")) {
+  handleError(params.get("fb_error"));
+}
+```
+
+#### Persist the user's choice (multi-page case)
+
+Wiro auto-picks the first Page as a default, but if the user manages multiple Pages and picks a different one, call `FBSetPage`:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/FBSetPage" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "userAgentGuid": "your-useragent-guid",
+    "pageId": "456",
+    "pageName": "Another Page"
+  }'
+```
+
+Response:
+
+```json
+{ "result": true, "errors": [] }
+```
+
+Behind the scenes Wiro looks up the page-specific access token in its short-term cache (15-minute TTL from the callback), writes it to the agent's config, and restarts the agent if it was already running. Wait too long (>15 min) and you will get an error — restart OAuth from Step 7.
+
+### Step 9: Verify the connection
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/FBStatus" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "userAgentGuid": "your-useragent-guid" }'
+```
+
+```json
+{
+  "result": true,
+  "connected": true,
+  "username": "My Page",
+  "connectedAt": "2026-04-17T12:00:00.000Z",
+  "tokenExpiresAt": "2026-06-16T12:00:00.000Z",
+  "errors": []
+}
+```
+
+### Step 10: Start the agent if it is not running
+
+If this is a new agent, it may still be in Stopped state:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+```
+
+Agents already running at connect time restart automatically.
+
+## API Reference
+
+### **POST** /UserAgentOAuth/FBConnect
+
+Initiate the Facebook Page OAuth flow.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `userAgentGuid` | string | Yes | Agent instance GUID. |
+| `redirectUrl` | string | Yes | HTTPS URL where the user is returned after consent. |
+| `authMethod` | string | No | `"wiro"` (default) or `"own"`. Use `"own"` while the shared app is pending. |
+
+Response: `{ result, authorizeUrl, errors }`.
+
+### **GET** /UserAgentOAuth/FBCallback
+
+Server-side callback. Wiro returns users to your `redirectUrl` with:
+
+| Param | Meaning |
+|-------|---------|
+| `fb_connected=true` | Success. |
+| `fb_pagename` | Auto-selected Page name (backward compat). |
+| `fb_pages` | URL-encoded JSON `[{ id, name }, ...]` of all admin Pages. |
+| `fb_error=<code>` | Failure. See [Troubleshooting](#troubleshooting). |
+
+### **POST** /UserAgentOAuth/FBSetPage
+
+Choose which Facebook Page the agent should operate against (when the user administers more than one).
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `userAgentGuid` | string | Yes | Agent instance GUID. |
+| `pageId` | string | Yes | Page ID copied from `fb_pages`. |
+| `pageName` | string | No | Display name to show in dashboards. If omitted, Wiro uses the name from the cached page list. |
+
+Response: `{ result, errors }`. Agent restarts automatically if it was running.
+
+> **Cache window:** Wiro caches the full page list (with page access tokens) for 15 minutes after the callback. Call `FBSetPage` within that window. If the cache expires, restart the OAuth flow from `FBConnect`.
+
+### **POST** /UserAgentOAuth/FBStatus
+
+Check the current Facebook Page connection state.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `userAgentGuid` | string | Yes | Agent instance GUID. |
+
+Response fields include `connected`, `username` (Page name), `connectedAt`, `tokenExpiresAt`.
+
+### **POST** /UserAgentOAuth/FBDisconnect
+
+Revoke the Facebook token and clear credentials.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `userAgentGuid` | string | Yes | Agent instance GUID. |
+
+Response: `{ result: true, errors: [] }`. Agent restarts automatically.
+
+### **POST** /UserAgentOAuth/TokenRefresh
+
+Force-refresh the long-lived page token. Wiro auto-refreshes before expiry.
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "userAgentGuid": "your-useragent-guid",
+    "provider": "facebook"
+  }'
+```
+
+## Using the Skill
+
+Once Facebook is connected, enable `facebookpage-post` in the agent's skills and optionally schedule runs — see [Agent Skills](/docs/agent-skills#enabling-skills).
+
+```json
+{
+  "guid": "your-useragent-guid",
+  "configuration": {
+    "custom_skills": [
+      {
+        "key": "daily-announcement",
+        "enabled": true,
+        "interval": "0 9 * * *",
+        "value": "Share a highlight from yesterday's product updates"
+      }
+    ]
+  }
+}
+```
+
+## Troubleshooting
+
+| Error code | Meaning | What to do |
+|------------|---------|------------|
+| `missing_params` | Callback reached without `state` or `code`. | Start a fresh OAuth flow from Step 7. |
+| `session_expired` | More than 15 minutes passed between `FBConnect` and the user finishing consent. | Re-run `FBConnect`. |
+| `authorization_denied` | User cancelled, or in Development Mode the user is not listed under App Roles. | Add the user as a Tester (Step 5), ask them to accept the invite, retry. |
+| `token_exchange_failed` | Wrong App Secret or redirect URI mismatch. | Re-copy App Secret from **Settings → Basic**; verify the redirect URI in **Facebook Login for Business → Settings** is exactly `https://api.wiro.ai/v1/UserAgentOAuth/FBCallback`. |
+| `useragent_not_found` | The `userAgentGuid` is wrong or not owned by this API key. | Use `POST /UserAgent/MyAgents` to find the right guid. |
+| `invalid_config` | The agent has no `credentials.facebook` block. | Call `POST /UserAgent/Update` with `facebook.appId` and `facebook.appSecret`, retry. |
+| `internal_error` | Unexpected server error. | Retry once; if it persists, contact support. |
+
+### "No pending page selection" error on FBSetPage
+
+The page list cache expired. The cache keeps page-specific access tokens for 15 minutes after a successful callback. If the user takes longer to pick a page, restart the OAuth flow from `FBConnect`. The default (first) page stays usable in the meantime — no configuration is lost, you just cannot switch pages from a cold state.
+
+### User administers multiple Pages but only one was returned
+
+Meta only returns Pages where the user currently holds an admin or editor role in **Meta Business Suite**. Recently created Pages can take up to ~30 minutes to show up in OAuth — ask the user to retry after refreshing their Business Suite session.
+
+### "App not verified" banner on consent
+
+Expected in Development Mode. Users added to App Roles can click **Continue**; other users are blocked entirely.
+
+### Page posts succeed but show the wrong page author
+
+Wiro uses the **page access token**, not the user token, so posts appear as the Page. If they show a personal account name, your `FBSetPage` call is using a `pageId` that was not in the last callback's list — start a new OAuth flow and select again.
+
+## Multi-Tenant Architecture
+
+For SaaS builders connecting many customers' Pages through a single Wiro-powered backend:
+
+1. **One Meta Developer App** serves all customers. The same `appId`/`appSecret` pair works across every Wiro agent instance.
+2. **One Wiro agent instance per customer** — deploy with `POST /UserAgent/Deploy` during onboarding.
+3. **Page tokens are isolated per agent instance.** Customer A's Page token is never visible to Customer B; they live under different `useragentguid`s.
+4. **Your consent screen carries your branding.** The customer sees *your* App display name on Facebook's consent screen — not "Wiro".
+5. **Each customer must be on App Roles** until you go Live Mode. Collect their Facebook user ID during signup and add them as Testers via the Meta Business API or the Roles UI.
+6. **Page admin rights must be verified on your side.** Meta returns only Pages where the user is currently an admin. If your customer lost admin access after signing up, your agent will error — build a revalidation loop that runs `FBStatus` periodically and flags stale connections.
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Overview](/docs/agent-overview)
+- [Agent Skills](/docs/agent-skills)
+- [Meta Ads integration](/docs/integration-metaads)
+- [Instagram integration](/docs/integration-instagram)
+- [Meta for Developers — Pages API](https://developers.facebook.com/docs/pages-api)
+
+
+# Instagram Integration
+
+Connect your agents to an Instagram Business Account so they can publish posts, reels, stories, and carousels.
+
+## Overview
+
+The Instagram integration lets an agent publish content to an Instagram Business or Creator account via Meta's Instagram Graph API.
+
+**Skills that use this integration:**
+
+- `instagram-post` — Publish photos, videos, reels, carousels, and stories
+
+**Agents that typically enable this integration:**
+
+- Social Manager
+- Any custom agent that needs Instagram publishing
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| `"wiro"` | Coming soon | Wiro's shared Meta App is under review. |
+| `"own"` | Available now | Use your own Meta Developer App in Development Mode — no App Review required. |
+
+## Prerequisites
+
+- **A Wiro API key** — see [Authentication](/docs/authentication).
+- **A deployed agent** — see [Agent Overview](/docs/agent-overview), keep the `useragentguid`.
+- **A Meta Business account** — [business.facebook.com](https://business.facebook.com/).
+- **A Meta Developer account** — [developers.facebook.com](https://developers.facebook.com/).
+- **Instagram Business Account linked to a Facebook Page.** This is **mandatory** — personal Instagram accounts cannot be connected via the Graph API.
+- **An HTTPS callback URL** for your backend.
+
+### Linking an Instagram account to a Facebook Page
+
+If your Instagram account is not yet connected to a Facebook Page:
+
+1. Open [Meta Business Suite](https://business.facebook.com/) and select the Page that will own this Instagram account.
+2. Go to **Settings → Linked accounts → Instagram → Connect account**.
+3. Sign in with the Instagram account. Grant manage permissions.
+4. Back in Instagram mobile app, go to **Settings → Account → Switch to Professional Account** if the account is still Personal. Pick **Business** or **Creator**.
+5. Under **Settings → Business tools → Connected Accounts → Facebook**, confirm the Page link.
+
+Until both the Instagram Business switch and the Facebook Page link are complete, the Graph API will not return this Instagram account during OAuth.
+
+## Complete Integration Walkthrough
+
+### Step 1: Create a Meta Developer App
+
+Same Meta App you already use for Facebook Page or Meta Ads works here — one app can serve all three integrations. If you do not have one yet:
+
+1. [developers.facebook.com/apps](https://developers.facebook.com/apps) → **Create app** → **Other** → **Business**.
+2. App display name, contact email, Business Account.
+3. Create. Leave in **Development Mode**.
+
+### Step 2: Add the "Instagram" product
+
+1. From the app dashboard, click **Add product**.
+2. Find **"Instagram"** (not "Instagram Basic Display" — that one is for personal accounts only and is being deprecated).
+3. Click **Set up**.
+4. You may be prompted to confirm the Instagram-for-Business use case.
+
+### Step 3: Configure the OAuth redirect URI
+
+1. In the left sidebar: **Instagram → API setup with Instagram login**.
+2. Scroll to **Business login settings** and then **OAuth settings**.
+3. Under **Valid OAuth Redirect URIs** add:
+
+   ```
+   https://api.wiro.ai/v1/UserAgentOAuth/IGCallback
+   ```
+
+4. Click **Save changes**.
+
+> Unlike Facebook Page, Instagram OAuth uses its own authorize URL at `instagram.com/oauth/authorize` — but the redirect URI is still registered inside the Meta Developer App UI.
+
+### Step 4: Note the required permissions
+
+Wiro requests these Instagram-specific and Page-adjacent scopes:
+
+| Permission | Why it is needed |
+|------------|------------------|
+| `instagram_business_basic` | Basic account info, profile data. |
+| `instagram_business_content_publish` | Publish posts, reels, stories, carousels. |
+| `instagram_business_manage_messages` | Read and reply to DMs (if enabled). |
+| `instagram_business_manage_comments` | Read, reply to, and moderate comments. |
+| `pages_show_list` | Required companion scope to locate the linked Facebook Page. |
+| `pages_read_engagement` | Read engagement on the linked Page's posts. |
+| `business_management` | Query business assets. |
+
+In Development Mode these scopes work without App Review for Facebook users added under App Roles.
+
+### Step 5: Copy your App ID and App Secret
+
+**App settings → Basic** → copy App ID; **Show** → copy App Secret.
+
+### Step 6: Add other Facebook accounts as Testers (only if needed)
+
+If the person connecting Instagram is not the app's Admin, add them under **App Roles → Roles → Add People → Testers**. The user accepts the invite at [facebook.com/settings → Business Integrations](https://www.facebook.com/settings?tab=business_tools). Note that the Facebook account they use for App Roles must be the same one linked to the Instagram Business Account via Meta Business Suite.
+
+### Step 7: Save credentials to Wiro
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "guid": "your-useragent-guid",
+    "configuration": {
+      "credentials": {
+        "instagram": {
+          "appId": "YOUR_META_APP_ID",
+          "appSecret": "YOUR_META_APP_SECRET"
+        }
+      }
+    }
+  }'
+```
+
+Wiro merges credential updates — `accessToken` and other fields written later by the OAuth callback will not wipe `appId`/`appSecret`.
+
+### Step 8: Initiate OAuth
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/IGConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "userAgentGuid": "your-useragent-guid",
+    "redirectUrl": "https://your-app.com/settings/integrations",
+    "authMethod": "own"
+  }'
+```
+
+Response:
+
+```json
+{
+  "result": true,
+  "authorizeUrl": "https://www.instagram.com/oauth/authorize?client_id=...&redirect_uri=...&scope=instagram_business_basic,instagram_business_content_publish,...",
+  "errors": []
+}
+```
+
+Redirect the user to `authorizeUrl`. State has a 15-minute TTL.
+
+### Step 9: Handle the callback
+
+After consent, Wiro exchanges the code for a short-lived token, upgrades it to a long-lived token, fetches the linked Instagram Business Account ID, saves it, and redirects the user back.
+
+**Success URL** looks like:
+
+```
+https://your-app.com/settings/integrations?ig_connected=true&ig_username=my_brand
+```
+
+Parse:
+
+```javascript
+const params = new URLSearchParams(window.location.search);
+
+if (params.get("ig_connected") === "true") {
+  const username = params.get("ig_username");
+  showSuccess(`Connected to @${username}`);
+} else if (params.get("ig_error")) {
+  handleError(params.get("ig_error"));
+}
+```
+
+Instagram has no secondary selection step (unlike Meta Ads' ad account or Facebook's page picker) — the Instagram Business Account tied to the chosen Facebook Page is used directly.
+
+### Step 10: Verify the connection
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/IGStatus" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "userAgentGuid": "your-useragent-guid" }'
+```
+
+```json
+{
+  "result": true,
+  "connected": true,
+  "username": "my_brand",
+  "connectedAt": "2026-04-17T12:00:00.000Z",
+  "tokenExpiresAt": "2026-06-16T12:00:00.000Z",
+  "errors": []
+}
+```
+
+### Step 11: Start the agent if it is not running
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+```
+
+Already-running agents restart automatically.
+
+## API Reference
+
+### **POST** /UserAgentOAuth/IGConnect
+
+Start the Instagram OAuth flow.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `userAgentGuid` | string | Yes | Agent instance GUID. |
+| `redirectUrl` | string | Yes | HTTPS URL where the user returns after consent. |
+| `authMethod` | string | No | `"wiro"` (default) or `"own"`. Use `"own"` while the shared app is pending. |
+
+Response: `{ result, authorizeUrl, errors }`.
+
+### **GET** /UserAgentOAuth/IGCallback
+
+Server-side callback. Wiro returns users to your `redirectUrl` with:
+
+| Param | Meaning |
+|-------|---------|
+| `ig_connected=true` | OAuth succeeded. |
+| `ig_username` | Connected Instagram username (without the `@`). |
+| `ig_error=<code>` | Failure. See [Troubleshooting](#troubleshooting). |
+
+### **POST** /UserAgentOAuth/IGStatus
+
+Check the current connection state.
+
+Response fields: `connected`, `username`, `connectedAt`, `tokenExpiresAt`.
+
+### **POST** /UserAgentOAuth/IGDisconnect
+
+Revoke and clear Instagram credentials.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `userAgentGuid` | string | Yes | Agent instance GUID. |
+
+### **POST** /UserAgentOAuth/TokenRefresh
+
+Force-refresh the Instagram long-lived token.
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "userAgentGuid": "your-useragent-guid",
+    "provider": "instagram"
+  }'
+```
+
+Instagram long-lived tokens last ~60 days and auto-refresh; manual refresh is rarely needed.
+
+## Using the Skill
+
+Enable `instagram-post` in the agent's skills and optionally schedule runs — see [Agent Skills](/docs/agent-skills).
+
+```json
+{
+  "guid": "your-useragent-guid",
+  "configuration": {
+    "custom_skills": [
+      {
+        "key": "daily-reel",
+        "enabled": true,
+        "interval": "0 10 * * *",
+        "value": "Publish a reel highlighting today's most engaging story arc"
+      }
+    ]
+  }
+}
+```
+
+## Troubleshooting
+
+| Error code | Meaning | What to do |
+|------------|---------|------------|
+| `missing_params` | Callback hit without `state` or `code`. | Start a new OAuth flow from Step 8. |
+| `session_expired` | >15 minutes between `IGConnect` and callback. | Call `IGConnect` again. |
+| `authorization_denied` | User cancelled, or in Development Mode the user is not in App Roles. | Add the user as a Tester (Step 6), get them to accept, retry. |
+| `token_exchange_failed` | Wrong App Secret, redirect URI mismatch, or no linked Instagram Business Account. | Verify App Secret, redirect URI, and that the Facebook Page linked to Instagram is the one the user administers. |
+| `useragent_not_found` | Invalid or unauthorized `userAgentGuid`. | Use `POST /UserAgent/MyAgents` to find the correct guid. |
+| `invalid_config` | No `credentials.instagram` block on the agent. | `POST /UserAgent/Update` with `instagram.appId` and `instagram.appSecret`, retry. |
+| `internal_error` | Unexpected server error. | Retry once. If persistent, contact support. |
+
+### "No Instagram Business Account found" during OAuth
+
+The user must have an Instagram **Business** or **Creator** account linked to a Facebook Page they administer. Personal Instagram accounts are rejected.
+
+Checklist for the user:
+
+1. Open Instagram mobile app → **Settings → Account → Switch to Professional Account**. Pick **Business** or **Creator**.
+2. Meta Business Suite → Target Page → **Settings → Linked accounts → Instagram → Connect**.
+3. The same Facebook user who is in your app's Roles must be an admin of the Page that is linked to the Instagram account.
+
+### "App not verified" banner
+
+Expected in Development Mode. Users added to App Roles can click **Continue** and finish authorization.
+
+### Publishing fails with "media upload failed"
+
+Common causes:
+
+- Image resolution too low (<320px) or aspect ratio outside Instagram's allowed ranges.
+- Videos longer than allowed for the content type (reels, stories, posts each have their own limits).
+- Instagram account switched back to Personal after connection — the token becomes invalid. Ask the user to revert to Business and reconnect.
+
+## Multi-Tenant Architecture
+
+1. **One Meta Developer App** for all customers; same app also covers Meta Ads and Facebook Page if needed.
+2. **One Wiro agent instance per customer.**
+3. **Each customer's Facebook user must be added to App Roles** until you go Live Mode. Onboarding flow should capture their Facebook user ID.
+4. **Instagram Business Account requirement is strict** — build pre-flight validation into your onboarding to catch personal-account users before they see Wiro's Connect button. The Meta Graph API returns an `instagram_business_account` field on the Page object only when the link is set up correctly; surface a clear error otherwise.
+5. **Tokens are isolated per agent instance.** Customer A's Instagram token is never visible to Customer B.
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Overview](/docs/agent-overview)
+- [Agent Skills](/docs/agent-skills)
+- [Facebook Page integration](/docs/integration-facebook) — the Facebook Page linkage is mandatory.
+- [Meta Ads integration](/docs/integration-metaads) — for Instagram-placement ads.
+- [Meta for Developers — Instagram Graph API](https://developers.facebook.com/docs/instagram-api)
+
+
+# LinkedIn Integration
+
+Connect your agents to a LinkedIn Company Page so they can publish posts, articles, and engage with followers.
+
+## Overview
+
+The LinkedIn integration lets an agent publish content to a LinkedIn organization (Company Page) via the LinkedIn Marketing Developer Platform.
+
+**Skills that use this integration:**
+
+- `linkedin-post` — Publish text, image, and video posts to a Company Page
+
+**Agents that typically enable this integration:**
+
+- Social Manager
+- Any custom agent that needs LinkedIn Company Page publishing
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| `"wiro"` | Coming soon | LinkedIn partner app review is in progress. |
+| `"own"` | Available now | Create your own LinkedIn Developer App and connect it to Wiro. |
+
+## Prerequisites
+
+- **A Wiro API key** — see [Authentication](/docs/authentication).
+- **A deployed agent** — see [Agent Overview](/docs/agent-overview), keep the returned `useragentguid`.
+- **A LinkedIn Company Page** that the connecting user is an **admin** of — personal profiles cannot be managed through this integration.
+- **The LinkedIn organization ID** (numeric) — find it by visiting your Company Page on LinkedIn; the URL contains the organization identifier (e.g. `linkedin.com/company/12345678/admin/`).
+- **An HTTPS callback URL** for your backend.
+
+## Complete Integration Walkthrough
+
+### Step 1: Create a LinkedIn Developer App
+
+1. Go to [linkedin.com/developers/apps](https://www.linkedin.com/developers/apps) and click **Create app**.
+2. Fill in:
+   - **App name** (shown on consent screen — use a clean, trusted name).
+   - **LinkedIn Page** — associate the app with a LinkedIn Company Page you own.
+   - **Privacy policy URL**.
+   - **App logo** (128×128 PNG).
+3. Agree to the Legal terms and click **Create app**.
+
+### Step 2: Request the necessary products
+
+Inside your app, go to the **Products** tab. Request:
+
+- **Share on LinkedIn** — posting to members' personal feeds (optional, only if your agent also posts as the user).
+- **Sign In with LinkedIn using OpenID Connect** — basic identity scope.
+- **Community Management API** — **required** for Company Page posting.
+
+The **Community Management API** request goes through a manual approval step. While the request is pending, your app can still be used in development; once approved, production volume is unlocked. Development-scope access for a small number of test admins is available from day one.
+
+### Step 3: Configure the OAuth redirect URI
+
+1. Open the **Auth** tab in your app.
+2. Under **OAuth 2.0 settings → Authorized redirect URLs for your app**, add:
+
+   ```
+   https://api.wiro.ai/v1/UserAgentOAuth/LICallback
+   ```
+
+3. Save. The URL must match exactly — HTTPS, no trailing slash.
+
+### Step 4: Note the required scopes
+
+Wiro requests the following OAuth 2.0 scopes:
+
+| Scope | Why it is needed |
+|-------|------------------|
+| `openid` | OpenID Connect basic identity. |
+| `profile` | Display name, headline, and profile picture on the consent screen. |
+| `email` | Connected user's email address (used to confirm identity). |
+| `w_member_social` | Post to the member's own feed (some agent flows use this). |
+| `w_organization_social` | Post, comment, and reply on behalf of the Company Page. |
+| `r_organization_social` | Read Company Page posts, comments, and analytics. |
+| `rw_organization_admin` | Manage Company Page details (required for some posting endpoints). |
+
+Mark the scopes your agent uses in **Auth → OAuth 2.0 scopes**. Any scope not enabled in this list will fail at the consent screen.
+
+### Step 5: Copy your Client ID and Client Secret
+
+1. Go to the **Auth** tab.
+2. Under **Application credentials**, copy the **Client ID**.
+3. Copy the **Primary Client Secret** — it is shown in plain text on this page. Store it like a password.
+
+### Step 6: Save your credentials and organization ID to Wiro
+
+LinkedIn requires the organization ID alongside the OAuth credentials. Pass all three in one `UserAgent/Update` call:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "guid": "your-useragent-guid",
+    "configuration": {
+      "credentials": {
+        "linkedin": {
+          "clientId": "YOUR_LINKEDIN_CLIENT_ID",
+          "clientSecret": "YOUR_LINKEDIN_CLIENT_SECRET",
+          "organizationId": "12345678"
+        }
+      }
+    }
+  }'
+```
+
+### Step 7: Initiate OAuth
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/LIConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "userAgentGuid": "your-useragent-guid",
+    "redirectUrl": "https://your-app.com/settings/integrations",
+    "authMethod": "own"
+  }'
+```
+
+Response:
+
+```json
+{
+  "result": true,
+  "authorizeUrl": "https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=...&redirect_uri=...&scope=openid%20profile%20email%20w_member_social%20w_organization_social%20r_organization_social%20rw_organization_admin&state=...",
+  "errors": []
+}
+```
+
+Redirect the end user's browser to `authorizeUrl`. State has a 15-minute TTL.
+
+### Step 8: Handle the callback
+
+After consent, LinkedIn redirects to Wiro's callback, Wiro exchanges the code for access and refresh tokens, stores them, and sends the user back to your `redirectUrl`:
+
+```
+https://your-app.com/settings/integrations?li_connected=true&li_name=Jane%20Doe
+```
+
+Parse:
+
+```javascript
+const params = new URLSearchParams(window.location.search);
+
+if (params.get("li_connected") === "true") {
+  const name = params.get("li_name");
+  showSuccess(`Connected as ${name}`);
+} else if (params.get("li_error")) {
+  handleError(params.get("li_error"));
+}
+```
+
+`li_name` is the connected LinkedIn member's display name (the human admin), not the organization name. Use the `organizationId` you set in Step 6 for posting destination — that's the Company Page.
+
+### Step 9: Verify the connection
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/LIStatus" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "userAgentGuid": "your-useragent-guid" }'
+```
+
+```json
+{
+  "result": true,
+  "connected": true,
+  "linkedinName": "Jane Doe",
+  "connectedAt": "2026-04-17T12:00:00.000Z",
+  "tokenExpiresAt": "2026-06-16T12:00:00.000Z",
+  "refreshTokenExpiresAt": "2027-04-17T12:00:00.000Z",
+  "errors": []
+}
+```
+
+Note that LinkedIn uses `linkedinName` rather than `username`. Access tokens last ~60 days; refresh tokens last ~1 year.
+
+### Step 10: Start the agent if it is not running
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+```
+
+## API Reference
+
+### **POST** /UserAgentOAuth/LIConnect
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `userAgentGuid` | string | Yes | Agent instance GUID. |
+| `redirectUrl` | string | Yes | HTTPS URL for post-OAuth return. |
+| `authMethod` | string | No | `"wiro"` (coming soon) or `"own"`. |
+
+### **GET** /UserAgentOAuth/LICallback
+
+Query parameters appended to your `redirectUrl`:
+
+| Param | Meaning |
+|-------|---------|
+| `li_connected=true` | Success. |
+| `li_name` | Connected member's display name. |
+| `li_error=<code>` | Failure. |
+
+### **POST** /UserAgentOAuth/LIStatus
+
+Response includes `connected`, `linkedinName`, `connectedAt`, `tokenExpiresAt`, `refreshTokenExpiresAt`.
+
+### **POST** /UserAgentOAuth/LIDisconnect
+
+Revoke the LinkedIn token and clear credentials.
+
+### **POST** /UserAgentOAuth/TokenRefresh
+
+Force-refresh using the refresh token.
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "userAgentGuid": "your-useragent-guid",
+    "provider": "linkedin"
+  }'
+```
+
+## Using the Skill
+
+Enable `linkedin-post` on the agent — see [Agent Skills](/docs/agent-skills).
+
+```json
+{
+  "guid": "your-useragent-guid",
+  "configuration": {
+    "custom_skills": [
+      {
+        "key": "weekly-announcement",
+        "enabled": true,
+        "interval": "0 10 * * 1",
+        "value": "Publish a weekly company update highlighting last week's wins"
+      }
+    ]
+  }
+}
+```
+
+## Troubleshooting
+
+| Error code | Meaning | What to do |
+|------------|---------|------------|
+| `missing_params` | Callback reached without `state` or `code`. | Restart the flow from Step 7. |
+| `session_expired` | >15 minutes between `LIConnect` and callback. | Call `LIConnect` again. |
+| `authorization_denied` | User cancelled, or missing required scopes in LinkedIn app settings. | Verify all scopes are enabled in Auth → OAuth 2.0 scopes, retry. |
+| `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy secret; verify the redirect URI in Auth settings matches exactly. |
+| `useragent_not_found` | Invalid or unauthorized `userAgentGuid`. | Use `POST /UserAgent/MyAgents`. |
+| `invalid_config` | No `credentials.linkedin` block on the agent. | Update with `clientId`, `clientSecret`, `organizationId`. |
+| `internal_error` | Unexpected server error. | Retry; contact support if persistent. |
+
+### Posts are rejected with 401 Unauthorized
+
+Most common cause: the `Community Management API` product has not been approved yet. Until approval, posting to Company Pages only works for **admins listed on the app's associated LinkedIn Page**. Check **My Pages** inside LinkedIn Developers to confirm admin membership.
+
+### "Scope `w_organization_social` not authorized"
+
+LinkedIn does not automatically grant this scope on consent — you must request it explicitly under **Auth → OAuth 2.0 scopes**. Enable it, then have the user reconnect.
+
+### Wrong organization ID
+
+The numeric organization ID lives in your Company Page's admin URL (`linkedin.com/company/<ID>/admin/`). Not the vanity slug. If you saved the slug, update via `UserAgent/Update` and reconnect.
+
+## Multi-Tenant Architecture
+
+1. **One LinkedIn Developer App** per product; same app works for all customers.
+2. **One Wiro agent instance per customer** — capture their `organizationId` during onboarding.
+3. **Community Management API approval** is tied to your app, not per customer. You only apply once.
+4. **Tokens are isolated per agent instance.**
+5. **Rate limits** are per app and per organization — see [LinkedIn Developer docs](https://learn.microsoft.com/en-us/linkedin/shared/api-guide/concepts/rate-limits) for the exact caps. High-volume partners should contact LinkedIn partnership team for elevated limits.
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Overview](/docs/agent-overview)
+- [Agent Skills](/docs/agent-skills)
+- [LinkedIn Marketing Developer Platform](https://learn.microsoft.com/en-us/linkedin/marketing/)
+
+
+# Twitter / X Integration
+
+Connect your agents to an X (formerly Twitter) account so they can publish posts, reply to mentions, and manage conversations.
+
+## Overview
+
+The Twitter / X integration lets an agent act on behalf of an X account via X's API v2 with OAuth 2.0 PKCE.
+
+**Skills that use this integration:**
+
+- `twitterx-post` — Publish posts, threads, replies; read mentions
+
+**Agents that typically enable this integration:**
+
+- Social Manager
+- Any custom agent that needs X posting
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| `"wiro"` | Available | One-click connect using Wiro's shared X app. |
+| `"own"` | Available | Use your own X Developer app, e.g. for custom branding on the consent screen. |
+
+## Prerequisites
+
+- **A Wiro API key** — see [Authentication](/docs/authentication).
+- **A deployed agent** — see [Agent Overview](/docs/agent-overview), keep the `useragentguid`.
+- **An X account** for the connecting user.
+- **(Own mode only) An X Developer account** — sign up at [developer.x.com](https://developer.x.com/).
+- **An HTTPS callback URL** for your backend.
+
+## Complete Integration Walkthrough — Wiro Mode
+
+The simplest path. Skip to Step 3 below.
+
+### Wiro mode Step 1: Initiate OAuth
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/XConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "userAgentGuid": "your-useragent-guid",
+    "redirectUrl": "https://your-app.com/settings/integrations"
+  }'
+```
+
+Response contains `authorizeUrl`. Redirect the user; they see Wiro-branded consent. Upon return, parse `x_connected=true&x_username=<handle>`.
+
+Go to Step 5 (verification) to confirm — Steps 1–4 below are only for own mode.
+
+## Complete Integration Walkthrough — Own Mode
+
+### Step 1: Create an X Developer App
+
+1. Go to [developer.x.com/portal](https://developer.x.com/portal/dashboard) and sign in.
+2. Apply for a developer account if you have not already (free tier is sufficient for small test volumes; higher tiers unlock larger monthly post caps).
+3. Create a **Project** and, inside it, an **App**.
+4. Name your app — this is the name shown on the consent screen.
+
+### Step 2: Enable OAuth 2.0 with PKCE
+
+1. Inside the app, go to **User authentication settings → Set up**.
+2. Choose **OAuth 2.0**, type of app: **Web App, Automated App or Bot**.
+3. Enable **Request email from users** if your agent needs the email address.
+4. Set **Callback URI / Redirect URL**:
+
+   ```
+   https://api.wiro.ai/v1/UserAgentOAuth/XCallback
+   ```
+
+5. Set **Website URL** (your public product URL).
+6. Save.
+
+### Step 3: Note the required scopes
+
+Wiro requests:
+
+| Scope | Why |
+|-------|-----|
+| `tweet.read` | Read timeline, mentions, replies. |
+| `tweet.write` | Publish posts and replies. |
+| `users.read` | Get the connected user's handle and display name. |
+| `offline.access` | Enables refresh tokens. |
+
+### Step 4: Copy your Client ID and Client Secret
+
+After enabling OAuth 2.0, X shows the **Client ID** and **Client Secret** once. **Save the secret immediately** — you cannot retrieve it later; you can only regenerate.
+
+### Step 5: Save credentials to Wiro
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "guid": "your-useragent-guid",
+    "configuration": {
+      "credentials": {
+        "twitter": {
+          "clientId": "YOUR_X_CLIENT_ID",
+          "clientSecret": "YOUR_X_CLIENT_SECRET"
+        }
+      }
+    }
+  }'
+```
+
+### Step 6: Initiate OAuth
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/XConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "userAgentGuid": "your-useragent-guid",
+    "redirectUrl": "https://your-app.com/settings/integrations",
+    "authMethod": "own"
+  }'
+```
+
+Response:
+
+```json
+{
+  "result": true,
+  "authorizeUrl": "https://x.com/i/oauth2/authorize?response_type=code&client_id=...&redirect_uri=...&scope=tweet.read+tweet.write+users.read+offline.access&state=...&code_challenge=...&code_challenge_method=S256",
+  "errors": []
+}
+```
+
+X uses PKCE (Proof Key for Code Exchange) — Wiro generates the code verifier/challenge automatically. You do not need to handle PKCE yourself.
+
+### Step 7: Handle the callback
+
+After consent, the user returns to your `redirectUrl` with:
+
+```
+https://your-app.com/settings/integrations?x_connected=true&x_username=jane_doe
+```
+
+```javascript
+const params = new URLSearchParams(window.location.search);
+if (params.get("x_connected") === "true") {
+  const handle = params.get("x_username");
+  showSuccess(`Connected @${handle}`);
+} else if (params.get("x_error")) {
+  handleError(params.get("x_error"));
+}
+```
+
+### Step 8: Verify the connection
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/XStatus" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "userAgentGuid": "your-useragent-guid" }'
+```
+
+### Step 9: Start the agent
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+```
+
+## API Reference
+
+### **POST** /UserAgentOAuth/XConnect
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `userAgentGuid` | string | Yes | Agent instance GUID. |
+| `redirectUrl` | string | Yes | HTTPS URL. |
+| `authMethod` | string | No | `"wiro"` (default) or `"own"`. |
+
+### **GET** /UserAgentOAuth/XCallback
+
+Callback params appended to your `redirectUrl`: `x_connected=true&x_username=<handle>` on success, `x_error=<code>` on failure.
+
+### **POST** /UserAgentOAuth/XStatus / XDisconnect
+
+Standard shape — see [Agent Credentials & OAuth](/docs/agent-credentials#generic-oauth-endpoints).
+
+### **POST** /UserAgentOAuth/TokenRefresh
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "userAgentGuid": "your-useragent-guid", "provider": "twitter" }'
+```
+
+## Using the Skill
+
+Enable `twitterx-post`. Configure schedule via `custom_skills`.
+
+## Troubleshooting
+
+| Error code | Meaning | What to do |
+|------------|---------|------------|
+| `authorization_denied` | User cancelled, or OAuth 2.0 is not enabled in app settings. | Verify OAuth 2.0 setup (Step 2); retry. |
+| `session_expired` | 15-minute state cache expired. | Call `XConnect` again. |
+| `token_exchange_failed` | Wrong Client Secret (own mode), redirect URI mismatch, or PKCE verifier lost. | Re-copy Client Secret; verify redirect URI; start over. |
+| `useragent_not_found` | Invalid `userAgentGuid`. | Find with `POST /UserAgent/MyAgents`. |
+| `invalid_config` | No `credentials.twitter` on the agent. | `UserAgent/Update` with `clientId` + `clientSecret` (own mode). |
+| `internal_error` | Server error. | Retry; contact support. |
+
+### Posts fail with 403 or 429
+
+Rate limits kick in quickly on free-tier X Developer apps. For production, move to **Basic** ($100/month) or higher. Rate limits are per app, not per user — high-volume multi-tenant partners need a higher tier.
+
+## Multi-Tenant Architecture
+
+1. One X Developer app per product in own mode; Wiro-mode partners share Wiro's app.
+2. One Wiro agent instance per customer.
+3. Your app display name appears on every customer's consent screen in own mode.
+4. X imposes per-app limits on tweet writes. Plan tier choice around expected aggregate volume.
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Overview](/docs/agent-overview)
+- [Agent Skills](/docs/agent-skills)
+- [X Developer Platform](https://developer.x.com/)
+
+
+# TikTok Integration
+
+Connect your agents to a TikTok account so they can publish videos and posts.
+
+## Overview
+
+The TikTok integration lets an agent publish content to a TikTok account through the TikTok Content Posting API.
+
+**Skills that use this integration:**
+
+- `tiktok-post` — Publish videos to TikTok
+
+**Agents that typically enable this integration:**
+
+- Social Manager
+- Any custom agent that needs TikTok publishing
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| `"wiro"` | Available | One-click connect using Wiro's shared TikTok app. |
+| `"own"` | Available | Use your own TikTok for Developers app for custom branding. |
+
+## Prerequisites
+
+- **A Wiro API key** — see [Authentication](/docs/authentication).
+- **A deployed agent** — see [Agent Overview](/docs/agent-overview).
+- **A TikTok account** the connecting user controls.
+- **(Own mode only) A TikTok for Developers account** — [developers.tiktok.com](https://developers.tiktok.com/).
+- **An HTTPS callback URL**.
+
+## Complete Integration Walkthrough — Wiro Mode
+
+Call `TikTokConnect` with no `authMethod` (defaults to `"wiro"`), redirect the user, read `tiktok_connected=true&tiktok_username=<handle>` on return.
+
+## Complete Integration Walkthrough — Own Mode
+
+### Step 1: Create a TikTok for Developers App
+
+1. Go to [developers.tiktok.com/apps](https://developers.tiktok.com/apps) and sign in.
+2. Click **Create app**.
+3. Fill in **App name**, **Category**, **Description**, **Icon**.
+
+### Step 2: Add the Content Posting API scope
+
+1. In the app dashboard, go to **Add products**.
+2. Add **Login Kit** and **Content Posting API**.
+3. For **Content Posting API**, request the scopes you need:
+   - `video.upload` (direct post) or `video.publish` (user finalizes in TikTok app).
+
+### Step 3: Configure redirect URI
+
+1. Under **Login Kit → Platforms → Web**, add the callback URL:
+
+   ```
+   https://api.wiro.ai/v1/UserAgentOAuth/TikTokCallback
+   ```
+
+2. Save.
+
+### Step 4: Note the required scopes
+
+| Scope | Why |
+|-------|-----|
+| `user.info.basic` | User handle, avatar, display name. |
+| `video.upload` or `video.publish` | Publish video content. |
+| `video.list` | Read the user's recent posts. |
+
+### Step 5: Copy Client Key and Client Secret
+
+In **App details**, copy the **Client Key** and **Client Secret**. TikTok calls them "key" not "ID" — note the field names for `UserAgent/Update`.
+
+### Step 6: Save credentials
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "guid": "your-useragent-guid",
+    "configuration": {
+      "credentials": {
+        "tiktok": {
+          "clientKey": "YOUR_TIKTOK_CLIENT_KEY",
+          "clientSecret": "YOUR_TIKTOK_CLIENT_SECRET"
+        }
+      }
+    }
+  }'
+```
+
+### Step 7: Initiate OAuth
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TikTokConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "userAgentGuid": "your-useragent-guid",
+    "redirectUrl": "https://your-app.com/settings/integrations",
+    "authMethod": "own"
+  }'
+```
+
+### Step 8: Handle callback
+
+Success: `?tiktok_connected=true&tiktok_username=<handle>`. Error: `?tiktok_error=<code>`.
+
+### Step 9: Verify + Start
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TikTokStatus" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "userAgentGuid": "your-useragent-guid" }'
+```
+
+## API Reference
+
+### **POST** /UserAgentOAuth/TikTokConnect
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `userAgentGuid` | string | Yes | Agent instance GUID. |
+| `redirectUrl` | string | Yes | HTTPS URL. |
+| `authMethod` | string | No | `"wiro"` (default) or `"own"`. |
+
+### **GET** /UserAgentOAuth/TikTokCallback
+
+Callback params: `tiktok_connected=true&tiktok_username=<handle>` or `tiktok_error=<code>`.
+
+### **POST** /UserAgentOAuth/TikTokStatus / TikTokDisconnect
+
+Standard shape.
+
+### **POST** /UserAgentOAuth/TokenRefresh
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "userAgentGuid": "your-useragent-guid", "provider": "tiktok" }'
+```
+
+## Troubleshooting
+
+| Error code | Meaning | What to do |
+|------------|---------|------------|
+| `authorization_denied` | User cancelled, or scopes not enabled in app. | Verify scope configuration; retry. |
+| `session_expired` | State cache expired. | Restart OAuth. |
+| `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy Client Secret; verify redirect URI. |
+| `useragent_not_found` | Invalid `userAgentGuid`. | Use `POST /UserAgent/MyAgents`. |
+| `invalid_config` | No `credentials.tiktok` on the agent. | Update with `clientKey` + `clientSecret`. |
+| `internal_error` | Server error. | Retry; contact support. |
+
+### "unaudited_client" warning
+
+Until your app is audited by TikTok, publishing may be limited to private posts or to the app's listed test users. Submit for audit in the TikTok Developer portal for production readiness.
+
+## Multi-Tenant Architecture
+
+1. One TikTok app per product in own mode.
+2. One Wiro agent instance per customer.
+3. TikTok per-app rate limits — see TikTok's platform docs.
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Overview](/docs/agent-overview)
+- [Agent Skills](/docs/agent-skills)
+- [TikTok for Developers](https://developers.tiktok.com/)
+
+
+# Google Ads Integration
+
+Connect your agents to Google Ads for campaign management, keyword research, and ad copy optimization.
+
+## Overview
+
+The Google Ads integration lets an agent work with the Google Ads API — managing campaigns, ad groups, keywords, and reading performance data.
+
+**Skills that use this integration:**
+
+- `googleads-manage` — Campaign / ad group / keyword management, insights
+- `ads-manager-common` — Shared ads helpers
+
+**Agents that typically enable this integration:**
+
+- Google Ads Manager
+- Any custom agent that needs paid-search capabilities
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| `"wiro"` | Available | One-click connect using Wiro's Google Cloud project. |
+| `"own"` | Available | Use your own Google Cloud project, Developer Token, and MCC for full control. |
+
+## Prerequisites
+
+- **A Wiro API key** — see [Authentication](/docs/authentication).
+- **A deployed agent** — see [Agent Overview](/docs/agent-overview).
+- **A Google Ads account** (or MCC manager account) the connecting user administers.
+- **(Own mode only) A Google Cloud project** with the Google Ads API enabled.
+- **(Own mode only) A Google Ads Developer Token** — request from your MCC.
+- **(Own mode only) Your Manager (MCC) Customer ID** for server-to-server calls.
+- **An HTTPS callback URL**.
+
+## Complete Integration Walkthrough — Wiro Mode
+
+### Step 1: Initiate OAuth
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GAdsConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "userAgentGuid": "your-useragent-guid",
+    "redirectUrl": "https://your-app.com/settings/integrations"
+  }'
+```
+
+### Step 2: Callback handling
+
+User returns with `?gads_connected=true&gads_accounts=[{...}]`. Parse and present to the user if multiple.
+
+### Step 3: Pick the Customer ID
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GAdsSetCustomerId" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "userAgentGuid": "your-useragent-guid",
+    "customerId": "123-456-7890"
+  }'
+```
+
+Skip to Step 6 below for verification.
+
+## Complete Integration Walkthrough — Own Mode
+
+### Step 1: Create a Google Cloud Project
+
+1. Go to [console.cloud.google.com](https://console.cloud.google.com/) and create a new project (or reuse one).
+2. Under **APIs & Services → Library**, search for **Google Ads API** and click **Enable**.
+3. Under **APIs & Services → OAuth consent screen**, configure:
+   - User type: **External** (for multi-tenant) or **Internal** (for single-workspace).
+   - App name, support email, developer contact.
+   - Scopes: add `https://www.googleapis.com/auth/adwords` in **Edit App → Scopes**.
+   - Test users (during Testing publish status): add the Google accounts that will connect.
+
+### Step 2: Create OAuth 2.0 Client ID
+
+1. **APIs & Services → Credentials → Create credentials → OAuth client ID**.
+2. Application type: **Web application**.
+3. Name it.
+4. **Authorized redirect URIs** → add:
+
+   ```
+   https://api.wiro.ai/v1/UserAgentOAuth/GAdsCallback
+   ```
+
+5. Save; copy the **Client ID** and **Client Secret**.
+
+### Step 3: Get a Developer Token
+
+1. Sign in to your [Google Ads Manager (MCC) account](https://ads.google.com/).
+2. Go to **Tools → API Center** and request a token.
+3. Start with a **test token** for development; apply for **basic access** once you are ready for production.
+
+### Step 4: Save credentials to Wiro
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "guid": "your-useragent-guid",
+    "configuration": {
+      "credentials": {
+        "googleads": {
+          "clientId": "YOUR_GOOGLE_OAUTH_CLIENT_ID",
+          "clientSecret": "YOUR_GOOGLE_OAUTH_CLIENT_SECRET",
+          "developerToken": "YOUR_GOOGLE_ADS_DEVELOPER_TOKEN",
+          "managerCustomerId": "1234567890"
+        }
+      }
+    }
+  }'
+```
+
+`managerCustomerId` is your MCC's customer ID without dashes (10 digits).
+
+### Step 5: Initiate OAuth
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GAdsConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "userAgentGuid": "your-useragent-guid",
+    "redirectUrl": "https://your-app.com/settings/integrations",
+    "authMethod": "own"
+  }'
+```
+
+### Step 6: Handle the callback
+
+Success URL includes a list of accessible customer accounts:
+
+```
+https://your-app.com/settings/integrations?gads_connected=true&gads_accounts=%5B%7B%22id%22%3A%221234567890%22%2C%22name%22%3A%22My%20Client%22%7D%5D
+```
+
+```javascript
+const params = new URLSearchParams(window.location.search);
+if (params.get("gads_connected") === "true") {
+  const accounts = JSON.parse(decodeURIComponent(params.get("gads_accounts") || "[]"));
+  // Present picker or auto-select if only one
+}
+```
+
+### Step 7: Pick the Customer ID
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GAdsSetCustomerId" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "userAgentGuid": "your-useragent-guid",
+    "customerId": "1234567890"
+  }'
+```
+
+Pass either the 10-digit form or the formatted `123-456-7890` — non-digits are stripped automatically.
+
+### Step 8: Verify
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GAdsStatus" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "userAgentGuid": "your-useragent-guid" }'
+```
+
+Response contains `customerId` in place of `username`.
+
+### Step 9: Start the agent
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+```
+
+## API Reference
+
+### **POST** /UserAgentOAuth/GAdsConnect
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `userAgentGuid` | string | Yes | Agent instance GUID. |
+| `redirectUrl` | string | Yes | HTTPS URL. |
+| `authMethod` | string | No | `"wiro"` (default) or `"own"`. |
+
+### **GET** /UserAgentOAuth/GAdsCallback
+
+Callback query params: `gads_connected=true&gads_accounts=<JSON>` or `gads_error=<code>`.
+
+### **POST** /UserAgentOAuth/GAdsSetCustomerId
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `userAgentGuid` | string | Yes | Agent instance GUID. |
+| `customerId` | string | Yes | Google Ads customer ID. Non-digit characters are stripped. |
+
+Response: `{ result: true, customerId: "1234567890", errors: [] }`.
+
+### **POST** /UserAgentOAuth/GAdsStatus / GAdsDisconnect
+
+Standard shape. `Status` response uses `customerId` instead of `username`.
+
+### **POST** /UserAgentOAuth/TokenRefresh
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "userAgentGuid": "your-useragent-guid", "provider": "googleads" }'
+```
+
+## Using the Skill
+
+Enable `googleads-manage`. Schedule via `custom_skills`.
+
+## Troubleshooting
+
+| Error code | Meaning | What to do |
+|------------|---------|------------|
+| `authorization_denied` | User cancelled, or OAuth consent screen still in Testing status and the user is not a test user. | Add them under Test users; or publish the consent screen. |
+| `session_expired` | State cache expired. | Restart OAuth. |
+| `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy Client Secret; verify redirect URI in Google Cloud Credentials page. |
+| `useragent_not_found` | Invalid `userAgentGuid`. | Use `POST /UserAgent/MyAgents`. |
+| `invalid_config` | No `credentials.googleads` on the agent. | Update with all four fields. |
+| `internal_error` | Server error. | Retry; contact support. |
+
+### API returns USER_PERMISSION_DENIED
+
+The OAuth-authorized user lacks access to the `customerId` you chose. Make sure the user is a manager or admin on that customer in Google Ads, or pick a different customer from the `gads_accounts` list.
+
+### Developer Token rejected
+
+Test tokens can only query accounts in your own MCC. For customer accounts outside your MCC hierarchy, you need a Basic Access token. Apply in **Tools → API Center**.
+
+## Multi-Tenant Architecture
+
+1. One Google Cloud project per product. Publish the OAuth consent screen to serve public customers.
+2. Apply for Basic or Standard Developer Token access based on expected volume.
+3. One Wiro agent instance per customer; `customerId` is per-instance.
+4. Tokens auto-refresh via stored refresh token.
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Overview](/docs/agent-overview)
+- [Agent Skills](/docs/agent-skills)
+- [Meta Ads integration](/docs/integration-metaads) — often paired for cross-platform paid campaigns.
+- [Google Ads API docs](https://developers.google.com/google-ads/api/docs/start)
+
+
+# HubSpot Integration
+
+Connect your agents to HubSpot to manage contacts, deals, sequences, and other CRM objects.
+
+## Overview
+
+The HubSpot integration lets an agent read and write HubSpot CRM objects (contacts, companies, deals, engagements, tickets) via OAuth 2.0.
+
+**Skills that use this integration:**
+
+- `hubspot-crm` — Contact/deal management, note and task creation, enrollment in sequences
+
+**Agents that typically enable this integration:**
+
+- Lead Gen Manager
+- Newsletter Manager (optional CRM sync)
+- Any custom agent that needs CRM capabilities
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| `"wiro"` | Available | One-click connect using Wiro's public HubSpot app. |
+| `"own"` | Available | Use your own HubSpot developer app for custom branding or expanded scopes. |
+
+## Prerequisites
+
+- **A Wiro API key** — see [Authentication](/docs/authentication).
+- **A deployed agent** — see [Agent Overview](/docs/agent-overview).
+- **A HubSpot account** the connecting user is an admin of.
+- **(Own mode only) A HubSpot developer account** — sign up at [developers.hubspot.com](https://developers.hubspot.com/).
+- **An HTTPS callback URL**.
+
+## Complete Integration Walkthrough — Wiro Mode
+
+Call `HubSpotConnect` with no `authMethod`, redirect the user, read `hubspot_connected=true&hubspot_portal=<portalId>&hubspot_name=<name>`.
+
+## Complete Integration Walkthrough — Own Mode
+
+### Step 1: Create a HubSpot App
+
+1. Go to [developers.hubspot.com](https://developers.hubspot.com/), sign in, and click **Create app**.
+2. Set **App name** and **App description** (shown on the consent screen).
+
+### Step 2: Configure Auth
+
+1. Inside the app, open the **Auth** tab.
+2. Under **Redirect URL**, add:
+
+   ```
+   https://api.wiro.ai/v1/UserAgentOAuth/HubSpotCallback
+   ```
+
+3. Under **Scopes**, select the ones your agent needs. Typical set:
+
+   | Scope | Why |
+   |-------|-----|
+   | `crm.objects.contacts.read` | Read contacts. |
+   | `crm.objects.contacts.write` | Create/update contacts. |
+   | `crm.objects.companies.read` / `write` | Company management. |
+   | `crm.objects.deals.read` / `write` | Deal management. |
+   | `crm.objects.owners.read` | Read pipeline owners for assignment. |
+   | `crm.schemas.contacts.read` | Read custom contact fields. |
+
+4. Save.
+
+### Step 3: Copy Client ID and Client Secret
+
+From the **Auth** tab, copy **Client ID** and **Client Secret**.
+
+### Step 4: Save credentials
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "guid": "your-useragent-guid",
+    "configuration": {
+      "credentials": {
+        "hubspot": {
+          "clientId": "YOUR_HUBSPOT_CLIENT_ID",
+          "clientSecret": "YOUR_HUBSPOT_CLIENT_SECRET"
+        }
+      }
+    }
+  }'
+```
+
+### Step 5: Initiate OAuth
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/HubSpotConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "userAgentGuid": "your-useragent-guid",
+    "redirectUrl": "https://your-app.com/settings/integrations",
+    "authMethod": "own"
+  }'
+```
+
+### Step 6: Handle callback
+
+```
+https://your-app.com/settings/integrations?hubspot_connected=true&hubspot_portal=12345678&hubspot_name=My%20Workspace
+```
+
+`hubspot_portal` is the HubSpot portal ID (a.k.a. hub ID). `hubspot_name` is the workspace display name.
+
+### Step 7: Verify and Start
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/HubSpotStatus" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "userAgentGuid": "your-useragent-guid" }'
+```
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+```
+
+## API Reference
+
+### **POST** /UserAgentOAuth/HubSpotConnect
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `userAgentGuid` | string | Yes | Agent instance GUID. |
+| `redirectUrl` | string | Yes | HTTPS URL. |
+| `authMethod` | string | No | `"wiro"` (default) or `"own"`. |
+
+### **GET** /UserAgentOAuth/HubSpotCallback
+
+Callback query params: `hubspot_connected=true&hubspot_portal=<id>&hubspot_name=<name>` or `hubspot_error=<code>`.
+
+### **POST** /UserAgentOAuth/HubSpotStatus / HubSpotDisconnect
+
+Standard shape.
+
+### **POST** /UserAgentOAuth/TokenRefresh
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "userAgentGuid": "your-useragent-guid", "provider": "hubspot" }'
+```
+
+## Troubleshooting
+
+| Error code | Meaning | What to do |
+|------------|---------|------------|
+| `authorization_denied` | User cancelled, or missing scopes in app settings. | Verify scope list in Auth tab; retry. |
+| `session_expired` | State cache expired. | Restart. |
+| `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy; verify URL. |
+| `useragent_not_found` | Invalid `userAgentGuid`. | Find via `POST /UserAgent/MyAgents`. |
+| `invalid_config` | No `credentials.hubspot` on agent. | Update with `clientId` + `clientSecret`. |
+| `internal_error` | Server error. | Retry; contact support. |
+
+### 403 Forbidden on API calls
+
+Usually a missing scope. Look at the HubSpot API reference for the endpoint and add the required scope in your app's Auth configuration, then disconnect and reconnect (scope changes require re-auth).
+
+## Multi-Tenant Architecture
+
+1. One HubSpot developer app per product. Submit to the HubSpot Marketplace for listed apps or stay unlisted for private apps.
+2. One Wiro agent instance per customer.
+3. Portal IDs are unique per HubSpot customer account.
+4. Per-app rate limits apply — see HubSpot's [API usage guidelines](https://developers.hubspot.com/docs/api/usage-details).
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Overview](/docs/agent-overview)
+- [Agent Skills](/docs/agent-skills)
+- [HubSpot Developer docs](https://developers.hubspot.com/docs/api/overview)
+
+
+# Mailchimp Integration
+
+Connect your agents to Mailchimp for newsletter and audience management. Supports both OAuth and direct API keys.
+
+## Overview
+
+The Mailchimp integration lets an agent manage audiences, campaigns, and templates. Unlike most integrations, Mailchimp supports **three** authentication methods.
+
+**Skills that use this integration:**
+
+- `mailchimp-email` — Audience and campaign management
+
+**Agents that typically enable this integration:**
+
+- Newsletter Manager
+- Any custom agent that needs email marketing capabilities
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| `"wiro"` | Available | OAuth with Wiro's shared Mailchimp app. |
+| `"own"` | Available | OAuth with your own Mailchimp registered app. |
+| API key | Available | Paste a server-scoped Mailchimp API key directly — no OAuth. |
+
+## Prerequisites
+
+- **A Wiro API key** — see [Authentication](/docs/authentication).
+- **A deployed agent** — see [Agent Overview](/docs/agent-overview).
+- **A Mailchimp account**.
+- **(Own-OAuth mode only) A registered Mailchimp app** — at [admin.mailchimp.com](https://admin.mailchimp.com/account/oauth2_client/).
+- **(API-key mode only) A server-scoped Mailchimp API key**.
+
+## Option A: OAuth (Wiro or Own Mode)
+
+### Own-mode Step 1: Register a Mailchimp app
+
+1. Sign in to Mailchimp → **Profile → Extras → API keys** or directly [admin.mailchimp.com/account/oauth2_client](https://admin.mailchimp.com/account/oauth2_client/).
+2. Click **Register and manage your apps**.
+3. Fill in **App name**, **Description**, **Company**, **App website**.
+4. Under **Redirect URI**, add:
+
+   ```
+   https://api.wiro.ai/v1/UserAgentOAuth/MailchimpCallback
+   ```
+
+5. Save; copy **Client ID** and **Client Secret**.
+
+### Own-mode Step 2: Save credentials
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "guid": "your-useragent-guid",
+    "configuration": {
+      "credentials": {
+        "mailchimp": {
+          "clientId": "YOUR_MAILCHIMP_CLIENT_ID",
+          "clientSecret": "YOUR_MAILCHIMP_CLIENT_SECRET"
+        }
+      }
+    }
+  }'
+```
+
+### OAuth Step 3: Initiate
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/MailchimpConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "userAgentGuid": "your-useragent-guid",
+    "redirectUrl": "https://your-app.com/settings/integrations",
+    "authMethod": "own"
+  }'
+```
+
+Omit `authMethod` (or set to `"wiro"`) for Wiro-mode.
+
+### OAuth Step 4: Handle callback
+
+```
+https://your-app.com/settings/integrations?mailchimp_connected=true&mailchimp_account=Your%20Company
+```
+
+Mailchimp tokens do **not** expire — no refresh cycle.
+
+### OAuth Step 5: Verify
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/MailchimpStatus" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "userAgentGuid": "your-useragent-guid" }'
+```
+
+## Option B: Direct API Key (No OAuth)
+
+For server-side agents where OAuth is overkill:
+
+### Step 1: Get a Mailchimp API Key
+
+1. Sign in → **Profile → Extras → API keys**.
+2. Click **Create A Key**, name it, copy the value. The key ends in a datacenter prefix like `-us14`.
+
+### Step 2: Save to Wiro
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "guid": "your-useragent-guid",
+    "configuration": {
+      "credentials": {
+        "mailchimp": {
+          "apiKey": "abcdef1234567890-us14"
+        }
+      }
+    }
+  }'
+```
+
+No further OAuth step is needed. The agent uses the API key directly.
+
+## API Reference
+
+### **POST** /UserAgentOAuth/MailchimpConnect
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `userAgentGuid` | string | Yes | Agent instance GUID. |
+| `redirectUrl` | string | Yes | HTTPS URL. |
+| `authMethod` | string | No | `"wiro"` (default) or `"own"`. |
+
+### **GET** /UserAgentOAuth/MailchimpCallback
+
+Callback query params: `mailchimp_connected=true&mailchimp_account=<name>` or `mailchimp_error=<code>`.
+
+### **POST** /UserAgentOAuth/MailchimpStatus / MailchimpDisconnect
+
+Standard shape. **Note:** Mailchimp tokens do not expire, so `TokenRefresh` is not supported for this provider.
+
+## Troubleshooting
+
+| Error code | Meaning | What to do |
+|------------|---------|------------|
+| `authorization_denied` | User cancelled. | Retry. |
+| `session_expired` | State cache expired. | Restart. |
+| `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy; verify URL. |
+| `useragent_not_found` | Invalid `userAgentGuid`. | `POST /UserAgent/MyAgents`. |
+| `invalid_config` | No `credentials.mailchimp` on agent. | Update with credentials. |
+| `internal_error` | Server error. | Retry; contact support. |
+
+### API calls fail with 401
+
+- For OAuth: the stored token is invalid; disconnect and reconnect.
+- For API key: the key is wrong or the datacenter suffix was stripped; paste the full key including `-us14` (or whatever your datacenter prefix is).
+
+## Multi-Tenant Architecture
+
+1. One Mailchimp registered app per product in own-OAuth mode.
+2. API-key mode is simplest for tenants who only want to paste a single-purpose key.
+3. One Wiro agent instance per customer.
+4. Mailchimp rate limits are per-datacenter and per-account — typical 10 concurrent connections.
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Overview](/docs/agent-overview)
+- [Agent Skills](/docs/agent-skills)
+- [Mailchimp Marketing API](https://mailchimp.com/developer/marketing/)
+
+
+# Google Drive Integration
+
+Connect your agents to Google Drive to read, write, and organize files across selected folders.
+
+## Overview
+
+The Google Drive integration lets an agent list, download, upload, and organize files in specific Drive folders the connecting user selects.
+
+**Skills that use this integration:**
+
+- `google-drive` — Read files, write outputs, manage folders
+
+**Agents that typically enable this integration:**
+
+- Any content or research agent that needs persistent file storage accessible to humans.
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| `"wiro"` | Available | One-click connect with Wiro's Google Cloud project. |
+| `"own"` | Available | Your own Google Cloud project for custom branding. |
+
+## Prerequisites
+
+- **A Wiro API key** — see [Authentication](/docs/authentication).
+- **A deployed agent** — see [Agent Overview](/docs/agent-overview).
+- **A Google account** for the connecting user.
+- **(Own mode only) A Google Cloud project** with the Drive API enabled.
+- **An HTTPS callback URL**.
+
+## Complete Integration Walkthrough — Wiro Mode
+
+1. `POST /UserAgentOAuth/GoogleDriveConnect` with `userAgentGuid` + `redirectUrl`.
+2. User consents.
+3. Callback returns `?gdrive_connected=true` plus a folder picker state — the user selects one or more folders.
+4. Agent is now scoped to those folders only.
+
+## Complete Integration Walkthrough — Own Mode
+
+### Step 1: Create a Google Cloud Project
+
+Same as for Google Ads. Enable the **Drive API** under **APIs & Services → Library**.
+
+### Step 2: OAuth consent screen
+
+1. **APIs & Services → OAuth consent screen**.
+2. User type: **External**.
+3. Scopes: add `https://www.googleapis.com/auth/drive.file` (lets the user grant access to specific files/folders).
+
+### Step 3: Create OAuth 2.0 Client ID
+
+1. **APIs & Services → Credentials → Create credentials → OAuth client ID**.
+2. Application type: **Web application**.
+3. **Authorized redirect URIs**:
+
+   ```
+   https://api.wiro.ai/v1/UserAgentOAuth/GoogleDriveCallback
+   ```
+
+4. Save; copy **Client ID** and **Client Secret**.
+
+### Step 4: Save credentials
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "guid": "your-useragent-guid",
+    "configuration": {
+      "credentials": {
+        "googledrive": {
+          "clientId": "YOUR_GOOGLE_OAUTH_CLIENT_ID",
+          "clientSecret": "YOUR_GOOGLE_OAUTH_CLIENT_SECRET"
+        }
+      }
+    }
+  }'
+```
+
+### Step 5: Initiate OAuth
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GoogleDriveConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "userAgentGuid": "your-useragent-guid",
+    "redirectUrl": "https://your-app.com/settings/integrations",
+    "authMethod": "own"
+  }'
+```
+
+### Step 6: Handle callback
+
+User returns with `?gdrive_connected=true` and (when applicable) the folder selector is triggered in the Wiro Dashboard UI. If you are building your own UI:
+
+```javascript
+const params = new URLSearchParams(window.location.search);
+if (params.get("gdrive_connected") === "true") {
+  // Present folder picker by calling your own Drive-integrated picker
+  // or rely on the agent's folder selection UI in Wiro Dashboard.
+}
+```
+
+Folder selection is persisted by the dashboard via `GoogleDriveSetFolders`; in headless flows, set the folder IDs directly in credentials:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "guid": "your-useragent-guid",
+    "configuration": {
+      "credentials": {
+        "googledrive": {
+          "folders": [
+            { "id": "1AbCdEfGhIjKlMn", "name": "Agent Outputs" }
+          ]
+        }
+      }
+    }
+  }'
+```
+
+Up to 5 folders can be set per agent.
+
+### Step 7: Verify
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GoogleDriveStatus" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "userAgentGuid": "your-useragent-guid" }'
+```
+
+## API Reference
+
+### **POST** /UserAgentOAuth/GoogleDriveConnect
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `userAgentGuid` | string | Yes | Agent instance GUID. |
+| `redirectUrl` | string | Yes | HTTPS URL. |
+| `authMethod` | string | No | `"wiro"` (default) or `"own"`. |
+
+### **GET** /UserAgentOAuth/GoogleDriveCallback
+
+Callback query params: `gdrive_connected=true` on success, `gdrive_error=<code>` on failure.
+
+### **POST** /UserAgentOAuth/GoogleDriveStatus / GoogleDriveDisconnect
+
+Standard shape.
+
+### **POST** /UserAgentOAuth/TokenRefresh
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "userAgentGuid": "your-useragent-guid", "provider": "googledrive" }'
+```
+
+## Troubleshooting
+
+| Error code | Meaning | What to do |
+|------------|---------|------------|
+| `authorization_denied` | User cancelled, or user is not a Test user while consent screen is in Testing. | Add test user or publish consent screen. |
+| `session_expired` | State cache expired. | Restart. |
+| `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy; verify URL. |
+| `useragent_not_found` | Invalid `userAgentGuid`. | Use `POST /UserAgent/MyAgents`. |
+| `invalid_config` | No `credentials.googledrive` on agent. | Update with credentials. |
+| `internal_error` | Server error. | Retry; contact support. |
+
+### Agent cannot see folders it did not request
+
+`drive.file` scope is intentionally narrow — it grants access only to files created by the app or opened via a picker. Files in the user's Drive that the agent did not create or that were not explicitly shared via the folder selector remain invisible.
+
+## Multi-Tenant Architecture
+
+1. One Google Cloud project per product. Publish the consent screen before rolling out to many tenants.
+2. Rate limits are per-project; monitor quotas in Google Cloud Console.
+3. Per-agent folder selection is isolated — Customer A's folders are never visible to Customer B.
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Overview](/docs/agent-overview)
+- [Agent Skills](/docs/agent-skills)
+- [Google Drive API docs](https://developers.google.com/drive/api)
+
+
+# Gmail Integration
+
+Connect your agents to a Gmail inbox using an App Password for IMAP/SMTP-based access.
+
+## Overview
+
+The Gmail integration lets an agent monitor an inbox (for example, reading incoming support emails) and send messages via SMTP. Authentication uses a Google **App Password** tied to the agent's Gmail account.
+
+**Skills that use this integration:**
+
+- `gmail-check` — Monitor an inbox, parse incoming messages, trigger actions
+- Used by `newsletter-compose` and other skills that send or receive mail
+
+**Agents that typically enable this integration:**
+
+- Blog Content Editor
+- Newsletter Manager (test sends)
+- Support / App Review agents
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| API key (App Password) | Available | Works on any Gmail account with 2-Step Verification enabled. |
+
+## Prerequisites
+
+- **A Wiro API key** — see [Authentication](/docs/authentication).
+- **A deployed agent** — see [Agent Overview](/docs/agent-overview).
+- **A Gmail account** with **2-Step Verification** enabled.
+
+## Setup
+
+### Step 1: Enable 2-Step Verification
+
+1. Sign in to the Google account.
+2. Go to [myaccount.google.com/security](https://myaccount.google.com/security).
+3. Under **How you sign in to Google**, turn on **2-Step Verification**.
+
+### Step 2: Create an App Password
+
+1. After 2-Step Verification is on, the same Security page shows **App passwords**.
+2. Create a new app password — label it "Wiro agent" or similar.
+3. Google shows a 16-character password in the format `xxxx xxxx xxxx xxxx`. Copy it immediately.
+
+### Step 3: Save to Wiro
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "guid": "your-useragent-guid",
+    "configuration": {
+      "credentials": {
+        "gmail": {
+          "account": "agent@yourcompany.com",
+          "appPassword": "xxxx xxxx xxxx xxxx"
+        }
+      }
+    }
+  }'
+```
+
+### Step 4: Start the agent
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+```
+
+## Credential Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `key` | string | The unique identifier of the skill. Must match an existing skill defined in the agent template. |
-| `enabled` | boolean | Whether the skill is active. Set `false` to disable without removing. |
-| `interval` | string \| null | Cron expression for scheduled execution (e.g. `"0 */6 * * *"` for every 6 hours). Set `null` for on-demand only. |
-| `value` | string | User-configurable parameter for the skill (only if `_editable: true`). |
-| `description` | string | User-configurable description (only if `_editable: true`). |
+| `account` | string | Full Gmail address (e.g. `agent@company.com`). |
+| `appPassword` | string | 16-character Google App Password. Spaces are allowed. |
 
-> **Note:** You can only update skills that exist in the agent's template. New skills cannot be added — only the `enabled`, `interval`, `value`, and `description` fields can be modified. The `value` and `description` fields are editable only if the skill's `_editable` flag is `true`.
+## Troubleshooting
 
-## Security
+- **"Invalid credentials" when the agent tries to read mail:** The App Password is wrong, or 2-Step Verification was turned off (which invalidates all App Passwords). Re-create.
+- **Agent cannot read messages older than 30 days:** IMAP default folder selection limits may apply. Move the agent's read scope to "All Mail" or adjust folder config in the skill settings.
+- **Messages blocked by Google:** Less Secure Apps is no longer supported; App Password is the only path for IMAP/SMTP as of 2022.
 
-- **Tokens are stored server-side** in the agent instance configuration. The `TokenRefresh` endpoint returns new tokens — all other endpoints (Status, Detail, Update) sanitize token fields before responding.
-- The `redirectUrl` receives only connection status parameters — no tokens, no secrets
-- API responses from Status, Detail, and Update endpoints are sanitized: `accessToken`, `refreshToken`, `clientSecret`, and `appSecret` fields are stripped before returning
-- OAuth state parameters use a 15-minute TTL cache to prevent replay attacks
-- Redirect URLs must be HTTPS (or localhost for development)
+## Related
 
-## For Third-Party Developers
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Overview](/docs/agent-overview)
+- [Agent Skills](/docs/agent-skills)
+- [Google App Passwords help](https://support.google.com/accounts/answer/185833)
 
-If you're building a product on top of Wiro agents and need your customers to connect their own accounts (e.g., their Twitter, their Google Ads), here's the recommended flow:
 
-### Architecture
+# Telegram Integration
 
-1. **Deploy** an agent instance per customer via `POST /UserAgent/Deploy`
-2. **Connect** — your backend calls `POST /UserAgentOAuth/{Provider}Connect` with the customer's `userAgentGuid` and a `redirectUrl` pointing back to your app
-3. **Redirect** — send your customer's browser to the returned `authorizeUrl`
-4. **Authorize** — customer logs in and authorizes on the provider
-5. **Return** — customer lands back on your `redirectUrl` with success/error query parameters
-6. **Verify** — call `POST /UserAgentOAuth/{Provider}Status` to confirm connection
+Connect your agents to a Telegram bot for two-way messaging with end users.
 
-Your customers never interact with Wiro directly. The entire flow happens through your app, and Wiro handles token management behind the scenes.
+## Overview
 
-### Handling the Redirect in Your App
+The Telegram integration lets an agent communicate with operators or end users through a Telegram bot — useful for operator notifications, interactive support, or as the primary user channel for the agent.
 
-```javascript
-// Express route handling the OAuth redirect
-app.get('/settings/social', (req, res) => {
-  const provider = req.query.provider;
+**Used by:** Most Wiro agents support Telegram as an operator notification channel. Some agents use it as the primary user interface.
 
-  if (req.query.x_connected === 'true') {
-    const username = req.query.x_username;
-    return res.redirect(`/dashboard?connected=${provider}&username=${username}`);
-  }
+## Availability
 
-  if (req.query.x_error) {
-    const error = req.query.x_error;
-    return res.redirect(`/dashboard?error=${provider}&reason=${error}`);
-  }
-});
+| Mode | Status | Notes |
+|------|--------|-------|
+| API key (Bot Token) | Available | Single Bot Token from BotFather. |
+
+## Prerequisites
+
+- **A Wiro API key** — see [Authentication](/docs/authentication).
+- **A deployed agent** — see [Agent Overview](/docs/agent-overview).
+- **A Telegram account**.
+
+## Setup
+
+### Step 1: Create a Telegram bot
+
+1. Open Telegram and start a chat with [@BotFather](https://t.me/BotFather).
+2. Send `/newbot`.
+3. Choose a display name and a username (must end in `bot`, e.g. `@mycompany_agent_bot`).
+4. BotFather returns a **Bot Token** like `123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11`. Copy it.
+
+### Step 2: Find the Telegram user IDs of allowed users
+
+1. Each person who should be able to chat with the agent sends a message to the bot first.
+2. Open `https://api.telegram.org/bot<BOT_TOKEN>/getUpdates` in a browser (replace `<BOT_TOKEN>`).
+3. Find the `from.id` of each user — these are the numeric Telegram user IDs.
+
+### Step 3: Save to Wiro
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "guid": "your-useragent-guid",
+    "configuration": {
+      "credentials": {
+        "telegram": {
+          "botToken": "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11",
+          "allowedUsers": ["761381461", "987654321"],
+          "sessionMode": [
+            { "value": "private", "text": "Private — each user has their own conversation", "selected": true },
+            { "value": "collaborative", "text": "Collaborative — all users share the same conversation", "selected": false }
+          ]
+        }
+      }
+    }
+  }'
 ```
 
-### Error Values
+### Step 4: Start the agent
 
-OAuth redirect error parameters follow the pattern `{provider_prefix}_error`. Possible values:
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+```
 
-| Error | Description |
-|-------|-------------|
-| `authorization_denied` | User declined the authorization |
-| `token_exchange_failed` | Provider accepted the code but token exchange failed |
-| `useragent_not_found` | The agent instance GUID is invalid or unauthorized |
-| `invalid_config` | Agent configuration doesn't have credentials for this provider |
-| `internal_error` | Unexpected server error during callback processing |
+## Credential Fields
 
----
+| Field | Type | Description |
+|-------|------|-------------|
+| `botToken` | string | BotFather token. |
+| `allowedUsers` | string[] | Array of Telegram user IDs allowed to interact. Others are ignored. |
+| `sessionMode` | object[] | Session selection — Private (default) or Collaborative. Set one to `selected: true`. |
+
+## Session Modes
+
+- **Private** — each allowed user has an isolated conversation with the agent. Messages from user A are never visible to user B.
+- **Collaborative** — all allowed users share one conversation. Any user can see and respond to any message. Useful for team coordination.
+
+## Troubleshooting
+
+- **Bot does not respond:** Verify the Bot Token is correct and the user's Telegram ID is in `allowedUsers`.
+- **"Unauthorized" error:** Bot Token was regenerated in BotFather and the old one was invalidated. Create a new token and update.
+- **Rate limits:** Telegram bots are limited to ~30 messages per second across all chats. Plan around burst limits for broadcasts.
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Overview](/docs/agent-overview)
+- [Agent Skills](/docs/agent-skills)
+- [Telegram Bot API docs](https://core.telegram.org/bots/api)
+
+
+# Firebase Integration
+
+Connect your agents to Firebase Cloud Messaging (FCM) to send targeted push notifications to iOS and Android apps.
+
+## Overview
+
+The Firebase integration lets an agent send push notifications through FCM using a Firebase Admin SDK service account.
+
+**Skills that use this integration:**
+
+- `firebase-push` — Send push notifications by topic, token, or targeted audience
+
+**Agents that typically enable this integration:**
+
+- Push Notification Manager
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| Service account JSON | Available | Standard Firebase Admin SDK credentials. |
+
+## Prerequisites
+
+- **A Wiro API key** — see [Authentication](/docs/authentication).
+- **A deployed agent** — see [Agent Overview](/docs/agent-overview).
+- **A Firebase project** with your iOS and/or Android apps registered and FCM configured.
+
+## Setup
+
+### Step 1: Generate a Firebase Admin SDK service account
+
+1. Go to [console.firebase.google.com](https://console.firebase.google.com/) and select your project.
+2. **Project settings → Service accounts → Firebase Admin SDK → Generate new private key**.
+3. Save the downloaded JSON file. Treat it like a password.
+
+### Step 2: Base64-encode the JSON
+
+```bash
+base64 -w 0 firebase-service-account.json > firebase-sa.b64
+```
+
+(On macOS, `base64 -b 0 firebase-service-account.json`.)
+
+### Step 3: Save to Wiro
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "guid": "your-useragent-guid",
+    "configuration": {
+      "credentials": {
+        "firebase": {
+          "accounts": [
+            {
+              "appName": "My App",
+              "serviceAccountJsonBase64": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii...",
+              "apps": [
+                { "platform": "ios", "id": "6479306352" },
+                { "platform": "android", "id": "com.example.app" }
+              ],
+              "topics": {
+                "locale_en": "English users",
+                "tier_paid": "Paid subscribers"
+              }
+            }
+          ]
+        }
+      }
+    }
+  }'
+```
+
+### Step 4: Start the agent
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+```
+
+## Credential Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `accounts` | object[] | Array of Firebase projects you want to send notifications for. |
+| `accounts[].appName` | string | Display name for this project. |
+| `accounts[].serviceAccountJsonBase64` | string | Base64-encoded service account JSON. |
+| `accounts[].apps` | object[] | `{ platform: "ios" \| "android", id: string }`. `id` is App Store ID for iOS, package name for Android. |
+| `accounts[].topics` | object | FCM topic key → human description. Topics you have already set up on the client side. |
+
+Multiple `accounts` entries let one agent push to several Firebase projects (useful if you manage a portfolio of apps).
+
+## Troubleshooting
+
+- **"invalid JWT signature":** Service account JSON is corrupt or truncated. Re-export from Firebase Console and re-encode.
+- **No devices receive notifications:** Verify topics are subscribed client-side and the topic name matches exactly.
+- **Rate limits:** FCM limits ~1,800 messages/min per project by default. Contact Google for higher limits on broadcast use cases.
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Overview](/docs/agent-overview)
+- [Agent Skills](/docs/agent-skills)
+- [Firebase Cloud Messaging docs](https://firebase.google.com/docs/cloud-messaging)
+
+
+# WordPress Integration
+
+Connect your agents to a self-hosted WordPress site to publish posts and pages.
+
+## Overview
+
+The WordPress integration uses the WordPress REST API with Basic Authentication backed by a WordPress Application Password.
+
+**Skills that use this integration:**
+
+- `wordpress-post` — Publish blog posts, pages, categories, tags
+
+**Agents that typically enable this integration:**
+
+- Blog Content Editor
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| API key (Application Password) | Available | WordPress 5.6+ built-in Application Passwords feature. |
+
+## Prerequisites
+
+- **A Wiro API key** — see [Authentication](/docs/authentication).
+- **A deployed agent** — see [Agent Overview](/docs/agent-overview).
+- **A WordPress site** (self-hosted or WordPress.com Business/Commerce) running **WordPress 5.6 or newer**.
+- **An admin or editor-level user** on that site.
+
+## Setup
+
+### Step 1: Enable Application Passwords (if disabled)
+
+Application Passwords are enabled by default since WordPress 5.6. If your host or security plugin disabled them:
+
+- In `wp-config.php`, confirm `define('WP_ENVIRONMENT_TYPE', 'production');` is not restricting them.
+- Security plugins like Wordfence or iThemes Security may disable Application Passwords — check their settings.
+
+### Step 2: Create an Application Password
+
+1. Log in as the user the agent will post as.
+2. Go to **Users → Profile** (or **Users → All Users → Edit** for another user if you are an admin).
+3. Scroll to **Application Passwords**.
+4. Enter a name like "Wiro agent" and click **Add New Application Password**.
+5. Copy the generated 24-character password (spaces are cosmetic — Wiro accepts either form).
+
+### Step 3: Save to Wiro
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "guid": "your-useragent-guid",
+    "configuration": {
+      "credentials": {
+        "wordpress": {
+          "url": "https://blog.example.com",
+          "user": "WiroBlogAgent",
+          "appPassword": "xxxx xxxx xxxx xxxx xxxx xxxx"
+        }
+      }
+    }
+  }'
+```
+
+### Step 4: Start the agent
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+```
+
+## Credential Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `url` | string | Site URL (include `https://`, no trailing slash). |
+| `user` | string | WordPress username the Application Password belongs to. |
+| `appPassword` | string | 24-character Application Password. |
+
+## Troubleshooting
+
+- **401 Unauthorized on REST API calls:** Verify the username matches the user who created the Application Password. Usernames are case-sensitive in some setups.
+- **REST API returns 404 at `/wp-json/`:** Permalinks must be set to something other than Plain. Go to **Settings → Permalinks** and pick any pretty-permalink option.
+- **Hosted WordPress.com Business plans:** Enable the REST API via Jetpack settings and ensure the Business plan grants API access.
+- **Cloudflare/WAF blocking PUT/POST:** Some firewalls block REST API writes by default. Whitelist Wiro's outbound IPs (contact support for the list) or allow your `/wp-json/wp/v2/posts` endpoint.
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Overview](/docs/agent-overview)
+- [Agent Skills](/docs/agent-skills)
+- [WordPress Application Passwords docs](https://make.wordpress.org/core/2020/11/05/application-passwords-integration-guide/)
+
+
+# App Store Connect Integration
+
+Connect your agents to App Store Connect for review monitoring, metadata management, and in-app events.
+
+## Overview
+
+The App Store Connect integration uses App Store Connect API keys (key ID + issuer ID + ES256 private key) for server-to-server authentication.
+
+**Skills that use this integration:**
+
+- `appstore-reviews` — Monitor and reply to App Store reviews
+- `appstore-metadata` — Read/update app metadata
+- `appstore-events` — Create and manage in-app events
+
+**Agents that typically enable this integration:**
+
+- App Review Support
+- App Event Manager
+- Any custom agent that needs App Store Connect access
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| API key (ES256) | Available | Standard App Store Connect API keys. |
+
+## Prerequisites
+
+- **A Wiro API key** — see [Authentication](/docs/authentication).
+- **A deployed agent** — see [Agent Overview](/docs/agent-overview).
+- **App Store Connect Admin access** — only Admins can generate API keys.
+
+## Setup
+
+### Step 1: Create an API key
+
+1. Sign in to [App Store Connect](https://appstoreconnect.apple.com/).
+2. Go to **Users and Access → Integrations → App Store Connect API**.
+3. Click **+** to generate a new key.
+4. Name it (e.g. "Wiro agent") and choose an access role. For full capability pick **Admin** or **App Manager**; for reviews-only use **Customer Support** or **Developer**.
+5. Download the `.p8` file — you can only download it **once**.
+6. Copy the **Key ID** (10 characters, e.g. `ABC1234DEF`) and the **Issuer ID** (UUID at the top of the page).
+
+### Step 2: Base64-encode the private key
+
+```bash
+base64 -w 0 AuthKey_ABC1234DEF.p8 > appstore-key.b64
+```
+
+(On macOS: `base64 -b 0 AuthKey_ABC1234DEF.p8`.)
+
+### Step 3: Save to Wiro
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "guid": "your-useragent-guid",
+    "configuration": {
+      "credentials": {
+        "appstore": {
+          "keyId": "ABC1234DEF",
+          "issuerId": "12345678-1234-1234-1234-123456789012",
+          "privateKeyBase64": "LS0tLS1CRUdJTi...",
+          "appIds": ["6479306352"],
+          "supportEmail": "support@yourcompany.com"
+        }
+      }
+    }
+  }'
+```
+
+### Step 4: Start the agent
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+```
+
+## Credential Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `keyId` | string | 10-character App Store Connect Key ID. |
+| `issuerId` | string | UUID issuer ID for your App Store Connect team. |
+| `privateKeyBase64` | string | Base64-encoded `.p8` private key file. |
+| `appIds` | string[] | Array of App Store IDs the agent is scoped to. |
+| `supportEmail` | string | Email used when replying to reviews (App Review Support agent only). |
+
+Some agents use an alternative `apps` shape:
+
+```json
+"appstore": {
+  "apps": [
+    { "appName": "My iOS App", "appId": "6479306352" }
+  ]
+}
+```
+
+Refer to your specific agent's credential schema.
+
+## Troubleshooting
+
+- **401 Unauthorized when signing JWT:** Wrong Key ID or Issuer ID, or base64 encoding mangled the private key. Re-export and re-encode.
+- **Key ID "NOT_ENABLED":** The key was revoked. Generate a new one.
+- **Reviews not appearing in agent:** Role of the API key lacks Customer Support permissions. Regenerate the key with a role that includes review access.
+- **Metadata updates fail:** Role lacks Admin or App Manager permissions for the specific app.
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Overview](/docs/agent-overview)
+- [Agent Skills](/docs/agent-skills)
+- [App Store Connect API docs](https://developer.apple.com/documentation/appstoreconnectapi)
+
+
+# Google Play Integration
+
+Connect your agents to the Google Play Developer API for review monitoring and app listing management.
+
+## Overview
+
+The Google Play integration uses a Google Cloud service account with API access delegated from a Play Console project.
+
+**Skills that use this integration:**
+
+- `googleplay-reviews` — Monitor and reply to Google Play reviews
+- `googleplay-metadata` — Read/update app listings and metadata
+
+**Agents that typically enable this integration:**
+
+- App Review Support
+- Any custom agent that needs Play Console access
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| Service account JSON | Available | Google Cloud service account with Play Developer Reporting permissions. |
+
+## Prerequisites
+
+- **A Wiro API key** — see [Authentication](/docs/authentication).
+- **A deployed agent** — see [Agent Overview](/docs/agent-overview).
+- **A Google Play Console** account with **Admin** access.
+- **A Google Cloud project** to host the service account.
+
+## Setup
+
+### Step 1: Enable the Google Play Android Developer API
+
+1. In [Google Cloud Console](https://console.cloud.google.com/), select (or create) a project.
+2. **APIs & Services → Library** → search **Google Play Android Developer API** → **Enable**.
+
+### Step 2: Create a service account
+
+1. **IAM & Admin → Service accounts → Create service account**.
+2. Name it (e.g. "wiro-play-agent").
+3. Grant role: `Service Account Token Creator` is sufficient for signing.
+4. Skip user permissions; **Done**.
+5. Open the service account → **Keys → Add key → Create new key → JSON**. Download.
+
+### Step 3: Link the service account to Play Console
+
+1. In [Google Play Console](https://play.google.com/console), go to **Users and permissions → Invite new users**.
+2. Use the service account email (`...@....iam.gserviceaccount.com`).
+3. Grant at least: **View app information**, **Reply to reviews**, and any other permission your agent needs.
+4. Send invite — Play Console auto-accepts for service accounts.
+
+### Step 4: Base64-encode the JSON
+
+```bash
+base64 -w 0 play-service-account.json > play-sa.b64
+```
+
+(On macOS: `base64 -b 0 play-service-account.json`.)
+
+### Step 5: Save to Wiro
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "guid": "your-useragent-guid",
+    "configuration": {
+      "credentials": {
+        "googleplay": {
+          "serviceAccountJsonBase64": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii...",
+          "packageNames": ["com.example.app"],
+          "supportEmail": "support@yourcompany.com"
+        }
+      }
+    }
+  }'
+```
+
+### Step 6: Start the agent
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+```
+
+## Credential Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `serviceAccountJsonBase64` | string | Base64-encoded service account JSON. |
+| `packageNames` | string[] | Array of Android package names the agent is scoped to. |
+| `supportEmail` | string | Email used when replying to reviews (App Review Support only). |
+
+Ads-agent variants use an alternative `apps` shape:
+
+```json
+"googleplay": {
+  "apps": [
+    { "appName": "My Android App", "packageName": "com.example.app" }
+  ]
+}
+```
+
+## Troubleshooting
+
+- **403 "The caller does not have permission":** Service account is enabled but not invited in Play Console, or missing the required role. Return to Play Console → Users and permissions and adjust.
+- **"Invalid JWT token":** Service account JSON is corrupt or truncated. Re-encode.
+- **Review reply fails silently:** Some reviews are too old (>1 year) and cannot be replied to via API; Google enforces this at the platform level.
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Overview](/docs/agent-overview)
+- [Agent Skills](/docs/agent-skills)
+- [Google Play Developer API docs](https://developers.google.com/android-publisher)
+
+
+# Apollo.io Integration
+
+Connect your agents to Apollo.io for lead generation, prospecting, and email sequence enrollment.
+
+## Overview
+
+The Apollo integration uses Apollo.io's API key authentication for lead discovery, enrichment, and (optionally) sequence management.
+
+**Skills that use this integration:**
+
+- `apollo-sales` — Lead search, enrichment, sequence enrollment
+
+**Agents that typically enable this integration:**
+
+- Lead Gen Manager
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| API key | Available | Apollo.io REST API key with per-account scoping. |
+
+## Prerequisites
+
+- **A Wiro API key** — see [Authentication](/docs/authentication).
+- **A deployed agent** — see [Agent Overview](/docs/agent-overview).
+- **An Apollo.io account** on a plan that allows API access.
+
+## Setup
+
+### Step 1: Get an Apollo API key
+
+1. Sign in to [app.apollo.io](https://app.apollo.io/).
+2. Go to **Settings → Integrations → API** (or **Account settings → API keys** depending on plan).
+3. Click **Create new key**, name it "Wiro agent", copy the value.
+
+### Step 2: (Optional) Get a Master API Key for sequence management
+
+Some Apollo plans require a separate **Master API Key** to manage email sequences. This is exposed under **Admin → API keys** for workspace admins.
+
+### Step 3: Save to Wiro
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "guid": "your-useragent-guid",
+    "configuration": {
+      "credentials": {
+        "apollo": {
+          "apiKey": "YOUR_APOLLO_API_KEY",
+          "masterApiKey": "YOUR_APOLLO_MASTER_API_KEY"
+        }
+      }
+    }
+  }'
+```
+
+`masterApiKey` is optional — omit it if your agent only does lead search/enrichment without sequence management.
+
+### Step 4: Start the agent
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+```
+
+## Credential Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `apiKey` | string | Primary Apollo API key. |
+| `masterApiKey` | string (optional) | Master API key for sequence management. |
+
+## Troubleshooting
+
+- **403 Forbidden:** Plan does not include API access. Upgrade at Apollo to Professional tier or higher.
+- **429 Too Many Requests:** Apollo enforces strict per-key rate limits. Space out large prospecting runs or contact Apollo support for a higher tier.
+- **Sequence enrollment fails:** Missing `masterApiKey`. Add it and re-try.
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Overview](/docs/agent-overview)
+- [Agent Skills](/docs/agent-skills)
+- [Apollo.io API docs](https://apolloio.github.io/apollo-api-docs/)
+
+
+# Lemlist Integration
+
+Connect your agents to Lemlist for cold email outreach and campaign orchestration.
+
+## Overview
+
+The Lemlist integration uses Lemlist's API key for managing campaigns, leads, and custom variables.
+
+**Skills that use this integration:**
+
+- `lemlist-outreach` — Campaign creation, lead uploads, pause/resume
+
+**Agents that typically enable this integration:**
+
+- Lead Gen Manager
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| API key | Available | Standard Lemlist API key. |
+
+## Prerequisites
+
+- **A Wiro API key** — see [Authentication](/docs/authentication).
+- **A deployed agent** — see [Agent Overview](/docs/agent-overview).
+- **A Lemlist account** (Gold tier or higher for full API access).
+
+## Setup
+
+### Step 1: Get an API key
+
+1. Sign in to [app.lemlist.com](https://app.lemlist.com/).
+2. Go to **Settings → Integrations → API**.
+3. Click **Generate** (or copy existing). Keys look like `AbCdEfGhIjKlMnOp`.
+
+### Step 2: Save to Wiro
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "guid": "your-useragent-guid",
+    "configuration": {
+      "credentials": {
+        "lemlist": {
+          "apiKey": "YOUR_LEMLIST_API_KEY"
+        }
+      }
+    }
+  }'
+```
+
+### Step 3: Start the agent
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+```
+
+## Credential Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `apiKey` | string | Lemlist API key. |
+
+## Troubleshooting
+
+- **401 Unauthorized:** Key revoked in Lemlist settings. Regenerate.
+- **403 on campaign operations:** Plan tier lacks API write access. Check Lemlist plan.
+- **Email address not found:** Lead must exist in at least one campaign before some endpoints work — upload them first.
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Overview](/docs/agent-overview)
+- [Agent Skills](/docs/agent-skills)
+- [Lemlist API docs](https://developer.lemlist.com/)
+
+
+# Brevo Integration
+
+Connect your agents to Brevo (formerly Sendinblue) for transactional and marketing email delivery.
+
+## Overview
+
+The Brevo integration uses a Brevo API v3 key for sending transactional emails, managing contact lists, and running email campaigns.
+
+**Used by:** `newsletter-compose` and custom agents needing email sending.
+
+**Agents that typically enable this integration:**
+
+- Newsletter Manager
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| API key (v3) | Available | Standard Brevo API v3 key. |
+
+## Prerequisites
+
+- **A Wiro API key** — see [Authentication](/docs/authentication).
+- **A deployed agent** — see [Agent Overview](/docs/agent-overview).
+- **A Brevo account** (free tier works for low volume).
+
+## Setup
+
+### Step 1: Get an API key
+
+1. Sign in to [app.brevo.com](https://app.brevo.com/).
+2. Click your profile (top right) → **SMTP & API → API Keys tab**.
+3. Click **Generate a new API key**, name it "Wiro agent".
+4. Copy the key (starts with `xkeysib-`).
+
+### Step 2: Save to Wiro
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "guid": "your-useragent-guid",
+    "configuration": {
+      "credentials": {
+        "brevo": {
+          "apiKey": "xkeysib-xxxxxxxxxxxxxxxxxxxx"
+        }
+      }
+    }
+  }'
+```
+
+### Step 3: Start the agent
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+```
+
+## Credential Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `apiKey` | string | Brevo v3 API key (starts with `xkeysib-`). |
+
+## Troubleshooting
+
+- **401 Unauthorized:** Key was revoked or deleted. Generate a new one.
+- **Emails go to spam:** Verify your sending domain under Brevo → Senders & IP → Domains. Set up SPF, DKIM, DMARC records as instructed.
+- **Rate limit (429):** Brevo free tier is 300 emails/day. Upgrade plan if you exceed.
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Overview](/docs/agent-overview)
+- [Agent Skills](/docs/agent-skills)
+- [Brevo API docs](https://developers.brevo.com/reference/getting-started-1)
+
+
+# SendGrid Integration
+
+Connect your agents to SendGrid for transactional and marketing email delivery.
+
+## Overview
+
+The SendGrid integration uses a Twilio SendGrid API key for sending transactional emails and managing lists.
+
+**Used by:** `newsletter-compose` and custom agents needing email sending.
+
+**Agents that typically enable this integration:**
+
+- Newsletter Manager
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| API key | Available | Twilio SendGrid API key. |
+
+## Prerequisites
+
+- **A Wiro API key** — see [Authentication](/docs/authentication).
+- **A deployed agent** — see [Agent Overview](/docs/agent-overview).
+- **A SendGrid account**.
+
+## Setup
+
+### Step 1: Create an API key
+
+1. Sign in to [app.sendgrid.com](https://app.sendgrid.com/).
+2. **Settings → API Keys → Create API Key**.
+3. Name it "Wiro agent".
+4. Choose permissions:
+   - **Full Access** for maximum capability, or
+   - **Restricted Access** and enable at minimum **Mail Send** + **Marketing Campaigns** (if applicable).
+5. Click **Create & View**, copy the key once — it cannot be retrieved later.
+
+### Step 2: Save to Wiro
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "guid": "your-useragent-guid",
+    "configuration": {
+      "credentials": {
+        "sendgrid": {
+          "apiKey": "SG.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        }
+      }
+    }
+  }'
+```
+
+### Step 3: Start the agent
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+```
+
+## Credential Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `apiKey` | string | SendGrid API key (starts with `SG.`). |
+
+## Troubleshooting
+
+- **401 Unauthorized:** Key deleted or permissions changed. Create a new key with appropriate scopes.
+- **403 Forbidden on send:** Sender identity not verified. In SendGrid → Settings → Sender Authentication, verify your single sender or domain.
+- **Emails delivered but flagged as spam:** Complete Domain Authentication (SPF + DKIM + DMARC) in SendGrid sender settings.
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Overview](/docs/agent-overview)
+- [Agent Skills](/docs/agent-skills)
+- [SendGrid API docs](https://docs.sendgrid.com/api-reference/)
 
 # Agent Skills
 

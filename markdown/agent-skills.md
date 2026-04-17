@@ -207,6 +207,8 @@ This single request:
 
 ## Available Skills by Agent
 
+> **Integration setup guides:** Every skill below that needs a third-party connection links to a dedicated integration page with the full OAuth / API key walkthrough, required scopes or permissions, callback URL, troubleshooting, and multi-tenant architecture notes. See the [Integration Catalog](/docs/agent-credentials#integration-catalog) for the full list.
+
 ### Preferences (Editable Instructions)
 
 | Agent | Skill Key | What It Controls |
@@ -244,6 +246,32 @@ This single request:
 | Meta Ads | `performance-reporter` | Performance report | Daily 9 AM |
 | Meta Ads | `audience-scanner` | Audience analysis | Monday 10 AM |
 | Meta Ads | `holiday-ad-planner` | Holiday campaigns | Wednesday 10 AM |
+
+### Skill → Integration Mapping
+
+Skills that depend on third-party credentials. Follow the linked integration page for provider setup, OAuth walkthrough, and troubleshooting.
+
+| Skill | Credentials Required | Integration Guide |
+|-------|---------------------|-------------------|
+| `metaads-manage` | `metaads` (OAuth) | [Meta Ads](/docs/integration-metaads) |
+| `facebookpage-post` | `facebook` (OAuth) | [Facebook Page](/docs/integration-facebook) |
+| `instagram-post` | `instagram` (OAuth) | [Instagram](/docs/integration-instagram) |
+| `linkedin-post` | `linkedin` (OAuth) | [LinkedIn](/docs/integration-linkedin) |
+| `twitterx-post` | `twitter` (OAuth) | [Twitter / X](/docs/integration-twitter) |
+| `tiktok-post` | `tiktok` (OAuth) | [TikTok](/docs/integration-tiktok) |
+| `googleads-manage` | `googleads` (OAuth) | [Google Ads](/docs/integration-googleads) |
+| `hubspot-crm` | `hubspot` (OAuth) | [HubSpot](/docs/integration-hubspot) |
+| `mailchimp-email` | `mailchimp` (OAuth or API key) | [Mailchimp](/docs/integration-mailchimp) |
+| `google-drive` | `googledrive` (OAuth) | [Google Drive](/docs/integration-googledrive) |
+| `gmail-check` | `gmail` (App Password) | [Gmail](/docs/integration-gmail) |
+| `firebase-push` | `firebase` (Service account) | [Firebase](/docs/integration-firebase) |
+| `wordpress-post` | `wordpress` (App Password) | [WordPress](/docs/integration-wordpress) |
+| `appstore-reviews`, `appstore-metadata`, `appstore-events` | `appstore` (API key) | [App Store Connect](/docs/integration-appstore) |
+| `googleplay-reviews`, `googleplay-metadata` | `googleplay` (Service account) | [Google Play](/docs/integration-googleplay) |
+| `apollo-sales` | `apollo` (API key) | [Apollo](/docs/integration-apollo) |
+| `lemlist-outreach` | `lemlist` (API key) | [Lemlist](/docs/integration-lemlist) |
+
+Agents use `telegram` for operator notifications — see [Telegram](/docs/integration-telegram). Email sending across `brevo` and `sendgrid` — see [Brevo](/docs/integration-brevo) and [SendGrid](/docs/integration-sendgrid).
 
 ## Update Rules
 
