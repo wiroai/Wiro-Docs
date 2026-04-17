@@ -57,11 +57,26 @@ Call `POST /UserAgent/Detail` to fetch the agent instance. The skill array lives
 | `description` | string | Human-readable description of what the skill does. |
 | `enabled` | boolean | Whether the skill is active. |
 | `interval` | string \| null | Cron expression for scheduled execution, or `null` for preference-only skills. |
-| `_editable` | boolean | If `true`, you can modify `value` and `description`. If `false`, only `enabled` and `interval` can be changed. |
+| `_editable` | boolean | Indicates whether `value` / `description` can be modified. Cron skills are `_editable: false` and only accept `enabled` / `interval`; preference skills are `_editable: true` and only accept `value` / `description`. See [Skill types cheat-sheet](#skill-types-cheat-sheet) below. |
+
+### Skill Types Cheat-Sheet
+
+The backend decides which fields are writable by looking at the template's `interval` field on the existing skill:
+
+| Skill type | `interval` in template | `_editable` | Writable fields | Everything else |
+|---|---|---|---|---|
+| **Cron skill** (scheduled task) | non-null cron string (e.g. `"0 */4 * * *"`) | `false` | `enabled`, `interval` | silently ignored |
+| **Preference skill** (instructions) | `null` | `true` | `value`, `description` | silently ignored |
+
+**No prefix needed** — the `interval` field is the canonical discriminator. Keys like `content-scanner` are cron skills because their template `interval` is a cron expression; keys like `content-tone` are preference skills because their template `interval` is `null`.
+
+> **Cross-type fields are dropped at merge time.** If you send `{ key: "content-tone", enabled: false }` (preference skill + cron-only field), the backend drops `enabled` before writing — no error is raised, but the change is not persisted. Same the other way: `{ key: "content-scanner", value: "..." }` drops `value`. Always fetch `POST /UserAgent/Detail` first to see the real `interval` and pick the right update shape.
 
 ## Updating Preferences
 
 Preference skills (`_editable: true`, `interval: null`) let you customize the agent's behavior by editing its instructions.
+
+> **Send only `value` (and optionally `description`) to a preference skill.** `enabled` and `interval` fields are dropped by `mergeUserConfig` for preference skills — they have no runtime effect anyway (preference skills are read on-demand by cron tasks via `cs-<slug>`; they're never scheduled themselves).
 
 Send a `POST /UserAgent/Update` request with only the preference skills you want to change. Unmodified skills are preserved (the payload is **merged** with the existing config).
 
@@ -117,7 +132,7 @@ Send a `POST /UserAgent/Update` request with only the preference skills you want
 
 Scheduled tasks (`_editable: false`, non-null `interval`) run automatically on a cron schedule.
 
-> **Only `enabled` and `interval` are writable for scheduled tasks.** `value` and `description` fields sent for a non-editable skill are **silently ignored** — the task body is template-controlled and re-materialised on every container restart from the instance JSON. To change **what** a scheduled task does, edit the paired preference skill (`cs-<slug>`, `_editable: true`) that the cron reads at runtime.
+> **Only `enabled` and `interval` are writable for scheduled tasks.** `value` and `description` fields on a cron skill are dropped by `mergeUserConfig` — the task body is template-controlled and re-materialised on every container restart from the instance JSON. To change **what** a scheduled task does, edit the paired preference skill (`cs-<slug>`, `_editable: true`) that the cron reads at runtime.
 
 ### Example: Change scanner frequency
 

@@ -7250,14 +7250,27 @@ app.get('/settings/social', (req, res) => {
 <tr><td><code>description</code></td><td>string</td><td>Human-readable description of what the skill does.</td></tr>
 <tr><td><code>enabled</code></td><td>boolean</td><td>Whether the skill is active.</td></tr>
 <tr><td><code>interval</code></td><td>string | null</td><td>Cron expression for scheduled execution, or <code>null</code> for preference-only skills.</td></tr>
-<tr><td><code>_editable</code></td><td>boolean</td><td>If <code>true</code>, you can modify <code>value</code> and <code>description</code>. If <code>false</code>, only <code>enabled</code> and <code>interval</code> can be changed.</td></tr>
+<tr><td><code>_editable</code></td><td>boolean</td><td>Indicates whether <code>value</code> / <code>description</code> can be modified. Cron skills are <code>_editable: false</code> and only accept <code>enabled</code> / <code>interval</code>; preference skills are <code>_editable: true</code> and only accept <code>value</code> / <code>description</code>. See <a href="#skill-types-cheat-sheet">Skill types cheat-sheet</a> below.</td></tr>
 </tbody>
 </table></div></div>
+
+<h3 id="skill-types-cheat-sheet">Skill Types Cheat-Sheet</h3>
+<p>The backend decides which fields are writable by looking at the template's <code>interval</code> field on the existing skill:</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Skill type</th><th><code>interval</code> in template</th><th><code>_editable</code></th><th>Writable fields</th><th>Everything else</th></tr></thead>
+<tbody>
+<tr><td><strong>Cron skill</strong> (scheduled task)</td><td>non-null cron string (e.g. <code>"0 */4 * * *"</code>)</td><td><code>false</code></td><td><code>enabled</code>, <code>interval</code></td><td>silently ignored</td></tr>
+<tr><td><strong>Preference skill</strong> (instructions)</td><td><code>null</code></td><td><code>true</code></td><td><code>value</code>, <code>description</code></td><td>silently ignored</td></tr>
+</tbody>
+</table></div></div>
+<p><strong>No prefix needed</strong> — the <code>interval</code> field is the canonical discriminator. Keys like <code>content-scanner</code> are cron skills because their template <code>interval</code> is a cron expression; keys like <code>content-tone</code> are preference skills because their template <code>interval</code> is <code>null</code>.</p>
+<blockquote><p><strong>Cross-type fields are dropped at merge time.</strong> If you send <code>{ key: "content-tone", enabled: false }</code> (preference skill + cron-only field), the backend drops <code>enabled</code> before writing — no error is raised, but the change is not persisted. Same the other way: <code>{ key: "content-scanner", value: "..." }</code> drops <code>value</code>. Always fetch <code>POST /UserAgent/Detail</code> first to see the real <code>interval</code> and pick the right update shape.</p></blockquote>
 </section>
 
 <section id="skills-updating-preferences">
 <h2>Updating Preferences</h2>
 <p>Preference skills (<code>_editable: true</code>, <code>interval: null</code>) let you customize the agent's behavior by editing its instructions. Every agent has one — it controls tone, style, targeting, and strategy. Select your agent below to see its preference skill and a complete update request.</p>
+<blockquote><p><strong>Send only <code>value</code> (and optionally <code>description</code>) to a preference skill.</strong> <code>enabled</code> and <code>interval</code> fields are dropped by <code>mergeUserConfig</code> for preference skills — they have no runtime effect anyway (preference skills are read on-demand by cron tasks via <code>cs-&lt;slug&gt;</code>; they're never scheduled themselves).</p></blockquote>
 
 <div class="content-tabs">
 <input type="radio" name="skill-tabs" id="sk-social" checked>
@@ -7552,7 +7565,7 @@ Use bullet points for features.
 <section id="skills-managing-scheduled">
 <h2>Managing Scheduled Tasks</h2>
 <p>Scheduled tasks (<code>_editable: false</code>, non-null <code>interval</code>) run automatically on a cron schedule.</p>
-<blockquote><p><strong>Only <code>enabled</code> and <code>interval</code> are writable for scheduled tasks.</strong> <code>value</code> and <code>description</code> fields sent for a non-editable skill are <strong>silently ignored</strong> — the task body is template-controlled and re-materialised on every container restart from the instance JSON. To change <strong>what</strong> a scheduled task does, edit the paired preference skill (<code>cs-&lt;slug&gt;</code>, <code>_editable: true</code>) that the cron reads at runtime.</p></blockquote>
+<blockquote><p><strong>Only <code>enabled</code> and <code>interval</code> are writable for scheduled tasks.</strong> <code>value</code> and <code>description</code> fields on a cron skill are dropped by <code>mergeUserConfig</code> — the task body is template-controlled and re-materialised on every container restart from the instance JSON. To change <strong>what</strong> a scheduled task does, edit the paired preference skill (<code>cs-&lt;slug&gt;</code>, <code>_editable: true</code>) that the cron reads at runtime.</p></blockquote>
 
 <h3>Example: Change scanner frequency</h3>
 <pre><code class="language-json">{
