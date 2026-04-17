@@ -4879,7 +4879,20 @@ import type {
     "response": "Here are the key AI trends for 2026...",
     "debugoutput": "Here are the key AI trends for 2026...",
     "status": "agent_end",
-    "metadata": "{\"thinking\":[],\"answer\":[\"Here are the key AI trends for 2026...\"],\"raw\":\"Here are the key AI trends for 2026...\"}",
+    "metadata": {
+      "type": "agent_end",
+      "task": "What are the latest trends in AI?",
+      "speed": "14.2",
+      "speedType": "token",
+      "elapsedTime": 7430,
+      "tokenCount": 105,
+      "wordCount": 118,
+      "raw": "Here are the key AI trends for 2026...",
+      "thinking": [],
+      "answer": ["Here are the key AI trends for 2026..."],
+      "isThinking": false
+    },
+    "attachments": [],
     "createdat": "1743350400",
     "startedat": "1743350401",
     "endedat": "1743350408"
@@ -4895,7 +4908,8 @@ import type {
 <tr><td><code>response</code></td><td><code>string</code></td><td>The agent's full response text. Empty until <code>agent_end</code>.</td></tr>
 <tr><td><code>debugoutput</code></td><td><code>string</code></td><td>Accumulated output text. Updated during streaming, contains the full response after completion.</td></tr>
 <tr><td><code>status</code></td><td><code>string</code></td><td>Current message status (see Message Lifecycle).</td></tr>
-<tr><td><code>metadata</code></td><td><code>string</code></td><td>JSON string containing structured response data — <code>thinking</code>, <code>answer</code>, <code>raw</code>, speed metrics, and token/word counts.</td></tr>
+<tr><td><code>metadata</code></td><td><code>object</code></td><td>Parsed JSON object (API returns it already decoded). Populated from the agent bridge on <code>agent_end</code>. Fields: <code>type</code> (event type, e.g. <code>"agent_end"</code>), <code>task</code> (user input summary), <code>speed</code> (tokens/sec), <code>speedType</code> (<code>"token"</code>), <code>elapsedTime</code> (ms), <code>tokenCount</code>, <code>wordCount</code>, <code>raw</code> (full output), <code>thinking</code> (array of <code>&lt;think&gt;</code> blocks), <code>answer</code> (array of post-think answer chunks), <code>isThinking</code> (false when answer finalized). Empty object <code>{}</code> for <code>agent_error</code>, <code>agent_cancel</code>, or when the bridge hasn't finished yet.</td></tr>
+<tr><td><code>attachments</code></td><td><code>array</code></td><td>Present only if the message was sent via multipart with files. Array of <code>{url, name, type, size}</code> entries — each file metadata is already URL-resolved server-side (no further lookup needed). Absent when the message had no attachments. Identical shape in <code>Message/History</code> rows.</td></tr>
 <tr><td><code>createdat</code></td><td><code>string</code></td><td>Unix timestamp when the message was created.</td></tr>
 <tr><td><code>startedat</code></td><td><code>string</code></td><td>Unix timestamp when the agent started processing.</td></tr>
 <tr><td><code>endedat</code></td><td><code>string</code></td><td>Unix timestamp when processing completed.</td></tr>
@@ -4928,7 +4942,8 @@ import type {
         "response": "Here are the key AI trends for 2026...",
         "debugoutput": "Here are the key AI trends for 2026...",
         "status": "agent_end",
-        "metadata": "{}",
+        "metadata": {},
+        "attachments": [],
         "createdat": "1743350400"
       }
     ],

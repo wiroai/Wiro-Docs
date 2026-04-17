@@ -89,7 +89,20 @@ Retrieves the current status and content of a single message. You can query by e
     "response": "Here are the key AI trends for 2026...",
     "debugoutput": "Here are the key AI trends for 2026...",
     "status": "agent_end",
-    "metadata": "{\"thinking\":[],\"answer\":[\"Here are the key AI trends for 2026...\"],\"raw\":\"Here are the key AI trends for 2026...\"}",
+    "metadata": {
+      "type": "agent_end",
+      "task": "What are the latest trends in AI?",
+      "speed": "14.2",
+      "speedType": "token",
+      "elapsedTime": 7430,
+      "tokenCount": 105,
+      "wordCount": 118,
+      "raw": "Here are the key AI trends for 2026...",
+      "thinking": [],
+      "answer": ["Here are the key AI trends for 2026..."],
+      "isThinking": false
+    },
+    "attachments": [],
     "createdat": "1743350400",
     "startedat": "1743350401",
     "endedat": "1743350408"
@@ -106,8 +119,8 @@ Retrieves the current status and content of a single message. You can query by e
 | `response` | `string` | The agent's full response text. Empty until `agent_end`. |
 | `debugoutput` | `string` | Accumulated output text. Updated during streaming, contains the full response after completion. |
 | `status` | `string` | Current message status (see Message Lifecycle). |
-| `metadata` | `string` (JSON) | **JSON-encoded string** — parse client-side with `JSON.parse`. Populated from the agent bridge on `agent_end`. Fields: `type` (event type, e.g. `"agent_end"`), `task` (user input summary), `speed` (tokens/sec), `speedType` (`"token"`), `elapsedTime` (ms), `tokenCount`, `wordCount`, `raw` (full output), `thinking` (array of `<think>` blocks), `answer` (array of post-think answer chunks), `isThinking` (false when answer finalized). Empty object `{}` for `agent_error` and `agent_cancel`. |
-| `attachments` | `string` (JSON) | Present only if the message was sent via multipart with files. Returned as a **JSON-encoded string** (not a parsed array) — parse it client-side with `JSON.parse` to get the array of `{filename, url, size, contentType}` entries. Identical shape in `Message/History` rows. |
+| `metadata` | `object` | Parsed JSON object (API returns it already decoded). Populated from the agent bridge on `agent_end`. Fields: `type` (event type, e.g. `"agent_end"`), `task` (user input summary), `speed` (tokens/sec), `speedType` (`"token"`), `elapsedTime` (ms), `tokenCount`, `wordCount`, `raw` (full output), `thinking` (array of `<think>` blocks), `answer` (array of post-think answer chunks), `isThinking` (false when answer finalized). Empty object `{}` for `agent_error`, `agent_cancel`, or when the bridge hasn't finished yet. |
+| `attachments` | `array` | Present only if the message was sent via multipart with files. Array of `{url, name, type, size}` entries — each file metadata is already URL-resolved server-side (no further lookup needed). Absent when the message had no attachments. Identical shape in `Message/History` rows. |
 | `deletestatus` | `number` | Internal flag. `0` for normal messages. |
 | `createdat` | `string` | Unix timestamp when the message was created. |
 | `startedat` | `string` | Unix timestamp when the agent started processing. |
@@ -140,7 +153,8 @@ Retrieves conversation history for a specific agent and session. Messages are re
         "response": "Here are the key AI trends for 2026...",
         "debugoutput": "Here are the key AI trends for 2026...",
         "status": "agent_end",
-        "metadata": "{}",
+        "metadata": { "type": "agent_end", "raw": "Here are the key AI trends for 2026...", "thinking": [], "answer": ["Here are the key AI trends for 2026..."], "isThinking": false },
+        "attachments": [],
         "createdat": "1743350400"
       },
       {
@@ -149,7 +163,8 @@ Retrieves conversation history for a specific agent and session. Messages are re
         "response": "Multimodal models combine...",
         "debugoutput": "Multimodal models combine...",
         "status": "agent_end",
-        "metadata": "{}",
+        "metadata": {},
+        "attachments": [],
         "createdat": "1743350300"
       }
     ],
