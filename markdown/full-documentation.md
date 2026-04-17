@@ -4548,10 +4548,12 @@ Each external service is documented as its own **integration page** with the com
 Some credentials are **managed by Wiro on your behalf** — you don't provide them, you can't see them in API responses, and attempts to set them via `POST /UserAgent/Update` are silently ignored:
 
 - **OpenAI** — Wiro uses its own OpenAI account to power the LLM brain of every agent. You never need to supply an OpenAI key.
-- **Wiro platform** (`credentials.wiro.apiKey`) — pre-configured for agents that use the Wiro Generator skill (image/video model runs on Wiro).
+- **Wiro platform** (`credentials.wiro.apiKey`) — pre-configured for agents that have the `wiro-generator` skill enabled. This skill lets the agent call Wiro's own AI models (image/video/audio/LLM) internally — see [Using Wiro AI Models from Your Agent](/docs/agent-skills#using-wiro-ai-models-from-your-agent).
 - **Calendarific** — pre-configured for agents that use the Calendarific skill (holiday/special-date lookups).
 
 These are `_editable: false` in the agent template. When you read `POST /UserAgent/Detail`, they don't appear in the `configuration.credentials` response — they're filtered out server-side. If your agent needs them, they're already wired up.
+
+> **Don't confuse platform-managed `credentials.wiro.apiKey` with your regular Wiro API key.** The key in `credentials.wiro.apiKey` is internal to the agent container; the `x-api-key` header you send to Wiro endpoints from your own backend is entirely separate (see [Authentication](/docs/authentication)).
 
 ## Setting API Key Credentials
 
@@ -9154,15 +9156,17 @@ POST /UserAgent/Detail
     "_editable": true
   },
   {
-    "key": "wiromodel-scanner",
+    "key": "scheduled-scanner",
     "value": "",
-    "description": "Scan for new Wiro models and draft social posts",
+    "description": "Scan external source and prepare drafts",
     "enabled": true,
     "interval": "0 * * * *",
     "_editable": false
   }
 ]
 ```
+
+> The exact key names depend on the agent template. For example, Wiro's own Social Manager template seeds a `wiromodel-scanner` cron that scans wiro.ai for newly released AI models — that's a Wiro-specific content scanner, not a generic one. Your deployed instance may have different keys; always fetch `POST /UserAgent/Detail` to see the real list.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -9241,7 +9245,7 @@ POST /UserAgent/Update
   "configuration": {
     "custom_skills": [
       { "key": "review-scanner", "enabled": true, "interval": "0 */4 * * *" },
-      { "key": "wiromodel-scanner", "enabled": false }
+      { "key": "content-scanner", "enabled": false }
     ]
   }
 }
@@ -9351,27 +9355,29 @@ This single request:
 
 ### Scheduled Tasks
 
-| Agent | Task Key | Description | Default Schedule |
-|-------|----------|-------------|-----------------|
-| Social Manager | `content-scanner` | Scan for new models, prepare posts | Hourly |
-| Social Manager | `gmail-checker` | Check inbox for requests | Every 30 min |
-| Blog Content | `blog-scanner` | Discover topics, write content | Daily 9 AM |
-| Blog Content | `gmail-checker` | Check inbox for topic requests | Every 30 min |
-| App Review | `review-scanner` | Scan stores for new reviews | Every 2 hours |
-| App Event | `app-event-scanner` | Scan holidays, suggest events | Monday 9 AM |
-| Push Notification | `push-scanner` | Scan holidays, craft suggestions | Daily 9 AM |
-| Push Notification | `push-dispatcher` | Send queued notifications | Hourly |
-| Newsletter | `newsletter-sender` | Create and send newsletters | Monday 9 AM |
-| Newsletter | `subscriber-scanner` | Subscriber list health check | Daily 10 AM |
-| Lead Gen | `prospect-scanner` | Prospect search and scoring | Monday 10 AM |
-| Lead Gen | `outreach-reporter` | Outreach performance report | Daily 9 AM |
-| Lead Gen | `reply-handler` | Check replies, analyze sentiment | Every 4 hours |
-| Google Ads | `performance-reporter` | Performance report | Daily 9 AM |
-| Google Ads | `competitor-scanner` | Competitor analysis | Monday 10 AM |
-| Google Ads | `holiday-ad-planner` | Holiday ad campaigns | Wednesday 10 AM |
-| Meta Ads | `performance-reporter` | Performance report | Daily 9 AM |
-| Meta Ads | `audience-scanner` | Audience analysis | Monday 10 AM |
-| Meta Ads | `holiday-ad-planner` | Holiday campaigns | Wednesday 10 AM |
+> Scheduled task keys are defined **per agent template** and are not universal. The table below lists the typical intent for each agent, but actual keys in your deployed instance come from the template (for example, Wiro's Social Manager template uses `wiromodel-scanner` to scan wiro.ai for new models — a Wiro-specific task). Always fetch `POST /UserAgent/Detail` to get the exact keys and values.
+
+| Agent | Typical Task Intent | Default Schedule |
+|-------|---------------------|------------------|
+| Social Manager | Content discovery + draft generation | Hourly |
+| Social Manager | Inbox monitoring for incoming requests | Every 30 min |
+| Blog Content | Topic discovery + article drafting | Daily 9 AM |
+| Blog Content | Inbox monitoring for topic requests | Every 30 min |
+| App Review Support | Store scanning for new reviews | Every 2 hours |
+| App Event Manager | Holiday scanning + event suggestions | Monday 9 AM |
+| Push Notification | Notification content preparation | Daily 9 AM |
+| Push Notification | Dispatching queued notifications | Hourly |
+| Newsletter Manager | Newsletter drafting and sending | Monday 9 AM |
+| Newsletter Manager | Subscriber list health checks | Daily 10 AM |
+| Lead Gen Manager | Prospect discovery and scoring | Monday 10 AM |
+| Lead Gen Manager | Outreach performance reporting | Daily 9 AM |
+| Lead Gen Manager | Reply analysis | Every 4 hours |
+| Google Ads Manager | Performance reporting | Daily 9 AM |
+| Google Ads Manager | Competitor analysis | Monday 10 AM |
+| Google Ads Manager | Holiday campaign planning | Wednesday 10 AM |
+| Meta Ads Manager | Performance reporting | Daily 9 AM |
+| Meta Ads Manager | Audience analysis | Monday 10 AM |
+| Meta Ads Manager | Holiday campaign planning | Wednesday 10 AM |
 
 ### Skill → Integration Mapping
 
@@ -9396,11 +9402,36 @@ Skills that depend on third-party credentials. Follow the linked integration pag
 | `googleplay-reviews`, `googleplay-metadata` | `googleplay` (Service account) | [Google Play Skills](/docs/integration-googleplay-skills) — env vars export only when `googleplay-reviews` is enabled; metadata-only setups need it too |
 | `apollo-sales` | `apollo` (API key) | [Apollo Skills](/docs/integration-apollo-skills) |
 | `lemlist-outreach` | `lemlist` (API key) | [Lemlist Skills](/docs/integration-lemlist-skills) |
-| `calendarific`, `wiro-generator`, OpenAI-backed skills | Platform-managed | No setup needed — see [Platform-Managed Credentials](/docs/agent-credentials#platform-managed-credentials) |
+| `wiro-generator` | `credentials.wiro.apiKey` (platform-managed) | See [Using Wiro AI Models from Your Agent](#using-wiro-ai-models-from-your-agent) |
+| `calendarific`, OpenAI-backed LLM skills | Platform-managed (no user key) | [Platform-Managed Credentials](/docs/agent-credentials#platform-managed-credentials) |
 
 Agents use `telegram` for operator notifications — see [Telegram Skills](/docs/integration-telegram-skills). Email sending across `brevo` and `sendgrid` — see [Brevo Skills](/docs/integration-brevo-skills) and [SendGrid Skills](/docs/integration-sendgrid-skills).
 
 > **Restart behavior:** Updating `custom_skills` on a running agent (status 3 or 4) triggers an automatic restart (`restartafter: true`) so the new skill configuration is picked up on the next daemon cycle. Same as credential updates.
+
+## Using Wiro AI Models from Your Agent
+
+`wiro-generator` is a platform built-in skill that lets an agent call Wiro's own AI models (image/video/audio/LLM generation, cover image creation, model discovery) using Wiro's internal API. When it's enabled on an agent:
+
+- `credentials.wiro.apiKey` is filled in automatically by Wiro (platform-managed; `_editable: false`). You don't set this key yourself.
+- The agent container gets `WIRO_API_KEY` as an env var only when both `wiro-generator` skill is enabled **and** the key is present in the template.
+- `wiro-generator` is marked `user-invocable: false` — it isn't called directly by end-user messages; other skills and scheduled tasks invoke it internally when they need to generate content.
+
+Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, Google Ads, Newsletter) ship with `wiro-generator: true` and the platform-managed `wiro` credential pre-filled. Templates that don't need AI generation (App Review Support, Lead Gen Manager) ship with `wiro-generator: false`.
+
+To check whether your deployed agent has it:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Detail" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+# Look under configuration.skills — "wiro-generator" should be true
+```
+
+### API user-specific note
+
+`wiro-generator` does **not** mean "your custom skill can call Wiro's Run API with your own API key". It's scoped to the agent template's internal skills and uses Wiro's pre-filled platform key. If you're building on top of Wiro programmatically and want to call the Run / Task / LLM APIs directly from your own backend (not from inside an agent container), use your standard Wiro API key against the public API — see [Run a Model](/docs/run-a-model) and [LLM & Chat Streaming](/docs/llm-chat-streaming).
 
 ## Update Rules
 

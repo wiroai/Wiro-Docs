@@ -50,10 +50,12 @@ Each external service is documented as its own **integration page** with the com
 Some credentials are **managed by Wiro on your behalf** — you don't provide them, you can't see them in API responses, and attempts to set them via `POST /UserAgent/Update` are silently ignored:
 
 - **OpenAI** — Wiro uses its own OpenAI account to power the LLM brain of every agent. You never need to supply an OpenAI key.
-- **Wiro platform** (`credentials.wiro.apiKey`) — pre-configured for agents that use the Wiro Generator skill (image/video model runs on Wiro).
+- **Wiro platform** (`credentials.wiro.apiKey`) — pre-configured for agents that have the `wiro-generator` skill enabled. This skill lets the agent call Wiro's own AI models (image/video/audio/LLM) internally — see [Using Wiro AI Models from Your Agent](/docs/agent-skills#using-wiro-ai-models-from-your-agent).
 - **Calendarific** — pre-configured for agents that use the Calendarific skill (holiday/special-date lookups).
 
 These are `_editable: false` in the agent template. When you read `POST /UserAgent/Detail`, they don't appear in the `configuration.credentials` response — they're filtered out server-side. If your agent needs them, they're already wired up.
+
+> **Don't confuse platform-managed `credentials.wiro.apiKey` with your regular Wiro API key.** The key in `credentials.wiro.apiKey` is internal to the agent container; the `x-api-key` header you send to Wiro endpoints from your own backend is entirely separate (see [Authentication](/docs/authentication)).
 
 ## Setting API Key Credentials
 
