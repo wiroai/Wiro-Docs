@@ -5381,50 +5381,108 @@ import type {
 <section id="connection-url">
 <h2>Connection URL</h2>
 <pre><code>wss://socket.wiro.ai/v1</code></pre>
-<p>Connect to this URL after calling the <a href="/docs/agent-messaging">Message / Send</a> endpoint. Use the <code>agenttoken</code> from the send response to subscribe to the agent session. This is the same WebSocket server used for model tasks — you can subscribe to both task events and agent events on the same connection.</p>
+<p>Connect to this URL after calling the <a href="/docs/agent-messaging">Message / Send</a> endpoint. Use the <code>agenttoken</code> from the send response to subscribe to the agent session. This is the same WebSocket server used for model tasks — you can subscribe to both task events (<code>task_info</code>) and agent events (<code>agent_info</code>) on the same connection.</p>
+<p>No API key or auth header is required on the WebSocket itself. Authorization is enforced via the <code>agenttoken</code>, which is issued by <code>POST /UserAgent/Message/Send</code> against your API key and is scoped to a single message run.</p>
 </section>
 
 <section id="connection-flow">
 <h2>Connection Flow</h2>
 <ol>
-<li><strong>Connect</strong> — open a WebSocket connection to <code>wss://socket.wiro.ai/v1</code></li>
-<li><strong>Subscribe</strong> — send an <code>agent_info</code> message with your <code>agenttoken</code></li>
-<li><strong>Receive</strong> — listen for <code>agent_output</code> events as the agent streams its response</li>
-<li><strong>Complete</strong> — the <code>agent_end</code> event fires when the response is finished</li>
-<li><strong>Close</strong> — disconnect after processing the final response</li>
+<li><strong>Connect</strong> — open a WebSocket connection to <code>wss://socket.wiro.ai/v1</code>.</li>
+<li><strong>Receive welcome</strong> — the server pushes a one-shot <code>connected</code> frame confirming the upgrade.</li>
+<li><strong>Subscribe</strong> — send an <code>agent_info</code> frame with your <code>agenttoken</code>.</li>
+<li><strong>Receive <code>agent_subscribed</code></strong> — the server acknowledges the subscribe and reports the current lifecycle status (plus any already-accumulated <code>debugoutput</code>).</li>
+<li><strong>Stream</strong> — listen for <code>agent_start</code> → many <code>agent_output</code> → <code>agent_end</code> / <code>agent_error</code> / <code>agent_cancel</code>.</li>
+<li><strong>Close</strong> — disconnect after a terminal event, or keep the socket open and subscribe to the next <code>agenttoken</code>.</li>
 </ol>
-<p>Subscribe message format:</p>
+
+<h3>1. Welcome frame (server → client)</h3>
+<p>Right after the WebSocket upgrade succeeds, the server sends this frame on its own. You don't request it; it arrives before you send anything.</p>
+<pre><code class="language-json">{
+  "type": "connected",
+  "version": "1.0"
+}</code></pre>
+<p>Use it as a signal that the socket is fully ready to receive a subscribe. Most clients can ignore the payload — the <code>version</code> field is informational.</p>
+
+<h3>2. Subscribe frame (client → server)</h3>
 <pre><code class="language-json">{
   "type": "agent_info",
   "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb"
 }</code></pre>
+<ul>
+<li><code>type</code> — must be the literal string <code>"agent_info"</code>. Other values are ignored (the server routes by type; unknown types are silently dropped).</li>
+<li><code>agenttoken</code> — the token returned by <code>POST /UserAgent/Message/Send</code>. Required. If missing or empty, the server responds with an <code>error</code> frame (see below).</li>
+</ul>
+
+<h3>3. Subscribe errors</h3>
+<p>If <code>agenttoken</code> is missing or blank, the server replies with:</p>
+<pre><code class="language-json">{
+  "type": "error",
+  "message": "agenttoken-required",
+  "result": false
+}</code></pre>
+<p>The connection stays open — no disconnect. Fix the payload and resend.</p>
+
+<h3>Multi-session subscription</h3>
+<p>A single WebSocket connection can hold subscriptions to multiple agent sessions simultaneously. Send one <code>agent_info</code> frame per token; the server de-duplicates, so resending the same token is a no-op.</p>
+<p>After this, every server-side event for either token is forwarded to this connection. All events carry the <code>agenttoken</code> field, so your handler can route them back to the right UI surface.</p>
+<p>Typical use cases:</p>
+<ul>
+<li>Multi-tab chat clients that keep several live conversations.</li>
+<li>Dashboards watching several users' agents in parallel.</li>
+<li>Combining task streaming and agent streaming on the same connection — <code>task_info</code> and <code>agent_info</code> frames both map to the same connection's token list.</li>
+</ul>
+<p>There is no <code>unsubscribe</code> frame. Tokens are cleaned up automatically when the connection closes.</p>
 </section>
 
 <section id="event-types">
 <h2>Event Types</h2>
+<p>Frames flow in two directions. <code>↓</code> = server → client, <code>↑</code> = client → server.</p>
 <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
-<thead><tr><th>Event Type</th><th>Description</th></tr></thead>
+<thead><tr><th>Direction</th><th>Event Type</th><th>Description</th></tr></thead>
 <tbody>
-<tr><td><code>agent_subscribed</code></td><td>Subscription confirmed. The server acknowledges your <code>agenttoken</code> and returns the current status. If the agent already started before you subscribed, accumulated text is included.</td></tr>
-<tr><td><code>agent_start</code></td><td>The agent has started processing your message. The underlying model is now generating a response.</td></tr>
-<tr><td><code>agent_output</code></td><td>A streaming response chunk. Emitted <strong>multiple times</strong> — each chunk contains the full accumulated text so far, plus real-time performance metrics.</td></tr>
-<tr><td><code>agent_end</code></td><td>Response complete. Contains the final accumulated text with total metrics. This is the event to listen for.</td></tr>
-<tr><td><code>agent_error</code></td><td>An error occurred during processing. The <code>message</code> field may be a plain string or a structured progress object depending on the error type.</td></tr>
-<tr><td><code>agent_cancel</code></td><td>The message was cancelled by the user before the agent finished responding.</td></tr>
+<tr><td>↓</td><td><code>connected</code></td><td>Welcome frame pushed by the server right after the WebSocket upgrade. Fires exactly once per connection.</td></tr>
+<tr><td>↑</td><td><code>agent_info</code></td><td>Client-initiated subscribe frame. Carries the <code>agenttoken</code> issued by <code>Message/Send</code>. Can be sent multiple times on the same socket (one per token).</td></tr>
+<tr><td>↓</td><td><code>error</code></td><td>Server-side rejection of a malformed subscribe (missing <code>agenttoken</code>). Connection stays open; retry with a valid frame.</td></tr>
+<tr><td>↓</td><td><code>agent_subscribed</code></td><td>Subscribe acknowledged. Carries the current lifecycle <code>status</code> plus any accumulated <code>debugoutput</code>. If the agent already finished before you subscribed, this frame is your snapshot of the final output and no further events will fire.</td></tr>
+<tr><td>↓</td><td><code>agent_start</code></td><td>The bridge has opened an SSE stream to the agent container. The underlying model is now generating. Emits exactly once per message.</td></tr>
+<tr><td>↓</td><td><code>agent_output</code></td><td>Streaming chunk. Emits <strong>many times</strong> — each carries the full accumulated <code>raw</code> text so far plus real-time metrics (<code>speed</code>, <code>elapsedTime</code>, <code>tokenCount</code>, <code>wordCount</code>). Replace (don't append) your UI on each event.</td></tr>
+<tr><td>↓</td><td><code>agent_end</code></td><td>Terminal success event. Same payload shape as <code>agent_output</code> but contains the final complete text with total metrics. Emits at most once.</td></tr>
+<tr><td>↓</td><td><code>agent_error</code></td><td>Terminal failure event. <code>message</code> is either a sanitized string (when an exception was caught) or a <code>progressGenerate</code> object (when the stream finished but content was a degenerate <code>"..."</code> / <code>"Error: internal error"</code>). Emits at most once.</td></tr>
+<tr><td>↓</td><td><code>agent_cancel</code></td><td>Terminal cancel event. Fires <strong>only</strong> when an already-active message is aborted mid-stream. Cancels against a still-queued message do <strong>not</strong> broadcast this event — check <code>Message/Detail</code> for those. Emits at most once.</td></tr>
 </tbody>
 </table></div></div>
 </section>
 
 <section id="message-format">
 <h2>Message Format</h2>
-<p>Every WebSocket message is a JSON object with this base structure:</p>
+<p>Every WebSocket frame is a JSON object. All <strong>agent lifecycle frames</strong> (<code>agent_subscribed</code> / <code>agent_start</code> / <code>agent_output</code> / <code>agent_end</code> / <code>agent_error</code> / <code>agent_cancel</code>) share this base shape:</p>
 <pre><code class="language-json">{
   "type": "agent_output",
   "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
   "message": { ... },
   "result": true
 }</code></pre>
-<p>The <code>type</code> field indicates the event. The <code>message</code> field varies by type — it's an empty string for lifecycle events, a structured progress object for output events, and a string or object for errors.</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>type</code></td><td>string</td><td>Event name. See <a href="#event-types">Event Types</a> for the full list.</td></tr>
+<tr><td><code>agenttoken</code></td><td>string</td><td>The token you subscribed with. Present on every agent lifecycle frame so multi-token subscribers can route the event to the right session.</td></tr>
+<tr><td><code>message</code></td><td>varies</td><td>Empty string (<code>""</code>) for <code>agent_start</code>, a <code>progressGenerate</code> object for <code>agent_output</code> / <code>agent_end</code> (and for the object-shaped <code>agent_error</code>), and a plain string for string-shaped <code>agent_error</code> and <code>agent_cancel</code>.</td></tr>
+<tr><td><code>result</code></td><td>boolean</td><td><code>true</code> for success-side events (<code>agent_subscribed</code> / <code>agent_start</code> / <code>agent_output</code> / <code>agent_end</code>), <code>false</code> for failure-side events (<code>agent_error</code> / <code>agent_cancel</code>).</td></tr>
+</tbody>
+</table></div></div>
+<p>The <strong>control frames</strong> (<code>connected</code>, <code>error</code>) use a different shape with no <code>agenttoken</code>:</p>
+<pre><code class="language-json">{
+  "type": "connected",
+  "version": "1.0"
+}</code></pre>
+<pre><code class="language-json">{
+  "type": "error",
+  "message": "agenttoken-required",
+  "result": false
+}</code></pre>
+<p>The <code>agent_subscribed</code> frame additionally carries <code>status</code> (the DB row's current status) and, when the token is known, <code>debugoutput</code> (accumulated text so far). When the token is unknown, <code>status</code> is <code>"unknown"</code> and <code>debugoutput</code> is omitted entirely.</p>
 
 <h3>agent_subscribed</h3>
 <p>Sent immediately after the server accepts your subscription. The <code>status</code> field reflects where the agent currently is in its lifecycle.</p>
@@ -5513,22 +5571,27 @@ import type {
 }</code></pre>
 
 <h3>agent_error</h3>
-<p>An error occurred during processing. The <code>message</code> field can take two forms:</p>
-<p><strong>String error</strong> — a human-readable error description from exceptions:</p>
+<p>An error occurred during processing. The <code>message</code> field can take two forms — a <strong>sanitized string</strong> when the stream is aborted by an exception, or a <strong>progress object</strong> when the stream finished naturally but the model returned a non-response.</p>
+<p><strong>Sanitized string error</strong> — any exception during streaming (bridge timeout, upstream HTTP 5xx, worker crash, SSE read error, etc.) surfaces as a single user-safe sentence:</p>
 <pre><code class="language-json">{
   "type": "agent_error",
   "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
-  "message": "Could not resolve agent endpoint",
+  "message": "Agent is temporarily unavailable. Please try again shortly.",
   "result": false
 }</code></pre>
-<p>Common string errors include <code>"Could not resolve agent endpoint"</code>, <code>"OpenClaw returned HTTP 500"</code>, and <code>"The operation was aborted."</code>.</p>
-<p><strong>Structured error</strong> — when the model returns an invalid response (e.g. <code>"..."</code> or <code>"Error: internal error"</code>), the message contains the same <code>progressGenerate</code> object as <code>agent_output</code>:</p>
+<blockquote><p><strong>The raw runtime error is never broadcast over WebSocket.</strong> Strings like <code>"Bridge timeout"</code>, <code>"OpenClaw returned HTTP 500"</code>, <code>"SSE request timeout (30min)"</code>, <code>"Could not resolve agent endpoint"</code> are recorded in the database <code>debugoutput</code> field (retrievable via <code>POST /UserAgent/Message/Detail</code>) but <strong>replaced with the generic sentence above</strong> before being pushed to subscribed clients. This is intentional so end users never see internal infrastructure errors.</p></blockquote>
+<p><strong>Progress-object error</strong> — the SSE stream completes normally but the model returns <code>"..."</code> or <code>"Error: internal error"</code>. In that case Wiro flags the message as <code>agent_error</code> and broadcasts the same <code>progressGenerate</code> shape as <code>agent_output</code> / <code>agent_end</code>:</p>
 <pre><code class="language-json">{
   "type": "agent_error",
   "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
   "message": {
     "type": "progressGenerate",
     "task": "Generate",
+    "speed": "2.5",
+    "speedType": "words/s",
+    "elapsedTime": "1.2s",
+    "tokenCount": 3,
+    "wordCount": 1,
     "raw": "...",
     "thinking": [],
     "answer": ["..."],
@@ -5536,29 +5599,34 @@ import type {
   },
   "result": false
 }</code></pre>
-<p>Always check the type of <code>message</code> — handle both <code>string</code> and <code>object</code> forms in your client.</p>
+<p>Check the runtime type of <code>message</code> to branch:</p>
+<pre><code class="language-javascript">if (msg.type === 'agent_error') {
+  if (typeof msg.message === 'string') showToast(msg.message)
+  else renderResponse(msg.message.raw)
+}</code></pre>
 
 <h3>agent_cancel</h3>
-<p>Sent when the user cancels a message before the agent completes its response:</p>
+<p>Sent when the user cancels a message before the agent completes its response — but <strong>only when the abort hits the bridge mid-flight</strong> (queued-state cancels do not broadcast this event):</p>
 <pre><code class="language-json">{
   "type": "agent_cancel",
   "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
-  "message": "The operation was aborted.",
+  "message": "AbortError",
   "result": false
 }</code></pre>
+<blockquote><p>The <code>message</code> field carries the abort reason from the runtime (typically <code>"AbortError"</code> or a short technical string). It is <strong>not a fixed user-facing message</strong> — do not parse it for exact strings. Use <code>type === "agent_cancel"</code> as the canonical signal. Subscribers that cancel from a queued state receive no event at all (the message is simply marked <code>agent_cancel</code> in the database; check with <code>POST /UserAgent/Message/Detail</code>).</p></blockquote>
 </section>
 
 <section id="the-result-field">
 <h2>The <code>result</code> Field</h2>
-<p>Every event includes a <code>result</code> boolean:</p>
+<p>Every agent lifecycle event includes a <code>result</code> boolean:</p>
 <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
 <thead><tr><th>Value</th><th>Events</th></tr></thead>
 <tbody>
 <tr><td><code>true</code></td><td><code>agent_subscribed</code>, <code>agent_start</code>, <code>agent_output</code>, <code>agent_end</code></td></tr>
-<tr><td><code>false</code></td><td><code>agent_error</code>, <code>agent_cancel</code></td></tr>
+<tr><td><code>false</code></td><td><code>error</code>, <code>agent_error</code>, <code>agent_cancel</code></td></tr>
 </tbody>
 </table></div></div>
-<p>Use <code>result</code> to quickly determine whether the event represents a successful state. When <code>result</code> is <code>false</code>, inspect <code>message</code> for error details or cancellation context.</p>
+<p>Use <code>result</code> to quickly determine whether the event represents a successful state. When <code>result</code> is <code>false</code>, inspect <code>message</code> for error details or cancellation context. The welcome <code>connected</code> frame has no <code>result</code> field — it's a one-shot ack and always implies success (you got the frame, so the upgrade worked).</p>
 </section>
 
 <section id="streaming-metrics">
@@ -5631,21 +5699,34 @@ ws.onopen = () => {
   }));
 };</code></pre>
 <p><strong>Step 3 — Handle streaming events:</strong></p>
-<pre><code>→  agent_subscribed  { status: "agent_queue" }
-→  agent_start       { message: "" }
-→  agent_output      { message: { raw: "Quantum", wordCount: 1 } }
-→  agent_output      { message: { raw: "Quantum computing uses", wordCount: 3 } }
-→  agent_output      { message: { raw: "Quantum computing uses qubits...", wordCount: 28 } }
-→  agent_end         { message: { raw: "Quantum computing uses qubits that...", wordCount: 118 } }</code></pre>
-<p>Each <code>agent_output</code> contains the full accumulated text. Replace (don't append) your display content on each event.</p>
+<pre><code>←  connected         { version: "1.0" }
+→  agent_info        { agenttoken: "..." }
+←  agent_subscribed  { status: "agent_queue", debugoutput: "" }
+←  agent_start       { message: "" }
+←  agent_output      { message: { raw: "Quantum", wordCount: 1 } }
+←  agent_output      { message: { raw: "Quantum computing uses", wordCount: 3 } }
+←  agent_output      { message: { raw: "Quantum computing uses qubits...", wordCount: 28 } }
+←  agent_end         { message: { raw: "Quantum computing uses qubits that...", wordCount: 118 } }</code></pre>
+<p><code>←</code> = server → client, <code>→</code> = client → server. Each <code>agent_output</code> contains the full accumulated text. Replace (don't append) your display content on each event.</p>
 </section>
 
 <section id="quick-reference">
 <h2>Quick Reference</h2>
-<p><strong>Subscribe frame (client → server):</strong></p>
+<p><strong><code>connected</code> — welcome frame</strong> (server → client, sent once on upgrade):</p>
+<pre><code class="language-json">{
+  "type": "connected",
+  "version": "1.0"
+}</code></pre>
+<p><strong>Subscribe frame</strong> (client → server):</p>
 <pre><code class="language-json">{
   "type": "agent_info",
   "agenttoken": "aB3xK9..."
+}</code></pre>
+<p><strong><code>error</code> — malformed subscribe</strong> (server → client, sent when <code>agent_info</code> is missing <code>agenttoken</code>):</p>
+<pre><code class="language-json">{
+  "type": "error",
+  "message": "agenttoken-required",
+  "result": false
 }</code></pre>
 <p><strong><code>agent_subscribed</code> — valid token</strong> (empty <code>debugoutput</code>):</p>
 <pre><code class="language-json">{
@@ -5701,11 +5782,11 @@ ws.onopen = () => {
   },
   "result": true
 }</code></pre>
-<p><strong><code>agent_error</code>:</strong></p>
+<p><strong><code>agent_error</code></strong> — sanitized string (any exception during streaming):</p>
 <pre><code class="language-json">{
   "type": "agent_error",
   "agenttoken": "aB3xK9...",
-  "message": "Bridge timeout",
+  "message": "Agent is temporarily unavailable. Please try again shortly.",
   "result": false
 }</code></pre>
 <p><strong><code>agent_cancel</code></strong> — active-processing abort only; queued-state cancels don't broadcast:</p>
@@ -5717,6 +5798,54 @@ ws.onopen = () => {
 }</code></pre>
 </section>
 
+<section id="reconnection-recovery">
+<h2>Reconnection &amp; Recovery</h2>
+<p>The agent keeps running server-side <strong>regardless of whether any client is subscribed</strong>. A disconnected socket never cancels the agent. This means a dropped connection is always recoverable — just reconnect and re-subscribe with the same <code>agenttoken</code>.</p>
+
+<h3>Recovery flow</h3>
+<ol>
+<li><strong>Detect disconnect</strong> — <code>ws.onclose</code> / stream exception / ping timeout.</li>
+<li><strong>Reconnect</strong> — open a new WebSocket to <code>wss://socket.wiro.ai/v1</code>.</li>
+<li><strong>Wait for welcome</strong> — receive <code>{ "type": "connected", "version": "1.0" }</code> (optional but clean).</li>
+<li><strong>Re-subscribe</strong> — send <code>{ "type": "agent_info", "agenttoken": "..." }</code> with the same token.</li>
+<li><strong>Handle <code>agent_subscribed</code></strong> — the server reports the <strong>current</strong> status. Three cases:
+<ul>
+<li><code>status</code> is <code>agent_queue</code> / <code>agent_start</code> / <code>agent_output</code> → stream is still live; accumulated text so far is in <code>debugoutput</code>. Future events will be forwarded normally.</li>
+<li><code>status</code> is <code>agent_end</code> → the agent already finished. <code>debugoutput</code> holds the full final response. <strong>No further WebSocket events will fire.</strong> Fetch <code>POST /UserAgent/Message/Detail</code> for the canonical record (including <code>metadata</code>, <code>attachments</code>, <code>endedat</code>), then close the socket.</li>
+<li><code>status</code> is <code>agent_error</code> / <code>agent_cancel</code> → the agent already failed / was cancelled. <code>debugoutput</code> may contain partial output. No further events. Fetch <code>POST /UserAgent/Message/Detail</code> for the persisted error details.</li>
+</ul>
+</li>
+</ol>
+<p>On reconnect you do <strong>not</strong> receive replays of the past <code>agent_output</code> frames — only events emitted after re-subscribe. Use the <code>debugoutput</code> on <code>agent_subscribed</code> as the snapshot of what you missed.</p>
+
+<h3>Retry strategy</h3>
+<ul>
+<li><strong>Exponential backoff</strong>, capped at 30 seconds. The server is usually responsive, so don't hammer it.</li>
+<li><strong>Stop retrying once you hit a terminal event</strong> (<code>agent_end</code> / <code>agent_error</code> / <code>agent_cancel</code>) or an <code>unknown</code> status — the work is either done or the token is gone.</li>
+<li><strong>Idempotent re-subscribe</strong>: sending the same <code>agenttoken</code> again on a fresh socket is always safe.</li>
+<li><strong>Fall back to polling</strong> if WebSocket is blocked (strict corporate proxies, mobile cellular with long-poll fallbacks). Use <code>POST /UserAgent/Message/Detail</code> at 1–2 second intervals until <code>status</code> is terminal.</li>
+</ul>
+</section>
+
+<section id="token-lifecycle">
+<h2>Token Lifecycle</h2>
+<p>An <code>agenttoken</code> is issued per message by <code>POST /UserAgent/Message/Send</code> and stays addressable on the WebSocket for as long as the underlying <code>agentmessages</code> row exists (Wiro does not auto-purge rows on a short timer; tokens remain queryable indefinitely after the run ends).</p>
+<div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
+<thead><tr><th>Event</th><th>Effect on token</th></tr></thead>
+<tbody>
+<tr><td><code>Message/Send</code></td><td>Token is minted, row is inserted with <code>status: "agent_queue"</code>.</td></tr>
+<tr><td>Worker picks up</td><td>Emits <code>agent_start</code> to every active subscriber.</td></tr>
+<tr><td>Each SSE chunk</td><td>Emits <code>agent_output</code> to every active subscriber (with full accumulated <code>raw</code>).</td></tr>
+<tr><td>Stream finishes</td><td>Emits <code>agent_end</code> (or <code>agent_error</code> for <code>"..."</code> / internal-error content) with final <code>progressGenerate</code> payload; DB row status is updated to terminal.</td></tr>
+<tr><td>Bridge exception</td><td>Emits <code>agent_error</code> with sanitized string; DB row status → <code>agent_error</code>, raw error in <code>debugoutput</code>.</td></tr>
+<tr><td><code>Message/Cancel</code> during active stream</td><td>Bridge aborts, emits <code>agent_cancel</code>; DB row status → <code>agent_cancel</code>.</td></tr>
+<tr><td><code>Message/Cancel</code> while queued</td><td>DB row status → <code>agent_cancel</code> immediately. <strong>No WebSocket event is broadcast</strong> (the bridge never started). Clients checking via the socket must consult <code>Message/Detail</code> for queued-state cancels.</td></tr>
+</tbody>
+</table></div></div>
+<p><strong>Multi-subscriber semantics</strong>: multiple WebSocket connections can subscribe to the same <code>agenttoken</code> and all receive the same event stream in parallel. The server does not enforce a subscriber limit per token. This is how the Wiro Dashboard shows the same agent chat on multiple tabs for the same user — each tab opens its own socket and subscribes independently.</p>
+<p><strong>Cross-user subscription</strong>: the <code>agenttoken</code> alone authenticates subscription — if you leak a token to another user, they can read the stream. Treat tokens like short-lived secrets scoped to the message.</p>
+</section>
+
 </article>
 
 <script type="application/json" class="code-examples-data">
@@ -5724,7 +5853,7 @@ ws.onopen = () => {
   {
     "label": "JavaScript",
     "language": "javascript",
-    "code": "const agentToken = 'your-agent-token';\n\nconst ws = new WebSocket('wss://socket.wiro.ai/v1');\n\nws.onopen = () => {\n  console.log('Connected');\n  ws.send(JSON.stringify({\n    type: 'agent_info',\n    agenttoken: agentToken\n  }));\n};\n\nws.onmessage = (event) => {\n  const msg = JSON.parse(event.data);\n  console.log('Event:', msg.type);\n\n  if (msg.type === 'agent_output') {\n    console.log('Streaming:', msg.message?.raw);\n  }\n  if (msg.type === 'agent_end') {\n    console.log('Final:', msg.message?.raw);\n    ws.close();\n  }\n  if (msg.type === 'agent_error') {\n    console.error('Error:', msg.message);\n    ws.close();\n  }\n};\n\nws.onerror = (err) => console.error('WebSocket error:', err);\nws.onclose = () => console.log('Disconnected');"
+    "code": "const agentToken = 'your-agent-token';\n\nconst ws = new WebSocket('wss://socket.wiro.ai/v1');\n\nws.onopen = () => {\n  console.log('Connected');\n  ws.send(JSON.stringify({\n    type: 'agent_info',\n    agenttoken: agentToken\n  }));\n};\n\nws.onmessage = (event) => {\n  const msg = JSON.parse(event.data);\n\n  switch (msg.type) {\n    case 'connected':\n      // One-shot welcome frame from server. OK to ignore.\n      break;\n\n    case 'error':\n      // Subscribe shape rejected (e.g. missing agenttoken).\n      console.error('Subscribe error:', msg.message);\n      ws.close();\n      break;\n\n    case 'agent_subscribed':\n      if (msg.status === 'unknown') {\n        console.error('Unknown token:', msg.agenttoken);\n        ws.close();\n      } else if (['agent_end', 'agent_error', 'agent_cancel'].includes(msg.status)) {\n        // We subscribed late \u2014 the agent already finished.\n        console.log('Already finished. Snapshot:', msg.debugoutput);\n        ws.close();\n      }\n      break;\n\n    case 'agent_start':\n      console.log('Agent started generating');\n      break;\n\n    case 'agent_output':\n      // message is a progressGenerate object; replace (don't append) your UI.\n      console.log('Streaming:', msg.message.raw);\n      break;\n\n    case 'agent_end':\n      console.log('Final:', msg.message.raw);\n      ws.close();\n      break;\n\n    case 'agent_error':\n      // message is either a sanitized string or a progressGenerate object.\n      if (typeof msg.message === 'string') console.error('Error:', msg.message);\n      else console.error('Non-response:', msg.message.raw);\n      ws.close();\n      break;\n\n    case 'agent_cancel':\n      console.warn('Cancelled:', msg.message);\n      ws.close();\n      break;\n  }\n};\n\nws.onerror = (err) => console.error('WebSocket error:', err);\nws.onclose = () => console.log('Disconnected');"
   },
   {
     "label": "Python",
