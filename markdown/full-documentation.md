@@ -1869,14 +1869,15 @@ Lists available agents in the catalog. This is a **public endpoint** — no auth
 
 #### **POST** /Agent/Detail
 
-Retrieves full details for a single agent by guid or slug. This is a **public endpoint** — no authentication required.
+Retrieves details for a single agent by guid or slug. This is a **public endpoint** — no authentication required.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `guid` | string | No* | Agent guid |
-| `slug` | string | No* | Agent slug (e.g. `"instagram-manager"`) |
+| `guid` | string | No* | Agent guid. |
+| `slug` | string | No* | Agent slug (e.g. `"instagram-manager"`). |
+| `type` | string | No | Pass `"full"` to receive the complete `configuration` tree (agent_skills, custom_skills, rateLimit, full credentials schema). Without `type: "full"`, the response returns a **trimmed** `configuration` object containing only `{ credentials }` (sanitized for template browsing). |
 
-> **Note:** You must provide either `guid` or `slug`. If both are provided, `slug` takes priority.
+> **Note:** You must provide either `guid` or `slug`. If both are provided, `slug` takes priority. Pass `type: "full"` when you need the complete template (including `custom_skills` keys to preview before deploy); omit it for a lightweight catalog listing.
 
 ##### Response
 
@@ -1926,17 +1927,24 @@ All endpoints below require authentication.
 
 #### **POST** /UserAgent/Deploy
 
-Creates a new agent instance from a catalog template. The agent is created with status `6` (Setup Required). After deploying, call `UserAgent/Detail` to see which credentials are needed, provide them via `UserAgent/Update`, then call `UserAgent/Start` to launch the agent. The subscription cost is deducted from your prepaid wallet immediately.
+Creates a new agent instance from a catalog template.
+
+Deploy has two modes depending on `useprepaid`:
+
+- **Normal deploy** (default, `useprepaid` omitted or `false`): instance is queued for immediate launch — status `2` (Queued). Any `configuration.credentials` and `configuration.custom_skills` you pass in the body are merged into the instance's config using `mergeUserConfig` (only fields marked `_editable: true` in the template are written; unknown keys are ignored).
+- **Prepaid deploy** (`useprepaid: true` + `plan`): wallet is charged immediately, instance is created in status `6` (Setup Required). **`configuration.credentials` and `configuration.custom_skills` in the prepaid deploy body are ignored** — you must call `POST /UserAgent/Update` separately after deploy to set credentials and customize skills. After credentials are complete, status auto-transitions to `0` (Stopped) and you can call `UserAgent/Start`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `agentguid` | string | Yes | The guid of the agent template from the catalog |
-| `title` | string | Yes | Display name for your instance |
-| `description` | string | No | Optional description |
-| `configuration` | object | No | Initial credential values. Format: `{ "credentials": { "key": "value" } }` |
-| `useprepaid` | boolean | Yes | Set to `true` to pay from wallet balance. Requires `plan`. |
-| `plan` | string | Yes | Plan tier: `"starter"` or `"pro"`. Required when `useprepaid` is `true`. |
-| `pinned` | boolean | No | Whether the agent appears in the pinned agents list. Defaults to `true`. Set to `false` when deploying agents programmatically for end users (e.g. bulk provisioning). |
+| `agentguid` | string | Yes | The guid of the agent template from the catalog. |
+| `title` | string | Yes | Display name for your instance. |
+| `description` | string | No | Optional description. |
+| `configuration` | object | No | Initial values (normal deploy only — ignored in prepaid deploy). Shape: `{ "credentials": { ... }, "custom_skills": [...] }`. Both sub-fields are optional; either (or both) can be provided. `mergeUserConfig` only writes fields that are `_editable: true` in the template and silently ignores the rest. |
+| `useprepaid` | boolean | No | Set to `true` to pay from wallet balance. Requires `plan`. Defaults to `false` (normal deploy). |
+| `plan` | string | Conditional | Plan tier: `"starter"` or `"pro"`. Required when `useprepaid` is `true`. |
+| `pinned` | boolean | No | **Prepaid deploy only.** Whether the agent appears in the pinned agents list (defaults to `true`). Normal deploy ignores this parameter — instances are always pinned on creation. To unpin a normal-deploy agent, call `POST /UserAgent/Pin` afterwards. |
+
+**Headers:** Standard authentication (`x-api-key` or `x-nonce` + `x-signature`). For **team-scoped agents** (when an end user deploys via a team project), pass `teamGUID: <team-guid>` as an additional request header — the API validates the caller is a member of that team before writing the instance row. Personal deployments omit this header.
 
 ##### Response
 
@@ -2866,6 +2874,8 @@ Sends a user message to a deployed agent. The agent must be in running state (st
 }
 ```
 
+> **A successful Send response means the message was accepted and queued — not that it will definitely reach the agent.** After this response the system enqueues the job into Redis/BullMQ for the bridge to pick up. If the enqueue step itself fails (queue backpressure, Redis outage), the message row is flipped to `agent_error` server-side. Always confirm the final state via `POST /UserAgent/Message/Detail` or the WebSocket stream; don't assume the message progresses to `agent_start` just because Send returned `result: true`.
+
 | Field | Type | Description |
 |-------|------|-------------|
 | `messageguid` | `string` | Unique identifier for this message. Use it with Detail, History, or Cancel. |
@@ -3059,7 +3069,14 @@ Cancels an in-progress message. Only messages in `agent_queue`, `agent_start`, o
 }
 ```
 
-On success, the message status changes to `agent_cancel` and all subscribed WebSocket clients receive an `agent_cancel` event.
+On success, the message status changes to `agent_cancel` in the database.
+
+> **Behavior depends on when the cancel hits:**
+>
+> - If the message was **already being processed** by the agent bridge (status `agent_start` or `agent_output`), the bridge's abort handler fires: subscribed WebSocket clients receive an `agent_cancel` event, `debugoutput` / `response` are populated with the abort reason (typically `"AbortError"` or similar technical message — not guaranteed to be a fixed user-facing string), and the `callbackurl` webhook (if set) is triggered with `status: "agent_cancel"`.
+> - If the message was **still queued** (status `agent_queue`) when cancelled, no processing attempt had started: the row is marked `agent_cancel` but `response` and `debugoutput` remain empty strings, **no WebSocket `agent_cancel` event** is broadcast, and **no webhook** is triggered.
+>
+> When polling for the final state, check `status === "agent_cancel"` rather than relying on non-empty `response` / `debugoutput` (they may be empty for queued-state cancellations).
 
 ## Session Management
 
@@ -4235,8 +4252,11 @@ channel.stream.listen((message) {
 // Subscribe
 {"type": "agent_info", "agenttoken": "aB3xK9..."}
 
-// agent_subscribed
-{"type": "agent_subscribed", "agenttoken": "aB3xK9...", "status": "agent_queue", "result": true}
+// agent_subscribed (valid token — debugoutput present)
+{"type": "agent_subscribed", "agenttoken": "aB3xK9...", "status": "agent_queue", "debugoutput": "", "result": true}
+
+// agent_subscribed (unknown token — debugoutput field omitted)
+{"type": "agent_subscribed", "agenttoken": "wrongtoken", "status": "agent_queue", "result": true}
 
 // agent_start
 {"type": "agent_start", "agenttoken": "aB3xK9...", "message": "", "result": true}
@@ -4250,9 +4270,13 @@ channel.stream.listen((message) {
 // agent_error
 {"type": "agent_error", "agenttoken": "aB3xK9...", "message": "Bridge timeout", "result": false}
 
-// agent_cancel
-{"type": "agent_cancel", "agenttoken": "aB3xK9...", "message": "The operation was aborted.", "result": false}
+// agent_cancel (active-processing abort only — queued-state cancels don't broadcast)
+{"type": "agent_cancel", "agenttoken": "aB3xK9...", "message": "AbortError", "result": false}
 ```
+
+## Connection Keep-Alive
+
+The Wiro WebSocket server sends a ping every **30 seconds** to keep the connection alive. Most standard WebSocket client libraries respond to pings automatically; if your client implements a custom frame handler, make sure it sends a pong within a few seconds of each ping or the server will drop the connection. After `agent_end` / `agent_error` / `agent_cancel`, you can close the socket safely — no more events will be sent for that `agenttoken`.
 
 ---
 
@@ -4340,7 +4364,7 @@ When the agent finishes, Wiro sends a **POST** request to your `callbackurl` wit
 }
 ```
 
-> **When the cancel webhook fires:** `agent_cancel` is delivered **only when the agent bridge catches an `AbortError`** during active processing — i.e. the message had already started on the agent side and was aborted mid-flight (via `POST /UserAgent/Message/Cancel` or an upstream timeout). For messages cancelled **before** they reach the bridge (still queued, or an instant `Message/Cancel` that beats dispatching), the message is marked `agent_cancel` in the database and returned as such in `POST /UserAgent/Message/Detail`, but **no webhook is fired** — there was no processing attempt to report on. Use `Message/Detail` or the `agent_statusupdate` WebSocket event as the canonical source of truth for cancellation, and treat the webhook as a best-effort "processing was interrupted" signal.
+> **When the cancel webhook fires:** `agent_cancel` is delivered **only when the agent bridge catches an `AbortError`** during active processing — i.e. the message had already started on the agent side and was aborted mid-flight (via `POST /UserAgent/Message/Cancel` or an upstream timeout). For messages cancelled **before** they reach the bridge (still queued, or an instant `Message/Cancel` that beats dispatching), the message is marked `agent_cancel` in the database and returned as such in `POST /UserAgent/Message/Detail`, but **no webhook is fired** — there was no processing attempt to report on. Use `POST /UserAgent/Message/Detail` (checking `status === "agent_cancel"`) as the canonical source of truth for cancellation; WebSocket subscribers receive the `agent_cancel` event only on active-processing aborts (same condition as the webhook). Treat the webhook as a best-effort "processing was interrupted" signal.
 
 ### Field Reference
 
@@ -4598,8 +4622,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
 
 - Only fields marked `_editable: true` in the agent template are accepted. Non-editable fields are silently ignored.
 - Credential groups that don't exist in the template cannot be added — you can only update keys the agent declares.
-- Array credentials (`firebase.accounts`, `appstore.apps`, etc.) use positional indexing. Sending more indices than the template has creates new entries cloned from the template shape, constrained to template-editable fields. **Sending fewer indices truncates the array** — if the agent has 3 Firebase accounts and you send only 2, the third is removed.
-- Use `POST /UserAgent/Detail` to inspect the `_editable` map for each credential group.
+- **Positional-index merge applies only to `credentials.{group}.accounts[]` arrays** (the pattern used by `firebase` — an array of per-account objects with their own `_editable` maps). For these arrays: sending more indices than the template has creates new entries cloned from the template shape (constrained to template-editable fields); **sending fewer indices truncates the array** — e.g. if the agent has 3 Firebase accounts and you send only 2, the third is removed.
+- Other array-shaped credentials (`appstore.apps`, `googleplay.apps`, `googledrive.folders`, `website.urls`, etc.) are **replace-only** — the whole array is overwritten when you send it (no positional merge, no per-index preservation). Send the complete desired list.
+- Use `POST /UserAgent/Detail` to inspect the `_editable` map for each credential group (and, for `accounts`-shaped groups, the per-account `_editable` nested inside each array element).
 
 ### Prepaid deploy gotcha
 

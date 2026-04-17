@@ -198,16 +198,18 @@ Common string errors include `"Bridge timeout"`, `"OpenClaw returned HTTP 500"`,
 
 ### agent_cancel
 
-Sent when the user cancels a message before the agent completes its response:
+Sent when the user cancels a message before the agent completes its response (only when the abort hits the bridge mid-flight — queued-state cancels don't broadcast this event):
 
 ```json
 {
   "type": "agent_cancel",
   "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
-  "message": "The operation was aborted.",
+  "message": "AbortError",
   "result": false
 }
 ```
+
+> The `message` field carries the abort reason from the runtime (typically `"AbortError"` or a short technical string). It is **not a fixed user-facing message** — do not parse it for exact strings; use `type === "agent_cancel"` as the signal. Subscribers that cancel from a queued state will receive no event at all (the message is simply marked `agent_cancel` in the database; check with `POST /UserAgent/Message/Detail`).
 
 ## The `result` Field
 
@@ -651,8 +653,11 @@ channel.stream.listen((message) {
 // Subscribe
 {"type": "agent_info", "agenttoken": "aB3xK9..."}
 
-// agent_subscribed
-{"type": "agent_subscribed", "agenttoken": "aB3xK9...", "status": "agent_queue", "result": true}
+// agent_subscribed (valid token — debugoutput present)
+{"type": "agent_subscribed", "agenttoken": "aB3xK9...", "status": "agent_queue", "debugoutput": "", "result": true}
+
+// agent_subscribed (unknown token — debugoutput field omitted)
+{"type": "agent_subscribed", "agenttoken": "wrongtoken", "status": "agent_queue", "result": true}
 
 // agent_start
 {"type": "agent_start", "agenttoken": "aB3xK9...", "message": "", "result": true}
@@ -666,6 +671,10 @@ channel.stream.listen((message) {
 // agent_error
 {"type": "agent_error", "agenttoken": "aB3xK9...", "message": "Bridge timeout", "result": false}
 
-// agent_cancel
-{"type": "agent_cancel", "agenttoken": "aB3xK9...", "message": "The operation was aborted.", "result": false}
+// agent_cancel (active-processing abort only — queued-state cancels don't broadcast)
+{"type": "agent_cancel", "agenttoken": "aB3xK9...", "message": "AbortError", "result": false}
 ```
+
+## Connection Keep-Alive
+
+The Wiro WebSocket server sends a ping every **30 seconds** to keep the connection alive. Most standard WebSocket client libraries respond to pings automatically; if your client implements a custom frame handler, make sure it sends a pong within a few seconds of each ping or the server will drop the connection. After `agent_end` / `agent_error` / `agent_cancel`, you can close the socket safely — no more events will be sent for that `agenttoken`.

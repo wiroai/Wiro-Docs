@@ -4251,15 +4251,16 @@ import type {
 }</code></pre>
 
 <h2><span class="endpoint-badge post">POST</span> /Agent/Detail</h2>
-<p>Retrieves full details for a single agent by guid or slug. This is a <strong>public endpoint</strong> — no authentication required.</p>
+<p>Retrieves details for a single agent by guid or slug. This is a <strong>public endpoint</strong> — no authentication required.</p>
 <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
 <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
 <tbody>
-<tr><td><code>guid</code></td><td>string</td><td>No*</td><td>Agent guid</td></tr>
-<tr><td><code>slug</code></td><td>string</td><td>No*</td><td>Agent slug (e.g. <code>"instagram-manager"</code>)</td></tr>
+<tr><td><code>guid</code></td><td>string</td><td>No*</td><td>Agent guid.</td></tr>
+<tr><td><code>slug</code></td><td>string</td><td>No*</td><td>Agent slug (e.g. <code>"instagram-manager"</code>).</td></tr>
+<tr><td><code>type</code></td><td>string</td><td>No</td><td>Pass <code>"full"</code> to receive the complete <code>configuration</code> tree (agent_skills, custom_skills, rateLimit, full credentials schema). Without <code>type: "full"</code>, the response returns a <strong>trimmed</strong> <code>configuration</code> object containing only <code>{ credentials }</code> (sanitized for template browsing).</td></tr>
 </tbody>
 </table></div></div>
-<div class="info-callout"><strong>Note:</strong> You must provide either <code>guid</code> or <code>slug</code>. If both are provided, <code>slug</code> takes priority.</div>
+<div class="info-callout"><strong>Note:</strong> You must provide either <code>guid</code> or <code>slug</code>. If both are provided, <code>slug</code> takes priority. Pass <code>type: "full"</code> when you need the complete template (including <code>custom_skills</code> keys to preview before deploy); omit it for a lightweight catalog listing.</div>
 
 <h3>Response</h3>
 <pre><code class="language-json">{
@@ -4301,18 +4302,25 @@ import type {
 }</code></pre>
 
 <h2><span class="endpoint-badge post">POST</span> /UserAgent/Deploy</h2>
-<p>Creates a new agent instance from a catalog template. The agent is created with status <code>6</code> (Setup Required). After deploying, call <code>UserAgent/Detail</code> to see which credentials are needed, provide them via <code>UserAgent/Update</code>, then call <code>UserAgent/Start</code> to launch the agent. The subscription cost is deducted from your prepaid wallet immediately.</p>
+<p>Creates a new agent instance from a catalog template.</p>
+<p>Deploy has two modes depending on <code>useprepaid</code>:</p>
+<ul>
+<li><strong>Normal deploy</strong> (default, <code>useprepaid</code> omitted or <code>false</code>): instance is queued for immediate launch — status <code>2</code> (Queued). Any <code>configuration.credentials</code> and <code>configuration.custom_skills</code> you pass in the body are merged into the instance's config using <code>mergeUserConfig</code> (only fields marked <code>_editable: true</code> in the template are written; unknown keys are ignored).</li>
+<li><strong>Prepaid deploy</strong> (<code>useprepaid: true</code> + <code>plan</code>): wallet is charged immediately, instance is created in status <code>6</code> (Setup Required). <strong><code>configuration.credentials</code> and <code>configuration.custom_skills</code> in the prepaid deploy body are ignored</strong> — you must call <code>POST /UserAgent/Update</code> separately after deploy to set credentials and customize skills. After credentials are complete, status auto-transitions to <code>0</code> (Stopped) and you can call <code>UserAgent/Start</code>.</li>
+</ul>
 <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>
 <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
 <tbody>
-<tr><td><code>agentguid</code></td><td>string</td><td>Yes</td><td>The guid of the agent template from the catalog</td></tr>
-<tr><td><code>title</code></td><td>string</td><td>Yes</td><td>Display name for your instance</td></tr>
-<tr><td><code>description</code></td><td>string</td><td>No</td><td>Optional description</td></tr>
-<tr><td><code>configuration</code></td><td>object</td><td>No</td><td>Initial credential values. Format: <code>{ "credentials": { "key": "value" } }</code></td></tr>
-<tr><td><code>useprepaid</code></td><td>boolean</td><td>Yes</td><td>Set to <code>true</code> to pay from wallet balance. Cost is deducted immediately.</td></tr>
-<tr><td><code>plan</code></td><td>string</td><td>Yes</td><td>Plan tier: <code>"starter"</code> or <code>"pro"</code>. Check <code>Agent/Detail</code> pricing for available plans and prices.</td></tr>
+<tr><td><code>agentguid</code></td><td>string</td><td>Yes</td><td>The guid of the agent template from the catalog.</td></tr>
+<tr><td><code>title</code></td><td>string</td><td>Yes</td><td>Display name for your instance.</td></tr>
+<tr><td><code>description</code></td><td>string</td><td>No</td><td>Optional description.</td></tr>
+<tr><td><code>configuration</code></td><td>object</td><td>No</td><td>Initial values (normal deploy only — ignored in prepaid deploy). Shape: <code>{ "credentials": { ... }, "custom_skills": [...] }</code>. Both sub-fields are optional; either (or both) can be provided. <code>mergeUserConfig</code> only writes fields that are <code>_editable: true</code> in the template and silently ignores the rest.</td></tr>
+<tr><td><code>useprepaid</code></td><td>boolean</td><td>No</td><td>Set to <code>true</code> to pay from wallet balance. Requires <code>plan</code>. Defaults to <code>false</code> (normal deploy).</td></tr>
+<tr><td><code>plan</code></td><td>string</td><td>Conditional</td><td>Plan tier: <code>"starter"</code> or <code>"pro"</code>. Required when <code>useprepaid</code> is <code>true</code>.</td></tr>
+<tr><td><code>pinned</code></td><td>boolean</td><td>No</td><td><strong>Prepaid deploy only.</strong> Whether the agent appears in the pinned agents list (defaults to <code>true</code>). Normal deploy ignores this parameter — instances are always pinned on creation. To unpin a normal-deploy agent, call <code>POST /UserAgent/Pin</code> afterwards.</td></tr>
 </tbody>
 </table></div></div>
+<p><strong>Headers:</strong> Standard authentication (<code>x-api-key</code> or <code>x-nonce</code> + <code>x-signature</code>). For <strong>team-scoped agents</strong> (when an end user deploys via a team project), pass <code>teamGUID: &lt;team-guid&gt;</code> as an additional request header — the API validates the caller is a member of that team before writing the instance row. Personal deployments omit this header.</p>
 
 <h3>Request</h3>
 <pre><code class="language-json">POST /UserAgent/Deploy
@@ -5031,7 +5039,13 @@ POST /UserAgent/Message/History { "useragentguid": "...", "limit": 50, "before":
   "result": true,
   "errors": []
 }</code></pre>
-<p>On success, the message status changes to <code>agent_cancel</code> and all subscribed WebSocket clients receive an <code>agent_cancel</code> event.</p>
+<p>On success, the message status changes to <code>agent_cancel</code> in the database.</p>
+<p class="docs-callout"><strong>Behavior depends on when the cancel hits:</strong></p>
+<ul>
+<li>If the message was <strong>already being processed</strong> by the agent bridge (status <code>agent_start</code> or <code>agent_output</code>), the bridge's abort handler fires: subscribed WebSocket clients receive an <code>agent_cancel</code> event, <code>debugoutput</code> / <code>response</code> are populated with the abort reason (typically <code>"AbortError"</code> or similar technical message — not guaranteed to be a fixed user-facing string), and the <code>callbackurl</code> webhook (if set) is triggered with <code>status: "agent_cancel"</code>.</li>
+<li>If the message was <strong>still queued</strong> (status <code>agent_queue</code>) when cancelled, no processing attempt had started: the row is marked <code>agent_cancel</code> but <code>response</code> and <code>debugoutput</code> remain empty strings, <strong>no WebSocket <code>agent_cancel</code> event</strong> is broadcast, and <strong>no webhook</strong> is triggered.</li>
+</ul>
+<p>When polling for the final state, check <code>status === "agent_cancel"</code> rather than relying on non-empty <code>response</code> / <code>debugoutput</code> (they may be empty for queued-state cancellations).</p>
 </section>
 
 <section id="session-management">
@@ -5636,7 +5650,7 @@ ws.onopen = () => {
   "endedat": 1712050004
 }</code></pre>
 
-<p class="docs-callout"><strong>When the cancel webhook fires:</strong> <code>agent_cancel</code> is delivered <strong>only when the agent bridge catches an <code>AbortError</code></strong> during active processing — i.e. the message had already started on the agent side and was aborted mid-flight (via <code>POST /UserAgent/Message/Cancel</code> or an upstream timeout). For messages cancelled <strong>before</strong> they reach the bridge (still queued, or an instant <code>Message/Cancel</code> that beats dispatching), the message is marked <code>agent_cancel</code> in the database and returned as such in <code>POST /UserAgent/Message/Detail</code>, but <strong>no webhook is fired</strong>. Use <code>Message/Detail</code> or the <code>agent_statusupdate</code> WebSocket event as the canonical source of truth for cancellation, and treat the webhook as a best-effort "processing was interrupted" signal.</p>
+<p class="docs-callout"><strong>When the cancel webhook fires:</strong> <code>agent_cancel</code> is delivered <strong>only when the agent bridge catches an <code>AbortError</code></strong> during active processing — i.e. the message had already started on the agent side and was aborted mid-flight (via <code>POST /UserAgent/Message/Cancel</code> or an upstream timeout). For messages cancelled <strong>before</strong> they reach the bridge (still queued, or an instant <code>Message/Cancel</code> that beats dispatching), the message is marked <code>agent_cancel</code> in the database and returned as such in <code>POST /UserAgent/Message/Detail</code>, but <strong>no webhook is fired</strong>. Use <code>POST /UserAgent/Message/Detail</code> (checking <code>status === "agent_cancel"</code>) as the canonical source of truth for cancellation; WebSocket subscribers receive the <code>agent_cancel</code> event only on active-processing aborts (same condition as the webhook). Treat the webhook as a best-effort "processing was interrupted" signal.</p>
 
 <h3>Field Reference</h3>
 <div class="docs-param-table"><div class="docs-param-table-wrapper"><table>

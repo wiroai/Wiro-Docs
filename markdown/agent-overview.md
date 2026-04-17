@@ -116,14 +116,15 @@ Lists available agents in the catalog. This is a **public endpoint** — no auth
 
 #### **POST** /Agent/Detail
 
-Retrieves full details for a single agent by guid or slug. This is a **public endpoint** — no authentication required.
+Retrieves details for a single agent by guid or slug. This is a **public endpoint** — no authentication required.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `guid` | string | No* | Agent guid |
-| `slug` | string | No* | Agent slug (e.g. `"instagram-manager"`) |
+| `guid` | string | No* | Agent guid. |
+| `slug` | string | No* | Agent slug (e.g. `"instagram-manager"`). |
+| `type` | string | No | Pass `"full"` to receive the complete `configuration` tree (agent_skills, custom_skills, rateLimit, full credentials schema). Without `type: "full"`, the response returns a **trimmed** `configuration` object containing only `{ credentials }` (sanitized for template browsing). |
 
-> **Note:** You must provide either `guid` or `slug`. If both are provided, `slug` takes priority.
+> **Note:** You must provide either `guid` or `slug`. If both are provided, `slug` takes priority. Pass `type: "full"` when you need the complete template (including `custom_skills` keys to preview before deploy); omit it for a lightweight catalog listing.
 
 ##### Response
 
@@ -177,18 +178,20 @@ Creates a new agent instance from a catalog template.
 
 Deploy has two modes depending on `useprepaid`:
 
-- **Normal deploy** (default, `useprepaid` omitted or `false`): instance is queued for immediate launch — status `2` (Queued). Any `configuration.credentials` you pass in the body are merged into the instance's config.
-- **Prepaid deploy** (`useprepaid: true` + `plan`): wallet is charged immediately, instance is created in status `6` (Setup Required). **`configuration.credentials` in the prepaid deploy body is ignored** — you must call `POST /UserAgent/Update` separately to set credentials. After credentials are complete, status auto-transitions to `0` (Stopped) and you can call `UserAgent/Start`.
+- **Normal deploy** (default, `useprepaid` omitted or `false`): instance is queued for immediate launch — status `2` (Queued). Any `configuration.credentials` and `configuration.custom_skills` you pass in the body are merged into the instance's config using `mergeUserConfig` (only fields marked `_editable: true` in the template are written; unknown keys are ignored).
+- **Prepaid deploy** (`useprepaid: true` + `plan`): wallet is charged immediately, instance is created in status `6` (Setup Required). **`configuration.credentials` and `configuration.custom_skills` in the prepaid deploy body are ignored** — you must call `POST /UserAgent/Update` separately after deploy to set credentials and customize skills. After credentials are complete, status auto-transitions to `0` (Stopped) and you can call `UserAgent/Start`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `agentguid` | string | Yes | The guid of the agent template from the catalog |
-| `title` | string | Yes | Display name for your instance |
-| `description` | string | No | Optional description |
-| `configuration` | object | No | Initial credential values (normal deploy only — ignored in prepaid deploy). Format: `{ "credentials": { "key": "value" } }` |
+| `agentguid` | string | Yes | The guid of the agent template from the catalog. |
+| `title` | string | Yes | Display name for your instance. |
+| `description` | string | No | Optional description. |
+| `configuration` | object | No | Initial values (normal deploy only — ignored in prepaid deploy). Shape: `{ "credentials": { ... }, "custom_skills": [...] }`. Both sub-fields are optional; either (or both) can be provided. `mergeUserConfig` only writes fields that are `_editable: true` in the template and silently ignores the rest. |
 | `useprepaid` | boolean | No | Set to `true` to pay from wallet balance. Requires `plan`. Defaults to `false` (normal deploy). |
 | `plan` | string | Conditional | Plan tier: `"starter"` or `"pro"`. Required when `useprepaid` is `true`. |
 | `pinned` | boolean | No | **Prepaid deploy only.** Whether the agent appears in the pinned agents list (defaults to `true`). Normal deploy ignores this parameter — instances are always pinned on creation. To unpin a normal-deploy agent, call `POST /UserAgent/Pin` afterwards. |
+
+**Headers:** Standard authentication (`x-api-key` or `x-nonce` + `x-signature`). For **team-scoped agents** (when an end user deploys via a team project), pass `teamGUID: <team-guid>` as an additional request header — the API validates the caller is a member of that team before writing the instance row. Personal deployments omit this header.
 
 ##### Response
 
@@ -372,6 +375,9 @@ Retrieves full details for a single deployed agent instance, including subscript
       },
       "extracredits": 2000,
       "extracreditsexpiry": 1730419200,
+      "stripeportalurl": "https://billing.stripe.com/p/session/...",
+      "stripeupdateurl": "https://billing.stripe.com/p/session/.../subscriptions/update",
+      "stripecancelurl": "https://billing.stripe.com/p/session/.../subscriptions/cancel",
       "createdat": "1714608000",
       "updatedat": "1714694400",
       "startedat": "1714694400",
@@ -388,12 +394,15 @@ Retrieves full details for a single deployed agent instance, including subscript
 | `title` | `string` | Display name you gave this instance. |
 | `status` | `number` | Current status code (see UserAgent Statuses). |
 | `setuprequired` | `boolean` | `true` if credentials are missing or incomplete. |
-| `configuration` | `object` | Credential fields with values (passwords are masked). |
+| `configuration` | `object` | Sanitized `{ credentials, custom_skills, skills, agent_skills }` — non-editable sensitive fields (OAuth access tokens, platform `wiro.apiKey`, `openai.apiKey`, etc.) are hidden. Use this to see current credential values (user-editable ones populated, platform-managed ones blank) and custom_skills with their `_editable` flags. |
 | `subscription` | `object\|null` | Active subscription info, or `null` if no subscription. |
 | `agent` | `object` | Parent agent template info (title, slug, cover, pricing). |
 | `extracredits` | `number` | Remaining extra credits purchased for this instance. |
 | `extracreditsexpiry` | `number\|null` | Unix timestamp when the earliest extra credit pack expires. |
-| `subscription.provider` | `string` | Payment provider (`"prepaid"`). |
+| `stripeportalurl` | `string\|undefined` | **Stripe-only.** One-shot Stripe billing portal session URL for the customer to self-serve payment method / invoices. Only present when `subscription.provider === "stripe"` and the subscription is active. Omitted for prepaid instances. |
+| `stripeupdateurl` | `string\|undefined` | **Stripe-only.** Deep link into the billing portal's subscription-update flow (plan change). Same conditions as `stripeportalurl`. |
+| `stripecancelurl` | `string\|undefined` | **Stripe-only.** Deep link into the billing portal's cancellation flow. Same conditions as `stripeportalurl`. Use this URL for the "Cancel subscription" button — do NOT call `POST /UserAgent/CancelSubscription` on Stripe subscriptions (it returns an error telling you to use the portal). |
+| `subscription.provider` | `string` | Payment provider: `"prepaid"` (credits wallet) or `"stripe"` (subscription). |
 
 #### **POST** /UserAgent/Update
 

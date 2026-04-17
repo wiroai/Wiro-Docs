@@ -327,7 +327,7 @@ Response fields:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `connected` | boolean | `true` when `accessToken` is set and `authMethod` is `"wiro"` or `"own"`. |
+| `connected` | boolean | `true` when `accessToken` is set and `authMethod` is `"wiro"` or `"own"`. **Note:** this reflects **OAuth completion**, not full setup readiness — `adAccountId` is not required for `connected: true`. Use `setupcomplete` (from `POST /UserAgent/Detail`) or check `configuration.credentials.metaads.adAccountId` for end-to-end readiness to create campaigns. |
 | `username` | string | The saved `adAccountName`. |
 | `connectedAt` | string | ISO timestamp of connection. |
 | `tokenExpiresAt` | string | ISO timestamp (~60 days from connection). |

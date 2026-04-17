@@ -56,6 +56,8 @@ Accepts either `application/json` (text-only) or `multipart/form-data` (text + f
 }
 ```
 
+> **A successful Send response means the message was accepted and queued — not that it will definitely reach the agent.** After this response the system enqueues the job into Redis/BullMQ for the bridge to pick up. If the enqueue step itself fails (queue backpressure, Redis outage), the message row is flipped to `agent_error` server-side. Always confirm the final state via `POST /UserAgent/Message/Detail` or the WebSocket stream; don't assume the message progresses to `agent_start` just because Send returned `result: true`.
+
 | Field | Type | Description |
 |-------|------|-------------|
 | `messageguid` | `string` | Unique identifier for this message. Use it with Detail, History, or Cancel. |
@@ -105,7 +107,7 @@ Retrieves the current status and content of a single message. You can query by e
 | `debugoutput` | `string` | Accumulated output text. Updated during streaming, contains the full response after completion. |
 | `status` | `string` | Current message status (see Message Lifecycle). |
 | `metadata` | `string` | JSON string containing structured response data — `thinking`, `answer`, `raw`, speed metrics, and token/word counts. |
-| `attachments` | `array` | Present only if the message was sent via multipart with files. Array of file metadata objects. |
+| `attachments` | `string` (JSON) | Present only if the message was sent via multipart with files. Returned as a **JSON-encoded string** (not a parsed array) — parse it client-side with `JSON.parse` to get the array of `{filename, url, size, contentType}` entries. Identical shape in `Message/History` rows. |
 | `deletestatus` | `number` | Internal flag. `0` for normal messages. |
 | `createdat` | `string` | Unix timestamp when the message was created. |
 | `startedat` | `string` | Unix timestamp when the agent started processing. |
@@ -253,7 +255,14 @@ Cancels an in-progress message. Only messages in `agent_queue`, `agent_start`, o
 }
 ```
 
-On success, the message status changes to `agent_cancel` and all subscribed WebSocket clients receive an `agent_cancel` event.
+On success, the message status changes to `agent_cancel` in the database.
+
+> **Behavior depends on when the cancel hits:**
+>
+> - If the message was **already being processed** by the agent bridge (status `agent_start` or `agent_output`), the bridge's abort handler fires: subscribed WebSocket clients receive an `agent_cancel` event, `debugoutput` / `response` are populated with the abort reason (typically `"AbortError"` or similar technical message — not guaranteed to be a fixed user-facing string), and the `callbackurl` webhook (if set) is triggered with `status: "agent_cancel"`.
+> - If the message was **still queued** (status `agent_queue`) when cancelled, no processing attempt had started: the row is marked `agent_cancel` but `response` and `debugoutput` remain empty strings, **no WebSocket `agent_cancel` event** is broadcast, and **no webhook** is triggered.
+>
+> When polling for the final state, check `status === "agent_cancel"` rather than relying on non-empty `response` / `debugoutput` (they may be empty for queued-state cancellations).
 
 ## Session Management
 

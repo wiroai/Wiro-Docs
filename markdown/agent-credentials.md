@@ -86,8 +86,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
 
 - Only fields marked `_editable: true` in the agent template are accepted. Non-editable fields are silently ignored.
 - Credential groups that don't exist in the template cannot be added — you can only update keys the agent declares.
-- Array credentials (`firebase.accounts`, `appstore.apps`, etc.) use positional indexing. Sending more indices than the template has creates new entries cloned from the template shape, constrained to template-editable fields. **Sending fewer indices truncates the array** — if the agent has 3 Firebase accounts and you send only 2, the third is removed.
-- Use `POST /UserAgent/Detail` to inspect the `_editable` map for each credential group.
+- **Positional-index merge applies only to `credentials.{group}.accounts[]` arrays** (the pattern used by `firebase` — an array of per-account objects with their own `_editable` maps). For these arrays: sending more indices than the template has creates new entries cloned from the template shape (constrained to template-editable fields); **sending fewer indices truncates the array** — e.g. if the agent has 3 Firebase accounts and you send only 2, the third is removed.
+- Other array-shaped credentials (`appstore.apps`, `googleplay.apps`, `googledrive.folders`, `website.urls`, etc.) are **replace-only** — the whole array is overwritten when you send it (no positional merge, no per-index preservation). Send the complete desired list.
+- Use `POST /UserAgent/Detail` to inspect the `_editable` map for each credential group (and, for `accounts`-shaped groups, the per-account `_editable` nested inside each array element).
 
 ### Prepaid deploy gotcha
 
