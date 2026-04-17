@@ -5798,6 +5798,90 @@ ws.onopen = () => {
 }</code></pre>
 </section>
 
+<section id="correlating-events">
+<h2>Correlating Events With Your Messages</h2>
+<p>Every agent lifecycle frame (<code>agent_subscribed</code> / <code>agent_start</code> / <code>agent_output</code> / <code>agent_end</code> / <code>agent_error</code> / <code>agent_cancel</code>) carries <code>agenttoken</code> — this is the <strong>only</strong> correlation key available on the wire. The wire payload does <strong>not</strong> include <code>messageguid</code>, <code>sessionkey</code>, or <code>useragentguid</code>. If you need any of those fields to route events back to a specific message in your UI, build the mapping yourself when you call <code>Message/Send</code>.</p>
+
+<h3>Why <code>agenttoken</code> is the correlation key</h3>
+<ul>
+<li><code>Message/Send</code> issues exactly one <code>agenttoken</code> per message and returns it alongside <code>messageguid</code> in the HTTP response.</li>
+<li>The bridge stamps the same <code>agenttoken</code> on every event it emits for that message.</li>
+<li>Multiple connections can subscribe to the same <code>agenttoken</code> and each gets the full event stream — so <code>agenttoken</code> is also the fan-out key.</li>
+<li>A single socket can hold subscriptions for many <code>agenttoken</code>s at once — the per-event <code>agenttoken</code> lets your handler dispatch into the right UI element.</li>
+</ul>
+
+<h3>Recommended client pattern</h3>
+<ol>
+<li>Call <code>POST /UserAgent/Message/Send</code> — you get back <code>{ messageguid, agenttoken, status: "agent_queue", ... }</code>.</li>
+<li>Store the mapping <code>agenttoken → messageguid</code> (or <code>agenttoken → your UI message id</code>).</li>
+<li>Send <code>{ "type": "agent_info", "agenttoken" }</code> on an open socket (new or existing — connections can be reused).</li>
+<li>In <code>ws.onmessage</code>, read <code>msg.agenttoken</code> on every agent lifecycle frame, look up your stored mapping, and update the matching UI element.</li>
+<li>When you see a terminal event (<code>agent_end</code> / <code>agent_error</code> / <code>agent_cancel</code>), delete the mapping so it doesn't leak memory across sessions.</li>
+</ol>
+
+<pre><code class="language-javascript">const tokenToMessageId = new Map()
+
+async function sendMessage(text, uiMessageId) {
+  const resp = await fetch('https://api.wiro.ai/v1/UserAgent/Message/Send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': 'YOUR_API_KEY' },
+    body: JSON.stringify({
+      useragentguid: 'your-useragent-guid',
+      message: text,
+      sessionkey: 'user-42'
+    })
+  }).then(r =&gt; r.json())
+
+  tokenToMessageId.set(resp.agenttoken, uiMessageId)
+  ws.send(JSON.stringify({ type: 'agent_info', agenttoken: resp.agenttoken }))
+  return { messageguid: resp.messageguid, agenttoken: resp.agenttoken }
+}
+
+ws.onmessage = (event) =&gt; {
+  const msg = JSON.parse(event.data)
+  if (!msg.agenttoken) return  // control frames (connected / error) have no token
+
+  const uiMessageId = tokenToMessageId.get(msg.agenttoken)
+  if (!uiMessageId) return
+
+  switch (msg.type) {
+    case 'agent_output':
+      updateUI(uiMessageId, { streaming: msg.message.raw })
+      break
+    case 'agent_end':
+      updateUI(uiMessageId, { final: msg.message.raw, status: 'agent_end' })
+      tokenToMessageId.delete(msg.agenttoken)
+      break
+    case 'agent_error':
+    case 'agent_cancel':
+      updateUI(uiMessageId, { error: msg.message, status: msg.type })
+      tokenToMessageId.delete(msg.agenttoken)
+      break
+  }
+}</code></pre>
+
+<h3>Concurrency: multiple in-flight messages on one session</h3>
+<p>Sending two messages back-to-back in the same <code>sessionkey</code> produces two independent <code>agenttoken</code>s. Both reach the bridge in queue order; both stream events independently. Your client must:</p>
+<ul>
+<li>Subscribe to <strong>both</strong> <code>agenttoken</code>s (one <code>agent_info</code> frame each — the server de-duplicates automatically).</li>
+<li>Key all UI updates on <code>agenttoken</code>, not on <code>sessionkey</code> (which is shared) or timestamps (which can interleave).</li>
+</ul>
+<p>The server never mixes streams — every event is stamped with the originating <code>agenttoken</code> so routing is unambiguous even when chunks from two messages interleave on the wire.</p>
+
+<h3>Control frames have no <code>agenttoken</code></h3>
+<p>The welcome frame and the subscribe-error frame are connection-level signals, not per-message events. They intentionally <strong>omit</strong> <code>agenttoken</code>:</p>
+<pre><code class="language-json">{
+  "type": "connected",
+  "version": "1.0"
+}</code></pre>
+<pre><code class="language-json">{
+  "type": "error",
+  "message": "agenttoken-required",
+  "result": false
+}</code></pre>
+<p>Always null-check <code>msg.agenttoken</code> before looking it up in your mapping — see the <code>if (!msg.agenttoken) return</code> guard in the example above.</p>
+</section>
+
 <section id="reconnection-recovery">
 <h2>Reconnection &amp; Recovery</h2>
 <p>The agent keeps running server-side <strong>regardless of whether any client is subscribed</strong>. A disconnected socket never cancels the agent. This means a dropped connection is always recoverable — just reconnect and re-subscribe with the same <code>agenttoken</code>.</p>
