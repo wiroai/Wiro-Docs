@@ -225,7 +225,7 @@ Uses `grant_type=refresh_token`. Returns new access + refresh tokens. See [Autom
 
 ## Using the Skill
 
-Once the X account is connected, the agent's existing scheduled tasks use the `twitterx-post` platform skill to publish. To adjust the cron of the built-in `content-scanner` task (Social Manager), send an Update with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for `_editable: false` skills:
+Once the X account is connected, the agent's existing scheduled tasks use the `twitterx-post` platform skill to publish. To adjust the cron of the built-in `cron-content-scanner` task (Social Manager), send an Update with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for `_editable: false` skills:
 
 ```json
 {
@@ -233,7 +233,7 @@ Once the X account is connected, the agent's existing scheduled tasks use the `t
   "configuration": {
     "custom_skills": [
       {
-        "key": "content-scanner",
+        "key": "cron-content-scanner",
         "enabled": true,
         "interval": "0 */4 * * *"
       }

@@ -230,7 +230,7 @@ Uses the stored refresh token. Returns new access + refresh tokens. See [Automat
 
 ## Using the Skill
 
-Once the LinkedIn Company Page is connected (organization ID persisted), the agent's scheduled tasks use the `linkedin-post` platform skill to publish text, image, and video posts to the Company Page. To adjust the cron of the built-in `content-scanner` task (Social Manager), send an Update with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for `_editable: false` skills:
+Once the LinkedIn Company Page is connected (organization ID persisted), the agent's scheduled tasks use the `linkedin-post` platform skill to publish text, image, and video posts to the Company Page. To adjust the cron of the built-in `cron-content-scanner` task (Social Manager), send an Update with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for `_editable: false` skills:
 
 ```json
 {
@@ -238,7 +238,7 @@ Once the LinkedIn Company Page is connected (organization ID persisted), the age
   "configuration": {
     "custom_skills": [
       {
-        "key": "content-scanner",
+        "key": "cron-content-scanner",
         "enabled": true,
         "interval": "0 */4 * * *"
       }

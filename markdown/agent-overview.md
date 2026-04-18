@@ -375,7 +375,7 @@ Retrieves full details for a single deployed agent instance, including subscript
             "_editable": true
           },
           {
-            "key": "content-scanner",
+            "key": "cron-content-scanner",
             "description": "Content discovery with rotating strategies",
             "value": "",
             "enabled": true,
@@ -472,7 +472,7 @@ The Stripe path (panel/UI deploy flow) adds three billing portal URLs; prepaid i
             "_editable": true
           },
           {
-            "key": "content-scanner",
+            "key": "cron-content-scanner",
             "description": "Content discovery with rotating strategies",
             "value": "",
             "enabled": true,
@@ -594,7 +594,7 @@ Updates an agent instance's configuration, title, or description. If the agent i
             "_editable": true
           },
           {
-            "key": "content-scanner",
+            "key": "cron-content-scanner",
             "description": "Content discovery with rotating strategies",
             "value": "",
             "enabled": true,

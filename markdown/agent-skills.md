@@ -38,7 +38,7 @@ Call `POST /UserAgent/Detail` to fetch the agent instance. The skill array lives
     "_editable": true
   },
   {
-    "key": "content-scanner",
+    "key": "cron-content-scanner",
     "value": "",
     "description": "Content discovery with rotating strategies",
     "enabled": true,
@@ -54,29 +54,29 @@ Call `POST /UserAgent/Detail` to fetch the agent instance. The skill array lives
 |-------|------|-------------|
 | `key` | string | Unique skill identifier. Use this in Update requests. |
 | `value` | string | Skill instructions/content. Visible only when `_editable: true` — otherwise empty string. |
-| `description` | string | Human-readable description of what the skill does. |
-| `enabled` | boolean | Whether the skill is active. |
-| `interval` | string \| null | Cron expression for scheduled execution, or `null` for preference-only skills. |
-| `_editable` | boolean | Indicates whether `value` / `description` can be modified. Cron skills are `_editable: false` and only accept `enabled` / `interval`; preference skills are `_editable: true` and only accept `value` / `description`. See [Skill types cheat-sheet](#skill-types-cheat-sheet) below. |
+| `description` | string | Human-readable description of what the skill does. **Read-only — set by the agent template, never accepted in Update payloads.** |
+| `enabled` | boolean | Whether the skill is active. Writable on **cron skills only** (keys prefixed with `cron-`). Dropped by the backend if sent on a preference skill. |
+| `interval` | string \| null | Cron expression for scheduled execution, or `null` for preference skills. Writable on **cron skills only**. Dropped if sent on a preference skill. |
+| `_editable` | boolean | `true` for preference skills (you can update `value`), `false` for cron skills (you can update `enabled` / `interval`). See [Skill types cheat-sheet](#skill-types-cheat-sheet) below. |
 
 ### Skill Types Cheat-Sheet
 
-The backend decides which fields are writable by looking at the template's `interval` field on the existing skill:
+The backend decides which fields are writable by looking at the skill's **key prefix**:
 
-| Skill type | `interval` in template | `_editable` | Writable fields | Everything else |
+| Skill type | Key prefix | `_editable` | Writable fields | Silently dropped if sent |
 |---|---|---|---|---|
-| **Cron skill** (scheduled task) | non-null cron string (e.g. `"0 */4 * * *"`) | `false` | `enabled`, `interval` | silently ignored |
-| **Preference skill** (instructions) | `null` | `true` | `value`, `description` | silently ignored |
+| **Cron skill** (scheduled task) | `cron-*` | `false` | `enabled`, `interval` | `value`, `description`, and everything else |
+| **Preference skill** (instructions) | no prefix | `true` | `value` | `enabled`, `interval`, `description`, and everything else |
 
-**No prefix needed** — the `interval` field is the canonical discriminator. Keys like `content-scanner` are cron skills because their template `interval` is a cron expression; keys like `content-tone` are preference skills because their template `interval` is `null`.
+**The `cron-` prefix is the canonical discriminator.** Both `mergeUserConfig` (backend) and the Wiro Dashboard UI branch on this prefix. `description` is **never** writable from the client on either skill type — it's a template-only field. The `interval` field still carries the cron expression for scheduled tasks, but the skill *type* is determined by the key prefix.
 
-> **Cross-type fields are dropped at merge time.** If you send `{ key: "content-tone", enabled: false }` (preference skill + cron-only field), the backend drops `enabled` before writing — no error is raised, but the change is not persisted. Same the other way: `{ key: "content-scanner", value: "..." }` drops `value`. Always fetch `POST /UserAgent/Detail` first to see the real `interval` and pick the right update shape.
+> **Cross-type fields are dropped at merge time.** If you send `{ key: "content-tone", enabled: false }` (preference skill + cron-only field), the backend drops `enabled` before writing — no error is raised, but the change is not persisted. Same the other way: `{ key: "cron-content-scanner", value: "..." }` drops `value`. `description` is dropped regardless of skill type. Always fetch `POST /UserAgent/Detail` first to see the real `key` (with or without `cron-` prefix) and pick the right update shape.
 
 ## Updating Preferences
 
-Preference skills (`_editable: true`, `interval: null`) let you customize the agent's behavior by editing its instructions.
+Preference skills (`_editable: true`, no `cron-` prefix) let you customize the agent's behavior by editing its instructions.
 
-> **Send only `value` (and optionally `description`) to a preference skill.** `enabled` and `interval` fields are dropped by `mergeUserConfig` for preference skills — they have no runtime effect anyway (preference skills are read on-demand by cron tasks via `cs-<slug>`; they're never scheduled themselves).
+> **Send only `value` to a preference skill.** `enabled`, `interval`, and `description` are all dropped by `mergeUserConfig` on preference skills. They have no runtime effect anyway — preference skills are read on-demand by cron tasks via `cs-<slug>`; they're never scheduled themselves. If you need the skill's display description, read it from `POST /UserAgent/Detail`.
 
 Send a `POST /UserAgent/Update` request with only the preference skills you want to change. Unmodified skills are preserved (the payload is **merged** with the existing config).
 
@@ -132,7 +132,7 @@ Send a `POST /UserAgent/Update` request with only the preference skills you want
 
 Scheduled tasks (`_editable: false`, non-null `interval`) run automatically on a cron schedule.
 
-> **Only `enabled` and `interval` are writable for scheduled tasks.** `value` and `description` fields on a cron skill are dropped by `mergeUserConfig` — the task body is template-controlled and re-materialised on every container restart from the instance JSON. To change **what** a scheduled task does, edit the paired preference skill (`cs-<slug>`, `_editable: true`) that the cron reads at runtime.
+> **Only `enabled` and `interval` are writable for cron skills** (keys prefixed with `cron-`). `value` and `description` on a cron skill are dropped by `mergeUserConfig` — the task body is template-controlled and re-materialised on every container restart from the instance JSON. To change **what** a scheduled task does, edit the paired preference skill (`cs-<slug>`, `_editable: true`) that the cron reads at runtime.
 
 ### Example: Change scanner frequency
 
@@ -142,12 +142,12 @@ Scheduled tasks (`_editable: false`, non-null `interval`) run automatically on a
   "configuration": {
     "custom_skills": [
       {
-        "key": "review-scanner",
+        "key": "cron-review-scanner",
         "enabled": true,
         "interval": "0 */4 * * *"
       },
       {
-        "key": "content-scanner",
+        "key": "cron-content-scanner",
         "enabled": false
       }
     ]
@@ -194,7 +194,7 @@ Response excerpt (`configuration.custom_skills`):
     "_editable": true
   },
   {
-    "key": "push-scanner",
+    "key": "cron-push-scanner",
     "value": "",
     "description": "Scan holidays and craft push notification suggestions",
     "enabled": true,
@@ -202,7 +202,7 @@ Response excerpt (`configuration.custom_skills`):
     "_editable": false
   },
   {
-    "key": "push-dispatcher",
+    "key": "cron-push-dispatcher",
     "value": "",
     "description": "Send queued push notifications on schedule",
     "enabled": true,
@@ -226,12 +226,12 @@ Response excerpt (`configuration.custom_skills`):
         "value": "## Push Tone\nFriendly and casual. Turkish for locale_tr, English for locale_en.\n\n## Holiday Preferences\nFocus on: New Year, Ramadan, Republic Day.\nSkip: Valentine's Day, Halloween.\n\n## Targeting\nAlways segment by locale. Premium version for paid users."
       },
       {
-        "key": "push-scanner",
+        "key": "cron-push-scanner",
         "enabled": true,
         "interval": "0 9 * * 1"
       },
       {
-        "key": "push-dispatcher",
+        "key": "cron-push-dispatcher",
         "interval": "0 */2 * * *"
       }
     ]
@@ -270,43 +270,43 @@ This single request:
 
 | Agent | Skill Key | Cron | What It Does |
 |-------|-----------|------|--------------|
-| Social Manager | `content-scanner` | `0 */4 * * *` | Content discovery + draft generation (reads `cs-content-tone`) |
-| Social Manager | `gmail-checker` | `*/30 * * * *` | Inbox monitoring for incoming requests (disabled by default) |
-| Social Manager | `drive-scanner` | `0 10 * * *` | Google Drive asset scanning (disabled by default) |
-| Blog Content Editor | `blog-scanner` | `0 9 * * *` | Topic discovery + article drafting (reads `cs-content-strategy`) |
-| Blog Content Editor | `gmail-checker` | `*/30 * * * *` | Inbox monitoring for topic requests |
-| App Review Support | `review-scanner` | `0 */2 * * *` | Store scanning for new reviews (reads `cs-review-preferences`) |
-| App Event Manager | `app-event-scanner` | `0 9 * * 1` | Holiday scanning + event suggestions (reads `cs-event-preferences`) |
-| Push Notification Manager | `push-scanner` | `0 9 * * *` | Notification content preparation (reads `cs-push-preferences`) |
-| Push Notification Manager | `push-dispatcher` | `0 * * * *` | Dispatching queued notifications |
-| Newsletter Manager | `newsletter-sender` | `0 9 * * 1` | Newsletter drafting and sending (reads `cs-newsletter-strategy`) |
-| Newsletter Manager | `subscriber-scanner` | `0 10 * * *` | Subscriber list health checks |
-| Lead Gen Manager | `prospect-scanner` | `0 10 * * 1` | Prospect discovery and scoring (reads `cs-lead-strategy`) |
-| Lead Gen Manager | `outreach-reporter` | `0 9 * * *` | Outreach performance reporting |
-| Lead Gen Manager | `reply-handler` | `0 */4 * * *` | Reply analysis |
-| Google Ads Manager | `performance-reporter` | `0 9 * * *` | Performance reporting (reads `cs-ad-strategy`) |
-| Google Ads Manager | `competitor-scanner` | `0 10 * * 1` | Competitor analysis |
-| Google Ads Manager | `holiday-ad-planner` | `0 10 * * 3` | Holiday campaign planning |
-| Google Ads Manager | `drive-scanner` | `0 10 * * *` | Google Drive creative asset scanning (disabled by default) |
-| Meta Ads Manager | `performance-reporter` | `0 9 * * *` | Performance reporting (reads `cs-ad-strategy`) |
-| Meta Ads Manager | `audience-scanner` | `0 10 * * 1` | Audience analysis |
-| Meta Ads Manager | `holiday-ad-planner` | `0 10 * * 3` | Holiday campaign planning |
-| Meta Ads Manager | `drive-scanner` | `0 10 * * *` | Google Drive creative asset scanning (disabled by default) |
+| Social Manager | `cron-content-scanner` | `0 */4 * * *` | Content discovery + draft generation (reads `cs-content-tone`) |
+| Social Manager | `cron-gmail-checker` | `*/30 * * * *` | Inbox monitoring for incoming requests (disabled by default) |
+| Social Manager | `cron-drive-scanner` | `0 10 * * *` | Google Drive asset scanning (disabled by default) |
+| Blog Content Editor | `cron-blog-scanner` | `0 9 * * *` | Topic discovery + article drafting (reads `cs-content-strategy`) |
+| Blog Content Editor | `cron-gmail-checker` | `*/30 * * * *` | Inbox monitoring for topic requests |
+| App Review Support | `cron-review-scanner` | `0 */2 * * *` | Store scanning for new reviews (reads `cs-review-preferences`) |
+| App Event Manager | `cron-app-event-scanner` | `0 9 * * 1` | Holiday scanning + event suggestions (reads `cs-event-preferences`) |
+| Push Notification Manager | `cron-push-scanner` | `0 9 * * *` | Notification content preparation (reads `cs-push-preferences`) |
+| Push Notification Manager | `cron-push-dispatcher` | `0 * * * *` | Dispatching queued notifications |
+| Newsletter Manager | `cron-newsletter-sender` | `0 9 * * 1` | Newsletter drafting and sending (reads `cs-newsletter-strategy`) |
+| Newsletter Manager | `cron-subscriber-scanner` | `0 10 * * *` | Subscriber list health checks |
+| Lead Gen Manager | `cron-prospect-scanner` | `0 10 * * 1` | Prospect discovery and scoring (reads `cs-lead-strategy`) |
+| Lead Gen Manager | `cron-outreach-reporter` | `0 9 * * *` | Outreach performance reporting |
+| Lead Gen Manager | `cron-reply-handler` | `0 */4 * * *` | Reply analysis |
+| Google Ads Manager | `cron-performance-reporter` | `0 9 * * *` | Performance reporting (reads `cs-ad-strategy`) |
+| Google Ads Manager | `cron-competitor-scanner` | `0 10 * * 1` | Competitor analysis |
+| Google Ads Manager | `cron-holiday-ad-planner` | `0 10 * * 3` | Holiday campaign planning |
+| Google Ads Manager | `cron-drive-scanner` | `0 10 * * *` | Google Drive creative asset scanning (disabled by default) |
+| Meta Ads Manager | `cron-performance-reporter` | `0 9 * * *` | Performance reporting (reads `cs-ad-strategy`) |
+| Meta Ads Manager | `cron-audience-scanner` | `0 10 * * 1` | Audience analysis |
+| Meta Ads Manager | `cron-holiday-ad-planner` | `0 10 * * 3` | Holiday campaign planning |
+| Meta Ads Manager | `cron-drive-scanner` | `0 10 * * *` | Google Drive creative asset scanning (disabled by default) |
 
 ### How Preference and Scheduled Skills Work Together
 
 Each scheduled cron skill reads its paired preference skill at runtime. The mechanism:
 
 1. `POST /UserAgent/Update` writes your preference `value` into `custom_skills[key=<preference-key>]` (for example `content-tone`).
-2. When the container starts, each `custom_skills` entry is materialized as a local skill at `skills/cs-<slug>/SKILL.md` inside the agent workspace.
-3. The scheduled cron skill's `value` (shipped in the template, not user-editable) references its paired preference via the `cs-<slug>` path, for example:
+2. When the container starts, each `custom_skills` entry is materialized as a local skill at `skills/cs-<key>/SKILL.md` inside the agent workspace. Note that the `cs-` runtime prefix is **added by the container** on top of whatever `key` you see in the API — so a preference skill with key `content-tone` becomes `skills/cs-content-tone/`, and a cron skill with key `cron-content-scanner` becomes `skills/cs-cron-content-scanner/` (double-prefix by design — the runtime `cs-` is a namespace for custom skills, and the `cron-` prefix on the key is the type marker).
+3. The scheduled cron skill's `value` (shipped in the template, not user-editable) references its paired preference via the runtime `cs-<preference-key>` path, for example:
    ```
    0. Read the cs-content-tone skill first — follow ALL its rules.
    1. ...
    ```
 4. At each cron tick, the agent LLM reads `cs-content-tone`, applies your instructions, then executes the scan/report/dispatch workflow.
 
-> **Slug normalization:** the `<slug>` in `cs-<slug>` is NOT the raw `key` — the container normalizes each key to lowercase and replaces any run of non-alphanumeric characters with a single `-` (leading/trailing dashes are trimmed). In practice, stick to lowercase keys like `content-tone`, `push-preferences`, `lead-strategy` and the slug will match 1:1 with the key. If your key contains uppercase, underscores, or other punctuation, inspect the normalized folder name under `skills/` (via the agent's internal `read` tool on `SKILL.md`) to confirm the exact reference string the LLM should use.
+> **Slug normalization:** the `<key>` in `cs-<key>` is the raw `key` lowercased with any run of non-alphanumeric characters replaced by a single `-` (leading/trailing dashes trimmed). Template keys already follow this shape (`content-tone`, `cron-content-scanner`, `push-preferences`) so the slug matches the `key` 1:1.
 
 This means **your editable preference becomes the single place to customize agent behavior** (brand voice, target audience, content sources, holiday markets, etc.), and the non-editable cron skill is a thin orchestration layer that defers to your preference.
 

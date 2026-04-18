@@ -363,7 +363,7 @@ Response: `{ result: true, accessToken: "...", refreshToken: "", errors: [] }`. 
 
 ## Using the Skill
 
-Enable `metaads-manage` on the agent — see [Agent Skills](/docs/agent-skills#enabling-skills). Adjust the cron of the built-in `performance-reporter` task (Meta Ads Manager) with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for `_editable: false` skills:
+Enable `metaads-manage` on the agent — see [Agent Skills](/docs/agent-skills#enabling-skills). Adjust the cron of the built-in `cron-performance-reporter` task (Meta Ads Manager) with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for `_editable: false` skills:
 
 ```json
 {
@@ -371,7 +371,7 @@ Enable `metaads-manage` on the agent — see [Agent Skills](/docs/agent-skills#e
   "configuration": {
     "custom_skills": [
       {
-        "key": "performance-reporter",
+        "key": "cron-performance-reporter",
         "enabled": true,
         "interval": "0 9 * * *"
       }

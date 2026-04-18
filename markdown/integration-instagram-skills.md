@@ -243,7 +243,7 @@ Uses `grant_type=ig_refresh_token` with the current access token (Instagram has 
 
 ## Using the Skill
 
-Once the Instagram Business account is connected, the agent's scheduled tasks use the `instagram-post` platform skill to publish feed carousels, reels, and stories. To adjust the cron of the built-in `content-scanner` task (Social Manager), send an Update with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for `_editable: false` skills:
+Once the Instagram Business account is connected, the agent's scheduled tasks use the `instagram-post` platform skill to publish feed carousels, reels, and stories. To adjust the cron of the built-in `cron-content-scanner` task (Social Manager), send an Update with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for `_editable: false` skills:
 
 ```json
 {
@@ -251,7 +251,7 @@ Once the Instagram Business account is connected, the agent's scheduled tasks us
   "configuration": {
     "custom_skills": [
       {
-        "key": "content-scanner",
+        "key": "cron-content-scanner",
         "enabled": true,
         "interval": "0 */4 * * *"
       }

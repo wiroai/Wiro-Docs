@@ -257,7 +257,7 @@ See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
 
 ## Using the Skill
 
-Once Google Ads is connected and `customerId` is persisted, the agent's scheduled tasks use the `googleads-manage` platform skill to pull metrics and manage campaigns. Adjust the cron of the built-in `performance-reporter` task (Google Ads Manager) with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for `_editable: false` skills:
+Once Google Ads is connected and `customerId` is persisted, the agent's scheduled tasks use the `googleads-manage` platform skill to pull metrics and manage campaigns. Adjust the cron of the built-in `cron-performance-reporter` task (Google Ads Manager) with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for `_editable: false` skills:
 
 ```json
 {
@@ -265,7 +265,7 @@ Once Google Ads is connected and `customerId` is persisted, the agent's schedule
   "configuration": {
     "custom_skills": [
       {
-        "key": "performance-reporter",
+        "key": "cron-performance-reporter",
         "enabled": true,
         "interval": "0 9 * * *"
       }

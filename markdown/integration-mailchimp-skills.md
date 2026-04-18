@@ -191,7 +191,7 @@ Clears credentials (no remote revoke — Mailchimp doesn't expose a revoke endpo
 
 ## Using the Skill
 
-Once Mailchimp is connected (OAuth or API key), the agent's scheduled tasks use the `mailchimp-email` platform skill for audience and campaign operations. Adjust the cron of the built-in `subscriber-scanner` task (Newsletter Manager) with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for `_editable: false` skills:
+Once Mailchimp is connected (OAuth or API key), the agent's scheduled tasks use the `mailchimp-email` platform skill for audience and campaign operations. Adjust the cron of the built-in `cron-subscriber-scanner` task (Newsletter Manager) with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for `_editable: false` skills:
 
 ```json
 {
@@ -199,7 +199,7 @@ Once Mailchimp is connected (OAuth or API key), the agent's scheduled tasks use 
   "configuration": {
     "custom_skills": [
       {
-        "key": "subscriber-scanner",
+        "key": "cron-subscriber-scanner",
         "enabled": true,
         "interval": "0 10 * * *"
       }
