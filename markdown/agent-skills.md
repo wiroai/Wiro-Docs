@@ -112,7 +112,7 @@ Send a `POST /UserAgent/Update` request with only the preference skills you want
 }
 ```
 
-### Example: Lead Gen Manager — ICP Definition
+### Example: Lead Generation Manager — ICP Definition
 
 ```json
 {
@@ -260,7 +260,7 @@ This single request:
 | App Event Manager | `event-preferences` | Event regions, holiday priorities |
 | Push Notification | `push-preferences` | Push tone, language, targeting |
 | Newsletter Manager | `newsletter-strategy` | Topics, tone, audience, frequency |
-| Lead Gen Manager | `lead-strategy` | ICP definition, outreach tone |
+| Lead Generation Manager | `lead-strategy` | ICP definition, outreach tone |
 | Google Ads Manager | `ad-strategy` | Target audience, budget goals |
 | Meta Ads Manager | `ad-strategy` | Target audience, creative preferences |
 
@@ -281,9 +281,9 @@ This single request:
 | Push Notification Manager | `cron-push-dispatcher` | `0 * * * *` | Dispatching queued notifications |
 | Newsletter Manager | `cron-newsletter-sender` | `0 9 * * 1` | Newsletter drafting and sending (reads `cs-newsletter-strategy`) |
 | Newsletter Manager | `cron-subscriber-scanner` | `0 10 * * *` | Subscriber list health checks |
-| Lead Gen Manager | `cron-prospect-scanner` | `0 10 * * 1` | Prospect discovery and scoring (reads `cs-lead-strategy`) |
-| Lead Gen Manager | `cron-outreach-reporter` | `0 9 * * *` | Outreach performance reporting |
-| Lead Gen Manager | `cron-reply-handler` | `0 */4 * * *` | Reply analysis |
+| Lead Generation Manager | `cron-prospect-scanner` | `0 10 * * 1` | Prospect discovery and scoring (reads `cs-lead-strategy`) |
+| Lead Generation Manager | `cron-outreach-reporter` | `0 9 * * *` | Outreach performance reporting |
+| Lead Generation Manager | `cron-reply-handler` | `0 */4 * * *` | Reply analysis |
 | Google Ads Manager | `cron-performance-reporter` | `0 9 * * *` | Performance reporting (reads `cs-ad-strategy`) |
 | Google Ads Manager | `cron-competitor-scanner` | `0 10 * * 1` | Competitor analysis |
 | Google Ads Manager | `cron-holiday-ad-planner` | `0 10 * * 3` | Holiday campaign planning |
@@ -336,7 +336,7 @@ Skills that depend on third-party credentials. Follow the linked integration pag
 | `wiro-generator` | `credentials.wiro.apiKey` (platform-managed) | See [Using Wiro AI Models from Your Agent](#using-wiro-ai-models-from-your-agent) |
 | `calendarific`, OpenAI-backed LLM skills | Platform-managed (no user key) | [Platform-Managed Credentials](/docs/agent-credentials#platform-managed-credentials) |
 
-Agents use `telegram` for operator notifications — see [Telegram Skills](/docs/integration-telegram-skills). Email sending across `brevo` and `sendgrid` — see [Brevo Skills](/docs/integration-brevo-skills) and [SendGrid Skills](/docs/integration-sendgrid-skills).
+Agents can optionally forward operator notifications to a `telegram` bot — see [Telegram Skills](/docs/integration-telegram-skills). This is never required; every agent remains fully usable over web chat and the [Messaging API](/docs/agent-messaging) without a bot configured. Email sending across `brevo` and `sendgrid` — see [Brevo Skills](/docs/integration-brevo-skills) and [SendGrid Skills](/docs/integration-sendgrid-skills).
 
 > **Restart behavior:** Updating `custom_skills` on a running agent (status 3 or 4) triggers an automatic restart (`restartafter: true`) so the new skill configuration is picked up on the next daemon cycle. Same as credential updates.
 
@@ -348,7 +348,7 @@ Agents use `telegram` for operator notifications — see [Telegram Skills](/docs
 - The agent container gets `WIRO_API_KEY` as an env var only when both `wiro-generator` skill is enabled **and** the key is present in the template.
 - `wiro-generator` is marked `user-invocable: false` — it isn't called directly by end-user messages; other skills and scheduled tasks invoke it internally when they need to generate content.
 
-Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, Google Ads, Newsletter) ship with `wiro-generator: true` and the platform-managed `wiro` credential pre-filled. Templates that don't need AI generation (App Review Support, Lead Gen Manager) ship with `wiro-generator: false`.
+Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, Google Ads, Newsletter) ship with `wiro-generator: true` and the platform-managed `wiro` credential pre-filled. Templates that don't need AI generation (App Review Support, Lead Generation Manager) ship with `wiro-generator: false`.
 
 To check whether your deployed agent has it:
 

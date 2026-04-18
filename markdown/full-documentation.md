@@ -14,27 +14,29 @@ Complete API documentation for the Wiro AI platform — run AI models through a 
 8. [LLM Streaming](#llm-streaming)
 9. [WebSocket](#websocket)
 10. [Realtime Voice](#realtime-voice)
-11. [Files](#files)
-12. [Concurrency Limits](#concurrency-limits)
-13. [Error Reference](#error-reference)
-14. [Code Examples](#code-examples)
-15. [Pricing](#pricing)
-16. [FAQ](#faq)
-17. [MCP Server](#mcp-server)
-18. [Self-Hosted MCP](#self-hosted-mcp)
-19. [Node.js Library](#nodejs-library)
-20. [n8n Wiro Integration](#n8n-wiro-integration)
-21. [Agent Overview](#agent-overview)
-22. [Agent Messaging](#agent-messaging)
-23. [Agent WebSocket](#agent-websocket)
-24. [Agent Webhooks](#agent-webhooks)
-25. [Agent Credentials & OAuth](#agent-credentials--oauth)
-26. [Agent Skills](#agent-skills)
-27. [Agent Use Cases](#agent-use-cases)
-28. [Organizations & Teams](#organizations--teams)
-29. [Managing Teams](#managing-teams)
-30. [Team Billing & Spending](#team-billing--spending)
-31. [Team API Access](#team-api-access)
+11. [Realtime Text to Speech](#realtime-text-to-speech)
+12. [Realtime Speech to Text](#realtime-speech-to-text)
+13. [Files](#files)
+14. [Concurrency Limits](#concurrency-limits)
+15. [Error Reference](#error-reference)
+16. [Code Examples](#code-examples)
+17. [Pricing](#pricing)
+18. [FAQ](#faq)
+19. [MCP Server](#mcp-server)
+20. [Self-Hosted MCP](#self-hosted-mcp)
+21. [Node.js Library](#nodejs-library)
+22. [n8n Wiro Integration](#n8n-wiro-integration)
+23. [Agent Overview](#agent-overview)
+24. [Agent Messaging](#agent-messaging)
+25. [Agent WebSocket](#agent-websocket)
+26. [Agent Webhooks](#agent-webhooks)
+27. [Agent Credentials & OAuth](#agent-credentials--oauth)
+28. [Agent Skills](#agent-skills)
+29. [Agent Use Cases](#agent-use-cases)
+30. [Organizations & Teams](#organizations--teams)
+31. [Managing Teams](#managing-teams)
+32. [Team Billing & Spending](#team-billing--spending)
+33. [Team API Access](#team-api-access)
 
 ---
 
@@ -1197,6 +1199,208 @@ After sending this, the server will process any remaining audio, send final cost
 > **Safety:** If the client disconnects without sending `task_session_end`, the server automatically terminates the session to prevent the pipeline from running indefinitely (and the provider from continuing to charge). Always send `task_session_end` explicitly for a clean shutdown.
 
 > **Insufficient balance:** If the wallet runs out of balance during a realtime session, the server automatically stops the session. You will still receive the final `task_cost` and `task_end` events.
+
+---
+
+# Realtime Text to Speech
+
+Build streaming text-to-speech apps with realtime AI models.
+
+## Overview
+
+Realtime text-to-speech models convert text into streaming audio. Unlike standard TTS that processes a full prompt and returns an audio file, realtime TTS streams AI-generated speech as a continuous PCM audio stream over a WebSocket connection — in real time. The text prompt is submitted via [POST /Run](#run-a-model), not over the WebSocket. The WebSocket carries only task events (`task_info`, `task_stream_ready`, etc.), binary audio frames, and control messages (`task_session_end`).
+
+No microphone is required. The flow is one-directional: text goes in, audio comes out.
+
+The flow is:
+
+1. **Run** the realtime TTS model via [POST /Run](#run-a-model) with your text prompt in the parameters
+2. **Connect** to the WebSocket and send `task_info` with your `socketaccesstoken`
+3. **Wait** for `task_stream_ready` — the model has loaded and is generating audio
+4. **Receive** AI audio as binary frames and play them
+5. **End** the session with `task_session_end` or wait for the stream to finish naturally
+
+## How It Differs from Realtime Voice Conversation
+
+|              | Realtime Voice Conversation                             | Realtime Text to Speech           |
+| ------------ | ------------------------------------------------------- | --------------------------------- |
+| Input        | Microphone audio (streamed)                             | Text (sent with the run request)  |
+| Output       | AI audio + transcripts                                  | AI audio only                     |
+| Direction    | Bidirectional (client ↔ server)                         | Server → client only              |
+| Microphone   | Required                                                | Not required                      |
+| Transcripts  | `TRANSCRIPT_USER:` / `TRANSCRIPT_AI:` via `task_output` | None                              |
+| Use case     | Interactive voice chat                                  | Narration, voiceover, assistants  |
+
+## Realtime Events
+
+During a realtime TTS session, you'll receive these WebSocket events:
+
+| Event                  | Description                                                                                      |
+| ---------------------- | ------------------------------------------------------------------------------------------------ |
+| `task_stream_ready`    | Session is ready — the model is generating audio and will begin sending chunks                   |
+| `task_stream_end`      | The model finished generating audio for the current segment                                      |
+| `task_cost`            | Cost update — includes `turnCost`, `cumulativeCost`, and `usage` (raw cost breakdown)            |
+| `task_end`             | The model process has exited. Post-processing follows — wait for `task_postprocess_end` to close |
+| `task_postprocess_end` | Post-processing is complete. Safe to close the WebSocket connection                              |
+
+> **No `task_output` events.** Unlike voice conversation, TTS sessions do not produce transcript events. The input text is already known (you provided it), and the AI output is audio, not text.
+
+## Audio Format
+
+Audio flows in one direction only: **server → client**. The client does not send any audio.
+
+| Property    | Value                                                     |
+| ----------- | --------------------------------------------------------- |
+| Format      | PCM (raw, uncompressed)                                   |
+| Bit depth   | 16-bit signed integer (Int16)                             |
+| Sample rate | 24,000 Hz (24 kHz)                                        |
+| Channels    | Mono (1 channel)                                          |
+| Byte order  | Little-endian                                             |
+| Chunk size  | Variable (typically 200 ms = 4,800 samples = 9,600 bytes) |
+
+### Binary Frame Format
+
+Every binary WebSocket frame from the server is structured as:
+
+```
+[tasktoken]|[PCM audio data]
+```
+
+The pipe character `|` (0x7C) separates the token from the raw audio bytes. To extract the audio:
+
+1. Find the first `|` byte in the binary frame
+2. Everything after it is raw PCM Int16 audio data
+3. Convert Int16 samples to your playback format (e.g., Float32 for Web Audio API)
+
+> **Client → server:** In TTS mode, you do not send binary audio frames. The only messages you send are `task_info` (to register) and `task_session_end` (to end the session).
+
+## Ending a Session
+
+To gracefully end a realtime TTS session, send `task_session_end`:
+
+```json
+{
+  "type": "task_session_end",
+  "tasktoken": "YOUR_SOCKET_ACCESS_TOKEN"
+}
+```
+
+After sending this, the server will finish any in-progress generation, send final cost events, and then emit `task_postprocess_end`. Wait for `task_postprocess_end` before closing the WebSocket.
+
+For TTS sessions, the stream often ends naturally when the model finishes generating audio for the provided text. In this case, you'll receive `task_stream_end` followed by `task_end` without needing to send `task_session_end`. However, it's good practice to send it explicitly for a clean shutdown, especially if you want to stop playback early.
+
+> **Safety:** If the client disconnects without sending `task_session_end`, the server automatically terminates the session to prevent the pipeline from running indefinitely. Always send `task_session_end` explicitly for a clean shutdown.
+
+---
+
+# Realtime Speech to Text
+
+Transcribe live microphone audio into text in real time using streaming ASR models.
+
+## Overview
+
+Realtime speech-to-text models convert streaming audio into text transcripts as the user speaks. Unlike [Realtime Voice Conversation](#realtime-voice) which produces two-way audio, this mode is **audio in → text out** only. There is no AI audio playback — the server returns transcript strings over the WebSocket.
+
+The flow is:
+
+1. **Run** the realtime STT model via [POST /Run](#run-a-model) to get a `socketaccesstoken`
+2. **Connect** to the WebSocket and send `task_info` with your token
+3. **Wait** for `task_stream_ready` — the model is ready to receive audio
+4. **Stream** microphone audio as binary frames (client → server)
+5. **Receive** transcript text as `task_output` messages with `TRANSCRIPT_USER:` prefix
+6. **End** the session with `task_session_end`
+
+> **Key difference from Voice Conversation:** No binary audio is sent back from the server. All server → client messages are JSON text events.
+
+## Realtime Events
+
+During a realtime speech-to-text session, you'll receive these WebSocket events:
+
+| Event                  | Direction       | Description                                                                         |
+| ---------------------- | --------------- | ----------------------------------------------------------------------------------- |
+| `task_stream_ready`    | server → client | Session is ready — start sending microphone audio                                   |
+| `task_output`          | server → client | Transcript text prefixed with `TRANSCRIPT_USER:`                                    |
+| `task_stream_end`      | server → client | Transcription stream has ended — no more transcripts will arrive                    |
+| `task_cost`            | server → client | Cost update — includes `turnCost`, `cumulativeCost`, and `usage` breakdown          |
+| `task_end`             | server → client | The model process has exited. Post-processing follows                               |
+| `task_postprocess_end` | server → client | Post-processing complete — safe to close the WebSocket now                          |
+
+> Unlike voice conversation, there are no binary audio frames from the server. Every server message is a JSON text event.
+
+## Audio Format
+
+Audio flows in one direction only: **client → server**.
+
+| Property    | Value                                |
+| ----------- | ------------------------------------ |
+| Format      | PCM (raw, uncompressed)              |
+| Bit depth   | 16-bit signed integer (Int16)        |
+| Sample rate | 24,000 Hz (24 kHz)                   |
+| Channels    | Mono (1 channel)                     |
+| Byte order  | Little-endian                        |
+| Chunk size  | 4,800 samples (200 ms) = 9,600 bytes |
+
+> The server internally resamples to the model's native rate (e.g. 16 kHz for Voxtral). Always send at 24 kHz — the server handles conversion.
+
+### Binary Frame Format
+
+Every binary WebSocket frame sent from the client is structured as:
+
+```
+[tasktoken]|[PCM audio data]
+```
+
+The pipe character `|` (0x7C) separates the token from the raw audio bytes. There are no binary frames from the server — all responses are JSON text.
+
+## Transcripts
+
+Transcripts arrive as `task_output` messages with the `TRANSCRIPT_USER:` prefix. Each message contains a segment of transcribed speech:
+
+```json
+{
+  "type": "task_output",
+  "message": "TRANSCRIPT_USER:What's the weather like today?"
+}
+
+{
+  "type": "task_output",
+  "message": "TRANSCRIPT_USER:I need to book a flight to New York."
+}
+```
+
+### Progressive Results
+
+Transcripts arrive progressively as words and phrases are recognized — not just at segment boundaries. The model streams `TRANSCRIPT_USER:` messages word-by-word as speech is detected, so the client can display live, incremental results. To build a full transcript, concatenate all received messages:
+
+```javascript
+var fullTranscript = [];
+
+if (msg.type === 'task_output' &&
+    typeof msg.message === 'string' &&
+    msg.message.startsWith('TRANSCRIPT_USER:')) {
+  var segment = msg.message.substring(16);
+  fullTranscript.push(segment);
+  console.log('Segment:', segment);
+  console.log('Full:', fullTranscript.join(' '));
+}
+```
+
+> **Note:** Unlike voice conversation, there is no `TRANSCRIPT_AI:` prefix. All transcripts are user speech.
+
+## Ending a Session
+
+To gracefully end a realtime session, send `task_session_end`:
+
+```json
+{
+  "type": "task_session_end",
+  "tasktoken": "YOUR_SOCKET_ACCESS_TOKEN"
+}
+```
+
+After sending this, the server processes any remaining buffered audio, sends final transcript and cost events, and then emits `task_postprocess_end`. Wait for `task_postprocess_end` before closing the WebSocket.
+
+> **Safety:** If the client disconnects without sending `task_session_end`, the server automatically terminates the session to prevent the pipeline from running indefinitely. Always send `task_session_end` explicitly for a clean shutdown.
 
 ---
 
@@ -7805,7 +8009,7 @@ The HubSpot integration uses HubSpot's OAuth 2.0.
 
 **Agents that typically enable this integration:**
 
-- Lead Gen Manager
+- Lead Generation Manager
 - Newsletter Manager (HubSpot as ESP)
 - Any custom agent with CRM capabilities
 
@@ -8786,13 +8990,22 @@ Env vars inside the agent container (exported **only when `gmail-check` skill is
 
 # Telegram Integration
 
-Connect your agent to a Telegram bot for two-way messaging with operators or end users.
+Connect your agent to a Telegram bot as an optional extra messaging channel.
 
 ## Overview
 
-Telegram is unique among Wiro integrations — it's always available (no skill toggle required) and is used both as an operator notification channel and, for some agents, as the primary user interface.
+Telegram is **optional** on every Wiro agent. By default your agents already support two built-in messaging channels out of the box:
 
-**Agents that use Telegram:** Nearly all Wiro agents accept a Telegram bot for operator notifications. Some (e.g. Lead Gen Manager for status reports) use it as the main interaction channel.
+- **Web chat** — chat with the agent directly from the [wiro.ai dashboard](https://wiro.ai/panel/agents) with no extra setup.
+- **Messaging API** — your own application sends and receives messages programmatically via [Agent Messaging](#agent-messaging), with real-time streaming over [Agent WebSocket](#agent-websocket) or HTTP callbacks via [Agent Webhooks](#agent-webhooks).
+
+Adding a Telegram bot gives you a third, complementary channel — useful when you want to:
+
+- Push **operator notifications** (campaign alerts, new leads, error reports) to a private chat or team group on your phone.
+- Give **off-dashboard access** to team members who don't log into wiro.ai but still want to message the agent.
+- Pipe **scheduled status reports** from cron skills into a shared Telegram channel.
+
+You can skip this integration entirely — agents keep working through web chat and the API regardless. When the bot token is missing or `allowedUsers` is empty, the Telegram plugin inside the agent is disabled automatically and no messages flow through it.
 
 ## Availability
 
@@ -9544,7 +9757,7 @@ The Apollo integration uses Apollo's `x-api-key` header authentication.
 
 **Agents that typically enable this integration:**
 
-- Lead Gen Manager
+- Lead Generation Manager
 
 ## Availability
 
@@ -9658,7 +9871,7 @@ The Lemlist integration uses HTTP Basic Authentication with an empty username an
 
 **Agents that typically enable this integration:**
 
-- Lead Gen Manager
+- Lead Generation Manager
 
 ## Availability
 
@@ -10049,7 +10262,7 @@ Send a `POST /UserAgent/Update` request with only the preference skills you want
 }
 ```
 
-### Example: Lead Gen Manager — ICP Definition
+### Example: Lead Generation Manager — ICP Definition
 
 `POST /UserAgent/Update`:
 
@@ -10199,7 +10412,7 @@ This single request:
 | App Event Manager | `event-preferences` | Event regions, holiday priorities |
 | Push Notification | `push-preferences` | Push tone, language, targeting |
 | Newsletter Manager | `newsletter-strategy` | Topics, tone, audience, frequency |
-| Lead Gen Manager | `lead-strategy` | ICP definition, outreach tone |
+| Lead Generation Manager | `lead-strategy` | ICP definition, outreach tone |
 | Google Ads Manager | `ad-strategy` | Target audience, budget goals |
 | Meta Ads Manager | `ad-strategy` | Target audience, creative preferences |
 
@@ -10220,9 +10433,9 @@ This single request:
 | Push Notification Manager | `cron-push-dispatcher` | `0 * * * *` | Dispatching queued notifications |
 | Newsletter Manager | `cron-newsletter-sender` | `0 9 * * 1` | Newsletter drafting and sending (reads `cs-newsletter-strategy`) |
 | Newsletter Manager | `cron-subscriber-scanner` | `0 10 * * *` | Subscriber list health checks |
-| Lead Gen Manager | `cron-prospect-scanner` | `0 10 * * 1` | Prospect discovery and scoring (reads `cs-lead-strategy`) |
-| Lead Gen Manager | `cron-outreach-reporter` | `0 9 * * *` | Outreach performance reporting |
-| Lead Gen Manager | `cron-reply-handler` | `0 */4 * * *` | Reply analysis |
+| Lead Generation Manager | `cron-prospect-scanner` | `0 10 * * 1` | Prospect discovery and scoring (reads `cs-lead-strategy`) |
+| Lead Generation Manager | `cron-outreach-reporter` | `0 9 * * *` | Outreach performance reporting |
+| Lead Generation Manager | `cron-reply-handler` | `0 */4 * * *` | Reply analysis |
 | Google Ads Manager | `cron-performance-reporter` | `0 9 * * *` | Performance reporting (reads `cs-ad-strategy`) |
 | Google Ads Manager | `cron-competitor-scanner` | `0 10 * * 1` | Competitor analysis |
 | Google Ads Manager | `cron-holiday-ad-planner` | `0 10 * * 3` | Holiday campaign planning |
@@ -10275,7 +10488,7 @@ Skills that depend on third-party credentials. Follow the linked integration pag
 | `wiro-generator` | `credentials.wiro.apiKey` (platform-managed) | See [Using Wiro AI Models from Your Agent](#using-wiro-ai-models-from-your-agent) |
 | `calendarific`, OpenAI-backed LLM skills | Platform-managed (no user key) | [Platform-Managed Credentials](/docs/agent-credentials#platform-managed-credentials) |
 
-Agents use `telegram` for operator notifications — see [Telegram Skills](/docs/integration-telegram-skills). Email sending across `brevo` and `sendgrid` — see [Brevo Skills](/docs/integration-brevo-skills) and [SendGrid Skills](/docs/integration-sendgrid-skills).
+Agents can optionally forward operator notifications to a `telegram` bot — see [Telegram Skills](#telegram-integration). This is never required; every agent remains fully usable over web chat and the [Messaging API](#agent-messaging) without a bot configured. Email sending across `brevo` and `sendgrid` — see [Brevo Skills](#brevo-integration) and [SendGrid Skills](#sendgrid-integration).
 
 > **Restart behavior:** Updating `custom_skills` on a running agent (status 3 or 4) triggers an automatic restart (`restartafter: true`) so the new skill configuration is picked up on the next daemon cycle. Same as credential updates.
 
@@ -10287,7 +10500,7 @@ Agents use `telegram` for operator notifications — see [Telegram Skills](/docs
 - The agent container gets `WIRO_API_KEY` as an env var only when both `wiro-generator` skill is enabled **and** the key is present in the template.
 - `wiro-generator` is marked `user-invocable: false` — it isn't called directly by end-user messages; other skills and scheduled tasks invoke it internally when they need to generate content.
 
-Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, Google Ads, Newsletter) ship with `wiro-generator: true` and the platform-managed `wiro` credential pre-filled. Templates that don't need AI generation (App Review Support, Lead Gen Manager) ship with `wiro-generator: false`.
+Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, Google Ads, Newsletter) ship with `wiro-generator: true` and the platform-managed `wiro` credential pre-filled. Templates that don't need AI generation (App Review Support, Lead Generation Manager) ship with `wiro-generator: false`.
 
 To check whether your deployed agent has it:
 
@@ -10356,9 +10569,10 @@ Most agents interact with external services — posting to social media, managin
 | Mobile app company | App Review Support | Each app has its own App Store / Google Play credentials |
 | E-commerce platform | Google Ads Manager + Meta Ads Manager | Each advertiser connects their own ad accounts |
 | Marketing SaaS | Newsletter Manager | Each customer connects their own Brevo/SendGrid/Mailchimp |
-| Sales platform | Lead Gen Manager | Each sales team connects their own Apollo/Lemlist |
+| Sales platform | Lead Generation Manager | Each sales team connects their own Apollo/Lemlist |
 | Content agency tool | Blog Content Editor | Each client connects their own WordPress site |
-| App publisher platform | App Event Manager | Each app has its own Firebase project |
+| App publisher platform | App Event Manager | Each app has its own App Store credentials |
+| Mobile app publisher | Push Notification Manager | Each app has its own Firebase service account |
 | Customer engagement tool | Social Manager | Each brand manages their own social presence |
 
 ### Pattern 2: Session Per User
@@ -10368,6 +10582,8 @@ For conversational agents that don't need per-user credentials. One agent instan
 **Why:** No third-party accounts to connect. The agent answers questions using its built-in knowledge or pre-configured data sources.
 
 **How:** Deploy one instance via `POST /UserAgent/Deploy`, then send messages with different `sessionkey` values per user.
+
+**About `sessionkey`:** This field is optional — if omitted, messages go into a shared `"default"` session. Reuse the same `sessionkey` to continue a conversation (the agent retrieves prior messages as context). Use a fresh UUID to start a new conversation. The common convention is one `sessionkey` per end-user (e.g. `"user-456"`), but you can also use it per-thread (e.g. `"ticket-2025-0817"`) for products that group conversations by topic. See the [Agent Messaging](#agent-messaging) guide for how sessions work.
 
 #### Real-World Examples
 
@@ -10388,21 +10604,35 @@ For conversational agents that don't need per-user credentials. One agent instan
 | Does the agent perform actions on behalf of the user? | Yes | Rarely |
 | How many instances do you need? | One per customer | One total (or a few) |
 
+### Hybrid Pattern
+
+A single product can combine both — a per-customer action agent plus a shared conversational agent sit side by side in the same frontend. For example:
+
+- One **Social Manager** instance per customer (Pattern 1) to publish posts with their own OAuth-connected accounts.
+- One **shared knowledge-base chat** agent (Pattern 2) that answers product, billing, or onboarding questions across all customers, using `sessionkey` to keep each user's chat separate.
+
+The two agents are independent deployments with different `useragentguid` values. Route user actions to the per-customer instance, and chat questions to the shared instance. Your backend decides which agent handles each request.
+
 ## Building Your Product
 
 ### White-Label Chat
 
 Build a fully branded chat experience with no Wiro UI visible to your users.
 
-1. Deploy an agent via `POST /UserAgent/Deploy`
-2. Start the agent with `POST /UserAgent/Start`
-3. Build your own chat UI
-4. Send messages via `POST /UserAgent/Message/Send`
-5. Stream responses in real-time via [Agent WebSocket](/docs/agent-websocket) using the `agenttoken`
-6. Manage conversation history with `POST /UserAgent/Message/History`
+The deploy flow has three stages — Deploy, Setup (only when the agent needs third-party credentials), and Start:
+
+1. **Deploy** an agent via `POST /UserAgent/Deploy` — returns `useragents[0].guid` and starts the instance in `status: 6` (setup-required) or `status: 0` (ready) depending on whether the template needs credentials.
+2. **Setup** the credentials (only if the agent template requires them) via one or more `POST /UserAgent/Update` calls and the matching OAuth flows — see [Agent Credentials & OAuth](#agent-credentials--oauth). Check `setuprequired` on the response: while it's `true`, the agent cannot start. Once all required credential slots are filled, `setuprequired` flips to `false` and `status` becomes `0`. For Pattern 2 (knowledge-base / chat-only agents) there are no third-party credentials, so this stage is skipped and the agent is ready to start right after Deploy.
+3. **Start** the agent with `POST /UserAgent/Start` — transitions through `status: 3` (starting) → `status: 4` (running).
+4. Build your own chat UI.
+5. Send messages via `POST /UserAgent/Message/Send`.
+6. Stream responses in real-time via [Agent WebSocket](#agent-websocket) using the `agenttoken`.
+7. Manage conversation history with `POST /UserAgent/Message/History`.
+
+See [Agent Overview](#agent-overview) for the full lifecycle state table (`status: 0, 1, 3, 4, 5, 6`).
 
 ```bash
-# Deploy (pinned: false keeps your dashboard clean when deploying for end users)
+# Deploy — prepaid + plan are required for API users (credits debit from your wallet)
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
@@ -10410,9 +10640,20 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
     "agentguid": "agent-template-guid",
     "title": "Customer Support Bot",
     "useprepaid": true,
-    "plan": "starter",
-    "pinned": false
+    "plan": "starter"
   }'
+
+# Pattern 1 only — fill any missing credentials, then verify setuprequired flipped to false
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Detail" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "deployed-useragent-guid" }'
+
+# Start the agent (skipped if Deploy already returned status: 4 for cheap chat-only templates)
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "deployed-useragent-guid" }'
 
 # Send a message
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
@@ -10488,7 +10729,7 @@ Wiro provides pre-built agent templates you can deploy immediately. Each agent s
 | **Google Ads Manager** | Create and optimize Google Ads campaigns, daily performance reports | Google Ads (OAuth), Calendarific (platform-managed), Google Drive (optional) |
 | **Meta Ads Manager** | Manage Facebook and Instagram ad campaigns, audience analysis | Meta Ads (OAuth), Calendarific (platform-managed), Google Drive (optional) |
 | **Newsletter Manager** | Design and send email newsletters to subscriber lists | Brevo, SendGrid, Mailchimp, HubSpot (any one — API key or OAuth) |
-| **Lead Gen Manager** | Find and enrich leads, run multi-channel outreach, analyze replies | Apollo (API key), Lemlist (API key), HubSpot (optional, for CRM sync) |
+| **Lead Generation Manager** | Find and enrich leads, run multi-channel outreach, analyze replies | Apollo (API key), Lemlist (API key), HubSpot (optional, for CRM sync) |
 | **App Review Support** | Monitor app store reviews, draft responses in operator's tone | App Store Connect (private key JWT), Google Play (service account) |
 | **App Event Manager** | Scan global holidays, suggest and create App Store in-app events | App Store Connect (JWT), Calendarific (platform-managed) |
 | **Push Notification Manager** | Craft locale- and timezone-aware push notifications, queue dispatch | Firebase (service account JSON per app), Calendarific (platform-managed) |
@@ -10513,7 +10754,7 @@ agents = requests.post(
 )
 print(agents.json())
 
-# Deploy an instance (pinned: False for programmatic deployments)
+# Deploy an instance (API users always use prepaid — credits debit from your wallet)
 deploy = requests.post(
     "https://api.wiro.ai/v1/UserAgent/Deploy",
     headers=headers,
@@ -10521,8 +10762,7 @@ deploy = requests.post(
         "agentguid": "social-manager-agent-guid",
         "title": "Acme Corp Social Media",
         "useprepaid": True,
-        "plan": "starter",
-        "pinned": False
+        "plan": "starter"
     }
 )
 useragent_guid = deploy.json()["useragents"][0]["guid"]

@@ -1,12 +1,21 @@
 # Telegram Integration
 
-Connect your agent to a Telegram bot for two-way messaging with operators or end users.
+Connect your agent to a Telegram bot as an optional extra messaging channel.
 
 ## Overview
 
-Telegram is unique among Wiro integrations — it's always available (no skill toggle required) and is used both as an operator notification channel and, for some agents, as the primary user interface.
+Telegram is **optional** on every Wiro agent. By default your agents already support two built-in messaging channels out of the box:
 
-**Agents that use Telegram:** Nearly all Wiro agents accept a Telegram bot for operator notifications. Some (e.g. Lead Gen Manager for status reports) use it as the main interaction channel.
+- **Web chat** — chat with the agent directly from the [wiro.ai dashboard](https://wiro.ai/panel/agents) with no extra setup.
+- **Messaging API** — your own application sends and receives messages programmatically via [Agent Messaging](/docs/agent-messaging), with real-time streaming over [Agent WebSocket](/docs/agent-websocket) or HTTP callbacks via [Agent Webhooks](/docs/agent-webhooks).
+
+Adding a Telegram bot gives you a third, complementary channel — useful when you want to:
+
+- Push **operator notifications** (campaign alerts, new leads, error reports) to a private chat or team group on your phone.
+- Give **off-dashboard access** to team members who don't log into wiro.ai but still want to message the agent.
+- Pipe **scheduled status reports** from cron skills into a shared Telegram channel.
+
+You can skip this integration entirely — agents keep working through web chat and the API regardless. When the bot token is missing or `allowedUsers` is empty, the Telegram plugin inside the agent is disabled automatically and no messages flow through it.
 
 ## Availability
 

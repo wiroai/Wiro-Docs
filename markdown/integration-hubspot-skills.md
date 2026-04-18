@@ -13,7 +13,7 @@ The HubSpot integration uses HubSpot's OAuth 2.0.
 
 **Agents that typically enable this integration:**
 
-- Lead Gen Manager
+- Lead Generation Manager
 - Newsletter Manager (HubSpot as ESP)
 - Any custom agent with CRM capabilities
 

@@ -22,9 +22,10 @@ Most agents interact with external services — posting to social media, managin
 | Mobile app company | App Review Support | Each app has its own App Store / Google Play credentials |
 | E-commerce platform | Google Ads Manager + Meta Ads Manager | Each advertiser connects their own ad accounts |
 | Marketing SaaS | Newsletter Manager | Each customer connects their own Brevo/SendGrid/Mailchimp |
-| Sales platform | Lead Gen Manager | Each sales team connects their own Apollo/Lemlist |
+| Sales platform | Lead Generation Manager | Each sales team connects their own Apollo/Lemlist |
 | Content agency tool | Blog Content Editor | Each client connects their own WordPress site |
-| App publisher platform | App Event Manager | Each app has its own Firebase project |
+| App publisher platform | App Event Manager | Each app has its own App Store credentials |
+| Mobile app publisher | Push Notification Manager | Each app has its own Firebase service account |
 | Customer engagement tool | Social Manager | Each brand manages their own social presence |
 
 ### Pattern 2: Session Per User
@@ -34,6 +35,8 @@ For conversational agents that don't need per-user credentials. One agent instan
 **Why:** No third-party accounts to connect. The agent answers questions using its built-in knowledge or pre-configured data sources.
 
 **How:** Deploy one instance via `POST /UserAgent/Deploy`, then send messages with different `sessionkey` values per user.
+
+**About `sessionkey`:** This field is optional — if omitted, messages go into a shared `"default"` session. Reuse the same `sessionkey` to continue a conversation (the agent retrieves prior messages as context). Use a fresh UUID to start a new conversation. The common convention is one `sessionkey` per end-user (e.g. `"user-456"`), but you can also use it per-thread (e.g. `"ticket-2025-0817"`) for products that group conversations by topic. See the [Agent Messaging](/docs/agent-messaging) guide for how sessions work.
 
 #### Real-World Examples
 
@@ -54,21 +57,35 @@ For conversational agents that don't need per-user credentials. One agent instan
 | Does the agent perform actions on behalf of the user? | Yes | Rarely |
 | How many instances do you need? | One per customer | One total (or a few) |
 
+### Hybrid Pattern
+
+A single product can combine both — a per-customer action agent plus a shared conversational agent sit side by side in the same frontend. For example:
+
+- One **Social Manager** instance per customer (Pattern 1) to publish posts with their own OAuth-connected accounts.
+- One **shared knowledge-base chat** agent (Pattern 2) that answers product, billing, or onboarding questions across all customers, using `sessionkey` to keep each user's chat separate.
+
+The two agents are independent deployments with different `useragentguid` values. Route user actions to the per-customer instance, and chat questions to the shared instance. Your backend decides which agent handles each request.
+
 ## Building Your Product
 
 ### White-Label Chat
 
 Build a fully branded chat experience with no Wiro UI visible to your users.
 
-1. Deploy an agent via `POST /UserAgent/Deploy`
-2. Start the agent with `POST /UserAgent/Start`
-3. Build your own chat UI
-4. Send messages via `POST /UserAgent/Message/Send`
-5. Stream responses in real-time via [Agent WebSocket](/docs/agent-websocket) using the `agenttoken`
-6. Manage conversation history with `POST /UserAgent/Message/History`
+The deploy flow has three stages — Deploy, Setup (only when the agent needs third-party credentials), and Start:
+
+1. **Deploy** an agent via `POST /UserAgent/Deploy` — returns `useragents[0].guid` and starts the instance in `status: 6` (setup-required) or `status: 0` (ready) depending on whether the template needs credentials.
+2. **Setup** the credentials (only if the agent template requires them) via one or more `POST /UserAgent/Update` calls and the matching OAuth flows — see [Agent Credentials & OAuth](/docs/agent-credentials). Check `setuprequired` on the response: while it's `true`, the agent cannot start. Once all required credential slots are filled, `setuprequired` flips to `false` and `status` becomes `0`. For Pattern 2 (knowledge-base / chat-only agents) there are no third-party credentials, so this stage is skipped and the agent is ready to start right after Deploy.
+3. **Start** the agent with `POST /UserAgent/Start` — transitions through `status: 3` (starting) → `status: 4` (running).
+4. Build your own chat UI.
+5. Send messages via `POST /UserAgent/Message/Send`.
+6. Stream responses in real-time via [Agent WebSocket](/docs/agent-websocket) using the `agenttoken`.
+7. Manage conversation history with `POST /UserAgent/Message/History`.
+
+See [Agent Overview](/docs/agent-overview) for the full lifecycle state table (`status: 0, 1, 3, 4, 5, 6`).
 
 ```bash
-# Deploy (pinned: false keeps your dashboard clean when deploying for end users)
+# Deploy — prepaid + plan are required for API users (credits debit from your wallet)
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
@@ -76,9 +93,20 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
     "agentguid": "agent-template-guid",
     "title": "Customer Support Bot",
     "useprepaid": true,
-    "plan": "starter",
-    "pinned": false
+    "plan": "starter"
   }'
+
+# Pattern 1 only — fill any missing credentials, then verify setuprequired flipped to false
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Detail" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "deployed-useragent-guid" }'
+
+# Start the agent (skipped if Deploy already returned status: 4 for cheap chat-only templates)
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "deployed-useragent-guid" }'
 
 # Send a message
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
@@ -154,7 +182,7 @@ Wiro provides pre-built agent templates you can deploy immediately. Each agent s
 | **Google Ads Manager** | Create and optimize Google Ads campaigns, daily performance reports | Google Ads (OAuth), Calendarific (platform-managed), Google Drive (optional) |
 | **Meta Ads Manager** | Manage Facebook and Instagram ad campaigns, audience analysis | Meta Ads (OAuth), Calendarific (platform-managed), Google Drive (optional) |
 | **Newsletter Manager** | Design and send email newsletters to subscriber lists | Brevo, SendGrid, Mailchimp, HubSpot (any one — API key or OAuth) |
-| **Lead Gen Manager** | Find and enrich leads, run multi-channel outreach, analyze replies | Apollo (API key), Lemlist (API key), HubSpot (optional, for CRM sync) |
+| **Lead Generation Manager** | Find and enrich leads, run multi-channel outreach, analyze replies | Apollo (API key), Lemlist (API key), HubSpot (optional, for CRM sync) |
 | **App Review Support** | Monitor app store reviews, draft responses in operator's tone | App Store Connect (private key JWT), Google Play (service account) |
 | **App Event Manager** | Scan global holidays, suggest and create App Store in-app events | App Store Connect (JWT), Calendarific (platform-managed) |
 | **Push Notification Manager** | Craft locale- and timezone-aware push notifications, queue dispatch | Firebase (service account JSON per app), Calendarific (platform-managed) |
@@ -179,7 +207,7 @@ agents = requests.post(
 )
 print(agents.json())
 
-# Deploy an instance (pinned: False for programmatic deployments)
+# Deploy an instance (API users always use prepaid — credits debit from your wallet)
 deploy = requests.post(
     "https://api.wiro.ai/v1/UserAgent/Deploy",
     headers=headers,
@@ -187,8 +215,7 @@ deploy = requests.post(
         "agentguid": "social-manager-agent-guid",
         "title": "Acme Corp Social Media",
         "useprepaid": True,
-        "plan": "starter",
-        "pinned": False
+        "plan": "starter"
     }
 )
 useragent_guid = deploy.json()["useragents"][0]["guid"]

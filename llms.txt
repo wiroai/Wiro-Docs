@@ -17,6 +17,8 @@
 - [WebSocket](https://wiro.ai/docs/websocket): Real-time streaming for model outputs
 - [LLM & Chat Streaming](https://wiro.ai/docs/llm-chat-streaming): Token-by-token LLM response streaming
 - [Realtime Voice](https://wiro.ai/docs/realtime-voice-conversation): Two-way audio conversations with AI
+- [Realtime Text to Speech](https://wiro.ai/docs/realtime-text-to-speech): Stream synthesized speech over WebSocket — server → client only
+- [Realtime Speech to Text](https://wiro.ai/docs/realtime-speech-to-text): Stream mic audio, receive live transcripts — client → server audio, JSON back
 - [Files](https://wiro.ai/docs/files): Upload files for model inputs
 - [Pricing](https://wiro.ai/docs/pricing): Pay-per-use credit system
 - [Error Reference](https://wiro.ai/docs/error-reference): Error codes and troubleshooting
@@ -265,6 +267,34 @@ Parameters vary per model. Available realtime models:
 - https://wiro.ai/models/openai/gpt-realtime-mini
 - https://wiro.ai/models/openai/gpt-realtime
 - https://wiro.ai/models/elevenlabs/realtime-conversational-ai
+
+## Realtime Text to Speech
+
+For one-way streaming TTS: text prompt in via POST /Run, audio chunks stream back over WebSocket. No mic, server → client only.
+
+Flow: Run task (text in params) → Connect WebSocket (task_info) → Wait for task_stream_ready → Receive binary PCM chunks → task_stream_end → task_postprocess_end → close.
+
+Audio format: PCM Int16, 24kHz, mono. Binary frame: `tasktoken|pcm_audio_data` (server → client only).
+
+Events: task_stream_ready, task_stream_end, task_cost, task_end, task_postprocess_end. No task_output (no transcripts — input text is already known).
+
+Stream often ends naturally when synthesis completes; task_session_end is optional but good practice for early stop or clean shutdown.
+
+Browse models: https://wiro.ai/models (filter by Realtime TTS).
+
+## Realtime Speech to Text
+
+For one-way streaming ASR: mic audio in via WebSocket binary frames, transcripts back as task_output. Client → server audio, server → client JSON only.
+
+Flow: Run task → Connect WebSocket (task_info) → Wait for task_stream_ready → Stream mic PCM chunks → Receive task_output with TRANSCRIPT_USER: prefix → End with task_session_end.
+
+Audio format: PCM Int16, 24kHz, mono. Always send 24kHz — server resamples to model's native rate (e.g. 16kHz for Voxtral). Binary frame: `tasktoken|pcm_audio_data` (client → server only, no server binary frames).
+
+Transcript format: `{ "type": "task_output", "message": "TRANSCRIPT_USER:<text>" }` — progressive, word-by-word. No TRANSCRIPT_AI: prefix.
+
+Events: task_stream_ready, task_output (TRANSCRIPT_USER: prefix), task_stream_end, task_cost, task_end, task_postprocess_end.
+
+Browse models: https://wiro.ai/models (filter by Realtime STT).
 
 ## Parameter Types
 

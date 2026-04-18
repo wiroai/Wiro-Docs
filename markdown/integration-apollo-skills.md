@@ -12,7 +12,7 @@ The Apollo integration uses Apollo's `x-api-key` header authentication.
 
 **Agents that typically enable this integration:**
 
-- Lead Gen Manager
+- Lead Generation Manager
 
 ## Availability
 

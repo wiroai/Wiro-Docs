@@ -12,7 +12,7 @@ The Lemlist integration uses HTTP Basic Authentication with an empty username an
 
 **Agents that typically enable this integration:**
 
-- Lead Gen Manager
+- Lead Generation Manager
 
 ## Availability
 
