@@ -233,6 +233,10 @@ button {
   display: none;
 }
 
+.docs-nav-group-submenu > summary::marker {
+  content: "";
+}
+
 .docs-nav-group-submenu > summary::after {
   content: "›";
   font-size: 1.2rem;
@@ -251,7 +255,8 @@ button {
 
 .docs-nav-group-submenu.is-inline > summary {
   justify-content: flex-start;
-  padding-right: 24px;
+  padding: 8px 24px;
+  margin: 0;
 }
 
 .docs-nav-group-submenu.is-inline > summary::after {
@@ -271,6 +276,12 @@ button {
   list-style: none;
   padding: 0;
   margin: 0;
+}
+
+.docs-nav-links > li {
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
 .docs-nav-link {
