@@ -122,13 +122,16 @@ function escapeHtml(str) {
 }
 
 function updateNavActive(slug) {
+  const activeHref = `${BASE_PATH}/${slug}`;
+  const activeLink = document.querySelector(`.docs-nav-link[href="${activeHref}"]`);
+  const activeSubmenu = activeLink ? activeLink.closest('.docs-nav-group-submenu') : null;
+
   document.querySelectorAll('.docs-nav-link').forEach((link) => {
-    const isActive = link.getAttribute('href') === `${BASE_PATH}/${slug}`;
-    link.classList.toggle('is-active', isActive);
-    if (isActive) {
-      const submenu = link.closest('.docs-nav-group-submenu');
-      if (submenu && !submenu.open) submenu.open = true;
-    }
+    link.classList.toggle('is-active', link === activeLink);
+  });
+
+  document.querySelectorAll('.docs-nav-group-submenu').forEach((submenu) => {
+    submenu.open = submenu === activeSubmenu;
   });
 }
 

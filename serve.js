@@ -70,10 +70,16 @@ const sections = [
 
 const sectionMap = Object.fromEntries(sections.map(s => [s.slug, s]));
 
-let indexHtml = null;
+let indexHtmlCache = null;
+let indexHtmlMtime = 0;
 function getIndexHtml() {
-  if (!indexHtml) indexHtml = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-  return indexHtml;
+  const filePath = path.join(ROOT, 'index.html');
+  const mtime = fs.statSync(filePath).mtimeMs;
+  if (indexHtmlCache === null || mtime !== indexHtmlMtime) {
+    indexHtmlCache = fs.readFileSync(filePath, 'utf8');
+    indexHtmlMtime = mtime;
+  }
+  return indexHtmlCache;
 }
 
 function injectMeta(html, section) {
@@ -139,4 +145,7 @@ http.createServer((req, res) => {
   res.end(html);
 }).listen(PORT, () => {
   console.log(`Docs server running at http://localhost:${PORT}${BASE}/`);
+  if (typeof process.send === 'function') {
+    process.send('ready');
+  }
 });

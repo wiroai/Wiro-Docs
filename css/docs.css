@@ -249,6 +249,24 @@ button {
   margin-top: 4px;
 }
 
+.docs-nav-group-submenu.is-inline > summary {
+  justify-content: flex-start;
+  padding-right: 24px;
+}
+
+.docs-nav-group-submenu.is-inline > summary::after {
+  margin-left: auto;
+}
+
+.docs-nav-group-submenu.is-inline > ul {
+  margin-top: 2px;
+}
+
+.docs-nav-group-submenu.is-inline > ul .docs-nav-link {
+  padding-left: 48px;
+  font-size: 0.95rem;
+}
+
 .docs-nav-links {
   list-style: none;
   padding: 0;
@@ -287,6 +305,25 @@ button {
 .docs-nav-link.active .nav-emoji-icon {
   filter: grayscale(0);
   opacity: 1;
+}
+
+.docs-nav-icon-img {
+  width: 1.1rem;
+  height: 1.1rem;
+  object-fit: contain;
+  flex-shrink: 0;
+  opacity: 0.75;
+  transition: opacity 0.2s, filter 0.2s;
+}
+
+.docs-nav-link:hover .docs-nav-icon-img,
+.docs-nav-link.is-active .docs-nav-icon-img {
+  opacity: 1;
+}
+
+.is-dark .docs-nav-icon-img[src*="twitterx"],
+.is-dark .docs-nav-icon-img[src*="tiktok"] {
+  filter: invert(1);
 }
 
 .docs-nav-link:hover {
@@ -2898,6 +2935,8 @@ button {
     top: 0;
     left: 0;
     z-index: 90;
+    height: 100vh;
+    height: 100dvh;
     transform: translateX(-100%);
     transition: transform 0.3s ease;
   }
@@ -2908,6 +2947,10 @@ button {
 
   .docs-nav {
     display: block;
+    height: 100%;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
   }
 
   .docs-center {
