@@ -120,6 +120,9 @@ function injectMeta(html, section) {
   return html;
 }
 
+const STATIC_CACHE_CONTROL = 'public, max-age=300, must-revalidate';
+const HTML_CACHE_CONTROL = 'no-cache, no-store, must-revalidate';
+
 http.createServer((req, res) => {
   let urlPath = req.url.split('?')[0];
 
@@ -127,10 +130,14 @@ http.createServer((req, res) => {
   else if (urlPath === BASE) urlPath = '/';
 
   const filePath = path.join(ROOT, urlPath);
+  const isRootHtml = urlPath === '/' || urlPath === '/index.html';
 
-  if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+  if (!isRootHtml && fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
     const ext = path.extname(filePath);
-    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
+    res.writeHead(200, {
+      'Content-Type': MIME[ext] || 'application/octet-stream',
+      'Cache-Control': STATIC_CACHE_CONTROL,
+    });
     fs.createReadStream(filePath).pipe(res);
     return;
   }
@@ -141,7 +148,13 @@ http.createServer((req, res) => {
   let html = getIndexHtml();
   if (section) html = injectMeta(html, section);
 
-  res.writeHead(200, { 'Content-Type': 'text/html' });
+  res.writeHead(200, {
+    'Content-Type': 'text/html; charset=utf-8',
+    'Cache-Control': HTML_CACHE_CONTROL,
+    'Pragma': 'no-cache',
+    'Expires': '0',
+    'X-Deploy-Version': String(indexHtmlMtime),
+  });
   res.end(html);
 }).listen(PORT, () => {
   console.log(`Docs server running at http://localhost:${PORT}${BASE}/`);
