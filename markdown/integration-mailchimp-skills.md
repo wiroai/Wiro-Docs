@@ -51,19 +51,16 @@ The Mailchimp integration is unique in supporting three authentication options: 
 ### Own Step 2: Save credentials
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "mailchimp": {
-          "clientId": "YOUR_MAILCHIMP_CLIENT_ID",
-          "clientSecret": "YOUR_MAILCHIMP_CLIENT_SECRET"
-        }
-      }
-    }
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "mailchimp", "fieldname": "clientid",     "fieldvalue": "YOUR_MAILCHIMP_CLIENT_ID" },
+      { "credentialkey": "mailchimp", "fieldname": "clientsecret", "fieldvalue": "YOUR_MAILCHIMP_CLIENT_SECRET" },
+      { "credentialkey": "mailchimp", "fieldname": "authmethod",   "fieldvalue": "own" }
+    ]
   }'
 ```
 
@@ -74,9 +71,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/MailchimpConnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "redirectUrl": "https://your-app.com/settings/integrations",
-    "authMethod": "own"
+    "useragentguid": "your-useragent-guid",
+    "redirecturl": "https://your-app.com/settings/integrations",
+    "authmethod": "own"
   }'
 ```
 
@@ -108,7 +105,7 @@ https://your-app.com/settings/integrations?mailchimp_connected=true&mailchimp_ac
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/MailchimpStatus" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "userAgentGuid": "your-useragent-guid" }'
+  -d '{ "useragentguid": "your-useragent-guid" }'
 ```
 
 Response:
@@ -118,12 +115,12 @@ Response:
   "result": true,
   "connected": true,
   "username": "Your Company",
-  "connectedAt": "2026-04-17T12:00:00.000Z",
+  "connectedat": "2026-04-17T12:00:00.000Z",
   "errors": []
 }
 ```
 
-> **Mailchimp tokens don't expire.** `Status` responses don't include `tokenExpiresAt` or `refreshTokenExpiresAt`. There's no `TokenRefresh` support for Mailchimp either — it's excluded from the valid providers list.
+> **Mailchimp tokens don't expire.** `Status` responses don't include `tokenexpiresat` or `refreshtokenexpiresat`. There's no `TokenRefresh` support for Mailchimp either — it's excluded from the valid providers list.
 
 ## Option B: Direct API Key (No OAuth)
 
@@ -137,18 +134,15 @@ For server-side agents where OAuth is overkill:
 ### Step 2: Save to Wiro
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "mailchimp": {
-          "apiKey": "abcdef1234567890-us14"
-        }
-      }
-    }
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "mailchimp", "fieldname": "authmethod", "fieldvalue": "apiKey" },
+      { "credentialkey": "mailchimp", "fieldname": "apiKey",     "fieldvalue": "abcdef1234567890-us14" }
+    ]
   }'
 ```
 
@@ -167,9 +161,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | Agent instance GUID. |
-| `redirectUrl` | string | Yes | HTTPS URL. |
-| `authMethod` | string | No | `"wiro"` (default) or `"own"`. |
+| `useragentguid` | string | Yes | Agent instance GUID. |
+| `redirecturl` | string | Yes | HTTPS URL. |
+| `authmethod` | string | No | `"wiro"` (default) or `"own"`. |
 
 ### GET /UserAgentOAuth/MailchimpCallback
 
@@ -177,9 +171,9 @@ Query params: `mailchimp_connected=true&mailchimp_account=<name>` or `mailchimp_
 
 ### POST /UserAgentOAuth/MailchimpStatus
 
-Response fields: `connected`, `username` (= accountName), `connectedAt`. **No `tokenExpiresAt`, no `refreshTokenExpiresAt`** — tokens don't expire.
+Response fields: `connected`, `username` (= accountname), `connectedat`. **No `tokenexpiresat`, no `refreshtokenexpiresat`** — tokens don't expire.
 
-> **API key-only mode caveat:** `connected` is computed from `authMethod in {wiro, own}` **and** a non-empty `accessToken`. If you set up Mailchimp via direct API key (no OAuth), `authMethod` and `accessToken` stay empty and `MailchimpStatus.connected` returns `false` — even though the agent runtime is fully functional (the `mailchimp-email` skill reads `$MAILCHIMP_API_KEY` directly via `start.sh`). Don't use `MailchimpStatus.connected` as the source of truth for API key setups; instead, check that `credentials.mailchimp.apiKey` is non-empty in `POST /UserAgent/Detail`.
+> **API key-only mode caveat:** `connected` is computed from `authmethod in {wiro, own}` **and** a non-empty `accesstoken`. If you set up Mailchimp via direct API key (no OAuth), `authmethod` and `accesstoken` stay empty and `MailchimpStatus.connected` returns `false` — even though the agent runtime is fully functional (the `mailchimp-email` skill reads `$MAILCHIMP_API_KEY` directly via `start.sh`). Don't use `MailchimpStatus.connected` as the source of truth for API key setups; instead, check that `credentials.mailchimp.apiKey` is non-empty in `POST /UserAgent/Detail`.
 
 ### POST /UserAgentOAuth/MailchimpDisconnect
 
@@ -191,24 +185,21 @@ Clears credentials (no remote revoke — Mailchimp doesn't expose a revoke endpo
 
 ## Using the Skill
 
-Once Mailchimp is connected (OAuth or API key), the agent's scheduled tasks use the `mailchimp-email` platform skill for audience and campaign operations. Adjust the cron of the built-in `cron-subscriber-scanner` task (Newsletter Manager) with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for `_editable: false` skills:
+Once Mailchimp is connected (OAuth or API key), the agent's scheduled tasks use the `mailchimp-email` platform skill for audience and campaign operations. Adjust the cron of the built-in `cron-subscriber-scanner` task (Newsletter Manager) with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for bundled crons:
 
-```json
-{
-  "guid": "your-useragent-guid",
-  "configuration": {
-    "custom_skills": [
-      {
-        "key": "cron-subscriber-scanner",
-        "enabled": true,
-        "interval": "0 10 * * *"
-      }
-    ]
-  }
-}
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "skillkey": "cron-subscriber-scanner",
+    "enabled": true,
+    "interval": "0 10 * * *"
+  }'
 ```
 
-To change **what** the scanner checks (target lists, bounce thresholds, tone, audience segments), edit the paired preference skill `newsletter-strategy` instead — see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preferences).
+To change **what** the scanner checks (target lists, bounce thresholds, tone, audience segments), edit the paired preference skill `newsletter-strategy` instead — see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preference-skills).
 
 ## Troubleshooting
 

@@ -99,19 +99,16 @@ If the connecting person isn't the app Admin, add them under **App Roles → Rol
 ### Step 7: Save your Meta App credentials to Wiro
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "instagram": {
-          "appId": "YOUR_META_APP_ID",
-          "appSecret": "YOUR_META_APP_SECRET"
-        }
-      }
-    }
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "instagram", "fieldname": "authmethod", "fieldvalue": "own" },
+      { "credentialkey": "instagram", "fieldname": "appid", "fieldvalue": "YOUR_META_APP_ID" },
+      { "credentialkey": "instagram", "fieldname": "appsecret", "fieldvalue": "YOUR_META_APP_SECRET" }
+    ]
   }'
 ```
 
@@ -122,9 +119,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/IGConnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "redirectUrl": "https://your-app.com/settings/integrations",
-    "authMethod": "own"
+    "useragentguid": "your-useragent-guid",
+    "redirecturl": "https://your-app.com/settings/integrations",
+    "authmethod": "own"
   }'
 ```
 
@@ -169,7 +166,7 @@ Instagram has **no secondary selection step** — the Business Account tied to t
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/IGStatus" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "userAgentGuid": "your-useragent-guid" }'
+  -d '{ "useragentguid": "your-useragent-guid" }'
 ```
 
 ```json
@@ -177,16 +174,16 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/IGStatus" \
   "result": true,
   "connected": true,
   "username": "my_brand",
-  "connectedAt": "2026-04-17T12:00:00.000Z",
-  "tokenExpiresAt": "2026-06-16T12:00:00.000Z",
+  "connectedat": "2026-04-17T12:00:00.000Z",
+  "tokenexpiresat": "2026-06-16T12:00:00.000Z",
   "errors": []
 }
 ```
 
-- `connected: true` requires an `accessToken` and `authMethod` (`"wiro"` or `"own"`).
+- `connected: true` requires an `accesstoken` and `authmethod` (`"wiro"` or `"own"`).
 - `username` = Instagram handle (without `@`).
-- `tokenExpiresAt` = ~60 days from connection.
-- **No `refreshTokenExpiresAt`** — Instagram long-lived tokens don't use refresh tokens; they refresh via `grant_type=ig_refresh_token`.
+- `tokenexpiresat` = ~60 days from connection.
+- **No `refreshtokenexpiresat`** — Instagram long-lived tokens don't use refresh tokens; they refresh via `grant_type=ig_refresh_token`.
 
 ### Step 11: Start the agent if it's not running
 
@@ -203,13 +200,13 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | Agent instance GUID. |
-| `redirectUrl` | string | Yes | HTTPS URL (or localhost/127.0.0.1 for dev). |
-| `authMethod` | string | No | `"wiro"` (default) or `"own"`. |
+| `useragentguid` | string | Yes | Agent instance GUID. |
+| `redirecturl` | string | Yes | HTTPS URL (or localhost/127.0.0.1 for dev). |
+| `authmethod` | string | No | `"wiro"` (default) or `"own"`. |
 
 ### GET /UserAgentOAuth/IGCallback
 
-Server-side. Query params appended to your `redirectUrl`:
+Server-side. Query params appended to your `redirecturl`:
 
 | Param | Meaning |
 |-------|---------|
@@ -219,7 +216,7 @@ Server-side. Query params appended to your `redirectUrl`:
 
 ### POST /UserAgentOAuth/IGStatus
 
-Response: `connected`, `username`, `connectedAt`, `tokenExpiresAt`.
+Response: `connected`, `username`, `connectedat`, `tokenexpiresat`.
 
 ### POST /UserAgentOAuth/IGDisconnect
 
@@ -234,7 +231,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "userAgentGuid": "your-useragent-guid",
+    "useragentguid": "your-useragent-guid",
     "provider": "instagram"
   }'
 ```
@@ -243,24 +240,21 @@ Uses `grant_type=ig_refresh_token` with the current access token (Instagram has 
 
 ## Using the Skill
 
-Once the Instagram Business account is connected, the agent's scheduled tasks use the `instagram-post` platform skill to publish feed carousels, reels, and stories. To adjust the cron of the built-in `cron-content-scanner` task (Social Manager), send an Update with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for `_editable: false` skills:
+Once the Instagram Business account is connected, the agent's scheduled tasks use the `instagram-post` platform skill to publish feed carousels, reels, and stories. To adjust the cron of the built-in `cron-content-scanner` task (Social Manager), call `UserAgent/CustomSkillUpsert` with `enabled` and `interval` only — the task body (`value`) is owned by the bundled integration skill and silently dropped on writes:
 
-```json
-{
-  "guid": "your-useragent-guid",
-  "configuration": {
-    "custom_skills": [
-      {
-        "key": "cron-content-scanner",
-        "enabled": true,
-        "interval": "0 */4 * * *"
-      }
-    ]
-  }
-}
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "skillkey": "cron-content-scanner",
+    "enabled": true,
+    "interval": "0 */4 * * *"
+  }'
 ```
 
-To change **what** the scheduled task posts (topics, tone, hashtag rules, caption style), edit the paired preference skill `content-tone` instead — see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preferences).
+To change **what** the scheduled task posts (topics, tone, hashtag rules, caption style), edit the paired preference skill `content-tone` instead — see [Agent Skills → Updating Preference Skills](/docs/agent-skills#updating-preference-skills).
 
 ## Troubleshooting
 
@@ -271,7 +265,7 @@ To change **what** the scheduled task posts (topics, tone, hashtag rules, captio
 | `authorization_denied` | User cancelled, or not in App Roles (Development Mode). | Add as Tester (Step 6), retry. |
 | `token_exchange_failed` | Wrong App Secret, redirect URI mismatch, or no linked Instagram Business Account. | Re-copy App Secret; verify redirect URI; verify IG Business → FB Page linkage. |
 | `useragent_not_found` | Invalid or unauthorized guid. | Use `POST /UserAgent/MyAgents`. |
-| `invalid_config` | No `credentials.instagram` block. | `POST /UserAgent/Update` with `instagram.appId` and `instagram.appSecret`. |
+| `invalid_config` | No `credentials.instagram` block. | `POST /UserAgent/CredentialUpsert` with `instagram.appid` and `instagram.appsecret`. |
 | `internal_error` | Unexpected server error. | Retry. If persistent, contact support. |
 
 ### "No Instagram Business Account found" during OAuth

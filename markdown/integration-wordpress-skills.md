@@ -47,20 +47,16 @@ Enabled by default in WP 5.6+. If your host or security plugin disabled them:
 ### Step 3: Save to Wiro
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "wordpress": {
-          "url": "https://blog.example.com",
-          "user": "WiroBlogAgent",
-          "appPassword": "xxxx xxxx xxxx xxxx xxxx xxxx"
-        }
-      }
-    }
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "wordpress", "fieldname": "url",         "fieldvalue": "https://blog.example.com" },
+      { "credentialkey": "wordpress", "fieldname": "user",        "fieldvalue": "WiroBlogAgent" },
+      { "credentialkey": "wordpress", "fieldname": "apppassword", "fieldvalue": "xxxx xxxx xxxx xxxx xxxx xxxx" }
+    ]
   }'
 ```
 
@@ -79,21 +75,19 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 |-------|------|-------------|
 | `url` | string | Site URL with `https://`, no trailing slash. |
 | `user` | string | WordPress username the Application Password belongs to. |
-| `appPassword` | string | 24-character Application Password. |
+| `apppassword` | string | 24-character Application Password. |
 
 ## Credentials schema (as returned by `POST /UserAgent/Detail`)
 
 ```json
 "wordpress": {
   "optional": false,
+  "_connected": false,
+  "optional": false,
+  "extra": false,
   "url": "",
   "user": "",
-  "appPassword": "",
-  "_editable": {
-    "url": true,
-    "user": true,
-    "appPassword": true
-  }
+  "apppassword": ""
 }
 ```
 
@@ -103,7 +97,7 @@ Env vars inside the agent container (exported **only when `wordpress-post` skill
 
 - `WORDPRESS_URL` ← `credentials.wordpress.url`
 - `WORDPRESS_USER` ← `credentials.wordpress.user`
-- `WORDPRESS_APP_PASSWORD` ← `credentials.wordpress.appPassword`
+- `WORDPRESS_APP_PASSWORD` ← `credentials.wordpress.apppassword`
 
 Auth: `--user "$WORDPRESS_USER:$WORDPRESS_APP_PASSWORD"` (Basic via Application Password).
 Base URL: `$WORDPRESS_URL/wp-json/wp/v2/...`

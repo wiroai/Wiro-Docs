@@ -25,12 +25,15 @@
 
 ## Agent API Docs
 
-- [Agent Overview](https://wiro.ai/docs/agent-overview): Deploy and manage autonomous AI agents
+- [Agent Overview](https://wiro.ai/docs/agent-overview): Deploy and manage autonomous AI agents (tiers, peractioncosts, lifecycle, all UserAgent endpoints)
+- [Agent Builder](https://wiro.ai/docs/agent-builder): Build a custom agent from scratch (no template — pick your own skill set), live pricing previews, custom: true Deploy
 - [Agent Messaging](https://wiro.ai/docs/agent-messaging): Send messages and stream agent responses
 - [Agent WebSocket](https://wiro.ai/docs/agent-websocket): Real-time agent response streaming
 - [Agent Webhooks](https://wiro.ai/docs/agent-webhooks): Receive agent responses via HTTP callbacks
-- [Agent Credentials](https://wiro.ai/docs/agent-credentials): Integration catalog hub + generic OAuth flow
-- [Agent Skills](https://wiro.ai/docs/agent-skills): Configure preferences and scheduled automation tasks
+- [Agent Credentials](https://wiro.ai/docs/agent-credentials): Integration catalog hub + generic OAuth flow + Credentials/List + CredentialFieldHistory
+- [Agent Skills](https://wiro.ai/docs/agent-skills): Configure preferences and scheduled automation tasks; Skills/List + Skills/Detail + Skills/Capabilities + SkillsApply + CustomSkillHistory + CustomSkillRevert
+- [Agent Transactions](https://wiro.ai/docs/agent-transactions): Per-instance credit ledger (deductions, renewals, purchases, grants)
+- [Agent Logs](https://wiro.ai/docs/agent-logs): Per-instance activity feed (tool calls, cron runs, message exchanges)
 - [Agent Use Cases](https://wiro.ai/docs/agent-use-cases): Deployment patterns and architecture guides
 
 ## Integration Guides
@@ -45,7 +48,7 @@ OAuth integrations:
 - [Google Ads](https://wiro.ai/docs/integration-googleads-skills): Developer Token + MCC + customer ID selection
 - [HubSpot](https://wiro.ai/docs/integration-hubspot-skills): CRM object management
 - [Mailchimp](https://wiro.ai/docs/integration-mailchimp-skills): OAuth or direct API key
-- [Google Drive](https://wiro.ai/docs/integration-googledrive-skills): Scoped folder access via drive.file
+- [Google Drive](https://wiro.ai/docs/integration-googledrive-skills): Per-user service account, folders shared with SA email
 
 API key integrations:
 - [Gmail](https://wiro.ai/docs/integration-gmail-skills): App Password via IMAP/SMTP
@@ -182,24 +185,52 @@ POST /File/Upload (multipart/form-data) — Fields: `file`, `folderid`. Max 100M
 
 ## Agent Endpoints
 
-POST /Agent/List - List available agent templates (public, no auth required)
-POST /Agent/Detail - Get agent template details by guid or slug (public)
-POST /UserAgent/Deploy - Deploy a new agent instance (supports prepaid wallet)
+POST /Agent/List - List available agent templates (public, no auth required) - returns tiers + tiermultiplier per row
+POST /Agent/Detail - Get agent template details by guid or slug (public) - returns tiers + tiermultiplier + peractioncosts + skills + skillsmeta + credentials._schema
+POST /Skills/List - Browse the skill registry (public, no auth)
+POST /Skills/Detail - Get a single skill descriptor by name (public, no auth)
+POST /Skills/CredentialSchema - Get the credential entry for a skill (public, no auth)
+POST /Skills/Capabilities - Closed-set capability vocabulary (public, no auth)
+POST /Credentials/List - Browse the credential registry (public, no auth)
+POST /Credentials/Detail - Get a single credential schema by key (public, no auth)
+POST /UserAgent/Deploy - Deploy a new agent instance (template via agentguid OR custom build via custom: true). useprepaid: true + tier: starter|pro for API.
 POST /UserAgent/MyAgents - List your deployed agent instances
-POST /UserAgent/Detail - Get agent instance details
-POST /UserAgent/Update - Update agent configuration and credentials
+POST /UserAgent/Detail - Get agent instance details (full composed shape: credentials, customskills, scheduledskills, skills, peractioncosts, subscription, agent.tiers, agent.extracreditpacks)
+POST /UserAgent/Update - Update agent scalar fields (title, description, categories, cover URL)
+POST /UserAgent/Cover - Upload a cover image (multipart, image field)
+POST /UserAgent/CredentialUpsert - Write one or more credential fields per provider
+POST /UserAgent/CredentialFieldHistory - Read credential edit history (oauth_session never appears; clientsecret REDACTED in entries)
+POST /UserAgent/CustomSkillUpsert - Write a single custom skill's value/interval/enabled (server normalises to cs-* / cs-cron-*)
+POST /UserAgent/CustomSkillDelete - Delete a user-created cron skill (preset-owned crons rejected with disable-via-upsert suggestion)
+POST /UserAgent/CustomSkillHistory - Read version history for a custom skill (with preset_default baseline)
+POST /UserAgent/CustomSkillRevert - Revert to preset default OR a specific historical version
+POST /UserAgent/SkillsApply - Single or batch skill toggle + optional tier change (idempotency-key required, atomic, ONE restart, prorated wallet delta). Custom builds only for non-admin callers.
+POST /UserAgent/PricingPreview - Live tier-pricing preview. Two modes: (1) draft: true + skills[] for Builder; (2) useragentguid + skillOverrides for existing UA.
 POST /UserAgent/Start - Start an agent instance
 POST /UserAgent/Stop - Stop an agent instance
-POST /UserAgent/CreateExtraCreditCheckout - Purchase extra credits (supports prepaid wallet)
+POST /UserAgent/Pin - Pin / unpin an agent
+POST /UserAgent/PinnedAgents - List pinned agents (header dropdown)
+POST /UserAgent/PinnedUnread - Latest message guid per pinned agent (unread badge)
+POST /UserAgent/CreateSubscriptionCheckout - Subscribe a not-yet-subscribed useragent (always pass useprepaid: true from API — wallet is debited and the agent is auto-queued)
+POST /UserAgent/CreateExtraCreditCheckout - Purchase extra credits (supports prepaid wallet). Pack keys: small | medium | large.
 POST /UserAgent/CancelSubscription - Cancel a prepaid subscription at period end
-POST /UserAgent/UpgradePlan - Upgrade prepaid plan (starter → pro, prorated)
-POST /UserAgent/RenewSubscription - Renew expired prepaid subscription or undo cancel
+POST /UserAgent/UpgradeTier - Upgrade Starter → Pro (targetTier required; downgrade rejected). Wallet is debited the prorated upgrade fee synchronously, subscription + useragent are updated, agent runtime restarted.
+POST /UserAgent/RenewSubscription - Renew expired prepaid subscription or undo cancel (snapshot-driven pricing, no tier param)
+POST /UserAgent/TransactionList - Read agent credit ledger (paginated, 50 default 500 max). Returns summary + transactions[] with type/action/amount/metadata/user.
+POST /UserAgent/CreditSync - Agent → API monotonic counter sync (runtime-only auth: useragentguid + uuid pair)
+POST /UserAgent/TransactionInsert - Agent → API per-deduction event (runtime-only auth, idempotent on guid)
+POST /UserAgent/Logs - Per-instance activity feed live tail (last N events for date)
+POST /UserAgent/LogsList - List dates with activity files
+POST /UserAgent/LogsFile - Read full JSONL file for a date
+POST /UserAgent/LogsDelete - Delete one date's activity file (idempotent)
 POST /UserAgent/Message/Send - Send a message to an agent (async, returns agenttoken)
 POST /UserAgent/Message/Detail - Get message details by guid or agenttoken
 POST /UserAgent/Message/History - Get conversation history with pagination
 POST /UserAgent/Message/Sessions - List conversation sessions
-POST /UserAgent/Message/DeleteSession - Delete a session and messages
+POST /UserAgent/Message/DeleteSession - Delete an entire session's messages (hard delete; scoped to caller's uuid in private mode, scoped to all in collaborative mode)
+POST /UserAgent/Message/Delete - Bulk per-side soft-delete: { items: [{ messageguid, side: "user"|"agent"|"both" }] }
 POST /UserAgent/Message/Cancel - Cancel an in-progress message
+POST /UserAgent/Message/SystemInsert - Insert a finished system message into the conversation history (runtime-only auth: useragentguid + uuid pair; never triggers a model call)
 POST /UserAgentOAuth/{Provider}Connect - Start OAuth flow for a provider
 POST /UserAgentOAuth/{Provider}Disconnect - Disconnect OAuth provider
 POST /UserAgentOAuth/{Provider}Status - Check OAuth connection status
@@ -461,38 +492,75 @@ Methods: `searchModels()`, `getModelSchema()`, `explore()`, `runModel()`, `waitF
 
 ## Agent API
 
-Autonomous AI agents in isolated containers. Two layers: Agent templates (catalog) and UserAgent instances (your deployments). Same auth (`x-api-key`).
+Autonomous AI agents in isolated containers. Two layers: Agent templates (catalog) and UserAgent instances (your deployments). Two deploy paths: template (`agentguid`) and custom build (`custom: true`). Same auth (`x-api-key`).
 
-Lifecycle: Browse → Subscribe (prepaid wallet) → Deploy → Configure credentials → Start → Running → Chat
+Lifecycle: Browse → Deploy (`useprepaid: true` + `tier`) → Configure credentials → Start → Running → Chat
 
 Statuses: 0=Stopped, 1=Stopping, 2=Queued, 3=Starting, 4=Running, 5=Error, 6=Setup Required
 
-### Catalog (Public, No Auth)
+### Pricing Model
 
-POST /Agent/List — `{ search, category, sort, order, limit, start }` → `{ result, total, agents: [{ guid, title, slug, headline, cover, categories, pricing, skills, status }] }`
-POST /Agent/Detail — `{ guid }` or `{ slug }` → same plus `ratelimit`, `configuration.credentials`
+Pricing is fully derived from the agent's enabled skill set + per-template `tiermultiplier`. Two tiers: Starter (default) and Pro. `pro.priceUsd = starter.priceUsd × tiermultiplier`, `pro.credits = starter.credits × tiermultiplier`. Default `tiermultiplier = 3`.
+
+`peractioncosts` object on every useragent: `{ message, create, modify, regenerate }` — credits charged per agent action. Computed as `max()` across enabled skills' `pricing.credit_costs`. Same value for Starter and Pro (Pro just gives 3× more monthly credits).
+
+Extra credit packs are per-useragent: derived as 5x / 10x / 20x of the instance's monthly allocation. Pack keys: `small`, `medium`, `large`. Pro tier only.
+
+Agent subscription plan is `"agent"` with separate `tier` field (`"starter"` | `"pro"`). The legacy `"agent-starter"` / `"agent-pro"` plan strings are retired.
+
+### Catalog & Registries (Public, No Auth)
+
+POST /Agent/List — `{ search, category, sort, order, limit, start }` → `{ result, total, agents: [{ guid, title, slug, headline, cover, categories, samples, tiermultiplier, tiers: { starter: { priceUsd, credits }, pro: { priceUsd, credits } }, status }] }`. The `id` / `totalrun` / `activerun` columns are stripped for the public role.
+POST /Agent/Detail — `{ guid, slug, type? }` → agent row with `tiermultiplier` + `tiers` + `peractioncosts` + `skills` (string[] of enabled preset skill names) + `skillsmeta` (registry metadata for each enabled skill: title/icon/category/credential_key) + `credentials` (template schema with `optional`/`extra` flags + `_editable` map + `_schema` registry descriptor). Pass `type: "full"` to also include `customskills` and `scheduledskills`. `_connected` flag is instance-scoped and only on UserAgent/Detail. `extracreditpacks` is `[]` here — populated only on UserAgent/Detail.
+POST /Skills/List — `{ category?, capability?, user_invocable?, requires_credentials?, wiro_connect_pending?, name_in?[] }` → `{ result, total, skills: [{ name, title, description, icon, category, credential_key, requires_credentials, user_invocable, depends_on[], conflicts_with[], capabilities[], pricing: { base_price_usd, base_credits, credit_costs: { message, create, modify, regenerate } }, wiro_connect_pending, doc_url }] }`.
+POST /Skills/Detail — `{ name }` → `{ result, skill }` — same shape as List rows + `tools[]` array of runtime tool calls.
+POST /Skills/CredentialSchema — `{ name }` → `{ result, credential }` — convenience: returns the credential entry for the skill.
+POST /Skills/Capabilities — `{}` → `{ result, capabilities: [{ name, description }] }` — closed-set vocabulary: post-content, schedule-content, send-email, send-message, fetch-content, manage-ads, lead-research, analytics.
+POST /Credentials/List — `{ credential_mode?, wiro_connect_pending? }` → `{ result, total, credentials: [{ key, label, icon, credential_mode, oauth_provider?, doc_url, wiro_connect_pending, credential_schema: [{ key, label, type, options?, fieldstatus, parentfield? }] }] }`. credential_mode: oauth | sa | api_key | multi_api_key | hybrid | imap_credentials | jwt_sa | rule_only.
+POST /Credentials/Detail — `{ key }` → `{ result, credential }`.
 
 ### Management (Auth Required)
 
-POST /UserAgent/Deploy — `{ agentguid, title, useprepaid?, plan?, pinned? }` → `{ result, useragents: [{ guid, status, pinned }] }`. When `useprepaid: true`, pass `plan` ("starter" or "pro") to pay from wallet. Deducts plan price and creates a 30-day subscription. Set `pinned: false` for bulk/programmatic deployments to avoid cluttering the pinned list.
-POST /UserAgent/MyAgents — `{ sort, order, limit, start }` → `{ result, useragents: [{ guid, title, status, setuprequired, subscription, agent, extracredits }] }`
-POST /UserAgent/Detail — `{ guid }` → full instance + subscription. Subscription includes `provider` ("prepaid").
-POST /UserAgent/Update — `{ guid, title?, description?, categories?, configuration? }` → Only `_editable` fields accepted. Running agents restart.
-POST /UserAgent/Start — `{ guid }` → Queues agent (status 2). Requires subscription + credits.
+POST /UserAgent/Deploy — Two shapes: (a) template `{ agentguid, title, useprepaid: true, tier: "starter"|"pro", pinned?, credentials?, customskills?, skills?, description?, cover? }`; (b) custom build `{ custom: true, title, useprepaid: true, tier, ... }`. When `useprepaid: true`, deducts the chosen tier price from your wallet and creates a 30-day subscription (`plan: "agent"`, `provider: "prepaid"`). Returns the composed useragent shape.
+POST /UserAgent/MyAgents — `{ sort, order, limit, start, category? }` → `{ result, useragents }` — same row shape as PinnedAgents.
+POST /UserAgent/Detail — `{ guid }` → composed instance: `tier`, `tiermultiplier`, `monthlypriceusd`, `monthlycredits`, `extracredits`, `usedcredits`, `remainingcredits`, `creditperiod`, `creditsyncat`, `peractioncosts`, `credentials` (with `_connected`/`optional`/`extra`/`_editable`/`_schema`), `customskills` (preference + non-cron user-created), `scheduledskills` (cron skills), `skills`, `subscription` (`plan: "agent"`, `provider`, `amount`, `currentperiodend`, `pendingdowngrade`), `agent` (template summary with `tiers` + `tiermultiplier` + `extracreditpacks`).
+POST /UserAgent/Update — `{ guid, title?, description?, categories?, cover? }` → Scalar-only update. Running agents auto-restart on success.
+POST /UserAgent/Cover — multipart `{ useragentguid, image }` → `{ result, cover, useragents }`. Uploads to S3 + writes URL to useragents.cover.
+POST /UserAgent/CredentialUpsert — `{ useragentguid, fields: [{ credentialkey, fieldname, fieldvalue, fieldstatus?, parentfield?, ordinal? }] }` → `{ result, applied, errors }`. Only `fieldstatus: "user"` writable from API role.
+POST /UserAgent/CredentialFieldHistory — `{ useragentguid, credentialkey, startdate?, enddate? }` → `{ result, entries }`. clientsecret REDACTED in entries; oauth_session never appears.
+POST /UserAgent/CustomSkillUpsert — `{ useragentguid, skillkey, value?, interval?, enabled?, description?, usercreated? }` → `{ result }`. Server auto-normalises skillkey to canonical `cs-*` / `cs-cron-*`. Description-only edits skip the agent restart.
+POST /UserAgent/CustomSkillDelete — `{ useragentguid, skillkey }` → `{ result }`. Preset-owned crons rejected with `suggestion: "disable-via-upsert"`.
+POST /UserAgent/CustomSkillHistory — `{ useragentguid, skillkey, startdate?, enddate? }` → `{ result, entries, preset_default }`.
+POST /UserAgent/CustomSkillRevert — `{ useragentguid, skillkey, source: "preset"|"history", versionguid? }` → `{ result, action, current_value, current_interval, current_enabled }`.
+POST /UserAgent/SkillsApply — `{ useragentguid, skills: { "int-skillname": bool }, tier?, idempotencyKey }` → `{ result, tier, stripeProrationApplied: false, prepaidWalletDelta, restartTriggered, restartedAt, pricing: { previousPriceUsd, newPriceUsd, deltaUsd, previousMonthlyCredits, newMonthlyCredits, deltaCredits, enabledSkills, peractioncosts } }`. The ONLY skill-toggle endpoint API consumers should use — even single-skill toggles go through this. Atomic batch with one charge + one restart, idempotent. Custom builds only for non-admin (template UAs reject with `Skill changes are only available for custom-built agents.`). Tier downgrade Pro→Starter rejected. Error codes 100-108 (template-only, deps-violation, conflict, insufficient-wallet, in-progress, tier-downgrade, subscription-inactive, idempotency-cache-corrupt, db-tx-failed).
+POST /UserAgent/PricingPreview — Two body shapes: (a) draft `{ draft: true, tier?, skills: [...] }` for Builder; (b) existing `{ useragentguid, tier?, skillOverrides? }`. Returns `{ tier, tiermultiplier, totalPriceUsd, totalMonthlyCredits, peractioncosts, skillBreakdown[], enabledSkills, directSkills, agentBase, tiers: { starter, pro } }`.
+POST /UserAgent/CreateSubscriptionCheckout — `{ useragentguid, useprepaid: true, tier? }` → `{ result, subscriptionId, monthlypriceusd, monthlycredits }`. API consumers always pass useprepaid: true (wallet-backed). Rejects if useragent already has an active subscription.
+POST /UserAgent/Start — `{ guid }` → Queues agent (status 2). Requires monthlycredits + extracredits > usedcredits.
 POST /UserAgent/Stop — `{ guid }` → Stops or moves to Stopping.
-POST /UserAgent/CreateExtraCreditCheckout — `{ useragentGuid, pack, useprepaid? }` → `{ result }`. Pro plan only. Deducts pack price from wallet and activates credits immediately.
-POST /UserAgent/CancelSubscription — `{ guid }` → `{ result, cancelsAt }`. Sets subscription to cancel at period end (not immediate).
-POST /UserAgent/UpgradePlan — `{ guid, plan }` → `{ result, plan, proratedCharge, newMonthlyCredits }`. Upgrades starter → pro with prorated wallet charge for remaining days.
-POST /UserAgent/RenewSubscription — `{ guid }` → `{ result, action, plan?, amount? }`. If active with pending cancel: undoes cancel (`action: "undo-cancel"`). If expired: charges wallet and creates new 30-day subscription (`action: "renewed"`).
-
+POST /UserAgent/Pin — `{ useragentguid, pinned }` → `{ result }`.
+POST /UserAgent/PinnedAgents — `{}` (uses tokenUUID / teamGUID header) → `{ result, useragents }`.
+POST /UserAgent/PinnedUnread — `{}` → `{ result, data: [{ useragentguid, lastmessageguid }] }`.
+POST /UserAgent/CreateExtraCreditCheckout — `{ useragentguid, pack: "small"|"medium"|"large", useprepaid: true }` → `{ result }`. Deducts pack price from wallet, activates credits immediately, expires 6 months.
+POST /UserAgent/CancelSubscription — `{ guid }` → `{ result, cancelsAt }`. Prepaid-only cancel-at-period-end. Reverse with RenewSubscription (no charge).
+POST /UserAgent/UpgradeTier — `{ guid, targetTier: "pro" }` → `{ result, tier, previousTier, newPriceUsd, newMonthlyCredits, proratedCharge, stripeProrationApplied: false }`. Wallet debited the prorated upgrade fee. Starter → Pro only; downgrade rejected.
+POST /UserAgent/RenewSubscription — `{ guid }` → either `{ action: "undo-cancel" }` (no wallet charge) or `{ action: "renewed", plan: "agent", amount, monthlycredits }` (wallet charged the snapshot price, expired sub rolled forward into a fresh 30-day active period; agents in status 0/5 are auto-queued back to 2). Renewal pricing is snapshot-driven from useragents.monthlypriceusd / monthlycredits — registry weight changes between renewals do NOT propagate.
+POST /UserAgent/TransactionList — `{ useragentguid, limit?, start? }` → `{ result, total, summary, transactions }`. summary: `{ monthlycredits, extracredits, usedcredits, remainingcredits, creditperiod, creditsyncat }`. Each transaction: `{ guid, type, action, amount, balanceafter, description, sessionkey?, messageguid?, provider, providerref?, metadata?, uuid?, user?, createdat }`. type: deduct | renewal | purchase | grant | expired | refund | cancel. action for purchase: small | medium | large.
+POST /UserAgent/CreditSync — runtime-only auth: `{ useragentguid, uuid, usedcredits, creditperiod }` → `{ result, usedcredits, creditperiod, remainingcredits }`. Server stores GREATEST(existing, incoming) within same period.
+POST /UserAgent/TransactionInsert — runtime-only auth: `{ useragentguid, uuid, type: "deduct", action?, amount, guid?, sessionkey?, messageguid?, description? }` → `{ result, guid, idempotent, monthlycredits, extracredits, usedcredits, remainingcredits }`. Idempotent on guid.
+POST /UserAgent/Logs — `{ useragentguid, date?, lines? }` → `{ result, date, totalLines, events }`. Live tail. Cached 30s for non-admin.
+POST /UserAgent/LogsList — `{ useragentguid }` → `{ result, dates: [{ date, filename, size, compressed }] }`.
+POST /UserAgent/LogsFile — `{ useragentguid, date }` → `{ result, date, truncated, events }`. Full JSONL file read.
+POST /UserAgent/LogsDelete — `{ useragentguid, date }` → `{ result, date, removed: { plain, gz } }`.
 ### Messaging
 
 POST /UserAgent/Message/Send — `{ useragentguid, message, sessionkey?, callbackurl? }` → `{ result, messageguid, agenttoken, status: "agent_queue" }`
-POST /UserAgent/Message/Detail — `{ messageguid }` or `{ agenttoken }` → `{ result, data: { guid, sessionkey, content, response, debugoutput, status, metadata, createdat, startedat, endedat } }`
-POST /UserAgent/Message/History — `{ useragentguid, sessionkey?, limit?, before? }` → `{ result, data: { messages, count, hasmore } }`
+POST /UserAgent/Message/Detail — `{ messageguid }` or `{ agenttoken }` → `{ result, data: { guid, uuid, user, sessionkey, content, response, debugoutput, status, metadata, attachments, deletestatus, createdat, startedat, endedat } }`. `user` is server-decorated `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }` from agentmessages.uuid; `null` for system rows.
+POST /UserAgent/Message/History — `{ useragentguid, sessionkey?, limit?, before? }` → `{ result, data: { messages, count, hasmore } }`. Each message row carries the same shape as Message/Detail (including `uuid` sender + decorated `user` object). Collaborative team mode returns rows from all team members; private mode filters by caller uuid.
 POST /UserAgent/Message/Sessions — `{ useragentguid }` → `{ result, data: { sessions: [{ sessionkey, messagecount, updatedat, lastmessage }] } }`
-POST /UserAgent/Message/DeleteSession — `{ useragentguid, sessionkey }`
+POST /UserAgent/Message/DeleteSession — `{ useragentguid, sessionkey }`. Hard delete of every message row in the session for the caller's uuid (collaborative team mode deletes for all members).
+POST /UserAgent/Message/Delete — `{ useragentguid, items: [{ messageguid, side: "user"|"agent"|"both" }] }`. Per-side soft-delete via the `deletestatus` bitmask (user=1, agent=2, both=3). Best-effort across the items array.
 POST /UserAgent/Message/Cancel — `{ messageguid }` or `{ agenttoken }`. Only cancellable in agent_queue/agent_start/agent_output.
+POST /UserAgent/Message/SystemInsert — runtime-only auth: `{ useragentguid, uuid, content, sessionkey? }` → `{ result, messageguid, sessionkey }`. Inserts a verbatim message into agentmessages with status='agent_end' and metadata.type='system' — never queues, never calls the model. sessionkey defaults to "auto" (resolved to last session, falls back to "default"). Used by agent runtime, cron skills, and external chat-platform bridges (Telegram/Slack relays).
 
 Message statuses: agent_queue → agent_start → agent_output (multiple) → agent_end. Also: agent_error, agent_cancel.
 
@@ -512,18 +580,18 @@ For error/cancel: `metadata` is `{}`. Retry: 3 attempts, 2s delay. Must return H
 
 ### Credentials
 
-API Key: Set via Update `configuration.credentials.<service>`. Services: brevo (apiKey), sendgrid (apiKey), wordpress (url, user, appPassword), firebase (accounts array with appName, serviceAccountJsonBase64, apps, topics), gmail (account, appPassword), apollo (apiKey, masterApiKey), lemlist (apiKey), telegram (botToken, allowedUsers, sessionMode), website (urls array of {websiteName, url}), appstore (keyId, issuerId, privateKeyBase64, appIds — or apps array for ads agents), googleplay (serviceAccountJsonBase64, packageNames — or apps array for ads agents), newsletter (testEmail).
+API Key: Set via `POST /UserAgent/CredentialUpsert` with `fields[]`. One row per field: `{ credentialkey: "<service>", fieldname: "<field>", fieldvalue: "<value>" }`. Nested arrays (firebase.accounts, googledrive.folders, appstore.apps, googleplay.apps) use `parentfield` (dotted path) + `ordinal` (index). Services: brevo (apiKey), sendgrid (apiKey), wordpress (url, user, apppassword), firebase (accounts[].serviceaccountjsonbase64 + accounts[].apps[].appid/platform + accounts[].topics[].topickey), gmail (account, apppassword), apollo (apiKey, masterapikey), lemlist (apiKey), telegram (bottoken, allowedusers JSON array, sessionmode), website (urls array of {websitename, url}), appstore (keyid, issuerid, privatekeybase64, appids — or apps[] for ads agents), googleplay (serviceaccountjsonbase64, packagenames — or apps[] for ads agents), newsletter (testemail).
 
-OAuth: POST /UserAgentOAuth/{Provider}Connect — `{ userAgentGuid, redirectUrl, authMethod: "wiro"|"own" }` → `{ authorizeUrl }`. White-label: user sees only your app + provider consent screen, never wiro.ai.
-Providers: X, TikTok, Instagram, Facebook, LinkedIn, Google Ads, Meta Ads, HubSpot, Mailchimp, Google Drive.
-POST /UserAgentOAuth/{Provider}Status — `{ userAgentGuid }` → `{ connected, username, connectedAt, tokenExpiresAt }`
-POST /UserAgentOAuth/{Provider}Disconnect — `{ userAgentGuid }`
-POST /UserAgentOAuth/TokenRefresh — `{ userAgentGuid, provider }` → `{ accessToken, refreshToken }`. API users typically don't call this — every running agent container runs its own token refresh cron jobs (20 min for HubSpot, 45 min for Google Ads/Drive, 90 min for Twitter/X, daily for others) that call this endpoint internally. Manual calls are for debugging only. Not supported for Mailchimp (tokens don't expire).
+OAuth: POST /UserAgentOAuth/{Provider}Connect — `{ useragentguid, redirecturl, authmethod: "wiro"|"own" }` → `{ authorizeUrl }`. White-label: user sees only your app + provider consent screen, never wiro.ai.
+Providers: X, TikTok, Instagram, Facebook, LinkedIn, Google Ads, Meta Ads, HubSpot, Mailchimp.
+POST /UserAgentOAuth/{Provider}Status — `{ useragentguid }` → `{ connected, username, connectedat, tokenexpiresat }`
+POST /UserAgentOAuth/{Provider}Disconnect — `{ useragentguid }`
+POST /UserAgentOAuth/TokenRefresh — `{ useragentguid, provider }` → `{ accesstoken, refreshtoken }`. API users typically don't call this — every running agent container runs its own token refresh cron jobs (20 min for HubSpot, 45 min for Google Ads/Drive, 90 min for Twitter/X, daily for others) that call this endpoint internally. Manual calls are for debugging only. Not supported for Mailchimp (tokens don't expire).
 
 Post-callback selection endpoints (provider-specific):
-POST /UserAgentOAuth/MetaAdsSetAdAccount — `{ userAgentGuid, adAccountId, adAccountName? }` → pick ad account after Meta Ads OAuth
-POST /UserAgentOAuth/FBSetPage — `{ userAgentGuid, pageId, pageName? }` → pick Facebook Page after OAuth (multi-page accounts). Backend caches pending pages for 15 minutes; client-side only receives `{id, name}` pairs via `fb_pages` query param.
-POST /UserAgentOAuth/GAdsSetCustomerId — `{ userAgentGuid, customerId }` → pick Google Ads customer ID
+POST /UserAgentOAuth/MetaAdsSetAdAccount — `{ useragentguid, adaccountid, adaccountname? }` → pick ad account after Meta Ads OAuth
+POST /UserAgentOAuth/FBSetPage — `{ useragentguid, pageid, pagename? }` → pick Facebook Page after OAuth (multi-page accounts). Backend caches pending pages for 15 minutes; client-side only receives `{id, name}` pairs via `fb_pages` query param.
+POST /UserAgentOAuth/GAdsSetCustomerId — `{ useragentguid, customerid }` → pick Google Ads customer ID
 
 Meta Platforms (Meta Ads, Facebook Page, Instagram): wiro mode coming soon while shared app pending Meta review. Use own mode with your own Meta Developer App in Development Mode — no App Review required when users connecting are added to the app's Roles as Testers/Developers.
 

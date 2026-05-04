@@ -40,18 +40,14 @@ The Brevo integration uses Brevo API v3 with an `api-key` header (not Bearer).
 ### Step 2: Save to Wiro
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "brevo": {
-          "apiKey": "xkeysib-xxxxxxxxxxxxxxxxxxxx"
-        }
-      }
-    }
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "brevo", "fieldname": "apiKey", "fieldvalue": "xkeysib-xxxxxxxxxxxxxxxxxxxx" }
+    ]
   }'
 ```
 
@@ -74,9 +70,10 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ```json
 "brevo": {
+  "_connected": false,
   "optional": true,
-  "apiKey": "",
-  "_editable": { "apiKey": true }
+  "extra": false,
+  "apiKey": ""
 }
 ```
 

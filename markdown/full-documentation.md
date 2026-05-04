@@ -27,16 +27,19 @@ Complete API documentation for the Wiro AI platform — run AI models through a 
 21. [Node.js Library](#nodejs-library)
 22. [n8n Wiro Integration](#n8n-wiro-integration)
 23. [Agent Overview](#agent-overview)
-24. [Agent Messaging](#agent-messaging)
-25. [Agent WebSocket](#agent-websocket)
-26. [Agent Webhooks](#agent-webhooks)
-27. [Agent Credentials & OAuth](#agent-credentials--oauth)
-28. [Agent Skills](#agent-skills)
-29. [Agent Use Cases](#agent-use-cases)
-30. [Organizations & Teams](#organizations--teams)
-31. [Managing Teams](#managing-teams)
-32. [Team Billing & Spending](#team-billing--spending)
-33. [Team API Access](#team-api-access)
+24. [Agent Builder](#agent-builder)
+25. [Agent Messaging](#agent-messaging)
+26. [Agent WebSocket](#agent-websocket)
+27. [Agent Webhooks](#agent-webhooks)
+28. [Agent Credentials & OAuth](#agent-credentials--oauth)
+29. [Agent Skills](#agent-skills)
+30. [Agent Transactions](#agent-transactions)
+31. [Agent Logs](#agent-logs)
+32. [Agent Use Cases](#agent-use-cases)
+33. [Organizations & Teams](#organizations--teams)
+34. [Managing Teams](#managing-teams)
+35. [Team Billing & Spending](#team-billing--spending)
+36. [Team API Access](#team-api-access)
 
 ---
 
@@ -1955,9 +1958,23 @@ Or via command line: `npm install @wiro-ai/n8n-nodes-wiroai`
 
 ---
 
+
 # Agent Overview
 
 Deploy and manage autonomous AI agents through a single API.
+
+## Wiro Agents on the Web
+
+The endpoints below cover the full programmatic surface. If you also want to see the web product alongside what you're building — landing pages, marketing copy, the visual catalog, and the no-code Build Your Own Agent flow — these are the public Wiro pages dedicated to agents:
+
+| Page | URL | What it covers |
+|------|-----|----------------|
+| **AI Agents Home** | [wiro.ai/agents](https://wiro.ai/agents) | Top-level landing — what Wiro Agents are, how they compare to traditional setups, and a featured selection from the marketplace. |
+| **Learn About Agents** | [wiro.ai/agents/learn](https://wiro.ai/agents/learn) | Concept primer — pricing model, security model, deployment lifecycle, and the difference between marketplace templates and custom builds. |
+| **Build Your Own Agent** | [wiro.ai/agents/build](https://wiro.ai/agents/build) | The web wizard for the same custom-build flow exposed by [`POST /UserAgent/Deploy`](#post-useragentdeploy) with `custom: true`. Useful for previewing the skill picker / pricing breakdown before scripting it. |
+| **Browse Agents** | [wiro.ai/browse-agents](https://wiro.ai/browse-agents) | Full marketplace catalog with categories, descriptions, screenshots, and per-agent tier prices — the visual mirror of [`POST /Agent/List`](#post-agentlist). |
+
+> All four pages are public — no Wiro account required to browse. Sign-in becomes mandatory only when you click "Deploy" on a specific agent (which then drops you into the Wiro dashboard at [wiro.ai/panel/agents](https://wiro.ai/panel/agents)).
 
 ## What are Wiro Agents?
 
@@ -1965,10 +1982,12 @@ Wiro Agents are autonomous AI assistants that run persistently in isolated conta
 
 The system has two layers:
 
-- **Agent templates** (the catalog) — Pre-built agent definitions published by Wiro. Each template defines the agent's capabilities, required credentials, tools, and pricing. Browse the catalog with `POST /Agent/List`.
-- **UserAgent instances** (your deployments) — When you deploy an agent template, Wiro creates a personal instance tied to your account. Each instance runs in its own container with its own credentials, configuration, conversation history, and billing.
+- **Agent templates** (the catalog) — Pre-built agent definitions published by Wiro. Each template defines the agent's default skill set, required credentials, the per-tier credit multiplier, and a per-instance pricing recipe. Browse the catalog with `POST /Agent/List`.
+- **UserAgent instances** (your deployments) — When you deploy an agent template (or build a custom one), Wiro creates a personal instance tied to your account. Each instance runs in its own container with its own credentials, configuration, conversation history, billing, and per-action cost profile.
 
 Every instance is fully isolated. Your credentials, conversations, and data are never shared with other users.
+
+> **Two deploy paths.** You can deploy a marketplace template by passing `agentguid`, **or** build a custom agent from scratch with `custom: true` (no template — you pick the skill set yourself). Both flows are documented under [`POST /UserAgent/Deploy`](#post-useragentdeploy). The custom builder is detailed in [Agent Builder](/docs/agent-builder).
 
 ## Base URL
 
@@ -1985,23 +2004,65 @@ Agents use the same authentication as the rest of the Wiro API. Include your key
 | API Key | `x-api-key: YOUR_API_KEY` |
 | Bearer Token | `Authorization: Bearer YOUR_API_KEY` |
 
-**Public endpoints** — `Agent/List` and `Agent/Detail` are catalog endpoints and do not require authentication. You can browse available agents without an API key.
+**Public endpoints** — `Agent/List`, `Agent/Detail`, `Skills/List`, `Skills/Detail`, `Skills/Capabilities`, `Credentials/List`, and `Credentials/Detail` are catalog endpoints and do not require authentication. You can browse available agents, the skill registry, and the credential schema without an API key.
 
-**Authenticated endpoints** — All `UserAgent/*` endpoints (Deploy, MyAgents, Detail, Update, Start, Stop, CreateExtraCreditCheckout, CancelSubscription, UpgradePlan, RenewSubscription) require a valid API key.
+**Authenticated endpoints** — All `UserAgent/*` endpoints require a valid API key.
 
-For full details, see [Authentication](#authentication).
+For full details, see [Authentication](/docs/authentication).
+
+## Pricing Model — Tiers, Skills & Per-Action Costs
+
+Agent pricing is **fully derived from the agent's enabled skill set** plus a per-template `tiermultiplier`. There are no fixed `agent.basemonthlypriceusd` columns and no `useragents.rate*cost` overrides — those were dropped in favor of skill-driven pricing. The single source of truth is the skill registry, exposed via [`POST /Skills/List`](/docs/agent-skills#post-skillslist) and [`POST /Skills/Detail`](/docs/agent-skills#post-skillsdetail).
+
+### Tiers
+
+Every agent ships with two tier presets: **Starter** and **Pro**. Each tier has its own `price` (USD/month) and `credits` (monthly credit allowance). The relationship between the two is fixed by the agent's `tiermultiplier`:
+
+```
+pro.price   = starter.price   × tiermultiplier
+pro.credits = starter.credits × tiermultiplier
+```
+
+`tiermultiplier` defaults to `3` if the template omits it. Each agent template's tier numbers (and the `tiermultiplier`) appear on every catalog response under the `tiers` object:
+
+```json
+"tiers": {
+  "starter": { "priceUsd": 9, "credits": 1000 },
+  "pro":     { "priceUsd": 29, "credits": 5000 }
+}
+```
+
+### Per-Action Costs
+
+The `peractioncosts` object on each agent / useragent response shows how many credits each agent action burns at runtime:
+
+```json
+"peractioncosts": {
+  "message":    10,
+  "create":     60,
+  "modify":     20,
+  "regenerate": 20
+}
+```
+
+These values are computed as the **maximum** `pricing.credit_costs.<action>` across the agent's enabled skill set (free / utility skills contribute nothing). When you toggle a skill on or off the values automatically recompute — see [`POST /UserAgent/SkillsApply`](#post-useragentskillsapply).
+
+> **Per-action costs are tier-agnostic.** Pro and Starter use the same `message` / `create` / `modify` / `regenerate` rates. Pro just gives you `tiermultiplier` × more monthly credits to spend at the same per-action burn rate.
+
+### Live Pricing Preview
+
+Before you commit a skill change or build a custom agent, fetch a live preview with [`POST /UserAgent/PricingPreview`](#post-useragentpricingpreview). The preview returns the post-toggle `tiers`, `peractioncosts`, and `enabledSkills` (with transitive `depends_on` resolved) without writing any state.
 
 ## Agent Lifecycle
 
 Deploying and running an agent follows this flow:
 
 1. **Browse** — call `POST /Agent/List` to discover available agents in the catalog
-2. **Subscribe** — subscribe to a Starter or Pro plan using your prepaid wallet balance
-3. **Deploy** — call `POST /UserAgent/Deploy` with the agent's guid and a title
-4. **Configure** — if the agent requires credentials (API keys, OAuth tokens), call `POST /UserAgent/Update` to provide them. See [Agent Credentials](#agent-credentials) for details
-5. **Start** — call `POST /UserAgent/Start` to queue the agent for launch
-6. **Running** — the agent's container starts and the agent becomes available for conversation
-7. **Chat** — send messages via `POST /UserAgent/Message/Send`. See [Agent Messaging](#agent-messaging) for the full messaging API
+2. **Deploy** — call `POST /UserAgent/Deploy` with `useprepaid: true` and `tier` (`"starter"` or `"pro"`). The selected tier price is debited from your prepaid wallet immediately and a 30-day subscription row is created.
+3. **Configure** — if the agent requires credentials (API keys, OAuth tokens), set them per-provider with `POST /UserAgent/CredentialUpsert`, or per-skill with `POST /UserAgent/CustomSkillUpsert`. See [Agent Credentials](/docs/agent-credentials) for details
+4. **Start** — call `POST /UserAgent/Start` to queue the agent for launch
+5. **Running** — the agent's container starts and the agent becomes available for conversation
+6. **Chat** — send messages via `POST /UserAgent/Message/Send`. See [Agent Messaging](/docs/agent-messaging) for the full messaging API
 
 ## UserAgent Statuses
 
@@ -2015,13 +2076,15 @@ Every deployed agent instance has a numeric status that reflects its current sta
 | `3` | Starting | A worker has accepted the agent and is spinning up the container. |
 | `4` | Running | Agent is live and ready to receive messages. |
 | `5` | Error | Agent encountered an error during execution. Call Start to retry. |
-| `6` | Setup Required | Agent needs credentials or configuration before it can start. Call Update to provide them. |
+| `6` | Setup Required | Agent needs credentials or configuration before it can start. Provide them via `CredentialUpsert` / `CustomSkillUpsert` / `SkillsApply`. |
 
-### Automatic Restart (restartafter)
+### Automatic Restart (`restartafter`)
 
-When you update an agent's configuration while it is **starting** (status `3`) or **running** (status `4`), the system automatically triggers a restart cycle: the agent is moved to **Stopping** (status `1`) with `restartafter` set to `true`. Once the container fully stops, the system automatically re-queues it, applying the new configuration on startup.
+When you mutate an agent's configuration while it is **starting** (status `3`) or **running** (status `4`), the system automatically triggers a restart cycle: the agent is moved to **Stopping** (status `1`) with `restartafter` set to `true`. Once the container fully stops, the system automatically re-queues it, applying the new configuration on startup.
 
-This means you can update credentials or settings on a running agent without manually stopping and starting it.
+This means you can update credentials, toggle skills, or change a custom skill on a running agent without manually stopping and starting it.
+
+Endpoints that auto-trigger a restart on success: `CredentialUpsert`, `SkillsApply`, `CustomSkillUpsert` (when functional fields change), `CustomSkillDelete`, `CustomSkillRevert`, `Update` (scalar edits).
 
 ## Endpoints
 
@@ -2049,7 +2112,6 @@ Lists available agents in the catalog. This is a **public endpoint** — no auth
   "total": 12,
   "agents": [
     {
-      "id": 5,
       "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
       "title": "Instagram Manager",
       "slug": "instagram-manager",
@@ -2058,11 +2120,11 @@ Lists available agents in the catalog. This is a **public endpoint** — no auth
       "cover": "https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp",
       "categories": ["social-media", "marketing"],
       "samples": ["https://cdn.wiro.ai/uploads/agents/instagram-manager-sample-1.webp"],
-      "pricing": {
-        "starter": { "price": 9, "credits": 1000 },
-        "pro": { "price": 29, "credits": 5000 }
+      "tiermultiplier": 3,
+      "tiers": {
+        "starter": { "priceUsd": 9, "credits": 1000 },
+        "pro":     { "priceUsd": 29, "credits": 5000 }
       },
-      "skills": ["post_image", "reply_comment", "schedule_post"],
       "status": 1,
       "createdat": "1711929600",
       "updatedat": "1714521600"
@@ -2070,6 +2132,8 @@ Lists available agents in the catalog. This is a **public endpoint** — no auth
   ]
 }
 ```
+
+> `Agent/List` returns only catalog-header columns plus inlined `tiers` (so the catalog card can render the price without a per-row `Agent/Detail` round-trip). The `id` / `totalrun` / `activerun` columns are stripped for the public role. Call `POST /Agent/Detail` with `type: "full"` when you need the full template (skills map, credential schema, custom skills, scheduled skills).
 
 #### **POST** /Agent/Detail
 
@@ -2079,9 +2143,9 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
 |-----------|------|----------|-------------|
 | `guid` | string | No* | Agent guid. |
 | `slug` | string | No* | Agent slug (e.g. `"instagram-manager"`). |
-| `type` | string | No | Pass `"full"` to receive the complete `configuration` tree (agent_skills, custom_skills, rateLimit, full credentials schema). Without `type: "full"`, the response returns a **trimmed** `configuration` object containing only `{ credentials }` (sanitized for template browsing). |
+| `type` | string | No | Pass `"full"` to also include `customskills` and `scheduledskills` arrays in the response. Without `type: "full"`, the response carries the catalog header + `tiers` + `peractioncosts` + `credentials` + `skills` + `skillsmeta` only. |
 
-> **Note:** You must provide either `guid` or `slug`. If both are provided, `slug` takes priority. Pass `type: "full"` when you need the complete template (including `custom_skills` keys to preview before deploy); omit it for a lightweight catalog listing.
+> **Note:** You must provide either `guid` or `slug`. If both are provided, `slug` takes priority. Pass `type: "full"` when you need to preview custom skill keys and scheduled skill cron expressions before deploying; omit it for a lightweight catalog detail call.
 
 ##### Response
 
@@ -2091,7 +2155,6 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
   "errors": [],
   "agents": [
     {
-      "id": 5,
       "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
       "title": "Instagram Manager",
       "slug": "instagram-manager",
@@ -2100,23 +2163,98 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
       "cover": "https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp",
       "categories": ["social-media", "marketing"],
       "samples": ["https://cdn.wiro.ai/uploads/agents/instagram-manager-sample-1.webp"],
-      "pricing": {
-        "starter": { "price": 9, "credits": 1000 },
-        "pro": { "price": 29, "credits": 5000 }
+      "tiermultiplier": 3,
+      "tiers": {
+        "starter": { "priceUsd": 9, "credits": 1000 },
+        "pro":     { "priceUsd": 29, "credits": 5000 }
       },
-      "skills": ["post_image", "reply_comment", "schedule_post"],
-      "ratelimit": { "actionTypes": { "message": 10, "create": 5 } },
-      "configuration": {
-        "credentials": {
-          "instagram": {
-            "_editable": { "authMethod": true },
-            "optional": false,
-            "authMethod": "",
-            "igUsername": "",
-            "connectedAt": ""
+      "peractioncosts": {
+        "message":    10,
+        "create":     60,
+        "modify":     20,
+        "regenerate": 20
+      },
+      "skills": ["instagram-post", "wiro-generator"],
+      "skillsmeta": [
+        {
+          "name": "instagram-post",
+          "title": "Instagram — Post & Stories",
+          "icon": "https://wiro.ai/images/icons/skills/instagram.svg",
+          "category": "int",
+          "credential_key": "instagram"
+        },
+        {
+          "name": "wiro-generator",
+          "title": "Wiro Generator (platform-managed)",
+          "icon": "https://wiro.ai/images/icons/skills/wiro.svg",
+          "category": "int",
+          "credential_key": "wiro"
+        }
+      ],
+      "credentials": {
+        "instagram": {
+          "optional": false,
+          "extra": false,
+          "_editable": { "appid": true, "appsecret": true, "igusername": false },
+          "_schema": {
+            "title": "Instagram",
+            "icon": "https://wiro.ai/images/icons/skills/instagram.svg",
+            "brand_color": "#e4405f",
+            "brand_text_color": "#ffffff",
+            "brand_logo_filter": "none",
+            "docs_url": "integration-instagram-skills",
+            "credential_mode": "oauth",
+            "connection_modes": ["wiro", "own"],
+            "wiro_connect_pending": true,
+            "oauth_provider": {
+              "auth_method_value": "wiro",
+              "connect_endpoint": "/UserAgentOAuth/IGConnect",
+              "disconnect_endpoint": "/UserAgentOAuth/IGDisconnect",
+              "status_endpoint": "/UserAgentOAuth/IGStatus",
+              "connect_button_label": "Connect with Instagram",
+              "connect_button_icon": "/images/icons/skills/instagram.svg",
+              "connect_button_brand_color": "#e4405f",
+              "connect_button_text_color": "#ffffff",
+              "connect_button_logo_filter": "none",
+              "username_field": "igusername",
+              "return_query_param": "ig_connected",
+              "return_error_param": "ig_error",
+              "return_error_detail_param": "ig_error_detail",
+              "account_picker": null,
+              "extra_step": null
+            },
+            "fields": [
+              {
+                "key": "appid",
+                "type": "text",
+                "label": "App ID",
+                "required": true,
+                "pattern": "^[0-9]+$",
+                "oauth_managed": true,
+                "only_in_modes": ["own"]
+              },
+              {
+                "key": "appsecret",
+                "type": "password",
+                "label": "App Secret",
+                "required": true,
+                "show_toggle": true,
+                "oauth_managed": true,
+                "only_in_modes": ["own"]
+              },
+              {
+                "key": "igusername",
+                "type": "text",
+                "label": "Connected Account",
+                "required": false,
+                "auto_filled_by_oauth": true,
+                "readonly_when_connected": true
+              }
+            ]
           }
         }
       },
+      "extracreditpacks": [],
       "status": 1,
       "createdat": "1711929600",
       "updatedat": "1714521600"
@@ -2125,30 +2263,102 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
 }
 ```
 
+> `Agent/Detail` describes the **template**, so its `credentials` block only carries the `optional` / `extra` meta flags plus the registry-driven `_schema` (field labels / types) and `_editable` map. The `_connected` flag is per-instance and appears on `UserAgent/Detail` / `UserAgent/MyAgents`, not on the catalog endpoint. `extracreditpacks` is always `[]` here — packs are derived from the deployed instance's actual monthly allocation (see [Extra Credit Packs](#extra-credit-packs)) and only appear on `UserAgent/Detail`.
+
+**Credential response flags** (on `UserAgent/Detail` / `UserAgent/MyAgents`) — every credential object in the top-level `credentials` tree on the per-instance endpoints carries:
+
+| Flag | Type | Meaning |
+|------|------|---------|
+| `_connected` | boolean | **OAuth readiness indicator.** `true` when Wiro has a valid OAuth access token (reflected as `connectedat` / `accesstoken` on the credential) **and** every picker field declared by the template (`customerid`, `merchantid`, `channelid`, ad-account, page id, etc.) is populated. Non-OAuth credentials — API-key providers (Gmail, Apollo, Lemlist, Brevo, SendGrid, WordPress, Telegram) and service-account providers (Firebase, Google Drive, Google Play, App Store Connect) — do **not** raise `_connected` to `true` because they never write a `connectedat`; check `setuprequired` on `UserAgent/Detail` (or inspect the field values directly) to know when those are configured. |
+| `optional` | boolean | `true` when the template marks this credential as not required for the agent to run. Agents can start even if `optional: true` credentials are empty. |
+| `extra` | boolean | `true` when the template groups the credential under "extra integrations" in the UI (disabled by default until the user opts into the skill). |
+| `_editable` | object | Map of `fieldname → true` for fields the caller may write. Computed from the registry schema + caller role. |
+| `_schema` | object | Inlined registry descriptor (`label`, `credential_mode`, `credential_schema[]` field shapes). Lets a UI render the form without a separate `Credentials/Detail` round-trip. |
+
+**Field redaction in responses:**
+
+- `fieldstatus: "oauth_session"` fields (`accesstoken`, `refreshtoken`, `tokenexpiresat`, `pageAccessToken`, etc.) — always stripped from every response, regardless of caller role.
+- `fieldstatus: "platform"` fields (`credentials.wiro.apiKey`, `credentials.openai.apiKey`, `credentials.calendarific.apiKey`) — stripped for API callers (role = `user`). The platform credential entries themselves are also dropped from the response. Only the agent runtime itself sees the values.
+- `fieldstatus: "oauth_app"` fields (`clientsecret`, `appsecret`) — **visible to anyone who can read the credentials**. History writes redact `clientsecret` to `[REDACTED]`, but the live value is returned. Treat them as read-admin-only in your own UI layer.
+- Sentinel rows `_isoptional` / `_isextra` — never appear as fields; they're folded into the `optional` and `extra` flags above.
+
+API callers see the non-sensitive fields (public identifiers like `clientid`, display-only values like `igusername`, flags like `authmethod`, and the flags above).
+
 ### Deploy & Manage
 
 All endpoints below require authentication.
 
 #### **POST** /UserAgent/Deploy
 
-Creates a new agent instance from a catalog template.
+Creates a new agent instance from a catalog template, **or** builds a brand-new custom agent (no template).
 
-> **For API integrations, always pass `useprepaid: true` + `plan`.** This is the only deploy mode that's fully programmatic — the subscription cost is deducted from your prepaid wallet immediately and the instance is created server-side in one call. Omitting `useprepaid` triggers the Stripe checkout flow (the panel's deploy path), which requires a user-facing browser redirect to Stripe's hosted checkout and is not suitable for API integrations. The sections below assume prepaid deploy.
+> **API agent deployment is prepaid-only.** Pass `useprepaid: true` + `tier` — the subscription cost is deducted from your prepaid wallet immediately and the instance is created server-side in one call. There is no API path that accepts a credit card directly; subscriptions from a card can only be created through the Wiro dashboard at [wiro.ai/panel/agents](https://wiro.ai/panel/agents). Top up your wallet on [wiro.ai/panel/billing](https://wiro.ai/panel/billing) before calling Deploy.
 
-Prepaid deploy (`useprepaid: true` + `plan`) charges your wallet immediately and creates the instance in status `6` (Setup Required). **`configuration.credentials` and `configuration.custom_skills` passed in the Deploy body are ignored on prepaid deploy** — after deploy, call `POST /UserAgent/Update` to set credentials and (optionally) customize skill content. Once credentials are complete, status auto-transitions to `0` (Stopped) and you can call `UserAgent/Start`.
+Prepaid deploy (`useprepaid: true` + `tier`) charges your wallet for the chosen tier price immediately and inserts a 30-day subscription row (`plan: "agent"`, `provider: "prepaid"`). The instance is created in status `6` (Setup Required) when the template has required credentials you didn't pass inline; otherwise it auto-transitions to `0` (Stopped) and is ready for `UserAgent/Start`.
+
+If you pass `credentials`, `skills`, or `customskills` at the top level of the Deploy body they are **applied server-side in the same call** (one-shot deploy + initial setup) — note that inline credentials only accept flat string/number fields and can't populate nested arrays (firebase accounts, drive folders, app-store apps); use `POST /UserAgent/CredentialUpsert` afterwards for those. See [Agent Credentials → Prepaid deploy — inline setup supported](/docs/agent-credentials#prepaid-deploy--inline-setup-supported-with-limitations) for the full rules.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `agentguid` | string | Yes | The guid of the agent template from the catalog. |
+| `agentguid` | string | Conditional | The guid of the agent template from the catalog. Required unless `custom: true`. |
+| `custom` | boolean | Conditional | Pass `true` to deploy a custom-built agent (no marketplace template). Mutually exclusive with `agentguid`. See [Agent Builder](/docs/agent-builder) for the full builder flow. |
 | `title` | string | Yes | Display name for your instance. |
-| `description` | string | No | Optional description. |
-| `useprepaid` | boolean | **Yes (for API use)** | Pass `true` to pay from wallet balance in a single server-side call. Omitting this (or passing `false`) activates the Stripe checkout flow — the response redirects to Stripe's hosted checkout UI, which only works for interactive browser sessions, not API integrations. |
-| `plan` | string | Yes | Plan tier: `"starter"` or `"pro"`. Check `POST /Agent/Detail` → `agent.pricing` for each tier's credit allowance and price. |
+| `description` | string | No | Optional description (custom builds: free-text describing what the agent does). |
+| `cover` | string | No | Optional cover image URL. Custom builds only — template deploys clone the agent's cover automatically. |
+| `useprepaid` | boolean | Yes | Must be `true` for API deploys. Pays the tier price from your wallet balance in a single server-side call. |
+| `tier` | string | No | Tier selection: `"starter"` (default) or `"pro"`. Determines the price + credits debited to your wallet at deploy time. |
 | `pinned` | boolean | No | Whether the agent appears in the pinned agents list (defaults to `true`). Pass `false` when deploying agents programmatically for end users (e.g. bulk provisioning) so they don't clutter your admin dashboard. |
+| `credentials` | object | No | Inline credentials to apply server-side (flat fields only — see Agent Credentials). |
+| `skills` | object | No | Inline skill toggles `{ "skillname": true \| false }`. For custom builds this seeds the initial skill set; for template deploys it overlays the template defaults. |
+| `customskills` | array | No | Inline custom skill rows. Each entry: `{ key, value?, interval?, enabled?, description?, _user_created? }`. |
 
-**Headers:** Standard API authentication — `x-api-key` for key-based projects, or `x-nonce` + `x-signature` for signature-based projects (see [Authentication](/docs/authentication)). For **team-scoped deploys** (when an end user deploys via a team project), pass `teamGUID: <team-guid>` as an additional request header; the API validates the caller is a member of that team before writing the instance row. Personal deployments omit this header.
+**Headers:** Standard API authentication — `x-api-key` for key-based projects, or `x-nonce` + `x-signature` for signature-based projects (see [Authentication](/docs/authentication)). For **team-scoped deploys** (when an end user deploys via a team project), pass `teamGUID: <team-guid>` as an additional request header; the API validates the caller is a team admin before writing the instance row.
 
-> **Panel/UI note:** the non-prepaid Deploy mode (omit `useprepaid`) exists for the Wiro dashboard's interactive deploy flow where end users pay via Stripe subscription with a browser redirect. That path also accepts `configuration.credentials` and `configuration.custom_skills` in the body (merged via `mergeUserConfig`), but API integrations should always use prepaid deploy and set credentials with a follow-up `UserAgent/Update` call.
+> **`teamGUID` header usage across endpoints** — the requirement differs per endpoint:
+>
+> | Endpoint | `teamGUID` header |
+> |----------|-------------------|
+> | `UserAgent/Deploy` | Pass when deploying into a team project; validated against team admin before insert |
+> | `UserAgent/Message/Send`, `Message/Detail`, `Message/History`, `Message/Sessions`, `Message/Cancel`, `Message/DeleteSession` | **Required for team agents.** Messaging endpoints call `validateAgentContext(teamGUID, ...)` and reject if the header is missing or doesn't match a team the caller belongs to |
+> | `UserAgent/Detail`, `UserAgent/Update`, `UserAgent/Start`, `UserAgent/Stop`, `UserAgent/MyAgents` | Optional — these endpoints fall back to "am I a member of this agent's team?" check, so the header isn't strictly needed if your user already has team membership. Passing it is still recommended for explicitness and to avoid ambiguity on multi-team users |
+> | `UserAgent/CancelSubscription`, `UserAgent/CreateExtraCreditCheckout`, `UserAgent/UpgradeTier`, `UserAgent/RenewSubscription`, `UserAgent/CreateSubscriptionCheckout` | **Required for team agents** — subscription / billing operations also validate team context explicitly |
+>
+> Personal (non-team) agents ignore this header. If you see `"You are not a member of this team"` or `"Agent not found"` errors on messaging endpoints, you're likely missing the header on a team agent.
+
+##### Request body — template deploy (recommended API pattern)
+
+```json
+{
+  "agentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "title": "My Instagram Bot",
+  "useprepaid": true,
+  "tier": "starter",
+  "pinned": false
+}
+```
+
+##### Request body — custom build (Build Your Own Agent)
+
+```json
+{
+  "custom": true,
+  "title": "My Custom Sales Agent",
+  "description": "Watches inbound emails and posts a summary to Slack each morning.",
+  "useprepaid": true,
+  "tier": "pro",
+  "skills": {
+    "gmail-check": true,
+    "telegram-post": true,
+    "wiro-generator": true
+  },
+  "credentials": {
+    "gmail":    { "account": "agent@company.com", "apppassword": "xxxx xxxx xxxx xxxx" },
+    "telegram": { "bottoken": "123456:ABC-DEF...", "allowedusers": "[\"761381461\"]", "sessionmode": "private" }
+  }
+}
+```
+
+> **Custom builds are skill-driven.** There is no marketplace template behind a custom agent — the price + credit allowance is computed live from the skills you toggle on. Use [`POST /UserAgent/PricingPreview`](#post-useragentpricingpreview) (with `draft: true`) to estimate the tier price before calling Deploy. Full walkthrough: [Agent Builder](/docs/agent-builder).
 
 ##### Response
 
@@ -2158,54 +2368,63 @@ Prepaid deploy (`useprepaid: true` + `plan`) charges your wallet immediately and
   "errors": [],
   "useragents": [
     {
-      "id": 47,
       "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
-      "agentid": 5,
+      "uuid": "your-user-uuid",
+      "agentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "teamguid": null,
       "title": "My Instagram Bot",
       "description": null,
-      "configuration": {
-        "credentials": {
-          "instagram": {
-            "_editable": { "authMethod": true },
-            "optional": false,
-            "authMethod": "",
-            "igUsername": "",
-            "connectedAt": ""
-          }
+      "tier": "starter",
+      "tiermultiplier": 3,
+      "credentials": {
+        "instagram": {
+          "_connected": false,
+          "optional": false,
+          "extra": false,
+          "_editable": { "authmethod": true, "igusername": true },
+          "_schema": { "key": "instagram", "label": "Instagram", "credential_mode": "oauth" },
+          "authmethod": "",
+          "igusername": "",
+          "connectedat": ""
         }
       },
-      "status": 2,
-      "createdat": "1714608000",
-      "updatedat": "1714608000",
-      "queuedat": "1714608000"
-    }
-  ]
-}
-```
-
-##### Prepaid Deploy
-
-When `useprepaid` is `true`, the wallet is charged immediately. The response includes the created agent with status `6`:
-
-```json
-// Request
-{
-  "agentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  "title": "My Lead Gen Agent",
-  "useprepaid": true,
-  "plan": "starter",
-  "pinned": false
-}
-// Response
-{
-  "result": true,
-  "errors": [],
-  "useragents": [
-    {
-      "guid": "new-guid-here",
-      "title": "My Lead Gen Agent",
+      "skills": ["instagram-post", "wiro-generator"],
+      "customskills": [],
+      "scheduledskills": [],
+      "monthlycredits": 1000,
+      "monthlypriceusd": 9,
+      "extracredits": 0,
+      "usedcredits": 0,
+      "remainingcredits": 1000,
+      "creditperiod": "2026-05",
+      "creditsyncat": null,
+      "peractioncosts": {
+        "message":    10,
+        "create":     60,
+        "modify":     20,
+        "regenerate": 20
+      },
+      "teamsessionmode": "",
       "status": 6,
+      "setuprequired": true,
       "pinned": false,
+      "agent": {
+        "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "title": "Instagram Manager",
+        "slug": "instagram-manager",
+        "cover": "https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp",
+        "categories": ["social-media", "marketing"],
+        "tiermultiplier": 3,
+        "tiers": {
+          "starter": { "priceUsd": 9, "credits": 1000 },
+          "pro":     { "priceUsd": 29, "credits": 5000 }
+        },
+        "extracreditpacks": [
+          { "packkey": "small",  "credits": 5000,  "priceusd": 45,  "enabled": true },
+          { "packkey": "medium", "credits": 10000, "priceusd": 80,  "enabled": true },
+          { "packkey": "large",  "credits": 20000, "priceusd": 140, "enabled": true }
+        ]
+      },
       "createdat": 1714608000,
       "updatedat": 1714608000
     }
@@ -2213,9 +2432,29 @@ When `useprepaid` is `true`, the wallet is charged immediately. The response inc
 }
 ```
 
-> **Note:** The Deploy response returns only the raw `useragents` row (with sanitized `configuration`). It does **not** include `setuprequired` or `subscription` — those are Detail-level fields assembled from joined tables. A prepaid subscription row (`agent-<plan>`, provider `prepaid`) is inserted server-side during prepaid deploy; call `POST /UserAgent/Detail` with the returned `guid` to see `setuprequired`, `subscription`, and `stripe*url` fields (if applicable).
+##### Status and `setuprequired` on deploy
 
-> **Tip:** When deploying agents programmatically for your end users (e.g. one instance per customer), set `"pinned": false` to keep your own dashboard clean. Users can pin agents manually later.
+The Deploy response reflects the same composed shape you get from `UserAgent/Detail`. Two status signals matter:
+
+| Field | Meaning |
+|-------|---------|
+| `status: 6` | **Setup Required** — agent cannot start yet, at least one non-optional credential is still empty. |
+| `status: 0` | **Stopped** — all required credentials are set, agent is ready to launch with `UserAgent/Start`. Happens immediately when the template has no required credentials, or you filled them inline in the Deploy body. |
+| `status: 2` | **Queued** — `useprepaid: true` charged the wallet and the deploy auto-queued the agent (only happens when setup is already complete after applying the inline `credentials`). |
+| `setuprequired: true` | Mirrors the condition: any non-optional credential missing. Stays `true` while `status: 6`. |
+| `setuprequired: false` | All non-optional credentials complete. Safe to call `UserAgent/Start`. |
+
+> **Subscription on deploy:** the `useragents.subscription` field is **not** included in the Deploy response (it's assembled from the `subscriptions` table). A prepaid subscription row (`plan: "agent"`, provider `prepaid`, `tier` matches what you passed) is inserted server-side during the Deploy call — call `POST /UserAgent/Detail` with the returned `guid` to read the subscription object back.
+
+The instance starts in status `6` (Setup Required) when the template has required credentials you didn't pass inline. Next steps for the API integration flow:
+
+1. Inspect `credentials` in the Deploy response (or call `POST /UserAgent/Detail`) to see each provider's fields, the `optional` / `extra` flags, the registry-driven `_schema`, and the `_connected` OAuth status.
+2. Call `POST /UserAgent/CredentialUpsert` per provider (or in bulk via the `fields[]` array) to write API keys, bot tokens, WordPress credentials, etc. For OAuth providers (Meta, Google Ads, HubSpot, …) use the provider's dedicated Connect/Callback/Picker flow — see [Agent Credentials & OAuth](/docs/agent-credentials).
+3. Call `POST /UserAgent/CustomSkillUpsert` per skill to customize strategy text or cron intervals, if the template exposes any.
+4. Once all non-optional credentials are populated, the server automatically flips `status` to `0` and `setuprequired` to `false`.
+5. Call `POST /UserAgent/Start` to launch the agent (status progresses `2` → `3` → `4`, Running).
+
+> **Tip:** When deploying agents programmatically for your end users (e.g. one instance per customer), set `"pinned": false` to keep your own dashboard clean. Users can pin agents manually later via [`POST /UserAgent/Pin`](#post-useragentpin).
 
 #### **POST** /UserAgent/MyAgents
 
@@ -2227,7 +2466,9 @@ Lists all agent instances deployed under your account.
 | `order` | string | No | Sort direction: `ASC` or `DESC`. Default: `DESC` |
 | `limit` | number | No | Results per page (max 1000). Default: `20` |
 | `start` | number | No | Offset for pagination. Default: `0` |
-| `category` | string | No | Filter by category |
+| `category` | string | No | Filter by category (comma-separated for multiple) |
+
+> **Pagination:** the response does not include a `total` count. To know if there are more pages, call with `limit: 20` and inspect the returned array length — if it equals your `limit`, paginate further by incrementing `start` (e.g. `start: 20, 40, 60, ...`) until you get fewer rows than your `limit`.
 
 ##### Response
 
@@ -2237,14 +2478,29 @@ Lists all agent instances deployed under your account.
   "errors": [],
   "useragents": [
     {
-      "id": 47,
       "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
-      "agentid": 5,
+      "uuid": "ada-uuid",
+      "agentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "teamguid": null,
       "title": "My Instagram Bot",
+      "description": null,
+      "cover": null,
+      "categories": ["social-media", "marketing"],
+      "tier": "pro",
+      "tiermultiplier": 3,
+      "monthlypriceusd": 29,
+      "monthlycredits": 5000,
+      "extracredits": 2000,
+      "usedcredits": 1450,
+      "remainingcredits": 5550,
+      "creditperiod": "2026-05",
+      "creditsyncat": 1714694410,
+      "peractioncosts": { "message": 10, "create": 60, "modify": 20, "regenerate": 20 },
       "status": 4,
+      "pinned": true,
       "setuprequired": false,
       "subscription": {
-        "plan": "agent-pro",
+        "plan": "agent",
         "status": "active",
         "amount": 29,
         "currency": "usd",
@@ -2255,110 +2511,17 @@ Lists all agent instances deployed under your account.
         "provider": "prepaid"
       },
       "agent": {
-        "id": 5,
+        "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
         "title": "Instagram Manager",
         "slug": "instagram-manager",
         "cover": "https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp",
         "categories": ["social-media", "marketing"],
-        "pricing": {
-          "starter": { "price": 9, "credits": 1000 },
-          "pro": { "price": 29, "credits": 5000 }
+        "tiermultiplier": 3,
+        "tiers": {
+          "starter": { "priceUsd": 9, "credits": 1000 },
+          "pro":     { "priceUsd": 29, "credits": 5000 }
         }
       },
-      "extracredits": 0,
-      "extracreditsexpiry": null,
-      "createdat": "1714608000",
-      "updatedat": "1714694400",
-      "startedat": "1714694400",
-      "runningat": "1714694410"
-    }
-  ]
-}
-```
-
-#### **POST** /UserAgent/Detail
-
-Retrieves full details for a single deployed agent instance, including subscription info.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `guid` | string | Yes | Your UserAgent instance guid |
-
-##### Response
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "useragents": [
-    {
-      "id": 47,
-      "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
-      "uuid": "your-user-uuid",
-      "agentid": 5,
-      "teamguid": null,
-      "title": "My Instagram Bot",
-      "description": null,
-      "status": 4,
-      "pinned": false,
-      "setuprequired": false,
-      "configuration": {
-        "credentials": {
-          "instagram": {
-            "_editable": { "authMethod": true },
-            "optional": false,
-            "authMethod": "wiro",
-            "igUsername": "myaccount",
-            "connectedAt": "2025-04-01T12:00:00.000Z"
-          }
-        },
-        "custom_skills": [
-          {
-            "key": "content-tone",
-            "description": "Content strategy, brand voice, and posting rules",
-            "value": "## Brand Voice\nTone: friendly\nTarget Audience: ...",
-            "enabled": true,
-            "interval": null,
-            "_editable": true
-          },
-          {
-            "key": "cron-content-scanner",
-            "description": "Content discovery with rotating strategies",
-            "value": "",
-            "enabled": true,
-            "interval": "0 */4 * * *",
-            "_editable": false
-          }
-        ],
-        "skills": { "instagram-post": true, "wiro-generator": true },
-        "rateLimit": {
-          "monthlyCredits": 5000,
-          "extraCredits": 2000,
-          "actionTypes": { "message": 10, "create": 60, "modify": 20, "regenerate": 20 }
-        }
-      },
-      "subscription": {
-        "plan": "agent-pro",
-        "status": "active",
-        "amount": 29,
-        "currency": "usd",
-        "currentperiodend": 1717200000,
-        "renewaldate": "2026-06-01T00:00:00.000Z",
-        "daysremaining": 62,
-        "pendingdowngrade": null,
-        "provider": "prepaid"
-      },
-      "agent": {
-        "id": 5,
-        "title": "Instagram Manager",
-        "slug": "instagram-manager",
-        "cover": "https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp",
-        "pricing": {
-          "starter": { "price": 9, "credits": 1000 },
-          "pro": { "price": 29, "credits": 5000 }
-        }
-      },
-      "extracredits": 2000,
       "extracreditsexpiry": 1730419200,
       "createdat": 1714608000,
       "updatedat": 1714694400,
@@ -2369,9 +2532,15 @@ Retrieves full details for a single deployed agent instance, including subscript
 }
 ```
 
-**Prepaid vs Stripe:** The above example is a **prepaid** instance (`subscription.provider: "prepaid"`) and omits the `stripeportalurl` / `stripeupdateurl` / `stripecancelurl` fields. Those three URLs appear only when the subscription provider is `"stripe"` (the panel/UI deploy path); prepaid instances never carry them.
+#### **POST** /UserAgent/Detail
 
-##### Response — Stripe-subscription instance
+Retrieves full details for a single deployed agent instance, including subscription info, the per-instance credit ledger summary, the resolved per-action cost table, and the `extracreditpacks` catalog.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `guid` | string | Yes | Your UserAgent instance guid |
+
+##### Response — prepaid instance (the API deploy pattern)
 
 ```json
 {
@@ -2379,46 +2548,67 @@ Retrieves full details for a single deployed agent instance, including subscript
   "errors": [],
   "useragents": [
     {
-      "id": 48,
-      "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
       "uuid": "your-user-uuid",
-      "agentid": 5,
-      "title": "Stripe-subscribed Instagram Bot",
+      "agentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "teamguid": null,
+      "title": "My Instagram Bot",
+      "description": null,
+      "tier": "pro",
+      "tiermultiplier": 3,
       "status": 4,
       "pinned": true,
       "setuprequired": false,
-      "configuration": {
-        "credentials": {
-          "instagram": {
-            "_editable": { "authMethod": true },
-            "optional": false,
-            "authMethod": "wiro",
-            "igUsername": "myaccount",
-            "connectedAt": "2025-04-01T12:00:00.000Z"
-          }
-        },
-        "custom_skills": [
-          {
-            "key": "content-tone",
-            "description": "Content strategy, brand voice, and posting rules",
-            "value": "## Brand Voice\nTone: friendly\nTarget Audience: ...",
-            "enabled": true,
-            "interval": null,
-            "_editable": true
-          },
-          {
-            "key": "cron-content-scanner",
-            "description": "Content discovery with rotating strategies",
-            "value": "",
-            "enabled": true,
-            "interval": "0 */4 * * *",
-            "_editable": false
-          }
-        ],
-        "skills": { "instagram-post": true, "wiro-generator": true }
+      "credentials": {
+        "instagram": {
+          "_connected": true,
+          "optional": false,
+          "extra": false,
+          "_editable": { "authmethod": true, "igusername": true },
+          "_schema": { "key": "instagram", "label": "Instagram", "credential_mode": "oauth" },
+          "authmethod": "wiro",
+          "igusername": "myaccount",
+          "connectedat": "2025-04-01T12:00:00.000Z"
+        }
+      },
+      "customskills": [
+        {
+          "key": "cs-content-tone",
+          "description": "Content strategy, brand voice, and posting rules",
+          "value": "## Brand Voice\nTone: friendly\nTarget Audience: ...",
+          "enabled": true,
+          "interval": null,
+          "_source": "preset-strategy",
+          "_editable": true
+        }
+      ],
+      "scheduledskills": [
+        {
+          "key": "cs-cron-content-scanner",
+          "description": "Content discovery with rotating strategies",
+          "value": "",
+          "enabled": true,
+          "interval": "0 */4 * * *",
+          "_source": "skill-bundle",
+          "_editable": false
+        }
+      ],
+      "skills": ["twitterx-post", "instagram-post", "wiro-generator"],
+      "monthlycredits": 5000,
+      "monthlypriceusd": 29,
+      "extracredits": 2000,
+      "usedcredits": 1450,
+      "remainingcredits": 5550,
+      "creditperiod": "2026-05",
+      "creditsyncat": 1714694410,
+      "peractioncosts": {
+        "message":    10,
+        "create":     60,
+        "modify":     20,
+        "regenerate": 20
       },
       "subscription": {
-        "plan": "agent-pro",
+        "plan": "agent",
         "status": "active",
         "amount": 29,
         "currency": "usd",
@@ -2426,22 +2616,26 @@ Retrieves full details for a single deployed agent instance, including subscript
         "renewaldate": "2026-06-01T00:00:00.000Z",
         "daysremaining": 62,
         "pendingdowngrade": null,
-        "provider": "stripe"
+        "provider": "prepaid"
       },
       "agent": {
-        "id": 5,
+        "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
         "title": "Instagram Manager",
         "slug": "instagram-manager",
-        "pricing": {
-          "starter": { "price": 9, "credits": 1000 },
-          "pro": { "price": 29, "credits": 5000 }
-        }
+        "cover": "https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp",
+        "categories": ["social-media", "marketing"],
+        "tiermultiplier": 3,
+        "tiers": {
+          "starter": { "priceUsd": 9, "credits": 1000 },
+          "pro":     { "priceUsd": 29, "credits": 5000 }
+        },
+        "extracreditpacks": [
+          { "packkey": "small",  "credits": 25000,  "priceusd": 130, "enabled": true },
+          { "packkey": "medium", "credits": 50000,  "priceusd": 240, "enabled": true },
+          { "packkey": "large",  "credits": 100000, "priceusd": 420, "enabled": true }
+        ]
       },
-      "extracredits": 0,
-      "extracreditsexpiry": null,
-      "stripeportalurl": "https://billing.stripe.com/p/session/xxxxxxxx",
-      "stripeupdateurl": "https://billing.stripe.com/p/session/xxxxxxxx/subscriptions/update",
-      "stripecancelurl": "https://billing.stripe.com/p/session/xxxxxxxx/subscriptions/cancel",
+      "extracreditsexpiry": 1730419200,
       "createdat": 1714608000,
       "updatedat": 1714694400,
       "startedat": 1714694400,
@@ -2454,33 +2648,54 @@ Retrieves full details for a single deployed agent instance, including subscript
 | Field | Type | Description |
 |-------|------|-------------|
 | `guid` | `string` | Unique identifier for this agent instance. |
-| `agentid` | `number` | The catalog agent ID this instance was deployed from. |
+| `agentid` | `number\|null` | The catalog agent ID this instance was deployed from. `null` for custom builds. |
 | `title` | `string` | Display name you gave this instance. |
+| `tier` | `string` | `"starter"` or `"pro"` — the active tier for this instance. |
+| `tiermultiplier` | `number` | Per-instance Pro multiplier — snapshotted at deploy from the template (default `3`). Drives the Pro tier's price + credit allocation. |
 | `status` | `number` | Current status code (see UserAgent Statuses). |
 | `setuprequired` | `boolean` | `true` if credentials are missing or incomplete. |
-| `configuration` | `object` | Sanitized `{ credentials, custom_skills, skills, agent_skills }` — non-editable sensitive fields (OAuth access tokens, platform `wiro.apiKey`, `openai.apiKey`, etc.) are hidden. Use this to see current credential values (user-editable ones populated, platform-managed ones blank) and custom_skills with their `_editable` flags. |
-| `subscription` | `object\|null` | Active subscription info, or `null` if no subscription. |
-| `agent` | `object` | Parent agent template info (title, slug, cover, pricing). |
-| `extracredits` | `number` | Remaining extra credits purchased for this instance. |
+| `credentials` | `object` | Per-provider credential map assembled from the normalized tables. Sensitive fields (OAuth tokens, platform API keys) are hidden per the field-redaction rules above. Each credential carries `_connected` / `optional` / `extra` / `_editable` / `_schema`. |
+| `customskills` | `array` | Composed list of preset strategies and **non-cron** custom skills (writable instructions). Each entry carries `_source` (`preset-strategy` \| `user-created`), `_editable`, and (only on user-created rows) `_user_created: true`. |
+| `scheduledskills` | `array` | Composed list of **cron** skills (`cs-cron-*`). Same field shape as `customskills` plus `interval` (cron expression). `_source` is `skill-bundle` for crons that ship with an integration skill, `user-created` for user-added crons. |
+| `skills` | `array<object>` | Currently-enabled integration skills. Each entry: `{ name, enabled: true, _edited, _user_created }`. Toggle one or more skills with `POST /UserAgent/SkillsApply`. |
+| `monthlycredits` | `number` | Monthly credit allocation snapshotted at deploy / renewal. |
+| `monthlypriceusd` | `number` | Monthly USD price snapshotted at deploy / renewal. Mirrors `subscription.amount`. |
+| `extracredits` | `number` | Active extra-credit balance (sum of non-expired packs from `POST /UserAgent/CreateExtraCreditCheckout`). |
+| `usedcredits` | `number` | Credits consumed during the current billing period, reported by the agent runtime. |
+| `remainingcredits` | `number` | Computed: `max(0, monthlycredits + extracredits - usedcredits)`. |
+| `creditperiod` | `string` | `'YYYY-MM'` tag of the current billing window. Rolls over on subscription renewal. |
+| `creditsyncat` | `number\|null` | Unix seconds of the last agent → API usage sync (null before the first report). |
+| `peractioncosts` | `object` | `{ message, create, modify, regenerate }` — credits charged per action. Computed as `max()` across enabled skills' `pricing.credit_costs`. |
+| `teamsessionmode` | `string` | Session isolation mode for team agents (`"collaborative"` or `"private"` — empty string for solo agents). |
+| `subscription` | `object\|null` | Active subscription info, or `null` if no subscription. `subscription.plan` is `"agent"`, `subscription.provider` is `"prepaid"` for API-deployed instances. |
+| `agent` | `object` | Parent agent template info (title, slug, cover, `tiers`, `tiermultiplier`, `extracreditpacks`). For custom builds this is a synthesized placeholder containing the same shape with `agent.custom: true`. |
 | `extracreditsexpiry` | `number\|null` | Unix timestamp when the earliest extra credit pack expires. |
-| `stripeportalurl` | `string\|undefined` | **Stripe-only.** One-shot Stripe billing portal session URL. Only present when `subscription.provider === "stripe"` and the subscription is active. Omitted for prepaid instances. |
-| `stripeupdateurl` | `string\|undefined` | **Stripe-only.** Deep link into the billing portal's subscription-update flow. Same conditions as `stripeportalurl`. |
-| `stripecancelurl` | `string\|undefined` | **Stripe-only.** Deep link into the billing portal's cancellation flow. Use this URL for the "Cancel subscription" button on Stripe subscriptions — do NOT call `POST /UserAgent/CancelSubscription` (it returns an error telling you to use the portal). |
-| `subscription.provider` | `string` | Payment provider: `"prepaid"` (credits wallet) or `"stripe"` (subscription). |
 
 #### **POST** /UserAgent/Update
 
-Updates an agent instance's configuration, title, or description. If the agent is currently **starting (status `3`)** or **running (status `4`)**, this triggers an automatic restart to apply the new settings (the agent is moved to Stopping with `restartafter: true`, and re-queued after it fully stops).
+Updates an agent instance's **scalar fields only** (title, description, categories, cover URL). If the agent is currently **starting (status `3`)** or **running (status `4`)**, this triggers an automatic restart to apply the new settings (the agent is moved to Stopping with `restartafter: true`, and re-queued after it fully stops).
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `guid` | string | Yes | Your UserAgent instance guid |
 | `title` | string | No | New display name |
-| `description` | string | No | New description |
+| `description` | string | No | New description (set to empty string or `null` to clear) |
 | `categories` | array | No | Updated categories. Cannot be empty if provided. |
-| `configuration` | object | No | Updated credentials. Format: `{ "credentials": { "key": "value" } }` |
+| `cover` | string | No | New cover image URL (set to empty string or `null` to clear). For multipart upload, use [`POST /UserAgent/Cover`](#post-useragentcover) instead. |
 
-> **Note:** If the agent's status is `6` (Setup Required) and the update completes all required credentials, the status automatically changes to `0` (Stopped), allowing you to start it.
+> **Scalar-only.** Credentials, custom skills, skill toggles, tier upgrades, and rate-limit edits use dedicated endpoints:
+>
+> | What you want to change | Use |
+> |-------------------------|-----|
+> | Provider credentials (API keys, OAuth settings) | [`POST /UserAgent/CredentialUpsert`](#post-useragentcredentialupsert) |
+> | Custom skill values (strategy text, cron intervals, enabled flag) | [`POST /UserAgent/CustomSkillUpsert`](#post-useragentcustomskillupsert) |
+> | Delete a user-created cron skill | [`POST /UserAgent/CustomSkillDelete`](#post-useragentcustomskilldelete) |
+> | Toggle one or more integration skills on/off (with optional tier change) | [`POST /UserAgent/SkillsApply`](#post-useragentskillsapply) |
+> | Apply a batch of skill toggles (with optional tier change) | [`POST /UserAgent/SkillsApply`](#post-useragentskillsapply) |
+> | Upgrade Starter → Pro | [`POST /UserAgent/UpgradeTier`](#post-useragentupgradetier) |
+> | Upload a cover image (multipart) | [`POST /UserAgent/Cover`](#post-useragentcover) |
+
+> **Note:** If the agent's status is `6` (Setup Required) and a subsequent `CredentialUpsert` call completes all required credentials, the status automatically flips to `0` (Stopped) so you can call `Start`.
 
 ##### Response
 
@@ -2490,65 +2705,575 @@ Updates an agent instance's configuration, title, or description. If the agent i
   "errors": [],
   "useragents": [
     {
-      "id": 47,
       "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
-      "uuid": "your-user-uuid",
-      "agentid": 5,
+      "uuid": "ada-uuid",
+      "agentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "teamguid": null,
       "title": "My Instagram Bot",
-      "description": null,
-      "status": 0,
+      "description": "Updated description after rename",
+      "cover": "https://cdn.wiro.ai/uploads/useragents/f8e7d6c5-cover.webp",
+      "categories": ["social-media", "marketing"],
+      "tier": "starter",
+      "tiermultiplier": 3,
+      "monthlypriceusd": 9,
+      "monthlycredits": 1000,
+      "extracredits": 0,
+      "usedcredits": 320,
+      "creditperiod": "2026-05",
+      "creditsyncat": 1714694400,
+      "status": 1,
       "pinned": false,
       "setuprequired": false,
-      "configuration": {
-        "credentials": {
-          "instagram": {
-            "_editable": { "authMethod": true },
-            "authMethod": "wiro",
-            "igUsername": "myaccount",
-            "connectedAt": "2025-04-01T12:00:00.000Z"
-          }
-        },
-        "custom_skills": [
-          {
-            "key": "content-tone",
-            "description": "Content strategy, brand voice, and posting rules",
-            "value": "## Brand Voice\nTone: friendly\nTarget Audience: ...",
-            "enabled": true,
-            "interval": null,
-            "_editable": true
-          },
-          {
-            "key": "cron-content-scanner",
-            "description": "Content discovery with rotating strategies",
-            "value": "",
-            "enabled": true,
-            "interval": "0 */4 * * *",
-            "_editable": false
-          }
-        ],
-        "skills": { "instagram-post": true }
-      },
+      "teamsessionmode": "",
       "agent": {
-        "id": 5,
+        "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
         "title": "Instagram Manager",
         "slug": "instagram-manager",
-        "pricing": {
-          "starter": { "price": 9, "credits": 1000 },
-          "pro": { "price": 29, "credits": 5000 }
-        }
+        "headline": "Automate your Instagram presence with AI",
+        "description": "An autonomous agent that manages your Instagram Business account.",
+        "cover": "https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp",
+        "icon": "https://cdn.wiro.ai/uploads/agents/instagram-manager-icon.webp",
+        "categories": ["social-media", "marketing"],
+        "tiermultiplier": 3,
+        "tiers": {
+          "starter": { "priceUsd": 9,  "credits": 1000 },
+          "pro":     { "priceUsd": 29, "credits": 5000 }
+        },
+        "extracreditpacks": []
       },
       "createdat": 1714608000,
-      "updatedat": 1714694400
+      "updatedat": 1714694500,
+      "queuedat": 1714694498,
+      "startedat": null,
+      "runningat": null,
+      "stoppingat": 1714694500,
+      "stopdat": null,
+      "errordat": null
     }
   ]
 }
 ```
 
-> Returns the updated agent instance with the `setuprequired` flag and agent summary. Does **not** include `subscription` — use `UserAgent/Detail` for the full view.
+> **`Update` returns scalar useragent fields + the `agent` template summary + `setuprequired` only.** It does **not** re-compose the heavy children (`credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `peractioncosts`, `remainingcredits`, `subscription`, `extracreditsexpiry`). Call `UserAgent/Detail` afterwards if you need the full composed shape — `Update` is optimised for fast scalar writes.
+
+> **Restart on running agents.** When the call lands on a status `3`/`4` agent, the response shows the lifecycle transition mid-flight: `status: 1` (Stopping) with a fresh `stoppingat` timestamp, `runningat` cleared, and `queuedat` set to the same instant — Wiro auto-queues the agent so it picks the new settings up after the next stop cycle.
+
+#### **POST** /UserAgent/Cover
+
+Uploads a new cover image for the agent instance via multipart. Mirrors the `/User/Avatar` pattern — accepts `jpg`, `png`, `gif`, `jpeg`, `webp`; converts to webp; uploads to S3; writes the resulting CDN URL into `useragents.cover`.
+
+If you already have a hosted URL, use `POST /UserAgent/Update` with `cover: "<url>"` instead.
+
+**Multipart fields:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `useragentguid` | text | Yes | Your UserAgent instance guid |
+| `image` | file | Yes | The cover image file (jpg/png/gif/jpeg/webp, max ~10MB) |
+
+##### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "cover": "https://cdn.wiro.ai/uploads/useragents/f8e7d6c5-b4a3-2190-fedc-ba0987654321-cover.webp",
+  "useragents": [
+    {
+      "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+      "uuid": "ada-uuid",
+      "agentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "teamguid": null,
+      "title": "My Instagram Bot",
+      "description": null,
+      "cover": "https://cdn.wiro.ai/uploads/useragents/f8e7d6c5-b4a3-2190-fedc-ba0987654321-cover.webp",
+      "categories": ["social-media", "marketing"],
+      "tier": "starter",
+      "tiermultiplier": 3,
+      "monthlypriceusd": 9,
+      "monthlycredits": 1000,
+      "extracredits": 0,
+      "usedcredits": 320,
+      "creditperiod": "2026-05",
+      "creditsyncat": 1714694400,
+      "status": 4,
+      "pinned": false,
+      "teamsessionmode": "",
+      "agent": {
+        "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "title": "Instagram Manager",
+        "slug": "instagram-manager",
+        "headline": "Automate your Instagram presence with AI",
+        "description": "An autonomous agent that manages your Instagram Business account.",
+        "cover": "https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp",
+        "icon": "https://cdn.wiro.ai/uploads/agents/instagram-manager-icon.webp",
+        "categories": ["social-media", "marketing"],
+        "tiermultiplier": 3
+      },
+      "createdat": 1714608000,
+      "updatedat": 1714694500,
+      "queuedat": 1714694395,
+      "startedat": 1714694400,
+      "runningat": 1714694410,
+      "stoppingat": null,
+      "stopdat": null,
+      "errordat": null
+    }
+  ]
+}
+```
+
+> **Cover returns scalar useragent fields + the `agent` template summary only.** It does **not** include `setuprequired`, `peractioncosts`, `remainingcredits`, or any composed children (`credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `subscription`). The endpoint is optimised for the cover refresh round-trip; call `UserAgent/Detail` afterwards if you need the full composed shape.
+
+#### **POST** /UserAgent/CredentialUpsert
+
+Writes one or more credential fields for one or multiple providers in a single call.
+
+If the agent is **starting** or **running**, completing the upsert triggers an automatic restart (`restartafter: true`).
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Your UserAgent instance guid |
+| `fields` | array | Yes | One or more field rows. Each row has `{ credentialkey, fieldname, fieldvalue, fieldstatus?, parentfield?, ordinal? }`. You can write to more than one `credentialkey` in a single request. |
+
+Each field row:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `credentialkey` | string | The provider key — e.g. `"instagram"`, `"google-ads"`, `"wordpress"`, `"telegram"`. Must match one of the credentials declared in `credentials` on `/UserAgent/Detail`. |
+| `fieldname` | string | Field inside that credential — e.g. `"apiKey"`, `"clientid"`, `"bottoken"`. Must not start with `_` (reserved for internal sentinels such as `_isoptional`, `_isextra`). |
+| `fieldvalue` | string \| number | The value to write. Empty string is allowed (effectively clears the field). |
+| `fieldstatus` | string | Optional. One of `user`, `platform`, `oauth_app`, `oauth_picker`, `computed`, `control`. Defaults to `user` for API callers (the only status user-role API keys may write). OAuth picker/session fields are written by Wiro's OAuth callback internally, not by your API. |
+| `parentfield` | string | Optional. Dotted path when the credential has a nested array (e.g. `"accounts.0.apps"` for `firebase.accounts[0].apps[*]`). |
+| `ordinal` | number | Optional. Array index inside `parentfield`. Defaults to `0`. |
+
+##### Request
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+    "fields": [
+      { "credentialkey": "wordpress", "fieldname": "url",         "fieldvalue": "https://myblog.com" },
+      { "credentialkey": "wordpress", "fieldname": "user",        "fieldvalue": "admin" },
+      { "credentialkey": "wordpress", "fieldname": "apppassword", "fieldvalue": "abcd efgh ijkl mnop" }
+    ]
+  }'
+```
+
+##### Response
+
+```json
+{ "result": true, "applied": 3, "errors": [] }
+```
+
+`applied` is the number of rows actually written. Any row that fails validation (reserved fieldname, invalid fieldstatus for your role) is skipped and reported in `errors` without rolling back the others.
+
+#### **POST** /UserAgent/CustomSkillUpsert
+
+Writes a single custom skill — either a **strategy** (instructions read by other skills at runtime) or a **scheduled task** (`cs-cron-*`).
+
+The endpoint auto-normalises the skillkey to its canonical form. Bare slugs become `cs-<slug>`; if you also send `interval` (or `usercreated: true`) the slug is treated as a cron and becomes `cs-cron-<slug>`. So `"weekly-health-check"` with `interval: "0 9 * * 1"` is stored as `cs-cron-weekly-health-check`.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Your UserAgent instance guid |
+| `skillkey` | string | Yes | The skill key. Strategies use bare names (e.g. `"content-tone"` → stored as `cs-content-tone`). Crons use a `cron-` prefix (e.g. `"cron-content-scanner"` → stored as `cs-cron-content-scanner`). |
+| `value` | string | No | Strategy body / cron prompt text. Editable for preset strategies and user-created entries; bundled crons silently drop `value` writes. |
+| `interval` | string | No | Cron expression (e.g. `"0 */4 * * *"`). Only persisted on `cs-cron-*` rows. |
+| `enabled` | boolean | No | Turn a cron on or off. Only persisted on `cs-cron-*` rows. |
+| `description` | string | No | Only persisted for user-created skills (preset descriptions are template-owned). |
+| `usercreated` | boolean | No | Pass `true` to mark the row as user-created (admins also use this to flag a row as user-deletable). Server auto-prefixes `skillkey` with `cron-` when `usercreated: true` and no prefix is present. |
+
+> **Description-only edits skip the restart.** If you only change `description` (and the row's functional fields — `value`, `interval`, `enabled` — stay the same), the agent is **not** restarted. Functional changes still trigger the standard auto-restart.
+
+##### Request
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+    "skillkey": "content-tone",
+    "value": "## Brand Voice\nTone: friendly\nTarget Audience: teens on Instagram"
+  }'
+```
+
+##### Response
+
+```json
+{ "result": true, "errors": [] }
+```
+
+#### **POST** /UserAgent/CustomSkillDelete
+
+Removes a user-created cron skill. **Preset-owned crons cannot be deleted** — disable them instead with `CustomSkillUpsert` + `enabled: false` (they re-materialise on container restart, which preserves the disabled state via `useredited: true`).
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Your UserAgent instance guid |
+| `skillkey` | string | Yes | The skill key to remove (`cs-cron-*` for user-created crons). |
+
+##### Response (delete allowed)
+
+```json
+{ "result": true, "errors": [] }
+```
+
+##### Response (preset-owned — rejected with suggestion)
+
+```json
+{
+  "result": false,
+  "errors": [
+    {
+      "code": 0,
+      "message": "This skill belongs to the agent preset and cannot be deleted. Use enabled=false to disable it instead."
+    }
+  ],
+  "suggestion": "disable-via-upsert"
+}
+```
+
+#### **POST** /UserAgent/CustomSkillHistory
+
+Returns the version history for one custom skill on a useragent — a per-write audit trail with diff metadata + the resolved actor for each entry. Powers the "Version History" modal in the panel; useful for API consumers building audit views.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Your UserAgent instance guid |
+| `skillkey` | string | Yes | Canonical skill key (e.g. `"cs-content-tone"`) |
+| `startdate` | number | No | UTC epoch seconds — return entries on/after this time |
+| `enddate` | number | No | UTC epoch seconds — return entries on/before this time |
+
+##### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "preset_default": {
+    "value": "## Brand Voice\nTone: friendly...",
+    "intervalexpr": null,
+    "enabled": true,
+    "description": "How the agent should sound across all generated copy."
+  },
+  "entries": [
+    {
+      "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+      "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+      "skillkey": "cs-content-tone",
+      "operation": "upsert",
+      "value": "## Brand Voice\nTone: friendly\n...",
+      "intervalexpr": null,
+      "enabled": true,
+      "usercreated": false,
+      "prev_value": "## Brand Voice\nTone: professional\n...",
+      "prev_interval": null,
+      "prev_enabled": true,
+      "after_value": "## Brand Voice\nTone: friendly\n...",
+      "after_interval": null,
+      "after_enabled": true,
+      "changed_fields": ["value"],
+      "changedby": "ada-uuid",
+      "changedby_user": {
+        "uuid": "ada-uuid",
+        "firstname": "Ada",
+        "lastname": "Lovelace",
+        "email": "ada@example.com",
+        "username": "ada",
+        "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
+        "avatarinitials": "AL"
+      },
+      "changedat": 1714694410
+    }
+  ]
+}
+```
+
+> **Field semantics.** Each row captures the **BEFORE** state of the action that produced it (audit-write fires before the table mutation). The server-computed `after_*` and `prev_*` fields give you the resolved AFTER + previous-version snapshots without you having to walk the list manually:
+>
+> - `prev_*` — value as of the immediately-older entry (`null` for the oldest row).
+> - `after_*` — value the row was left with after this action committed: pulled from the next-newer entry's BEFORE state, or from the live custom-skill row for the newest entry. `null` when `operation: "delete-user"` (row was removed).
+> - `changed_fields[]` — names of fields whose value differs from the immediately-older entry. Subset of `["value", "interval", "enabled"]`.
+> - `changedby_user` — resolved actor object (full shape: `uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`). `null` when `changedby` is `"system"` (automation / cron) or when the user record was deleted.
+
+#### **POST** /UserAgent/CustomSkillRevert
+
+Reverts a custom skill to either (a) the agent template's preset default or (b) a specific historical version. Auto-triggers a restart on success unless the action is a no-op.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Your UserAgent instance guid |
+| `skillkey` | string | Yes | Canonical skill key |
+| `source` | string | Yes | `"preset"` (reset to template default) or `"history"` (jump to a `versionguid`) |
+| `versionguid` | string | When `source=history` | The `entries[].guid` from `CustomSkillHistory` |
+
+##### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "action": "reverted",
+  "current_value": "## Brand Voice\nTone: ...",
+  "current_interval": null,
+  "current_enabled": true
+}
+```
+
+`action` is `"reverted"`, `"reset-to-preset"`, `"deleted"` (preset removed upstream), or `"no-op"` (already matches target).
+
+#### **POST** /UserAgent/CredentialFieldHistory
+
+Returns the per-field write history for one credential group on a useragent. Sensitive values are redacted at read time as a belt-and-suspenders guard:
+- `oauth_session` fields (access / refresh tokens) **never** appear in history at all — they're stripped before persisting.
+- `clientsecret` and similar `oauth_app` secret fields are stored as `[REDACTED]` in history rows (the live row carries the real secret — read it via `UserAgent/Detail`).
+- Platform-only credentials (`wiro`, `calendarific`, `sys-openai`) short-circuit to an empty `entries[]` (no user-facing history to show).
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Your UserAgent instance guid |
+| `credentialkey` | string | Yes | Provider key (e.g. `"instagram"`, `"wordpress"`) |
+| `startdate` | number | No | UTC epoch seconds — return entries on/after this time |
+| `enddate` | number | No | UTC epoch seconds — return entries on/before this time |
+
+##### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "entries": [
+    {
+      "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+      "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+      "credentialkey": "instagram",
+      "fieldname": "igusername",
+      "fieldvalue": "myaccount",
+      "fieldstatus": "user",
+      "parentfield": null,
+      "ordinal": 0,
+      "operation": "upsert",
+      "changedby": "ada-uuid",
+      "changedby_user": {
+        "uuid": "ada-uuid",
+        "firstname": "Ada",
+        "lastname": "Lovelace",
+        "email": "ada@example.com",
+        "username": "ada",
+        "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
+        "avatarinitials": "AL"
+      },
+      "changedat": 1714694410
+    },
+    {
+      "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+      "credentialkey": "instagram",
+      "fieldname": "clientsecret",
+      "fieldvalue": "[REDACTED]",
+      "fieldstatus": "oauth_app",
+      "parentfield": null,
+      "ordinal": 0,
+      "operation": "upsert",
+      "changedby": "ada-uuid",
+      "changedby_user": {
+        "uuid": "ada-uuid",
+        "firstname": "Ada",
+        "lastname": "Lovelace",
+        "email": "ada@example.com",
+        "username": "ada",
+        "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
+        "avatarinitials": "AL"
+      },
+      "changedat": 1714600000
+    }
+  ]
+}
+```
+
+> `changedby_user` is the resolved actor object (`uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`). It is `null` when `changedby` is `"system"` (automation / cron) or when the user record has been deleted.
+
+#### **POST** /UserAgent/SkillsApply
+
+Applies a batch of skill toggles + an optional tier change in a single transactional unit. **This is the only skill-toggle endpoint API consumers should use** — even when you're flipping a single skill, send it as a one-entry `skills` map. The single-skill alternative (`SkillToggle`) is not part of the public API surface.
+
+Designed for both the Skill Editor modal (multiple toggles in one save) and one-off API mutations:
+
+1. Charges the wallet (or proration) **once**, not N times.
+2. Triggers exactly **one container restart** after all toggles land.
+3. Uses **idempotency** + a UA-level mutex — concurrent calls or FE retries can't double-apply.
+4. **Atomic** — a payment-side failure rolls back to the pre-call skill set.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Your UserAgent instance guid (custom build only for non-admin callers) |
+| `skills` | object | Yes | Map of `{ "skillname": true \| false }` for every skill you want to set. Skills not in the map keep their current state. |
+| `tier` | string | No | `"starter"` or `"pro"` — change the tier in the same call. **Pro → Starter downgrade is rejected** (cancel + re-subscribe instead). |
+| `idempotencyKey` | string | Yes | Caller-generated unique key (UUID recommended). Replays of the same key return the cached response without re-running the saga. |
+
+##### Request
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+    "tier": "pro",
+    "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000",
+    "skills": {
+      "int-instagram-post": true,
+      "int-twitterx-post":  true,
+      "int-telegram-post":  false
+    }
+  }'
+```
+
+##### Response (success)
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "tier": "pro",
+  "stripeProrationApplied": false,
+  "prepaidWalletDelta": 19.99,
+  "restartTriggered": true,
+  "restartedAt": 1714694520,
+  "pricing": {
+    "previousPriceUsd": 9,
+    "newPriceUsd": 39,
+    "deltaUsd": 30,
+    "previousMonthlyCredits": 1000,
+    "newMonthlyCredits": 6000,
+    "deltaCredits": 5000,
+    "enabledSkills": ["int-instagram-post", "int-twitterx-post", "int-wiro-generator"],
+    "peractioncosts": { "message": 10, "create": 60, "modify": 20, "regenerate": 20 }
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `tier` | `string` | The tier in effect after the call (`"starter"` or `"pro"`). |
+| `stripeProrationApplied` | `boolean` | Always `false` for prepaid subscriptions (the prorated charge is taken from the wallet as `prepaidWalletDelta` instead). |
+| `prepaidWalletDelta` | `number` | USD debited (positive) or credited (negative) from the wallet for the prorated price diff. `0` when the toggle batch is a no-op or the agent has no active subscription yet. |
+| `restartTriggered` | `boolean` | `true` when the agent runtime was restarted to pick up the new skill set. `false` for stopped agents (no restart needed) or no-op batches. |
+| `restartedAt` | `number\|null` | Unix seconds when the restart trigger fired. `null` when `restartTriggered` is `false`. |
+| `pricing.previousPriceUsd` / `newPriceUsd` / `deltaUsd` | `number` | USD totals before / after the apply, plus the signed delta. |
+| `pricing.previousMonthlyCredits` / `newMonthlyCredits` / `deltaCredits` | `number` | Monthly credit allocation before / after, plus the signed delta. |
+| `pricing.enabledSkills` | `array<string>` | Final enabled skill set including transitive `depends_on` closure — same skill names you'd see on `useragent.skills[].name` in the next `Detail` call. |
+| `pricing.peractioncosts` | `object` | The `{ message, create, modify, regenerate }` per-action burn rates that follow from the new skill set. |
+
+##### Common error codes
+
+| Code | Meaning |
+|------|---------|
+| `100` | `skillsapply-template-only` — non-admin caller tried to mutate a template-deploy useragent. |
+| `101` | `skillsapply-deps-violation` — a final enabled skill has unsatisfied `depends_on`. Body includes `deps[]`. |
+| `102` | `skillsapply-conflict` — two finally-enabled skills are mutually exclusive. Body includes `conflicts[]`. |
+| `103` | `skillsapply-insufficient-wallet` — wallet can't cover the prorated charge. Body includes `requiredUsd` / `availableUsd`. |
+| `104` | `skillsapply-in-progress` — another `SkillsApply` is already running on this useragent. Wait and retry. |
+| `105` | `skillsapply-tier-downgrade` — Pro → Starter rejected. Cancel + re-subscribe instead. |
+| `106` | `skillsapply-subscription-inactive` — subscription must be `active` to mutate. |
+| `108` | `skillsapply-db-tx-failed` — DB transaction rolled back; safe to retry with a new idempotency key. |
+
+#### **POST** /UserAgent/PricingPreview
+
+Live tier-pricing preview. Drives the Build Your Agent / Skill Editor UI: as the user toggles skills on/off, the frontend POSTs here with `skillOverrides` to see "if I save this, my new monthly price would be $X with Y monthly credits" without writing any state.
+
+Two body shapes:
+
+##### A. Draft preview (custom builder, no useragent yet)
+
+```json
+{
+  "draft": true,
+  "tier": "pro",
+  "skills": ["instagram-post", "wiro-generator"]
+}
+```
+
+##### B. Existing useragent preview
+
+```json
+{
+  "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+  "tier": "pro",
+  "skillOverrides": {
+    "instagram-post": true,
+    "telegram-post": false
+  }
+}
+```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `draft` | boolean | A | When `true`, no useragent lookup happens; the resolver synthesises pricing from the `skills` array directly. Used by Build Your Agent. |
+| `skills` | array<string> | A | Draft mode only — the proposed enabled skill set. |
+| `useragentguid` | string | B | Required for non-draft previews. |
+| `skillOverrides` | object | No | Override the persisted state with `{ skillname: boolean }` for the preview. Omit for "current state" preview. |
+| `tier` | string | No | `"starter"` or `"pro"` — preview a specific tier. The response also includes both tiers under `tiers.{starter,pro}`. |
+
+##### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "tier": "pro",
+  "tiermultiplier": 3,
+  "totalPriceUsd": 14,
+  "totalMonthlyCredits": 1500,
+  "peractioncosts": { "message": 10, "create": 60, "modify": 20, "regenerate": 20 },
+  "skillBreakdown": [
+    { "skill": "instagram-post", "priceUsd": 5, "credits": 500, "actionCostOverrides": { "create": 60 } },
+    { "skill": "wiro-generator", "priceUsd": 0, "credits": 0,   "actionCostOverrides": {} }
+  ],
+  "enabledSkills": ["instagram-post", "wiro-generator"],
+  "directSkills":  ["instagram-post"],
+  "agentBase": { "priceUsd": 9, "credits": 1000 },
+  "tiers": {
+    "starter": { "priceUsd": 9,  "credits": 1000 },
+    "pro":     { "priceUsd": 14, "credits": 1500 }
+  }
+}
+```
+
+`enabledSkills` is the full closure (including transitive `depends_on`); `directSkills` is just what the user explicitly toggled.
+
+#### **POST** /UserAgent/CreateSubscriptionCheckout
+
+Subscribes a useragent that doesn't yet have an active subscription. Wallet is debited, a prepaid subscription row is inserted, and the agent is auto-queued — same single-call behaviour as `Deploy` with `useprepaid: true`. Always pass `useprepaid: true` from the API.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Your UserAgent instance guid |
+| `useprepaid` | boolean | Yes | Must be `true` for API consumers. |
+| `tier` | string | No | `"starter"` or `"pro"` — overrides the useragent's persisted tier so the user can re-subscribe at a different tier without redeploying. |
+
+##### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "subscriptionId": 8421,
+  "monthlypriceusd": 29,
+  "monthlycredits": 5000
+}
+```
+
+If the useragent already has an active subscription, the call rejects with `Subscription already active for this useragent. Cancel or modify the existing subscription instead.`
 
 #### **POST** /UserAgent/Start
 
-Starts a stopped agent instance. The agent is moved to Queued (status `2`) and will be picked up by a worker.
+Starts a stopped agent instance. The agent is moved to Queued (status `2`) and picked up by a worker. Also valid for agents in Error state (`5`) — Start re-queues them for another launch attempt.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -2564,12 +3289,13 @@ Starts a stopped agent instance. The agent is moved to Queued (status `2`) and w
 }
 ```
 
-Start will fail with a descriptive error if:
+> `useragents` is always returned (empty array on Start) because the endpoint uses the shared `UserAgentResultModel` — just `result` and `errors` carry the outcome here.
+
+Start will fail (returns `{ "result": false, "errors": [...] }`) if:
 - The agent is already running or queued
 - The agent is currently stopping
 - Setup is incomplete (status `6`)
-- No active subscription exists
-- No credits remain (monthly or extra)
+- No credits remain (`monthlycredits + extracredits - usedcredits <= 0`)
 
 #### **POST** /UserAgent/Stop
 
@@ -2589,34 +3315,164 @@ Stops a running agent instance. If the agent is Queued (status `2`), it is immed
 }
 ```
 
-#### **POST** /UserAgent/CreateExtraCreditCheckout
+#### **POST** /UserAgent/Pin
 
-Purchases additional credits for a Pro plan agent. Deducts from your prepaid wallet balance.
+Pins or unpins an agent instance from the user's pinned-agents quick list. Pinned agents appear in the global header dropdown (`PinnedAgents`) and get an unread badge from `PinnedUnread`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `useragentGuid` | string | Yes | Your UserAgent instance guid |
-| `pack` | string | Yes | Credit pack: `package1`, `package2`, or `package3` |
-| `useprepaid` | boolean | Yes | Set to `true` to pay from wallet balance. No redirect needed. |
+| `useragentguid` | string | Yes | Your UserAgent instance guid |
+| `pinned` | boolean | Yes | `true` to pin, `false` to unpin |
 
 ##### Response
 
 ```json
-// Request
-{"useragentGuid": "your-guid", "pack": "package2", "useprepaid": true}
-// Response
-{"result": true, "url": null, "errors": []}
+{ "result": true, "errors": [] }
 ```
 
-When `result` is `true`, the credits are added immediately from your wallet balance. Credits expire 6 months after purchase.
+#### **POST** /UserAgent/PinnedAgents
+
+Lists the user's pinned agents. Returns the **same composed shape as `MyAgents`** — every field that appears on a `MyAgents` row appears here, just filtered to `pinned: true`.
+
+No request body fields are required — the caller's `tokenUUID` (or active `teamGUID` header) scopes the response.
+
+##### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "useragents": [
+    {
+      "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+      "uuid": "ada-uuid",
+      "agentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "teamguid": null,
+      "title": "My Instagram Bot",
+      "description": null,
+      "cover": null,
+      "categories": ["social-media", "marketing"],
+      "tier": "pro",
+      "tiermultiplier": 3,
+      "monthlypriceusd": 29,
+      "monthlycredits": 5000,
+      "extracredits": 2000,
+      "usedcredits": 1450,
+      "creditperiod": "2026-05",
+      "creditsyncat": 1714694410,
+      "status": 4,
+      "pinned": true,
+      "teamsessionmode": "",
+      "setuprequired": false,
+      "subscription": {
+        "plan": "agent",
+        "status": "active",
+        "amount": 29,
+        "currency": "usd",
+        "currentperiodend": 1717200000,
+        "renewaldate": "2026-06-01T00:00:00.000Z",
+        "daysremaining": 28,
+        "pendingdowngrade": null,
+        "provider": "prepaid"
+      },
+      "agent": {
+        "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "title": "Instagram Manager",
+        "slug": "instagram-manager",
+        "description": "An autonomous agent that manages your Instagram Business account.",
+        "cover": "https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp",
+        "categories": ["social-media", "marketing"],
+        "tiermultiplier": 3,
+        "tiers": {
+          "starter": { "priceUsd": 9,  "credits": 1000 },
+          "pro":     { "priceUsd": 29, "credits": 5000 }
+        }
+      },
+      "extracreditsexpiry": 1730419200,
+      "createdat": 1714608000,
+      "updatedat": 1714694400,
+      "queuedat": 1714694395,
+      "startedat": 1714694400,
+      "runningat": 1714694410,
+      "stoppingat": null,
+      "stopdat": null,
+      "errordat": null
+    }
+  ]
+}
+```
+
+#### **POST** /UserAgent/PinnedUnread
+
+Returns the latest message GUID per pinned agent. Compare each `lastmessageguid` against the last value you saw client-side to draw an unread badge — same pattern the Wiro dashboard uses for its global header.
+
+##### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "data": [
+    { "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "lastmessageguid": "5c41dabf-f2be-4aa8-a5a4-8c9e3d2f3f11" },
+    { "useragentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "lastmessageguid": null }
+  ]
+}
+```
+
+### Extra Credit Packs
+
+Pro-tier instances can buy additional credits at any time. Pack catalogs are derived per-useragent (5x / 10x / 20x of the instance's monthly allocation), so the catalog auto-scales when the user upgrades from Starter → Pro or toggles paid skills.
+
+The catalog appears at `agent.extracreditpacks` on `UserAgent/Detail`:
+
+```json
+"extracreditpacks": [
+  { "packkey": "small",  "credits": 25000,  "priceusd": 130, "enabled": true },
+  { "packkey": "medium", "credits": 50000,  "priceusd": 240, "enabled": true },
+  { "packkey": "large",  "credits": 100000, "priceusd": 420, "enabled": true }
+]
+```
+
+#### **POST** /UserAgent/CreateExtraCreditCheckout
+
+Purchases additional credits for a useragent. The wallet is debited the pack price and credits are added to the instance immediately.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Your UserAgent instance guid |
+| `pack` | string | Yes | Pack key from `agent.extracreditpacks[].packkey` — `"small"`, `"medium"`, or `"large"`. |
+| `useprepaid` | boolean | Yes | Must be `true` for API use. Pays the pack price from your wallet balance. |
+
+##### Request
+
+```json
+{
+  "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+  "pack": "medium",
+  "useprepaid": true
+}
+```
+
+##### Response
+
+```json
+{
+  "result": true,
+  "errors": []
+}
+```
+
+The pack price is deducted from your wallet and credits are added to the instance immediately. Credits expire 6 months after purchase. The transaction is appended to the agent ledger (`type: "purchase"`, `action: "<pack>"`, `provider: "prepaid"`) and surfaced on `POST /UserAgent/TransactionList`.
 
 #### **POST** /UserAgent/CancelSubscription
 
-Cancels a subscription at the end of the current billing period. The agent remains active until the period ends.
+Schedules the subscription to end at the current billing period's expiry — a **cancel-at-period-end** pattern. The agent keeps running with the full plan allowance until that moment. No wallet refund is issued for the remaining days; you're paying for the full period up front.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `guid` | string | Yes | Your UserAgent instance guid |
+
+**Headers:** Pass `teamGUID: <team-guid>` when the target agent belongs to a team project (the endpoint validates team context explicitly for all billing mutations).
 
 ##### Response
 
@@ -2628,54 +3484,71 @@ Cancels a subscription at the end of the current billing period. The agent remai
 }
 ```
 
-The `cancelsAt` field is the Unix timestamp when the subscription will expire. The agent continues running until this date. You can reverse the cancellation by calling RenewSubscription before the period ends.
+- `cancelsAt` is the Unix timestamp when the subscription will finish.
+- Server-side, `subscription.pendingdowngrade` is flipped to `"cancel"` and `subscription.status` stays `"active"` until the period end. Subsequent `UserAgent/Detail` responses reflect this: `subscription.pendingdowngrade = "cancel"` and the usual `currentperiodend`.
+- To reverse the cancellation **before** the period ends, call `POST /UserAgent/RenewSubscription` — it clears the flag without charging the wallet again.
+- When the period actually ends, the daily cron marks the subscription `"expired"` and stops the agent (`status: 0`). At that point the user must call `POST /UserAgent/RenewSubscription` (or `CreateSubscriptionCheckout` for a fresh sub) to continue.
 
-#### **POST** /UserAgent/UpgradePlan
+**Common errors:**
 
-Upgrades a Starter subscription to Pro. The prorated cost for the remaining days is deducted from your wallet.
+| Error | When |
+|-------|------|
+| `No active subscription found for this agent` | `status != "active"` on the subscription row |
+| `Stripe subscriptions must be cancelled via Stripe portal` | The active subscription was set up through the Wiro web dashboard with a card (e.g. by a teammate) — manage it from the Wiro dashboard instead. API-managed prepaid subscriptions never hit this path. |
+| `User agent not found` | Caller doesn't own the useragent and isn't a team admin |
+
+#### **POST** /UserAgent/UpgradeTier
+
+Upgrades the active subscription from **Starter → Pro**. The capability surface stays the same; the tier change just scales the credit pool and price by `tiermultiplier`.
+
+**Upgrade-only.** Pro → Starter downgrades are rejected with an explicit error — cancel and redeploy at the lower tier instead.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `guid` | string | Yes | Your UserAgent instance guid |
-| `plan` | string | Yes | Target plan: `"pro"` (only starter-to-pro upgrade is supported) |
+| `targetTier` | string | Yes | Must be `"pro"` (`"starter"` is rejected with the downgrade error). |
+
+**Headers:** Pass `teamGUID: <team-guid>` when the target agent belongs to a team project.
+
+When called against a prepaid subscription, the wallet is debited the prorated upgrade fee `Math.max(0, ((P_pro − P_starter) / totalDays) × remainingDays)` synchronously, the subscription + useragent are updated to Pro pricing / credits, and the agent is restarted to apply the new tier. Existing extra credits and `usedcredits` are preserved.
 
 ##### Response
 
 ```json
 {
   "result": true,
-  "plan": "agent-pro",
-  "proratedCharge": 11.33,
+  "tier": "pro",
+  "previousTier": "starter",
+  "newPriceUsd": 29,
   "newMonthlyCredits": 5000,
+  "proratedCharge": 11.33,
+  "stripeProrationApplied": false,
   "errors": []
 }
 ```
 
-Downgrades are not supported. To change from Pro to Starter, cancel and re-deploy.
+> `stripeProrationApplied` is part of the standard contract and is always `false` for prepaid subscriptions (the prorated charge is taken from the wallet as `proratedCharge` instead).
 
 #### **POST** /UserAgent/RenewSubscription
 
-Renews an expired subscription or reverses a pending cancellation. The renewal cost is deducted from your wallet.
+Two distinct operations share this endpoint depending on the subscription's current state:
+
+1. **Undo-cancel** — active subscription with `pendingdowngrade: "cancel"` → clears the flag, **no wallet charge**.
+2. **Renew** — subscription in `"expired"` status → creates a brand-new 30-day subscription, charges the wallet for the full plan price, resets the useragent to `status: 0` (Stopped).
+
+The endpoint inspects the current subscription state and picks the right operation; the caller doesn't choose.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `guid` | string | Yes | Your UserAgent instance guid |
 
-##### Response (renewal)
+**Headers:** Pass `teamGUID: <team-guid>` when the target agent belongs to a team project.
 
-```json
-{
-  "result": true,
-  "action": "renewed",
-  "plan": "agent-starter",
-  "amount": 49,
-  "errors": []
-}
-```
+> Renewal pricing is **snapshot-driven** — `monthlypriceusd` and `monthlycredits` are read straight off the useragent row (last touched by `Deploy`, `SkillsApply`, or `UpgradeTier`). Skill-registry weight changes between renewals do **not** propagate; the user keeps the price they last agreed to. To pick up new pricing, the user must explicitly call `SkillsApply` or `UpgradeTier` (both re-snapshot in the same transaction).
 
-##### Response (undo cancel)
+##### Response — undo-cancel
 
-When called on an active subscription with a pending cancellation:
+Called while the subscription is still `"active"` with a pending cancel flag set by `CancelSubscription`:
 
 ```json
 {
@@ -2685,26 +3558,100 @@ When called on an active subscription with a pending cancellation:
 }
 ```
 
-After renewal, the agent status is reset to `0` (Stopped). Call Start to launch it again. Monthly credits are refreshed for the new billing period.
+- Clears `subscription.pendingdowngrade` back to `null`.
+- **No wallet charge** — you've already paid for the full period.
+- Agent status is unchanged (still running / stopped / whatever it was).
 
-## Agent Pricing
+##### Response — renew
 
-Agent pricing is subscription-based, billed monthly. Two payment methods are available:
+Called after the subscription has expired (daily cron flipped it to `status: "expired"` and stopped the agent). The renewal rolls the existing expired subscription forward into a fresh 30-day `active` row instead of inserting a new one:
 
-| Feature | Starter | Pro |
-|---------|---------|-----|
-| Monthly price | Varies by agent (e.g. $9/mo) | Varies by agent (e.g. $29/mo) |
-| Monthly credits | Included (e.g. 1,000) | Included (e.g. 5,000) |
-| Extra credit packs | Not available | Available (expire in 6 months) |
-| Plan upgrade | Upgrade to Pro anytime | — |
+```json
+{
+  "result": true,
+  "action": "renewed",
+  "plan": "agent",
+  "amount": 9,
+  "monthlycredits": 1000,
+  "errors": []
+}
+```
 
-Each agent in the catalog defines its own pricing tiers in the `pricing` field. Check the `Agent/Detail` response for exact prices and credit amounts.
+- Updates the `subscriptions` row in place: `status: "active"`, `type: "renewal"`, `currentperiodstart: now`, `currentperiodend: now + 30 days`, `pendingdowngrade: null`.
+- Debits `amount` (the snapshot `monthlypriceusd`) from the wallet (caller's personal wallet, or the agent's team wallet if the agent is team-scoped).
+- Zeroes `usedcredits` and stamps the new `creditperiod`. Existing extra credits are preserved.
+- If the agent was in `status: 0` (Stopped) or `5` (Error), it's auto-queued back to `2` (Queued) — the runtime picks it up on the next cycle, no extra `Start` call needed. Statuses `1`/`2`/`3`/`4` are mid-flight and settle on their own.
+
+**Common errors:**
+
+| Error | When |
+|-------|------|
+| `Subscription is already active` | Called on an active subscription with **no** pending cancel (nothing to do) |
+| `No expired subscription found to renew` | No active sub and no expired sub — agent was never subscribed, or data is gone |
+| `Stripe subscriptions must be managed via Stripe portal` | Active subscription was set up through the Wiro web dashboard with a card — undo a pending cancel from the Wiro dashboard. API-managed prepaid subscriptions never hit this path. |
+| `Stripe subscriptions must be renewed via Stripe checkout` | Expired subscription was originally a card-based dashboard sub — re-subscribe from the Wiro dashboard, or call `CreateSubscriptionCheckout` with `useprepaid: true` to switch to wallet billing. |
+| `Renewal pricing not available` | Resolver couldn't recompute price (skill registry drift); fix the agent's skill set or contact support |
+| `Insufficient wallet balance. Required: $X.XX, Available: $Y.YY` | Wallet (personal or team) can't cover the renewal price |
+
+##### Full subscription lifecycle (prepaid)
+
+```
+                  Deploy (wallet charged, period starts)
+                         │
+                         ▼
+              ┌────────────────────────┐
+              │ status: "active"       │
+              │ pendingdowngrade: null │◄──────── RenewSubscription
+              └───────────┬────────────┘          (undo-cancel, no charge)
+                          │                       ▲
+                          │ CancelSubscription    │
+                          ▼                       │
+              ┌────────────────────────┐          │
+              │ status: "active"       │──────────┘
+              │ pendingdowngrade:      │
+              │   "cancel"             │
+              └───────────┬────────────┘
+                          │ currentperiodend reached
+                          │ (daily cron)
+                          ▼
+              ┌────────────────────────┐
+              │ status: "expired"      │
+              │ useragent.status: 0    │◄───┐
+              └───────────┬────────────┘    │
+                          │                 │
+                          │ RenewSubscription (wallet charged,
+                          │ new 30-day period, useragent stays 0)
+                          ▼                 │
+              ┌────────────────────────┐    │
+              │ NEW subscription row   │────┘
+              │ status: "active"       │
+              │ type: "renewal"        │
+              └────────────────────────┘
+```
+
+## Pricing Summary
+
+| Component | Source | Notes |
+|-----------|--------|-------|
+| **Tier price** | `agent.tiers.{starter,pro}.price` | Snapshotted on the useragent at deploy as `monthlypriceusd`. Pro = Starter × `tiermultiplier`. |
+| **Monthly credits** | `agent.tiers.{starter,pro}.credits` | Snapshotted on the useragent at deploy as `monthlycredits`. Pro = Starter × `tiermultiplier`. |
+| **Per-action costs** | `peractioncosts` (computed) | `max()` across enabled skills' `pricing.credit_costs`. Same value for Starter and Pro. |
+| **Tier multiplier** | `agent.tiermultiplier` | Default `3`. Snapshotted on the useragent at deploy so admin tweaks don't retroactively change live instances. |
+| **Extra credit packs** | `agent.extracreditpacks[]` | Per-useragent — derived as 5x / 10x / 20x of `monthlycredits`. Pro tier only (Starter has empty array). |
 
 ### Payment Method
 
-All subscriptions use your **prepaid wallet balance**. The cost is deducted immediately when you deploy or renew. Subscriptions renew automatically if your wallet has sufficient balance; otherwise the subscription expires. Manage subscriptions through the CancelSubscription, UpgradePlan, and RenewSubscription endpoints.
+All API subscriptions use your **prepaid wallet balance**. The cost is deducted immediately when you deploy, renew, upgrade, or buy an extra credit pack. Always pass `useprepaid: true` on `Deploy`, `CreateSubscriptionCheckout`, and `CreateExtraCreditCheckout` — that's the only path designed for API consumers. Make sure your wallet balance covers the upfront tier price before calling these endpoints; otherwise you'll get an `Insufficient wallet balance` error.
 
-Credits are consumed by the agent runtime (container) as it processes messages and generates content — not at `Message/Send` time. Each `configuration.rateLimit.actionTypes` entry (message, create, modify, regenerate) defines how many credits a specific action costs; the container reports usage back to Wiro asynchronously. The API-side check is gating only: `POST /UserAgent/Start` refuses to launch if `monthlyCredits + extraCredits <= 0`. During an active session, monthly credits are deducted first; once they hit zero, extra credits (purchased via `CreateExtraCreditCheckout`) are used. When both pools are empty, the agent responds `[SYSTEM_CREDIT_LIMIT_REACHED]` and stops processing further actions. Credits reset on each billing cycle (next `currentperiodend`) or when extra credits are topped up.
+### Credit Consumption
+
+Credits are consumed by the agent runtime (container) as it processes messages and generates content — not at `Message/Send` time. The `peractioncosts` object on the useragent declares how many credits each action burns; the container reports usage back to Wiro asynchronously through `POST /UserAgent/CreditSync` (and per-deduction via `POST /UserAgent/TransactionInsert`), which updates `usedcredits` and derives the live `remainingcredits = max(0, monthlycredits + extracredits - usedcredits)`.
+
+The API-side check is gating only: `POST /UserAgent/Start` and `POST /UserAgent/Message/Send` refuse to launch / accept messages when `remainingcredits <= 0`. During an active session, monthly credits are consumed first; once `usedcredits >= monthlycredits`, extra credits (purchased via `CreateExtraCreditCheckout`) absorb the rest. When both pools are empty, the agent responds `[SYSTEM_CREDIT_LIMIT_REACHED]` and stops processing further actions.
+
+On each billing cycle (subscription renewal) `usedcredits` is reset to zero and `creditperiod` advances to the new `'YYYY-MM'` window; extra-credit purchases simply bump `extracredits` without resetting usage.
+
+For the full audit trail (every credit deduct / grant / purchase / renewal / cancel) call [`POST /UserAgent/TransactionList`](/docs/agent-transactions#post-useragenttransactionlist) — see [Agent Transactions](/docs/agent-transactions).
 
 ## Error Messages
 
@@ -2715,32 +3662,28 @@ Agent-specific errors you may encounter:
 | `Agent not found` | The `agentguid` or `slug` does not match any catalog agent |
 | `User agent not found` | The `guid` does not match any of your deployed instances |
 | `Agent not found or inactive` | The catalog agent exists but is disabled |
-| `Active subscription required to start agent. Please renew your subscription.` | No active subscription for this instance |
-| `Agent setup is not complete. Please fill in your credentials before starting.` | Status is `6` — call Update to provide required credentials |
+| `Subscription price must be greater than $0. Add at least one paid skill or set agent base price.` | Custom build with a $0 skill set — toggle on at least one paid skill |
 | `Agent is already running` | Start called on an agent with status `3` or `4` |
 | `Agent is already queued to start` | Start called on an agent with status `2` |
 | `Agent is already stopped` | Stop called on an agent with status `0` |
 | `Agent is currently stopping, please wait` | Start called on an agent with status `1` |
 | `Agent is in error state, use Start to retry` | Stop called on an agent with status `5` |
+| `Agent setup is not complete. Please fill in your credentials before starting.` | Status is `6` — call `CredentialUpsert` / `SkillsApply` / `CustomSkillUpsert` to provide required values |
 | `No credits available. Please renew your subscription or purchase extra credits.` | Monthly and extra credits are both exhausted |
-| `Extra credits are available only for Pro plan subscribers. Please upgrade your plan.` | CreateExtraCreditCheckout called on a Starter plan |
-| `Invalid pack. Choose package1, package2, or package3.` | CreateExtraCreditCheckout with invalid pack |
-| `Active subscription required to purchase extra credits.` | CreateExtraCreditCheckout without subscription |
-| `Extra credit pack not available for this agent.` | Agent pricing doesn't define the pack |
-| `Categories cannot be empty` | Update with empty categories |
+| `Skill changes are only available for custom-built agents.` | `SkillsApply` called on a template-deploy useragent. Skills are inherited from the template — to change them, deploy a custom build (`Deploy` with `custom: true`) instead. |
+| `Subscription already active for this useragent. Cancel or modify the existing subscription instead.` | `CreateSubscriptionCheckout` called when a sub already exists |
+| `Insufficient wallet balance for proration. Required: $X.XX, available: $Y.YY` | `SkillsApply` — wallet can't cover the prorated charge |
+| `Downgrading to Starter is not supported. /UserAgent/UpgradeTier is upgrade-only (Starter → Pro).` | `UpgradeTier` with `targetTier: "starter"` |
+| `Already on {tier} tier` | `UpgradeTier` when current tier matches the target — no-op |
+| `No active subscription — use /UserAgent/CreateSubscriptionCheckout to subscribe at the chosen tier` | `UpgradeTier` called without an active sub |
 | `Agent not found or access denied` | Message endpoint with invalid useragentguid |
-| `Agent is not running. Current status: {n}` | Message/Send when not running |
-| `Message not found` | Detail/Cancel with invalid messageguid |
-| `Message cannot be cancelled (status: {status})` | Cancel on completed message |
-| `Invalid redirect URL` | OAuth Connect with non-HTTPS URL |
-| `Subscription is already active` | RenewSubscription called when subscription is already active without pending cancel |
-| `No expired subscription found to renew` | RenewSubscription called with no expired subscription |
-| `Insufficient wallet balance. Required: $X, Available: $Y` | Prepaid operation with insufficient funds |
-| `Cannot downgrade from Pro to Starter. Cancel your subscription instead.` | UpgradePlan with downgrade attempt |
-| `Subscription cancellation scheduled` | CancelSubscription success |
-| `Valid plan required when using prepaid (starter or pro)` | Deploy with useprepaid but missing/invalid plan |
-| `Pricing not available for this plan` | Deploy with useprepaid for agent without pricing |
-| `Renewal pricing not available` | RenewSubscription for agent with zero pricing |
+| `Agent is not running. Current status: {n}` | `Message/Send` when not running. Response includes `agentstatus` (the integer) so the FE can branch. |
+| `Agent has no remaining credits. Renew your subscription or buy a credit pack to continue.` | `Message/Send` while `remainingcredits <= 0`. Response includes `agentbalance` for the FE to render a "Buy credits" CTA. |
+| `Message not found` | `Detail` / `Cancel` with invalid messageguid |
+| `Message cannot be cancelled (status: {status})` | `Cancel` on a message that's already in a terminal state |
+| `Invalid redirect URL` | OAuth `Connect` with non-HTTPS URL |
+| `Pack key required` | `CreateExtraCreditCheckout` without `pack` |
+| `Could not retrieve wallet balance` | Wallet service lookup failed while checking balance |
 
 ## Code Examples
 
@@ -2765,7 +3708,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
     "agentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "title": "My Instagram Bot",
     "useprepaid": true,
-    "plan": "starter"
+    "tier": "starter"
   }'
 
 # Deploy for an end user (unpinned, won't clutter your dashboard)
@@ -2776,8 +3719,29 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
     "agentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "title": "Customer #1234 Bot",
     "useprepaid": true,
-    "plan": "starter",
+    "tier": "starter",
     "pinned": false
+  }'
+
+# Build a custom agent (no template — pick your own skill set)
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "custom": true,
+    "title": "Inbox Watcher",
+    "useprepaid": true,
+    "tier": "pro",
+    "skills": { "gmail-check": true, "telegram-post": true, "wiro-generator": true }
+  }'
+
+# Live pricing preview before committing a skill change
+curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+    "skillOverrides": { "twitterx-post": true }
   }'
 
 # Cancel a subscription (cancels at end of billing period)
@@ -2786,13 +3750,13 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CancelSubscription" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{"guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321"}'
 
-# Upgrade starter to pro
-curl -X POST "https://api.wiro.ai/v1/UserAgent/UpgradePlan" \
+# Upgrade Starter → Pro (prepaid, prorated charge)
+curl -X POST "https://api.wiro.ai/v1/UserAgent/UpgradeTier" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{"guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "plan": "pro"}'
+  -d '{"guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "targetTier": "pro"}'
 
-# Renew expired subscription
+# Renew expired subscription (or undo a pending cancel)
 curl -X POST "https://api.wiro.ai/v1/UserAgent/RenewSubscription" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
@@ -2802,7 +3766,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/RenewSubscription" \
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CreateExtraCreditCheckout" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{"useragentGuid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "pack": "package1", "useprepaid": true}'
+  -d '{"useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "pack": "small", "useprepaid": true}'
 
 # Start an agent
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
@@ -2817,16 +3781,14 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Detail" \
   -d '{"guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321"}'
 
 # Update credentials on a running agent (triggers automatic restart)
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
-    "configuration": {
-      "credentials": {
-        "instagram": { "authMethod": "wiro" }
-      }
-    }
+    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+    "fields": [
+      { "credentialkey": "instagram", "fieldname": "authmethod", "fieldvalue": "wiro" }
+    ]
   }'
 
 # Stop an agent
@@ -2852,7 +3814,7 @@ catalog = requests.post(
     json={"limit": 10}
 ).json()
 for agent in catalog["agents"]:
-    print(f"{agent['title']} ({agent['slug']})")
+    print(f"{agent['title']} ({agent['slug']}) — Starter ${agent['tiers']['starter']['price']}/mo")
 
 # Get agent details by slug
 detail = requests.post(
@@ -2860,9 +3822,9 @@ detail = requests.post(
     json={"slug": "instagram-manager"}
 ).json()
 agent = detail["agents"][0]
-print(f"Credentials needed: {list(agent['configuration']['credentials'].keys())}")
+print(f"Credentials needed: {list(agent['credentials'].keys())}")
 
-# Deploy a new instance
+# Deploy a new instance (prepaid wallet, Starter tier)
 deploy = requests.post(
     "https://api.wiro.ai/v1/UserAgent/Deploy",
     headers=headers,
@@ -2870,7 +3832,7 @@ deploy = requests.post(
         "agentguid": agent["guid"],
         "title": "My Instagram Bot",
         "useprepaid": True,
-        "plan": "starter"
+        "tier": "starter"
     }
 ).json()
 instance_guid = deploy["useragents"][0]["guid"]
@@ -2878,15 +3840,13 @@ print(f"Deployed: {instance_guid}")
 
 # Update credentials
 requests.post(
-    "https://api.wiro.ai/v1/UserAgent/Update",
+    "https://api.wiro.ai/v1/UserAgent/CredentialUpsert",
     headers=headers,
     json={
-        "guid": instance_guid,
-        "configuration": {
-            "credentials": {
-                "instagram": { "authMethod": "wiro" }
-            }
-        }
+        "useragentguid": instance_guid,
+        "fields": [
+            { "credentialkey": "instagram", "fieldname": "authmethod", "fieldvalue": "wiro" }
+        ]
     }
 )
 
@@ -2915,6 +3875,20 @@ while True:
         break
     time.sleep(5)
 
+# Upgrade Starter → Pro (prorated, debited from wallet)
+requests.post(
+    "https://api.wiro.ai/v1/UserAgent/UpgradeTier",
+    headers=headers,
+    json={"guid": instance_guid, "targetTier": "pro"}
+)
+
+# Buy extra credits (Pro tier — prepaid wallet)
+requests.post(
+    "https://api.wiro.ai/v1/UserAgent/CreateExtraCreditCheckout",
+    headers=headers,
+    json={"useragentguid": instance_guid, "pack": "small", "useprepaid": True}
+)
+
 # List your deployed agents
 my_agents = requests.post(
     "https://api.wiro.ai/v1/UserAgent/MyAgents",
@@ -2922,7 +3896,7 @@ my_agents = requests.post(
     json={"limit": 50}
 ).json()
 for ua in my_agents["useragents"]:
-    print(f"{ua['title']} - status: {ua['status']}")
+    print(f"{ua['title']} - status: {ua['status']} - tier: {ua.get('tier')}")
 
 # Stop the agent
 requests.post(
@@ -2948,7 +3922,9 @@ async function main() {
     'https://api.wiro.ai/v1/Agent/List',
     { limit: 10 }
   );
-  catalog.data.agents.forEach(a => console.log(`${a.title} (${a.slug})`));
+  catalog.data.agents.forEach(a =>
+    console.log(`${a.title} (${a.slug}) — Starter $${a.tiers.starter.priceUsd}/mo`)
+  );
 
   // Get agent details by slug
   const detail = await axios.post(
@@ -2957,10 +3933,10 @@ async function main() {
   );
   const agent = detail.data.agents[0];
 
-  // Deploy a new instance
+  // Deploy a new instance (prepaid wallet, Starter tier)
   const deploy = await axios.post(
     'https://api.wiro.ai/v1/UserAgent/Deploy',
-    { agentguid: agent.guid, title: 'My Instagram Bot', useprepaid: true, plan: 'starter' },
+    { agentguid: agent.guid, title: 'My Instagram Bot', useprepaid: true, tier: 'starter' },
     { headers }
   );
   const instanceGuid = deploy.data.useragents[0].guid;
@@ -2968,14 +3944,12 @@ async function main() {
 
   // Update credentials
   await axios.post(
-    'https://api.wiro.ai/v1/UserAgent/Update',
+    'https://api.wiro.ai/v1/UserAgent/CredentialUpsert',
     {
-      guid: instanceGuid,
-      configuration: {
-        credentials: {
-          instagram: { authMethod: 'wiro' }
-        }
-      }
+      useragentguid: instanceGuid,
+      fields: [
+        { credentialkey: 'instagram', fieldname: 'authmethod', fieldvalue: 'wiro' }
+      ]
     },
     { headers }
   );
@@ -3000,6 +3974,20 @@ async function main() {
     if (status === 5) { console.log('Agent errored'); break; }
     await new Promise(r => setTimeout(r, 5000));
   }
+
+  // Upgrade Starter → Pro
+  await axios.post(
+    'https://api.wiro.ai/v1/UserAgent/UpgradeTier',
+    { guid: instanceGuid, targetTier: 'pro' },
+    { headers }
+  );
+
+  // Buy extra credits (prepaid wallet)
+  await axios.post(
+    'https://api.wiro.ai/v1/UserAgent/CreateExtraCreditCheckout',
+    { useragentguid: instanceGuid, pack: 'small', useprepaid: true },
+    { headers }
+  );
 
   // Stop the agent
   await axios.post(
@@ -3028,7 +4016,7 @@ curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 $catalog = json_decode(curl_exec($ch), true);
 curl_close($ch);
 
-// Deploy a new instance
+// Deploy a new instance (prepaid wallet, Starter tier)
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, "https://api.wiro.ai/v1/UserAgent/Deploy");
 curl_setopt($ch, CURLOPT_POST, true);
@@ -3040,7 +4028,7 @@ curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
     "agentguid" => "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "title" => "My Instagram Bot",
     "useprepaid" => true,
-    "plan" => "starter"
+    "tier" => "starter"
 ]));
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 $deploy = json_decode(curl_exec($ch), true);
@@ -3054,13 +4042,13 @@ echo "Deployed: " . $deploy["useragents"][0]["guid"];
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Add("x-api-key", "YOUR_API_KEY");
 
-// Deploy a new instance
+// Deploy a new instance (prepaid wallet, Starter tier)
 var deployContent = new StringContent(
     JsonSerializer.Serialize(new {
         agentguid = "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
         title = "My Instagram Bot",
         useprepaid = true,
-        plan = "starter"
+        tier = "starter"
     }),
     Encoding.UTF8, "application/json");
 
@@ -3095,12 +4083,12 @@ import (
 )
 
 func main() {
-    // Deploy a new instance
+    // Deploy a new instance (prepaid wallet, Starter tier)
     body, _ := json.Marshal(map[string]interface{}{
         "agentguid":  "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
         "title":      "My Instagram Bot",
         "useprepaid": true,
-        "plan":       "starter",
+        "tier":       "starter",
     })
     req, _ := http.NewRequest("POST",
         "https://api.wiro.ai/v1/UserAgent/Deploy",
@@ -3132,7 +4120,7 @@ request.httpBody = try! JSONSerialization.data(
         "agentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
         "title": "My Instagram Bot",
         "useprepaid": true,
-        "plan": "starter"
+        "tier": "starter"
     ])
 
 let (data, _) = try await URLSession.shared
@@ -3156,7 +4144,7 @@ conn.outputStream.write("""{
     "agentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "title": "My Instagram Bot",
     "useprepaid": true,
-    "plan": "starter"
+    "tier": "starter"
 }""".toByteArray())
 
 val response = conn.inputStream.bufferedReader().readText()
@@ -3179,7 +4167,7 @@ final response = await http.post(
     'agentguid': 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
     'title': 'My Instagram Bot',
     'useprepaid': true,
-    'plan': 'starter',
+    'tier': 'starter',
   }),
 );
 print(response.body);
@@ -3187,10 +4175,395 @@ print(response.body);
 
 ## What's Next
 
-- [Agent Messaging](#agent-messaging) — Send messages and receive responses from running agents
-- [Agent Credentials](#agent-credentials) — Configure OAuth and API key credentials for your agent
-- [Authentication](#authentication) — API key setup and authentication methods
-- [Pricing](#pricing) — General pricing information
+- [Agent Builder](/docs/agent-builder) — Build custom agents from scratch (`custom: true`) with live pricing previews and skill picker
+- [Agent Skills](/docs/agent-skills) — Configure preferences, scheduled tasks, and skill toggles. Includes the registry browser endpoints (`Skills/List`, `Skills/Detail`, `Skills/Capabilities`)
+- [Agent Credentials](/docs/agent-credentials) — Integration catalog hub: 20+ dedicated per-provider setup guides (Meta Ads, Facebook, Instagram, LinkedIn, Twitter, and more) plus the registry endpoints (`Credentials/List`, `Credentials/Detail`)
+- [Agent Messaging](/docs/agent-messaging) — Send messages and receive responses from running agents
+- [Agent WebSocket](/docs/agent-websocket) — Real-time response streaming
+- [Agent Webhooks](/docs/agent-webhooks) — Receive agent responses via HTTP callbacks
+- [Agent Transactions](/docs/agent-transactions) — Per-instance credit ledger (deductions, renewals, purchases, grants, refunds)
+- [Agent Logs](/docs/agent-logs) — Per-instance activity feed (tool calls, cron runs, message exchanges)
+- [Authentication](/docs/authentication) — API key setup and authentication methods
+
+---
+
+# Agent Builder
+
+Build a custom agent from scratch — no marketplace template required. Pick your own skill set, preview the live tier price, and deploy in one call.
+
+## Overview
+
+Wiro's agent runtime supports two deploy paths:
+
+| Path | When to use | Endpoint |
+|------|-------------|----------|
+| **Template deploy** | The marketplace already has an agent that does what you need (Instagram Manager, Push Notifications, App Review Support, …). You inherit the template's default skill set + configuration. | `POST /UserAgent/Deploy` with `agentguid` |
+| **Custom build** | You want a unique skill combination — for example a custom support bot that watches Gmail, posts to Telegram, and uses Wiro's image generator. No marketplace template fits. | `POST /UserAgent/Deploy` with `custom: true` |
+
+The two paths produce the **same useragent shape** at the end (same `customskills`, `scheduledskills`, `credentials`, `subscription`, `peractioncosts`, etc.). The only differences are:
+
+| Aspect | Template deploy | Custom build |
+|--------|-----------------|--------------|
+| `useragents.agentid` | The catalog row id | `null` |
+| Pricing recipe | Computed from the template's default skill set | Computed from the skills **you** toggled on |
+| `agent.tiers` on the response | Template's tier numbers | Live-resolved per-instance tier numbers |
+| `agent.cover` on the response | Template's cover image | The `cover` you sent at Deploy (or a placeholder) |
+| Cascade updates | When admin pushes a preset edit, your useragent reconciles | No template — the agent is fully owned by you |
+
+> **Custom builds don't share a marketplace listing.** They are private to your account; nothing about a custom agent appears on `/Agent/List` or `/Agent/Detail`. Discovery happens through your own product surface.
+
+## Step 1 — Browse Available Skills
+
+Custom builds start from the **skill registry** — the catalogue of every skill the platform supports. Browse it with [`POST /Skills/List`](/docs/agent-skills#post-skillslist) and inspect details with [`POST /Skills/Detail`](/docs/agent-skills#post-skillsdetail).
+
+Both endpoints are **public — no authentication required.**
+
+```bash
+# Browse all integration skills
+curl -X POST "https://api.wiro.ai/v1/Skills/List" \
+  -H "Content-Type: application/json" \
+  -d '{ "category": "int" }'
+```
+
+Pick the skill names you want to enable. Each skill descriptor tells you:
+
+- `name` — the canonical skill key you'll send in `skills` / `skillOverrides`
+- `category` — `int` (integration with a third-party service) or `rule` (rule-only, no credential)
+- `credential_key` — which credential the skill needs (`null` for rule-only or platform-managed skills)
+- `requires_credentials` — boolean, whether the user must supply a credential before the skill can run
+- `depends_on` — array of skill names that must also be enabled (Wiro auto-enables transitive deps)
+- `conflicts_with` — array of skill names that cannot coexist with this one
+- `pricing` — the per-skill pricing recipe (`base_price_usd`, `base_credits`, `credit_costs.{message,create,modify,regenerate}`)
+
+> **Use [`POST /Skills/Capabilities`](/docs/agent-skills#post-skillscapabilities)** to discover the closed-set capability vocabulary (the high-level tasks skills can perform). Useful when you want to find every skill that can "post-content" or "send-email".
+
+## Step 2 — Live Pricing Preview
+
+Before you commit, fetch the live tier price for the proposed skill set with [`POST /UserAgent/PricingPreview`](/docs/agent-overview#post-useragentpricingpreview) — the **draft** mode runs without touching any DB state.
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "draft": true,
+    "tier": "pro",
+    "skills": ["gmail-check", "telegram-post", "wiro-generator"]
+  }'
+```
+
+##### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "tier": "pro",
+  "tiermultiplier": 3,
+  "totalPriceUsd": 27,
+  "totalMonthlyCredits": 3000,
+  "peractioncosts": { "message": 10, "create": 60, "modify": 20, "regenerate": 20 },
+  "skillBreakdown": [
+    { "skill": "gmail-check",    "priceUsd": 4, "credits": 400,  "actionCostOverrides": {} },
+    { "skill": "telegram-post",  "priceUsd": 5, "credits": 500,  "actionCostOverrides": { "create": 60 } },
+    { "skill": "wiro-generator", "priceUsd": 0, "credits": 0,    "actionCostOverrides": {} }
+  ],
+  "enabledSkills": ["gmail-check", "telegram-post", "wiro-generator"],
+  "directSkills":  ["gmail-check", "telegram-post", "wiro-generator"],
+  "agentBase": { "priceUsd": 9, "credits": 1000 },
+  "tiers": {
+    "starter": { "priceUsd": 9,  "credits": 1000 },
+    "pro":     { "priceUsd": 27, "credits": 3000 }
+  }
+}
+```
+
+Read the response:
+
+- `tiers.starter.priceUsd` and `tiers.pro.priceUsd` → what your wallet will be charged for each tier.
+- `tiers.starter.credits` and `tiers.pro.credits` → monthly credit allocation.
+- `peractioncosts` → how many credits each agent action burns.
+- `skillBreakdown[]` → per-skill contribution to the total. Use this to see which skill is the most expensive.
+- `enabledSkills` → final closure (includes any transitively-enabled `depends_on`).
+
+> **`agentBase`** is the platform-wide floor (`$9 / 1000 credits`) — every agent has this base, regardless of skill set. The skill weights stack on top.
+
+## Step 3 — Deploy the Custom Agent
+
+Send the same skill set you previewed to `POST /UserAgent/Deploy` with `custom: true` and `useprepaid: true`. The selected `tier` is debited immediately.
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "custom": true,
+    "title": "Inbox Watcher",
+    "description": "Watches inbound Gmail and forwards a summary to Telegram every 4 hours.",
+    "useprepaid": true,
+    "tier": "pro",
+    "skills": {
+      "gmail-check":    true,
+      "telegram-post":  true,
+      "wiro-generator": true
+    },
+    "credentials": {
+      "gmail":    { "account": "agent@company.com", "apppassword": "xxxx xxxx xxxx xxxx" },
+      "telegram": { "bottoken": "123456:ABC-DEF...", "allowedusers": "[\"761381461\"]", "sessionmode": "private" }
+    },
+    "customskills": [
+      {
+        "key": "cron-summarize-inbox",
+        "value": "Every 4 hours, scan all unread Gmail messages from the past 4 hours, summarize each in 1 sentence, and post the digest to Telegram.",
+        "interval": "0 */4 * * *",
+        "enabled": true,
+        "_user_created": true,
+        "description": "Inbox summary digest"
+      }
+    ]
+  }'
+```
+
+##### Response (excerpt)
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "useragents": [
+    {
+      "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+      "agentid": null,
+      "title": "Inbox Watcher",
+      "description": "Watches inbound Gmail and forwards a summary to Telegram every 4 hours.",
+      "tier": "pro",
+      "tiermultiplier": 3,
+      "status": 0,
+      "setuprequired": false,
+      "monthlycredits": 3000,
+      "monthlypriceusd": 27,
+      "remainingcredits": 3000,
+      "creditperiod": "2026-05",
+      "peractioncosts": { "message": 10, "create": 60, "modify": 20, "regenerate": 20 },
+      "skills": ["gmail-check", "telegram-post", "wiro-generator"],
+      "customskills": [],
+      "scheduledskills": [
+        {
+          "key": "cs-cron-summarize-inbox",
+          "value": "Every 4 hours, scan all unread Gmail messages from the past 4 hours, summarize each in 1 sentence, and post the digest to Telegram.",
+          "interval": "0 */4 * * *",
+          "enabled": true,
+          "_source": "user-created",
+          "_editable": true,
+          "_user_created": true
+        }
+      ],
+      "credentials": {
+        "gmail":    { "_connected": false, "optional": false, "extra": false, "account": "agent@company.com", "apppassword": "[present]" },
+        "telegram": { "_connected": false, "optional": false, "extra": false, "bottoken": "[present]", "allowedusers": "[\"761381461\"]", "sessionmode": "private" }
+      },
+      "agent": {
+        "custom": true,
+        "title": "Inbox Watcher",
+        "tiermultiplier": 3,
+        "tiers": {
+          "starter": { "priceUsd": 9,  "credits": 1000 },
+          "pro":     { "priceUsd": 27, "credits": 3000 }
+        },
+        "extracreditpacks": [
+          { "packkey": "small",  "credits": 15000, "priceusd": 120, "enabled": true },
+          { "packkey": "medium", "credits": 30000, "priceusd": 220, "enabled": true },
+          { "packkey": "large",  "credits": 60000, "priceusd": 380, "enabled": true }
+        ]
+      }
+    }
+  ]
+}
+```
+
+Notes on the response:
+
+- `agentid: null` — confirms this is a custom build with no marketplace template.
+- `agent.custom: true` — the synthesized template placeholder. Same shape as a template's `agent` block but no `slug` / `cover` / `categories` (custom builds aren't in the marketplace).
+- `scheduledskills` already contains the cron from the Deploy body, with the canonical `cs-cron-` prefix added by the server.
+- `status: 0` — Deploy auto-transitioned to Stopped because all required credentials were inline. Call `POST /UserAgent/Start` next.
+
+## Step 4 — Refine Skills After Deploy
+
+Custom builds are the only path where end users can toggle skills on/off after deploy. Use [`POST /UserAgent/SkillsApply`](/docs/agent-overview#post-useragentskillsapply) — even when you only want to flip a single skill, send it as a one-entry `skills` map. The endpoint charges the wallet once, triggers exactly one container restart, and rolls back atomically on payment failure.
+
+> **Template-deploy useragents reject `SkillsApply` with `Skill changes are only available for custom-built agents.`** Skills are inherited from the marketplace agent template and changing them would diverge the instance. To run a different skill set, deploy a custom build (`Deploy` with `custom: true`) instead.
+
+### Single-skill enable
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+    "idempotencyKey": "550e8400-e29b-41d4-a716-446655440001",
+    "skills": {
+      "int-wordpress-post": true
+    }
+  }'
+```
+
+The response includes the new pricing snapshot and the prorated wallet debit:
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "tier": "starter",
+  "stripeProrationApplied": false,
+  "prepaidWalletDelta": 4.0,
+  "restartTriggered": true,
+  "restartedAt": 1714694520,
+  "pricing": {
+    "previousPriceUsd": 27,
+    "newPriceUsd": 33,
+    "deltaUsd": 6,
+    "previousMonthlyCredits": 3500,
+    "newMonthlyCredits": 4000,
+    "deltaCredits": 500,
+    "enabledSkills": ["int-gmail-check", "int-telegram-post", "int-wiro-generator", "int-wordpress-post"],
+    "peractioncosts": { "message": 10, "create": 60, "modify": 20, "regenerate": 20 }
+  }
+}
+```
+
+`prepaidWalletDelta` is the prorated USD amount debited from your wallet for the remaining days of the current period. The same wallet is credited if you disable a paid skill mid-period (negative delta).
+
+### Batch toggle + tier upgrade in one call
+
+When the user stages many toggles in your UI and commits them all together, send everything in one `SkillsApply` call:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+    "tier": "pro",
+    "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000",
+    "skills": {
+      "int-gmail-check":     true,
+      "int-telegram-post":   true,
+      "int-wiro-generator":  true,
+      "int-wordpress-post":  true,
+      "int-metaads-manage":  false
+    }
+  }'
+```
+
+`idempotencyKey` is required — use a UUID per "user clicks Save" event. A retry of the same key returns the cached response without re-running the saga.
+
+## Common Recipes
+
+### A. Email-driven Telegram digest
+
+```json
+{
+  "custom": true,
+  "title": "Email Digest Bot",
+  "useprepaid": true,
+  "tier": "starter",
+  "skills": { "gmail-check": true, "telegram-post": true },
+  "credentials": {
+    "gmail":    { "account": "agent@company.com", "apppassword": "xxxx xxxx xxxx xxxx" },
+    "telegram": { "bottoken": "123456:ABC-DEF...", "allowedusers": "[\"761381461\"]", "sessionmode": "private" }
+  },
+  "customskills": [
+    {
+      "key": "cron-email-digest",
+      "value": "Twice a day, summarize unread Gmail messages in one Telegram message.",
+      "interval": "0 9,17 * * *",
+      "enabled": true,
+      "_user_created": true,
+      "description": "Daily email digest"
+    }
+  ]
+}
+```
+
+### B. WordPress publisher with weekly research
+
+```json
+{
+  "custom": true,
+  "title": "Blog Research & Publish",
+  "useprepaid": true,
+  "tier": "pro",
+  "skills": { "wordpress-post": true, "website": true, "wiro-generator": true },
+  "credentials": {
+    "wordpress": { "url": "https://blog.example.com", "user": "admin", "apppassword": "xxxx xxxx xxxx xxxx" },
+    "website":   { "urls": "[{\"websitename\":\"Wired\",\"url\":\"https://www.wired.com/feed/rss\"}]" }
+  },
+  "customskills": [
+    {
+      "key": "content-strategy",
+      "value": "## Writing Style\nShort, punchy, technical. Always include code examples.\n\n## Sources\nWired, ArsTechnica, Hacker News.\n\n## Cadence\nOne 600-word article every Monday.",
+      "_user_created": false
+    },
+    {
+      "key": "cron-weekly-blog",
+      "value": "Every Monday morning, scan the websites listed under cs-website, draft one 600-word article, and publish to WordPress as a draft.",
+      "interval": "0 9 * * 1",
+      "enabled": true,
+      "_user_created": true,
+      "description": "Weekly WordPress publish"
+    }
+  ]
+}
+```
+
+### C. Multi-channel social poster (Pro tier)
+
+```json
+{
+  "custom": true,
+  "title": "Cross-Channel Social",
+  "useprepaid": true,
+  "tier": "pro",
+  "skills": {
+    "twitterx-post":   true,
+    "instagram-post":  true,
+    "linkedin-post":   true,
+    "facebookpage-post": true,
+    "wiro-generator":  true
+  },
+  "credentials": {}
+}
+```
+
+OAuth providers are connected later via `POST /UserAgentOAuth/{Provider}Connect` — see [Agent Credentials](/docs/agent-credentials).
+
+## Subscription & Billing for Custom Builds
+
+Subscriptions for custom builds work exactly like template deploys:
+
+- A 30-day prepaid subscription row (`plan: "agent"`, `tier: <starter|pro>`, `provider: "prepaid"`) is inserted at Deploy.
+- `POST /UserAgent/CancelSubscription` schedules cancel-at-period-end.
+- `POST /UserAgent/RenewSubscription` either undoes a pending cancel (no charge) or creates a fresh 30-day period (wallet charged).
+- `POST /UserAgent/UpgradeTier` upgrades Starter → Pro with a prorated wallet debit.
+
+When you toggle a skill on or off, the active subscription is automatically prorated (see Step 4 above). The new monthly amount becomes your charge at next renewal.
+
+## Limits & Notes
+
+- **Skill set must produce a `> $0` price.** Custom builds with no paid skills are rejected with `Subscription price must be greater than $0. Add at least one paid skill or set agent base price.` The `agentBase` floor (`$9 / 1000 credits`) is the implicit minimum unless every enabled skill is free / utility.
+- **Conflict / dependency violations are surfaced eagerly.** If you toggle on two mutually-exclusive skills, `SkillsApply` returns code `102` with a `conflicts[]` array; if a `depends_on` is missing, code `101` with `deps[]`. Resolve in the UI before committing.
+- **Custom builds receive the same auto-restart on configuration changes** as template deploys (status `3`/`4` → status `1` with `restartafter: true`).
+- **Cover image:** custom builds can ship a `cover` URL in the Deploy body, or upload one later via [`POST /UserAgent/Cover`](/docs/agent-overview#post-useragentcover).
+- **The agent's persona** is editable via the standard `customskills` flow. Add a `cs-persona` strategy via `CustomSkillUpsert` to set the agent's voice, role, and constraints.
+
+## What's Next
+
+- [Agent Skills](/docs/agent-skills) — Discover the skill registry, browse credentials per skill, and configure preferences + scheduled tasks
+- [Agent Credentials](/docs/agent-credentials) — Connect OAuth providers and set API-key credentials
+- [Agent Messaging](/docs/agent-messaging) — Chat with your custom agent
+- [Agent Transactions](/docs/agent-transactions) — Audit credit deductions, renewals, and grants
 
 ---
 
@@ -3200,10 +4573,10 @@ Send messages to AI agents and receive streaming responses in real time.
 
 ## How It Works
 
-Agent messaging follows the same async pattern as [model runs](#run-a-model):
+Agent messaging follows the same async pattern as [model runs](/docs/run-a-model):
 
 1. **Send** a message via REST → get an `agenttoken` immediately
-2. **Subscribe** to [WebSocket](#agent-websocket) with the `agenttoken` → receive streaming response chunks
+2. **Subscribe** to [Agent WebSocket](/docs/agent-websocket) with the `agenttoken` → receive streaming response chunks
 3. **Or poll** via the Detail endpoint to check status and fetch the completed response
 4. **Or set** a `callbackurl` to receive a webhook notification when the agent finishes
 
@@ -3219,7 +4592,7 @@ Every agent message progresses through a defined set of stages:
 
 | Status | Description |
 |--------|-------------|
-| `agent_queue` | The message is queued and waiting to be picked up by the agent worker. Emitted once when the message enters the queue. |
+| `agent_queue` | The message is queued and waiting to be picked up by the agent runtime. Emitted once when the message enters the queue. |
 | `agent_start` | The agent has accepted the message and begun processing. The underlying LLM call is being prepared. |
 | `agent_output` | The agent is producing output. This event is emitted **multiple times** — each chunk of the response arrives as a separate `agent_output` event via WebSocket, enabling real-time streaming. |
 | `agent_end` | The agent has finished generating the response. The full output is available in the `response` and `debugoutput` fields. **This is the event you should listen for** to get the final result. |
@@ -3230,12 +4603,15 @@ Every agent message progresses through a defined set of stages:
 
 Sends a user message to a deployed agent. The agent must be in running state (status `4`). Returns immediately with an `agenttoken` that you use to track the response via WebSocket, polling, or webhook.
 
+Accepts either `application/json` (text-only) or `multipart/form-data` (text + file attachments). When sending files, the `message` field can be empty — the agent receives the attachments and any accompanying text.
+
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | The agent instance GUID (from Deploy or MyAgents). |
-| `message` | string | Yes | The user message text to send to the agent. |
+| `message` | string | Conditional | The user message text. Required unless sending files via multipart. |
 | `sessionkey` | string | No | Session identifier for conversation continuity. Defaults to `"default"`. |
 | `callbackurl` | string | No | Webhook URL — the system will POST the final response to this URL when the agent finishes. |
+| `attachment` / `attachments[]` | file | No | Multipart only — one or more file attachments that the agent can process. |
 
 ### Response
 
@@ -3276,7 +4652,16 @@ Retrieves the current status and content of a single message. You can query by e
   "errors": [],
   "data": {
     "guid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
-    "uuid": "user-uuid-here",
+    "uuid": "ada-uuid",
+    "user": {
+      "uuid": "ada-uuid",
+      "firstname": "Ada",
+      "lastname": "Lovelace",
+      "email": "ada@example.com",
+      "username": "ada",
+      "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
+      "avatarinitials": "AL"
+    },
     "sessionkey": "default",
     "content": "What are the latest trends in AI?",
     "response": "Here are the key AI trends for 2026...",
@@ -3308,6 +4693,7 @@ Retrieves the current status and content of a single message. You can query by e
 |-------|------|-------------|
 | `guid` | `string` | Message GUID. |
 | `uuid` | `string` | The account UUID of the user who sent the message. |
+| `user` | `object\|null` | Resolved sender info: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. Decorated server-side from `agentmessages.uuid` so the chat bubble can render avatar / hover-tooltip without an extra `User/Detail` round-trip. `null` when the row was written by automation (sentinel `uuid` like `"system"`) or when the user record was deleted. |
 | `sessionkey` | `string` | The session this message belongs to. |
 | `content` | `string` | The original user message. |
 | `response` | `string` | The agent's full response text. Empty until `agent_end`. |
@@ -3315,9 +4701,10 @@ Retrieves the current status and content of a single message. You can query by e
 | `status` | `string` | Current message status (see Message Lifecycle). |
 | `metadata` | `object` | Parsed JSON object (API returns it already decoded). Populated from the agent bridge on `agent_end`. Fields produced by the bridge's `finalMessage` builder: `type` — always the literal `"progressGenerate"` (not the message status); `task` — always the literal `"Generate"`; `speed` — numeric words-per-second value (e.g. `14.2`); `speedType` — always `"words/s"`; `elapsedTime` — human string with unit, e.g. `"8.1s"` (NOT a number); `tokenCount`, `wordCount` — integers; `raw` — the full accumulated response text; `thinking` — array of reasoning blocks extracted from `<think>...</think>`; `answer` — array of answer chunks stripped of `<think>`; `isThinking` — always `false` in the final payload. Empty object `{}` for `agent_error`, `agent_cancel`, or when the bridge hasn't finished yet. Message status lives in the top-level `status` field — don't read it from `metadata.type`. |
 | `attachments` | `array` | Always present as an array — empty `[]` for text-only messages. When the message was sent via multipart with files, each entry is a resolved `{url, name, type, size}` object (no further file-lookup needed). Identical shape in `Message/History` rows. |
+| `deletestatus` | `number` | Internal flag. `0` for normal messages. |
 | `createdat` | `string` | Unix timestamp when the message was created. |
 | `startedat` | `string` | Unix timestamp when the agent started processing. |
-| `endedat` | `string` | Unix timestamp when processing completed. |
+| `endedat` | `string` | Unix timestamp when processing completed. May be empty for `agent_cancel` (cancel only sets `status` and `updatedat`). |
 
 ## **POST** /UserAgent/Message/History
 
@@ -3330,6 +4717,8 @@ Retrieves conversation history for a specific agent and session. Messages are re
 | `limit` | number | No | Maximum number of messages to return. Defaults to `50`, max `200`. |
 | `before` | string | No | Message GUID to use as cursor — returns only messages created before this one. Omit for the most recent messages. |
 
+> **Team agents:** If the agent's `teamsessionmode` is `collaborative`, History returns messages from **all team members** in the session. In the default `private` mode, History only returns messages sent by the caller's own `uuid`. Same applies to `Sessions` listing.
+
 ### Response
 
 ```json
@@ -3340,6 +4729,16 @@ Retrieves conversation history for a specific agent and session. Messages are re
     "messages": [
       {
         "guid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+        "uuid": "ada-uuid",
+        "user": {
+          "uuid": "ada-uuid",
+          "firstname": "Ada",
+          "lastname": "Lovelace",
+          "email": "ada@example.com",
+          "username": "ada",
+          "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
+          "avatarinitials": "AL"
+        },
         "content": "What are the latest trends in AI?",
         "response": "Here are the key AI trends for 2026...",
         "debugoutput": "Here are the key AI trends for 2026...",
@@ -3363,6 +4762,16 @@ Retrieves conversation history for a specific agent and session. Messages are re
       },
       {
         "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "uuid": "ada-uuid",
+        "user": {
+          "uuid": "ada-uuid",
+          "firstname": "Ada",
+          "lastname": "Lovelace",
+          "email": "ada@example.com",
+          "username": "ada",
+          "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
+          "avatarinitials": "AL"
+        },
         "content": "Tell me more about multimodal models",
         "response": "Multimodal models combine...",
         "debugoutput": "Multimodal models combine...",
@@ -3373,15 +4782,17 @@ Retrieves conversation history for a specific agent and session. Messages are re
         "createdat": "1743350300"
       }
     ],
-    "count": 1,
+    "count": 2,
     "hasmore": false
   }
 }
 ```
 
+> Each message row carries `uuid` (sender) and a server-decorated `user` object with the full sender shape — same as `Message/Detail`. `user` is `null` for system-inserted rows (e.g. `Message/SystemInsert` writes when `uuid` is `"system"`) or when the underlying account has been deleted.
+
 | Field | Type | Description |
 |-------|------|-------------|
-| `messages` | `array` | Array of message objects, newest first. |
+| `messages` | `array` | Array of message objects, newest first. Each row has the **same shape as `Message/Detail`** — including the `uuid` sender and decorated `user` object. |
 | `count` | `number` | Number of messages in this page. |
 | `hasmore` | `boolean` | `true` if there are older messages available. Pass the last message's `guid` as `before` to fetch the next page. |
 
@@ -3393,18 +4804,20 @@ To paginate through a long conversation:
 
 ```json
 {
-  "useragentguid": "...",
+  "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+  "sessionkey": "default",
   "limit": 50
 }
 ```
 
-**Page 2** — pass the last message's `guid` as cursor:
+**Page 2** — pass the **last** (oldest, smallest `createdat`) message's `guid` from page 1 as the `before` cursor:
 
 ```json
 {
-  "useragentguid": "...",
+  "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+  "sessionkey": "default",
   "limit": 50,
-  "before": "a1b2c3d4-..."
+  "before": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 }
 ```
 
@@ -3452,12 +4865,12 @@ Lists all conversation sessions for an agent. Returns each session's key, messag
 
 Deletes messages in the given session for the **calling user**. This action cannot be undone.
 
-Scope: the API matches on `useragentguid` + `sessionkey` **and** the caller's `uuid`, so only messages the calling user sent/received in this session are removed. In **collaborative** team mode (`teamSessionMode: "collaborative"`, Telegram group-shared sessions), other team members' messages in the same `sessionkey` remain intact — each member must call `DeleteSession` to clear their own share.
-
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | The agent instance GUID. |
 | `sessionkey` | string | Yes | The session key to delete. |
+
+> **Scope of deletion:** The API matches on both `useragentguid` + `sessionkey` **and** the caller's `uuid`, so only messages the calling user sent/received in this session are removed. In **collaborative** team mode (`teamsessionmode: "collaborative"`, Telegram group-shared sessions), other team members' messages in the same `sessionkey` remain intact — each member must call `DeleteSession` to clear their own share. Admin callers (platform owner) are not subject to this scoping. For private (per-user) sessions this distinction doesn't matter — the caller is the only owner.
 
 ### Response
 
@@ -3497,6 +4910,34 @@ On success, the message status changes to `agent_cancel` in the database.
 >
 > When polling for the final state, check `status === "agent_cancel"` rather than relying on non-empty `response` / `debugoutput` (they may be empty for queued-state cancellations).
 
+## **POST** /UserAgent/Message/SystemInsert
+
+Inserts a finished "system" message into the conversation history without running it through the agent. Used by the agent runtime, scheduled cron skills, and external chat-platform bridges (Telegram bot, Slack relay, push-notification webhooks) to drop a pre-rendered message into a session as if the agent had produced it. The endpoint **never** triggers a model call — the supplied `content` is written verbatim to `agentmessages.response` with `status: "agent_end"` and `metadata: {"type":"system"}`.
+
+> **Runtime-only auth.** This endpoint is reserved for the Wiro-managed agent runtime and the platform bridges Wiro ships (Telegram / Slack / cron). API users normally use [`Message/Send`](#post-useragentmessagesend) instead, which goes through the standard auth flow + queue + model call path.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | The target useragent guid. |
+| `uuid` | string | Yes | The useragent owner uuid. Must match the row stored in `useragents.uuid` for `useragentguid`. |
+| `content` | string | Yes | The message body to insert. Stored verbatim in `response` and `debugoutput`. |
+| `sessionkey` | string | No | Conversation thread the message belongs to. Defaults to `"auto"` — the endpoint resolves it to the most recent session for this useragent (falls back to `"default"` for empty histories). Pass an explicit value to insert into a specific named session. |
+
+### Response
+
+```json
+{
+  "result": true,
+  "messageguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+  "sessionkey": "default",
+  "errors": []
+}
+```
+
+- `messageguid` is the inserted row's guid — use it to address the message later via `Message/Detail` or to thread replies.
+- `sessionkey` echoes the resolved session (matters when the caller passed `"auto"` or omitted the field).
+- The inserted row carries `status: "agent_end"` and `metadata: {"type":"system"}` so the chat UI renders it as a non-interactive system bubble (no retry / cancel affordances).
+
 ## Session Management
 
 Sessions let you maintain separate conversation threads with the same agent:
@@ -3511,7 +4952,7 @@ User A's conversation:
 
 ```json
 {
-  "useragentguid": "...",
+  "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
   "message": "Hello!",
   "sessionkey": "user-alice"
 }
@@ -3521,7 +4962,7 @@ User B's separate conversation with the same agent:
 
 ```json
 {
-  "useragentguid": "...",
+  "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
   "message": "Hello!",
   "sessionkey": "user-bob"
 }
@@ -4071,7 +5512,7 @@ Receive real-time agent response streaming via a persistent WebSocket connection
 wss://socket.wiro.ai/v1
 ```
 
-Connect to this URL after calling the [Message / Send](#agent-messaging) endpoint. Use the `agenttoken` from the send response to subscribe to the agent session. This is the same WebSocket server used for model tasks — you can subscribe to both task events (`task_info`) and agent events (`agent_info`) on the same connection.
+Connect to this URL after calling the [Message / Send](/docs/agent-messaging) endpoint. Use the `agenttoken` from the send response to subscribe to the agent session. This is the same WebSocket server used for model tasks — you can subscribe to both task events (`task_info`) and agent events (`agent_info`) on the same connection.
 
 No API key or auth header is required on the WebSocket itself. Authorization is enforced via the `agenttoken`, which is issued by `POST /UserAgent/Message/Send` against your API key and is scoped to a single message run.
 
@@ -4109,6 +5550,8 @@ Use it as a signal that the socket is fully ready to receive a subscribe. Most c
 - `type` — must be the literal string `"agent_info"`. Other values are ignored (the server routes by type; unknown types are silently dropped).
 - `agenttoken` — the token returned by `POST /UserAgent/Message/Send`. Required. If missing or empty, the server responds with an `error` frame (see [Subscribe errors](#subscribe-errors)).
 
+The server keeps the mapping `connection ↔ agenttoken` in memory for the life of the connection. You can send additional `agent_info` frames on the same socket to subscribe to more tokens — see [Multi-session subscription](#multi-session-subscription).
+
 ### 3. Subscribe errors
 
 If `agenttoken` is missing or blank, the server replies with:
@@ -4121,11 +5564,18 @@ If `agenttoken` is missing or blank, the server replies with:
 }
 ```
 
-The connection stays open — no disconnect. Fix the payload and resend.
+The connection stays open — no disconnect. Fix the payload and resend. The same frame is used for any shape-level rejection of a subscribe; message routing failures (unknown types, internal exceptions) are silently dropped and produce no frame at all.
 
 ### Multi-session subscription
 
 A single WebSocket connection can hold subscriptions to multiple agent sessions simultaneously. Send one `agent_info` frame per token; the server de-duplicates, so resending the same token is a no-op.
+
+```text
+WS connect              →  { "type": "connected", "version": "1.0" }
+{ agent_info, token: A } →  { agent_subscribed ... token: A }
+{ agent_info, token: B } →  { agent_subscribed ... token: B }
+{ agent_info, token: A } →  (no-op — already subscribed)
+```
 
 After this, every server-side event for either token is forwarded to this connection. All events carry the `agenttoken` field, so your handler can route them back to the right UI surface.
 
@@ -4133,9 +5583,9 @@ Typical use cases:
 
 - Multi-tab chat clients that keep several live conversations.
 - Dashboards watching several users' agents in parallel.
-- Combining task streaming and agent streaming on the same connection — `task_info` and `agent_info` frames both map to the same connection's token list.
+- Combining task streaming and agent streaming on the same connection — `task_info` and `agent_info` frames both map to the same connection's token list (tasks under `taskTokens`, agents under `agentTokens`).
 
-There is no `unsubscribe` frame. Tokens are cleaned up automatically when the connection closes.
+There is no `unsubscribe` frame. To stop listening to a token without reconnecting, ignore its events client-side; tokens are cleaned up automatically when the connection closes.
 
 ## Event Types
 
@@ -4150,8 +5600,8 @@ Frames flow in two directions. `↓` = server → client, `↑` = client → ser
 | ↓ | `agent_start` | The bridge has opened an SSE stream to the agent container. The underlying model is now generating. Emits exactly once per message. |
 | ↓ | `agent_output` | Streaming chunk. Emits **many times** — each carries the full accumulated `raw` text so far plus real-time metrics (`speed`, `elapsedTime`, `tokenCount`, `wordCount`). Replace (don't append) your UI on each event. |
 | ↓ | `agent_end` | Terminal success event. Same payload shape as `agent_output` but contains the final complete text with total metrics. Emits at most once. |
-| ↓ | `agent_error` | Terminal failure event. `message` is either a sanitized string (when an exception was caught) or a `progressGenerate` object (when the stream finished but content was a degenerate `"..."` / `"Error: internal error"`). Emits at most once. |
-| ↓ | `agent_cancel` | Terminal cancel event. Fires **only** when an already-active message is aborted mid-stream. Cancels against a still-queued message do **not** broadcast this event — check `Message/Detail` for those. Emits at most once. |
+| ↓ | `agent_error` | Terminal failure event. `message` is either a sanitized string ("Agent is temporarily unavailable…" when an exception was caught) or a `progressGenerate` object (when the stream finished but content was a degenerate `"..."` / `"Error: internal error"`). Emits at most once. |
+| ↓ | `agent_cancel` | Terminal cancel event. Fires **only** when an already-active message is aborted mid-stream (via `Message/Cancel` or upstream abort). Cancels against a still-queued message do **not** broadcast this event — check `Message/Detail` for those. Emits at most once. |
 
 ## Message Format
 
@@ -4171,15 +5621,15 @@ Every WebSocket frame is a JSON object. All **agent lifecycle frames** (`agent_s
 | `type` | string | Event name. See [Event Types](#event-types) for the full list. |
 | `agenttoken` | string | The token you subscribed with. Present on every agent lifecycle frame so multi-token subscribers can route the event to the right session. |
 | `message` | varies | Empty string (`""`) for `agent_start`, a `progressGenerate` object for `agent_output` / `agent_end` (and for the object-shaped `agent_error`), and a plain string for string-shaped `agent_error` and `agent_cancel`. |
-| `result` | boolean | `true` for success-side events (`agent_subscribed` / `agent_start` / `agent_output` / `agent_end`), `false` for failure-side events (`agent_error` / `agent_cancel`). |
+| `result` | boolean | `true` for success-side events (`agent_subscribed` / `agent_start` / `agent_output` / `agent_end`), `false` for failure-side events (`agent_error` / `agent_cancel`). See [The `result` field](#the-result-field). |
 
 The **control frames** (`connected`, `error`) use a different shape with no `agenttoken`:
 
 ```json
+// Welcome — one per connection
 { "type": "connected", "version": "1.0" }
-```
 
-```json
+// Subscribe rejection — stays connected, just indicates the last agent_info was malformed
 { "type": "error", "message": "agenttoken-required", "result": false }
 ```
 
@@ -4307,9 +5757,9 @@ An error occurred during processing. The `message` field can take two forms — 
 }
 ```
 
-> **The raw runtime error is never broadcast over WebSocket.** Strings like `"Bridge timeout"`, `"OpenClaw returned HTTP 500"`, `"SSE request timeout (30min)"`, `"Could not resolve agent endpoint"` are recorded in the database `debugoutput` field (retrievable via `POST /UserAgent/Message/Detail`) but **replaced with the generic sentence above** before being pushed to subscribed clients. This is intentional so end users never see internal infrastructure errors.
+> **The raw runtime error is never broadcast over WebSocket.** Internal failure messages are recorded in `debugoutput` (retrievable via `POST /UserAgent/Message/Detail`) but **replaced with the generic sentence above** before being pushed to subscribed clients. Log the raw `debugoutput` for your own debugging; show the sanitized string from the WebSocket event to end users.
 
-**Progress-object error** — the SSE stream completes normally but the model returns `"..."` or `"Error: internal error"`. In that case Wiro flags the message as `agent_error` and broadcasts the same `progressGenerate` shape as `agent_output` / `agent_end`:
+**Progress-object error** — the SSE stream completes normally but the model returns `"..."` or `"Error: internal error"`. In that case Wiro flags the message as `agent_error` and broadcasts the same `progressGenerate` shape as `agent_output` / `agent_end`, so the client can render the non-response to the user:
 
 ```json
 {
@@ -4336,14 +5786,17 @@ Check the runtime type of `message` to branch:
 
 ```javascript
 if (msg.type === 'agent_error') {
-  if (typeof msg.message === 'string') showToast(msg.message)
-  else renderResponse(msg.message.raw)
+  if (typeof msg.message === 'string') {
+    showToast(msg.message)
+  } else {
+    renderResponse(msg.message.raw)
+  }
 }
 ```
 
 ### agent_cancel
 
-Sent when the user cancels a message before the agent completes its response — but **only when the abort hits the bridge mid-flight** (queued-state cancels do not broadcast this event):
+Sent when the user cancels a message before the agent completes its response (only when the abort hits the bridge mid-flight — queued-state cancels don't broadcast this event):
 
 ```json
 {
@@ -4354,7 +5807,7 @@ Sent when the user cancels a message before the agent completes its response —
 }
 ```
 
-> The `message` field carries the abort reason from the runtime (typically `"AbortError"` or a short technical string). It is **not a fixed user-facing message** — do not parse it for exact strings. Use `type === "agent_cancel"` as the canonical signal. Subscribers that cancel from a queued state receive no event at all (the message is simply marked `agent_cancel` in the database; check with `POST /UserAgent/Message/Detail`).
+> The `message` field carries the abort reason from the runtime (typically `"AbortError"` or a short technical string). It is **not a fixed user-facing message** — do not parse it for exact strings; use `type === "agent_cancel"` as the signal. Subscribers that cancel from a queued state will receive no event at all (the message is simply marked `agent_cancel` in the database; check with `POST /UserAgent/Message/Detail`).
 
 ## The `result` Field
 
@@ -4643,7 +6096,7 @@ while (true) {
 $client->close();
 ```
 
-### C#
+### C\#
 
 ```csharp
 using System.Net.WebSockets;
@@ -4959,13 +6412,13 @@ Every agent lifecycle frame (`agent_subscribed` / `agent_start` / `agent_output`
 - `Message/Send` issues exactly one `agenttoken` per message and returns it alongside `messageguid` in the HTTP response.
 - The bridge stamps the same `agenttoken` on every event it emits for that message.
 - Multiple connections can subscribe to the same `agenttoken` and each gets the full event stream — so `agenttoken` is also the fan-out key.
-- A single socket can hold subscriptions for many `agenttoken`s at once — the per-event `agenttoken` lets your handler dispatch into the right UI element.
+- A single socket can hold subscriptions for many `agenttoken`s at once (see [Multi-session subscription](#multi-session-subscription)) — the per-event `agenttoken` lets your handler dispatch into the right UI element.
 
 ### Recommended client pattern
 
 1. Call `POST /UserAgent/Message/Send` — you get back `{ messageguid, agenttoken, status: "agent_queue", ... }`.
 2. Store the mapping `agenttoken → messageguid` (or `agenttoken → your UI message id`).
-3. Send `{ "type": "agent_info", "agenttoken" }` on an open socket (new or existing — connections can be reused).
+3. Send `{ "type": "agent_info", "agenttoken }` on an open socket (new or existing — connections can be reused).
 4. In `ws.onmessage`, read `msg.agenttoken` on every agent lifecycle frame, look up your stored mapping, and update the matching UI element.
 5. When you see a terminal event (`agent_end` / `agent_error` / `agent_cancel`), delete the mapping so it doesn't leak memory across sessions.
 
@@ -4993,7 +6446,7 @@ ws.onmessage = (event) => {
   if (!msg.agenttoken) return  // control frames (connected / error) have no token
 
   const uiMessageId = tokenToMessageId.get(msg.agenttoken)
-  if (!uiMessageId) return
+  if (!uiMessageId) return  // unknown token — probably stale
 
   switch (msg.type) {
     case 'agent_output':
@@ -5052,7 +6505,62 @@ The agent keeps running server-side **regardless of whether any client is subscr
 
 On reconnect you do **not** receive replays of the past `agent_output` frames — only events emitted after re-subscribe. Use the `debugoutput` on `agent_subscribed` as the snapshot of what you missed.
 
-### Retry strategy
+### Example retry strategy
+
+```javascript
+const MAX_BACKOFF_MS = 30000
+let backoff = 1000
+
+function connect(agenttoken, onStreamingChunk, onFinal, onFailure) {
+  const ws = new WebSocket('wss://socket.wiro.ai/v1')
+  let finished = false
+
+  ws.onopen = () => {
+    backoff = 1000
+    ws.send(JSON.stringify({ type: 'agent_info', agenttoken }))
+  }
+
+  ws.onmessage = (event) => {
+    const msg = JSON.parse(event.data)
+    if (msg.type === 'connected') return
+
+    if (msg.type === 'agent_subscribed') {
+      if (msg.status === 'unknown') {
+        finished = true
+        onFailure({ reason: 'unknown-token' })
+        ws.close()
+        return
+      }
+      if (['agent_end', 'agent_error', 'agent_cancel'].includes(msg.status)) {
+        finished = true
+        onFinal(msg.debugoutput || '')
+        ws.close()
+      }
+      return
+    }
+
+    if (msg.type === 'agent_output') onStreamingChunk(msg.message)
+    if (msg.type === 'agent_end') {
+      finished = true
+      onFinal(msg.message.raw)
+      ws.close()
+    }
+    if (['agent_error', 'agent_cancel'].includes(msg.type)) {
+      finished = true
+      onFailure({ reason: msg.type, message: msg.message })
+      ws.close()
+    }
+  }
+
+  ws.onclose = () => {
+    if (finished) return
+    setTimeout(() => connect(agenttoken, onStreamingChunk, onFinal, onFailure), backoff)
+    backoff = Math.min(backoff * 2, MAX_BACKOFF_MS)
+  }
+}
+```
+
+Guidance:
 
 - **Exponential backoff**, capped at 30 seconds. The server is usually responsive, so don't hammer it.
 - **Stop retrying once you hit a terminal event** (`agent_end` / `agent_error` / `agent_cancel`) or an `unknown` status — the work is either done or the token is gone.
@@ -5065,7 +6573,7 @@ An `agenttoken` is issued per message by `POST /UserAgent/Message/Send` and stay
 
 | Event | Effect on token |
 |---|---|
-| `Message/Send` | Token is minted, row is inserted with `status: "agent_queue"`. |
+| `Message/Send` | Token is minted, row is inserted with `status: "agent_queue"`, broadcast to all queue subscribers. |
 | Worker picks up | Emits `agent_start` to every active subscriber. |
 | Each SSE chunk | Emits `agent_output` to every active subscriber (with full accumulated `raw`). |
 | Stream finishes | Emits `agent_end` (or `agent_error` for `"..."` / internal-error content) with final `progressGenerate` payload; DB row status is updated to terminal. |
@@ -5085,15 +6593,13 @@ Receive agent response notifications via HTTP callbacks.
 
 ## How It Works
 
-When you send a message to an agent via `POST /UserAgent/Message/Send`, include a `callbackurl` parameter. Once the agent finishes processing — whether it completes successfully, encounters an error, or the message is cancelled — Wiro sends a POST request to your URL with the result.
+When you send a message to an agent via `POST /UserAgent/Message/Send`, include a `callbackurl` parameter. Once the agent finishes processing on the bridge, Wiro sends a POST request to your URL with the result. Callbacks fire on `agent_end` (success), `agent_error` (failure during processing), and `agent_cancel` **only when the abort hits the bridge mid-flight**. Messages cancelled while still queued (status `agent_queue`, before the bridge picks them up) are marked `agent_cancel` in the database but **do not fire a webhook** — there was no processing attempt to report on. See the "When the cancel webhook fires" note below for the full decision table.
 
 This lets you build fully asynchronous workflows: fire a message and let your backend handle the response whenever it arrives, without polling or maintaining a WebSocket connection.
 
 ## Setting a Callback URL
 
-Include `callbackurl` in your message request body:
-
-`POST /UserAgent/Message/Send`:
+Include `callbackurl` in your message request body. `POST /UserAgent/Message/Send`:
 
 ```json
 {
@@ -5199,6 +6705,8 @@ On successful completion (`agent_end`), the `metadata` object contains the struc
 | `wordCount` | number | Total words in the response. |
 
 For `agent_error` and `agent_cancel`, `metadata` is an empty object `{}`. Always check `status` before accessing metadata fields.
+
+> **Note:** For `agent_error`, the webhook's `response` / `debugoutput` contain the **raw error** from the agent runtime (useful for debugging). The same message may be **sanitized to a user-facing string** when you read it back via `POST /UserAgent/Message/Detail`, so the two can differ. Log the webhook payload if you need the original.
 
 ## Status Values
 
@@ -5331,23 +6839,224 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
 }
 ```
 
-The `agenttoken` can be used to track the message via [WebSocket](#agent-websocket) for real-time streaming, while the webhook delivers the final result to your server.
+The `agenttoken` can be used to track the message via [Agent WebSocket](/docs/agent-websocket) for real-time streaming, while the webhook delivers the final result to your server.
 
 ---
 
-
 # Agent Credentials & OAuth
 
-Configure third-party service connections for your agent instances.
+Configure third-party service connections for your agent instances. Browse the platform's credential registry, set API keys + OAuth, and audit credential edits over time.
 
 ## Overview
 
 Wiro agents connect to external services — social platforms, ad networks, email tools, CRMs — through two credential methods:
 
-1. **API Key credentials** — set directly via `POST /UserAgent/Update`.
+1. **API Key credentials** — set directly via `POST /UserAgent/CredentialUpsert` (bulk field upsert per provider).
 2. **OAuth credentials** — redirect-based authorization via `POST /UserAgentOAuth/{Provider}Connect`, where Wiro handles token exchange server-side.
 
 Each external service is documented as its own **integration page** with the complete setup walkthrough, API reference, troubleshooting, and multi-tenant architecture notes. Use the catalog below to jump to the one you need.
+
+> **Read & write paths at a glance:**
+>
+> | Operation | Endpoint |
+> |-----------|----------|
+> | Browse all credentials in the registry | [`POST /Credentials/List`](#post-credentialslist) (public) |
+> | Inspect a single credential schema | [`POST /Credentials/Detail`](#post-credentialsdetail) (public) |
+> | Find the credential a skill needs | [`POST /Skills/CredentialSchema`](/docs/agent-skills#post-skillscredentialschema) (public) |
+> | Write one or more credential fields | [`POST /UserAgent/CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert) |
+> | Read version history of a credential | [`POST /UserAgent/CredentialFieldHistory`](/docs/agent-overview#post-useragentcredentialfieldhistory) |
+>
+> Read responses from `POST /UserAgent/Detail` / `POST /UserAgent/MyAgents` expose the composed `credentials` tree (each provider with its `_connected` / `optional` / `extra` / `_editable` / `_schema` flags), the `customskills[]` array, the `scheduledskills[]` array (cron skills), the `skills[]` array of enabled skill names, the `peractioncosts` object, and the flat credit fields (`monthlycredits`, `extracredits`, `usedcredits`, `remainingcredits`, `creditperiod`, `creditsyncat`) as **top-level fields** on the useragent object. See [Agent Overview](/docs/agent-overview) for the full endpoint catalog.
+
+## Credential Registry Endpoints
+
+These endpoints are **public — no authentication required**. They return data straight from the credential registry — useful when you want to render a "Connect this provider" form without a deployed useragent (e.g. inside an onboarding wizard).
+
+### **POST** /Credentials/List
+
+Lists all credentials in the registry.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `credential_mode` | string | No | Filter by mode: `"oauth"`, `"sa"` (service account), `"api_key"`, `"multi_api_key"`, `"hybrid"` (OAuth + API key fallback), `"imap_credentials"`, `"jwt_sa"`, `"rule_only"`. |
+| `wiro_connect_pending` | boolean | No | Filter by the "Wiro mode coming soon" flag (Meta integrations while Wiro's app is under review). |
+
+##### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "total": 22,
+  "credentials": [
+    {
+      "key": "instagram",
+      "title": "Instagram",
+      "icon": "/images/icons/skills/instagram.svg",
+      "brand_color": "#e4405f",
+      "brand_text_color": "#ffffff",
+      "brand_logo_filter": "none",
+      "docs_url": "integration-instagram-skills",
+      "credential_mode": "oauth",
+      "connection_modes": ["wiro", "own"],
+      "wiro_connect_pending": true,
+      "credential_schema": [
+        {
+          "key": "appid",
+          "type": "text",
+          "label": "App ID",
+          "required": true,
+          "pattern": "^[0-9]+$",
+          "help": "Meta for Developers → My Apps → Create App → copy App ID. Add Facebook Login product and OAuth Redirect URI: https://api.wiro.ai/v1/UserAgentOAuth/IGCallback",
+          "oauth_managed": true,
+          "only_in_modes": ["own"]
+        },
+        {
+          "key": "appsecret",
+          "type": "password",
+          "label": "App Secret",
+          "required": true,
+          "show_toggle": true,
+          "help": "Meta for Developers → App Settings → Basic → Show next to App Secret.",
+          "oauth_managed": true,
+          "only_in_modes": ["own"]
+        },
+        {
+          "key": "igusername",
+          "type": "text",
+          "label": "Connected Account",
+          "required": false,
+          "auto_filled_by_oauth": true,
+          "readonly_when_connected": true
+        }
+      ],
+      "oauth_provider": {
+        "auth_method_value": "wiro",
+        "connect_endpoint": "/UserAgentOAuth/IGConnect",
+        "disconnect_endpoint": "/UserAgentOAuth/IGDisconnect",
+        "status_endpoint": "/UserAgentOAuth/IGStatus",
+        "connect_button_label": "Connect with Instagram",
+        "connect_button_icon": "/images/icons/skills/instagram.svg",
+        "connect_button_brand_color": "#e4405f",
+        "connect_button_text_color": "#ffffff",
+        "connect_button_logo_filter": "none",
+        "username_field": "igusername",
+        "return_query_param": "ig_connected",
+        "return_error_param": "ig_error",
+        "return_error_detail_param": "ig_error_detail",
+        "account_picker": null,
+        "extra_step": null
+      },
+      "used_by_skills": ["int-instagram-post"]
+    }
+  ]
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `key` | `string` | Canonical credential key. Use this in `CredentialUpsert.fields[].credentialkey`. |
+| `title` | `string` | Display label shown on credential cards. |
+| `icon` | `string` | Path or URL to the brand icon (relative paths absolutized server-side). |
+| `brand_color` / `brand_text_color` / `brand_logo_filter` | `string\|null` | Brand colours and CSS filter for icon rendering — same shape as on skill registry entries. |
+| `docs_url` | `string\|null` | Slug of the integration page on this docs site. Frontends prefix with `/docs/`. |
+| `credential_mode` | `string` | One of `"oauth"`, `"sa"` (service account), `"api_key"`, `"multi_api_key"`, `"hybrid"` (OAuth + API key fallback), `"imap_credentials"`, `"jwt_sa"`, `"rule_only"`. |
+| `connection_modes` | `array<string>` | Auth modes the credential supports (`["wiro", "own"]` for OAuth, `["api_key"]` for API key, `["sa"]` for service account). Drives the auth-method picker. |
+| `wiro_connect_pending` | `boolean` | When `true`, Wiro's shared OAuth client is awaiting provider review (Meta family). Forces **own** mode until the platform clears review. |
+| `credential_schema` | `array<field>` | Per-field schema describing the credential form. Each entry: `{ key, type, label, required, placeholder?, pattern?, help?, options?, default?, show_toggle?, oauth_managed?, auto_filled_by_oauth?, readonly_when_connected?, only_in_modes?, platform_managed?, item_schema?, item_type? }`. |
+| `oauth_provider` | `object\|null` | OAuth wiring (endpoints, button styling, picker config) when `credential_mode` includes OAuth. `null` for non-OAuth credentials. |
+| `used_by_skills` | `array<string>` | Skill names that consume this credential. |
+
+**`fieldstatus` values** — `fieldstatus` is **not** part of the registry schema; it's a runtime classification applied to each credential field at write time. It controls who can see the value:
+
+| Value | Who writes it | Visible to API caller? |
+|-------|---------------|------------------------|
+| `user` | API callers + UI users | Yes |
+| `oauth_app` | API callers (own-mode only) | Yes (live), redacted to `[REDACTED]` in history |
+| `oauth_session` | OAuth callback (server-only) | **No** — always stripped from responses |
+| `oauth_picker` | OAuth callback / `Set*` picker endpoints | Yes |
+| `platform` | Wiro internal | **No** — stripped for `user`-role callers |
+| `computed` | Server-derived | Yes |
+| `control` | Wiro internal | **No** — stripped for `user`-role callers |
+
+### **POST** /Credentials/Detail
+
+Returns a single credential entry by key. The response is the **same full credential entry** as a row from `Credentials/List`.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `key` | string | Yes | Canonical credential key (e.g. `"instagram"`, `"google-ads"`, `"telegram"`). |
+
+##### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "credential": {
+    "key": "instagram",
+    "title": "Instagram",
+    "icon": "/images/icons/skills/instagram.svg",
+    "brand_color": "#e4405f",
+    "brand_text_color": "#ffffff",
+    "brand_logo_filter": "none",
+    "docs_url": "integration-instagram-skills",
+    "credential_mode": "oauth",
+    "connection_modes": ["wiro", "own"],
+    "wiro_connect_pending": true,
+    "credential_schema": [
+      {
+        "key": "appid",
+        "type": "text",
+        "label": "App ID",
+        "required": true,
+        "pattern": "^[0-9]+$",
+        "help": "Meta for Developers → My Apps → Create App → copy App ID.",
+        "oauth_managed": true,
+        "only_in_modes": ["own"]
+      },
+      {
+        "key": "appsecret",
+        "type": "password",
+        "label": "App Secret",
+        "required": true,
+        "show_toggle": true,
+        "help": "Meta for Developers → App Settings → Basic → Show next to App Secret.",
+        "oauth_managed": true,
+        "only_in_modes": ["own"]
+      },
+      {
+        "key": "igusername",
+        "type": "text",
+        "label": "Connected Account",
+        "required": false,
+        "auto_filled_by_oauth": true,
+        "readonly_when_connected": true
+      }
+    ],
+    "oauth_provider": {
+      "auth_method_value": "wiro",
+      "connect_endpoint": "/UserAgentOAuth/IGConnect",
+      "disconnect_endpoint": "/UserAgentOAuth/IGDisconnect",
+      "status_endpoint": "/UserAgentOAuth/IGStatus",
+      "connect_button_label": "Connect with Instagram",
+      "connect_button_icon": "/images/icons/skills/instagram.svg",
+      "connect_button_brand_color": "#e4405f",
+      "connect_button_text_color": "#ffffff",
+      "connect_button_logo_filter": "none",
+      "username_field": "igusername",
+      "return_query_param": "ig_connected",
+      "return_error_param": "ig_error",
+      "return_error_detail_param": "ig_error_detail",
+      "account_picker": null,
+      "extra_step": null
+    },
+    "used_by_skills": ["int-instagram-post"]
+  }
+}
+```
+
+Returns `{ "result": false, "errors": [{ "code": 404, "message": "Credential not found: <key>" }] }` if the key is unknown.
 
 ## Integration Catalog
 
@@ -5362,9 +7071,20 @@ Each external service is documented as its own **integration page** with the com
 | Twitter / X | Wiro + Own | [Twitter Skills](/docs/integration-twitter-skills) |
 | TikTok | Wiro + Own | [TikTok Skills](/docs/integration-tiktok-skills) |
 | Google Ads | Wiro + Own | [Google Ads Skills](/docs/integration-googleads-skills) |
+| YouTube | Wiro + Own | See [Google Ads Skills](/docs/integration-googleads-skills) (same OAuth client) |
+| Google Analytics 4 | Wiro + Own | See [Google Ads Skills](/docs/integration-googleads-skills) (same OAuth client) |
+| Merchant Center | Wiro + Own | See [Google Ads Skills](/docs/integration-googleads-skills) (same OAuth client) |
 | HubSpot | Wiro + Own | [HubSpot Skills](/docs/integration-hubspot-skills) |
 | Mailchimp | Wiro + Own + API Key | [Mailchimp Skills](/docs/integration-mailchimp-skills) |
-| Google Drive | Wiro + Own | [Google Drive Skills](/docs/integration-googledrive-skills) |
+
+> **Google OAuth is shared across 4 APIs.** Google Ads, YouTube, Google Analytics 4, and Merchant Center are all authorized through a single Wiro OAuth client in "wiro" mode — one Google Cloud project, one OAuth 2.0 Client ID, multiple API scopes. In "own" mode you may reuse one of your own OAuth clients the same way, or set up separate ones per product.
+
+### Service Account Integrations
+
+| Integration | Setup Guide |
+|-------------|-------------|
+| Google Drive | [Google Drive Skills](/docs/integration-googledrive-skills) |
+| Google Play | [Google Play Skills](/docs/integration-googleplay-skills) |
 
 > **Meta Platforms availability:** While Wiro's shared Meta App is under review by Meta, the Meta Ads, Facebook Page, and Instagram integrations must be connected using your own Meta Developer App in Development Mode. No App Review is required — users who are listed in your app's Roles (Testers/Developers) can connect without review. See each integration page for step-by-step setup.
 
@@ -5377,7 +7097,6 @@ Each external service is documented as its own **integration page** with the com
 | Firebase | [Firebase Skills](/docs/integration-firebase-skills) |
 | WordPress | [WordPress Skills](/docs/integration-wordpress-skills) |
 | App Store Connect | [App Store Skills](/docs/integration-appstore-skills) |
-| Google Play | [Google Play Skills](/docs/integration-googleplay-skills) |
 | Apollo | [Apollo Skills](/docs/integration-apollo-skills) |
 | Lemlist | [Lemlist Skills](/docs/integration-lemlist-skills) |
 | Brevo | [Brevo Skills](/docs/integration-brevo-skills) |
@@ -5385,58 +7104,150 @@ Each external service is documented as its own **integration page** with the com
 
 ## Platform-Managed Credentials
 
-Some credentials are **managed by Wiro on your behalf** — you don't provide them, you can't see them in API responses, and attempts to set them via `POST /UserAgent/Update` are silently ignored:
+Some credentials are **managed by Wiro on your behalf** — you don't provide them, you can't see them in API responses, and attempts to set them via `POST /UserAgent/CredentialUpsert` are rejected (the server only accepts fields with `fieldstatus: "user"` from API callers):
 
 - **OpenAI** — Wiro uses its own OpenAI account to power the LLM brain of every agent. You never need to supply an OpenAI key.
 - **Wiro platform** (`credentials.wiro.apiKey`) — pre-configured for agents that have the `wiro-generator` skill enabled. This skill lets the agent call Wiro's own AI models (image/video/audio/LLM) internally — see [Using Wiro AI Models from Your Agent](/docs/agent-skills#using-wiro-ai-models-from-your-agent).
 - **Calendarific** — pre-configured for agents that use the Calendarific skill (holiday/special-date lookups).
 
-These are `_editable: false` in the agent template. When you read `POST /UserAgent/Detail`, they don't appear in the `configuration.credentials` response — they're filtered out server-side. If your agent needs them, they're already wired up.
+These credentials are stored with `fieldstatus: "platform"` in the template. `POST /UserAgent/Detail` omits them from the `credentials` response (they're filtered out server-side). If your agent needs them, they're already wired up.
 
 > **Don't confuse platform-managed `credentials.wiro.apiKey` with your regular Wiro API key.** The key in `credentials.wiro.apiKey` is internal to the agent container; the `x-api-key` header you send to Wiro endpoints from your own backend is entirely separate (see [Authentication](/docs/authentication)).
 
-## Setting API Key Credentials
+## Auditing Credential Changes — `CredentialFieldHistory`
 
-Use `POST /UserAgent/Update` with `configuration.credentials.<service>`. Each integration page above documents the exact field names and shape.
-
-### Per-group update pattern
-
-Wiro's backend merges credential updates **per group**. Only the fields you send are written, and other credential groups are untouched. The Wiro Dashboard follows this pattern exactly — each credential card is saved independently.
+Every credential field write is appended to a versioned history. Use `POST /UserAgent/CredentialFieldHistory` to read it — same idea as `CustomSkillHistory` for skills.
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialFieldHistory" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "gmail": {
-          "account": "agent@company.com",
-          "appPassword": "xxxx xxxx xxxx xxxx"
-        }
-      }
-    }
+    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+    "credentialkey": "instagram"
   }'
 ```
 
-### Merge rules (verified against agent-helper.js)
+##### Response
 
-- Only fields marked `_editable: true` in the agent template are accepted. Non-editable fields are silently ignored.
-- Credential groups that don't exist in the template cannot be added — you can only update keys the agent declares.
-- **Positional-index merge applies only to `credentials.{group}.accounts[]` arrays** (the pattern used by `firebase` — an array of per-account objects with their own `_editable` maps). For these arrays: sending more indices than the template has creates new entries cloned from the template shape (constrained to template-editable fields); **sending fewer indices truncates the array** — e.g. if the agent has 3 Firebase accounts and you send only 2, the third is removed.
-- Other array-shaped credentials (`appstore.apps`, `googleplay.apps`, `googledrive.folders`, `website.urls`, etc.) are **replace-only** — the whole array is overwritten when you send it (no positional merge, no per-index preservation). Send the complete desired list.
-- Use `POST /UserAgent/Detail` to inspect the `_editable` map for each credential group (and, for `accounts`-shaped groups, the per-account `_editable` nested inside each array element).
+```json
+{
+  "result": true,
+  "errors": [],
+  "entries": [
+    {
+      "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+      "useragentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "credentialkey": "instagram",
+      "fieldname": "igusername",
+      "fieldvalue": "myaccount",
+      "fieldstatus": "user",
+      "parentfield": null,
+      "ordinal": 0,
+      "operation": "upsert",
+      "changedby": "ada-uuid",
+      "changedby_user": {
+        "uuid": "ada-uuid",
+        "firstname": "Ada",
+        "lastname": "Lovelace",
+        "email": "ada@example.com",
+        "username": "ada",
+        "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
+        "avatarinitials": "AL"
+      },
+      "changedat": 1714694410
+    },
+    {
+      "guid": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+      "useragentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "credentialkey": "instagram",
+      "fieldname": "clientsecret",
+      "fieldvalue": "[REDACTED]",
+      "fieldstatus": "oauth_app",
+      "parentfield": null,
+      "ordinal": 0,
+      "operation": "upsert",
+      "changedby": "ada-uuid",
+      "changedby_user": {
+        "uuid": "ada-uuid",
+        "firstname": "Ada",
+        "lastname": "Lovelace",
+        "email": "ada@example.com",
+        "username": "ada",
+        "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
+        "avatarinitials": "AL"
+      },
+      "changedat": 1714600000
+    }
+  ]
+}
+```
 
-### Prepaid deploy gotcha
+`changedby_user` is the resolved actor object (`uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`). It is `null` when `changedby` is `"system"` (automation / cron) or when the user record has been deleted.
 
-If you called `POST /UserAgent/Deploy` with `useprepaid: true`, the `credentials` you passed in the Deploy body were **not** saved — prepaid deploy writes only a template placeholder. You must call `POST /UserAgent/Update` separately to set credentials before initiating OAuth or starting the agent.
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Your UserAgent instance guid |
+| `credentialkey` | string | Yes | Provider key (e.g. `"instagram"`, `"wordpress"`) |
+| `startdate` | number | No | UTC epoch seconds — return entries on/after this time |
+| `enddate` | number | No | UTC epoch seconds — return entries on/before this time |
+
+> **Sensitive values are redacted in history.** `oauth_session` rows (access/refresh tokens) **never** appear in history at all (they're stripped before persisting). `clientsecret` is stored as `[REDACTED]` in history rows; the live row carries the real secret. Use `POST /UserAgent/Detail` to read the current live values; `CredentialFieldHistory` only shows the audit trail.
+
+## Setting API Key Credentials
+
+Use `POST /UserAgent/CredentialUpsert` with a flat `fields[]` array. Each field row carries `{credentialkey, fieldname, fieldvalue}`. Each integration page documents the exact field names and shape.
+
+### Bulk upsert pattern
+
+`/UserAgent/CredentialUpsert` takes an array of field rows in one request. Only the fields you send are written; other credential groups and other fields inside the same group are untouched. The Wiro Dashboard follows this pattern exactly — each credential card sends a single `CredentialUpsert` call with its group's fields.
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "gmail", "fieldname": "account",     "fieldvalue": "agent@company.com" },
+      { "credentialkey": "gmail", "fieldname": "apppassword", "fieldvalue": "xxxx xxxx xxxx xxxx" }
+    ]
+  }'
+```
+
+Response: `{ "result": true, "applied": 2, "errors": [] }`. `applied` is the count of fields actually written; rows that fail validation (reserved fieldname prefixed with `_`, invalid `fieldstatus` for the caller's role) are skipped and listed in `errors` without rolling back the others. If the agent was running, it is automatically restarted to apply the new values.
+
+### Field-level write rules
+
+- **Only `fieldstatus: "user"` fields may be written by API callers.** The template marks OAuth app keys (`oauth_app`), OAuth tokens (`oauth_session`), OAuth picker selections (`oauth_picker`), and platform-managed values (`platform`) with non-user statuses — the API rejects attempts to write them directly with `agent-fieldstatus-not-allowed-for-role`. OAuth-managed values are written by Wiro's OAuth callback flow, not by your API.
+- **Reserved fieldnames are rejected.** Any `fieldname` starting with `_` (e.g. `_isoptional`, `_isextra`) is a sentinel used by the template itself and cannot be set by API callers.
+- Credential groups that don't exist in the template cannot be created — you can only write fields for credential keys the agent declares.
+- **Nested arrays** (`firebase.accounts[].apps[]`, `googledrive.folders[]`, `appstore.apps[]`, etc.) are supported via the optional `parentfield` (dotted path) and `ordinal` (array index) on each field row. Send the complete desired list — positional merge applies: indices you don't send are kept from the previous state, unless you explicitly send an empty set to clear them.
+- Use `POST /UserAgent/Detail` to inspect which fields each credential exposes, and the `_connected` / `optional` / `extra` flags that describe its readiness state.
+
+### Prepaid deploy — inline setup supported (with limitations)
+
+If you call `POST /UserAgent/Deploy` with `useprepaid: true`, you may pass `credentials`, `customskills` (or the equivalent key `customskills`), and `skills` at the **top level of the Deploy body**. The server applies them to the normalized child tables in the same call (one-shot deploy + initial setup).
+
+**Deploy body `credentials` limitations:**
+
+- Only **flat fields** are accepted — values must be `string` or `number`. Nested object values are ignored.
+- Nested arrays (`firebase.accounts[]`, `googledrive.folders[]`, `appstore.apps[]`, `googleplay.apps[]`) **cannot be set via the Deploy body**. Deploy an empty instance first, then call `POST /UserAgent/CredentialUpsert` with `parentfield`/`ordinal` rows to populate arrays.
+- Fieldnames starting with `_` (sentinel rows like `_isoptional`, `_isextra`) are silently skipped.
+- All fields written through Deploy are set to `fieldstatus: "user"` automatically — you can't choose a different fieldstatus from the Deploy body. Use `POST /UserAgent/CredentialUpsert` afterwards if you need admin-only statuses.
+
+**Deploy body `customskills` semantics:**
+
+- Each entry must have a `key`. Server reads `value`, `interval`, `enabled`, `description`, and treats `_user_created: true` as an explicit user-created cron (auto-prefixing the key with `cron-` if missing).
+- The request body accepts a single top-level `customskills` array; server-side values are merged onto any existing preset rows for the same key.
+
+If you skip these keys in Deploy entirely, the instance is created empty and you set credentials/skills later with `CredentialUpsert`, `CustomSkillUpsert`, and `SkillsApply`.
 
 ## OAuth Authorization Flow
 
 For services that require user authorization, Wiro implements a full OAuth redirect flow. The entire process is **fully white-label** — your end users interact only with your app and the provider's consent screen. They never see or visit wiro.ai.
 
-> The `redirectUrl` you pass to Connect is **your own URL**. After authorization, users are redirected back to your app with status query parameters. HTTPS is required; `http://localhost` and `http://127.0.0.1` are allowed for development only.
+> The `redirecturl` you pass to Connect is **your own URL**. After authorization, users are redirected back to your app with status query parameters. HTTPS is required; `http://localhost` and `http://127.0.0.1` are allowed for development only.
 
 ### Generic flow
 
@@ -5446,16 +7257,16 @@ Your App (Frontend)           Your Backend              Wiro API              Pr
   (1)  | "Connect X" click          |                       |                      |
        |--------------------------->|                       |                      |
   (2)  |                            |  POST /{P}Connect --> |                      |
-       |                            |  { userAgentGuid,     |                      |
-       |                            |    redirectUrl,       |                      |
-       |                            |    authMethod }       |                      |
+       |                            |  { useragentguid,     |                      |
+       |                            |    redirecturl,       |                      |
+       |                            |    authmethod }       |                      |
   (3)  |                            |<-- { authorizeUrl }   |                      |
   (4)  |<--- redirect to authorizeUrl -------------------------------------------->|
   (5)  |                            |                       |<-- User clicks Allow |
   (6)  |                            |  (invisible callback) |                      |
        |                            |  Wiro exchanges code  |<---------------------|
        |                            |  for tokens, saves    |                      |
-  (7)  |<------- 302 to YOUR redirectUrl --------------------------------------->  |
+  (7)  |<------- 302 to YOUR redirecturl --------------------------------------->  |
        |        ?{provider}_connected=true&...                                     |
 ```
 
@@ -5466,7 +7277,7 @@ Your App (Frontend)           Your Backend              Wiro API              Pr
 | **OAuth app credentials** | Wiro's pre-configured app | Your own app on the provider's developer portal |
 | **Setup required** | None — just call Connect | Create app on provider, save credentials via Update, register Wiro's callback URL |
 | **Consent screen branding** | Shows "Wiro" as the app name | Shows **your app name** |
-| **Redirect after auth** | To your `redirectUrl` | To your `redirectUrl` |
+| **Redirect after auth** | To your `redirecturl` | To your `redirecturl` |
 | **User sees wiro.ai?** | No | No |
 | **Token management** | Automatic by Wiro | Automatic by Wiro |
 | **Best for** | Quick setup when available | Custom branding or bypassing review processes |
@@ -5476,21 +7287,25 @@ Your App (Frontend)           Your Backend              Wiro API              Pr
 Own mode requires two sequential calls before initiating OAuth:
 
 ```bash
-# Step 1: Save your provider app credentials + authMethod
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+# Step 1: Save your provider app credentials + authmethod via CredentialUpsert
+#
+# NOTE: `clientid` / `clientsecret` are normally fieldstatus="oauth_app" in the
+# template — and the API rejects user-role writes to them. The template flips
+# them to fieldstatus="user" when the credential is configured for own mode
+# (so customers can bring their own keys); on those templates the call below
+# works. If your API key gets `agent-fieldstatus-not-allowed-for-role`, the
+# template doesn't support own mode and you should use wiro mode instead.
+
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "twitter": {
-          "clientId": "YOUR_CLIENT_ID",
-          "clientSecret": "YOUR_CLIENT_SECRET",
-          "authMethod": "own"
-        }
-      }
-    }
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "twitter", "fieldname": "clientid",     "fieldvalue": "YOUR_CLIENT_ID" },
+      { "credentialkey": "twitter", "fieldname": "clientsecret", "fieldvalue": "YOUR_CLIENT_SECRET" },
+      { "credentialkey": "twitter", "fieldname": "authmethod",   "fieldvalue": "own" }
+    ]
   }'
 
 # Step 2: Initiate OAuth
@@ -5498,13 +7313,13 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/XConnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "redirectUrl": "https://your-app.com/callback",
-    "authMethod": "own"
+    "useragentguid": "your-useragent-guid",
+    "redirecturl": "https://your-app.com/callback",
+    "authmethod": "own"
   }'
 ```
 
-For Wiro mode: skip Step 1, just call Step 2 with `authMethod: "wiro"` (or omit — it defaults to `"wiro"`).
+For Wiro mode: skip Step 1, just call Step 2 with `authmethod: "wiro"` (or omit — it defaults to `"wiro"`).
 
 ### Callback URL pattern (own mode)
 
@@ -5514,24 +7329,26 @@ Register this URL in your OAuth app settings on the provider's developer portal:
 https://api.wiro.ai/v1/UserAgentOAuth/{Provider}Callback
 ```
 
-Provider-specific paths: `MetaAdsCallback`, `FBCallback`, `IGCallback`, `LICallback`, `XCallback`, `TikTokCallback`, `GAdsCallback`, `HubSpotCallback`, `MailchimpCallback`, `GoogleDriveCallback`.
+Provider-specific paths: `XCallback`, `TikTokCallback`, `IGCallback`, `FBCallback`, `LICallback`, `GAdsCallback`, `MetaAdsCallback`, `MCCallback`, `YTCallback`, `GA4Callback`, `HubSpotCallback`, `MailchimpCallback`.
 
 ### Callback success & error parameters
 
 | Provider | Success Params | Error Param |
 |----------|---------------|-------------|
-| Twitter / X | `x_connected=true&x_username=...` | `x_error=...` |
-| TikTok | `tiktok_connected=true&tiktok_username=...` | `tiktok_error=...` |
-| Instagram | `ig_connected=true&ig_username=...` | `ig_error=...` |
-| Facebook | `fb_connected=true&fb_pages=[...]` | `fb_error=...` |
-| LinkedIn | `li_connected=true&li_name=...` | `li_error=...` |
-| Google Ads | `gads_connected=true&gads_accounts=[...]` | `gads_error=...` |
-| Meta Ads | `metaads_connected=true&metaads_accounts=[...]` | `metaads_error=...` |
-| HubSpot | `hubspot_connected=true&hubspot_portal=...&hubspot_name=...` | `hubspot_error=...` |
-| Mailchimp | `mailchimp_connected=true&mailchimp_account=...` | `mailchimp_error=...` |
-| Google Drive | `gdrive_connected=true&gdrive_folders=[...]` | `gdrive_error=...` |
+| Twitter / X | `x_connected=true&x_username=...` | `x_error=...` (+ `x_error_detail=...`) |
+| TikTok | `tiktok_connected=true&tiktok_username=...` | `tiktok_error=...` (+ `tiktok_error_detail=...`) |
+| Instagram | `ig_connected=true&ig_username=...` | `ig_error=...` (+ `ig_error_detail=...`) |
+| Facebook Pages | `fb_connected=true&fb_pages=[...]` | `fb_error=...` (+ `fb_error_detail=...`) |
+| LinkedIn | `li_connected=true&li_name=...` | `li_error=...` (+ `li_error_detail=...`) |
+| Google Ads | `gads_connected=true&gads_accounts=[...]` | `gads_error=...` (+ `gads_error_detail=...`) |
+| Meta Ads | `metaads_connected=true&metaads_accounts=[...]` | `metaads_error=...` (+ `metaads_error_detail=...`) |
+| Merchant Center | `mc_connected=true&mc_accounts=[...]` | `mc_error=...` (+ `mc_error_detail=...`) |
+| YouTube | `yt_connected=true&yt_channels=[...]` | `yt_error=...` (+ `yt_error_detail=...`) |
+| GA4 | `ga4_connected=true&ga4_properties=[...]` | `ga4_error=...` (+ `ga4_error_detail=...`) |
+| HubSpot | `hubspot_connected=true&hubspot_portal=...&hubspot_name=...` | `hubspot_error=...` (+ `hubspot_error_detail=...`) |
+| Mailchimp | `mailchimp_connected=true&mailchimp_account=...` | `mailchimp_error=...` (+ `mailchimp_error_detail=...`) |
 
-> **Conditional params:** `gads_accounts` and `gdrive_folders` are omitted from the redirect when the provider returns zero items (for example, no accessible Google Ads customers, or a developer token is missing in Wiro mode). `fb_pages` is always present on success — Facebook returns `fb_error=no_pages` instead when the user has no administered Pages.
+> **Conditional params:** `gads_accounts`, `mc_accounts`, `yt_channels`, `ga4_properties`, and `metaads_accounts` are omitted from the redirect when the provider returns zero items (for example, no accessible Google Ads customers, or a developer token is missing in Wiro mode). `fb_pages` is always present on success — Facebook returns `fb_error=no_pages` instead when the user has no administered Pages.
 
 Common error codes across providers:
 
@@ -5541,7 +7358,7 @@ Common error codes across providers:
 | `authorization_denied` | User cancelled, or (Meta Dev Mode) not in App Roles. |
 | `session_expired` | 15-minute OAuth state cache expired. |
 | `token_exchange_failed` | Wrong Client/App Secret or redirect URI mismatch. |
-| `useragent_not_found` | Invalid or unauthorized `userAgentGuid`. |
+| `useragent_not_found` | Invalid or unauthorized `useragentguid`. |
 | `invalid_config` | Agent has no credentials block for the provider. |
 | `internal_error` | Unexpected server error. |
 
@@ -5556,15 +7373,58 @@ Provider-specific codes:
 
 ## Generic OAuth Endpoints
 
-All integrations share these three endpoints. Replace `{Provider}` with the integration code (`MetaAds`, `FB`, `IG`, `LI`, `X`, `TikTok`, `GAds`, `HubSpot`, `Mailchimp`, `GoogleDrive`).
+All integrations share these three endpoints. Replace `{Provider}` with one of the URL-prefix codes Wiro ships:
+
+| URL prefix | Provider | Canonical credential key |
+|------------|----------|--------------------------|
+| `X` | Twitter / X | `twitter` |
+| `TikTok` | TikTok | `tiktok` |
+| `IG` | Instagram | `instagram` |
+| `FB` | Facebook Pages | `facebook-pages` |
+| `LI` | LinkedIn | `linkedin` |
+| `GAds` | Google Ads | `google-ads` |
+| `MetaAds` | Meta Ads | `meta-ads` |
+| `MC` | Google Merchant Center | `google-merchant-center` |
+| `YT` | YouTube | `youtube` |
+| `GA4` | Google Analytics 4 | `ga4` |
+| `HubSpot` | HubSpot | `hubspot` |
+| `Mailchimp` | Mailchimp | `mailchimp` |
 
 ### POST /UserAgentOAuth/{Provider}Status
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | Agent instance GUID. |
+| `useragentguid` | string | Yes | Agent instance GUID. |
 
-Response shape varies per provider (e.g. `username` vs `linkedinName` vs `customerId`). See each integration page. Common fields: `connected`, `connectedAt`, `tokenExpiresAt`.
+##### Response
+
+The shape is consistent across providers — only the **identity field** name changes (some providers expose the connected account under `username`, others under a provider-specific key like `linkedinname`, `customerid`, `merchantid`):
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "connected": true,
+  "username": "yourbrand",
+  "connectedat": "1714694410",
+  "tokenexpiresat": "1719878410",
+  "refreshtokenexpiresat": "1730073610"
+}
+```
+
+| Field | Type | Description | Providers |
+|-------|------|-------------|-----------|
+| `connected` | `boolean` | `true` when Wiro has a valid access token AND every required picker field (ad-account id, page id, customer id, channel id, merchant id, GA4 property id, …) is populated. |  All |
+| `connectedat` | `string` | Unix-seconds timestamp of the last successful Connect / token refresh. Empty string when never connected. | All |
+| `tokenexpiresat` | `string` | Unix-seconds when the current access token expires. Empty for Mailchimp (no expiry). | All except Mailchimp |
+| `refreshtokenexpiresat` | `string` | Unix-seconds when the refresh token expires. Only set for providers that issue refresh tokens. | Twitter / X, TikTok, LinkedIn |
+| `username` | `string` | Connected account identifier. Replaced by a provider-specific key on some providers (see below). | Twitter / X, TikTok, Instagram, Facebook Pages, HubSpot, Mailchimp |
+| `linkedinname` | `string` | LinkedIn profile name (replaces `username`). | LinkedIn |
+| `customerid` / `customerdescriptivename` | `string` | Google Ads customer id + human-readable label. | Google Ads |
+| `merchantid` | `string` | Merchant Center merchant id. | Google Merchant Center |
+| `channelid` / `channelname` | `string` | YouTube channel id + display name. | YouTube |
+| `propertyid` / `propertyname` | `string` | GA4 property id + human-readable label. | GA4 |
+| `adaccountid` / `adaccountname` | `string` | Meta Ads account id (without `act_` prefix) + label. | Meta Ads |
 
 ### POST /UserAgentOAuth/{Provider}Disconnect
 
@@ -5572,7 +7432,7 @@ Response shape varies per provider (e.g. `username` vs `linkedinName` vs `custom
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/{Provider}Disconnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "userAgentGuid": "your-useragent-guid" }'
+  -d '{ "useragentguid": "your-useragent-guid" }'
 ```
 
 Response: `{ "result": true, "errors": [] }`. The agent restarts automatically if it was running. Twitter/X and TikTok additionally call the provider's revoke endpoint; other providers only clear the stored credentials (the token remains valid on the provider side until it expires).
@@ -5583,12 +7443,23 @@ Response: `{ "result": true, "errors": [] }`. The agent restarts automatically i
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | Agent instance GUID. |
-| `provider` | string | Yes | One of: `twitter`, `tiktok`, `instagram`, `facebook`, `linkedin`, `googleads`, `metaads`, `hubspot`, `googledrive`. |
+| `useragentguid` | string | Yes | Agent instance GUID. |
+| `provider` | string | Yes | Canonical credential key — one of: `twitter`, `tiktok`, `instagram`, `facebook-pages`, `linkedin`, `google-ads`, `meta-ads`, `hubspot`, `google-merchant-center`, `youtube`, `ga4`. |
 
 **Mailchimp is not supported** — its tokens don't expire. Calling TokenRefresh with `provider: "mailchimp"` returns `Invalid provider`.
 
-Response: `{ result: true, accessToken, refreshToken, errors }`.
+##### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "accesstoken": "EAAB...",
+  "refreshtoken": "AQX..."
+}
+```
+
+`refreshtoken` is empty for providers that don't issue one (Instagram, Facebook Pages, Meta Ads, Google Ads usually).
 
 ### Automatic token refresh
 
@@ -5600,7 +7471,6 @@ Refresh cadence inside the agent container:
 |----------|---------------|----------------|
 | HubSpot | every 20 min | 30 min |
 | Google Ads | every 45 min | 1 hour |
-| Google Drive | every 45 min | 1 hour |
 | Twitter / X | every 90 min | 2 hours |
 | Instagram, Facebook, Meta Ads, LinkedIn, TikTok | once per day | 1–60 days |
 | Mailchimp | never (tokens don't expire) | — |
@@ -5615,7 +7485,7 @@ An initial refresh also runs on every container startup, so tokens are always cu
 
 Hardcoded token TTLs that Wiro stores after each refresh:
 
-| Provider | Access Token `tokenExpiresAt` | Refresh Token |
+| Provider | Access Token `tokenexpiresat` | Refresh Token |
 |----------|--------------------------------|----------------|
 | Twitter / X | 2 hours | ~180 days |
 | TikTok | 1 day | ~1 year |
@@ -5625,7 +7495,6 @@ Hardcoded token TTLs that Wiro stores after each refresh:
 | Google Ads | 1 hour | Long-lived (no expiry in typical use) |
 | Meta Ads | 60 days | N/A |
 | HubSpot | 30 minutes | Long-lived |
-| Google Drive | 1 hour | Long-lived |
 | Mailchimp | No expiry | N/A |
 
 ## Provider-Specific Post-Callback Endpoints
@@ -5640,9 +7509,9 @@ After `MetaAdsCallback`, the user must choose an ad account:
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | Agent instance GUID. |
-| `adAccountId` | string | Yes | Ad account ID without `act_` prefix (prefix stripped automatically). |
-| `adAccountName` | string | No | Display name shown in dashboards. |
+| `useragentguid` | string | Yes | Agent instance GUID. |
+| `adaccountid` | string | Yes | Ad account ID without `act_` prefix (prefix stripped automatically). |
+| `adaccountname` | string | No | Display name shown in dashboards. |
 
 See [Meta Ads Skills](/docs/integration-metaads-skills).
 
@@ -5654,9 +7523,9 @@ After `FBCallback`, the connection is incomplete until the user chooses a Page:
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | Agent instance GUID. |
-| `pageId` | string | Yes | A page ID from the `fb_pages` callback array. |
-| `pageName` | string | No | Display name override. |
+| `useragentguid` | string | Yes | Agent instance GUID. |
+| `pageid` | string | Yes | A page ID from the `fb_pages` callback array. |
+| `pagename` | string | No | Display name override. |
 
 Must be called within 15 minutes of the callback (pending cache TTL). See [Facebook Page Skills](/docs/integration-facebook-skills).
 
@@ -5668,45 +7537,44 @@ After `GAdsCallback`, pick an accessible customer:
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | Agent instance GUID. |
-| `customerId` | string | Yes | 10-digit customer ID (dashes stripped). |
+| `useragentguid` | string | Yes | Agent instance GUID. |
+| `customerid` | string | Yes | 10-digit customer ID (dashes stripped). |
+| `customerdescriptivename` | string | No | Human-readable label shown in the dashboard (e.g. `"Acme Corp — Production"`). |
 
 See [Google Ads Skills](/docs/integration-googleads-skills).
-
-### Google Drive — List / Set Folders
-
-After `GoogleDriveCallback`, list subfolders and set selections:
-
-**POST** `/UserAgentOAuth/GoogleDriveListFolder` — browse folder contents by `parentId`.
-
-**POST** `/UserAgentOAuth/GoogleDriveSetFolder` — persist up to 5 selected folders (singular endpoint name, array payload).
-
-See [Google Drive Skills](/docs/integration-googledrive-skills).
 
 ## Web UI Behaviors (Wiro Dashboard)
 
 If you're comparing against the Wiro Dashboard, here's what happens under the hood for parity with the API:
 
-- **Per-group save**: Each credential card has its own Save button. Saving a card calls `POST /UserAgent/Update` with only that group's fields.
-- **Own mode 2-step**: When a user clicks "Connect" in own mode, the Dashboard first calls Update to save `appId`/`appSecret` + `authMethod: "own"`, then calls the Connect endpoint with `authMethod: "own"`. API users must make both calls explicitly.
+- **Per-group save**: Each credential card has its own Save button. Saving a card calls `POST /UserAgent/CredentialUpsert` with only that group's `fields[]` (one request per card).
+- **Own mode 2-step**: When a user clicks "Connect" in own mode, the Dashboard first calls `CredentialUpsert` to save `appid`/`appsecret` + `authmethod: "own"`, then calls the Connect endpoint with `authmethod: "own"`. API users must make both calls explicitly.
 - **Full-page redirect, not popup**: `window.location.href = authorizeUrl` — no popup windows (avoids third-party cookie issues).
 - **No manual token refresh button**: Refresh is fully automatic. `TokenRefresh` exists for debugging only.
 - **LLM Markdown feature**: The Dashboard includes an "LLM Markdown" tab that generates a ready-to-paste prompt for AI assistants summarizing every credential field the agent needs. Useful for API users building their own configuration UIs — see the per-integration help texts for equivalent guidance.
 - **No format validation**: Wiro doesn't validate email/URL formats server-side. Malformed values fail at runtime inside the skill when it tries to use them.
-- **Credential groups that are all-readonly are hidden**: If every field in a group has `_editable: false`, the entire group is omitted from `POST /UserAgent/Detail` responses. This is how platform-managed credentials (OpenAI, Wiro, Calendarific) stay invisible.
+- **Platform-managed credentials are hidden**: Groups whose fields all have `fieldstatus: "platform"` (OpenAI, Wiro, Calendarific) are omitted from `POST /UserAgent/Detail` responses entirely. They're pre-configured by Wiro and can't be set by customers.
 
 ## Setup Required State
 
 If an agent has required credentials not yet filled in, it's in **Setup Required** state (`status: 6`). It can't be started until credentials are complete.
 
 - Fresh normal deploy → status `2` (Queued) immediately.
-- Fresh prepaid deploy → status `6` (Setup Required) — fill credentials, then call Start.
-- `setuprequired` flag in `UserAgent/Detail` / `UserAgent/MyAgents` combines `status === 6` with whether all required credential fields are populated.
+- Fresh prepaid deploy → status `6` (Setup Required) — fill credentials via `POST /UserAgent/CredentialUpsert`, then call Start.
+- `setuprequired` flag in `UserAgent/Detail` / `UserAgent/MyAgents` is `true` when any non-optional credential is still incomplete. The server treats a credential as complete when either:
+  - **OAuth credentials** — `_connected: true` (access token present **and** every required picker field populated), or
+  - **API-key credentials** — at least one field with `fieldstatus: "user"` has a non-empty value (any one user-writable field filled in makes the credential count as "entered"; there is no deeper per-field validation).
+
+  The two branches are checked together: `setuprequired` stays `true` until every required credential passes one of them.
 
 ## Security
 
-- **Tokens are stored server-side** in the agent instance configuration. `TokenRefresh` returns new tokens; Status, Detail, and Update endpoints strip `accessToken`, `refreshToken`, `clientSecret`, and `appSecret` before responding.
-- The `redirectUrl` receives only connection status parameters — no tokens, no secrets.
+- **Tokens are stored server-side** by Wiro (one row per field). `TokenRefresh` returns new tokens in its own response.
+- **`oauth_session` fields are always stripped** from Status, Detail, `MyAgents`, and `CredentialUpsert` responses — `accesstoken`, `refreshtoken`, `tokenexpiresat`, `pageAccessToken` and any similar rows never leave the server.
+- **`platform` fields are stripped for `user` role callers** (default for API keys without ADMIN scope). OpenAI / Wiro / Calendarific keys are invisible in the response.
+- **`oauth_app` fields (`clientsecret`, `appsecret`) are visible in Detail responses** after an admin / OAuth "own mode" setup writes them. If you build a customer-facing UI on top of this API, treat them as admin-only in your own layer. The append-only credential history redacts `clientsecret` to `[REDACTED]` and always redacts `oauth_session` rows; only the live row can be read.
+- **`fieldstatus` enforces least-privilege writes.** API callers only hold `user` role — they cannot write `oauth_app`, `oauth_session`, `oauth_picker`, `platform`, `computed`, or `control` fields. Attempts to do so return `agent-fieldstatus-not-allowed-for-role` in the `errors[]` array without altering data.
+- The `redirecturl` receives only connection status parameters — no tokens, no secrets.
 - OAuth state parameters use a 15-minute TTL cache to prevent replay attacks.
 - Redirect URLs must be HTTPS (or localhost/127.0.0.1 for development).
 - Facebook Page tokens are cached server-side for 15 minutes after the OAuth callback; clients only see `{id, name}` pairs. Page access tokens never leave the server.
@@ -5716,11 +7584,11 @@ If an agent has required credentials not yet filled in, it's in **Setup Required
 If you're building a product on top of Wiro agents and need your customers to connect their own accounts:
 
 1. **Deploy** an agent instance per customer via `POST /UserAgent/Deploy`.
-2. **Connect** — your backend calls `POST /UserAgentOAuth/{Provider}Connect` with the customer's `userAgentGuid` and a `redirectUrl` pointing back to your app.
+2. **Connect** — your backend calls `POST /UserAgentOAuth/{Provider}Connect` with the customer's `useragentguid` and a `redirecturl` pointing back to your app.
 3. **Redirect** — send the customer's browser to the returned `authorizeUrl`.
 4. **Authorize** — customer authorizes on the provider's consent screen.
-5. **Return** — customer lands on your `redirectUrl` with success/error query parameters.
-6. **Finalize** — for Meta Ads, Facebook, Google Ads, Google Drive: call the appropriate SetAdAccount/SetPage/SetCustomerId/SetFolder endpoint.
+5. **Return** — customer lands on your `redirecturl` with success/error query parameters.
+6. **Finalize** — for Meta Ads, Facebook, Google Ads: call the appropriate SetAdAccount/SetPage/SetCustomerId endpoint.
 7. **Verify** — call `POST /UserAgentOAuth/{Provider}Status`.
 
 Each integration page includes a **Multi-Tenant Architecture** section covering per-provider rate limits, token isolation, and white-label consent screen configuration.
@@ -5749,11 +7617,6 @@ app.get('/settings/integrations', (req, res) => {
     return res.redirect(`/dashboard/google-ads?pick=${encodeURIComponent(JSON.stringify(customers))}`)
   }
 
-  if (req.query.gdrive_connected === 'true') {
-    const folders = JSON.parse(decodeURIComponent(req.query.gdrive_folders || '[]'))
-    return res.redirect(`/dashboard/drive?pick=${encodeURIComponent(JSON.stringify(folders))}`)
-  }
-
   const errKey = Object.keys(req.query).find((k) => k.endsWith('_error'))
   if (errKey) {
     return res.redirect(`/dashboard?error=${errKey}&reason=${req.query[errKey]}`)
@@ -5763,4549 +7626,425 @@ app.get('/settings/integrations', (req, res) => {
 })
 ```
 
-
-# Meta Ads Integration
-
-Connect your agent to Meta's advertising platform to manage campaigns, ad sets, creatives, and performance insights across Facebook and Instagram ads.
-
-## Overview
-
-The Meta Ads integration powers the `metaads-manage` skill — creating and managing campaigns, pulling insights, managing creatives, and analyzing ad account data via the Meta Marketing API.
-
-**Skills that use this integration:**
-
-- `metaads-manage` — Campaign / ad set / creative CRUD, insights reporting, Marketing API operations
-- `ads-manager-common` — Shared ads helpers (works alongside `metaads-manage` and `googleads-manage`)
-
-**Agents that typically enable this integration:**
-
-- Meta Ads Manager
-- Any custom agent that needs paid-media capabilities on Meta
-
-## Availability
-
-| Mode | Status | Notes |
-|------|--------|-------|
-| `"wiro"` | Coming soon | Wiro's shared Meta App is under review by Meta. |
-| `"own"` | Available now | You create your own Meta Developer App and connect it to Wiro. No App Review required when Development Mode + App Roles is used. |
-
-> **Why own mode only right now?** Meta's approval process for multi-tenant apps that request `ads_management` is long and strict. While our shared app is pending, you can skip the review bottleneck entirely by using your own Meta Developer App in Development Mode — App Review is not needed as long as every user who connects is listed under your app's Roles as Tester or Developer.
-
-## Prerequisites
-
-- **A Wiro API key** — see [Authentication](/docs/authentication) for how to issue keys and sign requests.
-- **A deployed agent** — see [Agent Overview](/docs/agent-overview) and call `POST /UserAgent/Deploy` first. You need the returned `useragents[0].guid` for every step below.
-- **A Meta Business account** — [business.facebook.com](https://business.facebook.com/).
-- **A Meta Developer account** — [developers.facebook.com](https://developers.facebook.com/).
-- **An HTTPS callback URL** that your backend controls. `http://localhost` and `http://127.0.0.1` are accepted for local development only.
-
-## Complete Integration Walkthrough
-
-Every curl example and response shape below matches Wiro's production behavior verified against the source code. Nothing is invented.
-
-### Step 1: Create a Meta Developer App
-
-1. Go to [developers.facebook.com/apps](https://developers.facebook.com/apps) and click **Create app**.
-2. Choose **"Other"** as the use case, then **"Business"** as the app type.
-3. Set an **App display name** (this is what your end users see on the consent screen — use your company or product name, not "Wiro").
-4. Enter an **App contact email**.
-5. Select the **Meta Business Account** that owns the ad accounts you plan to manage, then click **Create app**.
-
-You're now on the app dashboard. The app is in **Development Mode** by default — leave it there. Development Mode is exactly what lets you skip App Review.
-
-### Step 2: Add the Marketing API product
-
-1. From the app dashboard, click **Add product**.
-2. Find **"Marketing API"** and click **Set up**.
-3. No further configuration is required inside Marketing API itself — adding the product unlocks the `ads_*` permissions.
-
-### Step 3: Add "Facebook Login for Business" and register the redirect URI
-
-Meta Ads OAuth uses Facebook Login under the hood.
-
-1. Click **Add product** again.
-2. Find **"Facebook Login for Business"** and click **Set up**.
-3. Left sidebar: **Facebook Login for Business → Settings**.
-4. Scroll to **Valid OAuth Redirect URIs** and add exactly:
-
-   ```
-   https://api.wiro.ai/v1/UserAgentOAuth/MetaAdsCallback
-   ```
-
-5. **Save changes** at the bottom.
-
-> This is the single most common place where own-mode setups fail. The redirect URI must be exact — HTTPS, no trailing slash, same capitalization.
-
-### Step 4: Note the required permissions
-
-Wiro requests these exact scopes during OAuth (verified against `api-useragent-oauth.js` L2204–L2208):
-
-```
-ads_management,ads_read,business_management,pages_show_list,pages_read_engagement
-```
-
-| Permission | Why Wiro requests it |
-|------------|----------------------|
-| `ads_management` | Create, update, and pause campaigns, ad sets, and ads. |
-| `ads_read` | Read insights, performance metrics, and account metadata. |
-| `business_management` | Enumerate ad accounts and pages the user has access to under their Business Manager. |
-| `pages_show_list` | Resolve the first administered Facebook Page so its ID can be attached to ad creatives (see [How Meta Ads uses `pageId`](#how-meta-ads-uses-pageid)). |
-| `pages_read_engagement` | Read page-level engagement metrics that some creative types reference. |
-
-These permissions normally require App Review for Live Mode. In Development Mode they work **without App Review** for any Facebook user listed under your app's Roles. You don't need to request Advanced Access.
-
-### Step 5: Copy your App ID and App Secret
-
-**App settings → Basic** → copy the **App ID**, click **Show** next to **App Secret** and copy that too.
-
-### Step 6: Add the users who will connect as Testers (only if they're not you)
-
-- Connecting your own Facebook account? You're already the app Admin; skip this step.
-- Connecting a different Facebook account (typical for SaaS customers)? Go to **App Roles → Roles → Add People** and invite them as **Testers** or **Developers**. They accept at [facebook.com/settings → Business Integrations](https://www.facebook.com/settings?tab=business_tools).
-
-Users not listed in App Roles will be blocked at the consent screen in Development Mode.
-
-### Step 7: Save your Meta App credentials to Wiro
-
-Push the `appId` and `appSecret` into the agent's `metaads` credential group. Wiro merges credential updates per group — fields you don't send are preserved, and credentials from other groups are untouched.
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "metaads": {
-          "appId": "YOUR_META_APP_ID",
-          "appSecret": "YOUR_META_APP_SECRET"
-        }
-      }
-    }
-  }'
-```
-
-Successful response (sanitized — OAuth tokens, if any, are stripped):
-
-```json
-{
-  "result": true,
-  "useragents": [
-    {
-      "guid": "your-useragent-guid",
-      "setuprequired": true,
-      "status": 0
-    }
-  ],
-  "errors": []
-}
-```
-
-> **Prepaid deploy users:** If you deployed your agent with `useprepaid: true`, the `credentials` you passed in the Deploy body were **not** saved (prepaid deploy writes only a template placeholder). You must call this Update step explicitly before initiating OAuth.
-
-> **Only `_editable: true` fields are accepted.** `appId` and `appSecret` are editable by default in the `metaads` template. Attempts to set non-editable fields are silently ignored. Call `POST /UserAgent/Detail` and inspect `configuration.credentials.metaads._editable` if you see a silent no-op.
-
-### Step 8: Initiate OAuth
-
-Start the flow. Include `authMethod: "own"` so Wiro uses your `appId`/`appSecret` instead of its own shared app.
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/MetaAdsConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "redirectUrl": "https://your-app.com/settings/integrations",
-    "authMethod": "own"
-  }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "authorizeUrl": "https://www.facebook.com/v25.0/dialog/oauth?client_id=...&redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FUserAgentOAuth%2FMetaAdsCallback&state=...&scope=ads_management%2Cads_read%2Cbusiness_management%2Cpages_show_list%2Cpages_read_engagement",
-  "errors": []
-}
-```
-
-Redirect the user's browser to `authorizeUrl`. Full-page redirect is recommended over a popup — some browsers block third-party cookies in popups, breaking the OAuth session.
-
-> **State TTL:** Wiro caches the OAuth state for **15 minutes**. If the user takes longer to complete consent, the callback returns `metaads_error=session_expired` and you must restart from this step.
-
-### Step 9: Handle the callback
-
-After the user consents, Meta sends them back to Wiro's callback URL. Wiro exchanges the code for a long-lived token, fetches the user's active ad accounts, writes the access token into the agent's config, and redirects the user to **your** `redirectUrl` with query parameters.
-
-**Success URL** looks like:
-
-```
-https://your-app.com/settings/integrations?metaads_connected=true&metaads_accounts=%5B%7B%22id%22%3A%22123456789%22%2C%22name%22%3A%22My%20Ad%20Account%22%7D%5D
-```
-
-- `metaads_accounts` is `encodeURIComponent(JSON.stringify([...]))`.
-- Each array element: `{ id, name }`.
-- The `id` has the `act_` prefix stripped by Wiro.
-- Only ad accounts with `account_status === 1` (active) are included.
-
-Parse in the browser:
-
-```javascript
-const params = new URLSearchParams(window.location.search);
-
-if (params.get("metaads_connected") === "true") {
-  const accounts = JSON.parse(decodeURIComponent(params.get("metaads_accounts") || "[]"));
-  if (accounts.length === 0) {
-    showError("No active ad accounts found on this Meta user.");
-  } else if (accounts.length === 1) {
-    await setAdAccount(accounts[0]);
-  } else {
-    presentAccountPicker(accounts);
-  }
-} else if (params.get("metaads_error")) {
-  handleError(params.get("metaads_error"));
-}
-```
-
-### Step 10: Persist the ad account selection
-
-Wiro doesn't automatically pick an ad account — you must tell it which one to use. This is **required** for the agent to function.
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/MetaAdsSetAdAccount" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "adAccountId": "123456789",
-    "adAccountName": "My Ad Account"
-  }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "errors": []
-}
-```
-
-Behavior:
-
-- Pass the ad account ID **without** the `act_` prefix. If you include it, Wiro strips it automatically.
-- `adAccountName` is optional but recommended — it surfaces in `Status` responses and dashboards as `username`.
-- If the agent was running (status `3` or `4`), Wiro marks it `status: 1` with `restartafter: true` so the daemon picks up the new ad account after the next stop cycle. No manual Start needed.
-
-### Step 11: Verify the connection
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/MetaAdsStatus" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "userAgentGuid": "your-useragent-guid" }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "connected": true,
-  "username": "My Ad Account",
-  "connectedAt": "2026-04-17T12:00:00.000Z",
-  "tokenExpiresAt": "2026-06-16T12:00:00.000Z",
-  "errors": []
-}
-```
-
-Field notes:
-
-- `connected: true` requires both an `accessToken` and `authMethod` (`"wiro"` or `"own"`).
-- `username` = the saved `adAccountName` (empty string if you didn't pass one in Step 10).
-- `tokenExpiresAt` = 60 days from the connect moment (Meta's long-lived user token lifetime).
-- **No `refreshTokenExpiresAt`** — Meta user tokens don't have refresh tokens; renewal uses `fb_exchange_token` with the long-lived token itself.
-
-### Step 12: Start the agent if it's not running
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "guid": "your-useragent-guid" }'
-```
-
-Check `POST /UserAgent/Detail` first: if `setuprequired` is still `true`, some other credential the agent requires is missing — Start will refuse. See [Agent Credentials — Setup Required](/docs/agent-credentials#setup-required-state).
-
-Agents already running when you connected Meta Ads restart automatically.
-
-## How Meta Ads uses `pageId`
-
-During Step 9 (the callback), Wiro silently calls Meta's Graph API `GET /me/accounts?fields=id,name&limit=5` and stores the **first returned page ID** as `credentials.metaads.pageId`. This is **not** the Facebook Page integration — it's a Marketing-API-only field used internally by the `metaads-manage` skill when creating creatives that need `object_story_spec.page_id` (for example, when boosting a page post).
-
-If your agent needs a specific page for creatives and the user administers multiple pages, the first one won't always be what they want. In that case, update `metaads.pageId` manually via `POST /UserAgent/Update` after the OAuth flow completes.
-
-If you need organic posting (writing posts directly to a Facebook Page rather than running ads), that's a separate integration — see the [Facebook Page integration](/docs/integration-facebook-skills). The `facebookpage-post` skill lives under the `facebook` credential group, not `metaads`.
-
-## API Reference
-
-All endpoints require Wiro authentication — see [Authentication](/docs/authentication) for `x-api-key` + optional signature headers.
-
-### POST /UserAgentOAuth/MetaAdsConnect
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | Agent instance GUID. |
-| `redirectUrl` | string | Yes | HTTPS URL (or `http://localhost` / `http://127.0.0.1` for dev) where users return after consent. |
-| `authMethod` | string | No | `"wiro"` (default) or `"own"`. Use `"own"` while the shared app is pending. |
-
-Response: `{ result, authorizeUrl, errors }`. If `result: false`, inspect `errors[0].message` — common messages: `Missing userAgentGuid`, `Missing redirectUrl`, `Invalid redirect URL`, `User agent not found or unauthorized`, `Meta Ads credentials not configured` (own mode without prior Update).
-
-### GET /UserAgentOAuth/MetaAdsCallback
-
-Server-side endpoint invoked by Meta. You don't call it — you only handle the final redirect back to your `redirectUrl`:
-
-| Query param | Meaning |
-|-------------|---------|
-| `metaads_connected=true` | OAuth completed successfully. |
-| `metaads_accounts` | URL-encoded JSON array of `{ id, name }` for active ad accounts. |
-| `metaads_error=<code>` | OAuth failed. See [Troubleshooting](#troubleshooting). |
-
-### POST /UserAgentOAuth/MetaAdsSetAdAccount
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | Agent instance GUID. |
-| `adAccountId` | string | Yes | Ad account ID without the `act_` prefix (prefix stripped automatically if sent). |
-| `adAccountName` | string | No | Display name shown in dashboards and `Status` responses. |
-
-Response: `{ result: true, errors: [] }` on success. Triggers an automatic agent restart if the agent was running.
-
-### POST /UserAgentOAuth/MetaAdsStatus
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | Agent instance GUID. |
-
-Response fields:
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `connected` | boolean | `true` when `accessToken` is set and `authMethod` is `"wiro"` or `"own"`. |
-| `username` | string | The saved `adAccountName`. |
-| `connectedAt` | string | ISO timestamp of connection. |
-| `tokenExpiresAt` | string | ISO timestamp (~60 days from connection). |
-
-### POST /UserAgentOAuth/MetaAdsDisconnect
-
-Clears Meta Ads credentials (no remote revoke — Facebook's Graph API doesn't have a straightforward revoke for long-lived tokens).
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/MetaAdsDisconnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "userAgentGuid": "your-useragent-guid" }'
-```
-
-Response: `{ "result": true, "errors": [] }`. Running agents restart automatically.
-
-### POST /UserAgentOAuth/TokenRefresh
-
-> **You don't normally need to call this.** Running agents refresh their Meta Ads token automatically via `fb_exchange_token` on a daily maintenance cron. Use this endpoint only for debugging or forcing a new token immediately.
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "provider": "metaads"
-  }'
-```
-
-Response: `{ result: true, accessToken: "...", refreshToken: "", errors: [] }`. See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh) for the full cron schedule.
-
-## Using the Skill
-
-Enable `metaads-manage` on the agent — see [Agent Skills](/docs/agent-skills#enabling-skills). Adjust the cron of the built-in `cron-performance-reporter` task (Meta Ads Manager) with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for `_editable: false` skills:
-
-```json
-{
-  "guid": "your-useragent-guid",
-  "configuration": {
-    "custom_skills": [
-      {
-        "key": "cron-performance-reporter",
-        "enabled": true,
-        "interval": "0 9 * * *"
-      }
-    ]
-  }
-}
-```
-
-To change **what** the reporter includes (thresholds, reporting preferences, holiday markets), edit the paired preference skill `ad-strategy` instead — see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preferences).
-
-## Troubleshooting
-
-| Error code | Meaning | What to do |
-|------------|---------|------------|
-| `missing_params` | Callback was hit without `state` or `code`. | Don't hit the callback URL directly. Start a new flow from Step 8. |
-| `session_expired` | More than 15 minutes elapsed between `MetaAdsConnect` and the consent return. | Call `MetaAdsConnect` again to refresh the state. |
-| `authorization_denied` | User clicked Cancel, or Facebook returned `error=access_denied`. In Development Mode this also happens when the user isn't listed under App Roles. | Add the user as a Tester (Step 6), have them accept, retry. |
-| `token_exchange_failed` | Facebook rejected the token exchange. Usually wrong App Secret, revoked app, or redirect URI mismatch. | Re-copy the App Secret from Settings → Basic, verify the redirect URI exactly matches, retry. |
-| `useragent_not_found` | Wrong `userAgentGuid` or agent doesn't belong to your API key's user. | Fetch the correct guid with `POST /UserAgent/MyAgents`. |
-| `invalid_config` | The agent has no `credentials.metaads` block at all. | Call `POST /UserAgent/Update` to add `metaads.appId` and `metaads.appSecret`, then retry `MetaAdsConnect`. |
-| `internal_error` | Unexpected server error during callback processing. | Retry once. If it persists, contact Wiro support with the timestamp and your `userAgentGuid`. |
-
-### "App not verified" warning on consent
-
-Facebook shows a yellow banner in Development Mode. This is expected and **not a blocker** — users listed under App Roles can click Continue and finish authorization. Users outside App Roles are hard-blocked.
-
-### `connected: false` after completing OAuth
-
-`Status` returns `connected: true` only when **both** an access token is saved and an `authMethod` is set. If you skipped Step 10 (`MetaAdsSetAdAccount`), the ad account is empty but `connected` is still `true` as long as the token is present. If you see `connected: false`, the token didn't save — check for error parameters in the callback URL or retry OAuth.
-
-### Token keeps expiring
-
-Long-lived Meta tokens last ~60 days. The agent's daily maintenance cron refreshes them automatically via `fb_exchange_token`. If you see `tokenExpiresAt` in the past and the agent is running, the refresh cron either failed or hasn't run yet — check agent logs. If you can't wait, force a refresh manually with `POST /UserAgentOAuth/TokenRefresh`. If that also fails (typically a 190-series Graph error), the user must redo OAuth from Step 8.
-
-## Multi-Tenant Architecture
-
-For SaaS products connecting many customers' Meta Ads accounts through a single Wiro-powered backend:
-
-1. **One Meta Developer App** per product, not per customer. The same `appId`/`appSecret` pair serves unlimited customers.
-2. **One Wiro agent instance per customer.** Call `POST /UserAgent/Deploy` during onboarding and follow Steps 7–11 per customer's `userAgentGuid`.
-3. **Tokens are isolated per agent instance.** Customer A's Meta token is never visible to Customer B — they live under different `useragentguid` values.
-4. **Your consent screen carries your branding.** Users see *your* app display name, not "Wiro". Keep the display name clean and trustworthy; Meta occasionally flags apps with generic names.
-5. **Add each customer to App Roles → Testers** until you go Live Mode. Collect their Facebook user ID during onboarding and add them via the Meta Business API or Roles UI.
-6. **Rate limits are per app, not per customer.** The Marketing API tier (Development → Standard → Advanced) governs aggregate call volume. See Meta's [Rate Limiting](https://developers.facebook.com/docs/graph-api/overview/rate-limiting) docs.
-
-## Related
-
-- [Agent Credentials & OAuth](/docs/agent-credentials) — integration catalog hub and generic OAuth reference.
-- [Agent Overview](/docs/agent-overview) — deploying, starting, and lifecycle.
-- [Agent Skills](/docs/agent-skills) — configuring `metaads-manage` and scheduled runs.
-- [Google Ads integration](/docs/integration-googleads-skills) — for cross-platform paid campaigns.
-- [Meta for Developers — Marketing API](https://developers.facebook.com/docs/marketing-apis/)
-
-
-# Facebook Page Integration
-
-Connect your agent to a Facebook Page to publish posts, photos, and videos on the user's behalf.
-
-## Overview
-
-The Facebook Page integration uses Meta's Graph API with a page-scoped access token. The connecting Facebook user must be an admin of at least one Page, and the connection is not complete until a specific Page is selected.
-
-**Skills that use this integration:**
-
-- `facebookpage-post` — Publish text, photo, and video posts to a Facebook Page
-
-**Agents that typically enable this integration:**
-
-- Social Manager
-- Any custom agent that needs Facebook Page posting
-
-## Availability
-
-| Mode | Status | Notes |
-|------|--------|-------|
-| `"wiro"` | Coming soon | Wiro's shared Meta App is under review by Meta. |
-| `"own"` | Available now | Use your own Meta Developer App in Development Mode — no App Review required. |
-
-## Prerequisites
-
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview); keep the `useragents[0].guid`.
-- **A Meta Business account** — [business.facebook.com](https://business.facebook.com/).
-- **A Meta Developer account** — [developers.facebook.com](https://developers.facebook.com/).
-- **At least one Facebook Page where the end user is an admin** — OAuth enumerates every admin-managed Page.
-- **An HTTPS callback URL** for your backend.
-
-## Complete Integration Walkthrough
-
-All scopes, endpoints, and callback parameters are verified against the backend source code.
-
-### Step 1: Create a Meta Developer App
-
-You can reuse a single Meta App for Facebook Page, Instagram, and Meta Ads.
-
-1. [developers.facebook.com/apps](https://developers.facebook.com/apps) → **Create app** → **Other** → **Business**.
-2. Enter an **App display name** (what users see on consent screens), **App contact email**, select your **Business Account**, then **Create app**.
-3. Leave it in **Development Mode**.
-
-### Step 2: Add "Facebook Login for Business" and register the redirect URI
-
-1. **Add product** → **Facebook Login for Business** → **Set up**.
-2. **Facebook Login for Business → Settings**.
-3. Under **Valid OAuth Redirect URIs**, add:
-
-   ```
-   https://api.wiro.ai/v1/UserAgentOAuth/FBCallback
-   ```
-
-4. **Save changes**.
-
-### Step 3: Note the required permissions
-
-Wiro requests these exact scopes (verified against `api-useragent-oauth.js` L1099):
-
-```
-pages_show_list,pages_manage_posts,pages_read_engagement,pages_read_user_content,pages_manage_metadata,pages_messaging
-```
-
-| Permission | Why |
-|------------|-----|
-| `pages_show_list` | Enumerate the Pages the user administers. |
-| `pages_manage_posts` | Publish posts, photos, and videos to a Page. |
-| `pages_read_engagement` | Read likes, comments, and shares on the Page's posts. |
-| `pages_read_user_content` | Read user-generated content on the Page (for context). |
-| `pages_manage_metadata` | Webhook subscriptions and Page metadata. |
-| `pages_messaging` | Send and receive messages on behalf of the Page (some skills use this). |
-
-These work without App Review in Development Mode for any Facebook user in App Roles.
-
-### Step 4: Copy your App ID and App Secret
-
-**App settings → Basic** → copy **App ID** and **App Secret**.
-
-### Step 5: Add other Facebook accounts as Testers (only if needed)
-
-Connecting your own Facebook account? You're the app Admin — skip. Connecting a customer's account? Add them under **App Roles → Roles → Add People → Testers**. They accept at [facebook.com/settings → Business Integrations](https://www.facebook.com/settings?tab=business_tools).
-
-### Step 6: Save your Meta App credentials to Wiro
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "facebook": {
-          "appId": "YOUR_META_APP_ID",
-          "appSecret": "YOUR_META_APP_SECRET"
-        }
-      }
-    }
-  }'
-```
-
-Wiro merges this into only the `facebook` group — other credentials are untouched.
-
-### Step 7: Initiate OAuth
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/FBConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "redirectUrl": "https://your-app.com/settings/integrations",
-    "authMethod": "own"
-  }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "authorizeUrl": "https://www.facebook.com/v25.0/dialog/oauth?client_id=...&redirect_uri=...&scope=pages_show_list%2Cpages_manage_posts%2Cpages_read_engagement%2Cpages_read_user_content%2Cpages_manage_metadata%2Cpages_messaging&auth_type=rerequest&response_type=code&state=...",
-  "errors": []
-}
-```
-
-Redirect the user's browser to `authorizeUrl`. State has a 15-minute TTL.
-
-### Step 8: Handle the callback and list returned Pages
-
-After consent, Wiro exchanges the code for a user access token, fetches every admin-managed Page **with its page-specific access token**, caches the full list server-side, and redirects the user to your `redirectUrl`.
-
-**Crucial:** Wiro does **not** auto-select a Page. The connection is incomplete until the client calls `FBSetPage` with a chosen `pageId`. `POST /UserAgentOAuth/FBStatus` returns `connected: false` during this window.
-
-**Success URL:**
-
-```
-https://your-app.com/settings/integrations?fb_connected=true&fb_pages=%5B%7B%22id%22%3A%22123%22%2C%22name%22%3A%22Page%20A%22%7D%2C%7B%22id%22%3A%22456%22%2C%22name%22%3A%22Page%20B%22%7D%5D
-```
-
-Query parameters:
-
-| Param | Meaning |
-|-------|---------|
-| `fb_connected=true` | OAuth completed; credentials are cached server-side awaiting page selection. |
-| `fb_pages` | URL-encoded JSON array `[{ id, name }, ...]` of every admin-managed Page. The per-page access tokens stay server-side — the client only receives ID and name. |
-| `fb_error=<code>` | Failure. See [Troubleshooting](#troubleshooting). |
-
-Parse:
-
-```javascript
-const params = new URLSearchParams(window.location.search);
-
-if (params.get("fb_connected") === "true") {
-  const pages = JSON.parse(decodeURIComponent(params.get("fb_pages") || "[]"));
-
-  if (pages.length === 0) {
-    // Shouldn't normally happen — the callback returns fb_error=no_pages if the user
-    // has no Pages. But handle defensively.
-    showError("No Facebook Pages to manage.");
-  } else if (pages.length === 1) {
-    // One-page case: still required to confirm via FBSetPage
-    await setPage(pages[0]);
-  } else {
-    presentPagePicker(pages);
-  }
-} else if (params.get("fb_error")) {
-  handleError(params.get("fb_error"));
-}
-```
-
-### Step 9: Persist the page selection (required)
-
-**This step is mandatory.** The agent has no valid Facebook credentials until you call `FBSetPage`. Until then, `credentials.facebook.accessToken` and `pageId` remain empty, and `FBStatus` reports `connected: false`.
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/FBSetPage" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "pageId": "456",
-    "pageName": "Page B"
-  }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "pageId": "456",
-  "pageName": "Page B",
-  "errors": []
-}
-```
-
-What happens server-side:
-
-1. Wiro looks up the pending payload in cache (keyed by `userAgentGuid`, 15-minute TTL).
-2. Finds the page matching `pageId` in the cached list.
-3. Writes the **page access token** (not the user token) to `credentials.facebook.accessToken` along with `pageId`, `fbPageName`, `authMethod`, `connectedAt`, and `tokenExpiresAt` (~60 days).
-4. Triggers an agent restart if it was running.
-5. Clears the pending cache.
-
-If the 15-minute window lapses before you call `FBSetPage`, you'll get `No pending Facebook connection. Please reconnect via FBConnect.` — start again from Step 7.
-
-`pageName` is optional; if omitted, Wiro uses the name from the cached page list.
-
-### Step 10: Verify the connection
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/FBStatus" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "userAgentGuid": "your-useragent-guid" }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "connected": true,
-  "username": "Page B",
-  "connectedAt": "2026-04-17T12:00:00.000Z",
-  "tokenExpiresAt": "2026-06-16T12:00:00.000Z",
-  "errors": []
-}
-```
-
-- `connected: true` requires **both** `accessToken` and `pageId` to be set — meaning `FBSetPage` was called successfully.
-- `username` = the saved `fbPageName`.
-- No `refreshTokenExpiresAt` — Facebook page tokens are long-lived (~60 days) and refresh with `fb_exchange_token`, not a refresh token flow.
-
-### Step 11: Start the agent if it's not running
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "guid": "your-useragent-guid" }'
-```
-
-Agents already running at `FBSetPage` time restart automatically to pick up the new credentials.
-
-## API Reference
-
-### POST /UserAgentOAuth/FBConnect
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | Agent instance GUID. |
-| `redirectUrl` | string | Yes | HTTPS URL (or `http://localhost` / `http://127.0.0.1` for dev). |
-| `authMethod` | string | No | `"wiro"` (default) or `"own"`. |
-
-Response: `{ result, authorizeUrl, errors }`.
-
-### GET /UserAgentOAuth/FBCallback
-
-Server-side. Query params appended to your `redirectUrl`:
-
-| Param | Meaning |
-|-------|---------|
-| `fb_connected=true` | OAuth completed; pending payload cached awaiting `FBSetPage`. |
-| `fb_pages` | URL-encoded JSON `[{id, name}, ...]` of admin-managed Pages. |
-| `fb_error=<code>` | Failure. |
-
-### POST /UserAgentOAuth/FBSetPage
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | Agent instance GUID. |
-| `pageId` | string | Yes | A page ID from the `fb_pages` array returned in the callback. |
-| `pageName` | string | No | Override the display name. If omitted, Wiro uses the cached name. |
-
-Response: `{ result, pageId, pageName, errors }`. Triggers auto-restart if running.
-
-> Must be called within **15 minutes** of the callback (cache TTL). After that, the pending payload is gone and you'll need to restart OAuth.
-
-### POST /UserAgentOAuth/FBStatus
-
-Response fields: `connected` (only `true` when both `accessToken` and `pageId` are set), `username` (= `fbPageName`), `connectedAt`, `tokenExpiresAt`.
-
-### POST /UserAgentOAuth/FBDisconnect
-
-Clears Facebook credentials (no remote revoke).
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/FBDisconnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "userAgentGuid": "your-useragent-guid" }'
-```
-
-### POST /UserAgentOAuth/TokenRefresh
-
-> Running agents refresh the Facebook page token automatically via the daily maintenance cron. Use this only for debugging or manual overrides.
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "provider": "facebook"
-  }'
-```
-
-Uses `fb_exchange_token` under the hood. See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
-
-## Using the Skill
-
-Once the Facebook Page is connected (page selected via `FBSetPage`), the agent's scheduled tasks use the `facebookpage-post` platform skill to publish text, photo, and video posts to the Page. To adjust the cron of the built-in `cron-content-scanner` task (Social Manager), send an Update with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for `_editable: false` skills:
-
-```json
-{
-  "guid": "your-useragent-guid",
-  "configuration": {
-    "custom_skills": [
-      {
-        "key": "cron-content-scanner",
-        "enabled": true,
-        "interval": "0 */4 * * *"
-      }
-    ]
-  }
-}
-```
-
-To change **what** the scheduled task posts (topics, tone, content angle), edit the paired preference skill `content-tone` instead — see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preferences).
-
-## Troubleshooting
-
-| Error code | Meaning | What to do |
-|------------|---------|------------|
-| `missing_params` | Callback hit without `state` or `code`. | Start a new flow from Step 7. |
-| `session_expired` | >15 min between `FBConnect` and the callback. | Call `FBConnect` again. |
-| `authorization_denied` | User cancelled, or not listed in App Roles (Development Mode). | Add as Tester (Step 5), retry. |
-| `token_exchange_failed` | Wrong App Secret or redirect URI mismatch. | Re-copy App Secret; verify redirect URI exactly. |
-| `no_pages` | User has no administered Facebook Pages. | Ask the user to create/administer a Page first, retry. |
-| `useragent_not_found` | Invalid or unauthorized `userAgentGuid`. | Use `POST /UserAgent/MyAgents`. |
-| `invalid_config` | Agent has no `credentials.facebook` block. | Call `POST /UserAgent/Update` with `facebook.appId` and `facebook.appSecret`, retry. |
-| `internal_error` | Unexpected server error (includes cache write failures). | Retry once. If persistent, contact support. |
-
-### `FBSetPage` returns "No pending Facebook connection"
-
-The 15-minute pending cache expired, or you passed a `pageId` that wasn't in the `fb_pages` list. Start a new OAuth flow from Step 7.
-
-### `FBSetPage` returns "Selected pageId not found in pending pages list"
-
-The `pageId` you sent doesn't match any ID in the cached list. Verify you're parsing `fb_pages` correctly and sending the exact ID string.
-
-### Posts publish but as the wrong author
-
-Check `POST /UserAgent/Detail` and verify `configuration.credentials.facebook.pageId` is the Page you intended. If not, disconnect and reconnect, or call `FBSetPage` again within a fresh 15-minute window.
-
-### "App not verified" banner on consent
-
-Expected in Development Mode. Users in App Roles can click Continue.
-
-## Multi-Tenant Architecture
-
-1. **One Meta Developer App** per product — same `appId`/`appSecret` for all customers.
-2. **One Wiro agent instance per customer.**
-3. **Each customer's page token is isolated** per `useragentguid`. Customer A's token never leaks to Customer B.
-4. **Your app display name** shows on every consent screen — not "Wiro".
-5. **Each customer must be in App Roles** until you go Live Mode. Capture their Facebook user ID during onboarding.
-6. **Page admin rights must be current.** Meta returns only Pages the user is currently an admin of. If a customer loses admin access later, the agent will start failing — build a revalidation loop that periodically checks `FBStatus`.
-
-## Related
-
-- [Agent Credentials & OAuth](/docs/agent-credentials)
-- [Agent Overview](/docs/agent-overview)
-- [Agent Skills](/docs/agent-skills)
-- [Meta Ads integration](/docs/integration-metaads-skills) — separate product; used for paid media, not organic posting.
-- [Instagram integration](/docs/integration-instagram-skills)
-- [Meta for Developers — Pages API](https://developers.facebook.com/docs/pages-api)
-
-
-# Instagram Integration
-
-Connect your agent to an Instagram Business Account to publish feed posts, carousels, reels, and stories.
-
-## Overview
-
-The Instagram integration uses Meta's Graph API against an Instagram Business (or Creator) account that's linked to a Facebook Page.
-
-**Skills that use this integration:**
-
-- `instagram-post` — Publish feed carousels, reels, and stories
-
-**Agents that typically enable this integration:**
-
-- Social Manager
-- Any custom agent that needs Instagram publishing
-
-## Availability
-
-| Mode | Status | Notes |
-|------|--------|-------|
-| `"wiro"` | Coming soon | Wiro's shared Meta App is under review. |
-| `"own"` | Available now | Use your own Meta Developer App in Development Mode — no App Review required. |
-
-## Prerequisites
-
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview); keep the `useragents[0].guid`.
-- **A Meta Business account** — [business.facebook.com](https://business.facebook.com/).
-- **A Meta Developer account** — [developers.facebook.com](https://developers.facebook.com/).
-- **An Instagram Business or Creator account** — personal Instagram accounts cannot be connected via the Graph API.
-- **An HTTPS callback URL** for your backend.
-
-### Preparing the Instagram account
-
-Before the user can complete OAuth:
-
-1. In the Instagram mobile app: **Settings → Account → Switch to Professional Account** → pick **Business** or **Creator**.
-2. In [Meta Business Suite](https://business.facebook.com/): select the Facebook Page that should own the Instagram account → **Settings → Linked accounts → Instagram → Connect account**. Sign in with the Instagram account and grant manage permissions.
-
-Without both steps, the Graph API won't return the Instagram account during OAuth.
-
-## Complete Integration Walkthrough
-
-### Step 1: Create a Meta Developer App
-
-If you already have one for Meta Ads or Facebook Page, reuse it.
-
-1. [developers.facebook.com/apps](https://developers.facebook.com/apps) → **Create app** → **Other** → **Business**.
-2. App display name, contact email, Business Account → **Create app**.
-3. Leave in **Development Mode**.
-
-### Step 2: Add the "Instagram" product
-
-1. From the app dashboard, **Add product**.
-2. Find **"Instagram"** (not "Instagram Basic Display" — that's for personal accounts and is being deprecated).
-3. **Set up**.
-
-### Step 3: Configure the OAuth redirect URI
-
-1. Left sidebar: **Instagram → API setup with Instagram login**.
-2. Scroll to **Business login settings** → **OAuth settings**.
-3. Add to **Valid OAuth Redirect URIs**:
-
-   ```
-   https://api.wiro.ai/v1/UserAgentOAuth/IGCallback
-   ```
-
-4. **Save changes**.
-
-> Note: Instagram OAuth has its own authorize URL at `instagram.com/oauth/authorize` (not `facebook.com/…`), but the redirect URI is still registered inside the Meta Developer App.
-
-### Step 4: Note the required permissions
-
-Wiro requests these exact scopes (verified against `api-useragent-oauth.js` L805-L806):
-
-```
-instagram_business_basic,instagram_business_content_publish,instagram_business_manage_messages,instagram_business_manage_comments,instagram_business_manage_insights
-```
-
-| Permission | Why |
-|------------|-----|
-| `instagram_business_basic` | Basic account info, profile data. |
-| `instagram_business_content_publish` | Publish feed, carousel, reel, and story content. |
-| `instagram_business_manage_messages` | Read and reply to DMs (used by some skills). |
-| `instagram_business_manage_comments` | Read, reply, hide, delete comments. |
-| `instagram_business_manage_insights` | Read engagement insights for posts and profile. |
-
-These work without App Review in Development Mode for any Facebook user in App Roles. **No `pages_*` scopes are requested** — Instagram Login uses its own scope family.
-
-### Step 5: Copy your App ID and App Secret
-
-**App settings → Basic** → copy **App ID**, click **Show** → copy **App Secret**.
-
-### Step 6: Add users as Testers (only if needed)
-
-If the connecting person isn't the app Admin, add them under **App Roles → Roles → Add People → Testers**. The Facebook account they accept with must be the one linked to the Instagram Business Account via Meta Business Suite.
-
-### Step 7: Save your Meta App credentials to Wiro
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "instagram": {
-          "appId": "YOUR_META_APP_ID",
-          "appSecret": "YOUR_META_APP_SECRET"
-        }
-      }
-    }
-  }'
-```
-
-### Step 8: Initiate OAuth
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/IGConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "redirectUrl": "https://your-app.com/settings/integrations",
-    "authMethod": "own"
-  }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "authorizeUrl": "https://www.instagram.com/oauth/authorize?client_id=...&redirect_uri=...&scope=instagram_business_basic%2Cinstagram_business_content_publish%2Cinstagram_business_manage_messages%2Cinstagram_business_manage_comments%2Cinstagram_business_manage_insights&response_type=code&state=...",
-  "errors": []
-}
-```
-
-### Step 9: Handle the callback
-
-After consent, Wiro exchanges the code for a short-lived token, upgrades it to a long-lived token via `graph.instagram.com/access_token?grant_type=ig_exchange_token`, fetches the Instagram user info, and redirects the user back.
-
-**Success URL:**
-
-```
-https://your-app.com/settings/integrations?ig_connected=true&ig_username=my_brand
-```
-
-Parse:
-
-```javascript
-const params = new URLSearchParams(window.location.search);
-
-if (params.get("ig_connected") === "true") {
-  const username = params.get("ig_username");
-  showSuccess(`Connected @${username}`);
-} else if (params.get("ig_error")) {
-  handleError(params.get("ig_error"));
-}
-```
-
-Instagram has **no secondary selection step** — the Business Account tied to the chosen Facebook Page is used directly.
-
-### Step 10: Verify the connection
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/IGStatus" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "userAgentGuid": "your-useragent-guid" }'
-```
-
-```json
-{
-  "result": true,
-  "connected": true,
-  "username": "my_brand",
-  "connectedAt": "2026-04-17T12:00:00.000Z",
-  "tokenExpiresAt": "2026-06-16T12:00:00.000Z",
-  "errors": []
-}
-```
-
-- `connected: true` requires an `accessToken` and `authMethod` (`"wiro"` or `"own"`).
-- `username` = Instagram handle (without `@`).
-- `tokenExpiresAt` = ~60 days from connection.
-- **No `refreshTokenExpiresAt`** — Instagram long-lived tokens don't use refresh tokens; they refresh via `grant_type=ig_refresh_token`.
-
-### Step 11: Start the agent if it's not running
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "guid": "your-useragent-guid" }'
-```
-
-## API Reference
-
-### POST /UserAgentOAuth/IGConnect
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | Agent instance GUID. |
-| `redirectUrl` | string | Yes | HTTPS URL (or localhost/127.0.0.1 for dev). |
-| `authMethod` | string | No | `"wiro"` (default) or `"own"`. |
-
-### GET /UserAgentOAuth/IGCallback
-
-Server-side. Query params appended to your `redirectUrl`:
-
-| Param | Meaning |
-|-------|---------|
-| `ig_connected=true` | OAuth succeeded. |
-| `ig_username` | Connected Instagram handle (without `@`). |
-| `ig_error=<code>` | Failure. |
-
-### POST /UserAgentOAuth/IGStatus
-
-Response: `connected`, `username`, `connectedAt`, `tokenExpiresAt`.
-
-### POST /UserAgentOAuth/IGDisconnect
-
-Clears Instagram credentials (no remote revoke).
-
-### POST /UserAgentOAuth/TokenRefresh
-
-> Running agents refresh the Instagram token automatically via the daily maintenance cron. Use this only for debugging or manual overrides.
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "provider": "instagram"
-  }'
-```
-
-Uses `grant_type=ig_refresh_token` with the current access token (Instagram has no separate refresh token). See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
-
-## Using the Skill
-
-Once the Instagram Business account is connected, the agent's scheduled tasks use the `instagram-post` platform skill to publish feed carousels, reels, and stories. To adjust the cron of the built-in `cron-content-scanner` task (Social Manager), send an Update with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for `_editable: false` skills:
-
-```json
-{
-  "guid": "your-useragent-guid",
-  "configuration": {
-    "custom_skills": [
-      {
-        "key": "cron-content-scanner",
-        "enabled": true,
-        "interval": "0 */4 * * *"
-      }
-    ]
-  }
-}
-```
-
-To change **what** the scheduled task posts (topics, tone, hashtag rules, caption style), edit the paired preference skill `content-tone` instead — see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preferences).
-
-## Troubleshooting
-
-| Error code | Meaning | What to do |
-|------------|---------|------------|
-| `missing_params` | Callback hit without `state` or `code`. | Start a new flow from Step 8. |
-| `session_expired` | >15 min between `IGConnect` and callback. | Call `IGConnect` again. |
-| `authorization_denied` | User cancelled, or not in App Roles (Development Mode). | Add as Tester (Step 6), retry. |
-| `token_exchange_failed` | Wrong App Secret, redirect URI mismatch, or no linked Instagram Business Account. | Re-copy App Secret; verify redirect URI; verify IG Business → FB Page linkage. |
-| `useragent_not_found` | Invalid or unauthorized guid. | Use `POST /UserAgent/MyAgents`. |
-| `invalid_config` | No `credentials.instagram` block. | `POST /UserAgent/Update` with `instagram.appId` and `instagram.appSecret`. |
-| `internal_error` | Unexpected server error. | Retry. If persistent, contact support. |
-
-### "No Instagram Business Account found" during OAuth
-
-Most common cause: the Instagram account is still in Personal mode, or not linked to a Facebook Page the user administers. Walk through the [Preparing the Instagram account](#preparing-the-instagram-account) checklist.
-
-### Publishing fails with "media upload failed"
-
-Common causes:
-
-- Image resolution too low (<320px) or aspect ratio outside Instagram's allowed ranges.
-- Videos exceeding allowed durations (feed: 60s, reel: 90s, story: 60s).
-- Instagram account switched back to Personal after connection — the token becomes invalid. Ask the user to switch back to Business and reconnect.
-
-## Multi-Tenant Architecture
-
-1. **One Meta Developer App** per product, same for Facebook, Instagram, Meta Ads.
-2. **One Wiro agent instance per customer.**
-3. **Each customer's Facebook user must be added to App Roles** until you go Live Mode.
-4. **Business Account linkage is strict.** Build pre-flight validation during onboarding — the Graph API returns `instagram_business_account` on the Page object only when the linkage is set up.
-5. **Tokens are isolated per agent instance.**
-
-## Related
-
-- [Agent Credentials & OAuth](/docs/agent-credentials)
-- [Agent Overview](/docs/agent-overview)
-- [Agent Skills](/docs/agent-skills)
-- [Facebook Page integration](/docs/integration-facebook-skills) — the Facebook Page linkage is mandatory for Instagram.
-- [Meta Ads integration](/docs/integration-metaads-skills) — for Instagram-placement paid ads.
-- [Meta for Developers — Instagram Graph API](https://developers.facebook.com/docs/instagram-api)
-
-
-# LinkedIn Integration
-
-Connect your agent to a LinkedIn Company Page to publish posts and engage with followers.
-
-## Overview
-
-The LinkedIn integration uses the LinkedIn Marketing Developer Platform via OAuth 2.0. Agents publish posts on behalf of a Company Page using the connecting member's admin rights.
-
-**Skills that use this integration:**
-
-- `linkedin-post` — Publish text, image, and video posts to a Company Page
-
-**Agents that typically enable this integration:**
-
-- Social Manager
-- Any custom agent that needs LinkedIn Company Page publishing
-
-## Availability
-
-| Mode | Status | Notes |
-|------|--------|-------|
-| `"wiro"` | Coming soon | LinkedIn partner app review pending. |
-| `"own"` | Available now | Create your own LinkedIn Developer App. |
-
-## Prerequisites
-
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
-- **A LinkedIn Company Page** the connecting user is an **admin** of — personal profiles are not supported.
-- **The numeric LinkedIn organization ID** (not the vanity slug). Find it in `linkedin.com/company/<ID>/admin/`.
-- **An HTTPS callback URL** for your backend.
-
-## Complete Integration Walkthrough
-
-### Step 1: Create a LinkedIn Developer App
-
-1. [linkedin.com/developers/apps](https://www.linkedin.com/developers/apps) → **Create app**.
-2. Fill in:
-   - **App name** (shown on consent screen).
-   - **LinkedIn Page** (associate with a Company Page you own — this gives admins automatic development access).
-   - **Privacy policy URL**.
-   - **App logo** (128×128 PNG).
-3. Agree to Legal terms → **Create app**.
-
-### Step 2: Request the required products
-
-**Products** tab. Request:
-
-- **Sign In with LinkedIn using OpenID Connect** — for `openid` and `profile` scopes.
-- **Community Management API** — required for Company Page posting (`w_organization_social`, `r_organization_social`).
-
-Community Management API approval is a manual review that can take days. While pending, your app can still post **to the Company Page it's associated with** for admins listed on that page — this is enough for development and testing.
-
-### Step 3: Configure the OAuth redirect URI
-
-1. **Auth** tab.
-2. **OAuth 2.0 settings → Authorized redirect URLs for your app** → add:
-
-   ```
-   https://api.wiro.ai/v1/UserAgentOAuth/LICallback
-   ```
-
-3. Save.
-
-### Step 4: Note the required OAuth 2.0 scopes
-
-Wiro requests these exact scopes (verified against `api-useragent-oauth.js` L1484):
-
-```
-openid profile w_organization_social r_organization_social
-```
-
-| Scope | Why |
-|-------|-----|
-| `openid` | OpenID Connect basic identity. |
-| `profile` | Member's display name and headline (shown on consent). |
-| `w_organization_social` | Post, comment, and reply on behalf of the Company Page. |
-| `r_organization_social` | Read Company Page posts and engagement. |
-
-> Wiro does **not** request `email`, `w_member_social`, or `rw_organization_admin`. Keep your app's scope list limited to the four above for consistency with the Wiro flow.
-
-Enable all four in **Auth → OAuth 2.0 scopes**. Scopes not enabled in this list will fail at the consent screen.
-
-### Step 5: Copy your Client ID and Client Secret
-
-**Auth → Application credentials** → copy **Client ID**. Copy the **Primary Client Secret** — it's shown in plain text here. Store it like a password.
-
-### Step 6: Save credentials to Wiro
-
-LinkedIn requires `clientId`, `clientSecret`, and `organizationId` all in the same credential block.
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "linkedin": {
-          "clientId": "YOUR_LINKEDIN_CLIENT_ID",
-          "clientSecret": "YOUR_LINKEDIN_CLIENT_SECRET",
-          "organizationId": "12345678"
-        }
-      }
-    }
-  }'
-```
-
-`organizationId` is the numeric ID from your Company Page admin URL. The vanity slug won't work.
-
-### Step 7: Initiate OAuth
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/LIConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "redirectUrl": "https://your-app.com/settings/integrations",
-    "authMethod": "own"
-  }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "authorizeUrl": "https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=...&redirect_uri=...&scope=openid%20profile%20w_organization_social%20r_organization_social&state=...",
-  "errors": []
-}
-```
-
-### Step 8: Handle the callback
-
-After consent, LinkedIn redirects to Wiro's callback. Wiro exchanges the code for access + refresh tokens, fetches the member's `localizedFirstName` + `localizedLastName` from `GET /v2/me`, and returns the user to your `redirectUrl`.
-
-**Success URL:**
-
-```
-https://your-app.com/settings/integrations?li_connected=true&li_name=Jane%20Doe
-```
-
-`li_name` is the connected LinkedIn member's display name (a human), **not** the Company Page name — the page is identified by `organizationId` which you set in Step 6.
-
-```javascript
-const params = new URLSearchParams(window.location.search);
-
-if (params.get("li_connected") === "true") {
-  const name = params.get("li_name");
-  showSuccess(`Connected as ${name}`);
-} else if (params.get("li_error")) {
-  handleError(params.get("li_error"));
-}
-```
-
-### Step 9: Verify
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/LIStatus" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "userAgentGuid": "your-useragent-guid" }'
-```
-
-Response (note the non-standard field name):
-
-```json
-{
-  "result": true,
-  "connected": true,
-  "linkedinName": "Jane Doe",
-  "connectedAt": "2026-04-17T12:00:00.000Z",
-  "tokenExpiresAt": "2026-06-16T12:00:00.000Z",
-  "refreshTokenExpiresAt": "2027-04-17T12:00:00.000Z",
-  "errors": []
-}
-```
-
-- `linkedinName` is the field name — not `username` like other providers.
-- Access tokens last ~60 days; refresh tokens ~1 year (LinkedIn returns both durations in the token exchange response).
-
-### Step 10: Start the agent
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "guid": "your-useragent-guid" }'
-```
-
-## API Reference
-
-### POST /UserAgentOAuth/LIConnect
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | Agent instance GUID. |
-| `redirectUrl` | string | Yes | HTTPS URL. |
-| `authMethod` | string | No | `"wiro"` (coming soon) or `"own"`. |
-
-### GET /UserAgentOAuth/LICallback
-
-Query params: `li_connected=true&li_name=...` or `li_error=...`.
-
-### POST /UserAgentOAuth/LIStatus
-
-Response fields: `connected`, **`linkedinName`** (not `username`), `connectedAt`, `tokenExpiresAt`, `refreshTokenExpiresAt`.
-
-### POST /UserAgentOAuth/LIDisconnect
-
-Clears LinkedIn credentials (no remote revoke).
-
-### POST /UserAgentOAuth/TokenRefresh
-
-> Running agents refresh the LinkedIn token automatically via the daily maintenance cron. Use this only for debugging or manual overrides.
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "provider": "linkedin"
-  }'
-```
-
-Uses the stored refresh token. Returns new access + refresh tokens. See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
-
-## Using the Skill
-
-Once the LinkedIn Company Page is connected (organization ID persisted), the agent's scheduled tasks use the `linkedin-post` platform skill to publish text, image, and video posts to the Company Page. To adjust the cron of the built-in `cron-content-scanner` task (Social Manager), send an Update with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for `_editable: false` skills:
-
-```json
-{
-  "guid": "your-useragent-guid",
-  "configuration": {
-    "custom_skills": [
-      {
-        "key": "cron-content-scanner",
-        "enabled": true,
-        "interval": "0 */4 * * *"
-      }
-    ]
-  }
-}
-```
-
-To change **what** the scheduled task posts (topics, tone, audience angle), edit the paired preference skill `content-tone` instead — see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preferences).
-
-## Troubleshooting
-
-| Error code | Meaning | What to do |
-|------------|---------|------------|
-| `missing_params` | Callback reached without `state` or `code`. | Restart from Step 7. |
-| `session_expired` | >15 min between `LIConnect` and callback. | Call `LIConnect` again. |
-| `authorization_denied` | User cancelled, or missing required scopes in app. | Verify all four scopes are enabled under Auth → OAuth 2.0 scopes. |
-| `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy secret; verify URL. |
-| `useragent_not_found` | Invalid or unauthorized guid. | Use `POST /UserAgent/MyAgents`. |
-| `invalid_config` | No `credentials.linkedin` block. | Update with `clientId`, `clientSecret`, `organizationId`. |
-| `internal_error` | Server error. | Retry; contact support if persistent. |
-
-### Posts rejected with 401 Unauthorized
-
-Most likely cause: the Community Management API product hasn't been approved yet. During the pending phase, posting works only for admins of the Company Page the app is associated with (**My Pages** in LinkedIn Developers). Verify admin membership.
-
-### "Scope `w_organization_social` not authorized"
-
-Enable it under **Auth → OAuth 2.0 scopes**, then have the user reconnect. LinkedIn doesn't automatically grant scopes you haven't enabled.
-
-### Wrong organization ID
-
-Use the numeric ID from `linkedin.com/company/<ID>/admin/` — not the slug. Update via `POST /UserAgent/Update` and reconnect if needed.
-
-## Multi-Tenant Architecture
-
-1. **One LinkedIn Developer App** per product.
-2. **One Wiro agent instance per customer**; capture `organizationId` during onboarding.
-3. **Community Management API approval** is per app (not per customer) — apply once.
-4. **Tokens are isolated per agent instance.**
-5. **Rate limits** per app and per organization; see LinkedIn's [rate-limits docs](https://learn.microsoft.com/en-us/linkedin/shared/api-guide/concepts/rate-limits).
-
-## Related
-
-- [Agent Credentials & OAuth](/docs/agent-credentials)
-- [Agent Overview](/docs/agent-overview)
-- [Agent Skills](/docs/agent-skills)
-- [LinkedIn Marketing Developer Platform](https://learn.microsoft.com/en-us/linkedin/marketing/)
-
-
-# Twitter / X Integration
-
-Connect your agent to an X (formerly Twitter) account to publish posts, read timelines, and reply to mentions.
-
-## Overview
-
-The Twitter / X integration uses X API v2 with OAuth 2.0 Authorization Code Flow + PKCE.
-
-**Skills that use this integration:**
-
-- `twitterx-post` — Publish posts, threads, and replies; read mentions
-
-**Agents that typically enable this integration:**
-
-- Social Manager
-- Any custom agent that needs X posting
-
-## Availability
-
-| Mode | Status | Notes |
-|------|--------|-------|
-| `"wiro"` | Available | One-click connect using Wiro's shared X app. |
-| `"own"` | Available | Use your own X Developer app for custom branding. |
-
-## Prerequisites
-
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
-- **(Own mode) An X Developer account** — [developer.x.com](https://developer.x.com/).
-- **An HTTPS callback URL** for your backend.
-
-## Wiro Mode (Simplest)
-
-Skip all the own-mode setup. Just call Connect without `authMethod`:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/XConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "redirectUrl": "https://your-app.com/settings/integrations"
-  }'
-```
-
-User consents on the Wiro-branded consent screen. On return parse `x_connected=true&x_username=<handle>`. Jump to [Step 8: Verify](#step-8-verify) below.
-
-## Complete Integration Walkthrough — Own Mode
-
-### Step 1: Create an X Developer App
-
-1. [developer.x.com/portal](https://developer.x.com/portal/dashboard) → sign in.
-2. Apply for a developer account if needed (free tier works for testing).
-3. Create a **Project** → create an **App** inside it.
-4. Name your app — this shows on the consent screen.
-
-### Step 2: Enable OAuth 2.0 with PKCE
-
-1. **User authentication settings → Set up**.
-2. Pick **OAuth 2.0**, type: **Web App, Automated App or Bot**.
-3. Enable any extras you need (e.g. email).
-4. **Callback URI / Redirect URL**:
-
-   ```
-   https://api.wiro.ai/v1/UserAgentOAuth/XCallback
-   ```
-
-5. Set your **Website URL** (public product URL).
-6. Save.
-
-### Step 3: Note the required scopes
-
-Wiro requests these exact scopes (verified against `api-useragent-oauth.js` L159):
-
-```
-tweet.read tweet.write users.read offline.access
-```
-
-| Scope | Why |
-|-------|-----|
-| `tweet.read` | Read timeline, mentions, replies. |
-| `tweet.write` | Publish posts and replies. |
-| `users.read` | Get connected user's handle and display name. |
-| `offline.access` | Issues a refresh token alongside the access token. |
-
-### Step 4: Copy Client ID and Client Secret
-
-After enabling OAuth 2.0, X shows **Client ID** and **Client Secret** — **save the secret immediately**. You cannot retrieve it later, only regenerate.
-
-### Step 5: Save credentials to Wiro
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "twitter": {
-          "clientId": "YOUR_X_CLIENT_ID",
-          "clientSecret": "YOUR_X_CLIENT_SECRET"
-        }
-      }
-    }
-  }'
-```
-
-### Step 6: Initiate OAuth
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/XConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "redirectUrl": "https://your-app.com/settings/integrations",
-    "authMethod": "own"
-  }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "authorizeUrl": "https://x.com/i/oauth2/authorize?response_type=code&client_id=...&redirect_uri=...&scope=tweet.read%20tweet.write%20users.read%20offline.access&state=...&code_challenge=...&code_challenge_method=S256",
-  "errors": []
-}
-```
-
-> **PKCE:** Twitter/X is the only Wiro integration that uses PKCE (Proof Key for Code Exchange, S256). Wiro generates the `code_verifier` / `code_challenge` automatically and stores them in the OAuth state cache. You don't need to handle PKCE yourself.
-
-### Step 7: Handle the callback
-
-User returns with:
-
-```
-https://your-app.com/settings/integrations?x_connected=true&x_username=jane_doe
-```
-
-```javascript
-const params = new URLSearchParams(window.location.search);
-if (params.get("x_connected") === "true") {
-  const handle = params.get("x_username");
-  showSuccess(`Connected @${handle}`);
-} else if (params.get("x_error")) {
-  handleError(params.get("x_error"));
-}
-```
-
-### Step 8: Verify
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/XStatus" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "userAgentGuid": "your-useragent-guid" }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "connected": true,
-  "username": "jane_doe",
-  "connectedAt": "2026-04-17T12:00:00.000Z",
-  "tokenExpiresAt": "2026-04-17T14:00:00.000Z",
-  "refreshTokenExpiresAt": "2026-10-14T12:00:00.000Z",
-  "errors": []
-}
-```
-
-- Access token lifetime: **~2 hours** (short!). Wiro auto-refreshes.
-- Refresh token lifetime: **~180 days** from connection (hardcoded by Wiro, since X doesn't report one).
-- `username` = `@`-less X handle.
-
-### Step 9: Start the agent
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "guid": "your-useragent-guid" }'
-```
-
-## API Reference
-
-### POST /UserAgentOAuth/XConnect
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | Agent instance GUID. |
-| `redirectUrl` | string | Yes | HTTPS URL. |
-| `authMethod` | string | No | `"wiro"` (default) or `"own"`. |
-
-### GET /UserAgentOAuth/XCallback
-
-Query params: `x_connected=true&x_username=<handle>` or `x_error=<code>`.
-
-### POST /UserAgentOAuth/XStatus
-
-Response: `connected`, `username`, `connectedAt`, `tokenExpiresAt` (~2h), `refreshTokenExpiresAt` (~180d).
-
-### POST /UserAgentOAuth/XDisconnect
-
-Calls X's revoke endpoint (`POST https://api.x.com/2/oauth2/revoke`) with Basic auth, then clears credentials. X is one of the few providers where Wiro actively revokes.
-
-### POST /UserAgentOAuth/TokenRefresh
-
-> Running agents refresh the X token automatically **every 90 minutes** (a dedicated background cron) because X access tokens only last 2 hours. Use this endpoint only for debugging or manual overrides.
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "provider": "twitter"
-  }'
-```
-
-Uses `grant_type=refresh_token`. Returns new access + refresh tokens. See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
-
-## Using the Skill
-
-Once the X account is connected, the agent's existing scheduled tasks use the `twitterx-post` platform skill to publish. To adjust the cron of the built-in `cron-content-scanner` task (Social Manager), send an Update with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for `_editable: false` skills:
-
-```json
-{
-  "guid": "your-useragent-guid",
-  "configuration": {
-    "custom_skills": [
-      {
-        "key": "cron-content-scanner",
-        "enabled": true,
-        "interval": "0 */4 * * *"
-      }
-    ]
-  }
-}
-```
-
-To change **what** the scheduled task posts (topics, tone, hashtag rules), edit the paired preference skill `content-tone` instead — see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preferences).
-
-## Troubleshooting
-
-| Error code | Meaning | What to do |
-|------------|---------|------------|
-| `missing_params` | Callback reached without `state` or `code`. | Start a new flow from Step 6. |
-| `authorization_denied` | User cancelled, or OAuth 2.0 not enabled in app settings. | Verify OAuth 2.0 setup (Step 2); retry. |
-| `session_expired` | 15-min state cache expired (includes PKCE verifier). | Call `XConnect` again. |
-| `token_exchange_failed` | Wrong Client Secret, redirect URI mismatch, or lost PKCE verifier. | Re-copy Client Secret; verify URL; start over. |
-| `useragent_not_found` | Invalid guid. | Use `POST /UserAgent/MyAgents`. |
-| `invalid_config` | No `credentials.twitter` block. | `UserAgent/Update` with `clientId` + `clientSecret`. |
-| `internal_error` | Server error. | Retry; contact support. |
-
-### Posts fail with 429 Too Many Requests
-
-Free-tier X Developer apps have strict per-app rate limits. For production, move to Basic ($100/mo) or higher. Limits are per app, not per user — high-volume multi-tenant partners need a higher tier.
-
-### Token expires every 2 hours
-
-Access token lifetime is unusually short. Wiro's agent runs a dedicated background cron every 90 minutes to refresh X tokens before they expire. If the refresh cron hits a wall (e.g. user revoked the app in X settings, or X flagged the app), the next skill call fails with a 401 — reconnect is required.
-
-## Multi-Tenant Architecture
-
-1. **One X Developer app** per product in own mode. Wiro-mode partners share Wiro's app.
-2. **One Wiro agent instance per customer.**
-3. **Your app display name** appears on every customer's consent screen (own mode).
-4. **Rate limits are per app.** Plan your X Developer tier around aggregate volume.
-
-## Related
-
-- [Agent Credentials & OAuth](/docs/agent-credentials)
-- [Agent Overview](/docs/agent-overview)
-- [Agent Skills](/docs/agent-skills)
-- [X Developer Platform](https://developer.x.com/)
-
-
-# TikTok Integration
-
-Connect your agent to a TikTok account to publish videos.
-
-## Overview
-
-The TikTok integration uses TikTok's OAuth 2.0 with the Content Posting API.
-
-**Skills that use this integration:**
-
-- `tiktok-post` — Publish videos and carousel posts
-
-**Agents that typically enable this integration:**
-
-- Social Manager
-- Any custom agent that needs TikTok publishing
-
-## Availability
-
-| Mode | Status | Notes |
-|------|--------|-------|
-| `"wiro"` | Available | One-click connect using Wiro's shared TikTok app. |
-| `"own"` | Available | Use your own TikTok for Developers app. |
-
-## Prerequisites
-
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
-- **(Own mode) A TikTok for Developers account** — [developers.tiktok.com](https://developers.tiktok.com/).
-- **An HTTPS callback URL**.
-
-## Wiro Mode
-
-Call `TikTokConnect` without `authMethod`, redirect, parse `tiktok_connected=true&tiktok_username=<display_name>` (display name, not the `@handle`).
-
-## Complete Integration Walkthrough — Own Mode
-
-### Step 1: Create a TikTok for Developers App
-
-1. [developers.tiktok.com/apps](https://developers.tiktok.com/apps) → sign in.
-2. **Create app**.
-3. **App name**, **category**, **description**, **icon**.
-
-### Step 2: Add Login Kit + Content Posting API
-
-1. **Add products**.
-2. Add **Login Kit** and **Content Posting API**.
-
-### Step 3: Configure redirect URI
-
-1. **Login Kit → Platforms → Web**.
-2. Add callback URL:
-
-   ```
-   https://api.wiro.ai/v1/UserAgentOAuth/TikTokCallback
-   ```
-
-3. Save.
-
-### Step 4: Note the required scopes
-
-Wiro requests these exact scopes (verified against `api-useragent-oauth.js` L483-L484):
-
-```
-user.info.basic,video.publish
-```
-
-| Scope | Why |
-|-------|-----|
-| `user.info.basic` | User handle, avatar, display name. |
-| `video.publish` | Publish video content to the authorized account. |
-
-Other scopes like `video.upload`, `video.list` are **not** used by Wiro.
-
-### Step 5: Copy Client Key and Client Secret
-
-**App details** → copy **Client Key** and **Client Secret**. Note: TikTok calls the first one "key" (not "ID") — the field name in Wiro is `clientKey`.
-
-### Step 6: Save credentials
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "tiktok": {
-          "clientKey": "YOUR_TIKTOK_CLIENT_KEY",
-          "clientSecret": "YOUR_TIKTOK_CLIENT_SECRET"
-        }
-      }
-    }
-  }'
-```
-
-### Step 7: Initiate OAuth
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TikTokConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "redirectUrl": "https://your-app.com/settings/integrations",
-    "authMethod": "own"
-  }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "authorizeUrl": "https://www.tiktok.com/v2/auth/authorize/?client_key=...&scope=user.info.basic,video.publish&response_type=code&redirect_uri=...&state=...",
-  "errors": []
-}
-```
-
-### Step 8: Handle the callback
-
-Success: `?tiktok_connected=true&tiktok_username=<display_name>`.
-Error: `?tiktok_error=<code>`.
-
-> `tiktok_username` in the callback is populated from TikTok's `display_name` field (the creator's public display name), not the handle. The handle/username as it appears in URLs is not exposed by TikTok's OAuth user info endpoint.
-
-### Step 9: Verify
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TikTokStatus" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "userAgentGuid": "your-useragent-guid" }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "connected": true,
-  "username": "Creator Display Name",
-  "connectedAt": "2026-04-17T12:00:00.000Z",
-  "tokenExpiresAt": "2026-04-18T12:00:00.000Z",
-  "refreshTokenExpiresAt": "2027-04-17T12:00:00.000Z",
-  "errors": []
-}
-```
-
-- Access token: ~1 day (86400s).
-- Refresh token: ~1 year (31536000s).
-- `username` = TikTok **display name** (the creator's public display name as set in their profile), NOT the `@handle`. The handle/URL username is not exposed by TikTok's OAuth `user/info/` endpoint, so Wiro stores `display_name` and returns it as `username`.
-
-### Step 10: Start the agent
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "guid": "your-useragent-guid" }'
-```
-
-## API Reference
-
-### POST /UserAgentOAuth/TikTokConnect
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | Agent instance GUID. |
-| `redirectUrl` | string | Yes | HTTPS URL. |
-| `authMethod` | string | No | `"wiro"` (default) or `"own"`. |
-
-### GET /UserAgentOAuth/TikTokCallback
-
-Query params: `tiktok_connected=true&tiktok_username=<display_name>` or `tiktok_error=<code>`. `tiktok_username` is TikTok's display name (from the OAuth `user/info/` endpoint's `display_name` field), not the `@handle`.
-
-### POST /UserAgentOAuth/TikTokStatus
-
-Response: `connected`, `username` (= tiktokUsername), `connectedAt`, `tokenExpiresAt` (~1 day), `refreshTokenExpiresAt` (~1 year).
-
-### POST /UserAgentOAuth/TikTokDisconnect
-
-Calls TikTok's revoke endpoint (`POST https://open.tiktokapis.com/v2/oauth/revoke/`), then clears credentials. TikTok is one of the few providers where Wiro actively revokes.
-
-### POST /UserAgentOAuth/TokenRefresh
-
-> Running agents refresh the TikTok token automatically via the daily maintenance cron (access token lifetime is 1 day). Use this only for debugging.
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "provider": "tiktok"
-  }'
-```
-
-See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
-
-## Troubleshooting
-
-| Error code | Meaning | What to do |
-|------------|---------|------------|
-| `missing_params` | Callback hit without `state` or `code`. | Start a new OAuth flow. |
-| `authorization_denied` | User cancelled, or scopes not enabled. | Verify scope configuration. |
-| `session_expired` | 15-min state cache expired. | Restart OAuth. |
-| `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy; verify URL. |
-| `useragent_not_found` | Invalid guid. | Use `POST /UserAgent/MyAgents`. |
-| `invalid_config` | No `credentials.tiktok` block. | Update with `clientKey` + `clientSecret`. |
-| `internal_error` | Server error. | Retry. |
-
-### "unaudited_client" or limited publishing
-
-Until your TikTok app is audited, publishing may be limited to private posts or a small set of listed test users. Submit for audit in the TikTok Developer portal for production volume.
-
-## Multi-Tenant Architecture
-
-1. **One TikTok app per product** in own mode.
-2. **One Wiro agent instance per customer.**
-3. TikTok per-app limits apply — plan around aggregate volume.
-
-## Related
-
-- [Agent Credentials & OAuth](/docs/agent-credentials)
-- [Agent Overview](/docs/agent-overview)
-- [Agent Skills](/docs/agent-skills)
-- [TikTok for Developers](https://developers.tiktok.com/)
-
-
-# Google Ads Integration
-
-Connect your agent to Google Ads for campaign management, keyword research, and ad copy.
-
-## Overview
-
-The Google Ads integration uses Google OAuth 2.0 with the Google Ads API v23 REST endpoints.
-
-**Skills that use this integration:**
-
-- `googleads-manage` — Campaign / ad group / keyword management, insights
-- `ads-manager-common` — Shared ads helpers
-
-**Agents that typically enable this integration:**
-
-- Google Ads Manager
-- Any custom agent that needs paid-search capabilities
-
-## Availability
-
-| Mode | Status | Notes |
-|------|--------|-------|
-| `"wiro"` | Available | One-click connect using Wiro's Google Cloud project. |
-| `"own"` | Available | Own Google Cloud project, Developer Token, and MCC manager customer. |
-
-## Prerequisites
-
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
-- **A Google Ads account (or MCC)** the connecting user administers.
-- **(Own mode) A Google Cloud project** with the Google Ads API enabled.
-- **(Own mode) A Google Ads Developer Token** — request from your MCC.
-- **(Own mode) Your Manager (MCC) Customer ID** (10 digits, no dashes) for server-to-server calls.
-- **An HTTPS callback URL**.
-
-## Wiro Mode
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GAdsConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "redirectUrl": "https://your-app.com/settings/integrations"
-  }'
-```
-
-User returns with `?gads_connected=true&gads_accounts=[{...}]`. Present to user if multiple. Call `GAdsSetCustomerId`. Skip to [Step 8: Verify](#step-8-verify-and-start).
-
-## Complete Integration Walkthrough — Own Mode
-
-### Step 1: Create a Google Cloud Project
-
-1. [console.cloud.google.com](https://console.cloud.google.com/) → create a project.
-2. **APIs & Services → Library** → enable **Google Ads API**.
-3. **OAuth consent screen**:
-   - **External** user type for multi-tenant.
-   - App name, support email, dev contact.
-   - Add scope: `https://www.googleapis.com/auth/adwords`.
-   - While in Testing status: add test users (the Google accounts that will connect).
-
-### Step 2: Create OAuth 2.0 Client ID
-
-1. **APIs & Services → Credentials → Create credentials → OAuth client ID**.
-2. Application type: **Web application**.
-3. **Authorized redirect URIs**:
-
-   ```
-   https://api.wiro.ai/v1/UserAgentOAuth/GAdsCallback
-   ```
-
-4. Save; copy **Client ID** and **Client Secret**.
-
-### Step 3: Get a Developer Token
-
-1. Sign in to your [Google Ads MCC](https://ads.google.com/).
-2. **Tools → API Center** → request a token.
-3. Start with a **test token**; apply for **basic access** for production.
-
-### Step 4: Save credentials to Wiro
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "googleads": {
-          "clientId": "YOUR_GOOGLE_OAUTH_CLIENT_ID",
-          "clientSecret": "YOUR_GOOGLE_OAUTH_CLIENT_SECRET",
-          "developerToken": "YOUR_GOOGLE_ADS_DEVELOPER_TOKEN",
-          "managerCustomerId": "1234567890"
-        }
-      }
-    }
-  }'
-```
-
-`managerCustomerId` is your MCC's 10-digit customer ID without dashes.
-
-### Step 5: Initiate OAuth
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GAdsConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "redirectUrl": "https://your-app.com/settings/integrations",
-    "authMethod": "own"
-  }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth?client_id=...&redirect_uri=...&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fadwords&state=...&access_type=offline&prompt=consent",
-  "errors": []
-}
-```
-
-Scope is a single string: `https://www.googleapis.com/auth/adwords`. `access_type=offline&prompt=consent` ensures a refresh token is issued.
-
-### Step 6: Handle the callback
-
-After the token exchange, Wiro queries `customers:listAccessibleCustomers` and fetches `customer.descriptive_name` for each accessible customer via the Google Ads API.
-
-**Success URL:**
-
-```
-https://your-app.com/settings/integrations?gads_connected=true&gads_accounts=%5B%7B%22id%22%3A%221234567890%22%2C%22name%22%3A%22My%20Client%22%7D%5D
-```
-
-- `gads_accounts` is only populated when a developer token is available. If the callback finishes without accessible customers, `gads_accounts` is omitted entirely (not an empty array).
-- Each entry: `{ id, name, status }` — `status` comes from the Google Ads API customer status (e.g. `"ENABLED"`, `"CANCELLED"`) and may be an empty string if the per-customer lookup failed.
-
-```javascript
-const params = new URLSearchParams(window.location.search);
-if (params.get("gads_connected") === "true") {
-  const accounts = JSON.parse(decodeURIComponent(params.get("gads_accounts") || "[]"));
-  if (accounts.length === 1) {
-    await setCustomerId(accounts[0]);
-  } else if (accounts.length > 1) {
-    presentCustomerPicker(accounts);
-  }
-}
-```
-
-### Step 7: Persist the customer ID selection
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GAdsSetCustomerId" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "customerId": "1234567890"
-  }'
-```
-
-Either 10-digit or `123-456-7890` format works — non-digits are stripped automatically.
-
-Response:
-
-```json
-{
-  "result": true,
-  "customerId": "1234567890",
-  "errors": []
-}
-```
-
-Triggers agent restart if running.
-
-### Step 8: Verify and Start
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GAdsStatus" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "userAgentGuid": "your-useragent-guid" }'
-```
-
-Response (note the non-standard field name — **`customerId`** instead of `username`):
-
-```json
-{
-  "result": true,
-  "connected": true,
-  "customerId": "1234567890",
-  "connectedAt": "2026-04-17T12:00:00.000Z",
-  "tokenExpiresAt": "2026-04-17T13:00:00.000Z",
-  "errors": []
-}
-```
-
-- Access token lifetime: **1 hour** (short). The agent runs a background refresh cron every 45 minutes.
-- No `refreshTokenExpiresAt` — Google's refresh tokens don't expire in typical use (unless revoked).
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "guid": "your-useragent-guid" }'
-```
-
-## API Reference
-
-### POST /UserAgentOAuth/GAdsConnect
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | Agent instance GUID. |
-| `redirectUrl` | string | Yes | HTTPS URL. |
-| `authMethod` | string | No | `"wiro"` (default) or `"own"`. |
-
-### GET /UserAgentOAuth/GAdsCallback
-
-Query params: `gads_connected=true&gads_accounts=<JSON>` (when developer token available) or `gads_error=<code>`.
-
-### POST /UserAgentOAuth/GAdsSetCustomerId
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | Agent instance GUID. |
-| `customerId` | string | Yes | 10-digit customer ID. Non-digits stripped. |
-
-Response: `{ result, customerId, errors }`.
-
-### POST /UserAgentOAuth/GAdsStatus
-
-Response fields: `connected`, **`customerId`** (not `username`), `connectedAt`, `tokenExpiresAt` (~1h).
-
-### POST /UserAgentOAuth/GAdsDisconnect
-
-Clears Google Ads credentials (no remote revoke).
-
-### POST /UserAgentOAuth/TokenRefresh
-
-> Running agents refresh the Google Ads token automatically **every 45 minutes** (access tokens last 1 hour). Use this only for debugging.
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "provider": "googleads"
-  }'
-```
-
-See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
-
-## Using the Skill
-
-```json
-{
-  "guid": "your-useragent-guid",
-  "configuration": {
-    "custom_skills": [
-      {
-        "key": "cron-performance-reporter",
-        "enabled": true,
-        "interval": "0 9 * * *"
-      }
-    ]
-  }
-}
-```
-
-## Troubleshooting
-
-| Error code | Meaning | What to do |
-|------------|---------|------------|
-| `missing_params` | Callback hit without `state` or `code`. | Start a new flow from Step 5. |
-| `authorization_denied` | User cancelled, or consent screen in Testing and the user isn't a test user. | Add test user or publish consent screen. |
-| `session_expired` | State cache expired. | Restart. |
-| `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy; verify URL. |
-| `template_not_found` (wiro mode) | Wiro's template doesn't have `googleads` credentials. | Contact support or switch to own mode. |
-| `useragent_not_found` | Invalid guid. | Use `POST /UserAgent/MyAgents`. |
-| `invalid_config` | No `credentials.googleads` block. | Update with all four fields. |
-| `internal_error` | Server error. | Retry; contact support. |
-
-### `USER_PERMISSION_DENIED` on API calls
-
-The OAuth-authorized user lacks access to the `customerId` you chose. Pick a different customer from `gads_accounts` or have the user request access.
-
-### Developer Token rejected
-
-Test tokens can only query accounts in your own MCC hierarchy. For customer accounts outside your MCC, you need Basic Access — apply in **Tools → API Center**.
-
-## Multi-Tenant Architecture
-
-1. **One Google Cloud project** per product. Publish the OAuth consent screen.
-2. **Apply for Basic or Standard Developer Token access** based on expected volume.
-3. **One Wiro agent instance per customer**; `customerId` is per-instance.
-4. **Tokens auto-refresh** via the stored refresh token.
-
-## Related
-
-- [Agent Credentials & OAuth](/docs/agent-credentials)
-- [Agent Overview](/docs/agent-overview)
-- [Agent Skills](/docs/agent-skills)
-- [Meta Ads integration](/docs/integration-metaads-skills)
-- [Google Ads API docs](https://developers.google.com/google-ads/api/docs/start)
-
-
-# HubSpot Integration
-
-Connect your agent to HubSpot for contact, deal, and engagement management via the HubSpot CRM API.
-
-## Overview
-
-The HubSpot integration uses HubSpot's OAuth 2.0.
-
-**Skills that use this integration:**
-
-- `hubspot-crm` — Contact/deal CRUD, note and task creation, sequence enrollment
-- `newsletter-compose` — optional; uses HubSpot as an ESP when enabled alongside
-
-**Agents that typically enable this integration:**
-
-- Lead Generation Manager
-- Newsletter Manager (HubSpot as ESP)
-- Any custom agent with CRM capabilities
-
-## Availability
-
-| Mode | Status | Notes |
-|------|--------|-------|
-| `"wiro"` | Available | One-click connect using Wiro's HubSpot app. |
-| `"own"` | Available | Your own HubSpot developer app. |
-
-## Prerequisites
-
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
-- **A HubSpot account** the connecting user is an admin of.
-- **(Own mode) A HubSpot developer account** — [developers.hubspot.com](https://developers.hubspot.com/).
-- **An HTTPS callback URL**.
-
-## Wiro Mode
-
-Call `HubSpotConnect` without `authMethod`, redirect, parse `hubspot_connected=true&hubspot_portal=<id>&hubspot_name=<name>`.
-
-## Complete Integration Walkthrough — Own Mode
-
-### Step 1: Create a HubSpot App
-
-1. [developers.hubspot.com](https://developers.hubspot.com/) → sign in → **Create app**.
-2. Set **App name** and **App description** (shown on consent).
-
-### Step 2: Configure Auth
-
-1. Open the **Auth** tab.
-2. **Redirect URL**:
-
-   ```
-   https://api.wiro.ai/v1/UserAgentOAuth/HubSpotCallback
-   ```
-
-3. **Scopes** — Wiro requests a fixed scope string plus optional_scopes (verified against `api-useragent-oauth.js` L2551-L2556). Enable **all** of the following in your HubSpot app's Auth tab:
-
-   **Required `scope` (mandatory — OAuth fails if any is missing):**
-
-   - `crm.objects.contacts.read`
-   - `crm.objects.contacts.write`
-   - `crm.lists.read`
-   - `crm.lists.write`
-   - `oauth`
-
-   **`optional_scope` (granted on consent if enabled, otherwise skipped — Wiro doesn't fail if missing):**
-
-   - `crm.objects.companies.read`
-   - `crm.objects.companies.write`
-   - `crm.objects.deals.read`
-   - `crm.objects.deals.write`
-   - `crm.objects.owners.read`
-   - `crm.schemas.contacts.read`
-   - `content`
-   - `transactional-email`
-   - `files`
-
-4. Save.
-
-> Wiro's authorize URL is built with this exact scope list — you cannot customize it per integration. Enabling additional scopes in your HubSpot app beyond this set has no effect (Wiro won't request them). If a required scope is missing from your app's configuration, the consent screen will error.
-
-### Step 3: Copy Client ID and Client Secret
-
-**Auth** tab → copy **Client ID** and **Client Secret**.
-
-### Step 4: Save credentials to Wiro
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "hubspot": {
-          "clientId": "YOUR_HUBSPOT_CLIENT_ID",
-          "clientSecret": "YOUR_HUBSPOT_CLIENT_SECRET"
-        }
-      }
-    }
-  }'
-```
-
-### Step 5: Initiate OAuth
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/HubSpotConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "redirectUrl": "https://your-app.com/settings/integrations",
-    "authMethod": "own"
-  }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "authorizeUrl": "https://app.hubspot.com/oauth/authorize?client_id=...&redirect_uri=...&scope=...&state=...",
-  "errors": []
-}
-```
-
-### Step 6: Handle the callback
-
-Wiro exchanges the code, then calls `GET https://api.hubapi.com/oauth/v1/access-tokens/<access_token>` to fetch `hub_id` (portalId) and `hub_domain` (portalName).
-
-**Success URL:**
-
-```
-https://your-app.com/settings/integrations?hubspot_connected=true&hubspot_portal=12345678&hubspot_name=My%20Workspace
-```
-
-### Step 7: Verify and Start
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/HubSpotStatus" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "userAgentGuid": "your-useragent-guid" }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "connected": true,
-  "username": "12345678",
-  "connectedAt": "2026-04-17T12:00:00.000Z",
-  "tokenExpiresAt": "2026-04-17T12:30:00.000Z",
-  "errors": []
-}
-```
-
-> **HubSpot tokens expire in 30 minutes.** This is the shortest token lifetime of any Wiro integration. Every running agent has a dedicated background cron that refreshes HubSpot tokens **every 20 minutes** — you never need to call TokenRefresh from your own app. If you see stale tokens despite the agent being running, check agent logs for refresh failures.
-
-Note: `username` in the response is actually the **portalId as a string** (not `portalName`) — this is backend behavior. `hubspot_name` is only set on the callback URL, not re-surfaced by `Status`.
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "guid": "your-useragent-guid" }'
-```
-
-## API Reference
-
-### POST /UserAgentOAuth/HubSpotConnect
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | Agent instance GUID. |
-| `redirectUrl` | string | Yes | HTTPS URL. |
-| `authMethod` | string | No | `"wiro"` (default) or `"own"`. |
-
-### GET /UserAgentOAuth/HubSpotCallback
-
-Query params: `hubspot_connected=true&hubspot_portal=<id>&hubspot_name=<name>` or `hubspot_error=<code>`.
-
-### POST /UserAgentOAuth/HubSpotStatus
-
-Response fields: `connected`, `username` (= portalId string), `connectedAt`, `tokenExpiresAt` (~30 min).
-
-### POST /UserAgentOAuth/HubSpotDisconnect
-
-Clears HubSpot credentials (no remote revoke).
-
-### POST /UserAgentOAuth/TokenRefresh
-
-> Running agents refresh HubSpot tokens automatically **every 20 minutes** (tokens last 30 minutes). Use this endpoint only for debugging.
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "provider": "hubspot"
-  }'
-```
-
-Returns new access + refresh tokens. See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
-
-## Using the Skill
-
-```json
-{
-  "guid": "your-useragent-guid",
-  "configuration": {
-    "custom_skills": [
-      {
-        "key": "lead-enrichment",
-        "enabled": true,
-        "interval": "0 */4 * * *",
-        "value": "Enrich new contacts with company information"
-      }
-    ]
-  }
-}
-```
-
-## Troubleshooting
-
-| Error code | Meaning | What to do |
-|------------|---------|------------|
-| `missing_params` | Callback hit without `state` or `code`. | User didn't complete consent; restart the flow. |
-| `authorization_denied` | User cancelled, or missing scopes. | Verify scope list in the HubSpot app's Auth tab. |
-| `session_expired` | State cache expired (15 min TTL). | Restart the OAuth flow. |
-| `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy; verify URL. |
-| `useragent_not_found` | Invalid guid. | Use `POST /UserAgent/MyAgents`. |
-| `invalid_config` | No `credentials.hubspot` block. | Update with `clientId` + `clientSecret`. |
-| `internal_error` | Server error. | Retry; contact support. |
-
-### 403 Forbidden on API calls
-
-Usually a missing scope. Look up the specific HubSpot API endpoint you're hitting, add the required scope in your app's Auth tab, then disconnect and reconnect (scope changes require re-consent).
-
-### Token expired error at runtime
-
-HubSpot's 30-minute token lifetime makes refresh critical. The agent container runs the HubSpot refresh cron every 20 minutes, so stale tokens should only appear if:
-
-- The agent is stopped (status 0/1/6). Start it: `POST /UserAgent/Start`.
-- The refresh token was revoked in HubSpot's app management UI. User must reconnect.
-- The refresh cron itself is failing — check agent logs via dashboard or support.
-
-## Multi-Tenant Architecture
-
-1. **One HubSpot developer app** per product — submit to the HubSpot App Marketplace for listed visibility, or stay private.
-2. **One Wiro agent instance per customer.**
-3. **Portal IDs are unique per customer's HubSpot account.**
-4. **Per-app rate limits apply** — see HubSpot's [API usage guidelines](https://developers.hubspot.com/docs/api/usage-details).
-
-## Related
-
-- [Agent Credentials & OAuth](/docs/agent-credentials)
-- [Agent Overview](/docs/agent-overview)
-- [Agent Skills](/docs/agent-skills)
-- [HubSpot Developer docs](https://developers.hubspot.com/docs/api/overview)
-
-
-# Mailchimp Integration
-
-Connect your agent to Mailchimp for audience and campaign management. Supports OAuth 2.0 or direct API key.
-
-## Overview
-
-The Mailchimp integration is unique in supporting three authentication options: Wiro's shared OAuth app, your own OAuth app, or a direct API key bypassing OAuth entirely.
-
-**Skills that use this integration:**
-
-- `mailchimp-email` — Audience and campaign management
-- `newsletter-compose` — uses Mailchimp as an ESP when enabled alongside
-
-**Agents that typically enable this integration:**
-
-- Newsletter Manager
-
-## Availability
-
-| Mode | Status | Notes |
-|------|--------|-------|
-| `"wiro"` | Available | OAuth with Wiro's shared Mailchimp app. |
-| `"own"` | Available | OAuth with your own Mailchimp registered app. |
-| API key | Available | Paste a server-scoped Mailchimp API key directly — no OAuth. |
-
-## Prerequisites
-
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
-- **A Mailchimp account**.
-- **(Own OAuth mode) A registered Mailchimp app** — [admin.mailchimp.com/account/oauth2_client](https://admin.mailchimp.com/account/oauth2_client/).
-- **(API-key mode) A server-scoped Mailchimp API key**.
-
-## Option A: OAuth (Wiro or Own Mode)
-
-### Own Step 1: Register a Mailchimp app
-
-1. [admin.mailchimp.com/account/oauth2_client](https://admin.mailchimp.com/account/oauth2_client/).
-2. **Register and manage your apps**.
-3. Fill **App name**, **Description**, **Company**, **App website**.
-4. Under **Redirect URI**, add:
-
-   ```
-   https://api.wiro.ai/v1/UserAgentOAuth/MailchimpCallback
-   ```
-
-5. Save; copy **Client ID** and **Client Secret**.
-
-> **No OAuth scopes to configure.** Mailchimp's OAuth 2.0 doesn't use scopes — connected apps get full account access. Wiro's `authorizeUrl` omits any scope parameter.
-
-### Own Step 2: Save credentials
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "mailchimp": {
-          "clientId": "YOUR_MAILCHIMP_CLIENT_ID",
-          "clientSecret": "YOUR_MAILCHIMP_CLIENT_SECRET"
-        }
-      }
-    }
-  }'
-```
-
-### OAuth Step 3: Initiate
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/MailchimpConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "redirectUrl": "https://your-app.com/settings/integrations",
-    "authMethod": "own"
-  }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "authorizeUrl": "https://login.mailchimp.com/oauth2/authorize?response_type=code&client_id=...&redirect_uri=...&state=...",
-  "errors": []
-}
-```
-
-No `scope` parameter — Mailchimp OAuth doesn't use scopes.
-
-### OAuth Step 4: Handle the callback
-
-Wiro exchanges the code via `POST https://login.mailchimp.com/oauth2/token`, then fetches metadata from `GET https://login.mailchimp.com/oauth2/metadata` with `Authorization: OAuth <access_token>` to retrieve the server prefix (`dc`) and account name.
-
-**Success URL:**
-
-```
-https://your-app.com/settings/integrations?mailchimp_connected=true&mailchimp_account=Your%20Company
-```
-
-### OAuth Step 5: Verify
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/MailchimpStatus" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "userAgentGuid": "your-useragent-guid" }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "connected": true,
-  "username": "Your Company",
-  "connectedAt": "2026-04-17T12:00:00.000Z",
-  "errors": []
-}
-```
-
-> **Mailchimp tokens don't expire.** `Status` responses don't include `tokenExpiresAt` or `refreshTokenExpiresAt`. There's no `TokenRefresh` support for Mailchimp either — it's excluded from the valid providers list.
-
-## Option B: Direct API Key (No OAuth)
-
-For server-side agents where OAuth is overkill:
-
-### Step 1: Get a Mailchimp API Key
-
-1. Sign in → **Profile → Extras → API keys**.
-2. **Create A Key**, name it, copy the value. The key ends in a datacenter prefix like `-us14`.
-
-### Step 2: Save to Wiro
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "mailchimp": {
-          "apiKey": "abcdef1234567890-us14"
-        }
-      }
-    }
-  }'
-```
-
-No further OAuth step. The agent uses the API key directly.
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "guid": "your-useragent-guid" }'
-```
-
-## API Reference
-
-### POST /UserAgentOAuth/MailchimpConnect
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | Agent instance GUID. |
-| `redirectUrl` | string | Yes | HTTPS URL. |
-| `authMethod` | string | No | `"wiro"` (default) or `"own"`. |
-
-### GET /UserAgentOAuth/MailchimpCallback
-
-Query params: `mailchimp_connected=true&mailchimp_account=<name>` or `mailchimp_error=<code>`.
-
-### POST /UserAgentOAuth/MailchimpStatus
-
-Response fields: `connected`, `username` (= accountName), `connectedAt`. **No `tokenExpiresAt`, no `refreshTokenExpiresAt`** — tokens don't expire.
-
-> **API key-only mode caveat:** `connected` is computed from `authMethod in {wiro, own}` **and** a non-empty `accessToken`. If you set up Mailchimp via direct API key (no OAuth), `authMethod` and `accessToken` stay empty and `MailchimpStatus.connected` returns `false` — even though the agent runtime is fully functional (the `mailchimp-email` skill reads `$MAILCHIMP_API_KEY` directly via `start.sh`). Don't use `MailchimpStatus.connected` as the source of truth for API key setups; instead, check that `credentials.mailchimp.apiKey` is non-empty in `POST /UserAgent/Detail`.
-
-### POST /UserAgentOAuth/MailchimpDisconnect
-
-Clears credentials (no remote revoke — Mailchimp doesn't expose a revoke endpoint for OAuth tokens).
-
-### TokenRefresh
-
-**Not supported for Mailchimp.** Calling `POST /UserAgentOAuth/TokenRefresh` with `provider: "mailchimp"` returns an error — Mailchimp tokens don't expire, so refresh is unnecessary.
-
-## Using the Skill
-
-```json
-{
-  "guid": "your-useragent-guid",
-  "configuration": {
-    "custom_skills": [
-      {
-        "key": "cron-subscriber-scanner",
-        "enabled": true,
-        "interval": "0 10 * * *"
-      }
-    ]
-  }
-}
-```
-
-## Troubleshooting
-
-| Error code | Meaning | What to do |
-|------------|---------|------------|
-| `authorization_denied` | User cancelled. | Retry. |
-| `session_expired` | State cache expired (15 min). | Restart. |
-| `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy; verify URL. |
-| `useragent_not_found` | Invalid guid. | Use `POST /UserAgent/MyAgents`. |
-| `invalid_config` | No `credentials.mailchimp` block. | Update with credentials. |
-| `internal_error` | Server error. | Retry; contact support. |
-
-### API calls fail with 401
-
-- OAuth: stored token is invalid; disconnect and reconnect.
-- API key: wrong key or datacenter suffix stripped. Paste the full key including `-us14`.
-
-## Multi-Tenant Architecture
-
-1. **One Mailchimp registered app** per product in own-OAuth mode.
-2. **API-key mode is simplest** for tenants who prefer a single-purpose key.
-3. **One Wiro agent instance per customer.**
-4. Mailchimp rate limits are per-datacenter and per-account (~10 concurrent connections).
-
-## Related
-
-- [Agent Credentials & OAuth](/docs/agent-credentials)
-- [Agent Overview](/docs/agent-overview)
-- [Agent Skills](/docs/agent-skills)
-- [Mailchimp Marketing API](https://mailchimp.com/developer/marketing/)
-
-
-# Google Drive Integration
-
-Connect your agent to Google Drive to read, write, and organize files in selected folders.
-
-## Overview
-
-The Google Drive integration uses Google's OAuth 2.0 with the full Drive API. The connecting user explicitly picks which folders the agent can access.
-
-**Skills that use this integration:**
-
-- `google-drive` — Read files, write outputs, manage folders
-
-**Agents that typically enable this integration:**
-
-- Any content or research agent that needs persistent file storage accessible to humans.
-
-## Availability
-
-| Mode | Status | Notes |
-|------|--------|-------|
-| `"wiro"` | Available | One-click connect with Wiro's Google Cloud project. |
-| `"own"` | Available | Your own Google Cloud project for custom branding. |
-
-## Prerequisites
-
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
-- **A Google account** for the connecting user.
-- **(Own mode) A Google Cloud project** with the Drive API enabled.
-- **An HTTPS callback URL**.
-
-## Wiro Mode
-
-Call `GoogleDriveConnect` without `authMethod`, redirect user, parse `gdrive_connected=true&gdrive_folders=<JSON>` on return.
-
-## Complete Integration Walkthrough — Own Mode
-
-### Step 1: Create a Google Cloud Project
-
-1. [console.cloud.google.com](https://console.cloud.google.com/) → create a project.
-2. **APIs & Services → Library** → enable **Drive API**.
-3. **OAuth consent screen**:
-   - **External** user type.
-   - App name, support email.
-   - Add scope: `https://www.googleapis.com/auth/drive`.
-   - Test users (while in Testing status).
-
-### Step 2: Create OAuth 2.0 Client ID
-
-1. **APIs & Services → Credentials → Create credentials → OAuth client ID**.
-2. Application type: **Web application**.
-3. **Authorized redirect URIs**:
-
-   ```
-   https://api.wiro.ai/v1/UserAgentOAuth/GoogleDriveCallback
-   ```
-
-4. Save; copy **Client ID** and **Client Secret**.
-
-### Step 3: Save credentials to Wiro
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "googledrive": {
-          "clientId": "YOUR_GOOGLE_OAUTH_CLIENT_ID",
-          "clientSecret": "YOUR_GOOGLE_OAUTH_CLIENT_SECRET"
-        }
-      }
-    }
-  }'
-```
-
-### Step 4: Initiate OAuth
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GoogleDriveConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "redirectUrl": "https://your-app.com/settings/integrations",
-    "authMethod": "own"
-  }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth?client_id=...&redirect_uri=...&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fdrive&state=...&access_type=offline&prompt=consent",
-  "errors": []
-}
-```
-
-Wiro requests the **full `drive` scope** (not the narrow `drive.file`). This is needed for folder discovery and file operations across the user's Drive.
-
-### Step 5: Handle the callback
-
-After the token exchange, Wiro queries Drive's `files.list` for root-level folders and prepends a virtual `{ id: "shared", name: "Shared with me", virtual: true }` entry. These folder suggestions are returned in the callback URL.
-
-**Success URL:**
-
-```
-https://your-app.com/settings/integrations?gdrive_connected=true&gdrive_folders=%5B%7B%22id%22%3A%22shared%22%2C%22name%22%3A%22Shared%20with%20me%22%2C%22virtual%22%3Atrue%7D%2C%7B%22id%22%3A%221AbC%22%2C%22name%22%3A%22Agent%20Outputs%22%7D%5D
-```
-
-`gdrive_folders` is `encodeURIComponent(JSON.stringify([...]))`. Each entry: `{ id, name, virtual? }`.
-
-```javascript
-const params = new URLSearchParams(window.location.search);
-if (params.get("gdrive_connected") === "true") {
-  const folders = JSON.parse(decodeURIComponent(params.get("gdrive_folders") || "[]"));
-  presentFolderPicker(folders);
-}
-```
-
-### Step 6: Browse more folders (optional)
-
-If the user wants to drill into subfolders rather than pick from root, call:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GoogleDriveListFolder" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "parentId": "1AbC",
-    "searchQuery": ""
-  }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "folders": [
-    {
-      "id": "2XyZ",
-      "name": "2025 Q1"
-    },
-    {
-      "id": "3MnO",
-      "name": "Archive"
-    }
-  ],
-  "errors": []
-}
-```
-
-- `parentId` defaults to `"root"`.
-- `searchQuery` is optional; passes through to Drive's query syntax.
-
-### Step 7: Persist selected folders
-
-Once the user picks (up to 5 folders), commit the selection:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GoogleDriveSetFolder" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "folders": [
-      {
-        "id": "1AbC",
-        "name": "Agent Outputs"
-      },
-      {
-        "id": "2XyZ",
-        "name": "2025 Q1"
-      }
-    ]
-  }'
-```
-
-Note the endpoint is `GoogleDriveSetFolder` (singular) even though it accepts an array.
-
-Response:
-
-```json
-{
-  "result": true,
-  "folders": [
-    {
-      "id": "1AbC",
-      "name": "Agent Outputs"
-    },
-    {
-      "id": "2XyZ",
-      "name": "2025 Q1"
-    }
-  ],
-  "errors": []
-}
-```
-
-Requirements:
-
-- `folders` must be a non-empty array.
-- Each item needs `id`; `name` is optional (falls back to empty string).
-- Maximum **5** folders per agent. Sending more than 5 fails with `Maximum 5 folders allowed` — the request is rejected, not truncated.
-
-Triggers agent restart if running.
-
-### Step 8: Verify
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GoogleDriveStatus" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "userAgentGuid": "your-useragent-guid" }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "connected": true,
-  "folders": [
-    {
-      "id": "1AbC",
-      "name": "Agent Outputs"
-    },
-    {
-      "id": "2XyZ",
-      "name": "2025 Q1"
-    }
-  ],
-  "connectedAt": "2026-04-17T12:00:00.000Z",
-  "tokenExpiresAt": "2026-04-17T13:00:00.000Z",
-  "errors": []
-}
-```
-
-- Access token lifetime: **1 hour** (short). The agent runs a background refresh cron every 45 minutes.
-- No `refreshTokenExpiresAt` — Google refresh tokens don't normally expire.
-- `folders` shows the currently selected folders (unique to Google Drive Status).
-
-## Agent Runtime Usage (inside the container)
-
-Once the OAuth flow is done and `GoogleDriveSetFolder` has persisted the folder selection, the agent container runs independently of the Wiro API — the `google-drive` platform skill (loaded from `skills/google-drive/SKILL.md`) reads env vars and talks to Google's REST APIs directly.
-
-**Env vars exported by `docker/start.sh`** (only when `skills.google-drive` is enabled and a Drive `accessToken` exists):
-
-| Env var | Source | Notes |
-|---------|--------|-------|
-| `GDRIVE_CLIENT_ID` | `credentials.googledrive.clientId` | For token refresh |
-| `GDRIVE_CLIENT_SECRET` | `credentials.googledrive.clientSecret` | For token refresh |
-| `GDRIVE_ACCESS_TOKEN` | `credentials.googledrive.accessToken` | **Auto-refreshed by the container every 45 minutes** via `POST /UserAgentOAuth/TokenRefresh` (short-lived: Google access tokens expire in 1 hour) |
-| `GDRIVE_REFRESH_TOKEN` | `credentials.googledrive.refreshToken` | Passed to the refresh cron |
-| `GDRIVE_FOLDERS` | `credentials.googledrive.folders` | JSON array of `[{id, name}]` — the user-selected folders from `GoogleDriveSetFolder` |
-
-**How cron skills access the token:** There is **no `gdrive-token` helper command**. The agent reads the pre-refreshed token directly from the env var:
-
-```
-exec command="echo $GDRIVE_ACCESS_TOKEN"
-```
-
-Then uses it in curl calls as `Authorization: Bearer $GDRIVE_ACCESS_TOKEN`. If an API call returns 401, the agent re-reads `$GDRIVE_ACCESS_TOKEN` (the 45-minute cron may have just refreshed it). See the full SKILL.md for all endpoint examples.
-
-**Checking folder selection in cron scripts:** Since `GDRIVE_FOLDERS` is a JSON array (not a single ID), cron skills check it like this:
-
-```
-exec command="echo $GDRIVE_FOLDERS"
-```
-
-Empty output or `[]` means the user hasn't selected any folder yet — the scan should notify the operator and stop instead of iterating over an empty list.
-
-### Step 9: Start the agent
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "guid": "your-useragent-guid" }'
-```
-
-## API Reference
-
-### POST /UserAgentOAuth/GoogleDriveConnect
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | Agent instance GUID. |
-| `redirectUrl` | string | Yes | HTTPS URL. |
-| `authMethod` | string | No | `"wiro"` (default) or `"own"`. |
-
-### GET /UserAgentOAuth/GoogleDriveCallback
-
-Query params: `gdrive_connected=true&gdrive_folders=<JSON>` or `gdrive_error=<code>`.
-
-### POST /UserAgentOAuth/GoogleDriveListFolder
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | Agent instance GUID. |
-| `parentId` | string | No | Drive folder ID to list. Defaults to `"root"`. Accepts the virtual `"shared"` ID. |
-| `searchQuery` | string | No | Drive query string (passed through). |
-
-Response: `{ result, folders: [{id, name}], errors }`.
-
-### POST /UserAgentOAuth/GoogleDriveSetFolder
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | Agent instance GUID. |
-| `folders` | object[] | Yes | Array of `{ id, name? }`. Max 5 items; sending more returns `Maximum 5 folders allowed`. |
-
-Response: `{ result: true, folders: [{id, name}], errors: [] }`. Triggers agent restart if running.
-
-### POST /UserAgentOAuth/GoogleDriveStatus
-
-Response fields: `connected`, `folders` (selected folder list), `connectedAt`, `tokenExpiresAt` (~1h).
-
-### POST /UserAgentOAuth/GoogleDriveDisconnect
-
-Clears Google Drive credentials (no remote revoke).
-
-### POST /UserAgentOAuth/TokenRefresh
-
-> Running agents refresh Google Drive tokens automatically **every 45 minutes** (access tokens last 1 hour). Use this only for debugging.
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "provider": "googledrive"
-  }'
-```
-
-See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
-
-## Using the Skill
-
-The `google-drive` skill can browse, upload, download, and organize files within the selected folders.
-
-## Troubleshooting
-
-| Error code | Meaning | What to do |
-|------------|---------|------------|
-| `authorization_denied` | User cancelled, or consent screen in Testing and the user isn't a test user. | Add test user or publish consent screen. |
-| `session_expired` | State cache expired (15 min). | Restart. |
-| `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy; verify URL. |
-| `useragent_not_found` | Invalid guid. | Use `POST /UserAgent/MyAgents`. |
-| `invalid_config` | No `credentials.googledrive` block. | Update with credentials. |
-| `internal_error` | Server error. | Retry. |
-
-### Agent can't list folders beyond root
-
-Use `GoogleDriveListFolder` with the `parentId` you want to drill into. Or call again with the `"shared"` virtual ID to see shared drives.
-
-### "quotaExceeded" from Drive API
-
-Rate limits are per-project in Google Cloud Console — check and raise quota as needed.
-
-## Multi-Tenant Architecture
-
-1. **One Google Cloud project** per product. Publish the consent screen.
-2. **Rate limits are per-project.**
-3. **Per-agent folder selection is isolated** — Customer A's folders never visible to B.
-
-## Related
-
-- [Agent Credentials & OAuth](/docs/agent-credentials)
-- [Agent Overview](/docs/agent-overview)
-- [Agent Skills](/docs/agent-skills)
-- [Google Drive API docs](https://developers.google.com/drive/api)
-
-
-# Gmail Integration
-
-Connect your agent to a Gmail inbox using a Google App Password for IMAP access.
-
-## Overview
-
-The Gmail integration uses IMAP with Basic authentication backed by a Google App Password. Agents can monitor the inbox, parse incoming messages, and trigger actions.
-
-**Skills that use this integration:**
-
-- `gmail-check` — Poll Gmail inbox on a schedule, parse messages, route to actions
-
-**Agents that typically enable this integration:**
-
-- Blog Content Editor (inbox-triggered workflows)
-- Newsletter Manager (test sends)
-- Support / App Review agents (operator notifications)
-
-## Availability
-
-| Mode | Status | Notes |
-|------|--------|-------|
-| App Password | Available | Works on any Gmail account with 2-Step Verification enabled. |
-
-## Prerequisites
-
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
-- **A Gmail account** with **2-Step Verification** enabled.
-
-## Setup
-
-### Step 1: Enable 2-Step Verification
-
-1. Sign in to the Google account.
-2. [myaccount.google.com/security](https://myaccount.google.com/security).
-3. Under **How you sign in to Google**, turn on **2-Step Verification**.
-
-### Step 2: Create an App Password
-
-1. Same Security page → **App passwords** (appears once 2-Step Verification is on).
-2. Create a new App Password, label it "Wiro agent".
-3. Copy the 16-character password (format: `xxxx xxxx xxxx xxxx`). Spaces are cosmetic — Wiro accepts either form.
-
-### Step 3: Save to Wiro
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "gmail": {
-          "account": "agent@yourcompany.com",
-          "appPassword": "xxxx xxxx xxxx xxxx"
-        }
-      }
-    }
-  }'
-```
-
-Only `account` and `appPassword` are editable. `credentials.gmail.interval` (when present in some templates) is NOT used by `start.sh` and NOT wired to the runtime. The actual polling cadence comes from the scheduled skill `cron-gmail-checker` under `custom_skills[]` (a cron wrapper that invokes the built-in `gmail-check` platform skill). To change how often the inbox is polled, update `custom_skills[key="gmail-checker"].interval` via `POST /UserAgent/Update` — see [Agent Skills](/docs/agent-skills#managing-scheduled-tasks).
-
-> **Naming:** the **platform skill** (the IMAP-speaking module loaded from `skills/gmail-check/SKILL.md`) is `gmail-check`. The **cron wrapper** (an entry in `custom_skills[]` that schedules inbox polling and references `gmail-check` internally) is `cron-gmail-checker`. When `skills.gmail-check` is disabled on the template, the cron wrapper early-returns with `HEARTBEAT_OK`.
-
-### Step 4: Start the agent
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "guid": "your-useragent-guid" }'
-```
-
-## Credential Fields
-
-| Field | Type | Editable | Description |
-|-------|------|----------|-------------|
-| `account` | string | Yes | Full Gmail address (e.g. `agent@company.com`). |
-| `appPassword` | string | Yes | 16-character Google App Password. Spaces allowed. |
-| `interval` | cron string | **No** (template-controlled) | Polling frequency. Example: `*/8 * * * *` (every 8 minutes). |
-
-## Runtime Behavior
-
-The `gmail-check` skill uses IMAP:
-
-- Host: `imaps://imap.gmail.com:993/INBOX`
-- Auth: `--user "$GMAIL_ACCOUNT:$GMAIL_APP_PASSWORD"` (Basic-style)
-- Polls on the configured `interval`, processes new messages per agent rules
-
-Env vars inside the agent container (exported **only when `gmail-check` skill is enabled** and `account` is set):
-
-- `GMAIL_ACCOUNT` ← `credentials.gmail.account`
-- `GMAIL_APP_PASSWORD` ← `credentials.gmail.appPassword`
-
-## Troubleshooting
-
-- **"Invalid credentials" when IMAP connects:** Wrong App Password, or 2-Step Verification was turned off (which invalidates all App Passwords). Regenerate.
-- **Agent can't see messages older than ~30 days:** IMAP folder defaults. For broader scope, your agent may need to switch to "All Mail" — ask support.
-- **"Less Secure Apps" mentioned anywhere:** Google removed that option in 2022. App Password is the only supported path for IMAP/SMTP.
-
-## Related
-
-- [Agent Credentials & OAuth](/docs/agent-credentials)
-- [Agent Overview](/docs/agent-overview)
-- [Agent Skills](/docs/agent-skills)
-- [Google App Passwords help](https://support.google.com/accounts/answer/185833)
-
-
-# Telegram Integration
-
-Connect your agent to a Telegram bot as an optional extra messaging channel.
-
-## Overview
-
-Telegram is **optional** on every Wiro agent. By default your agents already support two built-in messaging channels out of the box:
-
-- **Web chat** — chat with the agent directly from the [wiro.ai dashboard](https://wiro.ai/panel/agents) with no extra setup.
-- **Messaging API** — your own application sends and receives messages programmatically via [Agent Messaging](#agent-messaging), with real-time streaming over [Agent WebSocket](#agent-websocket) or HTTP callbacks via [Agent Webhooks](#agent-webhooks).
-
-Adding a Telegram bot gives you a third, complementary channel — useful when you want to:
-
-- Push **operator notifications** (campaign alerts, new leads, error reports) to a private chat or team group on your phone.
-- Give **off-dashboard access** to team members who don't log into wiro.ai but still want to message the agent.
-- Pipe **scheduled status reports** from cron skills into a shared Telegram channel.
-
-You can skip this integration entirely — agents keep working through web chat and the API regardless. When the bot token is missing or `allowedUsers` is empty, the Telegram plugin inside the agent is disabled automatically and no messages flow through it.
-
-## Availability
-
-| Mode | Status | Notes |
-|------|--------|-------|
-| Bot Token | Available | Single Bot Token from BotFather. |
-
-## Prerequisites
-
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
-- **A Telegram account**.
-
-## Setup
-
-### Step 1: Create a Telegram bot
-
-1. In Telegram, start a chat with [@BotFather](https://t.me/BotFather).
-2. Send `/newbot`.
-3. Choose a display name and a username (must end in `bot`, e.g. `@mycompany_agent_bot`).
-4. BotFather returns a **Bot Token** like `123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11`. Copy it.
-
-### Step 2: Collect allowed user IDs
-
-Each allowed user must message the bot first.
-
-1. User sends any message to the bot.
-2. Open `https://api.telegram.org/bot<BOT_TOKEN>/getUpdates` in a browser.
-3. Find the `message.from.id` value in the response — that's the Telegram user ID (numeric).
-
-Alternative: each user can DM [@userinfobot](https://t.me/userinfobot) in Telegram to get their own ID.
-
-### Step 3: Save to Wiro
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "telegram": {
-          "botToken": "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11",
-          "allowedUsers": ["761381461", "987654321"],
-          "sessionMode": [
-            {
-              "value": "private",
-              "text": "Private — each user has their own conversation",
-              "selected": true
-            },
-            {
-              "value": "collaborative",
-              "text": "Collaborative — all users share the same conversation",
-              "selected": false
-            }
-          ]
-        }
-      }
-    }
-  }'
-```
-
-### Step 4: Start the agent
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "guid": "your-useragent-guid" }'
-```
-
-## Credential Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `botToken` | string | BotFather token (`<bot_id>:<secret>`). |
-| `allowedUsers` | string[] | Array of Telegram user IDs (numeric strings) allowed to interact. Messages from IDs outside this list are ignored. |
-| `sessionMode` | object[] \| string | Session selection. See below. |
-
-### sessionMode format
-
-`sessionMode` is an **array of option objects**, with exactly one having `selected: true`:
-
-```json
-[
-  {
-    "value": "private",
-    "text": "Private — each user has their own conversation",
-    "selected": true
-  },
-  {
-    "value": "collaborative",
-    "text": "Collaborative — all users share the same conversation",
-    "selected": false
-  }
-]
-```
-
-This matches Wiro's dropdown format. A simpler string form is also accepted at the backend (`"private"` or `"collaborative"`) but the array form is what the dashboard UI produces.
-
-| Mode | Behavior |
-|------|----------|
-| `private` (default) | Each allowed user has an isolated conversation with the agent. Messages from user A are never visible to user B. Maps internally to `session.dmScope = "per-channel-peer"`. |
-| `collaborative` | All allowed users share one conversation. Any user sees and can respond to any message. Maps to `session.dmScope = "main"`. |
-
-## Runtime Behavior
-
-Env vars inside the agent container:
-
-- `TELEGRAM_BOT_TOKEN` ← `credentials.telegram.botToken`
-- `GATEWAY_TOKEN` ← internal gateway token
-
-`allowedUsers` is **not** an env var. It's serialized two ways during container startup:
-
-1. **JSON file** `/.../credentials/telegram-allowFrom.json` — the full array, used by the gateway to filter incoming messages.
-2. **Template substitution** — `__TELEGRAM_ALLOW_FROM__` in `openclaw.json` (JSON array) and `__TELEGRAM_CHAT_ID__` in `AGENTS.md` (CSV) are replaced at runtime.
-
-The Telegram integration plugin inside the agent is **disabled automatically** if `allowedUsers` is empty or `botToken` is missing — no messages flow.
-
-## Troubleshooting
-
-- **Bot doesn't respond:** Verify `botToken` is correct and the sender's Telegram user ID is in `allowedUsers`.
-- **"Unauthorized" (401) from Telegram API:** BotFather regenerated the token, invalidating the old one. Create a new token and update.
-- **Rate limits:** Telegram bots are limited to ~30 messages/second globally. For burst broadcasts, plan around this.
-- **Collaborative mode confusion:** If users don't see each other's messages, re-save `sessionMode` with `collaborative` as `selected: true` and restart the agent.
-
-## Related
-
-- [Agent Credentials & OAuth](/docs/agent-credentials)
-- [Agent Overview](/docs/agent-overview)
-- [Agent Skills](/docs/agent-skills)
-- [Telegram Bot API docs](https://core.telegram.org/bots/api)
-
-
-# Firebase Integration
-
-Connect your agent to Firebase Cloud Messaging (FCM) to send targeted push notifications to iOS and Android apps.
-
-## Overview
-
-The Firebase integration uses FCM HTTP v1 with an Admin SDK service account. A single agent can manage notifications for multiple Firebase projects.
-
-**Skills that use this integration:**
-
-- `firebase-push` — Send push notifications by topic, device token, or condition
-
-**Agents that typically enable this integration:**
-
-- Push Notification Manager
-
-## Availability
-
-| Mode | Status | Notes |
-|------|--------|-------|
-| Service account JSON | Available | Admin SDK service account with FCM permissions. |
-
-## Prerequisites
-
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
-- **A Firebase project** with your iOS and/or Android apps registered and FCM enabled.
-
-## Setup
-
-### Step 1: Generate a Firebase Admin SDK service account
-
-1. [console.firebase.google.com](https://console.firebase.google.com/) → select project.
-2. **Project settings → Service accounts → Firebase Admin SDK → Generate new private key**.
-3. Save the JSON file.
-
-### Step 2: Base64-encode the JSON
-
-```bash
-# Linux
-base64 -w 0 firebase-service-account.json > firebase-sa.b64
-
-# macOS
-base64 -b 0 firebase-service-account.json > firebase-sa.b64
-```
-
-### Step 3: Save to Wiro
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "firebase": {
-          "accounts": [
-            {
-              "appName": "My App",
-              "serviceAccountJsonBase64": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii...",
-              "apps": [
-                {
-                  "platform": "ios",
-                  "id": "6479306352"
-                },
-                {
-                  "platform": "android",
-                  "id": "com.example.app"
-                }
-              ],
-              "topics": [
-                {
-                  "topicKey": "locale_en",
-                  "topicDesc": "English users"
-                },
-                {
-                  "topicKey": "tier_paid",
-                  "topicDesc": "Paid subscribers"
-                }
-              ]
-            }
-          ]
-        }
-      }
-    }
-  }'
-```
-
-### Step 4: Start the agent
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "guid": "your-useragent-guid" }'
-```
-
-## Credential Fields
-
-`credentials.firebase.accounts[]` is an array. Each account object:
-
-| Field | Type | Editable | Description |
-|-------|------|----------|-------------|
-| `appName` | string | Yes | Display name for this project. |
-| `serviceAccountJsonBase64` | string | Yes | Base64-encoded service account JSON. |
-| `apps` | object[] | Yes | `{ platform: "ios" \| "android", id: string }`. `id` is App Store ID for iOS, package name for Android. |
-| `topics` | object[] \| object | Yes | Either an array of `{ topicKey, topicDesc }` or a flat object map `{ topicKey: topicDesc, ... }`. Both are accepted; the runtime converts arrays into the map form. Topics you've subscribed clients to on the device side. |
-| `projectId` | string | **No** (derived from service account) | Read from the decoded JSON. |
-
-### Multi-project setups
-
-Add more entries to `accounts[]` to manage multiple Firebase projects from one agent:
-
-```json
-{
-  "credentials": {
-    "firebase": {
-      "accounts": [
-        {
-          "appName": "Consumer App",
-          "serviceAccountJsonBase64": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii...",
-          "apps": [
-            {
-              "platform": "ios",
-              "id": "6479306352"
-            }
-          ],
-          "topics": [
-            {
-              "topicKey": "locale_en",
-              "topicDesc": "English users"
-            }
-          ]
-        },
-        {
-          "appName": "Business App",
-          "serviceAccountJsonBase64": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii...",
-          "apps": [
-            {
-              "platform": "android",
-              "id": "com.example.business"
-            }
-          ],
-          "topics": [
-            {
-              "topicKey": "tier_paid",
-              "topicDesc": "Paid subscribers"
-            }
-          ]
-        }
-      ]
-    }
-  }
-}
-```
-
-Wiro's merge logic uses positional indexes — sending `accounts[2]` while the template has 1 account creates a new account entry cloned from the template shape, populated with your editable fields.
-
-## Runtime Behavior
-
-Env vars (exported **only when `firebase-push` skill is enabled** and `accounts` is non-empty) per account index `idx`:
-
-- `FIREBASE_APP_COUNT` — total accounts
-- `FIREBASE_{idx}_PROJECT_ID` — from decoded service account JSON
-- `FIREBASE_{idx}_APP_NAME`
-- `FIREBASE_{idx}_TOPICS` — JSON map of `{ topicKey: topicDesc }`
-- `FIREBASE_{idx}_APPS` — JSON array of `{ platform, id }`
-
-Secret files:
-
-- `/run/secrets/firebase-sa-{idx}.json` — decoded service account (not exposed as env)
-
-Auth: FCM HTTP v1 `Authorization: Bearer <token>` — tokens minted from the service account.
-
-Base URL: `https://fcm.googleapis.com/v1/projects/<PROJECT_ID>/messages:send`
-
-## Troubleshooting
-
-- **"invalid JWT signature":** Service account JSON corrupt or truncated. Re-export from Firebase Console and re-encode.
-- **No devices receive notifications:** Verify topics are subscribed on the client side and the topic name matches exactly. Check `FIREBASE_{idx}_TOPICS` logs.
-- **Rate limits:** FCM supports up to **600,000 messages/minute per project** for HTTP v1 API (see the `firebase-push` skill for topic/condition specifics). Higher volumes require a support request to Google Cloud.
-
-## Related
-
-- [Agent Credentials & OAuth](/docs/agent-credentials)
-- [Agent Overview](/docs/agent-overview)
-- [Agent Skills](/docs/agent-skills)
-- [Firebase Cloud Messaging docs](https://firebase.google.com/docs/cloud-messaging)
-
-
-# WordPress Integration
-
-Connect your agent to a WordPress site (self-hosted or WordPress.com Business+) to publish posts and pages.
-
-## Overview
-
-The WordPress integration uses the WordPress REST API with Basic Authentication backed by a WordPress Application Password.
-
-**Skills that use this integration:**
-
-- `wordpress-post` — Publish blog posts, pages, categories, tags; upload media
-
-**Agents that typically enable this integration:**
-
-- Blog Content Editor
-
-## Availability
-
-| Mode | Status | Notes |
-|------|--------|-------|
-| Application Password | Available | WordPress 5.6+ built-in Application Passwords. |
-
-## Prerequisites
-
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
-- **A WordPress site** (self-hosted or WordPress.com Business/Commerce) running **WordPress 5.6+**.
-- **An admin or editor-level user** on that site.
-
-## Setup
-
-### Step 1: Enable Application Passwords (if disabled)
-
-Enabled by default in WP 5.6+. If your host or security plugin disabled them:
-
-- In `wp-config.php`, confirm `WP_ENVIRONMENT_TYPE` isn't restricting them.
-- Security plugins like Wordfence or iThemes Security sometimes disable Application Passwords — check their settings.
-
-### Step 2: Create an Application Password
-
-1. Log in as the user the agent will post as.
-2. **Users → Profile** (or **Users → All Users → Edit** another user if you're admin).
-3. Scroll to **Application Passwords**.
-4. Name it "Wiro agent", **Add New Application Password**.
-5. Copy the 24-character password (spaces are cosmetic; both forms work).
-
-### Step 3: Save to Wiro
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "wordpress": {
-          "url": "https://blog.example.com",
-          "user": "WiroBlogAgent",
-          "appPassword": "xxxx xxxx xxxx xxxx xxxx xxxx"
-        }
-      }
-    }
-  }'
-```
-
-### Step 4: Start the agent
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "guid": "your-useragent-guid" }'
-```
-
-## Credential Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `url` | string | Site URL with `https://`, no trailing slash. |
-| `user` | string | WordPress username the Application Password belongs to. |
-| `appPassword` | string | 24-character Application Password. |
-
-## Runtime Behavior
-
-Env vars inside the agent container (exported **only when `wordpress-post` skill is enabled** and `url` is set):
-
-- `WORDPRESS_URL` ← `credentials.wordpress.url`
-- `WORDPRESS_USER` ← `credentials.wordpress.user`
-- `WORDPRESS_APP_PASSWORD` ← `credentials.wordpress.appPassword`
-
-Auth: `--user "$WORDPRESS_USER:$WORDPRESS_APP_PASSWORD"` (Basic via Application Password).
-Base URL: `$WORDPRESS_URL/wp-json/wp/v2/...`
-
-## Troubleshooting
-
-- **401 Unauthorized on REST API:** Username mismatch (case-sensitive on some setups), or Application Password invalid. Regenerate.
-- **REST API returns 404 at `/wp-json/`:** Permalinks set to **Plain**. Go to **Settings → Permalinks** and pick any pretty-permalink option.
-- **WordPress.com Business plan:** REST API access must be on via Jetpack settings.
-- **Cloudflare/WAF blocking writes:** Whitelist Wiro's outbound IPs (contact support) or allow `/wp-json/wp/v2/posts` endpoints.
-
-## Related
-
-- [Agent Credentials & OAuth](/docs/agent-credentials)
-- [Agent Overview](/docs/agent-overview)
-- [Agent Skills](/docs/agent-skills)
-- [WordPress Application Passwords](https://make.wordpress.org/core/2020/11/05/application-passwords-integration-guide/)
-
-
-# App Store Connect Integration
-
-Connect your agent to App Store Connect for review monitoring, metadata management, and in-app events.
-
-## Overview
-
-The App Store Connect integration uses ES256-signed JWT authentication with App Store Connect API keys.
-
-**Skills that use this integration:**
-
-- `appstore-reviews` — Monitor and reply to App Store reviews
-- `appstore-metadata` — Read/update app metadata, localizations, screenshots
-- `appstore-events` — Create and manage in-app events
-
-**Agents that typically enable this integration:**
-
-- App Review Support
-- App Event Manager
-- Meta Ads Manager (uses a simpler `apps` array shape — see below)
-
-## Availability
-
-| Mode | Status | Notes |
-|------|--------|-------|
-| ES256 API Key | Available | Standard App Store Connect API keys. |
-
-## Prerequisites
-
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
-- **App Store Connect Admin access** — only Admins can generate API keys.
-
-## Setup
-
-### Step 1: Create an API key
-
-1. Sign in to [App Store Connect](https://appstoreconnect.apple.com/).
-2. **Users and Access → Integrations → App Store Connect API**.
-3. Click **+** to generate a new key.
-4. Name (e.g. "Wiro agent") and role:
-   - **Admin** or **App Manager** for full capability
-   - **Customer Support** for reviews-only
-5. Download the `.p8` file — **only downloadable once**.
-6. Copy the **Key ID** (10-char like `ABC1234DEF`) and **Issuer ID** (UUID at top).
-
-### Step 2: Base64-encode the private key
-
-```bash
-# Linux
-base64 -w 0 AuthKey_ABC1234DEF.p8 > appstore-key.b64
-
-# macOS
-base64 -b 0 AuthKey_ABC1234DEF.p8 > appstore-key.b64
-```
-
-### Step 3: Save to Wiro
-
-The credential schema depends on which agent you're configuring. There are two valid shapes.
-
-#### Shape A: Flat (review/events/metadata agents)
-
-Used by **App Review Support** and **App Event Manager**:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "appstore": {
-          "keyId": "ABC1234DEF",
-          "issuerId": "12345678-1234-1234-1234-123456789012",
-          "privateKeyBase64": "LS0tLS1CRUdJTi...",
-          "appIds": ["6479306352", "1234567890"],
-          "supportEmail": "support@yourcompany.com"
-        }
-      }
-    }
-  }'
-```
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `keyId` | string | 10-character App Store Connect Key ID. |
-| `issuerId` | string | UUID issuer ID. |
-| `privateKeyBase64` | string | Base64-encoded `.p8` private key. |
-| `appIds` | string[] | App Store IDs the agent is scoped to. |
-| `supportEmail` | string | Used when replying to reviews. |
-
-#### Shape B: `apps` array (ads-manager agents)
-
-Used by **Meta Ads Manager** and **Google Ads Manager** (for cross-platform creatives that reference app listings):
-
-```json
-{
-  "credentials": {
-    "appstore": {
-      "apps": [
-        {
-          "appName": "My iOS App",
-          "appId": "6479306352"
-        }
-      ]
-    }
-  }
-}
-```
-
-Each app: `{ appName, appId }`. No keyId/issuerId/privateKey — the ads agents only need the app listing IDs for attribution, not API access.
-
-### Step 4: Start the agent
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "guid": "your-useragent-guid" }'
-```
-
-## Runtime Behavior
-
-Env vars are exported **only when `appstore-reviews` OR `appstore-events` skill is enabled** (not `appstore-metadata` alone):
-
-- `APPSTORE_KEY_ID` ← `credentials.appstore.keyId`
-- `APPSTORE_ISSUER_ID` ← `credentials.appstore.issuerId`
-- `APPSTORE_APP_IDS` ← `appIds.join(",")`
-- `APPSTORE_SUPPORT_EMAIL` ← `supportEmail`
-
-Secret file:
-
-- `/run/secrets/appstore-key.p8` — decoded private key (file, not env var)
-
-Auth: JWT ES256 signed in-agent → `Authorization: Bearer <TOKEN>`.
-Base URL: `https://api.appstoreconnect.apple.com/v1/...`.
-
-For ads-manager agents (Shape B), the `apps` array is serialized into `METAADS_APPSTORE_APPS` or `GADS_APPSTORE_APPS` env vars as JSON arrays.
-
-## Troubleshooting
-
-- **401 Unauthorized on API:** Wrong Key ID or Issuer ID, or base64 corrupted the `.p8` key. Re-export and re-encode. Verify no newlines or whitespace were introduced.
-- **Key ID `NOT_ENABLED`:** The key was revoked. Generate a new one.
-- **Reviews not appearing:** Role of the API key lacks Customer Support permissions. Regenerate with a role that includes review access.
-- **Metadata updates fail:** Role lacks Admin or App Manager permissions for the app in question.
-
-## Related
-
-- [Agent Credentials & OAuth](/docs/agent-credentials)
-- [Agent Overview](/docs/agent-overview)
-- [Agent Skills](/docs/agent-skills)
-- [App Store Connect API docs](https://developer.apple.com/documentation/appstoreconnectapi)
-
-
-# Google Play Integration
-
-Connect your agent to the Google Play Developer API for review monitoring and app listing management.
-
-## Overview
-
-The Google Play integration uses a Google Cloud service account with API access delegated from a Play Console project.
-
-**Skills that use this integration:**
-
-- `googleplay-reviews` — Monitor and reply to Google Play reviews
-- `googleplay-metadata` — Read/update app listings and metadata
-
-**Agents that typically enable this integration:**
-
-- App Review Support
-- Meta Ads Manager (uses the simpler `apps` array shape)
-
-## Availability
-
-| Mode | Status | Notes |
-|------|--------|-------|
-| Service Account JSON | Available | Google Cloud service account with Play Developer Reporting access. |
-
-## Prerequisites
-
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
-- **A Google Play Console** account with **Admin** access.
-- **A Google Cloud project** to host the service account.
-
-## Setup
-
-### Step 1: Enable the Google Play Android Developer API
-
-[Google Cloud Console](https://console.cloud.google.com/) → select project → **APIs & Services → Library** → **Google Play Android Developer API** → **Enable**.
-
-### Step 2: Create a service account
-
-1. **IAM & Admin → Service accounts → Create service account**.
-2. Name (e.g. "wiro-play-agent").
-3. Grant role: `Service Account Token Creator`.
-4. Skip user permissions → **Done**.
-5. Open the service account → **Keys → Add key → Create new key → JSON**. Download.
-
-### Step 3: Link the service account to Play Console
-
-1. [Google Play Console](https://play.google.com/console) → **Users and permissions → Invite new users**.
-2. Email: the service account email (`...@....iam.gserviceaccount.com`).
-3. Grant at least: **View app information**, **Reply to reviews**, and any others needed by your agent.
-4. Send invite — Play Console auto-accepts for service accounts.
-
-### Step 4: Base64-encode the JSON
-
-```bash
-# Linux
-base64 -w 0 play-service-account.json > play-sa.b64
-
-# macOS
-base64 -b 0 play-service-account.json > play-sa.b64
-```
-
-### Step 5: Save to Wiro
-
-Same two-shape approach as App Store Connect.
-
-#### Shape A: Flat (reviews/metadata agents)
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "googleplay": {
-          "serviceAccountJsonBase64": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii...",
-          "packageNames": ["com.example.app"],
-          "supportEmail": "support@yourcompany.com"
-        }
-      }
-    }
-  }'
-```
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `serviceAccountJsonBase64` | string | Base64-encoded JSON. |
-| `packageNames` | string[] | Android package names the agent is scoped to. |
-| `supportEmail` | string | Used when replying to reviews. |
-
-#### Shape B: `apps` array (ads-manager agents)
-
-```json
-{
-  "credentials": {
-    "googleplay": {
-      "apps": [
-        {
-          "appName": "My Android App",
-          "packageName": "com.example.app"
-        }
-      ]
-    }
-  }
-}
-```
-
-### Step 6: Start the agent
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "guid": "your-useragent-guid" }'
-```
-
-## Runtime Behavior
-
-Env vars exported **only when `googleplay-reviews` skill is enabled** (not metadata alone):
-
-- `GOOGLE_PLAY_PACKAGE_NAMES` ← `packageNames.join(",")`
-- `GOOGLE_PLAY_SUPPORT_EMAIL` ← `supportEmail`
-
-Secret file:
-
-- `/run/secrets/gplay-sa.json` — decoded service account (file, not env)
-
-Auth: OAuth access token minted from the service account → `Authorization: Bearer`.
-Base URL: `https://androidpublisher.googleapis.com/androidpublisher/v3/...`.
-
-For ads agents (Shape B): `apps` serialized into `GADS_GPLAY_APPS` or `METAADS_GPLAY_APPS` env vars as JSON.
-
-## Troubleshooting
-
-- **403 "The caller does not have permission":** Service account is in Google Cloud but hasn't been invited in Play Console, or lacks the required permission. Return to **Play Console → Users and permissions** and adjust.
-- **"Invalid JWT token":** Service account JSON corrupt or truncated. Re-encode.
-- **Review reply fails silently:** Some reviews are >1 year old and can't be replied to via API — Google enforces this at the platform level.
-
-## Related
-
-- [Agent Credentials & OAuth](/docs/agent-credentials)
-- [Agent Overview](/docs/agent-overview)
-- [Agent Skills](/docs/agent-skills)
-- [Google Play Developer API docs](https://developers.google.com/android-publisher)
-
-
-# Apollo.io Integration
-
-Connect your agent to Apollo.io for lead generation, prospecting, and email sequence enrollment.
-
-## Overview
-
-The Apollo integration uses Apollo's `x-api-key` header authentication.
-
-**Skills that use this integration:**
-
-- `apollo-sales` — Lead search, enrichment, sequence enrollment, reply handling
-
-**Agents that typically enable this integration:**
-
-- Lead Generation Manager
-
-## Availability
-
-| Mode | Status | Notes |
-|------|--------|-------|
-| API Key | Available | Apollo REST API keys. |
-
-## Prerequisites
-
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
-- **An Apollo.io account** on a plan that includes API access.
-
-## Setup
-
-### Step 1: Get an Apollo API key
-
-1. [app.apollo.io](https://app.apollo.io/) → **Settings → Integrations → API** (or **Account settings → API keys**).
-2. **Create new key**, name "Wiro agent", copy value.
-
-### Step 2 (optional): Get a Master API Key
-
-Some Apollo plans require a separate **Master API Key** for the `mixed_people/api_search` endpoint (people search) and for sequence management. Find it in **Admin → API keys** (workspace admins only). Enrichment, lookups, and basic read operations use the standard `apiKey`.
-
-### Step 3: Save to Wiro
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "apollo": {
-          "apiKey": "YOUR_APOLLO_API_KEY",
-          "masterApiKey": "YOUR_APOLLO_MASTER_API_KEY"
-        }
-      }
-    }
-  }'
-```
-
-`masterApiKey` is optional — omit if your agent only does enrichment and lookups. Required for people search (`mixed_people/api_search`) and sequence management.
-
-### Step 4: Start the agent
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "guid": "your-useragent-guid" }'
-```
-
-## Credential Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `apiKey` | string | Primary Apollo API key. |
-| `masterApiKey` | string (optional) | Master API key for people search + sequence management. |
-
-## Runtime Behavior
-
-Env vars (exported **only when `apollo-sales` skill is enabled** and `apiKey` is set):
-
-- `APOLLO_API_KEY` ← `credentials.apollo.apiKey`
-- `APOLLO_MASTER_KEY` ← `credentials.apollo.masterApiKey` (only if set)
-
-**Endpoint-based key selection** — the `apollo-sales` skill picks the header per endpoint:
-
-| Endpoint group | Header | Env var |
-|----------------|--------|---------|
-| People Search (`POST /mixed_people/api_search`) | `x-api-key: $APOLLO_MASTER_KEY` | **Requires `masterApiKey`** |
-| Sequence management (create sequence, add contacts, start/pause) | `x-api-key: $APOLLO_MASTER_KEY` | **Requires `masterApiKey`** |
-| People enrichment (`POST /people/match`) | `x-api-key: $APOLLO_API_KEY` | `apiKey` sufficient |
-| Organization lookup | `x-api-key: $APOLLO_API_KEY` | `apiKey` sufficient |
-| Email verification | `x-api-key: $APOLLO_API_KEY` | `apiKey` sufficient |
-
-Base URL: `https://api.apollo.io/api/v1`.
-
-Rate limits: Apollo enforces strict per-key limits; 429 responses require 60s backoff.
-
-**If `masterApiKey` is missing:** People search and sequence endpoints return **401 Unauthorized** with `"error": "Invalid Api Key"`. This is expected — even though `apiKey` works for other endpoints, Apollo's master-only endpoints reject the regular key. Add `masterApiKey` via `POST /UserAgent/Update` and the same agent can immediately use master-only endpoints (no restart needed if the cron picks up env changes on next run).
-
-## Troubleshooting
-
-- **403 Forbidden:** Plan doesn't include API access. Upgrade to Professional tier or higher.
-- **429 Too Many Requests:** Rate limit hit. Space prospecting runs or request higher tier from Apollo support.
-- **401 on `mixed_people/api_search`:** Missing `masterApiKey`. Add it (workspace admins: Apollo → Admin → API keys).
-- **Sequence enrollment fails:** Missing `masterApiKey`. Same fix — master key is required for write operations on sequences.
-
-## Related
-
-- [Agent Credentials & OAuth](/docs/agent-credentials)
-- [Agent Overview](/docs/agent-overview)
-- [Agent Skills](/docs/agent-skills)
-- [Apollo.io API docs](https://apolloio.github.io/apollo-api-docs/)
-
-
-# Lemlist Integration
-
-Connect your agent to Lemlist for cold email outreach and campaign orchestration.
-
-## Overview
-
-The Lemlist integration uses HTTP Basic Authentication with an empty username and the API key as the password.
-
-**Skills that use this integration:**
-
-- `lemlist-outreach` — Campaign creation, lead uploads, pause/resume
-
-**Agents that typically enable this integration:**
-
-- Lead Generation Manager
-
-## Availability
-
-| Mode | Status | Notes |
-|------|--------|-------|
-| API Key | Available | Lemlist API key (Gold tier or higher). |
-
-## Prerequisites
-
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
-- **A Lemlist account** on Gold tier or higher for full API access.
-
-## Setup
-
-### Step 1: Get an API key
-
-1. [app.lemlist.com](https://app.lemlist.com/) → **Settings → Integrations → API**.
-2. Click **Generate** (or copy existing). Keys look like `AbCdEfGhIjKlMnOp`.
-
-### Step 2: Save to Wiro
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "lemlist": {
-          "apiKey": "YOUR_LEMLIST_API_KEY"
-        }
-      }
-    }
-  }'
-```
-
-### Step 3: Start the agent
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "guid": "your-useragent-guid" }'
-```
-
-## Credential Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `apiKey` | string | Lemlist API key. |
-
-## Runtime Behavior
-
-Env vars (exported **only when `lemlist-outreach` skill is enabled** and `apiKey` is set):
-
-- `LEMLIST_API_KEY` ← `credentials.lemlist.apiKey`
-
-Auth: **Basic auth with empty username** — `--user ":$LEMLIST_API_KEY"`. (Lemlist treats the API key as the password, with no username.)
-Base URL: `https://api.lemlist.com/api`.
-
-Rate limits: ~20 requests per 2 seconds; 429 requires backoff.
-
-## Troubleshooting
-
-- **401 Unauthorized:** API key revoked in Lemlist settings. Regenerate.
-- **403 on campaign operations:** Plan tier lacks API write access. Upgrade.
-- **Email address not found:** Lead must exist in at least one campaign before some endpoints work — upload leads first.
-
-## Related
-
-- [Agent Credentials & OAuth](/docs/agent-credentials)
-- [Agent Overview](/docs/agent-overview)
-- [Agent Skills](/docs/agent-skills)
-- [Lemlist API docs](https://developer.lemlist.com/)
-
-
-# Brevo Integration
-
-Connect your agent to Brevo (formerly Sendinblue) for transactional and marketing email.
-
-## Overview
-
-The Brevo integration uses Brevo API v3 with an `api-key` header (not Bearer).
-
-**Skills that use this integration:**
-
-- `brevo-email` — Campaign, template, and contact management via Brevo API v3
-- `newsletter-compose` — uses Brevo as the ESP when enabled alongside
-
-**Other:** Custom agents can call the Brevo API via whatever skill invokes `BREVO_API_KEY`.
-
-**Agents that typically enable this integration:**
-
-- Newsletter Manager
-
-## Availability
-
-| Mode | Status | Notes |
-|------|--------|-------|
-| API Key (v3) | Available | Standard Brevo API v3 keys. |
-
-## Prerequisites
-
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
-- **A Brevo account** (free tier works for low volume).
-
-## Setup
-
-### Step 1: Get an API key
-
-1. [app.brevo.com](https://app.brevo.com/) → profile (top right) → **SMTP & API → API Keys**.
-2. **Generate a new API key**, name "Wiro agent".
-3. Copy the key (starts with `xkeysib-`).
-
-### Step 2: Save to Wiro
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "brevo": {
-          "apiKey": "xkeysib-xxxxxxxxxxxxxxxxxxxx"
-        }
-      }
-    }
-  }'
-```
-
-### Step 3: Start the agent
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "guid": "your-useragent-guid" }'
-```
-
-## Credential Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `apiKey` | string | Brevo v3 API key (starts with `xkeysib-`). |
-
-## Runtime Behavior
-
-Env vars (exported **only when `brevo-email` skill is enabled** and `apiKey` is set):
-
-- `BREVO_API_KEY` ← `credentials.brevo.apiKey`
-
-Auth: **Header `api-key: $BREVO_API_KEY`** — not Bearer. This is Brevo's documented auth pattern.
-Base URL: `https://api.brevo.com/v3/`.
-
-Rate limits: ~10 req/s on free plan; higher on paid tiers.
-
-## Troubleshooting
-
-- **401 Unauthorized:** Key revoked or deleted. Generate a new one.
-- **Emails go to spam:** Verify sending domain under Brevo → **Senders & IP → Domains**. Set up SPF, DKIM, DMARC.
-- **Rate limit (429):** Free tier is 300 emails/day. Upgrade plan.
-
-## Related
-
-- [Agent Credentials & OAuth](/docs/agent-credentials)
-- [Agent Overview](/docs/agent-overview)
-- [Agent Skills](/docs/agent-skills)
-- [Brevo API docs](https://developers.brevo.com/reference/getting-started-1)
-
-
-# SendGrid Integration
-
-Connect your agent to Twilio SendGrid for transactional and marketing email delivery.
-
-## Overview
-
-The SendGrid integration uses standard Bearer authentication with a SendGrid API key.
-
-**Skills that use this integration:**
-
-- `sendgrid-email` — Marketing and transactional email via SendGrid v3 API
-- `newsletter-compose` — uses SendGrid as the ESP when enabled alongside
-
-**Other:** Custom agents can call the SendGrid API via whatever skill invokes `SENDGRID_API_KEY`.
-
-**Agents that typically enable this integration:**
-
-- Newsletter Manager
-
-## Availability
-
-| Mode | Status | Notes |
-|------|--------|-------|
-| API Key | Available | Twilio SendGrid API keys. |
-
-## Prerequisites
-
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
-- **A SendGrid account**.
-
-## Setup
-
-### Step 1: Create an API key
-
-1. [app.sendgrid.com](https://app.sendgrid.com/) → **Settings → API Keys → Create API Key**.
-2. Name "Wiro agent".
-3. Permissions:
-   - **Full Access** for maximum capability, or
-   - **Restricted Access** + enable at least **Mail Send** (and **Marketing Campaigns** if used).
-4. **Create & View**, copy the key once (starts with `SG.`) — **cannot be retrieved later**.
-
-### Step 2: Save to Wiro
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "sendgrid": {
-          "apiKey": "SG.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-        }
-      }
-    }
-  }'
-```
-
-### Step 3: Start the agent
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "guid": "your-useragent-guid" }'
-```
-
-## Credential Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `apiKey` | string | SendGrid API key (starts with `SG.`). |
-
-## Runtime Behavior
-
-Env vars (exported **only when `sendgrid-email` skill is enabled** and `apiKey` is set):
-
-- `SENDGRID_API_KEY` ← `credentials.sendgrid.apiKey`
-
-Auth: `Authorization: Bearer $SENDGRID_API_KEY`.
-Base URL: `https://api.sendgrid.com/v3`.
-
-Rate limits: 600 req/min on most endpoints; higher on marketing endpoints.
-
-## Troubleshooting
-
-- **401 Unauthorized:** Key deleted or permissions changed. Create a new key with appropriate scopes.
-- **403 Forbidden on send:** Sender identity not verified. In SendGrid → **Settings → Sender Authentication**, verify single sender or domain.
-- **Emails flagged as spam:** Complete Domain Authentication (SPF + DKIM + DMARC) in SendGrid sender settings.
-
-## Related
-
-- [Agent Credentials & OAuth](/docs/agent-credentials)
-- [Agent Overview](/docs/agent-overview)
-- [Agent Skills](/docs/agent-skills)
-- [SendGrid API docs](https://docs.sendgrid.com/api-reference/)
+---
 
 # Agent Skills
 
-Configure agent behavior with editable preferences and scheduled automation tasks.
+Configure agent behavior with editable preferences, scheduled automation tasks, and skill toggles. Browse the platform's skill registry and inspect every skill's pricing, capabilities, and credential requirements.
 
-## Overview
+> **Read & write paths at a glance:**
+>
+> | Operation | Endpoint |
+> |-----------|----------|
+> | Browse all skills (registry) | [`POST /Skills/List`](#post-skillslist) (public) |
+> | Inspect a single skill | [`POST /Skills/Detail`](#post-skillsdetail) (public) |
+> | Find the credential a skill needs | [`POST /Skills/CredentialSchema`](#post-skillscredentialschema) (public) |
+> | List the closed-set capability vocabulary | [`POST /Skills/Capabilities`](#post-skillscapabilities) (public) |
+> | Edit a preference skill's `value` or a cron's `interval`/`enabled` | [`POST /UserAgent/CustomSkillUpsert`](/docs/agent-overview#post-useragentcustomskillupsert) |
+> | Delete a user-created cron skill | [`POST /UserAgent/CustomSkillDelete`](/docs/agent-overview#post-useragentcustomskilldelete) |
+> | Read version history of a custom skill | [`POST /UserAgent/CustomSkillHistory`](/docs/agent-overview#post-useragentcustomskillhistory) |
+> | Revert a custom skill to preset / a historical version | [`POST /UserAgent/CustomSkillRevert`](/docs/agent-overview#post-useragentcustomskillrevert) |
+> | Toggle one or more integration skills (the top-level `skills` array, e.g. `int-instagram-post`) on/off | [`POST /UserAgent/SkillsApply`](/docs/agent-overview#post-useragentskillsapply) |
+> | Apply a batch of skill toggles + optional tier change | [`POST /UserAgent/SkillsApply`](/docs/agent-overview#post-useragentskillsapply) |
+> | Live tier-pricing preview for a hypothetical skill set | [`POST /UserAgent/PricingPreview`](/docs/agent-overview#post-useragentpricingpreview) |
+>
+> Read responses from `POST /UserAgent/Detail` expose the composed `customskills[]` array (preference skills + non-cron user-created skills), the `scheduledskills[]` array (cron skills), and the `skills[]` array of enabled skill names as top-level fields on the useragent object.
 
-Every agent has a set of **custom skills** that define its behavior. Skills come in two types:
+## Skill Registry vs Custom Skills
 
-| Type | Has Interval | Purpose | What You Can Change |
-|------|-------------|---------|-------------------|
-| **Preferences** | No (`null`) | Instructions that shape agent behavior — tone, style, targeting rules, content strategy | `value`, `description`, `enabled` |
-| **Scheduled Tasks** | Yes (cron) | Automated actions that run on a schedule — scanning, reporting, dispatching | `enabled`, `interval` |
+Two concepts share the word "skill" in the agent system. Keep them straight:
 
-Call `POST /UserAgent/Detail` to discover an agent's skills. They appear in `configuration.custom_skills`.
+| Concept | What it is | Where it lives | API surface |
+|---------|------------|----------------|-------------|
+| **Registry skills** | Platform-shipped capabilities — Wiro defines them, they have pricing recipes, credential requirements, and runtime tools. Examples: `int-instagram-post`, `int-gmail-check`, `int-wordpress-post`, `int-wiro-generator`. | The skill registry (git-tracked JSON definitions). | `POST /Skills/List` / `POST /Skills/Detail` (read), `POST /UserAgent/SkillsApply` (toggle on/off per useragent). |
+| **Custom skills** | User-editable preference text (`cs-content-tone`) or scheduled tasks (`cs-cron-blog-scanner`) that live ON a useragent. They reference registry skills (e.g. a cron skill calls into `int-wordpress-post`) but are scoped to one instance. | Per useragent on the Wiro platform. | `POST /UserAgent/CustomSkillUpsert` / `POST /UserAgent/CustomSkillDelete` / `POST /UserAgent/CustomSkillHistory` / `POST /UserAgent/CustomSkillRevert`. |
 
-## Discovering Skills
+The rest of this page documents both — the registry endpoints first (so you can discover what's possible), then the per-useragent endpoints (so you can configure them).
 
-Call `POST /UserAgent/Detail` to fetch the agent instance. The skill array lives under `configuration.custom_skills`.
+## Skill Registry Endpoints
+
+These four endpoints are **public — no authentication required**. They return data straight from the skill registry.
+
+### **POST** /Skills/List
+
+Lists all skills in the registry.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `category` | string | No | Filter by `"int"` (integration with a third-party service) or `"rule"` (rule-only — no credential, no external API). |
+| `capability` | string | No | Filter by capability key (see [`POST /Skills/Capabilities`](#post-skillscapabilities) for the closed-set vocabulary). |
+| `user_invocable` | boolean | No | When `true`, only return skills end users can call directly through chat. `wiro-generator` and other internal-only skills are hidden. |
+| `requires_credentials` | boolean | No | Filter by whether the skill requires a credential. |
+| `wiro_connect_pending` | boolean | No | Filter by the "Wiro mode coming soon" flag (Meta integrations while Wiro's app is under review). |
+| `name_in` | array<string> | No | Restrict the response to a specific list of skill names. |
+
+##### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "total": 87,
+  "skills": [
+    {
+      "name": "int-instagram-post",
+      "category": "int",
+      "version": "1.0.0",
+      "title": "Instagram Post",
+      "description": "Post carousel feed and multi-story via Meta Graph API.",
+      "icon": "/images/icons/skills/instagram.svg",
+      "brand_color": "#e4405f",
+      "brand_text_color": "#ffffff",
+      "brand_logo_filter": "brightness(0) invert(1)",
+      "docs_url": "integration-instagram-skills",
+      "requires_credentials": true,
+      "credential_key": "instagram",
+      "additional_credential_keys": [],
+      "capabilities": ["social_publishing"],
+      "depends_on": [],
+      "conflicts_with": [],
+      "user_invocable": true,
+      "deprecated": false,
+      "replacement": null,
+      "pricing": {
+        "monthly_price_weight_usd": 5.5,
+        "monthly_credits_weight": 200,
+        "credit_costs": {
+          "message":    6,
+          "create":     58,
+          "modify":     29,
+          "regenerate": 58
+        }
+      }
+    }
+  ]
+}
+```
+
+Skill names always carry their registry prefix (`int-*` integration, `util-*` utility / rule-only, `cs-cron-*` bundled cron). `pricing.monthly_price_weight_usd` and `pricing.monthly_credits_weight` are the weights the resolver sums across the enabled-skill closure to compute Starter `monthlypriceusd` / `monthlycredits`; Pro multiplies the totals by `tiermultiplier`. `credit_costs` per action contributes via `max()` to the agent's `peractioncosts`.
+
+### **POST** /Skills/Detail
+
+Returns a single skill by name.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `name` | string | Yes | Canonical skill name **with prefix** (e.g. `"int-instagram-post"`, `"util-html-strip"`, `"cs-cron-content-scanner"`). |
+
+##### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "skill": {
+    "name": "int-instagram-post",
+    "category": "int",
+    "version": "1.0.0",
+    "title": "Instagram Post",
+    "description": "Post carousel feed and multi-story via Meta Graph API.",
+    "icon": "/images/icons/skills/instagram.svg",
+    "brand_color": "#e4405f",
+    "brand_text_color": "#ffffff",
+    "brand_logo_filter": "brightness(0) invert(1)",
+    "docs_url": "integration-instagram-skills",
+    "requires_credentials": true,
+    "credential_key": "instagram",
+    "additional_credential_keys": [],
+    "capabilities": ["social_publishing"],
+    "depends_on": [],
+    "conflicts_with": [],
+    "user_invocable": true,
+    "deprecated": false,
+    "replacement": null,
+    "pricing": {
+      "monthly_price_weight_usd": 5.5,
+      "monthly_credits_weight": 200,
+      "credit_costs": {
+        "message":    6,
+        "create":     58,
+        "modify":     29,
+        "regenerate": 58
+      }
+    }
+  }
+}
+```
+
+Returns the **full registry entry** — same shape as a row from `Skills/List`. Returns `{ "result": false, "errors": [{ "code": 404, "message": "Skill not found: <name>" }] }` if the name is unknown.
+
+### **POST** /Skills/CredentialSchema
+
+Convenience endpoint — returns the credential entry for a given skill name in one call. Useful when you've discovered a skill via `Skills/List` and want to render the credential form without a separate `Credentials/Detail` round-trip.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `name` | string | Yes | Skill name (with the registry prefix, e.g. `"int-instagram-post"`). |
+
+##### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "credential": {
+    "key": "instagram",
+    "title": "Instagram",
+    "icon": "/images/icons/skills/instagram.svg",
+    "brand_color": "#e4405f",
+    "brand_text_color": "#ffffff",
+    "brand_logo_filter": "none",
+    "docs_url": "integration-instagram-skills",
+    "credential_mode": "oauth",
+    "connection_modes": ["wiro", "own"],
+    "wiro_connect_pending": true,
+    "credential_schema": [
+      { "key": "appid",      "type": "text",     "label": "App ID",            "required": true,  "pattern": "^[0-9]+$", "oauth_managed": true, "only_in_modes": ["own"] },
+      { "key": "appsecret",  "type": "password", "label": "App Secret",        "required": true,  "show_toggle": true,   "oauth_managed": true, "only_in_modes": ["own"] },
+      { "key": "igusername", "type": "text",     "label": "Connected Account", "required": false, "auto_filled_by_oauth": true, "readonly_when_connected": true }
+    ],
+    "oauth_provider": {
+      "auth_method_value": "wiro",
+      "connect_endpoint": "/UserAgentOAuth/IGConnect",
+      "disconnect_endpoint": "/UserAgentOAuth/IGDisconnect",
+      "status_endpoint": "/UserAgentOAuth/IGStatus",
+      "connect_button_label": "Connect with Instagram",
+      "connect_button_icon": "/images/icons/skills/instagram.svg",
+      "connect_button_brand_color": "#e4405f",
+      "connect_button_text_color": "#ffffff",
+      "connect_button_logo_filter": "none",
+      "username_field": "igusername",
+      "return_query_param": "ig_connected",
+      "return_error_param": "ig_error",
+      "return_error_detail_param": "ig_error_detail",
+      "account_picker": null,
+      "extra_step": null
+    },
+    "used_by_skills": ["int-instagram-post"]
+  }
+}
+```
+
+Returns the **full registry credential entry** — same shape as [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail). Returns `{ "result": false, "errors": [{ "code": 404, "message": "No credential associated with skill: <name>" }] }` if the skill exists but has `credential_key: null` (rule-only / platform-managed) or if the skill is unknown.
+
+### **POST** /Skills/Capabilities
+
+Returns the closed-set vocabulary of high-level capability tags. Use this to build a "Find skills that can: ___" picker in your UI, or to filter `Skills/List` via the `capability` parameter.
+
+##### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "capabilities": [
+    { "name": "direct_reporting",         "description": "Skill generates direct reports on operator request" },
+    { "name": "attribution_cross_check",  "description": "Cross-check platform conversions vs GA4 paid traffic" },
+    { "name": "cross_check",              "description": "Cross-system data validation" },
+    { "name": "campaign_management",      "description": "Create/pause/modify ad campaigns" },
+    { "name": "campaign_reporting",       "description": "Campaign performance reports" },
+    { "name": "approval_flow",            "description": "Approval command grammar for operator-gated actions" },
+    { "name": "recommendation_ledger",    "description": "Recommendation queue/log management" },
+    { "name": "recommendation_execution", "description": "Execute approved recommendations" },
+    { "name": "content_generation",       "description": "Generate content (text, media)" },
+    { "name": "creative_generation",      "description": "Generate ad creatives" },
+    { "name": "image_generation",         "description": "Generate images" },
+    { "name": "video_generation",         "description": "Generate videos" },
+    { "name": "human_copywriting",        "description": "Enforce anti-AI human copy rules" },
+    { "name": "anti_ai_tone",             "description": "Reject AI-generated tone patterns" },
+    { "name": "memory_management",        "description": "Manage memory/*.json hygiene (size limits, trim, dedupe, schema)" },
+    { "name": "markdown_reporting",       "description": "Structured markdown reports (tables, code blocks, splits)" },
+    { "name": "store_review_response",    "description": "Craft App Store / Google Play review responses" },
+    { "name": "outreach_compliance",      "description": "Outreach PII/opt-out/consent rules (GDPR, CAN-SPAM)" },
+    { "name": "web_publishing",           "description": "Publish web content (WordPress, etc.)" },
+    { "name": "email_publishing",         "description": "Send emails / newsletters" },
+    { "name": "social_publishing",        "description": "Post to social platforms (Twitter, IG, FB, LI, TikTok)" },
+    { "name": "push_notification",        "description": "Send push notifications (FCM)" },
+    { "name": "lead_enrichment",          "description": "Enrich prospect data (Apollo, HubSpot)" },
+    { "name": "sequence_automation",      "description": "Run outreach sequences (Lemlist, Apollo)" },
+    { "name": "multi_platform_detection", "description": "Auto-detect available platforms" },
+    { "name": "holiday_discovery",        "description": "Discover global holidays (Calendarific)" },
+    { "name": "product_feed_management",  "description": "Manage product feeds (Merchant Center)" },
+    { "name": "review_monitoring",        "description": "Monitor store reviews (App Store, Google Play)" },
+    { "name": "app_metadata",             "description": "Fetch app store metadata (description, pricing, features)" },
+    { "name": "event_management",         "description": "Manage app events (App Store in-app events)" },
+    { "name": "file_asset_management",    "description": "Manage asset files from cloud storage (Drive)" }
+  ]
+}
+```
+
+Capability names are **snake_case** strings. Pass any of them as the `capability` parameter to `Skills/List` to filter (e.g. `{ "capability": "social_publishing" }` returns every skill that publishes to a social platform).
+
+## Custom Skills — Discovery (Per-Instance)
+
+Once you've deployed a useragent, its current custom skills live under `customskills[]` (preferences + non-cron user-created skills) and `scheduledskills[]` (cron skills) on the `POST /UserAgent/Detail` response.
 
 **Request:**
 
 ```json
+{ "guid": "your-useragent-guid" }
+```
+
+**Response** (top-level `customskills` and `scheduledskills` excerpt):
+
+```json
 {
-  "guid": "your-useragent-guid"
+  "customskills": [
+    {
+      "key": "cs-content-tone",
+      "value": "## Brand Voice\nTone: friendly\nTarget Audience: ...\n\n## Content Sources\nPrimary Source: https://your-site.com/feed.xml\n...",
+      "description": "Content strategy, brand voice, and posting rules",
+      "enabled": true,
+      "interval": null,
+      "_source": "preset-strategy",
+      "_editable": true
+    }
+  ],
+  "scheduledskills": [
+    {
+      "key": "cs-cron-content-scanner",
+      "value": "",
+      "description": "Content discovery with rotating strategies",
+      "enabled": true,
+      "interval": "0 */4 * * *",
+      "_source": "skill-bundle",
+      "_editable": false
+    },
+    {
+      "key": "cs-cron-weekly-health-check",
+      "value": "Every Monday, check the inbox and report to Telegram.",
+      "description": "User-created cron",
+      "enabled": true,
+      "interval": "0 9 * * 1",
+      "_source": "user-created",
+      "_editable": true,
+      "_user_created": true
+    }
+  ],
+  "skills": ["instagram-post", "wiro-generator"]
 }
 ```
 
-**Response** (`configuration.custom_skills` excerpt):
-
-```json
-[
-  {
-    "key": "content-tone",
-    "value": "## Brand Voice\nTone: friendly\nTarget Audience: ...\n\n## Content Sources\nPrimary Source: https://your-site.com/feed.xml\n...",
-    "description": "Content strategy, brand voice, and posting rules",
-    "enabled": true,
-    "interval": null,
-    "_editable": true
-  },
-  {
-    "key": "cron-content-scanner",
-    "value": "",
-    "description": "Content discovery with rotating strategies",
-    "enabled": true,
-    "interval": "0 */4 * * *",
-    "_editable": false
-  }
-]
-```
-
-> The exact key names depend on the agent template. Always fetch `POST /UserAgent/Detail` to see the real list for your deployed instance — skill keys, their default cron schedules, and even the set of skills can evolve as templates are updated.
+> The exact key names depend on the agent template. Always fetch `POST /UserAgent/Detail` to see the real list for your deployed instance — skill keys, default cron schedules, and even the set of skills can evolve as templates are updated.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `key` | string | Unique skill identifier. Use this in Update requests. |
-| `value` | string | Skill instructions/content. Visible only when `_editable: true` — otherwise empty string. |
-| `description` | string | Human-readable description of what the skill does. **Read-only — set by the agent template, never accepted in Update payloads.** |
-| `enabled` | boolean | Whether the skill is active. Writable on **cron skills only** (keys prefixed with `cron-`). Dropped by the backend if sent on a preference skill. |
-| `interval` | string \| null | Cron expression for scheduled execution, or `null` for preference skills. Writable on **cron skills only**. Dropped if sent on a preference skill. |
-| `_editable` | boolean | `true` for preference skills (you can update `value`), `false` for cron skills (you can update `enabled` / `interval`). See [Skill types cheat-sheet](#skill-types-cheat-sheet) below. |
+| `key` | string | Canonical key. **Always carries the `cs-` runtime prefix.** Strategies are `cs-<slug>`; crons are `cs-cron-<slug>`. The server normalises bare slugs you send to `CustomSkillUpsert` — `"content-tone"` becomes `cs-content-tone`, `"weekly-health-check"` (with `usercreated: true`) becomes `cs-cron-weekly-health-check`. |
+| `value` | string | Skill instructions / cron prompt body. Populated only for editable preference skills and user-created entries; bundled crons have it empty. |
+| `description` | string | Human-readable description. **Read-only — set by the agent template or by the user at create time, never accepted in `Upsert` payloads for preset skills.** |
+| `enabled` | boolean | Whether the cron is active. Writable on cron skills; ignored on preference skills. |
+| `interval` | string \| null | Cron expression for scheduled execution, or `null` for preference skills. Writable on cron skills; ignored on preferences. |
+| `_source` | string | `preset-strategy` (editable preference), `skill-bundle` (cron owned by an integration skill), or `user-created` (cron added via `CustomSkillUpsert` with `usercreated: true`). |
+| `_editable` | boolean | Convenience flag: `true` for preset strategies and user-created rows (you can write `value`), `false` for skill-bundled crons (you can only write `enabled` / `interval`). |
+| `_user_created` | boolean | Present (and `true`) only on `_source: "user-created"` rows. Omitted on preset strategies and skill-bundled crons. |
 
-### Skill Types Cheat-Sheet
+### Understanding `_source`
 
-The backend decides which fields are writable by looking at the skill's **key prefix**:
+Agent responses merge three sources into a single set of custom-skill rows:
 
-| Skill type | Key prefix | `_editable` | Writable fields | Silently dropped if sent |
-|---|---|---|---|---|
-| **Cron skill** (scheduled task) | `cron-*` | `false` | `enabled`, `interval` | `value`, `description`, and everything else |
-| **Preference skill** (instructions) | no prefix | `true` | `value` | `enabled`, `interval`, `description`, and everything else |
+1. **Preset strategies** (`_source: "preset-strategy"`) — preferences defined by the agent preset (e.g. `cs-content-tone`, `cs-ad-strategy`). You can write `value`.
+2. **Bundled crons** (`_source: "skill-bundle"`) — cron tasks shipped inside a specific integration skill. Automatically materialized when the integration is enabled. You can write `interval` and `enabled`, but **not** `value` (the skill owns the cron instruction text).
+3. **User-created rows** (`_source: "user-created"`) — entries added via `POST /UserAgent/CustomSkillUpsert` (with `usercreated: true` for crons). You can write all fields.
 
-**The `cron-` prefix is the canonical discriminator.** Both `mergeUserConfig` (backend) and the Wiro Dashboard UI branch on this prefix. `description` is **never** writable from the client on either skill type — it's a template-only field. The `interval` field still carries the cron expression for scheduled tasks, but the skill *type* is determined by the key prefix.
+## Updating Preference Skills
 
-> **Cross-type fields are dropped at merge time.** If you send `{ key: "content-tone", enabled: false }` (preference skill + cron-only field), the backend drops `enabled` before writing — no error is raised, but the change is not persisted. Same the other way: `{ key: "cron-content-scanner", value: "..." }` drops `value`. `description` is dropped regardless of skill type. Always fetch `POST /UserAgent/Detail` first to see the real `key` (with or without `cron-` prefix) and pick the right update shape.
+Preference skills (`_source: "preset-strategy"`, `_editable: true`) let you customize the agent's behavior by editing its instructions.
 
-## Updating Preferences
-
-Preference skills (`_editable: true`, no `cron-` prefix) let you customize the agent's behavior by editing its instructions.
-
-> **Send only `value` to a preference skill.** `enabled`, `interval`, and `description` are all dropped by `mergeUserConfig` on preference skills. They have no runtime effect anyway — preference skills are read on-demand by cron tasks via `cs-<slug>`; they're never scheduled themselves. If you need the skill's display description, read it from `POST /UserAgent/Detail`.
+Send one `CustomSkillUpsert` call per skill. Unspecified skills are untouched. **Send only `value`** — `enabled`, `interval`, and `description` are silently dropped on preset strategies (they have no runtime effect since strategies are read on-demand by cron tasks via `cs-<slug>`; they're never scheduled themselves).
 
 ### Example: Social Manager — Brand Voice
 
-Send a `POST /UserAgent/Update` request with only the preference skills you want to change:
-
-```json
-{
-  "guid": "your-social-manager-guid",
-  "configuration": {
-    "custom_skills": [
-      {
-        "key": "content-tone",
-        "value": "## Brand Voice\nTone: Professional and informative. No slang.\nTarget Audience: Developers and product managers\nKey Topics: Developer tools, APIs, product updates\nHashtag Strategy: Max 3 per post. Always include #AI and #YourBrand.\n\n## Content Sources\nPrimary Source: https://your-site.com/blog/feed.xml\nSort Order: newest first\nCTA URL Pattern: https://your-site.com/posts/{slug}\n\n## Post Format\nCaption Style: short hook, 3 emoji bullet points, CTA line\nSignature Phrase: \"Build faster with YourBrand\"\n"
-      }
-    ]
-  }
-}
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-social-manager-guid",
+    "skillkey": "content-tone",
+    "value": "## Brand Voice\nTone: Professional and informative. No slang.\nTarget Audience: Developers and product managers\nKey Topics: Developer tools, APIs, product updates\nHashtag Strategy: Max 3 per post. Always include #AI and #YourBrand.\n\n## Content Sources\nPrimary Source: https://your-site.com/blog/feed.xml\nSort Order: newest first\nCTA URL Pattern: https://your-site.com/posts/{slug}\n\n## Post Format\nCaption Style: short hook, 3 emoji bullet points, CTA line\nSignature Phrase: \"Build faster with YourBrand\"\n"
+  }'
 ```
 
-### Example: Push Notification Manager — Targeting Preferences
-
-`POST /UserAgent/Update`:
-
-```json
-{
-  "guid": "your-push-agent-guid",
-  "configuration": {
-    "custom_skills": [
-      {
-        "key": "push-preferences",
-        "value": "## Push Tone\nFriendly and casual. Turkish for locale_tr, English for locale_en.\n\n## Holiday Preferences\nFocus on: New Year, Ramadan, Republic Day.\nSkip: Valentine's Day, Halloween."
-      }
-    ]
-  }
-}
-```
+Response: `{ "result": true, "errors": [] }`. If the agent was running it automatically restarts.
 
 ### Example: Lead Generation Manager — ICP Definition
 
-`POST /UserAgent/Update`:
-
-```json
-{
-  "guid": "your-leadgen-guid",
-  "configuration": {
-    "custom_skills": [
-      {
-        "key": "lead-strategy",
-        "value": "## Our Business\nCompany: Acme Corp\nProduct: AI-powered CRM\n\n## Ideal Customer Profile\nIndustry: SaaS, FinTech\nCompany size: 50-500\nJob titles: VP Sales, CTO\n\n## Outreach Tone\nCasual but professional."
-      }
-    ]
-  }
-}
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-leadgen-guid",
+    "skillkey": "lead-strategy",
+    "value": "## Our Business\nCompany: Acme Corp\nProduct: AI-powered CRM\n\n## Ideal Customer Profile\nIndustry: SaaS, FinTech\nCompany size: 50-500\nJob titles: VP Sales, CTO\n\n## Outreach Tone\nCasual but professional."
+  }'
 ```
 
 ## Managing Scheduled Tasks
 
-Scheduled tasks (`_editable: false`, non-null `interval`) run automatically on a cron schedule.
+Scheduled tasks are cron skills — bundled ones (`_source: "skill-bundle"`) ship with integration skills and run automatically when the integration is enabled. User-created crons (`_source: "user-created"`) are added at any time.
 
-> **Only `enabled` and `interval` are writable for cron skills** (keys prefixed with `cron-`). `value` and `description` on a cron skill are dropped by `mergeUserConfig` — the task body is template-controlled and re-materialised on every container restart from the instance JSON. To change **what** a scheduled task does, edit the paired preference skill (`cs-<slug>`, `_editable: true`) that the cron reads at runtime.
+> **For bundled crons, only `enabled` and `interval` are writable.** The task body (`value`) is owned by the integration skill and re-materialised on every container restart. To change **what** a bundled scheduled task does, edit the paired preference skill (e.g. `content-tone` is read by `cron-content-scanner` at runtime). For user-created crons, all three (`value`, `interval`, `enabled`) are writable.
 
-### Example: Change scanner frequency
+### Example: Change a bundled cron's frequency
 
-```json
-{
-  "guid": "your-useragent-guid",
-  "configuration": {
-    "custom_skills": [
-      {
-        "key": "cron-review-scanner",
-        "enabled": true,
-        "interval": "0 */4 * * *"
-      },
-      {
-        "key": "cron-content-scanner",
-        "enabled": false
-      }
-    ]
-  }
-}
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "skillkey": "cron-review-scanner",
+    "enabled": true,
+    "interval": "0 */4 * * *"
+  }'
 ```
+
+### Example: Disable a bundled cron
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "skillkey": "cron-content-scanner",
+    "enabled": false
+  }'
+```
+
+### Example: Create a user-defined cron
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "skillkey": "weekly-health-check",
+    "value": "Every Monday, check the inbox and report the count to Telegram.",
+    "interval": "0 9 * * 1",
+    "enabled": true,
+    "usercreated": true,
+    "description": "Weekly inbox health check"
+  }'
+```
+
+The server auto-prefixes `skillkey` with `cron-` on user-created crons, so the row above is stored with `key: "cs-cron-weekly-health-check"`. Subsequent upserts can use either form — `"weekly-health-check"`, `"cron-weekly-health-check"`, or `"cs-cron-weekly-health-check"`.
+
+### Example: Delete a user-created cron
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillDelete" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "skillkey": "cs-cron-weekly-health-check"
+  }'
+```
+
+Preset-owned crons cannot be deleted — the call returns `This skill belongs to the agent preset and cannot be deleted. Use enabled=false to disable it instead.` with `suggestion: "disable-via-upsert"`. Disable them via `CustomSkillUpsert` + `enabled: false`.
 
 ### Common Cron Expressions
 
@@ -10319,88 +8058,293 @@ Scheduled tasks (`_editable: false`, non-null `interval`) run automatically on a
 | `0 9 * * 1` | Every Monday at 9:00 AM UTC |
 | `0 10 * * 3` | Every Wednesday at 10:00 AM UTC |
 
+## Version History — Audit and Revert
+
+Every write through `CustomSkillUpsert` appends a row to the version history. Read it via `POST /UserAgent/CustomSkillHistory`; revert to any version (or to the preset default) via `POST /UserAgent/CustomSkillRevert`.
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillHistory" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "skillkey": "cs-content-tone"
+  }'
+```
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "preset_default": {
+    "value": "## Brand Voice\nTone: friendly\nTarget Audience: ...",
+    "intervalexpr": null,
+    "enabled": true,
+    "description": "How the agent should sound across all generated copy."
+  },
+  "entries": [
+    {
+      "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+      "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+      "skillkey": "cs-content-tone",
+      "operation": "upsert",
+      "value": "## Brand Voice\nTone: professional...",
+      "intervalexpr": null,
+      "enabled": true,
+      "usercreated": false,
+      "prev_value": "## Brand Voice\nTone: friendly...",
+      "prev_interval": null,
+      "prev_enabled": true,
+      "after_value": "## Brand Voice\nTone: professional...",
+      "after_interval": null,
+      "after_enabled": true,
+      "changed_fields": ["value"],
+      "changedby": "ada-uuid",
+      "changedby_user": {
+        "uuid": "ada-uuid",
+        "firstname": "Ada",
+        "lastname": "Lovelace",
+        "email": "ada@example.com",
+        "username": "ada",
+        "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
+        "avatarinitials": "AL"
+      },
+      "changedat": 1714694410
+    },
+    {
+      "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+      "skillkey": "cs-content-tone",
+      "operation": "upsert",
+      "value": "## Brand Voice\nTone: friendly...",
+      "intervalexpr": null,
+      "enabled": true,
+      "usercreated": false,
+      "prev_value": null,
+      "prev_interval": null,
+      "prev_enabled": null,
+      "after_value": "## Brand Voice\nTone: professional...",
+      "after_interval": null,
+      "after_enabled": true,
+      "changed_fields": [],
+      "changedby": "ada-uuid",
+      "changedby_user": {
+        "uuid": "ada-uuid",
+        "firstname": "Ada",
+        "lastname": "Lovelace",
+        "email": "ada@example.com",
+        "username": "ada",
+        "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
+        "avatarinitials": "AL"
+      },
+      "changedat": 1714600000
+    }
+  ]
+}
+```
+
+Each entry carries the **BEFORE** state of the action that produced it (the audit-write fires before the table mutation), plus server-computed `prev_*`, `after_*`, and `changed_fields[]` so you don't have to walk the list yourself. `changedby_user` is the resolved actor object — `null` for system / cron writes (sentinel `changedby`) or deleted users. Full field reference and revert flow live in [Agent Overview → CustomSkillHistory](/docs/agent-overview#post-useragentcustomskillhistory).
+
+Revert to the preset default:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillRevert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "skillkey": "cs-content-tone",
+    "source": "preset"
+  }'
+```
+
+Or jump back to a specific version:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillRevert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "skillkey": "cs-content-tone",
+    "source": "history",
+    "versionguid": "v1-1714600000-def"
+  }'
+```
+
+The response carries the post-revert state (`current_value`, `current_interval`, `current_enabled`) so the UI can refresh without a full `Detail` round-trip.
+
+## Toggling Integration Skills
+
+The top-level `skills[]` array on `UserAgent/Detail` lists the integration skills currently enabled on the instance (e.g. `[{ "name": "int-instagram-post" }, { "name": "int-googleads-manage" }]`). To enable, disable, or change tier in one shot, use **`POST /UserAgent/SkillsApply`** — even when you only want to flip a single skill, send it as a one-entry `skills` map. The endpoint:
+
+1. Charges the wallet (or prorates) **once**, not N times.
+2. Triggers exactly **one container restart** after the new skill set lands.
+3. Uses **idempotency** + a UA-level mutex — concurrent calls or FE retries can't double-apply.
+4. Is **atomic** — a payment failure rolls back to the pre-call skill set.
+
+**Single-skill enable:**
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+    "idempotencyKey": "550e8400-e29b-41d4-a716-446655440001",
+    "skills": {
+      "int-instagram-post": true
+    }
+  }'
+```
+
+**Batch toggle + tier upgrade in one call:**
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+    "tier": "pro",
+    "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000",
+    "skills": {
+      "int-instagram-post": true,
+      "int-twitterx-post":  true,
+      "int-telegram-post":  false
+    }
+  }'
+```
+
+`idempotencyKey` is required — use a UUID per "user clicks Save" event. The full response shape and error-code table live on [`SkillsApply`](/docs/agent-overview#post-useragentskillsapply).
+
+> **Custom builds only.** Template-deploy useragents reject `SkillsApply` with `Skill changes are only available for custom-built agents.` — skills are inherited from the marketplace agent template and changing them would diverge the instance. To run a different skill set, deploy a custom build (`POST /UserAgent/Deploy` with `custom: true`) and configure its skills there.
+
+> **Bundled crons follow the integration toggle.** When you disable an integration skill (e.g. `int-instagram-post`), every bundled cron it owns (`_source: "skill-bundle"`) is hidden from the top-level `customskills` / `scheduledskills` lists until the integration is re-enabled — you don't need to touch them individually.
+
+## Live Pricing Preview
+
+Before you commit `SkillsApply` (or the user clicks Save in your UI), call `POST /UserAgent/PricingPreview` to see "if I save this, my new monthly price would be $X with Y monthly credits". No state is mutated. See [`PricingPreview`](/docs/agent-overview#post-useragentpricingpreview) for the full response shape.
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "tier": "pro",
+    "skillOverrides": {
+      "twitterx-post": true,
+      "telegram-post": false
+    }
+  }'
+```
+
+For **Build Your Agent** (no useragent yet), use draft mode:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "draft": true,
+    "tier": "starter",
+    "skills": ["gmail-check", "telegram-post"]
+  }'
+```
+
+See [Agent Builder](/docs/agent-builder) for the full custom-build walkthrough.
+
 ## Full Example: Push Notification Manager
 
-Complete flow — fetch skills, then update preferences and schedules in one request.
+Complete flow — fetch skills, then update preferences and schedules with three separate calls.
 
 **Step 1 — Discover skills.**
 
-Call `POST /UserAgent/Detail` with the agent instance GUID:
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Detail" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-push-agent-guid" }'
+```
+
+Response excerpt (top-level `customskills` and `scheduledskills`):
 
 ```json
 {
-  "guid": "your-push-agent-guid"
+  "customskills": [
+    {
+      "key": "cs-push-preferences",
+      "value": "## Push Tone\nWrite like a mobile growth expert...",
+      "description": "Push notification style, language, and targeting preferences",
+      "enabled": true,
+      "interval": null,
+      "_source": "preset-strategy",
+      "_editable": true
+    }
+  ],
+  "scheduledskills": [
+    {
+      "key": "cs-cron-push-scanner",
+      "value": "",
+      "description": "Scan holidays and craft push notification suggestions",
+      "enabled": true,
+      "interval": "0 9 * * *",
+      "_source": "skill-bundle",
+      "_editable": false
+    },
+    {
+      "key": "cs-cron-push-dispatcher",
+      "value": "",
+      "description": "Send queued push notifications on schedule",
+      "enabled": true,
+      "interval": "0 * * * *",
+      "_source": "skill-bundle",
+      "_editable": false
+    }
+  ]
 }
 ```
 
-Response excerpt (`configuration.custom_skills`):
+**Step 2 — Update each skill with its own call.**
 
-```json
-[
-  {
-    "key": "push-preferences",
-    "value": "## Push Tone\nWrite like a mobile growth expert...",
-    "description": "Push notification style, language, and targeting preferences",
+```bash
+# 1. Rewrite preference value
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
+  -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-push-agent-guid",
+    "skillkey": "push-preferences",
+    "value": "## Push Tone\nFriendly and casual. Turkish for locale_tr, English for locale_en.\n\n## Holiday Preferences\nFocus on: New Year, Ramadan, Republic Day.\nSkip: Valentine'\''s Day, Halloween.\n\n## Targeting\nAlways segment by locale. Premium version for paid users."
+  }'
+
+# 2. Change scanner schedule from daily to Mondays only
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
+  -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-push-agent-guid",
+    "skillkey": "cron-push-scanner",
     "enabled": true,
-    "interval": null,
-    "_editable": true
-  },
-  {
-    "key": "cron-push-scanner",
-    "value": "",
-    "description": "Scan holidays and craft push notification suggestions",
-    "enabled": true,
-    "interval": "0 9 * * *",
-    "_editable": false
-  },
-  {
-    "key": "cron-push-dispatcher",
-    "value": "",
-    "description": "Send queued push notifications on schedule",
-    "enabled": true,
-    "interval": "0 * * * *",
-    "_editable": false
-  }
-]
+    "interval": "0 9 * * 1"
+  }'
+
+# 3. Change dispatcher schedule from hourly to every 2 hours
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
+  -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-push-agent-guid",
+    "skillkey": "cron-push-dispatcher",
+    "interval": "0 */2 * * *"
+  }'
 ```
 
-**Step 2 — Update everything in one request.**
-
-`POST /UserAgent/Update`:
-
-```json
-{
-  "guid": "your-push-agent-guid",
-  "configuration": {
-    "custom_skills": [
-      {
-        "key": "push-preferences",
-        "value": "## Push Tone\nFriendly and casual. Turkish for locale_tr, English for locale_en.\n\n## Holiday Preferences\nFocus on: New Year, Ramadan, Republic Day.\nSkip: Valentine's Day, Halloween.\n\n## Targeting\nAlways segment by locale. Premium version for paid users."
-      },
-      {
-        "key": "cron-push-scanner",
-        "enabled": true,
-        "interval": "0 9 * * 1"
-      },
-      {
-        "key": "cron-push-dispatcher",
-        "interval": "0 */2 * * *"
-      }
-    ]
-  }
-}
-```
-
-This single request:
-1. **push-preferences** — rewrites targeting rules (editable skill, `value` updated)
-2. **push-scanner** — changes from daily to Mondays only (`interval` updated)
-3. **push-dispatcher** — changes from hourly to every 2 hours (`interval` updated)
+All three requests succeed independently. The agent restarts once — the server coalesces the restart trigger after all three succeed within the same request window.
 
 ## Available Skills by Agent
 
 > **Integration setup guides:** Every skill below that needs a third-party connection links to a dedicated integration page with the full OAuth / API key walkthrough, required scopes or permissions, callback URL, troubleshooting, and multi-tenant architecture notes. See the [Integration Catalog](/docs/agent-credentials#integration-catalog) for the full list.
 
-> **Discovery is canonical.** Skill keys evolve as agent templates are updated. To see the exact keys for a specific agent instance, always fetch `POST /UserAgent/Detail` first — the `configuration.custom_skills` array is the source of truth. The tables below reflect current intended keys but may lag behind the latest agent template revisions; `mergeUserConfig` silently ignores Update requests for keys that don't exist on the instance.
+> **Discovery is canonical.** Skill keys evolve as agent templates are updated. To see the exact keys for a specific agent instance, always fetch `POST /UserAgent/Detail` first — the top-level `customskills` / `scheduledskills` arrays are the source of truth. The tables below reflect current intended keys but may lag behind the latest agent template revisions; `CustomSkillUpsert` silently accepts keys that exist on the instance and returns `skill-not-found` for unknown keys without altering other state.
 
 ### Preferences (Editable Instructions)
 
@@ -10418,29 +8362,29 @@ This single request:
 
 ### Scheduled Tasks
 
-> Scheduled task keys are defined **per agent template** and may be updated over time. The table below reflects the current keys and default cron expressions shipped with Wiro's built-in agent templates, but the source of truth for any specific deployed agent is always `POST /UserAgent/Detail` → `configuration.custom_skills`.
+> Scheduled task keys are defined **per agent template** and may be updated over time. The table below reflects the current keys and default cron expressions shipped with Wiro's built-in agent templates, but the source of truth for any specific deployed agent is always `POST /UserAgent/Detail` → top-level `scheduledskills`.
 
 | Agent | Skill Key | Cron | What It Does |
 |-------|-----------|------|--------------|
-| Social Manager | `cron-content-scanner` | `0 */4 * * *` | Content discovery + draft generation (reads `cs-content-tone`) |
+| Social Manager | `cron-content-scanner` | `0 */4 * * *` | Content discovery + draft generation (reads `content-tone`) |
 | Social Manager | `cron-gmail-checker` | `*/30 * * * *` | Inbox monitoring for incoming requests (disabled by default) |
 | Social Manager | `cron-drive-scanner` | `0 10 * * *` | Google Drive asset scanning (disabled by default) |
-| Blog Content Editor | `cron-blog-scanner` | `0 9 * * *` | Topic discovery + article drafting (reads `cs-content-strategy`) |
+| Blog Content Editor | `cron-blog-scanner` | `0 9 * * *` | Topic discovery + article drafting (reads `content-strategy`) |
 | Blog Content Editor | `cron-gmail-checker` | `*/30 * * * *` | Inbox monitoring for topic requests |
-| App Review Support | `cron-review-scanner` | `0 */2 * * *` | Store scanning for new reviews (reads `cs-review-preferences`) |
-| App Event Manager | `cron-app-event-scanner` | `0 9 * * 1` | Holiday scanning + event suggestions (reads `cs-event-preferences`) |
-| Push Notification Manager | `cron-push-scanner` | `0 9 * * *` | Notification content preparation (reads `cs-push-preferences`) |
+| App Review Support | `cron-review-scanner` | `0 */2 * * *` | Store scanning for new reviews (reads `review-preferences`) |
+| App Event Manager | `cron-app-event-scanner` | `0 9 * * 1` | Holiday scanning + event suggestions (reads `event-preferences`) |
+| Push Notification Manager | `cron-push-scanner` | `0 9 * * *` | Notification content preparation (reads `push-preferences`) |
 | Push Notification Manager | `cron-push-dispatcher` | `0 * * * *` | Dispatching queued notifications |
-| Newsletter Manager | `cron-newsletter-sender` | `0 9 * * 1` | Newsletter drafting and sending (reads `cs-newsletter-strategy`) |
+| Newsletter Manager | `cron-newsletter-sender` | `0 9 * * 1` | Newsletter drafting and sending (reads `newsletter-strategy`) |
 | Newsletter Manager | `cron-subscriber-scanner` | `0 10 * * *` | Subscriber list health checks |
-| Lead Generation Manager | `cron-prospect-scanner` | `0 10 * * 1` | Prospect discovery and scoring (reads `cs-lead-strategy`) |
+| Lead Generation Manager | `cron-prospect-scanner` | `0 10 * * 1` | Prospect discovery and scoring (reads `lead-strategy`) |
 | Lead Generation Manager | `cron-outreach-reporter` | `0 9 * * *` | Outreach performance reporting |
 | Lead Generation Manager | `cron-reply-handler` | `0 */4 * * *` | Reply analysis |
-| Google Ads Manager | `cron-performance-reporter` | `0 9 * * *` | Performance reporting (reads `cs-ad-strategy`) |
+| Google Ads Manager | `cron-performance-reporter` | `0 9 * * *` | Performance reporting (reads `ad-strategy`) |
 | Google Ads Manager | `cron-competitor-scanner` | `0 10 * * 1` | Competitor analysis |
 | Google Ads Manager | `cron-holiday-ad-planner` | `0 10 * * 3` | Holiday campaign planning |
 | Google Ads Manager | `cron-drive-scanner` | `0 10 * * *` | Google Drive creative asset scanning (disabled by default) |
-| Meta Ads Manager | `cron-performance-reporter` | `0 9 * * *` | Performance reporting (reads `cs-ad-strategy`) |
+| Meta Ads Manager | `cron-performance-reporter` | `0 9 * * *` | Performance reporting (reads `ad-strategy`) |
 | Meta Ads Manager | `cron-audience-scanner` | `0 10 * * 1` | Audience analysis |
 | Meta Ads Manager | `cron-holiday-ad-planner` | `0 10 * * 3` | Holiday campaign planning |
 | Meta Ads Manager | `cron-drive-scanner` | `0 10 * * *` | Google Drive creative asset scanning (disabled by default) |
@@ -10449,56 +8393,61 @@ This single request:
 
 Each scheduled cron skill reads its paired preference skill at runtime. The mechanism:
 
-1. `POST /UserAgent/Update` writes your preference `value` into `custom_skills[key=<preference-key>]` (for example `content-tone`).
-2. When the container starts, each `custom_skills` entry is materialized as a local skill at `skills/cs-<key>/SKILL.md` inside the agent workspace. The `cs-` runtime prefix is **added by the container** on top of whatever `key` you see in the API — a preference skill with key `content-tone` becomes `skills/cs-content-tone/`, and a cron skill with key `cron-content-scanner` becomes `skills/cs-cron-content-scanner/` (double-prefix by design — the runtime `cs-` is a namespace for custom skills, and the `cron-` prefix on the key is the type marker).
-3. The scheduled cron skill's `value` (shipped in the template, not user-editable) references its paired preference via the runtime `cs-<preference-key>` path, for example:
+1. `POST /UserAgent/CustomSkillUpsert` writes your preference `value` for key `content-tone` (stored as `cs-content-tone`).
+2. When the container starts, each `customskills` / `scheduledskills` row is materialized as a local skill at `skills/<key>/SKILL.md` inside the agent workspace. The `cs-` prefix on `key` IS the runtime path — a preference skill with key `cs-content-tone` becomes `skills/cs-content-tone/`, and a cron skill with key `cs-cron-content-scanner` becomes `skills/cs-cron-content-scanner/`.
+3. The scheduled cron skill's `value` (shipped in the integration skill, not user-editable) references its paired preference via the `cs-<preference-key>` path, for example:
    ```
    0. Read the cs-content-tone skill first — follow ALL its rules.
    1. ...
    ```
 4. At each cron tick, the agent LLM reads `cs-content-tone`, applies your instructions, then executes the scan/report/dispatch workflow.
 
-> **Slug normalization:** the `<slug>` in `cs-<slug>` is NOT the raw `key` — the container normalizes each key to lowercase and replaces any run of non-alphanumeric characters with a single `-` (leading/trailing dashes are trimmed). In practice, stick to lowercase keys like `content-tone`, `push-preferences`, `lead-strategy` and the slug will match 1:1 with the key. If your key contains uppercase, underscores, or other punctuation, inspect the normalized folder name under `skills/` (via the agent's internal `read` tool on `SKILL.md`) to confirm the exact reference string the LLM should use.
+> **Slug normalization:** the `<slug>` in `cs-<slug>` / `cs-cron-<slug>` is the raw key lowercased with any run of non-alphanumeric characters replaced by a single `-` (leading/trailing dashes trimmed). Template keys already follow this shape so the slug matches 1:1.
 
-This means **your editable preference becomes the single place to customize agent behavior** (brand voice, target audience, content sources, holiday markets, etc.), and the non-editable cron skill is a thin orchestration layer that defers to your preference.
+This means **your editable preference becomes the single place to customize agent behavior** (brand voice, target audience, content sources, holiday markets, etc.), and the bundled cron skill is a thin orchestration layer that defers to your preference.
 
 ### Skill → Integration Mapping
 
 Skills that depend on third-party credentials. Follow the linked integration page for provider setup, OAuth walkthrough, and troubleshooting.
 
-| Skill | Credentials Required | Integration Guide |
-|-------|---------------------|-------------------|
-| `metaads-manage` | `metaads` (OAuth) | [Meta Ads Skills](/docs/integration-metaads-skills) |
-| `facebookpage-post` | `facebook` (OAuth) | [Facebook Page Skills](/docs/integration-facebook-skills) |
-| `instagram-post` | `instagram` (OAuth) | [Instagram Skills](/docs/integration-instagram-skills) |
-| `linkedin-post` | `linkedin` (OAuth) | [LinkedIn Skills](/docs/integration-linkedin-skills) |
-| `twitterx-post` | `twitter` (OAuth) | [Twitter / X Skills](/docs/integration-twitter-skills) |
-| `tiktok-post` | `tiktok` (OAuth) | [TikTok Skills](/docs/integration-tiktok-skills) |
-| `googleads-manage` | `googleads` (OAuth) | [Google Ads Skills](/docs/integration-googleads-skills) |
-| `hubspot-crm` | `hubspot` (OAuth) | [HubSpot Skills](/docs/integration-hubspot-skills) |
-| `mailchimp-email` | `mailchimp` (OAuth or API key) | [Mailchimp Skills](/docs/integration-mailchimp-skills) |
-| `google-drive` | `googledrive` (OAuth) | [Google Drive Skills](/docs/integration-googledrive-skills) |
-| `gmail-check` | `gmail` (App Password) | [Gmail Skills](/docs/integration-gmail-skills) |
-| `firebase-push` | `firebase` (Service account) | [Firebase Skills](/docs/integration-firebase-skills) |
-| `wordpress-post` | `wordpress` (App Password) | [WordPress Skills](/docs/integration-wordpress-skills) |
-| `appstore-reviews`, `appstore-metadata`, `appstore-events` | `appstore` (API key) | [App Store Skills](/docs/integration-appstore-skills) — env vars export only when `appstore-reviews` OR `appstore-events` is enabled; metadata-only setups need one of them as well |
-| `googleplay-reviews`, `googleplay-metadata` | `googleplay` (Service account) | [Google Play Skills](/docs/integration-googleplay-skills) — env vars export only when `googleplay-reviews` is enabled; metadata-only setups need it too |
-| `apollo-sales` | `apollo` (API key) | [Apollo Skills](/docs/integration-apollo-skills) |
-| `lemlist-outreach` | `lemlist` (API key) | [Lemlist Skills](/docs/integration-lemlist-skills) |
-| `wiro-generator` | `credentials.wiro.apiKey` (platform-managed) | See [Using Wiro AI Models from Your Agent](#using-wiro-ai-models-from-your-agent) |
-| `calendarific`, OpenAI-backed LLM skills | Platform-managed (no user key) | [Platform-Managed Credentials](/docs/agent-credentials#platform-managed-credentials) |
+| Skill | Credential Key | Integration Guide |
+|-------|----------------|-------------------|
+| `int-metaads-manage` | `meta-ads` (OAuth) | [Meta Ads Skills](/docs/integration-metaads-skills) |
+| `int-facebookpage-post` | `facebook-pages` (OAuth) | [Facebook Page Skills](/docs/integration-facebook-skills) |
+| `int-instagram-post` | `instagram` (OAuth) | [Instagram Skills](/docs/integration-instagram-skills) |
+| `int-linkedin-post` | `linkedin` (OAuth) | [LinkedIn Skills](/docs/integration-linkedin-skills) |
+| `int-twitterx-post` | `twitter` (OAuth) | [Twitter / X Skills](/docs/integration-twitter-skills) |
+| `int-tiktok-post` | `tiktok` (OAuth) | [TikTok Skills](/docs/integration-tiktok-skills) |
+| `int-youtube-manage` | `youtube` (OAuth) | [YouTube Skills](/docs/integration-youtube-skills) |
+| `int-googleads-manage` | `google-ads` (OAuth) | [Google Ads Skills](/docs/integration-googleads-skills) |
+| `int-merchant-center` | `google-merchant-center` (OAuth) | [Merchant Center Skills](/docs/integration-merchantcenter-skills) |
+| `int-ga4-analytics` | `ga4` (OAuth) | [GA4 Skills](/docs/integration-ga4-skills) |
+| `int-hubspot-crm` | `hubspot` (OAuth) | [HubSpot Skills](/docs/integration-hubspot-skills) |
+| `int-mailchimp-email` | `mailchimp` (OAuth or API key) | [Mailchimp Skills](/docs/integration-mailchimp-skills) |
+| `int-google-drive` | `google-drive` (Service Account) | [Google Drive Skills](/docs/integration-googledrive-skills) |
+| `int-gmail-check` | `gmail` (App Password) | [Gmail Skills](/docs/integration-gmail-skills) |
+| `int-firebase-push` | `firebase` (Service Account) | [Firebase Skills](/docs/integration-firebase-skills) |
+| `int-wordpress-post` | `wordpress` (App Password) | [WordPress Skills](/docs/integration-wordpress-skills) |
+| `int-brevo-email` | `brevo` (API key) | [Brevo Skills](/docs/integration-brevo-skills) |
+| `int-sendgrid-email` | `sendgrid` (API key) | [SendGrid Skills](/docs/integration-sendgrid-skills) |
+| `int-appstore-reviews`, `int-appstore-metadata`, `int-appstore-events` | `apple-appstore` (JWT / Service Account) | [App Store Skills](/docs/integration-appstore-skills) |
+| `int-googleplay-reviews`, `int-googleplay-metadata`, `int-googleplay-events` | `google-play` (Service Account) | [Google Play Skills](/docs/integration-googleplay-skills) |
+| `int-apollo-sales` | `apollo` (API key) | [Apollo Skills](/docs/integration-apollo-skills) |
+| `int-lemlist-outreach` | `lemlist` (API key) | [Lemlist Skills](/docs/integration-lemlist-skills) |
+| `int-wiro-generator` | Platform-managed (Wiro internal key) | See [Using Wiro AI Models from Your Agent](#using-wiro-ai-models-from-your-agent) |
+| `int-calendarific` | Platform-managed (no user key) | [Platform-Managed Credentials](/docs/agent-credentials#platform-managed-credentials) |
 
-Agents can optionally forward operator notifications to a `telegram` bot — see [Telegram Skills](#telegram-integration). This is never required; every agent remains fully usable over web chat and the [Messaging API](#agent-messaging) without a bot configured. Email sending across `brevo` and `sendgrid` — see [Brevo Skills](#brevo-integration) and [SendGrid Skills](#sendgrid-integration).
+Agents can optionally forward operator notifications to a Telegram bot via the `sys-telegram` credential — see [Telegram Skills](/docs/integration-telegram-skills). This is never required; every agent remains fully usable over web chat and the [Messaging API](/docs/agent-messaging) without a bot configured.
 
-> **Restart behavior:** Updating `custom_skills` on a running agent (status 3 or 4) triggers an automatic restart (`restartafter: true`) so the new skill configuration is picked up on the next daemon cycle. Same as credential updates.
+> **Restart behavior:** Calls to `CustomSkillUpsert`, `CustomSkillDelete`, `CustomSkillRevert`, and `SkillsApply` on a running agent (status 3 or 4) each trigger an automatic restart so the new skill configuration is picked up. Same as credential updates. Description-only edits to `CustomSkillUpsert` skip the restart.
 
 ## Using Wiro AI Models from Your Agent
 
 `wiro-generator` is a platform built-in skill that lets an agent call Wiro's own AI models (image/video/audio/LLM generation, cover image creation, model discovery) using Wiro's internal API. When it's enabled on an agent:
 
-- `credentials.wiro.apiKey` is filled in automatically by Wiro (platform-managed; `_editable: false`). You don't set this key yourself.
+- `credentials.wiro.apiKey` is filled in automatically by Wiro (platform-managed — `fieldstatus: "platform"`). You don't set this key yourself.
 - The agent container gets `WIRO_API_KEY` as an env var only when both `wiro-generator` skill is enabled **and** the key is present in the template.
-- `wiro-generator` is marked `user-invocable: false` — it isn't called directly by end-user messages; other skills and scheduled tasks invoke it internally when they need to generate content.
+- `wiro-generator` is marked `user_invocable: false` in the registry — it isn't called directly by end-user messages; other skills and scheduled tasks invoke it internally when they need to generate content.
 
 Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, Google Ads, Newsletter) ship with `wiro-generator: true` and the platform-managed `wiro` credential pre-filled. Templates that don't need AI generation (App Review Support, Lead Generation Manager) ship with `wiro-generator: false`.
 
@@ -10509,41 +8458,830 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Detail" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{ "guid": "your-useragent-guid" }'
-# Look under configuration.skills — "wiro-generator" should be true
+# The top-level skills[] array should contain "wiro-generator"
 ```
 
 ### API user-specific note
 
 `wiro-generator` does **not** mean "your custom skill can call Wiro's Run API with your own API key". It's scoped to the agent template's internal skills and uses Wiro's pre-filled platform key. If you're building on top of Wiro programmatically and want to call the Run / Task / LLM APIs directly from your own backend (not from inside an agent container), use your standard Wiro API key against the public API — see [Run a Model](/docs/run-a-model) and [LLM & Chat Streaming](/docs/llm-chat-streaming).
 
-## Update Rules
+## Update Rules Summary
 
-| Field | Editable Skills (`_editable: true`) | System Skills (`_editable: false`) |
-|-------|-------------------------------------|-----------------------------------|
-| `key` | Read-only (used for lookup) | Read-only |
-| `enabled` | Can toggle on/off | Can toggle on/off |
-| `interval` | Can change cron schedule | Can change cron schedule |
-| `value` | Can rewrite instructions | Ignored (hidden in API response) |
-| `description` | Can update description | Ignored |
-| `_editable` | Read-only | Read-only |
+| Operation | Endpoint | Allowed on preset strategy (`_source: preset-strategy`) | Allowed on skill-bundled cron (`_source: skill-bundle`) | Allowed on user-created cron (`_source: user-created`) |
+|---|---|---|---|---|
+| Write `value` | `CustomSkillUpsert` | Yes | **No — silently dropped** | Yes |
+| Write `interval` | `CustomSkillUpsert` | **No — silently dropped** | Yes | Yes |
+| Write `enabled` | `CustomSkillUpsert` | **No — silently dropped** | Yes | Yes |
+| Write `description` | `CustomSkillUpsert` | **No — rejected** (preset descriptions are template-owned) | **No — rejected** | Yes |
+| Create | `CustomSkillUpsert` with `usercreated: true` | n/a | n/a | Yes |
+| Delete | `CustomSkillDelete` | No-op | **Rejected with `disable-via-upsert` suggestion** | Yes |
+| Read history | `CustomSkillHistory` | Yes | Yes (only `enabled` / `interval` writes show up) | Yes |
+| Revert to preset | `CustomSkillRevert` (`source: "preset"`) | Yes | Yes (resets `interval` / `enabled` to preset defaults) | Yes (deletes the row if no preset baseline exists) |
+| Revert to a version | `CustomSkillRevert` (`source: "history"`) | Yes | Yes | Yes |
 
-- Include only the fields you want to change — omitted fields keep their current values
-- New skills cannot be added — only existing skills (matched by `key`) can be updated
-- Send empty string `""` for `interval` to clear the schedule (becomes `null`)
-- You can update credentials and skills in the same `POST /UserAgent/Update` request
+- Send only the fields you want to change — omitted fields keep their current values.
+- Unknown skill keys return `skill-not-found` in the `errors[]` without altering other state.
+- To clear a cron schedule, call `CustomSkillUpsert` with `enabled: false`. Setting `interval: ""` or `null` also clears it.
+- Integration toggles (top-level `skills[]`) are a separate endpoint — see [Toggling Integration Skills](#toggling-integration-skills) and [`SkillsApply`](/docs/agent-overview#post-useragentskillsapply).
 
 ### What happens when Wiro updates an agent template
 
-Skills occasionally evolve on Wiro's side — new skills, renamed keys, improved cron instructions. Deployed instances are reconciled with the latest template without destroying your edits:
+Skills occasionally evolve on Wiro's side — new preset strategies, new bundled crons, improved instructions. Deployed instances are reconciled with the latest template without destroying your edits:
 
-| Skill type | Behavior on template update |
-|------------|-----------------------------|
-| Editable preference (`_editable: true`, `interval: null`) | Your `value` is **preserved**. If the new template adds fields to the placeholder structure, they appear only on fresh deploys, not on existing instances. |
-| Scheduled cron (`_editable: false`, `interval` set) | The `value` (cron instructions) is **overwritten** from the new template. Your custom `interval` and `enabled` flags are kept. |
-| New skill added upstream | Added to your instance with default `value`, `enabled`, `interval`. |
-| Skill removed upstream | Removed from your instance on the next reconciliation. |
+| Row type | Behavior on template update |
+|----------|----------------------------|
+| Preset strategy (`_source: "preset-strategy"`) | Your `value` is **preserved** (rows with `useredited: true`). New placeholder structure in the template appears only on fresh deploys. |
+| Skill-bundled cron (`_source: "skill-bundle"`) | The `value` (cron instructions) is **re-materialized** from the new skill. Your custom `interval` and `enabled` are preserved when `useredited: true`. |
+| New preset strategy upstream | Added to your instance with the template's default `value`. |
+| Preset strategy removed upstream | Removed from your instance on the next reconciliation. |
+| User-created cron | Always preserved. |
 
-This means your `UserAgent/Update` preference edits are durable across template upgrades, while Wiro can push improvements to the scanning/reporting workflows without you having to re-deploy.
+Cascade reconciliation is async — admin pushes an `Agent/CustomSkillUpsert`, which enqueues a job that fans out to every deployed useragent in the background. Per-useragent edits (`useredited: true`) are protected from being overwritten by the cascade.
+
+---
+
+# Agent Transactions
+
+Per-instance credit ledger — every credit deduction, renewal, purchase, refund, grant, and cancel for a useragent in a single immutable feed.
+
+## Overview
+
+Wiro keeps a complete, append-only **agent transaction ledger** for every UserAgent instance. Whenever credits move — the agent runtime burns them on a message, a subscription renews, a Pro user buys an extra-credit pack, an admin tops up, the user disables a paid skill mid-period and gets a refund — a row is inserted into the ledger and surfaced through `POST /UserAgent/TransactionList`.
+
+The ledger is the single source of truth for "where did my credits go?" and powers the **Transactions** view in your dashboard.
+
+| Transaction `type` | Source | When it fires |
+|--------------------|--------|---------------|
+| `deduct` | Agent runtime | Every successful agent action (`message`, `create`, `modify`, `regenerate`). Negative `amount`. |
+| `renewal` | Subscription cron | At each 30-day rollover when the wallet successfully covers the renewal. Positive `amount` = monthly credits granted. |
+| `purchase` | Extra-credit checkout | When `POST /UserAgent/CreateExtraCreditCheckout` (`useprepaid: true`) succeeds. Positive `amount` = pack credits. |
+| `grant` | Skill toggle / admin top-up | When a skill is enabled mid-period (extra credits added), or an admin uses `AdminRateLimitUpdate` to top up. Positive `amount`. |
+| `expired` | Skill toggle | When a skill is disabled mid-period and the credit pool shrinks. Negative `amount` (signed delta). |
+| `refund` | Server-side refund | When a Stripe refund webhook arrives for an agent purchase. Positive `amount`. |
+| `cancel` | Subscription end policy | When a subscription expires and the policy revokes any monthly leftover. Negative `amount`. |
+
+> **The ledger is append-only.** There is no delete endpoint. Each row carries a stable `guid` that the server uses for deduplication (so a duplicate retry of the same deduct event is a no-op).
+
+## **POST** /UserAgent/TransactionList
+
+Returns the ledger rows for a single useragent sorted **newest-first**, plus a snapshot summary of the current balance.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | The useragent instance guid. |
+| `limit` | number | No | Max rows to return. Default `50`, max `500`. |
+| `start` | number | No | Offset for pagination. Default `0`. |
+
+**Authorization:** owner uuid OR any team member of the useragent's team. Admin callers bypass the uuid check. Pass `teamGUID: <team-guid>` as a header for team agents.
+
+##### Request
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "limit": 50 }'
+```
+
+##### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "total": 128,
+  "summary": {
+    "monthlycredits": 5000,
+    "extracredits": 2000,
+    "usedcredits": 1450,
+    "remainingcredits": 5550,
+    "creditperiod": "2026-05",
+    "creditsyncat": 1714694410
+  },
+  "transactions": [
+    {
+      "guid": "7f3e8c21-1be1-4f5a-96e8-2b1a9e2a6a01",
+      "type": "deduct",
+      "action": "message",
+      "amount": -10,
+      "balanceafter": 5550,
+      "description": "Agent action: message",
+      "sessionkey": "default",
+      "messageguid": "5c41dabf-f2be-4aa8-a5a4-8c9e3d2f3f11",
+      "provider": "agent",
+      "providerref": null,
+      "metadata": null,
+      "uuid": "ada-uuid",
+      "user": {
+        "uuid": "ada-uuid",
+        "firstname": "Ada",
+        "lastname": "Lovelace",
+        "email": "ada@example.com",
+        "username": "ada",
+        "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
+        "avatarinitials": "AL"
+      },
+      "createdat": 1714694400
+    },
+    {
+      "guid": "a40b5473-aedb-47d7-966b-7b038eed30dc",
+      "type": "purchase",
+      "action": "small",
+      "amount": 5000,
+      "balanceafter": 5560,
+      "description": "Extra credits — small pack",
+      "sessionkey": null,
+      "messageguid": null,
+      "provider": "prepaid",
+      "providerref": null,
+      "metadata": { "pack": "small", "priceUsd": 45 },
+      "uuid": "ada-uuid",
+      "user": {
+        "uuid": "ada-uuid",
+        "firstname": "Ada",
+        "lastname": "Lovelace",
+        "email": "ada@example.com",
+        "username": "ada",
+        "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
+        "avatarinitials": "AL"
+      },
+      "createdat": 1714692800
+    },
+    {
+      "guid": "312e2a5f-1002-4c9a-af7d-70571e8b1739",
+      "type": "renewal",
+      "action": "monthly",
+      "amount": 5000,
+      "balanceafter": 3560,
+      "description": "Subscription renewal",
+      "sessionkey": null,
+      "messageguid": null,
+      "provider": "prepaid",
+      "providerref": null,
+      "metadata": { "period": "2026-05", "priceUsd": 29 },
+      "uuid": "system",
+      "user": null,
+      "createdat": 1714608000
+    },
+    {
+      "guid": "98a14c2e-ee0f-4a2d-b73b-d33fe8e57cf2",
+      "type": "grant",
+      "action": "skill-toggle",
+      "amount": 500,
+      "balanceafter": 5050,
+      "description": "Skill enabled: instagram-post",
+      "sessionkey": null,
+      "messageguid": null,
+      "provider": "prepaid",
+      "providerref": null,
+      "metadata": {
+        "skill": "instagram-post",
+        "enabled": true,
+        "previousPriceUsd": 27,
+        "newPriceUsd": 32,
+        "proratedCharge": 3.33
+      },
+      "uuid": "ada-uuid",
+      "user": {
+        "uuid": "ada-uuid",
+        "firstname": "Ada",
+        "lastname": "Lovelace",
+        "email": "ada@example.com",
+        "username": "ada",
+        "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
+        "avatarinitials": "AL"
+      },
+      "createdat": 1714604000
+    }
+  ]
+}
+```
+
+> The `user` object is the resolved actor that triggered the ledger entry — `uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`. It is `null` when `uuid` is `"system"` (cron renewals, subscription expiry, automation) or when the user record has been deleted. The renewal row above was written by an automated renewal cron, so `uuid: "system"` and `user: null`.
+
+**Summary fields** (snapshot of the useragent row):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `monthlycredits` | `number` | Current monthly allocation. |
+| `extracredits` | `number` | Active extra-credit balance (sum of non-expired packs). |
+| `usedcredits` | `number` | Consumed during the current period (reported by the runtime). |
+| `remainingcredits` | `number` | `max(0, monthlycredits + extracredits - usedcredits)`. |
+| `creditperiod` | `string` | `'YYYY-MM'` billing window. Rolls over on subscription renewal. |
+| `creditsyncat` | `number\|null` | Last runtime → API usage sync in Unix seconds. |
+
+**Transaction fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `guid` | `string` | Stable id of the ledger row. Daemon retries reuse this guid for idempotency. |
+| `type` | `string` | `"deduct"`, `"renewal"`, `"purchase"`, `"grant"`, `"expired"`, `"refund"`, or `"cancel"`. |
+| `action` | `string\|null` | Fine-grained detail. Values depend on `type`: `"message"`, `"create"`, `"modify"`, `"regenerate"` (deduct); `"monthly"` (renewal); `"small"`, `"medium"`, `"large"` (purchase); `"skill-toggle"`, `"admin"`, `"upgrade"` (grant); `"skill-toggle"` (expired); `"subscription"` (cancel/refund). |
+| `amount` | `number` | Signed credit delta — negative for deductions, positive for grants. |
+| `balanceafter` | `number\|null` | Remaining credit balance snapshot written at the time of the event. May be `null` for very old rows or for events written before the snapshot field was added. |
+| `description` | `string\|null` | Human-readable label. |
+| `sessionkey` | `string\|null` | Session the deduct belongs to (deduct rows only). |
+| `messageguid` | `string\|null` | Agent message that triggered the deduct (deduct rows only). |
+| `provider` | `string\|null` | `"agent"` (runtime deduct), `"prepaid"` (wallet-backed change), or `"stripe"` (Stripe-backed refund / renewal). |
+| `providerref` | `string\|null` | Provider-side reference (Stripe session / invoice / payment-intent id, etc.). |
+| `metadata` | `object\|null` | Arbitrary JSON context attached at write time (skill, tier, period, prorated charge, …). |
+| `uuid` | `string\|null` | UUID of the user who triggered the event (the chat operator for `deduct` rows; the wallet owner for `purchase` / `grant`). `"system"` for cron-driven events. |
+| `user` | `object\|null` | Resolved actor: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. `null` when `uuid` is `"system"` (automation / cron renewals) or when the user record was deleted. |
+| `createdat` | `number` | Unix seconds. |
+
+> **Pagination.** The endpoint returns `total` so you can render a precise paginator. Default page size is 50, max is 500. Use `start` to skip rows.
+
+## Reading the Ledger — Patterns
+
+### Daily / weekly reports
+
+Filter client-side on `createdat` to bucket transactions per day or per skill:
+
+```python
+import requests
+from collections import defaultdict
+from datetime import datetime
+
+resp = requests.post(
+    "https://api.wiro.ai/v1/UserAgent/TransactionList",
+    headers={"x-api-key": "YOUR_API_KEY", "Content-Type": "application/json"},
+    json={"useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "limit": 500}
+).json()
+
+per_day_burn = defaultdict(int)
+for tx in resp["transactions"]:
+    if tx["type"] == "deduct":
+        day = datetime.utcfromtimestamp(tx["createdat"]).strftime("%Y-%m-%d")
+        per_day_burn[day] += abs(tx["amount"])
+
+for day in sorted(per_day_burn):
+    print(f"{day}: {per_day_burn[day]} credits")
+```
+
+### Audit a billing-period rollover
+
+`type: "renewal"` rows are written exactly once per billing-period rollover. Pair them with the most recent `summary.creditperiod` to confirm the new period started on time.
+
+```javascript
+const renewals = transactions.filter(t => t.type === 'renewal');
+const lastRenewal = renewals[0];   // newest-first ordering
+console.log('Last renewal:', new Date(lastRenewal.createdat * 1000).toISOString());
+console.log('Granted:', lastRenewal.amount, 'credits');
+console.log('Now in period:', summary.creditperiod);
+```
+
+### Reconcile a Pro tier upgrade
+
+When the user upgrades Starter → Pro mid-period, `UpgradeTier` writes one `grant` row with `action: "upgrade"` and `metadata: { tier, proratedCharge, ... }`. Use this to render an upgrade history in your UI.
+
+## Agent → API Sync (`TransactionInsert`)
+
+Agent runtimes report deductions through a separate authenticated endpoint, **`POST /UserAgent/TransactionInsert`**. API users **don't normally call this** — it's reserved for the Wiro-managed agent runtime. It is documented here for completeness.
+
+The endpoint is **idempotent on `guid`**: a retry of the same deduction event returns the post-merge balance without double-charging.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Target useragent guid (must match the agent container's settings) |
+| `uuid` | string | Yes | Owner uuid (must match the useragent) |
+| `type` | string | Yes | Must be `"deduct"` (only deductions can be inserted from the agent side) |
+| `action` | string | No | `"message"`, `"create"`, `"modify"`, `"regenerate"` |
+| `amount` | number | Yes | Positive cost or pre-signed negative delta |
+| `guid` | string | No | Daemon-side stable identifier (recommended for idempotency); server mints one if omitted |
+| `sessionkey` | string | No | Session that consumed the credits |
+| `messageguid` | string | No | Message that triggered the deduction |
+| `description` | string | No | Human-readable label |
+| `metadata` | object | No | Arbitrary JSON to record with the row |
+
+##### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "guid": "7f3e8c21-1be1-4f5a-96e8-2b1a9e2a6a01",
+  "idempotent": false,
+  "monthlycredits": 5000,
+  "extracredits": 2000,
+  "usedcredits": 1460,
+  "remainingcredits": 5540
+}
+```
+
+`idempotent: true` means the event guid was already in the ledger — no double-charge happened, and the response carries the **current** balance for the agent to reconcile against.
+
+## Credit Sync (`CreditSync`)
+
+In addition to per-deduction `TransactionInsert` events, the agent container periodically pushes its **monotonic** total `usedcredits` counter via `POST /UserAgent/CreditSync`. This is also a runtime-only endpoint, but useful to understand the data flow.
+
+Server policy:
+
+- Within the same billing period (`creditperiod` matches), the server stores `GREATEST(existing, incoming)` — out-of-order syncs can never lower the counter.
+- If the incoming `creditperiod` doesn't match the DB row (e.g. a renewal already rolled over), the sync is rejected and the response carries the canonical period + counter for the agent to reset its local state.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Target useragent guid |
+| `uuid` | string | Yes | Owner uuid |
+| `usedcredits` | number | Yes | Total consumed this period (monotonic, >= 0) |
+| `creditperiod` | string | Yes | `'YYYY-MM'` tag this counter applies to |
+
+##### Response — happy path
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "usedcredits": 1460,
+  "creditperiod": "2026-05",
+  "remainingcredits": 5540
+}
+```
+
+##### Response — period mismatch
+
+```json
+{
+  "result": false,
+  "errors": [{ "code": 0, "message": "period mismatch (expected 2026-05, got 2026-04)" }],
+  "usedcredits": 1460,
+  "creditperiod": "2026-05"
+}
+```
+
+The agent runtime is expected to restart and retry on the new period.
+
+## Errors
+
+| Error | When |
+|-------|------|
+| `useragentguid is required` | `TransactionList` / `TransactionInsert` / `CreditSync` without `useragentguid` |
+| `useragent-access-denied` | Caller is neither owner, team member, nor admin |
+| `Only deduct transactions can be inserted from agents` | `TransactionInsert` with `type` other than `"deduct"` |
+| `period mismatch (expected X, got Y)` | `CreditSync` with a stale `creditperiod` after a renewal rollover |
+| `Invalid credentials` | `TransactionInsert` / `CreditSync` with a `(useragentguid, uuid)` pair that doesn't match a row |
+| `transactions-list-failed` | `TransactionList` server-side error (DB) — surfaced loudly so it's distinguishable from "empty ledger" |
+
+## Code Examples
+
+### curl
+
+```bash
+# Latest 50 transactions for a useragent
+curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "limit": 50 }'
+
+# Page 2 (next 50)
+curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "limit": 50, "start": 50 }'
+```
+
+### Python
+
+```python
+import requests
+
+headers = {"x-api-key": "YOUR_API_KEY", "Content-Type": "application/json"}
+
+resp = requests.post(
+    "https://api.wiro.ai/v1/UserAgent/TransactionList",
+    headers=headers,
+    json={"useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "limit": 100}
+).json()
+
+print(f"Balance — remaining: {resp['summary']['remainingcredits']}/{resp['summary']['monthlycredits']}")
+print(f"Total ledger rows: {resp['total']}")
+
+for tx in resp["transactions"][:10]:
+    sign = "+" if tx["amount"] > 0 else ""
+    print(f"  [{tx['type']:>9}] {sign}{tx['amount']:>6}  {tx['description']}")
+```
+
+### Node.js
+
+```javascript
+const axios = require('axios');
+
+const headers = { 'x-api-key': 'YOUR_API_KEY', 'Content-Type': 'application/json' };
+
+const { data } = await axios.post(
+  'https://api.wiro.ai/v1/UserAgent/TransactionList',
+  { useragentguid: 'f8e7d6c5-b4a3-2190-fedc-ba0987654321', limit: 100 },
+  { headers }
+);
+
+console.log(`Balance: ${data.summary.remainingcredits}/${data.summary.monthlycredits}`);
+console.log(`Period: ${data.summary.creditperiod}`);
+
+data.transactions.slice(0, 10).forEach(tx => {
+  const sign = tx.amount > 0 ? '+' : '';
+  console.log(`  [${tx.type.padStart(9)}] ${sign}${tx.amount}  ${tx.description}`);
+});
+```
+
+### PHP
+
+```php
+<?php
+$ch = curl_init("https://api.wiro.ai/v1/UserAgent/TransactionList");
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Content-Type: application/json",
+    "x-api-key: YOUR_API_KEY"
+]);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+    "useragentguid" => "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+    "limit" => 100
+]));
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+$resp = json_decode(curl_exec($ch), true);
+curl_close($ch);
+
+echo "Balance: {$resp['summary']['remainingcredits']}/{$resp['summary']['monthlycredits']}\n";
+foreach (array_slice($resp['transactions'], 0, 10) as $tx) {
+    $sign = $tx['amount'] > 0 ? '+' : '';
+    echo "[{$tx['type']}] {$sign}{$tx['amount']} {$tx['description']}\n";
+}
+```
+
+## What's Next
+
+- [Agent Logs](/docs/agent-logs) — Activity feed (tool calls, cron runs, message exchanges) for the same useragent
+- [Agent Overview](/docs/agent-overview) — Full agent endpoint catalog, including subscription / billing operations
+- [Agent Builder](/docs/agent-builder) — Build a custom agent and watch the ledger fill up as it runs
+
+---
+
+# Agent Logs
+
+Per-instance activity feed — tool calls, scheduled cron runs, message exchanges, and turn boundaries — for any deployed agent.
+
+## Overview
+
+Every Wiro agent container runs a small **wiro-commands plugin** that appends one structured `ActivityEvent` JSON line per tool call, turn boundary, session boundary, message exchange, and synthesized cron run. The plugin redacts secrets-by-field-name, high-entropy assignment values, internal tool-call IDs, and the API URL/credentials before writing — so what shows up in `Logs` is safe to show end users.
+
+A daily JSONL file is written for each calendar day; files older than 7 days are gzipped, files older than 180 days are deleted by the agent's daily maintenance cron.
+
+The endpoints below are **owner-or-team-member** scoped. Team admins can read any team agent; outside callers receive `useragent-access-denied`.
+
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /UserAgent/Logs` | Live tail (last N events for today, or a specific date). Cached server-side for 30s on non-admin callers to absorb polling. |
+| `POST /UserAgent/LogsList` | List the date strings (`YYYY-MM-DD`) for which an activity file exists. |
+| `POST /UserAgent/LogsFile` | Read the **full** JSONL file for a specific date. |
+| `POST /UserAgent/LogsDelete` | Delete one date's activity file (and its gzipped sibling). Idempotent. |
+
+> **Activity feed vs `Message/History`.** `Message/History` is a chat-bubble-level read of the conversation. `Logs` is a **runtime** view: every tool call, every scheduled trigger, every session boundary the agent touched. They serve different audiences (`Message/History` for end users, `Logs` for operators / power users).
+
+## ActivityEvent Shape
+
+Every event is a JSON object with this base shape:
+
+```json
+{
+  "ts": 1714694410,
+  "kind": "tool",
+  "action": "wordpress-publish",
+  "skill": "wordpress-post",
+  "session": "user-42",
+  "userUuid": "ada-uuid",
+  "user": {
+    "uuid": "ada-uuid",
+    "firstname": "Ada",
+    "lastname": "Lovelace",
+    "email": "ada@example.com",
+    "username": "ada",
+    "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
+    "avatarinitials": "AL"
+  },
+  "details": {
+    "title": "Weekly Roundup",
+    "url": "https://blog.example.com/weekly-roundup-12"
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `ts` | `number` | Unix seconds when the event was emitted inside the container. |
+| `kind` | `string` | Event class: `"tool"` (a skill tool call), `"turn"` (turn boundary), `"session"` (session start/end), `"message"` (user ↔ agent exchange), `"cron"` (scheduled cron tick), `"deduct"` (a credit deduction), `"system"` (container lifecycle). |
+| `action` | `string` | Fine-grained label: e.g. `"wordpress-publish"`, `"telegram-send"`, `"message"`, `"cron-tick"`, `"agent_start"`. |
+| `skill` | `string\|null` | The skill that produced the event (`"wordpress-post"`, `"telegram-post"`, `"cs-cron-content-scanner"`, …). `null` for system events. |
+| `session` | `string\|null` | Sessionkey the event belongs to (chat events only). |
+| `userUuid` | `string\|null` | UUID of the user who triggered the event. `"system"` for cron / internal events. Pre-rollout legacy entries fall back to the useragent owner. |
+| `user` | `object\|null` | Resolved actor: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. `null` when `userUuid` is `"system"` (automation / cron) or when the user record was deleted. |
+| `details` | `object` | Event-specific payload. Always redacted (no API URLs, no secret-by-name fields, no high-entropy assignment values). |
+
+> **`details` shape varies per `kind`.** Tool calls include the action's input/output summary; cron ticks include the cron expression and skill name; message events include the message GUID and the first ~120 chars of the user prompt. The plugin always strips `apiKey`, `apppassword`, `clientsecret`, `bearer`, `token`, etc. before writing.
+
+## **POST** /UserAgent/Logs
+
+Live tail of the agent's activity feed. Returns the last N events for the requested date (defaults to today).
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Your UserAgent instance guid. |
+| `date` | string | No | `YYYY-MM-DD` to read a specific day's file. Default: today (UTC). Pass `"today"` explicitly for clarity. |
+| `lines` | number | No | Max events to return (max 5000). Default: `200`. |
+
+**Caching:** the endpoint is cached server-side for 30 seconds per `(useragentguid, date, lines)` triple to absorb polling bursts. Plan for ≥30 s between repeated polls of the same key — older or differently-keyed reads bypass the cache.
+
+##### Request
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Logs" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "lines": 200 }'
+```
+
+##### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "date": "2026-05-03",
+  "totalLines": 1428,
+  "events": [
+    {
+      "ts": 1714694412,
+      "kind": "deduct",
+      "action": "create",
+      "skill": "wordpress-post",
+      "session": null,
+      "userUuid": "system",
+      "user": null,
+      "details": { "cost": 60, "balanceafter": 4940 }
+    },
+    {
+      "ts": 1714694410,
+      "kind": "tool",
+      "action": "wordpress-publish",
+      "skill": "wordpress-post",
+      "session": null,
+      "userUuid": "system",
+      "user": null,
+      "details": {
+        "title": "Weekly Roundup",
+        "url": "https://blog.example.com/weekly-roundup-12",
+        "categories": ["AI", "Tutorial"]
+      }
+    },
+    {
+      "ts": 1714694200,
+      "kind": "cron",
+      "action": "cron-tick",
+      "skill": "cs-cron-blog-scanner",
+      "session": null,
+      "userUuid": "system",
+      "user": null,
+      "details": { "interval": "0 9 * * *", "trigger": "scheduled" }
+    },
+    {
+      "ts": 1714693100,
+      "kind": "message",
+      "action": "agent_end",
+      "skill": null,
+      "session": "user-42",
+      "userUuid": "ada-uuid",
+      "user": {
+        "uuid": "ada-uuid",
+        "firstname": "Ada",
+        "lastname": "Lovelace",
+        "email": "ada@example.com",
+        "username": "ada",
+        "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
+        "avatarinitials": "AL"
+      },
+      "details": {
+        "messageguid": "5c41dabf-f2be-4aa8-a5a4-8c9e3d2f3f11",
+        "prompt": "Draft a weekly roundup post for the past week.",
+        "elapsedTime": "8.1s",
+        "wordCount": 412
+      }
+    }
+  ]
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `date` | `string\|null` | The actual date the events were read from (`YYYY-MM-DD`). |
+| `totalLines` | `number` | Total lines in the file (regardless of `lines` cap). |
+| `events` | `array<ActivityEvent>` | Newest events last (ascending by `ts`). The frontend usually reverses for display. |
+
+> **About the `user` field.** Every event is decorated with the resolved actor: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. It is `null` when:
+>
+> - The event was triggered by **automation** — `userUuid: "system"` for cron ticks, scheduled-skill runs, automated deductions, agent-initiated tool calls, and similar non-interactive writes (the three system / cron rows above).
+> - The actor's user record was deleted or the lookup misses for any reason.
+>
+> When the actor cannot be resolved (deleted account, automation), the server falls back to the useragent owner's UUID so the row never renders an empty placeholder.
+
+## **POST** /UserAgent/LogsList
+
+Returns the list of dates for which an activity file exists for this agent. Useful for rendering a date-picker.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Your UserAgent instance guid. |
+
+##### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "dates": [
+    { "date": "2026-05-03", "filename": "2026-05-03.jsonl",    "size": 184220, "compressed": false },
+    { "date": "2026-05-02", "filename": "2026-05-02.jsonl.gz", "size": 41280,  "compressed": true },
+    { "date": "2026-05-01", "filename": "2026-05-01.jsonl.gz", "size": 38912,  "compressed": true }
+  ]
+}
+```
+
+`compressed: true` means the file has been gzipped (happens after 7 days). Reading either form via `LogsFile` returns the same decoded events.
+
+## **POST** /UserAgent/LogsFile
+
+Reads the **full** JSONL file for a specific date and returns every event in it. Use this for "Download today's activity" buttons or for off-band analysis.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Your UserAgent instance guid. |
+| `date` | string | Yes | `YYYY-MM-DD` of the file to read. |
+
+##### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "date": "2026-05-02",
+  "truncated": false,
+  "events": [
+    {
+      "ts": 1714000000,
+      "kind": "system",
+      "action": "agent_start",
+      "skill": null,
+      "session": null,
+      "userUuid": "system",
+      "user": null,
+      "details": {}
+    },
+    {
+      "ts": 1714000020,
+      "kind": "session",
+      "action": "session_start",
+      "skill": null,
+      "session": "user-42",
+      "userUuid": "ada-uuid",
+      "user": {
+        "uuid": "ada-uuid",
+        "firstname": "Ada",
+        "lastname": "Lovelace",
+        "email": "ada@example.com",
+        "username": "ada",
+        "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
+        "avatarinitials": "AL"
+      },
+      "details": {}
+    }
+  ]
+}
+```
+
+> **`truncated`** is `true` when the file was capped at the worker's max-line ceiling (~50000 events per file). When `true`, paginate by date — older events for the same day are not retrievable through this endpoint. (Use the live tail with smaller `lines` values for partial reads.)
+
+## **POST** /UserAgent/LogsDelete
+
+Deletes one date's activity file and its gzipped sibling (if present). Idempotent — deleting an already-gone date is a success no-op.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Your UserAgent instance guid. |
+| `date` | string | Yes | `YYYY-MM-DD` of the file to remove. |
+
+##### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "date": "2026-05-01",
+  "removed": { "plain": false, "gz": true }
+}
+```
+
+`removed.{plain,gz}` reports which physical files were actually deleted. Both `false` is also a success (file was already gone).
+
+## Usage Patterns
+
+### Live polling for an in-app activity feed
+
+Polling `Logs` every 30 seconds is the recommended cadence — the server-side cache TTL is calibrated for exactly this interval, so faster polling won't return fresher data:
+
+```javascript
+async function pollActivity(useragentguid, onEvents) {
+  let lastTs = 0;
+
+  setInterval(async () => {
+    const { data } = await axios.post(
+      'https://api.wiro.ai/v1/UserAgent/Logs',
+      { useragentguid, lines: 200 },
+      { headers: { 'x-api-key': 'YOUR_API_KEY', 'Content-Type': 'application/json' } }
+    );
+
+    const fresh = data.events.filter(e => e.ts > lastTs);
+    if (fresh.length === 0) return;
+
+    onEvents(fresh);
+    lastTs = fresh[fresh.length - 1].ts;
+  }, 30_000);
+}
+```
+
+### Daily download for off-band analysis
+
+```bash
+# 1) discover available dates
+curl -X POST "https://api.wiro.ai/v1/UserAgent/LogsList" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321" }'
+
+# 2) download a specific date's full file
+curl -X POST "https://api.wiro.ai/v1/UserAgent/LogsFile" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "date": "2026-05-02" }' \
+  > logs-2026-05-02.json
+```
+
+### Filtering server-side by `kind`
+
+The endpoints don't support server-side filtering — apply filters client-side:
+
+```python
+import requests
+
+resp = requests.post(
+    "https://api.wiro.ai/v1/UserAgent/LogsFile",
+    headers={"x-api-key": "YOUR_API_KEY", "Content-Type": "application/json"},
+    json={"useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "date": "2026-05-02"}
+).json()
+
+cron_runs = [e for e in resp["events"] if e["kind"] == "cron"]
+print(f"{len(cron_runs)} cron ticks on 2026-05-02")
+for e in cron_runs:
+    print(f"  [{e['skill']}] interval={e['details'].get('interval')}")
+```
+
+### GDPR-style "scrub a day"
+
+`LogsDelete` lets the user wipe a specific day's events without waiting for the 180-day rotation:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/LogsDelete" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "date": "2026-05-02" }'
+```
+
+## Errors
+
+| Error | When |
+|-------|------|
+| `useragentguid is required` | Missing required parameter |
+| `date is required` | `LogsFile` / `LogsDelete` without `date` |
+| `useragent-access-denied` | Caller is neither owner, team admin, nor admin |
+| `Agent is not assigned to a worker. It may not be running.` | The useragent has no `workerid` (it's never been started, or has been re-allocated) |
+| `Worker not found` | The agent's worker row is missing — internal data inconsistency |
+| `Failed to fetch activity from worker` | The worker side rejected the request (worker offline, network blip) — retry |
+| `Failed to fetch activity dates from worker` / `Failed to delete activity file from worker` / `Failed to fetch activity file from worker` | Same as above for the matching endpoint |
+
+## Retention & Rotation
+
+| Period | What happens |
+|--------|--------------|
+| Day 0 — 6 | File is plain JSONL (`YYYY-MM-DD.jsonl`). Live tail + LogsFile read it directly. |
+| Day 7 — 180 | File is gzipped (`YYYY-MM-DD.jsonl.gz`). Reads are transparently decompressed; size in `LogsList` reports the on-disk compressed bytes. |
+| Day 181+ | File is deleted by the agent's daily maintenance cron. `LogsList` no longer surfaces the date and `LogsFile` returns `Failed to fetch activity file from worker`. |
+
+> **Persistence is per-agent.** If Wiro re-allocates the agent's runtime (rare; happens during platform maintenance), the activity history starts fresh from that point. For long-term audit trails, schedule a daily `LogsFile` download to your own storage.
+
+## What's Next
+
+- [Agent Transactions](/docs/agent-transactions) — Credit ledger for the same useragent — the audit trail of every credit movement
+- [Agent Messaging](/docs/agent-messaging) — User-facing message exchanges (with full prompts and responses)
+- [Agent Overview](/docs/agent-overview) — Full agent endpoint catalog
+
+---
 
 # Agent Use Cases
 
@@ -10583,7 +9321,7 @@ For conversational agents that don't need per-user credentials. One agent instan
 
 **How:** Deploy one instance via `POST /UserAgent/Deploy`, then send messages with different `sessionkey` values per user.
 
-**About `sessionkey`:** This field is optional — if omitted, messages go into a shared `"default"` session. Reuse the same `sessionkey` to continue a conversation (the agent retrieves prior messages as context). Use a fresh UUID to start a new conversation. The common convention is one `sessionkey` per end-user (e.g. `"user-456"`), but you can also use it per-thread (e.g. `"ticket-2025-0817"`) for products that group conversations by topic. See the [Agent Messaging](#agent-messaging) guide for how sessions work.
+**About `sessionkey`:** This field is optional — if omitted, messages go into a shared `"default"` session. Reuse the same `sessionkey` to continue a conversation (the agent retrieves prior messages as context). Use a fresh UUID to start a new conversation. The common convention is one `sessionkey` per end-user (e.g. `"user-456"`), but you can also use it per-thread (e.g. `"ticket-2025-0817"`) for products that group conversations by topic. See the [Agent Messaging](/docs/agent-messaging) guide for how sessions work.
 
 #### Real-World Examples
 
@@ -10622,14 +9360,14 @@ Build a fully branded chat experience with no Wiro UI visible to your users.
 The deploy flow has three stages — Deploy, Setup (only when the agent needs third-party credentials), and Start:
 
 1. **Deploy** an agent via `POST /UserAgent/Deploy` — returns `useragents[0].guid` and starts the instance in `status: 6` (setup-required) or `status: 0` (ready) depending on whether the template needs credentials.
-2. **Setup** the credentials (only if the agent template requires them) via one or more `POST /UserAgent/Update` calls and the matching OAuth flows — see [Agent Credentials & OAuth](#agent-credentials--oauth). Check `setuprequired` on the response: while it's `true`, the agent cannot start. Once all required credential slots are filled, `setuprequired` flips to `false` and `status` becomes `0`. For Pattern 2 (knowledge-base / chat-only agents) there are no third-party credentials, so this stage is skipped and the agent is ready to start right after Deploy.
+2. **Setup** the credentials (only if the agent template requires them) via one or more `POST /UserAgent/CredentialUpsert` calls and the matching OAuth flows — see [Agent Credentials & OAuth](/docs/agent-credentials). Check `setuprequired` on the response: while it's `true`, the agent cannot start. Once all required credential slots are filled, `setuprequired` flips to `false` and `status` becomes `0`. For Pattern 2 (knowledge-base / chat-only agents) there are no third-party credentials, so this stage is skipped and the agent is ready to start right after Deploy.
 3. **Start** the agent with `POST /UserAgent/Start` — transitions through `status: 3` (starting) → `status: 4` (running).
 4. Build your own chat UI.
 5. Send messages via `POST /UserAgent/Message/Send`.
-6. Stream responses in real-time via [Agent WebSocket](#agent-websocket) using the `agenttoken`.
+6. Stream responses in real-time via [Agent WebSocket](/docs/agent-websocket) using the `agenttoken`.
 7. Manage conversation history with `POST /UserAgent/Message/History`.
 
-See [Agent Overview](#agent-overview) for the full lifecycle state table (`status: 0, 1, 3, 4, 5, 6`).
+See [Agent Overview](/docs/agent-overview) for the full lifecycle state table (`status: 0, 1, 3, 4, 5, 6`).
 
 ```bash
 # Deploy — prepaid + plan are required for API users (credits debit from your wallet)
@@ -10726,8 +9464,8 @@ Wiro provides pre-built agent templates you can deploy immediately. Each agent s
 |-------|-------------|-------------|
 | **Social Manager** | Create, schedule, and publish social media content | Twitter/X, Instagram, Facebook, TikTok, LinkedIn (OAuth) |
 | **Blog Content Editor** | Write and publish blog posts (WordPress draft + publish workflow) | WordPress (App Password), Gmail (optional, for inbox requests) |
-| **Google Ads Manager** | Create and optimize Google Ads campaigns, daily performance reports | Google Ads (OAuth), Calendarific (platform-managed), Google Drive (optional) |
-| **Meta Ads Manager** | Manage Facebook and Instagram ad campaigns, audience analysis | Meta Ads (OAuth), Calendarific (platform-managed), Google Drive (optional) |
+| **Google Ads Manager** | Create and optimize Google Ads campaigns, daily performance reports | Google Ads (OAuth), Calendarific (platform-managed), Google Drive (optional, Service Account) |
+| **Meta Ads Manager** | Manage Facebook and Instagram ad campaigns, audience analysis | Meta Ads (OAuth), Calendarific (platform-managed), Google Drive (optional, Service Account) |
 | **Newsletter Manager** | Design and send email newsletters to subscriber lists | Brevo, SendGrid, Mailchimp, HubSpot (any one — API key or OAuth) |
 | **Lead Generation Manager** | Find and enrich leads, run multi-channel outreach, analyze replies | Apollo (API key), Lemlist (API key), HubSpot (optional, for CRM sync) |
 | **App Review Support** | Monitor app store reviews, draft responses in operator's tone | App Store Connect (private key JWT), Google Play (service account) |
@@ -10772,8 +9510,8 @@ connect = requests.post(
     "https://api.wiro.ai/v1/UserAgentOAuth/XConnect",
     headers=headers,
     json={
-        "userAgentGuid": useragent_guid,
-        "redirectUrl": "https://your-app.com/settings?connected=twitter"
+        "useragentguid": useragent_guid,
+        "redirecturl": "https://your-app.com/settings?connected=twitter"
     }
 )
 authorize_url = connect.json()["authorizeUrl"]
@@ -11484,7 +10222,9 @@ The following agent endpoints enforce context guards:
 - `UserAgent/CreateExtraCreditCheckout` — purchase extra credits
 - `UserAgent/CancelSubscription` — cancel subscription
 - `UserAgent/RenewSubscription` — renew subscription
-- `UserAgent/UpgradePlan` — upgrade plan
+- `UserAgent/UpgradeTier` — upgrade tier (Starter → Pro)
+- `UserAgent/CreateSubscriptionCheckout` — subscribe a not-yet-subscribed useragent
+- `UserAgent/SkillsApply` — change skill set (single or batch) on a custom build (auto-prorates)
 
 ### Error Response
 

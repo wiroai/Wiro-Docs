@@ -45,25 +45,21 @@ The Gmail integration uses IMAP with Basic authentication backed by a Google App
 ### Step 3: Save to Wiro
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "gmail": {
-          "account": "agent@yourcompany.com",
-          "appPassword": "xxxx xxxx xxxx xxxx"
-        }
-      }
-    }
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "gmail", "fieldname": "account",     "fieldvalue": "agent@yourcompany.com" },
+      { "credentialkey": "gmail", "fieldname": "apppassword", "fieldvalue": "xxxx xxxx xxxx xxxx" }
+    ]
   }'
 ```
 
-Only `account` and `appPassword` are editable. `credentials.gmail.interval` (when present in some templates) is NOT used by `start.sh` and NOT wired to the runtime. The actual polling cadence comes from the scheduled skill `cron-gmail-checker` under `custom_skills[]` (a cron wrapper that invokes the built-in `gmail-check` platform skill). To change how often the inbox is polled, update `custom_skills[key="cron-gmail-checker"].interval` via `POST /UserAgent/Update` — see [Agent Skills](/docs/agent-skills#managing-scheduled-tasks).
+Only `account` and `apppassword` are writable by API callers. `credentials.gmail.interval` (when present in some templates) is NOT used by `start.sh` and NOT wired to the runtime. The actual polling cadence comes from the scheduled skill `cron-gmail-checker` under `customskills[]` (a cron wrapper that invokes the built-in `gmail-check` platform skill). To change how often the inbox is polled, upsert `cron-gmail-checker` via `POST /UserAgent/CustomSkillUpsert` — see [Agent Skills](/docs/agent-skills#managing-scheduled-tasks).
 
-> **Naming:** the **platform skill** (the IMAP-speaking module loaded from `skills/gmail-check/SKILL.md`) is `gmail-check`. The **cron wrapper** (an entry in `custom_skills[]` that schedules inbox polling and references `gmail-check` internally) is `cron-gmail-checker` (prefixed with `cron-` to mark it as a scheduled task). When `skills.gmail-check` is disabled on the template, the cron wrapper early-returns with `HEARTBEAT_OK`.
+> **Naming:** the **platform skill** (the IMAP-speaking module loaded from `skills/gmail-check/SKILL.md`) is `gmail-check`. The **cron wrapper** (an entry in `customskills[]` that schedules inbox polling and references `gmail-check` internally) is `cron-gmail-checker` (prefixed with `cron-` to mark it as a scheduled task). When `skills.gmail-check` is disabled on the template, the cron wrapper early-returns with `HEARTBEAT_OK`.
 
 ### Step 4: Start the agent
 
@@ -79,20 +75,18 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 | Field | Type | Editable | Description |
 |-------|------|----------|-------------|
 | `account` | string | Yes | Full Gmail address (e.g. `agent@company.com`). |
-| `appPassword` | string | Yes | 16-character Google App Password. Spaces allowed. |
+| `apppassword` | string | Yes | 16-character Google App Password. Spaces allowed. |
 | `interval` | cron string | **No** (template-controlled) | Polling frequency. Example: `*/8 * * * *` (every 8 minutes). |
 
 ## Credentials schema (as returned by `POST /UserAgent/Detail`)
 
 ```json
 "gmail": {
+  "_connected": false,
   "optional": true,
+  "extra": false,
   "account": "",
-  "appPassword": "",
-  "_editable": {
-    "account": true,
-    "appPassword": true
-  }
+  "apppassword": ""
 }
 ```
 
@@ -107,7 +101,7 @@ The `gmail-check` skill uses IMAP:
 Env vars inside the agent container (exported **only when `gmail-check` skill is enabled** and `account` is set):
 
 - `GMAIL_ACCOUNT` ← `credentials.gmail.account`
-- `GMAIL_APP_PASSWORD` ← `credentials.gmail.appPassword`
+- `GMAIL_APP_PASSWORD` ← `credentials.gmail.apppassword`
 
 ## Troubleshooting
 

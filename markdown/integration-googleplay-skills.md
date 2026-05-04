@@ -42,6 +42,9 @@ The Google Play integration uses a Google Cloud service account with API access 
 3. Grant role: `Service Account Token Creator`.
 4. Skip user permissions → **Done**.
 5. Open the service account → **Keys → Add key → Create new key → JSON**. Download.
+6. Note the service account email from the account details page — format: `wiro-play-agent@YOUR-PROJECT.iam.gserviceaccount.com`.
+
+> **Tip:** In **[My Agents](https://wiro.ai/panel/agents)** → open your agent → **Credentials**, upload the JSON and your service account email will appear with a **Copy** button.
 
 ### Step 3: Link the service account to Play Console
 
@@ -67,44 +70,40 @@ Same two-shape approach as App Store Connect.
 #### Shape A: Flat (reviews/metadata agents)
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "googleplay": {
-          "serviceAccountJsonBase64": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii...",
-          "packageNames": ["com.example.app"],
-          "supportEmail": "support@yourcompany.com"
-        }
-      }
-    }
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "google-play", "fieldname": "serviceaccountjsonbase64", "fieldvalue": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii..." },
+      { "credentialkey": "google-play", "fieldname": "packagenames",             "fieldvalue": "com.example.app" },
+      { "credentialkey": "google-play", "fieldname": "supportemail",             "fieldvalue": "support@yourcompany.com" }
+    ]
   }'
 ```
 
+For multiple package names, pass them comma-separated in a single `packagenames` field row (e.g. `"com.example.app,com.example.other"`).
+
 | Field | Type | Description |
 |-------|------|-------------|
-| `serviceAccountJsonBase64` | string | Base64-encoded JSON. |
-| `packageNames` | string[] | Android package names the agent is scoped to. |
-| `supportEmail` | string | Used when replying to reviews. |
+| `serviceaccountjsonbase64` | string | Base64-encoded JSON. |
+| `packagenames` | string[] | Android package names the agent is scoped to. |
+| `supportemail` | string | Used when replying to reviews. |
 
 #### Shape B: `apps` array (ads-manager agents)
 
-```json
-{
-  "credentials": {
-    "googleplay": {
-      "apps": [
-        {
-          "appName": "My Android App",
-          "packageName": "com.example.app"
-        }
-      ]
-    }
-  }
-}
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "google-play-apps", "parentfield": "apps", "ordinal": 0, "fieldname": "name",        "fieldvalue": "My Android App" },
+      { "credentialkey": "google-play-apps", "parentfield": "apps", "ordinal": 0, "fieldname": "packagename", "fieldvalue": "com.example.app" }
+    ]
+  }'
 ```
 
 ### Step 6: Start the agent
@@ -120,8 +119,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 Env vars exported **only when `googleplay-reviews` skill is enabled** (not metadata alone):
 
-- `GOOGLE_PLAY_PACKAGE_NAMES` ← `packageNames.join(",")`
-- `GOOGLE_PLAY_SUPPORT_EMAIL` ← `supportEmail`
+- `GOOGLE_PLAY_PACKAGE_NAMES` ← `packagenames.join(",")`
+- `GOOGLE_PLAY_SUPPORT_EMAIL` ← `supportemail`
 
 Secret file:
 

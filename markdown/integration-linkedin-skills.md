@@ -87,27 +87,24 @@ Enable all four in **Auth → OAuth 2.0 scopes**. Scopes not enabled in this lis
 
 ### Step 6: Save credentials to Wiro
 
-LinkedIn requires `clientId`, `clientSecret`, and `organizationId` all in the same credential block.
+LinkedIn requires `clientid`, `clientsecret`, and `organizationid` all in the same credential block.
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "linkedin": {
-          "clientId": "YOUR_LINKEDIN_CLIENT_ID",
-          "clientSecret": "YOUR_LINKEDIN_CLIENT_SECRET",
-          "organizationId": "12345678"
-        }
-      }
-    }
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "linkedin", "fieldname": "authmethod", "fieldvalue": "own" },
+      { "credentialkey": "linkedin", "fieldname": "clientid", "fieldvalue": "YOUR_LINKEDIN_CLIENT_ID" },
+      { "credentialkey": "linkedin", "fieldname": "clientsecret", "fieldvalue": "YOUR_LINKEDIN_CLIENT_SECRET" },
+      { "credentialkey": "linkedin", "fieldname": "organizationid", "fieldvalue": "12345678" }
+    ]
   }'
 ```
 
-`organizationId` is the numeric ID from your Company Page admin URL. The vanity slug won't work.
+`organizationid` is the numeric ID from your Company Page admin URL. The vanity slug won't work.
 
 ### Step 7: Initiate OAuth
 
@@ -116,9 +113,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/LIConnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "redirectUrl": "https://your-app.com/settings/integrations",
-    "authMethod": "own"
+    "useragentguid": "your-useragent-guid",
+    "redirecturl": "https://your-app.com/settings/integrations",
+    "authmethod": "own"
   }'
 ```
 
@@ -134,7 +131,7 @@ Response:
 
 ### Step 8: Handle the callback
 
-After consent, LinkedIn redirects to Wiro's callback. Wiro exchanges the code for access + refresh tokens, fetches the member's `localizedFirstName` + `localizedLastName` from `GET /v2/me`, and returns the user to your `redirectUrl`.
+After consent, LinkedIn redirects to Wiro's callback. Wiro exchanges the code for access + refresh tokens, fetches the member's `localizedFirstName` + `localizedLastName` from `GET /v2/me`, and returns the user to your `redirecturl`.
 
 **Success URL:**
 
@@ -142,7 +139,7 @@ After consent, LinkedIn redirects to Wiro's callback. Wiro exchanges the code fo
 https://your-app.com/settings/integrations?li_connected=true&li_name=Jane%20Doe
 ```
 
-`li_name` is the connected LinkedIn member's display name (a human), **not** the Company Page name — the page is identified by `organizationId` which you set in Step 6.
+`li_name` is the connected LinkedIn member's display name (a human), **not** the Company Page name — the page is identified by `organizationid` which you set in Step 6.
 
 ```javascript
 const params = new URLSearchParams(window.location.search);
@@ -161,7 +158,7 @@ if (params.get("li_connected") === "true") {
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/LIStatus" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "userAgentGuid": "your-useragent-guid" }'
+  -d '{ "useragentguid": "your-useragent-guid" }'
 ```
 
 Response (note the non-standard field name):
@@ -170,15 +167,15 @@ Response (note the non-standard field name):
 {
   "result": true,
   "connected": true,
-  "linkedinName": "Jane Doe",
-  "connectedAt": "2026-04-17T12:00:00.000Z",
-  "tokenExpiresAt": "2026-06-16T12:00:00.000Z",
-  "refreshTokenExpiresAt": "2027-04-17T12:00:00.000Z",
+  "linkedinname": "Jane Doe",
+  "connectedat": "2026-04-17T12:00:00.000Z",
+  "tokenexpiresat": "2026-06-16T12:00:00.000Z",
+  "refreshtokenexpiresat": "2027-04-17T12:00:00.000Z",
   "errors": []
 }
 ```
 
-- `linkedinName` is the field name — not `username` like other providers.
+- `linkedinname` is the field name — not `username` like other providers.
 - Access tokens last ~60 days; refresh tokens ~1 year (LinkedIn returns both durations in the token exchange response).
 
 ### Step 10: Start the agent
@@ -196,9 +193,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | Agent instance GUID. |
-| `redirectUrl` | string | Yes | HTTPS URL. |
-| `authMethod` | string | No | `"wiro"` (coming soon) or `"own"`. |
+| `useragentguid` | string | Yes | Agent instance GUID. |
+| `redirecturl` | string | Yes | HTTPS URL. |
+| `authmethod` | string | No | `"wiro"` (coming soon) or `"own"`. |
 
 ### GET /UserAgentOAuth/LICallback
 
@@ -206,7 +203,7 @@ Query params: `li_connected=true&li_name=...` or `li_error=...`.
 
 ### POST /UserAgentOAuth/LIStatus
 
-Response fields: `connected`, **`linkedinName`** (not `username`), `connectedAt`, `tokenExpiresAt`, `refreshTokenExpiresAt`.
+Response fields: `connected`, **`linkedinname`** (not `username`), `connectedat`, `tokenexpiresat`, `refreshtokenexpiresat`.
 
 ### POST /UserAgentOAuth/LIDisconnect
 
@@ -221,7 +218,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "userAgentGuid": "your-useragent-guid",
+    "useragentguid": "your-useragent-guid",
     "provider": "linkedin"
   }'
 ```
@@ -230,24 +227,21 @@ Uses the stored refresh token. Returns new access + refresh tokens. See [Automat
 
 ## Using the Skill
 
-Once the LinkedIn Company Page is connected (organization ID persisted), the agent's scheduled tasks use the `linkedin-post` platform skill to publish text, image, and video posts to the Company Page. To adjust the cron of the built-in `cron-content-scanner` task (Social Manager), send an Update with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for `_editable: false` skills:
+Once the LinkedIn Company Page is connected (organization ID persisted), the agent's scheduled tasks use the `linkedin-post` platform skill to publish text, image, and video posts to the Company Page. To adjust the cron of the built-in `cron-content-scanner` task (Social Manager), call `UserAgent/CustomSkillUpsert` with `enabled` and `interval` only — the task body (`value`) is owned by the bundled integration skill and silently dropped on writes:
 
-```json
-{
-  "guid": "your-useragent-guid",
-  "configuration": {
-    "custom_skills": [
-      {
-        "key": "cron-content-scanner",
-        "enabled": true,
-        "interval": "0 */4 * * *"
-      }
-    ]
-  }
-}
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "skillkey": "cron-content-scanner",
+    "enabled": true,
+    "interval": "0 */4 * * *"
+  }'
 ```
 
-To change **what** the scheduled task posts (topics, tone, audience angle), edit the paired preference skill `content-tone` instead — see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preferences).
+To change **what** the scheduled task posts (topics, tone, audience angle), edit the paired preference skill `content-tone` instead — see [Agent Skills → Updating Preference Skills](/docs/agent-skills#updating-preference-skills).
 
 ## Troubleshooting
 
@@ -258,7 +252,7 @@ To change **what** the scheduled task posts (topics, tone, audience angle), edit
 | `authorization_denied` | User cancelled, or missing required scopes in app. | Verify all four scopes are enabled under Auth → OAuth 2.0 scopes. |
 | `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy secret; verify URL. |
 | `useragent_not_found` | Invalid or unauthorized guid. | Use `POST /UserAgent/MyAgents`. |
-| `invalid_config` | No `credentials.linkedin` block. | Update with `clientId`, `clientSecret`, `organizationId`. |
+| `invalid_config` | No `credentials.linkedin` block. | `UserAgent/CredentialUpsert` with `clientid`, `clientsecret`, `organizationid`. |
 | `internal_error` | Server error. | Retry; contact support if persistent. |
 
 ### Posts rejected with 401 Unauthorized
@@ -271,12 +265,12 @@ Enable it under **Auth → OAuth 2.0 scopes**, then have the user reconnect. Lin
 
 ### Wrong organization ID
 
-Use the numeric ID from `linkedin.com/company/<ID>/admin/` — not the slug. Update via `POST /UserAgent/Update` and reconnect if needed.
+Use the numeric ID from `linkedin.com/company/<ID>/admin/` — not the slug. Update via `POST /UserAgent/CredentialUpsert` and reconnect if needed.
 
 ## Multi-Tenant Architecture
 
 1. **One LinkedIn Developer App** per product.
-2. **One Wiro agent instance per customer**; capture `organizationId` during onboarding.
+2. **One Wiro agent instance per customer**; capture `organizationid` during onboarding.
 3. **Community Management API approval** is per app (not per customer) — apply once.
 4. **Tokens are isolated per agent instance.**
 5. **Rate limits** per app and per organization; see LinkedIn's [rate-limits docs](https://learn.microsoft.com/en-us/linkedin/shared/api-guide/concepts/rate-limits).

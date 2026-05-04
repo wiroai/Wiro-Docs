@@ -15,7 +15,7 @@ Adding a Telegram bot gives you a third, complementary channel — useful when y
 - Give **off-dashboard access** to team members who don't log into wiro.ai but still want to message the agent.
 - Pipe **scheduled status reports** from cron skills into a shared Telegram channel.
 
-You can skip this integration entirely — agents keep working through web chat and the API regardless. When the bot token is missing or `allowedUsers` is empty, the Telegram plugin inside the agent is disabled automatically and no messages flow through it.
+You can skip this integration entirely — agents keep working through web chat and the API regardless. When the bot token is missing or `allowedusers` is empty, the Telegram plugin inside the agent is disabled automatically and no messages flow through it.
 
 ## Availability
 
@@ -51,33 +51,20 @@ Alternative: each user can DM [@userinfobot](https://t.me/userinfobot) in Telegr
 ### Step 3: Save to Wiro
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "telegram": {
-          "botToken": "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11",
-          "allowedUsers": ["761381461", "987654321"],
-          "sessionMode": [
-            {
-              "value": "private",
-              "text": "Private — each user has their own conversation",
-              "selected": true
-            },
-            {
-              "value": "collaborative",
-              "text": "Collaborative — all users share the same conversation",
-              "selected": false
-            }
-          ]
-        }
-      }
-    }
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "telegram", "fieldname": "bottoken",     "fieldvalue": "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11" },
+      { "credentialkey": "telegram", "fieldname": "allowedusers", "fieldvalue": "[\"761381461\",\"987654321\"]" },
+      { "credentialkey": "telegram", "fieldname": "sessionmode",  "fieldvalue": "private" }
+    ]
   }'
 ```
+
+> `allowedusers` is a JSON-encoded string array inside `fieldvalue` because the underlying column is `TEXT`. The agent runtime parses it back into an array at startup. `sessionmode` accepts the short string form (`"private"` / `"collaborative"`) on the API — the dashboard's full option-object array is a UI concern only.
 
 ### Step 4: Start the agent
 
@@ -92,13 +79,13 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `botToken` | string | BotFather token (`<bot_id>:<secret>`). |
-| `allowedUsers` | string[] | Array of Telegram user IDs (numeric strings) allowed to interact. Messages from IDs outside this list are ignored. |
-| `sessionMode` | object[] \| string | Session selection. See below. |
+| `bottoken` | string | BotFather token (`<bot_id>:<secret>`). |
+| `allowedusers` | string[] | Array of Telegram user IDs (numeric strings) allowed to interact. Messages from IDs outside this list are ignored. |
+| `sessionmode` | object[] \| string | Session selection. See below. |
 
-### sessionMode format
+### sessionmode format
 
-`sessionMode` is an **array of option objects**, with exactly one having `selected: true`:
+`sessionmode` is an **array of option objects**, with exactly one having `selected: true`:
 
 ```json
 [
@@ -126,22 +113,22 @@ This matches Wiro's dropdown format. A simpler string form is also accepted at t
 
 Env vars inside the agent container:
 
-- `TELEGRAM_BOT_TOKEN` ← `credentials.telegram.botToken`
+- `TELEGRAM_BOT_TOKEN` ← `credentials.telegram.bottoken`
 - `GATEWAY_TOKEN` ← internal gateway token
 
-`allowedUsers` is **not** an env var. It's serialized two ways during container startup:
+`allowedusers` is **not** an env var. It's serialized two ways during container startup:
 
 1. **JSON file** `/.../credentials/telegram-allowFrom.json` — the full array, used by the gateway to filter incoming messages.
 2. **Template substitution** — `__TELEGRAM_ALLOW_FROM__` in `openclaw.json` (JSON array) and `__TELEGRAM_CHAT_ID__` in `AGENTS.md` (CSV) are replaced at runtime.
 
-The Telegram integration plugin inside the agent is **disabled automatically** if `allowedUsers` is empty or `botToken` is missing — no messages flow.
+The Telegram integration plugin inside the agent is **disabled automatically** if `allowedusers` is empty or `bottoken` is missing — no messages flow.
 
 ## Troubleshooting
 
-- **Bot doesn't respond:** Verify `botToken` is correct and the sender's Telegram user ID is in `allowedUsers`.
+- **Bot doesn't respond:** Verify `bottoken` is correct and the sender's Telegram user ID is in `allowedusers`.
 - **"Unauthorized" (401) from Telegram API:** BotFather regenerated the token, invalidating the old one. Create a new token and update.
 - **Rate limits:** Telegram bots are limited to ~30 messages/second globally. For burst broadcasts, plan around this.
-- **Collaborative mode confusion:** If users don't see each other's messages, re-save `sessionMode` with `collaborative` as `selected: true` and restart the agent.
+- **Collaborative mode confusion:** If users don't see each other's messages, re-save `sessionmode` with `collaborative` as `selected: true` and restart the agent.
 
 ## Related
 

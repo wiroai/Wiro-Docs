@@ -47,43 +47,23 @@ base64 -b 0 firebase-service-account.json > firebase-sa.b64
 ### Step 3: Save to Wiro
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-    "firebase": {
-      "accounts": [
-        {
-          "appName": "My App",
-          "serviceAccountJsonBase64": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii...",
-          "apps": [
-            {
-              "platform": "ios",
-              "id": "6479306352"
-            },
-            {
-              "platform": "android",
-              "id": "com.example.app"
-            }
-          ],
-          "topics": [
-            {
-              "topicKey": "locale_en",
-              "topicDesc": "English users"
-            },
-            {
-              "topicKey": "tier_paid",
-              "topicDesc": "Paid subscribers"
-            }
-          ]
-        }
-      ]
-    }
-      }
-    }
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "firebase", "parentfield": "accounts",          "ordinal": 0, "fieldname": "appname",                  "fieldvalue": "My App" },
+      { "credentialkey": "firebase", "parentfield": "accounts",          "ordinal": 0, "fieldname": "serviceaccountjsonbase64", "fieldvalue": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii..." },
+      { "credentialkey": "firebase", "parentfield": "accounts.0.apps",   "ordinal": 0, "fieldname": "platform",                 "fieldvalue": "ios" },
+      { "credentialkey": "firebase", "parentfield": "accounts.0.apps",   "ordinal": 0, "fieldname": "appid",                    "fieldvalue": "6479306352" },
+      { "credentialkey": "firebase", "parentfield": "accounts.0.apps",   "ordinal": 1, "fieldname": "platform",                 "fieldvalue": "android" },
+      { "credentialkey": "firebase", "parentfield": "accounts.0.apps",   "ordinal": 1, "fieldname": "appid",                    "fieldvalue": "com.example.app" },
+      { "credentialkey": "firebase", "parentfield": "accounts.0.topics", "ordinal": 0, "fieldname": "topickey",                 "fieldvalue": "locale_en" },
+      { "credentialkey": "firebase", "parentfield": "accounts.0.topics", "ordinal": 0, "fieldname": "topicdesc",                "fieldvalue": "English users" },
+      { "credentialkey": "firebase", "parentfield": "accounts.0.topics", "ordinal": 1, "fieldname": "topickey",                 "fieldvalue": "tier_paid" },
+      { "credentialkey": "firebase", "parentfield": "accounts.0.topics", "ordinal": 1, "fieldname": "topicdesc",                "fieldvalue": "Paid subscribers" }
+    ]
   }'
 ```
 
@@ -102,60 +82,41 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 | Field | Type | Editable | Description |
 |-------|------|----------|-------------|
-| `appName` | string | Yes | Display name for this project. |
-| `serviceAccountJsonBase64` | string | Yes | Base64-encoded service account JSON. |
+| `appname` | string | Yes | Display name for this project. |
+| `serviceaccountjsonbase64` | string | Yes | Base64-encoded service account JSON. |
 | `apps` | object[] | Yes | `{ platform: "ios" \| "android", id: string }`. `id` is App Store ID for iOS, package name for Android. |
-| `topics` | object[] \| object | Yes | Either an array of `{ topicKey, topicDesc }` or a flat object map `{ topicKey: topicDesc, ... }`. Both are accepted; the runtime converts arrays into the map form. Topics you've subscribed clients to on the device side. |
-| `projectId` | string | **No** (derived from service account) | Read from the decoded JSON. |
+| `topics` | object[] \| object | Yes | Either an array of `{ topickey, topicdesc }` or a flat object map `{ topickey: topicdesc, ... }`. Both are accepted; the runtime converts arrays into the map form. Topics you've subscribed clients to on the device side. |
+| `projectid` | string | **No** (derived from service account) | Read from the decoded JSON. |
 
 ### Multi-project setups
 
-Add more entries to `accounts[]` to manage multiple Firebase projects from one agent:
+Add more entries to `accounts[]` to manage multiple Firebase projects from one agent. Each new account is just a higher `ordinal` in the same `accounts` parent, with its nested `apps` and `topics` addressed via `accounts.{N}.apps` / `accounts.{N}.topics`:
 
-```json
-{
-  "credentials": {
-    "firebase": {
-      "accounts": [
-        {
-          "appName": "Consumer App",
-          "serviceAccountJsonBase64": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii...",
-          "apps": [
-            {
-              "platform": "ios",
-              "id": "6479306352"
-            }
-          ],
-          "topics": [
-            {
-              "topicKey": "locale_en",
-              "topicDesc": "English users"
-            }
-          ]
-        },
-        {
-          "appName": "Business App",
-          "serviceAccountJsonBase64": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii...",
-          "apps": [
-            {
-              "platform": "android",
-              "id": "com.example.business"
-            }
-          ],
-          "topics": [
-            {
-              "topicKey": "tier_paid",
-              "topicDesc": "Paid subscribers"
-            }
-          ]
-        }
-      ]
-    }
-  }
-}
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "firebase", "parentfield": "accounts",          "ordinal": 0, "fieldname": "appname",                  "fieldvalue": "Consumer App" },
+      { "credentialkey": "firebase", "parentfield": "accounts",          "ordinal": 0, "fieldname": "serviceaccountjsonbase64", "fieldvalue": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii..." },
+      { "credentialkey": "firebase", "parentfield": "accounts.0.apps",   "ordinal": 0, "fieldname": "platform",                 "fieldvalue": "ios" },
+      { "credentialkey": "firebase", "parentfield": "accounts.0.apps",   "ordinal": 0, "fieldname": "appid",                    "fieldvalue": "6479306352" },
+      { "credentialkey": "firebase", "parentfield": "accounts.0.topics", "ordinal": 0, "fieldname": "topickey",                 "fieldvalue": "locale_en" },
+      { "credentialkey": "firebase", "parentfield": "accounts.0.topics", "ordinal": 0, "fieldname": "topicdesc",                "fieldvalue": "English users" },
+
+      { "credentialkey": "firebase", "parentfield": "accounts",          "ordinal": 1, "fieldname": "appname",                  "fieldvalue": "Business App" },
+      { "credentialkey": "firebase", "parentfield": "accounts",          "ordinal": 1, "fieldname": "serviceaccountjsonbase64", "fieldvalue": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii..." },
+      { "credentialkey": "firebase", "parentfield": "accounts.1.apps",   "ordinal": 0, "fieldname": "platform",                 "fieldvalue": "android" },
+      { "credentialkey": "firebase", "parentfield": "accounts.1.apps",   "ordinal": 0, "fieldname": "appid",                    "fieldvalue": "com.example.business" },
+      { "credentialkey": "firebase", "parentfield": "accounts.1.topics", "ordinal": 0, "fieldname": "topickey",                 "fieldvalue": "tier_paid" },
+      { "credentialkey": "firebase", "parentfield": "accounts.1.topics", "ordinal": 0, "fieldname": "topicdesc",                "fieldvalue": "Paid subscribers" }
+    ]
+  }'
 ```
 
-Wiro's merge logic uses positional indexes — sending `accounts[2]` while the template has 1 account creates a new account entry cloned from the template shape, populated with your editable fields.
+Wiro's merge logic uses positional indexes — sending `accounts` ordinal `2` while the agent has 1 account creates a new account entry at index 2 populated with the field rows you supply.
 
 ## Runtime Behavior
 
@@ -164,7 +125,7 @@ Env vars (exported **only when `firebase-push` skill is enabled** and `accounts`
 - `FIREBASE_APP_COUNT` — total accounts
 - `FIREBASE_{idx}_PROJECT_ID` — from decoded service account JSON
 - `FIREBASE_{idx}_APP_NAME`
-- `FIREBASE_{idx}_TOPICS` — JSON map of `{ topicKey: topicDesc }`
+- `FIREBASE_{idx}_TOPICS` — JSON map of `{ topickey: topicdesc }`
 - `FIREBASE_{idx}_APPS` — JSON array of `{ platform, id }`
 
 Secret files:

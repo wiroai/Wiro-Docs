@@ -66,7 +66,9 @@ The following agent endpoints enforce context guards:
 - `UserAgent/CreateExtraCreditCheckout` — purchase extra credits
 - `UserAgent/CancelSubscription` — cancel subscription
 - `UserAgent/RenewSubscription` — renew subscription
-- `UserAgent/UpgradePlan` — upgrade plan
+- `UserAgent/UpgradeTier` — upgrade tier (Starter → Pro)
+- `UserAgent/CreateSubscriptionCheckout` — subscribe a not-yet-subscribed useragent
+- `UserAgent/SkillsApply` — change skill set (single or batch) on a custom build (auto-prorates)
 
 ### Error Response
 

@@ -72,4 +72,4 @@ Yes. Use the Agent Messaging API to send messages programmatically, receive stre
 
 ### How do I connect third-party services to an agent?
 
-Agents connect to services like Twitter, Instagram, Google Ads, and HubSpot via OAuth or API keys. Use the `/UserAgentOAuth/{Provider}Connect` endpoints to initiate OAuth flows, or set API keys via `/UserAgent/Update`. See [Agent Credentials & OAuth](/docs/agent-credentials).
+Agents connect to services like Twitter, Instagram, Google Ads, and HubSpot via OAuth or API keys. Use the `/UserAgentOAuth/{Provider}Connect` endpoints to initiate OAuth flows, or set API keys via `/UserAgent/CredentialUpsert`. See [Agent Credentials & OAuth](/docs/agent-credentials).

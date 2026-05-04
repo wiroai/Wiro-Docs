@@ -36,18 +36,14 @@ The Lemlist integration uses HTTP Basic Authentication with an empty username an
 ### Step 2: Save to Wiro
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "lemlist": {
-          "apiKey": "YOUR_LEMLIST_API_KEY"
-        }
-      }
-    }
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "lemlist", "fieldname": "apiKey", "fieldvalue": "YOUR_LEMLIST_API_KEY" }
+    ]
   }'
 ```
 
@@ -70,9 +66,10 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ```json
 "lemlist": {
+  "_connected": false,
   "optional": true,
-  "apiKey": "",
-  "_editable": { "apiKey": true }
+  "extra": false,
+  "apiKey": ""
 }
 ```
 

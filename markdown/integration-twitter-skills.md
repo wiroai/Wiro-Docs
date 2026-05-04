@@ -31,15 +31,15 @@ The Twitter / X integration uses X API v2 with OAuth 2.0 Authorization Code Flow
 
 ## Wiro Mode (Simplest)
 
-Skip all the own-mode setup. Just call Connect without `authMethod`:
+Skip all the own-mode setup. Just call Connect without `authmethod`:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/XConnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "redirectUrl": "https://your-app.com/settings/integrations"
+    "useragentguid": "your-useragent-guid",
+    "redirecturl": "https://your-app.com/settings/integrations"
   }'
 ```
 
@@ -90,19 +90,16 @@ After enabling OAuth 2.0, X shows **Client ID** and **Client Secret** — **save
 ### Step 5: Save credentials to Wiro
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "twitter": {
-          "clientId": "YOUR_X_CLIENT_ID",
-          "clientSecret": "YOUR_X_CLIENT_SECRET"
-        }
-      }
-    }
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "twitter", "fieldname": "clientid",     "fieldvalue": "YOUR_X_CLIENT_ID" },
+      { "credentialkey": "twitter", "fieldname": "clientsecret", "fieldvalue": "YOUR_X_CLIENT_SECRET" },
+      { "credentialkey": "twitter", "fieldname": "authmethod",   "fieldvalue": "own" }
+    ]
   }'
 ```
 
@@ -113,9 +110,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/XConnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "redirectUrl": "https://your-app.com/settings/integrations",
-    "authMethod": "own"
+    "useragentguid": "your-useragent-guid",
+    "redirecturl": "https://your-app.com/settings/integrations",
+    "authmethod": "own"
   }'
 ```
 
@@ -155,7 +152,7 @@ if (params.get("x_connected") === "true") {
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/XStatus" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "userAgentGuid": "your-useragent-guid" }'
+  -d '{ "useragentguid": "your-useragent-guid" }'
 ```
 
 Response:
@@ -165,9 +162,9 @@ Response:
   "result": true,
   "connected": true,
   "username": "jane_doe",
-  "connectedAt": "2026-04-17T12:00:00.000Z",
-  "tokenExpiresAt": "2026-04-17T14:00:00.000Z",
-  "refreshTokenExpiresAt": "2026-10-14T12:00:00.000Z",
+  "connectedat": "2026-04-17T12:00:00.000Z",
+  "tokenexpiresat": "2026-04-17T14:00:00.000Z",
+  "refreshtokenexpiresat": "2026-10-14T12:00:00.000Z",
   "errors": []
 }
 ```
@@ -191,9 +188,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | Agent instance GUID. |
-| `redirectUrl` | string | Yes | HTTPS URL. |
-| `authMethod` | string | No | `"wiro"` (default) or `"own"`. |
+| `useragentguid` | string | Yes | Agent instance GUID. |
+| `redirecturl` | string | Yes | HTTPS URL. |
+| `authmethod` | string | No | `"wiro"` (default) or `"own"`. |
 
 ### GET /UserAgentOAuth/XCallback
 
@@ -201,7 +198,7 @@ Query params: `x_connected=true&x_username=<handle>` or `x_error=<code>`.
 
 ### POST /UserAgentOAuth/XStatus
 
-Response: `connected`, `username`, `connectedAt`, `tokenExpiresAt` (~2h), `refreshTokenExpiresAt` (~180d).
+Response: `connected`, `username`, `connectedat`, `tokenexpiresat` (~2h), `refreshtokenexpiresat` (~180d).
 
 ### POST /UserAgentOAuth/XDisconnect
 
@@ -216,7 +213,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "userAgentGuid": "your-useragent-guid",
+    "useragentguid": "your-useragent-guid",
     "provider": "twitter"
   }'
 ```
@@ -225,24 +222,21 @@ Uses `grant_type=refresh_token`. Returns new access + refresh tokens. See [Autom
 
 ## Using the Skill
 
-Once the X account is connected, the agent's existing scheduled tasks use the `twitterx-post` platform skill to publish. To adjust the cron of the built-in `cron-content-scanner` task (Social Manager), send an Update with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for `_editable: false` skills:
+Once the X account is connected, the agent's existing scheduled tasks use the `twitterx-post` platform skill to publish. To adjust the cron of the built-in `cron-content-scanner` task (Social Manager), send a `CustomSkillUpsert` with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for bundled crons:
 
-```json
-{
-  "guid": "your-useragent-guid",
-  "configuration": {
-    "custom_skills": [
-      {
-        "key": "cron-content-scanner",
-        "enabled": true,
-        "interval": "0 */4 * * *"
-      }
-    ]
-  }
-}
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "skillkey": "cron-content-scanner",
+    "enabled": true,
+    "interval": "0 */4 * * *"
+  }'
 ```
 
-To change **what** the scheduled task posts (topics, tone, hashtag rules), edit the paired preference skill `content-tone` instead — see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preferences).
+To change **what** the scheduled task posts (topics, tone, hashtag rules), edit the paired preference skill `content-tone` instead — see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preference-skills).
 
 ## Troubleshooting
 
@@ -253,7 +247,7 @@ To change **what** the scheduled task posts (topics, tone, hashtag rules), edit 
 | `session_expired` | 15-min state cache expired (includes PKCE verifier). | Call `XConnect` again. |
 | `token_exchange_failed` | Wrong Client Secret, redirect URI mismatch, or lost PKCE verifier. | Re-copy Client Secret; verify URL; start over. |
 | `useragent_not_found` | Invalid guid. | Use `POST /UserAgent/MyAgents`. |
-| `invalid_config` | No `credentials.twitter` block. | `UserAgent/Update` with `clientId` + `clientSecret`. |
+| `invalid_config` | No `credentials.twitter` block. | `UserAgent/CredentialUpsert` with `clientid` + `clientsecret`. |
 | `internal_error` | Server error. | Retry; contact support. |
 
 ### Posts fail with 429 Too Many Requests

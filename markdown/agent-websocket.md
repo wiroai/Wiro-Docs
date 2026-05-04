@@ -253,7 +253,7 @@ An error occurred during processing. The `message` field can take two forms — 
 }
 ```
 
-> **The raw runtime error is never broadcast over WebSocket.** Strings like `"Bridge timeout"`, `"OpenClaw returned HTTP 500"`, `"SSE request timeout (30min)"`, `"Could not resolve agent endpoint"` are recorded in the database `debugoutput` field (retrievable via `POST /UserAgent/Message/Detail`) but **replaced with the generic sentence above** before being pushed to subscribed clients. This is intentional so end users never see internal infrastructure errors. Log the raw string from `Message/Detail`; show the sanitized string from the WebSocket event.
+> **The raw runtime error is never broadcast over WebSocket.** Internal failure messages are recorded in `debugoutput` (retrievable via `POST /UserAgent/Message/Detail`) but **replaced with the generic sentence above** before being pushed to subscribed clients. Log the raw `debugoutput` for your own debugging; show the sanitized string from the WebSocket event to end users.
 
 **Progress-object error** — the SSE stream completes normally but the model returns `"..."` or `"Error: internal error"`. In that case Wiro flags the message as `agent_error` and broadcasts the same `progressGenerate` shape as `agent_output` / `agent_end`, so the client can render the non-response to the user:
 

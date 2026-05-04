@@ -85,19 +85,16 @@ Connecting your own Facebook account? You're the app Admin — skip. Connecting 
 ### Step 6: Save your Meta App credentials to Wiro
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "facebook": {
-          "appId": "YOUR_META_APP_ID",
-          "appSecret": "YOUR_META_APP_SECRET"
-        }
-      }
-    }
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "facebook-pages", "fieldname": "authmethod", "fieldvalue": "own" },
+      { "credentialkey": "facebook-pages", "fieldname": "appid", "fieldvalue": "YOUR_META_APP_ID" },
+      { "credentialkey": "facebook-pages", "fieldname": "appsecret", "fieldvalue": "YOUR_META_APP_SECRET" }
+    ]
   }'
 ```
 
@@ -110,9 +107,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/FBConnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "redirectUrl": "https://your-app.com/settings/integrations",
-    "authMethod": "own"
+    "useragentguid": "your-useragent-guid",
+    "redirecturl": "https://your-app.com/settings/integrations",
+    "authmethod": "own"
   }'
 ```
 
@@ -130,9 +127,9 @@ Redirect the user's browser to `authorizeUrl`. State has a 15-minute TTL.
 
 ### Step 8: Handle the callback and list returned Pages
 
-After consent, Wiro exchanges the code for a user access token, fetches every admin-managed Page **with its page-specific access token**, caches the full list server-side, and redirects the user to your `redirectUrl`.
+After consent, Wiro exchanges the code for a user access token, fetches every admin-managed Page **with its page-specific access token**, caches the full list server-side, and redirects the user to your `redirecturl`.
 
-**Crucial:** Wiro does **not** auto-select a Page. The connection is incomplete until the client calls `FBSetPage` with a chosen `pageId`. `POST /UserAgentOAuth/FBStatus` returns `connected: false` during this window.
+**Crucial:** Wiro does **not** auto-select a Page. The connection is incomplete until the client calls `FBSetPage` with a chosen `pageid`. `POST /UserAgentOAuth/FBStatus` returns `connected: false` during this window.
 
 **Success URL:**
 
@@ -173,16 +170,16 @@ if (params.get("fb_connected") === "true") {
 
 ### Step 9: Persist the page selection (required)
 
-**This step is mandatory.** The agent has no valid Facebook credentials until you call `FBSetPage`. Until then, `credentials.facebook.accessToken` and `pageId` remain empty, and `FBStatus` reports `connected: false`.
+**This step is mandatory.** The agent has no valid Facebook credentials until you call `FBSetPage`. Until then, `credentials.facebook.accesstoken` and `pageid` remain empty, and `FBStatus` reports `connected: false`.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/FBSetPage" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "pageId": "456",
-    "pageName": "Page B"
+    "useragentguid": "your-useragent-guid",
+    "pageid": "456",
+    "pagename": "Page B"
   }'
 ```
 
@@ -191,23 +188,23 @@ Response:
 ```json
 {
   "result": true,
-  "pageId": "456",
-  "pageName": "Page B",
+  "pageid": "456",
+  "pagename": "Page B",
   "errors": []
 }
 ```
 
 What happens server-side:
 
-1. Wiro looks up the pending payload in cache (keyed by `userAgentGuid`, 15-minute TTL).
-2. Finds the page matching `pageId` in the cached list.
-3. Writes the **page access token** (not the user token) to `credentials.facebook.accessToken` along with `pageId`, `fbPageName`, `authMethod`, `connectedAt`, and `tokenExpiresAt` (~60 days).
+1. Wiro looks up the pending payload in cache (keyed by `useragentguid`, 15-minute TTL).
+2. Finds the page matching `pageid` in the cached list.
+3. Writes the **page access token** (not the user token) to `credentials.facebook.accesstoken` along with `pageid`, `fbpagename`, `authmethod`, `connectedat`, and `tokenexpiresat` (~60 days).
 4. Triggers an agent restart if it was running.
 5. Clears the pending cache.
 
 If the 15-minute window lapses before you call `FBSetPage`, you'll get `No pending Facebook connection. Please reconnect via FBConnect.` — start again from Step 7.
 
-`pageName` is optional; if omitted, Wiro uses the name from the cached page list.
+`pagename` is optional; if omitted, Wiro uses the name from the cached page list.
 
 ### Step 10: Verify the connection
 
@@ -215,7 +212,7 @@ If the 15-minute window lapses before you call `FBSetPage`, you'll get `No pendi
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/FBStatus" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "userAgentGuid": "your-useragent-guid" }'
+  -d '{ "useragentguid": "your-useragent-guid" }'
 ```
 
 Response:
@@ -225,15 +222,15 @@ Response:
   "result": true,
   "connected": true,
   "username": "Page B",
-  "connectedAt": "2026-04-17T12:00:00.000Z",
-  "tokenExpiresAt": "2026-06-16T12:00:00.000Z",
+  "connectedat": "2026-04-17T12:00:00.000Z",
+  "tokenexpiresat": "2026-06-16T12:00:00.000Z",
   "errors": []
 }
 ```
 
-- `connected: true` requires **both** `accessToken` and `pageId` to be set — meaning `FBSetPage` was called successfully.
-- `username` = the saved `fbPageName`.
-- No `refreshTokenExpiresAt` — Facebook page tokens are long-lived (~60 days) and refresh with `fb_exchange_token`, not a refresh token flow.
+- `connected: true` requires **both** `accesstoken` and `pageid` to be set — meaning `FBSetPage` was called successfully.
+- `username` = the saved `fbpagename`.
+- No `refreshtokenexpiresat` — Facebook page tokens are long-lived (~60 days) and refresh with `fb_exchange_token`, not a refresh token flow.
 
 ### Step 11: Start the agent if it's not running
 
@@ -252,15 +249,15 @@ Agents already running at `FBSetPage` time restart automatically to pick up the 
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | Agent instance GUID. |
-| `redirectUrl` | string | Yes | HTTPS URL (or `http://localhost` / `http://127.0.0.1` for dev). |
-| `authMethod` | string | No | `"wiro"` (default) or `"own"`. |
+| `useragentguid` | string | Yes | Agent instance GUID. |
+| `redirecturl` | string | Yes | HTTPS URL (or `http://localhost` / `http://127.0.0.1` for dev). |
+| `authmethod` | string | No | `"wiro"` (default) or `"own"`. |
 
 Response: `{ result, authorizeUrl, errors }`.
 
 ### GET /UserAgentOAuth/FBCallback
 
-Server-side. Query params appended to your `redirectUrl`:
+Server-side. Query params appended to your `redirecturl`:
 
 | Param | Meaning |
 |-------|---------|
@@ -272,17 +269,17 @@ Server-side. Query params appended to your `redirectUrl`:
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | Agent instance GUID. |
-| `pageId` | string | Yes | A page ID from the `fb_pages` array returned in the callback. |
-| `pageName` | string | No | Override the display name. If omitted, Wiro uses the cached name. |
+| `useragentguid` | string | Yes | Agent instance GUID. |
+| `pageid` | string | Yes | A page ID from the `fb_pages` array returned in the callback. |
+| `pagename` | string | No | Override the display name. If omitted, Wiro uses the cached name. |
 
-Response: `{ result, pageId, pageName, errors }`. Triggers auto-restart if running.
+Response: `{ result, pageid, pagename, errors }`. Triggers auto-restart if running.
 
 > Must be called within **15 minutes** of the callback (cache TTL). After that, the pending payload is gone and you'll need to restart OAuth.
 
 ### POST /UserAgentOAuth/FBStatus
 
-Response fields: `connected` (only `true` when both `accessToken` and `pageId` are set), `username` (= `fbPageName`), `connectedAt`, `tokenExpiresAt`.
+Response fields: `connected` (only `true` when both `accesstoken` and `pageid` are set), `username` (= `fbpagename`), `connectedat`, `tokenexpiresat`.
 
 ### POST /UserAgentOAuth/FBDisconnect
 
@@ -292,7 +289,7 @@ Clears Facebook credentials (no remote revoke).
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/FBDisconnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "userAgentGuid": "your-useragent-guid" }'
+  -d '{ "useragentguid": "your-useragent-guid" }'
 ```
 
 ### POST /UserAgentOAuth/TokenRefresh
@@ -304,7 +301,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "userAgentGuid": "your-useragent-guid",
+    "useragentguid": "your-useragent-guid",
     "provider": "facebook"
   }'
 ```
@@ -313,24 +310,21 @@ Uses `fb_exchange_token` under the hood. See [Automatic token refresh](/docs/age
 
 ## Using the Skill
 
-Once the Facebook Page is connected (page selected via `FBSetPage`), the agent's scheduled tasks use the `facebookpage-post` platform skill to publish text, photo, and video posts to the Page. To adjust the cron of the built-in `cron-content-scanner` task (Social Manager), send an Update with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for `_editable: false` skills:
+Once the Facebook Page is connected (page selected via `FBSetPage`), the agent's scheduled tasks use the `facebookpage-post` platform skill to publish text, photo, and video posts to the Page. To adjust the cron of the built-in `cron-content-scanner` task (Social Manager), call `UserAgent/CustomSkillUpsert` with `enabled` and `interval` only — the task body (`value`) is owned by the bundled integration skill and silently dropped on writes:
 
-```json
-{
-  "guid": "your-useragent-guid",
-  "configuration": {
-    "custom_skills": [
-      {
-        "key": "cron-content-scanner",
-        "enabled": true,
-        "interval": "0 */4 * * *"
-      }
-    ]
-  }
-}
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "skillkey": "cron-content-scanner",
+    "enabled": true,
+    "interval": "0 */4 * * *"
+  }'
 ```
 
-To change **what** the scheduled task posts (topics, tone, content angle), edit the paired preference skill `content-tone` instead — see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preferences).
+To change **what** the scheduled task posts (topics, tone, content angle), edit the paired preference skill `content-tone` instead — see [Agent Skills → Updating Preference Skills](/docs/agent-skills#updating-preference-skills).
 
 ## Troubleshooting
 
@@ -341,21 +335,21 @@ To change **what** the scheduled task posts (topics, tone, content angle), edit 
 | `authorization_denied` | User cancelled, or not listed in App Roles (Development Mode). | Add as Tester (Step 5), retry. |
 | `token_exchange_failed` | Wrong App Secret or redirect URI mismatch. | Re-copy App Secret; verify redirect URI exactly. |
 | `no_pages` | User has no administered Facebook Pages. | Ask the user to create/administer a Page first, retry. |
-| `useragent_not_found` | Invalid or unauthorized `userAgentGuid`. | Use `POST /UserAgent/MyAgents`. |
-| `invalid_config` | Agent has no `credentials.facebook` block. | Call `POST /UserAgent/Update` with `facebook.appId` and `facebook.appSecret`, retry. |
+| `useragent_not_found` | Invalid or unauthorized `useragentguid`. | Use `POST /UserAgent/MyAgents`. |
+| `invalid_config` | Agent has no `credentials.facebook` block. | Call `POST /UserAgent/CredentialUpsert` with `facebook.appid` and `facebook.appsecret`, retry. |
 | `internal_error` | Unexpected server error (includes cache write failures). | Retry once. If persistent, contact support. |
 
 ### `FBSetPage` returns "No pending Facebook connection"
 
-The 15-minute pending cache expired, or you passed a `pageId` that wasn't in the `fb_pages` list. Start a new OAuth flow from Step 7.
+The 15-minute pending cache expired, or you passed a `pageid` that wasn't in the `fb_pages` list. Start a new OAuth flow from Step 7.
 
-### `FBSetPage` returns "Selected pageId not found in pending pages list"
+### `FBSetPage` returns "Selected pageid not found in pending pages list"
 
-The `pageId` you sent doesn't match any ID in the cached list. Verify you're parsing `fb_pages` correctly and sending the exact ID string.
+The `pageid` you sent doesn't match any ID in the cached list. Verify you're parsing `fb_pages` correctly and sending the exact ID string.
 
 ### Posts publish but as the wrong author
 
-Check `POST /UserAgent/Detail` and verify `configuration.credentials.facebook.pageId` is the Page you intended. If not, disconnect and reconnect, or call `FBSetPage` again within a fresh 15-minute window.
+Check `POST /UserAgent/Detail` and verify `credentials.facebook.pageid` is the Page you intended. If not, disconnect and reconnect, or call `FBSetPage` again within a fresh 15-minute window.
 
 ### "App not verified" banner on consent
 
@@ -363,7 +357,7 @@ Expected in Development Mode. Users in App Roles can click Continue.
 
 ## Multi-Tenant Architecture
 
-1. **One Meta Developer App** per product — same `appId`/`appSecret` for all customers.
+1. **One Meta Developer App** per product — same `appid`/`appsecret` for all customers.
 2. **One Wiro agent instance per customer.**
 3. **Each customer's page token is isolated** per `useragentguid`. Customer A's token never leaks to Customer B.
 4. **Your app display name** shows on every consent screen — not "Wiro".

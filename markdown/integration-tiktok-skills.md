@@ -31,7 +31,7 @@ The TikTok integration uses TikTok's OAuth 2.0 with the Content Posting API.
 
 ## Wiro Mode
 
-Call `TikTokConnect` without `authMethod`, redirect, parse `tiktok_connected=true&tiktok_username=<display_name>` (display name, not the `@handle`).
+Call `TikTokConnect` without `authmethod`, redirect, parse `tiktok_connected=true&tiktok_username=<display_name>` (display name, not the `@handle`).
 
 ## Complete Integration Walkthrough — Own Mode
 
@@ -74,24 +74,21 @@ Other scopes like `video.upload`, `video.list` are **not** used by Wiro.
 
 ### Step 5: Copy Client Key and Client Secret
 
-**App details** → copy **Client Key** and **Client Secret**. Note: TikTok calls the first one "key" (not "ID") — the field name in Wiro is `clientKey`.
+**App details** → copy **Client Key** and **Client Secret**. Note: TikTok calls the first one "key" (not "ID") — the field name in Wiro is `clientkey`.
 
 ### Step 6: Save credentials
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "tiktok": {
-          "clientKey": "YOUR_TIKTOK_CLIENT_KEY",
-          "clientSecret": "YOUR_TIKTOK_CLIENT_SECRET"
-        }
-      }
-    }
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "tiktok", "fieldname": "authmethod", "fieldvalue": "own" },
+      { "credentialkey": "tiktok", "fieldname": "clientkey", "fieldvalue": "YOUR_TIKTOK_CLIENT_KEY" },
+      { "credentialkey": "tiktok", "fieldname": "clientsecret", "fieldvalue": "YOUR_TIKTOK_CLIENT_SECRET" }
+    ]
   }'
 ```
 
@@ -102,9 +99,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TikTokConnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "redirectUrl": "https://your-app.com/settings/integrations",
-    "authMethod": "own"
+    "useragentguid": "your-useragent-guid",
+    "redirecturl": "https://your-app.com/settings/integrations",
+    "authmethod": "own"
   }'
 ```
 
@@ -131,7 +128,7 @@ Error: `?tiktok_error=<code>`.
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TikTokStatus" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "userAgentGuid": "your-useragent-guid" }'
+  -d '{ "useragentguid": "your-useragent-guid" }'
 ```
 
 Response:
@@ -141,9 +138,9 @@ Response:
   "result": true,
   "connected": true,
   "username": "Creator Display Name",
-  "connectedAt": "2026-04-17T12:00:00.000Z",
-  "tokenExpiresAt": "2026-04-18T12:00:00.000Z",
-  "refreshTokenExpiresAt": "2027-04-17T12:00:00.000Z",
+  "connectedat": "2026-04-17T12:00:00.000Z",
+  "tokenexpiresat": "2026-04-18T12:00:00.000Z",
+  "refreshtokenexpiresat": "2027-04-17T12:00:00.000Z",
   "errors": []
 }
 ```
@@ -167,9 +164,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | Agent instance GUID. |
-| `redirectUrl` | string | Yes | HTTPS URL. |
-| `authMethod` | string | No | `"wiro"` (default) or `"own"`. |
+| `useragentguid` | string | Yes | Agent instance GUID. |
+| `redirecturl` | string | Yes | HTTPS URL. |
+| `authmethod` | string | No | `"wiro"` (default) or `"own"`. |
 
 ### GET /UserAgentOAuth/TikTokCallback
 
@@ -177,7 +174,7 @@ Query params: `tiktok_connected=true&tiktok_username=<display_name>` or `tiktok_
 
 ### POST /UserAgentOAuth/TikTokStatus
 
-Response: `connected`, `username` (= tiktokUsername), `connectedAt`, `tokenExpiresAt` (~1 day), `refreshTokenExpiresAt` (~1 year).
+Response: `connected`, `username` (= tiktokusername), `connectedat`, `tokenexpiresat` (~1 day), `refreshtokenexpiresat` (~1 year).
 
 ### POST /UserAgentOAuth/TikTokDisconnect
 
@@ -192,7 +189,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "userAgentGuid": "your-useragent-guid",
+    "useragentguid": "your-useragent-guid",
     "provider": "tiktok"
   }'
 ```
@@ -208,7 +205,7 @@ See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
 | `session_expired` | 15-min state cache expired. | Restart OAuth. |
 | `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy; verify URL. |
 | `useragent_not_found` | Invalid guid. | Use `POST /UserAgent/MyAgents`. |
-| `invalid_config` | No `credentials.tiktok` block. | Update with `clientKey` + `clientSecret`. |
+| `invalid_config` | No `credentials.tiktok` block. | `UserAgent/CredentialUpsert` with `clientkey` + `clientsecret`. |
 | `internal_error` | Server error. | Retry. |
 
 ### "unaudited_client" or limited publishing

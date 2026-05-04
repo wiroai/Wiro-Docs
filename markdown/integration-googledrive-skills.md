@@ -1,281 +1,142 @@
 # Google Drive Integration
 
-Connect your agent to Google Drive to read, write, and organize files in selected folders.
+Connect your agent to Google Drive for reading, writing, and managing files in selected folders.
 
 ## Overview
 
-The Google Drive integration uses Google's OAuth 2.0 with the full Drive API. The connecting user explicitly picks which folders the agent can access.
+The Google Drive integration uses a Google Cloud service account with folder access delegated from your Drive. You create the service account in your own Google Cloud project, share your Drive folders with the service account email, and the agent accesses only those shared folders.
 
 **Skills that use this integration:**
 
-- `google-drive` — Read files, write outputs, manage folders
+- `google-drive` — Read files, write outputs, manage folders in selected Drive folders
 
 **Agents that typically enable this integration:**
 
-- Any content or research agent that needs persistent file storage accessible to humans.
+- Google Ads Manager (creative assets for campaigns)
+- Meta Ads Manager (creative assets for campaigns)
+- Social Manager (post-ready media library)
 
 ## Availability
 
 | Mode | Status | Notes |
 |------|--------|-------|
-| `"wiro"` | Available | One-click connect with Wiro's Google Cloud project. |
-| `"own"` | Available | Your own Google Cloud project for custom branding. |
+| Service Account JSON | Available | Google Cloud service account with Drive API access. Folders shared by the user. |
 
 ## Prerequisites
 
 - **A Wiro API key** — [Authentication](/docs/authentication).
 - **A deployed agent** — [Agent Overview](/docs/agent-overview).
-- **A Google account** for the connecting user.
-- **(Own mode) A Google Cloud project** with the Drive API enabled.
-- **An HTTPS callback URL**.
+- **A Google account** with a Drive you want the agent to access.
+- **A Google Cloud project** to host the service account.
 
-## Wiro Mode
+## Setup
 
-Call `GoogleDriveConnect` without `authMethod`, redirect user, parse `gdrive_connected=true&gdrive_folders=<JSON>` on return.
+### Step 1: Enable the Google Drive API
 
-## Complete Integration Walkthrough — Own Mode
+[Google Cloud Console](https://console.cloud.google.com/) → select project → **APIs & Services → Library** → **Google Drive API** → **Enable**.
 
-### Step 1: Create a Google Cloud Project
+If your agent will also read/write Google Docs or Sheets, enable those APIs as well:
 
-1. [console.cloud.google.com](https://console.cloud.google.com/) → create a project.
-2. **APIs & Services → Library** → enable **Drive API**.
-3. **OAuth consent screen**:
-   - **External** user type.
-   - App name, support email.
-   - Add scope: `https://www.googleapis.com/auth/drive`.
-   - Test users (while in Testing status).
+- **Google Sheets API**
+- **Google Docs API**
 
-### Step 2: Create OAuth 2.0 Client ID
+### Step 2: Create a service account
 
-1. **APIs & Services → Credentials → Create credentials → OAuth client ID**.
-2. Application type: **Web application**.
-3. **Authorized redirect URIs**:
+1. **IAM & Admin → Service accounts → Create service account**.
+2. Name (e.g. "wiro-drive-agent").
+3. Skip role grant → **Done**.
+4. Open the service account → **Keys → Add key → Create new key → JSON**. Download.
+5. Note the service account email from the account details page — format: `wiro-drive-agent@YOUR-PROJECT.iam.gserviceaccount.com`.
 
-   ```
-   https://api.wiro.ai/v1/UserAgentOAuth/GoogleDriveCallback
-   ```
+> **Tip:** In **[My Agents](https://wiro.ai/panel/agents)** → open your agent → **Credentials**, upload the JSON and your service account email will appear with a **Copy** button.
 
-4. Save; copy **Client ID** and **Client Secret**.
+### Step 3: Share your Drive folders with the service account
 
-### Step 3: Save credentials to Wiro
+For each folder you want the agent to access:
+
+1. Open [Google Drive](https://drive.google.com).
+2. Right-click the folder → **Share**.
+3. Paste the service account email from Step 2.
+4. Set role to **Editor** (if the folder lives in your **My Drive**) or **Content manager** (if the folder lives in a **Shared Drive**).
+5. Click **Send**.
+
+Copy each folder's **ID** from its Drive URL — the part after `/folders/`. Example: from `https://drive.google.com/drive/folders/1BxiMVs0XRA5nFMdKvBd` the ID is `1BxiMVs0XRA5nFMdKvBd`.
+
+**Google Workspace users:** If you use a Shared Drive (Team Drive), add the service account as a **member** of the shared drive instead of sharing individual folders. All folders within the shared drive become accessible.
+
+### Step 4: Base64-encode the JSON
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+# Linux
+base64 -w 0 drive-service-account.json > drive-sa.b64
+
+# macOS
+base64 -b 0 drive-service-account.json > drive-sa.b64
+```
+
+### Step 5: Save to Wiro
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "googledrive": {
-          "clientId": "YOUR_GOOGLE_OAUTH_CLIENT_ID",
-          "clientSecret": "YOUR_GOOGLE_OAUTH_CLIENT_SECRET"
-        }
-      }
-    }
-  }'
-```
-
-### Step 4: Initiate OAuth
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GoogleDriveConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "redirectUrl": "https://your-app.com/settings/integrations",
-    "authMethod": "own"
-  }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth?client_id=...&redirect_uri=...&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fdrive&state=...&access_type=offline&prompt=consent",
-  "errors": []
-}
-```
-
-Wiro requests the **full `drive` scope** (not the narrow `drive.file`). This is needed for folder discovery and file operations across the user's Drive.
-
-### Step 5: Handle the callback
-
-After the token exchange, Wiro queries Drive's `files.list` for root-level folders and prepends a virtual `{ id: "shared", name: "Shared with me", virtual: true }` entry. These folder suggestions are returned in the callback URL.
-
-**Success URL:**
-
-```
-https://your-app.com/settings/integrations?gdrive_connected=true&gdrive_folders=%5B%7B%22id%22%3A%22shared%22%2C%22name%22%3A%22Shared%20with%20me%22%2C%22virtual%22%3Atrue%7D%2C%7B%22id%22%3A%221AbC%22%2C%22name%22%3A%22Agent%20Outputs%22%7D%5D
-```
-
-`gdrive_folders` is `encodeURIComponent(JSON.stringify([...]))`. Each entry: `{ id, name, virtual? }`.
-
-```javascript
-const params = new URLSearchParams(window.location.search);
-if (params.get("gdrive_connected") === "true") {
-  const folders = JSON.parse(decodeURIComponent(params.get("gdrive_folders") || "[]"));
-  presentFolderPicker(folders);
-}
-```
-
-### Step 6: Browse more folders (optional)
-
-If the user wants to drill into subfolders rather than pick from root, call:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GoogleDriveListFolder" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "parentId": "1AbC",
-    "searchQuery": ""
-  }'
-```
-
-Response:
-
-```json
-{
-  "result": true,
-  "folders": [
-    {
-      "id": "2XyZ",
-      "name": "2025 Q1"
-    },
-    {
-      "id": "3MnO",
-      "name": "Archive"
-    }
-  ],
-  "errors": []
-}
-```
-
-- `parentId` defaults to `"root"`.
-- `searchQuery` is optional; passes through to Drive's query syntax.
-
-### Step 7: Persist selected folders
-
-Once the user picks (up to 5 folders), commit the selection:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GoogleDriveSetFolder" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "folders": [
-      {
-        "id": "1AbC",
-        "name": "Agent Outputs"
-      },
-      {
-        "id": "2XyZ",
-        "name": "2025 Q1"
-      }
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "googledrive",                                      "fieldname": "serviceaccountjsonbase64", "fieldvalue": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii..." },
+      { "credentialkey": "googledrive", "parentfield": "folders", "ordinal": 0, "fieldname": "id",                       "fieldvalue": "1BxiMVs0XRA5nFMdKvBd" },
+      { "credentialkey": "googledrive", "parentfield": "folders", "ordinal": 0, "fieldname": "name",                     "fieldvalue": "Creatives" },
+      { "credentialkey": "googledrive", "parentfield": "folders", "ordinal": 1, "fieldname": "id",                       "fieldvalue": "2CyiNWt1YSB6oGNeL" },
+      { "credentialkey": "googledrive", "parentfield": "folders", "ordinal": 1, "fieldname": "name",                     "fieldvalue": "Ad Assets" }
     ]
   }'
 ```
 
-Note the endpoint is `GoogleDriveSetFolder` (singular) even though it accepts an array.
+| Field | Type | Description |
+|-------|------|-------------|
+| `serviceaccountjsonbase64` | string | Base64-encoded service account JSON key. |
+| `folders` | array | Array of `{ "id": string, "name": string }` objects the agent should scan. `name` is the human-readable label — the agent uses it when reporting back to the operator ("scanned the Creatives folder..."); `id` is the Drive folder ID used in API calls. Pass an empty array to clear. |
 
-Response:
+### Step 5b (optional): Discover folders via API
 
-```json
-{
-  "result": true,
-  "folders": [
-    {
-      "id": "1AbC",
-      "name": "Agent Outputs"
-    },
-    {
-      "id": "2XyZ",
-      "name": "2025 Q1"
-    }
-  ],
-  "errors": []
-}
-```
-
-Requirements:
-
-- `folders` must be a non-empty array.
-- Each item needs `id`; `name` is optional (falls back to empty string).
-- Maximum **5** folders per agent. Sending more than 5 fails with `Maximum 5 folders allowed` — the request is rejected, not truncated.
-
-Triggers agent restart if running.
-
-### Step 8: Verify
+If you don't already have folder IDs from Step 3, or you want to verify that the service account has access to the expected folders before saving them, call the folder discovery endpoint. This is the same endpoint the Wiro Dashboard uses for its folder picker.
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GoogleDriveStatus" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GoogleDriveListFolders" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "userAgentGuid": "your-useragent-guid" }'
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "serviceaccountjsonbase64": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii..."
+  }'
 ```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Agent instance GUID. |
+| `serviceaccountjsonbase64` | string | No | Base64-encoded SA JSON. Useful for previewing before saving. If omitted, the endpoint uses whatever JSON was already saved to the agent via Step 5. |
 
 Response:
 
 ```json
 {
   "result": true,
-  "connected": true,
+  "serviceAccountEmail": "wiro-drive-agent@your-project.iam.gserviceaccount.com",
   "folders": [
-    {
-      "id": "1AbC",
-      "name": "Agent Outputs"
-    },
-    {
-      "id": "2XyZ",
-      "name": "2025 Q1"
-    }
-  ],
-  "connectedAt": "2026-04-17T12:00:00.000Z",
-  "tokenExpiresAt": "2026-04-17T13:00:00.000Z",
-  "errors": []
+    { "id": "1BxiMVs0XRA5nFMdKvBd", "name": "Creatives", "modifiedTime": "2026-04-10T12:34:00Z", "ownerName": "design@yourcompany.com" },
+    { "id": "2CyiNWt1YSB6oGNeL",  "name": "Ad Assets", "modifiedTime": "2026-04-12T09:12:00Z", "ownerName": "design@yourcompany.com" }
+  ]
 }
 ```
 
-- Access token lifetime: **1 hour** (short). The agent runs a background refresh cron every 45 minutes.
-- No `refreshTokenExpiresAt` — Google refresh tokens don't normally expire.
-- `folders` shows the currently selected folders (unique to Google Drive Status).
+Only folders explicitly shared with the SA email (as Editor or Content manager — see Step 3) are returned. Take the `id` values from the folders you want the agent to scan and pass them as `folders`-prefixed field rows in your final `UserAgent/CredentialUpsert` call.
 
-## Agent Runtime Usage (inside the container)
+> **Two equivalent ways to run Steps 5–5b**
+>
+> - **Upfront** — you already know the folder IDs from Step 3. Call `UserAgent/CredentialUpsert` once with both the `serviceaccountjsonbase64` field row and every `folders` ordinal row.
+> - **Discovery (matches the Dashboard flow)** — call `UserAgent/CredentialUpsert` first with just the `serviceaccountjsonbase64` field row, then call `UserAgentOAuth/GoogleDriveListFolders` to enumerate what the SA can see, then call `UserAgent/CredentialUpsert` again with the picked `folders` ordinal rows. The Dashboard uses this pattern — JSON upload renders the service account email, the user shares folders with it in Drive, and the folder picker lists the results.
 
-Once the OAuth flow is done and `GoogleDriveSetFolder` has persisted the folder selection, the agent container runs independently of the Wiro API — the `google-drive` platform skill (loaded from `skills/google-drive/SKILL.md`) reads env vars and talks to Google's REST APIs directly.
-
-**Env vars exported by `docker/start.sh`** (only when `skills.google-drive` is enabled and a Drive `accessToken` exists):
-
-| Env var | Source | Notes |
-|---------|--------|-------|
-| `GDRIVE_CLIENT_ID` | `credentials.googledrive.clientId` | For token refresh |
-| `GDRIVE_CLIENT_SECRET` | `credentials.googledrive.clientSecret` | For token refresh |
-| `GDRIVE_ACCESS_TOKEN` | `credentials.googledrive.accessToken` | **Auto-refreshed by the container every 45 minutes** via `POST /UserAgentOAuth/TokenRefresh` (short-lived: Google access tokens expire in 1 hour) |
-| `GDRIVE_REFRESH_TOKEN` | `credentials.googledrive.refreshToken` | Passed to the refresh cron |
-| `GDRIVE_FOLDERS` | `credentials.googledrive.folders` | JSON array of `[{id, name}]` — the user-selected folders from `GoogleDriveSetFolder` |
-
-**How cron skills access the token:** There is **no `gdrive-token` helper command**. The agent reads the pre-refreshed token directly from the env var:
-
-```
-exec command="echo $GDRIVE_ACCESS_TOKEN"
-```
-
-Then uses it in curl calls as `Authorization: Bearer $GDRIVE_ACCESS_TOKEN`. If an API call returns 401, the agent re-reads `$GDRIVE_ACCESS_TOKEN` (the 45-minute cron may have just refreshed it). See the full SKILL.md ([skills/google-drive/SKILL.md](https://github.com/wiroai/Wiro-Agent/blob/main/WiroAgent/.openclaw/workspace/skills/google-drive/SKILL.md)) for all endpoint examples.
-
-**Checking folder selection in cron scripts:** Since `GDRIVE_FOLDERS` is a JSON array (not a single ID), cron skills check it like this:
-
-```
-exec command="echo $GDRIVE_FOLDERS"
-```
-
-Empty output or `[]` means the user hasn't selected any folder yet — the scan should notify the operator and stop instead of iterating over an empty list.
-
-### Step 9: Start the agent
+### Step 6: Start the agent
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
@@ -284,95 +145,43 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
   -d '{ "guid": "your-useragent-guid" }'
 ```
 
-## API Reference
+## Runtime Behavior
 
-### POST /UserAgentOAuth/GoogleDriveConnect
+Env vars exported when the `google-drive` skill is enabled:
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | Agent instance GUID. |
-| `redirectUrl` | string | Yes | HTTPS URL. |
-| `authMethod` | string | No | `"wiro"` (default) or `"own"`. |
+- `GDRIVE_FOLDERS` — a JSON array string of `[{"id": "...", "name": "..."}]`, e.g. `[{"id":"1MMZGo...","name":"Creatives"}]`. Empty array `[]` means no folder is configured. Inside the agent, parse with `jq` (e.g. `echo $GDRIVE_FOLDERS | jq -r '.[].id'` for IDs, or `jq -r '.[] | select(.name=="Creatives") | .id'` to resolve a folder ID by name).
 
-### GET /UserAgentOAuth/GoogleDriveCallback
+Secret file:
 
-Query params: `gdrive_connected=true&gdrive_folders=<JSON>` or `gdrive_error=<code>`.
+- `/run/secrets/gdrive-sa.json` — decoded service account (file, not env)
 
-### POST /UserAgentOAuth/GoogleDriveListFolder
+Auth: OAuth access token minted from the service account on-demand via the `gdrive-token` bin script → `Authorization: Bearer`. Token expires every hour; the script is called fresh before each API session.
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | Agent instance GUID. |
-| `parentId` | string | No | Drive folder ID to list. Defaults to `"root"`. Accepts the virtual `"shared"` ID. |
-| `searchQuery` | string | No | Drive query string (passed through). |
+Base URLs:
 
-Response: `{ result, folders: [{id, name}], errors }`.
+- Drive API: `https://www.googleapis.com/drive/v3/...`
+- Sheets API: `https://sheets.googleapis.com/v4/...`
+- Docs API: `https://docs.googleapis.com/v1/...`
 
-### POST /UserAgentOAuth/GoogleDriveSetFolder
+All list/get/upload calls pass `supportsAllDrives=true` + `includeItemsFromAllDrives=true`, so Shared Drives are supported automatically.
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `userAgentGuid` | string | Yes | Agent instance GUID. |
-| `folders` | object[] | Yes | Array of `{ id, name? }`. Max 5 items; sending more returns `Maximum 5 folders allowed`. |
+## Files created by the agent
 
-Response: `{ result: true, folders: [{id, name}], errors: [] }`. Triggers agent restart if running.
-
-### POST /UserAgentOAuth/GoogleDriveStatus
-
-Response fields: `connected`, `folders` (selected folder list), `connectedAt`, `tokenExpiresAt` (~1h).
-
-### POST /UserAgentOAuth/GoogleDriveDisconnect
-
-Clears Google Drive credentials (no remote revoke).
-
-### POST /UserAgentOAuth/TokenRefresh
-
-> Running agents refresh Google Drive tokens automatically **every 45 minutes** (access tokens last 1 hour). Use this only for debugging.
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "userAgentGuid": "your-useragent-guid",
-    "provider": "googledrive"
-  }'
-```
-
-See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
-
-## Using the Skill
-
-The `google-drive` skill can browse, upload, download, and organize files within the selected folders.
+When the agent creates a file inside a user-shared folder, the file is owned by the service account, not the user. The user can see the file via folder permission inheritance, but may see it as "view only". To give the user write access on files the agent creates (role `writer` in the Drive API — shown as **Editor** in My Drive or **Content manager** in a Shared Drive), the skill grants permissions programmatically via `POST /drive/v3/files/{fileId}/permissions`. See the `google-drive` skill for details.
 
 ## Troubleshooting
 
-| Error code | Meaning | What to do |
-|------------|---------|------------|
-| `authorization_denied` | User cancelled, or consent screen in Testing and the user isn't a test user. | Add test user or publish consent screen. |
-| `session_expired` | State cache expired (15 min). | Restart. |
-| `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy; verify URL. |
-| `useragent_not_found` | Invalid guid. | Use `POST /UserAgent/MyAgents`. |
-| `invalid_config` | No `credentials.googledrive` block. | Update with credentials. |
-| `internal_error` | Server error. | Retry. |
-
-### Agent can't list folders beyond root
-
-Use `GoogleDriveListFolder` with the `parentId` you want to drill into. Or call again with the `"shared"` virtual ID to see shared drives.
-
-### "quotaExceeded" from Drive API
-
-Rate limits are per-project in Google Cloud Console — check and raise quota as needed.
-
-## Multi-Tenant Architecture
-
-1. **One Google Cloud project** per product. Publish the consent screen.
-2. **Rate limits are per-project.**
-3. **Per-agent folder selection is isolated** — Customer A's folders never visible to B.
+- **403 "The user does not have sufficient permissions for file":** The folder hasn't been shared with the service account, or the service account was given a read-only role (Viewer / Commenter) instead of a write role. Go back to Google Drive → Share the folder with the SA email as **Editor** (My Drive) or **Content manager** (Shared Drive).
+- **403 on specific file inside a shared folder:** The file was added by someone else and hasn't inherited folder permissions yet. Force inheritance by resharing the folder, or share the specific file directly.
+- **"Invalid JWT token":** Service account JSON corrupt or truncated. Re-encode (watch for line breaks — use `base64 -w 0` on Linux, `base64 -b 0` on macOS).
+- **Agent can't find new files:** The agent only sees files inside folders listed in `folders`. Add new folder IDs to the list and restart.
+- **User sees files as "view only":** Files created by the SA inside user folders are SA-owned. The skill should grant the user write access (role `writer` — **Editor** in My Drive, **Content manager** in Shared Drive); if this step is skipped, the user sees view-only. Manual fix: right-click the file → Share → grant yourself write access.
 
 ## Related
 
 - [Agent Credentials & OAuth](/docs/agent-credentials)
 - [Agent Overview](/docs/agent-overview)
 - [Agent Skills](/docs/agent-skills)
-- [Google Drive API docs](https://developers.google.com/drive/api)
+- [Google Drive API docs](https://developers.google.com/drive)
+- [Google Sheets API docs](https://developers.google.com/sheets)
+- [Google Docs API docs](https://developers.google.com/docs)

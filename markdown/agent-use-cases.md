@@ -75,7 +75,7 @@ Build a fully branded chat experience with no Wiro UI visible to your users.
 The deploy flow has three stages — Deploy, Setup (only when the agent needs third-party credentials), and Start:
 
 1. **Deploy** an agent via `POST /UserAgent/Deploy` — returns `useragents[0].guid` and starts the instance in `status: 6` (setup-required) or `status: 0` (ready) depending on whether the template needs credentials.
-2. **Setup** the credentials (only if the agent template requires them) via one or more `POST /UserAgent/Update` calls and the matching OAuth flows — see [Agent Credentials & OAuth](/docs/agent-credentials). Check `setuprequired` on the response: while it's `true`, the agent cannot start. Once all required credential slots are filled, `setuprequired` flips to `false` and `status` becomes `0`. For Pattern 2 (knowledge-base / chat-only agents) there are no third-party credentials, so this stage is skipped and the agent is ready to start right after Deploy.
+2. **Setup** the credentials (only if the agent template requires them) via one or more `POST /UserAgent/CredentialUpsert` calls and the matching OAuth flows — see [Agent Credentials & OAuth](/docs/agent-credentials). Check `setuprequired` on the response: while it's `true`, the agent cannot start. Once all required credential slots are filled, `setuprequired` flips to `false` and `status` becomes `0`. For Pattern 2 (knowledge-base / chat-only agents) there are no third-party credentials, so this stage is skipped and the agent is ready to start right after Deploy.
 3. **Start** the agent with `POST /UserAgent/Start` — transitions through `status: 3` (starting) → `status: 4` (running).
 4. Build your own chat UI.
 5. Send messages via `POST /UserAgent/Message/Send`.
@@ -85,7 +85,7 @@ The deploy flow has three stages — Deploy, Setup (only when the agent needs th
 See [Agent Overview](/docs/agent-overview) for the full lifecycle state table (`status: 0, 1, 3, 4, 5, 6`).
 
 ```bash
-# Deploy — prepaid + plan are required for API users (credits debit from your wallet)
+# Deploy — prepaid + tier are required for API users (credits debit from your wallet)
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
@@ -93,7 +93,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
     "agentguid": "agent-template-guid",
     "title": "Customer Support Bot",
     "useprepaid": true,
-    "plan": "starter"
+    "tier": "starter"
   }'
 
 # Pattern 1 only — fill any missing credentials, then verify setuprequired flipped to false
@@ -179,8 +179,8 @@ Wiro provides pre-built agent templates you can deploy immediately. Each agent s
 |-------|-------------|-------------|
 | **Social Manager** | Create, schedule, and publish social media content | Twitter/X, Instagram, Facebook, TikTok, LinkedIn (OAuth) |
 | **Blog Content Editor** | Write and publish blog posts (WordPress draft + publish workflow) | WordPress (App Password), Gmail (optional, for inbox requests) |
-| **Google Ads Manager** | Create and optimize Google Ads campaigns, daily performance reports | Google Ads (OAuth), Calendarific (platform-managed), Google Drive (optional) |
-| **Meta Ads Manager** | Manage Facebook and Instagram ad campaigns, audience analysis | Meta Ads (OAuth), Calendarific (platform-managed), Google Drive (optional) |
+| **Google Ads Manager** | Create and optimize Google Ads campaigns, daily performance reports | Google Ads (OAuth), Calendarific (platform-managed), Google Drive (optional, Service Account) |
+| **Meta Ads Manager** | Manage Facebook and Instagram ad campaigns, audience analysis | Meta Ads (OAuth), Calendarific (platform-managed), Google Drive (optional, Service Account) |
 | **Newsletter Manager** | Design and send email newsletters to subscriber lists | Brevo, SendGrid, Mailchimp, HubSpot (any one — API key or OAuth) |
 | **Lead Generation Manager** | Find and enrich leads, run multi-channel outreach, analyze replies | Apollo (API key), Lemlist (API key), HubSpot (optional, for CRM sync) |
 | **App Review Support** | Monitor app store reviews, draft responses in operator's tone | App Store Connect (private key JWT), Google Play (service account) |
@@ -215,7 +215,7 @@ deploy = requests.post(
         "agentguid": "social-manager-agent-guid",
         "title": "Acme Corp Social Media",
         "useprepaid": True,
-        "plan": "starter"
+        "tier": "starter"
     }
 )
 useragent_guid = deploy.json()["useragents"][0]["guid"]
@@ -225,8 +225,8 @@ connect = requests.post(
     "https://api.wiro.ai/v1/UserAgentOAuth/XConnect",
     headers=headers,
     json={
-        "userAgentGuid": useragent_guid,
-        "redirectUrl": "https://your-app.com/settings?connected=twitter"
+        "useragentguid": useragent_guid,
+        "redirecturl": "https://your-app.com/settings?connected=twitter"
     }
 )
 authorize_url = connect.json()["authorizeUrl"]

@@ -43,18 +43,14 @@ The SendGrid integration uses standard Bearer authentication with a SendGrid API
 ### Step 2: Save to Wiro
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Update" \
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "guid": "your-useragent-guid",
-    "configuration": {
-      "credentials": {
-        "sendgrid": {
-          "apiKey": "SG.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-        }
-      }
-    }
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "sendgrid", "fieldname": "apiKey", "fieldvalue": "SG.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" }
+    ]
   }'
 ```
 
@@ -77,9 +73,10 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ```json
 "sendgrid": {
+  "_connected": false,
   "optional": true,
-  "apiKey": "",
-  "_editable": { "apiKey": true }
+  "extra": false,
+  "apiKey": ""
 }
 ```
 

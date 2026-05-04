@@ -23,7 +23,7 @@ Every agent message progresses through a defined set of stages:
 
 | Status | Description |
 |--------|-------------|
-| `agent_queue` | The message is queued and waiting to be picked up by the agent worker. Emitted once when the message enters the queue. |
+| `agent_queue` | The message is queued and waiting to be picked up by the agent runtime. Emitted once when the message enters the queue. |
 | `agent_start` | The agent has accepted the message and begun processing. The underlying LLM call is being prepared. |
 | `agent_output` | The agent is producing output. This event is emitted **multiple times** — each chunk of the response arrives as a separate `agent_output` event via WebSocket, enabling real-time streaming. |
 | `agent_end` | The agent has finished generating the response. The full output is available in the `response` and `debugoutput` fields. **This is the event you should listen for** to get the final result. |
@@ -83,7 +83,16 @@ Retrieves the current status and content of a single message. You can query by e
   "errors": [],
   "data": {
     "guid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
-    "uuid": "user-uuid-here",
+    "uuid": "ada-uuid",
+    "user": {
+      "uuid": "ada-uuid",
+      "firstname": "Ada",
+      "lastname": "Lovelace",
+      "email": "ada@example.com",
+      "username": "ada",
+      "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
+      "avatarinitials": "AL"
+    },
     "sessionkey": "default",
     "content": "What are the latest trends in AI?",
     "response": "Here are the key AI trends for 2026...",
@@ -115,6 +124,7 @@ Retrieves the current status and content of a single message. You can query by e
 |-------|------|-------------|
 | `guid` | `string` | Message GUID. |
 | `uuid` | `string` | The account UUID of the user who sent the message. |
+| `user` | `object\|null` | Resolved sender info: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. Decorated server-side from `agentmessages.uuid` so the chat bubble can render avatar / hover-tooltip without an extra `User/Detail` round-trip. `null` when the row was written by automation (sentinel `uuid` like `"system"`) or when the user record was deleted. |
 | `sessionkey` | `string` | The session this message belongs to. |
 | `content` | `string` | The original user message. |
 | `response` | `string` | The agent's full response text. Empty until `agent_end`. |
@@ -138,7 +148,7 @@ Retrieves conversation history for a specific agent and session. Messages are re
 | `limit` | number | No | Maximum number of messages to return. Defaults to `50`, max `200`. |
 | `before` | string | No | Message GUID to use as cursor — returns only messages created before this one. Omit for the most recent messages. |
 
-> **Team agents:** If the agent's `teamSessionMode` is `collaborative`, History returns messages from **all team members** in the session. In the default `private` mode, History only returns messages sent by the caller's own `uuid`. Same applies to `Sessions` listing.
+> **Team agents:** If the agent's `teamsessionmode` is `collaborative`, History returns messages from **all team members** in the session. In the default `private` mode, History only returns messages sent by the caller's own `uuid`. Same applies to `Sessions` listing.
 
 ### Response
 
@@ -150,6 +160,16 @@ Retrieves conversation history for a specific agent and session. Messages are re
     "messages": [
       {
         "guid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+        "uuid": "ada-uuid",
+        "user": {
+          "uuid": "ada-uuid",
+          "firstname": "Ada",
+          "lastname": "Lovelace",
+          "email": "ada@example.com",
+          "username": "ada",
+          "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
+          "avatarinitials": "AL"
+        },
         "content": "What are the latest trends in AI?",
         "response": "Here are the key AI trends for 2026...",
         "debugoutput": "Here are the key AI trends for 2026...",
@@ -173,6 +193,16 @@ Retrieves conversation history for a specific agent and session. Messages are re
       },
       {
         "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "uuid": "ada-uuid",
+        "user": {
+          "uuid": "ada-uuid",
+          "firstname": "Ada",
+          "lastname": "Lovelace",
+          "email": "ada@example.com",
+          "username": "ada",
+          "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
+          "avatarinitials": "AL"
+        },
         "content": "Tell me more about multimodal models",
         "response": "Multimodal models combine...",
         "debugoutput": "Multimodal models combine...",
@@ -189,9 +219,11 @@ Retrieves conversation history for a specific agent and session. Messages are re
 }
 ```
 
+> Each message row carries `uuid` (sender) and a server-decorated `user` object with the full sender shape — same as `Message/Detail`. `user` is `null` for system-inserted rows (e.g. `Message/SystemInsert` writes when `uuid` is `"system"`) or when the underlying account has been deleted.
+
 | Field | Type | Description |
 |-------|------|-------------|
-| `messages` | `array` | Array of message objects, newest first. |
+| `messages` | `array` | Array of message objects, newest first. Each row has the **same shape as `Message/Detail`** — including the `uuid` sender and decorated `user` object. |
 | `count` | `number` | Number of messages in this page. |
 | `hasmore` | `boolean` | `true` if there are older messages available. Pass the last message's `guid` as `before` to fetch the next page. |
 
@@ -203,18 +235,20 @@ To paginate through a long conversation:
 
 ```json
 {
-  "useragentguid": "...",
+  "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+  "sessionkey": "default",
   "limit": 50
 }
 ```
 
-**Page 2** — pass the last message's `guid` as cursor:
+**Page 2** — pass the **last** (oldest, smallest `createdat`) message's `guid` from page 1 as the `before` cursor:
 
 ```json
 {
-  "useragentguid": "...",
+  "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+  "sessionkey": "default",
   "limit": 50,
-  "before": "a1b2c3d4-..."
+  "before": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 }
 ```
 
@@ -267,7 +301,7 @@ Deletes messages in the given session for the **calling user**. This action cann
 | `useragentguid` | string | Yes | The agent instance GUID. |
 | `sessionkey` | string | Yes | The session key to delete. |
 
-> **Scope of deletion:** The API matches on both `useragentguid` + `sessionkey` **and** the caller's `uuid`, so only messages the calling user sent/received in this session are removed. In **collaborative** team mode (`teamSessionMode: "collaborative"`, Telegram group-shared sessions), other team members' messages in the same `sessionkey` remain intact — each member must call `DeleteSession` to clear their own share. Admin callers (platform owner) are not subject to this scoping. For private (per-user) sessions this distinction doesn't matter — the caller is the only owner.
+> **Scope of deletion:** The API matches on both `useragentguid` + `sessionkey` **and** the caller's `uuid`, so only messages the calling user sent/received in this session are removed. In **collaborative** team mode (`teamsessionmode: "collaborative"`, Telegram group-shared sessions), other team members' messages in the same `sessionkey` remain intact — each member must call `DeleteSession` to clear their own share. Admin callers (platform owner) are not subject to this scoping. For private (per-user) sessions this distinction doesn't matter — the caller is the only owner.
 
 ### Response
 
@@ -277,6 +311,48 @@ Deletes messages in the given session for the **calling user**. This action cann
   "errors": []
 }
 ```
+
+## **POST** /UserAgent/Message/Delete
+
+Bulk-deletes one or more messages from a session, with **per-side soft-delete** semantics. Each item lets you choose whether to hide the user side of the bubble, the agent side, or both — supporting "delete just my message" / "delete only the response" / "delete the whole bubble" UX without losing the underlying record.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | The agent instance GUID. |
+| `items` | array | Yes | One or more `{ messageguid, side }` rows. |
+
+Each item:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `messageguid` | string | The message to delete. Must belong to the agent identified by `useragentguid`. |
+| `side` | string | One of `"user"`, `"agent"`, or `"both"`. Maps to a bitmask (`user=1`, `agent=2`, `both=3`) OR'd into the row's `deletestatus` column. |
+
+> **Soft delete, not hard delete.** Rows are kept in the database with the `deletestatus` flag set so the chat history can re-render the redacted bubble. `Message/History` filters out fully-deleted (`deletestatus < 3`) rows so users don't see the gaps. To wipe the whole conversation hard-and-fast, use [`Message/DeleteSession`](#post-useragentmessagedeletesession) instead.
+
+### Request
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Delete" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "items": [
+      { "messageguid": "c3d4e5f6-...", "side": "user" },
+      { "messageguid": "d4e5f6a7-...", "side": "agent" },
+      { "messageguid": "e5f6a7b8-...", "side": "both" }
+    ]
+  }'
+```
+
+### Response
+
+```json
+{ "result": true, "errors": [] }
+```
+
+The endpoint is best-effort across the items array — invalid `messageguid` rows or invalid `side` values are silently skipped. The call returns `result: true` even when zero rows were updated, so callers should refetch `Message/History` to confirm the new state.
 
 ## **POST** /UserAgent/Message/Cancel
 
@@ -307,6 +383,34 @@ On success, the message status changes to `agent_cancel` in the database.
 >
 > When polling for the final state, check `status === "agent_cancel"` rather than relying on non-empty `response` / `debugoutput` (they may be empty for queued-state cancellations).
 
+## **POST** /UserAgent/Message/SystemInsert
+
+Inserts a finished "system" message into the conversation history without running it through the agent. Used by the agent runtime, scheduled cron skills, and external chat-platform bridges (Telegram bot, Slack relay, push-notification webhooks) to drop a pre-rendered message into a session as if the agent had produced it. The endpoint **never** triggers a model call — the supplied `content` is written verbatim to `agentmessages.response` with `status: "agent_end"` and `metadata: {"type":"system"}`.
+
+> **Runtime-only auth.** This endpoint is reserved for the Wiro-managed agent runtime and the platform bridges Wiro ships (Telegram / Slack / cron). API users normally use [`Message/Send`](#post-useragentmessagesend) instead, which goes through the standard auth flow + queue + model call path.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | The target useragent guid. |
+| `uuid` | string | Yes | The useragent owner uuid. Must match the row stored in `useragents.uuid` for `useragentguid`. |
+| `content` | string | Yes | The message body to insert. Stored verbatim in `response` and `debugoutput`. |
+| `sessionkey` | string | No | Conversation thread the message belongs to. Defaults to `"auto"` — the endpoint resolves it to the most recent session for this useragent (falls back to `"default"` for empty histories). Pass an explicit value to insert into a specific named session. |
+
+### Response
+
+```json
+{
+  "result": true,
+  "messageguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+  "sessionkey": "default",
+  "errors": []
+}
+```
+
+- `messageguid` is the inserted row's guid — use it to address the message later via `Message/Detail` or to thread replies.
+- `sessionkey` echoes the resolved session (matters when the caller passed `"auto"` or omitted the field).
+- The inserted row carries `status: "agent_end"` and `metadata: {"type":"system"}` so the chat UI renders it as a non-interactive system bubble (no retry / cancel affordances).
+
 ## Session Management
 
 Sessions let you maintain separate conversation threads with the same agent:
@@ -321,7 +425,7 @@ User A's conversation:
 
 ```json
 {
-  "useragentguid": "...",
+  "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
   "message": "Hello!",
   "sessionkey": "user-alice"
 }
@@ -331,7 +435,7 @@ User B's separate conversation with the same agent:
 
 ```json
 {
-  "useragentguid": "...",
+  "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
   "message": "Hello!",
   "sessionkey": "user-bob"
 }
