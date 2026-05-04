@@ -1022,16 +1022,27 @@ button {
 /* ------------------------------------------------------------------
    14. Info callout
    ------------------------------------------------------------------ */
-.info-callout {
+.info-callout,
+.docs-section blockquote {
   background: var(--primary-6);
   border-left: 3px solid var(--primary);
   padding: 12px 16px;
   border-radius: 0 8px 8px 0;
   margin: 12px 0;
+  color: var(--text);
 }
 
-.info-callout p {
+.info-callout p,
+.docs-section blockquote p {
   margin-bottom: 0;
+  color: var(--text);
+}
+
+.docs-section blockquote {
+  /* Reset browser-default blockquote indentation so content lines up
+     with surrounding paragraphs (info-callout already does this). */
+  margin-left: 0;
+  margin-right: 0;
 }
 
 /* ------------------------------------------------------------------
@@ -2701,18 +2712,23 @@ button {
 }
 
 /* Info callout */
-.is-dark .info-callout {
+.is-dark .info-callout,
+.is-dark .docs-section blockquote {
   background: var(--dark-sidebar-light-4);
   border-left-color: var(--primary);
 }
 
 .is-dark .info-callout,
 .is-dark .info-callout p,
-.is-dark .info-callout strong {
+.is-dark .info-callout strong,
+.is-dark .docs-section blockquote,
+.is-dark .docs-section blockquote p,
+.is-dark .docs-section blockquote strong {
   color: var(--dark-dark-text);
 }
 
-.is-dark .info-callout code {
+.is-dark .info-callout code,
+.is-dark .docs-section blockquote code {
   background: rgba(0, 195, 140, 0.2);
   color: #2ee6a8;
 }
