@@ -9427,6 +9427,7 @@ import type {
   "data": {
     "guid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
     "uuid": "ada-uuid",
+    "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
     "user": {
       "uuid": "ada-uuid",
       "firstname": "Ada",
@@ -9481,6 +9482,11 @@ import type {
                               <td><code>uuid</code></td>
                               <td><code>string</code></td>
                               <td>The account UUID of the user who sent the message.</td>
+                            </tr>
+                            <tr>
+                              <td><code>agenttoken</code></td>
+                              <td><code>string|null</code></td>
+                              <td>The same token issued by <code>Message/Send</code> for this message. Lets callers that arrived at the row through <code>Message/Detail</code> (or <code>Message/History</code>) subscribe to the <a href="/docs/agent-websocket">Agent WebSocket</a> and pick up an in-flight response — useful when a chat UI rehydrates after a reload and finds a message still in <code>agent_queue</code> / <code>agent_start</code> / <code>agent_output</code> status. Only <code>null</code> for very old rows that pre-date the column.</td>
                             </tr>
                             <tr>
                               <td><code>user</code></td>
@@ -9599,6 +9605,7 @@ import type {
       {
         "guid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
         "uuid": "ada-uuid",
+        "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
         "user": {
           "uuid": "ada-uuid",
           "firstname": "Ada",
@@ -9632,6 +9639,7 @@ import type {
       {
         "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
         "uuid": "ada-uuid",
+        "agenttoken": "tQ4nL8vY1zMkRpWdH7cXjBg6sFhPmA",
         "user": {
           "uuid": "ada-uuid",
           "firstname": "Ada",
@@ -9656,6 +9664,7 @@ import type {
   }
 }</code></pre>
                     <div class="info-callout"><p>Each message row carries <code>uuid</code> (sender) and a server-decorated <code>user</code> object with the full sender shape — same as <code>Message/Detail</code>. <code>user</code> is <code>null</code> for system-inserted rows (e.g. <code>Message/SystemInsert</code> writes when <code>uuid</code> is <code>"system"</code>) or when the underlying account has been deleted.</p></div>
+                    <div class="info-callout"><p><strong>Resuming an in-flight stream.</strong> Every row carries the original <code>agenttoken</code> from <code>Message/Send</code>. If a returned message's <code>status</code> is non-terminal (<code>agent_queue</code>, <code>agent_start</code>, or <code>agent_output</code>), the agent is still processing it server-side. Hand the <code>agenttoken</code> to the <a href="/docs/agent-websocket">Agent WebSocket</a> (<code>agent_info</code> frame) and you'll receive the remaining <code>agent_output</code> chunks plus the eventual <code>agent_end</code> event — no need to re-send the message. This is exactly how a chat UI can rehydrate live streams after a page reload.</p></div>
                     <div class="docs-param-table">
                       <div class="docs-param-table-wrapper">
                         <table>
@@ -9670,7 +9679,7 @@ import type {
                             <tr>
                               <td><code>messages</code></td>
                               <td><code>array</code></td>
-                              <td>Array of message objects, newest first. Each row has the <strong>same shape as <code>Message/Detail</code></strong> — including the <code>uuid</code> sender and decorated <code>user</code> object.</td>
+                              <td>Array of message objects, newest first. Each row has the <strong>same shape as <code>Message/Detail</code></strong> — including the <code>uuid</code> sender, the <code>agenttoken</code> (so you can resubscribe over WebSocket if <code>status</code> is non-terminal), and the decorated <code>user</code> object.</td>
                             </tr>
                             <tr>
                               <td><code>count</code></td>

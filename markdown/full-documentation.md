@@ -4701,6 +4701,7 @@ Retrieves the current status and content of a single message. You can query by e
   "data": {
     "guid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
     "uuid": "ada-uuid",
+    "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
     "user": {
       "uuid": "ada-uuid",
       "firstname": "Ada",
@@ -4741,6 +4742,7 @@ Retrieves the current status and content of a single message. You can query by e
 |-------|------|-------------|
 | `guid` | `string` | Message GUID. |
 | `uuid` | `string` | The account UUID of the user who sent the message. |
+| `agenttoken` | `string\|null` | The same token issued by `Message/Send` for this message. Lets callers that arrived at the row through `Message/Detail` (or `Message/History`) subscribe to the [Agent WebSocket](/docs/agent-websocket) and pick up an in-flight response — useful when a chat UI rehydrates after a reload and finds a message still in `agent_queue` / `agent_start` / `agent_output` status. Only `null` for very old rows that pre-date the column. |
 | `user` | `object\|null` | Resolved sender info: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. Decorated server-side from `agentmessages.uuid` so the chat bubble can render avatar / hover-tooltip without an extra `User/Detail` round-trip. `null` when the row was written by automation (sentinel `uuid` like `"system"`) or when the user record was deleted. |
 | `sessionkey` | `string` | The session this message belongs to. |
 | `content` | `string` | The original user message. |
@@ -4778,6 +4780,7 @@ Retrieves conversation history for a specific agent and session. Messages are re
       {
         "guid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
         "uuid": "ada-uuid",
+        "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
         "user": {
           "uuid": "ada-uuid",
           "firstname": "Ada",
@@ -4811,6 +4814,7 @@ Retrieves conversation history for a specific agent and session. Messages are re
       {
         "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
         "uuid": "ada-uuid",
+        "agenttoken": "tQ4nL8vY1zMkRpWdH7cXjBg6sFhPmA",
         "user": {
           "uuid": "ada-uuid",
           "firstname": "Ada",
@@ -4838,9 +4842,11 @@ Retrieves conversation history for a specific agent and session. Messages are re
 
 > Each message row carries `uuid` (sender) and a server-decorated `user` object with the full sender shape — same as `Message/Detail`. `user` is `null` for system-inserted rows (e.g. `Message/SystemInsert` writes when `uuid` is `"system"`) or when the underlying account has been deleted.
 
+> **Resuming an in-flight stream.** Every row carries the original `agenttoken` from `Message/Send`. If a returned message's `status` is non-terminal (`agent_queue`, `agent_start`, or `agent_output`), the agent is still processing it server-side. Hand the `agenttoken` to the [Agent WebSocket](/docs/agent-websocket) (`agent_info` frame) and you'll receive the remaining `agent_output` chunks plus the eventual `agent_end` event — no need to re-send the message. This is exactly how a chat UI can rehydrate live streams after a page reload.
+
 | Field | Type | Description |
 |-------|------|-------------|
-| `messages` | `array` | Array of message objects, newest first. Each row has the **same shape as `Message/Detail`** — including the `uuid` sender and decorated `user` object. |
+| `messages` | `array` | Array of message objects, newest first. Each row has the **same shape as `Message/Detail`** — including the `uuid` sender, the `agenttoken` (so you can resubscribe over WebSocket if `status` is non-terminal), and the decorated `user` object. |
 | `count` | `number` | Number of messages in this page. |
 | `hasmore` | `boolean` | `true` if there are older messages available. Pass the last message's `guid` as `before` to fetch the next page. |
 
