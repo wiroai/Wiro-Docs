@@ -123,7 +123,7 @@ When you mutate an agent's configuration while it is **starting** (status `3`) o
 
 This means you can update credentials, toggle skills, or change a custom skill on a running agent without manually stopping and starting it.
 
-Endpoints that auto-trigger a restart on success: `CredentialUpsert`, `SkillsApply`, `CustomSkillUpsert` (when functional fields change), `CustomSkillDelete`, `CustomSkillRevert`, `Update` (scalar edits).
+Endpoints that auto-trigger a restart on success: `CredentialUpsert`, `SkillsApply`, `CustomSkillUpsert` (when functional fields change), `CustomSkillRename`, `CustomSkillDelete`, `CustomSkillRevert`, `Update` (scalar edits).
 
 ## Endpoints
 
@@ -1005,6 +1005,7 @@ Updates an agent instance's **scalar fields only** (title, description, categori
 > |-------------------------|-----|
 > | Provider credentials (API keys, OAuth settings) | [`POST /UserAgent/CredentialUpsert`](#post-useragentcredentialupsert) |
 > | Custom skill values (strategy text, cron intervals, enabled flag) | [`POST /UserAgent/CustomSkillUpsert`](#post-useragentcustomskillupsert) |
+> | Rename a user-created custom skill (key + optional description) | [`POST /UserAgent/CustomSkillRename`](#post-useragentcustomskillrename) |
 > | Delete a user-created cron skill | [`POST /UserAgent/CustomSkillDelete`](#post-useragentcustomskilldelete) |
 > | Toggle one or more integration skills on/off (with optional tier change) | [`POST /UserAgent/SkillsApply`](#post-useragentskillsapply) |
 > | Upgrade Starter → Pro | [`POST /UserAgent/UpgradeTier`](#post-useragentupgradetier) |
@@ -1222,6 +1223,53 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
 ```json
 { "result": true, "errors": [] }
 ```
+
+#### **POST** /UserAgent/CustomSkillRename
+
+Renames a user-created custom skill, optionally updating its description in the same atomic write. Only rows with `usercreated: true` can be renamed through this endpoint — preset-owned rows reject with `agent-customskill-rename-preset-forbidden` (preset renames cascade through the admin `/Agent/CustomSkillRename` channel instead).
+
+The skillkey flavour is preserved: a `cs-cron-*` scheduled task stays scheduled, a `cs-*` strategy stays a strategy. Cross-flavour renames are rejected — delete + re-create via `CustomSkillUpsert` with the right kind if you need to switch sections.
+
+Version history is migrated under the new key so the full audit chain stays continuous after the rename, and a new `rename` entry is appended.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Your UserAgent instance guid |
+| `oldskillkey` | string | Yes | The skill's current canonical key (e.g. `cs-my-strategy`, `cs-cron-daily-summary`). |
+| `newskillkey` | string | Yes | The new skill key. The server canonicalises bare slugs using the flavour of `oldskillkey`: if old is `cs-cron-*` the new slug lands on `cs-cron-*`; otherwise `cs-*`. |
+| `description` | string | No | New description. Omit to leave unchanged; pass an empty string to clear. |
+
+> **Restart.** The renamed key surfaces in the container's settings.json, so the useragent is auto-restarted on success (same behaviour as `CustomSkillUpsert` functional edits).
+
+##### Request
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillRename" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+    "oldskillkey": "cs-my-custom-strategy",
+    "newskillkey": "cs-my-renamed-strategy",
+    "description": "Updated note shown next to the name"
+  }'
+```
+
+##### Response
+
+```json
+{ "result": true, "errors": [], "newskillkey": "cs-my-renamed-strategy" }
+```
+
+##### Error cases
+
+| Error message key | When |
+|---|---|
+| `agent-customskill-rename-preset-forbidden` | Target row has `usercreated: false` (preset-owned). Preset renames go through the admin `/Agent/CustomSkillRename` cascade. |
+| `agent-customskill-rename-flavour-mismatch` | Caller tried to rename `cs-cron-*` ↔ `cs-*`. Delete + re-create with the right kind instead. |
+| `agent-customskill-rename-collision` | `newskillkey` already exists on this useragent. |
+| `agent-customskill-rename-same-key` | `oldskillkey` equals canonicalised `newskillkey` — nothing to change. |
+| `agent-customskill-not-found` | `oldskillkey` does not exist on the useragent. |
 
 #### **POST** /UserAgent/CustomSkillDelete
 

@@ -7401,6 +7401,10 @@ import type {
                                 <td><a href="#post-useragentcustomskillupsert"><code>POST /UserAgent/CustomSkillUpsert</code></a></td>
                               </tr>
                               <tr>
+                                <td>Rename a user-created custom skill (key + optional description)</td>
+                                <td><a href="#post-useragentcustomskillrename"><code>POST /UserAgent/CustomSkillRename</code></a></td>
+                              </tr>
+                              <tr>
                                 <td>Delete a user-created cron skill</td>
                                 <td><a href="#post-useragentcustomskilldelete"><code>POST /UserAgent/CustomSkillDelete</code></a></td>
                               </tr>
@@ -7715,6 +7719,102 @@ import type {
 
                     <h3>Response</h3>
                     <pre><code class="language-json">{ "result": true, "errors": [] }</code></pre>
+
+                    <h2 id="post-useragentcustomskillrename"><span class="endpoint-badge post">POST</span> /UserAgent/CustomSkillRename</h2>
+                    <p>Renames a user-created custom skill, optionally updating its description in the same atomic write. Only rows with <code>usercreated: true</code> can be renamed through this endpoint — preset-owned rows reject with <code>agent-customskill-rename-preset-forbidden</code> (preset renames cascade through the admin <code>/Agent/CustomSkillRename</code> channel instead).</p>
+                    <p>The skillkey flavour is preserved: a <code>cs-cron-*</code> scheduled task stays scheduled, a <code>cs-*</code> strategy stays a strategy. Cross-flavour renames are rejected — delete + re-create via <code>CustomSkillUpsert</code> with the right kind if you need to switch sections.</p>
+                    <p>Version history is migrated under the new key so the full audit chain stays continuous after the rename, and a new <code>rename</code> entry is appended.</p>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Parameter</th>
+                              <th>Type</th>
+                              <th>Required</th>
+                              <th>Description</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td><code>useragentguid</code></td>
+                              <td>string</td>
+                              <td>Yes</td>
+                              <td>Your UserAgent instance guid</td>
+                            </tr>
+                            <tr>
+                              <td><code>oldskillkey</code></td>
+                              <td>string</td>
+                              <td>Yes</td>
+                              <td>The skill's current canonical key (e.g. <code>cs-my-strategy</code>, <code>cs-cron-daily-summary</code>).</td>
+                            </tr>
+                            <tr>
+                              <td><code>newskillkey</code></td>
+                              <td>string</td>
+                              <td>Yes</td>
+                              <td>The new skill key. The server canonicalises bare slugs using the flavour of <code>oldskillkey</code>: if old is <code>cs-cron-*</code> the new slug lands on <code>cs-cron-*</code>; otherwise <code>cs-*</code>.</td>
+                            </tr>
+                            <tr>
+                              <td><code>description</code></td>
+                              <td>string</td>
+                              <td>No</td>
+                              <td>New description. Omit to leave unchanged; pass an empty string to clear.</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <div class="info-callout"><p><strong>Restart.</strong> The renamed key surfaces in the container's settings.json, so the useragent is auto-restarted on success (same behaviour as <code>CustomSkillUpsert</code> functional edits).</p></div>
+
+                    <h3>Request</h3>
+                    <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillRename" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+    "oldskillkey": "cs-my-custom-strategy",
+    "newskillkey": "cs-my-renamed-strategy",
+    "description": "Updated note shown next to the name"
+  }'</code></pre>
+
+                    <h3>Response</h3>
+                    <pre><code class="language-json">{ "result": true, "errors": [], "newskillkey": "cs-my-renamed-strategy" }</code></pre>
+
+                    <h3>Error cases</h3>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Error message key</th>
+                              <th>When</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td><code>agent-customskill-rename-preset-forbidden</code></td>
+                              <td>Target row has <code>usercreated: false</code> (preset-owned). Preset renames go through the admin <code>/Agent/CustomSkillRename</code> cascade.</td>
+                            </tr>
+                            <tr>
+                              <td><code>agent-customskill-rename-flavour-mismatch</code></td>
+                              <td>Caller tried to rename <code>cs-cron-*</code> ↔ <code>cs-*</code>. Delete + re-create with the right kind instead.</td>
+                            </tr>
+                            <tr>
+                              <td><code>agent-customskill-rename-collision</code></td>
+                              <td><code>newskillkey</code> already exists on this useragent.</td>
+                            </tr>
+                            <tr>
+                              <td><code>agent-customskill-rename-same-key</code></td>
+                              <td><code>oldskillkey</code> equals canonicalised <code>newskillkey</code> — nothing to change.</td>
+                            </tr>
+                            <tr>
+                              <td><code>agent-customskill-not-found</code></td>
+                              <td><code>oldskillkey</code> does not exist on the useragent.</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
 
                     <h2 id="post-useragentcustomskilldelete"><span class="endpoint-badge post">POST</span> /UserAgent/CustomSkillDelete</h2>
                     <p>Removes a user-created cron skill. Has no effect on preset strategies or bundled crons (those cannot be deleted through the API).</p>
@@ -13164,6 +13264,10 @@ app.get('/settings/social', (req, res) => {
                               <td><a href="/docs/agent-overview#post-useragentcustomskillupsert"><code>POST /UserAgent/CustomSkillUpsert</code></a></td>
                             </tr>
                             <tr>
+                              <td>Rename a user-created custom skill (key + optional description)</td>
+                              <td><a href="/docs/agent-overview#post-useragentcustomskillrename"><code>POST /UserAgent/CustomSkillRename</code></a></td>
+                            </tr>
+                            <tr>
                               <td>Delete a user-created cron skill</td>
                               <td><a href="/docs/agent-overview#post-useragentcustomskilldelete"><code>POST /UserAgent/CustomSkillDelete</code></a></td>
                             </tr>
@@ -13210,7 +13314,7 @@ app.get('/settings/social', (req, res) => {
                               <td><strong>Custom skills</strong></td>
                               <td>User-editable preference text (<code>cs-content-tone</code>) or scheduled tasks (<code>cs-cron-blog-scanner</code>) that live ON a useragent. They reference registry skills (e.g. a cron skill calls into <code>wordpress-post</code>) but are scoped to one instance.</td>
                               <td>Per useragent on the Wiro platform.</td>
-                              <td><code>POST /UserAgent/CustomSkillUpsert</code> / <code>POST /UserAgent/CustomSkillDelete</code> / <code>POST /UserAgent/CustomSkillHistory</code> / <code>POST /UserAgent/CustomSkillRevert</code>.</td>
+                              <td><code>POST /UserAgent/CustomSkillUpsert</code> / <code>POST /UserAgent/CustomSkillRename</code> / <code>POST /UserAgent/CustomSkillDelete</code> / <code>POST /UserAgent/CustomSkillHistory</code> / <code>POST /UserAgent/CustomSkillRevert</code>.</td>
                             </tr>
                           </tbody>
                         </table>
@@ -13897,6 +14001,19 @@ app.get('/settings/social', (req, res) => {
     "skillkey": "cron-weekly-health-check"
   }'</code></pre>
                     <p>Deleting preset strategies or bundled crons is a no-op — they are controlled by the template/integration and always re-materialized on reconciliation.</p>
+
+                    <h3>Example: Rename a user-created custom skill</h3>
+                    <p>Only user-created rows (<code>_source: "user-created"</code>) can be renamed through <code>CustomSkillRename</code>. The skillkey flavour is preserved — a <code>cs-cron-*</code> scheduled task cannot be renamed to a <code>cs-*</code> strategy (delete + re-create with the right kind instead). The full version-history chain follows the rename under the new key, and a <code>rename</code> audit event is appended.</p>
+                    <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillRename" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "oldskillkey": "cs-cron-weekly-health-check",
+    "newskillkey": "cs-cron-weekly-system-check",
+    "description": "Weekly system health probe"
+  }'</code></pre>
+                    <p>Successful responses include the canonical <code>newskillkey</code> the server ended up writing (after slug normalisation), so follow-up calls that reference the skill should use that value.</p>
 
                     <h3>Common Cron Expressions</h3>
                     <div class="status-table-wrapper">

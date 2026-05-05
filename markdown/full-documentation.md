@@ -2084,7 +2084,7 @@ When you mutate an agent's configuration while it is **starting** (status `3`) o
 
 This means you can update credentials, toggle skills, or change a custom skill on a running agent without manually stopping and starting it.
 
-Endpoints that auto-trigger a restart on success: `CredentialUpsert`, `SkillsApply`, `CustomSkillUpsert` (when functional fields change), `CustomSkillDelete`, `CustomSkillRevert`, `Update` (scalar edits).
+Endpoints that auto-trigger a restart on success: `CredentialUpsert`, `SkillsApply`, `CustomSkillUpsert` (when functional fields change), `CustomSkillRename`, `CustomSkillDelete`, `CustomSkillRevert`, `Update` (scalar edits).
 
 ## Endpoints
 
@@ -2689,6 +2689,7 @@ Updates an agent instance's **scalar fields only** (title, description, categori
 > |-------------------------|-----|
 > | Provider credentials (API keys, OAuth settings) | [`POST /UserAgent/CredentialUpsert`](#post-useragentcredentialupsert) |
 > | Custom skill values (strategy text, cron intervals, enabled flag) | [`POST /UserAgent/CustomSkillUpsert`](#post-useragentcustomskillupsert) |
+> | Rename a user-created custom skill (key + optional description) | [`POST /UserAgent/CustomSkillRename`](#post-useragentcustomskillrename) |
 > | Delete a user-created cron skill | [`POST /UserAgent/CustomSkillDelete`](#post-useragentcustomskilldelete) |
 > | Toggle one or more integration skills on/off (with optional tier change) | [`POST /UserAgent/SkillsApply`](#post-useragentskillsapply) |
 > | Apply a batch of skill toggles (with optional tier change) | [`POST /UserAgent/SkillsApply`](#post-useragentskillsapply) |
@@ -2907,6 +2908,53 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
 ```json
 { "result": true, "errors": [] }
 ```
+
+#### **POST** /UserAgent/CustomSkillRename
+
+Renames a user-created custom skill, optionally updating its description in the same atomic write. Only rows with `usercreated: true` can be renamed through this endpoint — preset-owned rows reject with `agent-customskill-rename-preset-forbidden` (preset renames cascade through the admin `/Agent/CustomSkillRename` channel instead).
+
+The skillkey flavour is preserved: a `cs-cron-*` scheduled task stays scheduled, a `cs-*` strategy stays a strategy. Cross-flavour renames are rejected — delete + re-create via `CustomSkillUpsert` with the right kind if you need to switch sections.
+
+Version history is migrated under the new key so the full audit chain stays continuous after the rename, and a new `rename` entry is appended.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Your UserAgent instance guid |
+| `oldskillkey` | string | Yes | The skill's current canonical key (e.g. `cs-my-strategy`, `cs-cron-daily-summary`). |
+| `newskillkey` | string | Yes | The new skill key. The server canonicalises bare slugs using the flavour of `oldskillkey`: if old is `cs-cron-*` the new slug lands on `cs-cron-*`; otherwise `cs-*`. |
+| `description` | string | No | New description. Omit to leave unchanged; pass an empty string to clear. |
+
+> **Restart.** The renamed key surfaces in the container's settings.json, so the useragent is auto-restarted on success (same behaviour as `CustomSkillUpsert` functional edits).
+
+##### Request
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillRename" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+    "oldskillkey": "cs-my-custom-strategy",
+    "newskillkey": "cs-my-renamed-strategy",
+    "description": "Updated note shown next to the name"
+  }'
+```
+
+##### Response
+
+```json
+{ "result": true, "errors": [], "newskillkey": "cs-my-renamed-strategy" }
+```
+
+##### Error cases
+
+| Error message key | When |
+|---|---|
+| `agent-customskill-rename-preset-forbidden` | Target row has `usercreated: false` (preset-owned). Preset renames go through the admin `/Agent/CustomSkillRename` cascade. |
+| `agent-customskill-rename-flavour-mismatch` | Caller tried to rename `cs-cron-*` ↔ `cs-*`. Delete + re-create with the right kind instead. |
+| `agent-customskill-rename-collision` | `newskillkey` already exists on this useragent. |
+| `agent-customskill-rename-same-key` | `oldskillkey` equals canonicalised `newskillkey` — nothing to change. |
+| `agent-customskill-not-found` | `oldskillkey` does not exist on the useragent. |
 
 #### **POST** /UserAgent/CustomSkillDelete
 
@@ -7641,6 +7689,7 @@ Configure agent behavior with editable preferences, scheduled automation tasks, 
 > | Find the credential a skill needs | [`POST /Skills/CredentialSchema`](#post-skillscredentialschema) (public) |
 > | List the closed-set capability vocabulary | [`POST /Skills/Capabilities`](#post-skillscapabilities) (public) |
 > | Edit a preference skill's `value` or a cron's `interval`/`enabled` | [`POST /UserAgent/CustomSkillUpsert`](/docs/agent-overview#post-useragentcustomskillupsert) |
+> | Rename a user-created custom skill (key + optional description) | [`POST /UserAgent/CustomSkillRename`](/docs/agent-overview#post-useragentcustomskillrename) |
 > | Delete a user-created cron skill | [`POST /UserAgent/CustomSkillDelete`](/docs/agent-overview#post-useragentcustomskilldelete) |
 > | Read version history of a custom skill | [`POST /UserAgent/CustomSkillHistory`](/docs/agent-overview#post-useragentcustomskillhistory) |
 > | Revert a custom skill to preset / a historical version | [`POST /UserAgent/CustomSkillRevert`](/docs/agent-overview#post-useragentcustomskillrevert) |
@@ -7657,7 +7706,7 @@ Two concepts share the word "skill" in the agent system. Keep them straight:
 | Concept | What it is | Where it lives | API surface |
 |---------|------------|----------------|-------------|
 | **Registry skills** | Platform-shipped capabilities — Wiro defines them, they have pricing recipes, credential requirements, and runtime tools. Examples: `int-instagram-post`, `int-gmail-check`, `int-wordpress-post`, `int-wiro-generator`. | The skill registry (git-tracked JSON definitions). | `POST /Skills/List` / `POST /Skills/Detail` (read), `POST /UserAgent/SkillsApply` (toggle on/off per useragent). |
-| **Custom skills** | User-editable preference text (`cs-content-tone`) or scheduled tasks (`cs-cron-blog-scanner`) that live ON a useragent. They reference registry skills (e.g. a cron skill calls into `int-wordpress-post`) but are scoped to one instance. | Per useragent on the Wiro platform. | `POST /UserAgent/CustomSkillUpsert` / `POST /UserAgent/CustomSkillDelete` / `POST /UserAgent/CustomSkillHistory` / `POST /UserAgent/CustomSkillRevert`. |
+| **Custom skills** | User-editable preference text (`cs-content-tone`) or scheduled tasks (`cs-cron-blog-scanner`) that live ON a useragent. They reference registry skills (e.g. a cron skill calls into `int-wordpress-post`) but are scoped to one instance. | Per useragent on the Wiro platform. | `POST /UserAgent/CustomSkillUpsert` / `POST /UserAgent/CustomSkillRename` / `POST /UserAgent/CustomSkillDelete` / `POST /UserAgent/CustomSkillHistory` / `POST /UserAgent/CustomSkillRevert`. |
 
 The rest of this page documents both — the registry endpoints first (so you can discover what's possible), then the per-useragent endpoints (so you can configure them).
 
@@ -8045,6 +8094,24 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillDelete" \
 ```
 
 Preset-owned crons cannot be deleted — the call returns `This skill belongs to the agent preset and cannot be deleted. Use enabled=false to disable it instead.` with `suggestion: "disable-via-upsert"`. Disable them via `CustomSkillUpsert` + `enabled: false`.
+
+### Example: Rename a user-created custom skill
+
+Only user-created rows (`_source: "user-created"`) can be renamed through `CustomSkillRename`. The skillkey flavour is preserved — a `cs-cron-*` scheduled task cannot be renamed to a `cs-*` strategy (delete + re-create with the right kind instead). The full version-history chain follows the rename under the new key, and a `rename` audit event is appended.
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillRename" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "oldskillkey": "cs-cron-weekly-health-check",
+    "newskillkey": "cs-cron-weekly-system-check",
+    "description": "Weekly system health probe"
+  }'
+```
+
+Successful responses include the canonical `newskillkey` the server ended up writing (after slug normalisation), so follow-up calls that reference the skill should use that value.
 
 ### Common Cron Expressions
 
@@ -8439,7 +8506,7 @@ Skills that depend on third-party credentials. Follow the linked integration pag
 
 Agents can optionally forward operator notifications to a Telegram bot via the `sys-telegram` credential — see [Telegram Skills](/docs/integration-telegram-skills). This is never required; every agent remains fully usable over web chat and the [Messaging API](/docs/agent-messaging) without a bot configured.
 
-> **Restart behavior:** Calls to `CustomSkillUpsert`, `CustomSkillDelete`, `CustomSkillRevert`, and `SkillsApply` on a running agent (status 3 or 4) each trigger an automatic restart so the new skill configuration is picked up. Same as credential updates. Description-only edits to `CustomSkillUpsert` skip the restart.
+> **Restart behavior:** Calls to `CustomSkillUpsert`, `CustomSkillRename`, `CustomSkillDelete`, `CustomSkillRevert`, and `SkillsApply` on a running agent (status 3 or 4) each trigger an automatic restart so the new skill configuration is picked up. Same as credential updates. Description-only edits to `CustomSkillUpsert` skip the restart.
 
 ## Using Wiro AI Models from Your Agent
 
@@ -8474,8 +8541,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Detail" \
 | Write `enabled` | `CustomSkillUpsert` | **No — silently dropped** | Yes | Yes |
 | Write `description` | `CustomSkillUpsert` | **No — rejected** (preset descriptions are template-owned) | **No — rejected** | Yes |
 | Create | `CustomSkillUpsert` with `usercreated: true` | n/a | n/a | Yes |
+| Rename key (+ optional description) | `CustomSkillRename` | **No — preset-forbidden**, renames cascade through admin endpoint | **No — preset-forbidden** | Yes (flavour preserved; `cs-cron-*` ↔ `cs-*` rejected) |
 | Delete | `CustomSkillDelete` | No-op | **Rejected with `disable-via-upsert` suggestion** | Yes |
-| Read history | `CustomSkillHistory` | Yes | Yes (only `enabled` / `interval` writes show up) | Yes |
+| Read history | `CustomSkillHistory` | Yes | Yes (only `enabled` / `interval` writes show up) | Yes (post-rename, the chain is migrated under the new key; a `rename` event marks the transition) |
 | Revert to preset | `CustomSkillRevert` (`source: "preset"`) | Yes | Yes (resets `interval` / `enabled` to preset defaults) | Yes (deletes the row if no preset baseline exists) |
 | Revert to a version | `CustomSkillRevert` (`source: "history"`) | Yes | Yes | Yes |
 

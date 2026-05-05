@@ -201,6 +201,7 @@ POST /UserAgent/Cover - Upload a cover image (multipart, image field)
 POST /UserAgent/CredentialUpsert - Write one or more credential fields per provider
 POST /UserAgent/CredentialFieldHistory - Read credential edit history (oauth_session never appears; clientsecret REDACTED in entries)
 POST /UserAgent/CustomSkillUpsert - Write a single custom skill's value/interval/enabled (server normalises to cs-* / cs-cron-*)
+POST /UserAgent/CustomSkillRename - Rename a user-created custom skill's key (+ optional description). Flavour preserved (cs-cron-* stays cron); preset rows rejected; history migrated under the new key
 POST /UserAgent/CustomSkillDelete - Delete a user-created cron skill (preset-owned crons rejected with disable-via-upsert suggestion)
 POST /UserAgent/CustomSkillHistory - Read version history for a custom skill (with preset_default baseline)
 POST /UserAgent/CustomSkillRevert - Revert to preset default OR a specific historical version
@@ -529,6 +530,7 @@ POST /UserAgent/Cover — multipart `{ useragentguid, image }` → `{ result, co
 POST /UserAgent/CredentialUpsert — `{ useragentguid, fields: [{ credentialkey, fieldname, fieldvalue, fieldstatus?, parentfield?, ordinal? }] }` → `{ result, applied, errors }`. Only `fieldstatus: "user"` writable from API role.
 POST /UserAgent/CredentialFieldHistory — `{ useragentguid, credentialkey, startdate?, enddate? }` → `{ result, entries }`. clientsecret REDACTED in entries; oauth_session never appears.
 POST /UserAgent/CustomSkillUpsert — `{ useragentguid, skillkey, value?, interval?, enabled?, description?, usercreated? }` → `{ result }`. Server auto-normalises skillkey to canonical `cs-*` / `cs-cron-*`. Description-only edits skip the agent restart.
+POST /UserAgent/CustomSkillRename — `{ useragentguid, oldskillkey, newskillkey, description? }` → `{ result, newskillkey }`. User-created rows only (`usercreated: true`). Flavour preserved — `cs-cron-*` ↔ `cs-*` rejected with `agent-customskill-rename-flavour-mismatch`. Preset rows reject with `agent-customskill-rename-preset-forbidden`. Collision → `agent-customskill-rename-collision`. Version history migrates under the new key + a `rename` audit entry is appended. Triggers daemon restart.
 POST /UserAgent/CustomSkillDelete — `{ useragentguid, skillkey }` → `{ result }`. Preset-owned crons rejected with `suggestion: "disable-via-upsert"`.
 POST /UserAgent/CustomSkillHistory — `{ useragentguid, skillkey, startdate?, enddate? }` → `{ result, entries, preset_default }`.
 POST /UserAgent/CustomSkillRevert — `{ useragentguid, skillkey, source: "preset"|"history", versionguid? }` → `{ result, action, current_value, current_interval, current_enabled }`.
