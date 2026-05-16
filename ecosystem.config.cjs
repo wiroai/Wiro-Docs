@@ -61,7 +61,11 @@ module.exports = {
       autorestart: true,
       watch: false,
       max_restarts: 10,
-      min_uptime: "30s",
+      // PM2 source'ta integer (ms) beklenir; "30s" gibi string'ler
+      // bazı sürümlerde NaN'a parse olup min_uptime'i 0 yapıyor —
+      // bu da unstable_restarts counter'ını hiç tetiklememesine ve
+      // max_restarts kapısının açılmamasına yol açıyor (sonsuz loop).
+      min_uptime: 30000,
       kill_timeout: 30000,
     },
   ],
