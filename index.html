@@ -6584,7 +6584,7 @@ import type {
                               <td><code>tier</code></td>
                               <td>string</td>
                               <td>No</td>
-                              <td>Tier selection: <code>"starter"</code> (default) or <code>"pro"</code>. Determines the price + credits debited to your wallet at deploy time.</td>
+                              <td>Tier selection: <code>"starter"</code> (default) or <code>"pro"</code>. Determines the price + credits debited to your wallet at deploy time. <strong>Note:</strong> the parameter name is <code>tier</code>, not <code>plan</code> — anything other than <code>"starter"</code> / <code>"pro"</code> (typos, the legacy <code>plan</code> name, etc.) is silently coerced to <code>"starter"</code>, so a misspelled key never raises an error but yields a Starter-tier instance.</td>
                             </tr>
                             <tr>
                               <td><code>pinned</code></td>
@@ -6645,6 +6645,67 @@ import type {
   }
 }</code></pre>
                     <div class="info-callout"><strong>Custom builds are skill-driven.</strong> There is no marketplace template behind a custom agent — the price + credit allowance is computed live from the skills you toggle on. Use <a href="/docs/agent-overview#post-useragentpricingpreview"><code>POST /UserAgent/PricingPreview</code></a> (with <code>draft: true</code>) to estimate the tier price before calling Deploy. Full walkthrough: <a href="/docs/agent-builder">Agent Builder</a>.</div>
+
+                    <h3>Template deploy vs custom build — what differs server-side</h3>
+                    <p>Both paths hit the same endpoint, but a few server-side behaviours diverge:</p>
+                    <div class="docs-table-wrapper">
+                      <table class="docs-table">
+                        <thead>
+                          <tr>
+                            <th>Aspect</th>
+                            <th>Template deploy (<code>agentguid</code>)</th>
+                            <th>Custom build (<code>custom: true</code>)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td><code>agentid</code> on the new useragent row</td>
+                            <td>Snapshotted from the resolved template</td>
+                            <td><code>null</code> — no template back-reference</td>
+                          </tr>
+                          <tr>
+                            <td><code>categories</code></td>
+                            <td>Cloned from the agent template</td>
+                            <td><code>null</code> (custom agents have no marketplace categories)</td>
+                          </tr>
+                          <tr>
+                            <td><code>cover</code></td>
+                            <td>Cloned from <code>agent.cover</code> automatically</td>
+                            <td>Optional — pass <code>cover</code> in the body if you want one</td>
+                          </tr>
+                          <tr>
+                            <td><code>tiermultiplier</code></td>
+                            <td><strong>Snapshotted from <code>agent.tiermultiplier</code></strong> so future template tweaks don't retroactively change pricing on already-deployed instances</td>
+                            <td>Fixed at the platform default (<code>3</code>)</td>
+                          </tr>
+                          <tr>
+                            <td>Bundled cron skills</td>
+                            <td>Cloned from the template's preset customskills (<code>cloneAgentCustomSkillsToUserAgent</code>)</td>
+                            <td>Materialized from the standalone cron registry based on the enabled skill set (<code>cloneCustomAgentBundledCrons</code>)</td>
+                          </tr>
+                          <tr>
+                            <td>Onboarding placeholders</td>
+                            <td>None — the template ships its own preset strategies</td>
+                            <td>One invocation-only <code>cs-my-custom-strategy</code> and one scheduled <code>cs-cron-my-scheduled-task</code> are seeded so the panel always has something to render under "Custom Skills" / "Scheduled Skills"</td>
+                          </tr>
+                          <tr>
+                            <td>Platform-managed credentials (<code>sys-openai</code>, <code>wiro</code>, <code>calendarific</code>)</td>
+                            <td>Inherited from the template's preset <code>agentcredentialfields</code></td>
+                            <td>Seeded directly onto the useragent so <code>composeRuntimeConfig</code> has a non-empty merge input</td>
+                          </tr>
+                          <tr>
+                            <td>Marketplace counter (<code>agents.totalrun</code>)</td>
+                            <td>Bumped by 1</td>
+                            <td>Not touched (custom agents have no template to count against)</td>
+                          </tr>
+                          <tr>
+                            <td><code>tiers</code> / <code>extracreditpacks</code> in the response</td>
+                            <td>Read from the template definition</td>
+                            <td>Pre-subscribe state — <code>tiers</code> reflects the live registry pricing for the toggled skills, <code>extracreditpacks: []</code> until the subscription provisions</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
 
                     <h3>Response</h3>
                     <pre><code class="language-json">{
@@ -6904,6 +6965,13 @@ import type {
           "pro":     { "priceUsd": 29, "credits": 5000 }
         }
       },
+      "enabledSkills": ["int-instagram-post", "int-twitterx-post", "int-wiro-generator"],
+      "peractioncosts": {
+        "message":    10,
+        "create":     60,
+        "modify":     20,
+        "regenerate": 20
+      },
       "extracreditsexpiry": 1730419200,
       "createdat": 1714608000,
       "updatedat": 1714694400,
@@ -6916,7 +6984,7 @@ import type {
     }
   ]
 }</code></pre>
-                    <div class="info-callout"><strong><code>MyAgents</code> returns one row per useragent with its scalar fields, the trimmed <code>agent</code> template summary (no <code>extracreditpacks</code>), <code>subscription</code>, <code>setuprequired</code> (status-based check only), and resolved <code>extracredits</code> / <code>extracreditsexpiry</code>.</strong> Composed children (<code>credentials</code>, <code>customskills</code>, <code>scheduledskills</code>, <code>skills</code>, <code>skillsmeta</code>, <code>peractioncosts</code>, <code>remainingcredits</code>) are <strong>not</strong> included — call <code>UserAgent/Detail</code> on a single guid for the full composed shape.</div>
+                    <div class="info-callout"><strong><code>MyAgents</code> returns one row per useragent with its scalar fields, the trimmed <code>agent</code> template summary (no <code>extracreditpacks</code>), <code>subscription</code>, <code>setuprequired</code> (status-based check only), <code>extracredits</code> / <code>extracreditsexpiry</code>, the resolved <code>enabledSkills</code> (template defaults ∪ user overrides, including transitive <code>depends_on</code> closure), and <code>peractioncosts</code> (per-action burn rates from the same skill set — same shape as <code>UserAgent/Detail.peractioncosts</code>).</strong> Heavier composed children (<code>credentials</code>, <code>customskills</code>, <code>scheduledskills</code>, <code>skills</code>, <code>skillsmeta</code>, <code>remainingcredits</code>) are <strong>not</strong> included — call <code>UserAgent/Detail</code> on a single guid for the full composed shape. <code>enabledSkills</code> and <code>peractioncosts</code> were added in 2026-04-30 so the dock-chat / pinned-agents UI can decide whether to show the realtime voice-call button (<code>enabledSkills</code> includes <code>util-web-channel</code>) and render the per-action cost summary card without round-tripping <code>UserAgent/Detail</code> per row.</div>
 
                     <h2><span class="endpoint-badge post">POST</span> /UserAgent/Detail</h2>
                     <p>Retrieves full details for a single deployed agent instance, including subscription info.</p>
@@ -7413,12 +7481,20 @@ import type {
                                 <td><a href="#post-useragentcredentialupsert"><code>POST /UserAgent/CredentialUpsert</code></a></td>
                               </tr>
                               <tr>
+                                <td>Upload a credential <code>fileinput</code> field (multipart, e.g. Twilio voice MP3)</td>
+                                <td><a href="#post-useragentcredentialfileupload"><code>POST /UserAgent/CredentialFileUpload</code></a></td>
+                              </tr>
+                              <tr>
                                 <td>Custom skill values (strategy text, cron intervals, enabled flag)</td>
                                 <td><a href="#post-useragentcustomskillupsert"><code>POST /UserAgent/CustomSkillUpsert</code></a></td>
                               </tr>
                               <tr>
                                 <td>Rename a user-created custom skill (key + optional description)</td>
                                 <td><a href="#post-useragentcustomskillrename"><code>POST /UserAgent/CustomSkillRename</code></a></td>
+                              </tr>
+                              <tr>
+                                <td>Browse alternative templates for a custom skill</td>
+                                <td><a href="#post-useragentcustomskillalternatives"><code>POST /UserAgent/CustomSkillAlternatives</code></a></td>
                               </tr>
                               <tr>
                                 <td>Delete a user-created cron skill</td>
@@ -7435,6 +7511,14 @@ import type {
                               <tr>
                                 <td>Upload a cover image (multipart)</td>
                                 <td><a href="#post-useragentcover"><code>POST /UserAgent/Cover</code></a></td>
+                              </tr>
+                              <tr>
+                                <td>View / download / purge activity logs</td>
+                                <td><a href="#post-useragentlogs"><code>POST /UserAgent/Logs</code></a> · <a href="#post-useragentlogslist"><code>LogsList</code></a> · <a href="#post-useragentlogsfile"><code>LogsFile</code></a> · <a href="#post-useragentlogsdelete"><code>LogsDelete</code></a></td>
+                              </tr>
+                              <tr>
+                                <td>Soft-delete a useragent</td>
+                                <td><a href="#post-useragentdelete"><code>POST /UserAgent/Delete</code></a></td>
                               </tr>
                             </tbody>
                           </table>
@@ -7496,7 +7580,7 @@ import type {
     }
   ]
 }</code></pre>
-                    <div class="info-callout"><strong><code>Update</code> returns scalar useragent fields + the <code>agent</code> template summary + <code>setuprequired</code> only.</strong> It does <strong>not</strong> re-compose the heavy children (<code>credentials</code>, <code>customskills</code>, <code>scheduledskills</code>, <code>skills</code>, <code>skillsmeta</code>, <code>peractioncosts</code>, <code>remainingcredits</code>, <code>subscription</code>, <code>extracreditsexpiry</code>). Call <code>UserAgent/Detail</code> afterwards if you need the full composed shape — <code>Update</code> is optimised for fast scalar writes.</div>
+                    <div class="info-callout"><strong><code>Update</code> returns the full composed useragent shape</strong> — same composition path as <code>UserAgent/Detail</code> (<code>getUserAgentDetailForUI</code>), so <code>credentials</code>, <code>customskills</code>, <code>scheduledskills</code>, <code>skills</code>, <code>skillsmeta</code>, <code>peractioncosts</code>, and the <code>agent</code> template summary (with <code>tiers</code> + <code>extracreditpacks</code>) are all included. The fields <code>Update</code> cannot safely populate without an extra round-trip — <code>subscription</code> (read separately on <code>Detail</code>), <code>remainingcredits</code> / <code>extracreditsexpiry</code> (also Detail-only), and Stripe billing portal URLs — stay omitted. If you need a Stripe portal URL after a metadata edit, call <code>UserAgent/Detail</code> next. Otherwise the response is suitable for an in-place panel re-render without a follow-up call.</div>
                     <div class="info-callout"><strong>Restart on running agents.</strong> When the call lands on a status <code>3</code>/<code>4</code> agent, the response shows the lifecycle transition mid-flight: <code>status: 1</code> (Stopping) with a fresh <code>stoppingat</code> timestamp, <code>runningat</code> cleared, and <code>queuedat</code> set to the same instant — Wiro auto-queues the agent so it picks the new settings up after the next stop cycle.</div>
 
                     <h2 id="post-useragentcover"><span class="endpoint-badge post">POST</span> /UserAgent/Cover</h2>
@@ -7661,6 +7745,60 @@ import type {
                     <h3>Response</h3>
                     <pre><code class="language-json">{ "result": true, "applied": 3, "errors": [] }</code></pre>
                     <p><code>applied</code> is the number of rows actually written. Any row that fails validation (reserved fieldname, invalid fieldstatus for your role) is skipped and reported in <code>errors</code> without rolling back the others.</p>
+
+                    <h2 id="post-useragentcredentialfileupload"><span class="endpoint-badge post">POST</span> /UserAgent/CredentialFileUpload</h2>
+                    <p>Multipart-upload sibling of <code>CredentialUpsert</code> for credential fields whose registry schema declares <code>type: "fileinput"</code> — typically large binary assets that don't fit comfortably in a JSON body (e.g. Twilio voice greeting MP3, custom hold music). The endpoint stores the blob under your account's MyUploads area, writes the resulting reference into the credential field via the same <code>upsertUserAgentCredentialField</code> path used by <code>CredentialUpsert</code>, and triggers an automatic restart so the new URL flows into the daemon's <code>settings.json</code> on the next start.</p>
+                    <p>Unlike <code>CredentialUpsert</code>, this endpoint expects <code>multipart/form-data</code> — pass the metadata as form fields and the blob in a <code>file</code> part.</p>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead><tr><th>Form field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+                          <tbody>
+                            <tr><td><code>useragentguid</code></td><td>text</td><td>Yes</td><td>Your UserAgent instance guid</td></tr>
+                            <tr><td><code>credentialkey</code></td><td>text</td><td>Yes</td><td>Provider key (e.g. <code>twilio-voice</code>). Must declare a <code>fileinput</code> field in its registry schema.</td></tr>
+                            <tr><td><code>fieldname</code></td><td>text</td><td>Yes</td><td>The exact <code>fieldname</code> whose registry <code>type</code> is <code>"fileinput"</code> (e.g. <code>welcomeaudio</code>).</td></tr>
+                            <tr><td><code>file</code></td><td>file</td><td>Yes</td><td>The blob. Mimetype + size are validated against the registry's <code>filetypes[]</code> whitelist and <code>maxsize</code> (KB) cap. Default cap is 10 MB when the field omits <code>maxsize</code>.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <div class="info-callout"><strong><code>fileinput</code> vs <code>fileinput-base64</code>.</strong> This endpoint is the storage path for the <code>fileinput</code> type only — the binary lives in S3 and the credential row stores a reference. The companion <code>fileinput-base64</code> type stays inline in the DB and is written via the standard <code>CredentialUpsert</code> JSON <code>fields[]</code> array. Sending a base64 field through this endpoint returns <code>Field is not a fileinput type</code>.</div>
+
+                    <h3>Request</h3>
+                    <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialFileUpload" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -F "useragentguid=f8e7d6c5-b4a3-2190-fedc-ba0987654321" \
+  -F "credentialkey=twilio-voice" \
+  -F "fieldname=welcomeaudio" \
+  -F "file=@/path/to/welcome.mp3;type=audio/mpeg"</code></pre>
+
+                    <h3>Response</h3>
+                    <pre><code class="language-json">{
+  "result": true,
+  "errors": [],
+  "url": "https://cdn.wiro.ai/uploads/users/.../welcomeaudio_1714694400_8273645.mp3",
+  "credentialkey": "twilio-voice",
+  "fieldname": "welcomeaudio"
+}</code></pre>
+                    <p>The <code>url</code> is the public, AES-keyed CDN URL the daemon will fetch at runtime. The credential row stores the raw <code>&lt;path&gt;/&lt;name&gt;</code> reference under the hood and recomposes the URL on every read, so the field stays valid across CDN domain rotation and AES key rotation.</p>
+
+                    <h3>Common errors</h3>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead><tr><th>Error</th><th>When</th></tr></thead>
+                          <tbody>
+                            <tr><td><code>File required (form field name: file)</code></td><td>Missing the <code>file</code> multipart part</td></tr>
+                            <tr><td><code>Unknown credential: &lt;key&gt;</code></td><td><code>credentialkey</code> not declared in the skill registry</td></tr>
+                            <tr><td><code>Unknown field: &lt;name&gt;</code></td><td><code>fieldname</code> not in the credential's <code>credential_schema</code></td></tr>
+                            <tr><td><code>Field is not a fileinput type</code></td><td>The schema field's <code>type</code> is not <code>"fileinput"</code> (use <code>CredentialUpsert</code> instead)</td></tr>
+                            <tr><td><code>Invalid file type. Allowed: &lt;list&gt;</code></td><td>Mimetype not in the registry's <code>filetypes[]</code> whitelist</td></tr>
+                            <tr><td><code>File too large. Max: &lt;kb&gt; KB</code></td><td>Size exceeds the registry's <code>maxsize</code> cap (default 10240 KB / 10 MB)</td></tr>
+                            <tr><td><code>Could not resolve upload folder</code> / <code>Upload failed</code></td><td>Filesystem helper rejected the write — usually transient, retry</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
 
                     <h2 id="post-useragentcustomskillupsert"><span class="endpoint-badge post">POST</span> /UserAgent/CustomSkillUpsert</h2>
                     <p>Writes a single custom skill value (strategy text) or cron setting (<code>enabled</code> / <code>interval</code>).</p>
@@ -7831,6 +7969,43 @@ import type {
                         </table>
                       </div>
                     </div>
+
+                    <h2 id="post-useragentcustomskillalternatives"><span class="endpoint-badge post">POST</span> /UserAgent/CustomSkillAlternatives</h2>
+                    <p>Returns a list of alternative starter templates that the panel's custom-skill picker can offer for a given <code>skillkey</code>. Used by the "Browse alternatives" UX when the user wants to swap one bundled cron / strategy for another preset-owned variant without manually rewriting the <code>value</code> body.</p>
+                    <p>This endpoint is <strong>read-only</strong> — it does not mutate the useragent. Apply a chosen alternative by calling <code>CustomSkillUpsert</code> with the alternative's <code>value</code> (and <code>interval</code> for crons).</p>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+                          <tbody>
+                            <tr><td><code>useragentguid</code></td><td>string</td><td>Yes</td><td>Your UserAgent instance guid (membership check only — the alternatives list is registry-derived, not per-instance).</td></tr>
+                            <tr><td><code>skillkey</code></td><td>string</td><td>Yes</td><td>The skill the user is looking to swap — usually a <code>cs-*</code> strategy or a <code>cs-cron-*</code> cron currently on the useragent.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <h3>Response</h3>
+                    <pre><code class="language-json">{
+  "result": true,
+  "errors": [],
+  "alternatives": [
+    {
+      "key": "cs-content-tone-friendly",
+      "title": "Friendly / casual brand voice",
+      "description": "Tone: warm and approachable. Use first names and contractions.",
+      "value": "## Brand Voice\nTone: friendly, casual...",
+      "interval": null
+    },
+    {
+      "key": "cs-content-tone-formal",
+      "title": "Formal / professional brand voice",
+      "description": "Tone: polished and authoritative. Avoid slang.",
+      "value": "## Brand Voice\nTone: formal...",
+      "interval": null
+    }
+  ]
+}</code></pre>
+                    <p>When the registry has no alternatives for the requested <code>skillkey</code>, the response is <code>{ "result": true, "alternatives": [] }</code> — empty lists are not an error.</p>
 
                     <h2 id="post-useragentcustomskilldelete"><span class="endpoint-badge post">POST</span> /UserAgent/CustomSkillDelete</h2>
                     <p>Removes a user-created cron skill. Has no effect on preset strategies or bundled crons (those cannot be deleted through the API).</p>
@@ -8302,6 +8477,209 @@ import type {
   "errors": []
 }</code></pre>
 
+                    <h2 id="post-useragentdelete"><span class="endpoint-badge post">POST</span> /UserAgent/Delete</h2>
+                    <p>Soft-deletes a useragent. The row stays in the database (so the audit trail in <code>agenttransactions</code>, <code>useragentcredentialfieldshistory</code>, <code>useragentcustomskillshistory</code>, <code>agentmessages</code> keeps its FK targets intact) but <code>deletedat</code> + <code>deletedby</code> are stamped, the agent is unpinned, and every read path (<code>Detail</code>, <code>MyAgents</code>, <code>Start</code>, <code>Stop</code>, daemon config compose, cron reconcile) automatically excludes the tombstoned row.</p>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td><code>useragentguid</code></td><td>string</td><td>Yes</td><td>Your UserAgent instance guid. The legacy alias <code>guid</code> is also accepted for parity with <code>Start</code> / <code>Stop</code>.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <p><strong>Headers:</strong> Pass <code>teamGUID: &lt;team-guid&gt;</code> when the target agent belongs to a team project; the caller must be the row owner or a team admin (plain team members are rejected with code <code>97</code>).</p>
+
+                    <h3>Guards (run in this order)</h3>
+                    <ol>
+                      <li><strong>Access</strong> — owner of the row or a team admin of the UA's team. Members get <code>useragent-team-admin-required</code> (code <code>97</code>); strangers get <code>useragent-access-denied</code> (code <code>96</code>); unknown / already-deleted rows get <code>useragent-not-found</code> (code <code>95</code>).</li>
+                      <li><strong>Status</strong> — must be in a clean terminal state: <code>0</code> (Stopped), <code>5</code> (Error), or <code>6</code> (Setup Required). Anything in flight (<code>1</code> Stopping, <code>2</code> Queued, <code>3</code> Starting, <code>4</code> Running) is rejected with <code>useragent-delete-running</code> — Stop the agent first and wait for status <code>0</code>.</li>
+                      <li><strong>Active subscription</strong> — both Stripe and prepaid <code>subscriptions.status='active'</code> rows block delete (<code>useragent-delete-sub-active</code>). Cancel the subscription first; expired / cancelled / refunded / no-sub all pass.</li>
+                    </ol>
+                    <p>The write is idempotent — calling <code>Delete</code> on an already-deleted row no-ops the second <code>UPDATE</code> (<code>AND deletedat IS NULL</code>) and you still get <code>result: true</code>.</p>
+
+                    <h3>Response</h3>
+                    <pre><code class="language-json">{
+  "result": true,
+  "errors": [],
+  "useragent": {
+    "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+    "deletedat": 1714694400
+  }
+}</code></pre>
+
+                    <h3>Common errors</h3>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead><tr><th>Error code / message</th><th>When</th></tr></thead>
+                          <tbody>
+                            <tr><td><code>useragent-not-found</code> (95)</td><td>Unknown guid, or the row is already soft-deleted</td></tr>
+                            <tr><td><code>useragent-access-denied</code> (96)</td><td>Caller is not the owner and not a member of the UA's team</td></tr>
+                            <tr><td><code>useragent-team-admin-required</code> (97)</td><td>Caller is a team member but not a team admin on the UA's team</td></tr>
+                            <tr><td><code>useragent-delete-running</code></td><td>Status is <code>1</code> / <code>2</code> / <code>3</code> / <code>4</code> — call <code>Stop</code> first and retry once status reaches <code>0</code></td></tr>
+                            <tr><td><code>useragent-delete-sub-active</code></td><td>An active subscription is still attached — call <code>CancelSubscription</code> first</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <h2 id="post-useragentlogs"><span class="endpoint-badge post">POST</span> /UserAgent/Logs</h2>
+                    <p>Live activity feed for a useragent — what the agent did, when, and (post-rollout) which user triggered it. The daemon writes one JSONL row per skill invocation / cron tick / user message into the worker's per-day activity file; this endpoint tails the latest N rows for a given date and decorates each event with the resolved actor.</p>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+                          <tbody>
+                            <tr><td><code>useragentguid</code></td><td>string</td><td>Yes</td><td>Your UserAgent instance guid</td></tr>
+                            <tr><td><code>date</code></td><td>string</td><td>No</td><td>Activity date in <code>YYYY-MM-DD</code> (or <code>"today"</code>). Default: <code>"today"</code>.</td></tr>
+                            <tr><td><code>lines</code></td><td>number</td><td>No</td><td>Tail size — most recent N rows. Default <code>200</code>, capped at <code>5000</code>.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <p><strong>Headers:</strong> Owner-or-team-member access. Pass <code>teamGUID: &lt;team-guid&gt;</code> for team-scoped agents.</p>
+
+                    <h3>Rate limit (non-admin callers)</h3>
+                    <p>Non-admin callers are rate-limited via a 30-second Redis cache keyed on <code>(useragentguid, date, lines)</code>. The first call within a 30s window hits the worker; subsequent calls within the window receive the cached payload. Admins (<code>tokenUserRoles</code> includes <code>ADMIN</code>) bypass entirely. Tune your polling cadence to ≥30s for non-admin tokens to avoid serving stale data — the cache TTL was chosen to match the panel's lowest non-admin polling interval.</p>
+
+                    <h3>Response</h3>
+                    <pre><code class="language-json">{
+  "result": true,
+  "errors": [],
+  "events": [
+    {
+      "ts": 1714694401,
+      "type": "skill",
+      "skillkey": "int-instagram-post",
+      "summary": "Posted carousel: \"Brand voice teaser\"",
+      "userUuid": "ada-uuid",
+      "user": {
+        "firstname": "Ada",
+        "lastname": "Lovelace",
+        "email": "ada@example.com",
+        "avatar": "https://cdn.wiro.ai/uploads/users/ada-avatar.webp",
+        "avatarinitials": "AL"
+      }
+    },
+    {
+      "ts": 1714694200,
+      "type": "cron",
+      "skillkey": "cs-cron-content-scanner",
+      "summary": "Queued 3 fresh content ideas",
+      "userUuid": "system",
+      "user": null
+    }
+  ],
+  "date": "2026-05-03",
+  "totalLines": 2
+}</code></pre>
+
+                    <h3>Field reference</h3>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+                          <tbody>
+                            <tr><td><code>events[]</code></td><td>array</td><td>One row per activity entry (newest first by file order).</td></tr>
+                            <tr><td><code>events[].ts</code></td><td>number</td><td>UTC epoch seconds when the event was emitted.</td></tr>
+                            <tr><td><code>events[].type</code></td><td>string</td><td>Event flavour — <code>skill</code> (invocation), <code>cron</code> (scheduled tick), <code>message</code> (user chat), <code>error</code>, etc.</td></tr>
+                            <tr><td><code>events[].skillkey</code></td><td>string</td><td>Origin skill, when applicable.</td></tr>
+                            <tr><td><code>events[].summary</code></td><td>string</td><td>Human-readable description of what happened.</td></tr>
+                            <tr><td><code>events[].userUuid</code></td><td>string</td><td>Originating actor's UUID. <code>"system"</code> for cron / internal events; missing on legacy pre-rollout rows.</td></tr>
+                            <tr><td><code>events[].user</code></td><td>object | null</td><td>Resolved user shape (<code>firstname</code>, <code>lastname</code>, <code>email</code>, <code>avatar</code>, <code>avatarinitials</code>) when the actor is a real user. <code>null</code> for <code>system</code> events. Legacy rows fall back to the useragent owner so the panel always shows someone.</td></tr>
+                            <tr><td><code>date</code></td><td>string</td><td>The date that was actually read (<code>YYYY-MM-DD</code>).</td></tr>
+                            <tr><td><code>totalLines</code></td><td>number</td><td>Number of rows returned (≤ <code>lines</code>).</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <h3>Common errors</h3>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead><tr><th>Error</th><th>When</th></tr></thead>
+                          <tbody>
+                            <tr><td><code>useragentguid is required</code></td><td>Missing <code>useragentguid</code> in the body</td></tr>
+                            <tr><td><code>Agent is not assigned to a worker. It may not be running.</code></td><td>The useragent has never been deployed to a worker (no <code>workerid</code> set yet)</td></tr>
+                            <tr><td><code>Worker not found</code></td><td>Worker row was removed mid-flight (extremely rare)</td></tr>
+                            <tr><td><code>Failed to fetch activity from worker</code></td><td>Worker host unreachable / internal error during the tail</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <h2 id="post-useragentlogslist"><span class="endpoint-badge post">POST</span> /UserAgent/LogsList</h2>
+                    <p>Lists the dates for which an activity log file exists on the worker host. Useful for building a date-picker UI before calling <code>Logs</code> / <code>LogsFile</code> for that day.</p>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+                          <tbody>
+                            <tr><td><code>useragentguid</code></td><td>string</td><td>Yes</td><td>Your UserAgent instance guid</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <h3>Response</h3>
+                    <pre><code class="language-json">{
+  "result": true,
+  "errors": [],
+  "dates": ["2026-05-03", "2026-05-02", "2026-05-01"]
+}</code></pre>
+                    <p>The host retains activity files for 180 days (rolling); older dates are pruned by a worker cron and won't appear here.</p>
+
+                    <h2 id="post-useragentlogsdelete"><span class="endpoint-badge post">POST</span> /UserAgent/LogsDelete</h2>
+                    <p>Removes one date's activity JSONL file (and its gzipped sibling if present) from the worker host. Useful for scrubbing a specific day without waiting for the 180-day rotation.</p>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+                          <tbody>
+                            <tr><td><code>useragentguid</code></td><td>string</td><td>Yes</td><td>Your UserAgent instance guid</td></tr>
+                            <tr><td><code>date</code></td><td>string</td><td>Yes</td><td>Activity date to purge (<code>YYYY-MM-DD</code>).</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <p><strong>Headers:</strong> Owner-or-team-member access. Pass <code>teamGUID: &lt;team-guid&gt;</code> for team-scoped agents.</p>
+                    <h3>Response</h3>
+                    <pre><code class="language-json">{
+  "result": true,
+  "errors": [],
+  "date": "2026-04-30",
+  "removed": { "plain": true, "gz": false }
+}</code></pre>
+                    <p>Idempotent — deleting an already-gone date returns <code>result: true</code> with <code>removed.plain: false</code> and <code>removed.gz: false</code>.</p>
+
+                    <h2 id="post-useragentlogsfile"><span class="endpoint-badge post">POST</span> /UserAgent/LogsFile</h2>
+                    <p>Downloads the <strong>full</strong> day's activity log (no <code>lines</code> cap). Use this when you need a complete forensic trace — <code>Logs</code> is for live-tail UX (capped at 5000 rows for cache hygiene). The response is the same <code>events[]</code> shape as <code>Logs</code>, plus a <code>truncated</code> flag.</p>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+                          <tbody>
+                            <tr><td><code>useragentguid</code></td><td>string</td><td>Yes</td><td>Your UserAgent instance guid</td></tr>
+                            <tr><td><code>date</code></td><td>string</td><td>Yes</td><td>Activity date to download (<code>YYYY-MM-DD</code>).</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <p><strong>Headers:</strong> Owner-or-team-member access. Pass <code>teamGUID: &lt;team-guid&gt;</code> for team-scoped agents.</p>
+                    <h3>Response</h3>
+                    <pre><code class="language-json">{
+  "result": true,
+  "errors": [],
+  "events": [/* …full day, oldest first… */],
+  "date": "2026-04-30",
+  "truncated": false
+}</code></pre>
+                    <p><code>truncated: true</code> only when the worker's read buffer hit a hard ceiling (currently 250k rows / 50 MB). For typical agents this stays <code>false</code>; if you ever see <code>true</code>, fall back to streaming the file directly via the panel's download link.</p>
+
                     <h2 id="post-useragentpin"><span class="endpoint-badge post">POST</span> /UserAgent/Pin</h2>
                     <p>Pins or unpins an agent instance from the user's pinned-agents quick list. Pinned agents appear in the global header dropdown (<code>PinnedAgents</code>) and get an unread badge from <code>PinnedUnread</code>.</p>
                     <div class="docs-param-table">
@@ -8372,6 +8750,13 @@ import type {
           "starter": { "priceUsd": 9,  "credits": 1000 },
           "pro":     { "priceUsd": 29, "credits": 5000 }
         }
+      },
+      "enabledSkills": ["int-instagram-post", "int-twitterx-post", "int-wiro-generator"],
+      "peractioncosts": {
+        "message":    10,
+        "create":     60,
+        "modify":     20,
+        "regenerate": 20
       },
       "extracreditsexpiry": 1730419200,
       "createdat": 1714608000,
@@ -8551,7 +8936,7 @@ import type {
                               <td><code>targetTier</code></td>
                               <td>string</td>
                               <td>Yes</td>
-                              <td>Must be <code>"pro"</code> (<code>"starter"</code> is rejected with the downgrade error).</td>
+                              <td>Must be <code>"pro"</code> (<code>"starter"</code> is rejected with the downgrade error). The parameter name is <code>targetTier</code> — passing it as <code>tier</code> returns <code>"targetTier must be 'starter' or 'pro'"</code> instead of being silently coerced.</td>
                             </tr>
                           </tbody>
                         </table>
@@ -8560,9 +8945,27 @@ import type {
 
                     <p><strong>Headers:</strong> Pass <code>teamGUID: &lt;team-guid&gt;</code> when the target agent belongs to a team project.</p>
 
-                    <p>When called against a prepaid subscription, the wallet is debited the prorated upgrade fee <code>Math.max(0, ((P_pro − P_starter) / totalDays) × remainingDays)</code> synchronously, the subscription + useragent are updated to Pro pricing / credits, and the agent is restarted to apply the new tier. Existing extra credits and <code>usedcredits</code> are preserved.</p>
+                    <h3>Two payment paths</h3>
+                    <p><code>UpgradeTier</code> keeps the original subscription's payment provider — the response shape is decided by <code>subscriptions.provider</code> on the existing subscription row, not by anything you pass in the body:</p>
+                    <ul>
+                      <li><strong>Stripe path</strong> (<code>provider: "stripe"</code>, web-deployed agents) — opens a fresh Stripe Checkout Session at the new tier's monthly price and returns the hosted URL in <code>url</code>. <strong>The tier is not actually changed at this point.</strong> The frontend redirects the user to Stripe; once payment succeeds, the webhook (<code>_processAgentCheckout</code>) flips the new sub to <code>active</code>, expires the old sub, and snapshots the new <code>tier</code> / <code>monthlypriceusd</code> / <code>monthlycredits</code> onto the useragent. If the user abandons checkout or it expires, nothing changes.</li>
+                      <li><strong>Prepaid path</strong> (<code>provider: "prepaid"</code>, API-deployed agents) — debits the prorated upgrade fee <code>Math.max(0, ((P_pro − P_starter) / totalDays) × remainingDays)</code> from the wallet synchronously, updates the subscription row + useragent snapshot to Pro pricing / credits inline, and restarts the daemon to refresh <code>settings.json</code>. Existing extra credits and <code>usedcredits</code> are preserved.</li>
+                    </ul>
+                    <p>API-deployed agents always go through the prepaid path because Deploy created a <code>provider: "prepaid"</code> subscription. Stripe upgrades are reachable from the API only when the original subscription was created via the dashboard's Stripe Checkout (<code>provider: "stripe"</code>).</p>
 
-                    <h3>Response</h3>
+                    <h3>Response — Stripe path</h3>
+                    <pre><code class="language-json">{
+  "result": true,
+  "url": "https://checkout.stripe.com/c/pay/cs_live_...",
+  "previousTier": "starter",
+  "targetTier": "pro",
+  "targetPriceUsd": 29,
+  "targetCredits": 5000,
+  "errors": []
+}</code></pre>
+                    <p>The <code>url</code> field is the only thing that needs to be acted on — redirect the user to it. The actual tier flip happens server-side via Stripe webhook after payment confirmation, so a follow-up <code>POST /UserAgent/Detail</code> call before the webhook fires will still report the previous tier.</p>
+
+                    <h3>Response — Prepaid path</h3>
                     <pre><code class="language-json">{
   "result": true,
   "tier": "pro",
@@ -8588,7 +8991,7 @@ import type {
                           <tbody>
                             <tr>
                               <td><code>targetTier must be 'starter' or 'pro'</code></td>
-                              <td><code>targetTier</code> not in <code>["starter", "pro"]</code></td>
+                              <td><code>targetTier</code> outside the closed enum (typos, missing parameter name, etc.). Unlike Deploy's silent coercion, UpgradeTier rejects invalid input explicitly.</td>
                             </tr>
                             <tr>
                               <td><code>Downgrading to Starter is not supported. /UserAgent/UpgradeTier is upgrade-only (Starter → Pro).</code></td>
@@ -8607,8 +9010,20 @@ import type {
                               <td>Resolver couldn't compute the new tier's price (skill-registry drift)</td>
                             </tr>
                             <tr>
-                              <td><code>Insufficient wallet balance for proration. Required: $X.XX, available: $Y.YY</code></td>
-                              <td>Wallet (personal or team) can't cover the prorated charge</td>
+                              <td><code>Insufficient wallet balance. Required: $X.XX, Available: $Y.YY</code></td>
+                              <td>Prepaid path — wallet (personal or team) can't cover the prorated upgrade charge</td>
+                            </tr>
+                            <tr>
+                              <td><code>Wallet deduction failed: {error}</code></td>
+                              <td>Prepaid path — wallet write itself failed (rare; transient backend error)</td>
+                            </tr>
+                            <tr>
+                              <td><code>Stripe checkout failed: {stripe-error}</code></td>
+                              <td>Stripe path — Stripe API rejected the Checkout Session creation (price config issues, customer mismatch, etc.)</td>
+                            </tr>
+                            <tr>
+                              <td><code>Payment system not configured</code></td>
+                              <td>Stripe path — Stripe SDK isn't initialized on the backend (deployment misconfiguration)</td>
                             </tr>
                           </tbody>
                         </table>
@@ -9091,6 +9506,10 @@ import type {
                               <td><code>SkillsApply</code> — wallet can't cover the prorated charge</td>
                             </tr>
                             <tr>
+                              <td><code>targetTier must be 'starter' or 'pro'</code></td>
+                              <td><code>UpgradeTier</code> with a <code>targetTier</code> outside the closed enum (typos, missing parameter name, etc.). Unlike <code>Deploy</code>'s silent coercion, <code>UpgradeTier</code> rejects invalid input explicitly.</td>
+                            </tr>
+                            <tr>
                               <td><code>Downgrading to Starter is not supported. /UserAgent/UpgradeTier is upgrade-only (Starter → Pro).</code></td>
                               <td><code>UpgradeTier</code> with <code>targetTier: "starter"</code></td>
                             </tr>
@@ -9101,6 +9520,26 @@ import type {
                             <tr>
                               <td><code>No active subscription — use /UserAgent/CreateSubscriptionCheckout to subscribe at the chosen tier</code></td>
                               <td><code>UpgradeTier</code> called without an active sub</td>
+                            </tr>
+                            <tr>
+                              <td><code>Failed to compute target-tier pricing</code></td>
+                              <td><code>UpgradeTier</code> — pricing resolver returned null (skill registry inconsistency)</td>
+                            </tr>
+                            <tr>
+                              <td><code>Insufficient wallet balance. Required: $X.XX, Available: $Y.YY</code></td>
+                              <td><code>UpgradeTier</code> prepaid path — wallet can't cover the prorated upgrade charge</td>
+                            </tr>
+                            <tr>
+                              <td><code>Wallet deduction failed: {error}</code></td>
+                              <td><code>UpgradeTier</code> prepaid path — wallet write itself failed (rare; transient backend error)</td>
+                            </tr>
+                            <tr>
+                              <td><code>Stripe checkout failed: {stripe-error}</code></td>
+                              <td><code>UpgradeTier</code> Stripe path — Stripe API rejected the Checkout Session creation (price config issues, customer mismatch, etc.)</td>
+                            </tr>
+                            <tr>
+                              <td><code>Payment system not configured</code></td>
+                              <td><code>UpgradeTier</code> Stripe path — Stripe SDK isn't initialized on the backend (deployment misconfiguration)</td>
                             </tr>
                             <tr>
                               <td><code>Categories cannot be empty</code></td>
@@ -9216,17 +9655,17 @@ import type {
                     {
                       "label": "PHP",
                       "language": "php",
-                      "code": "<?php\n$apiKey = \"YOUR_API_KEY\";\n\n// List available agents (no auth required)\n$ch = curl_init();\ncurl_setopt($ch, CURLOPT_URL, \"https://api.wiro.ai/v1/Agent/List\");\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\"Content-Type: application/json\"]);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([\"limit\" => 10]));\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n$catalog = json_decode(curl_exec($ch), true);\ncurl_close($ch);\n\n// Deploy a new instance\n$ch = curl_init();\ncurl_setopt($ch, CURLOPT_URL, \"https://api.wiro.ai/v1/UserAgent/Deploy\");\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\n    \"Content-Type: application/json\",\n    \"x-api-key: $apiKey\"\n]);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([\n    \"agentguid\" => \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n    \"title\" => \"My Instagram Bot\",\n    \"useprepaid\" => true,\n    \"plan\" => \"starter\"\n]));\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n$deploy = json_decode(curl_exec($ch), true);\ncurl_close($ch);\necho \"Deployed: \" . $deploy[\"useragents\"][0][\"guid\"];"
+                      "code": "<?php\n$apiKey = \"YOUR_API_KEY\";\n\n// List available agents (no auth required)\n$ch = curl_init();\ncurl_setopt($ch, CURLOPT_URL, \"https://api.wiro.ai/v1/Agent/List\");\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\"Content-Type: application/json\"]);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([\"limit\" => 10]));\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n$catalog = json_decode(curl_exec($ch), true);\ncurl_close($ch);\n\n// Deploy a new instance\n$ch = curl_init();\ncurl_setopt($ch, CURLOPT_URL, \"https://api.wiro.ai/v1/UserAgent/Deploy\");\ncurl_setopt($ch, CURLOPT_POST, true);\ncurl_setopt($ch, CURLOPT_HTTPHEADER, [\n    \"Content-Type: application/json\",\n    \"x-api-key: $apiKey\"\n]);\ncurl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([\n    \"agentguid\" => \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n    \"title\" => \"My Instagram Bot\",\n    \"useprepaid\" => true,\n    \"tier\" => \"starter\"\n]));\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n$deploy = json_decode(curl_exec($ch), true);\ncurl_close($ch);\necho \"Deployed: \" . $deploy[\"useragents\"][0][\"guid\"];"
                     },
                     {
                       "label": "C#",
                       "language": "csharp",
-                      "code": "using var client = new HttpClient();\nclient.DefaultRequestHeaders.Add(\"x-api-key\", \"YOUR_API_KEY\");\n\n// Deploy a new instance\nvar deployContent = new StringContent(\n    JsonSerializer.Serialize(new {\n        agentguid = \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n        title = \"My Instagram Bot\",\n        useprepaid = true,\n        plan = \"starter\"\n    }),\n    Encoding.UTF8, \"application/json\");\n\nvar deployResp = await client.PostAsync(\n    \"https://api.wiro.ai/v1/UserAgent/Deploy\", deployContent);\nvar deployResult = await deployResp.Content.ReadAsStringAsync();\nConsole.WriteLine(deployResult);\n\n// Start the agent\nvar startContent = new StringContent(\n    JsonSerializer.Serialize(new {\n        guid = \"f8e7d6c5-b4a3-2190-fedc-ba0987654321\"\n    }),\n    Encoding.UTF8, \"application/json\");\n\nvar startResp = await client.PostAsync(\n    \"https://api.wiro.ai/v1/UserAgent/Start\", startContent);\nConsole.WriteLine(await startResp.Content.ReadAsStringAsync());"
+                      "code": "using var client = new HttpClient();\nclient.DefaultRequestHeaders.Add(\"x-api-key\", \"YOUR_API_KEY\");\n\n// Deploy a new instance\nvar deployContent = new StringContent(\n    JsonSerializer.Serialize(new {\n        agentguid = \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n        title = \"My Instagram Bot\",\n        useprepaid = true,\n        tier = \"starter\"\n    }),\n    Encoding.UTF8, \"application/json\");\n\nvar deployResp = await client.PostAsync(\n    \"https://api.wiro.ai/v1/UserAgent/Deploy\", deployContent);\nvar deployResult = await deployResp.Content.ReadAsStringAsync();\nConsole.WriteLine(deployResult);\n\n// Start the agent\nvar startContent = new StringContent(\n    JsonSerializer.Serialize(new {\n        guid = \"f8e7d6c5-b4a3-2190-fedc-ba0987654321\"\n    }),\n    Encoding.UTF8, \"application/json\");\n\nvar startResp = await client.PostAsync(\n    \"https://api.wiro.ai/v1/UserAgent/Start\", startContent);\nConsole.WriteLine(await startResp.Content.ReadAsStringAsync());"
                     },
                     {
                       "label": "Go",
                       "language": "go",
-                      "code": "package main\n\nimport (\n    \"bytes\"\n    \"encoding/json\"\n    \"fmt\"\n    \"net/http\"\n    \"io\"\n)\n\nfunc main() {\n    // Deploy a new instance\n    body, _ := json.Marshal(map[string]interface{}{\n        \"agentguid\":  \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n        \"title\":      \"My Instagram Bot\",\n        \"useprepaid\": true,\n        \"plan\":       \"starter\",\n    })\n    req, _ := http.NewRequest(\"POST\",\n        \"https://api.wiro.ai/v1/UserAgent/Deploy\",\n        bytes.NewBuffer(body))\n    req.Header.Set(\"Content-Type\", \"application/json\")\n    req.Header.Set(\"x-api-key\", \"YOUR_API_KEY\")\n\n    resp, _ := http.DefaultClient.Do(req)\n    defer resp.Body.Close()\n    data, _ := io.ReadAll(resp.Body)\n    fmt.Println(string(data))\n}"
+                      "code": "package main\n\nimport (\n    \"bytes\"\n    \"encoding/json\"\n    \"fmt\"\n    \"net/http\"\n    \"io\"\n)\n\nfunc main() {\n    // Deploy a new instance\n    body, _ := json.Marshal(map[string]interface{}{\n        \"agentguid\":  \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n        \"title\":      \"My Instagram Bot\",\n        \"useprepaid\": true,\n        \"tier\":       \"starter\",\n    })\n    req, _ := http.NewRequest(\"POST\",\n        \"https://api.wiro.ai/v1/UserAgent/Deploy\",\n        bytes.NewBuffer(body))\n    req.Header.Set(\"Content-Type\", \"application/json\")\n    req.Header.Set(\"x-api-key\", \"YOUR_API_KEY\")\n\n    resp, _ := http.DefaultClient.Do(req)\n    defer resp.Body.Close()\n    data, _ := io.ReadAll(resp.Body)\n    fmt.Println(string(data))\n}"
                     },
                     {
                       "label": "Swift",
@@ -9241,7 +9680,7 @@ import type {
                     {
                       "label": "Dart",
                       "language": "dart",
-                      "code": "import 'dart:convert';\nimport 'package:http/http.dart' as http;\n\nfinal response = await http.post(\n  Uri.parse('https://api.wiro.ai/v1/UserAgent/Deploy'),\n  headers: {\n    'Content-Type': 'application/json',\n    'x-api-key': 'YOUR_API_KEY',\n  },\n  body: jsonEncode({\n    'agentguid': 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',\n    'title': 'My Instagram Bot',\n    'useprepaid': true,\n    'plan': 'starter',\n  }),\n);\nprint(response.body);"
+                      "code": "import 'dart:convert';\nimport 'package:http/http.dart' as http;\n\nfinal response = await http.post(\n  Uri.parse('https://api.wiro.ai/v1/UserAgent/Deploy'),\n  headers: {\n    'Content-Type': 'application/json',\n    'x-api-key': 'YOUR_API_KEY',\n  },\n  body: jsonEncode({\n    'agentguid': 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',\n    'title': 'My Instagram Bot',\n    'useprepaid': true,\n    'tier': 'starter',\n  }),\n);\nprint(response.body);"
                     }
                   ]
                 </script>
