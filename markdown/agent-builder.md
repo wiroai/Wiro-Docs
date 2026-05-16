@@ -39,12 +39,12 @@ curl -X POST "https://api.wiro.ai/v1/Skills/List" \
 Pick the skill names you want to enable. Each skill descriptor tells you:
 
 - `name` — the canonical skill key you'll send in `skills` / `skillOverrides`
-- `category` — `int` (integration with a third-party service) or `rule` (rule-only, no credential)
-- `credential_key` — which credential the skill needs (`null` for rule-only or platform-managed skills)
+- `category` — `int` (integration with a third-party service) or `util` (utility / rule-only, no credential)
+- `credential_key` — which credential the skill needs (`null` for `util` or platform-managed skills)
 - `requires_credentials` — boolean, whether the user must supply a credential before the skill can run
 - `depends_on` — array of skill names that must also be enabled (Wiro auto-enables transitive deps)
 - `conflicts_with` — array of skill names that cannot coexist with this one
-- `pricing` — the per-skill pricing recipe (`base_price_usd`, `base_credits`, `credit_costs.{message,create,modify,regenerate}`)
+- `pricing` — the per-skill pricing recipe (`monthly_price_weight_usd`, `monthly_credits_weight`, `credit_costs.{message,create,modify,regenerate}` plus optional `realtime` for voice skills)
 
 > **Use [`POST /Skills/Capabilities`](/docs/agent-skills#post-skillscapabilities)** to discover the closed-set capability vocabulary (the high-level tasks skills can perform). Useful when you want to find every skill that can "post-content" or "send-email".
 

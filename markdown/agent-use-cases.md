@@ -2,6 +2,22 @@
 
 Build products with autonomous AI agents using the Wiro API.
 
+## See These Use Cases on the Web
+
+Wiro publishes interactive, fullscreen showcases for the most common agent use cases. Each one walks through a real product story end-to-end — build, deploy, daily operation, brand-voice authoring, scheduled autopilot, and a self-healing climax under an upstream API break — so you can see what the patterns below look like before writing any code.
+
+| Showcase | What you'll see |
+|----------|-----------------|
+| **[Ad Campaign Manager](https://wiro.ai/agents/usecase/ad-campaign-agent)** | Drape Studio (bespoke tailoring) running Google Ads + Meta Ads on autopilot — Brand Voice + Budget Control as plain-English skills, AI video ads, OAuth publish, Day-3 auto-pause, weekly review, and a self-heal under the Google Ads API v14 sunset. |
+| **[App Event Manager](https://wiro.ai/agents/usecase/app-event-agent)** | Nova (creative video + effects app) — Calendarific holiday scan across 7 markets, Nano Banana Pro dual-aspect covers, multi-language event copy, App Store Connect publish, autonomous monthly briefing, self-heal under a 503. |
+| **[App Review Replies](https://wiro.ai/agents/usecase/app-review-agent)** | Prism (photo + video editor) — App Store + Google Play replies, Brand Voice + Reply Policy markdown skills, multilingual drafts, dev-team Slack escalation for 1★ crashes, monthly sentiment report, self-heal under token expiry. |
+| **[Barber Booking](https://wiro.ai/agents/usecase/barber-booking-agent)** | Scissor Hands salon — WhatsApp + Google Calendar bookings, multi-staff routing with role-based privacy, customer memory, scheduled daily/monthly digests, self-heal under a Calendar API break. |
+| **[Customer Win-Back](https://wiro.ai/agents/usecase/customer-winback-agent)** | Swift Sweep (chimney + fireplace service) — HubSpot CRM segmentation, Brand Voice + Customer Scorer + Seasonal Reminder as markdown skills, AI seasonal covers, batch WhatsApp send, scheduled autumn run, self-heal under a HubSpot v2 → v3 contacts API deprecation. |
+| **[Ecommerce Listings](https://wiro.ai/agents/usecase/ecommerce-listing-agent)** | Coral & Crest (swimwear) — 5 Wiro AI models (Virtual Try-On, Product-on-Model, Background Remover, Cover Image, Description), multilingual copy, auto-publish to WordPress + Instagram + Shopify, 84-product Google-Drive bulk-autonomy climax. |
+| **[Restaurant Reviews](https://wiro.ai/agents/usecase/restaurant-review-agent)** | Green Bottle Coffee — daily chat-based approvals, scheduled reports, anomaly dispatch, self-heal under a Reviews API deprecation. The "no pitch deck required" demo. |
+
+You can also browse every available pre-built agent at [wiro.ai/agents/browse](https://wiro.ai/agents/browse) (the visual mirror of [`POST /Agent/List`](/docs/agent-overview#post-agentlist)). Each agent template has its own marketing page at `wiro.ai/agents/{slug}` — for example [wiro.ai/agents/social-manager](https://wiro.ai/agents/social-manager), [wiro.ai/agents/voice-receptionist](https://wiro.ai/agents/voice-receptionist), or [wiro.ai/agents/blog-content-editor](https://wiro.ai/agents/blog-content-editor) — with screenshots, default skills, credential requirements, and live tier pricing. The full URL for each agent in the [Available Agents](#available-agents) table below is `https://wiro.ai/agents/{slug}`.
+
 ## Two Deployment Patterns
 
 Every product built on Wiro agents follows one of two patterns. Choosing the right one depends on whether your users need to connect their own third-party accounts.
@@ -18,15 +34,16 @@ Most agents interact with external services — posting to social media, managin
 
 | Your Product | Agent Type | Why Per-Customer |
 |-------------|-----------|-----------------|
-| Digital marketing agency dashboard | Social Manager | Each client connects their own Twitter, Instagram, Facebook, TikTok, LinkedIn |
-| Mobile app company | App Review Support | Each app has its own App Store / Google Play credentials |
-| E-commerce platform | Google Ads Manager + Meta Ads Manager | Each advertiser connects their own ad accounts |
-| Marketing SaaS | Newsletter Manager | Each customer connects their own Brevo/SendGrid/Mailchimp |
-| Sales platform | Lead Generation Manager | Each sales team connects their own Apollo/Lemlist |
-| Content agency tool | Blog Content Editor | Each client connects their own WordPress site |
-| App publisher platform | App Event Manager | Each app has its own App Store credentials |
-| Mobile app publisher | Push Notification Manager | Each app has its own Firebase service account |
-| Customer engagement tool | Social Manager | Each brand manages their own social presence |
+| Digital marketing agency dashboard | [Social Manager](https://wiro.ai/agents/social-manager) | Each client connects their own Twitter, Instagram, Facebook, TikTok, LinkedIn |
+| Mobile app company | [App Review Support](https://wiro.ai/agents/app-review-support) | Each app has its own App Store / Google Play credentials |
+| E-commerce platform | [Google Ads Manager](https://wiro.ai/agents/google-ads-manager) + [Meta Ads Manager](https://wiro.ai/agents/meta-ads-manager) | Each advertiser connects their own ad accounts |
+| Marketing SaaS | [Newsletter Manager](https://wiro.ai/agents/newsletter-manager) | Each customer connects their own Brevo/SendGrid/Mailchimp |
+| Sales platform | [Lead Generation Manager](https://wiro.ai/agents/lead-gen-manager) | Each sales team connects their own Apollo/Lemlist |
+| Content agency tool | [Blog Content Editor](https://wiro.ai/agents/blog-content-editor) | Each client connects their own WordPress site |
+| App publisher platform | [App Event Manager](https://wiro.ai/agents/app-event-manager) | Each app has its own App Store credentials |
+| Mobile app publisher | [Push Notification Manager](https://wiro.ai/agents/push-notification-manager) | Each app has its own Firebase service account |
+| Customer engagement tool | [Social Manager](https://wiro.ai/agents/social-manager) | Each brand manages their own social presence |
+| Phone-receptionist platform for SMBs | [Voice Receptionist](https://wiro.ai/agents/voice-receptionist) | Each business has its own Twilio number, HubSpot CRM, and Google Calendar |
 
 ### Pattern 2: Session Per User
 
@@ -177,17 +194,18 @@ Wiro provides pre-built agent templates you can deploy immediately. Each agent s
 
 | Agent | What It Does | Credentials |
 |-------|-------------|-------------|
-| **Social Manager** | Create, schedule, and publish social media content | Twitter/X, Instagram, Facebook, TikTok, LinkedIn (OAuth) |
-| **Blog Content Editor** | Write and publish blog posts (WordPress draft + publish workflow) | WordPress (App Password), Gmail (optional, for inbox requests) |
-| **Google Ads Manager** | Create and optimize Google Ads campaigns, daily performance reports | Google Ads (OAuth), Calendarific (platform-managed), Google Drive (optional, Service Account) |
-| **Meta Ads Manager** | Manage Facebook and Instagram ad campaigns, audience analysis | Meta Ads (OAuth), Calendarific (platform-managed), Google Drive (optional, Service Account) |
-| **Newsletter Manager** | Design and send email newsletters to subscriber lists | Brevo, SendGrid, Mailchimp, HubSpot (any one — API key or OAuth) |
-| **Lead Generation Manager** | Find and enrich leads, run multi-channel outreach, analyze replies | Apollo (API key), Lemlist (API key), HubSpot (optional, for CRM sync) |
-| **App Review Support** | Monitor app store reviews, draft responses in operator's tone | App Store Connect (private key JWT), Google Play (service account) |
-| **App Event Manager** | Scan global holidays, suggest and create App Store in-app events | App Store Connect (JWT), Calendarific (platform-managed) |
-| **Push Notification Manager** | Craft locale- and timezone-aware push notifications, queue dispatch | Firebase (service account JSON per app), Calendarific (platform-managed) |
+| **[Social Manager](https://wiro.ai/agents/social-manager)** | Create, schedule, and publish social media content | Twitter/X, Instagram, Facebook, TikTok, LinkedIn (OAuth) |
+| **[Blog Content Editor](https://wiro.ai/agents/blog-content-editor)** | Write and publish blog posts (WordPress draft + publish workflow) | WordPress (App Password), Gmail (optional, for inbox requests) |
+| **[Google Ads Manager](https://wiro.ai/agents/google-ads-manager)** | Create and optimize Google Ads campaigns, daily performance reports | Google Ads (OAuth), Calendarific (platform-managed), Google Drive (optional, Service Account) |
+| **[Meta Ads Manager](https://wiro.ai/agents/meta-ads-manager)** | Manage Facebook and Instagram ad campaigns, audience analysis | Meta Ads (OAuth), Calendarific (platform-managed), Google Drive (optional, Service Account) |
+| **[Newsletter Manager](https://wiro.ai/agents/newsletter-manager)** | Design and send email newsletters to subscriber lists | Brevo, SendGrid, Mailchimp, HubSpot (any one — API key or OAuth) |
+| **[Lead Generation Manager](https://wiro.ai/agents/lead-gen-manager)** | Find and enrich leads, run multi-channel outreach, analyze replies | Apollo (API key), Lemlist (API key), HubSpot (optional, for CRM sync) |
+| **[App Review Support](https://wiro.ai/agents/app-review-support)** | Monitor app store reviews, draft responses in operator's tone | App Store Connect (private key JWT), Google Play (service account) |
+| **[App Event Manager](https://wiro.ai/agents/app-event-manager)** | Scan global holidays, suggest and create App Store + Google Play in-app events | App Store Connect (JWT), Google Play (service account), Calendarific (platform-managed) |
+| **[Push Notification Manager](https://wiro.ai/agents/push-notification-manager)** | Craft locale- and timezone-aware push notifications, queue dispatch | Firebase (service account JSON per app), Calendarific (platform-managed) |
+| **[Voice Receptionist](https://wiro.ai/agents/voice-receptionist)** | Answer phone calls 24/7 with a real-time AI receptionist — recognises callers from CRM, books from your calendar, drafts CRM notes + follow-up emails, streams a live transcript to chat | Twilio Voice (Account SID, Auth Token, phone number) for inbound phone; HubSpot (optional, caller recognition); Google Calendar (optional, slot lookup); Google Drive (optional); Brevo or HubSpot (any one, optional, follow-up email drafts); Telegram bot (optional, operator approvals) |
 
-> The list above matches the 9 agent templates currently deployed in production. The exact set can evolve over time; fetch `POST /Agent/List` for the live catalog.
+> The list above matches the agent templates currently deployed in production. The exact set evolves over time as new templates ship — fetch `POST /Agent/List` for the live catalog. Each agent's full marketing page lives at `https://wiro.ai/agents/{slug}` (linked in the first column).
 
 ### Deploying an Agent
 

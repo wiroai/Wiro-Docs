@@ -34,7 +34,7 @@
 - [Agent Skills](https://wiro.ai/docs/agent-skills): Configure preferences and scheduled automation tasks; Skills/List + Skills/Detail + Skills/Capabilities + SkillsApply + CustomSkillHistory + CustomSkillRevert
 - [Agent Transactions](https://wiro.ai/docs/agent-transactions): Per-instance credit ledger (deductions, renewals, purchases, grants)
 - [Agent Logs](https://wiro.ai/docs/agent-logs): Per-instance activity feed (tool calls, cron runs, message exchanges)
-- [Agent Use Cases](https://wiro.ai/docs/agent-use-cases): Deployment patterns and architecture guides
+- [Agent Use Cases](https://wiro.ai/docs/agent-use-cases): Deployment patterns + pre-built agent catalog (Social Manager, Blog Content Editor, Google/Meta Ads Manager, Newsletter Manager, Lead Generation Manager, App Review Support, App Event Manager, Push Notification Manager, Voice Receptionist) + 7 live web showcases at wiro.ai/agents/usecase/*
 
 ## Integration Guides
 
@@ -49,6 +49,7 @@ OAuth integrations:
 - [HubSpot](https://wiro.ai/docs/integration-hubspot-skills): CRM object management
 - [Mailchimp](https://wiro.ai/docs/integration-mailchimp-skills): OAuth or direct API key
 - [Google Drive](https://wiro.ai/docs/integration-googledrive-skills): Per-user service account, folders shared with SA email
+- [Google Calendar](https://wiro.ai/docs/integration-google-calendar-skills): Per-user service account + per-calendar sharing. Read availability, draft events. Used by appointment-booking and voice-receptionist agents.
 
 API key integrations:
 - [Gmail](https://wiro.ai/docs/integration-gmail-skills): App Password via IMAP/SMTP
@@ -61,6 +62,7 @@ API key integrations:
 - [Lemlist](https://wiro.ai/docs/integration-lemlist-skills): Cold email campaign management
 - [Brevo](https://wiro.ai/docs/integration-brevo-skills): Transactional + marketing email
 - [SendGrid](https://wiro.ai/docs/integration-sendgrid-skills): Transactional + marketing email
+- [Twilio Voice Channel](https://wiro.ai/docs/voice-agent-twilio-channel): Inbound phone calls via Twilio Voice Webhooks + Media Streams. Account SID + Auth Token, hold media, max-duration timer. Used by Voice Receptionist agents.
 
 ## Organizations & Teams
 
@@ -513,7 +515,7 @@ Agent subscription plan is `"agent"` with separate `tier` field (`"starter"` | `
 
 POST /Agent/List — `{ search, category, sort, order, limit, start }` → `{ result, total, agents: [{ guid, title, slug, headline, cover, categories, samples, tiermultiplier, tiers: { starter: { priceUsd, credits }, pro: { priceUsd, credits } }, status }] }`. The `id` / `totalrun` / `activerun` columns are stripped for the public role.
 POST /Agent/Detail — `{ guid, slug, type? }` → agent row with `tiermultiplier` + `tiers` + `peractioncosts` + `skills` (string[] of enabled preset skill names) + `skillsmeta` (registry metadata for each enabled skill: title/icon/category/credential_key) + `credentials` (template schema with `optional`/`extra` flags + `_editable` map + `_schema` registry descriptor). Pass `type: "full"` to also include `customskills` and `scheduledskills`. `_connected` flag is instance-scoped and only on UserAgent/Detail. `extracreditpacks` is `[]` here — populated only on UserAgent/Detail.
-POST /Skills/List — `{ category?, capability?, user_invocable?, requires_credentials?, wiro_connect_pending?, name_in?[] }` → `{ result, total, skills: [{ name, title, description, icon, category, credential_key, requires_credentials, user_invocable, depends_on[], conflicts_with[], capabilities[], pricing: { base_price_usd, base_credits, credit_costs: { message, create, modify, regenerate } }, wiro_connect_pending, doc_url }] }`.
+POST /Skills/List — `{ category?, capability?, user_invocable?, requires_credentials?, wiro_connect_pending?, name_in?[] }` → `{ result, total, skills: [{ name, title, description, icon, brand_color, brand_text_color, brand_logo_filter, category, version, docs_url, credential_key, additional_credential_keys?, requires_credentials, user_invocable, deprecated, replacement, depends_on[], conflicts_with[], capabilities[], pricing: { monthly_price_weight_usd, monthly_credits_weight, credit_costs: { message, create, modify, regenerate, realtime? } } }] }`. Categories: `int` (third-party integration) or `util` (utility / rule-only). `additional_credential_keys` only present when set; `realtime` cost only on voice-realtime skills.
 POST /Skills/Detail — `{ name }` → `{ result, skill }` — same shape as List rows + `tools[]` array of runtime tool calls.
 POST /Skills/CredentialSchema — `{ name }` → `{ result, credential }` — convenience: returns the credential entry for the skill.
 POST /Skills/Capabilities — `{}` → `{ result, capabilities: [{ name, description }] }` — closed-set vocabulary: post-content, schedule-content, send-email, send-message, fetch-content, manage-ads, lead-research, analytics.

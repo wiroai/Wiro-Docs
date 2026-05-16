@@ -2,23 +2,22 @@
 
 Configure agent behavior with editable preferences, scheduled automation tasks, and skill toggles. Browse the platform's skill registry and inspect every skill's pricing, capabilities, and credential requirements.
 
-> **Read & write paths at a glance:**
->
-> | Operation | Endpoint |
-> |-----------|----------|
-> | Browse all skills (registry) | [`POST /Skills/List`](#post-skillslist) (public) |
-> | Inspect a single skill | [`POST /Skills/Detail`](#post-skillsdetail) (public) |
-> | Find the credential a skill needs | [`POST /Skills/CredentialSchema`](#post-skillscredentialschema) (public) |
-> | List the closed-set capability vocabulary | [`POST /Skills/Capabilities`](#post-skillscapabilities) (public) |
-> | Edit a preference skill's `value` or a cron's `interval`/`enabled` | [`POST /UserAgent/CustomSkillUpsert`](/docs/agent-overview#post-useragentcustomskillupsert) |
-> | Rename a user-created custom skill (key + optional description) | [`POST /UserAgent/CustomSkillRename`](/docs/agent-overview#post-useragentcustomskillrename) |
-> | Delete a user-created cron skill | [`POST /UserAgent/CustomSkillDelete`](/docs/agent-overview#post-useragentcustomskilldelete) |
-> | Read version history of a custom skill | [`POST /UserAgent/CustomSkillHistory`](/docs/agent-overview#post-useragentcustomskillhistory) |
-> | Revert a custom skill to preset / a historical version | [`POST /UserAgent/CustomSkillRevert`](/docs/agent-overview#post-useragentcustomskillrevert) |
-> | Toggle one or more integration skills (the top-level `skills` array, e.g. `int-instagram-post`) on/off | [`POST /UserAgent/SkillsApply`](/docs/agent-overview#post-useragentskillsapply) |
-> | Apply a batch of skill toggles + optional tier change | [`POST /UserAgent/SkillsApply`](/docs/agent-overview#post-useragentskillsapply) |
-> | Live tier-pricing preview for a hypothetical skill set | [`POST /UserAgent/PricingPreview`](/docs/agent-overview#post-useragentpricingpreview) |
->
+**Read & write paths at a glance:**
+
+| Operation | Endpoint |
+|-----------|----------|
+| Browse all skills (registry) | [`POST /Skills/List`](#post-skillslist) (public) |
+| Inspect a single skill | [`POST /Skills/Detail`](#post-skillsdetail) (public) |
+| Find the credential a skill needs | [`POST /Skills/CredentialSchema`](#post-skillscredentialschema) (public) |
+| List the closed-set capability vocabulary | [`POST /Skills/Capabilities`](#post-skillscapabilities) (public) |
+| Edit a preference skill's `value` or a cron's `interval`/`enabled` | [`POST /UserAgent/CustomSkillUpsert`](/docs/agent-overview#post-useragentcustomskillupsert) |
+| Rename a user-created custom skill (key + optional description) | [`POST /UserAgent/CustomSkillRename`](/docs/agent-overview#post-useragentcustomskillrename) |
+| Delete a user-created cron skill | [`POST /UserAgent/CustomSkillDelete`](/docs/agent-overview#post-useragentcustomskilldelete) |
+| Read version history of a custom skill | [`POST /UserAgent/CustomSkillHistory`](/docs/agent-overview#post-useragentcustomskillhistory) |
+| Revert a custom skill to preset / a historical version | [`POST /UserAgent/CustomSkillRevert`](/docs/agent-overview#post-useragentcustomskillrevert) |
+| Toggle one or more integration skills (the top-level `skills` array, e.g. `int-instagram-post`) on/off, with optional tier change | [`POST /UserAgent/SkillsApply`](/docs/agent-overview#post-useragentskillsapply) |
+| Live tier-pricing preview for a hypothetical skill set | [`POST /UserAgent/PricingPreview`](/docs/agent-overview#post-useragentpricingpreview) |
+
 > Read responses from `POST /UserAgent/Detail` expose the composed `customskills[]` array (preference skills + non-cron user-created skills), the `scheduledskills[]` array (cron skills), and the `skills[]` array of enabled skill names as top-level fields on the useragent object.
 
 ## Skill Registry vs Custom Skills
@@ -42,11 +41,11 @@ Lists all skills in the registry.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `category` | string | No | Filter by `"int"` (integration with a third-party service) or `"rule"` (rule-only — no credential, no external API). |
+| `category` | string | No | Filter by `"int"` (integration with a third-party service) or `"util"` (utility / rule-only — no credential, no external API). |
 | `capability` | string | No | Filter by capability key (see [`POST /Skills/Capabilities`](#post-skillscapabilities) for the closed-set vocabulary). |
 | `user_invocable` | boolean | No | When `true`, only return skills end users can call directly through chat. `int-wiro-generator` and other non-user-invocable skills are hidden. |
 | `requires_credentials` | boolean | No | Filter by whether the skill requires a credential. |
-| `wiro_connect_pending` | boolean | No | Filter by the "Wiro mode coming soon" flag (Meta integrations while Wiro's app is under review). |
+| `wiro_connect_pending` | boolean | No | Filter by the "Wiro mode coming soon" flag (Meta, LinkedIn, and TikTok integrations whose Wiro-shared OAuth client is awaiting App Review). |
 | `name_in` | array<string> | No | Restrict the response to a specific list of skill names. |
 
 ##### Response
@@ -55,7 +54,7 @@ Lists all skills in the registry.
 {
   "result": true,
   "errors": [],
-  "total": 87,
+  "total": 40,
   "skills": [
     {
       "name": "int-instagram-post",
@@ -70,7 +69,6 @@ Lists all skills in the registry.
       "docs_url": "integration-instagram-skills",
       "requires_credentials": true,
       "credential_key": "instagram",
-      "additional_credential_keys": [],
       "capabilities": ["social_publishing"],
       "depends_on": [],
       "conflicts_with": [],
@@ -94,8 +92,8 @@ Lists all skills in the registry.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `name` | `string` | Canonical skill key, **including the registry prefix** (`int-*` for integration skills, `util-*` for utility / rule-only skills, `cs-cron-*` for bundled cron skills). Use this exact value in `SkillsApply` and `Deploy.body.skills`. |
-| `category` | `string` | `"int"` (third-party integration) or `"rule"` (rule-only — no credential, no external API). |
+| `name` | `string` | Canonical skill key, **including the registry prefix** (`int-*` for integration skills, `util-*` for utility / rule-only skills). Use this exact value in `SkillsApply` and `Deploy.body.skills`. |
+| `category` | `string` | `"int"` (third-party integration) or `"util"` (utility / rule-only — no credential, no external API). |
 | `version` | `string` | Semver for the registry entry. Bumped when the skill's tool surface or pricing weights change. |
 | `title` | `string` | Display name shown on chips / filters / cards. |
 | `description` | `string` | One-line summary used on marketing surfaces. |
@@ -105,8 +103,8 @@ Lists all skills in the registry.
 | `brand_logo_filter` | `string\|null` | CSS `filter` value applied to monochrome SVG icons (e.g. `"brightness(0) invert(1)"`) so the same source SVG renders correctly on light and dark brand colours. |
 | `docs_url` | `string\|null` | Slug or path of the integration page on this docs site. Frontends prefix with `/docs/` when rendering. |
 | `requires_credentials` | `boolean` | `true` when `credential_key` is set and the credential is not entirely platform-managed. |
-| `credential_key` | `string\|null` | The provider this skill needs (`"instagram"`, `"google-ads"`, …). `null` for rule-only / platform-managed skills. Use [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail) to inspect the schema. |
-| `additional_credential_keys` | `array<string>` | Secondary credentials the skill can also write into (e.g. `int-appstore-reviews` writes both `apple-appstore` and the optional `var-support-email` variable bag). Empty `[]` for skills with a single credential. |
+| `credential_key` | `string\|null` | The provider this skill needs (`"instagram"`, `"google-ads"`, …). `null` for `util` skills (rule-only) and platform-managed integrations. Use [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail) to inspect the schema. |
+| `additional_credential_keys` | `array<string>` | **Optional — only present when the skill writes secondary credentials.** App-store / Google-Play review skills include `["var-support-email"]` for the support-email variable bag; most skills omit this field entirely. |
 | `capabilities` | `array<string>` | High-level snake_case capability tags from the closed vocabulary returned by [`POST /Skills/Capabilities`](#post-skillscapabilities). Drives the "Find skills that can: ___" picker. |
 | `depends_on` | `array<string>` | Other skill names that must be enabled. Wiro auto-enables transitive deps when you toggle the parent skill on. |
 | `conflicts_with` | `array<string>` | Mutually-exclusive skill names. `SkillsApply` rejects toggle batches that would enable two conflicting skills. |
@@ -121,9 +119,9 @@ Lists all skills in the registry.
 |-----------|------|-------------|
 | `monthly_price_weight_usd` | `number` | Weight (USD) the skill contributes to the agent's Starter monthly price. The resolver sums weights across the agent's enabled-skill closure (incl. transitive `depends_on`); Pro multiplies the total by `tiermultiplier`. |
 | `monthly_credits_weight` | `number` | Weight (credits) the skill contributes to the Starter monthly credit allocation. Same closure + multiplier semantics as price. |
-| `credit_costs` | `object` | `{ message, create, modify, regenerate }` — credits charged per action when the skill produces output. The agent's exposed `peractioncosts` is `max()` across enabled skills' `credit_costs`. Free / utility skills omit the field or set zeros. |
+| `credit_costs` | `object` | Per-action credit weights. Common keys: `message`, `create`, `modify`, `regenerate`. Voice-realtime skills (`util-voice-receptionist`, `util-voice-call-prep`, `util-web-channel`, `int-twilio-channel`, `int-google-calendar`) also expose `realtime` — credits charged per **second of realtime audio session**. The agent's exposed `peractioncosts` is `max()` across enabled skills' `credit_costs` (per action key). Free / utility skills omit non-applicable keys or set zeros. |
 
-> **Optional filter `wiro_connect_pending`.** When you query with `wiro_connect_pending: true` you'll only see Meta-platform skills (`int-instagram-post`, `int-facebook-page-post`, `int-metaads-*`) whose Wiro-shared OAuth client is awaiting App Review. Those skills are still usable in **own** mode (your own Meta Developer App). The flag itself does not appear on the skill object — it lives on the credential entry under [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail).
+> **Optional filter `wiro_connect_pending`.** When you query with `wiro_connect_pending: true` you get every skill whose connecting integration's Wiro-shared OAuth client is awaiting App Review — currently the Meta family (`int-instagram-post`, `int-facebookpage-post`, `int-metaads-manage`), `int-linkedin-post`, `int-tiktok-post`, and the `util-*` posting helpers paired with them. Those skills are still usable in **own** mode (your own developer app). The flag itself does not appear on the skill object — it lives on the credential entry under [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail).
 
 ### **POST** /Skills/Detail
 
@@ -131,7 +129,7 @@ Returns a single skill by name.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `name` | string | Yes | Canonical skill name **with prefix** (e.g. `"int-instagram-post"`, `"util-html-strip"`, `"cs-cron-content-scanner"`). |
+| `name` | string | Yes | Canonical skill name **with prefix** (e.g. `"int-instagram-post"`, `"util-social-posting-common"`). Registry-only — `cs-*` and `cs-cron-*` user-level customskills are not exposed here. |
 
 ##### Response
 
@@ -152,7 +150,6 @@ Returns a single skill by name.
     "docs_url": "integration-instagram-skills",
     "requires_credentials": true,
     "credential_key": "instagram",
-    "additional_credential_keys": [],
     "capabilities": ["social_publishing"],
     "depends_on": [],
     "conflicts_with": [],
@@ -252,7 +249,7 @@ Convenience endpoint — returns the credential entry for a given skill name in 
 }
 ```
 
-Returns the **full registry credential entry** — same shape as a row from [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail). Returns `{ "result": false, "errors": [{ "code": 404, "message": "No credential associated with skill: <name>" }] }` if the skill exists but has `credential_key: null` (rule-only / platform-managed) or if the skill is unknown.
+Returns the **full registry credential entry** — same shape as a row from [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail). Returns `{ "result": false, "errors": [{ "code": 404, "message": "No credential associated with skill: <name>" }] }` if the skill exists but has `credential_key: null` (`util` / platform-managed) or if the skill is unknown.
 
 ### **POST** /Skills/Capabilities
 
@@ -295,7 +292,16 @@ Returns the closed-set vocabulary of high-level capability tags. Use this to bui
     { "name": "review_monitoring",        "description": "Monitor store reviews (App Store, Google Play)" },
     { "name": "app_metadata",             "description": "Fetch app store metadata (description, pricing, features)" },
     { "name": "event_management",         "description": "Manage app events (App Store in-app events)" },
-    { "name": "file_asset_management",    "description": "Manage asset files from cloud storage (Drive)" }
+    { "name": "file_asset_management",    "description": "Manage asset files from cloud storage (Drive)" },
+    { "name": "voice_call_handling",      "description": "Receive and handle inbound voice calls via Twilio or web browser" },
+    { "name": "caller_identification",    "description": "Match caller phone number against CRM records (HubSpot, Apollo)" },
+    { "name": "live_transcript",          "description": "Stream real-time call transcripts to operator chat" },
+    { "name": "voice_persona",            "description": "Configure AI voice persona (alloy/echo/etc) for phone interactions" },
+    { "name": "phone_inbound",            "description": "Accept inbound PSTN phone calls (Twilio)" },
+    { "name": "browser_voice",            "description": "Accept inbound voice calls from website browser (Web Audio API)" },
+    { "name": "appointment_management",   "description": "Manage calendar appointments (find slots, create events)" },
+    { "name": "calendar_lookup",          "description": "Read calendar/availability data (Google Calendar)" },
+    { "name": "realtime_session_prep",    "description": "Pre-call orchestration: bridge ↔ agent handshake before realtime audio starts (read operator's cs-* custom skills, run realtime model, callback to bridge)" }
   ]
 }
 ```
@@ -624,7 +630,7 @@ The response carries the post-revert state (`current_value`, `current_interval`,
 
 ## Toggling Integration Skills
 
-The top-level `skills[]` array on `UserAgent/Detail` lists the integration skills currently enabled on the instance (e.g. `[{ "name": "int-instagram-post" }, { "name": "int-googleads-manage" }]`). To enable, disable, or change tier in one shot, use **`POST /UserAgent/SkillsApply`** — even when you only want to flip a single skill, send it as a one-entry `skills` map. The endpoint:
+The top-level `skills[]` array on `UserAgent/Detail` lists the integration skills currently enabled on the instance as a flat **string array** of skill names (e.g. `["int-instagram-post", "int-googleads-manage", "int-wiro-generator"]`). To enable, disable, or change tier in one shot, use **`POST /UserAgent/SkillsApply`** — even when you only want to flip a single skill, send it as a one-entry `skills` map. The endpoint:
 
 1. Charges the wallet (or prorates) **once**, not N times.
 2. Triggers exactly **one container restart** after the new skill set lands.
@@ -873,15 +879,18 @@ Skills that depend on third-party credentials. Follow the linked integration pag
 | `int-hubspot-crm` | `hubspot` (OAuth) | [HubSpot Skills](/docs/integration-hubspot-skills) |
 | `int-mailchimp-email` | `mailchimp` (OAuth or API key) | [Mailchimp Skills](/docs/integration-mailchimp-skills) |
 | `int-google-drive` | `google-drive` (Service Account) | [Google Drive Skills](/docs/integration-googledrive-skills) |
+| `int-google-calendar` | `google-calendar` (Service Account) | [Google Calendar Skills](/docs/integration-google-calendar-skills) |
 | `int-gmail-check` | `gmail` (App Password) | [Gmail Skills](/docs/integration-gmail-skills) |
 | `int-firebase-push` | `firebase` (Service Account) | [Firebase Skills](/docs/integration-firebase-skills) |
 | `int-wordpress-post` | `wordpress` (App Password) | [WordPress Skills](/docs/integration-wordpress-skills) |
 | `int-brevo-email` | `brevo` (API key) | [Brevo Skills](/docs/integration-brevo-skills) |
 | `int-sendgrid-email` | `sendgrid` (API key) | [SendGrid Skills](/docs/integration-sendgrid-skills) |
 | `int-appstore-reviews`, `int-appstore-metadata`, `int-appstore-events` | `apple-appstore` (JWT / Service Account) | [App Store Skills](/docs/integration-appstore-skills) |
-| `int-googleplay-reviews`, `int-googleplay-metadata`, `int-googleplay-events` | `google-play` (Service Account) | [Google Play Skills](/docs/integration-googleplay-skills) |
+| `int-googleplay-reviews`, `int-googleplay-metadata` | `google-play` (Service Account) | [Google Play Skills](/docs/integration-googleplay-skills) |
+| `int-googleplay-events` | `google-play-apps` (Service Account — separate per-app registry) | [Google Play Skills](/docs/integration-googleplay-skills) |
 | `int-apollo-sales` | `apollo` (API key) | [Apollo Skills](/docs/integration-apollo-skills) |
 | `int-lemlist-outreach` | `lemlist` (API key) | [Lemlist Skills](/docs/integration-lemlist-skills) |
+| `int-twilio-channel` | `twilio-voice` (API key) | [Twilio Voice Channel](/docs/voice-agent-twilio-channel) |
 | `int-wiro-generator` | Platform-managed (Wiro internal key) | See [Using Wiro AI Models from Your Agent](#using-wiro-ai-models-from-your-agent) |
 | `int-calendarific` | Platform-managed (no user key) | [Platform-Managed Credentials](/docs/agent-credentials#platform-managed-credentials) |
 

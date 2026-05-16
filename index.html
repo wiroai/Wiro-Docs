@@ -249,6 +249,9 @@
                         <a href="/docs/integration-googledrive-skills" class="docs-nav-link" data-section="integration-googledrive-skills"><img src="https://wiro.ai/images/icons/skills/googledrive.svg" alt="" class="docs-nav-icon-img" /><span>Google Drive</span></a>
                       </li>
                       <li>
+                        <a href="/docs/integration-google-calendar-skills" class="docs-nav-link" data-section="integration-google-calendar-skills"><img src="https://wiro.ai/images/icons/skills/googlecalendar.svg" alt="" class="docs-nav-icon-img" /><span>Google Calendar</span></a>
+                      </li>
+                      <li>
                         <a href="/docs/integration-gmail-skills" class="docs-nav-link" data-section="integration-gmail-skills"><img src="https://wiro.ai/images/icons/skills/gmail.svg" alt="" class="docs-nav-icon-img" /><span>Gmail</span></a>
                       </li>
                       <li>
@@ -277,6 +280,9 @@
                       </li>
                       <li>
                         <a href="/docs/integration-sendgrid-skills" class="docs-nav-link" data-section="integration-sendgrid-skills"><img src="https://wiro.ai/images/icons/skills/sendgrid.svg" alt="" class="docs-nav-icon-img" /><span>SendGrid</span></a>
+                      </li>
+                      <li>
+                        <a href="/docs/voice-agent-twilio-channel" class="docs-nav-link" data-section="voice-agent-twilio-channel"><img src="https://wiro.ai/images/icons/skills/twilio.svg" alt="" class="docs-nav-icon-img" /><span>Twilio Voice</span></a>
                       </li>
                     </ul>
                   </details>
@@ -6103,20 +6109,30 @@ import type {
                               <td>Concept primer — pricing model, security model, deployment lifecycle, and the difference between marketplace templates and custom builds.</td>
                             </tr>
                             <tr>
+                              <td><strong>Anatomy of an Agent</strong></td>
+                              <td><a href="https://wiro.ai/agents/anatomy" target="_blank" rel="noopener">wiro.ai/agents/anatomy</a></td>
+                              <td>Fullscreen interactive walkthrough of the pieces that make a Wiro agent reason — system prompt, knowledge, skills, memory, guardrails, model, tools, scheduling, and observability.</td>
+                            </tr>
+                            <tr>
                               <td><strong>Build Your Own Agent</strong></td>
                               <td><a href="https://wiro.ai/agents/build" target="_blank" rel="noopener">wiro.ai/agents/build</a></td>
                               <td>The web wizard for the same custom-build flow exposed by <a href="#post-useragentdeploy"><code>POST /UserAgent/Deploy</code></a> with <code>custom: true</code>. Useful for previewing the skill picker / pricing breakdown before scripting it.</td>
                             </tr>
                             <tr>
                               <td><strong>Browse Agents</strong></td>
-                              <td><a href="https://wiro.ai/browse-agents" target="_blank" rel="noopener">wiro.ai/browse-agents</a></td>
-                              <td>Full marketplace catalog with categories, descriptions, screenshots, and per-agent tier prices — the visual mirror of <a href="#post-agentlist"><code>POST /Agent/List</code></a>.</td>
+                              <td><a href="https://wiro.ai/agents/browse" target="_blank" rel="noopener">wiro.ai/agents/browse</a></td>
+                              <td>Full marketplace catalog with categories, descriptions, screenshots, and per-agent tier prices — the visual mirror of <a href="#post-agentlist"><code>POST /Agent/List</code></a>. Each row links to a dedicated agent page at <code>/agents/{slug}</code>.</td>
+                            </tr>
+                            <tr>
+                              <td><strong>Use Case Showcases</strong></td>
+                              <td><a href="https://wiro.ai/agents" target="_blank" rel="noopener">wiro.ai/agents/usecase/...</a></td>
+                              <td>Seven fullscreen, auto-looping product stories that show real businesses operated end-to-end by a Wiro agent. See <a href="/docs/agent-use-cases#see-these-use-cases-on-the-web" class="docs-link">Agent Use Cases</a> for the full list.</td>
                             </tr>
                           </tbody>
                         </table>
                       </div>
                     </div>
-                    <div class="info-callout"><p>All four pages are public — no Wiro account required to browse. Sign-in becomes mandatory only when you click "Deploy" on a specific agent (which then drops you into the Wiro dashboard at <a href="https://wiro.ai/panel/agents" target="_blank" rel="noopener">wiro.ai/panel/agents</a>).</p></div>
+                    <div class="info-callout"><p>All pages are public — no Wiro account required to browse. Sign-in becomes mandatory only when you click "Deploy" on a specific agent (which then drops you into the Wiro dashboard at <a href="https://wiro.ai/panel/agents" target="_blank" rel="noopener">wiro.ai/panel/agents</a>).</p></div>
                   </section>
 
                   <section id="what-are-agents">
@@ -7305,7 +7321,7 @@ import type {
                             <tr>
                               <td><code>peractioncosts</code></td>
                               <td><code>object</code></td>
-                              <td><code>{ message, create, modify, regenerate }</code> — credits charged per action. Computed as <code>max()</code> across enabled skills' <code>pricing.credit_costs</code>.</td>
+                              <td>Credits charged per action. Common keys: <code>message</code>, <code>create</code>, <code>modify</code>, <code>regenerate</code>. Voice-realtime agents (those with <code>util-voice-receptionist</code> etc. enabled) also expose <code>realtime</code> — credits per second of realtime audio session. Computed as <code>max()</code> across enabled skills' <code>pricing.credit_costs</code>.</td>
                             </tr>
                             <tr>
                               <td><code>teamsessionmode</code></td>
@@ -8100,8 +8116,8 @@ import type {
                             <tr><td><code>restartedAt</code></td><td><code>number|null</code></td><td>Unix seconds when the restart trigger fired. <code>null</code> when <code>restartTriggered</code> is <code>false</code>.</td></tr>
                             <tr><td><code>pricing.previousPriceUsd</code> / <code>newPriceUsd</code> / <code>deltaUsd</code></td><td><code>number</code></td><td>USD totals before / after the apply, plus the signed delta.</td></tr>
                             <tr><td><code>pricing.previousMonthlyCredits</code> / <code>newMonthlyCredits</code> / <code>deltaCredits</code></td><td><code>number</code></td><td>Monthly credit allocation before / after, plus the signed delta.</td></tr>
-                            <tr><td><code>pricing.enabledSkills</code></td><td><code>array&lt;string&gt;</code></td><td>Final enabled skill set including transitive <code>depends_on</code> closure — same skill names you'd see on <code>useragent.skills[].name</code> in the next <code>Detail</code> call.</td></tr>
-                            <tr><td><code>pricing.peractioncosts</code></td><td><code>object</code></td><td>The <code>{ message, create, modify, regenerate }</code> per-action burn rates that follow from the new skill set.</td></tr>
+                            <tr><td><code>pricing.enabledSkills</code></td><td><code>array&lt;string&gt;</code></td><td>Final enabled skill set including transitive <code>depends_on</code> closure — same skill name strings you'd see in <code>useragent.skills</code> (a flat string array) on the next <code>Detail</code> call.</td></tr>
+                            <tr><td><code>pricing.peractioncosts</code></td><td><code>object</code></td><td>Per-action burn rates that follow from the new skill set: <code>{ message, create, modify, regenerate }</code>, plus <code>realtime</code> (per-second audio session cost) when a voice-realtime skill is in the new set.</td></tr>
                           </tbody>
                         </table>
                       </div>
@@ -11382,38 +11398,36 @@ ws.onmessage = (event) =&gt; {
                   <h1>Agent Credentials &amp; OAuth</h1>
                   <p class="section-subtitle">Configure third-party service connections for your agent instances. Browse the platform's credential registry, set API keys + OAuth, and audit credential edits over time.</p>
 
-                  <div class="info-callout">
-                    <strong>Read &amp; write paths at a glance:</strong>
-                    <div class="docs-param-table">
-                      <div class="docs-param-table-wrapper">
-                        <table>
-                          <thead>
-                            <tr><th>Operation</th><th>Endpoint</th></tr>
-                          </thead>
-                          <tbody>
-                            <tr>
-                              <td>Browse all credentials in the registry</td>
-                              <td><a href="#post-credentialslist"><code>POST /Credentials/List</code></a> (public)</td>
-                            </tr>
-                            <tr>
-                              <td>Inspect a single credential schema</td>
-                              <td><a href="#post-credentialsdetail"><code>POST /Credentials/Detail</code></a> (public)</td>
-                            </tr>
-                            <tr>
-                              <td>Find the credential a skill needs</td>
-                              <td><a href="/docs/agent-skills#post-skillscredentialschema"><code>POST /Skills/CredentialSchema</code></a> (public)</td>
-                            </tr>
-                            <tr>
-                              <td>Write one or more credential fields</td>
-                              <td><a href="/docs/agent-overview#post-useragentcredentialupsert"><code>POST /UserAgent/CredentialUpsert</code></a></td>
-                            </tr>
-                            <tr>
-                              <td>Read version history of a credential</td>
-                              <td><a href="#auditing-credential-changes--credentialfieldhistory"><code>POST /UserAgent/CredentialFieldHistory</code></a></td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
+                  <p><strong>Read &amp; write paths at a glance:</strong></p>
+                  <div class="docs-param-table">
+                    <div class="docs-param-table-wrapper">
+                      <table>
+                        <thead>
+                          <tr><th>Operation</th><th>Endpoint</th></tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td>Browse all credentials in the registry</td>
+                            <td><a href="#post-credentialslist"><code>POST /Credentials/List</code></a> (public)</td>
+                          </tr>
+                          <tr>
+                            <td>Inspect a single credential schema</td>
+                            <td><a href="#post-credentialsdetail"><code>POST /Credentials/Detail</code></a> (public)</td>
+                          </tr>
+                          <tr>
+                            <td>Find the credential a skill needs</td>
+                            <td><a href="/docs/agent-skills#post-skillscredentialschema"><code>POST /Skills/CredentialSchema</code></a> (public)</td>
+                          </tr>
+                          <tr>
+                            <td>Write one or more credential fields</td>
+                            <td><a href="/docs/agent-overview#post-useragentcredentialupsert"><code>POST /UserAgent/CredentialUpsert</code></a></td>
+                          </tr>
+                          <tr>
+                            <td>Read version history of a credential</td>
+                            <td><a href="#auditing-credential-changes--credentialfieldhistory"><code>POST /UserAgent/CredentialFieldHistory</code></a></td>
+                          </tr>
+                        </tbody>
+                      </table>
                     </div>
                   </div>
 
@@ -11431,7 +11445,7 @@ ws.onmessage = (event) =&gt; {
                           </thead>
                           <tbody>
                             <tr><td><code>credential_mode</code></td><td>string</td><td>No</td><td>Filter by mode: <code>"oauth"</code>, <code>"sa"</code> (service account), <code>"api_key"</code>, <code>"multi_api_key"</code>, <code>"hybrid"</code>, <code>"imap_credentials"</code>, <code>"jwt_sa"</code>, <code>"rule_only"</code>.</td></tr>
-                            <tr><td><code>wiro_connect_pending</code></td><td>boolean</td><td>No</td><td>Filter by the "Wiro mode coming soon" flag.</td></tr>
+                            <tr><td><code>wiro_connect_pending</code></td><td>boolean</td><td>No</td><td>Filter by the "Wiro mode coming soon" flag (Meta, LinkedIn, and TikTok credentials whose Wiro-shared OAuth client is awaiting App Review).</td></tr>
                           </tbody>
                         </table>
                       </div>
@@ -11701,9 +11715,9 @@ ws.onmessage = (event) =&gt; {
                       <li><a href="/docs/integration-twitter-skills">Twitter / X</a> — Wiro mode + own mode. OAuth 2.0 PKCE.</li>
                       <li><a href="/docs/integration-tiktok-skills">TikTok</a> — Wiro mode + own mode. Content Posting API.</li>
                       <li><a href="/docs/integration-googleads-skills">Google Ads</a> — Wiro mode + own mode. MCC + customer ID selection.</li>
-                      <li><strong>YouTube</strong> — Wiro mode + own mode. Shares OAuth client with Google Ads. See <a href="/docs/integration-googleads-skills">Google Ads Skills</a>.</li>
-                      <li><strong>Google Analytics 4</strong> — Wiro mode + own mode. Shares OAuth client with Google Ads. See <a href="/docs/integration-googleads-skills">Google Ads Skills</a>.</li>
-                      <li><strong>Merchant Center</strong> — Wiro mode + own mode. Shares OAuth client with Google Ads. See <a href="/docs/integration-googleads-skills">Google Ads Skills</a>.</li>
+                      <li><a href="/docs/integration-youtube-skills">YouTube</a> — Wiro mode + own mode. Shares OAuth client with Google Ads.</li>
+                      <li><a href="/docs/integration-ga4-skills">Google Analytics 4</a> — Wiro mode + own mode. Shares OAuth client with Google Ads.</li>
+                      <li><a href="/docs/integration-merchantcenter-skills">Merchant Center</a> — Wiro mode + own mode. Shares OAuth client with Google Ads.</li>
                       <li><a href="/docs/integration-hubspot-skills">HubSpot</a> — Wiro mode + own mode. CRM object management.</li>
                       <li><a href="/docs/integration-mailchimp-skills">Mailchimp</a> — Wiro mode + own mode + direct API key.</li>
                     </ul>
@@ -11713,6 +11727,7 @@ ws.onmessage = (event) =&gt; {
                     <h3>Service Account Integrations</h3>
                     <ul>
                       <li><a href="/docs/integration-googledrive-skills">Google Drive</a> — Per-user service account + scoped folder sharing.</li>
+                      <li><a href="/docs/integration-google-calendar-skills">Google Calendar</a> — Per-user service account + per-calendar sharing. Used by appointment-booking and voice-receptionist agents.</li>
                       <li><a href="/docs/integration-googleplay-skills">Google Play</a> — Per-user service account + Play Console permissions.</li>
                     </ul>
 
@@ -11727,6 +11742,7 @@ ws.onmessage = (event) =&gt; {
                       <li><a href="/docs/integration-lemlist-skills">Lemlist</a> — API key.</li>
                       <li><a href="/docs/integration-brevo-skills">Brevo</a> — API key.</li>
                       <li><a href="/docs/integration-sendgrid-skills">SendGrid</a> — API key.</li>
+                      <li><a href="/docs/voice-agent-twilio-channel">Twilio Voice</a> — Account SID + Auth Token. Inbound phone calls via Twilio Voice Webhooks + Media Streams. Auto-configures each number's <code>VoiceUrl</code> on save.</li>
                     </ul>
 
                     <div class="info-callout"><strong>Meta Platforms availability:</strong> While Wiro's shared Meta App is under review by Meta, the Meta Ads, Facebook Page, and Instagram integrations must be connected using your own Meta Developer App. No App Review is required — Development Mode + App Roles is sufficient. See each integration page for step-by-step setup.</div>
@@ -13240,67 +13256,67 @@ app.get('/settings/social', (req, res) => {
                   <h1>Agent Skills</h1>
                   <p class="section-subtitle">Configure agent behavior with editable preferences, scheduled automation tasks, and skill toggles. Browse the platform's skill registry and inspect every skill's pricing, capabilities, and credential requirements.</p>
 
-                  <div class="info-callout">
-                    <strong>Read &amp; write paths at a glance:</strong>
-                    <div class="docs-param-table">
-                      <div class="docs-param-table-wrapper">
-                        <table>
-                          <thead>
-                            <tr>
-                              <th>Operation</th>
-                              <th>Endpoint</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr>
-                              <td>Browse all skills (registry)</td>
-                              <td><a href="#post-skillslist"><code>POST /Skills/List</code></a> (public)</td>
-                            </tr>
-                            <tr>
-                              <td>Inspect a single skill</td>
-                              <td><a href="#post-skillsdetail"><code>POST /Skills/Detail</code></a> (public)</td>
-                            </tr>
-                            <tr>
-                              <td>Find the credential a skill needs</td>
-                              <td><a href="#post-skillscredentialschema"><code>POST /Skills/CredentialSchema</code></a> (public)</td>
-                            </tr>
-                            <tr>
-                              <td>List the closed-set capability vocabulary</td>
-                              <td><a href="#post-skillscapabilities"><code>POST /Skills/Capabilities</code></a> (public)</td>
-                            </tr>
-                            <tr>
-                              <td>Edit a preference skill's <code>value</code> or a cron's <code>interval</code>/<code>enabled</code></td>
-                              <td><a href="/docs/agent-overview#post-useragentcustomskillupsert"><code>POST /UserAgent/CustomSkillUpsert</code></a></td>
-                            </tr>
-                            <tr>
-                              <td>Rename a user-created custom skill (key + optional description)</td>
-                              <td><a href="/docs/agent-overview#post-useragentcustomskillrename"><code>POST /UserAgent/CustomSkillRename</code></a></td>
-                            </tr>
-                            <tr>
-                              <td>Delete a user-created cron skill</td>
-                              <td><a href="/docs/agent-overview#post-useragentcustomskilldelete"><code>POST /UserAgent/CustomSkillDelete</code></a></td>
-                            </tr>
-                            <tr>
-                              <td>Read version history of a custom skill</td>
-                              <td><a href="/docs/agent-overview#post-useragentcustomskillhistory"><code>POST /UserAgent/CustomSkillHistory</code></a></td>
-                            </tr>
-                            <tr>
-                              <td>Revert a custom skill to preset / a historical version</td>
-                              <td><a href="/docs/agent-overview#post-useragentcustomskillrevert"><code>POST /UserAgent/CustomSkillRevert</code></a></td>
-                            </tr>
-                            <tr>
-                              <td>Toggle one or more integration skills (the top-level <code>skills</code> array, e.g. <code>int-instagram-post</code>) on/off, with optional tier change</td>
-                              <td><a href="/docs/agent-overview#post-useragentskillsapply"><code>POST /UserAgent/SkillsApply</code></a></td>
-                            </tr>
-                            <tr>
-                              <td>Live tier-pricing preview for a hypothetical skill set</td>
-                              <td><a href="/docs/agent-overview#post-useragentpricingpreview"><code>POST /UserAgent/PricingPreview</code></a></td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
+                  <p><strong>Read &amp; write paths at a glance:</strong></p>
+                  <div class="docs-param-table">
+                    <div class="docs-param-table-wrapper">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Operation</th>
+                            <th>Endpoint</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td>Browse all skills (registry)</td>
+                            <td><a href="#post-skillslist"><code>POST /Skills/List</code></a> (public)</td>
+                          </tr>
+                          <tr>
+                            <td>Inspect a single skill</td>
+                            <td><a href="#post-skillsdetail"><code>POST /Skills/Detail</code></a> (public)</td>
+                          </tr>
+                          <tr>
+                            <td>Find the credential a skill needs</td>
+                            <td><a href="#post-skillscredentialschema"><code>POST /Skills/CredentialSchema</code></a> (public)</td>
+                          </tr>
+                          <tr>
+                            <td>List the closed-set capability vocabulary</td>
+                            <td><a href="#post-skillscapabilities"><code>POST /Skills/Capabilities</code></a> (public)</td>
+                          </tr>
+                          <tr>
+                            <td>Edit a preference skill's <code>value</code> or a cron's <code>interval</code>/<code>enabled</code></td>
+                            <td><a href="/docs/agent-overview#post-useragentcustomskillupsert"><code>POST /UserAgent/CustomSkillUpsert</code></a></td>
+                          </tr>
+                          <tr>
+                            <td>Rename a user-created custom skill (key + optional description)</td>
+                            <td><a href="/docs/agent-overview#post-useragentcustomskillrename"><code>POST /UserAgent/CustomSkillRename</code></a></td>
+                          </tr>
+                          <tr>
+                            <td>Delete a user-created cron skill</td>
+                            <td><a href="/docs/agent-overview#post-useragentcustomskilldelete"><code>POST /UserAgent/CustomSkillDelete</code></a></td>
+                          </tr>
+                          <tr>
+                            <td>Read version history of a custom skill</td>
+                            <td><a href="/docs/agent-overview#post-useragentcustomskillhistory"><code>POST /UserAgent/CustomSkillHistory</code></a></td>
+                          </tr>
+                          <tr>
+                            <td>Revert a custom skill to preset / a historical version</td>
+                            <td><a href="/docs/agent-overview#post-useragentcustomskillrevert"><code>POST /UserAgent/CustomSkillRevert</code></a></td>
+                          </tr>
+                          <tr>
+                            <td>Toggle one or more integration skills (the top-level <code>skills</code> array, e.g. <code>int-instagram-post</code>) on/off, with optional tier change</td>
+                            <td><a href="/docs/agent-overview#post-useragentskillsapply"><code>POST /UserAgent/SkillsApply</code></a></td>
+                          </tr>
+                          <tr>
+                            <td>Live tier-pricing preview for a hypothetical skill set</td>
+                            <td><a href="/docs/agent-overview#post-useragentpricingpreview"><code>POST /UserAgent/PricingPreview</code></a></td>
+                          </tr>
+                        </tbody>
+                      </table>
                     </div>
-                    Read responses from <code>POST /UserAgent/Detail</code> expose the composed <code>customskills[]</code> array (preference skills + non-cron user-created skills), the <code>scheduledskills[]</code> array (cron skills), and the <code>skills[]</code> array of enabled skill names as top-level fields on the useragent object.
+                  </div>
+                  <div class="info-callout">
+                    <p>Read responses from <code>POST /UserAgent/Detail</code> expose the composed <code>customskills[]</code> array (preference skills + non-cron user-created skills), the <code>scheduledskills[]</code> array (cron skills), and the <code>skills[]</code> array of enabled skill names as top-level fields on the useragent object.</p>
                   </div>
 
                   <section id="skill-registry-vs-custom">
@@ -13344,11 +13360,11 @@ app.get('/settings/social', (req, res) => {
                             <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
                           </thead>
                           <tbody>
-                            <tr><td><code>category</code></td><td>string</td><td>No</td><td>Filter by <code>"int"</code> (integration with a third-party service) or <code>"rule"</code> (rule-only — no credential, no external API).</td></tr>
+                            <tr><td><code>category</code></td><td>string</td><td>No</td><td>Filter by <code>"int"</code> (integration with a third-party service) or <code>"util"</code> (utility / rule-only — no credential, no external API).</td></tr>
                             <tr><td><code>capability</code></td><td>string</td><td>No</td><td>Filter by capability key (see <a href="#post-skillscapabilities"><code>POST /Skills/Capabilities</code></a>).</td></tr>
                             <tr><td><code>user_invocable</code></td><td>boolean</td><td>No</td><td>When <code>true</code>, only return skills end users can call directly through chat.</td></tr>
                             <tr><td><code>requires_credentials</code></td><td>boolean</td><td>No</td><td>Filter by whether the skill requires a credential.</td></tr>
-                            <tr><td><code>wiro_connect_pending</code></td><td>boolean</td><td>No</td><td>Filter by the "Wiro mode coming soon" flag.</td></tr>
+                            <tr><td><code>wiro_connect_pending</code></td><td>boolean</td><td>No</td><td>Filter by the "Wiro mode coming soon" flag (Meta, LinkedIn, and TikTok integrations whose Wiro-shared OAuth client is awaiting App Review).</td></tr>
                             <tr><td><code>name_in</code></td><td>array&lt;string&gt;</td><td>No</td><td>Restrict the response to a specific list of skill names.</td></tr>
                           </tbody>
                         </table>
@@ -13359,7 +13375,7 @@ app.get('/settings/social', (req, res) => {
                     <pre><code class="language-json">{
   "result": true,
   "errors": [],
-  "total": 87,
+  "total": 40,
   "skills": [
     {
       "name": "int-instagram-post",
@@ -13374,7 +13390,6 @@ app.get('/settings/social', (req, res) => {
       "docs_url": "integration-instagram-skills",
       "requires_credentials": true,
       "credential_key": "instagram",
-      "additional_credential_keys": [],
       "capabilities": ["social_publishing"],
       "depends_on": [],
       "conflicts_with": [],
@@ -13394,7 +13409,7 @@ app.get('/settings/social', (req, res) => {
     }
   ]
 }</code></pre>
-                    <p>Skill names always carry their registry prefix (<code>int-*</code> integration, <code>util-*</code> utility / rule-only, <code>cs-cron-*</code> bundled cron). Use the exact <code>name</code> value in <code>SkillsApply</code> and <code>Deploy.body.skills</code>.</p>
+                    <p>Skill names always carry their registry prefix (<code>int-*</code> integration or <code>util-*</code> utility / rule-only). <code>cs-*</code> and <code>cs-cron-*</code> are user-level customskills, not registry rows. Use the exact <code>name</code> value in <code>SkillsApply</code> and <code>Deploy.body.skills</code>. <code>pricing.credit_costs</code> always carries <code>message</code> / <code>create</code> / <code>modify</code> / <code>regenerate</code>; voice-realtime skills (<code>util-voice-receptionist</code>, <code>util-voice-call-prep</code>, <code>util-web-channel</code>, <code>int-twilio-channel</code>, <code>int-google-calendar</code>) also expose <code>realtime</code> — credits charged per second of realtime audio session. <code>additional_credential_keys</code> is omitted unless the skill writes a secondary credential (currently <code>int-appstore-reviews</code> and <code>int-googleplay-reviews</code> include <code>"var-support-email"</code>).</p>
 
                     <h2 id="post-skillsdetail"><span class="endpoint-badge post">POST</span> /Skills/Detail</h2>
                     <p>Returns a single skill by name.</p>
@@ -13405,7 +13420,7 @@ app.get('/settings/social', (req, res) => {
                             <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
                           </thead>
                           <tbody>
-                            <tr><td><code>name</code></td><td>string</td><td>Yes</td><td>Canonical skill name <strong>with prefix</strong> (e.g. <code>"int-instagram-post"</code>, <code>"util-html-strip"</code>, <code>"cs-cron-content-scanner"</code>).</td></tr>
+                            <tr><td><code>name</code></td><td>string</td><td>Yes</td><td>Canonical skill name <strong>with prefix</strong> (e.g. <code>"int-instagram-post"</code>, <code>"util-social-posting-common"</code>). Registry-only — <code>cs-*</code> and <code>cs-cron-*</code> user-level customskills are not exposed here.</td></tr>
                           </tbody>
                         </table>
                       </div>
@@ -13427,7 +13442,6 @@ app.get('/settings/social', (req, res) => {
     "docs_url": "integration-instagram-skills",
     "requires_credentials": true,
     "credential_key": "instagram",
-    "additional_credential_keys": [],
     "capabilities": ["social_publishing"],
     "depends_on": [],
     "conflicts_with": [],
@@ -13502,7 +13516,7 @@ app.get('/settings/social', (req, res) => {
     "used_by_skills": ["int-instagram-post"]
   }
 }</code></pre>
-                    <p>Returns the <strong>full registry credential entry</strong> — same shape as <a href="/docs/agent-credentials#post-credentialsdetail"><code>POST /Credentials/Detail</code></a>. Returns <code>{ "result": false, "errors": [{ "code": 404, "message": "No credential associated with skill: &lt;name&gt;" }] }</code> if the skill exists but has <code>credential_key: null</code> (rule-only / platform-managed) or if the skill is unknown.</p>
+                    <p>Returns the <strong>full registry credential entry</strong> — same shape as <a href="/docs/agent-credentials#post-credentialsdetail"><code>POST /Credentials/Detail</code></a>. Returns <code>{ "result": false, "errors": [{ "code": 404, "message": "No credential associated with skill: &lt;name&gt;" }] }</code> if the skill exists but has <code>credential_key: null</code> (<code>util</code> / platform-managed) or if the skill is unknown.</p>
 
                     <h2 id="post-skillscapabilities"><span class="endpoint-badge post">POST</span> /Skills/Capabilities</h2>
                     <p>Returns the closed-set vocabulary of high-level capability tags. Use this to build a "Find skills that can: ___" picker in your UI, or to filter <code>Skills/List</code> via the <code>capability</code> parameter.</p>
@@ -13541,7 +13555,16 @@ app.get('/settings/social', (req, res) => {
     { "name": "review_monitoring",        "description": "Monitor store reviews (App Store, Google Play)" },
     { "name": "app_metadata",             "description": "Fetch app store metadata (description, pricing, features)" },
     { "name": "event_management",         "description": "Manage app events (App Store in-app events)" },
-    { "name": "file_asset_management",    "description": "Manage asset files from cloud storage (Drive)" }
+    { "name": "file_asset_management",    "description": "Manage asset files from cloud storage (Drive)" },
+    { "name": "voice_call_handling",      "description": "Receive and handle inbound voice calls via Twilio or web browser" },
+    { "name": "caller_identification",    "description": "Match caller phone number against CRM records (HubSpot, Apollo)" },
+    { "name": "live_transcript",          "description": "Stream real-time call transcripts to operator chat" },
+    { "name": "voice_persona",            "description": "Configure AI voice persona (alloy/echo/etc) for phone interactions" },
+    { "name": "phone_inbound",            "description": "Accept inbound PSTN phone calls (Twilio)" },
+    { "name": "browser_voice",            "description": "Accept inbound voice calls from website browser (Web Audio API)" },
+    { "name": "appointment_management",   "description": "Manage calendar appointments (find slots, create events)" },
+    { "name": "calendar_lookup",          "description": "Read calendar/availability data (Google Calendar)" },
+    { "name": "realtime_session_prep",    "description": "Pre-call orchestration: bridge ↔ agent handshake before realtime audio starts (read operator's cs-* custom skills, run realtime model, callback to bridge)" }
   ]
 }</code></pre>
                     <p>Capability names are <strong>snake_case</strong> strings. Pass any of them as the <code>capability</code> parameter to <code>Skills/List</code> to filter (e.g. <code>{ "capability": "social_publishing" }</code> returns every skill that publishes to a social platform).</p>
@@ -14077,7 +14100,7 @@ app.get('/settings/social', (req, res) => {
 
                   <section id="skills-toggling-integrations">
                     <h2>Toggling Integration Skills</h2>
-                    <p>The top-level <code>skills[]</code> array on <code>UserAgent/Detail</code> lists the integration skills currently enabled on the instance (e.g. <code>[{ "name": "int-instagram-post" }, { "name": "int-googleads-manage" }]</code>). To enable, disable, or change tier in one shot, use <strong><code>POST /UserAgent/SkillsApply</code></strong> — even when you only want to flip a single skill, send it as a one-entry <code>skills</code> map. The endpoint:</p>
+                    <p>The top-level <code>skills[]</code> array on <code>UserAgent/Detail</code> lists the integration skills currently enabled on the instance as a flat <strong>string array</strong> of skill names (e.g. <code>["int-instagram-post", "int-googleads-manage", "int-wiro-generator"]</code>). To enable, disable, or change tier in one shot, use <strong><code>POST /UserAgent/SkillsApply</code></strong> — even when you only want to flip a single skill, send it as a one-entry <code>skills</code> map. The endpoint:</p>
                     <ol>
                       <li>Charges the wallet (or prorates) <strong>once</strong>, not N times.</li>
                       <li>Triggers exactly <strong>one container restart</strong> after the new skill set lands.</li>
@@ -14496,6 +14519,11 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
                               <td><a href="/docs/integration-googledrive-skills">Google Drive Skills</a></td>
                             </tr>
                             <tr>
+                              <td><code>int-google-calendar</code></td>
+                              <td><code>google-calendar</code> (Service Account)</td>
+                              <td><a href="/docs/integration-google-calendar-skills">Google Calendar Skills</a></td>
+                            </tr>
+                            <tr>
                               <td><code>int-gmail-check</code></td>
                               <td><code>gmail</code> (App Password)</td>
                               <td><a href="/docs/integration-gmail-skills">Gmail Skills</a></td>
@@ -14526,8 +14554,13 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
                               <td><a href="/docs/integration-appstore-skills">App Store Skills</a></td>
                             </tr>
                             <tr>
-                              <td><code>int-googleplay-reviews</code>, <code>int-googleplay-metadata</code>, <code>int-googleplay-events</code></td>
+                              <td><code>int-googleplay-reviews</code>, <code>int-googleplay-metadata</code></td>
                               <td><code>google-play</code> (Service Account)</td>
+                              <td><a href="/docs/integration-googleplay-skills">Google Play Skills</a></td>
+                            </tr>
+                            <tr>
+                              <td><code>int-googleplay-events</code></td>
+                              <td><code>google-play-apps</code> (Service Account — separate per-app registry)</td>
                               <td><a href="/docs/integration-googleplay-skills">Google Play Skills</a></td>
                             </tr>
                             <tr>
@@ -14539,6 +14572,11 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
                               <td><code>int-lemlist-outreach</code></td>
                               <td><code>lemlist</code> (API key)</td>
                               <td><a href="/docs/integration-lemlist-skills">Lemlist Skills</a></td>
+                            </tr>
+                            <tr>
+                              <td><code>int-twilio-channel</code></td>
+                              <td><code>twilio-voice</code> (API key)</td>
+                              <td><a href="/docs/voice-agent-twilio-channel">Twilio Voice Channel</a></td>
                             </tr>
                             <tr>
                               <td><code>int-wiro-generator</code></td>
@@ -14777,12 +14815,12 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
                     <p>Pick the skill names you want to enable. Each skill descriptor tells you:</p>
                     <ul>
                       <li><code>name</code> — the canonical skill key you'll send in <code>skills</code> / <code>skillOverrides</code></li>
-                      <li><code>category</code> — <code>int</code> (integration with a third-party service) or <code>rule</code> (rule-only, no credential)</li>
-                      <li><code>credential_key</code> — which credential the skill needs (<code>null</code> for rule-only or platform-managed skills)</li>
+                      <li><code>category</code> — <code>int</code> (integration with a third-party service) or <code>util</code> (utility / rule-only, no credential)</li>
+                      <li><code>credential_key</code> — which credential the skill needs (<code>null</code> for <code>util</code> / platform-managed skills)</li>
                       <li><code>requires_credentials</code> — boolean, whether the user must supply a credential before the skill can run</li>
                       <li><code>depends_on</code> — array of skill names that must also be enabled (Wiro auto-enables transitive deps)</li>
                       <li><code>conflicts_with</code> — array of skill names that cannot coexist with this one</li>
-                      <li><code>pricing</code> — the per-skill pricing recipe (<code>base_price_usd</code>, <code>base_credits</code>, <code>credit_costs.{message,create,modify,regenerate}</code>)</li>
+                      <li><code>pricing</code> — the per-skill pricing recipe (<code>monthly_price_weight_usd</code>, <code>monthly_credits_weight</code>, <code>credit_costs.{message,create,modify,regenerate}</code> plus optional <code>realtime</code> for voice skills)</li>
                     </ul>
                     <div class="info-callout"><p>Use <a href="/docs/agent-skills#post-skillscapabilities"><code>POST /Skills/Capabilities</code></a> to discover the closed-set capability vocabulary (the high-level tasks skills can perform). Useful when you want to find every skill that can "post-content" or "send-email".</p></div>
                   </section>
@@ -20172,6 +20210,201 @@ Agent → POST /v1beta/properties/123456789:runReport
                 </article>
               </div>
 
+              <!-- ==================== INTEGRATION: GOOGLE CALENDAR ==================== -->
+              <div class="docs-page-section" data-page="integration-google-calendar-skills" style="display: none">
+                <article class="docs-section">
+                  <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/integration-google-calendar-skills.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/integration-google-calendar-skills.md" download class="docs-section-md-btn">Download</a></div>
+                  <h1>Google Calendar Integration</h1>
+                  <p class="section-subtitle">Connect your agent to Google Calendar for reading availability and drafting events — used primarily by appointment-booking and voice-receptionist agents.</p>
+
+                  <section id="overview">
+                    <h2>Overview</h2>
+                    <p>The Google Calendar integration uses a Google Cloud service account with calendar access delegated by the operator. You create the service account in your own Google Cloud project, share the calendar(s) you want the agent to manage with the service account email, and the agent reads/writes events on those shared calendars only.</p>
+                    <p>This is the <strong>same auth pattern as <a href="/docs/integration-googledrive-skills">Google Drive</a> and <a href="/docs/integration-googleplay-skills">Google Play</a></strong> — service account JSON, no OAuth.</p>
+                    <p><strong>Skills that use this integration:</strong></p>
+                    <ul>
+                      <li><code>int-google-calendar</code> — Read calendar availability, find open time slots, draft / create / modify events via Google Calendar API v3.</li>
+                    </ul>
+                    <p><strong>Agents that typically enable this integration:</strong></p>
+                    <ul>
+                      <li><a href="/docs/agent-use-cases">Voice Receptionist</a> (appointment booking during inbound calls)</li>
+                      <li><a href="https://wiro.ai/agents/barber-booking" target="_blank" rel="noopener">Barber Booking</a> and other small-business booking agents</li>
+                      <li>Custom agents that need calendar awareness (availability lookups, scheduling)</li>
+                    </ul>
+                  </section>
+
+                  <section id="availability">
+                    <h2>Availability</h2>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Mode</th><th>Status</th><th>Notes</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td>Service Account JSON</td>
+                              <td>Available</td>
+                              <td>Google Cloud service account with Google Calendar API enabled. Calendars shared by the operator.</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section id="prerequisites">
+                    <h2>Prerequisites</h2>
+                    <ul>
+                      <li><strong>A Wiro API key</strong> — <a href="/docs/authentication">Authentication</a>.</li>
+                      <li><strong>A deployed agent</strong> — <a href="/docs/agent-overview">Agent Overview</a>.</li>
+                      <li><strong>A Google account</strong> with the calendar(s) you want the agent to manage.</li>
+                      <li><strong>A Google Cloud project</strong> to host the service account.</li>
+                    </ul>
+                  </section>
+
+                  <section id="setup">
+                    <h2>Setup</h2>
+
+                    <h3>Step 1: Enable the Google Calendar API</h3>
+                    <p><a href="https://console.cloud.google.com/" target="_blank" rel="noopener">Google Cloud Console</a> → select project → <strong>APIs &amp; Services → Library</strong> → <strong>Google Calendar API</strong> → <strong>Enable</strong>.</p>
+
+                    <h3>Step 2: Create a service account</h3>
+                    <ol>
+                      <li><strong>IAM &amp; Admin → Service accounts → Create service account</strong>.</li>
+                      <li>Name it (e.g. <code>wiro-calendar-agent</code>) → <strong>Create and continue</strong>.</li>
+                      <li>Skip role grants → <strong>Done</strong>.</li>
+                      <li>Open the service account → <strong>Keys → Add key → Create new key → JSON</strong>. Download the JSON file.</li>
+                      <li>Note the service account email — format: <code>wiro-calendar-agent@YOUR-PROJECT.iam.gserviceaccount.com</code>.</li>
+                    </ol>
+                    <div class="info-callout"><p><strong>Tip:</strong> In <strong><a href="https://wiro.ai/panel/agents" target="_blank" rel="noopener">My Agents</a></strong> → open your agent → <strong>Credentials</strong>, you can upload the JSON via the file picker; the service account email is detected and surfaced with a <strong>Copy</strong> button.</p></div>
+
+                    <h3>Step 3: Share the calendar with the service account</h3>
+                    <ol>
+                      <li>Open <a href="https://calendar.google.com" target="_blank" rel="noopener">Google Calendar</a>.</li>
+                      <li>Hover the calendar in the left sidebar → ⋮ → <strong>Settings and sharing</strong>.</li>
+                      <li>Scroll to <strong>Share with specific people or groups</strong> → <strong>Add people or groups</strong>.</li>
+                      <li>Paste the service account email from Step 2.</li>
+                      <li>Set permissions to <strong>Make changes to events</strong> (read + write) → <strong>Send</strong>.</li>
+                    </ol>
+                    <div class="info-callout">
+                      <p><strong>Which calendar?</strong></p>
+                      <ul>
+                        <li><strong>Personal</strong> — share your primary calendar (<code>primary</code>) for solo operators.</li>
+                        <li><strong>Business / shared</strong> — create a dedicated calendar (e.g. <code>Bookings</code>) so appointments stay separate from personal events. Copy its <strong>Calendar ID</strong> from <strong>Settings → Integrate calendar → Calendar ID</strong> (looks like <code>abcd1234@group.calendar.google.com</code>).</li>
+                      </ul>
+                    </div>
+
+                    <h3>Step 4: Save credentials to Wiro</h3>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "google-calendar", "fieldname": "serviceaccountjson",  "fieldvalue": "&lt;base64-encoded service account JSON&gt;" },
+      { "credentialkey": "google-calendar", "fieldname": "calendarid",          "fieldvalue": "primary" },
+      { "credentialkey": "google-calendar", "fieldname": "timezone",            "fieldvalue": "Europe/Istanbul" },
+      { "credentialkey": "google-calendar", "fieldname": "slotdurationminutes", "fieldvalue": "30" }
+    ]
+  }'</code></pre>
+                    <p>Or upload directly through the panel: <strong><a href="https://wiro.ai/panel/agents" target="_blank" rel="noopener">My Agents</a></strong> → open agent → <strong>Credentials → Google Calendar</strong>.</p>
+
+                    <h3>Step 5: Start the agent</h3>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'</code></pre>
+                  </section>
+
+                  <section id="credential-fields">
+                    <h2>Credential Fields</h2>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td><code>serviceaccountjson</code></td>
+                              <td>string (base64-encoded JSON)</td>
+                              <td>Yes</td>
+                              <td>Service account credentials JSON, base64-encoded. Encrypted at rest. Max 50 KB.</td>
+                            </tr>
+                            <tr>
+                              <td><code>calendarid</code></td>
+                              <td>string</td>
+                              <td>Yes</td>
+                              <td>Which calendar to read/write. Use <code>primary</code> for the service account's own calendar, or a full Calendar ID like <code>abcd1234@group.calendar.google.com</code> for shared business calendars.</td>
+                            </tr>
+                            <tr>
+                              <td><code>timezone</code></td>
+                              <td>string</td>
+                              <td>No</td>
+                              <td>IANA timezone identifier (e.g. <code>Europe/Istanbul</code>, <code>America/New_York</code>, <code>Asia/Tokyo</code>). Used for slot suggestions, reminders, and event creation. Falls back to the calendar's own timezone if unset.</td>
+                            </tr>
+                            <tr>
+                              <td><code>slotdurationminutes</code></td>
+                              <td>number</td>
+                              <td>No</td>
+                              <td>Default appointment length in minutes when offering callers available slots. Common values: <code>15</code>, <code>30</code>, <code>45</code>, <code>60</code>.</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section id="credentials-schema">
+                    <h2>Credentials schema (as returned by <code>POST /UserAgent/Detail</code>)</h2>
+                    <pre><code class="language-json">"google-calendar": {
+  "_connected": true,
+  "optional": false,
+  "extra": false,
+  "serviceaccountjson": "***encrypted***",
+  "calendarid": "primary",
+  "timezone": "Europe/Istanbul",
+  "slotdurationminutes": 30
+}</code></pre>
+                  </section>
+
+                  <section id="combined-use-appointment-booking">
+                    <h2>Combined Use: Appointment Booking via Voice</h2>
+                    <p>When paired with <a href="/docs/voice-agent-twilio-channel">Twilio Voice Channel</a> on a <a href="https://wiro.ai/agents/voice-receptionist" target="_blank" rel="noopener">Voice Receptionist</a> agent, the typical flow is:</p>
+                    <ol>
+                      <li>Caller dials your Twilio number → agent answers.</li>
+                      <li>Caller asks "I'd like to book a haircut Tuesday at 3 PM" → agent checks availability against the configured calendar.</li>
+                      <li>If the slot is open → agent confirms → drafts the event.</li>
+                      <li>If conflicting → agent offers nearest free slots based on <code>slotdurationminutes</code>.</li>
+                      <li>Post-call, the agent can also draft a confirmation email via <a href="/docs/integration-brevo-skills">Brevo</a> or <a href="/docs/integration-sendgrid-skills">SendGrid</a> using the caller's email captured during the call.</li>
+                    </ol>
+                  </section>
+
+                  <section id="troubleshooting">
+                    <h2>Troubleshooting</h2>
+                    <ul>
+                      <li><strong>403 <code>notFound</code>:</strong> The service account does not have access to the calendar. Re-share the calendar (Step 3) and confirm the email matches exactly (no trailing whitespace).</li>
+                      <li><strong>403 <code>accessNotConfigured</code>:</strong> Google Calendar API isn't enabled in the Cloud project. Re-do Step 1.</li>
+                      <li><strong>400 <code>invalid_grant</code>:</strong> Service account JSON is malformed or the private key was rotated. Generate a new key and re-upload.</li>
+                      <li><strong>Events appear in wrong timezone:</strong> Set <code>timezone</code> explicitly. Without it, Google falls back to the calendar's own timezone, which may differ from your operator's expectations.</li>
+                      <li><strong>403 <code>forbiddenForServiceAccounts</code> on personal Gmail calendars:</strong> Some personal Google accounts restrict service-account writes. Use a dedicated Google Workspace calendar or a regular Google account that allows it.</li>
+                    </ul>
+                  </section>
+
+                  <section id="related">
+                    <h2>Related</h2>
+                    <ul>
+                      <li><a href="/docs/agent-credentials">Agent Credentials &amp; OAuth</a></li>
+                      <li><a href="/docs/agent-skills">Agent Skills</a></li>
+                      <li><a href="/docs/voice-agent-twilio-channel">Twilio Voice Channel</a> — pair for inbound voice booking</li>
+                      <li><a href="/docs/integration-brevo-skills">Brevo Skills</a> / <a href="/docs/integration-sendgrid-skills">SendGrid Skills</a> — confirmation email drafts</li>
+                      <li><a href="/docs/integration-hubspot-skills">HubSpot Skills</a> — log appointment as CRM activity</li>
+                    </ul>
+                  </section>
+                </article>
+              </div>
+
               <!-- ==================== INTEGRATION: GMAIL ==================== -->
               <div class="docs-page-section" data-page="integration-gmail-skills" style="display: none">
                 <article class="docs-section">
@@ -21984,6 +22217,263 @@ base64 -b 0 play-service-account.json &gt; play-sa.b64</code></pre>
                 </article>
               </div>
 
+              <!-- ==================== INTEGRATION: TWILIO VOICE CHANNEL ==================== -->
+              <div class="docs-page-section" data-page="voice-agent-twilio-channel" style="display: none">
+                <article class="docs-section">
+                  <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/voice-agent-twilio-channel.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/voice-agent-twilio-channel.md" download class="docs-section-md-btn">Download</a></div>
+                  <h1>Twilio Voice Channel</h1>
+                  <p class="section-subtitle">Connect inbound phone calls (PSTN) to a Wiro agent. Used by the Voice Receptionist agent and any custom agent that needs to answer real phone calls.</p>
+
+                  <section id="overview">
+                    <h2>Overview</h2>
+                    <p>Toggle <code>int-twilio-channel</code> on a useragent and Wiro auto-enables the bundled voice rules (<code>util-voice-receptionist</code> + <code>util-voice-call-prep</code>) via the registry's <code>depends_on</code> chain — you don't need to enable them separately.</p>
+                    <p><strong>Skills that use this credential:</strong></p>
+                    <ul>
+                      <li><code>int-twilio-channel</code> — Twilio Voice channel.</li>
+                    </ul>
+                    <p><strong>Agents that typically enable this integration:</strong></p>
+                    <ul>
+                      <li><a href="https://wiro.ai/agents/voice-receptionist" target="_blank" rel="noopener">Voice Receptionist</a> (phone-receptionist for SMBs)</li>
+                      <li>Custom agents that handle inbound calls</li>
+                    </ul>
+                    <div class="info-callout"><p><strong>Twilio bills you separately</strong> on your Twilio account (per inbound minute + per number rental + per TTS character when hold uses TTS). Wiro doesn't proxy Twilio billing.</p></div>
+                  </section>
+
+                  <section id="availability">
+                    <h2>Availability</h2>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Mode</th><th>Status</th><th>Notes</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td>API Key (Account SID + Auth Token)</td>
+                              <td>Available</td>
+                              <td>Twilio Live Credentials. Wiro auto-configures each number's <code>VoiceUrl</code> on save.</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section id="webhook-auto-configuration">
+                    <h2>Webhook auto-configuration</h2>
+                    <p>You don't touch the Twilio Console's webhook fields manually — when you save this credential through <code>POST /UserAgent/CredentialUpsert</code> (or the panel), Wiro uses your Account SID + Auth Token to auto-configure each phone number's <code>VoiceUrl</code> and <code>StatusCallback</code>. No separate "Setup webhooks" step.</p>
+                    <div class="info-callout"><p><strong>Important:</strong> the number's <strong>Configure with</strong> mode in the Twilio Console must be <em>Webhook, TwiML Bin, Function, Studio Flow, Proxy Service</em> (Twilio's default). Wiro does <strong>not</strong> drive <em>TwiML App</em> or <em>SIP Trunk</em> routing — flip the number back to <em>Webhook</em> in the Twilio Console first if it's set to one of those.</p></div>
+                  </section>
+
+                  <section id="prerequisites">
+                    <h2>Prerequisites</h2>
+                    <ul>
+                      <li><strong>A Wiro API key</strong> — <a href="/docs/authentication">Authentication</a>.</li>
+                      <li><strong>A deployed agent</strong> (Voice Receptionist preset or any custom agent with <code>int-twilio-channel</code> enabled) — <a href="/docs/agent-overview">Agent Overview</a>.</li>
+                      <li><strong>A Twilio account</strong> with at least one purchased phone number.</li>
+                    </ul>
+                  </section>
+
+                  <section id="setup">
+                    <h2>Setup</h2>
+
+                    <h3>Step 1: Get your Twilio Live Credentials</h3>
+                    <ol>
+                      <li><a href="https://console.twilio.com/us1/account/keys-credentials/api-keys" target="_blank" rel="noopener">Twilio Console → Account → Keys &amp; Credentials → API keys &amp; tokens</a>.</li>
+                      <li>In the <strong>Live credentials</strong> section at the top of the page, copy:
+                        <ul>
+                          <li><strong>Account SID</strong> — 34 chars, starts with <code>AC</code>.</li>
+                          <li><strong>Auth Token</strong> — click <em>Show</em> to reveal. 32-char secret.</li>
+                        </ul>
+                      </li>
+                    </ol>
+                    <div class="info-callout"><p><strong>Don't confuse with API Keys.</strong> The lower part of the same page lists <em>API Keys</em> — those are a different mechanism Wiro doesn't use. Use the Live Auth Token specifically — an API Key Secret pasted here will silently fail every call.</p></div>
+
+                    <h3>Step 2: Buy or import phone numbers</h3>
+                    <p><a href="https://console.twilio.com/us1/develop/phone-numbers/manage/incoming" target="_blank" rel="noopener">Twilio Console → Phone Numbers → Active numbers</a> → <strong>Buy a number</strong>. Pick a number with <strong>Voice</strong> capability (toll-free, local, or international as desired).</p>
+                    <p>Numbers must be in <strong>E.164</strong> format when you save them to Wiro:</p>
+                    <ul>
+                      <li>Starts with <code>+</code></li>
+                      <li>Country code first (no leading <code>0</code>)</li>
+                      <li>Digits only — no spaces, dashes, or parentheses</li>
+                      <li>Max 15 digits total</li>
+                    </ul>
+                    <p><strong>Examples:</strong> <code>+14155551234</code> (US), <code>+447911123456</code> (UK), <code>+905551234567</code> (Turkey), <code>+5511955256325</code> (Brazil).</p>
+
+                    <h3>Step 3: Save credentials to Wiro</h3>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "twilio-voice", "fieldname": "accountsid",      "fieldvalue": "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" },
+      { "credentialkey": "twilio-voice", "fieldname": "authtoken",       "fieldvalue": "your-32-character-auth-token" },
+      { "credentialkey": "twilio-voice", "parentfield": "phonenumbers", "ordinal": 0, "fieldname": "value", "fieldvalue": "+14155551234" },
+      { "credentialkey": "twilio-voice", "fieldname": "maxcallseconds",  "fieldvalue": "600" },
+      { "credentialkey": "twilio-voice", "fieldname": "holdstrategy",    "fieldvalue": "text_then_music" },
+      { "credentialkey": "twilio-voice", "fieldname": "holdtext",        "fieldvalue": "Please hold while we connect you to our assistant." },
+      { "credentialkey": "twilio-voice", "fieldname": "holdvoice",       "fieldvalue": "Polly.Joanna-Neural" }
+    ]
+  }'</code></pre>
+                    <p>Or save through the panel: <strong><a href="https://wiro.ai/panel/agents" target="_blank" rel="noopener">My Agents</a></strong> → open agent → <strong>Credentials → Twilio Voice</strong>. The panel form auto-validates Account SID format and runs <em>Setup webhooks</em> on save.</p>
+
+                    <h3>Step 4: Verify webhook configuration</h3>
+                    <p>After saving credentials, the response includes:</p>
+                    <ul>
+                      <li><code>twilioWebhooksUpdated</code> — numbers whose <code>VoiceUrl</code> was successfully written.</li>
+                      <li><code>twilioWebhookSkipped</code> — numbers skipped, with the reason (e.g. <em>no matching IncomingPhoneNumber on Twilio account</em>).</li>
+                      <li><code>twilioWebhooksFailed</code> — Twilio API errors per number, if any.</li>
+                    </ul>
+                    <p>You can also confirm in the Twilio Console: open the number → <strong>Voice Configuration</strong> → <strong>A call comes in</strong> should show:</p>
+                    <ul>
+                      <li><strong>Configure with</strong> → <em>Webhook, TwiML Bin, Function, Studio Flow, Proxy Service</em></li>
+                      <li><strong>Webhook URL</strong> → a Wiro voice handler URL</li>
+                      <li><strong>HTTP</strong> → <em>POST</em></li>
+                    </ul>
+
+                    <h3>Step 5: Start the agent and place a test call</h3>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'</code></pre>
+                    <p>Once the agent is in status <code>4</code> (running), dial your Twilio number from any phone. You should hear the configured hold experience for ~5–8 seconds, then the agent's greeting.</p>
+                  </section>
+
+                  <section id="credential-fields">
+                    <h2>Credential Fields</h2>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td><code>accountsid</code></td>
+                              <td>string</td>
+                              <td>Yes</td>
+                              <td>Twilio Account SID — 34 chars starting with <code>AC</code>.</td>
+                            </tr>
+                            <tr>
+                              <td><code>authtoken</code></td>
+                              <td>string (secret)</td>
+                              <td>Yes</td>
+                              <td>Twilio Live Auth Token — 32-char secret. Stored encrypted at rest.</td>
+                            </tr>
+                            <tr>
+                              <td><code>phonenumbers</code></td>
+                              <td>string array</td>
+                              <td>Yes</td>
+                              <td>E.164-formatted phone numbers this agent will answer. All numbers share the same agent settings (hold media, persona, skills).</td>
+                            </tr>
+                            <tr>
+                              <td><code>maxcallseconds</code></td>
+                              <td>number</td>
+                              <td>No</td>
+                              <td>Hard cap per call in seconds. Default <code>600</code> (10 min). When reached, the call is force-ended and the caller hears a fallback message. Twilio still bills for the full duration up to this cap.</td>
+                            </tr>
+                            <tr>
+                              <td><code>whitelistedcallers</code></td>
+                              <td>string array</td>
+                              <td>No</td>
+                              <td>E.164-formatted caller-ID allowlist. <strong>Non-empty</strong> → only listed numbers reach the agent (others get a busy signal). <strong>Empty</strong> → all callers accepted (production default). Use to add only your own number while testing in production.</td>
+                            </tr>
+                            <tr>
+                              <td><code>holdstrategy</code></td>
+                              <td>enum</td>
+                              <td>No</td>
+                              <td>What the caller hears during the ~5–8 sec window it takes the agent to connect. Options: <code>none</code>, <code>text</code>, <code>audio</code>, <code>music</code>, <code>audio_then_music</code>, <code>text_then_music</code>. <em>"X + background music"</em> options are the most polished.</td>
+                            </tr>
+                            <tr>
+                              <td><code>holdtext</code></td>
+                              <td>string</td>
+                              <td>Conditional</td>
+                              <td>Required when <code>holdstrategy</code> ∈ {<code>text</code>, <code>text_then_music</code>}. TTS text — keep to 1 sentence (~5–8s spoken). Hard cap 3000 chars. Supports SSML tags (<code>&lt;break&gt;</code>, <code>&lt;prosody&gt;</code>, <code>&lt;say-as&gt;</code>).</td>
+                            </tr>
+                            <tr>
+                              <td><code>holdvoice</code></td>
+                              <td>enum</td>
+                              <td>Conditional</td>
+                              <td>TTS voice for <code>holdtext</code>. Empty = use Twilio account default. 21 voices available (AWS Polly Neural / Generative + Google Chirp3-HD), each tied to a single language: <code>Polly.Joanna-Neural</code> (en-US), <code>Polly.Burcu-Neural</code> (tr-TR), <code>Polly.Lea-Neural</code> (fr-FR), etc. Generative tier is most human-like but priced higher per character.</td>
+                            </tr>
+                            <tr>
+                              <td><code>holdaudio</code></td>
+                              <td>file (MP3/WAV)</td>
+                              <td>Conditional</td>
+                              <td>Required when <code>holdstrategy</code> ∈ {<code>audio</code>, <code>audio_then_music</code>}. Short greeting (5–15 s recommended), mono, max 10 MB.</td>
+                            </tr>
+                            <tr>
+                              <td><code>holdmusic</code></td>
+                              <td>file (MP3/WAV)</td>
+                              <td>Conditional</td>
+                              <td>Required when <code>holdstrategy</code> ∈ {<code>music</code>, <code>audio_then_music</code>, <code>text_then_music</code>}. Background music that loops while the caller waits. Mono, max 10 MB. 30–60 s sweet spot. <strong>Use royalty-free music</strong> — you are responsible for licensing.</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <div class="info-callout"><p><strong>Twilio cannot mix speech over music simultaneously</strong> — for a voice-over-music intro, pre-mix both into a single audio file and use <code>holdstrategy: audio</code> (or <code>audio_then_music</code> if you also want the loop after).</p></div>
+                  </section>
+
+                  <section id="credentials-schema">
+                    <h2>Credentials schema (as returned by <code>POST /UserAgent/Detail</code>)</h2>
+                    <pre><code class="language-json">"twilio-voice": {
+  "_connected": true,
+  "optional": false,
+  "extra": false,
+  "accountsid": "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "authtoken": "***encrypted***",
+  "phonenumbers": ["+14155551234"],
+  "maxcallseconds": 600,
+  "whitelistedcallers": [],
+  "holdstrategy": "text_then_music",
+  "holdtext": "Please hold while we connect you to our assistant.",
+  "holdvoice": "Polly.Joanna-Neural",
+  "holdaudio": null,
+  "holdmusic": "https://cdn.wiro.ai/uploads/.../music.mp3"
+}</code></pre>
+                  </section>
+
+                  <section id="pairing-with-other-skills">
+                    <h2>Pairing With Other Skills</h2>
+                    <p>Pair this channel with skills that supply the conversation behavior:</p>
+                    <ul>
+                      <li><a href="/docs/integration-google-calendar-skills"><code>int-google-calendar</code></a> — read availability + draft appointments during the call.</li>
+                      <li><a href="/docs/integration-hubspot-skills"><code>int-hubspot-crm</code></a> — match caller phone number against CRM contacts and log call outcomes.</li>
+                      <li><a href="/docs/integration-brevo-skills"><code>int-brevo-email</code></a> / <a href="/docs/integration-sendgrid-skills"><code>int-sendgrid-email</code></a> / <a href="/docs/integration-mailchimp-skills"><code>int-mailchimp-email</code></a> — draft post-call confirmation or follow-up emails.</li>
+                    </ul>
+                    <p>The Voice Receptionist preset bundles this channel together with the voice rules and Brevo/HubSpot credentials by default — see <a href="/docs/agent-use-cases">Agent Use Cases</a> for the full preset.</p>
+                  </section>
+
+                  <section id="troubleshooting">
+                    <h2>Troubleshooting</h2>
+                    <ul>
+                      <li><strong>All calls fail with signature error:</strong> You probably pasted an <em>API Key Secret</em> instead of the live <em>Auth Token</em>. Re-paste from the <strong>Live credentials</strong> section of the Twilio Console.</li>
+                      <li><strong>Number isn't in <code>twilioWebhooksUpdated</code>:</strong> The number isn't on the Twilio account whose Account SID you provided. Either buy the number on this account, or import it from the source account. The skip reason <code>no matching IncomingPhoneNumber on Twilio account</code> confirms this.</li>
+                      <li><strong>Caller hears Twilio's default voicemail:</strong> The number's <em>Configure with</em> is set to <em>TwiML App</em> or <em>SIP Trunk</em> — flip it back to <em>Webhook</em> in the Twilio Console, then re-save credentials in Wiro to re-write <code>VoiceUrl</code>.</li>
+                      <li><strong>Calls cut off at exactly N seconds:</strong> That's <code>maxcallseconds</code>. Raise it for longer use cases.</li>
+                      <li><strong>Hold music plays forever, agent never speaks:</strong> The agent failed to start the realtime conversation. Check <code>POST /UserAgent/Logs</code> for errors.</li>
+                      <li><strong>Caller hears your fallback message but no agent:</strong> <code>maxcallseconds</code> was reached before the agent connected, or the agent crashed mid-call. Check <code>POST /UserAgent/Logs</code>.</li>
+                      <li><strong>Whitelisted caller still gets busy signal:</strong> Ensure E.164 format. Twilio normalizes inbound numbers — if your test phone presents itself as <code>4155551234</code> instead of <code>+14155551234</code>, the allowlist won't match. Add both forms while testing.</li>
+                      <li><strong>Rotated the Auth Token in Twilio Console:</strong> Re-paste the new token in Wiro and save again — the credential save also re-runs the webhook setup.</li>
+                    </ul>
+                  </section>
+
+                  <section id="related">
+                    <h2>Related</h2>
+                    <ul>
+                      <li><a href="/docs/agent-credentials" class="docs-link">Agent Credentials &amp; OAuth</a></li>
+                      <li><a href="/docs/agent-skills" class="docs-link">Agent Skills</a> — toggle skills on/off, configure preferences and crons</li>
+                      <li><a href="/docs/agent-use-cases" class="docs-link">Agent Use Cases</a> — Voice Receptionist preset</li>
+                      <li><a href="/docs/integration-google-calendar-skills" class="docs-link">Google Calendar Skills</a> — pair for inbound voice booking</li>
+                      <li><a href="/docs/integration-hubspot-skills" class="docs-link">HubSpot Skills</a> — caller identification + CRM logging</li>
+                      <li><a href="https://www.twilio.com/docs/voice" class="docs-link" target="_blank" rel="noopener">Twilio Voice docs</a></li>
+                    </ul>
+                  </section>
+                </article>
+              </div>
+
               <!-- ==================== AGENT USE CASES ==================== -->
               <div class="docs-page-section" data-page="agent-use-cases" style="display: none">
                 <article class="docs-section">
@@ -21991,6 +22481,54 @@ base64 -b 0 play-service-account.json &gt; play-sa.b64</code></pre>
 
                   <h1>Agent Use Cases</h1>
                   <p class="section-subtitle">Build products with autonomous AI agents using the Wiro API.</p>
+
+                  <section id="see-these-use-cases-on-the-web">
+                    <h2>See These Use Cases on the Web</h2>
+                    <p>Wiro publishes interactive, fullscreen showcases for the most common agent use cases. Each one walks through a real product story end-to-end — build, deploy, daily operation, brand-voice authoring, scheduled autopilot, and a self-healing climax under an upstream API break — so you can see what the patterns below look like before writing any code.</p>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Showcase</th>
+                              <th>What you'll see</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td><strong><a href="https://wiro.ai/agents/usecase/ad-campaign-agent" target="_blank" rel="noopener">Ad Campaign Manager</a></strong></td>
+                              <td>Drape Studio (bespoke tailoring) running Google Ads + Meta Ads on autopilot — Brand Voice + Budget Control as plain-English skills, AI video ads, OAuth publish, Day-3 auto-pause, weekly review, and a self-heal under the Google Ads API v14 sunset.</td>
+                            </tr>
+                            <tr>
+                              <td><strong><a href="https://wiro.ai/agents/usecase/app-event-agent" target="_blank" rel="noopener">App Event Manager</a></strong></td>
+                              <td>Nova (creative video + effects app) — Calendarific holiday scan across 7 markets, Nano Banana Pro dual-aspect covers, multi-language event copy, App Store Connect publish, autonomous monthly briefing, self-heal under a 503.</td>
+                            </tr>
+                            <tr>
+                              <td><strong><a href="https://wiro.ai/agents/usecase/app-review-agent" target="_blank" rel="noopener">App Review Replies</a></strong></td>
+                              <td>Prism (photo + video editor) — App Store + Google Play replies, Brand Voice + Reply Policy markdown skills, multilingual drafts, dev-team Slack escalation for 1★ crashes, monthly sentiment report, self-heal under token expiry.</td>
+                            </tr>
+                            <tr>
+                              <td><strong><a href="https://wiro.ai/agents/usecase/barber-booking-agent" target="_blank" rel="noopener">Barber Booking</a></strong></td>
+                              <td>Scissor Hands salon — WhatsApp + Google Calendar bookings, multi-staff routing with role-based privacy, customer memory, scheduled daily/monthly digests, self-heal under a Calendar API break.</td>
+                            </tr>
+                            <tr>
+                              <td><strong><a href="https://wiro.ai/agents/usecase/customer-winback-agent" target="_blank" rel="noopener">Customer Win-Back</a></strong></td>
+                              <td>Swift Sweep (chimney + fireplace service) — HubSpot CRM segmentation, Brand Voice + Customer Scorer + Seasonal Reminder as markdown skills, AI seasonal covers, batch WhatsApp send, scheduled autumn run, self-heal under a HubSpot v2 → v3 contacts API deprecation.</td>
+                            </tr>
+                            <tr>
+                              <td><strong><a href="https://wiro.ai/agents/usecase/ecommerce-listing-agent" target="_blank" rel="noopener">Ecommerce Listings</a></strong></td>
+                              <td>Coral &amp; Crest (swimwear) — 5 Wiro AI models (Virtual Try-On, Product-on-Model, Background Remover, Cover Image, Description), multilingual copy, auto-publish to WordPress + Instagram + Shopify, 84-product Google-Drive bulk-autonomy climax.</td>
+                            </tr>
+                            <tr>
+                              <td><strong><a href="https://wiro.ai/agents/usecase/restaurant-review-agent" target="_blank" rel="noopener">Restaurant Reviews</a></strong></td>
+                              <td>Green Bottle Coffee — daily chat-based approvals, scheduled reports, anomaly dispatch, self-heal under a Reviews API deprecation. The "no pitch deck required" demo.</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <p>You can also browse every available pre-built agent at <a href="https://wiro.ai/agents/browse" target="_blank" rel="noopener">wiro.ai/agents/browse</a> (the visual mirror of <a href="/docs/agent-overview#post-agentlist" class="docs-link"><code>POST /Agent/List</code></a>). Each agent template has its own marketing page at <code>wiro.ai/agents/{slug}</code> — for example <a href="https://wiro.ai/agents/social-manager" target="_blank" rel="noopener">wiro.ai/agents/social-manager</a>, <a href="https://wiro.ai/agents/voice-receptionist" target="_blank" rel="noopener">wiro.ai/agents/voice-receptionist</a>, or <a href="https://wiro.ai/agents/blog-content-editor" target="_blank" rel="noopener">wiro.ai/agents/blog-content-editor</a> — with screenshots, default skills, credential requirements, and live tier pricing. The full URL for each agent in the <a href="#available-agents" class="docs-link">Available Agents</a> table below is <code>https://wiro.ai/agents/{slug}</code>.</p>
+                  </section>
 
                   <section id="two-deployment-patterns">
                     <h2>Two Deployment Patterns</h2>
@@ -22015,48 +22553,53 @@ base64 -b 0 play-service-account.json &gt; play-sa.b64</code></pre>
                           <tbody>
                             <tr>
                               <td>Digital marketing agency dashboard</td>
-                              <td>Social Manager</td>
+                              <td><a href="https://wiro.ai/agents/social-manager" target="_blank" rel="noopener">Social Manager</a></td>
                               <td>Each client connects their own Twitter, Instagram, Facebook, TikTok, LinkedIn</td>
                             </tr>
                             <tr>
                               <td>Mobile app company</td>
-                              <td>App Review Support</td>
+                              <td><a href="https://wiro.ai/agents/app-review-support" target="_blank" rel="noopener">App Review Support</a></td>
                               <td>Each app has its own App Store / Google Play credentials</td>
                             </tr>
                             <tr>
                               <td>E-commerce platform</td>
-                              <td>Google Ads Manager + Meta Ads Manager</td>
+                              <td><a href="https://wiro.ai/agents/google-ads-manager" target="_blank" rel="noopener">Google Ads Manager</a> + <a href="https://wiro.ai/agents/meta-ads-manager" target="_blank" rel="noopener">Meta Ads Manager</a></td>
                               <td>Each advertiser connects their own ad accounts</td>
                             </tr>
                             <tr>
                               <td>Marketing SaaS</td>
-                              <td>Newsletter Manager</td>
+                              <td><a href="https://wiro.ai/agents/newsletter-manager" target="_blank" rel="noopener">Newsletter Manager</a></td>
                               <td>Each customer connects their own Brevo/SendGrid/Mailchimp</td>
                             </tr>
                             <tr>
                               <td>Sales platform</td>
-                              <td>Lead Generation Manager</td>
+                              <td><a href="https://wiro.ai/agents/lead-gen-manager" target="_blank" rel="noopener">Lead Generation Manager</a></td>
                               <td>Each sales team connects their own Apollo/Lemlist</td>
                             </tr>
                             <tr>
                               <td>Content agency tool</td>
-                              <td>Blog Content Editor</td>
+                              <td><a href="https://wiro.ai/agents/blog-content-editor" target="_blank" rel="noopener">Blog Content Editor</a></td>
                               <td>Each client connects their own WordPress site</td>
                             </tr>
                             <tr>
                               <td>App publisher platform</td>
-                              <td>App Event Manager</td>
+                              <td><a href="https://wiro.ai/agents/app-event-manager" target="_blank" rel="noopener">App Event Manager</a></td>
                               <td>Each app has its own App Store credentials</td>
                             </tr>
                             <tr>
                               <td>Mobile app publisher</td>
-                              <td>Push Notification Manager</td>
+                              <td><a href="https://wiro.ai/agents/push-notification-manager" target="_blank" rel="noopener">Push Notification Manager</a></td>
                               <td>Each app has its own Firebase service account</td>
                             </tr>
                             <tr>
                               <td>Customer engagement tool</td>
-                              <td>Social Manager</td>
+                              <td><a href="https://wiro.ai/agents/social-manager" target="_blank" rel="noopener">Social Manager</a></td>
                               <td>Each brand manages their own social presence</td>
+                            </tr>
+                            <tr>
+                              <td>Phone-receptionist platform for SMBs</td>
+                              <td><a href="https://wiro.ai/agents/voice-receptionist" target="_blank" rel="noopener">Voice Receptionist</a></td>
+                              <td>Each business has its own Twilio number, HubSpot CRM, and Google Calendar</td>
                             </tr>
                           </tbody>
                         </table>
@@ -22257,56 +22800,61 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
                           </thead>
                           <tbody>
                             <tr>
-                              <td><strong>Social Manager</strong></td>
+                              <td><strong><a href="https://wiro.ai/agents/social-manager" target="_blank" rel="noopener">Social Manager</a></strong></td>
                               <td>Create, schedule, and publish social media content</td>
                               <td>Twitter/X, Instagram, Facebook, TikTok, LinkedIn (OAuth)</td>
                             </tr>
                             <tr>
-                              <td><strong>Blog Content Editor</strong></td>
+                              <td><strong><a href="https://wiro.ai/agents/blog-content-editor" target="_blank" rel="noopener">Blog Content Editor</a></strong></td>
                               <td>Write and publish blog posts (WordPress draft + publish workflow)</td>
                               <td>WordPress (App Password), Gmail (optional, for inbox requests)</td>
                             </tr>
                             <tr>
-                              <td><strong>Google Ads Manager</strong></td>
+                              <td><strong><a href="https://wiro.ai/agents/google-ads-manager" target="_blank" rel="noopener">Google Ads Manager</a></strong></td>
                               <td>Create and optimize Google Ads campaigns, daily performance reports</td>
                               <td>Google Ads (OAuth), Calendarific (platform-managed), Google Drive (optional)</td>
                             </tr>
                             <tr>
-                              <td><strong>Meta Ads Manager</strong></td>
+                              <td><strong><a href="https://wiro.ai/agents/meta-ads-manager" target="_blank" rel="noopener">Meta Ads Manager</a></strong></td>
                               <td>Manage Facebook and Instagram ad campaigns, audience analysis</td>
                               <td>Meta Ads (OAuth), Calendarific (platform-managed), Google Drive (optional)</td>
                             </tr>
                             <tr>
-                              <td><strong>Newsletter Manager</strong></td>
+                              <td><strong><a href="https://wiro.ai/agents/newsletter-manager" target="_blank" rel="noopener">Newsletter Manager</a></strong></td>
                               <td>Design and send email newsletters to subscriber lists</td>
                               <td>Brevo, SendGrid, Mailchimp, HubSpot (any one — API key or OAuth)</td>
                             </tr>
                             <tr>
-                              <td><strong>Lead Generation Manager</strong></td>
+                              <td><strong><a href="https://wiro.ai/agents/lead-gen-manager" target="_blank" rel="noopener">Lead Generation Manager</a></strong></td>
                               <td>Find and enrich leads, run multi-channel outreach, analyze replies</td>
                               <td>Apollo (API key), Lemlist (API key), HubSpot (optional, for CRM sync)</td>
                             </tr>
                             <tr>
-                              <td><strong>App Review Support</strong></td>
+                              <td><strong><a href="https://wiro.ai/agents/app-review-support" target="_blank" rel="noopener">App Review Support</a></strong></td>
                               <td>Monitor app store reviews, draft responses in operator's tone</td>
                               <td>App Store Connect (private key JWT), Google Play (service account)</td>
                             </tr>
                             <tr>
-                              <td><strong>App Event Manager</strong></td>
-                              <td>Scan global holidays, suggest and create App Store in-app events</td>
-                              <td>App Store Connect (JWT), Calendarific (platform-managed)</td>
+                              <td><strong><a href="https://wiro.ai/agents/app-event-manager" target="_blank" rel="noopener">App Event Manager</a></strong></td>
+                              <td>Scan global holidays, suggest and create App Store + Google Play in-app events</td>
+                              <td>App Store Connect (JWT), Google Play (service account), Calendarific (platform-managed)</td>
                             </tr>
                             <tr>
-                              <td><strong>Push Notification Manager</strong></td>
+                              <td><strong><a href="https://wiro.ai/agents/push-notification-manager" target="_blank" rel="noopener">Push Notification Manager</a></strong></td>
                               <td>Craft locale- and timezone-aware push notifications, queue dispatch</td>
                               <td>Firebase (service account JSON per app), Calendarific (platform-managed)</td>
+                            </tr>
+                            <tr>
+                              <td><strong><a href="https://wiro.ai/agents/voice-receptionist" target="_blank" rel="noopener">Voice Receptionist</a></strong></td>
+                              <td>Answer phone calls 24/7 with a real-time AI receptionist — recognises callers from CRM, books from your calendar, drafts CRM notes + follow-up emails, streams a live transcript to chat</td>
+                              <td>Twilio Voice (Account SID, Auth Token, phone number) for inbound phone; HubSpot (optional, caller recognition); Google Calendar (optional, slot lookup); Google Drive (optional); Brevo or HubSpot (any one, optional, follow-up email drafts); Telegram bot (optional, operator approvals)</td>
                             </tr>
                           </tbody>
                         </table>
                       </div>
                     </div>
                     <p class="docs-callout">
-                      <em>The list above matches the 9 agent templates currently deployed in production. The exact set can evolve over time; fetch <code>POST /Agent/List</code> for the live catalog.</em>
+                      <em>The list above matches the agent templates currently deployed in production. The exact set evolves over time as new templates ship — fetch <code>POST /Agent/List</code> for the live catalog. Each agent's full marketing page lives at <code>https://wiro.ai/agents/{slug}</code> (linked in the first column).</em>
                     </p>
 
                     <h3>Deploying an Agent</h3>

@@ -1971,10 +1971,12 @@ The endpoints below cover the full programmatic surface. If you also want to see
 |------|-----|----------------|
 | **AI Agents Home** | [wiro.ai/agents](https://wiro.ai/agents) | Top-level landing — what Wiro Agents are, how they compare to traditional setups, and a featured selection from the marketplace. |
 | **Learn About Agents** | [wiro.ai/agents/learn](https://wiro.ai/agents/learn) | Concept primer — pricing model, security model, deployment lifecycle, and the difference between marketplace templates and custom builds. |
+| **Anatomy of an Agent** | [wiro.ai/agents/anatomy](https://wiro.ai/agents/anatomy) | Fullscreen interactive walkthrough of the pieces that make a Wiro agent reason — system prompt, knowledge, skills, memory, guardrails, model, tools, scheduling, and observability. |
 | **Build Your Own Agent** | [wiro.ai/agents/build](https://wiro.ai/agents/build) | The web wizard for the same custom-build flow exposed by [`POST /UserAgent/Deploy`](#post-useragentdeploy) with `custom: true`. Useful for previewing the skill picker / pricing breakdown before scripting it. |
-| **Browse Agents** | [wiro.ai/browse-agents](https://wiro.ai/browse-agents) | Full marketplace catalog with categories, descriptions, screenshots, and per-agent tier prices — the visual mirror of [`POST /Agent/List`](#post-agentlist). |
+| **Browse Agents** | [wiro.ai/agents/browse](https://wiro.ai/agents/browse) | Full marketplace catalog with categories, descriptions, screenshots, and per-agent tier prices — the visual mirror of [`POST /Agent/List`](#post-agentlist). Each row links to a dedicated agent page at `/agents/{slug}`. |
+| **Use Case Showcases** | [wiro.ai/agents/usecase/...](https://wiro.ai/agents) | Seven fullscreen, auto-looping product stories that show real businesses operated end-to-end by a Wiro agent. See [Agent Use Cases](#see-these-use-cases-on-the-web) for the full list. |
 
-> All four pages are public — no Wiro account required to browse. Sign-in becomes mandatory only when you click "Deploy" on a specific agent (which then drops you into the Wiro dashboard at [wiro.ai/panel/agents](https://wiro.ai/panel/agents)).
+> All pages are public — no Wiro account required to browse. Sign-in becomes mandatory only when you click "Deploy" on a specific agent (which then drops you into the Wiro dashboard at [wiro.ai/panel/agents](https://wiro.ai/panel/agents)).
 
 ## What are Wiro Agents?
 
@@ -2665,7 +2667,7 @@ Retrieves full details for a single deployed agent instance, including subscript
 | `remainingcredits` | `number` | Computed: `max(0, monthlycredits + extracredits - usedcredits)`. |
 | `creditperiod` | `string` | `'YYYY-MM'` tag of the current billing window. Rolls over on subscription renewal. |
 | `creditsyncat` | `number\|null` | Unix seconds of the last agent → API usage sync (null before the first report). |
-| `peractioncosts` | `object` | `{ message, create, modify, regenerate }` — credits charged per action. Computed as `max()` across enabled skills' `pricing.credit_costs`. |
+| `peractioncosts` | `object` | Credits charged per action. Common keys: `message`, `create`, `modify`, `regenerate`. Voice-realtime agents (those with `util-voice-receptionist` etc. enabled) also expose `realtime` — credits per second of realtime audio session. Computed as `max()` across enabled skills' `pricing.credit_costs`. |
 | `teamsessionmode` | `string` | Session isolation mode for team agents (`"collaborative"` or `"private"` — empty string for solo agents). |
 | `subscription` | `object\|null` | Active subscription info, or `null` if no subscription. `subscription.plan` is `"agent"`, `subscription.provider` is `"prepaid"` for API-deployed instances. |
 | `agent` | `object` | Parent agent template info (title, slug, cover, `tiers`, `tiermultiplier`, `extracreditpacks`). For custom builds this is a synthesized placeholder containing the same shape with `agent.custom: true`. |
@@ -3215,8 +3217,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
 | `restartedAt` | `number\|null` | Unix seconds when the restart trigger fired. `null` when `restartTriggered` is `false`. |
 | `pricing.previousPriceUsd` / `newPriceUsd` / `deltaUsd` | `number` | USD totals before / after the apply, plus the signed delta. |
 | `pricing.previousMonthlyCredits` / `newMonthlyCredits` / `deltaCredits` | `number` | Monthly credit allocation before / after, plus the signed delta. |
-| `pricing.enabledSkills` | `array<string>` | Final enabled skill set including transitive `depends_on` closure — same skill names you'd see on `useragent.skills[].name` in the next `Detail` call. |
-| `pricing.peractioncosts` | `object` | The `{ message, create, modify, regenerate }` per-action burn rates that follow from the new skill set. |
+| `pricing.enabledSkills` | `array<string>` | Final enabled skill set including transitive `depends_on` closure — same skill name strings you'd see in `useragent.skills` (a flat string array) on the next `Detail` call. |
+| `pricing.peractioncosts` | `object` | Per-action burn rates that follow from the new skill set: `{ message, create, modify, regenerate }`, plus `realtime` (per-second audio session cost) when a voice-realtime skill is in the new set. |
 
 ##### Common error codes
 
@@ -4276,12 +4278,12 @@ curl -X POST "https://api.wiro.ai/v1/Skills/List" \
 Pick the skill names you want to enable. Each skill descriptor tells you:
 
 - `name` — the canonical skill key you'll send in `skills` / `skillOverrides`
-- `category` — `int` (integration with a third-party service) or `rule` (rule-only, no credential)
-- `credential_key` — which credential the skill needs (`null` for rule-only or platform-managed skills)
+- `category` — `int` (integration with a third-party service) or `util` (utility / rule-only, no credential)
+- `credential_key` — which credential the skill needs (`null` for `util` / platform-managed skills)
 - `requires_credentials` — boolean, whether the user must supply a credential before the skill can run
 - `depends_on` — array of skill names that must also be enabled (Wiro auto-enables transitive deps)
 - `conflicts_with` — array of skill names that cannot coexist with this one
-- `pricing` — the per-skill pricing recipe (`base_price_usd`, `base_credits`, `credit_costs.{message,create,modify,regenerate}`)
+- `pricing` — the per-skill pricing recipe (`monthly_price_weight_usd`, `monthly_credits_weight`, `credit_costs.{message,create,modify,regenerate}` plus optional `realtime` for voice skills)
 
 > **Use [`POST /Skills/Capabilities`](/docs/agent-skills#post-skillscapabilities)** to discover the closed-set capability vocabulary (the high-level tasks skills can perform). Useful when you want to find every skill that can "post-content" or "send-email".
 
@@ -6910,16 +6912,16 @@ Wiro agents connect to external services — social platforms, ad networks, emai
 
 Each external service is documented as its own **integration page** with the complete setup walkthrough, API reference, troubleshooting, and multi-tenant architecture notes. Use the catalog below to jump to the one you need.
 
-> **Read & write paths at a glance:**
->
-> | Operation | Endpoint |
-> |-----------|----------|
-> | Browse all credentials in the registry | [`POST /Credentials/List`](#post-credentialslist) (public) |
-> | Inspect a single credential schema | [`POST /Credentials/Detail`](#post-credentialsdetail) (public) |
-> | Find the credential a skill needs | [`POST /Skills/CredentialSchema`](/docs/agent-skills#post-skillscredentialschema) (public) |
-> | Write one or more credential fields | [`POST /UserAgent/CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert) |
-> | Read version history of a credential | [`POST /UserAgent/CredentialFieldHistory`](/docs/agent-overview#post-useragentcredentialfieldhistory) |
->
+**Read & write paths at a glance:**
+
+| Operation | Endpoint |
+|-----------|----------|
+| Browse all credentials in the registry | [`POST /Credentials/List`](#post-credentialslist) (public) |
+| Inspect a single credential schema | [`POST /Credentials/Detail`](#post-credentialsdetail) (public) |
+| Find the credential a skill needs | [`POST /Skills/CredentialSchema`](/docs/agent-skills#post-skillscredentialschema) (public) |
+| Write one or more credential fields | [`POST /UserAgent/CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert) |
+| Read version history of a credential | [`POST /UserAgent/CredentialFieldHistory`](/docs/agent-overview#post-useragentcredentialfieldhistory) |
+
 > Read responses from `POST /UserAgent/Detail` / `POST /UserAgent/MyAgents` expose the composed `credentials` tree (each provider with its `_connected` / `optional` / `extra` / `_editable` / `_schema` flags), the `customskills[]` array, the `scheduledskills[]` array (cron skills), the `skills[]` array of enabled skill names, the `peractioncosts` object, and the flat credit fields (`monthlycredits`, `extracredits`, `usedcredits`, `remainingcredits`, `creditperiod`, `creditsyncat`) as **top-level fields** on the useragent object. See [Agent Overview](/docs/agent-overview) for the full endpoint catalog.
 
 ## Credential Registry Endpoints
@@ -6933,7 +6935,7 @@ Lists all credentials in the registry.
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `credential_mode` | string | No | Filter by mode: `"oauth"`, `"sa"` (service account), `"api_key"`, `"multi_api_key"`, `"hybrid"` (OAuth + API key fallback), `"imap_credentials"`, `"jwt_sa"`, `"rule_only"`. |
-| `wiro_connect_pending` | boolean | No | Filter by the "Wiro mode coming soon" flag (Meta integrations while Wiro's app is under review). |
+| `wiro_connect_pending` | boolean | No | Filter by the "Wiro mode coming soon" flag (Meta, LinkedIn, and TikTok credentials while Wiro's app is awaiting App Review). |
 
 ##### Response
 
@@ -7016,7 +7018,7 @@ Lists all credentials in the registry.
 | `docs_url` | `string\|null` | Slug of the integration page on this docs site. Frontends prefix with `/docs/`. |
 | `credential_mode` | `string` | One of `"oauth"`, `"sa"` (service account), `"api_key"`, `"multi_api_key"`, `"hybrid"` (OAuth + API key fallback), `"imap_credentials"`, `"jwt_sa"`, `"rule_only"`. |
 | `connection_modes` | `array<string>` | Auth modes the credential supports (`["wiro", "own"]` for OAuth, `["api_key"]` for API key, `["sa"]` for service account). Drives the auth-method picker. |
-| `wiro_connect_pending` | `boolean` | When `true`, Wiro's shared OAuth client is awaiting provider review (Meta family). Forces **own** mode until the platform clears review. |
+| `wiro_connect_pending` | `boolean` | When `true`, Wiro's shared OAuth client is awaiting provider review (currently the Meta family — `facebook-pages`, `instagram`, `meta-ads` — plus `linkedin` and `tiktok`). End users see a "Wiro mode coming soon" badge in the connection picker; in the meantime they can connect via **own** mode using their own developer app. |
 | `credential_schema` | `array<field>` | Per-field schema describing the credential form. Each entry: `{ key, type, label, required, placeholder?, pattern?, help?, options?, default?, show_toggle?, oauth_managed?, auto_filled_by_oauth?, readonly_when_connected?, only_in_modes?, platform_managed?, item_schema?, item_type? }`. |
 | `oauth_provider` | `object\|null` | OAuth wiring (endpoints, button styling, picker config) when `credential_mode` includes OAuth. `null` for non-OAuth credentials. |
 | `used_by_skills` | `array<string>` | Skill names that consume this credential. |
@@ -7125,9 +7127,9 @@ Returns `{ "result": false, "errors": [{ "code": 404, "message": "Credential not
 | Twitter / X | Wiro + Own | [Twitter Skills](/docs/integration-twitter-skills) |
 | TikTok | Wiro + Own | [TikTok Skills](/docs/integration-tiktok-skills) |
 | Google Ads | Wiro + Own | [Google Ads Skills](/docs/integration-googleads-skills) |
-| YouTube | Wiro + Own | See [Google Ads Skills](/docs/integration-googleads-skills) (same OAuth client) |
-| Google Analytics 4 | Wiro + Own | See [Google Ads Skills](/docs/integration-googleads-skills) (same OAuth client) |
-| Merchant Center | Wiro + Own | See [Google Ads Skills](/docs/integration-googleads-skills) (same OAuth client) |
+| YouTube | Wiro + Own | [YouTube Skills](/docs/integration-youtube-skills) (shares Google OAuth client with Google Ads) |
+| Google Analytics 4 | Wiro + Own | [Google Analytics 4 Skills](/docs/integration-ga4-skills) (shares Google OAuth client with Google Ads) |
+| Merchant Center | Wiro + Own | [Merchant Center Skills](/docs/integration-merchantcenter-skills) (shares Google OAuth client with Google Ads) |
 | HubSpot | Wiro + Own | [HubSpot Skills](/docs/integration-hubspot-skills) |
 | Mailchimp | Wiro + Own + API Key | [Mailchimp Skills](/docs/integration-mailchimp-skills) |
 
@@ -7138,6 +7140,7 @@ Returns `{ "result": false, "errors": [{ "code": 404, "message": "Credential not
 | Integration | Setup Guide |
 |-------------|-------------|
 | Google Drive | [Google Drive Skills](/docs/integration-googledrive-skills) |
+| Google Calendar | [Google Calendar Skills](/docs/integration-google-calendar-skills) |
 | Google Play | [Google Play Skills](/docs/integration-googleplay-skills) |
 
 > **Meta Platforms availability:** While Wiro's shared Meta App is under review by Meta, the Meta Ads, Facebook Page, and Instagram integrations must be connected using your own Meta Developer App in Development Mode. No App Review is required — users who are listed in your app's Roles (Testers/Developers) can connect without review. See each integration page for step-by-step setup.
@@ -7155,6 +7158,7 @@ Returns `{ "result": false, "errors": [{ "code": 404, "message": "Credential not
 | Lemlist | [Lemlist Skills](/docs/integration-lemlist-skills) |
 | Brevo | [Brevo Skills](/docs/integration-brevo-skills) |
 | SendGrid | [SendGrid Skills](/docs/integration-sendgrid-skills) |
+| Twilio Voice | [Twilio Voice Channel](/docs/voice-agent-twilio-channel) |
 
 ## Platform-Managed Credentials
 
@@ -7686,23 +7690,22 @@ app.get('/settings/integrations', (req, res) => {
 
 Configure agent behavior with editable preferences, scheduled automation tasks, and skill toggles. Browse the platform's skill registry and inspect every skill's pricing, capabilities, and credential requirements.
 
-> **Read & write paths at a glance:**
->
-> | Operation | Endpoint |
-> |-----------|----------|
-> | Browse all skills (registry) | [`POST /Skills/List`](#post-skillslist) (public) |
-> | Inspect a single skill | [`POST /Skills/Detail`](#post-skillsdetail) (public) |
-> | Find the credential a skill needs | [`POST /Skills/CredentialSchema`](#post-skillscredentialschema) (public) |
-> | List the closed-set capability vocabulary | [`POST /Skills/Capabilities`](#post-skillscapabilities) (public) |
-> | Edit a preference skill's `value` or a cron's `interval`/`enabled` | [`POST /UserAgent/CustomSkillUpsert`](/docs/agent-overview#post-useragentcustomskillupsert) |
-> | Rename a user-created custom skill (key + optional description) | [`POST /UserAgent/CustomSkillRename`](/docs/agent-overview#post-useragentcustomskillrename) |
-> | Delete a user-created cron skill | [`POST /UserAgent/CustomSkillDelete`](/docs/agent-overview#post-useragentcustomskilldelete) |
-> | Read version history of a custom skill | [`POST /UserAgent/CustomSkillHistory`](/docs/agent-overview#post-useragentcustomskillhistory) |
-> | Revert a custom skill to preset / a historical version | [`POST /UserAgent/CustomSkillRevert`](/docs/agent-overview#post-useragentcustomskillrevert) |
-> | Toggle one or more integration skills (the top-level `skills` array, e.g. `int-instagram-post`) on/off | [`POST /UserAgent/SkillsApply`](/docs/agent-overview#post-useragentskillsapply) |
-> | Apply a batch of skill toggles + optional tier change | [`POST /UserAgent/SkillsApply`](/docs/agent-overview#post-useragentskillsapply) |
-> | Live tier-pricing preview for a hypothetical skill set | [`POST /UserAgent/PricingPreview`](/docs/agent-overview#post-useragentpricingpreview) |
->
+**Read & write paths at a glance:**
+
+| Operation | Endpoint |
+|-----------|----------|
+| Browse all skills (registry) | [`POST /Skills/List`](#post-skillslist) (public) |
+| Inspect a single skill | [`POST /Skills/Detail`](#post-skillsdetail) (public) |
+| Find the credential a skill needs | [`POST /Skills/CredentialSchema`](#post-skillscredentialschema) (public) |
+| List the closed-set capability vocabulary | [`POST /Skills/Capabilities`](#post-skillscapabilities) (public) |
+| Edit a preference skill's `value` or a cron's `interval`/`enabled` | [`POST /UserAgent/CustomSkillUpsert`](/docs/agent-overview#post-useragentcustomskillupsert) |
+| Rename a user-created custom skill (key + optional description) | [`POST /UserAgent/CustomSkillRename`](/docs/agent-overview#post-useragentcustomskillrename) |
+| Delete a user-created cron skill | [`POST /UserAgent/CustomSkillDelete`](/docs/agent-overview#post-useragentcustomskilldelete) |
+| Read version history of a custom skill | [`POST /UserAgent/CustomSkillHistory`](/docs/agent-overview#post-useragentcustomskillhistory) |
+| Revert a custom skill to preset / a historical version | [`POST /UserAgent/CustomSkillRevert`](/docs/agent-overview#post-useragentcustomskillrevert) |
+| Toggle one or more integration skills (the top-level `skills` array, e.g. `int-instagram-post`) on/off, with optional tier change | [`POST /UserAgent/SkillsApply`](/docs/agent-overview#post-useragentskillsapply) |
+| Live tier-pricing preview for a hypothetical skill set | [`POST /UserAgent/PricingPreview`](/docs/agent-overview#post-useragentpricingpreview) |
+
 > Read responses from `POST /UserAgent/Detail` expose the composed `customskills[]` array (preference skills + non-cron user-created skills), the `scheduledskills[]` array (cron skills), and the `skills[]` array of enabled skill names as top-level fields on the useragent object.
 
 ## Skill Registry vs Custom Skills
@@ -7726,11 +7729,11 @@ Lists all skills in the registry.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `category` | string | No | Filter by `"int"` (integration with a third-party service) or `"rule"` (rule-only — no credential, no external API). |
+| `category` | string | No | Filter by `"int"` (integration with a third-party service) or `"util"` (utility / rule-only — no credential, no external API). |
 | `capability` | string | No | Filter by capability key (see [`POST /Skills/Capabilities`](#post-skillscapabilities) for the closed-set vocabulary). |
-| `user_invocable` | boolean | No | When `true`, only return skills end users can call directly through chat. `wiro-generator` and other internal-only skills are hidden. |
+| `user_invocable` | boolean | No | When `true`, only return skills end users can call directly through chat. `int-wiro-generator` and other non-user-invocable skills are hidden. |
 | `requires_credentials` | boolean | No | Filter by whether the skill requires a credential. |
-| `wiro_connect_pending` | boolean | No | Filter by the "Wiro mode coming soon" flag (Meta integrations while Wiro's app is under review). |
+| `wiro_connect_pending` | boolean | No | Filter by the "Wiro mode coming soon" flag (Meta, LinkedIn, and TikTok integrations whose Wiro-shared OAuth client is awaiting App Review). |
 | `name_in` | array<string> | No | Restrict the response to a specific list of skill names. |
 
 ##### Response
@@ -7739,7 +7742,7 @@ Lists all skills in the registry.
 {
   "result": true,
   "errors": [],
-  "total": 87,
+  "total": 40,
   "skills": [
     {
       "name": "int-instagram-post",
@@ -7754,7 +7757,6 @@ Lists all skills in the registry.
       "docs_url": "integration-instagram-skills",
       "requires_credentials": true,
       "credential_key": "instagram",
-      "additional_credential_keys": [],
       "capabilities": ["social_publishing"],
       "depends_on": [],
       "conflicts_with": [],
@@ -7776,7 +7778,7 @@ Lists all skills in the registry.
 }
 ```
 
-Skill names always carry their registry prefix (`int-*` integration, `util-*` utility / rule-only, `cs-cron-*` bundled cron). `pricing.monthly_price_weight_usd` and `pricing.monthly_credits_weight` are the weights the resolver sums across the enabled-skill closure to compute Starter `monthlypriceusd` / `monthlycredits`; Pro multiplies the totals by `tiermultiplier`. `credit_costs` per action contributes via `max()` to the agent's `peractioncosts`.
+Skill names always carry their registry prefix (`int-*` integration or `util-*` utility / rule-only). `cs-*` and `cs-cron-*` are user-level customskills, not registry rows. `pricing.monthly_price_weight_usd` and `pricing.monthly_credits_weight` are the weights the resolver sums across the enabled-skill closure to compute Starter `monthlypriceusd` / `monthlycredits`; Pro multiplies the totals by `tiermultiplier`. `credit_costs` per action contributes via `max()` to the agent's `peractioncosts`. Voice-realtime skills (`util-voice-receptionist`, `util-voice-call-prep`, `util-web-channel`, `int-twilio-channel`, `int-google-calendar`) also expose a `realtime` action key — credits charged per second of realtime audio session. `additional_credential_keys` appears only on skills that write a secondary credential (currently `int-appstore-reviews` and `int-googleplay-reviews`, both writing the `var-support-email` variable bag).
 
 ### **POST** /Skills/Detail
 
@@ -7784,7 +7786,7 @@ Returns a single skill by name.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `name` | string | Yes | Canonical skill name **with prefix** (e.g. `"int-instagram-post"`, `"util-html-strip"`, `"cs-cron-content-scanner"`). |
+| `name` | string | Yes | Canonical skill name **with prefix** (e.g. `"int-instagram-post"`, `"util-social-posting-common"`). Registry-only — `cs-*` and `cs-cron-*` user-level customskills are not exposed here. |
 
 ##### Response
 
@@ -7805,7 +7807,6 @@ Returns a single skill by name.
     "docs_url": "integration-instagram-skills",
     "requires_credentials": true,
     "credential_key": "instagram",
-    "additional_credential_keys": [],
     "capabilities": ["social_publishing"],
     "depends_on": [],
     "conflicts_with": [],
@@ -7880,7 +7881,7 @@ Convenience endpoint — returns the credential entry for a given skill name in 
 }
 ```
 
-Returns the **full registry credential entry** — same shape as [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail). Returns `{ "result": false, "errors": [{ "code": 404, "message": "No credential associated with skill: <name>" }] }` if the skill exists but has `credential_key: null` (rule-only / platform-managed) or if the skill is unknown.
+Returns the **full registry credential entry** — same shape as [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail). Returns `{ "result": false, "errors": [{ "code": 404, "message": "No credential associated with skill: <name>" }] }` if the skill exists but has `credential_key: null` (`util` / platform-managed) or if the skill is unknown.
 
 ### **POST** /Skills/Capabilities
 
@@ -7923,7 +7924,16 @@ Returns the closed-set vocabulary of high-level capability tags. Use this to bui
     { "name": "review_monitoring",        "description": "Monitor store reviews (App Store, Google Play)" },
     { "name": "app_metadata",             "description": "Fetch app store metadata (description, pricing, features)" },
     { "name": "event_management",         "description": "Manage app events (App Store in-app events)" },
-    { "name": "file_asset_management",    "description": "Manage asset files from cloud storage (Drive)" }
+    { "name": "file_asset_management",    "description": "Manage asset files from cloud storage (Drive)" },
+    { "name": "voice_call_handling",      "description": "Receive and handle inbound voice calls via Twilio or web browser" },
+    { "name": "caller_identification",    "description": "Match caller phone number against CRM records (HubSpot, Apollo)" },
+    { "name": "live_transcript",          "description": "Stream real-time call transcripts to operator chat" },
+    { "name": "voice_persona",            "description": "Configure AI voice persona (alloy/echo/etc) for phone interactions" },
+    { "name": "phone_inbound",            "description": "Accept inbound PSTN phone calls (Twilio)" },
+    { "name": "browser_voice",            "description": "Accept inbound voice calls from website browser (Web Audio API)" },
+    { "name": "appointment_management",   "description": "Manage calendar appointments (find slots, create events)" },
+    { "name": "calendar_lookup",          "description": "Read calendar/availability data (Google Calendar)" },
+    { "name": "realtime_session_prep",    "description": "Pre-call orchestration: bridge ↔ agent handshake before realtime audio starts (read operator's cs-* custom skills, run realtime model, callback to bridge)" }
   ]
 }
 ```
@@ -8249,7 +8259,7 @@ The response carries the post-revert state (`current_value`, `current_interval`,
 
 ## Toggling Integration Skills
 
-The top-level `skills[]` array on `UserAgent/Detail` lists the integration skills currently enabled on the instance (e.g. `[{ "name": "int-instagram-post" }, { "name": "int-googleads-manage" }]`). To enable, disable, or change tier in one shot, use **`POST /UserAgent/SkillsApply`** — even when you only want to flip a single skill, send it as a one-entry `skills` map. The endpoint:
+The top-level `skills[]` array on `UserAgent/Detail` lists the integration skills currently enabled on the instance as a flat **string array** of skill names (e.g. `["int-instagram-post", "int-googleads-manage", "int-wiro-generator"]`). To enable, disable, or change tier in one shot, use **`POST /UserAgent/SkillsApply`** — even when you only want to flip a single skill, send it as a one-entry `skills` map. The endpoint:
 
 1. Charges the wallet (or prorates) **once**, not N times.
 2. Triggers exactly **one container restart** after the new skill set lands.
@@ -8498,15 +8508,18 @@ Skills that depend on third-party credentials. Follow the linked integration pag
 | `int-hubspot-crm` | `hubspot` (OAuth) | [HubSpot Skills](/docs/integration-hubspot-skills) |
 | `int-mailchimp-email` | `mailchimp` (OAuth or API key) | [Mailchimp Skills](/docs/integration-mailchimp-skills) |
 | `int-google-drive` | `google-drive` (Service Account) | [Google Drive Skills](/docs/integration-googledrive-skills) |
+| `int-google-calendar` | `google-calendar` (Service Account) | [Google Calendar Skills](/docs/integration-google-calendar-skills) |
 | `int-gmail-check` | `gmail` (App Password) | [Gmail Skills](/docs/integration-gmail-skills) |
 | `int-firebase-push` | `firebase` (Service Account) | [Firebase Skills](/docs/integration-firebase-skills) |
 | `int-wordpress-post` | `wordpress` (App Password) | [WordPress Skills](/docs/integration-wordpress-skills) |
 | `int-brevo-email` | `brevo` (API key) | [Brevo Skills](/docs/integration-brevo-skills) |
 | `int-sendgrid-email` | `sendgrid` (API key) | [SendGrid Skills](/docs/integration-sendgrid-skills) |
 | `int-appstore-reviews`, `int-appstore-metadata`, `int-appstore-events` | `apple-appstore` (JWT / Service Account) | [App Store Skills](/docs/integration-appstore-skills) |
-| `int-googleplay-reviews`, `int-googleplay-metadata`, `int-googleplay-events` | `google-play` (Service Account) | [Google Play Skills](/docs/integration-googleplay-skills) |
+| `int-googleplay-reviews`, `int-googleplay-metadata` | `google-play` (Service Account) | [Google Play Skills](/docs/integration-googleplay-skills) |
+| `int-googleplay-events` | `google-play-apps` (Service Account — separate per-app registry) | [Google Play Skills](/docs/integration-googleplay-skills) |
 | `int-apollo-sales` | `apollo` (API key) | [Apollo Skills](/docs/integration-apollo-skills) |
 | `int-lemlist-outreach` | `lemlist` (API key) | [Lemlist Skills](/docs/integration-lemlist-skills) |
+| `int-twilio-channel` | `twilio-voice` (API key) | [Twilio Voice Channel](/docs/voice-agent-twilio-channel) |
 | `int-wiro-generator` | Platform-managed (Wiro internal key) | See [Using Wiro AI Models from Your Agent](#using-wiro-ai-models-from-your-agent) |
 | `int-calendarific` | Platform-managed (no user key) | [Platform-Managed Credentials](/docs/agent-credentials#platform-managed-credentials) |
 
@@ -9361,6 +9374,22 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/LogsDelete" \
 
 Build products with autonomous AI agents using the Wiro API.
 
+## See These Use Cases on the Web
+
+Wiro publishes interactive, fullscreen showcases for the most common agent use cases. Each one walks through a real product story end-to-end — build, deploy, daily operation, brand-voice authoring, scheduled autopilot, and a self-healing climax under an upstream API break — so you can see what the patterns below look like before writing any code.
+
+| Showcase | What you'll see |
+|----------|-----------------|
+| **[Ad Campaign Manager](https://wiro.ai/agents/usecase/ad-campaign-agent)** | Drape Studio (bespoke tailoring) running Google Ads + Meta Ads on autopilot — Brand Voice + Budget Control as plain-English skills, AI video ads, OAuth publish, Day-3 auto-pause, weekly review, and a self-heal under the Google Ads API v14 sunset. |
+| **[App Event Manager](https://wiro.ai/agents/usecase/app-event-agent)** | Nova (creative video + effects app) — Calendarific holiday scan across 7 markets, Nano Banana Pro dual-aspect covers, multi-language event copy, App Store Connect publish, autonomous monthly briefing, self-heal under a 503. |
+| **[App Review Replies](https://wiro.ai/agents/usecase/app-review-agent)** | Prism (photo + video editor) — App Store + Google Play replies, Brand Voice + Reply Policy markdown skills, multilingual drafts, dev-team Slack escalation for 1★ crashes, monthly sentiment report, self-heal under token expiry. |
+| **[Barber Booking](https://wiro.ai/agents/usecase/barber-booking-agent)** | Scissor Hands salon — WhatsApp + Google Calendar bookings, multi-staff routing with role-based privacy, customer memory, scheduled daily/monthly digests, self-heal under a Calendar API break. |
+| **[Customer Win-Back](https://wiro.ai/agents/usecase/customer-winback-agent)** | Swift Sweep (chimney + fireplace service) — HubSpot CRM segmentation, Brand Voice + Customer Scorer + Seasonal Reminder as markdown skills, AI seasonal covers, batch WhatsApp send, scheduled autumn run, self-heal under a HubSpot v2 → v3 contacts API deprecation. |
+| **[Ecommerce Listings](https://wiro.ai/agents/usecase/ecommerce-listing-agent)** | Coral & Crest (swimwear) — 5 Wiro AI models (Virtual Try-On, Product-on-Model, Background Remover, Cover Image, Description), multilingual copy, auto-publish to WordPress + Instagram + Shopify, 84-product Google-Drive bulk-autonomy climax. |
+| **[Restaurant Reviews](https://wiro.ai/agents/usecase/restaurant-review-agent)** | Green Bottle Coffee — daily chat-based approvals, scheduled reports, anomaly dispatch, self-heal under a Reviews API deprecation. The "no pitch deck required" demo. |
+
+You can also browse every available pre-built agent at [wiro.ai/agents/browse](https://wiro.ai/agents/browse) (the visual mirror of [`POST /Agent/List`](#post-agentlist)). Each agent template has its own marketing page at `wiro.ai/agents/{slug}` — for example [wiro.ai/agents/social-manager](https://wiro.ai/agents/social-manager), [wiro.ai/agents/voice-receptionist](https://wiro.ai/agents/voice-receptionist), or [wiro.ai/agents/blog-content-editor](https://wiro.ai/agents/blog-content-editor) — with screenshots, default skills, credential requirements, and live tier pricing. The full URL for each agent in the [Available Agents](#available-agents) table below is `https://wiro.ai/agents/{slug}`.
+
 ## Two Deployment Patterns
 
 Every product built on Wiro agents follows one of two patterns. Choosing the right one depends on whether your users need to connect their own third-party accounts.
@@ -9377,15 +9406,16 @@ Most agents interact with external services — posting to social media, managin
 
 | Your Product | Agent Type | Why Per-Customer |
 |-------------|-----------|-----------------|
-| Digital marketing agency dashboard | Social Manager | Each client connects their own Twitter, Instagram, Facebook, TikTok, LinkedIn |
-| Mobile app company | App Review Support | Each app has its own App Store / Google Play credentials |
-| E-commerce platform | Google Ads Manager + Meta Ads Manager | Each advertiser connects their own ad accounts |
-| Marketing SaaS | Newsletter Manager | Each customer connects their own Brevo/SendGrid/Mailchimp |
-| Sales platform | Lead Generation Manager | Each sales team connects their own Apollo/Lemlist |
-| Content agency tool | Blog Content Editor | Each client connects their own WordPress site |
-| App publisher platform | App Event Manager | Each app has its own App Store credentials |
-| Mobile app publisher | Push Notification Manager | Each app has its own Firebase service account |
-| Customer engagement tool | Social Manager | Each brand manages their own social presence |
+| Digital marketing agency dashboard | [Social Manager](https://wiro.ai/agents/social-manager) | Each client connects their own Twitter, Instagram, Facebook, TikTok, LinkedIn |
+| Mobile app company | [App Review Support](https://wiro.ai/agents/app-review-support) | Each app has its own App Store / Google Play credentials |
+| E-commerce platform | [Google Ads Manager](https://wiro.ai/agents/google-ads-manager) + [Meta Ads Manager](https://wiro.ai/agents/meta-ads-manager) | Each advertiser connects their own ad accounts |
+| Marketing SaaS | [Newsletter Manager](https://wiro.ai/agents/newsletter-manager) | Each customer connects their own Brevo/SendGrid/Mailchimp |
+| Sales platform | [Lead Generation Manager](https://wiro.ai/agents/lead-gen-manager) | Each sales team connects their own Apollo/Lemlist |
+| Content agency tool | [Blog Content Editor](https://wiro.ai/agents/blog-content-editor) | Each client connects their own WordPress site |
+| App publisher platform | [App Event Manager](https://wiro.ai/agents/app-event-manager) | Each app has its own App Store credentials |
+| Mobile app publisher | [Push Notification Manager](https://wiro.ai/agents/push-notification-manager) | Each app has its own Firebase service account |
+| Customer engagement tool | [Social Manager](https://wiro.ai/agents/social-manager) | Each brand manages their own social presence |
+| Phone-receptionist platform for SMBs | [Voice Receptionist](https://wiro.ai/agents/voice-receptionist) | Each business has its own Twilio number, HubSpot CRM, and Google Calendar |
 
 ### Pattern 2: Session Per User
 
@@ -9536,17 +9566,18 @@ Wiro provides pre-built agent templates you can deploy immediately. Each agent s
 
 | Agent | What It Does | Credentials |
 |-------|-------------|-------------|
-| **Social Manager** | Create, schedule, and publish social media content | Twitter/X, Instagram, Facebook, TikTok, LinkedIn (OAuth) |
-| **Blog Content Editor** | Write and publish blog posts (WordPress draft + publish workflow) | WordPress (App Password), Gmail (optional, for inbox requests) |
-| **Google Ads Manager** | Create and optimize Google Ads campaigns, daily performance reports | Google Ads (OAuth), Calendarific (platform-managed), Google Drive (optional, Service Account) |
-| **Meta Ads Manager** | Manage Facebook and Instagram ad campaigns, audience analysis | Meta Ads (OAuth), Calendarific (platform-managed), Google Drive (optional, Service Account) |
-| **Newsletter Manager** | Design and send email newsletters to subscriber lists | Brevo, SendGrid, Mailchimp, HubSpot (any one — API key or OAuth) |
-| **Lead Generation Manager** | Find and enrich leads, run multi-channel outreach, analyze replies | Apollo (API key), Lemlist (API key), HubSpot (optional, for CRM sync) |
-| **App Review Support** | Monitor app store reviews, draft responses in operator's tone | App Store Connect (private key JWT), Google Play (service account) |
-| **App Event Manager** | Scan global holidays, suggest and create App Store in-app events | App Store Connect (JWT), Calendarific (platform-managed) |
-| **Push Notification Manager** | Craft locale- and timezone-aware push notifications, queue dispatch | Firebase (service account JSON per app), Calendarific (platform-managed) |
+| **[Social Manager](https://wiro.ai/agents/social-manager)** | Create, schedule, and publish social media content | Twitter/X, Instagram, Facebook, TikTok, LinkedIn (OAuth) |
+| **[Blog Content Editor](https://wiro.ai/agents/blog-content-editor)** | Write and publish blog posts (WordPress draft + publish workflow) | WordPress (App Password), Gmail (optional, for inbox requests) |
+| **[Google Ads Manager](https://wiro.ai/agents/google-ads-manager)** | Create and optimize Google Ads campaigns, daily performance reports | Google Ads (OAuth), Calendarific (platform-managed), Google Drive (optional, Service Account) |
+| **[Meta Ads Manager](https://wiro.ai/agents/meta-ads-manager)** | Manage Facebook and Instagram ad campaigns, audience analysis | Meta Ads (OAuth), Calendarific (platform-managed), Google Drive (optional, Service Account) |
+| **[Newsletter Manager](https://wiro.ai/agents/newsletter-manager)** | Design and send email newsletters to subscriber lists | Brevo, SendGrid, Mailchimp, HubSpot (any one — API key or OAuth) |
+| **[Lead Generation Manager](https://wiro.ai/agents/lead-gen-manager)** | Find and enrich leads, run multi-channel outreach, analyze replies | Apollo (API key), Lemlist (API key), HubSpot (optional, for CRM sync) |
+| **[App Review Support](https://wiro.ai/agents/app-review-support)** | Monitor app store reviews, draft responses in operator's tone | App Store Connect (private key JWT), Google Play (service account) |
+| **[App Event Manager](https://wiro.ai/agents/app-event-manager)** | Scan global holidays, suggest and create App Store + Google Play in-app events | App Store Connect (JWT), Google Play (service account), Calendarific (platform-managed) |
+| **[Push Notification Manager](https://wiro.ai/agents/push-notification-manager)** | Craft locale- and timezone-aware push notifications, queue dispatch | Firebase (service account JSON per app), Calendarific (platform-managed) |
+| **[Voice Receptionist](https://wiro.ai/agents/voice-receptionist)** | Answer phone calls 24/7 with a real-time AI receptionist — recognises callers from CRM, books from your calendar, drafts CRM notes + follow-up emails, streams a live transcript to chat | Twilio Voice (Account SID, Auth Token, phone number) for inbound phone; HubSpot (optional, caller recognition); Google Calendar (optional, slot lookup); Google Drive (optional); Brevo or HubSpot (any one, optional, follow-up email drafts); Telegram bot (optional, operator approvals) |
 
-> The list above matches the 9 agent templates currently deployed in production. The exact set can evolve over time; fetch `POST /Agent/List` for the live catalog.
+> The list above matches the agent templates currently deployed in production. The exact set evolves over time as new templates ship — fetch `POST /Agent/List` for the live catalog. Each agent's full marketing page lives at `https://wiro.ai/agents/{slug}` (linked in the first column).
 
 ### Deploying an Agent
 

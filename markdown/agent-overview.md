@@ -10,10 +10,12 @@ The endpoints below cover the full programmatic surface. If you also want to see
 |------|-----|----------------|
 | **AI Agents Home** | [wiro.ai/agents](https://wiro.ai/agents) | Top-level landing — what Wiro Agents are, how they compare to traditional setups, and a featured selection from the marketplace. |
 | **Learn About Agents** | [wiro.ai/agents/learn](https://wiro.ai/agents/learn) | Concept primer — pricing model, security model, deployment lifecycle, and the difference between marketplace templates and custom builds. |
+| **Anatomy of an Agent** | [wiro.ai/agents/anatomy](https://wiro.ai/agents/anatomy) | Fullscreen interactive walkthrough of the pieces that make a Wiro agent reason — system prompt, knowledge, skills, memory, guardrails, model, tools, scheduling, and observability. |
 | **Build Your Own Agent** | [wiro.ai/agents/build](https://wiro.ai/agents/build) | The web wizard for the same custom-build flow exposed by [`POST /UserAgent/Deploy`](#post-useragentdeploy) with `custom: true`. Useful for previewing the skill picker / pricing breakdown before scripting it. |
-| **Browse Agents** | [wiro.ai/browse-agents](https://wiro.ai/browse-agents) | Full marketplace catalog with categories, descriptions, screenshots, and per-agent tier prices — the visual mirror of [`POST /Agent/List`](#post-agentlist). |
+| **Browse Agents** | [wiro.ai/agents/browse](https://wiro.ai/agents/browse) | Full marketplace catalog with categories, descriptions, screenshots, and per-agent tier prices — the visual mirror of [`POST /Agent/List`](#post-agentlist). Each row links to a dedicated agent page at `/agents/{slug}`. |
+| **Use Case Showcases** | [wiro.ai/agents/usecase/...](https://wiro.ai/agents) | Seven fullscreen, auto-looping product stories that show real businesses operated end-to-end by a Wiro agent. See [Agent Use Cases](/docs/agent-use-cases#see-these-use-cases-on-the-web) for the full list. |
 
-> All four pages are public — no Wiro account required to browse. Sign-in becomes mandatory only when you click "Deploy" on a specific agent (which then drops you into the Wiro dashboard at [wiro.ai/panel/agents](https://wiro.ai/panel/agents)).
+> All pages are public — no Wiro account required to browse. Sign-in becomes mandatory only when you click "Deploy" on a specific agent (which then drops you into the Wiro dashboard at [wiro.ai/panel/agents](https://wiro.ai/panel/agents)).
 
 ## What are Wiro Agents?
 
@@ -929,7 +931,7 @@ Retrieves full details for a single deployed agent instance, including subscript
 | `remainingcredits` | `number` | Computed: `max(0, monthlycredits + extracredits - usedcredits)`. |
 | `creditperiod` | `string` | `'YYYY-MM'` tag of the current billing window. Rolls over on subscription renewal. |
 | `creditsyncat` | `number\|null` | Unix seconds of the last agent → API usage sync (`null` before the first report). |
-| `peractioncosts` | `object\|null` | `{ message, create, modify, regenerate }` — credits charged per action. Computed as `max()` across enabled skills' `pricing.credit_costs`. `null` only when registry drift on an enabled skill makes the resolver fail. |
+| `peractioncosts` | `object\|null` | Credits charged per action. Common keys: `message`, `create`, `modify`, `regenerate`. Voice-realtime agents (those with `util-voice-receptionist` etc. enabled) also expose `realtime` — credits per second of realtime audio session. Computed as `max()` across enabled skills' `pricing.credit_costs`. `null` only when registry drift on an enabled skill makes the resolver fail. |
 
 **Lifecycle**
 
@@ -1530,8 +1532,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
 | `restartedAt` | `number\|null` | Unix seconds when the restart trigger fired. `null` when `restartTriggered` is `false`. |
 | `pricing.previousPriceUsd` / `newPriceUsd` / `deltaUsd` | `number` | USD totals before / after the apply, plus the signed delta. |
 | `pricing.previousMonthlyCredits` / `newMonthlyCredits` / `deltaCredits` | `number` | Monthly credit allocation before / after, plus the signed delta. |
-| `pricing.enabledSkills` | `array<string>` | Final enabled skill set including transitive `depends_on` closure — same skill names you'd see on `useragent.skills[].name` in the next `Detail` call. |
-| `pricing.peractioncosts` | `object` | The `{ message, create, modify, regenerate }` per-action burn rates that follow from the new skill set. |
+| `pricing.enabledSkills` | `array<string>` | Final enabled skill set including transitive `depends_on` closure — same skill name strings you'd see in `useragent.skills` (a flat string array) on the next `Detail` call. |
+| `pricing.peractioncosts` | `object` | Per-action burn rates that follow from the new skill set: `{ message, create, modify, regenerate }`, plus `realtime` (per-second audio session cost) when a voice-realtime skill is in the new set. |
 
 ##### Common error codes
 

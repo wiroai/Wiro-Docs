@@ -11,16 +11,16 @@ Wiro agents connect to external services — social platforms, ad networks, emai
 
 Each external service is documented as its own **integration page** with the complete setup walkthrough, API reference, troubleshooting, and multi-tenant architecture notes. Use the catalog below to jump to the one you need.
 
-> **Read & write paths at a glance:**
->
-> | Operation | Endpoint |
-> |-----------|----------|
-> | Browse all credentials in the registry | [`POST /Credentials/List`](#post-credentialslist) (public) |
-> | Inspect a single credential schema | [`POST /Credentials/Detail`](#post-credentialsdetail) (public) |
-> | Find the credential a skill needs | [`POST /Skills/CredentialSchema`](/docs/agent-skills#post-skillscredentialschema) (public) |
-> | Write one or more credential fields | [`POST /UserAgent/CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert) |
-> | Read version history of a credential | [`POST /UserAgent/CredentialFieldHistory`](/docs/agent-overview#post-useragentcredentialfieldhistory) |
->
+**Read & write paths at a glance:**
+
+| Operation | Endpoint |
+|-----------|----------|
+| Browse all credentials in the registry | [`POST /Credentials/List`](#post-credentialslist) (public) |
+| Inspect a single credential schema | [`POST /Credentials/Detail`](#post-credentialsdetail) (public) |
+| Find the credential a skill needs | [`POST /Skills/CredentialSchema`](/docs/agent-skills#post-skillscredentialschema) (public) |
+| Write one or more credential fields | [`POST /UserAgent/CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert) |
+| Read version history of a credential | [`POST /UserAgent/CredentialFieldHistory`](/docs/agent-overview#post-useragentcredentialfieldhistory) |
+
 > Read responses from `POST /UserAgent/Detail` / `POST /UserAgent/MyAgents` expose the composed `credentials` tree (each provider with its `_connected` / `optional` / `extra` / `_editable` / `_schema` flags), the `customskills[]` array, the `scheduledskills[]` array (cron skills), the `skills[]` array of enabled skill names, the `peractioncosts` object, and the flat credit fields (`monthlycredits`, `extracredits`, `usedcredits`, `remainingcredits`, `creditperiod`, `creditsyncat`) as **top-level fields** on the useragent object. See [Agent Overview](/docs/agent-overview) for the full endpoint catalog.
 
 ## Credential Registry Endpoints
@@ -34,7 +34,7 @@ Lists all credentials in the registry.
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `credential_mode` | string | No | Filter by mode: `"oauth"`, `"sa"` (service account), `"api_key"`, `"multi_api_key"`, `"hybrid"` (OAuth + API key fallback), `"imap_credentials"`, `"jwt_sa"`, `"rule_only"`. |
-| `wiro_connect_pending` | boolean | No | Filter by the "Wiro mode coming soon" flag (Meta integrations while Wiro's app is under review). |
+| `wiro_connect_pending` | boolean | No | Filter by the "Wiro mode coming soon" flag (Meta, LinkedIn, and TikTok credentials while Wiro's app is awaiting App Review). |
 
 ##### Response
 
@@ -117,7 +117,7 @@ Lists all credentials in the registry.
 | `docs_url` | `string\|null` | Slug of the integration page on this docs site. Frontends prefix with `/docs/`. |
 | `credential_mode` | `string` | One of `"oauth"`, `"sa"` (service account), `"api_key"`, `"multi_api_key"`, `"hybrid"` (OAuth + API key fallback), `"imap_credentials"`, `"jwt_sa"`, `"rule_only"`. |
 | `connection_modes` | `array<string>` | The auth modes the credential supports — usually `["wiro", "own"]` for OAuth credentials, `["api_key"]` for API-key credentials, `["sa"]` for service-account credentials. Drives the auth-method picker in the panel. |
-| `wiro_connect_pending` | `boolean` | When `true`, Wiro's shared OAuth client is awaiting provider review (Meta family). Forces **own** mode until the platform clears review. |
+| `wiro_connect_pending` | `boolean` | When `true`, Wiro's shared OAuth client is awaiting provider review (currently the Meta family — `facebook-pages`, `instagram`, `meta-ads` — plus `linkedin` and `tiktok`). End users see a "Wiro mode coming soon" badge in the connection picker; in the meantime they can connect via **own** mode using their own developer app. |
 | `credential_schema` | `array<field>` | Per-field schema describing the credential form. Each entry is a `field` object — see below. |
 | `oauth_provider` | `object\|null` | OAuth wiring (endpoints, button styling, picker config) when `credential_mode` includes OAuth. `null` for non-OAuth credentials. See below. |
 | `used_by_skills` | `array<string>` | Skill names that consume this credential — useful for "which skills will this connection enable?" hints. |
@@ -262,9 +262,9 @@ Returns `{ "result": false, "errors": [{ "code": 404, "message": "Credential not
 | Twitter / X | Wiro + Own | [Twitter Skills](/docs/integration-twitter-skills) |
 | TikTok | Wiro + Own | [TikTok Skills](/docs/integration-tiktok-skills) |
 | Google Ads | Wiro + Own | [Google Ads Skills](/docs/integration-googleads-skills) |
-| YouTube | Wiro + Own | See [Google Ads Skills](/docs/integration-googleads-skills) (same OAuth client) |
-| Google Analytics 4 | Wiro + Own | See [Google Ads Skills](/docs/integration-googleads-skills) (same OAuth client) |
-| Merchant Center | Wiro + Own | See [Google Ads Skills](/docs/integration-googleads-skills) (same OAuth client) |
+| YouTube | Wiro + Own | [YouTube Skills](/docs/integration-youtube-skills) (shares Google OAuth client with Google Ads) |
+| Google Analytics 4 | Wiro + Own | [Google Analytics 4 Skills](/docs/integration-ga4-skills) (shares Google OAuth client with Google Ads) |
+| Merchant Center | Wiro + Own | [Merchant Center Skills](/docs/integration-merchantcenter-skills) (shares Google OAuth client with Google Ads) |
 | HubSpot | Wiro + Own | [HubSpot Skills](/docs/integration-hubspot-skills) |
 | Mailchimp | Wiro + Own + API Key | [Mailchimp Skills](/docs/integration-mailchimp-skills) |
 
@@ -275,6 +275,7 @@ Returns `{ "result": false, "errors": [{ "code": 404, "message": "Credential not
 | Integration | Setup Guide |
 |-------------|-------------|
 | Google Drive | [Google Drive Skills](/docs/integration-googledrive-skills) |
+| Google Calendar | [Google Calendar Skills](/docs/integration-google-calendar-skills) |
 | Google Play | [Google Play Skills](/docs/integration-googleplay-skills) |
 
 > **Meta Platforms availability:** While Wiro's shared Meta App is under review by Meta, the Meta Ads, Facebook Page, and Instagram integrations must be connected using your own Meta Developer App in Development Mode. No App Review is required — users who are listed in your app's Roles (Testers/Developers) can connect without review. See each integration page for step-by-step setup.
@@ -292,6 +293,7 @@ Returns `{ "result": false, "errors": [{ "code": 404, "message": "Credential not
 | Lemlist | [Lemlist Skills](/docs/integration-lemlist-skills) |
 | Brevo | [Brevo Skills](/docs/integration-brevo-skills) |
 | SendGrid | [SendGrid Skills](/docs/integration-sendgrid-skills) |
+| Twilio Voice | [Twilio Voice Channel](/docs/voice-agent-twilio-channel) |
 
 ## Platform-Managed Credentials
 
