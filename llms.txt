@@ -199,6 +199,7 @@ POST /UserAgent/Deploy - Deploy a new agent instance (template via agentguid OR 
 POST /UserAgent/MyAgents - List your deployed agent instances
 POST /UserAgent/Detail - Get agent instance details (full composed shape: credentials, customskills, scheduledskills, skills, peractioncosts, subscription, agent.tiers, agent.extracreditpacks)
 POST /UserAgent/Update - Update agent scalar fields (title, description, categories, cover URL)
+POST /UserAgent/UpdateSettings - Update per-agent preference toggles (admin / team-admin only). Two fields: timezone (IANA id; null/""/UTC clears back to system default) and teamsessionmode ("collaborative"|"private", team-owned agents only). Partial updates supported; running/starting agents auto-restart to apply.
 POST /UserAgent/Cover - Upload a cover image (multipart, image field)
 POST /UserAgent/CredentialUpsert - Write one or more credential fields per provider
 POST /UserAgent/CredentialFileUpload - Multipart upload for credential fileinput fields (e.g. Twilio voice MP3). Validates mimetype + size against the registry's filetypes[] / maxsize.

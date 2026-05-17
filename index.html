@@ -7394,7 +7394,12 @@ import type {
                             <tr>
                               <td><code>teamsessionmode</code></td>
                               <td><code>string</code></td>
-                              <td>Session isolation mode for team agents (<code>"collaborative"</code> or <code>"private"</code> — empty string for solo agents).</td>
+                              <td>Session isolation mode for team agents (<code>"collaborative"</code> or <code>"private"</code> — empty string for solo agents). Write with <a href="#post-useragentupdatesettings"><code>POST /UserAgent/UpdateSettings</code></a> (team admins / owner only).</td>
+                            </tr>
+                            <tr>
+                              <td><code>timezone</code></td>
+                              <td><code>string|null</code></td>
+                              <td>Operator-selected IANA timezone (e.g. <code>"Europe/Istanbul"</code>, <code>"America/New_York"</code>). <code>null</code> means <strong>system default (UTC)</strong> — the agent container runs <code>TZ=UTC</code> and <code>current_time</code> in voice prep stays in UTC ISO form. When set, propagates through <code>settings.json.useragentTimezone</code> → container <code>TZ</code> env → cron <code>schedule.tz</code> → caller-facing voice prep / business-hours rendering. Write with <a href="#post-useragentupdatesettings"><code>POST /UserAgent/UpdateSettings</code></a>.</td>
                             </tr>
                             <tr>
                               <td><code>subscription</code></td>
@@ -7513,6 +7518,10 @@ import type {
                                 <td><a href="#post-useragentcover"><code>POST /UserAgent/Cover</code></a></td>
                               </tr>
                               <tr>
+                                <td>Per-agent timezone or team chat session mode</td>
+                                <td><a href="#post-useragentupdatesettings"><code>POST /UserAgent/UpdateSettings</code></a></td>
+                              </tr>
+                              <tr>
                                 <td>View / download / purge activity logs</td>
                                 <td><a href="#post-useragentlogs"><code>POST /UserAgent/Logs</code></a> · <a href="#post-useragentlogslist"><code>LogsList</code></a> · <a href="#post-useragentlogsfile"><code>LogsFile</code></a> · <a href="#post-useragentlogsdelete"><code>LogsDelete</code></a></td>
                               </tr>
@@ -7553,6 +7562,7 @@ import type {
       "pinned": false,
       "setuprequired": false,
       "teamsessionmode": "",
+      "timezone": null,
       "agent": {
         "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
         "title": "Instagram Manager",
@@ -7582,6 +7592,140 @@ import type {
 }</code></pre>
                     <div class="info-callout"><strong><code>Update</code> returns the full composed useragent shape</strong> — same composition path as <code>UserAgent/Detail</code> (<code>getUserAgentDetailForUI</code>), so <code>credentials</code>, <code>customskills</code>, <code>scheduledskills</code>, <code>skills</code>, <code>skillsmeta</code>, <code>peractioncosts</code>, and the <code>agent</code> template summary (with <code>tiers</code> + <code>extracreditpacks</code>) are all included. The fields <code>Update</code> cannot safely populate without an extra round-trip — <code>subscription</code> (read separately on <code>Detail</code>), <code>remainingcredits</code> / <code>extracreditsexpiry</code> (also Detail-only), and Stripe billing portal URLs — stay omitted. If you need a Stripe portal URL after a metadata edit, call <code>UserAgent/Detail</code> next. Otherwise the response is suitable for an in-place panel re-render without a follow-up call.</div>
                     <div class="info-callout"><strong>Restart on running agents.</strong> When the call lands on a status <code>3</code>/<code>4</code> agent, the response shows the lifecycle transition mid-flight: <code>status: 1</code> (Stopping) with a fresh <code>stoppingat</code> timestamp, <code>runningat</code> cleared, and <code>queuedat</code> set to the same instant — Wiro auto-queues the agent so it picks the new settings up after the next stop cycle.</div>
+
+                    <h2 id="post-useragentupdatesettings"><span class="endpoint-badge post">POST</span> /UserAgent/UpdateSettings</h2>
+                    <p>Writes per-agent preference toggles that are not credentials and not skill rows. Two fields ship with the initial cut — <code>timezone</code> (operator-selected IANA zone, propagates into the agent container's <code>TZ</code> env, cron <code>schedule.tz</code>, and caller-facing voice prep) and <code>teamsessionmode</code> (team workspace session mode, replaces the legacy <code>/Team/UpdateAgentMode</code> knob). Submit one or both in the same call — partial updates are supported and untouched fields keep their current value.</p>
+                    <p><strong>Permission</strong>: owner OR team admin (the same <code>requireRole: "admin"</code> gate as <code>/UserAgent/Update</code>). Team members cannot flip either knob.</p>
+                    <p><strong>Restart</strong>: if the agent is <strong>starting (status <code>3</code>)</strong> or <strong>running (status <code>4</code>)</strong>, the call auto-stops the container with <code>restartafter: true</code> so the daemon worker picks up the fresh <code>settings.json</code> (with the new <code>useragentTimezone</code> and / or <code>teamsessionmode</code>) on the next launch cycle. Status <code>0</code>/<code>1</code>/<code>2</code>/<code>5</code>/<code>6</code> agents take effect on the next manual <code>Start</code> without a soft-stop.</p>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Parameter</th>
+                              <th>Type</th>
+                              <th>Required</th>
+                              <th>Description</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td><code>useragentguid</code></td>
+                              <td>string</td>
+                              <td>Yes</td>
+                              <td>Your UserAgent instance guid.</td>
+                            </tr>
+                            <tr>
+                              <td><code>timezone</code></td>
+                              <td>string|null</td>
+                              <td>No</td>
+                              <td>IANA timezone identifier (e.g. <code>"Europe/Istanbul"</code>, <code>"America/New_York"</code>, <code>"Asia/Tokyo"</code>). Pass <code>null</code>, <code>""</code>, or the literal <code>"UTC"</code> to <strong>clear</strong> the override — the row is set back to <code>NULL</code>, which makes the propagation chain a no-op (container stays on <code>TZ=UTC</code>, no per-job <code>schedule.tz</code> injection, voice prep <code>current_time</code> stays in single-line UTC ISO form). Validated server-side via <code>new Intl.DateTimeFormat("en-GB", { timeZone })</code> — unknown zones are rejected with <code>invalid-timezone</code>.</td>
+                            </tr>
+                            <tr>
+                              <td><code>teamsessionmode</code></td>
+                              <td>string</td>
+                              <td>No</td>
+                              <td><code>"collaborative"</code> or <code>"private"</code>. Only meaningful when the agent is team-owned (<code>teamguid</code> is set); passing it on a personal agent is rejected with <code>teamsessionmode-team-only</code>. See <a href="/docs/agent-messaging">Agent Messaging</a> for what each mode does to <code>Message/History</code> and <code>Sessions</code> scoping.</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <div class="info-callout"><strong>Omitted fields are preserved.</strong> The handler distinguishes between "field not in the body" and "field present with <code>null</code>/<code>""</code>/value", so a POST that carries only <code>timezone</code> does <strong>not</strong> touch <code>teamsessionmode</code>, and vice versa. Sending neither (empty body) is rejected with <code>nothing-to-update</code> to avoid charging a no-op container restart.</div>
+                    <h3>Request</h3>
+                    <pre><code class="language-bash"># Set IANA timezone only
+curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
+  -H "Authorization: Bearer $WIRO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+    "timezone": "Europe/Istanbul"
+  }'
+
+# Clear timezone (back to system default UTC)
+curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
+  -H "Authorization: Bearer $WIRO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+    "timezone": null
+  }'
+
+# Flip team chat session mode (team-owned agents only)
+curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
+  -H "Authorization: Bearer $WIRO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+    "teamsessionmode": "collaborative"
+  }'
+
+# Update both in one call
+curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
+  -H "Authorization: Bearer $WIRO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+    "timezone": "Europe/Istanbul",
+    "teamsessionmode": "collaborative"
+  }'</code></pre>
+                    <h3>Response</h3>
+                    <pre><code class="language-json">{
+  "result": true,
+  "errors": []
+}</code></pre>
+                    <div class="info-callout"><strong>Light response by design.</strong> <code>UpdateSettings</code> returns just <code>result</code> + <code>errors</code> — no full useragent shape. Pull the refreshed row with <code>POST /UserAgent/Detail</code> if you need to re-render the panel after the write.</div>
+                    <h3>Common errors</h3>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Code</th>
+                              <th>Message key</th>
+                              <th>When</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td>400</td>
+                              <td><code>request-parameter-required</code></td>
+                              <td><code>useragentguid</code> missing from the body.</td>
+                            </tr>
+                            <tr>
+                              <td>400</td>
+                              <td><code>nothing-to-update</code></td>
+                              <td>Body had neither <code>timezone</code> nor <code>teamsessionmode</code>.</td>
+                            </tr>
+                            <tr>
+                              <td>400</td>
+                              <td><code>invalid-timezone</code></td>
+                              <td><code>timezone</code> wasn't a string the runtime's <code>Intl.DateTimeFormat</code> could resolve.</td>
+                            </tr>
+                            <tr>
+                              <td>400</td>
+                              <td><code>teamsessionmode-team-only</code></td>
+                              <td><code>teamsessionmode</code> was set on a personal (non-team) agent.</td>
+                            </tr>
+                            <tr>
+                              <td>400</td>
+                              <td><code>teamsessionmode-invalid</code></td>
+                              <td><code>teamsessionmode</code> wasn't <code>"collaborative"</code> or <code>"private"</code>.</td>
+                            </tr>
+                            <tr>
+                              <td>403</td>
+                              <td><code>useragent-access-denied</code></td>
+                              <td>Caller is neither the owner nor a team admin on a team-owned agent.</td>
+                            </tr>
+                            <tr>
+                              <td>500</td>
+                              <td><code>failed-to-update-useragent</code></td>
+                              <td>DB write failed (transient — safe to retry).</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
 
                     <h2 id="post-useragentcover"><span class="endpoint-badge post">POST</span> /UserAgent/Cover</h2>
                     <p>Uploads a new cover image for the agent instance via multipart. Mirrors the <code>/User/Avatar</code> pattern — accepts <code>jpg</code>, <code>png</code>, <code>gif</code>, <code>jpeg</code>, <code>webp</code>; converts to webp; uploads to S3; writes the resulting CDN URL into <code>useragents.cover</code>.</p>

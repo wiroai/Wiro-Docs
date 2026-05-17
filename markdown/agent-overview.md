@@ -975,7 +975,8 @@ Retrieves full details for a single deployed agent instance, including subscript
 | `scheduledskills` | `array` | Composed list of **cron** skills (`cs-cron-*`). Same shape as `customskills` plus `interval` (cron expression). `_source` ∈ `"skill-bundle"` (preset cron) \| `"user-created"`. |
 | `skills` | `array<object>` | Currently-enabled integration skills. Each entry: `{ name, enabled: true, _edited, _user_created }`. Toggle via `SkillsApply` (single-skill or batch). Note: object array (not string array). |
 | `skillsmeta` | `object` | Inline registry snapshot keyed by skill name — `title`, `icon`, `brand_color`, `category`, `docs_url`, `credential_key`, `requires_credentials`, `user_invocable`, `description`. Lets the panel render skill chips without a `Skills/List` round-trip. |
-| `teamsessionmode` | `string` | `"collaborative"` or `"private"` for team agents; empty string `""` for personal agents. Drives `Message/History` filtering: collaborative sessions show every team member's messages, private sessions filter by the caller's `uuid`. |
+| `teamsessionmode` | `string` | `"collaborative"` or `"private"` for team agents; empty string `""` for personal agents. Drives `Message/History` filtering: collaborative sessions show every team member's messages, private sessions filter by the caller's `uuid`. Write with [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) (team admins / owner only). |
+| `timezone` | `string\|null` | Operator-selected IANA timezone (e.g. `"Europe/Istanbul"`, `"America/New_York"`). `null` means **system default (UTC)** — the agent container runs `TZ=UTC` and `current_time` in voice prep stays in UTC ISO form. When set, propagates through `settings.json.useragentTimezone` → container `TZ` env → cron `schedule.tz` → caller-facing voice prep / business-hours rendering. Write with [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings). |
 
 **Subscription & template**
 
@@ -1039,6 +1040,7 @@ Updates an agent instance's **scalar fields only** (title, description, categori
 > | Toggle one or more integration skills on/off (with optional tier change) | [`POST /UserAgent/SkillsApply`](#post-useragentskillsapply) |
 > | Upgrade Starter → Pro | [`POST /UserAgent/UpgradeTier`](#post-useragentupgradetier) |
 > | Upload a cover image (multipart) | [`POST /UserAgent/Cover`](#post-useragentcover) |
+> | Per-agent timezone or team chat session mode | [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) |
 > | View / download / purge activity logs | [`POST /UserAgent/Logs`](#post-useragentlogs) · [`LogsList`](#post-useragentlogslist) · [`LogsFile`](#post-useragentlogsfile) · [`LogsDelete`](#post-useragentlogsdelete) |
 > | Soft-delete a useragent | [`POST /UserAgent/Delete`](#post-useragentdelete) |
 
@@ -1072,6 +1074,7 @@ Updates an agent instance's **scalar fields only** (title, description, categori
       "pinned": false,
       "setuprequired": false,
       "teamsessionmode": "",
+      "timezone": null,
       "agent": {
         "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
         "title": "Instagram Manager",
@@ -1104,6 +1107,86 @@ Updates an agent instance's **scalar fields only** (title, description, categori
 > **`Update` returns the full composed useragent shape** — same composition path as `UserAgent/Detail` (`getUserAgentDetailForUI`), so `credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `peractioncosts`, and the `agent` template summary (with `tiers` + `extracreditpacks`) are all included. The fields `Update` cannot safely populate without an extra round-trip — `subscription` (read separately on `Detail`), `remainingcredits` / `extracreditsexpiry` (also Detail-only), and Stripe billing portal URLs — stay omitted. If you need a Stripe portal URL after a metadata edit, call `UserAgent/Detail` next. Otherwise the response is suitable for an in-place panel re-render without a follow-up call.
 
 > **Restart on running agents.** When the call lands on a status `3`/`4` agent, the response shows the lifecycle transition mid-flight: `status: 1` (Stopping) with a fresh `stoppingat` timestamp, `runningat` cleared, and `queuedat` set to the same instant — Wiro auto-queues the agent so it picks the new settings up after the next stop cycle.
+
+#### **POST** /UserAgent/UpdateSettings
+
+Writes per-agent preference toggles that are not credentials and not skill rows. Two fields ship with the initial cut — `timezone` (operator-selected IANA zone, propagates into the agent container's `TZ` env, cron `schedule.tz`, and caller-facing voice prep) and `teamsessionmode` (team workspace session mode, replaces the legacy `/Team/UpdateAgentMode` knob). Submit one or both in the same call — partial updates are supported and untouched fields keep their current value.
+
+**Permission**: owner OR team admin (the same `requireRole: "admin"` gate as `/UserAgent/Update`). Team members cannot flip either knob.
+
+**Restart**: if the agent is **starting (status `3`)** or **running (status `4`)**, the call auto-stops the container with `restartafter: true` so the daemon worker picks up the fresh `settings.json` (with the new `useragentTimezone` and / or `teamsessionmode`) on the next launch cycle. Status `0`/`1`/`2`/`5`/`6` agents take effect on the next manual `Start` without a soft-stop.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Your UserAgent instance guid. |
+| `timezone` | string\|null | No | IANA timezone identifier (e.g. `"Europe/Istanbul"`, `"America/New_York"`, `"Asia/Tokyo"`). Pass `null`, `""`, or the literal `"UTC"` to **clear** the override — the row is set back to `NULL`, which makes the propagation chain a no-op (container stays on `TZ=UTC`, no per-job `schedule.tz` injection, voice prep `current_time` stays in single-line UTC ISO form). Validated server-side via `new Intl.DateTimeFormat("en-GB", { timeZone })` — unknown zones are rejected with `invalid-timezone`. |
+| `teamsessionmode` | string | No | `"collaborative"` or `"private"`. Only meaningful when the agent is team-owned (`teamguid` is set); passing it on a personal agent is rejected with `teamsessionmode-team-only`. See [Agent Messaging](/docs/agent-messaging) for what each mode does to `Message/History` and `Sessions` scoping. |
+
+> **Omitted fields are preserved.** The handler distinguishes between "field not in the body" and "field present with `null`/`""`/value", so a POST that carries only `timezone` does **not** touch `teamsessionmode`, and vice versa. Sending neither (empty body) is rejected with `nothing-to-update` to avoid charging a no-op container restart.
+
+##### Request
+
+```bash
+# Set IANA timezone only
+curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
+  -H "Authorization: Bearer $WIRO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+    "timezone": "Europe/Istanbul"
+  }'
+
+# Clear timezone (back to system default UTC)
+curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
+  -H "Authorization: Bearer $WIRO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+    "timezone": null
+  }'
+
+# Flip team chat session mode (team-owned agents only)
+curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
+  -H "Authorization: Bearer $WIRO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+    "teamsessionmode": "collaborative"
+  }'
+
+# Update both in one call
+curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
+  -H "Authorization: Bearer $WIRO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+    "timezone": "Europe/Istanbul",
+    "teamsessionmode": "collaborative"
+  }'
+```
+
+##### Response
+
+```json
+{
+  "result": true,
+  "errors": []
+}
+```
+
+> **Light response by design.** `UpdateSettings` returns just `result` + `errors` — no full useragent shape. Pull the refreshed row with `POST /UserAgent/Detail` if you need to re-render the panel after the write.
+
+##### Common errors
+
+| Code | Message key | When |
+|------|-------------|------|
+| 400 | `request-parameter-required` | `useragentguid` missing from the body. |
+| 400 | `nothing-to-update` | Body had neither `timezone` nor `teamsessionmode`. |
+| 400 | `invalid-timezone` | `timezone` wasn't a string the runtime's `Intl.DateTimeFormat` could resolve. |
+| 400 | `teamsessionmode-team-only` | `teamsessionmode` was set on a personal (non-team) agent. |
+| 400 | `teamsessionmode-invalid` | `teamsessionmode` wasn't `"collaborative"` or `"private"`. |
+| 403 | `useragent-access-denied` | Caller is neither the owner nor a team admin on a team-owned agent. |
+| 500 | `failed-to-update-useragent` | DB write failed (transient — safe to retry). |
 
 #### **POST** /UserAgent/Cover
 
