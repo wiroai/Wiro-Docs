@@ -67,11 +67,12 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
 ### OAuth Step 3: Initiate
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/MailchimpConnect" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
+    "credentialkey": "mailchimp",
     "redirecturl": "https://your-app.com/settings/integrations",
     "authmethod": "own"
   }'
@@ -102,10 +103,13 @@ https://your-app.com/settings/integrations?mailchimp_connected=true&mailchimp_ac
 ### OAuth Step 5: Verify
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/MailchimpStatus" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "useragentguid": "your-useragent-guid" }'
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "mailchimp"
+  }'
 ```
 
 Response:
@@ -114,13 +118,15 @@ Response:
 {
   "result": true,
   "connected": true,
-  "username": "Your Company",
+  "accounts": [
+    { "id": "Your Company", "name": "Your Company" }
+  ],
   "connectedat": "2026-04-17T12:00:00.000Z",
   "errors": []
 }
 ```
 
-> **Mailchimp tokens don't expire.** `Status` responses don't include `tokenexpiresat` or `refreshtokenexpiresat`. There's no `TokenRefresh` support for Mailchimp either — it's excluded from the valid providers list.
+> **Mailchimp tokens don't expire.** `OAuthStatus` responses for Mailchimp don't include `tokenexpiresat`. There's no `TokenRefresh` support for Mailchimp either — it's excluded from the valid providers list.
 
 ## Option B: Direct API Key (No OAuth)
 
@@ -140,8 +146,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -d '{
     "useragentguid": "your-useragent-guid",
     "fields": [
-      { "credentialkey": "mailchimp", "fieldname": "authmethod", "fieldvalue": "apiKey" },
-      { "credentialkey": "mailchimp", "fieldname": "apiKey",     "fieldvalue": "abcdef1234567890-us14" }
+      { "credentialkey": "mailchimp", "fieldname": "authmethod", "fieldvalue": "api_key" },
+      { "credentialkey": "mailchimp", "fieldname": "apikey",     "fieldvalue": "abcdef1234567890-us14" }
     ]
   }'
 ```
@@ -157,27 +163,28 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ## API Reference
 
-### POST /UserAgentOAuth/MailchimpConnect
+### POST /UserAgentOAuth/OAuthConnect
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
+| `credentialkey` | string | Yes | `"mailchimp"`. |
 | `redirecturl` | string | Yes | HTTPS URL. |
 | `authmethod` | string | No | `"wiro"` (default) or `"own"`. |
 
 ### GET /UserAgentOAuth/MailchimpCallback
 
-Query params: `mailchimp_connected=true&mailchimp_account=<name>` or `mailchimp_error=<code>`.
+Query params: `mailchimp_connected=true&mailchimp_account=<name>` or `mailchimp_error=<code>`. The callback path is per-provider — Mailchimp's stays `MailchimpCallback`.
 
-### POST /UserAgentOAuth/MailchimpStatus
+### POST /UserAgentOAuth/OAuthStatus
 
-Response fields: `connected`, `username` (= accountname), `connectedat`. **No `tokenexpiresat`, no `refreshtokenexpiresat`** — tokens don't expire.
+Body: `{ useragentguid, credentialkey: "mailchimp" }`. Response: `connected`, `accounts: [{id, name}]` (1-element with the Mailchimp account name), `connectedat`. **No `tokenexpiresat`** — Mailchimp OAuth tokens don't expire.
 
-> **API key-only mode caveat:** `connected` is computed from `authmethod in {wiro, own}` **and** a non-empty `accesstoken`. If you set up Mailchimp via direct API key (no OAuth), `authmethod` and `accesstoken` stay empty and `MailchimpStatus.connected` returns `false` — even though the agent runtime is fully functional (the `mailchimp-email` skill reads `$MAILCHIMP_API_KEY` directly via `start.sh`). Don't use `MailchimpStatus.connected` as the source of truth for API key setups; instead, check that `credentials.mailchimp.apiKey` is non-empty in `POST /UserAgent/Detail`.
+> **API key-only mode caveat:** `OAuthStatus.connected` is computed from `authmethod in {wiro, own}` **and** a non-empty `accesstoken`. If you set up Mailchimp via direct API key (no OAuth), `authmethod` is `"api_key"` and `accesstoken` is empty, so `OAuthStatus.connected` returns `false` — even though the agent runtime is fully functional (the `mailchimp-email` skill reads the API key directly). Don't use `OAuthStatus.connected` as the source of truth for API key setups; check that `credentials.mailchimp.apikey` is non-empty in `POST /UserAgent/Detail` instead.
 
-### POST /UserAgentOAuth/MailchimpDisconnect
+### POST /UserAgentOAuth/OAuthDisconnect
 
-Clears credentials (no remote revoke — Mailchimp doesn't expose a revoke endpoint for OAuth tokens).
+Body: `{ useragentguid, credentialkey: "mailchimp" }`. Clears credentials (no remote revoke — Mailchimp doesn't expose a revoke endpoint for OAuth tokens).
 
 ### TokenRefresh
 
@@ -209,7 +216,7 @@ To change **what** the scanner checks (target lists, bounce thresholds, tone, au
 | `session_expired` | State cache expired (15 min). | Restart. |
 | `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy; verify URL. |
 | `useragent_not_found` | Invalid guid. | Use `POST /UserAgent/MyAgents`. |
-| `invalid_config` | No `credentials.mailchimp` block. | Update with credentials. |
+| `Mailchimp credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `clientid` / `clientsecret` are missing. | Update with `POST /UserAgent/CredentialUpsert`. |
 | `internal_error` | Server error. | Retry; contact support. |
 
 ### API calls fail with 401

@@ -33,27 +33,32 @@ The Merchant Center integration uses the [Merchant API v1](https://developers.go
 ## Wiro Mode
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/MCConnect" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
+    "credentialkey": "google-merchant-center",
     "redirecturl": "https://your-app.com/settings/integrations"
   }'
 ```
 
-After consent the user returns with `?mc_connected=true&mc_accounts=[{merchantid,accountname}]`. Present the picker and call `MCSetMerchantId`:
+After consent the user returns with `?mc_connected=true&mc_accounts=<URL-encoded-JSON>`. The JSON array entries come straight from the Merchant Center API and carry `{ id, name, websiteUrl }` per account. Map them to the picker's `{ merchantid, accountname }` shape and call `SetPickerAccounts`:
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/MCSetMerchantId" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "merchantid": "5769377374",
-    "accountname": "Acme Store"
+    "credentialkey": "google-merchant-center",
+    "accounts": [
+      { "merchantid": "5769377374", "accountname": "Acme Store" }
+    ]
   }'
 ```
+
+Pass multiple `{ merchantid, accountname }` entries to authorize the agent against several merchant accounts at once.
 
 ## Own Mode
 
@@ -93,33 +98,59 @@ Once registered, your GCP project can call Merchant API on any merchant account 
 ### Step 4: Connect
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/MCConnect" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
+    "credentialkey": "google-merchant-center",
     "redirecturl": "https://your-app.com/settings/integrations",
     "authmethod": "own"
   }'
 ```
 
+After consent, present any returned accounts to the user and persist the selection with `SetPickerAccounts` exactly as shown in [Wiro Mode](#wiro-mode) above.
+
 ## Disconnect
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/MCDisconnect" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthDisconnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "useragentguid": "your-useragent-guid" }'
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "google-merchant-center"
+  }'
 ```
 
 ## Status
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/MCStatus" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "useragentguid": "your-useragent-guid" }'
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "google-merchant-center"
+  }'
 ```
+
+Response:
+
+```json
+{
+  "result": true,
+  "connected": true,
+  "accounts": [
+    { "id": "5769377374", "name": "Acme Store" }
+  ],
+  "connectedat": "2026-04-17T12:00:00.000Z",
+  "tokenexpiresat": "2026-04-17T13:00:00.000Z",
+  "errors": []
+}
+```
+
+`accounts[]` carries one entry per selected merchant (`id` = `merchantid`, `name` = `accountname`).
 
 ## Skill reference
 
@@ -130,6 +161,6 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/MCStatus" \
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | `PERMISSION_DENIED` on any merchant call | GCP project not registered | Complete Step 3 once |
-| `invalid_grant` | Refresh token expired | Re-connect via `MCConnect` |
+| `invalid_grant` | Refresh token expired | Re-connect via `OAuthConnect` |
 | `No Merchant Center accounts available` | User has no MC access | User creates/gains access at `merchants.google.com` |
 | Content API deprecation error | You're on old v2.1 endpoints | Switch to v1 (`merchantapi.googleapis.com`) |

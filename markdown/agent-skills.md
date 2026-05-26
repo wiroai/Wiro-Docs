@@ -18,7 +18,7 @@ Configure agent behavior with editable preferences, scheduled automation tasks, 
 | Toggle one or more integration skills (the top-level `skills` array, e.g. `int-instagram-post`) on/off, with optional tier change | [`POST /UserAgent/SkillsApply`](/docs/agent-overview#post-useragentskillsapply) |
 | Live tier-pricing preview for a hypothetical skill set | [`POST /UserAgent/PricingPreview`](/docs/agent-overview#post-useragentpricingpreview) |
 
-> Read responses from `POST /UserAgent/Detail` expose the composed `customskills[]` array (preference skills + non-cron user-created skills), the `scheduledskills[]` array (cron skills), and the `skills[]` array of enabled skill names as top-level fields on the useragent object.
+> Read responses from `POST /UserAgent/Detail` expose the composed `customskills[]` array (preference skills + non-cron user-created skills), the `scheduledskills[]` array (cron skills), and the `skills[]` array as top-level fields on the useragent object. `skills[]` is an **object array** — each entry is `{ name, enabled, _edited?, _user_created? }` (e.g. `[{ "name": "int-instagram-post", "enabled": true }, { "name": "int-wiro-aimodels", "enabled": true }]`).
 
 ## Skill Registry vs Custom Skills
 
@@ -26,7 +26,7 @@ Two concepts share the word "skill" in the agent system. Keep them straight:
 
 | Concept | What it is | Where it lives | API surface |
 |---------|------------|----------------|-------------|
-| **Registry skills** | Platform-shipped capabilities — Wiro defines them, they have pricing recipes, credential requirements, and runtime tools. Examples: `int-instagram-post`, `int-gmail-check`, `int-wordpress-post`, `int-wiro-generator`. | The skill registry (git-tracked JSON definitions). | `POST /Skills/List` / `POST /Skills/Detail` (read), `POST /UserAgent/SkillsApply` (toggle on/off per useragent). |
+| **Registry skills** | Platform-shipped capabilities — Wiro defines them, they have pricing recipes, credential requirements, and runtime tools. Examples: `int-instagram-post`, `int-gmail-check`, `int-wordpress-post`, `int-wiro-aimodels`. | The skill registry (git-tracked JSON definitions). | `POST /Skills/List` / `POST /Skills/Detail` (read), `POST /UserAgent/SkillsApply` (toggle on/off per useragent). |
 | **Custom skills** | User-editable preference text (`cs-content-tone`) or scheduled tasks (`cs-cron-blog-scanner`) that live ON a useragent. They reference registry skills (e.g. a cron skill calls into `int-wordpress-post`) but are scoped to one instance. | Per useragent on the Wiro platform. | `POST /UserAgent/CustomSkillUpsert` / `POST /UserAgent/CustomSkillRename` / `POST /UserAgent/CustomSkillDelete` / `POST /UserAgent/CustomSkillHistory` / `POST /UserAgent/CustomSkillRevert`. |
 
 The rest of this page documents both — the registry endpoints first (so you can discover what's possible), then the per-useragent endpoints (so you can configure them).
@@ -43,9 +43,9 @@ Lists all skills in the registry.
 |-----------|------|----------|-------------|
 | `category` | string | No | Filter by `"int"` (integration with a third-party service) or `"util"` (utility / rule-only — no credential, no external API). |
 | `capability` | string | No | Filter by capability key (see [`POST /Skills/Capabilities`](#post-skillscapabilities) for the closed-set vocabulary). |
-| `user_invocable` | boolean | No | When `true`, only return skills end users can call directly through chat. `int-wiro-generator` and other non-user-invocable skills are hidden. |
+| `user_invocable` | boolean | No | When `true`, only return skills end users can call directly through chat (filters out plumbing skills wired by the runtime). |
 | `requires_credentials` | boolean | No | Filter by whether the skill requires a credential. |
-| `wiro_connect_pending` | boolean | No | Filter by the "Wiro mode coming soon" flag (Meta, LinkedIn, and TikTok integrations whose Wiro-shared OAuth client is awaiting App Review). |
+| `wiro_connect_pending` | boolean | No | Filter by the "Wiro mode coming soon" flag — integrations whose Wiro-shared OAuth client is still awaiting provider review (currently 9 credentials: `facebook-pages`, `instagram`, `meta-ads`, `google-ads`, `google-merchant-center`, `youtube`, `ga4`, `linkedin`, `tiktok`). When `true`, only those skills are returned; when `false`, only ready-to-use skills. The flag is read off the credential, not the skill — `int-instagram-post` is pending because `instagram` is pending, etc. |
 | `name_in` | array<string> | No | Restrict the response to a specific list of skill names. |
 
 ##### Response
@@ -76,13 +76,14 @@ Lists all skills in the registry.
       "deprecated": false,
       "replacement": null,
       "pricing": {
-        "monthly_price_weight_usd": 5.5,
-        "monthly_credits_weight": 200,
+        "monthly_price_weight_usd": 1,
+        "monthly_credits_weight": 5,
         "credit_costs": {
-          "message":    6,
-          "create":     58,
-          "modify":     29,
-          "regenerate": 58
+          "message":    1,
+          "create":     5,
+          "modify":     2,
+          "regenerate": 5,
+          "realtime":   0
         }
       }
     }
@@ -102,13 +103,13 @@ Lists all skills in the registry.
 | `brand_text_color` | `string\|null` | Foreground colour to render on top of `brand_color`. |
 | `brand_logo_filter` | `string\|null` | CSS `filter` value applied to monochrome SVG icons (e.g. `"brightness(0) invert(1)"`) so the same source SVG renders correctly on light and dark brand colours. |
 | `docs_url` | `string\|null` | Slug or path of the integration page on this docs site. Frontends prefix with `/docs/` when rendering. |
-| `requires_credentials` | `boolean` | `true` when `credential_key` is set and the credential is not entirely platform-managed. |
-| `credential_key` | `string\|null` | The provider this skill needs (`"instagram"`, `"google-ads"`, …). `null` for `util` skills (rule-only) and platform-managed integrations. Use [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail) to inspect the schema. |
+| `requires_credentials` | `boolean` | `true` when the skill needs a credential the operator must supply (effectively `true` whenever `credential_key` resolves to a non-platform-only credential — currently every credential except `sys-openai`). |
+| `credential_key` | `string\|null` | The provider this skill needs (`"instagram"`, `"google-ads"`, `"wiro"`, `"calendarific"`, …). `null` for `util` skills (rule-only) and the rare skills backed by a platform-only credential like `sys-openai`. Use [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail) to inspect the schema. |
 | `additional_credential_keys` | `array<string>` | **Optional — only present when the skill writes secondary credentials.** App-store / Google-Play review skills include `["var-support-email"]` for the support-email variable bag; most skills omit this field entirely. |
 | `capabilities` | `array<string>` | High-level snake_case capability tags from the closed vocabulary returned by [`POST /Skills/Capabilities`](#post-skillscapabilities). Drives the "Find skills that can: ___" picker. |
 | `depends_on` | `array<string>` | Other skill names that must be enabled. Wiro auto-enables transitive deps when you toggle the parent skill on. |
 | `conflicts_with` | `array<string>` | Mutually-exclusive skill names. `SkillsApply` rejects toggle batches that would enable two conflicting skills. |
-| `user_invocable` | `boolean` | `true` when end users can call the skill via chat. `int-wiro-generator` is `false` (internal-only). |
+| `user_invocable` | `boolean` | `true` when end users can call the skill via chat. Most user-facing skills (including `int-wiro-aimodels` and `int-calendarific`) are `true`; `false` is reserved for plumbing skills wired by the runtime (currently none in the public catalog). |
 | `deprecated` | `boolean` | `true` for skills slated for removal — `replacement` (if any) names the migration target. |
 | `replacement` | `string\|null` | When `deprecated: true`, the registry-recommended successor skill name. |
 | `pricing` | `object` | Per-skill pricing recipe (see below). |
@@ -117,9 +118,11 @@ Lists all skills in the registry.
 
 | Sub-field | Type | Description |
 |-----------|------|-------------|
-| `monthly_price_weight_usd` | `number` | Weight (USD) the skill contributes to the agent's Starter monthly price. The resolver sums weights across the agent's enabled-skill closure (incl. transitive `depends_on`); Pro multiplies the total by `tiermultiplier`. |
-| `monthly_credits_weight` | `number` | Weight (credits) the skill contributes to the Starter monthly credit allocation. Same closure + multiplier semantics as price. |
+| `monthly_price_weight_usd` | `number` | Weight (USD) the skill contributes to the agent's Starter monthly price. The resolver sums weights across the agent's enabled-skill closure (incl. transitive `depends_on`); Pro multiplies the total by `tiermultiplier`. The platform applies a **$4/month minimum floor** on top of this sum (with credits scaled proportionally) — see Pricing in the [Agent Overview](/docs/agent-overview#pricing-model--tiers-skills--per-action-costs). |
+| `monthly_credits_weight` | `number` | Weight (credits) the skill contributes to the Starter monthly credit allocation. Same closure + multiplier semantics as price. When the $4 starter floor is applied to `monthly_price_weight_usd`, this weight is scaled up by the same ratio so the user gets a proportional credit boost rather than a free upgrade. |
 | `credit_costs` | `object` | Per-action credit weights. Common keys: `message`, `create`, `modify`, `regenerate`. Voice-realtime skills (`util-voice-receptionist`, `util-voice-call-prep`, `util-web-channel`, `int-twilio-channel`, `int-google-calendar`) also expose `realtime` — credits charged per **second of realtime audio session**. The agent's exposed `peractioncosts` is `max()` across enabled skills' `credit_costs` (per action key). Free / utility skills omit non-applicable keys or set zeros. |
+
+> **5 weight buckets in the skill registry.** Every skill's `monthly_price_weight_usd` / `monthly_credits_weight` pair lands in one of five buckets: `ZERO` (`$0` / `0` — utility / rule-only skills), `SOCIAL_POST` (`$1` / `5` credits per month — posting-only social helpers), `LIGHT` (`$1` / `25` credits per month), `HEAVY` (`$2` / `50` credits per month), or `PREMIUM` (`$4` / `100` credits per month). There are **no per-skill Pro overrides** — Pro is always derived as `Starter × tiermultiplier` (default `10`). The agent's Starter price = `Σ(enabled-skill weights)`, bumped to `$4` if the raw sum lands below the floor (with credits scaled proportionally to keep the per-credit ratio stable); Pro = `Starter × tiermultiplier`. Per-action `credit_costs` (`message`, `create`, `modify`, `regenerate`, `realtime`) are independent of the monthly weights — they're per-call burn rates, not tier pricing.
 
 > **Optional filter `wiro_connect_pending`.** When you query with `wiro_connect_pending: true` you get every skill whose connecting integration's Wiro-shared OAuth client is awaiting App Review — currently the Meta family (`int-instagram-post`, `int-facebookpage-post`, `int-metaads-manage`), `int-linkedin-post`, `int-tiktok-post`, and the `util-*` posting helpers paired with them. Those skills are still usable in **own** mode (your own developer app). The flag itself does not appear on the skill object — it lives on the credential entry under [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail).
 
@@ -157,13 +160,14 @@ Returns a single skill by name.
     "deprecated": false,
     "replacement": null,
     "pricing": {
-      "monthly_price_weight_usd": 5.5,
-      "monthly_credits_weight": 200,
+      "monthly_price_weight_usd": 1,
+      "monthly_credits_weight": 5,
       "credit_costs": {
-        "message":    6,
-        "create":     58,
-        "modify":     29,
-        "regenerate": 58
+        "message":    1,
+        "create":     5,
+        "modify":     2,
+        "regenerate": 5,
+        "realtime":   0
       }
     }
   }
@@ -229,9 +233,9 @@ Convenience endpoint — returns the credential entry for a given skill name in 
     ],
     "oauth_provider": {
       "auth_method_value": "wiro",
-      "connect_endpoint": "/UserAgentOAuth/IGConnect",
-      "disconnect_endpoint": "/UserAgentOAuth/IGDisconnect",
-      "status_endpoint": "/UserAgentOAuth/IGStatus",
+      "connect_endpoint": "/UserAgentOAuth/OAuthConnect",
+      "disconnect_endpoint": "/UserAgentOAuth/OAuthDisconnect",
+      "status_endpoint": "/UserAgentOAuth/OAuthStatus",
       "connect_button_label": "Connect with Instagram",
       "connect_button_icon": "/images/icons/skills/instagram.svg",
       "connect_button_brand_color": "#e4405f",
@@ -274,6 +278,9 @@ Returns the closed-set vocabulary of high-level capability tags. Use this to bui
     { "name": "creative_generation",      "description": "Generate ad creatives" },
     { "name": "image_generation",         "description": "Generate images" },
     { "name": "video_generation",         "description": "Generate videos" },
+    { "name": "audio_generation",         "description": "Generate audio / voice clips (TTS, music, SFX)" },
+    { "name": "realtime_conversation",    "description": "Bidirectional realtime audio/text conversation (Wiro realtime, OpenAI realtime)" },
+    { "name": "vision",                   "description": "Vision LLM analysis of images (caption, describe, OCR, visual QA)" },
     { "name": "human_copywriting",        "description": "Enforce anti-AI human copy rules" },
     { "name": "anti_ai_tone",             "description": "Reject AI-generated tone patterns" },
     { "name": "memory_management",        "description": "Manage memory/*.json hygiene (size limits, trim, dedupe, schema)" },
@@ -357,7 +364,11 @@ Once you've deployed a useragent, its current custom skills live under `customsk
       "_user_created": true
     }
   ],
-  "skills": ["int-instagram-post", "int-wiro-generator"]
+  "skills": [
+    { "name": "int-instagram-post", "enabled": true },
+    { "name": "int-googleads-manage", "enabled": false },
+    { "name": "int-wiro-aimodels", "enabled": true }
+  ]
 }
 ```
 
@@ -365,10 +376,10 @@ Once you've deployed a useragent, its current custom skills live under `customsk
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `key` | string | Canonical key. **Always carries the `cs-` runtime prefix.** Strategies are `cs-<slug>`; crons are `cs-cron-<slug>`. The server normalises bare slugs you send to `CustomSkillUpsert` — `"content-tone"` becomes `cs-content-tone`, `"weekly-health-check"` (with `usercreated: true`) becomes `cs-cron-weekly-health-check`. |
+| `key` | string | Canonical key. **Always carries the `cs-` runtime prefix.** Strategies are `cs-<slug>`; crons are `cs-cron-<slug>`. The server normalises bare slugs you send to `CustomSkillUpsert` — `"content-tone"` becomes `cs-content-tone`, `"weekly-health-check"` with `interval: "0 9 * * 1"` becomes `cs-cron-weekly-health-check`. |
 | `value` | string | Skill instructions / cron prompt body. Populated only for editable preference skills and user-created entries; bundled crons have it empty. |
-| `description` | string | Human-readable description. **Read-only — set by the agent template or by the user at create time, never accepted in `Upsert` payloads for preset skills.** |
-| `enabled` | boolean | Whether the cron is active. Writable on cron skills; ignored on preference skills. |
+| `description` | string | Human-readable description. **Writable only on user-created rows.** Sending `description` for a preset strategy or a skill-bundled cron is rejected with `customskill-preset-description-not-editable`. |
+| `enabled` | boolean | Whether the skill is active. **Writable for both strategies (`cs-*`) and crons (`cs-cron-*`)** — a disabled strategy is suppressed end-to-end (kept in the merged `customskills[]` so the IDE sees it, but skipped during `start.sh`'s `SKILL.md` write and dropped from the agent's `<available_skills>` block). |
 | `interval` | string \| null | Cron expression for scheduled execution, or `null` for preference skills. Writable on cron skills; ignored on preferences. |
 | `_source` | string | `preset-strategy` (editable preference), `skill-bundle` (cron owned by an integration skill), or `user-created` (cron added via `CustomSkillUpsert` with `usercreated: true`). |
 | `_editable` | boolean | Convenience flag: `true` for preset strategies and user-created rows (you can write `value`), `false` for skill-bundled crons (you can only write `enabled` / `interval`). |
@@ -380,13 +391,13 @@ Agent responses merge three sources into a single set of custom-skill rows:
 
 1. **Preset strategies** (`_source: "preset-strategy"`) — preferences defined by the agent preset (e.g. `cs-content-tone`, `cs-ad-strategy`). You can write `value`.
 2. **Bundled crons** (`_source: "skill-bundle"`) — cron tasks shipped inside a specific integration skill. Automatically materialized when the integration is enabled. You can write `interval` and `enabled`, but **not** `value` (the skill owns the cron instruction text).
-3. **User-created rows** (`_source: "user-created"`) — entries added via `POST /UserAgent/CustomSkillUpsert` (with `usercreated: true` for crons). You can write all fields.
+3. **User-created rows** (`_source: "user-created"`) — entries added via `POST /UserAgent/CustomSkillUpsert`. You can write all fields. Crons are flagged via `interval` (or an explicit `cs-cron-` prefix), not `usercreated`.
 
 ## Updating Preference Skills
 
 Preference skills (`_source: "preset-strategy"`, `_editable: true`) let you customize the agent's behavior by editing its instructions.
 
-Send one `CustomSkillUpsert` call per skill. Unspecified skills are untouched. **Send only `value`** — `enabled`, `interval`, and `description` are silently dropped on preset strategies (they have no runtime effect since strategies are read on-demand by cron tasks via `cs-<slug>`; they're never scheduled themselves).
+Send one `CustomSkillUpsert` call per skill. Unspecified skills are untouched. The typical update is just `value`. You can also pass `enabled: false` to disable a strategy (the agent will skip it everywhere it would otherwise inject the strategy's instructions). `interval` has no effect on strategies — they're read on-demand by cron tasks via `cs-<slug>`, never scheduled themselves. `description` is rejected on preset rows with `customskill-preset-description-not-editable` — the description is template-owned.
 
 ### Example: Social Manager — Brand Voice
 
@@ -630,7 +641,7 @@ The response carries the post-revert state (`current_value`, `current_interval`,
 
 ## Toggling Integration Skills
 
-The top-level `skills[]` array on `UserAgent/Detail` lists the integration skills currently enabled on the instance as a flat **string array** of skill names (e.g. `["int-instagram-post", "int-googleads-manage", "int-wiro-generator"]`). To enable, disable, or change tier in one shot, use **`POST /UserAgent/SkillsApply`** — even when you only want to flip a single skill, send it as a one-entry `skills` map. The endpoint:
+The top-level `skills[]` array on `UserAgent/Detail` lists every integration skill on the instance as an **object array** — `[{ name, enabled, _edited?, _user_created? }, ...]`. `enabled: false` entries are still returned (so the IDE can render disabled rows); filter on `enabled: true` to get only the active set. Example: `[{ "name": "int-instagram-post", "enabled": true }, { "name": "int-googleads-manage", "enabled": false }, { "name": "int-wiro-aimodels", "enabled": true }]`. To enable, disable, or change tier in one shot, use **`POST /UserAgent/SkillsApply`** — even when you only want to flip a single skill, send it as a one-entry `skills` map. The endpoint:
 
 1. Charges the wallet (or prorates) **once**, not N times.
 2. Triggers exactly **one container restart** after the new skill set lands.
@@ -672,7 +683,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
 
 `idempotencyKey` is required — use a UUID per "user clicks Save" event. The full response shape and error-code table live on [`SkillsApply`](/docs/agent-overview#post-useragentskillsapply).
 
-> **Custom builds only.** Template-deploy useragents reject `SkillsApply` with `Skill changes are only available for custom-built agents.` — skills are inherited from the marketplace agent template and changing them would diverge the instance. To run a different skill set, deploy a custom build (`POST /UserAgent/Deploy` with `custom: true`) and configure its skills there.
+> **Custom builds only.** Template-deploy useragents reject `SkillsApply` with error code `100`: `Cannot edit skills on a template agent — only custom-built agents support skill editing.` Skills are inherited from the marketplace agent template and changing them would diverge the instance. To run a different skill set, deploy a custom build (`POST /UserAgent/Deploy` with `custom: true`) and configure its skills there.
 
 > **Bundled crons follow the integration toggle.** When you disable an integration skill (e.g. `int-instagram-post`), every bundled cron it owns (`_source: "skill-bundle"`) is hidden from the top-level `customskills` / `scheduledskills` lists until the integration is re-enabled — you don't need to touch them individually.
 
@@ -890,49 +901,62 @@ Skills that depend on third-party credentials. Follow the linked integration pag
 | `int-googleplay-events` | `google-play-apps` (Service Account — separate per-app registry) | [Google Play Skills](/docs/integration-googleplay-skills) |
 | `int-apollo-sales` | `apollo` (API key) | [Apollo Skills](/docs/integration-apollo-skills) |
 | `int-lemlist-outreach` | `lemlist` (API key) | [Lemlist Skills](/docs/integration-lemlist-skills) |
-| `int-twilio-channel` | `twilio-voice` (API key) | [Twilio Voice Channel](/docs/voice-agent-twilio-channel) |
-| `int-wiro-generator` | Platform-managed (Wiro internal key) | See [Using Wiro AI Models from Your Agent](#using-wiro-ai-models-from-your-agent) |
-| `int-calendarific` | Platform-managed (no user key) | [Platform-Managed Credentials](/docs/agent-credentials#platform-managed-credentials) |
+| `int-twilio-channel` | `twilio-voice` (API key) | [Twilio Voice](/docs/integration-twiliovoice-skills) |
+| `int-wiro-aimodels` | `wiro` (your own Wiro project API key) | See [Using Wiro AI Models from Your Agent](#using-wiro-ai-models-from-your-agent) |
+| `int-calendarific` | `calendarific` (API key) | [Calendarific in your agent](/docs/agent-credentials#calendarific-in-your-agent) |
 
-Agents can optionally forward operator notifications to a Telegram bot via the `sys-telegram` credential — see [Telegram Skills](/docs/integration-telegram-skills). This is never required; every agent remains fully usable over web chat and the [Messaging API](/docs/agent-messaging) without a bot configured.
+Agents can optionally forward operator notifications to a Telegram bot via the `telegram` credential — see [Telegram Skills](/docs/integration-telegram-skills). This is never required; every agent remains fully usable over web chat and the [Messaging API](/docs/agent-messaging) without a bot configured.
 
 > **Restart behavior:** Calls to `CustomSkillUpsert`, `CustomSkillRename`, `CustomSkillDelete`, `CustomSkillRevert`, and `SkillsApply` on a running agent (status 3 or 4) each trigger an automatic restart so the new skill configuration is picked up. Same as credential updates. Description-only edits to `CustomSkillUpsert` skip the restart.
 
 ## Using Wiro AI Models from Your Agent
 
-`int-wiro-generator` is a platform built-in skill that lets an agent call Wiro's own AI models (image/video/audio/LLM generation, cover image creation, model discovery) using Wiro's internal API. When it's enabled on an agent:
+`int-wiro-aimodels` lets an agent call Wiro's own AI models (image / video / audio / LLM generation, cover image creation, model discovery) from inside the agent container. When it's enabled on an agent:
 
-- `credentials.wiro.apiKey` is filled in automatically by Wiro (platform-managed — `fieldstatus: "platform"`). You don't set this key yourself.
-- The agent container gets `WIRO_API_KEY` as an env var only when both `int-wiro-generator` skill is enabled **and** the key is present in the template.
-- `int-wiro-generator` is marked `user_invocable: false` in the registry — it isn't called directly by end-user messages; other skills and scheduled tasks invoke it internally when they need to generate content.
+- `credentials.wiro.apikey` is **operator-supplied** — pick or create a Wiro project at [wiro.ai/panel/projects](https://wiro.ai/panel/projects), copy its API key, and write it via `POST /UserAgent/CredentialUpsert`. Each generated asset is billed to that project's wallet.
+- The agent container gets `WIRO_API_KEY` as an env var only when both `int-wiro-aimodels` is enabled **and** a `wiro.apikey` value has been written.
+- `int-wiro-aimodels` is marked `user_invocable: true` in the registry — end-user messages can trigger it directly, and other skills / scheduled tasks invoke it internally when they need to generate content.
 
-Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, Google Ads, Newsletter) ship with `int-wiro-generator: true` and the platform-managed `wiro` credential pre-filled. Templates that don't need AI generation (App Review Support, Lead Generation Manager) ship with `int-wiro-generator: false`.
+Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, Google Ads) ship with `int-wiro-aimodels: true`. Templates that don't need AI generation (App Review Support, Lead Generation Manager) ship with `int-wiro-aimodels: false`. Either way, the agent stays at `status: 6` (Setup Required) until you upsert the `wiro` credential — same as any other API-key integration.
 
-To check whether your deployed agent has it:
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "wiro", "fieldname": "apikey", "fieldvalue": "wp_xxx_your_wiro_project_api_key" }
+    ]
+  }'
+```
+
+To verify the skill is active on a deployed agent:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Detail" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{ "guid": "your-useragent-guid" }'
-# The top-level skills[] array should contain "int-wiro-generator"
+# The top-level skills[] array should contain { "name": "int-wiro-aimodels", "enabled": true }
+# credentials.wiro._connected should be true after the apikey is set
 ```
 
-### API user-specific note
+### Project key vs operator key
 
-`int-wiro-generator` does **not** mean "your custom skill can call Wiro's Run API with your own API key". It's scoped to the agent template's internal skills and uses Wiro's pre-filled platform key. If you're building on top of Wiro programmatically and want to call the Run / Task / LLM APIs directly from your own backend (not from inside an agent container), use your standard Wiro API key against the public API — see [Run a Model](/docs/run-a-model) and [LLM & Chat Streaming](/docs/llm-chat-streaming).
+`credentials.wiro.apikey` is a **per-agent Wiro project key** — it lives inside that agent container and only the container ever uses it. The `x-api-key` header you send to the public Wiro endpoints from your own backend (e.g. `POST /UserAgent/Deploy`, `POST /Run`) is your **operator key** — entirely separate. If you're building on top of Wiro programmatically and want to call the Run / Task / LLM APIs directly from your own backend (not from inside an agent container), use your operator key — see [Run a Model](/docs/run-a-model) and [LLM & Chat Streaming](/docs/llm-chat-streaming).
 
 ## Update Rules Summary
 
 | Operation | Endpoint | Allowed on preset strategy (`_source: preset-strategy`) | Allowed on skill-bundled cron (`_source: skill-bundle`) | Allowed on user-created cron (`_source: user-created`) |
 |---|---|---|---|---|
-| Write `value` | `CustomSkillUpsert` | Yes | **No — silently dropped** | Yes |
-| Write `interval` | `CustomSkillUpsert` | **No — silently dropped** | Yes | Yes |
-| Write `enabled` | `CustomSkillUpsert` | **No — silently dropped** | Yes | Yes |
-| Write `description` | `CustomSkillUpsert` | **No — rejected** (preset descriptions are template-owned) | **No — rejected** | Yes |
+| Write `value` | `CustomSkillUpsert` | Yes | **No — silently dropped** (skill owns the cron body) | Yes |
+| Write `interval` | `CustomSkillUpsert` | **No — silently dropped** (strategies aren't scheduled) | Yes | Yes |
+| Write `enabled` | `CustomSkillUpsert` | Yes (disabling suppresses the strategy end-to-end) | Yes | Yes |
+| Write `description` | `CustomSkillUpsert` | **No — rejected** with `customskill-preset-description-not-editable` | **No — rejected** with `customskill-preset-description-not-editable` | Yes |
 | Create | `CustomSkillUpsert` with `usercreated: true` | n/a | n/a | Yes |
 | Rename key (+ optional description) | `CustomSkillRename` | **No — preset-forbidden**, renames cascade through admin endpoint | **No — preset-forbidden** | Yes (flavour preserved; `cs-cron-*` ↔ `cs-*` rejected) |
-| Delete | `CustomSkillDelete` | No-op | **Rejected with `disable-via-upsert` suggestion** | Yes |
+| Delete | `CustomSkillDelete` | **Rejected with `suggestion: "disable-via-upsert"`** | **Rejected with `suggestion: "disable-via-upsert"`** | Yes (hard delete — live row + full history purged) |
 | Read history | `CustomSkillHistory` | Yes | Yes (only `enabled` / `interval` writes show up) | Yes (post-rename, the chain is migrated under the new key; a `rename` event marks the transition) |
 | Revert to preset | `CustomSkillRevert` (`source: "preset"`) | Yes | Yes (resets `interval` / `enabled` to preset defaults) | Yes (deletes the row if no preset baseline exists) |
 | Revert to a version | `CustomSkillRevert` (`source: "history"`) | Yes | Yes | Yes |

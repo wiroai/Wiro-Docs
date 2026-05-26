@@ -42,7 +42,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -d '{
     "useragentguid": "your-useragent-guid",
     "fields": [
-      { "credentialkey": "lemlist", "fieldname": "apiKey", "fieldvalue": "YOUR_LEMLIST_API_KEY" }
+      { "credentialkey": "lemlist", "fieldname": "apikey", "fieldvalue": "YOUR_LEMLIST_API_KEY" }
     ]
   }'
 ```
@@ -60,7 +60,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `apiKey` | string | Lemlist API key. |
+| `apikey` | string | Lemlist API key. |
 
 ## Credentials schema (as returned by `POST /UserAgent/Detail`)
 
@@ -69,15 +69,15 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
   "_connected": false,
   "optional": true,
   "extra": false,
-  "apiKey": ""
+  "apikey": ""
 }
 ```
 
 ## Runtime Behavior
 
-Env vars (exported **only when `lemlist-outreach` skill is enabled** and `apiKey` is set):
+Env vars (exported **only when `lemlist-outreach` skill is enabled** and `apikey` is set):
 
-- `LEMLIST_API_KEY` ← `credentials.lemlist.apiKey`
+- `LEMLIST_API_KEY` ← `credentials.lemlist.apikey`
 
 Auth: **Basic auth with empty username** — `--user ":$LEMLIST_API_KEY"`. (Lemlist treats the API key as the password, with no username.)
 Base URL: `https://api.lemlist.com/api`.

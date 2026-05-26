@@ -35,27 +35,32 @@ The YouTube integration uses Google OAuth 2.0 with:
 ## Wiro Mode
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/YTConnect" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
+    "credentialkey": "youtube",
     "redirecturl": "https://your-app.com/settings/integrations"
   }'
 ```
 
-After consent the user returns with `?yt_connected=true&yt_channels=[{channelid,channeltitle}]`. Present the channel picker and call `YTSetChannel`:
+After consent the user returns with `?yt_connected=true&yt_channels=<URL-encoded-JSON>`. The JSON array entries come straight from the YouTube Data API and carry `{ id, title, customUrl, subscriberCount }` per channel. Map them to the picker's `{ channelid, channeltitle }` shape and call `SetPickerAccounts`:
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/YTSetChannel" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "channelid": "UC...",
-    "channeltitle": "My Channel"
+    "credentialkey": "youtube",
+    "accounts": [
+      { "channelid": "UC...", "channeltitle": "My Channel" }
+    ]
   }'
 ```
+
+Pass multiple `{ channelid, channeltitle }` entries to authorize the agent against several channels at once.
 
 ## Own Mode
 
@@ -79,35 +84,92 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/YTSetChannel" \
 ### Step 3: Connect
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/YTConnect" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
+    "credentialkey": "youtube",
     "redirecturl": "https://your-app.com/settings/integrations",
     "authmethod": "own"
   }'
 ```
 
+After consent, present any returned channels to the user and persist the selection with `SetPickerAccounts` exactly as shown in [Wiro Mode](#wiro-mode) above.
+
 ## Disconnect
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/YTDisconnect" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthDisconnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "useragentguid": "your-useragent-guid" }'
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "youtube"
+  }'
 ```
 
 ## Status
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/YTStatus" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "useragentguid": "your-useragent-guid" }'
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "youtube"
+  }'
 ```
 
-Returns `{ result: true, connected: true, channelid, channeltitle, connectedat }`.
+Response:
+
+```json
+{
+  "result": true,
+  "connected": true,
+  "accounts": [
+    { "id": "UC...", "name": "My Channel" }
+  ],
+  "connectedat": "2026-04-17T12:00:00.000Z",
+  "tokenexpiresat": "2026-04-17T13:00:00.000Z",
+  "errors": []
+}
+```
+
+`accounts[]` carries one entry per selected channel (`id` = `channelid`, `name` = `channeltitle`).
+
+## API Reference
+
+### POST /UserAgentOAuth/OAuthConnect
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Agent instance GUID. |
+| `credentialkey` | string | Yes | `"youtube"`. |
+| `redirecturl` | string | Yes | HTTPS URL. |
+| `authmethod` | string | No | `"wiro"` (default) or `"own"`. |
+
+### GET /UserAgentOAuth/YTCallback
+
+Query params: `yt_connected=true&yt_channels=<JSON>` (URL-encoded JSON array of `{ id, title, customUrl, subscriberCount }` straight from the YouTube Data API) or `yt_error=<code>`. The callback path is per-provider — YouTube's stays `YTCallback`. When you hand the array off to `SetPickerAccounts`, map each entry to `{ channelid: id, channeltitle: title }` — the picker uses those names for storage.
+
+### POST /UserAgentOAuth/SetPickerAccounts
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Agent instance GUID. |
+| `credentialkey` | string | Yes | `"youtube"`. |
+| `accounts` | array | Yes | One or more `{ channelid, channeltitle }` entries. |
+
+Response: `{ result, accounts: [{id, name}, ...], errors }`. Triggers agent restart if running.
+
+### POST /UserAgentOAuth/OAuthStatus
+
+Body: `{ useragentguid, credentialkey: "youtube" }`. Response: `connected`, `accounts: [{id, name}, ...]` (one entry per selected channel — `id` = `channelid`, `name` = `channeltitle`), `connectedat`, `tokenexpiresat`.
+
+### POST /UserAgentOAuth/OAuthDisconnect
+
+Body: `{ useragentguid, credentialkey: "youtube" }`. Clears YouTube credentials (no remote revoke).
 
 ## What the agent does with this integration
 
@@ -151,5 +213,5 @@ Agent → POST /youtubeAnalytics/v2/reports
 |---------|-------|-----|
 | Empty channel list | User has no YouTube channel | User creates a channel |
 | `quotaExceeded` | Daily quota hit | Wait 24h or request higher quota from Google |
-| `channelNotFound` | Channel deleted or moved | User re-selects via `YTSetChannel` |
-| `invalid_grant` | Refresh token expired | Re-connect via `YTConnect` |
+| `channelNotFound` | Channel deleted or moved | User re-selects via `SetPickerAccounts` |
+| `invalid_grant` | Refresh token expired | Re-connect via `OAuthConnect` |

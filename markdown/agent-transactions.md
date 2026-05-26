@@ -15,7 +15,7 @@ The ledger is the single source of truth for "where did my credits go?" and powe
 | `purchase` | Extra-credit checkout | When `POST /UserAgent/CreateExtraCreditCheckout` (`useprepaid: true`) succeeds. Positive `amount` = pack credits. |
 | `grant` | Skill toggle / tier upgrade | When a skill is enabled mid-period and the credit pool grows, or when a tier upgrade lifts the monthly allocation. Positive `amount`. |
 | `expired` | Skill toggle | When a skill is disabled mid-period and the credit pool shrinks. Negative `amount` (signed delta). |
-| `refund` | Server-side refund | When a Stripe refund webhook arrives for an agent purchase. Positive `amount`. |
+| `refund` | Server-side refund | Issued by Wiro support when a previous charge is reversed. Positive `amount`. |
 | `cancel` | Subscription end policy | When a subscription expires and the policy revokes any monthly leftover. Negative `amount`. |
 
 > **The ledger is append-only.** There is no delete endpoint. Each row carries a stable `guid` that the server uses for deduplication (so a duplicate retry of the same deduct event is a no-op).
@@ -49,10 +49,10 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
   "errors": [],
   "total": 128,
   "summary": {
-    "monthlycredits": 5000,
+    "monthlycredits": 10000,
     "extracredits": 2000,
     "usedcredits": 1450,
-    "remainingcredits": 5550,
+    "remainingcredits": 10550,
     "creditperiod": "2026-05",
     "creditsyncat": 1714694410
   },
@@ -62,7 +62,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "type": "deduct",
       "action": "message",
       "amount": -10,
-      "balanceafter": 5550,
+      "balanceafter": 10550,
       "description": "Agent action: message",
       "sessionkey": "default",
       "messageguid": "5c41dabf-f2be-4aa8-a5a4-8c9e3d2f3f11",
@@ -86,7 +86,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "type": "purchase",
       "action": "small",
       "amount": 5000,
-      "balanceafter": 5560,
+      "balanceafter": 10560,
       "description": "Extra credits — small pack",
       "sessionkey": null,
       "messageguid": null,
@@ -109,14 +109,14 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "guid": "312e2a5f-1002-4c9a-af7d-70571e8b1739",
       "type": "renewal",
       "action": "monthly",
-      "amount": 5000,
-      "balanceafter": 3560,
+      "amount": 10000,
+      "balanceafter": 5560,
       "description": "Subscription renewal",
       "sessionkey": null,
       "messageguid": null,
       "provider": "prepaid",
       "providerref": null,
-      "metadata": { "period": "2026-05", "priceUsd": 29 },
+      "metadata": { "period": "2026-05", "priceUsd": 90 },
       "uuid": "system",
       "user": null,
       "createdat": 1714608000
@@ -135,9 +135,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "metadata": {
         "skill": "int-instagram-post",
         "enabled": true,
-        "previousPriceUsd": 27,
-        "newPriceUsd": 32,
-        "proratedCharge": 3.33
+        "previousPriceUsd": 90,
+        "newPriceUsd": 140,
+        "proratedCharge": 33.33
       },
       "uuid": "ada-uuid",
       "user": {
@@ -180,8 +180,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 | `description` | `string\|null` | Human-readable label. |
 | `sessionkey` | `string\|null` | Session the deduct belongs to (deduct rows only). |
 | `messageguid` | `string\|null` | Agent message that triggered the deduct (deduct rows only). |
-| `provider` | `string\|null` | `"agent"` (runtime deduct), `"prepaid"` (wallet-backed change), or `"stripe"` (Stripe-backed refund / renewal). |
-| `providerref` | `string\|null` | Provider-side reference (Stripe session / invoice / payment-intent id, etc.). |
+| `provider` | `string\|null` | `"agent"` (runtime deduct) or `"prepaid"` (wallet-backed change). API-deployed agents always run on the prepaid path. |
+| `providerref` | `string\|null` | Provider-side reference id. Always populated for `prepaid` rows (wallet transaction id); `null` for `agent` runtime deducts. |
 | `metadata` | `object\|null` | Arbitrary JSON context attached at write time (skill, tier, period, prorated charge, …). |
 | `uuid` | `string\|null` | UUID of the user who triggered the event (the chat operator for `deduct` rows; the wallet owner for `purchase` / `grant`). `"system"` for cron-driven events. |
 | `user` | `object\|null` | Resolved actor: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. `null` when `uuid` is `"system"` (automation / cron renewals) or when the user record was deleted. |
@@ -259,10 +259,10 @@ The endpoint is **idempotent on `guid`**: a retry of the same deduction event re
   "errors": [],
   "guid": "7f3e8c21-1be1-4f5a-96e8-2b1a9e2a6a01",
   "idempotent": false,
-  "monthlycredits": 5000,
+  "monthlycredits": 10000,
   "extracredits": 2000,
   "usedcredits": 1460,
-  "remainingcredits": 5540
+  "remainingcredits": 10540
 }
 ```
 

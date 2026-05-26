@@ -64,7 +64,7 @@ Community Management API approval is a manual review that can take days. While p
 
 ### Step 4: Note the required OAuth 2.0 scopes
 
-Wiro requests these exact scopes (verified against `api-useragent-oauth.js` L1484):
+Wiro requests these exact scopes (sourced from the LinkedIn entry in the credential registry — `data/agent-skills-registry/credentials/linkedin.json` under `oauth_provider.oauth_flow.scopes`):
 
 ```
 openid profile w_organization_social r_organization_social
@@ -109,11 +109,12 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
 ### Step 7: Initiate OAuth
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/LIConnect" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
+    "credentialkey": "linkedin",
     "redirecturl": "https://your-app.com/settings/integrations",
     "authmethod": "own"
   }'
@@ -155,28 +156,32 @@ if (params.get("li_connected") === "true") {
 ### Step 9: Verify
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/LIStatus" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "useragentguid": "your-useragent-guid" }'
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "linkedin"
+  }'
 ```
 
-Response (note the non-standard field name):
+Response:
 
 ```json
 {
   "result": true,
   "connected": true,
-  "linkedinname": "Jane Doe",
+  "accounts": [
+    { "id": "Jane Doe", "name": "Jane Doe" }
+  ],
   "connectedat": "2026-04-17T12:00:00.000Z",
   "tokenexpiresat": "2026-06-16T12:00:00.000Z",
-  "refreshtokenexpiresat": "2027-04-17T12:00:00.000Z",
   "errors": []
 }
 ```
 
-- `linkedinname` is the field name — not `username` like other providers.
-- Access tokens last ~60 days; refresh tokens ~1 year (LinkedIn returns both durations in the token exchange response).
+- `accounts[0].id` carries the connected LinkedIn member's display name (a human), **not** the Company Page name — the page is identified by `organizationid` you set in Step 6.
+- Access tokens last ~60 days; refresh tokens ~1 year (LinkedIn returns both durations in the token exchange response; the refresh token is used internally by Wiro's daily maintenance cron).
 
 ### Step 10: Start the agent
 
@@ -189,25 +194,26 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ## API Reference
 
-### POST /UserAgentOAuth/LIConnect
+### POST /UserAgentOAuth/OAuthConnect
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
+| `credentialkey` | string | Yes | `"linkedin"`. |
 | `redirecturl` | string | Yes | HTTPS URL. |
 | `authmethod` | string | No | `"wiro"` (coming soon) or `"own"`. |
 
 ### GET /UserAgentOAuth/LICallback
 
-Query params: `li_connected=true&li_name=...` or `li_error=...`.
+Query params: `li_connected=true&li_name=...` or `li_error=...`. The callback path is per-provider — LinkedIn's stays `LICallback`.
 
-### POST /UserAgentOAuth/LIStatus
+### POST /UserAgentOAuth/OAuthStatus
 
-Response fields: `connected`, **`linkedinname`** (not `username`), `connectedat`, `tokenexpiresat`, `refreshtokenexpiresat`.
+Body: `{ useragentguid, credentialkey: "linkedin" }`. Response: `connected`, `accounts: [{id, name}]` (1-element with the connected member's display name), `connectedat`, `tokenexpiresat`.
 
-### POST /UserAgentOAuth/LIDisconnect
+### POST /UserAgentOAuth/OAuthDisconnect
 
-Clears LinkedIn credentials (no remote revoke).
+Body: `{ useragentguid, credentialkey: "linkedin" }`. Clears LinkedIn credentials (no remote revoke).
 
 ### POST /UserAgentOAuth/TokenRefresh
 
@@ -248,11 +254,11 @@ To change **what** the scheduled task posts (topics, tone, audience angle), edit
 | Error code | Meaning | What to do |
 |------------|---------|------------|
 | `missing_params` | Callback reached without `state` or `code`. | Restart from Step 7. |
-| `session_expired` | >15 min between `LIConnect` and callback. | Call `LIConnect` again. |
+| `session_expired` | >15 min between `OAuthConnect` and callback. | Call `OAuthConnect` again. |
 | `authorization_denied` | User cancelled, or missing required scopes in app. | Verify all four scopes are enabled under Auth → OAuth 2.0 scopes. |
 | `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy secret; verify URL. |
 | `useragent_not_found` | Invalid or unauthorized guid. | Use `POST /UserAgent/MyAgents`. |
-| `invalid_config` | No `credentials.linkedin` block. | `UserAgent/CredentialUpsert` with `clientid`, `clientsecret`, `organizationid`. |
+| `LinkedIn credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `clientid` / `clientsecret` are missing. | `UserAgent/CredentialUpsert` with `clientid` + `clientsecret`. |
 | `internal_error` | Server error. | Retry; contact support if persistent. |
 
 ### Posts rejected with 401 Unauthorized

@@ -49,7 +49,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -d '{
     "useragentguid": "your-useragent-guid",
     "fields": [
-      { "credentialkey": "sendgrid", "fieldname": "apiKey", "fieldvalue": "SG.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" }
+      { "credentialkey": "sendgrid", "fieldname": "apikey", "fieldvalue": "SG.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" }
     ]
   }'
 ```
@@ -67,7 +67,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `apiKey` | string | SendGrid API key (starts with `SG.`). |
+| `apikey` | string | SendGrid API key (starts with `SG.`). |
 
 ## Credentials schema (as returned by `POST /UserAgent/Detail`)
 
@@ -76,15 +76,15 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
   "_connected": false,
   "optional": true,
   "extra": false,
-  "apiKey": ""
+  "apikey": ""
 }
 ```
 
 ## Runtime Behavior
 
-Env vars (exported **only when `sendgrid-email` skill is enabled** and `apiKey` is set):
+Env vars (exported **only when `sendgrid-email` skill is enabled** and `apikey` is set):
 
-- `SENDGRID_API_KEY` ← `credentials.sendgrid.apiKey`
+- `SENDGRID_API_KEY` ← `credentials.sendgrid.apikey`
 
 Auth: `Authorization: Bearer $SENDGRID_API_KEY`.
 Base URL: `https://api.sendgrid.com/v3`.

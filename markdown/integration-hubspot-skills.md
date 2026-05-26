@@ -34,7 +34,7 @@ The HubSpot integration uses HubSpot's OAuth 2.0.
 
 ## Wiro Mode
 
-Call `HubSpotConnect` without `authmethod`, redirect, parse `hubspot_connected=true&hubspot_portal=<id>&hubspot_name=<name>`.
+Call `OAuthConnect` without `authmethod`, redirect, parse `hubspot_connected=true&hubspot_portal=<id>&hubspot_name=<name>`.
 
 ## Complete Integration Walkthrough — Own Mode
 
@@ -52,7 +52,7 @@ Call `HubSpotConnect` without `authmethod`, redirect, parse `hubspot_connected=t
    https://api.wiro.ai/v1/UserAgentOAuth/HubSpotCallback
    ```
 
-3. **Scopes** — Wiro requests a fixed scope string plus optional_scopes (verified against `api-useragent-oauth.js` L2551-L2556). Enable **all** of the following in your HubSpot app's Auth tab:
+3. **Scopes** — Wiro requests a fixed scope string plus optional_scopes (sourced from `data/agent-skills-registry/credentials/hubspot.json` under `oauth_provider.oauth_flow.scopes`). Enable **all** of the following in your HubSpot app's Auth tab:
 
    **Required `scope` (mandatory — OAuth fails if any is missing):**
 
@@ -101,11 +101,12 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
 ### Step 5: Initiate OAuth
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/HubSpotConnect" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
+    "credentialkey": "hubspot",
     "redirecturl": "https://your-app.com/settings/integrations",
     "authmethod": "own"
   }'
@@ -134,10 +135,13 @@ https://your-app.com/settings/integrations?hubspot_connected=true&hubspot_portal
 ### Step 7: Verify and Start
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/HubSpotStatus" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "useragentguid": "your-useragent-guid" }'
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "hubspot"
+  }'
 ```
 
 Response:
@@ -146,7 +150,9 @@ Response:
 {
   "result": true,
   "connected": true,
-  "username": "12345678",
+  "accounts": [
+    { "id": "Acme Corp HubSpot", "name": "Acme Corp HubSpot" }
+  ],
   "connectedat": "2026-04-17T12:00:00.000Z",
   "tokenexpiresat": "2026-04-17T12:30:00.000Z",
   "errors": []
@@ -155,7 +161,7 @@ Response:
 
 > **HubSpot tokens expire in 30 minutes.** This is the shortest token lifetime of any Wiro integration. Every running agent has a dedicated background cron that refreshes HubSpot tokens **every 20 minutes** — you never need to call TokenRefresh from your own app. If you see stale tokens despite the agent being running, check agent logs for refresh failures.
 
-Note: `username` in the response is actually the **portalid as a string** (not `portalname`) — this is backend behavior. `hubspot_name` is only set on the callback URL, not re-surfaced by `Status`.
+Note: For HubSpot, the unified `OAuthStatus` mirrors the saved `portalname` into both `accounts[0].id` and `accounts[0].name` (HubSpot has no separate picker — there's exactly one portal per OAuth grant). The numeric `portalid` is captured by `HubSpotCallback` as `hubspot_portal=<id>` on the redirect URL but is not re-surfaced by `OAuthStatus`.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
@@ -166,25 +172,26 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ## API Reference
 
-### POST /UserAgentOAuth/HubSpotConnect
+### POST /UserAgentOAuth/OAuthConnect
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
+| `credentialkey` | string | Yes | `"hubspot"`. |
 | `redirecturl` | string | Yes | HTTPS URL. |
 | `authmethod` | string | No | `"wiro"` (default) or `"own"`. |
 
 ### GET /UserAgentOAuth/HubSpotCallback
 
-Query params: `hubspot_connected=true&hubspot_portal=<id>&hubspot_name=<name>` or `hubspot_error=<code>`.
+Query params: `hubspot_connected=true&hubspot_portal=<id>&hubspot_name=<name>` or `hubspot_error=<code>`. The callback path is per-provider — HubSpot's stays `HubSpotCallback`.
 
-### POST /UserAgentOAuth/HubSpotStatus
+### POST /UserAgentOAuth/OAuthStatus
 
-Response fields: `connected`, `username` (= portalid string), `connectedat`, `tokenexpiresat` (~30 min).
+Body: `{ useragentguid, credentialkey: "hubspot" }`. Response: `connected`, `accounts: [{id, name}]` (1-element with the saved `portalname` mirrored into both `id` and `name`), `connectedat`, `tokenexpiresat` (~30 min).
 
-### POST /UserAgentOAuth/HubSpotDisconnect
+### POST /UserAgentOAuth/OAuthDisconnect
 
-Clears HubSpot credentials (no remote revoke).
+Body: `{ useragentguid, credentialkey: "hubspot" }`. Clears HubSpot credentials (no remote revoke).
 
 ### POST /UserAgentOAuth/TokenRefresh
 
@@ -226,7 +233,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
 | `session_expired` | State cache expired (15 min TTL). | Restart the OAuth flow. |
 | `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy; verify URL. |
 | `useragent_not_found` | Invalid guid. | Use `POST /UserAgent/MyAgents`. |
-| `invalid_config` | No `credentials.hubspot` block. | `UserAgent/CredentialUpsert` with `clientid` + `clientsecret`. |
+| `HubSpot credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `clientid` / `clientsecret` are missing. | `UserAgent/CredentialUpsert` with `clientid` + `clientsecret`. |
 | `internal_error` | Server error. | Retry; contact support. |
 
 ### 403 Forbidden on API calls

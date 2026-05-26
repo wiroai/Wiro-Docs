@@ -34,29 +34,34 @@ The GA4 integration uses Google OAuth 2.0 with the GA4 Data API v1beta and the G
 ## Wiro Mode
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GA4Connect" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
+    "credentialkey": "ga4",
     "redirecturl": "https://your-app.com/settings/integrations"
   }'
 ```
 
 The response returns `{ result: true, authorizeUrl: "..." }`. Redirect the user to `authorizeUrl`.
 
-After consent, the user returns with `?ga4_connected=true&ga4_properties=[{propertyid,propertydisplayname,accountname}]`. If the user has multiple GA4 properties, present them in a picker and call `GA4SetProperty`:
+After consent, the user returns with `?ga4_connected=true&ga4_properties=<URL-encoded-JSON>`. The JSON array entries come straight from GA4's Admin API and carry `{ id, displayName, account, propertyType }` per property. Map them to the picker shape and call `SetPickerAccounts`:
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GA4SetProperty" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "propertyid": "123456789",
-    "propertydisplayname": "MyApp — Production"
+    "credentialkey": "ga4",
+    "accounts": [
+      { "propertyid": "123456789", "propertydisplayname": "MyApp — Production" }
+    ]
   }'
 ```
+
+Pass multiple `{ propertyid, propertydisplayname }` entries to authorize the agent against several GA4 properties at once. Only `propertyid` and `propertydisplayname` are persisted by the picker — the GA4 `account` resource name (`accounts/12345`) is discoverable from the redirect-URL JSON if you need it for UI grouping but is not stored.
 
 ## Own Mode
 
@@ -81,14 +86,15 @@ Copy the **Client ID** and **Client Secret** to your agent credentials.
 
 ### Step 3: Connect
 
-Submit the Client ID, Client Secret via agent credential update (`POST /UserAgent/CredentialUpsert`), then trigger `GA4Connect` in `own` mode:
+Submit the Client ID, Client Secret via agent credential update (`POST /UserAgent/CredentialUpsert`), then trigger `OAuthConnect` in `own` mode:
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GA4Connect" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
+    "credentialkey": "ga4",
     "redirecturl": "https://your-app.com/settings/integrations",
     "authmethod": "own"
   }'
@@ -96,15 +102,18 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GA4Connect" \
 
 ### Step 4: Property Picker
 
-After GA4 consent the user returns with `?ga4_properties=[...]`. Present the list, let the user choose, then call `GA4SetProperty` as shown above.
+After GA4 consent the user returns with `?ga4_properties=[...]`. Present the list, let the user choose, then call `SetPickerAccounts` as shown above.
 
 ## Disconnect
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GA4Disconnect" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthDisconnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "useragentguid": "your-useragent-guid" }'
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "ga4"
+  }'
 ```
 
 Clears `accesstoken`, `refreshtoken`, `propertyid`, `propertydisplayname` and resets `_connected` to `false`. The credential template shape is preserved so the UI can re-offer Connect.
@@ -112,13 +121,31 @@ Clears `accesstoken`, `refreshtoken`, `propertyid`, `propertydisplayname` and re
 ## Status
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GA4Status" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "useragentguid": "your-useragent-guid" }'
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "ga4"
+  }'
 ```
 
-Returns `{ result: true, connected: true, propertyid, propertydisplayname, connectedat }`.
+Response:
+
+```json
+{
+  "result": true,
+  "connected": true,
+  "accounts": [
+    { "id": "123456789", "name": "MyApp — Production" }
+  ],
+  "connectedat": "2026-04-17T12:00:00.000Z",
+  "tokenexpiresat": "2026-04-17T13:00:00.000Z",
+  "errors": []
+}
+```
+
+`accounts[]` carries one entry per selected property (`id` = `propertyid`, `name` = `propertydisplayname`).
 
 ## What the agent does with this integration
 
@@ -145,7 +172,7 @@ Agent reads GA4 predefined + custom audiences via Admin API and can propose Cust
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| `invalid_grant` | Refresh token expired | Re-connect via `GA4Connect` |
+| `invalid_grant` | Refresh token expired | Re-connect via `OAuthConnect` |
 | `PERMISSION_DENIED` | User not a property administrator | Ask user to add the GA account |
 | `403 Request had insufficient authentication` | Missing scopes | Re-consent with full scope set |
 | Empty property picker | User has no GA4 property access | Instruct user to create/gain access |

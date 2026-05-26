@@ -36,16 +36,17 @@ The Google Ads integration uses Google OAuth 2.0 with the Google Ads API v23 RES
 ## Wiro Mode
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GAdsConnect" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
+    "credentialkey": "google-ads",
     "redirecturl": "https://your-app.com/settings/integrations"
   }'
 ```
 
-User returns with `?gads_connected=true&gads_accounts=[{...}]`. Present to user if multiple. Call `GAdsSetCustomerId`. Skip to [Step 8: Verify](#step-8-verify-and-start).
+User returns with `?gads_connected=true&gads_accounts=[{...}]`. Present to user if multiple. Call `SetPickerAccounts`. Skip to [Step 8: Verify](#step-8-verify-and-start).
 
 ## Complete Integration Walkthrough — Own Mode
 
@@ -121,11 +122,12 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
 ### Step 5: Initiate OAuth
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GAdsConnect" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
+    "credentialkey": "google-ads",
     "redirecturl": "https://your-app.com/settings/integrations",
     "authmethod": "own"
   }'
@@ -171,26 +173,30 @@ if (params.get("gads_connected") === "true") {
 ### Step 7: Persist the customer ID selection
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GAdsSetCustomerId" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "customerid": "1234567890",
-    "customerdescriptivename": "Acme Corp — Production"
+    "credentialkey": "google-ads",
+    "accounts": [
+      { "customerid": "1234567890", "customerdescriptivename": "Acme Corp — Production" }
+    ]
   }'
 ```
 
 - `customerid`: either 10-digit or `123-456-7890` format works — non-digits are stripped automatically.
 - `customerdescriptivename` (optional): human-readable account label. Shown in the dashboard next to the customer ID so users can tell accounts apart when they manage many MCC sub-accounts. Typically the `customer.descriptive_name` you received in the `gads_accounts` array from the OAuth callback.
+- Pass multiple `{ customerid, customerdescriptivename }` entries to authorize the agent against several customers at once.
 
 Response:
 
 ```json
 {
   "result": true,
-  "customerid": "1234567890",
-  "customerdescriptivename": "Acme Corp — Production",
+  "accounts": [
+    { "id": "1234567890", "name": "Acme Corp — Production" }
+  ],
   "errors": []
 }
 ```
@@ -200,27 +206,33 @@ Triggers agent restart if running.
 ### Step 8: Verify and Start
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GAdsStatus" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "useragentguid": "your-useragent-guid" }'
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "google-ads"
+  }'
 ```
 
-Response (note the non-standard field name — **`customerid`** instead of `username`):
+Response:
 
 ```json
 {
   "result": true,
   "connected": true,
-  "customerid": "1234567890",
+  "accounts": [
+    { "id": "1234567890", "name": "Acme Corp — Production" }
+  ],
   "connectedat": "2026-04-17T12:00:00.000Z",
   "tokenexpiresat": "2026-04-17T13:00:00.000Z",
   "errors": []
 }
 ```
 
+- `accounts[]` carries one entry per selected customer (`id` = `customerid`, `name` = `customerdescriptivename`).
 - Access token lifetime: **1 hour** (short). The agent runs a background refresh cron every 45 minutes.
-- No `refreshtokenexpiresat` — Google's refresh tokens don't expire in typical use (unless revoked).
+- Google's refresh tokens don't expire in typical use (unless revoked).
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
@@ -231,35 +243,36 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ## API Reference
 
-### POST /UserAgentOAuth/GAdsConnect
+### POST /UserAgentOAuth/OAuthConnect
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
+| `credentialkey` | string | Yes | `"google-ads"`. |
 | `redirecturl` | string | Yes | HTTPS URL. |
 | `authmethod` | string | No | `"wiro"` (default) or `"own"`. |
 
 ### GET /UserAgentOAuth/GAdsCallback
 
-Query params: `gads_connected=true&gads_accounts=<JSON>` (when developer token available) or `gads_error=<code>`.
+Query params: `gads_connected=true&gads_accounts=<JSON>` (when developer token available) or `gads_error=<code>`. The callback path is per-provider — Google Ads's stays `GAdsCallback`.
 
-### POST /UserAgentOAuth/GAdsSetCustomerId
+### POST /UserAgentOAuth/SetPickerAccounts
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
-| `customerid` | string | Yes | 10-digit customer ID. Non-digits stripped. |
-| `customerdescriptivename` | string | No | Human-readable account label shown in the dashboard next to the customer ID. Typically the `customer.descriptive_name` from the OAuth callback's `gads_accounts` array. |
+| `credentialkey` | string | Yes | `"google-ads"`. |
+| `accounts` | array | Yes | One or more `{ customerid, customerdescriptivename }` entries. `customerid` is 10 digits (dashes/letters stripped server-side); `customerdescriptivename` is the human-readable label, typically the `customer.descriptive_name` from the OAuth callback's `gads_accounts` array. |
 
-Response: `{ result, customerid, customerdescriptivename, errors }`.
+Response: `{ result, accounts: [{id, name}, ...], errors }`. Triggers agent restart if running.
 
-### POST /UserAgentOAuth/GAdsStatus
+### POST /UserAgentOAuth/OAuthStatus
 
-Response fields: `connected`, **`customerid`** (not `username`), `customerdescriptivename`, `connectedat`, `tokenexpiresat` (~1h).
+Body: `{ useragentguid, credentialkey: "google-ads" }`. Response: `connected`, `accounts: [{id, name}, ...]` (one entry per selected customer — `id` = `customerid`, `name` = `customerdescriptivename`), `connectedat`, `tokenexpiresat` (~1h).
 
-### POST /UserAgentOAuth/GAdsDisconnect
+### POST /UserAgentOAuth/OAuthDisconnect
 
-Clears Google Ads credentials (no remote revoke).
+Body: `{ useragentguid, credentialkey: "google-ads" }`. Clears Google Ads credentials (no remote revoke).
 
 ### POST /UserAgentOAuth/TokenRefresh
 
@@ -271,7 +284,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "provider": "googleads"
+    "provider": "google-ads"
   }'
 ```
 
@@ -305,7 +318,7 @@ To change **what** the reporter includes (wasted-spend threshold, target ROAS, r
 | `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy; verify URL. |
 | `template_not_found` (wiro mode) | Wiro's template doesn't have `googleads` credentials. | Contact support or switch to own mode. |
 | `useragent_not_found` | Invalid guid. | Use `POST /UserAgent/MyAgents`. |
-| `invalid_config` | No `credentials.googleads` block. | `UserAgent/CredentialUpsert` with all four fields. |
+| `Google Ads credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but the four required fields are missing. | `UserAgent/CredentialUpsert` with all four fields. |
 | `internal_error` | Server error. | Retry; contact support. |
 
 ### `USER_PERMISSION_DENIED` on API calls

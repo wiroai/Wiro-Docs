@@ -59,7 +59,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
   -d '{
     "draft": true,
     "tier": "pro",
-    "skills": ["int-gmail-check", "int-wordpress-post", "int-wiro-generator"]
+    "skills": ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels"]
   }'
 ```
 
@@ -70,21 +70,21 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
   "result": true,
   "errors": [],
   "tier": "pro",
-  "tiermultiplier": 3,
-  "totalPriceUsd": 27,
-  "totalMonthlyCredits": 3000,
+  "tiermultiplier": 10,
+  "totalPriceUsd": 90,
+  "totalMonthlyCredits": 10000,
   "peractioncosts": { "message": 10, "create": 60, "modify": 20, "regenerate": 20 },
   "skillBreakdown": [
-    { "skill": "int-gmail-check",    "priceUsd": 4, "credits": 400,  "actionCostOverrides": {} },
-    { "skill": "int-wordpress-post",  "priceUsd": 5, "credits": 500,  "actionCostOverrides": { "create": 60 } },
-    { "skill": "int-wiro-generator", "priceUsd": 0, "credits": 0,    "actionCostOverrides": {} }
+    { "skill": "int-gmail-check",     "priceUsd": 4, "credits": 400,  "actionCostOverrides": {} },
+    { "skill": "int-wordpress-post",  "priceUsd": 5, "credits": 600,  "actionCostOverrides": { "create": 60 } },
+    { "skill": "int-wiro-aimodels",   "priceUsd": 0, "credits": 0,    "actionCostOverrides": {} }
   ],
-  "enabledSkills": ["int-gmail-check", "int-wordpress-post", "int-wiro-generator"],
-  "directSkills":  ["int-gmail-check", "int-wordpress-post", "int-wiro-generator"],
-  "agentBase": { "priceUsd": 9, "credits": 1000 },
+  "enabledSkills": ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels"],
+  "directSkills":  ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels"],
+  "agentBase": { "priceUsd": 0, "credits": 0 },
   "tiers": {
     "starter": { "priceUsd": 9,  "credits": 1000 },
-    "pro":     { "priceUsd": 27, "credits": 3000 }
+    "pro":     { "priceUsd": 90, "credits": 10000 }
   }
 }
 ```
@@ -97,7 +97,7 @@ Read the response:
 - `skillBreakdown[]` → per-skill contribution to the total. Use this to see which skill is the most expensive.
 - `enabledSkills` → final closure (includes any transitively-enabled `depends_on`).
 
-> **`agentBase`** is the platform-wide floor (`$9 / 1000 credits`) — every agent has this base, regardless of skill set. The skill weights stack on top.
+> **`agentBase`** is always `{ priceUsd: 0, credits: 0 }` — pricing is fully skill-driven and the field is kept on the response so callers don't have to null-check. The agent's Starter price = Σ(skill weights), bumped to **$4/month** if the raw sum lands below the floor (credits scale up by the same ratio). Pro = Starter × `tiermultiplier` (default `10`).
 
 ## Step 3 — Deploy the Custom Agent
 
@@ -116,7 +116,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
     "skills": {
       "int-gmail-check":    true,
       "int-wordpress-post":  true,
-      "int-wiro-generator": true
+      "int-wiro-aimodels": true
     },
     "credentials": {
       "gmail":    { "account": "agent@company.com", "apppassword": "xxxx xxxx xxxx xxxx" },
@@ -148,15 +148,15 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
       "title": "Inbox Watcher",
       "description": "Watches inbound Gmail and forwards a summary to Telegram every 4 hours.",
       "tier": "pro",
-      "tiermultiplier": 3,
-      "status": 0,
+      "tiermultiplier": 10,
+      "status": 2,
       "setuprequired": false,
-      "monthlycredits": 3000,
-      "monthlypriceusd": 27,
-      "remainingcredits": 3000,
+      "monthlycredits": 10000,
+      "monthlypriceusd": 90,
+      "remainingcredits": 10000,
       "creditperiod": "2026-05",
       "peractioncosts": { "message": 10, "create": 60, "modify": 20, "regenerate": 20 },
-      "skills": ["int-gmail-check", "int-wordpress-post", "int-wiro-generator"],
+      "skills": ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels"],
       "customskills": [],
       "scheduledskills": [
         {
@@ -176,15 +176,15 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
       "agent": {
         "custom": true,
         "title": "Inbox Watcher",
-        "tiermultiplier": 3,
+        "tiermultiplier": 10,
         "tiers": {
           "starter": { "priceUsd": 9,  "credits": 1000 },
-          "pro":     { "priceUsd": 27, "credits": 3000 }
+          "pro":     { "priceUsd": 90, "credits": 10000 }
         },
         "extracreditpacks": [
-          { "packkey": "small",  "credits": 15000, "priceusd": 120, "enabled": true },
-          { "packkey": "medium", "credits": 30000, "priceusd": 220, "enabled": true },
-          { "packkey": "large",  "credits": 60000, "priceusd": 380, "enabled": true }
+          { "packkey": "small",  "credits": 50000,  "priceusd": 450,  "enabled": true },
+          { "packkey": "medium", "credits": 100000, "priceusd": 900,  "enabled": true },
+          { "packkey": "large",  "credits": 200000, "priceusd": 1800, "enabled": true }
         ]
       }
     }
@@ -194,16 +194,16 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
 
 Notes on the response:
 
-- `agentid: null` — confirms this is a custom build with no marketplace template.
+- `agentguid: null` — confirms this is a custom build with no marketplace template.
 - `agent.custom: true` — the synthesized template placeholder. Same shape as a template's `agent` block but no `slug` / `cover` / `categories` (custom builds aren't in the marketplace).
 - `scheduledskills` already contains the cron from the Deploy body, with the canonical `cs-cron-` prefix added by the server.
-- `status: 0` — Deploy auto-transitioned to Stopped because all required credentials were inline. Call `POST /UserAgent/Start` next.
+- `status: 2` — Deploy auto-queued the instance because `useprepaid: true` provisioned a subscription in the same call. The daemon picks the row up from the queue; you do **not** need to call `POST /UserAgent/Start` after a prepaid deploy.
 
 ## Step 4 — Refine Skills After Deploy
 
 Custom builds are the only path where end users can toggle skills on/off after deploy. Use [`POST /UserAgent/SkillsApply`](/docs/agent-overview#post-useragentskillsapply) — even when you only want to flip a single skill, send it as a one-entry `skills` map. The endpoint charges the wallet once, triggers exactly one container restart, and rolls back atomically on payment failure.
 
-> **Template-deploy useragents reject `SkillsApply` with `Skill changes are only available for custom-built agents.`** Skills are inherited from the marketplace agent template and changing them would diverge the instance. To run a different skill set, deploy a custom build (`Deploy` with `custom: true`) instead.
+> **Template-deploy useragents reject `SkillsApply` with error code `100` (`skillsapply-template-only`):** `Cannot edit skills on a template agent — only custom-built agents support skill editing.` Skills are inherited from the marketplace agent template and changing them would diverge the instance. To run a different skill set, deploy a custom build (`Deploy` with `custom: true`) instead.
 
 ### Single-skill enable
 
@@ -227,7 +227,6 @@ The response includes the new pricing snapshot and the prorated wallet debit:
   "result": true,
   "errors": [],
   "tier": "starter",
-  "stripeProrationApplied": false,
   "prepaidWalletDelta": 4.0,
   "restartTriggered": true,
   "restartedAt": 1714694520,
@@ -238,7 +237,7 @@ The response includes the new pricing snapshot and the prorated wallet debit:
     "previousMonthlyCredits": 3500,
     "newMonthlyCredits": 4000,
     "deltaCredits": 500,
-    "enabledSkills": ["int-gmail-check", "int-wordpress-post", "int-wiro-generator", "int-instagram-post"],
+    "enabledSkills": ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels", "int-instagram-post"],
     "peractioncosts": { "message": 10, "create": 60, "modify": 20, "regenerate": 20 }
   }
 }
@@ -261,7 +260,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
     "skills": {
       "int-gmail-check":     true,
       "int-wordpress-post":  true,
-      "int-wiro-generator":  true,
+      "int-wiro-aimodels":  true,
       "int-instagram-post":  true,
       "int-metaads-manage":  false
     }
@@ -306,7 +305,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   "title": "Blog Research & Publish",
   "useprepaid": true,
   "tier": "pro",
-  "skills": { "int-wordpress-post": true, "int-wiro-generator": true },
+  "skills": { "int-wordpress-post": true, "int-wiro-aimodels": true },
   "credentials": {
     "wordpress":   { "url": "https://blog.example.com", "user": "admin", "apppassword": "xxxx xxxx xxxx xxxx" },
     "var-website": { "urls": "[{\"websitename\":\"Wired\",\"url\":\"https://www.wired.com/feed/rss\"}]" }
@@ -342,7 +341,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
     "int-instagram-post":  true,
     "int-linkedin-post":   true,
     "int-facebookpage-post": true,
-    "int-wiro-generator":  true
+    "int-wiro-aimodels":  true
   },
   "credentials": {}
 }

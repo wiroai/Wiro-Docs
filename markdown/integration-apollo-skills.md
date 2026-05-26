@@ -35,7 +35,7 @@ The Apollo integration uses Apollo's `x-api-key` header authentication.
 
 ### Step 2 (optional): Get a Master API Key
 
-Some Apollo plans require a separate **Master API Key** for the `mixed_people/api_search` endpoint (people search) and for sequence management. Find it in **Admin → API keys** (workspace admins only). Enrichment, lookups, and basic read operations use the standard `apiKey`.
+Some Apollo plans require a separate **Master API Key** for the `mixed_people/api_search` endpoint (people search) and for sequence management. Find it in **Admin → API keys** (workspace admins only). Enrichment, lookups, and basic read operations use the standard `apikey`.
 
 ### Step 3: Save to Wiro
 
@@ -46,7 +46,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -d '{
     "useragentguid": "your-useragent-guid",
     "fields": [
-      { "credentialkey": "apollo", "fieldname": "apiKey",       "fieldvalue": "YOUR_APOLLO_API_KEY" },
+      { "credentialkey": "apollo", "fieldname": "apikey",       "fieldvalue": "YOUR_APOLLO_API_KEY" },
       { "credentialkey": "apollo", "fieldname": "masterapikey", "fieldvalue": "YOUR_APOLLO_MASTER_API_KEY" }
     ]
   }'
@@ -67,7 +67,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `apiKey` | string | Primary Apollo API key. |
+| `apikey` | string | Primary Apollo API key. |
 | `masterapikey` | string (optional) | Master API key for people search + sequence management. |
 
 ## Credentials schema (as returned by `POST /UserAgent/Detail`)
@@ -78,16 +78,16 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
   "_connected": false,
   "optional": false,
   "extra": false,
-  "apiKey": "",
+  "apikey": "",
   "masterapikey": ""
 }
 ```
 
 ## Runtime Behavior
 
-Env vars (exported **only when `apollo-sales` skill is enabled** and `apiKey` is set):
+Env vars (exported **only when `apollo-sales` skill is enabled** and `apikey` is set):
 
-- `APOLLO_API_KEY` ← `credentials.apollo.apiKey`
+- `APOLLO_API_KEY` ← `credentials.apollo.apikey`
 - `APOLLO_MASTER_KEY` ← `credentials.apollo.masterapikey` (only if set)
 
 **Endpoint-based key selection** — the `apollo-sales` skill picks the header per endpoint:
@@ -96,15 +96,15 @@ Env vars (exported **only when `apollo-sales` skill is enabled** and `apiKey` is
 |----------------|--------|---------|
 | People Search (`POST /mixed_people/api_search`) | `x-api-key: $APOLLO_MASTER_KEY` | **Requires `masterapikey`** |
 | Sequence management (create sequence, add contacts, start/pause) | `x-api-key: $APOLLO_MASTER_KEY` | **Requires `masterapikey`** |
-| People enrichment (`POST /people/match`) | `x-api-key: $APOLLO_API_KEY` | `apiKey` sufficient |
-| Organization lookup | `x-api-key: $APOLLO_API_KEY` | `apiKey` sufficient |
-| Email verification | `x-api-key: $APOLLO_API_KEY` | `apiKey` sufficient |
+| People enrichment (`POST /people/match`) | `x-api-key: $APOLLO_API_KEY` | `apikey` sufficient |
+| Organization lookup | `x-api-key: $APOLLO_API_KEY` | `apikey` sufficient |
+| Email verification | `x-api-key: $APOLLO_API_KEY` | `apikey` sufficient |
 
 Base URL: `https://api.apollo.io/api/v1`.
 
 Rate limits: Apollo enforces strict per-key limits; 429 responses require 60s backoff.
 
-**If `masterapikey` is missing:** People search and sequence endpoints return **401 Unauthorized** with `"error": "Invalid Api Key"`. This is expected — even though `apiKey` works for other endpoints, Apollo's master-only endpoints reject the regular key. Add `masterapikey` via `POST /UserAgent/CredentialUpsert` and the same agent can immediately use master-only endpoints (no restart needed if the cron picks up env changes on next run).
+**If `masterapikey` is missing:** People search and sequence endpoints return **401 Unauthorized** with `"error": "Invalid Api Key"`. This is expected — even though `apikey` works for other endpoints, Apollo's master-only endpoints reject the regular key. Add `masterapikey` via `POST /UserAgent/CredentialUpsert` and the same agent can immediately use master-only endpoints (no restart needed if the cron picks up env changes on next run).
 
 ## Troubleshooting
 

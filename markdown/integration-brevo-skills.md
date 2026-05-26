@@ -46,7 +46,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -d '{
     "useragentguid": "your-useragent-guid",
     "fields": [
-      { "credentialkey": "brevo", "fieldname": "apiKey", "fieldvalue": "xkeysib-xxxxxxxxxxxxxxxxxxxx" }
+      { "credentialkey": "brevo", "fieldname": "apikey", "fieldvalue": "xkeysib-xxxxxxxxxxxxxxxxxxxx" }
     ]
   }'
 ```
@@ -64,7 +64,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `apiKey` | string | Brevo v3 API key (starts with `xkeysib-`). |
+| `apikey` | string | Brevo v3 API key (starts with `xkeysib-`). |
 
 ## Credentials schema (as returned by `POST /UserAgent/Detail`)
 
@@ -73,15 +73,15 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
   "_connected": false,
   "optional": true,
   "extra": false,
-  "apiKey": ""
+  "apikey": ""
 }
 ```
 
 ## Runtime Behavior
 
-Env vars (exported **only when `brevo-email` skill is enabled** and `apiKey` is set):
+Env vars (exported **only when `brevo-email` skill is enabled** and `apikey` is set):
 
-- `BREVO_API_KEY` ← `credentials.brevo.apiKey`
+- `BREVO_API_KEY` ← `credentials.brevo.apikey`
 
 Auth: **Header `api-key: $BREVO_API_KEY`** — not Bearer. This is Brevo's documented auth pattern.
 Base URL: `https://api.brevo.com/v3/`.

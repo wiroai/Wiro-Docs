@@ -72,7 +72,7 @@ If you already have one for Meta Ads or Facebook Page, reuse it.
 
 ### Step 4: Note the required permissions
 
-Wiro requests these exact scopes (verified against `api-useragent-oauth.js` L805-L806):
+Wiro requests these exact scopes (sourced from `data/agent-skills-registry/credentials/instagram.json` under `oauth_provider.oauth_flow.scopes`):
 
 ```
 instagram_business_basic,instagram_business_content_publish,instagram_business_manage_messages,instagram_business_manage_comments,instagram_business_manage_insights
@@ -115,11 +115,12 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
 ### Step 8: Initiate OAuth
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/IGConnect" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
+    "credentialkey": "instagram",
     "redirecturl": "https://your-app.com/settings/integrations",
     "authmethod": "own"
   }'
@@ -163,17 +164,22 @@ Instagram has **no secondary selection step** — the Business Account tied to t
 ### Step 10: Verify the connection
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/IGStatus" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "useragentguid": "your-useragent-guid" }'
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "instagram"
+  }'
 ```
 
 ```json
 {
   "result": true,
   "connected": true,
-  "username": "my_brand",
+  "accounts": [
+    { "id": "my_brand", "name": "my_brand" }
+  ],
   "connectedat": "2026-04-17T12:00:00.000Z",
   "tokenexpiresat": "2026-06-16T12:00:00.000Z",
   "errors": []
@@ -181,7 +187,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/IGStatus" \
 ```
 
 - `connected: true` requires an `accesstoken` and `authmethod` (`"wiro"` or `"own"`).
-- `username` = Instagram handle (without `@`).
+- `accounts[0].id` = Instagram handle (without `@`).
 - `tokenexpiresat` = ~60 days from connection.
 - **No `refreshtokenexpiresat`** — Instagram long-lived tokens don't use refresh tokens; they refresh via `grant_type=ig_refresh_token`.
 
@@ -196,11 +202,12 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ## API Reference
 
-### POST /UserAgentOAuth/IGConnect
+### POST /UserAgentOAuth/OAuthConnect
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
+| `credentialkey` | string | Yes | `"instagram"`. |
 | `redirecturl` | string | Yes | HTTPS URL (or localhost/127.0.0.1 for dev). |
 | `authmethod` | string | No | `"wiro"` (default) or `"own"`. |
 
@@ -214,13 +221,15 @@ Server-side. Query params appended to your `redirecturl`:
 | `ig_username` | Connected Instagram handle (without `@`). |
 | `ig_error=<code>` | Failure. |
 
-### POST /UserAgentOAuth/IGStatus
+The callback path is per-provider — Instagram's stays `IGCallback`.
 
-Response: `connected`, `username`, `connectedat`, `tokenexpiresat`.
+### POST /UserAgentOAuth/OAuthStatus
 
-### POST /UserAgentOAuth/IGDisconnect
+Body: `{ useragentguid, credentialkey: "instagram" }`. Response: `connected`, `accounts: [{id, name}]` (1-element with the connected Instagram handle), `connectedat`, `tokenexpiresat`.
 
-Clears Instagram credentials (no remote revoke).
+### POST /UserAgentOAuth/OAuthDisconnect
+
+Body: `{ useragentguid, credentialkey: "instagram" }`. Clears Instagram credentials (no remote revoke).
 
 ### POST /UserAgentOAuth/TokenRefresh
 
@@ -261,11 +270,11 @@ To change **what** the scheduled task posts (topics, tone, hashtag rules, captio
 | Error code | Meaning | What to do |
 |------------|---------|------------|
 | `missing_params` | Callback hit without `state` or `code`. | Start a new flow from Step 8. |
-| `session_expired` | >15 min between `IGConnect` and callback. | Call `IGConnect` again. |
+| `session_expired` | >15 min between `OAuthConnect` and callback. | Call `OAuthConnect` again. |
 | `authorization_denied` | User cancelled, or not in App Roles (Development Mode). | Add as Tester (Step 6), retry. |
 | `token_exchange_failed` | Wrong App Secret, redirect URI mismatch, or no linked Instagram Business Account. | Re-copy App Secret; verify redirect URI; verify IG Business → FB Page linkage. |
 | `useragent_not_found` | Invalid or unauthorized guid. | Use `POST /UserAgent/MyAgents`. |
-| `invalid_config` | No `credentials.instagram` block. | `POST /UserAgent/CredentialUpsert` with `instagram.appid` and `instagram.appsecret`. |
+| `Instagram credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `appid` / `appsecret` are missing. | `POST /UserAgent/CredentialUpsert` with `instagram.appid` and `instagram.appsecret`. |
 | `internal_error` | Unexpected server error. | Retry. If persistent, contact support. |
 
 ### "No Instagram Business Account found" during OAuth

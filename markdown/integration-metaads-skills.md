@@ -72,7 +72,7 @@ Meta Ads OAuth uses Facebook Login under the hood.
 
 ### Step 4: Note the required permissions
 
-Wiro requests these exact scopes during OAuth (verified against `api-useragent-oauth.js` L2204–L2208):
+Wiro requests these exact scopes during OAuth (sourced from `data/agent-skills-registry/credentials/meta-ads.json` under `oauth_provider.oauth_flow.scopes`):
 
 ```
 ads_management,ads_read,business_management,pages_show_list,pages_read_engagement
@@ -142,11 +142,12 @@ Successful response (sanitized — OAuth tokens, if any, are stripped):
 Start the flow. Include `authmethod: "own"` so Wiro uses your `appid`/`appsecret` instead of its own shared app.
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/MetaAdsConnect" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
+    "credentialkey": "meta-ads",
     "redirecturl": "https://your-app.com/settings/integrations",
     "authmethod": "own"
   }'
@@ -164,7 +165,7 @@ Response:
 
 Redirect the user's browser to `authorizeUrl`. Full-page redirect is recommended over a popup — some browsers block third-party cookies in popups, breaking the OAuth session.
 
-> **State TTL:** Wiro caches the OAuth state for **15 minutes**. If the user takes longer to complete consent, the callback returns `metaads_error=session_expired` and you must restart from this step.
+> **State TTL:** Wiro caches the OAuth state for **15 minutes**. If the user takes longer to complete consent, the callback returns `metaads_error=session_expired` and you must call `OAuthConnect` again.
 
 ### Step 9: Handle the callback
 
@@ -205,13 +206,15 @@ if (params.get("metaads_connected") === "true") {
 Wiro doesn't automatically pick an ad account — you must tell it which one to use. This is **required** for the agent to function.
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/MetaAdsSetAdAccount" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "adaccountid": "123456789",
-    "adaccountname": "My Ad Account"
+    "credentialkey": "meta-ads",
+    "accounts": [
+      { "adaccountid": "123456789", "adaccountname": "My Ad Account" }
+    ]
   }'
 ```
 
@@ -220,6 +223,9 @@ Response:
 ```json
 {
   "result": true,
+  "accounts": [
+    { "id": "123456789", "name": "My Ad Account" }
+  ],
   "errors": []
 }
 ```
@@ -227,16 +233,20 @@ Response:
 Behavior:
 
 - Pass the ad account ID **without** the `act_` prefix. If you include it, Wiro strips it automatically.
-- `adaccountname` is optional but recommended — it surfaces in `Status` responses and dashboards as `username`.
+- `adaccountname` is optional but recommended — it surfaces in `OAuthStatus` responses and dashboards.
+- Pass multiple `{ adaccountid, adaccountname }` entries to authorize the agent against several ad accounts at once.
 - If the agent was running (status `3` or `4`), Wiro marks it `status: 1` with `restartafter: true` so the daemon picks up the new ad account after the next stop cycle. No manual Start needed.
 
 ### Step 11: Verify the connection
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/MetaAdsStatus" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "useragentguid": "your-useragent-guid" }'
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "meta-ads"
+  }'
 ```
 
 Response:
@@ -245,7 +255,9 @@ Response:
 {
   "result": true,
   "connected": true,
-  "username": "My Ad Account",
+  "accounts": [
+    { "id": "123456789", "name": "My Ad Account" }
+  ],
   "connectedat": "2026-04-17T12:00:00.000Z",
   "tokenexpiresat": "2026-06-16T12:00:00.000Z",
   "errors": []
@@ -255,9 +267,9 @@ Response:
 Field notes:
 
 - `connected: true` requires both an `accesstoken` and `authmethod` (`"wiro"` or `"own"`).
-- `username` = the saved `adaccountname` (empty string if you didn't pass one in Step 10).
+- `accounts[]` carries one entry per selected ad account (`id` = `adaccountid` without `act_` prefix, `name` = `adaccountname`). Empty `name` strings appear when no `adaccountname` was supplied in Step 10.
 - `tokenexpiresat` = 60 days from the connect moment (Meta's long-lived user token lifetime).
-- **No `refreshtokenexpiresat`** — Meta user tokens don't have refresh tokens; renewal uses `fb_exchange_token` with the long-lived token itself.
+- Meta user tokens don't have refresh tokens; renewal uses `fb_exchange_token` with the long-lived token itself.
 
 ### Step 12: Start the agent if it's not running
 
@@ -274,29 +286,30 @@ Agents already running when you connected Meta Ads restart automatically.
 
 ## How Meta Ads uses `pageid`
 
-During Step 9 (the callback), Wiro silently calls Meta's Graph API `GET /me/accounts?fields=id,name&limit=5` and stores the **first returned page ID** as `credentials.metaads.pageid`. This is **not** the Facebook Page integration — it's a Marketing-API-only field used internally by the `metaads-manage` skill when creating creatives that need `object_story_spec.page_id` (for example, when boosting a page post).
+During Step 9 (the callback), Wiro silently calls Meta's Graph API `GET /me/accounts?fields=id,name&limit=5` and stores the **first returned page ID** as `credentials.meta-ads.pageid`. This is **not** the Facebook Page integration — it's a Marketing-API-only field used internally by the `metaads-manage` skill when creating creatives that need `object_story_spec.page_id` (for example, when boosting a page post).
 
-If your agent needs a specific page for creatives and the user administers multiple pages, the first one won't always be what they want. In that case, update `metaads.pageid` manually via `POST /UserAgent/CredentialUpsert` after the OAuth flow completes.
+If your agent needs a specific page for creatives and the user administers multiple pages, the first one won't always be what they want. In that case, update `meta-ads.pageid` manually via `POST /UserAgent/CredentialUpsert` after the OAuth flow completes.
 
-If you need organic posting (writing posts directly to a Facebook Page rather than running ads), that's a separate integration — see the [Facebook Page integration](/docs/integration-facebook-skills). The `facebookpage-post` skill lives under the `facebook` credential group, not `metaads`.
+If you need organic posting (writing posts directly to a Facebook Page rather than running ads), that's a separate integration — see the [Facebook Page integration](/docs/integration-facebook-skills). The `facebookpage-post` skill lives under the `facebook-pages` credential group, not `meta-ads`.
 
 ## API Reference
 
 All endpoints require Wiro authentication — see [Authentication](/docs/authentication) for `x-api-key` + optional signature headers.
 
-### POST /UserAgentOAuth/MetaAdsConnect
+### POST /UserAgentOAuth/OAuthConnect
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
+| `credentialkey` | string | Yes | `"meta-ads"`. |
 | `redirecturl` | string | Yes | HTTPS URL (or `http://localhost` / `http://127.0.0.1` for dev) where users return after consent. |
 | `authmethod` | string | No | `"wiro"` (default) or `"own"`. Use `"own"` while the shared app is pending. |
 
-Response: `{ result, authorizeUrl, errors }`. If `result: false`, inspect `errors[0].message` — common messages: `Missing useragentguid`, `Missing redirecturl`, `Invalid redirect URL`, `User agent not found or unauthorized`, `Meta Ads credentials not configured` (own mode without prior Update).
+Response: `{ result, authorizeUrl, errors }`. If `result: false`, inspect `errors[0].message` — common messages: `Missing useragentguid`, `Missing credentialkey`, `Missing redirecturl`, `Invalid redirect URL`, `User agent not found or unauthorized`, `Meta Ads credentials not configured` (own mode without prior Update).
 
 ### GET /UserAgentOAuth/MetaAdsCallback
 
-Server-side endpoint invoked by Meta. You don't call it — you only handle the final redirect back to your `redirecturl`:
+Server-side endpoint invoked by Meta. You don't call it — you only handle the final redirect back to your `redirecturl`. The callback path is per-provider — Meta Ads's stays `MetaAdsCallback`.
 
 | Query param | Meaning |
 |-------------|---------|
@@ -304,40 +317,44 @@ Server-side endpoint invoked by Meta. You don't call it — you only handle the 
 | `metaads_accounts` | URL-encoded JSON array of `{ id, name }` for active ad accounts. |
 | `metaads_error=<code>` | OAuth failed. See [Troubleshooting](#troubleshooting). |
 
-### POST /UserAgentOAuth/MetaAdsSetAdAccount
+### POST /UserAgentOAuth/SetPickerAccounts
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
-| `adaccountid` | string | Yes | Ad account ID without the `act_` prefix (prefix stripped automatically if sent). |
-| `adaccountname` | string | No | Display name shown in dashboards and `Status` responses. |
+| `credentialkey` | string | Yes | `"meta-ads"`. |
+| `accounts` | array | Yes | One or more `{ adaccountid, adaccountname }` entries. `adaccountid` must be without the `act_` prefix (prefix stripped automatically if sent); `adaccountname` is the display name shown in dashboards and `OAuthStatus` responses. |
 
-Response: `{ result: true, errors: [] }` on success. Triggers an automatic agent restart if the agent was running.
+Response: `{ result, accounts: [{id, name}, ...], errors }`. Triggers an automatic agent restart if the agent was running.
 
-### POST /UserAgentOAuth/MetaAdsStatus
+### POST /UserAgentOAuth/OAuthStatus
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
+| `credentialkey` | string | Yes | `"meta-ads"`. |
 
 Response fields:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `connected` | boolean | `true` when `accesstoken` is set and `authmethod` is `"wiro"` or `"own"`. **Note:** this reflects **OAuth completion**, not full setup readiness — `adaccountid` is not required for `connected: true`. Use `setupcomplete` (from `POST /UserAgent/Detail`) or check `credentials.metaads.adaccountid` for end-to-end readiness to create campaigns. |
-| `username` | string | The saved `adaccountname`. |
+| `connected` | boolean | `true` when `accesstoken` is set and `authmethod` is `"wiro"` or `"own"`. **Note:** this reflects **OAuth completion**, not full setup readiness — `adaccountid` is not required for `connected: true`. Use `setupcomplete` (from `POST /UserAgent/Detail`) or check `credentials.meta-ads.adaccountid` for end-to-end readiness to create campaigns. |
+| `accounts` | array | One `{ id, name }` per selected ad account (`id` = `adaccountid` without `act_` prefix, `name` = `adaccountname`). |
 | `connectedat` | string | ISO timestamp of connection. |
 | `tokenexpiresat` | string | ISO timestamp (~60 days from connection). |
 
-### POST /UserAgentOAuth/MetaAdsDisconnect
+### POST /UserAgentOAuth/OAuthDisconnect
 
-Clears Meta Ads credentials (no remote revoke — Facebook's Graph API doesn't have a straightforward revoke for long-lived tokens).
+Body: `{ useragentguid, credentialkey: "meta-ads" }`. Clears Meta Ads credentials (no remote revoke — Facebook's Graph API doesn't have a straightforward revoke for long-lived tokens).
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/MetaAdsDisconnect" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthDisconnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "useragentguid": "your-useragent-guid" }'
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "meta-ads"
+  }'
 ```
 
 Response: `{ "result": true, "errors": [] }`. Running agents restart automatically.
@@ -352,7 +369,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "provider": "metaads"
+    "provider": "meta-ads"
   }'
 ```
 
@@ -381,11 +398,11 @@ To change **what** the reporter includes (thresholds, reporting preferences, hol
 | Error code | Meaning | What to do |
 |------------|---------|------------|
 | `missing_params` | Callback was hit without `state` or `code`. | Don't hit the callback URL directly. Start a new flow from Step 8. |
-| `session_expired` | More than 15 minutes elapsed between `MetaAdsConnect` and the consent return. | Call `MetaAdsConnect` again to refresh the state. |
+| `session_expired` | More than 15 minutes elapsed between `OAuthConnect` and the consent return. | Call `OAuthConnect` again to refresh the state. |
 | `authorization_denied` | User clicked Cancel, or Facebook returned `error=access_denied`. In Development Mode this also happens when the user isn't listed under App Roles. | Add the user as a Tester (Step 6), have them accept, retry. |
 | `token_exchange_failed` | Facebook rejected the token exchange. Usually wrong App Secret, revoked app, or redirect URI mismatch. | Re-copy the App Secret from Settings → Basic, verify the redirect URI exactly matches, retry. |
 | `useragent_not_found` | Wrong `useragentguid` or agent doesn't belong to your API key's user. | Fetch the correct guid with `POST /UserAgent/MyAgents`. |
-| `invalid_config` | The agent has no `credentials.metaads` block at all. | Call `POST /UserAgent/CredentialUpsert` to add `metaads.appid` and `metaads.appsecret`, then retry `MetaAdsConnect`. |
+| `Meta Ads credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `appid` / `appsecret` are missing. | Call `POST /UserAgent/CredentialUpsert` to add `meta-ads.appid` and `meta-ads.appsecret`, then retry `OAuthConnect`. |
 | `internal_error` | Unexpected server error during callback processing. | Retry once. If it persists, contact Wiro support with the timestamp and your `useragentguid`. |
 
 ### "App not verified" warning on consent
@@ -394,11 +411,11 @@ Facebook shows a yellow banner in Development Mode. This is expected and **not a
 
 ### `connected: false` after completing OAuth
 
-`Status` returns `connected: true` only when **both** an access token is saved and an `authmethod` is set. If you skipped Step 10 (`MetaAdsSetAdAccount`), the ad account is empty but `connected` is still `true` as long as the token is present. If you see `connected: false`, the token didn't save — check for error parameters in the callback URL or retry OAuth.
+`OAuthStatus` returns `connected: true` only when **both** an access token is saved and an `authmethod` is set. If you skipped Step 10 (`SetPickerAccounts`), the ad account is empty but `connected` is still `true` as long as the token is present. If you see `connected: false`, the token didn't save — check for error parameters in the callback URL or retry OAuth.
 
 ### Token keeps expiring
 
-Long-lived Meta tokens last ~60 days. The agent's daily maintenance cron refreshes them automatically via `fb_exchange_token`. If you see `tokenexpiresat` in the past and the agent is running, the refresh cron either failed or hasn't run yet — check agent logs. If you can't wait, force a refresh manually with `POST /UserAgentOAuth/TokenRefresh`. If that also fails (typically a 190-series Graph error), the user must redo OAuth from Step 8.
+Long-lived Meta tokens last ~60 days. The agent's daily maintenance cron refreshes them automatically via `fb_exchange_token`. If you see `tokenexpiresat` in the past and the agent is running, the refresh cron either failed or hasn't run yet — check agent logs. If you can't wait, force a refresh manually with `POST /UserAgentOAuth/TokenRefresh`. If that also fails (typically a 190-series Graph error), the user must redo OAuth from Step 8 via `OAuthConnect`.
 
 ## Multi-Tenant Architecture
 

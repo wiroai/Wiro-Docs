@@ -31,7 +31,7 @@ The TikTok integration uses TikTok's OAuth 2.0 with the Content Posting API.
 
 ## Wiro Mode
 
-Call `TikTokConnect` without `authmethod`, redirect, parse `tiktok_connected=true&tiktok_username=<display_name>` (display name, not the `@handle`).
+Call `OAuthConnect` without `authmethod`, redirect, parse `tiktok_connected=true&tiktok_username=<display_name>` (display name, not the `@handle`).
 
 ## Complete Integration Walkthrough — Own Mode
 
@@ -59,7 +59,7 @@ Call `TikTokConnect` without `authmethod`, redirect, parse `tiktok_connected=tru
 
 ### Step 4: Note the required scopes
 
-Wiro requests these exact scopes (verified against `api-useragent-oauth.js` L483-L484):
+Wiro requests these exact scopes (sourced from `data/agent-skills-registry/credentials/tiktok.json` under `oauth_provider.oauth_flow.scopes`):
 
 ```
 user.info.basic,video.publish
@@ -95,11 +95,12 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
 ### Step 7: Initiate OAuth
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TikTokConnect" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
+    "credentialkey": "tiktok",
     "redirecturl": "https://your-app.com/settings/integrations",
     "authmethod": "own"
   }'
@@ -125,10 +126,13 @@ Error: `?tiktok_error=<code>`.
 ### Step 9: Verify
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TikTokStatus" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "useragentguid": "your-useragent-guid" }'
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "tiktok"
+  }'
 ```
 
 Response:
@@ -137,17 +141,18 @@ Response:
 {
   "result": true,
   "connected": true,
-  "username": "Creator Display Name",
+  "accounts": [
+    { "id": "Creator Display Name", "name": "Creator Display Name" }
+  ],
   "connectedat": "2026-04-17T12:00:00.000Z",
   "tokenexpiresat": "2026-04-18T12:00:00.000Z",
-  "refreshtokenexpiresat": "2027-04-17T12:00:00.000Z",
   "errors": []
 }
 ```
 
 - Access token: ~1 day (86400s).
 - Refresh token: ~1 year (31536000s).
-- `username` = TikTok **display name** (the creator's public display name as set in their profile), NOT the `@handle`. The handle/URL username is not exposed by TikTok's OAuth `user/info/` endpoint, so Wiro stores `display_name` and returns it as `username`.
+- `accounts[0].id` = TikTok **display name** (the creator's public display name as set in their profile), NOT the `@handle`. The handle/URL username is not exposed by TikTok's OAuth `user/info/` endpoint, so Wiro stores `display_name` and returns it as the account identifier.
 
 ### Step 10: Start the agent
 
@@ -160,25 +165,26 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ## API Reference
 
-### POST /UserAgentOAuth/TikTokConnect
+### POST /UserAgentOAuth/OAuthConnect
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
+| `credentialkey` | string | Yes | `"tiktok"`. |
 | `redirecturl` | string | Yes | HTTPS URL. |
 | `authmethod` | string | No | `"wiro"` (default) or `"own"`. |
 
 ### GET /UserAgentOAuth/TikTokCallback
 
-Query params: `tiktok_connected=true&tiktok_username=<display_name>` or `tiktok_error=<code>`. `tiktok_username` is TikTok's display name (from the OAuth `user/info/` endpoint's `display_name` field), not the `@handle`.
+Query params: `tiktok_connected=true&tiktok_username=<display_name>` or `tiktok_error=<code>`. `tiktok_username` is TikTok's display name (from the OAuth `user/info/` endpoint's `display_name` field), not the `@handle`. The callback path is per-provider — TikTok's stays `TikTokCallback`.
 
-### POST /UserAgentOAuth/TikTokStatus
+### POST /UserAgentOAuth/OAuthStatus
 
-Response: `connected`, `username` (= tiktokusername), `connectedat`, `tokenexpiresat` (~1 day), `refreshtokenexpiresat` (~1 year).
+Body: `{ useragentguid, credentialkey: "tiktok" }`. Response: `connected`, `accounts: [{id, name}]` (1-element with the connected display name), `connectedat`, `tokenexpiresat` (~1 day).
 
-### POST /UserAgentOAuth/TikTokDisconnect
+### POST /UserAgentOAuth/OAuthDisconnect
 
-Calls TikTok's revoke endpoint (`POST https://open.tiktokapis.com/v2/oauth/revoke/`), then clears credentials. TikTok is one of the few providers where Wiro actively revokes.
+Body: `{ useragentguid, credentialkey: "tiktok" }`. Calls TikTok's revoke endpoint (`POST https://open.tiktokapis.com/v2/oauth/revoke/`), then clears credentials. TikTok is one of the few providers where Wiro actively revokes.
 
 ### POST /UserAgentOAuth/TokenRefresh
 
@@ -205,7 +211,7 @@ See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
 | `session_expired` | 15-min state cache expired. | Restart OAuth. |
 | `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy; verify URL. |
 | `useragent_not_found` | Invalid guid. | Use `POST /UserAgent/MyAgents`. |
-| `invalid_config` | No `credentials.tiktok` block. | `UserAgent/CredentialUpsert` with `clientkey` + `clientsecret`. |
+| `TikTok credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `clientkey` / `clientsecret` are missing. | `UserAgent/CredentialUpsert` with `clientkey` + `clientsecret`. |
 | `internal_error` | Server error. | Retry. |
 
 ### "unaudited_client" or limited publishing

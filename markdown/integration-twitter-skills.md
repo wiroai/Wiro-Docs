@@ -34,11 +34,12 @@ The Twitter / X integration uses X API v2 with OAuth 2.0 Authorization Code Flow
 Skip all the own-mode setup. Just call Connect without `authmethod`:
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/XConnect" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
+    "credentialkey": "twitter",
     "redirecturl": "https://your-app.com/settings/integrations"
   }'
 ```
@@ -70,7 +71,7 @@ User consents on the Wiro-branded consent screen. On return parse `x_connected=t
 
 ### Step 3: Note the required scopes
 
-Wiro requests these exact scopes (verified against `api-useragent-oauth.js` L159):
+Wiro requests these exact scopes (sourced from `data/agent-skills-registry/credentials/twitter.json` under `oauth_provider.oauth_flow.scopes`):
 
 ```
 tweet.read tweet.write users.read offline.access
@@ -106,11 +107,12 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
 ### Step 6: Initiate OAuth
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/XConnect" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
+    "credentialkey": "twitter",
     "redirecturl": "https://your-app.com/settings/integrations",
     "authmethod": "own"
   }'
@@ -149,10 +151,13 @@ if (params.get("x_connected") === "true") {
 ### Step 8: Verify
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/XStatus" \
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{ "useragentguid": "your-useragent-guid" }'
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "twitter"
+  }'
 ```
 
 Response:
@@ -161,17 +166,18 @@ Response:
 {
   "result": true,
   "connected": true,
-  "username": "jane_doe",
+  "accounts": [
+    { "id": "jane_doe", "name": "jane_doe" }
+  ],
   "connectedat": "2026-04-17T12:00:00.000Z",
   "tokenexpiresat": "2026-04-17T14:00:00.000Z",
-  "refreshtokenexpiresat": "2026-10-14T12:00:00.000Z",
   "errors": []
 }
 ```
 
 - Access token lifetime: **~2 hours** (short!). Wiro auto-refreshes.
 - Refresh token lifetime: **~180 days** from connection (hardcoded by Wiro, since X doesn't report one).
-- `username` = `@`-less X handle.
+- `accounts[0].id` = `@`-less X handle (Twitter has no picker — single-account flow).
 
 ### Step 9: Start the agent
 
@@ -184,25 +190,26 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ## API Reference
 
-### POST /UserAgentOAuth/XConnect
+### POST /UserAgentOAuth/OAuthConnect
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
+| `credentialkey` | string | Yes | `"twitter"`. |
 | `redirecturl` | string | Yes | HTTPS URL. |
 | `authmethod` | string | No | `"wiro"` (default) or `"own"`. |
 
 ### GET /UserAgentOAuth/XCallback
 
-Query params: `x_connected=true&x_username=<handle>` or `x_error=<code>`.
+Query params: `x_connected=true&x_username=<handle>` or `x_error=<code>`. The callback path is per-provider — Twitter's stays `XCallback`.
 
-### POST /UserAgentOAuth/XStatus
+### POST /UserAgentOAuth/OAuthStatus
 
-Response: `connected`, `username`, `connectedat`, `tokenexpiresat` (~2h), `refreshtokenexpiresat` (~180d).
+Body: `{ useragentguid, credentialkey: "twitter" }`. Response: `connected`, `accounts: [{id, name}]` (1-element with the connected handle), `connectedat`, `tokenexpiresat` (~2h).
 
-### POST /UserAgentOAuth/XDisconnect
+### POST /UserAgentOAuth/OAuthDisconnect
 
-Calls X's revoke endpoint (`POST https://api.x.com/2/oauth2/revoke`) with Basic auth, then clears credentials. X is one of the few providers where Wiro actively revokes.
+Body: `{ useragentguid, credentialkey: "twitter" }`. Calls X's revoke endpoint (`POST https://api.x.com/2/oauth2/revoke`) with Basic auth, then clears credentials. X is one of the few providers where Wiro actively revokes.
 
 ### POST /UserAgentOAuth/TokenRefresh
 
@@ -244,10 +251,10 @@ To change **what** the scheduled task posts (topics, tone, hashtag rules), edit 
 |------------|---------|------------|
 | `missing_params` | Callback reached without `state` or `code`. | Start a new flow from Step 6. |
 | `authorization_denied` | User cancelled, or OAuth 2.0 not enabled in app settings. | Verify OAuth 2.0 setup (Step 2); retry. |
-| `session_expired` | 15-min state cache expired (includes PKCE verifier). | Call `XConnect` again. |
+| `session_expired` | 15-min state cache expired (includes PKCE verifier). | Call `OAuthConnect` again. |
 | `token_exchange_failed` | Wrong Client Secret, redirect URI mismatch, or lost PKCE verifier. | Re-copy Client Secret; verify URL; start over. |
 | `useragent_not_found` | Invalid guid. | Use `POST /UserAgent/MyAgents`. |
-| `invalid_config` | No `credentials.twitter` block. | `UserAgent/CredentialUpsert` with `clientid` + `clientsecret`. |
+| `X (Twitter) credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `clientid` / `clientsecret` are missing. | `UserAgent/CredentialUpsert` with `clientid` + `clientsecret`. |
 | `internal_error` | Server error. | Retry; contact support. |
 
 ### Posts fail with 429 Too Many Requests

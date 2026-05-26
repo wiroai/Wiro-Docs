@@ -54,11 +54,11 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
     "useragentguid": "your-useragent-guid",
     "fields": [
       { "credentialkey": "firebase", "parentfield": "accounts",          "ordinal": 0, "fieldname": "appname",                  "fieldvalue": "My App" },
-      { "credentialkey": "firebase", "parentfield": "accounts",          "ordinal": 0, "fieldname": "serviceaccountjsonbase64", "fieldvalue": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii..." },
+      { "credentialkey": "firebase", "parentfield": "accounts",          "ordinal": 0, "fieldname": "serviceaccountjson", "fieldvalue": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii..." },
       { "credentialkey": "firebase", "parentfield": "accounts.0.apps",   "ordinal": 0, "fieldname": "platform",                 "fieldvalue": "ios" },
-      { "credentialkey": "firebase", "parentfield": "accounts.0.apps",   "ordinal": 0, "fieldname": "appid",                    "fieldvalue": "6479306352" },
+      { "credentialkey": "firebase", "parentfield": "accounts.0.apps",   "ordinal": 0, "fieldname": "id",                       "fieldvalue": "6479306352" },
       { "credentialkey": "firebase", "parentfield": "accounts.0.apps",   "ordinal": 1, "fieldname": "platform",                 "fieldvalue": "android" },
-      { "credentialkey": "firebase", "parentfield": "accounts.0.apps",   "ordinal": 1, "fieldname": "appid",                    "fieldvalue": "com.example.app" },
+      { "credentialkey": "firebase", "parentfield": "accounts.0.apps",   "ordinal": 1, "fieldname": "id",                       "fieldvalue": "com.example.app" },
       { "credentialkey": "firebase", "parentfield": "accounts.0.topics", "ordinal": 0, "fieldname": "topickey",                 "fieldvalue": "locale_en" },
       { "credentialkey": "firebase", "parentfield": "accounts.0.topics", "ordinal": 0, "fieldname": "topicdesc",                "fieldvalue": "English users" },
       { "credentialkey": "firebase", "parentfield": "accounts.0.topics", "ordinal": 1, "fieldname": "topickey",                 "fieldvalue": "tier_paid" },
@@ -83,7 +83,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 | Field | Type | Editable | Description |
 |-------|------|----------|-------------|
 | `appname` | string | Yes | Display name for this project. |
-| `serviceaccountjsonbase64` | string | Yes | Base64-encoded service account JSON. |
+| `serviceaccountjson` | string | Yes | Base64-encoded service account JSON. |
 | `apps` | object[] | Yes | `{ platform: "ios" \| "android", id: string }`. `id` is App Store ID for iOS, package name for Android. |
 | `topics` | object[] \| object | Yes | Either an array of `{ topickey, topicdesc }` or a flat object map `{ topickey: topicdesc, ... }`. Both are accepted; the runtime converts arrays into the map form. Topics you've subscribed clients to on the device side. |
 | `projectid` | string | **No** (derived from service account) | Read from the decoded JSON. |
@@ -100,16 +100,16 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
     "useragentguid": "your-useragent-guid",
     "fields": [
       { "credentialkey": "firebase", "parentfield": "accounts",          "ordinal": 0, "fieldname": "appname",                  "fieldvalue": "Consumer App" },
-      { "credentialkey": "firebase", "parentfield": "accounts",          "ordinal": 0, "fieldname": "serviceaccountjsonbase64", "fieldvalue": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii..." },
+      { "credentialkey": "firebase", "parentfield": "accounts",          "ordinal": 0, "fieldname": "serviceaccountjson", "fieldvalue": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii..." },
       { "credentialkey": "firebase", "parentfield": "accounts.0.apps",   "ordinal": 0, "fieldname": "platform",                 "fieldvalue": "ios" },
-      { "credentialkey": "firebase", "parentfield": "accounts.0.apps",   "ordinal": 0, "fieldname": "appid",                    "fieldvalue": "6479306352" },
+      { "credentialkey": "firebase", "parentfield": "accounts.0.apps",   "ordinal": 0, "fieldname": "id",                       "fieldvalue": "6479306352" },
       { "credentialkey": "firebase", "parentfield": "accounts.0.topics", "ordinal": 0, "fieldname": "topickey",                 "fieldvalue": "locale_en" },
       { "credentialkey": "firebase", "parentfield": "accounts.0.topics", "ordinal": 0, "fieldname": "topicdesc",                "fieldvalue": "English users" },
 
       { "credentialkey": "firebase", "parentfield": "accounts",          "ordinal": 1, "fieldname": "appname",                  "fieldvalue": "Business App" },
-      { "credentialkey": "firebase", "parentfield": "accounts",          "ordinal": 1, "fieldname": "serviceaccountjsonbase64", "fieldvalue": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii..." },
+      { "credentialkey": "firebase", "parentfield": "accounts",          "ordinal": 1, "fieldname": "serviceaccountjson", "fieldvalue": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii..." },
       { "credentialkey": "firebase", "parentfield": "accounts.1.apps",   "ordinal": 0, "fieldname": "platform",                 "fieldvalue": "android" },
-      { "credentialkey": "firebase", "parentfield": "accounts.1.apps",   "ordinal": 0, "fieldname": "appid",                    "fieldvalue": "com.example.business" },
+      { "credentialkey": "firebase", "parentfield": "accounts.1.apps",   "ordinal": 0, "fieldname": "id",                       "fieldvalue": "com.example.business" },
       { "credentialkey": "firebase", "parentfield": "accounts.1.topics", "ordinal": 0, "fieldname": "topickey",                 "fieldvalue": "tier_paid" },
       { "credentialkey": "firebase", "parentfield": "accounts.1.topics", "ordinal": 0, "fieldname": "topicdesc",                "fieldvalue": "Paid subscribers" }
     ]

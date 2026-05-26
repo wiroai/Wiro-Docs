@@ -88,6 +88,7 @@ After saving credentials, the response includes:
 - `twilioWebhooksUpdated` — numbers whose `VoiceUrl` was successfully written.
 - `twilioWebhookSkipped` — numbers skipped, with the reason (e.g. *no matching IncomingPhoneNumber on Twilio account*).
 - `twilioWebhooksFailed` — Twilio API errors per number, if any.
+- `twilioWebhookError` — present **instead of** the three fields above when the entire auto-webhook flow throws (e.g. Twilio API outage, invalid Account SID format, network error). Holds a single error string. Treat as "no numbers were configured this round; retry the save".
 
 You can also confirm in the Twilio Console: open the number → **Voice Configuration** → **A call comes in** should show:
 
@@ -117,7 +118,7 @@ Once the agent is in status `4` (running), dial your Twilio number from any phon
 | `whitelistedcallers` | string array | No | E.164-formatted caller-ID allowlist. **Non-empty** → only listed numbers reach the agent (others get a busy signal). **Empty** → all callers accepted (production default). Use to add only your own number while testing in production. |
 | `holdstrategy` | enum | No | What the caller hears during the ~5–8 sec window it takes the agent to connect. Options: `none`, `text`, `audio`, `music`, `audio_then_music`, `text_then_music`. *"X + background music"* options are the most polished. |
 | `holdtext` | string | Conditional | Required when `holdstrategy` ∈ {`text`, `text_then_music`}. TTS text — keep to 1 sentence (~5–8s spoken). Hard cap 3000 chars. Supports SSML tags (`<break>`, `<prosody>`, `<say-as>`). |
-| `holdvoice` | enum | Conditional | TTS voice for `holdtext`. Empty = use Twilio account default. 21 voices available (AWS Polly Neural / Generative + Google Chirp3-HD), each tied to a single language: `Polly.Joanna-Neural` (en-US), `Polly.Burcu-Neural` (tr-TR), `Polly.Lea-Neural` (fr-FR), etc. Generative tier is most human-like but priced higher per character. |
+| `holdvoice` | enum | Conditional | TTS voice for `holdtext`. Empty string (`""`) = use Twilio account default. 20 named voices available (AWS Polly Neural / Generative + Google Chirp3-HD), each tied to a single language: `Polly.Joanna-Neural` (en-US), `Polly.Burcu-Neural` (tr-TR), `Polly.Lea-Neural` (fr-FR), etc. Generative tier is most human-like but priced higher per character. |
 | `holdaudio` | file (MP3/WAV) | Conditional | Required when `holdstrategy` ∈ {`audio`, `audio_then_music`}. Short greeting (5–15 s recommended), mono, max 10 MB. |
 | `holdmusic` | file (MP3/WAV) | Conditional | Required when `holdstrategy` ∈ {`music`, `audio_then_music`, `text_then_music`}. Background music that loops while the caller waits. Mono, max 10 MB. 30–60 s sweet spot. **Use royalty-free music** — you are responsible for licensing. |
 
@@ -164,8 +165,87 @@ The Voice Receptionist preset bundles this channel together with the voice rules
 - **Whitelisted caller still gets busy signal:** Ensure E.164 format. Twilio normalizes inbound numbers — if your test phone presents itself as `4155551234` instead of `+14155551234`, the allowlist won't match. Add both forms while testing.
 - **Rotated the Auth Token in Twilio Console:** Re-paste the new token in Wiro and save again — the credential save also re-runs the webhook setup.
 
+## Call History
+
+Retrieve the last N realtime voice sessions for a useragent — regardless of which channel they came in on.
+
+### POST /UserAgent/TwilioCallHistory/List
+
+> **Despite the Twilio-named path, this endpoint returns both Twilio and Web Channel sessions.** They share the same `agentmessages` storage (`metadata.type` starts with `realtime_session` in either case), so a single feed is enough to audit every voice exchange the agent had.
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/TwilioCallHistory/List" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "limit": 50
+  }'
+```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Useragent instance guid. Owner / team-member access only. |
+| `limit` | number | No | Max sessions to return. Default `50`, hard-capped at `200`. Sorted newest-first by message id. |
+
+Response:
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "data": [
+    {
+      "messageguid": "5c41dabf-f2be-4aa8-a5a4-8c9e3d2f3f11",
+      "agenttoken": "8a5b9e2f-4d3c-4a01-9c2e-1b6d4e7a9c5d",
+      "channel": "twilio",
+      "callsid": "CAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "callerInfo": { "number": "+15551234567", "country": "US" },
+      "callerProfile": "Returning caller — last asked about pricing.",
+      "status": "realtime_session",
+      "endReason": "wiro_completed",
+      "durationSeconds": 137,
+      "modelSlug": "gpt-realtime-mini",
+      "startedAt": 1730473321000,
+      "endedAt":   1730473458000
+    },
+    {
+      "messageguid": "0f2a1c3d-9e8b-4c5a-bf42-3a7b6e1d0c8f",
+      "agenttoken": "1e7d3b9a-5c2f-4d6b-8e0a-2f4c7b5d9e1a",
+      "channel": "web",
+      "callsid": "voice-call-9d2d4b6e3f6b4c1a8a7e1f5a0b2c3d4e",
+      "callerInfo": { "page_url": "https://example.com/contact", "display_identifier": "+15551234567" },
+      "callerProfile": null,
+      "status": "realtime_session",
+      "endReason": "browser_disconnect",
+      "durationSeconds": 42,
+      "modelSlug": "gpt-realtime-mini",
+      "startedAt": 1730463668000,
+      "endedAt":   1730463710000
+    }
+  ]
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `messageguid` | string | The agentmessages row guid that records this session. Use it with `POST /UserAgent/Message/Detail` to fetch the full transcript metadata. |
+| `agenttoken` | string | The per-message agent token. Use it on `Message/Detail` / `Message/Cancel` like any other agent message. |
+| `channel` | `"twilio" \| "web"` | Source channel. Determines the `callerInfo` shape and whether `callsid` is a Twilio Call SID or a Web session id. |
+| `callsid` | string \| null | Twilio Call SID (`channel: "twilio"`) or internal `voice-call-<id>` session id (`channel: "web"`). |
+| `callerInfo` | object | Channel-specific. Twilio: `{ number, country }` (E.164 phone + ISO-2 country). Web: `{ page_url, display_identifier? }` — `display_identifier` is omitted unless the embedding page validated an identifier (`session_metadata.display_identifier` whose whole-string match passes the allowlist). |
+| `callerProfile` | string \| null | Free-text prep summary (`prepSummary`) the agent wrote before the audio bridge opened — used to brief the realtime model on caller context. `null` until prep finishes (and on rejected rows). |
+| `status` | string | Mirrors `agentmessages.metadata.type` verbatim. Values: `realtime_session_incoming` (call accepted, prep running), `realtime_session_active` (audio bridge live), `realtime_session_rejected` (rejected before audio, e.g. concurrent-limit), or **`realtime_session`** (no suffix — final/completed). The bare `realtime_session` is the only value that means "ended cleanly" — it is **not** the string `"completed"`. |
+| `endReason` | string \| null | Set on completed (`realtime_session`) rows only. One of: `wiro_completed` (graceful end), `wiro_cancelled`, `wiro_disconnect`, `wiro_error`, `max_duration` (Twilio cap or `maxcallseconds` hit), `browser_disconnect` (Web only), `twilio_disconnect` (Twilio only). Rejected rows leave `endReason: null` and instead carry `metadata.reason` (`concurrent_limit`, `agent_prep_timeout`, `realtime_ws_open_failed`, `realtime_stream_timeout`) — fetch via `Message/Detail`. |
+| `durationSeconds` | number \| null | Wall-clock duration. `null` while in-progress. |
+| `modelSlug` | string \| null | Realtime model used (e.g. `gpt-realtime-mini`). |
+| `startedAt` / `endedAt` | number \| null | Unix epoch ms. `endedAt` stays `null` while the call is in-progress or rejected. |
+
+> Per-second realtime credit usage for each session shows up under `POST /UserAgent/TransactionList` with `type: "deduct"` and `action: "realtime"`. Cross-reference the two endpoints on `messageguid` to reconcile spend with sessions.
+
 ## Related
 
+- [Web Voice](/docs/integration-webvoice-skills) — browser-embedded voice for the same agent, shares this page's [Call History](#call-history) feed.
 - [Agent Credentials & OAuth](/docs/agent-credentials)
 - [Agent Skills](/docs/agent-skills) — toggle skills on/off, configure preferences and crons
 - [Agent Use Cases](/docs/agent-use-cases) — Voice Receptionist preset

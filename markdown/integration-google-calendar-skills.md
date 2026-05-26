@@ -112,7 +112,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ## Combined Use: Appointment Booking via Voice
 
-When paired with [Twilio Voice Channel](/docs/voice-agent-twilio-channel) on a [Voice Receptionist](https://wiro.ai/agents/voice-receptionist) agent, the typical flow is:
+When paired with [Twilio Voice](/docs/integration-twiliovoice-skills) on a [Voice Receptionist](https://wiro.ai/agents/voice-receptionist) agent, the typical flow is:
 
 1. Caller dials your Twilio number → agent answers.
 2. Caller asks "I'd like to book a haircut Tuesday at 3 PM" → agent checks availability against the configured calendar.
@@ -132,6 +132,6 @@ When paired with [Twilio Voice Channel](/docs/voice-agent-twilio-channel) on a [
 
 - [Agent Credentials & OAuth](/docs/agent-credentials)
 - [Agent Skills](/docs/agent-skills)
-- [Twilio Voice Channel](/docs/voice-agent-twilio-channel) — pair for inbound voice booking
+- [Twilio Voice](/docs/integration-twiliovoice-skills) — pair for inbound voice booking
 - [Brevo Skills](/docs/integration-brevo-skills) / [SendGrid Skills](/docs/integration-sendgrid-skills) — confirmation email drafts
 - [HubSpot Skills](/docs/integration-hubspot-skills) — log appointment as CRM activity

@@ -65,9 +65,7 @@ base64 -b 0 play-service-account.json > play-sa.b64
 
 ### Step 5: Save to Wiro
 
-Same two-shape approach as App Store Connect.
-
-#### Shape A: Flat (reviews/metadata agents)
+All Google Play agents share the **same credential shape**: service account JSON + `apps[]` array. Each app entry carries `appname` + `packagename`.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
@@ -76,35 +74,22 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -d '{
     "useragentguid": "your-useragent-guid",
     "fields": [
-      { "credentialkey": "google-play", "fieldname": "serviceaccountjsonbase64", "fieldvalue": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii..." },
-      { "credentialkey": "google-play", "fieldname": "packagenames",             "fieldvalue": "com.example.app" },
-      { "credentialkey": "google-play", "fieldname": "supportemail",             "fieldvalue": "support@yourcompany.com" }
+      { "credentialkey": "google-play", "fieldname": "serviceaccountjson", "fieldvalue": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii..." },
+      { "credentialkey": "google-play", "parentfield": "apps", "ordinal": 0, "fieldname": "appname",     "fieldvalue": "My Android App" },
+      { "credentialkey": "google-play", "parentfield": "apps", "ordinal": 0, "fieldname": "packagename", "fieldvalue": "com.example.app" },
+      { "credentialkey": "google-play", "parentfield": "apps", "ordinal": 1, "fieldname": "appname",     "fieldvalue": "My Other App" },
+      { "credentialkey": "google-play", "parentfield": "apps", "ordinal": 1, "fieldname": "packagename", "fieldvalue": "com.example.other" }
     ]
   }'
 ```
 
-For multiple package names, pass them comma-separated in a single `packagenames` field row (e.g. `"com.example.app,com.example.other"`).
+For multiple apps, append more `apps`-prefixed ordinal rows. Positional merge applies — sending no `apps` rows leaves the existing list untouched; to clear, send a single ordinal-0 row with `fieldname: "appname"` and `fieldvalue: ""`.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `serviceaccountjsonbase64` | string | Base64-encoded JSON. |
-| `packagenames` | string[] | Android package names the agent is scoped to. |
-| `supportemail` | string | Used when replying to reviews. |
-
-#### Shape B: `apps` array (ads-manager agents)
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "fields": [
-      { "credentialkey": "google-play-apps", "parentfield": "apps", "ordinal": 0, "fieldname": "name",        "fieldvalue": "My Android App" },
-      { "credentialkey": "google-play-apps", "parentfield": "apps", "ordinal": 0, "fieldname": "packagename", "fieldvalue": "com.example.app" }
-    ]
-  }'
-```
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `serviceaccountjson` | string | Yes | Base64-encoded service account JSON. Stored encrypted-at-rest in the DB (`type: fileinput-base64`). |
+| `apps[].appname` | string | Yes | Human-readable label the agent uses when reporting back ("scanned reviews on My Android App"). |
+| `apps[].packagename` | string | Yes | Android package name (e.g. `com.example.app`). |
 
 ### Step 6: Start the agent
 
@@ -115,21 +100,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
   -d '{ "guid": "your-useragent-guid" }'
 ```
 
-## Runtime Behavior
+## Auth at runtime
 
-Env vars exported **only when `googleplay-reviews` skill is enabled** (not metadata alone):
-
-- `GOOGLE_PLAY_PACKAGE_NAMES` ← `packagenames.join(",")`
-- `GOOGLE_PLAY_SUPPORT_EMAIL` ← `supportemail`
-
-Secret file:
-
-- `/run/secrets/gplay-sa.json` — decoded service account (file, not env)
-
-Auth: OAuth access token minted from the service account → `Authorization: Bearer`.
-Base URL: `https://androidpublisher.googleapis.com/androidpublisher/v3/...`.
-
-For ads agents (Shape B): `apps` serialized into `GADS_GPLAY_APPS` or `METAADS_GPLAY_APPS` env vars as JSON.
+Wiro mints an OAuth access token from the service account JSON on demand and calls Google Play at `https://androidpublisher.googleapis.com/androidpublisher/v3/...` with `Authorization: Bearer <TOKEN>`. The `apps[]` list scopes which package names the agent operates on.
 
 ## Troubleshooting
 

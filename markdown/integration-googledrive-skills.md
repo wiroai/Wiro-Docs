@@ -83,18 +83,18 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -d '{
     "useragentguid": "your-useragent-guid",
     "fields": [
-      { "credentialkey": "googledrive",                                      "fieldname": "serviceaccountjsonbase64", "fieldvalue": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii..." },
-      { "credentialkey": "googledrive", "parentfield": "folders", "ordinal": 0, "fieldname": "id",                       "fieldvalue": "1BxiMVs0XRA5nFMdKvBd" },
-      { "credentialkey": "googledrive", "parentfield": "folders", "ordinal": 0, "fieldname": "name",                     "fieldvalue": "Creatives" },
-      { "credentialkey": "googledrive", "parentfield": "folders", "ordinal": 1, "fieldname": "id",                       "fieldvalue": "2CyiNWt1YSB6oGNeL" },
-      { "credentialkey": "googledrive", "parentfield": "folders", "ordinal": 1, "fieldname": "name",                     "fieldvalue": "Ad Assets" }
+      { "credentialkey": "google-drive",                                      "fieldname": "serviceaccountjson", "fieldvalue": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii..." },
+      { "credentialkey": "google-drive", "parentfield": "folders", "ordinal": 0, "fieldname": "id",                       "fieldvalue": "1BxiMVs0XRA5nFMdKvBd" },
+      { "credentialkey": "google-drive", "parentfield": "folders", "ordinal": 0, "fieldname": "name",                     "fieldvalue": "Creatives" },
+      { "credentialkey": "google-drive", "parentfield": "folders", "ordinal": 1, "fieldname": "id",                       "fieldvalue": "2CyiNWt1YSB6oGNeL" },
+      { "credentialkey": "google-drive", "parentfield": "folders", "ordinal": 1, "fieldname": "name",                     "fieldvalue": "Ad Assets" }
     ]
   }'
 ```
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `serviceaccountjsonbase64` | string | Base64-encoded service account JSON key. |
+| `serviceaccountjson` | string | Base64-encoded service account JSON key. |
 | `folders` | array | Array of `{ "id": string, "name": string }` objects the agent should scan. `name` is the human-readable label — the agent uses it when reporting back to the operator ("scanned the Creatives folder..."); `id` is the Drive folder ID used in API calls. Pass an empty array to clear. |
 
 ### Step 5b (optional): Discover folders via API
@@ -107,14 +107,15 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GoogleDriveListFolders" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "serviceaccountjsonbase64": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii..."
+    "serviceaccountjson": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii..."
   }'
 ```
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
-| `serviceaccountjsonbase64` | string | No | Base64-encoded SA JSON. Useful for previewing before saving. If omitted, the endpoint uses whatever JSON was already saved to the agent via Step 5. |
+| `serviceaccountjson` | string | No | Base64-encoded SA JSON. Useful for previewing before saving. If omitted, the endpoint uses whatever JSON was already saved to the agent via Step 5. |
+| `parentid` | string | No | Parent folder ID for subfolder listing. Omit (or pass empty) to list folders shared at the root level with the service account (Drive's `sharedWithMe` filter). When provided, returns folders whose parent is the given id — Drive's permission cascade lets the service account see children of any root it has access to, even if those children aren't shared individually. |
 
 Response:
 
@@ -122,6 +123,7 @@ Response:
 {
   "result": true,
   "serviceAccountEmail": "wiro-drive-agent@your-project.iam.gserviceaccount.com",
+  "parentId": "",
   "folders": [
     { "id": "1BxiMVs0XRA5nFMdKvBd", "name": "Creatives", "modifiedTime": "2026-04-10T12:34:00Z", "ownerName": "design@yourcompany.com" },
     { "id": "2CyiNWt1YSB6oGNeL",  "name": "Ad Assets", "modifiedTime": "2026-04-12T09:12:00Z", "ownerName": "design@yourcompany.com" }
@@ -129,12 +131,28 @@ Response:
 }
 ```
 
-Only folders explicitly shared with the SA email (as Editor or Content manager — see Step 3) are returned. Take the `id` values from the folders you want the agent to scan and pass them as `folders`-prefixed field rows in your final `UserAgent/CredentialUpsert` call.
+`parentId` echoes back whatever you passed in (`""` for a root listing) so the caller can verify it landed on the level it expected — useful when the user navigates two levels deep quickly and you need to discard out-of-order responses. Only folders explicitly shared with the SA email (as Editor or Content manager — see Step 3) are returned at the root. Take the `id` values from the folders you want the agent to scan and pass them as `folders`-prefixed field rows in your final `UserAgent/CredentialUpsert` call.
+
+#### Listing subfolders
+
+Use `parentid` to walk down the folder tree — first call without `parentid` to enumerate the roots the service account can see, then call again with `parentid: "<root-id>"` to list its children, and so on. The Wiro Dashboard's folder picker uses this exact pattern.
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GoogleDriveListFolders" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "parentid": "1BxiMVs0XRA5nFMdKvBd"
+  }'
+```
+
+The response shape is identical — `folders[]` now contains the immediate children of `1BxiMVs0XRA5nFMdKvBd`, and `parentId` echoes back `"1BxiMVs0XRA5nFMdKvBd"` so you can keep the picker UI in sync if the user clicks between levels quickly.
 
 > **Two equivalent ways to run Steps 5–5b**
 >
-> - **Upfront** — you already know the folder IDs from Step 3. Call `UserAgent/CredentialUpsert` once with both the `serviceaccountjsonbase64` field row and every `folders` ordinal row.
-> - **Discovery (matches the Dashboard flow)** — call `UserAgent/CredentialUpsert` first with just the `serviceaccountjsonbase64` field row, then call `UserAgentOAuth/GoogleDriveListFolders` to enumerate what the SA can see, then call `UserAgent/CredentialUpsert` again with the picked `folders` ordinal rows. The Dashboard uses this pattern — JSON upload renders the service account email, the user shares folders with it in Drive, and the folder picker lists the results.
+> - **Upfront** — you already know the folder IDs from Step 3. Call `UserAgent/CredentialUpsert` once with both the `serviceaccountjson` field row and every `folders` ordinal row.
+> - **Discovery (matches the Dashboard flow)** — call `UserAgent/CredentialUpsert` first with just the `serviceaccountjson` field row, then call `UserAgentOAuth/GoogleDriveListFolders` to enumerate what the SA can see, then call `UserAgent/CredentialUpsert` again with the picked `folders` ordinal rows. The Dashboard uses this pattern — JSON upload renders the service account email, the user shares folders with it in Drive, and the folder picker lists the results.
 
 ### Step 6: Start the agent
 

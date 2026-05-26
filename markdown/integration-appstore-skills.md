@@ -57,9 +57,7 @@ base64 -b 0 AuthKey_ABC1234DEF.p8 > appstore-key.b64
 
 The credential schema depends on which agent you're configuring. There are two valid shapes.
 
-#### Shape A: Flat (review/events/metadata agents)
-
-Used by **App Review Support** and **App Event Manager**:
+All App Store Connect agents share the **same credential shape**: API key + `apps[]` array. Each app entry carries `appname` + `appid`. Review/events/metadata agents need the API key to call App Store Connect; ads-manager agents only consume `apps[]` for attribution context. The agent skin decides which subset is used at runtime.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
@@ -68,43 +66,26 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -d '{
     "useragentguid": "your-useragent-guid",
     "fields": [
-      { "credentialkey": "apple-appstore", "fieldname": "keyid",            "fieldvalue": "ABC1234DEF" },
-      { "credentialkey": "apple-appstore", "fieldname": "issuerid",         "fieldvalue": "12345678-1234-1234-1234-123456789012" },
-      { "credentialkey": "apple-appstore", "fieldname": "privatekeybase64", "fieldvalue": "LS0tLS1CRUdJTi..." },
-      { "credentialkey": "apple-appstore", "fieldname": "appids",           "fieldvalue": "6479306352,1234567890" },
-      { "credentialkey": "apple-appstore", "fieldname": "supportemail",     "fieldvalue": "support@yourcompany.com" }
+      { "credentialkey": "apple-appstore", "fieldname": "keyid",      "fieldvalue": "ABC1234DEF" },
+      { "credentialkey": "apple-appstore", "fieldname": "issuerid",   "fieldvalue": "12345678-1234-1234-1234-123456789012" },
+      { "credentialkey": "apple-appstore", "fieldname": "privatekey", "fieldvalue": "LS0tLS1CRUdJTi..." },
+      { "credentialkey": "apple-appstore", "parentfield": "apps", "ordinal": 0, "fieldname": "appname", "fieldvalue": "My iOS App" },
+      { "credentialkey": "apple-appstore", "parentfield": "apps", "ordinal": 0, "fieldname": "appid",   "fieldvalue": "6479306352" },
+      { "credentialkey": "apple-appstore", "parentfield": "apps", "ordinal": 1, "fieldname": "appname", "fieldvalue": "My Other App" },
+      { "credentialkey": "apple-appstore", "parentfield": "apps", "ordinal": 1, "fieldname": "appid",   "fieldvalue": "1234567890" }
     ]
   }'
 ```
 
-For multiple App Store IDs, pass them comma-separated in a single `appids` field row (e.g. `"6479306352,1234567890"`).
+For multiple App Store IDs, append more `apps`-prefixed ordinal rows. Positional merge applies — sending no `apps` rows leaves the existing list untouched; to clear, send a single ordinal-0 row with `fieldname: "appname"` and `fieldvalue: ""`.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `keyid` | string | 10-character App Store Connect Key ID. |
-| `issuerid` | string | UUID issuer ID. |
-| `privatekeybase64` | string | Base64-encoded `.p8` private key. |
-| `appids` | string[] | App Store IDs the agent is scoped to. |
-| `supportemail` | string | Used when replying to reviews. |
-
-#### Shape B: `apps` array (ads-manager agents)
-
-Used by **Meta Ads Manager** and **Google Ads Manager** (for cross-platform creatives that reference app listings):
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "fields": [
-      { "credentialkey": "apple-appstore-apps", "parentfield": "apps", "ordinal": 0, "fieldname": "name",  "fieldvalue": "My iOS App" },
-      { "credentialkey": "apple-appstore-apps", "parentfield": "apps", "ordinal": 0, "fieldname": "appid", "fieldvalue": "6479306352" }
-    ]
-  }'
-```
-
-Each app supports `name`, `appid`, and optionally `bundleId`. No keyid/issuerid/privateKey — the ads agents only need the app listing IDs for attribution, not API access.
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `keyid` | string | Yes (review/events/metadata) | 10-character App Store Connect Key ID. |
+| `issuerid` | string | Yes (review/events/metadata) | UUID issuer ID. |
+| `privatekey` | string | Yes (review/events/metadata) | Base64-encoded `.p8` private key. Stored encrypted-at-rest in the DB (`type: fileinput-base64`). |
+| `apps[].appname` | string | Yes | Human-readable label the agent uses when reporting back ("scanned reviews on My iOS App"). |
+| `apps[].appid` | string | Yes | Numeric App Store ID. |
 
 ### Step 4: Start the agent
 
@@ -115,23 +96,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
   -d '{ "guid": "your-useragent-guid" }'
 ```
 
-## Runtime Behavior
+## Auth at runtime
 
-Env vars are exported **only when `appstore-reviews` OR `appstore-events` skill is enabled** (not `appstore-metadata` alone):
-
-- `APPSTORE_KEY_ID` ← `credentials.appstore.keyid`
-- `APPSTORE_ISSUER_ID` ← `credentials.appstore.issuerid`
-- `APPSTORE_APP_IDS` ← `appids.join(",")`
-- `APPSTORE_SUPPORT_EMAIL` ← `supportemail`
-
-Secret file:
-
-- `/run/secrets/appstore-key.p8` — decoded private key (file, not env var)
-
-Auth: JWT ES256 signed in-agent → `Authorization: Bearer <TOKEN>`.
-Base URL: `https://api.appstoreconnect.apple.com/v1/...`.
-
-For ads-manager agents (Shape B), the `apps` array is serialized into `METAADS_APPSTORE_APPS` or `GADS_APPSTORE_APPS` env vars as JSON arrays.
+Wiro signs an ES256 JWT from `keyid` + `issuerid` + `privatekey` and calls App Store Connect at `https://api.appstoreconnect.apple.com/v1/...` with `Authorization: Bearer <TOKEN>`. Ads-manager agents (Meta Ads Manager / Google Ads Manager) consume the `apps[]` list for attribution context and do not need the API key fields filled.
 
 ## Troubleshooting
 

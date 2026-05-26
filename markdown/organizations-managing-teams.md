@@ -177,7 +177,7 @@ Deletes an organization. Only the organization owner can delete an organization.
 Restores a soft-deleted organization. Restoring an organization:
 
 - Reactivates the organization and all its teams
-- Restores previously accepted members to active status
+- Restores accepted members to active status
 - Expired or cancelled invitations remain removed (they must be re-invited)
 
 | Parameter | Type | Required | Description |

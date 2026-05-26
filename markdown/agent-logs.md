@@ -53,11 +53,11 @@ Every event is a JSON object with this base shape:
 | `action` | `string` | Fine-grained label: e.g. `"wordpress-publish"`, `"telegram-send"`, `"message"`, `"cron-tick"`, `"agent_start"`. |
 | `skill` | `string\|null` | The skill that produced the event (`"int-wordpress-post"`, `"int-instagram-post"`, `"cs-cron-content-scanner"`, …). `null` for system events. |
 | `session` | `string\|null` | Sessionkey the event belongs to (chat events only). |
-| `userUuid` | `string\|null` | UUID of the user who triggered the event. `"system"` for cron / internal events. Pre-rollout legacy entries fall back to the useragent owner. |
+| `userUuid` | `string\|null` | UUID of the user who triggered the event. `"system"` for cron / internal events. |
 | `user` | `object\|null` | Resolved actor: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. `null` when `userUuid` is `"system"` (automation / cron) or when the user record was deleted. |
 | `details` | `object` | Event-specific payload. Always redacted (no API URLs, no secret-by-name fields, no high-entropy assignment values). |
 
-> **`details` shape varies per `kind`.** Tool calls include the action's input/output summary; cron ticks include the cron expression and skill name; message events include the message GUID and the first ~120 chars of the user prompt. The plugin always strips `apiKey`, `apppassword`, `clientsecret`, `bearer`, `token`, etc. before writing.
+> **`details` shape varies per `kind`.** Tool calls include the action's input/output summary; cron ticks include the cron expression and skill name; message events include the message GUID and the first ~120 chars of the user prompt. The plugin always strips `apikey`, `apppassword`, `clientsecret`, `bearer`, `token`, etc. before writing.
 
 ## **POST** /UserAgent/Logs
 
@@ -177,14 +177,14 @@ Returns the list of dates for which an activity file exists for this agent. Usef
   "result": true,
   "errors": [],
   "dates": [
-    { "date": "2026-05-03", "filename": "2026-05-03.jsonl",    "size": 184220, "compressed": false },
-    { "date": "2026-05-02", "filename": "2026-05-02.jsonl.gz", "size": 41280,  "compressed": true },
-    { "date": "2026-05-01", "filename": "2026-05-01.jsonl.gz", "size": 38912,  "compressed": true }
+    { "date": "2026-05-03", "sizeBytes": 184220, "compressed": false },
+    { "date": "2026-05-02", "sizeBytes": 41280,  "compressed": true  },
+    { "date": "2026-05-01", "sizeBytes": 38912,  "compressed": true  }
   ]
 }
 ```
 
-`compressed: true` means the file has been gzipped (happens after 7 days). Reading either form via `LogsFile` returns the same decoded events.
+Each entry exposes `date` (`YYYY-MM-DD`, sorted newest-first), `sizeBytes` (raw byte size on disk; compressed size when `compressed: true`), and `compressed` (`true` once the worker's daily maintenance cron has gzipped the file to `<date>.jsonl.gz`; `false` for the active day's plain `.jsonl`). Reading either form via `LogsFile` returns the same decoded events. The host retains activity files for 180 days (rolling); older dates are pruned by a worker cron and won't appear here.
 
 ## **POST** /UserAgent/LogsFile
 

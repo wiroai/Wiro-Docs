@@ -56,13 +56,24 @@ Accepts either `application/json` (text-only) or `multipart/form-data` (text + f
 }
 ```
 
-> **A successful Send response means the message was accepted and queued — not that it will definitely reach the agent.** After this response the system enqueues the job into Redis/BullMQ for the bridge to pick up. If the enqueue step itself fails (queue backpressure, Redis outage), the message row is flipped to `agent_error` server-side. Always confirm the final state via `POST /UserAgent/Message/Detail` or the WebSocket stream; don't assume the message progresses to `agent_start` just because Send returned `result: true`.
+> **A successful Send response means the message was accepted and queued — not that it will definitely reach the agent.** After this response the system enqueues the job into Redis/BullMQ for the bridge to pick up. If the enqueue step itself fails (queue backpressure, Redis outage), the message row is flipped to `agent_error` server-side **after** the HTTP response was already sent with `result: true`. Always confirm the final state via `POST /UserAgent/Message/Detail` or the WebSocket stream; don't assume the message progresses to `agent_start` just because Send returned `result: true`.
+
+> **Reserved session keys.** The platform reserves a small set of `sessionkey` prefixes for system-managed threads — `wiro:api`, `voice-prep*`, `voice-call-*`, and `cs-cron-*`. Sending a user message into one of these keys is rejected with `Reserved sessionkey` (the same guard that protects `Message/DeleteSession`). Pick any other identifier for your own threads.
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `messageguid` | `string` | Unique identifier for this message. Use it with Detail, History, or Cancel. |
 | `agenttoken` | `string` | Token for WebSocket subscription and polling. Equivalent to `tasktoken` in model runs. |
 | `status` | `string` | Initial status — always `"agent_queue"` on success. |
+
+#### Failure responses
+
+When `result: false`, the response shape is `{ result: false, errors: [{ code, message }], messageguid: null, agenttoken: null, status: null }`. Two branches add extra context:
+
+| Failure branch | Extra fields | Notes |
+|----------------|--------------|-------|
+| Agent not running (`status` ≠ 4) | `agentstatus: <int>` | Echoes the current `useragents.status` so the caller can decide whether to wait, call `Start`, or surface "Setup Required" UI. Common codes: `0` initializing, `1` stopping, `2` starting, `3` starting (container booting — wait and retry), `5` upgrading, `6` setup required. |
+| Out of credits | `agentstatus`, `agentbalance: { monthlycredits, extracredits, usedcredits, remainingcredits }` | `remainingcredits: 0` is the trigger; surface a "Renew or buy a credit pack" CTA. |
 
 ## **POST** /UserAgent/Message/Detail
 
@@ -114,9 +125,9 @@ Retrieves the current status and content of a single message. You can query by e
     },
     "attachments": [],
     "deletestatus": 0,
-    "createdat": "1743350400",
-    "startedat": "1743350401",
-    "endedat": "1743350408"
+    "createdat": 1743350400,
+    "startedat": 1743350401,
+    "endedat": 1743350408
   }
 }
 ```
@@ -135,9 +146,9 @@ Retrieves the current status and content of a single message. You can query by e
 | `metadata` | `object` | Parsed JSON object (API returns it already decoded). Populated from the agent bridge on `agent_end`. Fields produced by the bridge's `finalMessage` builder: `type` — always the literal `"progressGenerate"` (not the message status); `task` — always the literal `"Generate"`; `speed` — numeric words-per-second value (e.g. `14.2`); `speedType` — always `"words/s"`; `elapsedTime` — human string with unit, e.g. `"8.1s"` (NOT a number); `tokenCount`, `wordCount` — integers; `raw` — the full accumulated response text; `thinking` — array of reasoning blocks extracted from `<think>...</think>`; `answer` — array of answer chunks stripped of `<think>`; `isThinking` — always `false` in the final payload. Empty object `{}` for `agent_error`, `agent_cancel`, or when the bridge hasn't finished yet. Message status lives in the top-level `status` field — don't read it from `metadata.type`. |
 | `attachments` | `array` | Always present as an array — empty `[]` for text-only messages. When the message was sent via multipart with files, each entry is a resolved `{url, name, type, size}` object (no further file-lookup needed). Identical shape in `Message/History` rows. |
 | `deletestatus` | `number` | Internal flag. `0` for normal messages. |
-| `createdat` | `string` | Unix timestamp when the message was created. |
-| `startedat` | `string` | Unix timestamp when the agent started processing. |
-| `endedat` | `string` | Unix timestamp when processing completed. May be empty for `agent_cancel` (cancel only sets `status` and `updatedat`). |
+| `createdat` | `number` | Unix timestamp (epoch seconds) when the message was created. |
+| `startedat` | `number` | Unix timestamp (epoch seconds) when the agent started processing. |
+| `endedat` | `number` | Unix timestamp (epoch seconds) when processing completed. May be empty for `agent_cancel` (cancel only sets `status` and `updatedat`). |
 
 ## **POST** /UserAgent/Message/History
 
@@ -192,7 +203,7 @@ Retrieves conversation history for a specific agent and session. Messages are re
         },
         "attachments": [],
         "deletestatus": 0,
-        "createdat": "1743350400"
+        "createdat": 1743350400
       },
       {
         "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
@@ -214,7 +225,7 @@ Retrieves conversation history for a specific agent and session. Messages are re
         "metadata": {},
         "attachments": [],
         "deletestatus": 0,
-        "createdat": "1743350300"
+        "createdat": 1743350300
       }
     ],
     "count": 2,
@@ -260,7 +271,7 @@ To paginate through a long conversation:
 
 ## **POST** /UserAgent/Message/Sessions
 
-Lists all conversation sessions for an agent. Returns each session's key, message count, last activity time, and the most recent message content.
+Lists all conversation sessions for an agent. Returns each session's key, message count, last activity time, and the most recent message content. Sorted newest-first by `updatedat`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -276,14 +287,14 @@ Lists all conversation sessions for an agent. Returns each session's key, messag
     "sessions": [
       {
         "sessionkey": "default",
-        "messagecount": "24",
-        "updatedat": "1743350400",
+        "messagecount": 24,
+        "updatedat": 1743350400,
         "lastmessage": "What are the latest trends in AI?"
       },
       {
         "sessionkey": "user-42-support",
-        "messagecount": "8",
-        "updatedat": "1743349200",
+        "messagecount": 8,
+        "updatedat": 1743349200,
         "lastmessage": "How do I reset my password?"
       }
     ]
@@ -294,9 +305,11 @@ Lists all conversation sessions for an agent. Returns each session's key, messag
 | Field | Type | Description |
 |-------|------|-------------|
 | `sessionkey` | `string` | The session identifier. |
-| `messagecount` | `string` | Total number of messages in this session. |
-| `updatedat` | `string` | Unix timestamp of the last activity in this session. |
-| `lastmessage` | `string` | The content (user message) of the most recent message. |
+| `messagecount` | `number` | Total number of messages in this session. |
+| `updatedat` | `number` | Unix timestamp (epoch seconds) of the last activity in this session. |
+| `lastmessage` | `string` | The most recent message body — `agentmessages.content` if the user sent a message, falling back to `agentmessages.response` (assistant reply) when `content` is empty. |
+
+> **Reserved sessionkeys filtered out (non-admin only).** The list omits internal sessions used by the runtime: `wiro:api` (gateway hooks default), `voice-prep*` (per-call prep threads), `voice-call-*` (active voice-call rows), and `cs-cron-*` (one thread per scheduled cron skill). These rows still exist on the agent — they're just hidden from operator-facing listings to keep the panel UX clean. Admin callers (`tokenUserRoles` contains `"ADMIN"`) see the full unfiltered list. The same filter is applied on `Message/History` reads and the `DeleteSession` guard.
 
 ## **POST** /UserAgent/Message/DeleteSession
 
@@ -307,7 +320,9 @@ Deletes messages in the given session for the **calling user**. This action cann
 | `useragentguid` | string | Yes | The agent instance GUID. |
 | `sessionkey` | string | Yes | The session key to delete. |
 
-> **Scope of deletion:** The API matches on both `useragentguid` + `sessionkey` **and** the caller's `uuid`, so only messages the calling user sent/received in this session are removed. In **collaborative** team mode (`teamsessionmode: "collaborative"`, Telegram group-shared sessions), other team members' messages in the same `sessionkey` remain intact — each member must call `DeleteSession` to clear their own share. Admin callers (platform owner) are not subject to this scoping. For private (per-user) sessions this distinction doesn't matter — the caller is the only owner.
+> **Scope of deletion:** Hard delete — the API issues `DELETE FROM agentmessages WHERE useragentid = … AND sessionkey = …`. For non-admin callers an additional `AND uuid = <caller_uuid>` filter is appended, so only the caller's own rows in the session are purged. This holds in both private and collaborative team modes — even when `teamsessionmode: "collaborative"` (e.g. Telegram group-shared sessions) means every member sees the same thread, each member's `DeleteSession` only wipes their own contributions. Admin callers (`tokenUserRoles` contains `"ADMIN"`) bypass the uuid filter and wipe the entire session for every participant. Compare with `Message/Delete` (per-message), which is a soft-delete bumping the `deletestatus` bitmask.
+
+> **Reserved sessionkeys (non-admin callers).** Wiro-API maintains a handful of internal threads keyed under reserved sessionkeys — `voice-prep` and `voice-prep-<sid>` (per-call prep), `voice-call-<sid>` (voice-call bubble rows), `cs-cron-<slug>` (one thread per scheduled cron skill), and `wiro:api` (gateway hooks default). Non-admin callers passing any of these as `sessionkey` get back `"Session not found"` instead of a delete; the response shape is identical to a missing-session result so there's no information leak about what threads exist. Admin (`tokenUserRoles` contains `"ADMIN"`) bypasses this guard. The same guard also covers `Message/History` reads, so `Sessions` already filters these keys out of the operator's session list — you only encounter the reserved-key error if you hand-craft the body with a known internal key.
 
 ### Response
 
@@ -332,9 +347,9 @@ Each item:
 | Field | Type | Description |
 |-------|------|-------------|
 | `messageguid` | string | The message to delete. Must belong to the agent identified by `useragentguid`. |
-| `side` | string | One of `"user"`, `"agent"`, or `"both"`. Maps to a bitmask (`user=1`, `agent=2`, `both=3`) OR'd into the row's `deletestatus` column. |
+| `side` | string | One of `"user"`, `"agent"`, or `"both"`. Maps to a bitmask OR'd into the row's `deletestatus` column: `user → 1`, `agent → 3`, `both → 3`. **`agent` and `both` both produce `3`** (full hide on both sides) — there is no `side` value that hides only the agent's view while keeping the row visible to the user. |
 
-> **Soft delete, not hard delete.** Rows are kept in the database with the `deletestatus` flag set so the chat history can re-render the redacted bubble. `Message/History` filters out fully-deleted (`deletestatus < 3`) rows so users don't see the gaps. To wipe the whole conversation hard-and-fast, use [`Message/DeleteSession`](#post-useragentmessagedeletesession) instead.
+> **Soft delete, not hard delete.** Rows are kept in the database with the `deletestatus` flag set so the audit trail (and the admin xyz audit page with `includeDeleted: true`) can still see them. `Message/History` filters them out using **`deletestatus = 0`** — i.e. a row is hidden the moment any bit is set, regardless of which side flagged it. To wipe a whole session hard-and-fast (no soft-delete trail), use [`Message/DeleteSession`](#post-useragentmessagedeletesession) instead.
 
 ### Request
 
@@ -401,6 +416,7 @@ Inserts a finished "system" message into the conversation history without runnin
 | `uuid` | string | Yes | The useragent owner uuid. Must match the row stored in `useragents.uuid` for `useragentguid`. |
 | `content` | string | Yes | The message body to insert. Stored verbatim in `response` and `debugoutput`. |
 | `sessionkey` | string | No | Conversation thread the message belongs to. Defaults to `"auto"` — the endpoint resolves it to the most recent session for this useragent (falls back to `"default"` for empty histories). Pass an explicit value to insert into a specific named session. |
+| `metadata` | object \| string | No | Custom metadata payload to write on the row. Accepts either a JSON object or a JSON-encoded string; invalid JSON falls back to the default `{"type":"system"}`. No schema allowlist is applied — the value is stored verbatim. Used by the realtime voice bridge to seed `{"type":"realtime_session_incoming", "callsid", "callerInfo", "startedAt", "transcript":[]}` rows. |
 
 ### Response
 
@@ -409,13 +425,15 @@ Inserts a finished "system" message into the conversation history without runnin
   "result": true,
   "messageguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
   "sessionkey": "default",
+  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
   "errors": []
 }
 ```
 
 - `messageguid` is the inserted row's guid — use it to address the message later via `Message/Detail` or to thread replies.
 - `sessionkey` echoes the resolved session (matters when the caller passed `"auto"` or omitted the field).
-- The inserted row carries `status: "agent_end"` and `metadata: {"type":"system"}` so the chat UI renders it as a non-interactive system bubble (no retry / cancel affordances).
+- `agenttoken` is the per-message agent token. The realtime voice bridge subscribes to this token over the [Agent WebSocket](/docs/agent-websocket) to receive POSTCALL hand-off events on the same row.
+- The inserted row carries `status: "agent_end"` (or `metadata.type: "system"` by default) so the chat UI renders it as a non-interactive system bubble (no retry / cancel affordances).
 
 ## Session Management
 
