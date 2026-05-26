@@ -844,14 +844,42 @@ button {
   vertical-align: top;
 }
 
-/* The generic .docs-section table tbody td:first-child rule sets
-   white-space: nowrap on the first column — useful for short status /
-   error-code tables but it makes long-text first columns inside
-   .docs-param-table push the table into horizontal scroll. Reset to
-   normal wrapping for the structured param tables; the generic rule
-   still applies to any raw <table> rendered straight from markdown. */
-.docs-param-table tbody td {
+/* The generic .docs-section table tbody td:first-child rule (further up
+   in this file) sets white-space: nowrap on the first column — useful
+   for short status / error-code tables but it makes long-text first
+   columns inside .docs-param-table push the table past its wrapper.
+   Override it here; the .docs-section prefix and :first-child pseudo
+   are needed to win the specificity battle with the nowrap rule. The
+   generic rule still applies to any raw <table> rendered straight from
+   markdown. */
+.docs-section .docs-param-table tbody td,
+.docs-section .docs-param-table tbody td:first-child {
   white-space: normal;
+}
+
+/* 2-column endpoint cheatsheet tables (Operation | Endpoint).
+   Auto layout lets a long sentence in the first column push the table
+   wider than the wrapper, hiding the second column behind a horizontal
+   scroll. Pin them to a fixed 50/50 split so both columns are always
+   visible. The :not(:has()) guard excludes 3- and 4-column tables
+   (Parameter | Type | Required | Description, etc.) where auto layout
+   gives a better proportional fit. */
+.docs-param-table table:has(thead th:nth-child(2)):not(:has(thead th:nth-child(3))) {
+  table-layout: fixed;
+}
+.docs-param-table table:has(thead th:nth-child(2)):not(:has(thead th:nth-child(3))) thead th,
+.docs-param-table table:has(thead th:nth-child(2)):not(:has(thead th:nth-child(3))) tbody td {
+  width: 50%;
+}
+
+/* For the fixed-layout 2-column tables only, allow long inline <code>
+   chips (e.g. POST /UserAgent/CustomSkillHistory) to break inside as a
+   last resort if a narrow viewport would push them past the 50% column
+   width. We do NOT apply this globally to .docs-param-table because
+   short parameter-name chips in 3-/4-column auto-layout tables (like
+   "agentguid", "description") would then break inside their cells. */
+.docs-param-table table:has(thead th:nth-child(2)):not(:has(thead th:nth-child(3))) tbody td code {
+  overflow-wrap: anywhere;
 }
 
 .param-name {
