@@ -844,6 +844,16 @@ button {
   vertical-align: top;
 }
 
+/* The generic .docs-section table tbody td:first-child rule sets
+   white-space: nowrap on the first column — useful for short status /
+   error-code tables but it makes long-text first columns inside
+   .docs-param-table push the table into horizontal scroll. Reset to
+   normal wrapping for the structured param tables; the generic rule
+   still applies to any raw <table> rendered straight from markdown. */
+.docs-param-table tbody td {
+  white-space: normal;
+}
+
 .param-name {
   font-family: var(--mono);
   font-size: 0.82rem;
