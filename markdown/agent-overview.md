@@ -2030,12 +2030,21 @@ Non-admin callers are rate-limited via a 30-second Redis cache keyed on `(userag
   "errors": [],
   "events": [
     {
-      "ts": 1714694401,
-      "type": "skill",
-      "skillkey": "int-instagram-post",
-      "summary": "Posted carousel: \"Brand voice teaser\"",
+      "ts": "2026-05-03T14:00:01.000Z",
+      "kind": "tool_completed",
+      "tool": "exec",
+      "title": "Posted carousel: \"Brand voice teaser\"",
+      "summary": {
+        "skill": "int-instagram-post",
+        "action": "create",
+        "permalink": "https://www.instagram.com/p/CXY..."
+      },
+      "durationMs": 2480,
+      "ok": true,
+      "cost": { "credits": 60, "skill": "int-instagram-post", "action": "create" },
       "userUuid": "ada-uuid",
       "user": {
+        "uuid": "ada-uuid",
         "firstname": "Ada",
         "lastname": "Lovelace",
         "email": "ada@example.com",
@@ -2044,16 +2053,18 @@ Non-admin callers are rate-limited via a 30-second Redis cache keyed on `(userag
       }
     },
     {
-      "ts": 1714694200,
-      "type": "cron",
-      "skillkey": "cs-cron-content-scanner",
-      "summary": "Queued 3 fresh content ideas",
+      "ts": "2026-05-03T13:30:00.000Z",
+      "kind": "cron_finished",
+      "title": "Cron tick: cs-cron-content-scanner",
+      "summary": { "skill": "cs-cron-content-scanner", "interval": "0 9 * * *", "trigger": "scheduled", "queued": 3 },
+      "durationMs": 1860,
+      "ok": true,
       "userUuid": "system",
       "user": null
     }
   ],
   "date": "2026-05-03",
-  "totalLines": 2
+  "totalLines": 1428
 }
 ```
 
@@ -2061,15 +2072,20 @@ Non-admin callers are rate-limited via a 30-second Redis cache keyed on `(userag
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `events[]` | array | One row per activity entry (newest first by file order). |
-| `events[].ts` | number | UTC epoch seconds when the event was emitted. |
-| `events[].type` | string | Event flavour — `skill` (invocation), `cron` (scheduled tick), `message` (user chat), `error`, etc. |
-| `events[].skillkey` | string | Origin skill, when applicable. |
-| `events[].summary` | string | Human-readable description of what happened. |
-| `events[].userUuid` | string | Originating actor's UUID. `"system"` for cron / internal events. |
-| `events[].user` | object \| null | Resolved user shape (`firstname`, `lastname`, `email`, `avatar`, `avatarinitials`) when the actor is a real user. `null` for `system` events. Legacy rows fall back to the useragent owner so the panel always shows someone. |
+| `events[]` | array | One row per activity entry. The wiro-commands plugin appends events ascending by time; the array preserves that order — the frontend usually reverses for newest-first display. |
+| `events[].ts` | string | ISO-8601 UTC datetime when the event was emitted (e.g. `"2026-05-03T14:00:01.000Z"`). Parse with `Date.parse(ts)` for arithmetic. |
+| `events[].kind` | string | Fine-grained event class. One of: `"tool_started"`, `"tool_completed"` (one pair per tool invocation), `"turn_started"`, `"turn_ended"` (LLM turn boundary), `"cron_started"`, `"cron_finished"` (scheduled-cron tick), `"session_start"`, `"session_end"` (chat-session boundary), `"user_message"` (user → agent), `"agent_reply"` (agent → user). |
+| `events[].tool` | string \| null | Present on `tool_started` / `tool_completed`. One of: `"read"`, `"write"`, `"edit"`, `"exec"`, `"web_fetch"`, `"web_search"`, `"sessions_spawn"`, `"message"`. |
+| `events[].title` | string | Human-readable one-line description (always present). |
+| `events[].summary` | object \| null | Structured event-specific payload. Treat as opaque — render as JSON when expanding. Plugin pre-redacts `apikey`, `apppassword`, `clientsecret`, `bearer`, `token`, etc. before writing. Keys vary per `kind`/`tool`. |
+| `events[].durationMs` | number \| null | Wall-clock duration in milliseconds. Populated on `*_completed` / `*_finished` / `turn_ended` events. |
+| `events[].ok` | boolean \| null | `true` on success, `false` on failure. Populated on `*_completed` / `*_finished`. Pair with `error` for failures. |
+| `events[].error` | string \| null | One-line failure message (when `ok: false`). |
+| `events[].cost` | object \| null | Credit deduction attached to the event: `{ credits, skill, action }`. Only present for `exec`-tool calls that drove a per-action charge. |
+| `events[].userUuid` | string \| null | Originating actor's UUID. `"system"` for cron / internal events. May be missing on legacy rows from the 180-day retention window pre-attribution rollout — the server falls back to the useragent owner. |
+| `events[].user` | object \| null | Resolved user shape (`uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`) when the actor is a real user. `null` for `system` events. |
 | `date` | string | The date that was actually read (`YYYY-MM-DD`). |
-| `totalLines` | number | Number of rows returned (≤ `lines`). |
+| `totalLines` | number | **Total lines in the file** (regardless of `lines` cap). Use this to show "showing X of Y events" headers. |
 
 ##### Common errors
 

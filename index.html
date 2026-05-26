@@ -8765,12 +8765,21 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
   "errors": [],
   "events": [
     {
-      "ts": 1714694401,
-      "type": "skill",
-      "skillkey": "int-instagram-post",
-      "summary": "Posted carousel: \"Brand voice teaser\"",
+      "ts": "2026-05-03T14:00:01.000Z",
+      "kind": "tool_completed",
+      "tool": "exec",
+      "title": "Posted carousel: \"Brand voice teaser\"",
+      "summary": {
+        "skill": "int-instagram-post",
+        "action": "create",
+        "permalink": "https://www.instagram.com/p/CXY..."
+      },
+      "durationMs": 2480,
+      "ok": true,
+      "cost": { "credits": 60, "skill": "int-instagram-post", "action": "create" },
       "userUuid": "ada-uuid",
       "user": {
+        "uuid": "ada-uuid",
         "firstname": "Ada",
         "lastname": "Lovelace",
         "email": "ada@example.com",
@@ -8779,16 +8788,18 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
       }
     },
     {
-      "ts": 1714694200,
-      "type": "cron",
-      "skillkey": "cs-cron-content-scanner",
-      "summary": "Queued 3 fresh content ideas",
+      "ts": "2026-05-03T13:30:00.000Z",
+      "kind": "cron_finished",
+      "title": "Cron tick: cs-cron-content-scanner",
+      "summary": { "skill": "cs-cron-content-scanner", "interval": "0 9 * * *", "trigger": "scheduled", "queued": 3 },
+      "durationMs": 1860,
+      "ok": true,
       "userUuid": "system",
       "user": null
     }
   ],
   "date": "2026-05-03",
-  "totalLines": 2
+  "totalLines": 1428
 }</code></pre>
 
                     <h3>Field reference</h3>
@@ -8797,15 +8808,20 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
                         <table>
                           <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
                           <tbody>
-                            <tr><td><code>events[]</code></td><td>array</td><td>One row per activity entry (newest first by file order).</td></tr>
-                            <tr><td><code>events[].ts</code></td><td>number</td><td>UTC epoch seconds when the event was emitted.</td></tr>
-                            <tr><td><code>events[].type</code></td><td>string</td><td>Event flavour — <code>skill</code> (invocation), <code>cron</code> (scheduled tick), <code>message</code> (user chat), <code>error</code>, etc.</td></tr>
-                            <tr><td><code>events[].skillkey</code></td><td>string</td><td>Origin skill, when applicable.</td></tr>
-                            <tr><td><code>events[].summary</code></td><td>string</td><td>Human-readable description of what happened.</td></tr>
-                            <tr><td><code>events[].userUuid</code></td><td>string</td><td>Originating actor's UUID. <code>"system"</code> for cron / internal events.</td></tr>
-                            <tr><td><code>events[].user</code></td><td>object | null</td><td>Resolved user shape (<code>firstname</code>, <code>lastname</code>, <code>email</code>, <code>avatar</code>, <code>avatarinitials</code>) when the actor is a real user. <code>null</code> for <code>system</code> events. Legacy rows fall back to the useragent owner so the panel always shows someone.</td></tr>
+                            <tr><td><code>events[]</code></td><td>array</td><td>One row per activity entry. The wiro-commands plugin appends events ascending by time; the array preserves that order — the frontend usually reverses for newest-first display.</td></tr>
+                            <tr><td><code>events[].ts</code></td><td>string</td><td>ISO-8601 UTC datetime when the event was emitted (e.g. <code>"2026-05-03T14:00:01.000Z"</code>). Parse with <code>Date.parse(ts)</code> for arithmetic.</td></tr>
+                            <tr><td><code>events[].kind</code></td><td>string</td><td>Fine-grained event class. One of: <code>"tool_started"</code>, <code>"tool_completed"</code> (one pair per tool invocation), <code>"turn_started"</code>, <code>"turn_ended"</code> (LLM turn boundary), <code>"cron_started"</code>, <code>"cron_finished"</code> (scheduled-cron tick), <code>"session_start"</code>, <code>"session_end"</code> (chat-session boundary), <code>"user_message"</code> (user → agent), <code>"agent_reply"</code> (agent → user).</td></tr>
+                            <tr><td><code>events[].tool</code></td><td>string | null</td><td>Present on <code>tool_started</code> / <code>tool_completed</code>. One of: <code>"read"</code>, <code>"write"</code>, <code>"edit"</code>, <code>"exec"</code>, <code>"web_fetch"</code>, <code>"web_search"</code>, <code>"sessions_spawn"</code>, <code>"message"</code>.</td></tr>
+                            <tr><td><code>events[].title</code></td><td>string</td><td>Human-readable one-line description (always present).</td></tr>
+                            <tr><td><code>events[].summary</code></td><td>object | null</td><td>Structured event-specific payload. Treat as opaque — render as JSON when expanding. Plugin pre-redacts <code>apikey</code>, <code>apppassword</code>, <code>clientsecret</code>, <code>bearer</code>, <code>token</code>, etc. before writing. Keys vary per <code>kind</code>/<code>tool</code>.</td></tr>
+                            <tr><td><code>events[].durationMs</code></td><td>number | null</td><td>Wall-clock duration in milliseconds. Populated on <code>*_completed</code> / <code>*_finished</code> / <code>turn_ended</code> events.</td></tr>
+                            <tr><td><code>events[].ok</code></td><td>boolean | null</td><td><code>true</code> on success, <code>false</code> on failure. Populated on <code>*_completed</code> / <code>*_finished</code>. Pair with <code>error</code> for failures.</td></tr>
+                            <tr><td><code>events[].error</code></td><td>string | null</td><td>One-line failure message (when <code>ok: false</code>).</td></tr>
+                            <tr><td><code>events[].cost</code></td><td>object | null</td><td>Credit deduction attached to the event: <code>{ credits, skill, action }</code>. Only present for <code>exec</code>-tool calls that drove a per-action charge.</td></tr>
+                            <tr><td><code>events[].userUuid</code></td><td>string | null</td><td>Originating actor's UUID. <code>"system"</code> for cron / internal events. May be missing on legacy rows from the 180-day retention window pre-attribution rollout — the server falls back to the useragent owner.</td></tr>
+                            <tr><td><code>events[].user</code></td><td>object | null</td><td>Resolved user shape (<code>uuid</code>, <code>firstname</code>, <code>lastname</code>, <code>email</code>, <code>username</code>, <code>avatar</code>, <code>avatarinitials</code>) when the actor is a real user. <code>null</code> for <code>system</code> events.</td></tr>
                             <tr><td><code>date</code></td><td>string</td><td>The date that was actually read (<code>YYYY-MM-DD</code>).</td></tr>
-                            <tr><td><code>totalLines</code></td><td>number</td><td>Number of rows returned (≤ <code>lines</code>).</td></tr>
+                            <tr><td><code>totalLines</code></td><td>number</td><td><strong>Total lines in the file</strong> (regardless of <code>lines</code> cap). Use this to show "showing X of Y events" headers.</td></tr>
                           </tbody>
                         </table>
                       </div>
@@ -15862,18 +15878,13 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
                             </tr>
                             <tr>
                               <td><code>expired</code></td>
-                              <td>Skill toggle</td>
-                              <td>When a skill is disabled mid-period and the credit pool shrinks. Negative <code>amount</code> (signed delta).</td>
+                              <td>Skill toggle / subscription end</td>
+                              <td>Two cases share the type. Mid-period: when a skill is disabled and the credit pool shrinks (<code>action: "skill-toggle"</code>). End-of-period: when a cancelled subscription rolls past <code>currentperiodend</code> and the cron revokes any remaining monthly leftover (<code>action: "subscription"</code>). Negative <code>amount</code> in both cases.</td>
                             </tr>
                             <tr>
                               <td><code>refund</code></td>
                               <td>Server-side refund</td>
                               <td>Issued by Wiro support when a previous charge is reversed. Positive <code>amount</code>.</td>
-                            </tr>
-                            <tr>
-                              <td><code>cancel</code></td>
-                              <td>Subscription end policy</td>
-                              <td>When a subscription expires and the policy revokes any monthly leftover. Negative <code>amount</code>.</td>
                             </tr>
                           </tbody>
                         </table>
@@ -16061,8 +16072,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
                           </thead>
                           <tbody>
                             <tr><td><code>guid</code></td><td><code>string</code></td><td>Stable id of the ledger row. Daemon retries reuse this guid for idempotency.</td></tr>
-                            <tr><td><code>type</code></td><td><code>string</code></td><td><code>"deduct"</code>, <code>"renewal"</code>, <code>"purchase"</code>, <code>"grant"</code>, <code>"expired"</code>, <code>"refund"</code>, or <code>"cancel"</code>.</td></tr>
-                            <tr><td><code>action</code></td><td><code>string|null</code></td><td>Fine-grained detail. Examples: <code>"message"</code> (deduct), <code>"monthly"</code> (renewal), <code>"small"|"medium"|"large"</code> (purchase), <code>"skill-toggle"|"admin"|"upgrade"</code> (grant), <code>"subscription"</code> (cancel/refund).</td></tr>
+                            <tr><td><code>type</code></td><td><code>string</code></td><td>One of <code>"deduct"</code>, <code>"renewal"</code>, <code>"purchase"</code>, <code>"grant"</code>, <code>"expired"</code>, <code>"refund"</code>. There is no <code>"cancel"</code> type — a user-initiated subscription cancel only flips auto-renew off; credits are not forfeited until <code>currentperiodend</code> is reached, at which point the cron writes the ledger row as <code>type: "expired"</code>, <code>action: "subscription"</code>.</td></tr>
+                            <tr><td><code>action</code></td><td><code>string|null</code></td><td>Fine-grained detail. Examples: <code>"message"</code> (deduct), <code>"monthly"</code> (renewal), <code>"small"|"medium"|"large"</code> (purchase), <code>"skill-toggle"|"admin"|"upgrade"</code> (grant), <code>"skill-toggle"</code> (expired, mid-period skill disable), <code>"subscription"</code> (expired end-of-period rollover; refund).</td></tr>
                             <tr><td><code>amount</code></td><td><code>number</code></td><td>Signed credit delta — negative for deductions, positive for grants.</td></tr>
                             <tr><td><code>balanceafter</code></td><td><code>number|null</code></td><td>Remaining credit balance snapshot written at the time of the event.</td></tr>
                             <tr><td><code>description</code></td><td><code>string|null</code></td><td>Human-readable label.</td></tr>
@@ -16226,11 +16237,18 @@ console.log('Now in period:', summary.creditperiod);</code></pre>
                     <h2>ActivityEvent Shape</h2>
                     <p>Every event is a JSON object with this base shape:</p>
                     <pre><code class="language-json">{
-  "ts": 1714694410,
-  "kind": "tool",
-  "action": "wordpress-publish",
-  "skill": "int-wordpress-post",
-  "session": "user-42",
+  "ts": "2026-05-03T14:00:10.234Z",
+  "kind": "tool_completed",
+  "tool": "web_fetch",
+  "title": "Fetched https://blog.example.com/weekly-roundup-12",
+  "summary": {
+    "url": "https://blog.example.com/weekly-roundup-12",
+    "status": 200,
+    "bytes": 18432
+  },
+  "durationMs": 1840,
+  "ok": true,
+  "cost": { "credits": 5, "skill": "int-wiro-aimodels", "action": "create" },
   "userUuid": "ada-uuid",
   "user": {
     "uuid": "ada-uuid",
@@ -16240,10 +16258,6 @@ console.log('Now in period:', summary.creditperiod);</code></pre>
     "username": "ada",
     "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
     "avatarinitials": "AL"
-  },
-  "details": {
-    "title": "Weekly Roundup",
-    "url": "https://blog.example.com/weekly-roundup-12"
   }
 }</code></pre>
                     <div class="docs-param-table">
@@ -16253,18 +16267,22 @@ console.log('Now in period:', summary.creditperiod);</code></pre>
                             <tr><th>Field</th><th>Type</th><th>Description</th></tr>
                           </thead>
                           <tbody>
-                            <tr><td><code>ts</code></td><td><code>number</code></td><td>Unix seconds when the event was emitted inside the container.</td></tr>
-                            <tr><td><code>kind</code></td><td><code>string</code></td><td>Event class: <code>"tool"</code>, <code>"turn"</code>, <code>"session"</code>, <code>"message"</code>, <code>"cron"</code>, <code>"deduct"</code>, <code>"system"</code>.</td></tr>
-                            <tr><td><code>action</code></td><td><code>string</code></td><td>Fine-grained label: e.g. <code>"wordpress-publish"</code>, <code>"telegram-send"</code>, <code>"message"</code>, <code>"cron-tick"</code>, <code>"agent_start"</code>.</td></tr>
-                            <tr><td><code>skill</code></td><td><code>string|null</code></td><td>The skill that produced the event. <code>null</code> for system events.</td></tr>
-                            <tr><td><code>session</code></td><td><code>string|null</code></td><td>Sessionkey the event belongs to (chat events only).</td></tr>
-                            <tr><td><code>userUuid</code></td><td><code>string|null</code></td><td>UUID of the user who triggered the event. <code>"system"</code> for cron / internal events.</td></tr>
+                            <tr><td><code>ts</code></td><td><code>string</code></td><td>ISO-8601 UTC datetime when the event was emitted inside the container (e.g. <code>"2026-05-03T14:00:10.234Z"</code>). Parse with <code>Date.parse(ts)</code> for arithmetic.</td></tr>
+                            <tr><td><code>kind</code></td><td><code>string</code></td><td>Fine-grained event class. One of: <code>"tool_started"</code>, <code>"tool_completed"</code> (one pair per tool invocation); <code>"turn_started"</code>, <code>"turn_ended"</code> (LLM turn boundary); <code>"cron_started"</code>, <code>"cron_finished"</code> (scheduled-cron tick); <code>"session_start"</code>, <code>"session_end"</code> (chat-session boundary); <code>"user_message"</code> (user → agent message); <code>"agent_reply"</code> (agent → user reply).</td></tr>
+                            <tr><td><code>tool</code></td><td><code>string?</code></td><td>Present on <code>tool_started</code> / <code>tool_completed</code>. Tool family — one of: <code>"read"</code>, <code>"write"</code>, <code>"edit"</code>, <code>"exec"</code>, <code>"web_fetch"</code>, <code>"web_search"</code>, <code>"sessions_spawn"</code>, <code>"message"</code>.</td></tr>
+                            <tr><td><code>title</code></td><td><code>string</code></td><td>Human-readable one-line description of what happened (e.g. <code>"Posted carousel: \"Brand voice teaser\""</code>, <code>"Fetched https://…"</code>, <code>"Charged 5 credits · int-wiro-aimodels (create)"</code>). Always present.</td></tr>
+                            <tr><td><code>summary</code></td><td><code>object?</code></td><td>Structured event-specific payload. Opaque on the wire — render as JSON when expanding the row. Plugin pre-redacts <code>apikey</code>, <code>apppassword</code>, <code>clientsecret</code>, <code>bearer</code>, <code>token</code>, etc. before writing. Common keys: <code>url</code>, <code>status</code>, <code>bytes</code>, <code>query</code>, <code>resultCount</code>, <code>path</code>, <code>lines</code>, <code>interval</code>, <code>trigger</code>, <code>messageguid</code>, <code>wordCount</code>, <code>elapsedTime</code>.</td></tr>
+                            <tr><td><code>durationMs</code></td><td><code>number?</code></td><td>Wall-clock duration in milliseconds. Populated on <code>*_completed</code> / <code>*_finished</code> / <code>turn_ended</code> events.</td></tr>
+                            <tr><td><code>ok</code></td><td><code>boolean?</code></td><td><code>true</code> for a successful completion, <code>false</code> for a failure. Populated on <code>*_completed</code> / <code>*_finished</code> events. Pair with <code>error</code> for failure rows.</td></tr>
+                            <tr><td><code>error</code></td><td><code>string?</code></td><td>One-line failure message (when <code>ok: false</code>).</td></tr>
+                            <tr><td><code>cost</code></td><td><code>object?</code></td><td>Credit deduction attached to the event (<code>exec</code> tool calls that drove a per-action charge): <code>{ credits, skill, action }</code>. Absent on no-charge events.</td></tr>
+                            <tr><td><code>userUuid</code></td><td><code>string?</code></td><td>UUID of the actor who triggered the event. <code>"system"</code> for cron / internal events. May be missing on legacy rows from the 180-day retention window pre-attribution rollout — the server falls back to the useragent owner.</td></tr>
                             <tr><td><code>user</code></td><td><code>object|null</code></td><td>Resolved actor: <code>{ uuid, firstname, lastname, email, username, avatar, avatarinitials }</code>. <code>null</code> when <code>userUuid</code> is <code>"system"</code> (automation / cron) or when the user record was deleted.</td></tr>
-                            <tr><td><code>details</code></td><td><code>object</code></td><td>Event-specific payload. Always redacted.</td></tr>
                           </tbody>
                         </table>
                       </div>
                     </div>
+                    <div class="info-callout"><strong>What is <code>summary</code> for?</strong> Tool calls include the input/output summary (URL, status, bytecount, search query); cron ticks include <code>{ interval, trigger }</code>; message events include <code>{ messageguid, wordCount, elapsedTime }</code>. Treat the object as opaque and render-on-expand — its shape is plugin-version-specific and is allowed to evolve without a docs revision.</div>
                   </section>
 
                   <section id="logs-tail">
@@ -16300,45 +16318,53 @@ console.log('Now in period:', summary.creditperiod);</code></pre>
   "totalLines": 1428,
   "events": [
     {
-      "ts": 1714694412,
-      "kind": "deduct",
-      "action": "create",
-      "skill": "int-wordpress-post",
-      "session": null,
+      "ts": "2026-05-03T14:00:12.481Z",
+      "kind": "tool_completed",
+      "tool": "exec",
+      "title": "Charged 60 credits · int-wordpress-post (create)",
+      "summary": { "skill": "int-wordpress-post", "action": "create", "balanceafter": 4940 },
+      "durationMs": 92,
+      "ok": true,
+      "cost": { "credits": 60, "skill": "int-wordpress-post", "action": "create" },
       "userUuid": "system",
-      "user": null,
-      "details": { "cost": 60, "balanceafter": 4940 }
+      "user": null
     },
     {
-      "ts": 1714694410,
-      "kind": "tool",
-      "action": "wordpress-publish",
-      "skill": "int-wordpress-post",
-      "session": null,
-      "userUuid": "system",
-      "user": null,
-      "details": {
+      "ts": "2026-05-03T14:00:10.305Z",
+      "kind": "tool_completed",
+      "tool": "exec",
+      "title": "Posted: \"Weekly Roundup\"",
+      "summary": {
         "title": "Weekly Roundup",
         "url": "https://blog.example.com/weekly-roundup-12",
         "categories": ["AI", "Tutorial"]
-      }
-    },
-    {
-      "ts": 1714694200,
-      "kind": "cron",
-      "action": "cron-tick",
-      "skill": "cs-cron-blog-scanner",
-      "session": null,
+      },
+      "durationMs": 1840,
+      "ok": true,
       "userUuid": "system",
-      "user": null,
-      "details": { "interval": "0 9 * * *", "trigger": "scheduled" }
+      "user": null
     },
     {
-      "ts": 1714693100,
-      "kind": "message",
-      "action": "agent_end",
-      "skill": null,
-      "session": "user-42",
+      "ts": "2026-05-03T13:30:00.000Z",
+      "kind": "cron_finished",
+      "title": "Cron tick: cs-cron-blog-scanner",
+      "summary": { "skill": "cs-cron-blog-scanner", "interval": "0 9 * * *", "trigger": "scheduled" },
+      "durationMs": 4210,
+      "ok": true,
+      "userUuid": "system",
+      "user": null
+    },
+    {
+      "ts": "2026-05-03T13:14:42.118Z",
+      "kind": "agent_reply",
+      "title": "Agent replied (412 words, 8.1s)",
+      "summary": {
+        "messageguid": "5c41dabf-f2be-4aa8-a5a4-8c9e3d2f3f11",
+        "elapsedTime": "8.1s",
+        "wordCount": 412
+      },
+      "durationMs": 8104,
+      "ok": true,
       "userUuid": "ada-uuid",
       "user": {
         "uuid": "ada-uuid",
@@ -16348,12 +16374,6 @@ console.log('Now in period:', summary.creditperiod);</code></pre>
         "username": "ada",
         "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
         "avatarinitials": "AL"
-      },
-      "details": {
-        "messageguid": "5c41dabf-f2be-4aa8-a5a4-8c9e3d2f3f11",
-        "prompt": "Draft a weekly roundup post for the past week.",
-        "elapsedTime": "8.1s",
-        "wordCount": 412
       }
     }
   ]
@@ -16408,21 +16428,10 @@ console.log('Now in period:', summary.creditperiod);</code></pre>
   "truncated": false,
   "events": [
     {
-      "ts": 1714000000,
-      "kind": "system",
-      "action": "agent_start",
-      "skill": null,
-      "session": null,
-      "userUuid": "system",
-      "user": null,
-      "details": {}
-    },
-    {
-      "ts": 1714000020,
-      "kind": "session",
-      "action": "session_start",
-      "skill": null,
-      "session": "user-42",
+      "ts": "2026-05-02T08:00:00.000Z",
+      "kind": "session_start",
+      "title": "Session started: user-42",
+      "summary": { "sessionkey": "user-42" },
       "userUuid": "ada-uuid",
       "user": {
         "uuid": "ada-uuid",
@@ -16432,8 +16441,23 @@ console.log('Now in period:', summary.creditperiod);</code></pre>
         "username": "ada",
         "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
         "avatarinitials": "AL"
-      },
-      "details": {}
+      }
+    },
+    {
+      "ts": "2026-05-02T08:00:20.142Z",
+      "kind": "user_message",
+      "title": "User: \"Hi, can you draft a roundup post?\"",
+      "summary": { "messageguid": "5c41dabf-…", "wordCount": 8 },
+      "userUuid": "ada-uuid",
+      "user": {
+        "uuid": "ada-uuid",
+        "firstname": "Ada",
+        "lastname": "Lovelace",
+        "email": "ada@example.com",
+        "username": "ada",
+        "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
+        "avatarinitials": "AL"
+      }
     }
   ]
 }</code></pre>
@@ -16482,11 +16506,11 @@ console.log('Now in period:', summary.creditperiod);</code></pre>
       { headers: { 'x-api-key': 'YOUR_API_KEY', 'Content-Type': 'application/json' } }
     );
 
-    const fresh = data.events.filter(e =&gt; e.ts &gt; lastTs);
+    const fresh = data.events.filter(e =&gt; Date.parse(e.ts) &gt; lastTs);
     if (fresh.length === 0) return;
 
     onEvents(fresh);
-    lastTs = fresh[fresh.length - 1].ts;
+    lastTs = Date.parse(fresh[fresh.length - 1].ts);
   }, 30_000);
 }</code></pre>
 

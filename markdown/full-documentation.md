@@ -3700,12 +3700,21 @@ Non-admin callers are rate-limited via a 30-second Redis cache keyed on `(userag
   "errors": [],
   "events": [
     {
-      "ts": 1714694401,
-      "type": "skill",
-      "skillkey": "int-instagram-post",
-      "summary": "Posted carousel: \"Brand voice teaser\"",
+      "ts": "2026-05-03T14:00:01.000Z",
+      "kind": "tool_completed",
+      "tool": "exec",
+      "title": "Posted carousel: \"Brand voice teaser\"",
+      "summary": {
+        "skill": "int-instagram-post",
+        "action": "create",
+        "permalink": "https://www.instagram.com/p/CXY..."
+      },
+      "durationMs": 2480,
+      "ok": true,
+      "cost": { "credits": 60, "skill": "int-instagram-post", "action": "create" },
       "userUuid": "ada-uuid",
       "user": {
+        "uuid": "ada-uuid",
         "firstname": "Ada",
         "lastname": "Lovelace",
         "email": "ada@example.com",
@@ -3714,16 +3723,18 @@ Non-admin callers are rate-limited via a 30-second Redis cache keyed on `(userag
       }
     },
     {
-      "ts": 1714694200,
-      "type": "cron",
-      "skillkey": "cs-cron-content-scanner",
-      "summary": "Queued 3 fresh content ideas",
+      "ts": "2026-05-03T13:30:00.000Z",
+      "kind": "cron_finished",
+      "title": "Cron tick: cs-cron-content-scanner",
+      "summary": { "skill": "cs-cron-content-scanner", "interval": "0 9 * * *", "trigger": "scheduled", "queued": 3 },
+      "durationMs": 1860,
+      "ok": true,
       "userUuid": "system",
       "user": null
     }
   ],
   "date": "2026-05-03",
-  "totalLines": 2
+  "totalLines": 1428
 }
 ```
 
@@ -3731,15 +3742,20 @@ Non-admin callers are rate-limited via a 30-second Redis cache keyed on `(userag
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `events[]` | array | One row per activity entry (newest first by file order). |
-| `events[].ts` | number | UTC epoch seconds when the event was emitted. |
-| `events[].type` | string | Event flavour — `skill` (invocation), `cron` (scheduled tick), `message` (user chat), `error`, etc. |
-| `events[].skillkey` | string | Origin skill, when applicable. |
-| `events[].summary` | string | Human-readable description of what happened. |
-| `events[].userUuid` | string | Originating actor's UUID. `"system"` for cron / internal events. |
-| `events[].user` | object \| null | Resolved user shape (`firstname`, `lastname`, `email`, `avatar`, `avatarinitials`) when the actor is a real user. `null` for `system` events. Legacy rows fall back to the useragent owner so the panel always shows someone. |
+| `events[]` | array | One row per activity entry. The wiro-commands plugin appends events ascending by time; the array preserves that order — the frontend usually reverses for newest-first display. |
+| `events[].ts` | string | ISO-8601 UTC datetime when the event was emitted (e.g. `"2026-05-03T14:00:01.000Z"`). Parse with `Date.parse(ts)` for arithmetic. |
+| `events[].kind` | string | Fine-grained event class. One of: `"tool_started"`, `"tool_completed"` (one pair per tool invocation), `"turn_started"`, `"turn_ended"` (LLM turn boundary), `"cron_started"`, `"cron_finished"` (scheduled-cron tick), `"session_start"`, `"session_end"` (chat-session boundary), `"user_message"` (user → agent), `"agent_reply"` (agent → user). |
+| `events[].tool` | string \| null | Present on `tool_started` / `tool_completed`. One of: `"read"`, `"write"`, `"edit"`, `"exec"`, `"web_fetch"`, `"web_search"`, `"sessions_spawn"`, `"message"`. |
+| `events[].title` | string | Human-readable one-line description (always present). |
+| `events[].summary` | object \| null | Structured event-specific payload. Treat as opaque — render as JSON when expanding. Plugin pre-redacts `apikey`, `apppassword`, `clientsecret`, `bearer`, `token`, etc. before writing. Keys vary per `kind`/`tool`. |
+| `events[].durationMs` | number \| null | Wall-clock duration in milliseconds. Populated on `*_completed` / `*_finished` / `turn_ended` events. |
+| `events[].ok` | boolean \| null | `true` on success, `false` on failure. Populated on `*_completed` / `*_finished`. Pair with `error` for failures. |
+| `events[].error` | string \| null | One-line failure message (when `ok: false`). |
+| `events[].cost` | object \| null | Credit deduction attached to the event: `{ credits, skill, action }`. Only present for `exec`-tool calls that drove a per-action charge. |
+| `events[].userUuid` | string \| null | Originating actor's UUID. `"system"` for cron / internal events. May be missing on legacy rows from the 180-day retention window pre-attribution rollout — the server falls back to the useragent owner. |
+| `events[].user` | object \| null | Resolved user shape (`uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`) when the actor is a real user. `null` for `system` events. |
 | `date` | string | The date that was actually read (`YYYY-MM-DD`). |
-| `totalLines` | number | Number of rows returned (≤ `lines`). |
+| `totalLines` | number | **Total lines in the file** (regardless of `lines` cap). Use this to show "showing X of Y events" headers. |
 
 ##### Common errors
 
@@ -9372,9 +9388,8 @@ The ledger is the single source of truth for "where did my credits go?" and powe
 | `renewal` | Subscription cron | At each 30-day rollover when the wallet successfully covers the renewal. Positive `amount` = monthly credits granted. |
 | `purchase` | Extra-credit checkout | When `POST /UserAgent/CreateExtraCreditCheckout` (`useprepaid: true`) succeeds. Positive `amount` = pack credits. |
 | `grant` | Skill toggle / admin top-up | When a skill is enabled mid-period (extra credits added), or an admin uses `AdminRateLimitUpdate` to top up. Positive `amount`. |
-| `expired` | Skill toggle | When a skill is disabled mid-period and the credit pool shrinks. Negative `amount` (signed delta). |
+| `expired` | Skill toggle / subscription end | Two cases share the type. Mid-period: when a skill is disabled and the credit pool shrinks (`action: "skill-toggle"`). End-of-period: when a cancelled subscription rolls past `currentperiodend` and the cron revokes any remaining monthly leftover (`action: "subscription"`). Negative `amount` in both cases. |
 | `refund` | Server-side refund | Issued by Wiro support when a previous charge is reversed. Positive `amount`. |
-| `cancel` | Subscription end policy | When a subscription expires and the policy revokes any monthly leftover. Negative `amount`. |
 
 > **The ledger is append-only.** There is no delete endpoint. Each row carries a stable `guid` that the server uses for deduplication (so a duplicate retry of the same deduct event is a no-op).
 
@@ -9531,8 +9546,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 | Field | Type | Description |
 |-------|------|-------------|
 | `guid` | `string` | Stable id of the ledger row. Daemon retries reuse this guid for idempotency. |
-| `type` | `string` | `"deduct"`, `"renewal"`, `"purchase"`, `"grant"`, `"expired"`, `"refund"`, or `"cancel"`. |
-| `action` | `string\|null` | Fine-grained detail. Values depend on `type`: `"message"`, `"create"`, `"modify"`, `"regenerate"` (deduct); `"monthly"` (renewal); `"small"`, `"medium"`, `"large"` (purchase); `"skill-toggle"`, `"admin"`, `"upgrade"` (grant); `"skill-toggle"` (expired); `"subscription"` (cancel/refund). |
+| `type` | `string` | One of `"deduct"`, `"renewal"`, `"purchase"`, `"grant"`, `"expired"`, `"refund"`. There is no `"cancel"` type — a user-initiated subscription cancel only flips auto-renew off; credits are not forfeited until `currentperiodend` is reached, at which point the cron writes the ledger row as `type: "expired"`, `action: "subscription"`. |
+| `action` | `string\|null` | Fine-grained detail. Values depend on `type`: `"message"`, `"create"`, `"modify"`, `"regenerate"` (deduct); `"monthly"` (renewal); `"small"`, `"medium"`, `"large"` (purchase); `"skill-toggle"`, `"admin"`, `"upgrade"` (grant); `"skill-toggle"` (expired, mid-period skill disable); `"subscription"` (expired, end-of-period cancel rollover; refund). |
 | `amount` | `number` | Signed credit delta — negative for deductions, positive for grants. |
 | `balanceafter` | `number\|null` | Remaining credit balance snapshot written at the time of the event. May be `null` for very old rows or for events written before the snapshot field was added. |
 | `description` | `string\|null` | Human-readable label. |
@@ -9799,11 +9814,18 @@ Every event is a JSON object with this base shape:
 
 ```json
 {
-  "ts": 1714694410,
-  "kind": "tool",
-  "action": "wordpress-publish",
-  "skill": "wordpress-post",
-  "session": "user-42",
+  "ts": "2026-05-03T14:00:10.234Z",
+  "kind": "tool_completed",
+  "tool": "web_fetch",
+  "title": "Fetched https://blog.example.com/weekly-roundup-12",
+  "summary": {
+    "url": "https://blog.example.com/weekly-roundup-12",
+    "status": 200,
+    "bytes": 18432
+  },
+  "durationMs": 1840,
+  "ok": true,
+  "cost": { "credits": 5, "skill": "int-wiro-aimodels", "action": "create" },
   "userUuid": "ada-uuid",
   "user": {
     "uuid": "ada-uuid",
@@ -9813,26 +9835,25 @@ Every event is a JSON object with this base shape:
     "username": "ada",
     "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
     "avatarinitials": "AL"
-  },
-  "details": {
-    "title": "Weekly Roundup",
-    "url": "https://blog.example.com/weekly-roundup-12"
   }
 }
 ```
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `ts` | `number` | Unix seconds when the event was emitted inside the container. |
-| `kind` | `string` | Event class: `"tool"` (a skill tool call), `"turn"` (turn boundary), `"session"` (session start/end), `"message"` (user ↔ agent exchange), `"cron"` (scheduled cron tick), `"deduct"` (a credit deduction), `"system"` (container lifecycle). |
-| `action` | `string` | Fine-grained label: e.g. `"wordpress-publish"`, `"telegram-send"`, `"message"`, `"cron-tick"`, `"agent_start"`. |
-| `skill` | `string\|null` | The skill that produced the event (`"wordpress-post"`, `"telegram-post"`, `"cs-cron-content-scanner"`, …). `null` for system events. |
-| `session` | `string\|null` | Sessionkey the event belongs to (chat events only). |
-| `userUuid` | `string\|null` | UUID of the user who triggered the event. `"system"` for cron / internal events. |
+| `ts` | `string` | ISO-8601 UTC datetime when the event was emitted inside the container (e.g. `"2026-05-03T14:00:10.234Z"`). Parse with `Date.parse(ts)` for arithmetic. |
+| `kind` | `string` | Fine-grained event class. One of: `"tool_started"`, `"tool_completed"` (one pair per tool invocation); `"turn_started"`, `"turn_ended"` (an LLM turn boundary); `"cron_started"`, `"cron_finished"` (a scheduled-cron tick); `"session_start"`, `"session_end"` (a chat-session boundary); `"user_message"` (user → agent message); `"agent_reply"` (agent → user reply). |
+| `tool` | `string?` | Present on `tool_started` / `tool_completed`. Tool family — one of: `"read"`, `"write"`, `"edit"`, `"exec"`, `"web_fetch"`, `"web_search"`, `"sessions_spawn"`, `"message"`. |
+| `title` | `string` | Human-readable one-line description of what happened (e.g. `"Posted carousel: \"Brand voice teaser\""`, `"Fetched https://…"`, `"Charged 5 credits · int-wiro-aimodels (create)"`). Always present. |
+| `summary` | `object?` | Structured event-specific payload. Opaque on the wire — render as JSON when expanding the row. Plugin pre-redacts `apikey`, `apppassword`, `clientsecret`, `bearer`, `token`, etc. before writing. Common keys: `url`, `status`, `bytes`, `query`, `resultCount`, `path`, `lines`, `interval`, `trigger`, `messageguid`, `wordCount`, `elapsedTime`. |
+| `durationMs` | `number?` | Wall-clock duration in milliseconds. Populated on `*_completed` / `*_finished` / `turn_ended` events. |
+| `ok` | `boolean?` | `true` for a successful completion, `false` for a failure. Populated on `*_completed` / `*_finished` events. Pair with `error` for failure rows. |
+| `error` | `string?` | One-line failure message (when `ok: false`). |
+| `cost` | `object?` | Credit deduction attached to the event (`exec` tool calls that drove a per-action charge): `{ credits, skill, action }`. Absent on no-charge events. |
+| `userUuid` | `string?` | UUID of the actor who triggered the event. `"system"` for cron / internal events. May be missing on legacy rows from the 180-day retention window pre-attribution rollout — the server falls back to the useragent owner. |
 | `user` | `object\|null` | Resolved actor: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. `null` when `userUuid` is `"system"` (automation / cron) or when the user record was deleted. |
-| `details` | `object` | Event-specific payload. Always redacted (no API URLs, no secret-by-name fields, no high-entropy assignment values). |
 
-> **`details` shape varies per `kind`.** Tool calls include the action's input/output summary; cron ticks include the cron expression and skill name; message events include the message GUID and the first ~120 chars of the user prompt. The plugin always strips `apikey`, `apppassword`, `clientsecret`, `bearer`, `token`, etc. before writing.
+> **What is `summary` for?** Tool calls include the input/output summary (URL, status, bytecount, search query); cron ticks include `{ interval, trigger }`; message events include `{ messageguid, wordCount, elapsedTime }`. Treat the object as opaque and render-on-expand — its shape is plugin-version-specific and is allowed to evolve without a docs revision.
 
 ## **POST** /UserAgent/Logs
 
@@ -9865,45 +9886,53 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Logs" \
   "totalLines": 1428,
   "events": [
     {
-      "ts": 1714694412,
-      "kind": "deduct",
-      "action": "create",
-      "skill": "wordpress-post",
-      "session": null,
+      "ts": "2026-05-03T14:00:12.481Z",
+      "kind": "tool_completed",
+      "tool": "exec",
+      "title": "Charged 60 credits · int-wordpress-post (create)",
+      "summary": { "skill": "int-wordpress-post", "action": "create", "balanceafter": 4940 },
+      "durationMs": 92,
+      "ok": true,
+      "cost": { "credits": 60, "skill": "int-wordpress-post", "action": "create" },
       "userUuid": "system",
-      "user": null,
-      "details": { "cost": 60, "balanceafter": 4940 }
+      "user": null
     },
     {
-      "ts": 1714694410,
-      "kind": "tool",
-      "action": "wordpress-publish",
-      "skill": "wordpress-post",
-      "session": null,
-      "userUuid": "system",
-      "user": null,
-      "details": {
+      "ts": "2026-05-03T14:00:10.305Z",
+      "kind": "tool_completed",
+      "tool": "exec",
+      "title": "Posted: \"Weekly Roundup\"",
+      "summary": {
         "title": "Weekly Roundup",
         "url": "https://blog.example.com/weekly-roundup-12",
         "categories": ["AI", "Tutorial"]
-      }
-    },
-    {
-      "ts": 1714694200,
-      "kind": "cron",
-      "action": "cron-tick",
-      "skill": "cs-cron-blog-scanner",
-      "session": null,
+      },
+      "durationMs": 1840,
+      "ok": true,
       "userUuid": "system",
-      "user": null,
-      "details": { "interval": "0 9 * * *", "trigger": "scheduled" }
+      "user": null
     },
     {
-      "ts": 1714693100,
-      "kind": "message",
-      "action": "agent_end",
-      "skill": null,
-      "session": "user-42",
+      "ts": "2026-05-03T13:30:00.000Z",
+      "kind": "cron_finished",
+      "title": "Cron tick: cs-cron-blog-scanner",
+      "summary": { "skill": "cs-cron-blog-scanner", "interval": "0 9 * * *", "trigger": "scheduled" },
+      "durationMs": 4210,
+      "ok": true,
+      "userUuid": "system",
+      "user": null
+    },
+    {
+      "ts": "2026-05-03T13:14:42.118Z",
+      "kind": "agent_reply",
+      "title": "Agent replied (412 words, 8.1s)",
+      "summary": {
+        "messageguid": "5c41dabf-f2be-4aa8-a5a4-8c9e3d2f3f11",
+        "elapsedTime": "8.1s",
+        "wordCount": 412
+      },
+      "durationMs": 8104,
+      "ok": true,
       "userUuid": "ada-uuid",
       "user": {
         "uuid": "ada-uuid",
@@ -9913,12 +9942,6 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Logs" \
         "username": "ada",
         "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
         "avatarinitials": "AL"
-      },
-      "details": {
-        "messageguid": "5c41dabf-f2be-4aa8-a5a4-8c9e3d2f3f11",
-        "prompt": "Draft a weekly roundup post for the past week.",
-        "elapsedTime": "8.1s",
-        "wordCount": 412
       }
     }
   ]
@@ -9981,21 +10004,10 @@ Reads the **full** JSONL file for a specific date and returns every event in it.
   "truncated": false,
   "events": [
     {
-      "ts": 1714000000,
-      "kind": "system",
-      "action": "agent_start",
-      "skill": null,
-      "session": null,
-      "userUuid": "system",
-      "user": null,
-      "details": {}
-    },
-    {
-      "ts": 1714000020,
-      "kind": "session",
-      "action": "session_start",
-      "skill": null,
-      "session": "user-42",
+      "ts": "2026-05-02T08:00:00.000Z",
+      "kind": "session_start",
+      "title": "Session started: user-42",
+      "summary": { "sessionkey": "user-42" },
       "userUuid": "ada-uuid",
       "user": {
         "uuid": "ada-uuid",
@@ -10005,8 +10017,23 @@ Reads the **full** JSONL file for a specific date and returns every event in it.
         "username": "ada",
         "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
         "avatarinitials": "AL"
-      },
-      "details": {}
+      }
+    },
+    {
+      "ts": "2026-05-02T08:00:20.142Z",
+      "kind": "user_message",
+      "title": "User: \"Hi, can you draft a roundup post?\"",
+      "summary": { "messageguid": "5c41dabf-…", "wordCount": 8 },
+      "userUuid": "ada-uuid",
+      "user": {
+        "uuid": "ada-uuid",
+        "firstname": "Ada",
+        "lastname": "Lovelace",
+        "email": "ada@example.com",
+        "username": "ada",
+        "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
+        "avatarinitials": "AL"
+      }
     }
   ]
 }
@@ -10053,11 +10080,11 @@ async function pollActivity(useragentguid, onEvents) {
       { headers: { 'x-api-key': 'YOUR_API_KEY', 'Content-Type': 'application/json' } }
     );
 
-    const fresh = data.events.filter(e => e.ts > lastTs);
+    const fresh = data.events.filter(e => Date.parse(e.ts) > lastTs);
     if (fresh.length === 0) return;
 
     onEvents(fresh);
-    lastTs = fresh[fresh.length - 1].ts;
+    lastTs = Date.parse(fresh[fresh.length - 1].ts);
   }, 30_000);
 }
 ```
@@ -10092,10 +10119,11 @@ resp = requests.post(
     json={"useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "date": "2026-05-02"}
 ).json()
 
-cron_runs = [e for e in resp["events"] if e["kind"] == "cron"]
+cron_runs = [e for e in resp["events"] if e["kind"] == "cron_finished"]
 print(f"{len(cron_runs)} cron ticks on 2026-05-02")
 for e in cron_runs:
-    print(f"  [{e['skill']}] interval={e['details'].get('interval')}")
+    summary = e.get("summary") or {}
+    print(f"  [{summary.get('skill')}] interval={summary.get('interval')}")
 ```
 
 ### GDPR-style "scrub a day"
