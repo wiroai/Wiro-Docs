@@ -9511,12 +9511,12 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
                             <tr>
                               <td><code>type</code></td>
                               <td><code>string</code></td>
-                              <td><code>"deduct"</code>, <code>"renewal"</code>, <code>"purchase"</code>, <code>"refund"</code>, <code>"grant"</code>, or <code>"cancel"</code>.</td>
+                              <td>One of <code>"deduct"</code>, <code>"renewal"</code>, <code>"purchase"</code>, <code>"grant"</code>, <code>"expired"</code>, <code>"refund"</code>. There is no <code>"cancel"</code> type — a user-initiated subscription cancel only flips auto-renew off; credits are not forfeited until <code>currentperiodend</code> is reached, at which point the cron writes the ledger row as <code>type: "expired"</code>, <code>action: "subscription"</code>.</td>
                             </tr>
                             <tr>
                               <td><code>action</code></td>
                               <td><code>string|null</code></td>
-                              <td>Fine-grained detail. Values depend on <code>type</code>: <code>"message"</code>, <code>"create"</code>, <code>"modify"</code>, <code>"regenerate"</code> (deduct); <code>"monthly"</code> (renewal); <code>"small"</code>, <code>"medium"</code>, <code>"large"</code> (purchase); <code>"subscription"</code> (cancel / refund); <code>"upgrade"</code>, <code>"admin"</code>, <code>"skill-toggle"</code> (grant).</td>
+                              <td>Fine-grained detail. Values depend on <code>type</code>: <code>"message"</code>, <code>"create"</code>, <code>"modify"</code>, <code>"regenerate"</code> (deduct); <code>"monthly"</code> (renewal); <code>"small"</code>, <code>"medium"</code>, <code>"large"</code> (purchase); <code>"skill-toggle"</code>, <code>"admin"</code>, <code>"upgrade"</code> (grant); <code>"skill-toggle"</code> (expired, mid-period skill disable); <code>"subscription"</code> (expired, end-of-period cancel rollover; refund).</td>
                             </tr>
                             <tr>
                               <td><code>amount</code></td>
@@ -9557,6 +9557,16 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
                               <td><code>metadata</code></td>
                               <td><code>object|null</code></td>
                               <td>Arbitrary JSON context attached at write time (plan, period, price, etc.).</td>
+                            </tr>
+                            <tr>
+                              <td><code>uuid</code></td>
+                              <td><code>string|null</code></td>
+                              <td>UUID of the user who triggered the event (the chat operator for <code>deduct</code> rows; the wallet owner for <code>purchase</code> / <code>grant</code>). <code>"system"</code> for cron-driven events.</td>
+                            </tr>
+                            <tr>
+                              <td><code>user</code></td>
+                              <td><code>object|null</code></td>
+                              <td>Resolved actor: <code>{ uuid, firstname, lastname, email, username, avatar, avatarinitials }</code>. <code>null</code> when <code>uuid</code> is <code>"system"</code> (automation / cron renewals) or when the user record was deleted.</td>
                             </tr>
                             <tr>
                               <td><code>createdat</code></td>
