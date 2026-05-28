@@ -1974,7 +1974,7 @@ The endpoints below cover the full programmatic surface. If you also want to see
 | **Anatomy of an Agent** | [wiro.ai/agents/anatomy](https://wiro.ai/agents/anatomy) | Fullscreen interactive walkthrough of the pieces that make a Wiro agent reason — system prompt, knowledge, skills, memory, guardrails, model, tools, scheduling, and observability. |
 | **Build Your Own Agent** | [wiro.ai/agents/build](https://wiro.ai/agents/build) | The web wizard for the same custom-build flow exposed by [`POST /UserAgent/Deploy`](#post-useragentdeploy) with `custom: true`. Useful for previewing the skill picker / pricing breakdown before scripting it. |
 | **Browse Agents** | [wiro.ai/agents/browse](https://wiro.ai/agents/browse) | Full marketplace catalog with categories, descriptions, screenshots, and per-agent tier prices — the visual mirror of [`POST /Agent/List`](#post-agentlist). Each row links to a dedicated agent page at `/agents/{slug}`. |
-| **Use Case Showcases** | [wiro.ai/agents/usecase/...](https://wiro.ai/agents) | Seven fullscreen, auto-looping product stories that show real businesses operated end-to-end by a Wiro agent. See [Agent Use Cases](#see-these-use-cases-on-the-web) for the full list. |
+| **Use Case Showcases** | [wiro.ai/agents/usecase/...](https://wiro.ai/agents) | Seven fullscreen, auto-looping product stories that show real businesses operated end-to-end by a Wiro agent. See [Agent Use Cases](/docs/agent-use-cases#see-these-use-cases-on-the-web) for the full list. |
 
 > All pages are public — no Wiro account required to browse. Sign-in becomes mandatory only when you click "Deploy" on a specific agent (which then drops you into the Wiro dashboard at [wiro.ai/panel/agents](https://wiro.ai/panel/agents)).
 
@@ -1985,7 +1985,7 @@ Wiro Agents are autonomous AI assistants that run persistently in isolated conta
 The system has two layers:
 
 - **Agent templates** (the catalog) — Pre-built agent definitions published by Wiro. Each template defines the agent's default skill set, required credentials, the per-tier credit multiplier, and a per-instance pricing recipe. Browse the catalog with `POST /Agent/List`.
-- **UserAgent instances** (your deployments) — When you deploy an agent template (or build a custom one), Wiro creates a personal instance tied to your account. Each instance runs in its own container with its own credentials, configuration, conversation history, billing, and per-action cost profile.
+- **UserAgent instances** (your deployments) — When you deploy an agent template (or build a custom one), Wiro creates a personal instance tied to your account. Each instance runs in its own container with its own credentials, configuration, conversation history, billing, and per-model token-rate profile.
 
 Every instance is fully isolated. Your credentials, conversations, and data are never shared with other users.
 
@@ -2012,9 +2012,11 @@ Agents use the same authentication as the rest of the Wiro API. Include your key
 
 For full details, see [Authentication](/docs/authentication).
 
-## Pricing Model — Tiers, Skills & Per-Action Costs
+## Pricing Model — Tiers, Skills & Token Billing
 
 Agent pricing is **fully derived from the agent's enabled skill set** plus a per-template `tiermultiplier`. There are no fixed `agent.basemonthlypriceusd` columns and no `useragents.rate*cost` overrides — those were dropped in favor of skill-driven pricing. The single source of truth is the skill registry, exposed via [`POST /Skills/List`](/docs/agent-skills#post-skillslist) and [`POST /Skills/Detail`](/docs/agent-skills#post-skillsdetail).
+
+Pricing has **two layers**: a monthly **tier** (price + credit pool, set by the enabled skills) and **per-turn token billing** (each message / cron / voice-prep turn deducts credits from that pool, metered by the tokens the agent's model consumes).
 
 ### Tiers
 
@@ -2029,33 +2031,48 @@ pro.credits = starter.credits × tiermultiplier
 
 ```json
 "tiers": {
-  "starter": { "priceUsd": 9, "credits": 1000 },
-  "pro":     { "priceUsd": 90, "credits": 10000 }
+  "starter": { "priceUsd": 9, "credits": 225 },
+  "pro":     { "priceUsd": 90, "credits": 2250 }
 }
 ```
 
 > **Starter tier minimum: $4/month.** Every agent with at least one paid skill pays at least $4/month on Starter. When the raw sum of enabled-skill weights would land below $4, the resolver bumps the Starter price up to $4 **and** scales the credit pool up by the same ratio — so the user gets a proportional credit increase, not a free upgrade. Agents with zero paid skills (rule-only, or all-`ZERO`-tier skills) stay at `$0` / `0` credits. Default Pro = Starter × `tiermultiplier` (default `10`), so an agent that lands on the $4 floor pays **$40/month on Pro** with the same credit pool × 10.
 
-### Per-Action Costs
+### Token Billing
 
-The `peractioncosts` object on each agent / useragent response shows how many credits each agent action burns at runtime:
+The monthly tier buys a **credit pool**; each turn the agent runs (a chat reply, a scheduled cron tick, or a voice-prep turn) deducts credits from that pool, **metered by the tokens its model consumes**. There are no flat per-action costs — what a turn costs depends on the model and how many input / output / cached tokens it used.
+
+Per-model rates live in the `tokenRates` object, present on `Agent/Detail`, `UserAgent/Detail`, `MyAgents`, `PinnedAgents`, and `PricingPreview`:
 
 ```json
-"peractioncosts": {
-  "message":    10,
-  "create":     60,
-  "modify":     20,
-  "regenerate": 20
+"tokenRates": {
+  "default_model": "openai/gpt-5.4",
+  "fallback_rate": { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150 },
+  "models": {
+    "openai/gpt-5.4":      { "input_per_1m": 750,  "output_per_1m": 4500, "cached_input_per_1m": 75,   "selectable": true, "label": "GPT-5.4",      "tier": "balanced" },
+    "openai/gpt-5.4-mini": { "input_per_1m": 225,  "output_per_1m": 1350, "cached_input_per_1m": 22.5, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
+    "openai/gpt-5.5":      { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150,  "selectable": true, "label": "GPT-5.5",      "tier": "premium" }
+  }
 }
 ```
 
-These values are computed as the **maximum** `pricing.credit_costs.<action>` across the agent's enabled skill set (free / utility skills contribute nothing). When you toggle a skill on or off the values automatically recompute — see [`POST /UserAgent/SkillsApply`](#post-useragentskillsapply).
+Rates are quoted in **credits per 1,000,000 tokens**, and **1 credit = $0.01** (100 credits = $1). The per-turn cost is the sum of three independently rounded-up components:
 
-> **Per-action costs are tier-agnostic.** Pro and Starter use the same `message` / `create` / `modify` / `regenerate` rates. Pro just gives you `tiermultiplier` × more monthly credits to spend at the same per-action burn rate.
+```
+tokencost = ceil(input_tokens  × input_per_1m        / 1_000_000)
+          + ceil(output_tokens × output_per_1m       / 1_000_000)
+          + ceil(cached_tokens × cached_input_per_1m / 1_000_000)
+```
+
+`cached_tokens` is reported separately by the runtime, so `input_tokens` already excludes cached reads; the cached term is `0` when the model omits `cached_input_per_1m`. You don't send anything — the agent runtime reports token usage after each turn, Wiro deducts the credits, and records a ledger row with `action: "tokens"` (see [`POST /UserAgent/TransactionList`](/docs/agent-transactions#post-useragenttransactionlist)). Per-turn token counts and cost also ride on each assistant message (`inputtokens` / `outputtokens` / `tokencost` / `model` — see [Agent Messaging](/docs/agent-messaging)).
+
+When the credit pool is exhausted, [`POST /UserAgent/Message/Send`](/docs/agent-messaging#post-useragentmessagesend) and [`POST /UserAgent/Start`](#post-useragentstart) refuse with an `Agent has no remaining credits…` error plus an `agentbalance` snapshot; renew the subscription or buy an extra credit pack to continue.
+
+> **Voice realtime audio is billed separately.** Live voice-call audio (for `util-voice-receptionist` agents) is **not** charged to the platform credit pool — it flows through the operator's own Wiro AI Models balance via the `int-wiro-aimodels` skill (you bring your own Wiro API key). Only the post-call text turn is billed as a normal token deduct.
 
 ### Live Pricing Preview
 
-Before you commit a skill change or build a custom agent, fetch a live preview with [`POST /UserAgent/PricingPreview`](#post-useragentpricingpreview). The preview returns the post-toggle `tiers`, `peractioncosts`, and `enabledSkills` (with transitive `depends_on` resolved) without writing any state.
+Before you commit a skill change or build a custom agent, fetch a live preview with [`POST /UserAgent/PricingPreview`](#post-useragentpricingpreview). The preview returns the post-toggle `tiers`, `tokenRates`, `starterFloorUsd`, and `enabledSkills` (with transitive `depends_on` resolved) without writing any state.
 
 ## Agent Lifecycle
 
@@ -2126,8 +2143,8 @@ Lists available agents in the catalog. This is a **public endpoint** — no auth
       "samples": ["https://cdn.wiro.ai/uploads/agents/instagram-manager-sample-1.webp"],
       "tiermultiplier": 10,
       "tiers": {
-        "starter": { "priceUsd": 9, "credits": 1000 },
-        "pro":     { "priceUsd": 90, "credits": 10000 }
+        "starter": { "priceUsd": 9, "credits": 225 },
+        "pro":     { "priceUsd": 90, "credits": 2250 }
       },
       "status": 1,
       "createdat": "1711929600",
@@ -2147,7 +2164,7 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
 |-----------|------|----------|-------------|
 | `guid` | string | No* | Agent guid. |
 | `slug` | string | No* | Agent slug (e.g. `"instagram-manager"`). |
-| `type` | string | No | Pass `"full"` to also include `customskills` and `scheduledskills` arrays in the response. Without `type: "full"`, the response carries the catalog header + `tiers` + `peractioncosts` + `credentials` + `skills` + `skillsmeta` only. |
+| `type` | string | No | Pass `"full"` to also include `customskills` and `scheduledskills` arrays in the response. Without `type: "full"`, the response carries the catalog header + `tiers` + `tokenRates` + `credentials` + `skills` + `skillsmeta` only. |
 
 > **Note:** You must provide either `guid` or `slug`. If both are provided, `slug` takes priority. Pass `type: "full"` when you need to preview custom skill keys and scheduled skill cron expressions before deploying; omit it for a lightweight catalog detail call.
 
@@ -2169,37 +2186,60 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
       "samples": ["https://cdn.wiro.ai/uploads/agents/instagram-manager-sample-1.webp"],
       "tiermultiplier": 10,
       "tiers": {
-        "starter": { "priceUsd": 9, "credits": 1000 },
-        "pro":     { "priceUsd": 90, "credits": 10000 }
+        "starter": { "priceUsd": 9, "credits": 225 },
+        "pro":     { "priceUsd": 90, "credits": 2250 }
       },
-      "peractioncosts": {
-        "message":    10,
-        "create":     60,
-        "modify":     20,
-        "regenerate": 20
+      "tokenRates": {
+        "default_model": "openai/gpt-5.4",
+        "fallback_rate": { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150 },
+        "models": {
+          "openai/gpt-5.4":      { "input_per_1m": 750,  "output_per_1m": 4500, "cached_input_per_1m": 75,   "selectable": true, "label": "GPT-5.4",      "tier": "balanced" },
+          "openai/gpt-5.4-mini": { "input_per_1m": 225,  "output_per_1m": 1350, "cached_input_per_1m": 22.5, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
+          "openai/gpt-5.5":      { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150,  "selectable": true, "label": "GPT-5.5",      "tier": "premium" }
+        }
       },
-      "skills": ["instagram-post", "wiro-aimodels"],
-      "skillsmeta": [
-        {
-          "name": "instagram-post",
-          "title": "Instagram — Post & Stories",
+      "skills": ["int-instagram-post", "int-wiro-aimodels"],
+      "skillsmeta": {
+        "int-instagram-post": {
+          "name": "int-instagram-post",
+          "title": "Instagram Post",
           "icon": "https://wiro.ai/images/icons/skills/instagram.svg",
+          "brand_color": "#e4405f",
+          "brand_text_color": "#ffffff",
+          "brand_logo_filter": "brightness(0) invert(1)",
           "category": "int",
-          "credential_key": "instagram"
+          "docs_url": "integration-instagram-skills",
+          "credential_key": "instagram",
+          "additional_credential_keys": [],
+          "requires_credentials": true,
+          "user_invocable": true,
+          "deprecated": false,
+          "replacement": null,
+          "description": "Post carousel feed and multi-story via Meta Graph API."
         },
-        {
+        "int-wiro-aimodels": {
           "name": "int-wiro-aimodels",
           "title": "Wiro AI Models",
           "icon": "https://wiro.ai/images/icons/skills/wiro.svg",
+          "brand_color": "#33F2BC",
+          "brand_text_color": "#0F1A24",
+          "brand_logo_filter": null,
           "category": "int",
-          "credential_key": "wiro"
+          "docs_url": null,
+          "credential_key": "wiro",
+          "additional_credential_keys": [],
+          "requires_credentials": true,
+          "user_invocable": false,
+          "deprecated": false,
+          "replacement": null,
+          "description": "Internal: lets the agent call Wiro's own image / video / LLM generation API. Other skills invoke it; users do not."
         }
-      ],
+      },
       "credentials": {
         "instagram": {
           "optional": false,
           "extra": false,
-          "_editable": { "appid": true, "appsecret": true, "igusername": false },
+          "_editable": { "authmethod": true, "igusername": true },
           "_schema": {
             "title": "Instagram",
             "icon": "https://wiro.ai/images/icons/skills/instagram.svg",
@@ -2215,47 +2255,17 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
               "connect_endpoint": "/UserAgentOAuth/OAuthConnect",
               "disconnect_endpoint": "/UserAgentOAuth/OAuthDisconnect",
               "status_endpoint": "/UserAgentOAuth/OAuthStatus",
-              "connect_button_label": "Connect with Instagram",
-              "connect_button_icon": "/images/icons/skills/instagram.svg",
-              "connect_button_brand_color": "#e4405f",
-              "connect_button_text_color": "#ffffff",
-              "connect_button_logo_filter": "none",
               "username_field": "igusername",
-              "return_query_param": "ig_connected",
-              "return_error_param": "ig_error",
-              "return_error_detail_param": "ig_error_detail",
-              "account_picker": null,
-              "extra_step": null
+              "account_picker": null
             },
             "fields": [
-              {
-                "key": "appid",
-                "type": "text",
-                "label": "App ID",
-                "required": true,
-                "pattern": "^[0-9]+$",
-                "oauth_managed": true,
-                "only_in_modes": ["own"]
-              },
-              {
-                "key": "appsecret",
-                "type": "password",
-                "label": "App Secret",
-                "required": true,
-                "show_toggle": true,
-                "oauth_managed": true,
-                "only_in_modes": ["own"]
-              },
-              {
-                "key": "igusername",
-                "type": "text",
-                "label": "Connected Account",
-                "required": false,
-                "auto_filled_by_oauth": true,
-                "readonly_when_connected": true
-              }
+              { "key": "authmethod", "type": "select", "label": "Auth Method", "options": ["wiro", "own"] },
+              { "key": "igusername", "type": "text", "label": "Connected Account", "auto_filled_by_oauth": true, "readonly_when_connected": true }
             ]
-          }
+          },
+          "authmethod": "",
+          "igusername": "",
+          "connectedat": ""
         }
       },
       "extracreditpacks": [],
@@ -2282,7 +2292,7 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
 **Field redaction in responses:**
 
 - `fieldstatus: "oauth_session"` fields (`accesstoken`, `refreshtoken`, `tokenexpiresat`, `pageAccessToken`, etc.) — always stripped from every response, regardless of caller role.
-- `fieldstatus: "platform"` fields (currently only `credentials.sys-openai.apikey` and its `model` / `fallbacks` / `cronmodel` siblings) — stripped for API callers (role = `user`). The `sys-openai` credential entry itself is also dropped from the response. Only the agent runtime itself sees the values. `credentials.wiro.apikey` and `credentials.calendarific.apikey` are operator-supplied user-input fields and appear in the response with `fieldstatus: "user"` like any other API-key credential.
+- `fieldstatus: "platform"` fields (currently only `credentials.sys-openai.apikey` and its `model` / `fallbacks` / `cronmodel` siblings) — stripped for API callers (role = `user`). The `sys-openai` credential entry itself is also dropped from the response. Only the daemon container ever sees the values. `credentials.wiro.apikey` and `credentials.calendarific.apikey` are operator-supplied user-input fields and appear in the response with `fieldstatus: "user"` like any other API-key credential.
 - `fieldstatus: "oauth_app"` fields (`clientsecret`, `appsecret`) — **visible to anyone who can read the credentials**. History writes redact `clientsecret` to `[REDACTED]`, but the live value is returned. Treat them as read-admin-only in your own UI layer.
 - Sentinel rows `_isoptional` / `_isextra` — never appear as fields; they're folded into the `optional` and `extra` flags above.
 
@@ -2349,9 +2359,9 @@ If you pass `credentials`, `skills`, or `customskills` at the top level of the D
   "useprepaid": true,
   "tier": "pro",
   "skills": {
-    "gmail-check": true,
-    "telegram-post": true,
-    "wiro-aimodels": true
+    "int-gmail-check":    true,
+    "int-telegram-post":  true,
+    "int-wiro-aimodels": true
   },
   "credentials": {
     "gmail":    { "account": "agent@company.com", "apppassword": "xxxx xxxx xxxx xxxx" },
@@ -2406,21 +2416,30 @@ Both paths hit the same endpoint, but a few server-side behaviours diverge:
           "connectedat": ""
         }
       },
-      "skills": ["instagram-post", "wiro-aimodels"],
+      "skills": ["int-instagram-post", "int-wiro-aimodels"],
       "customskills": [],
       "scheduledskills": [],
-      "monthlycredits": 1000,
+      "monthlycredits": 225,
       "monthlypriceusd": 9,
       "extracredits": 0,
       "usedcredits": 0,
-      "remainingcredits": 1000,
+      "remainingcredits": 225,
       "creditperiod": "2026-05",
       "creditsyncat": null,
-      "peractioncosts": {
-        "message":    10,
-        "create":     60,
-        "modify":     20,
-        "regenerate": 20
+      "tokenRates": {
+        "default_model": "openai/gpt-5.4",
+        "fallback_rate": { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150 },
+        "models": {
+          "openai/gpt-5.4":      { "input_per_1m": 750,  "output_per_1m": 4500, "cached_input_per_1m": 75,   "selectable": true, "label": "GPT-5.4",      "tier": "balanced" },
+          "openai/gpt-5.4-mini": { "input_per_1m": 225,  "output_per_1m": 1350, "cached_input_per_1m": 22.5, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
+          "openai/gpt-5.5":      { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150,  "selectable": true, "label": "GPT-5.5",      "tier": "premium" }
+        }
+      },
+      "agentModel": {
+        "chatModel": "openai/gpt-5.4",
+        "cronModel": "openai/gpt-5.4",
+        "voicePrepModel": "openai/gpt-5.4-mini",
+        "voicePostcallModel": "openai/gpt-5.4"
       },
       "teamsessionmode": "",
       "status": 6,
@@ -2434,13 +2453,13 @@ Both paths hit the same endpoint, but a few server-side behaviours diverge:
         "categories": ["social-media", "marketing"],
         "tiermultiplier": 10,
         "tiers": {
-          "starter": { "priceUsd": 9, "credits": 1000 },
-          "pro":     { "priceUsd": 90, "credits": 10000 }
+          "starter": { "priceUsd": 9, "credits": 225 },
+          "pro":     { "priceUsd": 90, "credits": 2250 }
         },
         "extracreditpacks": [
-          { "packkey": "small",  "credits": 5000,  "priceusd": 45,  "enabled": true },
-          { "packkey": "medium", "credits": 10000, "priceusd": 90,  "enabled": true },
-          { "packkey": "large",  "credits": 20000, "priceusd": 180, "enabled": true }
+          { "packkey": "small",  "credits": 1125, "priceusd": 45,  "enabled": true },
+          { "packkey": "medium", "credits": 2250, "priceusd": 90,  "enabled": true },
+          { "packkey": "large",  "credits": 4500, "priceusd": 180, "enabled": true }
         ]
       },
       "createdat": 1714608000,
@@ -2525,15 +2544,14 @@ Lists all agent instances deployed under your account.
       "tier": "pro",
       "tiermultiplier": 10,
       "monthlypriceusd": 90,
-      "monthlycredits": 10000,
+      "monthlycredits": 2250,
       "extracredits": 2000,
       "usedcredits": 1450,
-      "remainingcredits": 10550,
       "creditperiod": "2026-05",
       "creditsyncat": 1714694410,
-      "peractioncosts": { "message": 10, "create": 60, "modify": 20, "regenerate": 20 },
       "status": 4,
       "pinned": true,
+      "teamsessionmode": "",
       "setuprequired": false,
       "subscription": {
         "plan": "agent",
@@ -2550,36 +2568,52 @@ Lists all agent instances deployed under your account.
         "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
         "title": "Instagram Manager",
         "slug": "instagram-manager",
+        "description": "An autonomous agent that manages your Instagram Business account.",
         "cover": "https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp",
         "categories": ["social-media", "marketing"],
         "tiermultiplier": 10,
         "tiers": {
-          "starter": { "priceUsd": 9, "credits": 1000 },
-          "pro":     { "priceUsd": 90, "credits": 10000 }
+          "starter": { "priceUsd": 9, "credits": 225 },
+          "pro":     { "priceUsd": 90, "credits": 2250 }
         }
       },
       "enabledSkills": ["int-instagram-post", "int-twitterx-post", "int-wiro-aimodels"],
-      "peractioncosts": {
-        "message":    10,
-        "create":     60,
-        "modify":     20,
-        "regenerate": 20
+      "tokenRates": {
+        "default_model": "openai/gpt-5.4",
+        "fallback_rate": { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150 },
+        "models": {
+          "openai/gpt-5.4":      { "input_per_1m": 750,  "output_per_1m": 4500, "cached_input_per_1m": 75,   "selectable": true, "label": "GPT-5.4",      "tier": "balanced" },
+          "openai/gpt-5.4-mini": { "input_per_1m": 225,  "output_per_1m": 1350, "cached_input_per_1m": 22.5, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
+          "openai/gpt-5.5":      { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150,  "selectable": true, "label": "GPT-5.5",      "tier": "premium" }
+        }
+      },
+      "agentModel": {
+        "chatModel": "openai/gpt-5.4",
+        "cronModel": "openai/gpt-5.4",
+        "voicePrepModel": "openai/gpt-5.4-mini",
+        "voicePostcallModel": "openai/gpt-5.4"
       },
       "extracreditsexpiry": 1730419200,
       "createdat": 1714608000,
       "updatedat": 1714694400,
+      "queuedat": 1714694395,
       "startedat": 1714694400,
-      "runningat": 1714694410
+      "runningat": 1714694410,
+      "stoppingat": null,
+      "stopdat": null,
+      "errordat": null
     }
   ]
 }
 ```
 
-> **`MyAgents` returns one row per useragent with its scalar fields, the trimmed `agent` template summary, `subscription`, `setuprequired`, `extracredits` / `extracreditsexpiry`, the resolved `enabledSkills` (template defaults ∪ user overrides, including transitive `depends_on` closure), and `peractioncosts` (per-action burn rates from the same skill set).** Heavier composed children (`credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `remainingcredits`) are **not** included — call `UserAgent/Detail` on a single guid for the full composed shape. `enabledSkills` and `peractioncosts` were added in 2026-04-30 so the dock-chat / pinned-agents UI can decide whether to show the realtime voice-call button and render the per-action cost summary card without round-tripping `UserAgent/Detail` per row.
+> **`MyAgents` returns one row per useragent with its scalar fields, the trimmed `agent` template summary (no `extracreditpacks`), `subscription`, `setuprequired` (status-based check only), `extracredits` / `extracreditsexpiry`, the resolved `enabledSkills` (template defaults ∪ user overrides, including transitive `depends_on` closure), `tokenRates` (per-model token rates — same map as `UserAgent/Detail.tokenRates`), and `agentModel` (the resolved chat / cron / voice-prep / voice-postcall model slugs).** Heavier composed children (`credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `remainingcredits`) are **not** included — call `UserAgent/Detail` on a single guid for the full composed shape.
+
+> **`enabledSkills`, `tokenRates`, and `agentModel`** ride on each list row so the dock chat / pinned-agents UI can decide whether to show the realtime voice-call button (`enabledSkills` includes `util-web-channel`) and render the model picker + live token-rate card without round-tripping `UserAgent/Detail` per row.
 
 #### **POST** /UserAgent/Detail
 
-Retrieves full details for a single deployed agent instance, including subscription info, the per-instance credit ledger summary, the resolved per-action cost table, and the `extracreditpacks` catalog.
+Retrieves full details for a single deployed agent instance, including subscription info, the per-instance credit ledger summary, the resolved per-model token-rate table (`tokenRates`) plus model selection (`agentModel`), and the `extracreditpacks` catalog.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -2599,58 +2633,293 @@ Retrieves full details for a single deployed agent instance, including subscript
       "teamguid": null,
       "title": "My Instagram Bot",
       "description": null,
+      "categories": ["social-media", "marketing"],
+      "cover": "https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp",
       "tier": "pro",
       "tiermultiplier": 10,
       "status": 4,
       "pinned": true,
       "setuprequired": false,
+      "teamsessionmode": "",
       "credentials": {
         "instagram": {
           "_connected": true,
           "optional": false,
           "extra": false,
-          "_editable": { "authmethod": true, "igusername": true },
-          "_schema": { "title": "Instagram", "credential_mode": "oauth", "fields": [ "..." ] },
+          "_editable": {
+            "authmethod": true,
+            "igusername": true
+          },
+          "_schema": {
+            "title": "Instagram",
+            "icon": "https://wiro.ai/images/icons/credentials/instagram.svg",
+            "brand_color": "#E4405F",
+            "brand_text_color": "#FFFFFF",
+            "brand_logo_filter": null,
+            "docs_url": "/docs/integration-instagram-skills",
+            "credential_mode": "oauth_or_api_key",
+            "connection_modes": ["wiro", "own"],
+            "wiro_connect_pending": true,
+            "oauth_provider": "instagram",
+            "fields": [
+              {
+                "key": "authmethod",
+                "label": "Authentication Method",
+                "type": "select",
+                "required": true,
+                "options": [
+                  { "label": "Wiro-managed",  "value": "wiro" },
+                  { "label": "Own OAuth app", "value": "own" }
+                ],
+                "default": "wiro"
+              },
+              {
+                "key": "igusername",
+                "label": "Instagram Username",
+                "type": "text",
+                "required": true,
+                "placeholder": "@yourbusiness",
+                "help": "Your Instagram Business account username (without the @)."
+              }
+            ]
+          },
+          "_required_missing": false,
           "authmethod": "wiro",
-          "igusername": "myaccount",
-          "connectedat": "2025-04-01T12:00:00.000Z"
+          "igusername": "mybrand",
+          "connectedat": "2026-05-01T12:00:00.000Z",
+          "tokenexpiresat": null
+        },
+        "telegram": {
+          "_connected": false,
+          "optional": true,
+          "extra": false,
+          "_editable": {
+            "bottoken":     true,
+            "allowedusers": true,
+            "sessionmode":  true
+          },
+          "_schema": {
+            "title": "Telegram Bot",
+            "icon": "https://wiro.ai/images/icons/credentials/telegram.svg",
+            "brand_color": "#2AABEE",
+            "brand_text_color": "#FFFFFF",
+            "brand_logo_filter": null,
+            "docs_url": "/docs/integration-telegram-skills",
+            "credential_mode": "api_key",
+            "connection_modes": ["api_key"],
+            "wiro_connect_pending": false,
+            "oauth_provider": null,
+            "fields": [
+              {
+                "key": "bottoken",
+                "label": "Bot Token",
+                "type": "password",
+                "required": true,
+                "placeholder": "123456789:ABC-DEF1234ghIkl-zyx57W2v1u123ew11",
+                "help": "Issued by @BotFather when you create the bot."
+              },
+              {
+                "key": "allowedusers",
+                "label": "Allowed Telegram User IDs",
+                "type": "text",
+                "required": false,
+                "placeholder": "[\"761381461\", \"823901274\"]",
+                "help": "JSON array of Telegram user / chat IDs that may DM the bot. Empty = open to anyone."
+              },
+              {
+                "key": "sessionmode",
+                "label": "Session Mode",
+                "type": "select",
+                "required": true,
+                "options": [
+                  { "label": "Private (one session per user)", "value": "private" },
+                  { "label": "Group (one session per chat)",   "value": "group"   }
+                ],
+                "default": "private"
+              }
+            ]
+          },
+          "_required_missing": false,
+          "bottoken": "",
+          "allowedusers": "",
+          "sessionmode": "private"
+        },
+        "wordpress": {
+          "_connected": false,
+          "optional": false,
+          "extra": false,
+          "_editable": {
+            "siteurl":         true,
+            "username":        true,
+            "applicationpass": true
+          },
+          "_schema": {
+            "title": "WordPress",
+            "icon": "https://wiro.ai/images/icons/credentials/wordpress.svg",
+            "brand_color": "#21759B",
+            "brand_text_color": "#FFFFFF",
+            "brand_logo_filter": null,
+            "docs_url": "/docs/integration-wordpress-skills",
+            "credential_mode": "api_key",
+            "connection_modes": ["api_key"],
+            "wiro_connect_pending": false,
+            "oauth_provider": null,
+            "fields": [
+              {
+                "key": "siteurl",
+                "label": "Site URL",
+                "type": "text",
+                "required": true,
+                "placeholder": "https://blog.example.com",
+                "pattern": "^https?://.+"
+              },
+              {
+                "key": "username",
+                "label": "Username",
+                "type": "text",
+                "required": true,
+                "placeholder": "wp-editor"
+              },
+              {
+                "key": "applicationpass",
+                "label": "Application Password",
+                "type": "password",
+                "required": true,
+                "placeholder": "xxxx xxxx xxxx xxxx xxxx xxxx",
+                "help": "Generate from WP Admin → Users → Profile → Application Passwords."
+              }
+            ]
+          },
+          "_required_missing": true,
+          "siteurl": "",
+          "username": "",
+          "applicationpass": ""
         }
       },
       "customskills": [
         {
           "key": "cs-content-tone",
-          "description": "Content strategy, brand voice, and posting rules",
-          "value": "## Brand Voice\nTone: friendly\nTarget Audience: ...",
+          "description": "Brand voice + posting rules read by every content-generation skill on this agent.",
+          "value": "## Brand Voice\nTone: friendly, casual, never salesy.\nTarget Audience: indie devs and side-project builders.\n\n## Hashtag Strategy\nMax 3 per post. Always include #BuildInPublic and #Indie.\n\n## Platform Rules\n- Instagram: square images only, carousels for tutorials.\n- Twitter: thread format for posts longer than 200 chars.",
           "enabled": true,
           "interval": null,
           "_source": "preset-strategy",
-          "_editable": true
+          "_editable": true,
+          "_edited": true
+        },
+        {
+          "key": "cs-content-sources",
+          "description": "RSS / sitemap URLs the agent should poll for new content ideas.",
+          "value": "## Primary Sources\nhttps://blog.example.com/feed.xml\nhttps://news.ycombinator.com/rss\n\n## CTA URL Pattern\nhttps://example.com/posts/{slug}",
+          "enabled": true,
+          "interval": null,
+          "_source": "preset-strategy",
+          "_editable": true,
+          "_edited": false
         }
       ],
       "scheduledskills": [
         {
           "key": "cs-cron-content-scanner",
-          "description": "Content discovery with rotating strategies",
-          "value": "",
+          "description": "Polls the content sources every 4 hours and queues fresh ideas for the post generator.",
+          "value": "Scan the configured RSS / sitemap sources, dedupe against last 14 days, and queue up to 3 fresh items into the post pipeline.",
           "enabled": true,
           "interval": "0 */4 * * *",
           "_source": "skill-bundle",
-          "_editable": false
+          "_editable": true,
+          "_edited": false
+        },
+        {
+          "key": "cs-cron-weekly-roundup",
+          "description": "User-created weekly summary cron that posts a Monday recap to Telegram.",
+          "value": "Every Monday at 09:00 UTC, summarize last week's published posts (titles + engagement) and post the recap to Telegram.",
+          "enabled": true,
+          "interval": "0 9 * * 1",
+          "_source": "user-created",
+          "_editable": true,
+          "_edited": false,
+          "_user_created": true
         }
       ],
-      "skills": ["twitterx-post", "instagram-post", "wiro-aimodels"],
-      "monthlycredits": 10000,
+      "skills": [
+        { "name": "int-instagram-post", "enabled": true, "_edited": false, "_user_created": false },
+        { "name": "int-twitterx-post",  "enabled": true, "_edited": true,  "_user_created": false },
+        { "name": "int-wiro-aimodels", "enabled": true, "_edited": false, "_user_created": false }
+      ],
+      "skillsmeta": {
+        "int-instagram-post": {
+          "name": "int-instagram-post",
+          "title": "Instagram Post",
+          "icon": "https://wiro.ai/images/icons/skills/instagram.svg",
+          "brand_color": "#e4405f",
+          "brand_text_color": "#ffffff",
+          "brand_logo_filter": "brightness(0) invert(1)",
+          "category": "int",
+          "docs_url": "integration-instagram-skills",
+          "credential_key": "instagram",
+          "additional_credential_keys": [],
+          "requires_credentials": true,
+          "user_invocable": true,
+          "deprecated": false,
+          "replacement": null,
+          "description": "Post carousel feed and multi-story via Meta Graph API."
+        },
+        "int-twitterx-post": {
+          "name": "int-twitterx-post",
+          "title": "X (Twitter) Post",
+          "icon": "https://wiro.ai/images/icons/skills/twitterx.svg",
+          "brand_color": "#000000",
+          "brand_text_color": "#ffffff",
+          "brand_logo_filter": "brightness(0) invert(1)",
+          "category": "int",
+          "docs_url": "integration-twitter-skills",
+          "credential_key": "twitterx",
+          "additional_credential_keys": [],
+          "requires_credentials": true,
+          "user_invocable": true,
+          "deprecated": false,
+          "replacement": null,
+          "description": "Compose tweets, threads, and replies on a connected X (Twitter) account."
+        },
+        "int-wiro-aimodels": {
+          "name": "int-wiro-aimodels",
+          "title": "Wiro AI Models",
+          "icon": "https://wiro.ai/images/icons/skills/wiro.svg",
+          "brand_color": "#33f2bc",
+          "brand_text_color": "#0f1a24",
+          "brand_logo_filter": null,
+          "category": "int",
+          "docs_url": null,
+          "credential_key": "wiro",
+          "additional_credential_keys": [],
+          "requires_credentials": true,
+          "user_invocable": false,
+          "deprecated": false,
+          "replacement": null,
+          "description": "Internal: lets the agent call Wiro's own image / video / LLM generation API. Other skills invoke it; users do not."
+        }
+      },
+      "monthlycredits": 2250,
       "monthlypriceusd": 90,
       "extracredits": 2000,
       "usedcredits": 1450,
-      "remainingcredits": 10550,
+      "remainingcredits": 2800,
       "creditperiod": "2026-05",
       "creditsyncat": 1714694410,
-      "peractioncosts": {
-        "message":    10,
-        "create":     60,
-        "modify":     20,
-        "regenerate": 20
+      "tokenRates": {
+        "default_model": "openai/gpt-5.4",
+        "fallback_rate": { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150 },
+        "models": {
+          "openai/gpt-5.4":      { "input_per_1m": 750,  "output_per_1m": 4500, "cached_input_per_1m": 75,   "selectable": true, "label": "GPT-5.4",      "tier": "balanced" },
+          "openai/gpt-5.4-mini": { "input_per_1m": 225,  "output_per_1m": 1350, "cached_input_per_1m": 22.5, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
+          "openai/gpt-5.5":      { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150,  "selectable": true, "label": "GPT-5.5",      "tier": "premium" }
+        }
+      },
+      "agentModel": {
+        "chatModel": "openai/gpt-5.4",
+        "cronModel": "openai/gpt-5.4",
+        "voicePrepModel": "openai/gpt-5.4-mini",
+        "voicePostcallModel": "openai/gpt-5.4"
       },
       "subscription": {
         "plan": "agent",
@@ -2659,7 +2928,7 @@ Retrieves full details for a single deployed agent instance, including subscript
         "currency": "usd",
         "currentperiodend": 1717200000,
         "renewaldate": "2026-06-01T00:00:00.000Z",
-        "daysremaining": 62,
+        "daysremaining": 28,
         "pendingdowngrade": null,
         "provider": "prepaid"
       },
@@ -2667,55 +2936,125 @@ Retrieves full details for a single deployed agent instance, including subscript
         "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
         "title": "Instagram Manager",
         "slug": "instagram-manager",
+        "headline": "Automate your Instagram presence with AI",
+        "description": "An autonomous agent that manages your Instagram Business account: drafts posts from your RSS feeds, schedules carousels, and replies to DMs.",
         "cover": "https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp",
+        "icon": "https://cdn.wiro.ai/uploads/agents/instagram-manager-icon.webp",
         "categories": ["social-media", "marketing"],
         "tiermultiplier": 10,
         "tiers": {
-          "starter": { "priceUsd": 9, "credits": 1000 },
-          "pro":     { "priceUsd": 90, "credits": 10000 }
+          "starter": { "priceUsd": 9,  "credits": 225 },
+          "pro":     { "priceUsd": 90, "credits": 2250 }
         },
         "extracreditpacks": [
-          { "packkey": "small",  "credits": 50000,  "priceusd": 450,  "enabled": true },
-          { "packkey": "medium", "credits": 100000, "priceusd": 900,  "enabled": true },
-          { "packkey": "large",  "credits": 200000, "priceusd": 1800, "enabled": true }
+          { "packkey": "small",  "credits": 11250, "priceusd": 450, "enabled": true },
+          { "packkey": "medium", "credits": 22500, "priceusd": 900, "enabled": true },
+          { "packkey": "large",  "credits": 45000, "priceusd": 1800, "enabled": true }
         ]
       },
       "extracreditsexpiry": 1730419200,
       "createdat": 1714608000,
       "updatedat": 1714694400,
+      "queuedat": 1714694395,
       "startedat": 1714694400,
-      "runningat": 1714694410
+      "runningat": 1714694410,
+      "stoppingat": null,
+      "stopdat": null,
+      "errordat": null
     }
   ]
 }
 ```
 
+##### Field reference
+
+**Identity & profile**
+
 | Field | Type | Description |
 |-------|------|-------------|
 | `guid` | `string` | Unique identifier for this agent instance. |
-| `agentid` | `number\|null` | The catalog agent ID this instance was deployed from. `null` for custom builds. |
-| `title` | `string` | Display name you gave this instance. |
+| `uuid` | `string` | Owner account UUID (the user who deployed). |
+| `agentguid` | `string\|null` | Catalog template GUID this instance was deployed from. `null` for custom builds (always check `agent.custom === true` to detect those). |
+| `teamguid` | `string\|null` | Team GUID when the agent is team-scoped. `null` for personal agents. |
+| `title` | `string` | Display name you gave this instance at deploy. |
+| `description` | `string\|null` | Long-form description shown on the agent card. |
+| `cover` | `string\|null` | Per-instance cover URL. Falls back to `agent.cover` for template deploys; `null` for custom builds without an uploaded cover. |
+| `categories` | `array<string>` | Inherited from the template at deploy; editable via `Update`. |
+| `pinned` | `boolean` | `true` when the user pinned this instance to the global header dropdown. Mutate via `Pin`. |
+
+**Tier & pricing**
+
+| Field | Type | Description |
+|-------|------|-------------|
 | `tier` | `string` | `"starter"` or `"pro"` — the active tier for this instance. |
-| `tiermultiplier` | `number` | Per-instance Pro multiplier — snapshotted at deploy from the template (default `10`). Drives the Pro tier's price + credit allocation. The value is fixed for the life of the instance — it is captured at deploy time and is not refreshed when the platform default changes. |
-| `status` | `number` | Current status code (see UserAgent Statuses). |
-| `setuprequired` | `boolean` | `true` if credentials are missing or incomplete. |
-| `credentials` | `object` | Per-provider credential map assembled from the normalized tables. Sensitive fields (OAuth tokens, platform API keys) are hidden per the field-redaction rules above. Each credential carries `_connected` / `optional` / `extra` / `_editable` / `_schema`. |
-| `customskills` | `array` | Composed list of preset strategies and **non-cron** custom skills (writable instructions). Each entry carries `_source` (`preset-strategy` \| `user-created`), `_editable`, and (only on user-created rows) `_user_created: true`. |
-| `scheduledskills` | `array` | Composed list of **cron** skills (`cs-cron-*`). Same field shape as `customskills` plus `interval` (cron expression). `_source` is `skill-bundle` for crons that ship with an integration skill, `user-created` for user-added crons. |
-| `skills` | `array<object>` | Currently-enabled integration skills. Each entry: `{ name, enabled: true, _edited, _user_created }`. Toggle one or more skills with `POST /UserAgent/SkillsApply`. |
-| `monthlycredits` | `number` | Monthly credit allocation snapshotted at deploy / renewal. |
+| `tiermultiplier` | `number` | Per-instance Pro multiplier — snapshotted at deploy from the template (default `10`). Pro `monthlypriceusd` = Starter × `tiermultiplier`. The value is fixed for the life of the instance — it is captured at deploy time and is not refreshed when the platform default changes. |
 | `monthlypriceusd` | `number` | Monthly USD price snapshotted at deploy / renewal. Mirrors `subscription.amount`. |
-| `extracredits` | `number` | Active extra-credit balance (sum of non-expired packs from `POST /UserAgent/CreateExtraCreditCheckout`). |
+| `monthlycredits` | `number` | Monthly credit allocation snapshotted at deploy / renewal. |
+| `extracredits` | `number` | Active extra-credit balance (sum of non-expired packs from `CreateExtraCreditCheckout`). |
+| `extracreditsexpiry` | `number\|null` | Unix timestamp when the earliest extra credit pack expires. `null` when no extras are active. |
 | `usedcredits` | `number` | Credits consumed during the current billing period, reported by the agent runtime. |
 | `remainingcredits` | `number` | Computed: `max(0, monthlycredits + extracredits - usedcredits)`. |
 | `creditperiod` | `string` | `'YYYY-MM'` tag of the current billing window. Rolls over on subscription renewal. |
-| `creditsyncat` | `number\|null` | Unix seconds of the last agent → API usage sync (null before the first report). |
-| `peractioncosts` | `object` | Credits charged per action. Common keys: `message`, `create`, `modify`, `regenerate`. Voice-realtime agents (those with `util-voice-receptionist` etc. enabled) also expose `realtime` — credits per second of realtime audio session. Computed as `max()` across enabled skills' `pricing.credit_costs`. |
-| `teamsessionmode` | `string` | Session isolation mode for team agents (`"collaborative"` or `"private"` — empty string for solo agents). Write with [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) (team admins / owner only). |
+| `creditsyncat` | `number\|null` | Unix seconds of the last agent → API usage sync (`null` before the first report). |
+| `tokenRates` | `object\|null` | Per-model token-billing rates (credits per 1,000,000 tokens). Shape: `{ default_model, fallback_rate, models: { "<slug>": { input_per_1m, output_per_1m, cached_input_per_1m?, selectable?, label?, tier? } } }`. Each turn's cost is metered from these rates (1 credit = $0.01) — see [Token Billing](#pricing-model--tiers-skills--token-billing). `null` only on registry-read failure. |
+| `agentModel` | `object` | The resolved model slugs this instance runs: `{ chatModel, cronModel, voicePrepModel, voicePostcallModel }` (camelCase). Each falls back to the platform default when the operator hasn't overridden it. Change them via [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) using the lowercase keys `chatmodel` / `cronmodel` / `voiceprepmodel` / `voicepostcallmodel`. |
+
+**Lifecycle**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `status` | `number` | Current status code (see [UserAgent Statuses](#useragent-statuses)). |
+| `setuprequired` | `boolean` | `true` if any required credential is missing or incomplete. Mirrors `status: 6` plus a fresh check against the live credential rows. |
+| `createdat` / `updatedat` / `queuedat` / `startedat` / `runningat` / `stoppingat` / `stopdat` / `errordat` | `number\|null` | Unix seconds for each lifecycle transition. `null` until the corresponding state is reached. |
+
+**Composed children**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `credentials` | `object` | Per-provider credential map keyed by credential name (`instagram`, `telegram`, `wordpress`, …). Each provider object carries the live field values plus a fixed metadata header — see "Credential object shape" below. |
+| `customskills` | `array` | Composed list of preset strategies and **non-cron** custom skills (writable instructions). Each entry: `{ key, description, value, enabled, interval: null, _source, _editable, _edited, _user_created? }`. `_source` ∈ `"preset-strategy"` \| `"user-created"`. |
+| `scheduledskills` | `array` | Composed list of **cron** skills (`cs-cron-*`). Same shape as `customskills` plus `interval` (cron expression). `_source` ∈ `"skill-bundle"` (preset cron) \| `"user-created"`. |
+| `skills` | `array<object>` | Currently-enabled integration skills. Each entry: `{ name, enabled: true, _edited, _user_created }`. Toggle via `SkillsApply` (single-skill or batch). Note: object array (not string array). |
+| `skillsmeta` | `object` | Inline registry snapshot keyed by skill name — `title`, `icon`, `brand_color`, `category`, `docs_url`, `credential_key`, `requires_credentials`, `user_invocable`, `description`. Lets the panel render skill chips without a `Skills/List` round-trip. |
+| `teamsessionmode` | `string` | `"collaborative"` or `"private"` for team agents; empty string `""` for personal agents. Drives `Message/History` filtering: collaborative sessions show every team member's messages, private sessions filter by the caller's `uuid`. Write with [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) (team admins / owner only). |
 | `timezone` | `string\|null` | Operator-selected IANA timezone (e.g. `"Europe/Istanbul"`, `"America/New_York"`). `null` means **system default (UTC)** — the agent container runs `TZ=UTC` and `current_time` in voice prep stays in UTC ISO form. When set, propagates through `settings.json.useragentTimezone` → container `TZ` env → cron `schedule.tz` → caller-facing voice prep / business-hours rendering. Write with [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings). |
-| `subscription` | `object\|null` | Active subscription info, or `null` if no subscription. `subscription.plan` is `"agent"`, `subscription.provider` is `"prepaid"` for API-deployed instances. |
-| `agent` | `object` | Parent agent template info (title, slug, cover, `tiers`, `tiermultiplier`, `extracreditpacks`). For custom builds this is a synthesized placeholder containing the same shape with `agent.custom: true`. |
-| `extracreditsexpiry` | `number\|null` | Unix timestamp when the earliest extra credit pack expires. |
+
+**Subscription & template**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `subscription` | `object\|null` | Active subscription info (see "Subscription object" below), or `null` when the agent has no active subscription. For API-deployed instances this is always `provider: "prepaid"`, `plan: "agent"`. |
+| `agent` | `object` | Parent template summary: `{ guid, title, slug, headline, description, cover, icon, categories, tiermultiplier, tiers, extracreditpacks }`. For custom builds (`agentid: null` / `agentguid: null`) this is a synthesized placeholder with the same shape **plus** `agent.custom: true`; `agent.guid`, `agent.title`, `agent.cover` mirror the useragent itself in that case. |
+
+##### Credential object shape
+
+Every provider entry under `credentials.<key>` carries:
+
+| Sub-field | Type | Description |
+|-----------|------|-------------|
+| `_connected` | `boolean` | OAuth-readiness flag. `true` when Wiro has a valid access token AND every picker field (ad-account ID, page ID, channel ID, …) is populated. **Always `false`** for non-OAuth providers (API-key, service-account) — for those use `_required_missing` or inspect the field values directly. |
+| `optional` | `boolean` | `true` when the agent template marks this credential as optional (the agent can run without it; the dependent skill just won't fire). `false` for required credentials. |
+| `extra` | `boolean` | `true` when this credential surfaces in the "alternative" / secondary group on the panel (rare; most credentials are primary). |
+| `_editable` | `object` | Per-field edit map: `{ fieldname: true\|false }`. `false` means the field is read-only (managed by OAuth, platform-managed, or computed). The frontend uses this to disable inputs. |
+| `_schema` | `object` | Inline registry descriptor — `title`, `icon`, `brand_color`, `docs_url`, `credential_mode` (`oauth`, `api_key`, `oauth_or_api_key`), `connection_modes`, `oauth_provider`, plus a `fields[]` array describing every input the form should render. Lets the panel build credential cards without a separate `Credentials/Detail` round-trip. |
+| `_required_missing` | `boolean` | `true` when the operator should look at this credential — required + user-editable fields are still empty (or the optional card is partially filled but incomplete). Drives the "needs attention" bullet on each credential card and the aggregate count badge on the Credentials tab. `false` when the card is complete or untouched-and-optional. |
+| `connectedat` | `string\|null` | OAuth providers only: ISO timestamp of the last successful connection. |
+| `tokenexpiresat` | `number\|null` | OAuth providers only: Unix seconds when the access token expires. |
+| `<fieldname>` | `string\|number\|boolean\|array` | The actual field value as the user (or OAuth callback) saved it. Field types match `_schema.fields[].type`. Sensitive values (`oauth_session` access/refresh tokens, `clientsecret`, `password`-typed fields) are NEVER returned in this surface — they stay server-side. |
+
+##### Subscription object
+
+| Sub-field | Type | Description |
+|-----------|------|-------------|
+| `plan` | `string` | Always `"agent"`. The Starter/Pro distinction lives on the useragent row's `tier` field, not on the subscription. |
+| `status` | `string` | `"active"`, `"expired"`, `"cancelled"`, or `"refunded"`. |
+| `amount` | `number` | The monthly USD price actually being charged. Mirrors `useragent.monthlypriceusd`. |
+| `currency` | `string` | Always `"usd"`. |
+| `currentperiodend` | `number\|null` | Unix seconds when the current billing period ends. |
+| `renewaldate` | `string\|null` | ISO-8601 string of the same period-end timestamp (convenience for display). |
+| `daysremaining` | `number` | Days until `currentperiodend`. |
+| `pendingdowngrade` | `string\|null` | `"cancel"` after `CancelSubscription`; `null` for normal active subs. |
+| `provider` | `string` | `"prepaid"` for every API-deployed subscription. |
 
 #### **POST** /UserAgent/Update
 
@@ -2729,7 +3068,7 @@ Updates an agent instance's **scalar fields only** (title, description, categori
 | `categories` | array | No | Updated categories. Cannot be empty if provided. |
 | `cover` | string | No | New cover image URL (set to empty string or `null` to clear). For multipart upload, use [`POST /UserAgent/Cover`](#post-useragentcover) instead. |
 
-> **Scalar-only.** Credentials, custom skills, skill toggles, tier upgrades, and rate-limit edits use dedicated endpoints:
+> **Scalar-only.** Credentials, custom skills, skill toggles, and tier upgrades use dedicated endpoints:
 >
 > | What you want to change | Use |
 > |-------------------------|-----|
@@ -2767,9 +3106,9 @@ Updates an agent instance's **scalar fields only** (title, description, categori
       "tier": "starter",
       "tiermultiplier": 10,
       "monthlypriceusd": 9,
-      "monthlycredits": 1000,
+      "monthlycredits": 225,
       "extracredits": 0,
-      "usedcredits": 320,
+      "usedcredits": 80,
       "creditperiod": "2026-05",
       "creditsyncat": 1714694400,
       "status": 1,
@@ -2788,8 +3127,8 @@ Updates an agent instance's **scalar fields only** (title, description, categori
         "categories": ["social-media", "marketing"],
         "tiermultiplier": 10,
         "tiers": {
-          "starter": { "priceUsd": 9,  "credits": 1000 },
-          "pro":     { "priceUsd": 90, "credits": 10000 }
+          "starter": { "priceUsd": 9,  "credits": 225 },
+          "pro":     { "priceUsd": 90, "credits": 2250 }
         },
         "extracreditpacks": []
       },
@@ -2806,25 +3145,31 @@ Updates an agent instance's **scalar fields only** (title, description, categori
 }
 ```
 
-> **`Update` returns the full composed useragent shape** — same composition path as `UserAgent/Detail` (`getUserAgentDetailForUI`), so `credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `peractioncosts`, and the `agent` template summary (with `tiers` + `extracreditpacks`) are all included. The fields `Update` cannot safely populate without an extra round-trip (`subscription`, `remainingcredits`, `extracreditsexpiry`) stay omitted — call `UserAgent/Detail` next if you need them. Otherwise the response is suitable for an in-place panel re-render without a follow-up call.
+> **`Update` returns the full composed useragent shape** — same composition path as `UserAgent/Detail` (`getUserAgentDetailForUI`), so `credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `tokenRates`, `agentModel`, and the `agent` template summary (with `tiers` + `extracreditpacks`) are all included. The fields `Update` cannot safely populate without an extra round-trip (`subscription`, `remainingcredits`, `extracreditsexpiry`) stay omitted — call `UserAgent/Detail` next if you need them. Otherwise the response is suitable for an in-place panel re-render without a follow-up call.
 
 > **Restart on running agents.** When the call lands on a status `3`/`4` agent, the response shows the lifecycle transition mid-flight: `status: 1` (Stopping) with a fresh `stoppingat` timestamp, `runningat` cleared, and `queuedat` set to the same instant — Wiro auto-queues the agent so it picks the new settings up after the next stop cycle.
 
 #### **POST** /UserAgent/UpdateSettings
 
-Writes per-agent preference toggles that are not credentials and not skill rows. Currently exposes `timezone` (operator-selected IANA zone, propagates into the agent container's `TZ` env, cron `schedule.tz`, and caller-facing voice prep) and `teamsessionmode` (team workspace session mode). Submit one or both in the same call — partial updates are supported and untouched fields keep their current value.
+Writes per-agent preference toggles that are not credentials and not skill rows. Exposes `timezone` (operator-selected IANA zone, propagates into the agent container's `TZ` env, cron `schedule.tz`, and caller-facing voice prep), `teamsessionmode` (team workspace session mode), and the four **model overrides** — `chatmodel`, `cronmodel`, `voiceprepmodel`, `voicepostcallmodel` — that choose which LLM the agent uses for chat replies, scheduled (cron) turns, voice-call prep, and the post-call summary turn. Submit any subset in the same call — partial updates are supported and untouched fields keep their current value.
 
-**Permission**: owner OR team admin (the same `requireRole: "admin"` gate as `/UserAgent/Update`). Team members cannot flip either knob.
+**Permission**: owner OR team admin (the same `requireRole: "admin"` gate as `/UserAgent/Update`). Team members cannot flip these knobs.
 
-**Restart**: if the agent is **starting (status `3`)** or **running (status `4`)**, the call auto-stops the container with `restartafter: true` so the daemon worker picks up the fresh `settings.json` (with the new `useragentTimezone` and / or `teamsessionmode`) on the next launch cycle. Status `0`/`1`/`2`/`5`/`6` agents take effect on the next manual `Start` without a soft-stop.
+**Restart**: if the agent is **starting (status `3`)** or **running (status `4`)**, the call auto-stops the container with `restartafter: true` so the daemon worker picks up the fresh `settings.json` (new timezone, session mode, and / or model selection) on the next launch cycle. Status `0`/`1`/`2`/`5`/`6` agents take effect on the next manual `Start` without a soft-stop.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Your UserAgent instance guid. |
 | `timezone` | string\|null | No | IANA timezone identifier (e.g. `"Europe/Istanbul"`, `"America/New_York"`, `"Asia/Tokyo"`). Pass `null`, `""`, or the literal `"UTC"` to **clear** the override — the row is set back to `NULL`, which makes the propagation chain a no-op (container stays on `TZ=UTC`, no per-job `schedule.tz` injection, voice prep `current_time` stays in single-line UTC ISO form). Validated server-side via `new Intl.DateTimeFormat("en-GB", { timeZone })` — unknown zones are rejected with `invalid-timezone`. |
-| `teamsessionmode` | string | No | `"collaborative"` or `"private"`. Only meaningful when the agent is team-owned (`teamguid` is set); passing it on a personal agent is rejected with `teamsessionmode-team-only`. See the Agent Messaging chapter for what each mode does to `Message/History` and `Sessions` scoping. |
+| `teamsessionmode` | string | No | `"collaborative"` or `"private"`. Only meaningful when the agent is team-owned (`teamguid` is set); passing it on a personal agent is rejected with `teamsessionmode-team-only`. See [Agent Messaging](/docs/agent-messaging) for what each mode does to `Message/History` and `Sessions` scoping. |
+| `chatmodel` | string\|null | No | Canonical model slug for **chat replies** (e.g. `"openai/gpt-5.4"`). Must be a **selectable** model — i.e. `tokenRates.models[<slug>].selectable === true`; an unknown / non-selectable slug is rejected with `invalid-model-selection`. Pass `null` or `""` to clear the override and fall back to the platform default. |
+| `cronmodel` | string\|null | No | Same rules as `chatmodel`, applied to **scheduled (cron) turns**. |
+| `voiceprepmodel` | string\|null | No | Same rules as `chatmodel`, applied to the **voice-call prep** turn (context assembled before a realtime call). |
+| `voicepostcallmodel` | string\|null | No | Same rules as `chatmodel`, applied to the **post-call summary** turn after a realtime voice call ends. |
 
-> **Omitted fields are preserved.** The handler distinguishes between "field not in the body" and "field present with `null`/`""`/value", so a POST that carries only `timezone` does **not** touch `teamsessionmode`, and vice versa. Sending neither (empty body) is rejected with `nothing-to-update` to avoid charging a no-op container restart.
+> **Omitted fields are preserved.** The handler distinguishes between "field not in the body" and "field present with `null`/`""`/value", so a POST that carries only `timezone` does **not** touch `teamsessionmode` or any model field, and vice versa. Sending an empty body (none of the recognised fields) is rejected with `nothing-to-update` to avoid charging a no-op container restart.
+
+> **Read vs write casing.** You **read** the current selection from the `agentModel` object on `UserAgent/Detail` / `MyAgents` / `PinnedAgents` in camelCase (`chatModel`, `cronModel`, `voicePrepModel`, `voicePostcallModel`); you **write** it here in lowercase (`chatmodel`, `cronmodel`, `voiceprepmodel`, `voicepostcallmodel`). The selectable set is exactly the models that `tokenRates.models` marks `selectable: true` — there is no separate "list models" endpoint, so read `tokenRates` to populate a picker.
 
 ##### Request
 
@@ -2856,7 +3201,17 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
     "teamsessionmode": "collaborative"
   }'
 
-# Update both in one call
+# Switch the chat + cron model (each must be selectable; "" / null resets to default)
+curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
+  -H "Authorization: Bearer $WIRO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+    "chatmodel": "openai/gpt-5.5",
+    "cronmodel": "openai/gpt-5.4-mini"
+  }'
+
+# Update both preference toggles in one call
 curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
   -H "Authorization: Bearer $WIRO_API_KEY" \
   -H "Content-Type: application/json" \
@@ -2923,9 +3278,9 @@ If you already have a hosted URL, use `POST /UserAgent/Update` with `cover: "<ur
       "tier": "starter",
       "tiermultiplier": 10,
       "monthlypriceusd": 9,
-      "monthlycredits": 1000,
+      "monthlycredits": 225,
       "extracredits": 0,
-      "usedcredits": 320,
+      "usedcredits": 80,
       "creditperiod": "2026-05",
       "creditsyncat": 1714694400,
       "status": 4,
@@ -2955,7 +3310,7 @@ If you already have a hosted URL, use `POST /UserAgent/Update` with `cover: "<ur
 }
 ```
 
-> **Cover returns scalar useragent fields + the `agent` template summary only.** It does **not** include `setuprequired`, `peractioncosts`, `remainingcredits`, or any composed children (`credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `subscription`). The endpoint is optimised for the cover refresh round-trip; call `UserAgent/Detail` afterwards if you need the full composed shape.
+> **Cover returns scalar useragent fields + the `agent` template summary only.** It does **not** include `setuprequired`, `tokenRates`, `agentModel`, `remainingcredits`, or any composed children (`credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `subscription`). The endpoint is optimised for the cover refresh round-trip; call `UserAgent/Detail` afterwards if you need the full composed shape.
 
 #### **POST** /UserAgent/CredentialUpsert
 
@@ -3027,7 +3382,7 @@ Unlike `CredentialUpsert`, this endpoint expects `multipart/form-data` — pass 
 | `fieldname` | text | Yes | The exact `fieldname` whose registry `type` is `"fileinput"` (e.g. `holdaudio` or `holdmusic` on `twilio-voice`). |
 | `file` | file | Yes | The blob. Mimetype + size are validated against the registry's `filetypes[]` whitelist and `maxsize` (KB) cap. Default cap is 10 MB when the field omits `maxsize`. |
 
-> **`fileinput` vs `fileinput-base64`.** This endpoint is the storage path for the `fileinput` type only — the binary lives in S3 and the credential row stores a reference. The companion `fileinput-base64` type stays inline in the DB and is written via the standard `CredentialUpsert` JSON `fields[]` array. Sending a base64 field through this endpoint returns `Field is not a fileinput type`.
+> **`fileinput` vs `fileinput-base64`.** This endpoint is the storage path for the `fileinput` type only — the binary lives in S3 and the credential row stores a reference. The companion `fileinput-base64` type stays inline in the DB (encrypted at rest) and is written via the standard `CredentialUpsert` JSON `fields[]` array (e.g. `serviceaccountjson` on `google-drive`/`google-calendar`/`google-play`/`firebase`, `privatekey` on `apple-appstore`). Sending a base64 field through this endpoint returns `Field is not a fileinput type`.
 
 ##### Request
 
@@ -3037,7 +3392,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialFileUpload" \
   -F "useragentguid=f8e7d6c5-b4a3-2190-fedc-ba0987654321" \
   -F "credentialkey=twilio-voice" \
   -F "fieldname=holdaudio" \
-  -F "file=@/path/to/welcome.mp3;type=audio/mpeg"
+  -F "file=@/path/to/greeting.mp3;type=audio/mpeg"
 ```
 
 ##### Response
@@ -3304,9 +3659,9 @@ Returns the version history for one custom skill on a useragent — a per-write 
 > **Field semantics.** Each row captures the **BEFORE** state of the action that produced it (audit-write fires before the table mutation). The server-computed `after_*` and `prev_*` fields give you the resolved AFTER + previous-version snapshots without you having to walk the list manually:
 >
 > - `prev_*` — value as of the immediately-older entry (`null` for the oldest row).
-> - `after_*` — value the row was left with after this action committed: pulled from the next-newer entry's BEFORE state, or from the live custom-skill row for the newest entry. `null` when `operation: "delete-user"` (row was removed).
+> - `after_*` — value the row was left with after this action committed: pulled from the next-newer entry's BEFORE state, or from the live `useragentcustomskills` row for the newest entry. `null` when `operation: "delete-user"` (row was removed).
 > - `changed_fields[]` — names of fields whose value differs from the immediately-older entry. Subset of `["value", "interval", "enabled"]`.
-> - `changedby_user` — resolved actor object (full shape: `uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`). `null` when `changedby` is `"system"` (automation / cron) or when the user record was deleted.
+> - `changedby_user` — resolved actor object (full shape: `uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`). `null` when `changedby` is a sentinel like `"system"` / `"backfill-*"` (cron / migration writes) or when the user record was deleted.
 
 #### **POST** /UserAgent/CustomSkillRevert
 
@@ -3403,7 +3758,7 @@ Returns the per-field write history for one credential group on a useragent. Sen
 }
 ```
 
-> `changedby_user` is the resolved actor object (`uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`). It is `null` when `changedby` is `"system"` (automation / cron) or when the user record has been deleted.
+> `changedby_user` is the resolved actor object (`uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`). It is `null` when `changedby` is a sentinel like `"system"` / `"backfill-*"` (cron / migration writes) or when the user record has been deleted.
 
 #### **POST** /UserAgent/SkillsApply
 
@@ -3448,18 +3803,17 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   "result": true,
   "errors": [],
   "tier": "pro",
-  "prepaidWalletDelta": 19.99,
+  "prepaidWalletDelta": 18.00,
   "restartTriggered": true,
   "restartedAt": 1714694520,
   "pricing": {
-    "previousPriceUsd": 9,
-    "newPriceUsd": 39,
-    "deltaUsd": 30,
-    "previousMonthlyCredits": 1000,
-    "newMonthlyCredits": 6000,
-    "deltaCredits": 5000,
-    "enabledSkills": ["int-instagram-post", "int-twitterx-post", "int-wiro-aimodels"],
-    "peractioncosts": { "message": 10, "create": 60, "modify": 20, "regenerate": 20 }
+    "previousPriceUsd": 4,
+    "newPriceUsd": 40,
+    "deltaUsd": 36,
+    "previousMonthlyCredits": 100,
+    "newMonthlyCredits": 1000,
+    "deltaCredits": 900,
+    "enabledSkills": ["int-instagram-post", "int-twitterx-post", "int-wiro-aimodels"]
   }
 }
 ```
@@ -3479,14 +3833,13 @@ When every entry in your `skills` map already matches the persisted state and th
 | Field | Type | Description |
 |-------|------|-------------|
 | `noOp` | `boolean` | Present and `true` only on the no-op short-circuit response. Absent on the regular success path. When you see `noOp: true`, the rest of the field set (`tier`, `prepaidWalletDelta`, `restartTriggered`, `pricing`) is omitted — there was nothing to apply. |
-| `tier` | `string` | The tier in effect after the call (`"starter"` or `"pro"`). |
+| `tier` | `string` | The tier in effect after the call (`"starter"` or `"pro"`). Mirrors what was passed in `body.tier` — or the unchanged current tier if the request omitted it. |
 | `prepaidWalletDelta` | `number` | USD debited (positive) or credited (negative) from the wallet for the prorated price diff. `0` when the toggle batch is a no-op or the agent has no active subscription yet. |
 | `restartTriggered` | `boolean` | `true` when the agent runtime was restarted to pick up the new skill set. `false` for stopped agents (no restart needed) or no-op batches. |
 | `restartedAt` | `number\|null` | Unix seconds when the restart trigger fired. `null` when `restartTriggered` is `false`. |
 | `pricing.previousPriceUsd` / `newPriceUsd` / `deltaUsd` | `number` | USD totals before / after the apply, plus the signed delta. |
 | `pricing.previousMonthlyCredits` / `newMonthlyCredits` / `deltaCredits` | `number` | Monthly credit allocation before / after, plus the signed delta. |
 | `pricing.enabledSkills` | `array<string>` | Final enabled skill set including transitive `depends_on` closure — flat array of skill names. The matching `useragent.skills` array on the next `Detail` call is an object array (`{name, enabled, _edited?, _user_created?}`); take `.name` from each entry to compare. |
-| `pricing.peractioncosts` | `object` | Per-action burn rates that follow from the new skill set: `{ message, create, modify, regenerate }`, plus `realtime` (per-second audio session cost) when a voice-realtime skill is in the new set. |
 
 ##### Common error codes
 
@@ -3513,7 +3866,7 @@ Two body shapes:
 {
   "draft": true,
   "tier": "pro",
-  "skills": ["instagram-post", "wiro-aimodels"]
+  "skills": ["int-instagram-post", "int-wiro-aimodels"]
 }
 ```
 
@@ -3524,8 +3877,8 @@ Two body shapes:
   "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
   "tier": "pro",
   "skillOverrides": {
-    "instagram-post": true,
-    "telegram-post": false
+    "int-instagram-post": true,
+    "int-telegram-post":  false
   }
 }
 ```
@@ -3546,26 +3899,35 @@ Two body shapes:
   "errors": [],
   "tier": "pro",
   "tiermultiplier": 10,
-  "totalPriceUsd": 50,
-  "totalMonthlyCredits": 5000,
-  "peractioncosts": { "message": 10, "create": 60, "modify": 20, "regenerate": 20 },
+  "totalPriceUsd": 40,
+  "totalMonthlyCredits": 1000,
+  "starterFloorUsd": 4,
   "skillBreakdown": [
-    { "skill": "instagram-post", "priceUsd": 5, "credits": 500, "actionCostOverrides": { "create": 60 } },
-    { "skill": "wiro-aimodels",  "priceUsd": 0, "credits": 0,   "actionCostOverrides": {} }
+    { "skill": "int-instagram-post", "priceUsd": 1, "credits": 25, "billing_model": "tokens" },
+    { "skill": "int-wiro-aimodels",  "priceUsd": 1, "credits": 25, "billing_model": "tokens" }
   ],
-  "enabledSkills": ["instagram-post", "wiro-aimodels"],
-  "directSkills":  ["instagram-post"],
+  "enabledSkills": ["int-instagram-post", "int-wiro-aimodels"],
+  "directSkills":  ["int-instagram-post"],
   "agentBase": { "priceUsd": 0, "credits": 0 },
   "tiers": {
-    "starter": { "priceUsd": 5,  "credits": 500 },
-    "pro":     { "priceUsd": 50, "credits": 5000 }
+    "starter": { "priceUsd": 4,  "credits": 100 },
+    "pro":     { "priceUsd": 40, "credits": 1000 }
+  },
+  "tokenRates": {
+    "default_model": "openai/gpt-5.4",
+    "fallback_rate": { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150 },
+    "models": {
+      "openai/gpt-5.4":      { "input_per_1m": 750,  "output_per_1m": 4500, "cached_input_per_1m": 75,   "selectable": true, "label": "GPT-5.4",      "tier": "balanced" },
+      "openai/gpt-5.4-mini": { "input_per_1m": 225,  "output_per_1m": 1350, "cached_input_per_1m": 22.5, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
+      "openai/gpt-5.5":      { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150,  "selectable": true, "label": "GPT-5.5",      "tier": "premium" }
+    }
   }
 }
 ```
 
-`enabledSkills` is the full closure (including transitive `depends_on`); `directSkills` is just what the user explicitly toggled. `agentBase` is always `{ priceUsd: 0, credits: 0 }` — pricing is fully skill-driven, and the field is kept on the response so callers don't have to null-check.
+`enabledSkills` is the full closure (including transitive `depends_on`); `directSkills` is just what the user explicitly toggled. `agentBase` is always `{ priceUsd: 0, credits: 0 }` — pricing is fully skill-driven, and the field is kept on the response so callers don't have to null-check. `skillBreakdown[].billing_model` is always `"tokens"`; `tokenRates` carries the per-model rates used to meter each turn (see [Token Billing](#pricing-model--tiers-skills--token-billing)).
 
-> **$4 starter floor.** When the raw weight sum lands below $4 (e.g. a single `LIGHT` skill at $1/25), the resolver bumps `tiers.starter.priceUsd` up to $4 **and** scales `tiers.starter.credits` up by the same ratio (e.g. 25 → 100). Pro derives from the post-floor starter via × `tiermultiplier` (default `10`), so a $1-weight agent becomes Starter `$4/100` and Pro `$40/1000`. See [Pricing Model — Tiers, Skills & Per-Action Costs](#pricing-model--tiers-skills--per-action-costs) for the full rules.
+> **$4 starter floor.** When the raw weight sum lands below $4 (e.g. a single `LIGHT` skill at $1/25), the resolver bumps `tiers.starter.priceUsd` up to $4 **and** scales `tiers.starter.credits` up by the same ratio (25 → 100); the applied floor is echoed as `starterFloorUsd`. Pro derives from the post-floor starter via × `tiermultiplier` (default `10`), so a $1-weight agent becomes Starter `$4/100` and Pro `$40/1000`. See [Pricing Model — Tiers, Skills & Token Billing](#pricing-model--tiers-skills--token-billing) for the full rules.
 
 #### **POST** /UserAgent/CreateSubscriptionCheckout
 
@@ -3585,7 +3947,7 @@ Subscribes a useragent that doesn't yet have an active subscription. Wallet is d
   "errors": [],
   "subscriptionId": 8421,
   "monthlypriceusd": 90,
-  "monthlycredits": 10000
+  "monthlycredits": 2250
 }
 ```
 
@@ -3700,6 +4062,28 @@ Non-admin callers are rate-limited via a 30-second Redis cache keyed on `(userag
   "errors": [],
   "events": [
     {
+      "ts": "2026-05-03T14:00:03.000Z",
+      "kind": "token_usage",
+      "title": "Turn billed — 6 credits",
+      "summary": { "trigger": "chat" },
+      "model": "openai/gpt-5.4",
+      "tokens": { "input": 3450, "output": 820, "cacheRead": 2400, "cacheWrite": 0, "total": 4270 },
+      "tokencost": 6,
+      "durationMs": 4200,
+      "calls": 2,
+      "remainingcredits": 2244,
+      "ok": true,
+      "userUuid": "ada-uuid",
+      "user": {
+        "uuid": "ada-uuid",
+        "firstname": "Ada",
+        "lastname": "Lovelace",
+        "email": "ada@example.com",
+        "avatar": "https://cdn.wiro.ai/uploads/users/ada-avatar.webp",
+        "avatarinitials": "AL"
+      }
+    },
+    {
       "ts": "2026-05-03T14:00:01.000Z",
       "kind": "tool_completed",
       "tool": "exec",
@@ -3711,7 +4095,6 @@ Non-admin callers are rate-limited via a 30-second Redis cache keyed on `(userag
       },
       "durationMs": 2480,
       "ok": true,
-      "cost": { "credits": 60, "skill": "int-instagram-post", "action": "create" },
       "userUuid": "ada-uuid",
       "user": {
         "uuid": "ada-uuid",
@@ -3742,16 +4125,20 @@ Non-admin callers are rate-limited via a 30-second Redis cache keyed on `(userag
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `events[]` | array | One row per activity entry. The wiro-commands plugin appends events ascending by time; the array preserves that order — the frontend usually reverses for newest-first display. |
+| `events[]` | array | One row per activity entry, **newest first** (descending by `ts`) — `events[0]` is the most recent event. Do not re-reverse for display. |
 | `events[].ts` | string | ISO-8601 UTC datetime when the event was emitted (e.g. `"2026-05-03T14:00:01.000Z"`). Parse with `Date.parse(ts)` for arithmetic. |
-| `events[].kind` | string | Fine-grained event class. One of: `"tool_started"`, `"tool_completed"` (one pair per tool invocation), `"turn_started"`, `"turn_ended"` (LLM turn boundary), `"cron_started"`, `"cron_finished"` (scheduled-cron tick), `"session_start"`, `"session_end"` (chat-session boundary), `"user_message"` (user → agent), `"agent_reply"` (agent → user). |
+| `events[].kind` | string | Fine-grained event class. One of: `"tool_started"`, `"tool_completed"` (one pair per tool invocation), `"turn_started"`, `"turn_ended"` (LLM turn boundary), `"cron_started"`, `"cron_finished"` (scheduled-cron tick), `"session_start"`, `"session_end"` (chat-session boundary), `"user_message"` (user → agent), `"agent_reply"` (agent → user), `"token_usage"` (a billed turn's token deduct), `"token_usage_idempotent"` (a replayed usage callback — already billed, informational), `"balance_gate_blocked"` (a turn refused because the credit pool was empty). |
 | `events[].tool` | string \| null | Present on `tool_started` / `tool_completed`. One of: `"read"`, `"write"`, `"edit"`, `"exec"`, `"web_fetch"`, `"web_search"`, `"sessions_spawn"`, `"message"`. |
 | `events[].title` | string | Human-readable one-line description (always present). |
 | `events[].summary` | object \| null | Structured event-specific payload. Treat as opaque — render as JSON when expanding. Plugin pre-redacts `apikey`, `apppassword`, `clientsecret`, `bearer`, `token`, etc. before writing. Keys vary per `kind`/`tool`. |
-| `events[].durationMs` | number \| null | Wall-clock duration in milliseconds. Populated on `*_completed` / `*_finished` / `turn_ended` events. |
+| `events[].durationMs` | number \| null | Wall-clock duration in milliseconds. Populated on `*_completed` / `*_finished` / `turn_ended` / `token_usage` events. |
 | `events[].ok` | boolean \| null | `true` on success, `false` on failure. Populated on `*_completed` / `*_finished`. Pair with `error` for failures. |
 | `events[].error` | string \| null | One-line failure message (when `ok: false`). |
-| `events[].cost` | object \| null | Credit deduction attached to the event: `{ credits, skill, action }`. Only present for `exec`-tool calls that drove a per-action charge. |
+| `events[].model` | string \| null | Canonical model slug billed for the turn. Present on `token_usage` / `token_usage_idempotent` events. |
+| `events[].tokens` | object \| null | Token breakdown on `token_usage` events: `{ input, output, cacheRead, cacheWrite, total }` — **nested camelCase** (distinct from the flat lowercase `inputtokens` / `outputtokens` / … columns on message + transaction rows; same underlying data, different shape). |
+| `events[].tokencost` | number \| null | Credits deducted for the turn (1 credit = $0.01). Present on `token_usage` events. |
+| `events[].calls` | number \| null | Number of LLM calls made in the billed turn. Present on `token_usage` events. |
+| `events[].remainingcredits` | number \| null | Credit pool remaining after the deduct. Present on `token_usage` events. |
 | `events[].userUuid` | string \| null | Originating actor's UUID. `"system"` for cron / internal events. May be missing on legacy rows from the 180-day retention window pre-attribution rollout — the server falls back to the useragent owner. |
 | `events[].user` | object \| null | Resolved user shape (`uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`) when the actor is a real user. `null` for `system` events. |
 | `date` | string | The date that was actually read (`YYYY-MM-DD`). |
@@ -3793,7 +4180,6 @@ Lists the dates for which an activity log file exists on the worker host. Useful
 | `dates[].date` | string | Activity-file date in `YYYY-MM-DD` form. Sorted newest-first. |
 | `dates[].sizeBytes` | number | Raw byte size of the file on disk (compressed size if `compressed: true`). |
 | `dates[].compressed` | boolean | `true` once the worker's daily maintenance cron has gzipped the file (`<date>.jsonl.gz`); `false` for the active day's plain `.jsonl`. |
-
 
 The host retains activity files for 180 days (rolling); older dates are pruned by a worker cron and won't appear here.
 
@@ -3838,13 +4224,13 @@ Downloads the **full** day's activity log (no `lines` cap). Use this when you ne
 {
   "result": true,
   "errors": [],
-  "events": [/* …full day, oldest first… */],
+  "events": [/* …full day, newest first (descending by ts)… */],
   "date": "2026-04-30",
   "truncated": false
 }
 ```
 
-`truncated: true` only when the worker's read buffer hit a hard ceiling (currently 250k rows / 50 MB). For typical agents this stays `false`; if you ever see `true`, fall back to streaming the file directly via the panel's download link.
+`events` is sorted **newest first** (descending by `ts`) — same contract as `Logs`, so `events[0]` is the freshest entry whether you're tailing the live day or downloading a historical one. `truncated: true` only when the worker's read buffer hit a hard ceiling (currently 250k rows / 50 MB). For typical agents this stays `false`; if you ever see `true`, fall back to streaming the file directly via the panel's download link.
 
 #### **POST** /UserAgent/Pin
 
@@ -3886,7 +4272,7 @@ No request body fields are required — the caller's `tokenUUID` (or active `tea
       "tier": "pro",
       "tiermultiplier": 10,
       "monthlypriceusd": 90,
-      "monthlycredits": 10000,
+      "monthlycredits": 2250,
       "extracredits": 2000,
       "usedcredits": 1450,
       "creditperiod": "2026-05",
@@ -3915,16 +4301,25 @@ No request body fields are required — the caller's `tokenUUID` (or active `tea
         "categories": ["social-media", "marketing"],
         "tiermultiplier": 10,
         "tiers": {
-          "starter": { "priceUsd": 9,  "credits": 1000 },
-          "pro":     { "priceUsd": 90, "credits": 10000 }
+          "starter": { "priceUsd": 9,  "credits": 225 },
+          "pro":     { "priceUsd": 90, "credits": 2250 }
         }
       },
       "enabledSkills": ["int-instagram-post", "int-twitterx-post", "int-wiro-aimodels"],
-      "peractioncosts": {
-        "message":    10,
-        "create":     60,
-        "modify":     20,
-        "regenerate": 20
+      "tokenRates": {
+        "default_model": "openai/gpt-5.4",
+        "fallback_rate": { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150 },
+        "models": {
+          "openai/gpt-5.4":      { "input_per_1m": 750,  "output_per_1m": 4500, "cached_input_per_1m": 75,   "selectable": true, "label": "GPT-5.4",      "tier": "balanced" },
+          "openai/gpt-5.4-mini": { "input_per_1m": 225,  "output_per_1m": 1350, "cached_input_per_1m": 22.5, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
+          "openai/gpt-5.5":      { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150,  "selectable": true, "label": "GPT-5.5",      "tier": "premium" }
+        }
+      },
+      "agentModel": {
+        "chatModel": "openai/gpt-5.4",
+        "cronModel": "openai/gpt-5.4",
+        "voicePrepModel": "openai/gpt-5.4-mini",
+        "voicePostcallModel": "openai/gpt-5.4"
       },
       "extracreditsexpiry": 1730419200,
       "createdat": 1714608000,
@@ -3975,37 +4370,35 @@ Starts a browser-embedded realtime voice session with the agent. Returns a short
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Useragent must be in `status: 4` and have `util-web-channel` enabled (Voice Receptionist / Voice Sales Rep presets enable it by default; toggle it on custom builds via `SkillsApply`). |
 | `session_metadata.page_url` | string | No | Page URL the caller opened the mic from (≤ 2048 chars). Echoed back on Call History. |
-| `session_metadata.display_identifier` | string | No | Operator-supplied display name. 1–100 chars matching `^[\p{L}\p{N} @._\-'+]+$`; the check is **whole-string** — any character outside the allowlist rejects the entire field (`callerInfo.display_identifier` ends up `null`). |
+| `session_metadata.display_identifier` | string | No | Operator-supplied display name. 1–100 chars, Unicode letters / numbers / spaces / `@ . _ - ' +`; other characters silently dropped. |
 
 ##### Response
 
 ```json
 {
   "result": true,
+  "errors": [],
   "sessionId": "vws-9d2d4b6e-3f6b-4c1a-8a7e-1f5a0b2c3d4e",
   "wsUrl": "wss://socket.wiro.ai/v1/AgentRealtime/Web",
-  "sessionToken": "<5-min HS256 token>",
+  "sessionToken": "<5-min HS256 JWT>",
   "expiresAt": 1748212800000,
   "estimatedReadyMs": 8000
 }
 ```
 
-- **Auth** — same Bearer / API key path as every other `UserAgent/*` endpoint. Bearer requests additionally enforce an Origin allow-list (`https://wiro.ai`, `https://www.wiro.ai`, plus `http://localhost:3000` / `http://localhost:8080` in non-production — other dev ports are rejected); API-key requests skip the Origin check.
+- **Auth** — same Bearer / API key path as every other `UserAgent/*` endpoint. Bearer requests additionally enforce an Origin allow-list (`https://wiro.ai`, `https://www.wiro.ai`, plus `http://localhost:*` in non-production); API-key requests skip the Origin check.
 - **Rate limit** — fixed 60 sessions/hour per operator (hashed key — raw uuid never logged). Override with `AGENT_WEB_REALTIME_RATE_LIMIT_PER_HOUR`. Fast-fail sessions are decremented back from the counter.
-- **`sessionToken` is JWT-like, not a standard JWT.** Two-segment (`<base64url(payload)>.<base64url(hmac)>`) — no header segment — so standard JWT libraries (`jsonwebtoken`, `jose`, `PyJWT`) reject it as malformed. Decode the payload manually with `base64url → JSON.parse` if you need to inspect it. Payload includes `iat` / `exp` and a `uuid` claim that holds the **useragent's** uuid (not the calling user's).
 - **Full WebSocket protocol, control frames, and JS snippet** — [Web Voice](/docs/integration-webvoice-skills).
 
 ##### Common errors
 
-| HTTP | Error code | Message | When |
-|------|------------|---------|------|
-| 200  | —          | `useragentguid required` | Missing useragent reference. |
-| 403  | `95`       | `useragent-not-found`    | Guid doesn't exist (returned as **403**, not 404). |
-| 403  | `96`       | `useragent-access-denied`| Caller doesn't own the useragent and isn't a member of its team. |
-| 200  | —          | `Agent is not running`   | Useragent is not in `status: 4`. |
-| 200  | —          | `util-web-channel not enabled` | Toggle the skill via `SkillsApply` (custom builds) or pick a preset that bundles it. |
-| 403  | —          | `web voice only available from Wiro-Web (Bearer auth) or via API key` | Bearer auth with an Origin outside the allow-list. |
-| 429  | —          | `Rate limit: max N web voice sessions per hour` | Operator burned through the per-hour cap. |
+| Error | When |
+|-------|------|
+| `useragentguid required` | Missing useragent reference. |
+| `Agent is not running` | Useragent is not in `status: 4`. |
+| `util-web-channel not enabled` | Toggle the skill via `SkillsApply` (custom builds) or pick a preset that bundles it. |
+| `web voice only available from Wiro-Web (Bearer auth) or via API key` | Bearer auth with an Origin outside the allow-list. |
+| `Rate limit: max N web voice sessions per hour` | Operator burned through the per-hour cap. |
 
 #### **POST** /UserAgent/Realtime/Cancel
 
@@ -4028,7 +4421,7 @@ Cancels a `WebStart`-initiated session **before the WebSocket handshake**. Use i
 | 401 | `invalid token` (signature mismatch, expired, malformed) |
 | 403 | `sessionId mismatch` (JWT claim doesn't match body) |
 
-> Without this call, the server-side agent prep `WebStart` kicked off lingers for ~5 minutes (the fallback cleanup guard) before being released — calling `Cancel` immediately frees the prep state and stops the per-second realtime quota from being held open.
+> Without this call, the server-side agent prep `WebStart` kicked off lingers for ~5 minutes (the fallback cleanup guard) before being released — calling `Cancel` immediately frees the prep state and releases the held realtime session slot.
 
 #### **POST** /UserAgent/TwilioCallHistory/List
 
@@ -4052,7 +4445,7 @@ Returns the last N realtime voice sessions for a useragent — **both Twilio and
       "channel": "twilio",
       "callsid": "CAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
       "callerInfo": { "number": "+15551234567", "country": "US" },
-      "callerProfile": "Returning caller — last asked about pricing.",
+      "callerProfile": "Returning caller — last asked about pricing. Mentioned company name 'Acme Corp'.",
       "status": "realtime_session",
       "endReason": "wiro_completed",
       "durationSeconds": 137,
@@ -4078,11 +4471,21 @@ Returns the last N realtime voice sessions for a useragent — **both Twilio and
 }
 ```
 
-> `status` mirrors `agentmessages.metadata.type` verbatim — values are `realtime_session_incoming` (prep running), `realtime_session_active` (audio bridge live), `realtime_session_rejected` (rejected before audio), or **`realtime_session`** (no suffix — final/completed). The bare `realtime_session` is the only value that means "ended cleanly". `endReason` is set on completed (`realtime_session`) rows only — one of `wiro_completed`, `wiro_cancelled`, `wiro_disconnect`, `wiro_error`, `max_duration`, `browser_disconnect`, `twilio_disconnect`. Rejected rows carry `metadata.reason` (`concurrent_limit`, `agent_prep_timeout`, `realtime_ws_open_failed`, `realtime_stream_timeout`) instead — fetch via `Message/Detail` with the row's `messageguid`. `callerProfile` is the free-form prep summary (`prepSummary`) written by the agent before the audio bridge opens; `null` until prep succeeds.
+| Field | Type | Description |
+|-------|------|-------------|
+| `messageguid` | string | The `agentmessages.guid` row that holds this call. Use it with `Message/Detail` for the full transcript. |
+| `agenttoken` | string | Useragent token. Same value across all rows for a given agent. |
+| `channel` | `"twilio"` \| `"web"` | Which voice surface served the call. |
+| `callsid` | string | Twilio Call SID for `channel: "twilio"`; the internal session id (`voice-call-*`) for `channel: "web"`. |
+| `callerInfo` | object | Twilio rows: `{ number, country }` (E.164 + ISO-2). Web rows: `{ page_url, display_identifier? }` — `display_identifier` is only present when the embedding page validated a phone-style identifier; `page_url` is the page hosting the widget. |
+| `callerProfile` | string \| null | Free-text persona summary written by the prep step (`prepSummary`). `null` when the bridge hasn't finished prep yet. |
+| `status` | string | `realtime_session_incoming` (call accepted, prep in flight) → `realtime_session_active` (audio flowing) → `realtime_session` (completed normally) or `realtime_session_rejected` (rejected before active state, with `metadata.reason`). |
+| `endReason` | string \| null | Set on `realtime_session` rows only. One of: `wiro_completed`, `wiro_cancelled`, `wiro_disconnect`, `wiro_error`, `twilio_disconnect`, `browser_disconnect`, `max_duration`. `null` while the call is still in flight or rejected. |
+| `durationSeconds` | number \| null | Total elapsed seconds. `null` until end. |
+| `modelSlug` | string \| null | Realtime model slug used for this call (e.g. `gpt-realtime-mini`). |
+| `startedAt` / `endedAt` | number \| null | Unix epoch ms. `endedAt` stays `null` until the call finishes or is rejected. |
 
-`callerInfo` shape differs by channel: Twilio rows ship `{ number, country }` (E.164 + ISO-2 country); Web rows ship `{ page_url, display_identifier? }` — `display_identifier` is omitted unless the embedding page passed a validated identifier through `session_metadata`.
-
-Full field reference: [Twilio Voice — Call History](/docs/integration-twiliovoice-skills#call-history).
+Rows are returned newest-first. Rejected sessions (`realtime_session_rejected`) are intermixed and carry `metadata.reason` — visible by reading the same `messageguid` via `Message/Detail` — with values: `concurrent_limit`, `agent_prep_timeout`, `realtime_ws_open_failed`, `realtime_stream_timeout`. Full field reference: [Twilio Voice — Call History](/docs/integration-twiliovoice-skills#call-history).
 
 ### Extra Credit Packs
 
@@ -4092,11 +4495,20 @@ The catalog appears at `agent.extracreditpacks` on `UserAgent/Detail`:
 
 ```json
 "extracreditpacks": [
-  { "packkey": "small",  "credits": 50000,  "priceusd": 450,  "enabled": true },
-  { "packkey": "medium", "credits": 100000, "priceusd": 900,  "enabled": true },
-  { "packkey": "large",  "credits": 200000, "priceusd": 1800, "enabled": true }
+  { "packkey": "small",  "credits": 11250, "priceusd": 450,  "enabled": true },
+  { "packkey": "medium", "credits": 22500, "priceusd": 900,  "enabled": true },
+  { "packkey": "large",  "credits": 45000, "priceusd": 1800, "enabled": true }
 ]
 ```
+
+Each pack carries:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `packkey` | string | The pack identifier — `"small"`, `"medium"`, or `"large"`. Pass this as `pack` in `POST /UserAgent/CreateExtraCreditCheckout`. |
+| `credits` | number | Credit amount this pack adds when purchased. |
+| `priceusd` | number | Pack price in USD (debited from the wallet on purchase). |
+| `enabled` | boolean | Whether the pack is currently purchasable. The list is server-filtered to enabled packs, so every entry here is `true`. |
 
 #### **POST** /UserAgent/CreateExtraCreditCheckout
 
@@ -4105,7 +4517,7 @@ Purchases additional credits for a useragent. The wallet is debited the pack pri
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Your UserAgent instance guid |
-| `pack` | string | Yes | Pack key from `agent.extracreditpacks[].packkey` — `"small"`, `"medium"`, or `"large"`. |
+| `pack` | string | Yes | Pack key from `agent.extracreditpacks[].key` — `"small"`, `"medium"`, or `"large"`. |
 | `useprepaid` | boolean | Yes | Must be `true` for API use. Pays the pack price from your wallet balance. |
 
 ##### Request
@@ -4184,7 +4596,7 @@ API-deployed agents always upgrade through the prepaid path. The endpoint debits
   "tier": "pro",
   "previousTier": "starter",
   "newPriceUsd": 90,
-  "newMonthlyCredits": 10000,
+  "newMonthlyCredits": 2250,
   "proratedCharge": 45.90,
   "errors": []
 }
@@ -4233,7 +4645,7 @@ Called after the subscription has expired (daily cron flipped it to `status: "ex
   "action": "renewed",
   "plan": "agent",
   "amount": 9,
-  "monthlycredits": 1000,
+  "monthlycredits": 225,
   "errors": []
 }
 ```
@@ -4241,7 +4653,7 @@ Called after the subscription has expired (daily cron flipped it to `status: "ex
 - Updates the `subscriptions` row in place: `status: "active"`, `type: "renewal"`, `currentperiodstart: now`, `currentperiodend: now + 30 days`, `pendingdowngrade: null`.
 - Debits `amount` (the snapshot `monthlypriceusd`) from the wallet (caller's personal wallet, or the agent's team wallet if the agent is team-scoped).
 - Zeroes `usedcredits` and stamps the new `creditperiod`. Existing extra credits are preserved.
-- If the agent was in `status: 0` (Stopped) or `5` (Error), it's auto-queued back to `2` (Queued) — the runtime picks it up on the next cycle, no extra `Start` call needed. Statuses `1`/`2`/`3`/`4` are mid-flight and settle on their own.
+- If the agent was in `status: 0` (Stopped) or `5` (Error), it's auto-queued back to `2` (Queued) — the daemon picks it up on the next cycle, no extra `Start` call needed. Statuses `1`/`2`/`3`/`4` are mid-flight and the daemon settles them on its own.
 
 **Common errors:**
 
@@ -4249,7 +4661,7 @@ Called after the subscription has expired (daily cron flipped it to `status: "ex
 |-------|------|
 | `Subscription is already active` | Called on an active subscription with **no** pending cancel (nothing to do) |
 | `No expired subscription found to renew` | No active sub and no expired sub — agent was never subscribed, or data is gone |
-| `Renewal pricing not available` | Resolver couldn't recompute price (skill registry drift); fix the agent's skill set or contact support |
+| `Renewal pricing must be greater than $0. Add at least one paid skill or set agent base price.` | The persisted `monthlypriceusd` snapshot is $0 (custom build with all-free skills); add a paid skill via `SkillsApply` before renewing |
 | `Insufficient wallet balance. Required: $X.XX, Available: $Y.YY` | Wallet (personal or team) can't cover the renewal price |
 
 ##### Full subscription lifecycle (prepaid)
@@ -4294,7 +4706,7 @@ Called after the subscription has expired (daily cron flipped it to `status: "ex
 |-----------|--------|-------|
 | **Tier price** | `agent.tiers.{starter,pro}.price` | Snapshotted on the useragent at deploy as `monthlypriceusd`. Pro = Starter × `tiermultiplier`. |
 | **Monthly credits** | `agent.tiers.{starter,pro}.credits` | Snapshotted on the useragent at deploy as `monthlycredits`. Pro = Starter × `tiermultiplier`. |
-| **Per-action costs** | `peractioncosts` (computed) | `max()` across enabled skills' `pricing.credit_costs`. Same value for Starter and Pro. |
+| **Per-turn token cost** | `tokenRates` (per-model) | Each chat / cron / voice-prep turn deducts credits metered by the tokens its model consumes (1 credit = $0.01). Tier-independent — Pro just buys a larger monthly credit pool. |
 | **Tier multiplier** | `agent.tiermultiplier` | Default `10`. Snapshotted on the useragent at deploy so admin tweaks don't retroactively change live instances (existing instances keep the multiplier they were deployed under). |
 | **Extra credit packs** | `agent.extracreditpacks[]` | Per-useragent — derived as 5x / 10x / 20x of `monthlycredits`. Pro tier only (Starter has empty array). |
 
@@ -4304,13 +4716,13 @@ All API subscriptions use your **prepaid wallet balance**. The cost is deducted 
 
 ### Credit Consumption
 
-Credits are consumed by the agent runtime (container) as it processes messages and generates content — not at `Message/Send` time. The `peractioncosts` object on the useragent declares how many credits each action burns; the container reports usage back to Wiro asynchronously through `POST /UserAgent/CreditSync` (and per-deduction via `POST /UserAgent/TransactionInsert`), which updates `usedcredits` and derives the live `remainingcredits = max(0, monthlycredits + extracredits - usedcredits)`.
+Credits are consumed by the agent runtime (container) as it processes messages and generates content — not at `Message/Send` time. Each turn is billed by **token usage**: the runtime reports the input / output / cached token counts once the turn completes, Wiro meters them against the per-model `tokenRates` (1 credit = $0.01), writes an `action: "tokens"` deduct row, bumps `usedcredits`, and derives the live `remainingcredits = max(0, monthlycredits + extracredits - usedcredits)`. You don't send anything — token billing is fully server-side. Per-turn token counts and cost also ride on each assistant message and arrive over the message WebSocket as an `agent_usage_report` frame (see [Agent Messaging](/docs/agent-messaging) and [Agent WebSocket](/docs/agent-websocket)).
 
-The API-side check is gating only: `POST /UserAgent/Start` and `POST /UserAgent/Message/Send` refuse to launch / accept messages when `remainingcredits <= 0`. During an active session, monthly credits are consumed first; once `usedcredits >= monthlycredits`, extra credits (purchased via `CreateExtraCreditCheckout`) absorb the rest. When both pools are empty, the agent responds `[SYSTEM_CREDIT_LIMIT_REACHED]` and stops processing further actions.
+The API-side check is gating only: `POST /UserAgent/Start` and `POST /UserAgent/Message/Send` refuse to launch / accept messages when `remainingcredits <= 0`, returning an `Agent has no remaining credits…` error plus an `agentbalance` snapshot (`{ monthlycredits, extracredits, usedcredits, remainingcredits }`). During an active session, monthly credits are consumed first; once `usedcredits >= monthlycredits`, extra credits (purchased via `CreateExtraCreditCheckout`) absorb the rest. When both pools are empty the agent stops accepting new turns until the subscription renews or an extra credit pack is bought.
 
 On each billing cycle (subscription renewal) `usedcredits` is reset to zero and `creditperiod` advances to the new `'YYYY-MM'` window; extra-credit purchases simply bump `extracredits` without resetting usage.
 
-For the full audit trail (every credit deduct / grant / purchase / renewal / cancel) call [`POST /UserAgent/TransactionList`](/docs/agent-transactions#post-useragenttransactionlist) — see [Agent Transactions](/docs/agent-transactions).
+For the full audit trail (every token deduct / grant / purchase / renewal / expiry) call [`POST /UserAgent/TransactionList`](/docs/agent-transactions#post-useragenttransactionlist) — see [Agent Transactions](/docs/agent-transactions).
 
 ## Error Messages
 
@@ -4396,7 +4808,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
     "title": "Inbox Watcher",
     "useprepaid": true,
     "tier": "pro",
-    "skills": { "gmail-check": true, "telegram-post": true, "wiro-aimodels": true }
+    "skills": { "int-gmail-check": true, "int-telegram-post": true, "int-wiro-aimodels": true }
   }'
 
 # Live pricing preview before committing a skill change
@@ -4405,7 +4817,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
-    "skillOverrides": { "twitterx-post": true }
+    "skillOverrides": { "int-twitterx-post": true }
   }'
 
 # Cancel a subscription (cancels at end of billing period)
@@ -4587,7 +4999,7 @@ async function main() {
     { limit: 10 }
   );
   catalog.data.agents.forEach(a =>
-    console.log(`${a.title} (${a.slug}) — Starter $${a.tiers.starter.priceUsd}/mo`)
+    console.log(`${a.title} (${a.slug}) — Starter $${a.tiers.starter.price}/mo`)
   );
 
   // Get agent details by slug
@@ -4862,9 +5274,9 @@ Wiro's agent runtime supports two deploy paths:
 | Path | When to use | Endpoint |
 |------|-------------|----------|
 | **Template deploy** | The marketplace already has an agent that does what you need (Instagram Manager, Push Notifications, App Review Support, …). You inherit the template's default skill set + configuration. | `POST /UserAgent/Deploy` with `agentguid` |
-| **Custom build** | You want a unique skill combination — for example a custom support bot that watches Gmail, posts to Telegram, and uses Wiro's image generator. No marketplace template fits. | `POST /UserAgent/Deploy` with `custom: true` |
+| **Custom build** | You want a unique skill combination — for example a custom support bot that watches Gmail, publishes a daily digest to WordPress, and uses Wiro's image generator. No marketplace template fits. | `POST /UserAgent/Deploy` with `custom: true` |
 
-The two paths produce the **same useragent shape** at the end (same `customskills`, `scheduledskills`, `credentials`, `subscription`, `peractioncosts`, etc.). The only differences are:
+The two paths produce the **same useragent shape** at the end (same `customskills`, `scheduledskills`, `credentials`, `subscription`, `tokenRates`, etc.). The only differences are:
 
 | Aspect | Template deploy | Custom build |
 |--------|-----------------|--------------|
@@ -4893,11 +5305,11 @@ Pick the skill names you want to enable. Each skill descriptor tells you:
 
 - `name` — the canonical skill key you'll send in `skills` / `skillOverrides`
 - `category` — `int` (integration with a third-party service) or `util` (utility / rule-only, no credential)
-- `credential_key` — which credential the skill needs (`null` for `util` / platform-managed skills)
+- `credential_key` — which credential the skill needs (`null` for `util` or platform-managed skills)
 - `requires_credentials` — boolean, whether the user must supply a credential before the skill can run
 - `depends_on` — array of skill names that must also be enabled (Wiro auto-enables transitive deps)
 - `conflicts_with` — array of skill names that cannot coexist with this one
-- `pricing` — the per-skill pricing recipe (`monthly_price_weight_usd`, `monthly_credits_weight`, `credit_costs.{message,create,modify,regenerate}` plus optional `realtime` for voice skills)
+- `pricing` — the per-skill pricing recipe (`monthly_price_weight_usd`, `monthly_credits_weight`, `billing_model: "tokens"`)
 
 > **Use [`POST /Skills/Capabilities`](/docs/agent-skills#post-skillscapabilities)** to discover the closed-set capability vocabulary (the high-level tasks skills can perform). Useful when you want to find every skill that can "post-content" or "send-email".
 
@@ -4912,7 +5324,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
   -d '{
     "draft": true,
     "tier": "pro",
-    "skills": ["gmail-check", "telegram-post", "wiro-aimodels"]
+    "skills": ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels"]
   }'
 ```
 
@@ -4924,20 +5336,29 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
   "errors": [],
   "tier": "pro",
   "tiermultiplier": 10,
-  "totalPriceUsd": 90,
-  "totalMonthlyCredits": 10000,
-  "peractioncosts": { "message": 10, "create": 60, "modify": 20, "regenerate": 20 },
+  "totalPriceUsd": 60,
+  "totalMonthlyCredits": 1500,
+  "starterFloorUsd": 4,
   "skillBreakdown": [
-    { "skill": "gmail-check",    "priceUsd": 4, "credits": 400,  "actionCostOverrides": {} },
-    { "skill": "telegram-post",  "priceUsd": 5, "credits": 600,  "actionCostOverrides": { "create": 60 } },
-    { "skill": "wiro-aimodels",  "priceUsd": 0, "credits": 0,    "actionCostOverrides": {} }
+    { "skill": "int-gmail-check",     "priceUsd": 1, "credits": 25,  "billing_model": "tokens" },
+    { "skill": "int-wordpress-post",  "priceUsd": 4, "credits": 100, "billing_model": "tokens" },
+    { "skill": "int-wiro-aimodels",   "priceUsd": 1, "credits": 25,  "billing_model": "tokens" }
   ],
-  "enabledSkills": ["gmail-check", "telegram-post", "wiro-aimodels"],
-  "directSkills":  ["gmail-check", "telegram-post", "wiro-aimodels"],
+  "enabledSkills": ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels"],
+  "directSkills":  ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels"],
   "agentBase": { "priceUsd": 0, "credits": 0 },
+  "tokenRates": {
+    "default_model": "openai/gpt-5.4",
+    "fallback_rate": { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150 },
+    "models": {
+      "openai/gpt-5.4":      { "input_per_1m": 750,  "output_per_1m": 4500, "cached_input_per_1m": 75,   "selectable": true, "label": "GPT-5.4",      "tier": "balanced" },
+      "openai/gpt-5.4-mini": { "input_per_1m": 225,  "output_per_1m": 1350, "cached_input_per_1m": 22.5, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
+      "openai/gpt-5.5":      { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150,  "selectable": true, "label": "GPT-5.5",      "tier": "premium" }
+    }
+  },
   "tiers": {
-    "starter": { "priceUsd": 9,  "credits": 1000 },
-    "pro":     { "priceUsd": 90, "credits": 10000 }
+    "starter": { "priceUsd": 6,  "credits": 150 },
+    "pro":     { "priceUsd": 60, "credits": 1500 }
   }
 }
 ```
@@ -4946,11 +5367,11 @@ Read the response:
 
 - `tiers.starter.priceUsd` and `tiers.pro.priceUsd` → what your wallet will be charged for each tier.
 - `tiers.starter.credits` and `tiers.pro.credits` → monthly credit allocation.
-- `peractioncosts` → how many credits each agent action burns.
+- `tokenRates` → per-model token rates (credits per 1M input / output / cached-input tokens). Each conversation turn is metered against these — see [token billing](/docs/agent-overview#pricing-model--tiers-skills--token-billing).
 - `skillBreakdown[]` → per-skill contribution to the total. Use this to see which skill is the most expensive.
 - `enabledSkills` → final closure (includes any transitively-enabled `depends_on`).
 
-> **`agentBase`** is always `{ priceUsd: 0, credits: 0 }` — pricing is fully skill-driven and the field is kept on the response so callers don't have to null-check. The agent's Starter price = Σ(skill weights), bumped to **$4/month** if the raw sum lands below the floor (credits scale up by the same ratio). Pro = Starter × `tiermultiplier` (default `10`).
+> **`agentBase`** is always `{ priceUsd: 0, credits: 0 }` — pricing is fully skill-driven and the field is kept on the response so callers don't have to null-check. The agent's Starter price = Σ(skill weights), bumped to the **`starterFloorUsd`** floor (**$4/month** by default) if the raw sum lands below it (credits scale up by the same ratio). Pro = Starter × `tiermultiplier` (default `10`). Per-turn conversation cost is metered separately against the agent's `tokenRates` — see [token billing](/docs/agent-overview#pricing-model--tiers-skills--token-billing).
 
 ## Step 3 — Deploy the Custom Agent
 
@@ -4967,9 +5388,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
     "useprepaid": true,
     "tier": "pro",
     "skills": {
-      "gmail-check":    true,
-      "telegram-post":  true,
-      "wiro-aimodels": true
+      "int-gmail-check":    true,
+      "int-wordpress-post":  true,
+      "int-wiro-aimodels": true
     },
     "credentials": {
       "gmail":    { "account": "agent@company.com", "apppassword": "xxxx xxxx xxxx xxxx" },
@@ -5002,14 +5423,22 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
       "description": "Watches inbound Gmail and forwards a summary to Telegram every 4 hours.",
       "tier": "pro",
       "tiermultiplier": 10,
-      "status": 0,
+      "status": 2,
       "setuprequired": false,
-      "monthlycredits": 10000,
-      "monthlypriceusd": 90,
-      "remainingcredits": 10000,
+      "monthlycredits": 1500,
+      "monthlypriceusd": 60,
+      "remainingcredits": 1500,
       "creditperiod": "2026-05",
-      "peractioncosts": { "message": 10, "create": 60, "modify": 20, "regenerate": 20 },
-      "skills": ["gmail-check", "telegram-post", "wiro-aimodels"],
+      "tokenRates": {
+        "default_model": "openai/gpt-5.4",
+        "fallback_rate": { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150 },
+        "models": {
+          "openai/gpt-5.4":      { "input_per_1m": 750,  "output_per_1m": 4500, "cached_input_per_1m": 75,   "selectable": true, "label": "GPT-5.4",      "tier": "balanced" },
+          "openai/gpt-5.4-mini": { "input_per_1m": 225,  "output_per_1m": 1350, "cached_input_per_1m": 22.5, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
+          "openai/gpt-5.5":      { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150,  "selectable": true, "label": "GPT-5.5",      "tier": "premium" }
+        }
+      },
+      "skills": ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels"],
       "customskills": [],
       "scheduledskills": [
         {
@@ -5031,13 +5460,13 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
         "title": "Inbox Watcher",
         "tiermultiplier": 10,
         "tiers": {
-          "starter": { "priceUsd": 9,  "credits": 1000 },
-          "pro":     { "priceUsd": 90, "credits": 10000 }
+          "starter": { "priceUsd": 6,  "credits": 150 },
+          "pro":     { "priceUsd": 60, "credits": 1500 }
         },
         "extracreditpacks": [
-          { "packkey": "small",  "credits": 50000,  "priceusd": 450,  "enabled": true },
-          { "packkey": "medium", "credits": 100000, "priceusd": 900,  "enabled": true },
-          { "packkey": "large",  "credits": 200000, "priceusd": 1800, "enabled": true }
+          { "packkey": "small",  "credits": 7500,  "priceusd": 300,  "enabled": true },
+          { "packkey": "medium", "credits": 15000, "priceusd": 600,  "enabled": true },
+          { "packkey": "large",  "credits": 30000, "priceusd": 1200, "enabled": true }
         ]
       }
     }
@@ -5080,18 +5509,17 @@ The response includes the new pricing snapshot and the prorated wallet debit:
   "result": true,
   "errors": [],
   "tier": "starter",
-  "prepaidWalletDelta": 4.0,
+  "prepaidWalletDelta": 2.0,
   "restartTriggered": true,
   "restartedAt": 1714694520,
   "pricing": {
-    "previousPriceUsd": 27,
-    "newPriceUsd": 33,
-    "deltaUsd": 6,
-    "previousMonthlyCredits": 3500,
-    "newMonthlyCredits": 4000,
-    "deltaCredits": 500,
-    "enabledSkills": ["int-gmail-check", "int-telegram-post", "int-wiro-aimodels", "int-wordpress-post"],
-    "peractioncosts": { "message": 10, "create": 60, "modify": 20, "regenerate": 20 }
+    "previousPriceUsd": 3,
+    "newPriceUsd": 7,
+    "deltaUsd": 4,
+    "previousMonthlyCredits": 75,
+    "newMonthlyCredits": 175,
+    "deltaCredits": 100,
+    "enabledSkills": ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels", "int-instagram-post"]
   }
 }
 ```
@@ -5112,9 +5540,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
     "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000",
     "skills": {
       "int-gmail-check":     true,
-      "int-telegram-post":   true,
-      "int-wiro-aimodels":  true,
       "int-wordpress-post":  true,
+      "int-wiro-aimodels":  true,
+      "int-instagram-post":  true,
       "int-metaads-manage":  false
     }
   }'
@@ -5132,7 +5560,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   "title": "Email Digest Bot",
   "useprepaid": true,
   "tier": "starter",
-  "skills": { "gmail-check": true, "telegram-post": true },
+  "skills": { "int-gmail-check": true, "int-wordpress-post": true },
   "credentials": {
     "gmail":    { "account": "agent@company.com", "apppassword": "xxxx xxxx xxxx xxxx" },
     "telegram": { "bottoken": "123456:ABC-DEF...", "allowedusers": "[\"761381461\"]", "sessionmode": "private" }
@@ -5160,8 +5588,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   "tier": "pro",
   "skills": { "int-wordpress-post": true, "int-wiro-aimodels": true },
   "credentials": {
-    "wordpress": { "url": "https://blog.example.com", "user": "admin", "apppassword": "xxxx xxxx xxxx xxxx" },
-    "var-website":   { "urls": "[{\"websitename\":\"Wired\",\"url\":\"https://www.wired.com/feed/rss\"}]" }
+    "wordpress":   { "url": "https://blog.example.com", "user": "admin", "apppassword": "xxxx xxxx xxxx xxxx" },
+    "var-website": { "urls": "[{\"websitename\":\"Wired\",\"url\":\"https://www.wired.com/feed/rss\"}]" }
   },
   "customskills": [
     {
@@ -5190,17 +5618,17 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   "useprepaid": true,
   "tier": "pro",
   "skills": {
-    "twitterx-post":   true,
-    "instagram-post":  true,
-    "linkedin-post":   true,
-    "facebookpage-post": true,
-    "wiro-aimodels":  true
+    "int-twitterx-post":   true,
+    "int-instagram-post":  true,
+    "int-linkedin-post":   true,
+    "int-facebookpage-post": true,
+    "int-wiro-aimodels":  true
   },
   "credentials": {}
 }
 ```
 
-OAuth providers are connected later via `POST /UserAgentOAuth/OAuthConnect` (the `credentialkey` body parameter selects the provider) — see [Agent Credentials](/docs/agent-credentials).
+OAuth providers are connected later via `POST /UserAgentOAuth/{Provider}Connect` — see [Agent Credentials](/docs/agent-credentials).
 
 ## Subscription & Billing for Custom Builds
 
@@ -5261,6 +5689,7 @@ Every agent message progresses through a defined set of stages:
 | `agent_end` | The agent has finished generating the response. The full output is available in the `response` and `debugoutput` fields. **This is the event you should listen for** to get the final result. |
 | `agent_error` | The agent encountered an error during processing. The `debugoutput` field contains the error message. |
 | `agent_cancel` | The message was cancelled by the user before completion. Only messages in `agent_queue`, `agent_start`, or `agent_output` status can be cancelled. |
+| `agent_done` | **Marker-only terminal status.** Used **exclusively** for `model_change` marker rows (see [Message/History](#post-useragentmessagehistory)) — never for a real user or assistant turn. Normal turns terminate at `agent_end` (or `agent_error` / `agent_cancel`). |
 
 ## **POST** /UserAgent/Message/Send
 
@@ -5274,7 +5703,10 @@ Accepts either `application/json` (text-only) or `multipart/form-data` (text + f
 | `message` | string | Conditional | The user message text. Required unless sending files via multipart. |
 | `sessionkey` | string | No | Session identifier for conversation continuity. Defaults to `"default"`. |
 | `callbackurl` | string | No | Webhook URL — the system will POST the final response to this URL when the agent finishes. |
+| `model` | string | No | Canonical model slug to run **this turn** on (e.g. `"openai/gpt-5.4"`), chosen from the agent's selectable set. Validated server-side — an unknown or non-selectable slug is rejected in `errors[]` and the turn is **not** sent. Omit to use the agent's configured chat model. |
 | `attachment` / `attachments[]` | file | No | Multipart only — one or more file attachments that the agent can process. |
+
+> **Per-turn model selection.** `model` selects the chat model for a single turn instead of the agent's configured default. Valid values are the agent's **selectable** slugs — the `tokenRates.models[]` entries where `selectable` is `true`, returned by `UserAgent/Detail` (see [Agent Overview](/docs/agent-overview)). The selectable slugs are `openai/gpt-5.4`, `openai/gpt-5.4-mini`, `openai/gpt-5.5`, `openai/gpt-5.5-pro`, `openai/gpt-5.2`, `openai/gpt-5.1`, `openai/gpt-5`, and `openai/gpt-5-mini` — read the live set from that field. The server forwards the chosen slug to the agent runtime as the `x-agent-model` and `x-openclaw-model` headers for that turn.
 
 ### Response
 
@@ -5288,7 +5720,7 @@ Accepts either `application/json` (text-only) or `multipart/form-data` (text + f
 }
 ```
 
-> **A successful Send response means the message was accepted and queued — not that it will definitely reach the agent.** After this response the system enqueues the job into Redis/BullMQ for the bridge to pick up. If the enqueue step itself fails (queue backpressure, Redis outage), the message row is flipped to `agent_error` server-side. Always confirm the final state via `POST /UserAgent/Message/Detail` or the WebSocket stream; don't assume the message progresses to `agent_start` just because Send returned `result: true`.
+> **A successful Send response means the message was accepted and queued — not that it will definitely reach the agent.** After this response the system enqueues the job into Redis/BullMQ for the bridge to pick up. If the enqueue step itself fails (queue backpressure, Redis outage), the message row is flipped to `agent_error` server-side **after** the HTTP response was already sent with `result: true`. Always confirm the final state via `POST /UserAgent/Message/Detail` or the WebSocket stream; don't assume the message progresses to `agent_start` just because Send returned `result: true`.
 
 > **Reserved session keys.** The platform reserves a small set of `sessionkey` prefixes for system-managed threads — `wiro:api`, `voice-prep*`, `voice-call-*`, and `cs-cron-*`. Sending a user message into one of these keys is rejected with `Reserved sessionkey` (the same guard that protects `Message/DeleteSession`). Pick any other identifier for your own threads.
 
@@ -5297,6 +5729,30 @@ Accepts either `application/json` (text-only) or `multipart/form-data` (text + f
 | `messageguid` | `string` | Unique identifier for this message. Use it with Detail, History, or Cancel. |
 | `agenttoken` | `string` | Token for WebSocket subscription and polling. Equivalent to `tasktoken` in model runs. |
 | `status` | `string` | Initial status — always `"agent_queue"` on success. |
+| `modelChangeMarker` | `object\|null` | Present **only** when this turn's `model` selects a different chat model than the session was running — i.e. it rotates the model mid-session. Shape: `{ guid, type: "model_change", fromModel, toModel, createdat }`. The platform also writes a matching marker row into history (see [Message/History](#post-useragentmessagehistory)). Absent on turns that keep the session's model. |
+
+> **`model_change` marker.** When `model` rotates the session to a different chat model, the Send response carries a `modelChangeMarker` describing the switch, and a standalone marker row (status `agent_done`) is written into history at the same time:
+>
+> ```json
+> "modelChangeMarker": {
+>   "guid": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+>   "type": "model_change",
+>   "fromModel": "openai/gpt-5.4",
+>   "toModel": "openai/gpt-5.5",
+>   "createdat": 1714694399
+> }
+> ```
+>
+> See [`Message/History`](#post-useragentmessagehistory) for the shape and ordering of the marker row it materializes.
+
+#### Failure responses
+
+When `result: false`, the response shape is `{ result: false, errors: [{ code, message }], messageguid: null, agenttoken: null, status: null }`. Two branches add extra context:
+
+| Failure branch | Extra fields | Notes |
+|----------------|--------------|-------|
+| Agent not running (`status` ≠ 4) | `agentstatus: <int>` | Echoes the current `useragents.status` so the caller can decide whether to wait, call `Start`, or surface "Setup Required" UI. Common codes: `0` initializing, `1` stopping, `2` starting, `3` starting (container booting — wait and retry), `5` upgrading, `6` setup required. |
+| Out of credits | `agentstatus`, `agentbalance: { monthlycredits, extracredits, usedcredits, remainingcredits }` | Returned with the `Agent has no remaining credits…` error. `remainingcredits: 0` is the trigger; surface a "Renew or buy a credit pack" CTA. |
 
 ## **POST** /UserAgent/Message/Detail
 
@@ -5350,7 +5806,15 @@ Retrieves the current status and content of a single message. You can query by e
     "deletestatus": 0,
     "createdat": 1743350400,
     "startedat": 1743350401,
-    "endedat": 1743350408
+    "endedat": 1743350408,
+    "inputtokens": 3450,
+    "outputtokens": 820,
+    "cachereadtokens": 2400,
+    "cachewritetokens": 0,
+    "totaltokens": 4270,
+    "model": "openai/gpt-5.4",
+    "tokencost": 6,
+    "processedms": 4200
   }
 }
 ```
@@ -5372,6 +5836,16 @@ Retrieves the current status and content of a single message. You can query by e
 | `createdat` | `number` | Unix timestamp (epoch seconds) when the message was created. |
 | `startedat` | `number` | Unix timestamp (epoch seconds) when the agent started processing. |
 | `endedat` | `number` | Unix timestamp (epoch seconds) when processing completed. May be empty for `agent_cancel` (cancel only sets `status` and `updatedat`). |
+| `inputtokens` | `number\|null` | Billed input (prompt) tokens for this turn's model call. Populated on the assistant turn once it completes; `null` on user-only, cron, legacy, and `model_change` marker rows. |
+| `outputtokens` | `number\|null` | Billed output (completion) tokens the model generated this turn. `null` on the same non-assistant / marker / legacy rows. |
+| `cachereadtokens` | `number\|null` | Tokens served from the model's prompt cache (billed at the cached-input rate). `0` when the model reported no cache hits; `null` on non-assistant rows. |
+| `cachewritetokens` | `number\|null` | Tokens written to the prompt cache this turn. `0` when none; `null` on non-assistant rows. |
+| `totaltokens` | `number\|null` | Total tokens attributed to the turn. `null` on non-assistant rows. |
+| `model` | `string\|null` | Canonical slug of the chat model that actually ran the turn (e.g. `"openai/gpt-5.4"`), reflecting any per-turn `model` override from Send. `null` on non-assistant / marker / legacy rows. |
+| `tokencost` | `number\|null` | Credits deducted for the turn, derived from the token counts and the model's `tokenRates` (see [Agent Overview](/docs/agent-overview)). `null` on non-assistant rows. |
+| `processedms` | `number\|null` | Wall-clock model processing time for the turn, in milliseconds. `null` on non-assistant rows. |
+
+> **`metadata.tokenCount` vs the billing token columns.** `metadata.tokenCount` is the **live stream counter** emitted inside the `progressGenerate` payload — a running word/token tally for the in-flight response. The flat `inputtokens` / `outputtokens` / `cachereadtokens` / `cachewritetokens` / `totaltokens` / `tokencost` columns are the **final billed usage**, written once the turn completes. They measure different things: use `tokenCount` for a live progress indicator, and the flat columns for accounting and cost.
 
 ## **POST** /UserAgent/Message/History
 
@@ -5426,7 +5900,41 @@ Retrieves conversation history for a specific agent and session. Messages are re
         },
         "attachments": [],
         "deletestatus": 0,
-        "createdat": 1743350400
+        "createdat": 1743350400,
+        "inputtokens": 3450,
+        "outputtokens": 820,
+        "cachereadtokens": 2400,
+        "cachewritetokens": 0,
+        "totaltokens": 4270,
+        "model": "openai/gpt-5.4",
+        "tokencost": 6,
+        "processedms": 4200
+      },
+      {
+        "guid": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+        "uuid": "system",
+        "agenttoken": null,
+        "user": null,
+        "content": "",
+        "response": "",
+        "debugoutput": "",
+        "status": "agent_done",
+        "metadata": {
+          "type": "model_change",
+          "fromModel": "openai/gpt-5.2",
+          "toModel": "openai/gpt-5.4"
+        },
+        "attachments": [],
+        "deletestatus": 0,
+        "createdat": 1743350399,
+        "inputtokens": null,
+        "outputtokens": null,
+        "cachereadtokens": null,
+        "cachewritetokens": null,
+        "totaltokens": null,
+        "model": null,
+        "tokencost": null,
+        "processedms": null
       },
       {
         "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
@@ -5448,10 +5956,18 @@ Retrieves conversation history for a specific agent and session. Messages are re
         "metadata": {},
         "attachments": [],
         "deletestatus": 0,
-        "createdat": 1743350300
+        "createdat": 1743350300,
+        "inputtokens": 1180,
+        "outputtokens": 540,
+        "cachereadtokens": 0,
+        "cachewritetokens": 0,
+        "totaltokens": 1720,
+        "model": "openai/gpt-5.2",
+        "tokencost": 4,
+        "processedms": 3100
       }
     ],
-    "count": 2,
+    "count": 3,
     "hasmore": false
   }
 }
@@ -5463,9 +5979,24 @@ Retrieves conversation history for a specific agent and session. Messages are re
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `messages` | `array` | Array of message objects, newest first. Each row has the **same shape as `Message/Detail`** — including the `uuid` sender, the `agenttoken` (so you can resubscribe over WebSocket if `status` is non-terminal), and the decorated `user` object. |
+| `messages` | `array` | Array of message objects, newest first. Each row has the **same shape as `Message/Detail`** — including the `uuid` sender, the `agenttoken` (so you can resubscribe over WebSocket if `status` is non-terminal), the decorated `user` object, and the per-turn token columns below. The array can also include `model_change` marker rows (see the note under the table). |
 | `count` | `number` | Number of messages in this page. |
 | `hasmore` | `boolean` | `true` if there are older messages available. Pass the last message's `guid` as `before` to fetch the next page. |
+
+Each assistant row also carries the per-turn token-accounting columns, identical to [`Message/Detail`](#post-useragentmessagedetail):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `inputtokens` | `number\|null` | Billed input (prompt) tokens for the turn. `null` on user-only, cron, legacy, and `model_change` marker rows. |
+| `outputtokens` | `number\|null` | Billed output (completion) tokens the model generated. `null` on the same non-assistant / marker / legacy rows. |
+| `cachereadtokens` | `number\|null` | Tokens served from the model's prompt cache. `0` when none; `null` on non-assistant rows. |
+| `cachewritetokens` | `number\|null` | Tokens written to the prompt cache. `0` when none; `null` on non-assistant rows. |
+| `totaltokens` | `number\|null` | Total tokens attributed to the turn. `null` on non-assistant rows. |
+| `model` | `string\|null` | Canonical slug of the chat model that ran the turn. `null` on non-assistant / marker / legacy rows. |
+| `tokencost` | `number\|null` | Credits deducted for the turn. `null` on non-assistant rows. |
+| `processedms` | `number\|null` | Wall-clock model processing time in milliseconds. `null` on non-assistant rows. |
+
+> **`model_change` marker rows.** Switching the chat model (via the [`model`](#post-useragentmessagesend) param) drops a synthetic marker row into history alongside the real turns. A marker row has `status: "agent_done"`, `model: null`, empty `content` / `response` / `debugoutput`, every token column `null`, and `metadata: { "type": "model_change", "fromModel": "…", "toModel": "…" }`. Detect it with `metadata.type === "model_change"` and render it as an inline separator (e.g. "Switched to GPT-5.4") rather than a chat bubble. Its `createdat` is the triggering turn's `createdat` minus one second, so it orders immediately before that turn (in the newest-first response it appears directly after the turn that triggered it).
 
 ### Pagination
 
@@ -5494,7 +6025,7 @@ To paginate through a long conversation:
 
 ## **POST** /UserAgent/Message/Sessions
 
-Lists all conversation sessions for an agent. Returns each session's key, message count, last activity time, and the most recent message content.
+Lists all conversation sessions for an agent. Returns each session's key, message count, last activity time, and the most recent message content. Sorted newest-first by `updatedat`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -5530,7 +6061,11 @@ Lists all conversation sessions for an agent. Returns each session's key, messag
 | `sessionkey` | `string` | The session identifier. |
 | `messagecount` | `number` | Total number of messages in this session. |
 | `updatedat` | `number` | Unix timestamp (epoch seconds) of the last activity in this session. |
-| `lastmessage` | `string` | The content (user message) of the most recent message. |
+| `lastmessage` | `string` | The most recent message body — `agentmessages.content` if the user sent a message, falling back to `agentmessages.response` (assistant reply) when `content` is empty. |
+
+> **Reserved sessionkeys filtered out (non-admin only).** The list omits internal sessions used by the runtime: `wiro:api` (gateway hooks default), `voice-prep*` (per-call prep threads), `voice-call-*` (active voice-call rows), and `cs-cron-*` (one thread per scheduled cron skill). These rows still exist on the agent — they're just hidden from operator-facing listings to keep the panel UX clean. Admin callers (`tokenUserRoles` contains `"ADMIN"`) see the full unfiltered list. The same filter is applied on `Message/History` reads and the `DeleteSession` guard.
+
+> **Marker rows excluded.** `model_change` marker rows are not real turns — they're skipped when building this list, so they never surface as a session's `lastmessage`.
 
 ## **POST** /UserAgent/Message/DeleteSession
 
@@ -5541,7 +6076,7 @@ Deletes messages in the given session for the **calling user**. This action cann
 | `useragentguid` | string | Yes | The agent instance GUID. |
 | `sessionkey` | string | Yes | The session key to delete. |
 
-> **Scope of deletion:** The API matches on both `useragentguid` + `sessionkey` **and** the caller's `uuid`, so only messages the calling user sent/received in this session are removed. In **collaborative** team mode (`teamsessionmode: "collaborative"`, Telegram group-shared sessions), other team members' messages in the same `sessionkey` remain intact — each member must call `DeleteSession` to clear their own share. Admin callers (platform owner) are not subject to this scoping. For private (per-user) sessions this distinction doesn't matter — the caller is the only owner.
+> **Scope of deletion:** Hard delete — the API issues `DELETE FROM agentmessages WHERE useragentid = … AND sessionkey = …`. For non-admin callers an additional `AND uuid = <caller_uuid>` filter is appended, so only the caller's own rows in the session are purged. This holds in both private and collaborative team modes — even when `teamsessionmode: "collaborative"` (e.g. Telegram group-shared sessions) means every member sees the same thread, each member's `DeleteSession` only wipes their own contributions. Admin callers (`tokenUserRoles` contains `"ADMIN"`) bypass the uuid filter and wipe the entire session for every participant. Compare with `Message/Delete` (per-message), which is a soft-delete bumping the `deletestatus` bitmask.
 
 > **Reserved sessionkeys (non-admin callers).** Wiro-API maintains a handful of internal threads keyed under reserved sessionkeys — `voice-prep` and `voice-prep-<sid>` (per-call prep), `voice-call-<sid>` (voice-call bubble rows), `cs-cron-<slug>` (one thread per scheduled cron skill), and `wiro:api` (gateway hooks default). Non-admin callers passing any of these as `sessionkey` get back `"Session not found"` instead of a delete; the response shape is identical to a missing-session result so there's no information leak about what threads exist. Admin (`tokenUserRoles` contains `"ADMIN"`) bypasses this guard. The same guard also covers `Message/History` reads, so `Sessions` already filters these keys out of the operator's session list — you only encounter the reserved-key error if you hand-craft the body with a known internal key.
 
@@ -5654,7 +6189,7 @@ Inserts a finished "system" message into the conversation history without runnin
 - `messageguid` is the inserted row's guid — use it to address the message later via `Message/Detail` or to thread replies.
 - `sessionkey` echoes the resolved session (matters when the caller passed `"auto"` or omitted the field).
 - `agenttoken` is the per-message agent token. The realtime voice bridge subscribes to this token over the [Agent WebSocket](/docs/agent-websocket) to receive POSTCALL hand-off events on the same row.
-- The inserted row carries `status: "agent_end"` (or whatever metadata payload was supplied) so the chat UI renders it as a non-interactive system bubble (no retry / cancel affordances).
+- The inserted row carries `status: "agent_end"` (or `metadata.type: "system"` by default) so the chat UI renders it as a non-interactive system bubble (no retry / cancel affordances).
 
 ## Session Management
 
@@ -6241,7 +6776,8 @@ No API key or auth header is required on the WebSocket itself. Authorization is 
 3. **Subscribe** — send an `agent_info` frame with your `agenttoken`.
 4. **Receive `agent_subscribed`** — the server acknowledges the subscribe and reports the current lifecycle status (plus any already-accumulated `debugoutput`).
 5. **Stream** — listen for `agent_start` → many `agent_output` → `agent_end` / `agent_error` / `agent_cancel`.
-6. **Close** — disconnect after a terminal event, or keep the socket open and subscribe to the next `agenttoken`.
+6. **Receive `agent_usage_report`** — after a successful `agent_end`, a one-shot token-usage/billing frame arrives on the same `agenttoken` (~250–500 ms later). Optional to consume; keep the socket open briefly if you need it.
+7. **Close** — disconnect once you've seen the terminal event (and `agent_usage_report`, if you want it), or keep the socket open and subscribe to the next `agenttoken`.
 
 ### 1. Welcome frame (server → client)
 
@@ -6320,10 +6856,11 @@ Frames flow in two directions. `↓` = server → client, `↑` = client → ser
 | ↓ | `agent_end` | Terminal success event. Same payload shape as `agent_output` but contains the final complete text with total metrics. Emits at most once. |
 | ↓ | `agent_error` | Terminal failure event. `message` is either a sanitized string ("Agent is temporarily unavailable…" when an exception was caught) or a `progressGenerate` object (when the stream finished but content was a degenerate `"..."` / `"Error: internal error"`). Emits at most once. |
 | ↓ | `agent_cancel` | Terminal cancel event. Fires **only** when an already-active message is aborted mid-stream (via `Message/Cancel` or upstream abort). Cancels against a still-queued message do **not** broadcast this event — check `Message/Detail` for those. Emits at most once. |
+| ↓ | `agent_usage_report` | Post-terminal usage/billing frame. Fires once, ~250–500 ms after a successful `agent_end`, on the same `agenttoken`. Carries the final token counts, `model`, `tokencost`, and `remainingcredits` for the message identified by `messageguid`. Not emitted for replayed usage callbacks or for turns with no chat message (cron/hook turns). |
 
 ## Message Format
 
-Every WebSocket frame is a JSON object. All **agent lifecycle frames** (`agent_subscribed` / `agent_start` / `agent_output` / `agent_end` / `agent_error` / `agent_cancel`) share this base shape:
+Every WebSocket frame is a JSON object. All **agent lifecycle frames** (`agent_subscribed` / `agent_start` / `agent_output` / `agent_end` / `agent_error` / `agent_cancel`) — plus the post-terminal `agent_usage_report` frame — share this base shape:
 
 ```json
 {
@@ -6338,8 +6875,8 @@ Every WebSocket frame is a JSON object. All **agent lifecycle frames** (`agent_s
 |---|---|---|
 | `type` | string | Event name. See [Event Types](#event-types) for the full list. |
 | `agenttoken` | string | The token you subscribed with. Present on every agent lifecycle frame so multi-token subscribers can route the event to the right session. |
-| `message` | varies | Empty string (`""`) for `agent_start`, a `progressGenerate` object for `agent_output` / `agent_end` (and for the object-shaped `agent_error`), and a plain string for string-shaped `agent_error` and `agent_cancel`. |
-| `result` | boolean | `true` for success-side events (`agent_subscribed` / `agent_start` / `agent_output` / `agent_end`), `false` for failure-side events (`agent_error` / `agent_cancel`). See [The `result` field](#the-result-field). |
+| `message` | varies | Empty string (`""`) for `agent_start`, a `progressGenerate` object for `agent_output` / `agent_end` (and for the object-shaped `agent_error`), a plain string for string-shaped `agent_error` and `agent_cancel`, and a token-usage object for `agent_usage_report`. |
+| `result` | boolean | `true` for success-side events (`agent_subscribed` / `agent_start` / `agent_output` / `agent_end` / `agent_usage_report`), `false` for failure-side events (`agent_error` / `agent_cancel`). See [The `result` field](#the-result-field). |
 
 The **control frames** (`connected`, `error`) use a different shape with no `agenttoken`:
 
@@ -6393,6 +6930,7 @@ Possible `status` values:
 | `agent_end` | Agent already finished. `debugoutput` contains the complete response. |
 | `agent_error` | Agent encountered an error. `debugoutput` may contain partial output. |
 | `agent_cancel` | Message was cancelled. `debugoutput` may contain partial output. |
+| `agent_done` | Status of a `model_change` marker row — a zero-content separator inserted when the chat model is switched mid-session. It is **only** used for these markers; normal turns terminate at `agent_end` and never carry this status. See [Agent Messaging](/docs/agent-messaging) for model_change markers. |
 | `unknown` | Status could not be determined. Treat as an error. |
 
 ### agent_start
@@ -6527,13 +7065,61 @@ Sent when the user cancels a message before the agent completes its response (on
 
 > The `message` field carries the abort reason from the runtime (typically `"AbortError"` or a short technical string). It is **not a fixed user-facing message** — do not parse it for exact strings; use `type === "agent_cancel"` as the signal. Subscribers that cancel from a queued state will receive no event at all (the message is simply marked `agent_cancel` in the database; check with `POST /UserAgent/Message/Detail`).
 
+### agent_usage_report
+
+A post-terminal frame that reports the final token usage and billing for the turn. It arrives shortly **after** `agent_end` (~250–500 ms later, once the turn's token usage has been metered and billed) on the **same** `agenttoken`-keyed channel as `agent_start` / `agent_output` / `agent_end`. A client already subscribed to the turn receives it automatically — no extra subscribe is needed.
+
+```json
+{
+  "type": "agent_usage_report",
+  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
+  "result": true,
+  "message": {
+    "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+    "inputtokens": 3450,
+    "outputtokens": 820,
+    "cachereadtokens": 2400,
+    "cachewritetokens": 0,
+    "totaltokens": 4270,
+    "model": "openai/gpt-5.4",
+    "tokencost": 6,
+    "processedms": 4200,
+    "remainingcredits": 9994
+  }
+}
+```
+
+The frame's `agenttoken` identifies the turn; the `message.messageguid` identifies the exact assistant message to patch. `result` is always `true`.
+
+| Field | Type | Description |
+|---|---|---|
+| `messageguid` | string | UUID of the assistant message this usage applies to. **Match it to the message row** you want to update. |
+| `inputtokens` | number | Prompt tokens sent to the model for this turn. |
+| `outputtokens` | number | Completion tokens generated by the model. |
+| `cachereadtokens` | number | Prompt tokens served from the provider's prompt cache (billed at the cache-read rate). |
+| `cachewritetokens` | number | Prompt tokens written to the provider's prompt cache during this turn. |
+| `totaltokens` | number | Total billable tokens for the turn. |
+| `model` | string | Provider/model slug used for this turn (e.g. `"openai/gpt-5.4"`). |
+| `tokencost` | number | Credits charged for this turn. |
+| `processedms` | number | Server-side processing time for the turn, in milliseconds. |
+| `remainingcredits` | number | Your account credit balance after this turn was billed. |
+
+Use it to patch the per-message token columns and the live credit balance **without re-fetching `Message/History`**: when the frame arrives, look up the row by `messageguid` and write the token counts, `model`, `tokencost`, and `remainingcredits` straight onto it.
+
+Like `agent_output`, it is a live broadcast — it is **not** replayed to clients that subscribe after it has already fired. If you reconnect after the fact, read usage from `POST /UserAgent/Message/Detail` (or `Message/History`) instead.
+
+It is **not** emitted for:
+
+- **Idempotent / replayed usage callbacks** — a turn is billed once, and a replayed usage callback does not re-broadcast the frame.
+- **Turns with no chat message** — e.g. cron- or hook-triggered turns that produce no assistant message row have no `messageguid` to key on, so no frame is sent.
+
 ## The `result` Field
 
 Every agent lifecycle event includes a `result` boolean:
 
 | Value | Events |
 |---|---|
-| `true` | `agent_subscribed`, `agent_start`, `agent_output`, `agent_end` |
+| `true` | `agent_subscribed`, `agent_start`, `agent_output`, `agent_end`, `agent_usage_report` |
 | `false` | `error`, `agent_error`, `agent_cancel` |
 
 Use `result` to quickly determine whether the event represents a successful state. When `result` is `false`, inspect `message` for error details or cancellation context. The welcome `connected` frame has no `result` field — it's a one-shot ack and always implies success (you got the frame, so the upgrade worked).
@@ -6643,9 +7229,18 @@ ws.onopen = () => {
 ←  agent_output      { message: { raw: "Quantum computing uses", wordCount: 3 } }
 ←  agent_output      { message: { raw: "Quantum computing uses qubits...", wordCount: 28 } }
 ←  agent_end         { message: { raw: "Quantum computing uses qubits that...", wordCount: 118 } }
+←  agent_usage_report { result: true, message: { messageguid: "c3d4...", totaltokens: 4270, remainingcredits: 9994 } }
 ```
 
 `←` = server → client, `→` = client → server. Each `agent_output` contains the full accumulated text. Replace (don't append) your display content on each event.
+
+The full observable wire order for a normal turn is:
+
+```text
+agent_queue  →  agent_start  →  agent_output × N  →  agent_end  →  agent_usage_report
+```
+
+`agent_queue` is **not** a WebSocket frame — it's the `status` returned synchronously in the `Message/Send` response (and reflected by `agent_subscribed` if you subscribe while the message is still queued). Everything from `agent_start` onward is pushed over the socket. On the failure path, `agent_error` or `agent_cancel` takes the place of `agent_end` as the terminal frame, and **no** `agent_usage_report` follows.
 
 ## Code Examples
 
@@ -7117,13 +7712,32 @@ channel.stream.listen((message) {
 }
 ```
 
+**`agent_usage_report`** — post-terminal usage/billing frame, ~250–500 ms after `agent_end`:
+
+```json
+{
+  "type": "agent_usage_report",
+  "agenttoken": "aB3xK9...",
+  "result": true,
+  "message": {
+    "messageguid": "c3d4e5f6-...",
+    "totaltokens": 4270,
+    "model": "openai/gpt-5.4",
+    "tokencost": 6,
+    "remainingcredits": 9994
+  }
+}
+```
+
 ## Connection Keep-Alive
 
-The Wiro WebSocket server sends a ping every **30 seconds** to keep the connection alive. Most standard WebSocket client libraries respond to pings automatically; if your client implements a custom frame handler, make sure it sends a pong within a few seconds of each ping or the server will drop the connection. After `agent_end` / `agent_error` / `agent_cancel`, you can close the socket safely — no more events will be sent for that `agenttoken`.
+The Wiro WebSocket server sends a ping every **30 seconds** to keep the connection alive. Most standard WebSocket client libraries respond to pings automatically; if your client implements a custom frame handler, make sure it sends a pong within a few seconds of each ping or the server will drop the connection. After `agent_error` / `agent_cancel` you can close the socket immediately — those are the last frames for that `agenttoken`. After `agent_end`, one more frame (`agent_usage_report`) follows ~250–500 ms later; wait for it if you need the usage/billing data, otherwise close right away.
 
 ## Correlating Events With Your Messages
 
-Every agent lifecycle frame (`agent_subscribed` / `agent_start` / `agent_output` / `agent_end` / `agent_error` / `agent_cancel`) carries `agenttoken` — this is the **only** correlation key available on the wire. The wire payload does **not** include `messageguid`, `sessionkey`, or `useragentguid`. If you need any of those fields to route events back to a specific message in your UI, build the mapping yourself when you call `Message/Send`.
+Every agent lifecycle frame (`agent_subscribed` / `agent_start` / `agent_output` / `agent_end` / `agent_error` / `agent_cancel`) carries `agenttoken` — this is the **only** correlation key available on the wire. These frames do **not** include `messageguid`, `sessionkey`, or `useragentguid`. If you need any of those fields to route events back to a specific message in your UI, build the mapping yourself when you call `Message/Send`.
+
+The one exception is the post-terminal `agent_usage_report` frame, whose `message.messageguid` does name the message — but it arrives only after `agent_end`, so you still need the `agenttoken → messageguid` mapping to attribute the streaming frames.
 
 ### Why `agenttoken` is the correlation key
 
@@ -7138,7 +7752,7 @@ Every agent lifecycle frame (`agent_subscribed` / `agent_start` / `agent_output`
 2. Store the mapping `agenttoken → messageguid` (or `agenttoken → your UI message id`).
 3. Send `{ "type": "agent_info", "agenttoken }` on an open socket (new or existing — connections can be reused).
 4. In `ws.onmessage`, read `msg.agenttoken` on every agent lifecycle frame, look up your stored mapping, and update the matching UI element.
-5. When you see a terminal event (`agent_end` / `agent_error` / `agent_cancel`), delete the mapping so it doesn't leak memory across sessions.
+5. When the turn ends, delete the mapping so it doesn't leak memory across sessions. For successful turns, wait for the trailing `agent_usage_report` (it arrives ~250–500 ms after `agent_end`) before deleting, so you can attribute the usage to the right message; for `agent_error` / `agent_cancel`, delete immediately — no usage report follows.
 
 ```javascript
 const tokenToMessageId = new Map()
@@ -7171,7 +7785,11 @@ ws.onmessage = (event) => {
       updateUI(uiMessageId, { streaming: msg.message.raw })
       break
     case 'agent_end':
+      // Keep the mapping — agent_usage_report still follows for successful turns.
       updateUI(uiMessageId, { final: msg.message.raw, status: 'agent_end' })
+      break
+    case 'agent_usage_report':
+      updateUI(uiMessageId, { usage: msg.message, remainingCredits: msg.message.remainingcredits })
       tokenToMessageId.delete(msg.agenttoken)
       break
     case 'agent_error':
@@ -7295,6 +7913,7 @@ An `agenttoken` is issued per message by `POST /UserAgent/Message/Send` and stay
 | Worker picks up | Emits `agent_start` to every active subscriber. |
 | Each SSE chunk | Emits `agent_output` to every active subscriber (with full accumulated `raw`). |
 | Stream finishes | Emits `agent_end` (or `agent_error` for `"..."` / internal-error content) with final `progressGenerate` payload; DB row status is updated to terminal. |
+| Usage billed | ~250–500 ms after a successful `agent_end`, emits `agent_usage_report` with final token counts, `model`, `tokencost`, and `remainingcredits`. Not emitted for replayed usage callbacks or for turns with no chat message (cron/hook turns). |
 | Bridge exception | Emits `agent_error` with sanitized string; DB row status → `agent_error`, raw error in `debugoutput`. |
 | `Message/Cancel` during active stream | Bridge aborts, emits `agent_cancel`; DB row status → `agent_cancel`. |
 | `Message/Cancel` while queued | DB row status → `agent_cancel` immediately. **No WebSocket event is broadcast** (the bridge never started). Clients checking via the socket must consult `Message/Detail` for queued-state cancels. |
@@ -7584,7 +8203,7 @@ Each external service is documented as its own **integration page** with the com
 | Write one or more credential fields | [`POST /UserAgent/CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert) |
 | Read version history of a credential | [`POST /UserAgent/CredentialFieldHistory`](/docs/agent-overview#post-useragentcredentialfieldhistory) |
 
-> Read responses from `POST /UserAgent/Detail` / `POST /UserAgent/MyAgents` expose the composed `credentials` tree (each provider with its `_connected` / `optional` / `extra` / `_editable` / `_schema` flags), the `customskills[]` array, the `scheduledskills[]` array (cron skills), the `skills[]` array of enabled skill names, the `peractioncosts` object, and the flat credit fields (`monthlycredits`, `extracredits`, `usedcredits`, `remainingcredits`, `creditperiod`, `creditsyncat`) as **top-level fields** on the useragent object. See [Agent Overview](/docs/agent-overview) for the full endpoint catalog.
+> Read responses from `POST /UserAgent/Detail` / `POST /UserAgent/MyAgents` expose the composed `credentials` tree (each provider with its `_connected` / `optional` / `extra` / `_editable` / `_schema` flags), the `customskills[]` array, the `scheduledskills[]` array (cron skills), the `skills[]` array of enabled skill names, the `tokenRates` + `agentModel` objects, and the flat credit fields (`monthlycredits`, `extracredits`, `usedcredits`, `remainingcredits`, `creditperiod`, `creditsyncat`) as **top-level fields** on the useragent object. See [Agent Overview](/docs/agent-overview) for the full endpoint catalog.
 
 ## Credential Registry Endpoints
 
@@ -7625,7 +8244,7 @@ Lists all credentials in the registry.
           "label": "App ID",
           "required": true,
           "pattern": "^[0-9]+$",
-          "help": "Meta for Developers → My Apps → Create App → copy App ID. Add Facebook Login product and OAuth Redirect URI: https://api.wiro.ai/v1/UserAgentOAuth/IGCallback",
+          "help": "<ol><li>Go to Meta for Developers → My Apps</li><li>Create App → Other → Business</li><li>Copy the App ID from the dashboard</li><li>Add Product → Facebook Login → Set Up</li><li>Add OAuth Redirect URI: https://api.wiro.ai/v1/UserAgentOAuth/IGCallback</li></ol>",
           "oauth_managed": true,
           "only_in_modes": ["own"]
         },
@@ -7635,7 +8254,7 @@ Lists all credentials in the registry.
           "label": "App Secret",
           "required": true,
           "show_toggle": true,
-          "help": "Meta for Developers → App Settings → Basic → Show next to App Secret.",
+          "help": "<ol><li>Meta for Developers → select your app</li><li>App Settings → Basic</li><li>Click Show next to App Secret and copy</li></ol>",
           "oauth_managed": true,
           "only_in_modes": ["own"]
         },
@@ -7679,13 +8298,47 @@ Lists all credentials in the registry.
 | `brand_color` / `brand_text_color` / `brand_logo_filter` | `string\|null` | Brand colours and CSS filter for icon rendering — same shape as on skill registry entries. |
 | `docs_url` | `string\|null` | Slug of the integration page on this docs site. Frontends prefix with `/docs/`. |
 | `credential_mode` | `string` | One of `"oauth"`, `"sa"` (service account), `"api_key"`, `"multi_api_key"`, `"hybrid"` (OAuth + API key fallback), `"imap_credentials"`, `"jwt_sa"`, `"rule_only"`. |
-| `connection_modes` | `array<string>` | Auth modes the credential supports (`["wiro", "own"]` for OAuth, `["api_key"]` for API key, `["sa"]` for service account). Drives the auth-method picker. |
+| `connection_modes` | `array<string>` | The auth modes the credential supports — usually `["wiro", "own"]` for OAuth credentials, `["api_key"]` for API-key credentials, `["sa"]` for service-account credentials. Drives the auth-method picker in the panel. |
 | `wiro_connect_pending` | `boolean` | When `true`, Wiro's shared OAuth client is awaiting provider review. Currently set on 9 credentials: `facebook-pages`, `instagram`, `meta-ads`, `google-ads`, `google-merchant-center`, `youtube`, `ga4`, `linkedin`, `tiktok`. End users see a "Wiro mode coming soon" badge in the connection picker; in the meantime they can connect via **own** mode using their own developer app. The flag does not strip or hide schema fields — both `wiro` and `own` connection modes remain available; the picker (`account_picker`) is shipped intact regardless of this flag. |
-| `credential_schema` | `array<field>` | Per-field schema describing the credential form. Each entry: `{ key, type, label, required, placeholder?, pattern?, help?, options?, default?, show_toggle?, oauth_managed?, auto_filled_by_oauth?, readonly_when_connected?, only_in_modes?, platform_managed?, item_schema?, item_type? }`. `type` enum: `"text"`, `"password"`, `"select"`, `"boolean"`, `"fileinput"` (public asset uploaded via `CredentialFileUpload` multipart — e.g. Twilio `holdaudio`/`holdmusic`), `"fileinput-base64"` (secret stored encrypted at rest, sent inline via `CredentialUpsert` — e.g. Google Drive `serviceaccountjson`, Apple App Store `privatekey`), `"custom"`. |
-| `oauth_provider` | `object\|null` | OAuth wiring when `credential_mode` includes OAuth; `null` for non-OAuth. Sub-fields: `auth_method_value`; `connect_endpoint` / `disconnect_endpoint` / `status_endpoint` (today all OAuth credentials resolve to the unified `/UserAgentOAuth/OAuthConnect`, `/UserAgentOAuth/OAuthDisconnect`, `/UserAgentOAuth/OAuthStatus` paths — the field is kept on the schema for forward-compat with future per-provider overrides); `connect_button_label` / `connect_button_icon` / `connect_button_brand_color` / `connect_button_text_color` / `connect_button_logo_filter`; `username_field`; `return_query_param` / `return_error_param` / `return_error_detail_param`; `account_picker` (`object\|null` — when non-null, indicates a second OAuth step is required to pick an account / page / channel; key fields: `set_endpoint` always `/UserAgentOAuth/SetPickerAccounts`, `multi_select` (`true` for 1+ entries, `false` for exactly one), `item_value_field` / `item_label_field` (which entry keys identify and label each account in the response), `item_fields_to_save` (the fields each entry in the `accounts` body must carry)); `extra_step` (`object\|null`, reserved). |
-| `used_by_skills` | `array<string>` | Skill names that consume this credential. |
+| `credential_schema` | `array<field>` | Per-field schema describing the credential form. Each entry is a `field` object — see below. |
+| `oauth_provider` | `object\|null` | OAuth wiring (endpoints, button styling, picker config) when `credential_mode` includes OAuth. `null` for non-OAuth credentials. See below. |
+| `used_by_skills` | `array<string>` | Skill names that consume this credential — useful for "which skills will this connection enable?" hints. |
 
-**`fieldstatus` values** — `fieldstatus` is **not** part of the registry schema; it's a runtime classification applied to each credential field at write time. It controls who can see the value:
+**`credential_schema[]` field object:**
+
+| Sub-field | Type | Description |
+|-----------|------|-------------|
+| `key` | `string` | Field name (matches the database column under `useragentcredentialfields.fieldname`). |
+| `type` | `string` | Input type: `"text"`, `"password"`, `"select"`, `"boolean"`, `"fileinput"` (public asset, written via `CredentialFileUpload` multipart — e.g. Twilio `holdaudio`/`holdmusic`), `"fileinput-base64"` (secret stored encrypted at rest, sent inline via `CredentialUpsert` — e.g. Google Drive `serviceaccountjson`, Apple App Store `privatekey`), `"custom"`. |
+| `label` | `string` | Display label for the form input. |
+| `required` | `boolean` | Whether the field must be filled before the agent can use the integration. |
+| `placeholder` | `string?` | Placeholder text for the input. |
+| `pattern` | `string?` | Regex the value must satisfy. |
+| `maxlength` / `minlength` | `number?` | Length constraints. |
+| `options` | `array?` | For `type: "select"` — `[{ label, value }]` choices. |
+| `default` | `string?` | Default value applied when the user hasn't set anything yet. |
+| `help` | `string?` | HTML help text rendered under the input. |
+| `show_toggle` | `boolean?` | For `type: "password"` — render a "show / hide" toggle. |
+| `oauth_managed` | `boolean?` | `true` when the field is set as part of the OAuth flow (cannot be edited by the user once connected). |
+| `auto_filled_by_oauth` | `boolean?` | `true` when the OAuth callback writes the value (e.g. `igusername`). |
+| `readonly_when_connected` | `boolean?` | `true` when the field becomes read-only after a successful OAuth connection. |
+| `only_in_modes` | `array<string>?` | When set (e.g. `["own"]`), the field only appears in the listed `authmethod` mode. |
+| `platform_managed` | `boolean?` | `true` when Wiro fills the value server-side (you can't supply it). Currently only the `sys-openai` credential schema flags every field as `platform_managed: true`, which makes the entire credential hidden from `UserAgent/Detail` and `Credentials/List` for non-admin callers. |
+| `item_schema` / `item_type` | `object?` | For array-of-object fields — describes the per-entry shape (e.g. `apple-appstore.apps[].{appname, appid}`). |
+
+**`oauth_provider` object** (present when `credential_mode` includes OAuth):
+
+| Sub-field | Type | Description |
+|-----------|------|-------------|
+| `auth_method_value` | `string` | The literal `authmethod` field value the panel should write to enable Wiro-managed OAuth (typically `"wiro"`). |
+| `connect_endpoint` / `disconnect_endpoint` / `status_endpoint` | `string` | The OAuth endpoints under `/UserAgentOAuth/...` that drive the connect / disconnect / status flow for this provider. Today every OAuth credential resolves to the unified `/UserAgentOAuth/OAuthConnect`, `/UserAgentOAuth/OAuthDisconnect`, `/UserAgentOAuth/OAuthStatus` endpoints — the field is kept on the schema for forward-compat with future per-provider overrides. |
+| `connect_button_label` / `connect_button_icon` / `connect_button_brand_color` / `connect_button_text_color` / `connect_button_logo_filter` | `string` | Branding for the "Connect with X" button. |
+| `username_field` | `string` | The credential field that holds the connected account name (e.g. `"igusername"`, `"channelname"`). |
+| `return_query_param` / `return_error_param` / `return_error_detail_param` | `string` | URL params Wiro appends to the `redirectURL` when the OAuth flow completes (success / error / detail). |
+| `account_picker` | `object\|null` | When non-null, indicates a second OAuth step is required to pick an account / page / channel (e.g. Facebook page picker, YouTube channel picker). Key fields: `set_endpoint` (always `/UserAgentOAuth/SetPickerAccounts`), `multi_select` (`true` when 1+ entries can be picked, `false` for exactly one), `item_value_field` / `item_label_field` (which entry keys identify and label each account in the response), `item_fields_to_save` (the fields each entry in the `accounts` body must carry). |
+| `extra_step` | `object\|null` | Reserved for providers with a third onboarding step beyond OAuth + picker (currently null for every provider). |
+
+**`fieldstatus` values** — note: this is **not** part of the registry schema; it's the runtime classification stamped onto each `useragentcredentialfields` row when it's written. It controls who can see the value:
 
 | Value | Who writes it | Visible to API caller? |
 |-------|---------------|------------------------|
@@ -7699,13 +8352,15 @@ Lists all credentials in the registry.
 
 ### **POST** /Credentials/Detail
 
-Returns a single credential entry by key. The response is the **same full credential entry** as a row from `Credentials/List`.
+Returns a single credential entry by key.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `key` | string | Yes | Canonical credential key (e.g. `"instagram"`, `"google-ads"`, `"telegram"`). |
 
 ##### Response
+
+Returns the **same full credential entry** as a row from `Credentials/List` — every field listed in the table above is present. Example for `key: "instagram"`:
 
 ```json
 {
@@ -7801,7 +8456,7 @@ Returns `{ "result": false, "errors": [{ "code": 404, "message": "Credential not
 
 | Integration | Setup Guide |
 |-------------|-------------|
-| Google Drive | [Google Drive Skills](/docs/integration-googledrive-skills) — `POST /UserAgentOAuth/GoogleDriveListFolders` accepts an optional `parentid` for [recursive folder discovery](/docs/integration-googledrive-skills#listing-subfolders). |
+| Google Drive | [Google Drive Skills](/docs/integration-googledrive-skills) |
 | Google Calendar | [Google Calendar Skills](/docs/integration-google-calendar-skills) |
 | Google Play | [Google Play Skills](/docs/integration-googleplay-skills) |
 
@@ -7820,9 +8475,9 @@ Returns `{ "result": false, "errors": [{ "code": 404, "message": "Credential not
 | Lemlist | [Lemlist Skills](/docs/integration-lemlist-skills) |
 | Brevo | [Brevo Skills](/docs/integration-brevo-skills) |
 | SendGrid | [SendGrid Skills](/docs/integration-sendgrid-skills) |
-| Twilio Voice | [Twilio Voice](/docs/integration-twiliovoice-skills) (includes [Call History](/docs/integration-twiliovoice-skills#call-history) for Twilio + Web sessions) |
+| Twilio Voice | [Twilio Voice](/docs/integration-twiliovoice-skills) |
 | Wiro AI Models | See [Using Wiro AI Models from Your Agent](/docs/agent-skills#using-wiro-ai-models-from-your-agent) |
-| Calendarific | See [Calendarific in your agent](/docs/agent-credentials#calendarific-in-your-agent) |
+| Calendarific | See [Calendarific in your agent](#calendarific-in-your-agent) |
 
 ## Wiro AI Models & Calendarific (User-Provided)
 
@@ -7951,7 +8606,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialFieldHistory" \
 }
 ```
 
-`changedby_user` is the resolved actor object (`uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`). It is `null` when `changedby` is `"system"` (automation / cron) or when the user record has been deleted.
+`changedby_user` is the resolved actor object (`uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`). It is `null` when `changedby` is a sentinel like `"system"` / `"backfill-*"` (cron / migration writes) or when the user record has been deleted.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -8024,9 +8679,8 @@ Your App (Frontend)           Your Backend              Wiro API              Pr
        |                            |                       |                      |
   (1)  | "Connect X" click          |                       |                      |
        |--------------------------->|                       |                      |
-  (2)  |                            |  POST /OAuthConnect-> |                      |
+  (2)  |                            |  POST /{P}Connect --> |                      |
        |                            |  { useragentguid,     |                      |
-       |                            |    credentialkey,     |                      |
        |                            |    redirecturl,       |                      |
        |                            |    authmethod }       |                      |
   (3)  |                            |<-- { authorizeUrl }   |                      |
@@ -8393,9 +9047,9 @@ The two branches are checked together: `setuprequired` stays `true` until every 
 
 ## Security
 
-- **Tokens are stored server-side** by Wiro (one row per field). `TokenRefresh` returns new tokens in its own response.
+- **Tokens are stored server-side** in the normalized `useragentcredentialfields` table (one row per field). `TokenRefresh` returns new tokens in its own response.
 - **`oauth_session` fields are always stripped** from Status, Detail, `MyAgents`, and `CredentialUpsert` responses — `accesstoken`, `refreshtoken`, `tokenexpiresat`, `pageAccessToken` and any similar rows never leave the server.
-- **`platform` fields are stripped for `user` role callers** (default for API keys without ADMIN scope). The `sys-openai` credential is the only one in this bucket today; its fields are invisible in the response.
+- **`platform` fields are stripped for `user` role callers** (default for API keys without ADMIN scope). In practice this currently affects only the `sys-openai` credential — its key never leaves the server. `credentials.wiro.apikey` and `credentials.calendarific.apikey` are user-supplied and appear normally in the response.
 - **`oauth_app` fields (`clientsecret`, `appsecret`) are visible in Detail responses** after an admin / OAuth "own mode" setup writes them. If you build a customer-facing UI on top of this API, treat them as admin-only in your own layer. The append-only credential history redacts `clientsecret` to `[REDACTED]` and always redacts `oauth_session` rows; only the live row can be read.
 - **`fieldstatus` enforces least-privilege writes.** API callers only hold `user` role — they cannot write `oauth_app`, `oauth_session`, `oauth_picker`, `platform`, `computed`, or `control` fields. Attempts to do so return `agent-fieldstatus-not-allowed-for-role` in the `errors[]` array without altering data.
 - The `redirecturl` receives only connection status parameters — no tokens, no secrets.
@@ -8472,7 +9126,7 @@ Configure agent behavior with editable preferences, scheduled automation tasks, 
 | Toggle one or more integration skills (the top-level `skills` array, e.g. `int-instagram-post`) on/off, with optional tier change | [`POST /UserAgent/SkillsApply`](/docs/agent-overview#post-useragentskillsapply) |
 | Live tier-pricing preview for a hypothetical skill set | [`POST /UserAgent/PricingPreview`](/docs/agent-overview#post-useragentpricingpreview) |
 
-> Read responses from `POST /UserAgent/Detail` expose the composed `customskills[]` array (preference skills + non-cron user-created skills), the `scheduledskills[]` array (cron skills), and the `skills[]` array of enabled skill names as top-level fields on the useragent object.
+> Read responses from `POST /UserAgent/Detail` expose the composed `customskills[]` array (preference skills + non-cron user-created skills), the `scheduledskills[]` array (cron skills), and the `skills[]` array as top-level fields on the useragent object. `skills[]` is an **object array** — each entry is `{ name, enabled, _edited?, _user_created? }` (e.g. `[{ "name": "int-instagram-post", "enabled": true }, { "name": "int-wiro-aimodels", "enabled": true }]`).
 
 ## Skill Registry vs Custom Skills
 
@@ -8497,9 +9151,9 @@ Lists all skills in the registry.
 |-----------|------|----------|-------------|
 | `category` | string | No | Filter by `"int"` (integration with a third-party service) or `"util"` (utility / rule-only — no credential, no external API). |
 | `capability` | string | No | Filter by capability key (see [`POST /Skills/Capabilities`](#post-skillscapabilities) for the closed-set vocabulary). |
-| `user_invocable` | boolean | No | When `true`, only return skills end users can call directly through chat (filters out plumbing skills wired by the runtime; currently none in the public catalog). |
+| `user_invocable` | boolean | No | When `true`, only return skills end users can call directly through chat (filters out plumbing skills wired by the runtime). |
 | `requires_credentials` | boolean | No | Filter by whether the skill requires a credential. |
-| `wiro_connect_pending` | boolean | No | Filter by the "Wiro mode coming soon" flag — integrations whose Wiro-shared OAuth client is still awaiting provider review (currently 9 credentials: `facebook-pages`, `instagram`, `meta-ads`, `google-ads`, `google-merchant-center`, `youtube`, `ga4`, `linkedin`, `tiktok`). When `true`, only those skills are returned; when `false`, only ready-to-use skills. |
+| `wiro_connect_pending` | boolean | No | Filter by the "Wiro mode coming soon" flag — integrations whose Wiro-shared OAuth client is still awaiting provider review (currently 9 credentials: `facebook-pages`, `instagram`, `meta-ads`, `google-ads`, `google-merchant-center`, `youtube`, `ga4`, `linkedin`, `tiktok`). When `true`, only those skills are returned; when `false`, only ready-to-use skills. The flag is read off the credential, not the skill — `int-instagram-post` is pending because `instagram` is pending, etc. |
 | `name_in` | array<string> | No | Restrict the response to a specific list of skill names. |
 
 ##### Response
@@ -8531,21 +9185,48 @@ Lists all skills in the registry.
       "replacement": null,
       "pricing": {
         "monthly_price_weight_usd": 1,
-        "monthly_credits_weight": 5,
-        "credit_costs": {
-          "message":    1,
-          "create":     5,
-          "modify":     2,
-          "regenerate": 5,
-          "realtime":   0
-        }
+        "monthly_credits_weight": 25,
+        "billing_model": "tokens"
       }
     }
   ]
 }
 ```
 
-Skill names always carry their registry prefix (`int-*` integration or `util-*` utility / rule-only). `cs-*` and `cs-cron-*` are user-level customskills, not registry rows. `pricing.monthly_price_weight_usd` and `pricing.monthly_credits_weight` are the weights the resolver sums across the enabled-skill closure to compute Starter `monthlypriceusd` / `monthlycredits`; Pro multiplies the totals by `tiermultiplier`. `credit_costs` per action contributes via `max()` to the agent's `peractioncosts`. Voice-realtime skills (`util-voice-receptionist`, `util-voice-call-prep`, `util-web-channel`, `int-twilio-channel`, `int-google-calendar`) also expose a `realtime` action key — credits charged per second of realtime audio session. `additional_credential_keys` appears only on skills that write a secondary credential (currently `int-appstore-reviews` and `int-googleplay-reviews`, both writing the `var-support-email` variable bag).
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | `string` | Canonical skill key, **including the registry prefix** (`int-*` for integration skills, `util-*` for utility / rule-only skills). Use this exact value in `SkillsApply` and `Deploy.body.skills`. |
+| `category` | `string` | `"int"` (third-party integration) or `"util"` (utility / rule-only — no credential, no external API). |
+| `version` | `string` | Semver for the registry entry. Bumped when the skill's tool surface or pricing weights change. |
+| `title` | `string` | Display name shown on chips / filters / cards. |
+| `description` | `string` | One-line summary used on marketing surfaces. |
+| `icon` | `string` | Path or URL to the brand icon (relative paths are absolutized to `https://wiro.ai/...` on the wire). |
+| `brand_color` | `string\|null` | Brand background colour (hex) for chips and cards. |
+| `brand_text_color` | `string\|null` | Foreground colour to render on top of `brand_color`. |
+| `brand_logo_filter` | `string\|null` | CSS `filter` value applied to monochrome SVG icons (e.g. `"brightness(0) invert(1)"`) so the same source SVG renders correctly on light and dark brand colours. |
+| `docs_url` | `string\|null` | Slug or path of the integration page on this docs site. Frontends prefix with `/docs/` when rendering. |
+| `requires_credentials` | `boolean` | `true` when the skill needs a credential the operator must supply (effectively `true` whenever `credential_key` resolves to a non-platform-only credential — currently every credential except `sys-openai`). |
+| `credential_key` | `string\|null` | The provider this skill needs (`"instagram"`, `"google-ads"`, `"wiro"`, `"calendarific"`, …). `null` for `util` skills (rule-only) and the rare skills backed by a platform-only credential like `sys-openai`. Use [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail) to inspect the schema. |
+| `additional_credential_keys` | `array<string>` | **Optional — only present when the skill writes secondary credentials.** App-store / Google-Play review skills include `["var-support-email"]` for the support-email variable bag; most skills omit this field entirely. |
+| `capabilities` | `array<string>` | High-level snake_case capability tags from the closed vocabulary returned by [`POST /Skills/Capabilities`](#post-skillscapabilities). Drives the "Find skills that can: ___" picker. |
+| `depends_on` | `array<string>` | Other skill names that must be enabled. Wiro auto-enables transitive deps when you toggle the parent skill on. |
+| `conflicts_with` | `array<string>` | Mutually-exclusive skill names. `SkillsApply` rejects toggle batches that would enable two conflicting skills. |
+| `user_invocable` | `boolean` | `true` when end users can call the skill via chat. Most user-facing skills (including `int-wiro-aimodels` and `int-calendarific`) are `true`; `false` is reserved for plumbing skills wired by the runtime (currently none in the public catalog). |
+| `deprecated` | `boolean` | `true` for skills slated for removal — `replacement` (if any) names the migration target. |
+| `replacement` | `string\|null` | When `deprecated: true`, the registry-recommended successor skill name. |
+| `pricing` | `object` | Per-skill pricing recipe (see below). |
+
+**`pricing` object:**
+
+| Sub-field | Type | Description |
+|-----------|------|-------------|
+| `monthly_price_weight_usd` | `number` | Weight (USD) the skill contributes to the agent's Starter monthly price. The resolver sums weights across the agent's enabled-skill closure (incl. transitive `depends_on`); Pro multiplies the total by `tiermultiplier`. The platform applies a **$4/month minimum floor** on top of this sum (with credits scaled proportionally) — see Pricing in the [Agent Overview](/docs/agent-overview#pricing-model--tiers-skills--token-billing). |
+| `monthly_credits_weight` | `number` | Weight (credits) the skill contributes to the Starter monthly credit allocation. Same closure + multiplier semantics as price. When the $4 starter floor is applied to `monthly_price_weight_usd`, this weight is scaled up by the same ratio so the user gets a proportional credit boost rather than a free upgrade. |
+| `billing_model` | `string` | Always `"tokens"`. Per-turn conversation cost is token-metered at the agent's per-model `tokenRates` (credits per 1M input / output / cached-input tokens) — see [token billing in the Agent Overview](/docs/agent-overview#pricing-model--tiers-skills--token-billing). Voice skills stream realtime audio through the operator's own Wiro AI Models balance via `int-wiro-aimodels` (your own Wiro API key); only the post-call text turn is a normal token deduct. |
+
+> **4 weight buckets in the skill registry.** Every skill's `monthly_price_weight_usd` / `monthly_credits_weight` pair lands in one of four buckets: `ZERO` (`$0` / `0` — utility / rule-only skills), `LIGHT` (`$1` / `25` credits per month), `HEAVY` (`$2` / `50` credits per month), or `PREMIUM` (`$4` / `100` credits per month). The `(priceUsd, credits)` grid is a documentation convenience — it is **not** a named API constant; each pair emerges from the skill's own `monthly_price_weight_usd` / `monthly_credits_weight`. There are **no per-skill Pro overrides** — Pro is always derived as `Starter × tiermultiplier` (default `10`). The agent's Starter price = `Σ(enabled-skill weights)`, bumped to `$4` if the raw sum lands below the floor (with credits scaled proportionally to keep the per-credit ratio stable); Pro = `Starter × tiermultiplier`.
+
+> **Optional filter `wiro_connect_pending`.** When you query with `wiro_connect_pending: true` you get every skill whose connecting integration's Wiro-shared OAuth client is awaiting App Review — currently the Meta family (`int-instagram-post`, `int-facebookpage-post`, `int-metaads-manage`), `int-linkedin-post`, `int-tiktok-post`, and the `util-*` posting helpers paired with them. Those skills are still usable in **own** mode (your own developer app). The flag itself does not appear on the skill object — it lives on the credential entry under [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail).
 
 ### **POST** /Skills/Detail
 
@@ -8582,20 +9263,14 @@ Returns a single skill by name.
     "replacement": null,
     "pricing": {
       "monthly_price_weight_usd": 1,
-      "monthly_credits_weight": 5,
-      "credit_costs": {
-        "message":    1,
-        "create":     5,
-        "modify":     2,
-        "regenerate": 5,
-        "realtime":   0
-      }
+      "monthly_credits_weight": 25,
+      "billing_model": "tokens"
     }
   }
 }
 ```
 
-Returns the **full registry entry** — same shape as a row from `Skills/List`. Returns `{ "result": false, "errors": [{ "code": 404, "message": "Skill not found: <name>" }] }` if the name is unknown.
+Returns the **full registry entry** — same shape as a row from `Skills/List`. The endpoint surfaces every field the registry has stored; Wiro never trims the response based on caller role. If the skill is not found you get `{ "result": false, "errors": [{ "code": 404, "message": "Skill not found: <name>" }] }`.
 
 ### **POST** /Skills/CredentialSchema
 
@@ -8623,9 +9298,34 @@ Convenience endpoint — returns the credential entry for a given skill name in 
     "connection_modes": ["wiro", "own"],
     "wiro_connect_pending": true,
     "credential_schema": [
-      { "key": "appid",      "type": "text",     "label": "App ID",            "required": true,  "pattern": "^[0-9]+$", "oauth_managed": true, "only_in_modes": ["own"] },
-      { "key": "appsecret",  "type": "password", "label": "App Secret",        "required": true,  "show_toggle": true,   "oauth_managed": true, "only_in_modes": ["own"] },
-      { "key": "igusername", "type": "text",     "label": "Connected Account", "required": false, "auto_filled_by_oauth": true, "readonly_when_connected": true }
+      {
+        "key": "appid",
+        "type": "text",
+        "label": "App ID",
+        "required": true,
+        "pattern": "^[0-9]+$",
+        "help": "<ol><li>Go to Meta for Developers → My Apps</li><li>Create App → Other → Business</li><li>Copy the App ID from the dashboard</li><li>Add Product → Facebook Login → Set Up</li><li>Add OAuth Redirect URI: https://api.wiro.ai/v1/UserAgentOAuth/IGCallback</li></ol>",
+        "oauth_managed": true,
+        "only_in_modes": ["own"]
+      },
+      {
+        "key": "appsecret",
+        "type": "password",
+        "label": "App Secret",
+        "required": true,
+        "show_toggle": true,
+        "help": "<ol><li>Meta for Developers → select your app</li><li>App Settings → Basic</li><li>Show next to App Secret and copy</li></ol>",
+        "oauth_managed": true,
+        "only_in_modes": ["own"]
+      },
+      {
+        "key": "igusername",
+        "type": "text",
+        "label": "Connected Account",
+        "required": false,
+        "auto_filled_by_oauth": true,
+        "readonly_when_connected": true
+      }
     ],
     "oauth_provider": {
       "auth_method_value": "wiro",
@@ -8649,7 +9349,7 @@ Convenience endpoint — returns the credential entry for a given skill name in 
 }
 ```
 
-Returns the **full registry credential entry** — same shape as [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail). Returns `{ "result": false, "errors": [{ "code": 404, "message": "No credential associated with skill: <name>" }] }` if the skill exists but has `credential_key: null` (`util` / platform-managed) or if the skill is unknown.
+Returns the **full registry credential entry** — same shape as a row from [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail). Returns `{ "result": false, "errors": [{ "code": 404, "message": "No credential associated with skill: <name>" }] }` if the skill exists but has `credential_key: null` (`util` / platform-managed) or if the skill is unknown.
 
 ### **POST** /Skills/Capabilities
 
@@ -8721,43 +9421,50 @@ Once you've deployed a useragent, its current custom skills live under `customsk
 { "guid": "your-useragent-guid" }
 ```
 
-**Response** (top-level `customskills` and `scheduledskills` excerpt):
+**Response** (top-level `customskills` and `scheduledskills` excerpt — same shape as on `POST /UserAgent/Detail`):
 
 ```json
 {
   "customskills": [
     {
       "key": "cs-content-tone",
-      "value": "## Brand Voice\nTone: friendly\nTarget Audience: ...\n\n## Content Sources\nPrimary Source: https://your-site.com/feed.xml\n...",
-      "description": "Content strategy, brand voice, and posting rules",
+      "description": "Brand voice + posting rules read by every content-generation skill on this agent.",
+      "value": "## Brand Voice\nTone: friendly, casual, never salesy.\nTarget Audience: indie devs and side-project builders.\n\n## Hashtag Strategy\nMax 3 per post. Always include #BuildInPublic and #Indie.\n\n## Platform Rules\n- Instagram: square images only, carousels for tutorials.\n- Twitter: thread format for posts longer than 200 chars.",
       "enabled": true,
       "interval": null,
       "_source": "preset-strategy",
-      "_editable": true
+      "_editable": true,
+      "_edited": true
     }
   ],
   "scheduledskills": [
     {
       "key": "cs-cron-content-scanner",
-      "value": "",
-      "description": "Content discovery with rotating strategies",
+      "description": "Polls the content sources every 4 hours and queues fresh ideas for the post generator.",
+      "value": "Scan the configured RSS / sitemap sources, dedupe against last 14 days, and queue up to 3 fresh items into the post pipeline.",
       "enabled": true,
       "interval": "0 */4 * * *",
       "_source": "skill-bundle",
-      "_editable": false
+      "_editable": true,
+      "_edited": false
     },
     {
       "key": "cs-cron-weekly-health-check",
-      "value": "Every Monday, check the inbox and report to Telegram.",
-      "description": "User-created cron",
+      "description": "User-created weekly summary cron that posts a Monday recap to Telegram.",
+      "value": "Every Monday at 09:00 UTC, summarize last week's published posts (titles + engagement) and post the recap to Telegram.",
       "enabled": true,
       "interval": "0 9 * * 1",
       "_source": "user-created",
       "_editable": true,
+      "_edited": false,
       "_user_created": true
     }
   ],
-  "skills": ["instagram-post", "wiro-aimodels"]
+  "skills": [
+    { "name": "int-instagram-post", "enabled": true },
+    { "name": "int-googleads-manage", "enabled": false },
+    { "name": "int-wiro-aimodels", "enabled": true }
+  ]
 }
 ```
 
@@ -9030,7 +9737,7 @@ The response carries the post-revert state (`current_value`, `current_interval`,
 
 ## Toggling Integration Skills
 
-The top-level `skills[]` array on `UserAgent/Detail` lists the integration skills currently enabled on the instance as an **object array** — each entry has `{name, enabled, _edited?, _user_created?}` (e.g. `[{"name": "int-instagram-post", "enabled": true}, {"name": "int-googleads-manage", "enabled": true}, {"name": "int-wiro-aimodels", "enabled": true}]`). Read `.name` from each entry when you need just the skill name. To enable, disable, or change tier in one shot, use **`POST /UserAgent/SkillsApply`** — even when you only want to flip a single skill, send it as a one-entry `skills` map. The endpoint:
+The top-level `skills[]` array on `UserAgent/Detail` lists every integration skill on the instance as an **object array** — `[{ name, enabled, _edited?, _user_created? }, ...]`. `enabled: false` entries are still returned (so the IDE can render disabled rows); filter on `enabled: true` to get only the active set. Example: `[{ "name": "int-instagram-post", "enabled": true }, { "name": "int-googleads-manage", "enabled": false }, { "name": "int-wiro-aimodels", "enabled": true }]`. To enable, disable, or change tier in one shot, use **`POST /UserAgent/SkillsApply`** — even when you only want to flip a single skill, send it as a one-entry `skills` map. The endpoint:
 
 1. Charges the wallet (or prorates) **once**, not N times.
 2. Triggers exactly **one container restart** after the new skill set lands.
@@ -9065,7 +9772,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
     "skills": {
       "int-instagram-post": true,
       "int-twitterx-post":  true,
-      "int-telegram-post":  false
+      "int-wordpress-post":  false
     }
   }'
 ```
@@ -9088,8 +9795,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
     "useragentguid": "your-useragent-guid",
     "tier": "pro",
     "skillOverrides": {
-      "twitterx-post": true,
-      "telegram-post": false
+      "int-twitterx-post": true,
+      "int-wordpress-post": false
     }
   }'
 ```
@@ -9103,7 +9810,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
   -d '{
     "draft": true,
     "tier": "starter",
-    "skills": ["gmail-check", "telegram-post"]
+    "skills": ["int-gmail-check", "int-wordpress-post"]
   }'
 ```
 
@@ -9291,7 +9998,6 @@ Skills that depend on third-party credentials. Follow the linked integration pag
 | `int-apollo-sales` | `apollo` (API key) | [Apollo Skills](/docs/integration-apollo-skills) |
 | `int-lemlist-outreach` | `lemlist` (API key) | [Lemlist Skills](/docs/integration-lemlist-skills) |
 | `int-twilio-channel` | `twilio-voice` (API key) | [Twilio Voice](/docs/integration-twiliovoice-skills) |
-| `util-web-channel` | None — browser voice channel, JWT-issued at runtime | [Web Voice](/docs/integration-webvoice-skills) |
 | `int-wiro-aimodels` | `wiro` (your own Wiro project API key) | See [Using Wiro AI Models from Your Agent](#using-wiro-ai-models-from-your-agent) |
 | `int-calendarific` | `calendarific` (API key) | [Calendarific in your agent](/docs/agent-credentials#calendarific-in-your-agent) |
 
@@ -9378,16 +10084,16 @@ Per-instance credit ledger — every credit deduction, renewal, purchase, refund
 
 ## Overview
 
-Wiro keeps a complete, append-only **agent transaction ledger** for every UserAgent instance. Whenever credits move — the agent runtime burns them on a message, a subscription renews, a Pro user buys an extra-credit pack, an admin tops up, the user disables a paid skill mid-period and gets a refund — a row is inserted into the ledger and surfaced through `POST /UserAgent/TransactionList`.
+Wiro keeps a complete, append-only **agent transaction ledger** for every UserAgent instance. Whenever credits move — the agent runtime burns them on a chat turn, a subscription renews, a Pro user buys an extra-credit pack, an admin tops up, the user disables a paid skill mid-period and gets a refund — a row is inserted into the ledger and surfaced through `POST /UserAgent/TransactionList`.
 
 The ledger is the single source of truth for "where did my credits go?" and powers the **Transactions** view in your dashboard.
 
 | Transaction `type` | Source | When it fires |
 |--------------------|--------|---------------|
-| `deduct` | Agent runtime | Every successful agent action (`message`, `create`, `modify`, `regenerate`). Negative `amount`. |
+| `deduct` | Agent runtime | Per-turn LLM token charge (`action: "tokens"`) for every chat, cron, and voice post-call turn. Negative `amount`. |
 | `renewal` | Subscription cron | At each 30-day rollover when the wallet successfully covers the renewal. Positive `amount` = monthly credits granted. |
 | `purchase` | Extra-credit checkout | When `POST /UserAgent/CreateExtraCreditCheckout` (`useprepaid: true`) succeeds. Positive `amount` = pack credits. |
-| `grant` | Skill toggle / admin top-up | When a skill is enabled mid-period (extra credits added), or an admin uses `AdminRateLimitUpdate` to top up. Positive `amount`. |
+| `grant` | Skill toggle / tier upgrade | When a skill is enabled mid-period and the credit pool grows, or when a tier upgrade lifts the monthly allocation. Positive `amount`. |
 | `expired` | Skill toggle / subscription end | Two cases share the type. Mid-period: when a skill is disabled and the credit pool shrinks (`action: "skill-toggle"`). End-of-period: when a cancelled subscription rolls past `currentperiodend` and the cron revokes any remaining monthly leftover (`action: "subscription"`). Negative `amount` in both cases. |
 | `refund` | Server-side refund | Issued by Wiro support when a previous charge is reversed. Positive `amount`. |
 
@@ -9422,23 +10128,35 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
   "errors": [],
   "total": 128,
   "summary": {
-    "monthlycredits": 10000,
+    "monthlycredits": 2250,
     "extracredits": 2000,
     "usedcredits": 1450,
-    "remainingcredits": 10550,
+    "remainingcredits": 2800,
     "creditperiod": "2026-05",
-    "creditsyncat": 1714694410
+    "creditsyncat": 1714694410,
+    "byModel": [
+      { "model": "openai/gpt-5.4", "inputtokens": 128400, "outputtokens": 32100, "cachereadtokens": 86000, "cachewritetokens": 0, "totaltokens": 160500, "tokencost": 240, "turncount": 38 },
+      { "model": "unknown", "inputtokens": 4200, "outputtokens": 900, "cachereadtokens": 0, "cachewritetokens": 0, "totaltokens": 5100, "tokencost": 7, "turncount": 3 }
+    ]
   },
   "transactions": [
     {
       "guid": "7f3e8c21-1be1-4f5a-96e8-2b1a9e2a6a01",
       "type": "deduct",
-      "action": "message",
-      "amount": -10,
-      "balanceafter": 5550,
-      "description": "Agent action: message",
+      "action": "tokens",
+      "amount": -6,
+      "balanceafter": 10550,
+      "description": "Input Tokens: 3450 / Output Tokens: 820 / Model: openai/gpt-5.4",
       "sessionkey": "default",
       "messageguid": "5c41dabf-f2be-4aa8-a5a4-8c9e3d2f3f11",
+      "inputtokens": 3450,
+      "outputtokens": 820,
+      "cachereadtokens": 512,
+      "cachewritetokens": 0,
+      "totaltokens": 4270,
+      "tokencost": 6,
+      "processedms": 4120,
+      "model": "openai/gpt-5.4",
       "provider": "agent",
       "providerref": null,
       "metadata": null,
@@ -9459,10 +10177,18 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "type": "purchase",
       "action": "small",
       "amount": 5000,
-      "balanceafter": 5560,
+      "balanceafter": 10560,
       "description": "Extra credits — small pack",
       "sessionkey": null,
       "messageguid": null,
+      "inputtokens": null,
+      "outputtokens": null,
+      "cachereadtokens": null,
+      "cachewritetokens": null,
+      "totaltokens": null,
+      "tokencost": null,
+      "processedms": null,
+      "model": null,
       "provider": "prepaid",
       "providerref": null,
       "metadata": { "pack": "small", "priceUsd": 45 },
@@ -9482,11 +10208,19 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "guid": "312e2a5f-1002-4c9a-af7d-70571e8b1739",
       "type": "renewal",
       "action": "monthly",
-      "amount": 5000,
-      "balanceafter": 3560,
+      "amount": 10000,
+      "balanceafter": 5560,
       "description": "Subscription renewal",
       "sessionkey": null,
       "messageguid": null,
+      "inputtokens": null,
+      "outputtokens": null,
+      "cachereadtokens": null,
+      "cachewritetokens": null,
+      "totaltokens": null,
+      "tokencost": null,
+      "processedms": null,
+      "model": null,
       "provider": "prepaid",
       "providerref": null,
       "metadata": { "period": "2026-05", "priceUsd": 90 },
@@ -9500,17 +10234,25 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "action": "skill-toggle",
       "amount": 500,
       "balanceafter": 5050,
-      "description": "Skill enabled: instagram-post",
+      "description": "Skill enabled: int-instagram-post",
       "sessionkey": null,
       "messageguid": null,
+      "inputtokens": null,
+      "outputtokens": null,
+      "cachereadtokens": null,
+      "cachewritetokens": null,
+      "totaltokens": null,
+      "tokencost": null,
+      "processedms": null,
+      "model": null,
       "provider": "prepaid",
       "providerref": null,
       "metadata": {
-        "skill": "instagram-post",
+        "skill": "int-instagram-post",
         "enabled": true,
-        "previousPriceUsd": 27,
-        "newPriceUsd": 32,
-        "proratedCharge": 3.33
+        "previousPriceUsd": 90,
+        "newPriceUsd": 140,
+        "proratedCharge": 33.33
       },
       "uuid": "ada-uuid",
       "user": {
@@ -9528,7 +10270,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 }
 ```
 
-> The `user` object is the resolved actor that triggered the ledger entry — `uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`. It is `null` when `uuid` is `"system"` (cron renewals, subscription expiry, automation) or when the user record has been deleted. The renewal row above was written by an automated renewal cron, so `uuid: "system"` and `user: null`.
+> The `user` object is the resolved actor that triggered the ledger entry — `uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`. It is `null` when `uuid` is a sentinel like `"system"` (cron renewals, subscription expiry sweeps, automated platform writes) or when the user record has been deleted. The renewal row above was written by the daily renewal cron, so `uuid: "system"` and `user: null`.
 
 **Summary fields** (snapshot of the useragent row):
 
@@ -9540,6 +10282,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 | `remainingcredits` | `number` | `max(0, monthlycredits + extracredits - usedcredits)`. |
 | `creditperiod` | `string` | `'YYYY-MM'` billing window. Rolls over on subscription renewal. |
 | `creditsyncat` | `number\|null` | Last runtime → API usage sync in Unix seconds. |
+| `byModel` | `array` | Per-model token rollup for the **current billing period**, aggregating only `action: "tokens"` rows, sorted by `tokencost` descending. A `null` or empty `model` is bucketed as `"unknown"`. Each entry: `{ model, inputtokens, outputtokens, cachereadtokens, cachewritetokens, totaltokens, tokencost, turncount }`. |
 
 **Transaction fields:**
 
@@ -9547,12 +10290,20 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 |-------|------|-------------|
 | `guid` | `string` | Stable id of the ledger row. Daemon retries reuse this guid for idempotency. |
 | `type` | `string` | One of `"deduct"`, `"renewal"`, `"purchase"`, `"grant"`, `"expired"`, `"refund"`. There is no `"cancel"` type — a user-initiated subscription cancel only flips auto-renew off; credits are not forfeited until `currentperiodend` is reached, at which point the cron writes the ledger row as `type: "expired"`, `action: "subscription"`. |
-| `action` | `string\|null` | Fine-grained detail. Values depend on `type`: `"message"`, `"create"`, `"modify"`, `"regenerate"` (deduct); `"monthly"` (renewal); `"small"`, `"medium"`, `"large"` (purchase); `"skill-toggle"`, `"admin"`, `"upgrade"` (grant); `"skill-toggle"` (expired, mid-period skill disable); `"subscription"` (expired, end-of-period cancel rollover; refund). |
+| `action` | `string\|null` | Fine-grained detail. Values depend on `type`: `"tokens"` (deduct — the per-turn LLM token charge the runtime writes for every chat, cron, and voice post-call turn); `"monthly"` (renewal); `"small"`, `"medium"`, `"large"` (purchase); `"skill-toggle"`, `"admin"`, `"upgrade"` (grant); `"skill-toggle"` (expired, mid-period skill disable); `"subscription"` (expired, end-of-period cancel rollover; refund). Legacy deduct rows may also carry `"message"`, `"create"`, `"modify"`, or `"regenerate"`. |
 | `amount` | `number` | Signed credit delta — negative for deductions, positive for grants. |
 | `balanceafter` | `number\|null` | Remaining credit balance snapshot written at the time of the event. May be `null` for very old rows or for events written before the snapshot field was added. |
 | `description` | `string\|null` | Human-readable label. |
 | `sessionkey` | `string\|null` | Session the deduct belongs to (deduct rows only). |
 | `messageguid` | `string\|null` | Agent message that triggered the deduct (deduct rows only). |
+| `inputtokens` | `number\|null` | Prompt tokens billed for the turn (`action: "tokens"` rows only). |
+| `outputtokens` | `number\|null` | Completion tokens billed for the turn (`action: "tokens"` rows only). |
+| `cachereadtokens` | `number\|null` | Prompt tokens served from cache for the turn (`action: "tokens"` rows only). |
+| `cachewritetokens` | `number\|null` | Prompt tokens written to cache for the turn (`action: "tokens"` rows only). |
+| `totaltokens` | `number\|null` | Input + output tokens for the turn (`action: "tokens"` rows only). |
+| `tokencost` | `number\|null` | Credit cost for the turn; equals `abs(amount)` (`action: "tokens"` rows only). |
+| `processedms` | `number\|null` | Model processing time for the turn, in milliseconds (`action: "tokens"` rows only). |
+| `model` | `string\|null` | Model id that served the turn, e.g. `"openai/gpt-5.4"` (`action: "tokens"` rows only). |
 | `provider` | `string\|null` | `"agent"` (runtime deduct) or `"prepaid"` (wallet-backed change). API-deployed agents always run on the prepaid path. |
 | `providerref` | `string\|null` | Provider-side reference id. Always populated for `prepaid` rows (wallet transaction id); `null` for `agent` runtime deducts. |
 | `metadata` | `object\|null` | Arbitrary JSON context attached at write time (skill, tier, period, prorated charge, …). |
@@ -9605,92 +10356,13 @@ console.log('Now in period:', summary.creditperiod);
 
 When the user upgrades Starter → Pro mid-period, `UpgradeTier` writes one `grant` row with `action: "upgrade"` and `metadata: { tier, proratedCharge, ... }`. Use this to render an upgrade history in your UI.
 
-## Agent → API Sync (`TransactionInsert`)
-
-Agent runtimes report deductions through a separate authenticated endpoint, **`POST /UserAgent/TransactionInsert`**. API users **don't normally call this** — it's reserved for the Wiro-managed agent runtime. It is documented here for completeness.
-
-The endpoint is **idempotent on `guid`**: a retry of the same deduction event returns the post-merge balance without double-charging.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | Target useragent guid (must match the agent container's settings) |
-| `uuid` | string | Yes | Owner uuid (must match the useragent) |
-| `type` | string | Yes | Must be `"deduct"` (only deductions can be inserted from the agent side) |
-| `action` | string | No | `"message"`, `"create"`, `"modify"`, `"regenerate"` |
-| `amount` | number | Yes | Positive cost or pre-signed negative delta |
-| `guid` | string | No | Daemon-side stable identifier (recommended for idempotency); server mints one if omitted |
-| `sessionkey` | string | No | Session that consumed the credits |
-| `messageguid` | string | No | Message that triggered the deduction |
-| `description` | string | No | Human-readable label |
-| `metadata` | object | No | Arbitrary JSON to record with the row |
-
-##### Response
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "guid": "7f3e8c21-1be1-4f5a-96e8-2b1a9e2a6a01",
-  "idempotent": false,
-  "monthlycredits": 10000,
-  "extracredits": 2000,
-  "usedcredits": 1460,
-  "remainingcredits": 10540
-}
-```
-
-`idempotent: true` means the event guid was already in the ledger — no double-charge happened, and the response carries the **current** balance for the agent to reconcile against.
-
-## Credit Sync (`CreditSync`)
-
-In addition to per-deduction `TransactionInsert` events, the agent container periodically pushes its **monotonic** total `usedcredits` counter via `POST /UserAgent/CreditSync`. This is also a runtime-only endpoint, but useful to understand the data flow.
-
-Server policy:
-
-- Within the same billing period (`creditperiod` matches), the server stores `GREATEST(existing, incoming)` — out-of-order syncs can never lower the counter.
-- If the incoming `creditperiod` doesn't match the DB row (e.g. a renewal already rolled over), the sync is rejected and the response carries the canonical period + counter for the agent to reset its local state.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | Target useragent guid |
-| `uuid` | string | Yes | Owner uuid |
-| `usedcredits` | number | Yes | Total consumed this period (monotonic, >= 0) |
-| `creditperiod` | string | Yes | `'YYYY-MM'` tag this counter applies to |
-
-##### Response — happy path
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "usedcredits": 1460,
-  "creditperiod": "2026-05",
-  "remainingcredits": 5540
-}
-```
-
-##### Response — period mismatch
-
-```json
-{
-  "result": false,
-  "errors": [{ "code": 0, "message": "period mismatch (expected 2026-05, got 2026-04)" }],
-  "usedcredits": 1460,
-  "creditperiod": "2026-05"
-}
-```
-
-The agent runtime is expected to restart and retry on the new period.
-
 ## Errors
 
 | Error | When |
 |-------|------|
-| `useragentguid is required` | `TransactionList` / `TransactionInsert` / `CreditSync` without `useragentguid` |
+| `useragentguid is required` | `TransactionList` without `useragentguid` |
 | `useragent-access-denied` | Caller is neither owner, team member, nor admin |
-| `Only deduct transactions can be inserted from agents` | `TransactionInsert` with `type` other than `"deduct"` |
-| `period mismatch (expected X, got Y)` | `CreditSync` with a stale `creditperiod` after a renewal rollover |
-| `Invalid credentials` | `TransactionInsert` / `CreditSync` with a `(useragentguid, uuid)` pair that doesn't match a row |
+| `Invalid credentials` | API key is missing or doesn't resolve to a valid Wiro user |
 | `transactions-list-failed` | `TransactionList` server-side error (DB) — surfaced loudly so it's distinguishable from "empty ledger" |
 
 ## Code Examples
@@ -9842,7 +10514,7 @@ Every event is a JSON object with this base shape:
 | Field | Type | Description |
 |-------|------|-------------|
 | `ts` | `string` | ISO-8601 UTC datetime when the event was emitted inside the container (e.g. `"2026-05-03T14:00:10.234Z"`). Parse with `Date.parse(ts)` for arithmetic. |
-| `kind` | `string` | Fine-grained event class. One of: `"tool_started"`, `"tool_completed"` (one pair per tool invocation); `"turn_started"`, `"turn_ended"` (an LLM turn boundary); `"cron_started"`, `"cron_finished"` (a scheduled-cron tick); `"session_start"`, `"session_end"` (a chat-session boundary); `"user_message"` (user → agent message); `"agent_reply"` (agent → user reply). |
+| `kind` | `string` | Fine-grained event class. One of: `"tool_started"`, `"tool_completed"` (one pair per tool invocation); `"turn_started"`, `"turn_ended"` (an LLM turn boundary); `"cron_started"`, `"cron_finished"` (a scheduled-cron tick); `"session_start"`, `"session_end"` (a chat-session boundary); `"user_message"` (user → agent message); `"agent_reply"` (agent → user reply); `"token_usage"` (a billed turn's token usage — chat / cron / voice post-call); `"token_usage_idempotent"` (a replayed usage callback, already billed — informational); `"balance_gate_blocked"` (a turn refused because the credit pool was exhausted). |
 | `tool` | `string?` | Present on `tool_started` / `tool_completed`. Tool family — one of: `"read"`, `"write"`, `"edit"`, `"exec"`, `"web_fetch"`, `"web_search"`, `"sessions_spawn"`, `"message"`. |
 | `title` | `string` | Human-readable one-line description of what happened (e.g. `"Posted carousel: \"Brand voice teaser\""`, `"Fetched https://…"`, `"Charged 5 credits · int-wiro-aimodels (create)"`). Always present. |
 | `summary` | `object?` | Structured event-specific payload. Opaque on the wire — render as JSON when expanding the row. Plugin pre-redacts `apikey`, `apppassword`, `clientsecret`, `bearer`, `token`, etc. before writing. Common keys: `url`, `status`, `bytes`, `query`, `resultCount`, `path`, `lines`, `interval`, `trigger`, `messageguid`, `wordCount`, `elapsedTime`. |
@@ -9854,6 +10526,37 @@ Every event is a JSON object with this base shape:
 | `user` | `object\|null` | Resolved actor: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. `null` when `userUuid` is `"system"` (automation / cron) or when the user record was deleted. |
 
 > **What is `summary` for?** Tool calls include the input/output summary (URL, status, bytecount, search query); cron ticks include `{ interval, trigger }`; message events include `{ messageguid, wordCount, elapsedTime }`. Treat the object as opaque and render-on-expand — its shape is plugin-version-specific and is allowed to evolve without a docs revision.
+
+### Token-usage events
+
+A `token_usage` event records the token spend and credit deduction for one billed turn — a chat reply, a cron run, or a voice post-call. A `token_usage_idempotent` event carries the **same shape** for a replayed usage callback that was already billed (informational; it does not deduct again). On top of the base `ActivityEvent` fields, these events add:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `model` | `string` | Canonical model slug that served the turn (e.g. `"openai/gpt-5.4"`). |
+| `tokens` | `object` | Nested token counts in **camelCase**: `{ input, output, cacheRead, cacheWrite, total }` (each an integer). |
+| `tokencost` | `number` | Credits deducted for the turn (1 credit = $0.01). |
+| `durationMs` | `number` | Wall-clock duration of the turn in milliseconds. |
+| `calls` | `number` | Number of LLM calls made during the turn. |
+| `remainingcredits` | `number` | Credit pool remaining after the deduction. |
+
+```json
+{
+  "ts": "2026-05-03T14:02:55.310Z",
+  "kind": "token_usage",
+  "title": "Token usage: 4270 tokens · 6 credits",
+  "model": "openai/gpt-5.4",
+  "tokens": { "input": 3450, "output": 820, "cacheRead": 2400, "cacheWrite": 0, "total": 4270 },
+  "tokencost": 6,
+  "durationMs": 4200,
+  "calls": 2,
+  "remainingcredits": 9994,
+  "userUuid": "system",
+  "user": null
+}
+```
+
+> **Nested vs flat token fields.** The activity-log `token_usage` event nests its counts in **camelCase** under `tokens.{input, output, cacheRead, cacheWrite, total}`. This is distinct from the **flat, lowercase** columns on message rows (`inputtokens`, `outputtokens`, `cachereadtokens`, …). Same underlying data, different shape.
 
 ## **POST** /UserAgent/Logs
 
@@ -9948,18 +10651,17 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Logs" \
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `date` | `string\|null` | The actual date the events were read from (`YYYY-MM-DD`). |
-| `totalLines` | `number` | Total lines in the file (regardless of `lines` cap). |
-| `events` | `array<ActivityEvent>` | Newest events last (ascending by `ts`). The frontend usually reverses for display. |
-
 > **About the `user` field.** Every event is decorated with the resolved actor: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. It is `null` when:
 >
 > - The event was triggered by **automation** — `userUuid: "system"` for cron ticks, scheduled-skill runs, automated deductions, agent-initiated tool calls, and similar non-interactive writes (the three system / cron rows above).
 > - The actor's user record was deleted or the lookup misses for any reason.
 >
-> When the actor cannot be resolved (deleted account, automation), the server falls back to the useragent owner's UUID so the row never renders an empty placeholder.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `date` | `string\|null` | The actual date the events were read from (`YYYY-MM-DD`). |
+| `totalLines` | `number` | Total lines in the file (regardless of `lines` cap). |
+| `events` | `array<ActivityEvent>` | Newest first (descending by `ts`) — `events[0]` is the most recent event; do not re-reverse. |
 
 ## **POST** /UserAgent/LogsList
 
@@ -10004,22 +10706,6 @@ Reads the **full** JSONL file for a specific date and returns every event in it.
   "truncated": false,
   "events": [
     {
-      "ts": "2026-05-02T08:00:00.000Z",
-      "kind": "session_start",
-      "title": "Session started: user-42",
-      "summary": { "sessionkey": "user-42" },
-      "userUuid": "ada-uuid",
-      "user": {
-        "uuid": "ada-uuid",
-        "firstname": "Ada",
-        "lastname": "Lovelace",
-        "email": "ada@example.com",
-        "username": "ada",
-        "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
-        "avatarinitials": "AL"
-      }
-    },
-    {
       "ts": "2026-05-02T08:00:20.142Z",
       "kind": "user_message",
       "title": "User: \"Hi, can you draft a roundup post?\"",
@@ -10034,10 +10720,28 @@ Reads the **full** JSONL file for a specific date and returns every event in it.
         "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
         "avatarinitials": "AL"
       }
+    },
+    {
+      "ts": "2026-05-02T08:00:00.000Z",
+      "kind": "session_start",
+      "title": "Session started: user-42",
+      "summary": { "sessionkey": "user-42" },
+      "userUuid": "ada-uuid",
+      "user": {
+        "uuid": "ada-uuid",
+        "firstname": "Ada",
+        "lastname": "Lovelace",
+        "email": "ada@example.com",
+        "username": "ada",
+        "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
+        "avatarinitials": "AL"
+      }
     }
   ]
 }
 ```
+
+Events are returned **newest first** (descending by `ts`), same as the live tail — `events[0]` is the most recent; do not re-reverse. The `user` field follows the same resolution rules as the live tail above — see the `Logs` section's "About the `user` field" callout.
 
 > **`truncated`** is `true` when the file was capped at the worker's max-line ceiling (~50000 events per file). When `true`, paginate by date — older events for the same day are not retrievable through this endpoint. (Use the live tail with smaller `lines` values for partial reads.)
 
@@ -10084,7 +10788,7 @@ async function pollActivity(useragentguid, onEvents) {
     if (fresh.length === 0) return;
 
     onEvents(fresh);
-    lastTs = Date.parse(fresh[fresh.length - 1].ts);
+    lastTs = Date.parse(fresh[0].ts);
   }, 30_000);
 }
 ```

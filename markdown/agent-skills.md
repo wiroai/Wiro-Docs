@@ -77,14 +77,8 @@ Lists all skills in the registry.
       "replacement": null,
       "pricing": {
         "monthly_price_weight_usd": 1,
-        "monthly_credits_weight": 5,
-        "credit_costs": {
-          "message":    1,
-          "create":     5,
-          "modify":     2,
-          "regenerate": 5,
-          "realtime":   0
-        }
+        "monthly_credits_weight": 25,
+        "billing_model": "tokens"
       }
     }
   ]
@@ -118,11 +112,11 @@ Lists all skills in the registry.
 
 | Sub-field | Type | Description |
 |-----------|------|-------------|
-| `monthly_price_weight_usd` | `number` | Weight (USD) the skill contributes to the agent's Starter monthly price. The resolver sums weights across the agent's enabled-skill closure (incl. transitive `depends_on`); Pro multiplies the total by `tiermultiplier`. The platform applies a **$4/month minimum floor** on top of this sum (with credits scaled proportionally) — see Pricing in the [Agent Overview](/docs/agent-overview#pricing-model--tiers-skills--per-action-costs). |
+| `monthly_price_weight_usd` | `number` | Weight (USD) the skill contributes to the agent's Starter monthly price. The resolver sums weights across the agent's enabled-skill closure (incl. transitive `depends_on`); Pro multiplies the total by `tiermultiplier`. The platform applies a **$4/month minimum floor** on top of this sum (with credits scaled proportionally) — see Pricing in the [Agent Overview](/docs/agent-overview#pricing-model--tiers-skills--token-billing). |
 | `monthly_credits_weight` | `number` | Weight (credits) the skill contributes to the Starter monthly credit allocation. Same closure + multiplier semantics as price. When the $4 starter floor is applied to `monthly_price_weight_usd`, this weight is scaled up by the same ratio so the user gets a proportional credit boost rather than a free upgrade. |
-| `credit_costs` | `object` | Per-action credit weights. Common keys: `message`, `create`, `modify`, `regenerate`. Voice-realtime skills (`util-voice-receptionist`, `util-voice-call-prep`, `util-web-channel`, `int-twilio-channel`, `int-google-calendar`) also expose `realtime` — credits charged per **second of realtime audio session**. The agent's exposed `peractioncosts` is `max()` across enabled skills' `credit_costs` (per action key). Free / utility skills omit non-applicable keys or set zeros. |
+| `billing_model` | `string` | Always `"tokens"`. Per-turn conversation cost is token-metered at the agent's per-model `tokenRates` (credits per 1M input / output / cached-input tokens) — see [token billing in the Agent Overview](/docs/agent-overview#pricing-model--tiers-skills--token-billing). Voice skills stream realtime audio through the operator's own Wiro AI Models balance via `int-wiro-aimodels` (your own Wiro API key); only the post-call text turn is a normal token deduct. |
 
-> **5 weight buckets in the skill registry.** Every skill's `monthly_price_weight_usd` / `monthly_credits_weight` pair lands in one of five buckets: `ZERO` (`$0` / `0` — utility / rule-only skills), `SOCIAL_POST` (`$1` / `5` credits per month — posting-only social helpers), `LIGHT` (`$1` / `25` credits per month), `HEAVY` (`$2` / `50` credits per month), or `PREMIUM` (`$4` / `100` credits per month). There are **no per-skill Pro overrides** — Pro is always derived as `Starter × tiermultiplier` (default `10`). The agent's Starter price = `Σ(enabled-skill weights)`, bumped to `$4` if the raw sum lands below the floor (with credits scaled proportionally to keep the per-credit ratio stable); Pro = `Starter × tiermultiplier`. Per-action `credit_costs` (`message`, `create`, `modify`, `regenerate`, `realtime`) are independent of the monthly weights — they're per-call burn rates, not tier pricing.
+> **4 weight buckets in the skill registry.** Every skill's `monthly_price_weight_usd` / `monthly_credits_weight` pair lands in one of four buckets: `ZERO` (`$0` / `0` — utility / rule-only skills), `LIGHT` (`$1` / `25` credits per month), `HEAVY` (`$2` / `50` credits per month), or `PREMIUM` (`$4` / `100` credits per month). The `(priceUsd, credits)` grid is a documentation convenience — it is **not** a named API constant; each pair emerges from the skill's own `monthly_price_weight_usd` / `monthly_credits_weight`. There are **no per-skill Pro overrides** — Pro is always derived as `Starter × tiermultiplier` (default `10`). The agent's Starter price = `Σ(enabled-skill weights)`, bumped to `$4` if the raw sum lands below the floor (with credits scaled proportionally to keep the per-credit ratio stable); Pro = `Starter × tiermultiplier`.
 
 > **Optional filter `wiro_connect_pending`.** When you query with `wiro_connect_pending: true` you get every skill whose connecting integration's Wiro-shared OAuth client is awaiting App Review — currently the Meta family (`int-instagram-post`, `int-facebookpage-post`, `int-metaads-manage`), `int-linkedin-post`, `int-tiktok-post`, and the `util-*` posting helpers paired with them. Those skills are still usable in **own** mode (your own developer app). The flag itself does not appear on the skill object — it lives on the credential entry under [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail).
 
@@ -161,14 +155,8 @@ Returns a single skill by name.
     "replacement": null,
     "pricing": {
       "monthly_price_weight_usd": 1,
-      "monthly_credits_weight": 5,
-      "credit_costs": {
-        "message":    1,
-        "create":     5,
-        "modify":     2,
-        "regenerate": 5,
-        "realtime":   0
-      }
+      "monthly_credits_weight": 25,
+      "billing_model": "tokens"
     }
   }
 }

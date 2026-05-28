@@ -19,7 +19,8 @@ No API key or auth header is required on the WebSocket itself. Authorization is 
 3. **Subscribe** — send an `agent_info` frame with your `agenttoken`.
 4. **Receive `agent_subscribed`** — the server acknowledges the subscribe and reports the current lifecycle status (plus any already-accumulated `debugoutput`).
 5. **Stream** — listen for `agent_start` → many `agent_output` → `agent_end` / `agent_error` / `agent_cancel`.
-6. **Close** — disconnect after a terminal event, or keep the socket open and subscribe to the next `agenttoken`.
+6. **Receive `agent_usage_report`** — after a successful `agent_end`, a one-shot token-usage/billing frame arrives on the same `agenttoken` (~250–500 ms later). Optional to consume; keep the socket open briefly if you need it.
+7. **Close** — disconnect once you've seen the terminal event (and `agent_usage_report`, if you want it), or keep the socket open and subscribe to the next `agenttoken`.
 
 ### 1. Welcome frame (server → client)
 
@@ -98,10 +99,11 @@ Frames flow in two directions. `↓` = server → client, `↑` = client → ser
 | ↓ | `agent_end` | Terminal success event. Same payload shape as `agent_output` but contains the final complete text with total metrics. Emits at most once. |
 | ↓ | `agent_error` | Terminal failure event. `message` is either a sanitized string ("Agent is temporarily unavailable…" when an exception was caught) or a `progressGenerate` object (when the stream finished but content was a degenerate `"..."` / `"Error: internal error"`). Emits at most once. |
 | ↓ | `agent_cancel` | Terminal cancel event. Fires **only** when an already-active message is aborted mid-stream (via `Message/Cancel` or upstream abort). Cancels against a still-queued message do **not** broadcast this event — check `Message/Detail` for those. Emits at most once. |
+| ↓ | `agent_usage_report` | Post-terminal usage/billing frame. Fires once, ~250–500 ms after a successful `agent_end`, on the same `agenttoken`. Carries the final token counts, `model`, `tokencost`, and `remainingcredits` for the message identified by `messageguid`. Not emitted for replayed usage callbacks or for turns with no chat message (cron/hook turns). |
 
 ## Message Format
 
-Every WebSocket frame is a JSON object. All **agent lifecycle frames** (`agent_subscribed` / `agent_start` / `agent_output` / `agent_end` / `agent_error` / `agent_cancel`) share this base shape:
+Every WebSocket frame is a JSON object. All **agent lifecycle frames** (`agent_subscribed` / `agent_start` / `agent_output` / `agent_end` / `agent_error` / `agent_cancel`) — plus the post-terminal `agent_usage_report` frame — share this base shape:
 
 ```json
 {
@@ -116,8 +118,8 @@ Every WebSocket frame is a JSON object. All **agent lifecycle frames** (`agent_s
 |---|---|---|
 | `type` | string | Event name. See [Event Types](#event-types) for the full list. |
 | `agenttoken` | string | The token you subscribed with. Present on every agent lifecycle frame so multi-token subscribers can route the event to the right session. |
-| `message` | varies | Empty string (`""`) for `agent_start`, a `progressGenerate` object for `agent_output` / `agent_end` (and for the object-shaped `agent_error`), and a plain string for string-shaped `agent_error` and `agent_cancel`. |
-| `result` | boolean | `true` for success-side events (`agent_subscribed` / `agent_start` / `agent_output` / `agent_end`), `false` for failure-side events (`agent_error` / `agent_cancel`). See [The `result` field](#the-result-field). |
+| `message` | varies | Empty string (`""`) for `agent_start`, a `progressGenerate` object for `agent_output` / `agent_end` (and for the object-shaped `agent_error`), a plain string for string-shaped `agent_error` and `agent_cancel`, and a token-usage object for `agent_usage_report`. |
+| `result` | boolean | `true` for success-side events (`agent_subscribed` / `agent_start` / `agent_output` / `agent_end` / `agent_usage_report`), `false` for failure-side events (`agent_error` / `agent_cancel`). See [The `result` field](#the-result-field). |
 
 The **control frames** (`connected`, `error`) use a different shape with no `agenttoken`:
 
@@ -171,6 +173,7 @@ Possible `status` values:
 | `agent_end` | Agent already finished. `debugoutput` contains the complete response. |
 | `agent_error` | Agent encountered an error. `debugoutput` may contain partial output. |
 | `agent_cancel` | Message was cancelled. `debugoutput` may contain partial output. |
+| `agent_done` | Status of a `model_change` marker row — a zero-content separator inserted when the chat model is switched mid-session. It is **only** used for these markers; normal turns terminate at `agent_end` and never carry this status. See [Agent Messaging](/docs/agent-messaging) for model_change markers. |
 | `unknown` | Status could not be determined. Treat as an error. |
 
 ### agent_start
@@ -305,13 +308,61 @@ Sent when the user cancels a message before the agent completes its response (on
 
 > The `message` field carries the abort reason from the runtime (typically `"AbortError"` or a short technical string). It is **not a fixed user-facing message** — do not parse it for exact strings; use `type === "agent_cancel"` as the signal. Subscribers that cancel from a queued state will receive no event at all (the message is simply marked `agent_cancel` in the database; check with `POST /UserAgent/Message/Detail`).
 
+### agent_usage_report
+
+A post-terminal frame that reports the final token usage and billing for the turn. It arrives shortly **after** `agent_end` (~250–500 ms later, once the turn's token usage has been metered and billed) on the **same** `agenttoken`-keyed channel as `agent_start` / `agent_output` / `agent_end`. A client already subscribed to the turn receives it automatically — no extra subscribe is needed.
+
+```json
+{
+  "type": "agent_usage_report",
+  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
+  "result": true,
+  "message": {
+    "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+    "inputtokens": 3450,
+    "outputtokens": 820,
+    "cachereadtokens": 2400,
+    "cachewritetokens": 0,
+    "totaltokens": 4270,
+    "model": "openai/gpt-5.4",
+    "tokencost": 6,
+    "processedms": 4200,
+    "remainingcredits": 9994
+  }
+}
+```
+
+The frame's `agenttoken` identifies the turn; the `message.messageguid` identifies the exact assistant message to patch. `result` is always `true`.
+
+| Field | Type | Description |
+|---|---|---|
+| `messageguid` | string | UUID of the assistant message this usage applies to. **Match it to the message row** you want to update. |
+| `inputtokens` | number | Prompt tokens sent to the model for this turn. |
+| `outputtokens` | number | Completion tokens generated by the model. |
+| `cachereadtokens` | number | Prompt tokens served from the provider's prompt cache (billed at the cache-read rate). |
+| `cachewritetokens` | number | Prompt tokens written to the provider's prompt cache during this turn. |
+| `totaltokens` | number | Total billable tokens for the turn. |
+| `model` | string | Provider/model slug used for this turn (e.g. `"openai/gpt-5.4"`). |
+| `tokencost` | number | Credits charged for this turn. |
+| `processedms` | number | Server-side processing time for the turn, in milliseconds. |
+| `remainingcredits` | number | Your account credit balance after this turn was billed. |
+
+Use it to patch the per-message token columns and the live credit balance **without re-fetching `Message/History`**: when the frame arrives, look up the row by `messageguid` and write the token counts, `model`, `tokencost`, and `remainingcredits` straight onto it.
+
+Like `agent_output`, it is a live broadcast — it is **not** replayed to clients that subscribe after it has already fired. If you reconnect after the fact, read usage from `POST /UserAgent/Message/Detail` (or `Message/History`) instead.
+
+It is **not** emitted for:
+
+- **Idempotent / replayed usage callbacks** — a turn is billed once, and a replayed usage callback does not re-broadcast the frame.
+- **Turns with no chat message** — e.g. cron- or hook-triggered turns that produce no assistant message row have no `messageguid` to key on, so no frame is sent.
+
 ## The `result` Field
 
 Every agent lifecycle event includes a `result` boolean:
 
 | Value | Events |
 |---|---|
-| `true` | `agent_subscribed`, `agent_start`, `agent_output`, `agent_end` |
+| `true` | `agent_subscribed`, `agent_start`, `agent_output`, `agent_end`, `agent_usage_report` |
 | `false` | `error`, `agent_error`, `agent_cancel` |
 
 Use `result` to quickly determine whether the event represents a successful state. When `result` is `false`, inspect `message` for error details or cancellation context. The welcome `connected` frame has no `result` field — it's a one-shot ack and always implies success (you got the frame, so the upgrade worked).
@@ -421,9 +472,18 @@ ws.onopen = () => {
 ←  agent_output      { message: { raw: "Quantum computing uses", wordCount: 3 } }
 ←  agent_output      { message: { raw: "Quantum computing uses qubits...", wordCount: 28 } }
 ←  agent_end         { message: { raw: "Quantum computing uses qubits that...", wordCount: 118 } }
+←  agent_usage_report { result: true, message: { messageguid: "c3d4...", totaltokens: 4270, remainingcredits: 9994 } }
 ```
 
 `←` = server → client, `→` = client → server. Each `agent_output` contains the full accumulated text. Replace (don't append) your display content on each event.
+
+The full observable wire order for a normal turn is:
+
+```text
+agent_queue  →  agent_start  →  agent_output × N  →  agent_end  →  agent_usage_report
+```
+
+`agent_queue` is **not** a WebSocket frame — it's the `status` returned synchronously in the `Message/Send` response (and reflected by `agent_subscribed` if you subscribe while the message is still queued). Everything from `agent_start` onward is pushed over the socket. On the failure path, `agent_error` or `agent_cancel` takes the place of `agent_end` as the terminal frame, and **no** `agent_usage_report` follows.
 
 ## Code Examples
 
@@ -895,13 +955,32 @@ channel.stream.listen((message) {
 }
 ```
 
+**`agent_usage_report`** — post-terminal usage/billing frame, ~250–500 ms after `agent_end`:
+
+```json
+{
+  "type": "agent_usage_report",
+  "agenttoken": "aB3xK9...",
+  "result": true,
+  "message": {
+    "messageguid": "c3d4e5f6-...",
+    "totaltokens": 4270,
+    "model": "openai/gpt-5.4",
+    "tokencost": 6,
+    "remainingcredits": 9994
+  }
+}
+```
+
 ## Connection Keep-Alive
 
-The Wiro WebSocket server sends a ping every **30 seconds** to keep the connection alive. Most standard WebSocket client libraries respond to pings automatically; if your client implements a custom frame handler, make sure it sends a pong within a few seconds of each ping or the server will drop the connection. After `agent_end` / `agent_error` / `agent_cancel`, you can close the socket safely — no more events will be sent for that `agenttoken`.
+The Wiro WebSocket server sends a ping every **30 seconds** to keep the connection alive. Most standard WebSocket client libraries respond to pings automatically; if your client implements a custom frame handler, make sure it sends a pong within a few seconds of each ping or the server will drop the connection. After `agent_error` / `agent_cancel` you can close the socket immediately — those are the last frames for that `agenttoken`. After `agent_end`, one more frame (`agent_usage_report`) follows ~250–500 ms later; wait for it if you need the usage/billing data, otherwise close right away.
 
 ## Correlating Events With Your Messages
 
-Every agent lifecycle frame (`agent_subscribed` / `agent_start` / `agent_output` / `agent_end` / `agent_error` / `agent_cancel`) carries `agenttoken` — this is the **only** correlation key available on the wire. The wire payload does **not** include `messageguid`, `sessionkey`, or `useragentguid`. If you need any of those fields to route events back to a specific message in your UI, build the mapping yourself when you call `Message/Send`.
+Every agent lifecycle frame (`agent_subscribed` / `agent_start` / `agent_output` / `agent_end` / `agent_error` / `agent_cancel`) carries `agenttoken` — this is the **only** correlation key available on the wire. These frames do **not** include `messageguid`, `sessionkey`, or `useragentguid`. If you need any of those fields to route events back to a specific message in your UI, build the mapping yourself when you call `Message/Send`.
+
+The one exception is the post-terminal `agent_usage_report` frame, whose `message.messageguid` does name the message — but it arrives only after `agent_end`, so you still need the `agenttoken → messageguid` mapping to attribute the streaming frames.
 
 ### Why `agenttoken` is the correlation key
 
@@ -916,7 +995,7 @@ Every agent lifecycle frame (`agent_subscribed` / `agent_start` / `agent_output`
 2. Store the mapping `agenttoken → messageguid` (or `agenttoken → your UI message id`).
 3. Send `{ "type": "agent_info", "agenttoken }` on an open socket (new or existing — connections can be reused).
 4. In `ws.onmessage`, read `msg.agenttoken` on every agent lifecycle frame, look up your stored mapping, and update the matching UI element.
-5. When you see a terminal event (`agent_end` / `agent_error` / `agent_cancel`), delete the mapping so it doesn't leak memory across sessions.
+5. When the turn ends, delete the mapping so it doesn't leak memory across sessions. For successful turns, wait for the trailing `agent_usage_report` (it arrives ~250–500 ms after `agent_end`) before deleting, so you can attribute the usage to the right message; for `agent_error` / `agent_cancel`, delete immediately — no usage report follows.
 
 ```javascript
 const tokenToMessageId = new Map()
@@ -949,7 +1028,11 @@ ws.onmessage = (event) => {
       updateUI(uiMessageId, { streaming: msg.message.raw })
       break
     case 'agent_end':
+      // Keep the mapping — agent_usage_report still follows for successful turns.
       updateUI(uiMessageId, { final: msg.message.raw, status: 'agent_end' })
+      break
+    case 'agent_usage_report':
+      updateUI(uiMessageId, { usage: msg.message, remainingCredits: msg.message.remainingcredits })
       tokenToMessageId.delete(msg.agenttoken)
       break
     case 'agent_error':
@@ -1073,6 +1156,7 @@ An `agenttoken` is issued per message by `POST /UserAgent/Message/Send` and stay
 | Worker picks up | Emits `agent_start` to every active subscriber. |
 | Each SSE chunk | Emits `agent_output` to every active subscriber (with full accumulated `raw`). |
 | Stream finishes | Emits `agent_end` (or `agent_error` for `"..."` / internal-error content) with final `progressGenerate` payload; DB row status is updated to terminal. |
+| Usage billed | ~250–500 ms after a successful `agent_end`, emits `agent_usage_report` with final token counts, `model`, `tokencost`, and `remainingcredits`. Not emitted for replayed usage callbacks or for turns with no chat message (cron/hook turns). |
 | Bridge exception | Emits `agent_error` with sanitized string; DB row status → `agent_error`, raw error in `debugoutput`. |
 | `Message/Cancel` during active stream | Bridge aborts, emits `agent_cancel`; DB row status → `agent_cancel`. |
 | `Message/Cancel` while queued | DB row status → `agent_cancel` immediately. **No WebSocket event is broadcast** (the bridge never started). Clients checking via the socket must consult `Message/Detail` for queued-state cancels. |

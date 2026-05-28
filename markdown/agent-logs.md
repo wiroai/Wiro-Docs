@@ -53,7 +53,7 @@ Every event is a JSON object with this base shape:
 | Field | Type | Description |
 |-------|------|-------------|
 | `ts` | `string` | ISO-8601 UTC datetime when the event was emitted inside the container (e.g. `"2026-05-03T14:00:10.234Z"`). Parse with `Date.parse(ts)` for arithmetic. |
-| `kind` | `string` | Fine-grained event class. One of: `"tool_started"`, `"tool_completed"` (one pair per tool invocation); `"turn_started"`, `"turn_ended"` (an LLM turn boundary); `"cron_started"`, `"cron_finished"` (a scheduled-cron tick); `"session_start"`, `"session_end"` (a chat-session boundary); `"user_message"` (user → agent message); `"agent_reply"` (agent → user reply). |
+| `kind` | `string` | Fine-grained event class. One of: `"tool_started"`, `"tool_completed"` (one pair per tool invocation); `"turn_started"`, `"turn_ended"` (an LLM turn boundary); `"cron_started"`, `"cron_finished"` (a scheduled-cron tick); `"session_start"`, `"session_end"` (a chat-session boundary); `"user_message"` (user → agent message); `"agent_reply"` (agent → user reply); `"token_usage"` (a billed turn's token usage — chat / cron / voice post-call); `"token_usage_idempotent"` (a replayed usage callback, already billed — informational); `"balance_gate_blocked"` (a turn refused because the credit pool was exhausted). |
 | `tool` | `string?` | Present on `tool_started` / `tool_completed`. Tool family — one of: `"read"`, `"write"`, `"edit"`, `"exec"`, `"web_fetch"`, `"web_search"`, `"sessions_spawn"`, `"message"`. |
 | `title` | `string` | Human-readable one-line description of what happened (e.g. `"Posted carousel: \"Brand voice teaser\""`, `"Fetched https://…"`, `"Charged 5 credits · int-wiro-aimodels (create)"`). Always present. |
 | `summary` | `object?` | Structured event-specific payload. Opaque on the wire — render as JSON when expanding the row. Plugin pre-redacts `apikey`, `apppassword`, `clientsecret`, `bearer`, `token`, etc. before writing. Common keys: `url`, `status`, `bytes`, `query`, `resultCount`, `path`, `lines`, `interval`, `trigger`, `messageguid`, `wordCount`, `elapsedTime`. |
@@ -65,6 +65,37 @@ Every event is a JSON object with this base shape:
 | `user` | `object\|null` | Resolved actor: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. `null` when `userUuid` is `"system"` (automation / cron) or when the user record was deleted. |
 
 > **What is `summary` for?** Tool calls include the input/output summary (URL, status, bytecount, search query); cron ticks include `{ interval, trigger }`; message events include `{ messageguid, wordCount, elapsedTime }`. Treat the object as opaque and render-on-expand — its shape is plugin-version-specific and is allowed to evolve without a docs revision.
+
+### Token-usage events
+
+A `token_usage` event records the token spend and credit deduction for one billed turn — a chat reply, a cron run, or a voice post-call. A `token_usage_idempotent` event carries the **same shape** for a replayed usage callback that was already billed (informational; it does not deduct again). On top of the base `ActivityEvent` fields, these events add:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `model` | `string` | Canonical model slug that served the turn (e.g. `"openai/gpt-5.4"`). |
+| `tokens` | `object` | Nested token counts in **camelCase**: `{ input, output, cacheRead, cacheWrite, total }` (each an integer). |
+| `tokencost` | `number` | Credits deducted for the turn (1 credit = $0.01). |
+| `durationMs` | `number` | Wall-clock duration of the turn in milliseconds. |
+| `calls` | `number` | Number of LLM calls made during the turn. |
+| `remainingcredits` | `number` | Credit pool remaining after the deduction. |
+
+```json
+{
+  "ts": "2026-05-03T14:02:55.310Z",
+  "kind": "token_usage",
+  "title": "Token usage: 4270 tokens · 6 credits",
+  "model": "openai/gpt-5.4",
+  "tokens": { "input": 3450, "output": 820, "cacheRead": 2400, "cacheWrite": 0, "total": 4270 },
+  "tokencost": 6,
+  "durationMs": 4200,
+  "calls": 2,
+  "remainingcredits": 9994,
+  "userUuid": "system",
+  "user": null
+}
+```
+
+> **Nested vs flat token fields.** The activity-log `token_usage` event nests its counts in **camelCase** under `tokens.{input, output, cacheRead, cacheWrite, total}`. This is distinct from the **flat, lowercase** columns on message rows (`inputtokens`, `outputtokens`, `cachereadtokens`, …). Same underlying data, different shape.
 
 ## **POST** /UserAgent/Logs
 
@@ -169,7 +200,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Logs" \
 |-------|------|-------------|
 | `date` | `string\|null` | The actual date the events were read from (`YYYY-MM-DD`). |
 | `totalLines` | `number` | Total lines in the file (regardless of `lines` cap). |
-| `events` | `array<ActivityEvent>` | Newest events last (ascending by `ts`). The frontend usually reverses for display. |
+| `events` | `array<ActivityEvent>` | Newest first (descending by `ts`) — `events[0]` is the most recent event; do not re-reverse. |
 
 ## **POST** /UserAgent/LogsList
 
@@ -214,10 +245,10 @@ Reads the **full** JSONL file for a specific date and returns every event in it.
   "truncated": false,
   "events": [
     {
-      "ts": "2026-05-02T08:00:00.000Z",
-      "kind": "session_start",
-      "title": "Session started: user-42",
-      "summary": { "sessionkey": "user-42" },
+      "ts": "2026-05-02T08:00:20.142Z",
+      "kind": "user_message",
+      "title": "User: \"Hi, can you draft a roundup post?\"",
+      "summary": { "messageguid": "5c41dabf-…", "wordCount": 8 },
       "userUuid": "ada-uuid",
       "user": {
         "uuid": "ada-uuid",
@@ -230,10 +261,10 @@ Reads the **full** JSONL file for a specific date and returns every event in it.
       }
     },
     {
-      "ts": "2026-05-02T08:00:20.142Z",
-      "kind": "user_message",
-      "title": "User: \"Hi, can you draft a roundup post?\"",
-      "summary": { "messageguid": "5c41dabf-…", "wordCount": 8 },
+      "ts": "2026-05-02T08:00:00.000Z",
+      "kind": "session_start",
+      "title": "Session started: user-42",
+      "summary": { "sessionkey": "user-42" },
       "userUuid": "ada-uuid",
       "user": {
         "uuid": "ada-uuid",
@@ -249,7 +280,7 @@ Reads the **full** JSONL file for a specific date and returns every event in it.
 }
 ```
 
-The `user` field follows the same resolution rules as the live tail above — see the `Logs` section's "About the `user` field" callout.
+Events are returned **newest first** (descending by `ts`), same as the live tail — `events[0]` is the most recent; do not re-reverse. The `user` field follows the same resolution rules as the live tail above — see the `Logs` section's "About the `user` field" callout.
 
 > **`truncated`** is `true` when the file was capped at the worker's max-line ceiling (~50000 events per file). When `true`, paginate by date — older events for the same day are not retrievable through this endpoint. (Use the live tail with smaller `lines` values for partial reads.)
 
@@ -296,7 +327,7 @@ async function pollActivity(useragentguid, onEvents) {
     if (fresh.length === 0) return;
 
     onEvents(fresh);
-    lastTs = Date.parse(fresh[fresh.length - 1].ts);
+    lastTs = Date.parse(fresh[0].ts);
   }, 30_000);
 }
 ```

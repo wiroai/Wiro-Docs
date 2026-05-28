@@ -29,6 +29,7 @@ Every agent message progresses through a defined set of stages:
 | `agent_end` | The agent has finished generating the response. The full output is available in the `response` and `debugoutput` fields. **This is the event you should listen for** to get the final result. |
 | `agent_error` | The agent encountered an error during processing. The `debugoutput` field contains the error message. |
 | `agent_cancel` | The message was cancelled by the user before completion. Only messages in `agent_queue`, `agent_start`, or `agent_output` status can be cancelled. |
+| `agent_done` | **Marker-only terminal status.** Used **exclusively** for `model_change` marker rows (see [Message/History](#post-useragentmessagehistory)) — never for a real user or assistant turn. Normal turns terminate at `agent_end` (or `agent_error` / `agent_cancel`). |
 
 ## **POST** /UserAgent/Message/Send
 
@@ -42,7 +43,10 @@ Accepts either `application/json` (text-only) or `multipart/form-data` (text + f
 | `message` | string | Conditional | The user message text. Required unless sending files via multipart. |
 | `sessionkey` | string | No | Session identifier for conversation continuity. Defaults to `"default"`. |
 | `callbackurl` | string | No | Webhook URL — the system will POST the final response to this URL when the agent finishes. |
+| `model` | string | No | Canonical model slug to run **this turn** on (e.g. `"openai/gpt-5.4"`), chosen from the agent's selectable set. Validated server-side — an unknown or non-selectable slug is rejected in `errors[]` and the turn is **not** sent. Omit to use the agent's configured chat model. |
 | `attachment` / `attachments[]` | file | No | Multipart only — one or more file attachments that the agent can process. |
+
+> **Per-turn model selection.** `model` selects the chat model for a single turn instead of the agent's configured default. Valid values are the agent's **selectable** slugs — the `tokenRates.models[]` entries where `selectable` is `true`, returned by `UserAgent/Detail` (see [Agent Overview](/docs/agent-overview)). The selectable slugs are `openai/gpt-5.4`, `openai/gpt-5.4-mini`, `openai/gpt-5.5`, `openai/gpt-5.5-pro`, `openai/gpt-5.2`, `openai/gpt-5.1`, `openai/gpt-5`, and `openai/gpt-5-mini` — read the live set from that field. The server forwards the chosen slug to the agent runtime as the `x-agent-model` and `x-openclaw-model` headers for that turn.
 
 ### Response
 
@@ -65,6 +69,21 @@ Accepts either `application/json` (text-only) or `multipart/form-data` (text + f
 | `messageguid` | `string` | Unique identifier for this message. Use it with Detail, History, or Cancel. |
 | `agenttoken` | `string` | Token for WebSocket subscription and polling. Equivalent to `tasktoken` in model runs. |
 | `status` | `string` | Initial status — always `"agent_queue"` on success. |
+| `modelChangeMarker` | `object\|null` | Present **only** when this turn's `model` selects a different chat model than the session was running — i.e. it rotates the model mid-session. Shape: `{ guid, type: "model_change", fromModel, toModel, createdat }`. The platform also writes a matching marker row into history (see [Message/History](#post-useragentmessagehistory)). Absent on turns that keep the session's model. |
+
+> **`model_change` marker.** When `model` rotates the session to a different chat model, the Send response carries a `modelChangeMarker` describing the switch, and a standalone marker row (status `agent_done`) is written into history at the same time:
+>
+> ```json
+> "modelChangeMarker": {
+>   "guid": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+>   "type": "model_change",
+>   "fromModel": "openai/gpt-5.4",
+>   "toModel": "openai/gpt-5.5",
+>   "createdat": 1714694399
+> }
+> ```
+>
+> See [`Message/History`](#post-useragentmessagehistory) for the shape and ordering of the marker row it materializes.
 
 #### Failure responses
 
@@ -73,7 +92,7 @@ When `result: false`, the response shape is `{ result: false, errors: [{ code, m
 | Failure branch | Extra fields | Notes |
 |----------------|--------------|-------|
 | Agent not running (`status` ≠ 4) | `agentstatus: <int>` | Echoes the current `useragents.status` so the caller can decide whether to wait, call `Start`, or surface "Setup Required" UI. Common codes: `0` initializing, `1` stopping, `2` starting, `3` starting (container booting — wait and retry), `5` upgrading, `6` setup required. |
-| Out of credits | `agentstatus`, `agentbalance: { monthlycredits, extracredits, usedcredits, remainingcredits }` | `remainingcredits: 0` is the trigger; surface a "Renew or buy a credit pack" CTA. |
+| Out of credits | `agentstatus`, `agentbalance: { monthlycredits, extracredits, usedcredits, remainingcredits }` | Returned with the `Agent has no remaining credits…` error. `remainingcredits: 0` is the trigger; surface a "Renew or buy a credit pack" CTA. |
 
 ## **POST** /UserAgent/Message/Detail
 
@@ -127,7 +146,15 @@ Retrieves the current status and content of a single message. You can query by e
     "deletestatus": 0,
     "createdat": 1743350400,
     "startedat": 1743350401,
-    "endedat": 1743350408
+    "endedat": 1743350408,
+    "inputtokens": 3450,
+    "outputtokens": 820,
+    "cachereadtokens": 2400,
+    "cachewritetokens": 0,
+    "totaltokens": 4270,
+    "model": "openai/gpt-5.4",
+    "tokencost": 6,
+    "processedms": 4200
   }
 }
 ```
@@ -149,6 +176,16 @@ Retrieves the current status and content of a single message. You can query by e
 | `createdat` | `number` | Unix timestamp (epoch seconds) when the message was created. |
 | `startedat` | `number` | Unix timestamp (epoch seconds) when the agent started processing. |
 | `endedat` | `number` | Unix timestamp (epoch seconds) when processing completed. May be empty for `agent_cancel` (cancel only sets `status` and `updatedat`). |
+| `inputtokens` | `number\|null` | Billed input (prompt) tokens for this turn's model call. Populated on the assistant turn once it completes; `null` on user-only, cron, legacy, and `model_change` marker rows. |
+| `outputtokens` | `number\|null` | Billed output (completion) tokens the model generated this turn. `null` on the same non-assistant / marker / legacy rows. |
+| `cachereadtokens` | `number\|null` | Tokens served from the model's prompt cache (billed at the cached-input rate). `0` when the model reported no cache hits; `null` on non-assistant rows. |
+| `cachewritetokens` | `number\|null` | Tokens written to the prompt cache this turn. `0` when none; `null` on non-assistant rows. |
+| `totaltokens` | `number\|null` | Total tokens attributed to the turn. `null` on non-assistant rows. |
+| `model` | `string\|null` | Canonical slug of the chat model that actually ran the turn (e.g. `"openai/gpt-5.4"`), reflecting any per-turn `model` override from Send. `null` on non-assistant / marker / legacy rows. |
+| `tokencost` | `number\|null` | Credits deducted for the turn, derived from the token counts and the model's `tokenRates` (see [Agent Overview](/docs/agent-overview)). `null` on non-assistant rows. |
+| `processedms` | `number\|null` | Wall-clock model processing time for the turn, in milliseconds. `null` on non-assistant rows. |
+
+> **`metadata.tokenCount` vs the billing token columns.** `metadata.tokenCount` is the **live stream counter** emitted inside the `progressGenerate` payload — a running word/token tally for the in-flight response. The flat `inputtokens` / `outputtokens` / `cachereadtokens` / `cachewritetokens` / `totaltokens` / `tokencost` columns are the **final billed usage**, written once the turn completes. They measure different things: use `tokenCount` for a live progress indicator, and the flat columns for accounting and cost.
 
 ## **POST** /UserAgent/Message/History
 
@@ -203,7 +240,41 @@ Retrieves conversation history for a specific agent and session. Messages are re
         },
         "attachments": [],
         "deletestatus": 0,
-        "createdat": 1743350400
+        "createdat": 1743350400,
+        "inputtokens": 3450,
+        "outputtokens": 820,
+        "cachereadtokens": 2400,
+        "cachewritetokens": 0,
+        "totaltokens": 4270,
+        "model": "openai/gpt-5.4",
+        "tokencost": 6,
+        "processedms": 4200
+      },
+      {
+        "guid": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+        "uuid": "system",
+        "agenttoken": null,
+        "user": null,
+        "content": "",
+        "response": "",
+        "debugoutput": "",
+        "status": "agent_done",
+        "metadata": {
+          "type": "model_change",
+          "fromModel": "openai/gpt-5.2",
+          "toModel": "openai/gpt-5.4"
+        },
+        "attachments": [],
+        "deletestatus": 0,
+        "createdat": 1743350399,
+        "inputtokens": null,
+        "outputtokens": null,
+        "cachereadtokens": null,
+        "cachewritetokens": null,
+        "totaltokens": null,
+        "model": null,
+        "tokencost": null,
+        "processedms": null
       },
       {
         "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
@@ -225,10 +296,18 @@ Retrieves conversation history for a specific agent and session. Messages are re
         "metadata": {},
         "attachments": [],
         "deletestatus": 0,
-        "createdat": 1743350300
+        "createdat": 1743350300,
+        "inputtokens": 1180,
+        "outputtokens": 540,
+        "cachereadtokens": 0,
+        "cachewritetokens": 0,
+        "totaltokens": 1720,
+        "model": "openai/gpt-5.2",
+        "tokencost": 4,
+        "processedms": 3100
       }
     ],
-    "count": 2,
+    "count": 3,
     "hasmore": false
   }
 }
@@ -240,9 +319,24 @@ Retrieves conversation history for a specific agent and session. Messages are re
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `messages` | `array` | Array of message objects, newest first. Each row has the **same shape as `Message/Detail`** — including the `uuid` sender, the `agenttoken` (so you can resubscribe over WebSocket if `status` is non-terminal), and the decorated `user` object. |
+| `messages` | `array` | Array of message objects, newest first. Each row has the **same shape as `Message/Detail`** — including the `uuid` sender, the `agenttoken` (so you can resubscribe over WebSocket if `status` is non-terminal), the decorated `user` object, and the per-turn token columns below. The array can also include `model_change` marker rows (see the note under the table). |
 | `count` | `number` | Number of messages in this page. |
 | `hasmore` | `boolean` | `true` if there are older messages available. Pass the last message's `guid` as `before` to fetch the next page. |
+
+Each assistant row also carries the per-turn token-accounting columns, identical to [`Message/Detail`](#post-useragentmessagedetail):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `inputtokens` | `number\|null` | Billed input (prompt) tokens for the turn. `null` on user-only, cron, legacy, and `model_change` marker rows. |
+| `outputtokens` | `number\|null` | Billed output (completion) tokens the model generated. `null` on the same non-assistant / marker / legacy rows. |
+| `cachereadtokens` | `number\|null` | Tokens served from the model's prompt cache. `0` when none; `null` on non-assistant rows. |
+| `cachewritetokens` | `number\|null` | Tokens written to the prompt cache. `0` when none; `null` on non-assistant rows. |
+| `totaltokens` | `number\|null` | Total tokens attributed to the turn. `null` on non-assistant rows. |
+| `model` | `string\|null` | Canonical slug of the chat model that ran the turn. `null` on non-assistant / marker / legacy rows. |
+| `tokencost` | `number\|null` | Credits deducted for the turn. `null` on non-assistant rows. |
+| `processedms` | `number\|null` | Wall-clock model processing time in milliseconds. `null` on non-assistant rows. |
+
+> **`model_change` marker rows.** Switching the chat model (via the [`model`](#post-useragentmessagesend) param) drops a synthetic marker row into history alongside the real turns. A marker row has `status: "agent_done"`, `model: null`, empty `content` / `response` / `debugoutput`, every token column `null`, and `metadata: { "type": "model_change", "fromModel": "…", "toModel": "…" }`. Detect it with `metadata.type === "model_change"` and render it as an inline separator (e.g. "Switched to GPT-5.4") rather than a chat bubble. Its `createdat` is the triggering turn's `createdat` minus one second, so it orders immediately before that turn (in the newest-first response it appears directly after the turn that triggered it).
 
 ### Pagination
 
@@ -310,6 +404,8 @@ Lists all conversation sessions for an agent. Returns each session's key, messag
 | `lastmessage` | `string` | The most recent message body — `agentmessages.content` if the user sent a message, falling back to `agentmessages.response` (assistant reply) when `content` is empty. |
 
 > **Reserved sessionkeys filtered out (non-admin only).** The list omits internal sessions used by the runtime: `wiro:api` (gateway hooks default), `voice-prep*` (per-call prep threads), `voice-call-*` (active voice-call rows), and `cs-cron-*` (one thread per scheduled cron skill). These rows still exist on the agent — they're just hidden from operator-facing listings to keep the panel UX clean. Admin callers (`tokenUserRoles` contains `"ADMIN"`) see the full unfiltered list. The same filter is applied on `Message/History` reads and the `DeleteSession` guard.
+
+> **Marker rows excluded.** `model_change` marker rows are not real turns — they're skipped when building this list, so they never surface as a session's `lastmessage`.
 
 ## **POST** /UserAgent/Message/DeleteSession
 

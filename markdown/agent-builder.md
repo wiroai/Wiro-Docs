@@ -11,7 +11,7 @@ Wiro's agent runtime supports two deploy paths:
 | **Template deploy** | The marketplace already has an agent that does what you need (Instagram Manager, Push Notifications, App Review Support, …). You inherit the template's default skill set + configuration. | `POST /UserAgent/Deploy` with `agentguid` |
 | **Custom build** | You want a unique skill combination — for example a custom support bot that watches Gmail, publishes a daily digest to WordPress, and uses Wiro's image generator. No marketplace template fits. | `POST /UserAgent/Deploy` with `custom: true` |
 
-The two paths produce the **same useragent shape** at the end (same `customskills`, `scheduledskills`, `credentials`, `subscription`, `peractioncosts`, etc.). The only differences are:
+The two paths produce the **same useragent shape** at the end (same `customskills`, `scheduledskills`, `credentials`, `subscription`, `tokenRates`, etc.). The only differences are:
 
 | Aspect | Template deploy | Custom build |
 |--------|-----------------|--------------|
@@ -44,7 +44,7 @@ Pick the skill names you want to enable. Each skill descriptor tells you:
 - `requires_credentials` — boolean, whether the user must supply a credential before the skill can run
 - `depends_on` — array of skill names that must also be enabled (Wiro auto-enables transitive deps)
 - `conflicts_with` — array of skill names that cannot coexist with this one
-- `pricing` — the per-skill pricing recipe (`monthly_price_weight_usd`, `monthly_credits_weight`, `credit_costs.{message,create,modify,regenerate}` plus optional `realtime` for voice skills)
+- `pricing` — the per-skill pricing recipe (`monthly_price_weight_usd`, `monthly_credits_weight`, `billing_model: "tokens"`)
 
 > **Use [`POST /Skills/Capabilities`](/docs/agent-skills#post-skillscapabilities)** to discover the closed-set capability vocabulary (the high-level tasks skills can perform). Useful when you want to find every skill that can "post-content" or "send-email".
 
@@ -71,20 +71,29 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
   "errors": [],
   "tier": "pro",
   "tiermultiplier": 10,
-  "totalPriceUsd": 90,
-  "totalMonthlyCredits": 10000,
-  "peractioncosts": { "message": 10, "create": 60, "modify": 20, "regenerate": 20 },
+  "totalPriceUsd": 60,
+  "totalMonthlyCredits": 1500,
+  "starterFloorUsd": 4,
   "skillBreakdown": [
-    { "skill": "int-gmail-check",     "priceUsd": 4, "credits": 400,  "actionCostOverrides": {} },
-    { "skill": "int-wordpress-post",  "priceUsd": 5, "credits": 600,  "actionCostOverrides": { "create": 60 } },
-    { "skill": "int-wiro-aimodels",   "priceUsd": 0, "credits": 0,    "actionCostOverrides": {} }
+    { "skill": "int-gmail-check",     "priceUsd": 1, "credits": 25,  "billing_model": "tokens" },
+    { "skill": "int-wordpress-post",  "priceUsd": 4, "credits": 100, "billing_model": "tokens" },
+    { "skill": "int-wiro-aimodels",   "priceUsd": 1, "credits": 25,  "billing_model": "tokens" }
   ],
   "enabledSkills": ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels"],
   "directSkills":  ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels"],
   "agentBase": { "priceUsd": 0, "credits": 0 },
+  "tokenRates": {
+    "default_model": "openai/gpt-5.4",
+    "fallback_rate": { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150 },
+    "models": {
+      "openai/gpt-5.4":      { "input_per_1m": 750,  "output_per_1m": 4500, "cached_input_per_1m": 75,   "selectable": true, "label": "GPT-5.4",      "tier": "balanced" },
+      "openai/gpt-5.4-mini": { "input_per_1m": 225,  "output_per_1m": 1350, "cached_input_per_1m": 22.5, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
+      "openai/gpt-5.5":      { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150,  "selectable": true, "label": "GPT-5.5",      "tier": "premium" }
+    }
+  },
   "tiers": {
-    "starter": { "priceUsd": 9,  "credits": 1000 },
-    "pro":     { "priceUsd": 90, "credits": 10000 }
+    "starter": { "priceUsd": 6,  "credits": 150 },
+    "pro":     { "priceUsd": 60, "credits": 1500 }
   }
 }
 ```
@@ -93,11 +102,11 @@ Read the response:
 
 - `tiers.starter.priceUsd` and `tiers.pro.priceUsd` → what your wallet will be charged for each tier.
 - `tiers.starter.credits` and `tiers.pro.credits` → monthly credit allocation.
-- `peractioncosts` → how many credits each agent action burns.
+- `tokenRates` → per-model token rates (credits per 1M input / output / cached-input tokens). Each conversation turn is metered against these — see [token billing](/docs/agent-overview#pricing-model--tiers-skills--token-billing).
 - `skillBreakdown[]` → per-skill contribution to the total. Use this to see which skill is the most expensive.
 - `enabledSkills` → final closure (includes any transitively-enabled `depends_on`).
 
-> **`agentBase`** is always `{ priceUsd: 0, credits: 0 }` — pricing is fully skill-driven and the field is kept on the response so callers don't have to null-check. The agent's Starter price = Σ(skill weights), bumped to **$4/month** if the raw sum lands below the floor (credits scale up by the same ratio). Pro = Starter × `tiermultiplier` (default `10`).
+> **`agentBase`** is always `{ priceUsd: 0, credits: 0 }` — pricing is fully skill-driven and the field is kept on the response so callers don't have to null-check. The agent's Starter price = Σ(skill weights), bumped to the **`starterFloorUsd`** floor (**$4/month** by default) if the raw sum lands below it (credits scale up by the same ratio). Pro = Starter × `tiermultiplier` (default `10`). Per-turn conversation cost is metered separately against the agent's `tokenRates` — see [token billing](/docs/agent-overview#pricing-model--tiers-skills--token-billing).
 
 ## Step 3 — Deploy the Custom Agent
 
@@ -151,11 +160,25 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
       "tiermultiplier": 10,
       "status": 2,
       "setuprequired": false,
-      "monthlycredits": 10000,
-      "monthlypriceusd": 90,
-      "remainingcredits": 10000,
+      "monthlycredits": 1500,
+      "monthlypriceusd": 60,
+      "remainingcredits": 1500,
       "creditperiod": "2026-05",
-      "peractioncosts": { "message": 10, "create": 60, "modify": 20, "regenerate": 20 },
+      "tokenRates": {
+        "default_model": "openai/gpt-5.4",
+        "fallback_rate": { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150 },
+        "models": {
+          "openai/gpt-5.4":      { "input_per_1m": 750,  "output_per_1m": 4500, "cached_input_per_1m": 75,   "selectable": true, "label": "GPT-5.4",      "tier": "balanced" },
+          "openai/gpt-5.4-mini": { "input_per_1m": 225,  "output_per_1m": 1350, "cached_input_per_1m": 22.5, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
+          "openai/gpt-5.5":      { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150,  "selectable": true, "label": "GPT-5.5",      "tier": "premium" }
+        }
+      },
+      "agentModel": {
+        "chatModel": "openai/gpt-5.4",
+        "cronModel": "openai/gpt-5.4",
+        "voicePrepModel": "openai/gpt-5.4-mini",
+        "voicePostcallModel": "openai/gpt-5.4"
+      },
       "skills": ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels"],
       "customskills": [],
       "scheduledskills": [
@@ -178,13 +201,13 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
         "title": "Inbox Watcher",
         "tiermultiplier": 10,
         "tiers": {
-          "starter": { "priceUsd": 9,  "credits": 1000 },
-          "pro":     { "priceUsd": 90, "credits": 10000 }
+          "starter": { "priceUsd": 6,  "credits": 150 },
+          "pro":     { "priceUsd": 60, "credits": 1500 }
         },
         "extracreditpacks": [
-          { "packkey": "small",  "credits": 50000,  "priceusd": 450,  "enabled": true },
-          { "packkey": "medium", "credits": 100000, "priceusd": 900,  "enabled": true },
-          { "packkey": "large",  "credits": 200000, "priceusd": 1800, "enabled": true }
+          { "packkey": "small",  "credits": 7500,  "priceusd": 300,  "enabled": true },
+          { "packkey": "medium", "credits": 15000, "priceusd": 600,  "enabled": true },
+          { "packkey": "large",  "credits": 30000, "priceusd": 1200, "enabled": true }
         ]
       }
     }
@@ -215,7 +238,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
     "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
     "idempotencyKey": "550e8400-e29b-41d4-a716-446655440001",
     "skills": {
-      "int-wordpress-post": true
+      "int-instagram-post": true
     }
   }'
 ```
@@ -226,19 +249,18 @@ The response includes the new pricing snapshot and the prorated wallet debit:
 {
   "result": true,
   "errors": [],
-  "tier": "starter",
-  "prepaidWalletDelta": 4.0,
+  "tier": "pro",
+  "prepaidWalletDelta": 5.0,
   "restartTriggered": true,
   "restartedAt": 1714694520,
   "pricing": {
-    "previousPriceUsd": 27,
-    "newPriceUsd": 33,
-    "deltaUsd": 6,
-    "previousMonthlyCredits": 3500,
-    "newMonthlyCredits": 4000,
-    "deltaCredits": 500,
-    "enabledSkills": ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels", "int-instagram-post"],
-    "peractioncosts": { "message": 10, "create": 60, "modify": 20, "regenerate": 20 }
+    "previousPriceUsd": 60,
+    "newPriceUsd": 70,
+    "deltaUsd": 10,
+    "previousMonthlyCredits": 1500,
+    "newMonthlyCredits": 1750,
+    "deltaCredits": 250,
+    "enabledSkills": ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels", "int-instagram-post"]
   }
 }
 ```

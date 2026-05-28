@@ -23,7 +23,7 @@ Toggle `util-web-channel` on a useragent and a single REST call (`POST /UserAgen
 | Web (this page) | Browser mic on **your** site | "Open mic" button on a product / support / sales page. No phone number, no per-minute Twilio bill. |
 | [Twilio](/docs/integration-twiliovoice-skills) | Inbound PSTN phone call | A real phone number ringing. Twilio bills per inbound minute. |
 
-> No third-party billing on this channel — the only meter is your Wiro agent's per-second realtime credit cost (`peractioncosts.realtime`).
+> No third-party billing on this channel. The live call audio is billed through the [`int-wiro-aimodels`](/docs/agent-credentials) skill against your own Wiro AI Models balance (you bring your own Wiro API key) — it is **not** charged to the agent's platform credit pool. Only the post-call text turn is billed as a normal token deduct (`action: "tokens"`) on [`POST /UserAgent/TransactionList`](/docs/agent-transactions#post-useragenttransactionlist).
 
 ## Availability
 
@@ -85,7 +85,7 @@ Response:
 | `expiresAt` | Wallclock JWT expiry in ms since epoch. After this point the browser must call `WebStart` again for a fresh token. |
 | `estimatedReadyMs` | Approximate time (ms) until the agent will be ready to speak after WS connect. The real "ready" signal is the `{ type: "ready" }` frame on the WebSocket. |
 
-> The endpoint also kicks off an asynchronous **agent prep** so the realtime model has the agent's system prompt + memory warm by the time the browser finishes the WS handshake. That's why a separate `Realtime/Cancel` call exists — if the browser never makes it to the WS step (mic permission denied, user changed their mind), Cancel tears the prep down so the agent's per-second quota isn't burned on an orphan session.
+> The endpoint also kicks off an asynchronous **agent prep** so the realtime model has the agent's system prompt + memory warm by the time the browser finishes the WS handshake. That's why a separate `Realtime/Cancel` call exists — if the browser never makes it to the WS step (mic permission denied, user changed their mind), Cancel tears the prep down immediately instead of leaving the warmed session to idle until the cleanup guard fires.
 
 ### Step 2: Connect the WebSocket
 
@@ -313,7 +313,7 @@ The bridge transcodes server-side if a downstream model needs a different sample
 ### Session lifetime
 
 - The JWT is valid for **300 seconds** from issue. Conversations that need to live longer simply call `WebStart` again before the JWT expires — there's no in-band refresh.
-- The `WebStart`-armed 5-minute pre-WS cleanup guard is cancelled the moment the bridge accepts your `session_start` frame, so once the call is live you only ever pay for active audio.
+- The `WebStart`-armed 5-minute pre-WS cleanup guard is cancelled the moment the bridge accepts your `session_start` frame, so a live call is never torn down by it. Live call audio is billed through `int-wiro-aimodels` against your own Wiro AI Models balance — the pre-WS prep window carries no audio charge.
 
 ## Rate Limits
 
@@ -348,6 +348,6 @@ Every WebStart call is scoped by:
 
 - [Twilio Voice](/docs/integration-twiliovoice-skills) — pair the same agent with a real phone number for inbound PSTN calls. Both channels surface in the same [Call History](/docs/integration-twiliovoice-skills#call-history) feed.
 - [Realtime Voice Conversation](/docs/realtime-voice-conversation) — the underlying model-level realtime protocol (used by `wiro.ai/models/openai/gpt-realtime-mini`, etc.). Web Channel is the agent-aware wrapper around it.
-- [Agent Overview](/docs/agent-overview) — useragent statuses, the `peractioncosts.realtime` per-second meter, and the rest of the agent surface.
+- [Agent Overview](/docs/agent-overview) — useragent statuses, token-based credit metering, and the rest of the agent surface.
 - [Agent Skills](/docs/agent-skills) — toggling `util-web-channel` on a custom build.
 - [Agent Use Cases — Voice Receptionist](/docs/agent-use-cases) — preset that ships Web + Twilio channels on by default.

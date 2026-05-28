@@ -4,13 +4,13 @@ Per-instance credit ledger — every credit deduction, renewal, purchase, refund
 
 ## Overview
 
-Wiro keeps a complete, append-only **agent transaction ledger** for every UserAgent instance. Whenever credits move — the agent runtime burns them on a message, a subscription renews, a Pro user buys an extra-credit pack, an admin tops up, the user disables a paid skill mid-period and gets a refund — a row is inserted into the ledger and surfaced through `POST /UserAgent/TransactionList`.
+Wiro keeps a complete, append-only **agent transaction ledger** for every UserAgent instance. Whenever credits move — the agent runtime burns them on a chat turn, a subscription renews, a Pro user buys an extra-credit pack, an admin tops up, the user disables a paid skill mid-period and gets a refund — a row is inserted into the ledger and surfaced through `POST /UserAgent/TransactionList`.
 
 The ledger is the single source of truth for "where did my credits go?" and powers the **Transactions** view in your dashboard.
 
 | Transaction `type` | Source | When it fires |
 |--------------------|--------|---------------|
-| `deduct` | Agent runtime | Every successful agent action (`message`, `create`, `modify`, `regenerate`). Negative `amount`. |
+| `deduct` | Agent runtime | Per-turn LLM token charge (`action: "tokens"`) for every chat, cron, and voice post-call turn. Negative `amount`. |
 | `renewal` | Subscription cron | At each 30-day rollover when the wallet successfully covers the renewal. Positive `amount` = monthly credits granted. |
 | `purchase` | Extra-credit checkout | When `POST /UserAgent/CreateExtraCreditCheckout` (`useprepaid: true`) succeeds. Positive `amount` = pack credits. |
 | `grant` | Skill toggle / tier upgrade | When a skill is enabled mid-period and the credit pool grows, or when a tier upgrade lifts the monthly allocation. Positive `amount`. |
@@ -48,23 +48,35 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
   "errors": [],
   "total": 128,
   "summary": {
-    "monthlycredits": 10000,
+    "monthlycredits": 2250,
     "extracredits": 2000,
     "usedcredits": 1450,
-    "remainingcredits": 10550,
+    "remainingcredits": 2800,
     "creditperiod": "2026-05",
-    "creditsyncat": 1714694410
+    "creditsyncat": 1714694410,
+    "byModel": [
+      { "model": "openai/gpt-5.4", "inputtokens": 128400, "outputtokens": 32100, "cachereadtokens": 86000, "cachewritetokens": 0, "totaltokens": 160500, "tokencost": 240, "turncount": 38 },
+      { "model": "unknown", "inputtokens": 4200, "outputtokens": 900, "cachereadtokens": 0, "cachewritetokens": 0, "totaltokens": 5100, "tokencost": 7, "turncount": 3 }
+    ]
   },
   "transactions": [
     {
       "guid": "7f3e8c21-1be1-4f5a-96e8-2b1a9e2a6a01",
       "type": "deduct",
-      "action": "message",
-      "amount": -10,
+      "action": "tokens",
+      "amount": -6,
       "balanceafter": 10550,
-      "description": "Agent action: message",
+      "description": "Input Tokens: 3450 / Output Tokens: 820 / Model: openai/gpt-5.4",
       "sessionkey": "default",
       "messageguid": "5c41dabf-f2be-4aa8-a5a4-8c9e3d2f3f11",
+      "inputtokens": 3450,
+      "outputtokens": 820,
+      "cachereadtokens": 512,
+      "cachewritetokens": 0,
+      "totaltokens": 4270,
+      "tokencost": 6,
+      "processedms": 4120,
+      "model": "openai/gpt-5.4",
       "provider": "agent",
       "providerref": null,
       "metadata": null,
@@ -89,6 +101,14 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "description": "Extra credits — small pack",
       "sessionkey": null,
       "messageguid": null,
+      "inputtokens": null,
+      "outputtokens": null,
+      "cachereadtokens": null,
+      "cachewritetokens": null,
+      "totaltokens": null,
+      "tokencost": null,
+      "processedms": null,
+      "model": null,
       "provider": "prepaid",
       "providerref": null,
       "metadata": { "pack": "small", "priceUsd": 45 },
@@ -113,6 +133,14 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "description": "Subscription renewal",
       "sessionkey": null,
       "messageguid": null,
+      "inputtokens": null,
+      "outputtokens": null,
+      "cachereadtokens": null,
+      "cachewritetokens": null,
+      "totaltokens": null,
+      "tokencost": null,
+      "processedms": null,
+      "model": null,
       "provider": "prepaid",
       "providerref": null,
       "metadata": { "period": "2026-05", "priceUsd": 90 },
@@ -129,6 +157,14 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "description": "Skill enabled: int-instagram-post",
       "sessionkey": null,
       "messageguid": null,
+      "inputtokens": null,
+      "outputtokens": null,
+      "cachereadtokens": null,
+      "cachewritetokens": null,
+      "totaltokens": null,
+      "tokencost": null,
+      "processedms": null,
+      "model": null,
       "provider": "prepaid",
       "providerref": null,
       "metadata": {
@@ -166,6 +202,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 | `remainingcredits` | `number` | `max(0, monthlycredits + extracredits - usedcredits)`. |
 | `creditperiod` | `string` | `'YYYY-MM'` billing window. Rolls over on subscription renewal. |
 | `creditsyncat` | `number\|null` | Last runtime → API usage sync in Unix seconds. |
+| `byModel` | `array` | Per-model token rollup for the **current billing period**, aggregating only `action: "tokens"` rows, sorted by `tokencost` descending. A `null` or empty `model` is bucketed as `"unknown"`. Each entry: `{ model, inputtokens, outputtokens, cachereadtokens, cachewritetokens, totaltokens, tokencost, turncount }`. |
 
 **Transaction fields:**
 
@@ -173,12 +210,20 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 |-------|------|-------------|
 | `guid` | `string` | Stable id of the ledger row. Daemon retries reuse this guid for idempotency. |
 | `type` | `string` | One of `"deduct"`, `"renewal"`, `"purchase"`, `"grant"`, `"expired"`, `"refund"`. There is no `"cancel"` type — a user-initiated subscription cancel only flips auto-renew off; credits are not forfeited until `currentperiodend` is reached, at which point the cron writes the ledger row as `type: "expired"`, `action: "subscription"`. |
-| `action` | `string\|null` | Fine-grained detail. Values depend on `type`: `"message"`, `"create"`, `"modify"`, `"regenerate"` (deduct); `"monthly"` (renewal); `"small"`, `"medium"`, `"large"` (purchase); `"skill-toggle"`, `"admin"`, `"upgrade"` (grant); `"skill-toggle"` (expired, mid-period skill disable); `"subscription"` (expired, end-of-period cancel rollover; refund). |
+| `action` | `string\|null` | Fine-grained detail. Values depend on `type`: `"tokens"` (deduct — the per-turn LLM token charge the runtime writes for every chat, cron, and voice post-call turn); `"monthly"` (renewal); `"small"`, `"medium"`, `"large"` (purchase); `"skill-toggle"`, `"admin"`, `"upgrade"` (grant); `"skill-toggle"` (expired, mid-period skill disable); `"subscription"` (expired, end-of-period cancel rollover; refund). Legacy deduct rows may also carry `"message"`, `"create"`, `"modify"`, or `"regenerate"`. |
 | `amount` | `number` | Signed credit delta — negative for deductions, positive for grants. |
 | `balanceafter` | `number\|null` | Remaining credit balance snapshot written at the time of the event. May be `null` for very old rows or for events written before the snapshot field was added. |
 | `description` | `string\|null` | Human-readable label. |
 | `sessionkey` | `string\|null` | Session the deduct belongs to (deduct rows only). |
 | `messageguid` | `string\|null` | Agent message that triggered the deduct (deduct rows only). |
+| `inputtokens` | `number\|null` | Prompt tokens billed for the turn (`action: "tokens"` rows only). |
+| `outputtokens` | `number\|null` | Completion tokens billed for the turn (`action: "tokens"` rows only). |
+| `cachereadtokens` | `number\|null` | Prompt tokens served from cache for the turn (`action: "tokens"` rows only). |
+| `cachewritetokens` | `number\|null` | Prompt tokens written to cache for the turn (`action: "tokens"` rows only). |
+| `totaltokens` | `number\|null` | Input + output tokens for the turn (`action: "tokens"` rows only). |
+| `tokencost` | `number\|null` | Credit cost for the turn; equals `abs(amount)` (`action: "tokens"` rows only). |
+| `processedms` | `number\|null` | Model processing time for the turn, in milliseconds (`action: "tokens"` rows only). |
+| `model` | `string\|null` | Model id that served the turn, e.g. `"openai/gpt-5.4"` (`action: "tokens"` rows only). |
 | `provider` | `string\|null` | `"agent"` (runtime deduct) or `"prepaid"` (wallet-backed change). API-deployed agents always run on the prepaid path. |
 | `providerref` | `string\|null` | Provider-side reference id. Always populated for `prepaid` rows (wallet transaction id); `null` for `agent` runtime deducts. |
 | `metadata` | `object\|null` | Arbitrary JSON context attached at write time (skill, tier, period, prorated charge, …). |
@@ -231,92 +276,13 @@ console.log('Now in period:', summary.creditperiod);
 
 When the user upgrades Starter → Pro mid-period, `UpgradeTier` writes one `grant` row with `action: "upgrade"` and `metadata: { tier, proratedCharge, ... }`. Use this to render an upgrade history in your UI.
 
-## Agent → API Sync (`TransactionInsert`)
-
-Agent runtimes report deductions through a separate authenticated endpoint, **`POST /UserAgent/TransactionInsert`**. API users **don't normally call this** — it's reserved for the Wiro-managed agent runtime. It is documented here for completeness.
-
-The endpoint is **idempotent on `guid`**: a retry of the same deduction event returns the post-merge balance without double-charging.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | Target useragent guid (must match the agent container's settings) |
-| `uuid` | string | Yes | Owner uuid (must match the useragent) |
-| `type` | string | Yes | Must be `"deduct"` (only deductions can be inserted from the agent side) |
-| `action` | string | No | `"message"`, `"create"`, `"modify"`, `"regenerate"` |
-| `amount` | number | Yes | Positive cost or pre-signed negative delta |
-| `guid` | string | No | Daemon-side stable identifier (recommended for idempotency); server mints one if omitted |
-| `sessionkey` | string | No | Session that consumed the credits |
-| `messageguid` | string | No | Message that triggered the deduction |
-| `description` | string | No | Human-readable label |
-| `metadata` | object | No | Arbitrary JSON to record with the row |
-
-##### Response
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "guid": "7f3e8c21-1be1-4f5a-96e8-2b1a9e2a6a01",
-  "idempotent": false,
-  "monthlycredits": 10000,
-  "extracredits": 2000,
-  "usedcredits": 1460,
-  "remainingcredits": 10540
-}
-```
-
-`idempotent: true` means the event guid was already in the ledger — no double-charge happened, and the response carries the **current** balance for the agent to reconcile against.
-
-## Credit Sync (`CreditSync`)
-
-In addition to per-deduction `TransactionInsert` events, the agent container periodically pushes its **monotonic** total `usedcredits` counter via `POST /UserAgent/CreditSync`. This is also a runtime-only endpoint, but useful to understand the data flow.
-
-Server policy:
-
-- Within the same billing period (`creditperiod` matches), the server stores `GREATEST(existing, incoming)` — out-of-order syncs can never lower the counter.
-- If the incoming `creditperiod` doesn't match the DB row (e.g. a renewal already rolled over), the sync is rejected and the response carries the canonical period + counter for the agent to reset its local state.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | Target useragent guid |
-| `uuid` | string | Yes | Owner uuid |
-| `usedcredits` | number | Yes | Total consumed this period (monotonic, >= 0) |
-| `creditperiod` | string | Yes | `'YYYY-MM'` tag this counter applies to |
-
-##### Response — happy path
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "usedcredits": 1460,
-  "creditperiod": "2026-05",
-  "remainingcredits": 5540
-}
-```
-
-##### Response — period mismatch
-
-```json
-{
-  "result": false,
-  "errors": [{ "code": 0, "message": "period mismatch (expected 2026-05, got 2026-04)" }],
-  "usedcredits": 1460,
-  "creditperiod": "2026-05"
-}
-```
-
-The agent runtime is expected to restart and retry on the new period.
-
 ## Errors
 
 | Error | When |
 |-------|------|
-| `useragentguid is required` | `TransactionList` / `TransactionInsert` / `CreditSync` without `useragentguid` |
+| `useragentguid is required` | `TransactionList` without `useragentguid` |
 | `useragent-access-denied` | Caller is neither owner, team member, nor admin |
-| `Only deduct transactions can be inserted from agents` | `TransactionInsert` with `type` other than `"deduct"` |
-| `period mismatch (expected X, got Y)` | `CreditSync` with a stale `creditperiod` after a renewal rollover |
-| `Invalid credentials` | `TransactionInsert` / `CreditSync` with a `(useragentguid, uuid)` pair that doesn't match a row |
+| `Invalid credentials` | API key is missing or doesn't resolve to a valid Wiro user |
 | `transactions-list-failed` | `TransactionList` server-side error (DB) — surfaced loudly so it's distinguishable from "empty ledger" |
 
 ## Code Examples

@@ -241,7 +241,7 @@ Response:
 | `modelSlug` | string \| null | Realtime model used (e.g. `gpt-realtime-mini`). |
 | `startedAt` / `endedAt` | number \| null | Unix epoch ms. `endedAt` stays `null` while the call is in-progress or rejected. |
 
-> Per-second realtime credit usage for each session shows up under `POST /UserAgent/TransactionList` with `type: "deduct"` and `action: "realtime"`. Cross-reference the two endpoints on `messageguid` to reconcile spend with sessions.
+> **Live call audio is billed through the [`int-wiro-aimodels`](/docs/agent-credentials) skill against your own Wiro AI Models balance** — you bring your own Wiro API key, and the per-second voice cost flows through your Wiro project wallet. It is **not** charged to the agent's platform credit pool and writes **no** `POST /UserAgent/TransactionList` row. Only the post-call text turn — where the agent summarizes and acts on the call afterward — is billed as a normal token deduct (`type: "deduct"`, `action: "tokens"`) and shows up in TransactionList. Audit call-audio cost from your Wiro AI Models usage (the `wiro` project wallet); TransactionList accounts only for the post-call token spend.
 
 ## Related
 
