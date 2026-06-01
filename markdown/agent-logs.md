@@ -83,13 +83,13 @@ A `token_usage` event records the token spend and credit deduction for one bille
 {
   "ts": "2026-05-03T14:02:55.310Z",
   "kind": "token_usage",
-  "title": "Token usage: 4270 tokens · 6 credits",
+  "title": "Token usage: 4270 tokens · 5 credits",
   "model": "openai/gpt-5.4",
   "tokens": { "input": 3450, "output": 820, "cacheRead": 2400, "cacheWrite": 0, "total": 4270 },
-  "tokencost": 6,
+  "tokencost": 5,
   "durationMs": 4200,
   "calls": 2,
-  "remainingcredits": 9994,
+  "remainingcredits": 9995,
   "userUuid": "system",
   "user": null
 }

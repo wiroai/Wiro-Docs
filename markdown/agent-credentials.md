@@ -307,6 +307,7 @@ The `int-wiro-aimodels` skill lets an agent call Wiro's own AI models (image / v
 
 - **Credential key:** `wiro`
 - **Field:** `apikey` (single field — type `custom:wiro-project-picker` in the registry; the dashboard renders it as a project picker, the API expects the project's raw API key string).
+- **No secret to supply.** Only the `apikey` is needed. Request signing for the agent's internal Wiro calls is handled automatically — Wiro derives the project's signing secret server-side from the key you pick, so there is no `apisecret` (or similar) field to paste.
 - **Setup:** create / pick a Wiro project at [wiro.ai/panel/projects](https://wiro.ai/panel/projects), copy its API key, then upsert it:
 
 ```bash

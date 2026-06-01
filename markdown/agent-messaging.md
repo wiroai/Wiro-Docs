@@ -102,6 +102,7 @@ Retrieves the current status and content of a single message. You can query by e
 |-----------|------|----------|-------------|
 | `messageguid` | string | No | The message GUID returned from Send. |
 | `agenttoken` | string | No | The agent token returned from Send (alternative to messageguid). |
+| `sessionkey` | string | No | Optional session scope. When supplied, the row is additionally constrained to this `sessionkey`, so a shared-owner agent (one API key fronting many end users) can ensure a user only reads their own turn. Omit for the default single-user behavior. |
 
 > **Note:** You must provide at least one of `messageguid` or `agenttoken`.
 
@@ -153,7 +154,7 @@ Retrieves the current status and content of a single message. You can query by e
     "cachewritetokens": 0,
     "totaltokens": 4270,
     "model": "openai/gpt-5.4",
-    "tokencost": 6,
+    "tokencost": 5,
     "processedms": 4200
   }
 }
@@ -247,7 +248,7 @@ Retrieves conversation history for a specific agent and session. Messages are re
         "cachewritetokens": 0,
         "totaltokens": 4270,
         "model": "openai/gpt-5.4",
-        "tokencost": 6,
+        "tokencost": 5,
         "processedms": 4200
       },
       {
@@ -303,7 +304,7 @@ Retrieves conversation history for a specific agent and session. Messages are re
         "cachewritetokens": 0,
         "totaltokens": 1720,
         "model": "openai/gpt-5.2",
-        "tokencost": 4,
+        "tokencost": 3,
         "processedms": 3100
       }
     ],
@@ -389,7 +390,15 @@ Lists all conversation sessions for an agent. Returns each session's key, messag
         "sessionkey": "user-42-support",
         "messagecount": 8,
         "updatedat": 1743349200,
-        "lastmessage": "How do I reset my password?"
+        "lastmessage": "How do I reset my password?",
+        "name": "Password help"
+      },
+      {
+        "sessionkey": "user-99-draft",
+        "messagecount": 0,
+        "updatedat": 1743348000,
+        "lastmessage": "",
+        "name": "New chat"
       }
     ]
   }
@@ -401,7 +410,10 @@ Lists all conversation sessions for an agent. Returns each session's key, messag
 | `sessionkey` | `string` | The session identifier. |
 | `messagecount` | `number` | Total number of messages in this session. |
 | `updatedat` | `number` | Unix timestamp (epoch seconds) of the last activity in this session. |
-| `lastmessage` | `string` | The most recent message body — `agentmessages.content` if the user sent a message, falling back to `agentmessages.response` (assistant reply) when `content` is empty. |
+| `lastmessage` | `string` | The most recent message body — `useragentmessages.content` if the user sent a message, falling back to `useragentmessages.response` (assistant reply) when `content` is empty. |
+| `name` | `string?` | Optional display name set via [`Message/RenameSession`](#post-useragentmessagerenamesession). Omitted when the session was never named — fall back to your own default label (e.g. the `sessionkey` or "New chat"). |
+
+> **Named-but-empty sessions appear too.** A session created by [`RenameSession`](#post-useragentmessagerenamesession) before its first `Message/Send` surfaces here with `messagecount: 0`, `lastmessage: ""`, and the `name` you set — so a freshly created chat shows up in the list immediately.
 
 > **Reserved sessionkeys filtered out (non-admin only).** The list omits internal sessions used by the runtime: `wiro:api` (gateway hooks default), `voice-prep*` (per-call prep threads), `voice-call-*` (active voice-call rows), and `cs-cron-*` (one thread per scheduled cron skill). These rows still exist on the agent — they're just hidden from operator-facing listings to keep the panel UX clean. Admin callers (`tokenUserRoles` contains `"ADMIN"`) see the full unfiltered list. The same filter is applied on `Message/History` reads and the `DeleteSession` guard.
 
@@ -415,10 +427,45 @@ Deletes messages in the given session for the **calling user**. This action cann
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | The agent instance GUID. |
 | `sessionkey` | string | Yes | The session key to delete. |
+| `rotate` | boolean | No | Default `false`. When `true`, after wiping the rows the server also rotates the session's memory bucket so the agent's container **forgets** the cleared turns — the next `Message/Send` on the same `sessionkey` starts a fresh reasoning context. With `false` (or omitted) the message rows are wiped but the running container may still recall them. Any display `name` set via [`RenameSession`](#post-useragentmessagerenamesession) is dropped on delete. |
 
-> **Scope of deletion:** Hard delete — the API issues `DELETE FROM agentmessages WHERE useragentid = … AND sessionkey = …`. For non-admin callers an additional `AND uuid = <caller_uuid>` filter is appended, so only the caller's own rows in the session are purged. This holds in both private and collaborative team modes — even when `teamsessionmode: "collaborative"` (e.g. Telegram group-shared sessions) means every member sees the same thread, each member's `DeleteSession` only wipes their own contributions. Admin callers (`tokenUserRoles` contains `"ADMIN"`) bypass the uuid filter and wipe the entire session for every participant. Compare with `Message/Delete` (per-message), which is a soft-delete bumping the `deletestatus` bitmask.
+> **Scope of deletion:** Hard delete — the API issues `DELETE FROM useragentmessages WHERE useragentid = … AND sessionkey = …`. For non-admin callers an additional `AND uuid = <caller_uuid>` filter is appended, so only the caller's own rows in the session are purged. This holds in both private and collaborative team modes — even when `teamsessionmode: "collaborative"` (e.g. Telegram group-shared sessions) means every member sees the same thread, each member's `DeleteSession` only wipes their own contributions. Admin callers (`tokenUserRoles` contains `"ADMIN"`) bypass the uuid filter and wipe the entire session for every participant. Compare with `Message/Delete` (per-message), which is a soft-delete bumping the `deletestatus` bitmask.
 
 > **Reserved sessionkeys (non-admin callers).** Wiro-API maintains a handful of internal threads keyed under reserved sessionkeys — `voice-prep` and `voice-prep-<sid>` (per-call prep), `voice-call-<sid>` (voice-call bubble rows), `cs-cron-<slug>` (one thread per scheduled cron skill), and `wiro:api` (gateway hooks default). Non-admin callers passing any of these as `sessionkey` get back `"Session not found"` instead of a delete; the response shape is identical to a missing-session result so there's no information leak about what threads exist. Admin (`tokenUserRoles` contains `"ADMIN"`) bypasses this guard. The same guard also covers `Message/History` reads, so `Sessions` already filters these keys out of the operator's session list — you only encounter the reserved-key error if you hand-craft the body with a known internal key.
+
+### Response
+
+```json
+{
+  "result": true,
+  "errors": []
+}
+```
+
+## **POST** /UserAgent/Message/RenameSession
+
+Sets a human-readable display **name** on a session without touching its messages or its `sessionkey`. The name is stored in a separate overlay keyed by `(useragentguid, sessionkey)` and surfaces on [`Message/Sessions`](#post-useragentmessagesessions). Because the `sessionkey` is unchanged, the agent's conversation memory is fully preserved across a rename.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | The agent instance GUID. |
+| `sessionkey` | string | Yes | The session to name. Reserved system keys (`wiro:api`, `voice-prep*`, `voice-call-*`, `cs-cron-*`) are rejected with `"Session not found"` for non-admin callers, same as `DeleteSession`. |
+| `name` | string | Yes | The display name. The server strips control characters, collapses whitespace, trims, and caps the result at **40 characters**. An empty string after sanitization is rejected with `request-parameter-required`. |
+
+> **Doubles as "create a named session".** Calling `RenameSession` with a brand-new `sessionkey` — before any `Message/Send` on it — seeds a named-but-empty session that immediately appears in [`Message/Sessions`](#post-useragentmessagesessions) with `messagecount: 0` and `lastmessage: ""`. This is the canonical way to let a user open a fresh, titled chat before they type anything.
+
+### Request
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/RenameSession" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "sessionkey": "user-42-support",
+    "name": "Password help"
+  }'
+```
 
 ### Response
 
@@ -479,6 +526,7 @@ Cancels an in-progress message. Only messages in `agent_queue`, `agent_start`, o
 |-----------|------|----------|-------------|
 | `messageguid` | string | No | The message GUID to cancel. |
 | `agenttoken` | string | No | The agent token to cancel (alternative to messageguid). |
+| `sessionkey` | string | No | Optional session scope. When supplied, the cancel only matches a row in this `sessionkey` — useful for shared-owner agents so one end user can't cancel another's in-flight turn. Omit for the default single-user behavior. |
 
 > **Note:** You must provide at least one of `messageguid` or `agenttoken`.
 

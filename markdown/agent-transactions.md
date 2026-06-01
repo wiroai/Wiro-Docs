@@ -64,17 +64,18 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "guid": "7f3e8c21-1be1-4f5a-96e8-2b1a9e2a6a01",
       "type": "deduct",
       "action": "tokens",
-      "amount": -6,
-      "balanceafter": 10550,
+      "amount": -5,
+      "balanceafter": 10551,
       "description": "Input Tokens: 3450 / Output Tokens: 820 / Model: openai/gpt-5.4",
       "sessionkey": "default",
+      "agentsessionkey": "default",
       "messageguid": "5c41dabf-f2be-4aa8-a5a4-8c9e3d2f3f11",
       "inputtokens": 3450,
       "outputtokens": 820,
       "cachereadtokens": 512,
       "cachewritetokens": 0,
       "totaltokens": 4270,
-      "tokencost": 6,
+      "tokencost": 5,
       "processedms": 4120,
       "model": "openai/gpt-5.4",
       "provider": "agent",
@@ -215,6 +216,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 | `balanceafter` | `number\|null` | Remaining credit balance snapshot written at the time of the event. May be `null` for very old rows or for events written before the snapshot field was added. |
 | `description` | `string\|null` | Human-readable label. |
 | `sessionkey` | `string\|null` | Session the deduct belongs to (deduct rows only). |
+| `agentsessionkey` | `string\|null` | Alias of `sessionkey` (same value), present on every row for a unified per-session attribution key across `TaskList` / `TransactionList` / wallet responses. |
 | `messageguid` | `string\|null` | Agent message that triggered the deduct (deduct rows only). |
 | `inputtokens` | `number\|null` | Prompt tokens billed for the turn (`action: "tokens"` rows only). |
 | `outputtokens` | `number\|null` | Completion tokens billed for the turn (`action: "tokens"` rows only). |

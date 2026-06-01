@@ -159,6 +159,29 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
   }'
 ```
 
+### Generative Media Studio
+
+A richer variant of white-label chat: the agent doesn't just reply with text — it **generates images, video, or audio** through Wiro AI models and streams them into a live activity feed beside the conversation. This is the pattern behind Wiro's own Studio. It layers the realtime socket on top of the **Session-Per-User** model.
+
+**Shape:**
+
+- One deployed agent that has the `int-wiro-aimodels` skill enabled, with its `wiro` credential set to your Wiro project key (see [Agent Credentials](/docs/agent-credentials#wiro-ai-models--wiro-credential)). Media the agent generates is billed to that project's wallet.
+- One `sessionkey` per end user (Pattern 2 above) — the same agent instance serves everyone; each user's chat and media history is isolated by session.
+- A single WebSocket connection carries three things at once: the streaming chat reply, the per-turn token-usage report, and discovery of any model runs the agent launches.
+
+**End-to-end sequence an integrator replicates:**
+
+1. **Deploy once** (prepaid) — `POST /UserAgent/Deploy` with `useprepaid: true` + `tier`. Set the `wiro` credential with `POST /UserAgent/CredentialUpsert`, then `Start`.
+2. **Open the socket** — connect to `wss://socket.wiro.ai/v1` and wait for the `connected` frame.
+3. **(Optional) name the session** — `POST /UserAgent/Message/RenameSession` seeds a titled, empty session that shows up immediately in `Message/Sessions`.
+4. **Subscribe to run discovery** — send `{ "type": "agent_info", "agenttoken": "<sessionkey>" }` so you receive `agent_wiroai_runtask` frames for this session.
+5. **Send a message** — `POST /UserAgent/Message/Send` with the user's `sessionkey`. Subscribe `{ "type": "agent_info", "agenttoken": "<agenttoken-from-send>" }` and stream `agent_start → agent_output × N → agent_end`.
+6. **Patch token usage** — ~250–500 ms after `agent_end`, an `agent_usage_report` frame delivers the turn's token counts, `tokencost`, and `remainingcredits`; splice them onto the message by `messageguid`.
+7. **Collect generated media** — when the agent runs a model, an `agent_wiroai_runtask` frame arrives on the session channel with a `socketaccesstoken`. Subscribe to it with `{ "type": "task_info", "tasktoken": "<socketaccesstoken>" }` and stream `task_queue → task_start → task_output → task_postprocess_end`; the final frame carries the output media URLs. See [Agent WebSocket → Model runs the agent triggers](/docs/agent-websocket#model-runs-the-agent-triggers).
+8. **Manage sessions** — list with `Message/Sessions`, rename with `Message/RenameSession`, clear/forget with `Message/DeleteSession` (`rotate: true` to wipe the agent's memory of the thread).
+
+Either deployment shape works: run **one** media agent and separate users by `sessionkey`, or deploy **separate** agents per workspace/customer — both use the exact same socket and messaging surface.
+
 ### Scheduled Automation
 
 Combine agents with cron jobs for recurring tasks.

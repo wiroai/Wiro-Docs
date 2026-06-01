@@ -100,6 +100,7 @@ Frames flow in two directions. `↓` = server → client, `↑` = client → ser
 | ↓ | `agent_error` | Terminal failure event. `message` is either a sanitized string ("Agent is temporarily unavailable…" when an exception was caught) or a `progressGenerate` object (when the stream finished but content was a degenerate `"..."` / `"Error: internal error"`). Emits at most once. |
 | ↓ | `agent_cancel` | Terminal cancel event. Fires **only** when an already-active message is aborted mid-stream (via `Message/Cancel` or upstream abort). Cancels against a still-queued message do **not** broadcast this event — check `Message/Detail` for those. Emits at most once. |
 | ↓ | `agent_usage_report` | Post-terminal usage/billing frame. Fires once, ~250–500 ms after a successful `agent_end`, on the same `agenttoken`. Carries the final token counts, `model`, `tokencost`, and `remainingcredits` for the message identified by `messageguid`. Not emitted for replayed usage callbacks or for turns with no chat message (cron/hook turns). |
+| ↓ | `agent_wiroai_runtask` | Model-run discovery frame. Fires whenever the agent itself launches a Wiro model run during a turn (e.g. generating an image or video via `int-wiro-aimodels`). Broadcast on the **session-key** channel (not the per-turn `agenttoken`), carrying the new task's `socketaccesstoken` so you can subscribe to that run's `task_*` lifecycle and collect its outputs. See [Model runs the agent triggers](#model-runs-the-agent-triggers). |
 
 ## Message Format
 
@@ -325,9 +326,9 @@ A post-terminal frame that reports the final token usage and billing for the tur
     "cachewritetokens": 0,
     "totaltokens": 4270,
     "model": "openai/gpt-5.4",
-    "tokencost": 6,
+    "tokencost": 5,
     "processedms": 4200,
-    "remainingcredits": 9994
+    "remainingcredits": 9995
   }
 }
 ```
@@ -355,6 +356,49 @@ It is **not** emitted for:
 
 - **Idempotent / replayed usage callbacks** — a turn is billed once, and a replayed usage callback does not re-broadcast the frame.
 - **Turns with no chat message** — e.g. cron- or hook-triggered turns that produce no assistant message row have no `messageguid` to key on, so no frame is sent.
+
+### Model runs the agent triggers
+
+When the agent **itself** kicks off a Wiro model run during a turn — for example generating an image or a video through the `int-wiro-aimodels` skill — the bridge emits an `agent_wiroai_runtask` discovery frame. It hands you the new model run's `socketaccesstoken` so you can subscribe to that run and stream its progress and final media outputs. This is how a chat product surfaces a "live activity feed" of the media the agent is producing.
+
+```json
+{
+  "type": "agent_wiroai_runtask",
+  "agenttoken": "user-42",
+  "message": {
+    "taskid": 534574,
+    "socketaccesstoken": "eDcCm5yy7Z…",
+    "slugowner": "openai",
+    "slugproject": "gpt-image-1",
+    "categories": ["image"],
+    "status": "task_queue",
+    "response": { "result": true, "taskid": 534574, "socketaccesstoken": "eDcCm5yy7Z…" }
+  },
+  "result": true
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `taskid` | number | The model run's task id. |
+| `socketaccesstoken` | string | The run's task token. Subscribe to it (see below) to stream the model run's lifecycle and outputs. |
+| `slugowner` | string | Model owner slug (e.g. `"openai"`, `"black-forest-labs"`). |
+| `slugproject` | string | Model slug (e.g. `"gpt-image-1"`). |
+| `categories` | array<string> | The model's categories (e.g. `["image"]`, `["video"]`). |
+| `status` | string | Always `"task_queue"` at discovery — the run was just enqueued. |
+| `response` | object | Convenience echo `{ result, taskid, socketaccesstoken }`. |
+
+**This frame is keyed on the session, not the per-turn token.** Unlike the lifecycle frames above, `agent_wiroai_runtask` is broadcast on the **`sessionkey`** you passed to `Message/Send` (the frame's `agenttoken` field carries that session key, not a per-turn token). To receive it, send a second subscribe frame with your session key as the token:
+
+```json
+{ "type": "agent_info", "agenttoken": "user-42" }
+```
+
+A single socket can hold both subscriptions at once — the per-turn `agenttoken` (for the chat stream) and the `sessionkey` (for run discovery).
+
+**Then pivot to the task socket for outputs.** Take `message.socketaccesstoken` and subscribe to the standard model-run WebSocket exactly as documented in [WebSocket](/docs/websocket) — send `{ "type": "task_info", "tasktoken": "<socketaccesstoken>" }` and stream `task_queue → task_start → task_output → task_postprocess_end`. The final `task_postprocess_end` carries the output array (media URLs). The model-run `task_*` events are **only** delivered on the task's own `socketaccesstoken` channel — they are never re-broadcast on the agent channel.
+
+> **Only fires for agent-initiated runs.** `agent_wiroai_runtask` is emitted when the *agent* calls a model mid-turn. Model runs you launch yourself with `POST /Run` (your own `x-api-key`) do not produce this frame — you already hold their `socketaccesstoken` from the `/Run` response.
 
 ## The `result` Field
 
@@ -484,6 +528,8 @@ agent_queue  →  agent_start  →  agent_output × N  →  agent_end  →  agen
 ```
 
 `agent_queue` is **not** a WebSocket frame — it's the `status` returned synchronously in the `Message/Send` response (and reflected by `agent_subscribed` if you subscribe while the message is still queued). Everything from `agent_start` onward is pushed over the socket. On the failure path, `agent_error` or `agent_cancel` takes the place of `agent_end` as the terminal frame, and **no** `agent_usage_report` follows.
+
+[`agent_wiroai_runtask`](#model-runs-the-agent-triggers) is **not** part of this linear order — it fires out-of-band (zero or more times per turn, whenever the agent launches a model run) on the **session-key** channel rather than the per-turn `agenttoken`.
 
 ## Code Examples
 
@@ -966,8 +1012,8 @@ channel.stream.listen((message) {
     "messageguid": "c3d4e5f6-...",
     "totaltokens": 4270,
     "model": "openai/gpt-5.4",
-    "tokencost": 6,
-    "remainingcredits": 9994
+    "tokencost": 5,
+    "remainingcredits": 9995
   }
 }
 ```

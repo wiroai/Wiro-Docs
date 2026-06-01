@@ -2042,16 +2042,16 @@ pro.credits = starter.credits × tiermultiplier
 
 The monthly tier buys a **credit pool**; each turn the agent runs (a chat reply, a scheduled cron tick, or a voice-prep turn) deducts credits from that pool, **metered by the tokens its model consumes**. There are no flat per-action costs — what a turn costs depends on the model and how many input / output / cached tokens it used.
 
-Per-model rates live in the `tokenRates` object, present on `Agent/Detail`, `UserAgent/Detail`, `MyAgents`, `PinnedAgents`, and `PricingPreview`:
+Per-model rates live in the `tokenRates` object, present on `Agent/Detail`, `UserAgent/Detail`, `MyAgents`, `PinnedAgents`, and `PricingPreview`. The marketplace catalog (`Agent/Detail`) and `PricingPreview` return only the **selectable** models; a deployed instance's `UserAgent/Detail` / `MyAgents` / `PinnedAgents` return the **full** model map (so historical model-change markers and token-usage tooltips can still resolve a model that ops later marked non-selectable). Internal ops metadata (`$`-prefixed keys) is stripped from every response:
 
 ```json
 "tokenRates": {
   "default_model": "openai/gpt-5.4",
-  "fallback_rate": { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150 },
+  "fallback_rate": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75 },
   "models": {
-    "openai/gpt-5.4":      { "input_per_1m": 750,  "output_per_1m": 4500, "cached_input_per_1m": 75,   "selectable": true, "label": "GPT-5.4",      "tier": "balanced" },
-    "openai/gpt-5.4-mini": { "input_per_1m": 225,  "output_per_1m": 1350, "cached_input_per_1m": 22.5, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
-    "openai/gpt-5.5":      { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150,  "selectable": true, "label": "GPT-5.5",      "tier": "premium" }
+    "openai/gpt-5.4": { "input_per_1m": 375, "output_per_1m": 2250, "cached_input_per_1m": 37.5, "selectable": true, "label": "GPT-5.4", "tier": "balanced" },
+    "openai/gpt-5.4-mini": { "input_per_1m": 112.5, "output_per_1m": 675, "cached_input_per_1m": 11.25, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
+    "openai/gpt-5.5": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75, "selectable": true, "label": "GPT-5.5", "tier": "premium" }
   }
 }
 ```
@@ -2191,11 +2191,11 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
       },
       "tokenRates": {
         "default_model": "openai/gpt-5.4",
-        "fallback_rate": { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150 },
+        "fallback_rate": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75 },
         "models": {
-          "openai/gpt-5.4":      { "input_per_1m": 750,  "output_per_1m": 4500, "cached_input_per_1m": 75,   "selectable": true, "label": "GPT-5.4",      "tier": "balanced" },
-          "openai/gpt-5.4-mini": { "input_per_1m": 225,  "output_per_1m": 1350, "cached_input_per_1m": 22.5, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
-          "openai/gpt-5.5":      { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150,  "selectable": true, "label": "GPT-5.5",      "tier": "premium" }
+          "openai/gpt-5.4": { "input_per_1m": 375, "output_per_1m": 2250, "cached_input_per_1m": 37.5, "selectable": true, "label": "GPT-5.4", "tier": "balanced" },
+          "openai/gpt-5.4-mini": { "input_per_1m": 112.5, "output_per_1m": 675, "cached_input_per_1m": 11.25, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
+          "openai/gpt-5.5": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75, "selectable": true, "label": "GPT-5.5", "tier": "premium" }
         }
       },
       "skills": ["int-instagram-post", "int-wiro-aimodels"],
@@ -2428,11 +2428,11 @@ Both paths hit the same endpoint, but a few server-side behaviours diverge:
       "creditsyncat": null,
       "tokenRates": {
         "default_model": "openai/gpt-5.4",
-        "fallback_rate": { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150 },
+        "fallback_rate": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75 },
         "models": {
-          "openai/gpt-5.4":      { "input_per_1m": 750,  "output_per_1m": 4500, "cached_input_per_1m": 75,   "selectable": true, "label": "GPT-5.4",      "tier": "balanced" },
-          "openai/gpt-5.4-mini": { "input_per_1m": 225,  "output_per_1m": 1350, "cached_input_per_1m": 22.5, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
-          "openai/gpt-5.5":      { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150,  "selectable": true, "label": "GPT-5.5",      "tier": "premium" }
+          "openai/gpt-5.4": { "input_per_1m": 375, "output_per_1m": 2250, "cached_input_per_1m": 37.5, "selectable": true, "label": "GPT-5.4", "tier": "balanced" },
+          "openai/gpt-5.4-mini": { "input_per_1m": 112.5, "output_per_1m": 675, "cached_input_per_1m": 11.25, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
+          "openai/gpt-5.5": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75, "selectable": true, "label": "GPT-5.5", "tier": "premium" }
         }
       },
       "agentModel": {
@@ -2580,11 +2580,11 @@ Lists all agent instances deployed under your account.
       "enabledSkills": ["int-instagram-post", "int-twitterx-post", "int-wiro-aimodels"],
       "tokenRates": {
         "default_model": "openai/gpt-5.4",
-        "fallback_rate": { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150 },
+        "fallback_rate": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75 },
         "models": {
-          "openai/gpt-5.4":      { "input_per_1m": 750,  "output_per_1m": 4500, "cached_input_per_1m": 75,   "selectable": true, "label": "GPT-5.4",      "tier": "balanced" },
-          "openai/gpt-5.4-mini": { "input_per_1m": 225,  "output_per_1m": 1350, "cached_input_per_1m": 22.5, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
-          "openai/gpt-5.5":      { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150,  "selectable": true, "label": "GPT-5.5",      "tier": "premium" }
+          "openai/gpt-5.4": { "input_per_1m": 375, "output_per_1m": 2250, "cached_input_per_1m": 37.5, "selectable": true, "label": "GPT-5.4", "tier": "balanced" },
+          "openai/gpt-5.4-mini": { "input_per_1m": 112.5, "output_per_1m": 675, "cached_input_per_1m": 11.25, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
+          "openai/gpt-5.5": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75, "selectable": true, "label": "GPT-5.5", "tier": "premium" }
         }
       },
       "agentModel": {
@@ -2607,7 +2607,7 @@ Lists all agent instances deployed under your account.
 }
 ```
 
-> **`MyAgents` returns one row per useragent with its scalar fields, the trimmed `agent` template summary (no `extracreditpacks`), `subscription`, `setuprequired` (status-based check only), `extracredits` / `extracreditsexpiry`, the resolved `enabledSkills` (template defaults ∪ user overrides, including transitive `depends_on` closure), `tokenRates` (per-model token rates — same map as `UserAgent/Detail.tokenRates`), and `agentModel` (the resolved chat / cron / voice-prep / voice-postcall model slugs).** Heavier composed children (`credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `remainingcredits`) are **not** included — call `UserAgent/Detail` on a single guid for the full composed shape.
+> **`MyAgents` returns one row per useragent with its scalar fields, the trimmed `agent` template summary (no `extracreditpacks`), `subscription`, `setuprequired` (status-based check only), `extracredits` / `extracreditsexpiry`, the resolved `enabledSkills` (template defaults ∪ user overrides, including transitive `depends_on` closure), `tokenRates` (per-model token rates — same map as `UserAgent/Detail.tokenRates`), `agentModel` (the resolved chat / cron / voice-prep / voice-postcall model slugs), and `enabledCommands` (the slash-command allowlist, `null` when uncustomized).** Heavier composed children (`credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `remainingcredits`) are **not** included — call `UserAgent/Detail` on a single guid for the full composed shape.
 
 > **`enabledSkills`, `tokenRates`, and `agentModel`** ride on each list row so the dock chat / pinned-agents UI can decide whether to show the realtime voice-call button (`enabledSkills` includes `util-web-channel`) and render the model picker + live token-rate card without round-tripping `UserAgent/Detail` per row.
 
@@ -2908,11 +2908,11 @@ Retrieves full details for a single deployed agent instance, including subscript
       "creditsyncat": 1714694410,
       "tokenRates": {
         "default_model": "openai/gpt-5.4",
-        "fallback_rate": { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150 },
+        "fallback_rate": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75 },
         "models": {
-          "openai/gpt-5.4":      { "input_per_1m": 750,  "output_per_1m": 4500, "cached_input_per_1m": 75,   "selectable": true, "label": "GPT-5.4",      "tier": "balanced" },
-          "openai/gpt-5.4-mini": { "input_per_1m": 225,  "output_per_1m": 1350, "cached_input_per_1m": 22.5, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
-          "openai/gpt-5.5":      { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150,  "selectable": true, "label": "GPT-5.5",      "tier": "premium" }
+          "openai/gpt-5.4": { "input_per_1m": 375, "output_per_1m": 2250, "cached_input_per_1m": 37.5, "selectable": true, "label": "GPT-5.4", "tier": "balanced" },
+          "openai/gpt-5.4-mini": { "input_per_1m": 112.5, "output_per_1m": 675, "cached_input_per_1m": 11.25, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
+          "openai/gpt-5.5": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75, "selectable": true, "label": "GPT-5.5", "tier": "premium" }
         }
       },
       "agentModel": {
@@ -2998,6 +2998,7 @@ Retrieves full details for a single deployed agent instance, including subscript
 | `creditsyncat` | `number\|null` | Unix seconds of the last agent → API usage sync (`null` before the first report). |
 | `tokenRates` | `object\|null` | Per-model token-billing rates (credits per 1,000,000 tokens). Shape: `{ default_model, fallback_rate, models: { "<slug>": { input_per_1m, output_per_1m, cached_input_per_1m?, selectable?, label?, tier? } } }`. Each turn's cost is metered from these rates (1 credit = $0.01) — see [Token Billing](#pricing-model--tiers-skills--token-billing). `null` only on registry-read failure. |
 | `agentModel` | `object` | The resolved model slugs this instance runs: `{ chatModel, cronModel, voicePrepModel, voicePostcallModel }` (camelCase). Each falls back to the platform default when the operator hasn't overridden it. Change them via [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) using the lowercase keys `chatmodel` / `cronmodel` / `voiceprepmodel` / `voicepostcallmodel`. |
+| `enabledCommands` | `array<string>\|null` | The in-chat slash-command allowlist (camelCase read). `null` = the operator never customized it, so **all** slash commands are available. An array (including `[]`) is an explicit allowlist of command keys (no leading slash); `[]` hides the slash-command menu. Write it via [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) with the lowercase `enabledcommands` key. Also present on `MyAgents` / `PinnedAgents` rows. |
 
 **Lifecycle**
 
@@ -3151,7 +3152,7 @@ Updates an agent instance's **scalar fields only** (title, description, categori
 
 #### **POST** /UserAgent/UpdateSettings
 
-Writes per-agent preference toggles that are not credentials and not skill rows. Exposes `timezone` (operator-selected IANA zone, propagates into the agent container's `TZ` env, cron `schedule.tz`, and caller-facing voice prep), `teamsessionmode` (team workspace session mode), and the four **model overrides** — `chatmodel`, `cronmodel`, `voiceprepmodel`, `voicepostcallmodel` — that choose which LLM the agent uses for chat replies, scheduled (cron) turns, voice-call prep, and the post-call summary turn. Submit any subset in the same call — partial updates are supported and untouched fields keep their current value.
+Writes per-agent preference toggles that are not credentials and not skill rows. Exposes `timezone` (operator-selected IANA zone, propagates into the agent container's `TZ` env, cron `schedule.tz`, and caller-facing voice prep), `teamsessionmode` (team workspace session mode), the four **model overrides** — `chatmodel`, `cronmodel`, `voiceprepmodel`, `voicepostcallmodel` — that choose which LLM the agent uses for chat replies, scheduled (cron) turns, voice-call prep, and the post-call summary turn, and `enabledcommands` (the in-chat slash-command allowlist). Submit any subset in the same call — partial updates are supported and untouched fields keep their current value.
 
 **Permission**: owner OR team admin (the same `requireRole: "admin"` gate as `/UserAgent/Update`). Team members cannot flip these knobs.
 
@@ -3166,6 +3167,9 @@ Writes per-agent preference toggles that are not credentials and not skill rows.
 | `cronmodel` | string\|null | No | Same rules as `chatmodel`, applied to **scheduled (cron) turns**. |
 | `voiceprepmodel` | string\|null | No | Same rules as `chatmodel`, applied to the **voice-call prep** turn (context assembled before a realtime call). |
 | `voicepostcallmodel` | string\|null | No | Same rules as `chatmodel`, applied to the **post-call summary** turn after a realtime voice call ends. |
+| `enabledcommands` | string[] | No | Allowlist of in-chat **slash commands** the agent exposes, as an array of command keys **without** the leading slash (e.g. `["agent_help", "new_session", "agent_status"]`). Validated against the command catalog — an unknown key is rejected with `invalid-command-selection`, a non-array value with `invalid-command-list`. Order is preserved and duplicates are removed. An empty array `[]` is valid and **hides the slash-command menu** entirely. Omit the field to leave the current allowlist untouched. |
+
+> **Slash-command catalog.** Valid `enabledcommands` keys are: `agent_help`, `new_session`, `agent_status`, `agent_limits`, `last_scan`, `last_heartbeat`, `agent_restart`, `clear_all_sessions`, `clear_history`. Read the agent's current allowlist from the `enabledCommands` field (camelCase) on `UserAgent/Detail` / `MyAgents` / `PinnedAgents` — `null` there means the operator never customized it (all commands available); an array (including `[]`) is an explicit allowlist.
 
 > **Omitted fields are preserved.** The handler distinguishes between "field not in the body" and "field present with `null`/`""`/value", so a POST that carries only `timezone` does **not** touch `teamsessionmode` or any model field, and vice versa. Sending an empty body (none of the recognised fields) is rejected with `nothing-to-update` to avoid charging a no-op container restart.
 
@@ -3211,6 +3215,15 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
     "cronmodel": "openai/gpt-5.4-mini"
   }'
 
+# Restrict the in-chat slash-command menu (empty array hides it entirely)
+curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
+  -H "Authorization: Bearer $WIRO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+    "enabledcommands": ["agent_help", "new_session", "agent_status"]
+  }'
+
 # Update both preference toggles in one call
 curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
   -H "Authorization: Bearer $WIRO_API_KEY" \
@@ -3238,10 +3251,13 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
 | Code | Message key | When |
 |------|-------------|------|
 | 400 | `request-parameter-required` | `useragentguid` missing from the body. |
-| 400 | `nothing-to-update` | Body had neither `timezone` nor `teamsessionmode`. |
+| 400 | `nothing-to-update` | Body had none of the recognised fields (`timezone`, `teamsessionmode`, a model override, or `enabledcommands`). |
 | 400 | `invalid-timezone` | `timezone` wasn't a string the runtime's `Intl.DateTimeFormat` could resolve. |
 | 400 | `teamsessionmode-team-only` | `teamsessionmode` was set on a personal (non-team) agent. |
 | 400 | `teamsessionmode-invalid` | `teamsessionmode` wasn't `"collaborative"` or `"private"`. |
+| 400 | `invalid-model-selection` | A model override (`chatmodel` / `cronmodel` / `voiceprepmodel` / `voicepostcallmodel`) was an unknown or non-selectable slug (`tokenRates.models[<slug>].selectable !== true`). |
+| 400 | `invalid-command-list` | `enabledcommands` was present but not an array. |
+| 400 | `invalid-command-selection` | `enabledcommands` contained a key that isn't in the slash-command catalog. |
 | 403 | `useragent-access-denied` | Caller is neither the owner nor a team admin on a team-owned agent. |
 | 500 | `failed-to-update-useragent` | DB write failed (transient — safe to retry). |
 
@@ -3915,11 +3931,11 @@ Two body shapes:
   },
   "tokenRates": {
     "default_model": "openai/gpt-5.4",
-    "fallback_rate": { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150 },
+    "fallback_rate": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75 },
     "models": {
-      "openai/gpt-5.4":      { "input_per_1m": 750,  "output_per_1m": 4500, "cached_input_per_1m": 75,   "selectable": true, "label": "GPT-5.4",      "tier": "balanced" },
-      "openai/gpt-5.4-mini": { "input_per_1m": 225,  "output_per_1m": 1350, "cached_input_per_1m": 22.5, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
-      "openai/gpt-5.5":      { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150,  "selectable": true, "label": "GPT-5.5",      "tier": "premium" }
+      "openai/gpt-5.4": { "input_per_1m": 375, "output_per_1m": 2250, "cached_input_per_1m": 37.5, "selectable": true, "label": "GPT-5.4", "tier": "balanced" },
+      "openai/gpt-5.4-mini": { "input_per_1m": 112.5, "output_per_1m": 675, "cached_input_per_1m": 11.25, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
+      "openai/gpt-5.5": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75, "selectable": true, "label": "GPT-5.5", "tier": "premium" }
     }
   }
 }
@@ -4064,14 +4080,14 @@ Non-admin callers are rate-limited via a 30-second Redis cache keyed on `(userag
     {
       "ts": "2026-05-03T14:00:03.000Z",
       "kind": "token_usage",
-      "title": "Turn billed — 6 credits",
+      "title": "Turn billed — 5 credits",
       "summary": { "trigger": "chat" },
       "model": "openai/gpt-5.4",
       "tokens": { "input": 3450, "output": 820, "cacheRead": 2400, "cacheWrite": 0, "total": 4270 },
-      "tokencost": 6,
+      "tokencost": 5,
       "durationMs": 4200,
       "calls": 2,
-      "remainingcredits": 2244,
+      "remainingcredits": 2245,
       "ok": true,
       "userUuid": "ada-uuid",
       "user": {
@@ -4308,11 +4324,11 @@ No request body fields are required — the caller's `tokenUUID` (or active `tea
       "enabledSkills": ["int-instagram-post", "int-twitterx-post", "int-wiro-aimodels"],
       "tokenRates": {
         "default_model": "openai/gpt-5.4",
-        "fallback_rate": { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150 },
+        "fallback_rate": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75 },
         "models": {
-          "openai/gpt-5.4":      { "input_per_1m": 750,  "output_per_1m": 4500, "cached_input_per_1m": 75,   "selectable": true, "label": "GPT-5.4",      "tier": "balanced" },
-          "openai/gpt-5.4-mini": { "input_per_1m": 225,  "output_per_1m": 1350, "cached_input_per_1m": 22.5, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
-          "openai/gpt-5.5":      { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150,  "selectable": true, "label": "GPT-5.5",      "tier": "premium" }
+          "openai/gpt-5.4": { "input_per_1m": 375, "output_per_1m": 2250, "cached_input_per_1m": 37.5, "selectable": true, "label": "GPT-5.4", "tier": "balanced" },
+          "openai/gpt-5.4-mini": { "input_per_1m": 112.5, "output_per_1m": 675, "cached_input_per_1m": 11.25, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
+          "openai/gpt-5.5": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75, "selectable": true, "label": "GPT-5.5", "tier": "premium" }
         }
       },
       "agentModel": {
@@ -5349,11 +5365,11 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
   "agentBase": { "priceUsd": 0, "credits": 0 },
   "tokenRates": {
     "default_model": "openai/gpt-5.4",
-    "fallback_rate": { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150 },
+    "fallback_rate": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75 },
     "models": {
-      "openai/gpt-5.4":      { "input_per_1m": 750,  "output_per_1m": 4500, "cached_input_per_1m": 75,   "selectable": true, "label": "GPT-5.4",      "tier": "balanced" },
-      "openai/gpt-5.4-mini": { "input_per_1m": 225,  "output_per_1m": 1350, "cached_input_per_1m": 22.5, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
-      "openai/gpt-5.5":      { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150,  "selectable": true, "label": "GPT-5.5",      "tier": "premium" }
+      "openai/gpt-5.4": { "input_per_1m": 375, "output_per_1m": 2250, "cached_input_per_1m": 37.5, "selectable": true, "label": "GPT-5.4", "tier": "balanced" },
+      "openai/gpt-5.4-mini": { "input_per_1m": 112.5, "output_per_1m": 675, "cached_input_per_1m": 11.25, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
+      "openai/gpt-5.5": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75, "selectable": true, "label": "GPT-5.5", "tier": "premium" }
     }
   },
   "tiers": {
@@ -5431,11 +5447,11 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
       "creditperiod": "2026-05",
       "tokenRates": {
         "default_model": "openai/gpt-5.4",
-        "fallback_rate": { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150 },
+        "fallback_rate": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75 },
         "models": {
-          "openai/gpt-5.4":      { "input_per_1m": 750,  "output_per_1m": 4500, "cached_input_per_1m": 75,   "selectable": true, "label": "GPT-5.4",      "tier": "balanced" },
-          "openai/gpt-5.4-mini": { "input_per_1m": 225,  "output_per_1m": 1350, "cached_input_per_1m": 22.5, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
-          "openai/gpt-5.5":      { "input_per_1m": 1500, "output_per_1m": 9000, "cached_input_per_1m": 150,  "selectable": true, "label": "GPT-5.5",      "tier": "premium" }
+          "openai/gpt-5.4": { "input_per_1m": 375, "output_per_1m": 2250, "cached_input_per_1m": 37.5, "selectable": true, "label": "GPT-5.4", "tier": "balanced" },
+          "openai/gpt-5.4-mini": { "input_per_1m": 112.5, "output_per_1m": 675, "cached_input_per_1m": 11.25, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
+          "openai/gpt-5.5": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75, "selectable": true, "label": "GPT-5.5", "tier": "premium" }
         }
       },
       "skills": ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels"],
@@ -5762,6 +5778,7 @@ Retrieves the current status and content of a single message. You can query by e
 |-----------|------|----------|-------------|
 | `messageguid` | string | No | The message GUID returned from Send. |
 | `agenttoken` | string | No | The agent token returned from Send (alternative to messageguid). |
+| `sessionkey` | string | No | Optional session scope. When supplied, the row is additionally constrained to this `sessionkey`, so a shared-owner agent (one API key fronting many end users) can ensure a user only reads their own turn. Omit for the default single-user behavior. |
 
 > **Note:** You must provide at least one of `messageguid` or `agenttoken`.
 
@@ -5813,7 +5830,7 @@ Retrieves the current status and content of a single message. You can query by e
     "cachewritetokens": 0,
     "totaltokens": 4270,
     "model": "openai/gpt-5.4",
-    "tokencost": 6,
+    "tokencost": 5,
     "processedms": 4200
   }
 }
@@ -5907,7 +5924,7 @@ Retrieves conversation history for a specific agent and session. Messages are re
         "cachewritetokens": 0,
         "totaltokens": 4270,
         "model": "openai/gpt-5.4",
-        "tokencost": 6,
+        "tokencost": 5,
         "processedms": 4200
       },
       {
@@ -5963,7 +5980,7 @@ Retrieves conversation history for a specific agent and session. Messages are re
         "cachewritetokens": 0,
         "totaltokens": 1720,
         "model": "openai/gpt-5.2",
-        "tokencost": 4,
+        "tokencost": 3,
         "processedms": 3100
       }
     ],
@@ -6049,7 +6066,15 @@ Lists all conversation sessions for an agent. Returns each session's key, messag
         "sessionkey": "user-42-support",
         "messagecount": 8,
         "updatedat": 1743349200,
-        "lastmessage": "How do I reset my password?"
+        "lastmessage": "How do I reset my password?",
+        "name": "Password help"
+      },
+      {
+        "sessionkey": "user-99-draft",
+        "messagecount": 0,
+        "updatedat": 1743348000,
+        "lastmessage": "",
+        "name": "New chat"
       }
     ]
   }
@@ -6061,7 +6086,10 @@ Lists all conversation sessions for an agent. Returns each session's key, messag
 | `sessionkey` | `string` | The session identifier. |
 | `messagecount` | `number` | Total number of messages in this session. |
 | `updatedat` | `number` | Unix timestamp (epoch seconds) of the last activity in this session. |
-| `lastmessage` | `string` | The most recent message body — `agentmessages.content` if the user sent a message, falling back to `agentmessages.response` (assistant reply) when `content` is empty. |
+| `lastmessage` | `string` | The most recent message body — `useragentmessages.content` if the user sent a message, falling back to `useragentmessages.response` (assistant reply) when `content` is empty. |
+| `name` | `string?` | Optional display name set via `Message/RenameSession`. Omitted when the session was never named — fall back to your own default label (e.g. the `sessionkey` or "New chat"). |
+
+> **Named-but-empty sessions appear too.** A session created by `RenameSession` before its first `Message/Send` surfaces here with `messagecount: 0`, `lastmessage: ""`, and the `name` you set — so a freshly created chat shows up in the list immediately.
 
 > **Reserved sessionkeys filtered out (non-admin only).** The list omits internal sessions used by the runtime: `wiro:api` (gateway hooks default), `voice-prep*` (per-call prep threads), `voice-call-*` (active voice-call rows), and `cs-cron-*` (one thread per scheduled cron skill). These rows still exist on the agent — they're just hidden from operator-facing listings to keep the panel UX clean. Admin callers (`tokenUserRoles` contains `"ADMIN"`) see the full unfiltered list. The same filter is applied on `Message/History` reads and the `DeleteSession` guard.
 
@@ -6075,10 +6103,45 @@ Deletes messages in the given session for the **calling user**. This action cann
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | The agent instance GUID. |
 | `sessionkey` | string | Yes | The session key to delete. |
+| `rotate` | boolean | No | Default `false`. When `true`, after wiping the rows the server also rotates the session's memory bucket so the agent's container **forgets** the cleared turns — the next `Message/Send` on the same `sessionkey` starts a fresh reasoning context. With `false` (or omitted) the message rows are wiped but the running container may still recall them. Any display `name` set via `RenameSession` is dropped on delete. |
 
-> **Scope of deletion:** Hard delete — the API issues `DELETE FROM agentmessages WHERE useragentid = … AND sessionkey = …`. For non-admin callers an additional `AND uuid = <caller_uuid>` filter is appended, so only the caller's own rows in the session are purged. This holds in both private and collaborative team modes — even when `teamsessionmode: "collaborative"` (e.g. Telegram group-shared sessions) means every member sees the same thread, each member's `DeleteSession` only wipes their own contributions. Admin callers (`tokenUserRoles` contains `"ADMIN"`) bypass the uuid filter and wipe the entire session for every participant. Compare with `Message/Delete` (per-message), which is a soft-delete bumping the `deletestatus` bitmask.
+> **Scope of deletion:** Hard delete — the API issues `DELETE FROM useragentmessages WHERE useragentid = … AND sessionkey = …`. For non-admin callers an additional `AND uuid = <caller_uuid>` filter is appended, so only the caller's own rows in the session are purged. This holds in both private and collaborative team modes — even when `teamsessionmode: "collaborative"` (e.g. Telegram group-shared sessions) means every member sees the same thread, each member's `DeleteSession` only wipes their own contributions. Admin callers (`tokenUserRoles` contains `"ADMIN"`) bypass the uuid filter and wipe the entire session for every participant. Compare with `Message/Delete` (per-message), which is a soft-delete bumping the `deletestatus` bitmask.
 
 > **Reserved sessionkeys (non-admin callers).** Wiro-API maintains a handful of internal threads keyed under reserved sessionkeys — `voice-prep` and `voice-prep-<sid>` (per-call prep), `voice-call-<sid>` (voice-call bubble rows), `cs-cron-<slug>` (one thread per scheduled cron skill), and `wiro:api` (gateway hooks default). Non-admin callers passing any of these as `sessionkey` get back `"Session not found"` instead of a delete; the response shape is identical to a missing-session result so there's no information leak about what threads exist. Admin (`tokenUserRoles` contains `"ADMIN"`) bypasses this guard. The same guard also covers `Message/History` reads, so `Sessions` already filters these keys out of the operator's session list — you only encounter the reserved-key error if you hand-craft the body with a known internal key.
+
+### Response
+
+```json
+{
+  "result": true,
+  "errors": []
+}
+```
+
+## **POST** /UserAgent/Message/RenameSession
+
+Sets a human-readable display **name** on a session without touching its messages or its `sessionkey`. The name is stored in a separate overlay keyed by `(useragentguid, sessionkey)` and surfaces on `Message/Sessions`. Because the `sessionkey` is unchanged, the agent's conversation memory is fully preserved across a rename.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | The agent instance GUID. |
+| `sessionkey` | string | Yes | The session to name. Reserved system keys (`wiro:api`, `voice-prep*`, `voice-call-*`, `cs-cron-*`) are rejected with `"Session not found"` for non-admin callers, same as `DeleteSession`. |
+| `name` | string | Yes | The display name. The server strips control characters, collapses whitespace, trims, and caps the result at **40 characters**. An empty string after sanitization is rejected with `request-parameter-required`. |
+
+> **Doubles as "create a named session".** Calling `RenameSession` with a brand-new `sessionkey` — before any `Message/Send` on it — seeds a named-but-empty session that immediately appears in `Message/Sessions` with `messagecount: 0` and `lastmessage: ""`. This is the canonical way to let a user open a fresh, titled chat before they type anything.
+
+### Request
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/RenameSession" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "sessionkey": "user-42-support",
+    "name": "Password help"
+  }'
+```
 
 ### Response
 
@@ -6139,6 +6202,7 @@ Cancels an in-progress message. Only messages in `agent_queue`, `agent_start`, o
 |-----------|------|----------|-------------|
 | `messageguid` | string | No | The message GUID to cancel. |
 | `agenttoken` | string | No | The agent token to cancel (alternative to messageguid). |
+| `sessionkey` | string | No | Optional session scope. When supplied, the cancel only matches a row in this `sessionkey` — useful for shared-owner agents so one end user can't cancel another's in-flight turn. Omit for the default single-user behavior. |
 
 > **Note:** You must provide at least one of `messageguid` or `agenttoken`.
 
@@ -6857,6 +6921,7 @@ Frames flow in two directions. `↓` = server → client, `↑` = client → ser
 | ↓ | `agent_error` | Terminal failure event. `message` is either a sanitized string ("Agent is temporarily unavailable…" when an exception was caught) or a `progressGenerate` object (when the stream finished but content was a degenerate `"..."` / `"Error: internal error"`). Emits at most once. |
 | ↓ | `agent_cancel` | Terminal cancel event. Fires **only** when an already-active message is aborted mid-stream (via `Message/Cancel` or upstream abort). Cancels against a still-queued message do **not** broadcast this event — check `Message/Detail` for those. Emits at most once. |
 | ↓ | `agent_usage_report` | Post-terminal usage/billing frame. Fires once, ~250–500 ms after a successful `agent_end`, on the same `agenttoken`. Carries the final token counts, `model`, `tokencost`, and `remainingcredits` for the message identified by `messageguid`. Not emitted for replayed usage callbacks or for turns with no chat message (cron/hook turns). |
+| ↓ | `agent_wiroai_runtask` | Model-run discovery frame. Fires whenever the agent itself launches a Wiro model run during a turn (e.g. generating an image or video via `int-wiro-aimodels`). Broadcast on the **session-key** channel (not the per-turn `agenttoken`), carrying the new task's `socketaccesstoken` so you can subscribe to that run's `task_*` lifecycle and collect its outputs. See [Model runs the agent triggers](#model-runs-the-agent-triggers). |
 
 ## Message Format
 
@@ -7082,9 +7147,9 @@ A post-terminal frame that reports the final token usage and billing for the tur
     "cachewritetokens": 0,
     "totaltokens": 4270,
     "model": "openai/gpt-5.4",
-    "tokencost": 6,
+    "tokencost": 5,
     "processedms": 4200,
-    "remainingcredits": 9994
+    "remainingcredits": 9995
   }
 }
 ```
@@ -7112,6 +7177,49 @@ It is **not** emitted for:
 
 - **Idempotent / replayed usage callbacks** — a turn is billed once, and a replayed usage callback does not re-broadcast the frame.
 - **Turns with no chat message** — e.g. cron- or hook-triggered turns that produce no assistant message row have no `messageguid` to key on, so no frame is sent.
+
+### Model runs the agent triggers
+
+When the agent **itself** kicks off a Wiro model run during a turn — for example generating an image or a video through the `int-wiro-aimodels` skill — the bridge emits an `agent_wiroai_runtask` discovery frame. It hands you the new model run's `socketaccesstoken` so you can subscribe to that run and stream its progress and final media outputs. This is how a chat product surfaces a "live activity feed" of the media the agent is producing.
+
+```json
+{
+  "type": "agent_wiroai_runtask",
+  "agenttoken": "user-42",
+  "message": {
+    "taskid": 534574,
+    "socketaccesstoken": "eDcCm5yy7Z…",
+    "slugowner": "openai",
+    "slugproject": "gpt-image-1",
+    "categories": ["image"],
+    "status": "task_queue",
+    "response": { "result": true, "taskid": 534574, "socketaccesstoken": "eDcCm5yy7Z…" }
+  },
+  "result": true
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `taskid` | number | The model run's task id. |
+| `socketaccesstoken` | string | The run's task token. Subscribe to it (see below) to stream the model run's lifecycle and outputs. |
+| `slugowner` | string | Model owner slug (e.g. `"openai"`, `"black-forest-labs"`). |
+| `slugproject` | string | Model slug (e.g. `"gpt-image-1"`). |
+| `categories` | array<string> | The model's categories (e.g. `["image"]`, `["video"]`). |
+| `status` | string | Always `"task_queue"` at discovery — the run was just enqueued. |
+| `response` | object | Convenience echo `{ result, taskid, socketaccesstoken }`. |
+
+**This frame is keyed on the session, not the per-turn token.** Unlike the lifecycle frames above, `agent_wiroai_runtask` is broadcast on the **`sessionkey`** you passed to `Message/Send` (the frame's `agenttoken` field carries that session key, not a per-turn token). To receive it, send a second subscribe frame with your session key as the token:
+
+```json
+{ "type": "agent_info", "agenttoken": "user-42" }
+```
+
+A single socket can hold both subscriptions at once — the per-turn `agenttoken` (for the chat stream) and the `sessionkey` (for run discovery).
+
+**Then pivot to the task socket for outputs.** Take `message.socketaccesstoken` and subscribe to the standard model-run WebSocket exactly as documented in [WebSocket](/docs/websocket) — send `{ "type": "task_info", "tasktoken": "<socketaccesstoken>" }` and stream `task_queue → task_start → task_output → task_postprocess_end`. The final `task_postprocess_end` carries the output array (media URLs). The model-run `task_*` events are **only** delivered on the task's own `socketaccesstoken` channel — they are never re-broadcast on the agent channel.
+
+> **Only fires for agent-initiated runs.** `agent_wiroai_runtask` is emitted when the *agent* calls a model mid-turn. Model runs you launch yourself with `POST /Run` (your own `x-api-key`) do not produce this frame — you already hold their `socketaccesstoken` from the `/Run` response.
 
 ## The `result` Field
 
@@ -7241,6 +7349,8 @@ agent_queue  →  agent_start  →  agent_output × N  →  agent_end  →  agen
 ```
 
 `agent_queue` is **not** a WebSocket frame — it's the `status` returned synchronously in the `Message/Send` response (and reflected by `agent_subscribed` if you subscribe while the message is still queued). Everything from `agent_start` onward is pushed over the socket. On the failure path, `agent_error` or `agent_cancel` takes the place of `agent_end` as the terminal frame, and **no** `agent_usage_report` follows.
+
+[`agent_wiroai_runtask`](#model-runs-the-agent-triggers) is **not** part of this linear order — it fires out-of-band (zero or more times per turn, whenever the agent launches a model run) on the **session-key** channel rather than the per-turn `agenttoken`.
 
 ## Code Examples
 
@@ -7723,8 +7833,8 @@ channel.stream.listen((message) {
     "messageguid": "c3d4e5f6-...",
     "totaltokens": 4270,
     "model": "openai/gpt-5.4",
-    "tokencost": 6,
-    "remainingcredits": 9994
+    "tokencost": 5,
+    "remainingcredits": 9995
   }
 }
 ```
@@ -8489,6 +8599,7 @@ The `int-wiro-aimodels` skill lets an agent call Wiro's own AI models (image / v
 
 - **Credential key:** `wiro`
 - **Field:** `apikey` (single field — type `custom:wiro-project-picker` in the registry; the dashboard renders it as a project picker, the API expects the project's raw API key string).
+- **No secret to supply.** Only the `apikey` is needed. Request signing for the agent's internal Wiro calls is handled automatically — Wiro derives the project's signing secret server-side from the key you pick, so there is no `apisecret` (or similar) field to paste.
 - **Setup:** create / pick a Wiro project at [wiro.ai/panel/projects](https://wiro.ai/panel/projects), copy its API key, then upsert it:
 
 ```bash
@@ -10144,17 +10255,18 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "guid": "7f3e8c21-1be1-4f5a-96e8-2b1a9e2a6a01",
       "type": "deduct",
       "action": "tokens",
-      "amount": -6,
-      "balanceafter": 10550,
+      "amount": -5,
+      "balanceafter": 10551,
       "description": "Input Tokens: 3450 / Output Tokens: 820 / Model: openai/gpt-5.4",
       "sessionkey": "default",
+      "agentsessionkey": "default",
       "messageguid": "5c41dabf-f2be-4aa8-a5a4-8c9e3d2f3f11",
       "inputtokens": 3450,
       "outputtokens": 820,
       "cachereadtokens": 512,
       "cachewritetokens": 0,
       "totaltokens": 4270,
-      "tokencost": 6,
+      "tokencost": 5,
       "processedms": 4120,
       "model": "openai/gpt-5.4",
       "provider": "agent",
@@ -10295,6 +10407,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 | `balanceafter` | `number\|null` | Remaining credit balance snapshot written at the time of the event. May be `null` for very old rows or for events written before the snapshot field was added. |
 | `description` | `string\|null` | Human-readable label. |
 | `sessionkey` | `string\|null` | Session the deduct belongs to (deduct rows only). |
+| `agentsessionkey` | `string\|null` | Alias of `sessionkey` (same value), present on every row for a unified per-session attribution key across `TaskList` / `TransactionList` / wallet responses. |
 | `messageguid` | `string\|null` | Agent message that triggered the deduct (deduct rows only). |
 | `inputtokens` | `number\|null` | Prompt tokens billed for the turn (`action: "tokens"` rows only). |
 | `outputtokens` | `number\|null` | Completion tokens billed for the turn (`action: "tokens"` rows only). |
@@ -10544,13 +10657,13 @@ A `token_usage` event records the token spend and credit deduction for one bille
 {
   "ts": "2026-05-03T14:02:55.310Z",
   "kind": "token_usage",
-  "title": "Token usage: 4270 tokens · 6 credits",
+  "title": "Token usage: 4270 tokens · 5 credits",
   "model": "openai/gpt-5.4",
   "tokens": { "input": 3450, "output": 820, "cacheRead": 2400, "cacheWrite": 0, "total": 4270 },
-  "tokencost": 6,
+  "tokencost": 5,
   "durationMs": 4200,
   "calls": 2,
-  "remainingcredits": 9994,
+  "remainingcredits": 9995,
   "userUuid": "system",
   "user": null
 }
@@ -11031,6 +11144,29 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
     "callbackurl": "https://your-server.com/webhooks/report-ready"
   }'
 ```
+
+### Generative Media Studio
+
+A richer variant of white-label chat: the agent doesn't just reply with text — it **generates images, video, or audio** through Wiro AI models and streams them into a live activity feed beside the conversation. This is the pattern behind Wiro's own Studio. It layers the realtime socket on top of the **Session-Per-User** model.
+
+**Shape:**
+
+- One deployed agent that has the `int-wiro-aimodels` skill enabled, with its `wiro` credential set to your Wiro project key (see [Agent Credentials](/docs/agent-credentials#wiro-ai-models--wiro-credential)). Media the agent generates is billed to that project's wallet.
+- One `sessionkey` per end user (Pattern 2 above) — the same agent instance serves everyone; each user's chat and media history is isolated by session.
+- A single WebSocket connection carries three things at once: the streaming chat reply, the per-turn token-usage report, and discovery of any model runs the agent launches.
+
+**End-to-end sequence an integrator replicates:**
+
+1. **Deploy once** (prepaid) — `POST /UserAgent/Deploy` with `useprepaid: true` + `tier`. Set the `wiro` credential with `POST /UserAgent/CredentialUpsert`, then `Start`.
+2. **Open the socket** — connect to `wss://socket.wiro.ai/v1` and wait for the `connected` frame.
+3. **(Optional) name the session** — `POST /UserAgent/Message/RenameSession` seeds a titled, empty session that shows up immediately in `Message/Sessions`.
+4. **Subscribe to run discovery** — send `{ "type": "agent_info", "agenttoken": "<sessionkey>" }` so you receive `agent_wiroai_runtask` frames for this session.
+5. **Send a message** — `POST /UserAgent/Message/Send` with the user's `sessionkey`. Subscribe `{ "type": "agent_info", "agenttoken": "<agenttoken-from-send>" }` and stream `agent_start → agent_output × N → agent_end`.
+6. **Patch token usage** — ~250–500 ms after `agent_end`, an `agent_usage_report` frame delivers the turn's token counts, `tokencost`, and `remainingcredits`; splice them onto the message by `messageguid`.
+7. **Collect generated media** — when the agent runs a model, an `agent_wiroai_runtask` frame arrives on the session channel with a `socketaccesstoken`. Subscribe to it with `{ "type": "task_info", "tasktoken": "<socketaccesstoken>" }` and stream `task_queue → task_start → task_output → task_postprocess_end`; the final frame carries the output media URLs. See [Agent WebSocket → Model runs the agent triggers](/docs/agent-websocket#model-runs-the-agent-triggers).
+8. **Manage sessions** — list with `Message/Sessions`, rename with `Message/RenameSession`, clear/forget with `Message/DeleteSession` (`rotate: true` to wipe the agent's memory of the thread).
+
+Either deployment shape works: run **one** media agent and separate users by `sessionkey`, or deploy **separate** agents per workspace/customer — both use the exact same socket and messaging surface.
 
 ### Scheduled Automation
 
