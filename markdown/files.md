@@ -10,6 +10,23 @@ The Files API lets you organize and upload data that can be referenced in model 
 - **File inputs** — provide images, audio, or documents as model inputs
 - **Batch processing** — store files for repeated use across multiple runs
 
+## Authentication and Public File URLs
+
+All file-management endpoints, including `FolderCreate`, `Upload`, `List`,
+`Edit`, `Delete`, `CheckDisk`, and `Unzip`, require normal Wiro project or
+Bearer authentication.
+
+- **API Key Only projects:** send `x-api-key`.
+- **Signature projects:** send `x-api-key`, `x-nonce`, and `x-signature`.
+  See [Authentication](/docs/authentication) for signature generation.
+- **Dashboard requests:** use the signed-in user's Bearer token.
+
+The URL returned for an uploaded file is intentionally different:
+`GET /File/:accessKey/:fileName` remains public so browsers, AI model workers,
+and external clients can display the file without forwarding account
+credentials. Possession of the generated access key grants read access; it
+does not grant permission to manage files.
+
 ## **POST** /File/FolderCreate
 
 Creates a new folder to organize your uploaded files.
@@ -82,6 +99,23 @@ You don't always need to upload files first. Most models accept direct URLs in t
 ```
 
 ## Code Examples
+
+The examples below show **API Key Only** authentication. For a
+signature-authenticated project, include the nonce and signature headers:
+
+```bash
+NONCE="$(date +%s)"
+SIGNATURE="$(printf '%s' "${YOUR_API_SECRET}${NONCE}" \
+  | openssl dgst -sha256 -hmac "${YOUR_API_KEY}" \
+  | awk '{print $2}')"
+
+curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: ${YOUR_API_KEY}" \
+  -H "x-nonce: ${NONCE}" \
+  -H "x-signature: ${SIGNATURE}" \
+  -d '{"name":"training-data"}'
+```
 
 ### curl (Folder)
 

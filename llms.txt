@@ -166,15 +166,15 @@ POST /Task/Detail
 
 Or by ID: `{ "taskid": "534574" }`
 
-Response includes: `id`, `status`, `pexit`, `debugoutput`, `outputs`, `elapsedseconds`, `totalcost`, `modeldescription`, `modelslugowner`, `modelslugproject`.
+Response includes: `id`, `status`, `pexit`, `debugoutput`, `debugerror`, `outputs`, `elapsedseconds`, `totalcost`, `modeldescription`, `modelslugowner`, `modelslugproject`.
 
 **Determining success:** Check `pexit` field. `"0"` = success, any other value = error. This is the most reliable indicator. For LLM models, the response is available as structured content in `outputs` (with `contenttype: "raw"` containing `prompt`, `raw`, `thinking`, `answer`) and as merged plain text in `debugoutput`.
 
 ### Cancel Task (queued only)
-POST /Task/Cancel — `{ "tasktoken": "..." }`
+POST /Task/Cancel — `{ "taskid": "534574" }`
 
 ### Kill Task (running)
-POST /Task/Kill — `{ "tasktoken": "..." }`
+POST /Task/Kill — `{ "socketaccesstoken": "..." }` (or `taskid`)
 
 ### Delete Task Files (completed/cancelled only)
 POST /Task/InputOutputDelete — `{ "tasktoken": "..." }`
@@ -185,6 +185,7 @@ POST /File/FolderCreate — `{ "name": "my-folder" }` (optional `parentid` for n
 
 ### Upload File
 POST /File/Upload (multipart/form-data) — Fields: `file`, `folderid`. Max 100MB. Response: `{ result, list: [{ id, name, contenttype, size, url, ... }] }`
+All File management endpoints require project or Bearer authentication. Returned `GET /File/:accessKey/:fileName` URLs remain public for browser/model-worker reads; the access key grants read access only.
 
 ## Agent Endpoints
 
@@ -252,7 +253,7 @@ POST /UserAgentOAuth/GoogleDriveListFolders - Discover Drive folders accessible 
 
 task_queue → task_accept → task_preprocess_start → task_preprocess_end → task_assign → task_start → task_output → task_output_full → task_end → task_postprocess_start → task_postprocess_end
 
-Additional: task_error (interim stderr log, not final failure), task_error_full (full stderr log), task_cancel
+Additional: task_error (interim stderr log as a live WebSocket event; terminal pre-execution failure when persisted as Task/Detail `status`), task_error_full (full stderr log), task_cancel
 
 Realtime only: task_stream_ready, task_stream_end, task_cost
 
@@ -466,25 +467,28 @@ Wiro provides an MCP (Model Context Protocol) server for AI assistants.
 Endpoint: https://mcp.wiro.ai/v1
 Transport: Streamable HTTP (stateless)
 Auth: `Authorization: Bearer apiKey:apiSecret` (signature) or `Bearer apiKey` (apikey-only) — plain text, no base64
+Claude Desktop URL config requires `"type": "http"`. `GET /v1` returns 405; MCP requests use POST.
 
 ### Self-Hosted (npx)
 ```json
 { "command": "npx", "args": ["-y", "@wiro-ai/wiro-mcp"], "env": { "WIRO_API_KEY": "...", "WIRO_API_SECRET": "..." } }
 ```
 
-### MCP Tools (11 total)
+### MCP Tools (12 total)
 - `search_models`: Search/browse models by keyword, category, or owner (POST /Tool/List)
 - `get_model_schema`: Get model parameters, types, and pricing (POST /Tool/Detail). Use clean model slug
 - `recommend_model`: Describe what you want to build, get models ranked by relevance (POST /Tool/List)
 - `explore`: Browse curated models organized by category (POST /Tool/Explore). No parameters needed.
-- `run_model`: Run any model, wait for result or get task token (POST /Run/{cleanslugowner}/{cleanslugproject})
-- `get_task`: Check task status, outputs, cost (POST /Task/Detail)
+- `run_model`: Run any model; waits 45s by default, then returns a recoverable task token (POST /Run/{cleanslugowner}/{cleanslugproject})
+- `wait_for_task`: Continue waiting for an existing task without creating a duplicate run (POST /Task/Detail)
+- `get_task`: Check task status immediately or wait up to 45s with `wait_seconds` (POST /Task/Detail)
 - `get_task_price`: Get cost of a completed task — only successful tasks (pexit "0") are billed (POST /Task/Detail)
 - `cancel_task`: Cancel a queued task (POST /Task/Cancel)
 - `kill_task`: Kill a running task (POST /Task/Kill)
 - `upload_file`: Upload a file from URL to Wiro for model input (POST /File/Upload)
 - `search_docs`: Search Wiro documentation for guides, API references, and examples
 
+If `run_model` returns Task Still Running, call `wait_for_task` with the same token. Do not resubmit `run_model`; that creates a separate billable task.
 
 ## Node.js Library
 
@@ -501,7 +505,7 @@ const run = await client.runModel('google/nano-banana-pro', { prompt: '...' });
 const result = await client.waitForTask(run.socketaccesstoken);
 ```
 
-Methods: `searchModels()`, `getModelSchema()`, `explore()`, `runModel()`, `waitForTask()`, `getTask()`, `cancelTask()`, `killTask()`, `uploadFile()`.
+Methods: `searchModels()`, `getModelSchema()`, `explore()`, `runModel()`, `waitForTask()`, `getTask()`, `cancelTask()`, `killTask()`, `uploadFile()`. `waitForTask` supports task token or ID, AbortSignal, stepped polling, progress callbacks, retries, and preserves the last detail in `TaskWaitTimeoutError`.
 
 ## Agent API
 

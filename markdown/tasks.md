@@ -19,7 +19,7 @@ Every model run creates a task that progresses through a defined set of stages:
 | `task_assign` | The task has been assigned to a specific GPU. The model is being loaded into memory. This may take a few seconds depending on the model size. |
 | `task_start` | The model command has started executing. Inference is now running on the GPU. |
 | `task_output` | The model is producing output. This event is emitted **multiple times** — each time the model writes to stdout, a new `task_output` message is sent via WebSocket. For LLM models, each token/chunk arrives as a separate `task_output` event, enabling real-time streaming. |
-| `task_error` | The model wrote to stderr. This is an **interim log event**, not a final failure — many models write warnings or debug info to stderr during normal operation. The task may still complete successfully. Always wait for `task_postprocess_end` to determine the actual result. |
+| `task_error` | As a live WebSocket event, this means the model wrote to stderr and is an **interim log**, not necessarily a failure. As the persisted `status` returned by Task/Detail, it represents a fatal pre-execution failure (for example, output-folder setup failed) and is terminal. |
 | `task_output_full` | The complete accumulated stdout log, sent once after the model process finishes. Contains the full output history in a single message. |
 | `task_error_full` | The complete accumulated stderr log, sent once after the model process finishes. |
 | `task_end` | The model process has exited. Emitted once. This fires **before** post-processing — do not use this event to determine success. Wait for `task_postprocess_end` instead. |
@@ -39,7 +39,10 @@ The following statuses are exclusive to realtime models (voice conversation, tex
 
 ## Determining Success or Failure
 
-Both successful and failed tasks reach `task_postprocess_end`. The status alone does not tell you whether the task succeeded. Wait for `task_postprocess_end` and then check `pexit` or `outputs` (or both) to determine the actual result:
+Normal model executions, both successful and failed, reach
+`task_postprocess_end`. The status alone does not tell you whether execution
+succeeded; check `pexit` or `outputs` (or both). A fatal setup failure may stop
+earlier with persisted `status: "task_error"` and a `debugerror` instead:
 
 - `pexit` — the process exit code. `"0"` means success, any other value means the model encountered an error. This is the most reliable indicator.
 - `outputs` — the output files array. For non-LLM models, a successful run populates this with CDN URLs. If it's empty or missing, the task likely failed.
@@ -80,7 +83,9 @@ Both successful and failed tasks reach `task_postprocess_end`. The status alone 
 }
 ```
 
-> **Important:** `task_error` events during execution are interim log messages, not final failures. A task can emit error logs and still complete successfully. Always wait for `task_postprocess_end` and check `pexit`.
+> **Important:** Do not confuse the live `task_error` WebSocket log event with
+> persisted `status: "task_error"` in Task/Detail. The event is interim; the
+> database status is a terminal pre-execution failure.
 
 ## Billing & Cost
 
@@ -160,6 +165,7 @@ Retrieves the current status and output of a task. You can query by either `task
 | `status` | `string` | Current task status (see Task Lifecycle). |
 | `pexit` | `string` | Process exit code. `"0"` = success. |
 | `debugoutput` | `string` | Accumulated stdout. For LLM models, contains the merged response text. |
+| `debugerror` | `string` | Accumulated stderr or a fatal pre-execution error message. |
 | `starttime` | `string` | Unix timestamp when execution started. |
 | `endtime` | `string` | Unix timestamp when execution ended. |
 | `elapsedseconds` | `string` | Total execution time in seconds. |
@@ -175,7 +181,7 @@ Cancels a task that is still in the `queue` stage. Tasks that have already been 
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `tasktoken` | string | Yes | The task token to cancel |
+| `taskid` | string | Yes | The numeric task ID returned by the Run endpoint |
 
 ## **POST** /Task/Kill
 
@@ -183,7 +189,10 @@ Terminates a task that is currently running (any status after `assign`). The wor
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `tasktoken` | string | Yes | The task token to kill |
+| `taskid` | string | No | The numeric task ID |
+| `socketaccesstoken` | string | No | The task token returned by the Run endpoint (alternative to `taskid`) |
+
+Provide either `taskid` or `socketaccesstoken`.
 
 ## **POST** /Task/InputOutputDelete
 
@@ -243,13 +252,13 @@ curl -X POST "https://api.wiro.ai/v1/Task/Detail" \
 curl -X POST "https://api.wiro.ai/v1/Task/Cancel" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{"tasktoken": "abc123-def456-ghi789"}'
+  -d '{"taskid": "534574"}'
 
 # Kill a running task
 curl -X POST "https://api.wiro.ai/v1/Task/Kill" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
-  -d '{"tasktoken": "abc123-def456-ghi789"}'
+  -d '{"socketaccesstoken": "abc123-def456-ghi789"}'
 
 # Delete task input and output files
 curl -X POST "https://api.wiro.ai/v1/Task/InputOutputDelete" \
@@ -269,6 +278,7 @@ headers = {
 }
 
 task_token = "abc123-def456-ghi789"
+task_id = "534574"
 
 # Poll task detail until completion
 while True:
@@ -277,14 +287,15 @@ while True:
         headers=headers,
         json={"tasktoken": task_token}
     )
-    task = resp.json()["data"]
+    task = resp.json()["tasklist"][0]
     status = task["status"]
     print(f"Status: {status}")
 
-    if status == "end":
-        print("Output:", task["output"])
+    if status == "task_postprocess_end":
+        print("Outputs:", task["outputs"])
+        print("Success:", task["pexit"] == "0")
         break
-    elif status in ("error", "cancel"):
+    elif status in ("task_error", "task_cancel"):
         print("Task failed or cancelled")
         break
 
@@ -294,14 +305,14 @@ while True:
 requests.post(
     "https://api.wiro.ai/v1/Task/Cancel",
     headers=headers,
-    json={"tasktoken": task_token}
+    json={"taskid": task_id}
 )
 
 # Kill a running task
 requests.post(
     "https://api.wiro.ai/v1/Task/Kill",
     headers=headers,
-    json={"tasktoken": task_token}
+    json={"socketaccesstoken": task_token}
 )
 ```
 
@@ -316,6 +327,7 @@ const headers = {
 };
 
 const taskToken = 'abc123-def456-ghi789';
+const taskId = '534574';
 
 // Poll task detail until completion
 async function pollTask() {
@@ -325,14 +337,16 @@ async function pollTask() {
       { tasktoken: taskToken },
       { headers }
     );
-    const { status, output } = resp.data.data;
+    const task = resp.data.tasklist[0];
+    const { status, outputs, pexit } = task;
     console.log('Status:', status);
 
-    if (status === 'end') {
-      console.log('Output:', output);
+    if (status === 'task_postprocess_end') {
+      console.log('Outputs:', outputs);
+      console.log('Success:', pexit === '0');
       break;
     }
-    if (status === 'error' || status === 'cancel') {
+    if (status === 'task_error' || status === 'task_cancel') {
       console.log('Task failed or cancelled');
       break;
     }
@@ -343,10 +357,10 @@ async function pollTask() {
 
 // Cancel / Kill
 await axios.post('https://api.wiro.ai/v1/Task/Cancel',
-  { tasktoken: taskToken }, { headers });
+  { taskid: taskId }, { headers });
 
 await axios.post('https://api.wiro.ai/v1/Task/Kill',
-  { tasktoken: taskToken }, { headers });
+  { socketaccesstoken: taskToken }, { headers });
 ```
 
 ### PHP

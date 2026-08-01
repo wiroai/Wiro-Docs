@@ -78,6 +78,7 @@ Add the following to your `claude_desktop_config.json`:
 {
   "mcpServers": {
     "wiro": {
+      "type": "http",
       "url": "https://mcp.wiro.ai/v1",
       "headers": {
         "Authorization": "Bearer YOUR_API_KEY:YOUR_API_SECRET"
@@ -86,6 +87,10 @@ Add the following to your `claude_desktop_config.json`:
   }
 }
 ```
+
+The `type` field is required for URL-based entries. Without `"type": "http"`,
+Claude treats the entry as a local stdio server and skips it as invalid.
+To run Wiro locally instead, use the [`"type": "stdio"` + npx setup](/docs/mcp-self-hosted).
 
 ### Windsurf
 
@@ -144,7 +149,7 @@ Your credentials are sent per-request in the Authorization header and are never 
 
 ## Available Tools
 
-The MCP server exposes 11 tools organized in four categories. Your AI assistant picks the right tool automatically based on what you ask.
+The MCP server exposes 12 tools organized in four categories. Your AI assistant picks the right tool automatically based on what you ask.
 
 **Model slugs:** When a tool requires a model identifier, use the clean/lowercase format `owner/model` (e.g. `openai/sora-2`, `wiro/virtual-try-on`). These correspond to the `cleanslugowner/cleanslugproject` values returned by `search_models`.
 
@@ -161,13 +166,14 @@ The MCP server exposes 11 tools organized in four categories. Your AI assistant 
 
 | Tool | What it does |
 |------|-------------|
-| `run_model` | Run any model. Wait for the result or return a task token for async monitoring |
+| `run_model` | Run any model. Waits up to 45 seconds by default, then returns a recoverable task token if still running |
 
 ### Task Management
 
 | Tool | What it does |
 |------|-------------|
-| `get_task` | Check task status, outputs, cost, and elapsed time |
+| `wait_for_task` | Continue waiting for an existing task without creating or billing a duplicate run |
+| `get_task` | Check task status immediately or wait up to 45 seconds with `wait_seconds` |
 | `get_task_price` | Get the cost of a completed task — shows whether it was billed and the total charge |
 | `cancel_task` | Cancel a task that is still in the queue (before worker assignment) |
 | `kill_task` | Kill a task that is currently running (after worker assignment) |
@@ -197,8 +203,8 @@ The assistant will:
 
 The assistant will:
 1. Use `get_model_schema` to check parameters for `klingai/kling-v3`
-2. Use `run_model` with `wait=false` (video generation takes longer)
-3. Use `get_task` to poll for the result
+2. Use `run_model` to submit the generation and wait for the first result window
+3. If it is still running, continue with `wait_for_task` using the returned token
 
 ### Find the right model
 
@@ -275,25 +281,54 @@ Run any AI model on Wiro. Calls `POST /Run/{owner}/{model}` on the Wiro API.
 |-----------|------|-------------|
 | `model` | string | Model slug in clean/lowercase format. Same as `get_model_schema`. Examples: `"openai/sora-2"`, `"klingai/kling-v3"` |
 | `params` | object | Model-specific parameters as key-value pairs. Use `get_model_schema` to discover accepted fields. Common: `prompt`, `negativePrompt`, `width`, `height`, `aspectRatio` |
-| `wait` | boolean (optional) | If `true` (default), polls `POST /Task/Detail` until the task completes and returns the result. If `false`, returns the task token immediately for async monitoring via `get_task`. |
-| `timeout_seconds` | number (optional) | Max seconds to wait (default 120, max 600). Only applies when `wait=true`. |
+| `wait` | boolean (optional) | If `true` (default), polls `POST /Task/Detail` until the task completes or the wait budget expires. If `false`, returns the task token immediately for `wait_for_task` or one-time `get_task` checks. |
+| `timeout_seconds` | number (optional) | Max seconds to wait (default 45, max 600). Only applies when `wait=true`. Values above 45 should only be used when the MCP client timeout is configured accordingly. |
 
-When `wait=true`, the tool returns the final task result including `pexit` (exit code, `"0"` = success), `outputs` (CDN URLs for generated files), and `debugoutput` (LLM text responses).
+When `wait=true`, the tool returns the final task result including `pexit` (exit code, `"0"` = success), `outputs` (clickable CDN URLs for generated files), and `debugoutput` (LLM text responses).
 
-When `wait=false`, returns `taskid` and `tasktoken` — use `get_task` to check progress.
+If the wait budget expires, the tool returns a normal **Task Still Running**
+result containing `taskid`, `tasktoken`, and the last observed status. The
+generation continues. Call `wait_for_task` with that identifier; do not call
+`run_model` again, because that would create a second billable task.
+
+When `wait=false`, returns `taskid` and `tasktoken` immediately — use
+`wait_for_task` to wait or `get_task` for a one-time status check.
+
+### wait_for_task
+
+Wait for an existing task without submitting another model run. Calls
+`POST /Task/Detail` repeatedly for a bounded interval.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `tasktoken` | string (optional) | The task token returned from `run_model` |
+| `taskid` | string (optional) | The task ID (alternative to `tasktoken`) |
+| `timeout_seconds` | number (optional) | Max seconds for this wait window (default 45, max 600) |
+
+If the task completes, this tool returns the final text and file outputs. If it
+is still active, it returns the same identifier so the assistant can call
+`wait_for_task` again in the same conversation. This continuation does not
+create or bill another model run.
 
 ### get_task
 
-Check task status and get results. Calls `POST /Task/Detail` on the Wiro API.
+Check task status and get results. It performs one immediate check by default,
+or a short bounded wait when `wait_seconds` is set. Calls `POST /Task/Detail`
+on the Wiro API.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `tasktoken` | string (optional) | The task token returned from `run_model` |
 | `taskid` | string (optional) | The task ID (alternative to tasktoken) |
+| `wait_seconds` | number (optional) | Short bounded wait before returning (default 0, max 45). Use `wait_for_task` for resumable long generations. |
 
 Returns the task's current `status`, `pexit` (process exit code), `outputs` (file URLs), `debugoutput` (LLM responses), `elapsedseconds`, and `totalcost`.
 
 **Determining success:** Check `pexit` — `"0"` means success, any other value means failure. For LLM models, the response is available as structured content in `outputs` (with `contenttype: "raw"`) and as merged plain text in `debugoutput`. See [Tasks](/docs/tasks) for the full task lifecycle.
+
+`task_error` needs context: a live WebSocket event with that name is an interim
+stderr log, while `status: "task_error"` returned by Task/Detail represents a
+fatal pre-execution database state and is terminal.
 
 ### get_task_price
 
@@ -312,7 +347,8 @@ Cancel a task that is still queued (before worker assignment). Calls `POST /Task
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `tasktoken` | string | The task token to cancel |
+| `tasktoken` | string (optional) | The task token returned from `run_model` |
+| `taskid` | string (optional) | The task ID (alternative to `tasktoken`) |
 
 Tasks that have already been assigned to a worker cannot be cancelled — use `kill_task` instead.
 
@@ -322,7 +358,8 @@ Kill a task that is currently running (after worker assignment). Calls `POST /Ta
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `tasktoken` | string | The task token to kill |
+| `tasktoken` | string (optional) | The task token returned from `run_model` |
+| `taskid` | string (optional) | The task ID (alternative to `tasktoken`) |
 
 The worker will stop processing and the task will move to `task_cancel` status.
 

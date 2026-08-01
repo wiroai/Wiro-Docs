@@ -1668,7 +1668,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                           </tr>
                           <tr>
                             <td><code>task_error</code></td>
-                            <td>The model wrote to stderr. This is an <strong>interim log event</strong>, not a final failure — many models write warnings or debug info to stderr during normal operation. The task may still complete successfully. Always wait for <code>task_postprocess_end</code> to determine the actual result.</td>
+                            <td>As a live WebSocket event, this means the model wrote to stderr and is an <strong>interim log</strong>, not necessarily a failure. As the persisted <code>status</code> returned by Task/Detail, it represents a fatal pre-execution failure and is terminal.</td>
                           </tr>
                           <tr>
                             <td><code>task_output_full</code></td>
@@ -1728,7 +1728,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
 
                   <section id="determining-success">
                     <h2>Determining Success or Failure</h2>
-                    <p>Both successful and failed tasks reach <code>task_postprocess_end</code>. The status alone does not tell you whether the task succeeded. Wait for <code>task_postprocess_end</code> and then check <code>pexit</code> or <code>outputs</code> (or both) to determine the actual result:</p>
+                    <p>Normal model executions, both successful and failed, reach <code>task_postprocess_end</code>. Check <code>pexit</code> or <code>outputs</code> (or both) to determine the result. A fatal setup failure may stop earlier with persisted <code>status: "task_error"</code> and a <code>debugerror</code>.</p>
 
                     <ul>
                       <li><code>pexit</code> — the process exit code. <code>"0"</code> means success, any other value means the model encountered an error. This is the most reliable indicator.</li>
@@ -1772,7 +1772,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
 }</code></pre>
 
                     <div class="info-callout">
-                      <p><strong>Important:</strong> <code>task_error</code> events during execution are interim log messages, not final failures. A task can emit error logs and still complete successfully. Always wait for <code>task_postprocess_end</code> and check <code>pexit</code>.</p>
+                      <p><strong>Important:</strong> Do not confuse the live <code>task_error</code> WebSocket log event with persisted <code>status: "task_error"</code> in Task/Detail. The event is interim; the database status is a terminal pre-execution failure.</p>
                     </div>
                   </section>
 
@@ -1907,6 +1907,11 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                             <td>Accumulated stdout output. For LLM models, contains the merged response text.</td>
                           </tr>
                           <tr>
+                            <td><code>debugerror</code></td>
+                            <td><code>string</code></td>
+                            <td>Accumulated stderr or a fatal pre-execution error message.</td>
+                          </tr>
+                          <tr>
                             <td><code>starttime</code></td>
                             <td><code>string</code></td>
                             <td>Unix timestamp when execution started.</td>
@@ -1971,10 +1976,10 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                           </thead>
                           <tbody>
                             <tr>
-                              <td><code>tasktoken</code></td>
+                              <td><code>taskid</code></td>
                               <td>string</td>
                               <td>Yes</td>
-                              <td>The task token to cancel</td>
+                              <td>The numeric task ID returned by the Run endpoint</td>
                             </tr>
                           </tbody>
                         </table>
@@ -2005,15 +2010,22 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                           </thead>
                           <tbody>
                             <tr>
-                              <td><code>tasktoken</code></td>
+                              <td><code>taskid</code></td>
                               <td>string</td>
-                              <td>Yes</td>
-                              <td>The task token to kill</td>
+                              <td>No</td>
+                              <td>The numeric task ID</td>
+                            </tr>
+                            <tr>
+                              <td><code>socketaccesstoken</code></td>
+                              <td>string</td>
+                              <td>No</td>
+                              <td>The task token returned by the Run endpoint (alternative to <code>taskid</code>)</td>
                             </tr>
                           </tbody>
                         </table>
                       </div>
                     </div>
+                    <p>Provide either <code>taskid</code> or <code>socketaccesstoken</code>.</p>
                   </section>
 
                   <section id="task-inputoutputdelete">
@@ -2098,17 +2110,17 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                     {
                       "label": "curl (Cancel/Kill/InputOutputDelete)",
                       "language": "bash",
-                      "code": "# Cancel a queued task\ncurl -X POST \"https://api.wiro.ai/v1/Task/Cancel\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"tasktoken\": \"abc123-def456-ghi789\"}'\n\n# Kill a running task\ncurl -X POST \"https://api.wiro.ai/v1/Task/Kill\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"tasktoken\": \"abc123-def456-ghi789\"}'\n\n# Delete task input and output files\ncurl -X POST \"https://api.wiro.ai/v1/Task/InputOutputDelete\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"tasktoken\": \"abc123-def456-ghi789\"}'"
+                      "code": "# Cancel a queued task\ncurl -X POST \"https://api.wiro.ai/v1/Task/Cancel\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"taskid\": \"534574\"}'\n\n# Kill a running task\ncurl -X POST \"https://api.wiro.ai/v1/Task/Kill\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"socketaccesstoken\": \"abc123-def456-ghi789\"}'\n\n# Delete task input and output files\ncurl -X POST \"https://api.wiro.ai/v1/Task/InputOutputDelete\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\"tasktoken\": \"abc123-def456-ghi789\"}'"
                     },
                     {
                       "label": "Python",
                       "language": "python",
-                      "code": "import requests, time\n\nheaders = {\n    \"x-api-key\": \"YOUR_API_KEY\",\n    \"Content-Type\": \"application/json\"\n}\n\ntask_token = \"abc123-def456-ghi789\"\n\n# Poll task detail until completion\nwhile True:\n    resp = requests.post(\n        \"https://api.wiro.ai/v1/Task/Detail\",\n        headers=headers,\n        json={\"tasktoken\": task_token}\n    )\n    task = resp.json()[\"tasklist\"][0]\n    print(f\"Status: {task['status']}\")\n\n    if task[\"status\"] == \"task_postprocess_end\":\n        if task[\"pexit\"] == \"0\":\n            print(\"Outputs:\", task[\"outputs\"])\n        else:\n            print(\"Failed: pexit\", task[\"pexit\"])\n        break\n    elif task[\"status\"] == \"task_cancel\":\n        print(\"Task cancelled\")\n        break\n\n    time.sleep(3)\n\n# Cancel a queued task\nrequests.post(\n    \"https://api.wiro.ai/v1/Task/Cancel\",\n    headers=headers,\n    json={\"tasktoken\": task_token}\n)\n\n# Kill a running task\nrequests.post(\n    \"https://api.wiro.ai/v1/Task/Kill\",\n    headers=headers,\n    json={\"tasktoken\": task_token}\n)"
+                      "code": "import requests, time\n\nheaders = {\n    \"x-api-key\": \"YOUR_API_KEY\",\n    \"Content-Type\": \"application/json\"\n}\n\ntask_token = \"abc123-def456-ghi789\"\ntask_id = \"534574\"\n\n# Poll task detail until completion\nwhile True:\n    resp = requests.post(\n        \"https://api.wiro.ai/v1/Task/Detail\",\n        headers=headers,\n        json={\"tasktoken\": task_token}\n    )\n    task = resp.json()[\"tasklist\"][0]\n    print(f\"Status: {task['status']}\")\n\n    if task[\"status\"] == \"task_postprocess_end\":\n        if task[\"pexit\"] == \"0\":\n            print(\"Outputs:\", task[\"outputs\"])\n        else:\n            print(\"Failed: pexit\", task[\"pexit\"])\n        break\n    elif task[\"status\"] in (\"task_error\", \"task_cancel\"):\n        print(\"Task failed or cancelled\")\n        break\n\n    time.sleep(3)\n\n# Cancel a queued task\nrequests.post(\n    \"https://api.wiro.ai/v1/Task/Cancel\",\n    headers=headers,\n    json={\"taskid\": task_id}\n)\n\n# Kill a running task\nrequests.post(\n    \"https://api.wiro.ai/v1/Task/Kill\",\n    headers=headers,\n    json={\"socketaccesstoken\": task_token}\n)"
                     },
                     {
                       "label": "Node.js",
                       "language": "javascript",
-                      "code": "const axios = require('axios');\n\nconst headers = {\n  'x-api-key': 'YOUR_API_KEY',\n  'Content-Type': 'application/json'\n};\n\nconst taskToken = 'abc123-def456-ghi789';\n\n// Poll task detail until completion\nasync function pollTask() {\n  while (true) {\n    const resp = await axios.post(\n      'https://api.wiro.ai/v1/Task/Detail',\n      { tasktoken: taskToken },\n      { headers }\n    );\n    const task = resp.data.tasklist[0];\n    console.log('Status:', task.status);\n\n    if (task.status === 'task_postprocess_end') {\n      if (task.pexit === '0') {\n        console.log('Outputs:', task.outputs);\n      } else {\n        console.log('Failed: pexit', task.pexit);\n      }\n      break;\n    }\n    if (task.status === 'task_cancel') {\n      console.log('Task cancelled');\n      break;\n    }\n\n    await new Promise(r => setTimeout(r, 3000));\n  }\n}\n\n// Cancel / Kill\nawait axios.post('https://api.wiro.ai/v1/Task/Cancel',\n  { tasktoken: taskToken }, { headers });\n\nawait axios.post('https://api.wiro.ai/v1/Task/Kill',\n  { tasktoken: taskToken }, { headers });"
+                      "code": "const axios = require('axios');\n\nconst headers = {\n  'x-api-key': 'YOUR_API_KEY',\n  'Content-Type': 'application/json'\n};\n\nconst taskToken = 'abc123-def456-ghi789';\nconst taskId = '534574';\n\n// Poll task detail until completion\nasync function pollTask() {\n  while (true) {\n    const resp = await axios.post(\n      'https://api.wiro.ai/v1/Task/Detail',\n      { tasktoken: taskToken },\n      { headers }\n    );\n    const task = resp.data.tasklist[0];\n    console.log('Status:', task.status);\n\n    if (task.status === 'task_postprocess_end') {\n      if (task.pexit === '0') {\n        console.log('Outputs:', task.outputs);\n      } else {\n        console.log('Failed: pexit', task.pexit);\n      }\n      break;\n    }\n    if (task.status === 'task_error' || task.status === 'task_cancel') {\n      console.log('Task failed or cancelled');\n      break;\n    }\n\n    await new Promise(r => setTimeout(r, 3000));\n  }\n}\n\n// Cancel / Kill\nawait axios.post('https://api.wiro.ai/v1/Task/Cancel',\n  { taskid: taskId }, { headers });\n\nawait axios.post('https://api.wiro.ai/v1/Task/Kill',\n  { socketaccesstoken: taskToken }, { headers });"
                     },
                     {
                       "label": "PHP",
@@ -3578,6 +3590,18 @@ if (msg.type === 'task_output' &amp;&amp;
                     </ul>
                   </section>
 
+                  <section id="files-authentication">
+                    <h2>Authentication and Public File URLs</h2>
+                    <p>All file-management endpoints, including <code>FolderCreate</code>, <code>Upload</code>, <code>List</code>, <code>Edit</code>, <code>Delete</code>, <code>CheckDisk</code>, and <code>Unzip</code>, require normal Wiro project or Bearer authentication.</p>
+                    <ul>
+                      <li><strong>API Key Only projects:</strong> send <code>x-api-key</code>.</li>
+                      <li><strong>Signature projects:</strong> send <code>x-api-key</code>, <code>x-nonce</code>, and <code>x-signature</code>. See <a href="/docs/authentication">Authentication</a>.</li>
+                      <li><strong>Dashboard requests:</strong> use the signed-in user's Bearer token.</li>
+                    </ul>
+                    <p>The returned <code>GET /File/:accessKey/:fileName</code> URL intentionally remains public so browsers, AI model workers, and external clients can display the file without account credentials. Possession of the generated access key grants read access only; it does not grant file-management permission.</p>
+                    <div class="info-callout"><p><strong>Code examples:</strong> The examples on this page show API Key Only authentication. Signature-authenticated projects must include the nonce and signature headers.</p></div>
+                  </section>
+
                   <section id="folder-create">
                     <h2>
                       <span class="endpoint-badge post">POST</span>
@@ -4155,7 +4179,7 @@ if (msg.type === 'task_output' &amp;&amp;
                         <strong>Use <a href="/docs/websocket">WebSocket</a> for monitoring</strong> — instead of polling <code>/Task/Detail</code> repeatedly, connect via WebSocket to get real-time updates without extra API calls.
                       </li>
                       <li>
-                        <strong>Use <code>wait=false</code> in MCP</strong> — for long-running models (video, 3D), submit with <code>wait=false</code> and check with <code>get_task</code> to avoid holding connections.
+                        <strong>Use bounded MCP waits</strong> — <code>run_model</code> waits up to 45 seconds by default and returns a recoverable token when the task is still active. Continue with <code>wait_for_task</code>; do not call <code>run_model</code> again for the same request. Use <code>wait=false</code> only when you need the token immediately.
                       </li>
                       <li><strong>Implement exponential backoff</strong> — if polling task status, start at 3 seconds and increase the interval for longer tasks.</li>
                     </ul>
@@ -4850,6 +4874,7 @@ if (!data.result) {
                         <pre><code class="language-json">{
   "mcpServers": {
     "wiro": {
+      "type": "http",
       "url": "https://mcp.wiro.ai/v1",
       "headers": {
         "Authorization": "Bearer YOUR_API_KEY:YOUR_API_SECRET"
@@ -4857,6 +4882,7 @@ if (!data.result) {
     }
   }
 }</code></pre>
+                        <p>The <code>type</code> field is required for URL-based entries. Without <code>"type": "http"</code>, Claude treats the entry as a local stdio server and skips it as invalid. To run Wiro locally instead, use the <a href="/docs/mcp-self-hosted"><code>"type": "stdio"</code> + npx setup</a>.</p>
                       </div>
 
                       <div class="mcp-setup-panel" id="mcp-setup-windsurf">
@@ -4900,7 +4926,7 @@ if (!data.result) {
 
                   <section id="mcp-tools">
                     <h2>Available Tools</h2>
-                    <p>The MCP server exposes 11 tools organized in four categories. Your AI assistant picks the right tool automatically.</p>
+                    <p>The MCP server exposes 12 tools organized in four categories. Your AI assistant picks the right tool automatically.</p>
                     <p><strong>Model slugs:</strong> Use the clean/lowercase format <code>owner/model</code> (e.g. <code>openai/sora-2</code>, <code>wiro/virtual-try-on</code>). These correspond to the <code>cleanslugowner/cleanslugproject</code> values returned by <code>search_models</code>.</p>
                     <h3>Discovery</h3>
                     <table>
@@ -4940,7 +4966,7 @@ if (!data.result) {
                       <tbody>
                         <tr>
                           <td><code>run_model</code></td>
-                          <td>Run any model and wait for the result, or submit and get a task token</td>
+                          <td>Run any model. Waits up to 45 seconds by default, then returns a recoverable task token if still running</td>
                         </tr>
                       </tbody>
                     </table>
@@ -4954,8 +4980,12 @@ if (!data.result) {
                       </thead>
                       <tbody>
                         <tr>
+                          <td><code>wait_for_task</code></td>
+                          <td>Continue waiting for an existing task without creating or billing a duplicate run</td>
+                        </tr>
+                        <tr>
                           <td><code>get_task</code></td>
-                          <td>Check task status, outputs, cost, and elapsed time</td>
+                          <td>Check task status immediately or wait up to 45 seconds with <code>wait_seconds</code></td>
                         </tr>
                         <tr>
                           <td><code>get_task_price</code></td>
@@ -5000,7 +5030,7 @@ if (!data.result) {
                     <p>The assistant will use <code>search_models</code> → <code>get_model_schema</code> → <code>run_model</code> and return the image URL.</p>
                     <h3>Generate a video</h3>
                     <div class="info-callout"><p>"Create a 5-second cinematic video of a drone shot over mountains using Kling V3"</p></div>
-                    <p>The assistant will use <code>get_model_schema</code> → <code>run_model</code> (wait=false) → <code>get_task</code> to poll for the result.</p>
+                    <p>The assistant will use <code>get_model_schema</code> → <code>run_model</code>, then continue with <code>wait_for_task</code> using the returned token if the generation is still running.</p>
                     <h3>Find models</h3>
                     <div class="info-callout"><p>"What models are available for text-to-video?"</p></div>
                     <p>The assistant will call <code>search_models</code> with categories filter.</p>
@@ -5133,20 +5163,51 @@ if (!data.result) {
                         <tr>
                           <td><code>wait</code></td>
                           <td>boolean (optional)</td>
-                          <td>If <code>true</code> (default), polls <code>POST /Task/Detail</code> until the task completes and returns the result. If <code>false</code>, returns the task token immediately for async monitoring via <code>get_task</code>.</td>
+                          <td>If <code>true</code> (default), polls <code>POST /Task/Detail</code> until the task completes or the wait budget expires. If <code>false</code>, returns the task token immediately for <code>wait_for_task</code> or one-time <code>get_task</code> checks.</td>
                         </tr>
                         <tr>
                           <td><code>timeout_seconds</code></td>
                           <td>number (optional)</td>
-                          <td>Max seconds to wait (default 120, max 600). Only applies when <code>wait=true</code>.</td>
+                          <td>Max seconds to wait (default 45, max 600). Values above 45 should only be used when the MCP client timeout is configured accordingly.</td>
                         </tr>
                       </tbody>
                     </table>
-                    <p>When <code>wait=true</code>, returns the final task result including <code>pexit</code> (exit code, <code>"0"</code> = success), <code>outputs</code> (CDN URLs for generated files), and <code>debugoutput</code> (LLM text responses).</p>
-                    <p>When <code>wait=false</code>, returns <code>taskid</code> and <code>tasktoken</code> — use <code>get_task</code> to check progress.</p>
+                    <p>When <code>wait=true</code>, returns the final task result including <code>pexit</code> (exit code, <code>"0"</code> = success), clickable <code>outputs</code>, and <code>debugoutput</code> (LLM text responses).</p>
+                    <p>If the wait budget expires, the tool returns a normal <strong>Task Still Running</strong> result with <code>taskid</code>, <code>tasktoken</code>, and the last status. The generation continues. Call <code>wait_for_task</code>; do not call <code>run_model</code> again, because that creates a second billable task.</p>
+                    <p>When <code>wait=false</code>, returns <code>taskid</code> and <code>tasktoken</code> immediately — use <code>wait_for_task</code> to wait or <code>get_task</code> for a one-time status check.</p>
+
+                    <h3>wait_for_task</h3>
+                    <p>Wait for an existing task without submitting another model run. Calls <code>POST /Task/Detail</code> repeatedly for a bounded interval.</p>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Parameter</th>
+                          <th>Type</th>
+                          <th>Description</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td><code>tasktoken</code></td>
+                          <td>string (optional)</td>
+                          <td>The task token returned from <code>run_model</code></td>
+                        </tr>
+                        <tr>
+                          <td><code>taskid</code></td>
+                          <td>string (optional)</td>
+                          <td>The task ID (alternative to <code>tasktoken</code>)</td>
+                        </tr>
+                        <tr>
+                          <td><code>timeout_seconds</code></td>
+                          <td>number (optional)</td>
+                          <td>Max seconds for this wait window (default 45, max 600)</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <p>If the task completes, this tool returns the final text and file outputs. If it is still active, call <code>wait_for_task</code> again with the same identifier. This does not create or bill another model run.</p>
 
                     <h3>get_task</h3>
-                    <p>Check task status and get results. Calls <code>POST /Task/Detail</code> on the Wiro API.</p>
+                    <p>Check task status and get results. It performs one immediate check by default, or a short bounded wait when <code>wait_seconds</code> is set.</p>
                     <table>
                       <thead>
                         <tr>
@@ -5166,10 +5227,16 @@ if (!data.result) {
                           <td>string (optional)</td>
                           <td>The task ID (alternative to tasktoken)</td>
                         </tr>
+                        <tr>
+                          <td><code>wait_seconds</code></td>
+                          <td>number (optional)</td>
+                          <td>Short bounded wait before returning (default 0, max 45). Use <code>wait_for_task</code> for resumable long generations.</td>
+                        </tr>
                       </tbody>
                     </table>
                     <p>Returns the task's current <code>status</code>, <code>pexit</code> (process exit code), <code>outputs</code> (file URLs), <code>debugoutput</code> (LLM responses), <code>elapsedseconds</code>, and <code>totalcost</code>.</p>
                     <p><strong>Determining success:</strong> Check <code>pexit</code> — <code>"0"</code> means success, any other value means failure. For LLM models, the response is available as structured content in <code>outputs</code> (with <code>contenttype: "raw"</code>) and as merged text in <code>debugoutput</code>. See <a href="/docs/tasks">Tasks</a> for the full task lifecycle.</p>
+                    <p>A live WebSocket <code>task_error</code> event is an interim stderr log, while persisted <code>status: "task_error"</code> returned by Task/Detail is a terminal pre-execution failure.</p>
 
                     <h3>get_task_price</h3>
                     <p>Get the cost of a completed task. Calls <code>POST /Task/Detail</code> on the Wiro API and returns billing information.</p>
@@ -5209,8 +5276,13 @@ if (!data.result) {
                       <tbody>
                         <tr>
                           <td><code>tasktoken</code></td>
-                          <td>string</td>
-                          <td>The task token to cancel</td>
+                          <td>string (optional)</td>
+                          <td>The task token returned from <code>run_model</code></td>
+                        </tr>
+                        <tr>
+                          <td><code>taskid</code></td>
+                          <td>string (optional)</td>
+                          <td>The task ID (alternative to <code>tasktoken</code>)</td>
                         </tr>
                       </tbody>
                     </table>
@@ -5229,8 +5301,13 @@ if (!data.result) {
                       <tbody>
                         <tr>
                           <td><code>tasktoken</code></td>
-                          <td>string</td>
-                          <td>The task token to kill</td>
+                          <td>string (optional)</td>
+                          <td>The task token returned from <code>run_model</code></td>
+                        </tr>
+                        <tr>
+                          <td><code>taskid</code></td>
+                          <td>string (optional)</td>
+                          <td>The task ID (alternative to <code>tasktoken</code>)</td>
                         </tr>
                       </tbody>
                     </table>
@@ -5312,6 +5389,7 @@ if (!data.result) {
                     <pre><code class="language-json">{
   "mcpServers": {
     "wiro": {
+      "type": "stdio",
       "command": "npx",
       "args": ["-y", "@wiro-ai/wiro-mcp"],
       "env": {
@@ -5434,7 +5512,7 @@ WIRO_API_SECRET=your-api-secret</code></pre>
 
                   <section id="self-hosted-tools">
                     <h2>Available Tools</h2>
-                    <p>The self-hosted server provides the same 11 tools as the <a href="/docs/wiro-mcp-server">hosted MCP server</a>. Your AI assistant picks the right tool automatically.</p>
+                    <p>The self-hosted server provides the same 12 tools as the <a href="/docs/wiro-mcp-server">hosted MCP server</a>. Your AI assistant picks the right tool automatically.</p>
                     <p><strong>Model slugs:</strong> Use the clean/lowercase format <code>owner/model</code> (e.g. <code>openai/sora-2</code>, <code>wiro/virtual-try-on</code>). These correspond to <code>cleanslugowner/cleanslugproject</code> values returned by <code>search_models</code>.</p>
 
                     <h3>Discovery</h3>
@@ -5483,7 +5561,7 @@ WIRO_API_SECRET=your-api-secret</code></pre>
                         <tr>
                           <td><code>run_model</code></td>
                           <td><code>POST /Run/{owner}/{model}</code></td>
-                          <td>Run any model with parameters. With <code>wait=true</code> (default), polls until complete and returns outputs. With <code>wait=false</code>, returns task token for async monitoring.</td>
+                          <td>Run any model with parameters. Waits up to 45 seconds by default; if still active, returns a recoverable token for <code>wait_for_task</code>.</td>
                         </tr>
                       </tbody>
                     </table>
@@ -5499,9 +5577,14 @@ WIRO_API_SECRET=your-api-secret</code></pre>
                       </thead>
                       <tbody>
                         <tr>
+                          <td><code>wait_for_task</code></td>
+                          <td><code>POST /Task/Detail</code></td>
+                          <td>Continue waiting for an existing task in bounded windows without creating a duplicate model run.</td>
+                        </tr>
+                        <tr>
                           <td><code>get_task</code></td>
                           <td><code>POST /Task/Detail</code></td>
-                          <td>Check task status, <code>pexit</code> (exit code), outputs (CDN URLs), <code>debugoutput</code> (LLM responses), elapsed time, and cost. <code>pexit="0"</code> means success.</td>
+                          <td>Check task status immediately, or wait up to 45 seconds with <code>wait_seconds</code>. Returns <code>pexit</code>, outputs, logs, elapsed time, and cost.</td>
                         </tr>
                         <tr>
                           <td><code>get_task_price</code></td>
@@ -5584,7 +5667,8 @@ WIRO_API_SECRET=your-api-secret</code></pre>
                       <li><strong>npm:</strong> <a href="https://www.npmjs.com/package/@wiro-ai/wiro-mcp" target="_blank">@wiro-ai/wiro-mcp</a></li>
                     </ul>
                     <h3>Using as a Library</h3>
-                    <pre><code class="language-javascript">import { createMcpServer, WiroClient } from '@wiro-ai/wiro-mcp';
+                    <pre><code class="language-javascript">import { WiroClient } from '@wiro-ai/wiro-mcp/client';
+import { createMcpServer } from '@wiro-ai/wiro-mcp/server';
 
 const client = new WiroClient('your-api-key', 'your-api-secret');
 const server = createMcpServer(client);</code></pre>
@@ -5703,24 +5787,24 @@ if (task.pexit === '0') {
                               <td>Browse curated models organized by category.</td>
                             </tr>
                             <tr>
-                              <td><code>runModel(model, params)</code></td>
+                              <td><code>runModel(model, params, signal?)</code></td>
                               <td>Run a model. Returns task ID and socket access token.</td>
                             </tr>
                             <tr>
-                              <td><code>waitForTask(tasktoken, timeoutMs?)</code></td>
-                              <td>Poll until the task completes. Default timeout: 120 seconds.</td>
+                              <td><code>waitForTask(tasktokenOrReference, timeoutMs?, options?)</code></td>
+                              <td>Poll until completion. Default timeout: 120 seconds. Supports AbortSignal, stepped polling, progress callbacks, and transient retries.</td>
                             </tr>
                             <tr>
-                              <td><code>getTask({ tasktoken?, taskid? })</code></td>
+                              <td><code>getTask({ tasktoken?, taskid? }, signal?)</code></td>
                               <td>Get current task status and outputs.</td>
                             </tr>
                             <tr>
-                              <td><code>cancelTask(tasktoken)</code></td>
-                              <td>Cancel a task still in the queue.</td>
+                              <td><code>cancelTask(tasktokenOrReference, signal?)</code></td>
+                              <td>Cancel a queued task. Resolves a token to the task ID required by the API.</td>
                             </tr>
                             <tr>
-                              <td><code>killTask(tasktoken)</code></td>
-                              <td>Kill a running task.</td>
+                              <td><code>killTask(tasktokenOrReference, signal?)</code></td>
+                              <td>Kill a running task using its socket access token or task ID.</td>
                             </tr>
                             <tr>
                               <td><code>uploadFile(url, fileName?)</code></td>
@@ -5730,6 +5814,7 @@ if (task.pexit === '0') {
                         </table>
                       </div>
                     </div>
+                    <p>If <code>waitForTask</code> exceeds its timeout, it throws <code>TaskWaitTimeoutError</code> and preserves <code>lastDetail</code>. Call it again with the same token or task ID; do not call <code>runModel</code> again for the same generation.</p>
                   </section>
 
                   <section id="nodejs-examples">
@@ -5831,6 +5916,12 @@ import type {
   ToolDetailResponse,
   ToolListItem,
   SearchModelsParams,
+  TaskReference,
+  WaitForTaskOptions,
+} from '@wiro-ai/wiro-mcp/client';</code></pre>
+                    <pre><code>import {
+  TaskPollingError,
+  TaskWaitTimeoutError,
 } from '@wiro-ai/wiro-mcp/client';</code></pre>
 
                     <div class="docs-param-table">
@@ -5870,6 +5961,22 @@ import type {
                             <tr>
                               <td><code>SearchModelsParams</code></td>
                               <td>Search parameters — <code>search</code>, <code>categories</code>, <code>slugowner</code>, <code>limit</code>, etc.</td>
+                            </tr>
+                            <tr>
+                              <td><code>TaskReference</code></td>
+                              <td>Existing task identifier — <code>tasktoken</code> or <code>taskid</code>.</td>
+                            </tr>
+                            <tr>
+                              <td><code>WaitForTaskOptions</code></td>
+                              <td>Polling options — <code>signal</code>, <code>onPoll</code>, <code>pollIntervalMs</code>, and retry limit.</td>
+                            </tr>
+                            <tr>
+                              <td><code>TaskWaitTimeoutError</code></td>
+                              <td>Bounded wait expired; carries the last Task/Detail response.</td>
+                            </tr>
+                            <tr>
+                              <td><code>TaskPollingError</code></td>
+                              <td>Repeated or permanent status lookup failure; also carries the last response.</td>
                             </tr>
                           </tbody>
                         </table>

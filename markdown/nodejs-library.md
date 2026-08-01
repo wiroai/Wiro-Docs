@@ -85,12 +85,16 @@ const client = new WiroClient('key', 'secret', 'https://custom-api.example.com/v
 | `searchModels(params?)` | Search and browse models by keyword, category, or owner. |
 | `getModelSchema(model)` | Get full parameter schema and pricing for a model. |
 | `explore()` | Browse curated models organized by category. |
-| `runModel(model, params)` | Run a model. Returns task ID and socket access token. |
-| `waitForTask(tasktoken, timeoutMs?)` | Poll until the task completes. Default timeout: 120 seconds. |
-| `getTask({ tasktoken?, taskid? })` | Get current task status and outputs. |
-| `cancelTask(tasktoken)` | Cancel a task still in the queue. |
-| `killTask(tasktoken)` | Kill a running task. |
+| `runModel(model, params, signal?)` | Run a model. Returns task ID and socket access token. |
+| `waitForTask(tasktokenOrReference, timeoutMs?, options?)` | Poll until the task completes. Default timeout: 120 seconds. Supports `AbortSignal`, stepped polling, progress callbacks, and transient retries. |
+| `getTask({ tasktoken?, taskid? }, signal?)` | Get current task status and outputs. |
+| `cancelTask(tasktokenOrReference, signal?)` | Cancel a queued task. Resolves a token to the `taskid` required by the API. |
+| `killTask(tasktokenOrReference, signal?)` | Kill a running task. Sends the token as `socketaccesstoken` or accepts a `taskid`. |
 | `uploadFile(url, fileName?)` | Upload a file from a URL for use as model input. |
+
+If `waitForTask` exceeds its timeout, it throws `TaskWaitTimeoutError`. The
+error preserves `lastDetail`; call `waitForTask` again with the same token or
+task ID. Do not call `runModel` again for the same generation.
 
 ## Examples
 
@@ -203,6 +207,13 @@ import type {
   ToolDetailResponse,
   ToolListItem,
   SearchModelsParams,
+  TaskReference,
+  WaitForTaskOptions,
+} from '@wiro-ai/wiro-mcp/client';
+
+import {
+  TaskPollingError,
+  TaskWaitTimeoutError,
 } from '@wiro-ai/wiro-mcp/client';
 ```
 
@@ -215,3 +226,7 @@ import type {
 | `ToolListResponse` | Response from `searchModels()` — contains `tool` array. |
 | `ToolDetailResponse` | Response from `getModelSchema()` — contains model with parameters. |
 | `SearchModelsParams` | Search parameters — `search`, `categories`, `slugowner`, `limit`, etc. |
+| `TaskReference` | Existing task identifier — `tasktoken` or `taskid`. |
+| `WaitForTaskOptions` | Polling options — `signal`, `onPoll`, `pollIntervalMs`, and retry limit. |
+| `TaskWaitTimeoutError` | Bounded wait expired; carries the last Task/Detail response. |
+| `TaskPollingError` | Repeated or permanent status lookup failure; also carries the last response. |

@@ -10,6 +10,7 @@ Add to your AI assistant's MCP config:
 {
   "mcpServers": {
     "wiro": {
+      "type": "stdio",
       "command": "npx",
       "args": ["-y", "@wiro-ai/wiro-mcp"],
       "env": {
@@ -98,7 +99,7 @@ WIRO_API_KEY=your-api-key
 
 ## Available Tools
 
-The self-hosted server provides the same 11 tools as the [hosted MCP server](/docs/wiro-mcp-server). Your AI assistant picks the right tool automatically.
+The self-hosted server provides the same 12 tools as the [hosted MCP server](/docs/wiro-mcp-server). Your AI assistant picks the right tool automatically.
 
 **Model slugs:** When a tool requires a model identifier, use the clean/lowercase format `owner/model` (e.g. `openai/sora-2`, `wiro/virtual-try-on`). These correspond to `cleanslugowner/cleanslugproject` values returned by `search_models`.
 
@@ -115,13 +116,14 @@ The self-hosted server provides the same 11 tools as the [hosted MCP server](/do
 
 | Tool | API Endpoint | What it does |
 |------|-------------|-------------|
-| `run_model` | `POST /Run/{owner}/{model}` | Run any model with parameters. With `wait=true` (default), polls until complete and returns outputs. With `wait=false`, returns task token for async monitoring. |
+| `run_model` | `POST /Run/{owner}/{model}` | Run any model with parameters. Waits up to 45 seconds by default; if still active, returns a recoverable token for `wait_for_task`. |
 
 ### Task Management
 
 | Tool | API Endpoint | What it does |
 |------|-------------|-------------|
-| `get_task` | `POST /Task/Detail` | Check task status, `pexit` (exit code), outputs (CDN URLs), `debugoutput` (LLM responses), elapsed time, and cost. `pexit="0"` means success. |
+| `wait_for_task` | `POST /Task/Detail` | Continue waiting for an existing task in bounded windows without creating a duplicate model run. |
+| `get_task` | `POST /Task/Detail` | Check task status immediately, or wait up to 45 seconds with `wait_seconds`. Returns `pexit`, outputs, logs, elapsed time, and cost. |
 | `get_task_price` | `POST /Task/Detail` | Get the cost of a completed task. Shows whether it was billed and the total charge. Only successful tasks (`pexit: "0"`) are billed. |
 | `cancel_task` | `POST /Task/Cancel` | Cancel a task still in queue (before worker assignment). |
 | `kill_task` | `POST /Task/Kill` | Kill a running task (after worker assignment). Task moves to `task_cancel` status. |
@@ -153,7 +155,8 @@ See the [Wiro MCP Server](/docs/wiro-mcp-server) page for detailed parameter tab
 The package exports its core components for building custom MCP servers:
 
 ```typescript
-import { createMcpServer, WiroClient } from '@wiro-ai/wiro-mcp';
+import { WiroClient } from '@wiro-ai/wiro-mcp/client';
+import { createMcpServer } from '@wiro-ai/wiro-mcp/server';
 
 const client = new WiroClient('your-api-key', 'your-api-secret');
 const server = createMcpServer(client);
@@ -161,7 +164,7 @@ const server = createMcpServer(client);
 
 | Export | Description |
 |--------|-------------|
-| `createMcpServer(client)` | Creates an McpServer with all 11 tools registered |
+| `createMcpServer(client)` | Creates an McpServer with all 12 tools registered |
 | `WiroClient` | API client supporting both auth types (signature + apikey-only) |
 | `registerTools(server, client)` | Register tools on an existing McpServer |
 

@@ -629,7 +629,7 @@ Every model run creates a task that progresses through a defined set of stages:
 | `task_assign` | The task has been assigned to a specific GPU. The model is being loaded into memory. This may take a few seconds depending on the model size. |
 | `task_start` | The model command has started executing. Inference is now running on the GPU. |
 | `task_output` | The model is producing output. This event is emitted **multiple times** — each time the model writes to stdout, a new `task_output` message is sent via WebSocket. For LLM models, each token/chunk arrives as a separate `task_output` event, enabling real-time streaming. |
-| `task_error` | The model wrote to stderr. This is an **interim log event**, not a final failure — many models write warnings or debug info to stderr during normal operation. The task may still complete successfully. Always wait for `task_postprocess_end` to determine the actual result. |
+| `task_error` | As a live WebSocket event, this means the model wrote to stderr and is an **interim log**, not necessarily a failure. As persisted `status` in Task/Detail, it represents a fatal pre-execution failure and is terminal. |
 | `task_output_full` | The complete accumulated stdout log, sent once after the model process finishes. Contains the full output history in a single message. |
 | `task_error_full` | The complete accumulated stderr log, sent once after the model process finishes. |
 | `task_end` | The model process has exited. Emitted once. This fires **before** post-processing — do not use this event to determine success. Wait for `task_postprocess_end` instead. |
@@ -649,7 +649,10 @@ The following statuses are exclusive to realtime conversation models (e.g. voice
 
 ## Determining Success or Failure
 
-Both successful and failed tasks reach `task_postprocess_end`. The status alone does not tell you whether the task succeeded. Wait for `task_postprocess_end` and then check `pexit` or `outputs` (or both) to determine the actual result:
+Normal model executions, both successful and failed, reach
+`task_postprocess_end`. Check `pexit` or `outputs` (or both) to determine the
+result. A fatal setup failure may stop earlier with persisted
+`status: "task_error"` and a `debugerror`:
 
 - `pexit` — the process exit code. `"0"` means success, any other value means the model encountered an error. This is the most reliable indicator.
 - `outputs` — the output files array. For non-LLM models, a successful run populates this with CDN URLs. If it's empty or missing, the task likely failed.
@@ -690,7 +693,9 @@ Both successful and failed tasks reach `task_postprocess_end`. The status alone 
 }
 ```
 
-> **Important:** `task_error` events during execution are interim log messages, not final failures. A task can emit error logs and still complete successfully. Always wait for `task_postprocess_end` and check `pexit`.
+> **Important:** Do not confuse the live `task_error` WebSocket log event with
+> persisted `status: "task_error"` in Task/Detail. The event is interim; the
+> database status is a terminal pre-execution failure.
 
 ## LLM Models
 
@@ -750,6 +755,7 @@ Retrieves the current status and output of a task. You can query by either `task
 | `status` | `string` | Current task status (see Task Lifecycle). |
 | `pexit` | `string` | Process exit code. `"0"` = success. |
 | `debugoutput` | `string` | Accumulated stdout. For LLM models, contains the merged response text. |
+| `debugerror` | `string` | Accumulated stderr or a fatal pre-execution error message. |
 | `starttime` | `string` | Unix timestamp when execution started. |
 | `endtime` | `string` | Unix timestamp when execution ended. |
 | `elapsedseconds` | `string` | Total execution time in seconds. |
@@ -763,17 +769,20 @@ Retrieves the current status and output of a task. You can query by either `task
 
 Cancels a task that is still in the `queue` stage. Tasks that have already been assigned to a worker cannot be cancelled — use Kill instead.
 
-| Parameter   | Type   | Required | Description              |
-| ----------- | ------ | -------- | ------------------------ |
-| `tasktoken` | string | Yes      | The task token to cancel |
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `taskid` | string | Yes | The numeric task ID returned by the Run endpoint |
 
 ## **POST** /Task/Kill
 
 Terminates a task that is currently running (any status after `assign`). The worker will stop processing and the task will move to `cancel` status.
 
-| Parameter   | Type   | Required | Description            |
-| ----------- | ------ | -------- | ---------------------- |
-| `tasktoken` | string | Yes      | The task token to kill |
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `taskid` | string | No | The numeric task ID |
+| `socketaccesstoken` | string | No | The task token returned by the Run endpoint (alternative to `taskid`) |
+
+Provide either `taskid` or `socketaccesstoken`.
 
 ## **POST** /Task/InputOutputDelete
 
@@ -1419,6 +1428,17 @@ The Files API lets you organize and upload data that can be referenced in model 
 - **File inputs** — provide images, audio, or documents as model inputs
 - **Batch processing** — store files for repeated use across multiple runs
 
+## Authentication and Public File URLs
+
+All file-management endpoints require project or Bearer authentication. API Key
+Only projects send `x-api-key`; signature projects also send `x-nonce` and
+`x-signature`.
+
+The returned `GET /File/:accessKey/:fileName` URL intentionally remains public
+so browsers and model workers can display the file without account
+credentials. Possession of the generated access key grants read access only,
+not file-management permission.
+
 ## **POST** /File/FolderCreate
 
 Creates a new folder to organize your uploaded files.
@@ -1553,6 +1573,10 @@ When you hit the limit, the Run endpoint returns:
 |------|---------|
 | `96` | Concurrent task limit reached |
 | `97` | Insufficient balance |
+
+For long MCP generations, `run_model` waits up to 45 seconds by default and
+returns a recoverable token when the task remains active. Continue with
+`wait_for_task`; do not resubmit `run_model` for the same request.
 
 ---
 
@@ -1808,6 +1832,24 @@ claude mcp add --transport http wiro \
   --header "Authorization: Bearer YOUR_API_KEY:YOUR_API_SECRET"
 ```
 
+### Claude Desktop
+
+```json
+{
+  "mcpServers": {
+    "wiro": {
+      "type": "http",
+      "url": "https://mcp.wiro.ai/v1",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_KEY:YOUR_API_SECRET"
+      }
+    }
+  }
+}
+```
+
+The `"type": "http"` field is required for URL-based Claude Desktop entries.
+
 ## Authentication
 
 Signature-Based: `Authorization: Bearer YOUR_API_KEY:YOUR_API_SECRET`
@@ -1824,13 +1866,17 @@ API Key Only: `Authorization: Bearer YOUR_API_KEY`
 | `get_model_schema` | Get parameter schema and pricing for any model |
 | `recommend_model` | Describe a task, get model recommendations by relevance |
 | `explore` | Browse curated models by category |
-| `run_model` | Run any model, wait or get task token |
-| `get_task` | Check task status and outputs |
+| `run_model` | Run any model; waits up to 45 seconds by default, then returns a recoverable task token |
+| `wait_for_task` | Continue waiting for an existing task without creating a duplicate run |
+| `get_task` | Check task status immediately or wait up to 45 seconds with `wait_seconds` |
 | `get_task_price` | Get the cost of a completed task |
 | `cancel_task` | Cancel a queued task |
 | `kill_task` | Kill a running task |
 | `upload_file` | Upload a file from URL for use as model input |
 | `search_docs` | Search Wiro documentation |
+
+If a generation exceeds the wait budget, continue with `wait_for_task` using
+the returned token. Do not call `run_model` again for the same request.
 
 ---
 
@@ -1844,6 +1890,7 @@ Run the Wiro MCP server locally on your own machine using npx.
 {
   "mcpServers": {
     "wiro": {
+      "type": "stdio",
       "command": "npx",
       "args": ["-y", "@wiro-ai/wiro-mcp"],
       "env": {
@@ -1854,6 +1901,10 @@ Run the Wiro MCP server locally on your own machine using npx.
   }
 }
 ```
+
+The self-hosted server exposes the same 12 tools as the hosted server,
+including bounded `run_model`, `wait_for_task`, and optional short waits through
+`get_task.wait_seconds`.
 
 ## Environment Variables
 
@@ -1912,12 +1963,15 @@ if (task.pexit === '0') {
 | `searchModels(params?)` | Search and browse models by keyword, category, or owner. |
 | `getModelSchema(model)` | Get full parameter schema and pricing for a model. |
 | `explore()` | Browse curated models organized by category. |
-| `runModel(model, params)` | Run a model. Returns task ID and socket access token. |
-| `waitForTask(tasktoken, timeoutMs?)` | Poll until the task completes. Default timeout: 120s. |
-| `getTask({ tasktoken?, taskid? })` | Get current task status and outputs. |
-| `cancelTask(tasktoken)` | Cancel a queued task. |
-| `killTask(tasktoken)` | Kill a running task. |
+| `runModel(model, params, signal?)` | Run a model. Returns task ID and socket access token. |
+| `waitForTask(tasktokenOrReference, timeoutMs?, options?)` | Poll until completion. Default timeout: 120s. Supports abort, progress, and transient retries. |
+| `getTask({ tasktoken?, taskid? }, signal?)` | Get current task status and outputs. |
+| `cancelTask(tasktokenOrReference, signal?)` | Cancel a queued task using the API-required task ID. |
+| `killTask(tasktokenOrReference, signal?)` | Kill a running task using its token or task ID. |
 | `uploadFile(url, fileName?)` | Upload a file from URL for use as model input. |
+
+`TaskWaitTimeoutError` preserves the last Task/Detail response. Resume
+`waitForTask` with the same identifier instead of calling `runModel` again.
 
 ---
 

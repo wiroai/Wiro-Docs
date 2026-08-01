@@ -70,5 +70,9 @@ For enterprise needs or custom concurrency arrangements, [contact support](mailt
 
 - **Check error code `96`** — if you get this error, wait for a running task to complete before submitting new ones.
 - **Use [WebSocket](/docs/websocket) for monitoring** — instead of polling `/Task/Detail` repeatedly, connect via WebSocket to get real-time updates without extra API calls.
-- **Use `wait=false` in MCP** — for long-running models (video, 3D), submit with `wait=false` and check with `get_task` to avoid holding connections.
+- **Use bounded MCP waits** — `run_model` waits up to 45 seconds by default and
+  returns a recoverable token when the task is still active. Continue with
+  `wait_for_task`; do not call `run_model` again for the same request. Use
+  `wait=false` only when you need the token immediately, and `get_task` for a
+  one-time status check.
 - **Implement exponential backoff** — if polling task status, start at 3 seconds and increase the interval for longer tasks.
