@@ -1832,6 +1832,9 @@ claude mcp add --transport http wiro \
   --header "Authorization: Bearer YOUR_API_KEY:YOUR_API_SECRET"
 ```
 
+For API Key Only authentication, use `Bearer YOUR_API_KEY`. Verify with
+`claude mcp get wiro` or `/mcp` inside Claude Code.
+
 ### Claude Desktop
 
 ```json
@@ -1849,6 +1852,16 @@ claude mcp add --transport http wiro \
 ```
 
 The `"type": "http"` field is required for URL-based Claude Desktop entries.
+Use `Bearer YOUR_API_KEY` for API Key Only authentication, then fully restart
+Claude Desktop. A browser `GET /v1` returning 405 is expected because MCP uses
+authenticated `POST` requests.
+
+Claude Desktop may enforce a fixed client-side tool timeout. Wiro returns from
+each generation wait within 45 seconds; when `nextAction.tool` is
+`wait_for_task`, execute that action with the returned arguments until the
+existing task completes. Never submit `run_model` again for the same request.
+Adding a `timeout` field to `claude_desktop_config.json` is not a reliable
+workaround because Claude Desktop versions may ignore it.
 
 ### OpenClaw
 

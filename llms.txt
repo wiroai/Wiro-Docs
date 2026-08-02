@@ -467,7 +467,7 @@ Wiro provides an MCP (Model Context Protocol) server for AI assistants.
 Endpoint: https://mcp.wiro.ai/v1
 Transport: Streamable HTTP (stateless)
 Auth: `Authorization: Bearer apiKey:apiSecret` (signature) or `Bearer apiKey` (apikey-only) — plain text, no base64
-Claude Desktop URL config requires `"type": "http"`. `GET /v1` returns 405; MCP requests use POST.
+Claude Desktop URL config requires `"type": "http"`, `url`, and `headers`; fully restart the app after saving. `GET /v1` returns 405 by design because MCP requests use authenticated POST. Claude Desktop may ignore custom timeout fields, so follow Wiro's bounded `run_model → wait_for_task` next actions instead of resubmitting a generation.
 OpenClaw: configure `mcp.servers.wiro` with `transport: "streamable-http"`, `connectionTimeoutMs: 10000`, and an environment-backed Authorization header; verify with `openclaw mcp doctor wiro --probe`, or on older releases use `openclaw mcp show wiro`, restart, and run `/tools verbose`.
 Hermes: configure `mcp_servers.wiro` in `~/.hermes/config.yaml`, keep `WIRO_MCP_AUTH` in `~/.hermes/.env`, then run `/reload-mcp` and `/tools`.
 The hosted endpoint requires a client that supports Streamable HTTP plus custom headers. OAuth-only clients are not currently supported.

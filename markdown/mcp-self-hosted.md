@@ -46,6 +46,7 @@ Add to `claude_desktop_config.json`:
 {
   "mcpServers": {
     "wiro": {
+      "type": "stdio",
       "command": "npx",
       "args": ["-y", "@wiro-ai/wiro-mcp"],
       "env": {

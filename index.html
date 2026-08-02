@@ -4875,7 +4875,7 @@ if (!data.result) {
                         <pre><code class="language-bash">claude mcp add --transport http wiro \
   https://mcp.wiro.ai/v1 \
   --header "Authorization: Bearer YOUR_API_KEY:YOUR_API_SECRET"</code></pre>
-                        <p>That's it. Claude Code will now have access to all Wiro tools.</p>
+                        <p>For an API Key Only project, use <code>Bearer YOUR_API_KEY</code> without the colon or secret. Verify the connection with <code>claude mcp get wiro</code>, or run <code>/mcp</code> inside Claude Code.</p>
                       </div>
 
                       <div class="mcp-setup-panel" id="mcp-setup-claude-desktop">
@@ -4892,7 +4892,15 @@ if (!data.result) {
     }
   }
 }</code></pre>
+                        <p>For API Key Only authentication, use <code>"Authorization": "Bearer YOUR_API_KEY"</code>. Save the file, fully quit Claude Desktop, and reopen it.</p>
                         <p>The <code>type</code> field is required for URL-based entries. Without <code>"type": "http"</code>, Claude treats the entry as a local stdio server and skips it as invalid. To run Wiro locally instead, use the <a href="/docs/mcp-self-hosted"><code>"type": "stdio"</code> + npx setup</a>.</p>
+                        <h4>Claude connection and timeout troubleshooting</h4>
+                        <ul>
+                          <li><strong>"Not valid MCP server configurations"</strong> — ensure the remote entry contains <code>"type": "http"</code>, <code>url</code>, and <code>headers</code> exactly as shown above.</li>
+                          <li><strong>Opening <code>/v1</code> in a browser returns 405</strong> — this is expected. MCP uses authenticated <code>POST</code> requests; the endpoint intentionally rejects <code>GET</code>.</li>
+                          <li><strong>A generation reaches Claude's tool timeout</strong> — Wiro waits for at most 45 seconds per call. If the task is still running, Claude should execute the returned <code>nextAction.tool: "wait_for_task"</code> until completion and must not call <code>run_model</code> again.</li>
+                          <li>Do not add a <code>timeout</code> field to <code>claude_desktop_config.json</code>; Claude Desktop versions with a fixed client-side tool timeout may ignore it. Wiro's bounded wait flow is designed to remain below that boundary.</li>
+                        </ul>
                       </div>
 
                       <div class="mcp-setup-panel" id="mcp-setup-windsurf">
@@ -5577,6 +5585,7 @@ export WIRO_API_SECRET="your-api-secret"</code></pre>
                         <pre><code class="language-json">{
   "mcpServers": {
     "wiro": {
+      "type": "stdio",
       "command": "npx",
       "args": ["-y", "@wiro-ai/wiro-mcp"],
       "env": {

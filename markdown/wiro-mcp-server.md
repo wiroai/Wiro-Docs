@@ -68,7 +68,9 @@ claude mcp add --transport http wiro \
   --header "Authorization: Bearer YOUR_API_KEY:YOUR_API_SECRET"
 ```
 
-That's it. Claude Code will now have access to all Wiro tools.
+For an API Key Only project, use `Bearer YOUR_API_KEY` without the colon or
+secret. Verify the connection with `claude mcp get wiro`, or run `/mcp` inside
+Claude Code.
 
 ### Claude Desktop
 
@@ -88,9 +90,26 @@ Add the following to your `claude_desktop_config.json`:
 }
 ```
 
+For API Key Only authentication, use `"Authorization": "Bearer YOUR_API_KEY"`.
+Save the file, fully quit Claude Desktop, and reopen it.
+
 The `type` field is required for URL-based entries. Without `"type": "http"`,
 Claude treats the entry as a local stdio server and skips it as invalid.
 To run Wiro locally instead, use the [`"type": "stdio"` + npx setup](/docs/mcp-self-hosted).
+
+#### Claude connection and timeout troubleshooting
+
+- **"Not valid MCP server configurations"** — ensure the remote entry contains
+  `"type": "http"`, `url`, and `headers` exactly as shown above.
+- **Opening `/v1` in a browser returns 405** — this is expected. MCP uses
+  authenticated `POST` requests; the endpoint intentionally rejects `GET`.
+- **A generation reaches Claude's tool timeout** — Wiro waits for at most 45
+  seconds per call. If the task is still running, the response contains
+  `nextAction.tool: "wait_for_task"`. Claude should execute that exact action
+  until completion and must not call `run_model` again.
+- Do not add a `timeout` field to `claude_desktop_config.json`; Claude Desktop
+  versions with a fixed client-side tool timeout may ignore it. Wiro's bounded
+  wait flow is designed to remain below that boundary.
 
 ### Windsurf
 
