@@ -1793,13 +1793,13 @@ button {
    15b. Client setup cards
    ------------------------------------------------------------------ */
 .mcp-client-grid {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 8px;
   margin: 16px 0 24px;
 }
 
 .mcp-client-grid .mcp-client-card {
-  flex: 1;
   min-width: 0;
 }
 
@@ -1893,7 +1893,11 @@ button {
 
 @media (max-width: 560px) {
   .mcp-client-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mcp-client-card strong {
+    white-space: normal;
   }
 }
 
