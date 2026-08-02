@@ -1847,7 +1847,7 @@ button {
 
 .mcp-client-card .mcp-client-logo {
   height: 24px;
-  width: auto;
+  width: 24px;
   display: block;
   margin: 0 auto 8px;
   filter: grayscale(1);
