@@ -1934,6 +1934,10 @@ If a generation exceeds the wait budget, continue with `wait_for_task` using
 the returned token. Do not call `run_model` again for the same request.
 Tools advertise typed input/output schemas and return `structuredContent` with
 stable task states and an executable `nextAction` for reliable LLM chaining.
+Completed media responses include standard MCP resource links plus an
+assistant-audience instruction to render images and preserve clickable media
+links in the user-facing response. This works even when a client displays
+resource links as tool metadata instead of previewing them inside the tool card.
 
 ---
 

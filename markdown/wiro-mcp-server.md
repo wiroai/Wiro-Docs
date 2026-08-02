@@ -281,6 +281,13 @@ Every tool advertises typed MCP `inputSchema` and `outputSchema` values. Success
 - concise text `content` for clients that only render text,
 - MCP resource links when a result contains generated media.
 
+When a task completes with media, Wiro also returns an assistant-audience
+delivery instruction. MCP clients do not all preview `resource_link` blocks
+inside tool cards, so the assistant is explicitly told to render image URLs and
+preserve clickable video, audio, and file links in its user-facing response.
+The standard resource link and full-resolution URL remain available without
+embedding a large base64 payload.
+
 For example, an LLM submits one generation:
 
 ```json

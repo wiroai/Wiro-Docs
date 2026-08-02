@@ -5083,6 +5083,7 @@ if (!data.result) {
                   <section id="mcp-contract">
                     <h2>MCP Request and Response Contract</h2>
                     <p>Every tool advertises typed MCP <code>inputSchema</code> and <code>outputSchema</code> values. Successful calls return <code>structuredContent</code> for reliable LLM tool chaining, concise text <code>content</code> for compatibility, and MCP resource links for generated media.</p>
+                    <p>When a task completes with media, Wiro also returns an assistant-audience delivery instruction. MCP clients do not all preview <code>resource_link</code> blocks inside tool cards, so the assistant is explicitly told to render image URLs and preserve clickable video, audio, and file links in its user-facing response. The standard resource link and full-resolution URL remain available without embedding a large base64 payload.</p>
                     <p>For example, an LLM submits one generation:</p>
                     <pre><code class="language-json">{
   "name": "run_model",
@@ -5634,7 +5635,7 @@ WIRO_API_SECRET=your-api-secret</code></pre>
 
                   <section id="self-hosted-tools">
                     <h2>Available Tools</h2>
-                    <p>The self-hosted server provides the same 13 typed tools as the <a href="/docs/wiro-mcp-server">hosted MCP server</a>. Successful calls include <code>structuredContent</code> for LLM chaining plus text content for compatibility.</p>
+                    <p>The self-hosted server provides the same 13 typed tools as the <a href="/docs/wiro-mcp-server">hosted MCP server</a>. Successful calls include <code>structuredContent</code> for LLM chaining plus text content for compatibility. Completed media calls return standard MCP resource links and an assistant-audience delivery instruction so the assistant can present image previews and clickable media links in its user-facing response even when the client does not render media inside its tool card.</p>
                     <p><strong>Model slugs:</strong> Use the clean/lowercase format <code>owner/model</code> (e.g. <code>openai/sora-2</code>, <code>wiro/virtual-try-on</code>). These correspond to <code>cleanslugowner/cleanslugproject</code> values returned by <code>search_models</code>.</p>
 
                     <h3>Discovery</h3>

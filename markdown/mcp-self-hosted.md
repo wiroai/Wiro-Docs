@@ -100,7 +100,7 @@ WIRO_API_KEY=your-api-key
 
 ## Available Tools
 
-The self-hosted server provides the same 13 typed tools as the [hosted MCP server](/docs/wiro-mcp-server). Successful calls include `structuredContent` for LLM chaining plus text content for compatibility.
+The self-hosted server provides the same 13 typed tools as the [hosted MCP server](/docs/wiro-mcp-server). Successful calls include `structuredContent` for LLM chaining plus text content for compatibility. Completed media calls return standard MCP resource links and an assistant-audience delivery instruction so the assistant can present image previews and clickable media links in its user-facing response even when the client does not render media inside its tool card.
 
 **Model slugs:** When a tool requires a model identifier, use the clean/lowercase format `owner/model` (e.g. `openai/sora-2`, `wiro/virtual-try-on`). These correspond to `cleanslugowner/cleanslugproject` values returned by `search_models`.
 

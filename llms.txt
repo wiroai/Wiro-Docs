@@ -492,7 +492,7 @@ The hosted endpoint requires a client that supports Streamable HTTP plus custom 
 - `upload_file`: Upload a file from URL to Wiro for model input (POST /File/Upload)
 - `search_docs`: Search Wiro documentation for guides, API references, and examples
 
-Tools advertise typed input/output schemas and return `structuredContent` plus text fallback. Task states are `submitted`, `running`, `completed`, `failed`, or `cancelled`. If `nextAction` is present, execute it with the exact arguments returned. If `run_model` is still running, call `wait_for_task`; do not resubmit `run_model`, because that creates a separate billable task. Use `list_tasks → get_task` to resume output from a different conversation.
+Tools advertise typed input/output schemas and return `structuredContent` plus text fallback. Task states are `submitted`, `running`, `completed`, `failed`, or `cancelled`. If `nextAction` is present, execute it with the exact arguments returned. If `run_model` is still running, call `wait_for_task`; do not resubmit `run_model`, because that creates a separate billable task. Use `list_tasks → get_task` to resume output from a different conversation. Completed media results include MCP `resource_link` blocks and an assistant-audience delivery instruction: render images and preserve clickable video/audio/file links in the user-facing response, because some clients expose resource links as tool metadata instead of previewing them in the tool card.
 
 ## Node.js Library
 
