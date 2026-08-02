@@ -4778,7 +4778,7 @@ if (!data.result) {
                   <section id="mcp-what-is">
                     <h2>What is MCP?</h2>
                     <p><a href="https://modelcontextprotocol.io/" target="_blank">Model Context Protocol</a> (MCP) is an open standard that lets AI assistants use external tools directly. With the Wiro MCP server, your AI assistant can search models, run inference, track tasks, and upload files — all without leaving your editor.</p>
-                    <p>The hosted MCP server is available at <code>mcp.wiro.ai/v1</code> and works with any MCP-compatible client, including Cursor, Claude Code, Claude Desktop, and Windsurf. Every request uses your own API key — nothing is stored on the server.</p>
+                    <p>The hosted MCP server is available at <code>mcp.wiro.ai/v1</code> and works with clients that support Streamable HTTP plus custom request headers, including Cursor, Claude Code, Claude Desktop, Windsurf, OpenClaw, and Hermes. Every request uses your own API key — nothing is stored on the server.</p>
                     <p>You need a Wiro API key to use the MCP server. If you don't have one yet, <a href="https://wiro.ai/panel/project/new" target="_blank">create a project here</a>.</p>
 
                     <h3>Links</h3>
@@ -4815,6 +4815,16 @@ if (!data.result) {
                         <img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/windsurf.svg" alt="Windsurf" class="mcp-client-logo" />
                         <strong>Windsurf</strong>
                         <span>MCP settings config</span>
+                      </a>
+                      <a href="#" class="mcp-client-card" data-toggle-target="mcp-setup-openclaw">
+                        <i class="lni lni-code-alt"></i>
+                        <strong>OpenClaw</strong>
+                        <span>Streamable HTTP config</span>
+                      </a>
+                      <a href="#" class="mcp-client-card" data-toggle-target="mcp-setup-hermes">
+                        <i class="lni lni-bolt"></i>
+                        <strong>Hermes</strong>
+                        <span>YAML config</span>
                       </a>
                       <a href="#" class="mcp-client-card" data-toggle-target="mcp-setup-other">
                         <i class="lni lni-plug"></i>
@@ -4900,6 +4910,41 @@ if (!data.result) {
 }</code></pre>
                       </div>
 
+                      <div class="mcp-setup-panel" id="mcp-setup-openclaw">
+                        <h3>OpenClaw</h3>
+                        <p>Set <code>WIRO_MCP_AUTH</code> in the environment that starts OpenClaw. Use <code>YOUR_API_KEY:YOUR_API_SECRET</code> for signature auth or only <code>YOUR_API_KEY</code> for API Key Only auth.</p>
+                        <pre><code class="language-json">{
+  "mcp": {
+    "servers": {
+      "wiro": {
+        "url": "https://mcp.wiro.ai/v1",
+        "transport": "streamable-http",
+        "connectionTimeoutMs": 10000,
+        "headers": {
+          "Authorization": "Bearer ${WIRO_MCP_AUTH}"
+        }
+      }
+    }
+  }
+}</code></pre>
+                        <p>Verify the saved definition, connection, and 13 advertised tools:</p>
+                        <pre><code class="language-bash">openclaw mcp doctor wiro --probe</code></pre>
+                        <p>On older OpenClaw releases without that command, use <code>openclaw mcp show wiro</code>, restart OpenClaw, and run <code>/tools verbose</code>.</p>
+                      </div>
+
+                      <div class="mcp-setup-panel" id="mcp-setup-hermes">
+                        <h3>Hermes</h3>
+                        <p>Add <code>WIRO_MCP_AUTH=YOUR_API_KEY:YOUR_API_SECRET</code> to <code>~/.hermes/.env</code>, then add this to <code>~/.hermes/config.yaml</code>:</p>
+                        <pre><code class="language-yaml">mcp_servers:
+  wiro:
+    url: "https://mcp.wiro.ai/v1"
+    headers:
+      Authorization: "Bearer ${WIRO_MCP_AUTH}"
+    timeout: 60
+    connect_timeout: 10</code></pre>
+                        <p>Use only the API key in <code>WIRO_MCP_AUTH</code> for API Key Only auth. Run <code>/reload-mcp</code> and then <code>/tools</code> inside Hermes.</p>
+                      </div>
+
                       <div class="mcp-setup-panel" id="mcp-setup-other">
                         <h3>Other MCP Clients</h3>
                         <p>The Wiro MCP server uses the <strong>Streamable HTTP</strong> transport at:</p>
@@ -4907,7 +4952,7 @@ if (!data.result) {
                         <p>Authentication is via the <code>Authorization</code> header:</p>
                         <pre><code>Authorization: Bearer YOUR_API_KEY:YOUR_API_SECRET</code></pre>
                         <p>Or for API Key Only auth: <code>Bearer YOUR_API_KEY</code></p>
-                        <p>Credentials are sent as plain text — no base64 encoding needed. Any MCP client that supports Streamable HTTP transport can connect.</p>
+                        <p>Credentials are sent as plain text — no base64 encoding needed. Clients must support both Streamable HTTP and a custom <code>Authorization</code> header. OAuth-only MCP clients are not currently supported.</p>
                       </div>
                     </div>
                   </section>
@@ -4926,7 +4971,7 @@ if (!data.result) {
 
                   <section id="mcp-tools">
                     <h2>Available Tools</h2>
-                    <p>The MCP server exposes 12 tools organized in four categories. Your AI assistant picks the right tool automatically.</p>
+                    <p>The MCP server exposes 13 tools organized in four categories. Your AI assistant picks the right tool automatically.</p>
                     <p><strong>Model slugs:</strong> Use the clean/lowercase format <code>owner/model</code> (e.g. <code>openai/sora-2</code>, <code>wiro/virtual-try-on</code>). These correspond to the <code>cleanslugowner/cleanslugproject</code> values returned by <code>search_models</code>.</p>
                     <h3>Discovery</h3>
                     <table>
@@ -4988,6 +5033,10 @@ if (!data.result) {
                           <td>Check task status immediately or wait up to 45 seconds with <code>wait_seconds</code></td>
                         </tr>
                         <tr>
+                          <td><code>list_tasks</code></td>
+                          <td>Browse authenticated generation history across conversations, then continue with <code>get_task</code></td>
+                        </tr>
+                        <tr>
                           <td><code>get_task_price</code></td>
                           <td>Get the cost of a completed task — shows whether it was billed and the total charge</td>
                         </tr>
@@ -5023,6 +5072,37 @@ if (!data.result) {
                     </table>
                   </section>
 
+                  <section id="mcp-contract">
+                    <h2>MCP Request and Response Contract</h2>
+                    <p>Every tool advertises typed MCP <code>inputSchema</code> and <code>outputSchema</code> values. Successful calls return <code>structuredContent</code> for reliable LLM tool chaining, concise text <code>content</code> for compatibility, and MCP resource links for generated media.</p>
+                    <p>For example, an LLM submits one generation:</p>
+                    <pre><code class="language-json">{
+  "name": "run_model",
+  "arguments": {
+    "model": "owner/model",
+    "params": { "prompt": "A mountain lake at sunset" },
+    "wait": true,
+    "timeout_seconds": 45
+  }
+}</code></pre>
+                    <p>If the generation outlives the bounded wait, the same tool returns the existing task and an executable next action:</p>
+                    <pre><code class="language-json">{
+  "state": "running",
+  "task": {
+    "id": "123",
+    "token": "task-token",
+    "status": "task_start"
+  },
+  "outputs": [],
+  "nextAction": {
+    "tool": "wait_for_task",
+    "arguments": { "tasktoken": "task-token" },
+    "reason": "Continue this exact task. Do not call run_model again."
+  }
+}</code></pre>
+                    <p>Task states are <code>submitted</code>, <code>running</code>, <code>completed</code>, <code>failed</code>, or <code>cancelled</code>. A two- or three-minute video can use several bounded <code>wait_for_task</code> calls without creating another billable generation.</p>
+                  </section>
+
                   <section id="mcp-examples">
                     <h2>Examples</h2>
                     <h3>Generate an image</h3>
@@ -5034,6 +5114,9 @@ if (!data.result) {
                     <h3>Find models</h3>
                     <div class="info-callout"><p>"What models are available for text-to-video?"</p></div>
                     <p>The assistant will call <code>search_models</code> with categories filter.</p>
+                    <h3>Resume a previous production</h3>
+                    <div class="info-callout"><p>"Show my latest productions and open the newest result"</p></div>
+                    <p>The assistant will call <code>list_tasks</code>, select the matching task, and call <code>get_task</code>. History is scoped from the authenticated project; the LLM never sends a user UUID.</p>
                   </section>
 
                   <section id="mcp-how-it-works">
@@ -5237,6 +5320,36 @@ if (!data.result) {
                     <p>Returns the task's current <code>status</code>, <code>pexit</code> (process exit code), <code>outputs</code> (file URLs), <code>debugoutput</code> (LLM responses), <code>elapsedseconds</code>, and <code>totalcost</code>.</p>
                     <p><strong>Determining success:</strong> Check <code>pexit</code> — <code>"0"</code> means success, any other value means failure. For LLM models, the response is available as structured content in <code>outputs</code> (with <code>contenttype: "raw"</code>) and as merged text in <code>debugoutput</code>. See <a href="/docs/tasks">Tasks</a> for the full task lifecycle.</p>
                     <p>A live WebSocket <code>task_error</code> event is an interim stderr log, while persisted <code>status: "task_error"</code> returned by Task/Detail is a terminal pre-execution failure.</p>
+
+                    <h3>list_tasks</h3>
+                    <p>List recent model-generation tasks owned by the authenticated project. Calls <code>POST /Task/List</code> without a <code>uuid</code>; Wiro derives the owner from the API credential.</p>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Parameter</th>
+                          <th>Type</th>
+                          <th>Description</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td><code>start</code></td>
+                          <td>number (optional)</td>
+                          <td>Pagination offset (default 0)</td>
+                        </tr>
+                        <tr>
+                          <td><code>limit</code></td>
+                          <td>number (optional)</td>
+                          <td>Maximum tasks to return (default 20, max 100)</td>
+                        </tr>
+                        <tr>
+                          <td><code>model</code></td>
+                          <td>string (optional)</td>
+                          <td>Model slug or partial model-name filter</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <p>Returns newest-first task summaries with stable state, model, task ID, timestamps, duration, cost, and limited output links. Call <code>get_task</code> with a returned <code>taskid</code> for the complete result.</p>
 
                     <h3>get_task_price</h3>
                     <p>Get the cost of a completed task. Calls <code>POST /Task/Detail</code> on the Wiro API and returns billing information.</p>
@@ -5512,7 +5625,7 @@ WIRO_API_SECRET=your-api-secret</code></pre>
 
                   <section id="self-hosted-tools">
                     <h2>Available Tools</h2>
-                    <p>The self-hosted server provides the same 12 tools as the <a href="/docs/wiro-mcp-server">hosted MCP server</a>. Your AI assistant picks the right tool automatically.</p>
+                    <p>The self-hosted server provides the same 13 typed tools as the <a href="/docs/wiro-mcp-server">hosted MCP server</a>. Successful calls include <code>structuredContent</code> for LLM chaining plus text content for compatibility.</p>
                     <p><strong>Model slugs:</strong> Use the clean/lowercase format <code>owner/model</code> (e.g. <code>openai/sora-2</code>, <code>wiro/virtual-try-on</code>). These correspond to <code>cleanslugowner/cleanslugproject</code> values returned by <code>search_models</code>.</p>
 
                     <h3>Discovery</h3>
@@ -5585,6 +5698,11 @@ WIRO_API_SECRET=your-api-secret</code></pre>
                           <td><code>get_task</code></td>
                           <td><code>POST /Task/Detail</code></td>
                           <td>Check task status immediately, or wait up to 45 seconds with <code>wait_seconds</code>. Returns <code>pexit</code>, outputs, logs, elapsed time, and cost.</td>
+                        </tr>
+                        <tr>
+                          <td><code>list_tasks</code></td>
+                          <td><code>POST /Task/List</code></td>
+                          <td>Browse authenticated generation history across conversations and continue with <code>get_task</code>.</td>
                         </tr>
                         <tr>
                           <td><code>get_task_price</code></td>
@@ -5683,7 +5801,7 @@ npm run build
 export WIRO_API_KEY="your-api-key"
 export WIRO_API_SECRET="your-api-secret"
 node dist/index.js</code></pre>
-                    <p>Requires Node.js 18 or later. <a href="https://wiro.ai/panel/project/new" target="_blank">Create a project</a> to get API keys.</p>
+                    <p>Requires Node.js 20 or later. <a href="https://wiro.ai/panel/project/new" target="_blank">Create a project</a> to get API keys.</p>
                   </section>
                 </article>
               </div>
@@ -5713,7 +5831,7 @@ node dist/index.js</code></pre>
                   <section id="nodejs-install">
                     <h2>Installation</h2>
                     <pre><code>npm install @wiro-ai/wiro-mcp</code></pre>
-                    <p>Requires Node.js 18 or later.</p>
+                    <p>Requires Node.js 20 or later.</p>
                   </section>
 
                   <section id="nodejs-quickstart">

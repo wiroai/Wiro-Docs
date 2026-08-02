@@ -6,7 +6,7 @@ Connect AI coding assistants to Wiro's AI models via the Model Context Protocol.
 
 [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) is an open standard that lets AI assistants use external tools directly. With the Wiro MCP server, your AI assistant can search models, run inference, track tasks, and upload files — all without leaving your editor. Every request uses your own API key — nothing is stored on the server.
 
-The hosted MCP server is available at `https://mcp.wiro.ai/v1` and works with any MCP-compatible client, including Cursor, Claude Code, Claude Desktop, and Windsurf.
+The hosted MCP server is available at `https://mcp.wiro.ai/v1`. It works with MCP clients that support **Streamable HTTP plus custom request headers**, including Cursor, Claude Code, Claude Desktop, Windsurf, OpenClaw, and Hermes.
 
 You need a Wiro API key to use the MCP server. If you don't have one yet, [create a project here](https://wiro.ai/panel/project/new).
 
@@ -109,6 +109,74 @@ Open **Settings → MCP** and add a new server:
 }
 ```
 
+### OpenClaw
+
+Store your Wiro bearer value in the environment that starts OpenClaw:
+
+```bash
+export WIRO_MCP_AUTH="YOUR_API_KEY:YOUR_API_SECRET"
+```
+
+Then add this server under `mcp.servers` in your OpenClaw config:
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "wiro": {
+        "url": "https://mcp.wiro.ai/v1",
+        "transport": "streamable-http",
+        "connectionTimeoutMs": 10000,
+        "headers": {
+          "Authorization": "Bearer ${WIRO_MCP_AUTH}"
+        }
+      }
+    }
+  }
+}
+```
+
+Verify the saved definition, connection, and advertised tools:
+
+```bash
+openclaw mcp doctor wiro --probe
+```
+
+On older OpenClaw releases without the probe command, run
+`openclaw mcp show wiro`, restart OpenClaw, and use `/tools verbose` to confirm
+that the Wiro tools loaded.
+
+Use only the API key as `WIRO_MCP_AUTH` for an API Key Only project. Wiro's default bounded wait is 45 seconds; if your client has a configurable tool-call timeout, keep it above that value.
+
+### Hermes
+
+Add the credential to `~/.hermes/.env`:
+
+```bash
+WIRO_MCP_AUTH=YOUR_API_KEY:YOUR_API_SECRET
+```
+
+Then add Wiro under `mcp_servers` in `~/.hermes/config.yaml`:
+
+```yaml
+mcp_servers:
+  wiro:
+    url: "https://mcp.wiro.ai/v1"
+    headers:
+      Authorization: "Bearer ${WIRO_MCP_AUTH}"
+    timeout: 60
+    connect_timeout: 10
+```
+
+Reload and inspect the discovered tools:
+
+```text
+/reload-mcp
+/tools
+```
+
+Use only the API key in `WIRO_MCP_AUTH` for an API Key Only project.
+
 ### Other MCP Clients
 
 The Wiro MCP server uses the **Streamable HTTP** transport at:
@@ -123,7 +191,7 @@ Authentication is via the `Authorization` header:
 Authorization: Bearer YOUR_API_KEY:YOUR_API_SECRET
 ```
 
-Any MCP client that supports Streamable HTTP transport can connect. Refer to your client's documentation for the exact configuration format.
+Any MCP client that supports Streamable HTTP **and a custom `Authorization` header** can connect. Refer to your client's documentation for the exact configuration format. Clients that require OAuth-only MCP authentication are not currently supported by this endpoint.
 
 ## Authentication
 
@@ -149,7 +217,7 @@ Your credentials are sent per-request in the Authorization header and are never 
 
 ## Available Tools
 
-The MCP server exposes 12 tools organized in four categories. Your AI assistant picks the right tool automatically based on what you ask.
+The MCP server exposes 13 tools organized in four categories. Your AI assistant picks the right tool automatically based on what you ask.
 
 **Model slugs:** When a tool requires a model identifier, use the clean/lowercase format `owner/model` (e.g. `openai/sora-2`, `wiro/virtual-try-on`). These correspond to the `cleanslugowner/cleanslugproject` values returned by `search_models`.
 
@@ -174,6 +242,7 @@ The MCP server exposes 12 tools organized in four categories. Your AI assistant 
 |------|-------------|
 | `wait_for_task` | Continue waiting for an existing task without creating or billing a duplicate run |
 | `get_task` | Check task status immediately or wait up to 45 seconds with `wait_seconds` |
+| `list_tasks` | List the authenticated project's recent generations across conversations, then continue with `get_task` |
 | `get_task_price` | Get the cost of a completed task — shows whether it was billed and the total charge |
 | `cancel_task` | Cancel a task that is still in the queue (before worker assignment) |
 | `kill_task` | Kill a task that is currently running (after worker assignment) |
@@ -184,6 +253,49 @@ The MCP server exposes 12 tools organized in four categories. Your AI assistant 
 |------|-------------|
 | `upload_file` | Upload a file from a URL to Wiro. Most models accept direct URLs without uploading first — use this for reuse across runs. |
 | `search_docs` | Search the Wiro documentation for guides, API references, and examples |
+
+## MCP Request and Response Contract
+
+Every tool advertises typed MCP `inputSchema` and `outputSchema` values. Successful calls return both:
+
+- `structuredContent` for reliable LLM tool chaining,
+- concise text `content` for clients that only render text,
+- MCP resource links when a result contains generated media.
+
+For example, an LLM submits one generation:
+
+```json
+{
+  "name": "run_model",
+  "arguments": {
+    "model": "owner/model",
+    "params": { "prompt": "A mountain lake at sunset" },
+    "wait": true,
+    "timeout_seconds": 45
+  }
+}
+```
+
+If the generation outlives that bounded wait, `run_model` returns the existing task instead of failing or submitting it again:
+
+```json
+{
+  "state": "running",
+  "task": {
+    "id": "123",
+    "token": "task-token",
+    "status": "task_start"
+  },
+  "outputs": [],
+  "nextAction": {
+    "tool": "wait_for_task",
+    "arguments": { "tasktoken": "task-token" },
+    "reason": "Continue this exact task. Do not call run_model again."
+  }
+}
+```
+
+Task responses use stable states: `submitted`, `running`, `completed`, `failed`, and `cancelled`. The LLM should execute `nextAction` when present. A two- or three-minute video can therefore use several bounded `wait_for_task` calls without creating another billable generation.
 
 ## Examples
 
@@ -217,6 +329,12 @@ The assistant will call `search_models` with `categories: ["text-to-video"]` and
 > "Check the status of my last task"
 
 The assistant will call `get_task` with the task token from the previous run.
+
+### Resume a production from another conversation
+
+> "Show my latest productions and open the newest result"
+
+The assistant will call `list_tasks`, select the matching task, and call `get_task` with its task ID. Task history is scoped from the authenticated project; the LLM never sends a user UUID.
 
 ## How It Works
 
@@ -330,6 +448,18 @@ Returns the task's current `status`, `pexit` (process exit code), `outputs` (fil
 stderr log, while `status: "task_error"` returned by Task/Detail represents a
 fatal pre-execution database state and is terminal.
 
+### list_tasks
+
+List recent model-generation tasks owned by the authenticated project. Calls `POST /Task/List` without a `uuid`; Wiro derives the owner from the API credential.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `start` | number (optional) | Pagination offset (default 0) |
+| `limit` | number (optional) | Maximum tasks to return (default 20, max 100) |
+| `model` | string (optional) | Model slug or partial model-name filter |
+
+Returns newest-first task summaries with stable state, model, task ID, timestamps, duration, cost, and limited output links. Call `get_task` with a returned `taskid` for the complete result.
+
 ### get_task_price
 
 Get the cost of a completed task. Calls `POST /Task/Detail` on the Wiro API and returns billing information.
@@ -402,7 +532,7 @@ No. The MCP server is free. You only pay for the model runs you trigger, at stan
 
 ### What about rate limits?
 
-The MCP server respects the same rate limits as direct API calls. There are no additional limits on the MCP endpoint.
+The hosted MCP endpoint applies a 60-request-per-minute guard per Authorization value, in addition to Wiro API project limits. Long generations do not require rapid polling: follow the returned bounded `wait_for_task` action.
 
 ### Can I self-host?
 

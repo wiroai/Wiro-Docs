@@ -18,7 +18,7 @@ The [`@wiro-ai/wiro-mcp`](https://www.npmjs.com/package/@wiro-ai/wiro-mcp) packa
 npm install @wiro-ai/wiro-mcp
 ```
 
-Requires Node.js 18 or later.
+Requires Node.js 20 or later.
 
 ## Quick Start
 

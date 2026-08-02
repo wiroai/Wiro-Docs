@@ -468,13 +468,16 @@ Endpoint: https://mcp.wiro.ai/v1
 Transport: Streamable HTTP (stateless)
 Auth: `Authorization: Bearer apiKey:apiSecret` (signature) or `Bearer apiKey` (apikey-only) — plain text, no base64
 Claude Desktop URL config requires `"type": "http"`. `GET /v1` returns 405; MCP requests use POST.
+OpenClaw: configure `mcp.servers.wiro` with `transport: "streamable-http"`, `connectionTimeoutMs: 10000`, and an environment-backed Authorization header; verify with `openclaw mcp doctor wiro --probe`, or on older releases use `openclaw mcp show wiro`, restart, and run `/tools verbose`.
+Hermes: configure `mcp_servers.wiro` in `~/.hermes/config.yaml`, keep `WIRO_MCP_AUTH` in `~/.hermes/.env`, then run `/reload-mcp` and `/tools`.
+The hosted endpoint requires a client that supports Streamable HTTP plus custom headers. OAuth-only clients are not currently supported.
 
 ### Self-Hosted (npx)
 ```json
 { "command": "npx", "args": ["-y", "@wiro-ai/wiro-mcp"], "env": { "WIRO_API_KEY": "...", "WIRO_API_SECRET": "..." } }
 ```
 
-### MCP Tools (12 total)
+### MCP Tools (13 total)
 - `search_models`: Search/browse models by keyword, category, or owner (POST /Tool/List)
 - `get_model_schema`: Get model parameters, types, and pricing (POST /Tool/Detail). Use clean model slug
 - `recommend_model`: Describe what you want to build, get models ranked by relevance (POST /Tool/List)
@@ -482,13 +485,14 @@ Claude Desktop URL config requires `"type": "http"`. `GET /v1` returns 405; MCP 
 - `run_model`: Run any model; waits 45s by default, then returns a recoverable task token (POST /Run/{cleanslugowner}/{cleanslugproject})
 - `wait_for_task`: Continue waiting for an existing task without creating a duplicate run (POST /Task/Detail)
 - `get_task`: Check task status immediately or wait up to 45s with `wait_seconds` (POST /Task/Detail)
+- `list_tasks`: Browse authenticated generation history across conversations, then continue with `get_task` (POST /Task/List; no uuid parameter)
 - `get_task_price`: Get cost of a completed task — only successful tasks (pexit "0") are billed (POST /Task/Detail)
 - `cancel_task`: Cancel a queued task (POST /Task/Cancel)
 - `kill_task`: Kill a running task (POST /Task/Kill)
 - `upload_file`: Upload a file from URL to Wiro for model input (POST /File/Upload)
 - `search_docs`: Search Wiro documentation for guides, API references, and examples
 
-If `run_model` returns Task Still Running, call `wait_for_task` with the same token. Do not resubmit `run_model`; that creates a separate billable task.
+Tools advertise typed input/output schemas and return `structuredContent` plus text fallback. Task states are `submitted`, `running`, `completed`, `failed`, or `cancelled`. If `nextAction` is present, execute it with the exact arguments returned. If `run_model` is still running, call `wait_for_task`; do not resubmit `run_model`, because that creates a separate billable task. Use `list_tasks → get_task` to resume output from a different conversation.
 
 ## Node.js Library
 
@@ -505,7 +509,7 @@ const run = await client.runModel('google/nano-banana-pro', { prompt: '...' });
 const result = await client.waitForTask(run.socketaccesstoken);
 ```
 
-Methods: `searchModels()`, `getModelSchema()`, `explore()`, `runModel()`, `waitForTask()`, `getTask()`, `cancelTask()`, `killTask()`, `uploadFile()`. `waitForTask` supports task token or ID, AbortSignal, stepped polling, progress callbacks, retries, and preserves the last detail in `TaskWaitTimeoutError`.
+Methods: `searchModels()`, `getModelSchema()`, `explore()`, `runModel()`, `waitForTask()`, `getTask()`, `listTasks()`, `cancelTask()`, `killTask()`, `uploadFile()`. `waitForTask` supports task token or ID, AbortSignal, stepped polling, progress callbacks, retries, and preserves the last detail in `TaskWaitTimeoutError`.
 
 ## Agent API
 

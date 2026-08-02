@@ -1803,7 +1803,7 @@ Connect AI coding assistants to Wiro's AI models via the Model Context Protocol.
 
 [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) is an open standard that lets AI assistants use external tools directly. With the Wiro MCP server, your AI assistant can search models, run inference, track tasks, and upload files — all without leaving your editor.
 
-The hosted MCP server is available at `mcp.wiro.ai/v1` and works with any MCP-compatible client, including Cursor, Claude Code, Claude Desktop, and Windsurf.
+The hosted MCP server is available at `mcp.wiro.ai/v1` and works with clients that support Streamable HTTP plus custom request headers, including Cursor, Claude Code, Claude Desktop, Windsurf, OpenClaw, and Hermes. OAuth-only clients are not currently supported.
 
 ## Setup
 
@@ -1850,6 +1850,47 @@ claude mcp add --transport http wiro \
 
 The `"type": "http"` field is required for URL-based Claude Desktop entries.
 
+### OpenClaw
+
+Set `WIRO_MCP_AUTH` in the OpenClaw process environment, then configure:
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "wiro": {
+        "url": "https://mcp.wiro.ai/v1",
+        "transport": "streamable-http",
+        "connectionTimeoutMs": 10000,
+        "headers": {
+          "Authorization": "Bearer ${WIRO_MCP_AUTH}"
+        }
+      }
+    }
+  }
+}
+```
+
+Verify with `openclaw mcp doctor wiro --probe`.
+On older OpenClaw releases without that command, use
+`openclaw mcp show wiro`, restart OpenClaw, and run `/tools verbose`.
+
+### Hermes
+
+Store `WIRO_MCP_AUTH` in `~/.hermes/.env`, then add this to `~/.hermes/config.yaml`:
+
+```yaml
+mcp_servers:
+  wiro:
+    url: "https://mcp.wiro.ai/v1"
+    headers:
+      Authorization: "Bearer ${WIRO_MCP_AUTH}"
+    timeout: 60
+    connect_timeout: 10
+```
+
+Run `/reload-mcp` and `/tools` in Hermes.
+
 ## Authentication
 
 Signature-Based: `Authorization: Bearer YOUR_API_KEY:YOUR_API_SECRET`
@@ -1869,6 +1910,7 @@ API Key Only: `Authorization: Bearer YOUR_API_KEY`
 | `run_model` | Run any model; waits up to 45 seconds by default, then returns a recoverable task token |
 | `wait_for_task` | Continue waiting for an existing task without creating a duplicate run |
 | `get_task` | Check task status immediately or wait up to 45 seconds with `wait_seconds` |
+| `list_tasks` | Browse authenticated generation history and continue with `get_task` |
 | `get_task_price` | Get the cost of a completed task |
 | `cancel_task` | Cancel a queued task |
 | `kill_task` | Kill a running task |
@@ -1877,6 +1919,8 @@ API Key Only: `Authorization: Bearer YOUR_API_KEY`
 
 If a generation exceeds the wait budget, continue with `wait_for_task` using
 the returned token. Do not call `run_model` again for the same request.
+Tools advertise typed input/output schemas and return `structuredContent` with
+stable task states and an executable `nextAction` for reliable LLM chaining.
 
 ---
 
@@ -1902,7 +1946,7 @@ Run the Wiro MCP server locally on your own machine using npx.
 }
 ```
 
-The self-hosted server exposes the same 12 tools as the hosted server,
+The self-hosted server exposes the same 13 tools as the hosted server,
 including bounded `run_model`, `wait_for_task`, and optional short waits through
 `get_task.wait_seconds`.
 
