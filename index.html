@@ -65,7 +65,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,450;14..32,500;14..32,550;14..32,600;14..32,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="css/lineicons-free.css?v=2026080302" />
     <link rel="stylesheet" href="css/docs.css?v=2026052625" />
-    <link rel="stylesheet" href="css/wiro-foundation.css?v=2026080104" />
+    <link rel="stylesheet" href="css/wiro-foundation.css?v=2026080301" />
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -156,6 +156,10 @@
           </div>
 
           <div class="docs-header-actions">
+            <nav class="docs-header-nav" aria-label="Wiro navigation">
+              <a href="https://wiro.ai/explore" class="docs-header-nav-link">Models</a>
+              <a href="https://wiro.ai/blog/" class="docs-header-nav-link">Blog</a>
+            </nav>
             <div class="docs-theme-toggle" id="themeToggle" role="group" aria-label="Theme preference">
               <button class="docs-theme-option" type="button" data-wiro-theme="light" title="Light" aria-label="Use light theme" aria-pressed="false">
                 <i class="lni lni-sun-1" aria-hidden="true"></i>
@@ -176,17 +180,19 @@
         <nav class="docs-nav" aria-label="Documentation navigation">
           <div class="docs-nav-inner">
             <div class="docs-nav-brand">
-              <a href="https://wiro.ai" class="docs-nav-logo">
-                <img src="https://wiro.ai/images/logos/logo/logo-black.png" alt="Wiro" height="16" />
-              </a>
-              <span class="docs-nav-label">API Docs</span>
-            </div>
-
-            <div class="docs-nav-group">
-              <div class="docs-nav-md-row">
-                <span class="docs-nav-md-label">Markdown</span>
-                <a href="markdown/full-documentation.md" target="_blank" class="docs-nav-md-btn">View</a>
-                <a href="markdown/full-documentation.md" download class="docs-nav-md-btn">Download</a>
+              <div class="docs-nav-brand-lockup">
+                <a href="https://wiro.ai" class="docs-nav-logo">
+                  <img src="https://wiro.ai/images/logos/logo/logo-black.png" alt="Wiro" height="16" />
+                </a>
+                <span class="docs-nav-label">API Docs</span>
+              </div>
+              <div class="docs-nav-md-actions" aria-label="Full documentation Markdown">
+                <a href="markdown/full-documentation.md" target="_blank" rel="noopener" class="docs-nav-md-action" title="View full documentation as Markdown" aria-label="View full documentation as Markdown">
+                  <i class="lni lni-markdown" aria-hidden="true"></i>
+                </a>
+                <a href="markdown/full-documentation.md" download class="docs-nav-md-action" title="Download full documentation as Markdown" aria-label="Download full documentation as Markdown">
+                  <i class="lni lni-download-1" aria-hidden="true"></i>
+                </a>
               </div>
             </div>
 
@@ -195,11 +201,6 @@
               <span>Search...</span>
               <kbd>⌘K</kbd>
             </button>
-
-            <div class="docs-nav-external">
-              <a href="https://wiro.ai/explore" target="_blank" class="docs-nav-external-link"><i class="lni lni-layers-1"></i><span>Explore Models</span></a>
-              <a href="https://wiro.ai/blog/" target="_blank" class="docs-nav-external-link"><i class="lni lni-star-fat"></i><span>Blog</span></a>
-            </div>
 
             <div class="docs-nav-group">
               <h4 class="docs-nav-group-title">Getting Started</h4>
@@ -449,7 +450,7 @@
                   <p class="section-subtitle">Everything you need to get started with the Wiro AI platform.</p>
 
                   <section id="what-is-wiro">
-                    <h2>What is <img src="https://wiro.ai/images/logos/logo/logo-black.png" alt="Wiro" style="height: 20px; vertical-align: -2px; display: inline; margin-right: 2px" />?</h2>
+                    <h2>What is Wiro?</h2>
                     <p>
                       Wiro is an AI model marketplace and API platform that lets you run
                       <strong>AI models</strong> through a single, unified API. Instead of managing infrastructure for each model provider, you make one API call to Wiro and we handle the rest.
@@ -26366,6 +26367,6 @@ curl -X POST "https://api.wiro.ai/v1/Run/google/nano-banana" \
       </div>
     </div>
 
-    <script type="module" src="js/app.js?v=2026080103"></script>
+    <script type="module" src="js/app.js?v=2026080301"></script>
   </body>
 </html>

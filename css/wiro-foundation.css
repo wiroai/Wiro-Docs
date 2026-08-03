@@ -233,9 +233,9 @@ summary:focus-visible {
   box-shadow: var(--wiro-focus-ring);
 }
 
-/* Match Wiro-Web's project-wide scrollbar contract exactly: WebKit-only,
-   6px, trackless and tokenized. Standard scrollbar properties are deliberately
-   avoided because they reserve native gutter space and override this treatment. */
+/* Keep Wiro-Web's exact WebKit-only 6px, trackless scrollbar geometry. Docs
+   additionally drives the tokenized thumb color from app.js so each scroll
+   surface can reveal and fade independently without shifting layout. */
 html::-webkit-scrollbar,
 body::-webkit-scrollbar,
 *::-webkit-scrollbar {
@@ -253,13 +253,7 @@ html::-webkit-scrollbar-thumb,
 body::-webkit-scrollbar-thumb,
 *::-webkit-scrollbar-thumb {
   border-radius: 3px;
-  background: var(--wiro-scroll-thumb);
-}
-
-html::-webkit-scrollbar-thumb:hover,
-body::-webkit-scrollbar-thumb:hover,
-*::-webkit-scrollbar-thumb:hover {
-  background: var(--wiro-scroll-thumb-hover);
+  background-color: var(--wiro-docs-scroll-thumb-color, transparent);
 }
 
 /* Undo the legacy Docs declarations so the canonical WebKit treatment above
@@ -384,6 +378,31 @@ body::-webkit-scrollbar-thumb:hover,
   margin-left: auto;
 }
 
+.docs-header-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.docs-header-nav-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  border-radius: 4px;
+  color: var(--wiro-ink3);
+  font-size: 13.5px;
+  font-weight: 450;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  transition: var(--wiro-transition);
+}
+
+.docs-header-nav-link:hover {
+  background: var(--wiro-bg-warm);
+  color: var(--wiro-ink);
+  text-decoration: none;
+}
+
 /* Static counterpart of WiroThemeToggle's full icon variant. */
 .docs-theme-toggle {
   display: inline-flex;
@@ -455,10 +474,51 @@ body::-webkit-scrollbar-thumb:hover,
 }
 
 .docs-nav-brand {
+  justify-content: space-between;
+  gap: 8px;
   height: 60px;
   margin: 0 0 8px;
   padding: 0 18px;
   border-bottom: 1px solid var(--wiro-border);
+}
+
+.docs-nav-brand-lockup,
+.docs-nav-md-actions {
+  display: flex;
+  align-items: center;
+}
+
+.docs-nav-brand-lockup {
+  gap: 9px;
+  min-width: 0;
+}
+
+.docs-nav-md-actions {
+  flex: 0 0 auto;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.docs-nav-md-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--wiro-border-med);
+  border-radius: var(--wiro-radius-control);
+  background: var(--wiro-surface);
+  color: var(--wiro-ink4);
+  font-size: 13px;
+  text-decoration: none;
+  transition: var(--wiro-transition);
+}
+
+.docs-nav-md-action:hover {
+  border-color: var(--wiro-border-strong);
+  background: var(--wiro-bg-warm);
+  color: var(--wiro-ink);
+  text-decoration: none;
 }
 
 .docs-nav-logo img {
@@ -595,7 +655,7 @@ body::-webkit-scrollbar-thumb:hover,
 .docs-search-trigger {
   width: calc(100% - 28px);
   height: 36px;
-  margin: 8px 14px 6px;
+  margin: 16px 14px;
   padding: 0 10px;
   border: 1px solid var(--wiro-border-med);
   border-radius: var(--wiro-radius-control);
@@ -640,8 +700,8 @@ body::-webkit-scrollbar-thumb:hover,
   width: min(34vw, 440px);
   min-width: 380px;
   max-width: 440px;
-  border-left: 1px solid var(--wiro-border);
-  background: var(--wiro-bg-warm);
+  border-left: 1px solid var(--wiro-border-med);
+  background: var(--wiro-bg);
 }
 
 .docs-right-sticky {
@@ -713,10 +773,6 @@ body::-webkit-scrollbar-thumb:hover,
   margin: 0 0 10px;
   font-size: var(--wiro-type-page-title-size);
   line-height: 1.2;
-}
-
-.docs-section h2 img[src*="logo-black.png"] {
-  filter: var(--wiro-brand-filter);
 }
 
 .docs-section h2 {
@@ -837,7 +893,7 @@ body::-webkit-scrollbar-thumb:hover,
   margin: 12px 0;
   padding: 14px 16px;
   overflow: auto;
-  border: 1px solid var(--wiro-code-border);
+  border: 1px solid var(--wiro-border-med);
   border-radius: var(--wiro-radius-lg);
   background: var(--wiro-code-bg) !important;
   color: var(--wiro-code-fg);
@@ -972,7 +1028,7 @@ body::-webkit-scrollbar-thumb:hover,
 
 .docs-code-panel {
   overflow: hidden;
-  border: 1px solid var(--wiro-code-border);
+  border: 1px solid var(--wiro-border-med);
   border-radius: var(--wiro-radius-lg);
   background: var(--wiro-code-surface);
   box-shadow: var(--wiro-shadow-sm);
@@ -989,7 +1045,7 @@ body::-webkit-scrollbar-thumb:hover,
 
 .docs-code-tabs {
   padding: 6px 10px 0;
-  border-bottom: 1px solid var(--wiro-code-border);
+  border-bottom: 1px solid var(--wiro-border-med);
 }
 
 .docs-code-tab {
@@ -1013,6 +1069,16 @@ body::-webkit-scrollbar-thumb:hover,
 .docs-code-rendered pre,
 .docs-code-rendered .shiki {
   background: var(--wiro-code-bg) !important;
+}
+
+.docs-code-rendered,
+.docs-code-rendered pre,
+.docs-code-rendered .shiki,
+.docs-code-rendered code,
+.docs-code-rendered .shiki code {
+  font-family: var(--wiro-mono);
+  font-size: 12.5px;
+  line-height: 1.7;
 }
 
 .docs-code-copy {
@@ -1226,8 +1292,6 @@ html.wiro-dark .shiki span {
 /* Existing segmented controls implement WiroTabs inset behaviour. */
 .auth-method-toggle,
 .playground-auth-toggle {
-  display: flex;
-  width: fit-content;
   max-width: 100%;
   gap: 2px;
   margin: 16px 0;
@@ -1238,8 +1302,20 @@ html.wiro-dark .shiki span {
   background: var(--wiro-bg-warm);
 }
 
+.auth-method-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+}
+
+.playground-auth-toggle {
+  display: inline-flex;
+  width: fit-content;
+}
+
 .auth-method-toggle button,
 .playground-auth-toggle button {
+  min-width: 0;
   min-height: 28px;
   padding: 0 10px;
   border: 0;
@@ -1249,6 +1325,7 @@ html.wiro-dark .shiki span {
   font-family: var(--wiro-sans);
   font-size: var(--wiro-type-button-sm-size);
   font-weight: 450;
+  white-space: nowrap;
   cursor: pointer;
   transition: var(--wiro-transition);
 }
@@ -1279,7 +1356,6 @@ html.wiro-dark .shiki span {
   margin: 14px 0;
   padding: 12px 14px;
   border: 1px solid color-mix(in srgb, var(--wiro-blue) 14%, transparent);
-  border-left: 2px solid var(--wiro-blue);
   border-radius: var(--wiro-radius-lg);
   background: var(--wiro-blue-bg);
   color: var(--wiro-ink2);
@@ -1605,6 +1681,10 @@ html.wiro-dark .docs-nav-icon-img[src*="tiktok"] {
   color: var(--wiro-ink3);
 }
 
+.faq-answer-inner {
+  padding: 14px 20px 16px;
+}
+
 .skill-value-preview h4 {
   border-bottom-color: var(--wiro-border);
   color: var(--wiro-ink);
@@ -1817,8 +1897,8 @@ html.wiro-dark .docs-nav-icon-img[src*="tiktok"] {
     max-width: 520px;
     height: calc(100vh - 60px);
     height: calc(100dvh - 60px);
-    border-left-color: var(--wiro-border);
-    background: var(--wiro-bg-warm);
+    border-left-color: var(--wiro-border-med);
+    background: var(--wiro-bg);
   }
 
   .docs-code-drawer-toggle {
@@ -1931,13 +2011,26 @@ html.wiro-dark .docs-nav-icon-img[src*="tiktok"] {
     padding-left: var(--wiro-public-page-x-mobile);
   }
 
+  .docs-header-brand,
+  .docs-header-divider,
   .docs-header-product-sep,
   .docs-header-product-page {
     display: none;
   }
 
-  .docs-header-brand img {
-    height: 14px;
+  .docs-header-nav-link {
+    padding-right: 8px;
+    padding-left: 8px;
+  }
+
+  .auth-method-toggle {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 359px) {
+  .docs-header-nav {
+    display: none;
   }
 }
 
