@@ -464,20 +464,26 @@ body::-webkit-scrollbar-thumb,
   width: 288px;
   min-width: 288px;
   height: 100%;
+  overflow: hidden;
   border-right: 1px solid var(--wiro-border);
   background: var(--wiro-surface);
   color: var(--wiro-ink);
 }
 
 .docs-nav-inner {
-  padding: 0 0 28px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
 }
 
 .docs-nav-brand {
+  flex: 0 0 60px;
   justify-content: space-between;
   gap: 8px;
   height: 60px;
-  margin: 0 0 8px;
+  margin: 0;
   padding: 0 18px;
   border-bottom: 1px solid var(--wiro-border);
 }
@@ -653,6 +659,7 @@ body::-webkit-scrollbar-thumb,
 }
 
 .docs-search-trigger {
+  flex: 0 0 36px;
   width: calc(100% - 28px);
   height: 36px;
   margin: 16px 14px;
@@ -663,6 +670,15 @@ body::-webkit-scrollbar-thumb,
   color: var(--wiro-ink4);
   font-size: 13px;
   transition: var(--wiro-transition), box-shadow 0.14s ease;
+}
+
+.docs-nav-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-bottom: 28px;
+  overscroll-behavior: contain;
 }
 
 .docs-search-trigger:hover {
@@ -1825,7 +1841,7 @@ html.wiro-dark .docs-nav-icon-img[src*="tiktok"] {
 }
 
 .docs-search-logo img {
-  filter: var(--wiro-brand-filter);
+  filter: brightness(0) invert(1);
 }
 
 .docs-search-trigger i,
@@ -1833,9 +1849,47 @@ html.wiro-dark .docs-nav-icon-img[src*="tiktok"] {
   color: var(--wiro-ink4);
 }
 
-.docs-search-header,
+.docs-search-header {
+  height: 36px;
+  margin: 16px;
+  padding: 0 10px;
+  border: 1px solid var(--wiro-border-med);
+  border-radius: var(--wiro-radius-control);
+  background: var(--wiro-surface);
+  box-shadow: 0 1px 2px rgb(22 20 15 / 3%);
+  transition: var(--wiro-transition);
+}
+
+.docs-search-header:hover,
+.docs-search-header:focus-within {
+  border-color: var(--wiro-border-strong);
+}
+
+.docs-search-header:focus-within {
+  box-shadow: var(--wiro-focus-ring);
+}
+
 .docs-search-item {
   border-color: var(--wiro-border);
+}
+
+.docs-search-input {
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.docs-search-input:focus,
+.docs-search-input:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 .docs-search-input,
@@ -1873,10 +1927,14 @@ html.wiro-dark .docs-nav-icon-img[src*="tiktok"] {
 }
 
 .docs-search-esc {
-  border-color: var(--wiro-border-med);
+  padding: 2px 5px;
+  border-color: var(--wiro-border);
+  border-radius: var(--wiro-radius-md);
   background: var(--wiro-bg-warm);
   color: var(--wiro-ink4);
   font-family: var(--wiro-mono);
+  font-size: 10px;
+  pointer-events: none;
 }
 
 /* --------------------------------------------------------------------------

@@ -71,7 +71,7 @@ const WIRO_THEME_VALUES = ['light', 'dark', 'system'];
 const systemThemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
 const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 const DOCS_SCROLL_FADE_MS = 140;
-const DOCS_SCROLL_IDLE_MS = 600;
+const DOCS_SCROLL_IDLE_MS = 1000;
 const docsScrollbarStates = new WeakMap();
 
 // Current Wiro code-surface hues from Wiro-Web's --wiro-code-* contract.
@@ -1051,7 +1051,7 @@ function forEachScrollableAncestor(start, callback) {
 function getDocsScrollbarState(element) {
   let state = docsScrollbarStates.get(element);
   if (!state) {
-    state = { value: 0, frame: 0, hideTimer: 0 };
+    state = { value: 0, target: 0, frame: 0, hideTimer: 0 };
     docsScrollbarStates.set(element, state);
   }
   return state;
@@ -1070,7 +1070,9 @@ function animateDocsScrollbar(element, target) {
   const state = getDocsScrollbarState(element);
   window.clearTimeout(state.hideTimer);
   state.hideTimer = 0;
+  if (state.frame && state.target === target) return;
   if (state.frame) window.cancelAnimationFrame(state.frame);
+  state.target = target;
 
   const from = state.value;
   if (reducedMotionQuery.matches || Math.abs(target - from) < 0.001) {
@@ -1100,44 +1102,27 @@ function animateDocsScrollbar(element, target) {
 }
 
 function hideDocsScrollbar(element) {
-  if (element.matches(':hover') || element.contains(document.activeElement)) return;
   animateDocsScrollbar(element, 0);
 }
 
-function initScrollbarReveal() {
-  document.addEventListener(
-    'pointerover',
-    (event) => {
-      forEachScrollableAncestor(event.target, (element) => {
-        if (!(event.relatedTarget instanceof Node) || !element.contains(event.relatedTarget)) {
-          animateDocsScrollbar(element, 1);
-        }
-      });
-    },
-    { passive: true },
-  );
+function scheduleDocsScrollbarHide(element) {
+  const state = getDocsScrollbarState(element);
+  window.clearTimeout(state.hideTimer);
+  state.hideTimer = window.setTimeout(() => hideDocsScrollbar(element), DOCS_SCROLL_IDLE_MS);
+}
 
+function initScrollbarReveal() {
   document.addEventListener(
     'pointerout',
     (event) => {
       forEachScrollableAncestor(event.target, (element) => {
         if (!(event.relatedTarget instanceof Node) || !element.contains(event.relatedTarget)) {
-          hideDocsScrollbar(element);
+          scheduleDocsScrollbarHide(element);
         }
       });
     },
     { passive: true },
   );
-
-  document.addEventListener('focusin', (event) => {
-    forEachScrollableAncestor(event.target, (element) => animateDocsScrollbar(element, 1));
-  });
-
-  document.addEventListener('focusout', (event) => {
-    forEachScrollableAncestor(event.target, (element) => {
-      window.requestAnimationFrame(() => hideDocsScrollbar(element));
-    });
-  });
 
   document.addEventListener(
     'scroll',
@@ -1146,8 +1131,7 @@ function initScrollbarReveal() {
       if (!(element instanceof HTMLElement) || !isDocsScrollable(element)) return;
 
       animateDocsScrollbar(element, 1);
-      const state = getDocsScrollbarState(element);
-      state.hideTimer = window.setTimeout(() => hideDocsScrollbar(element), DOCS_SCROLL_IDLE_MS);
+      scheduleDocsScrollbarHide(element);
     },
     true,
   );
