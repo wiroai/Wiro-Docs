@@ -4,6 +4,29 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script>
+      (function () {
+        try {
+          var preference = localStorage.getItem("wiro-theme");
+          var legacyDocsPreference = localStorage.getItem("wiro-docs-dark");
+          var legacyStyleguidePreference = localStorage.getItem("wiro-sg-theme");
+
+          if (!preference && (legacyStyleguidePreference === "light" || legacyStyleguidePreference === "dark" || legacyStyleguidePreference === "system")) {
+            preference = legacyStyleguidePreference;
+            localStorage.setItem("wiro-theme", preference);
+          } else if (!preference && (legacyDocsPreference === "true" || legacyDocsPreference === "false")) {
+            preference = legacyDocsPreference === "true" ? "dark" : "light";
+            localStorage.setItem("wiro-theme", preference);
+          }
+
+          localStorage.removeItem("wiro-sg-theme");
+
+          var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+          var isDark = preference === "dark" || (preference === "system" && prefersDark);
+          document.documentElement.classList.toggle("wiro-dark", Boolean(isDark));
+        } catch (error) {}
+      })();
+    </script>
+    <script>
       var bp = document.documentElement.dataset.basePath;
       document.write('<base href="' + (bp !== undefined ? bp : "/docs") + '/">');
     </script>
@@ -36,10 +59,13 @@
     <link rel="icon" type="image/png" sizes="16x16" href="https://wiro.ai/images/favicon/favicon-16x16.png" />
     <meta name="msapplication-TileColor" content="#ffffff" />
     <meta name="msapplication-TileImage" content="https://wiro.ai/images/favicon/ms-icon-144x144.png" />
-    <meta name="theme-color" content="#ffffff" />
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700&family=Montserrat:wght@500;600;700;800;900&family=Fira+Code:wght@400;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-    <link href="https://cdn.lineicons.com/4.0/lineicons.css" rel="stylesheet" />
+    <meta name="theme-color" content="#f9f8f5" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,450;14..32,500;14..32,550;14..32,600;14..32,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="css/lineicons-free.css?v=2026080301" />
     <link rel="stylesheet" href="css/docs.css?v=2026052625" />
+    <link rel="stylesheet" href="css/wiro-foundation.css?v=2026080104" />
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -111,11 +137,39 @@
       </defs>
     </svg>
     <div class="docs-layout" id="app">
-      <!-- Mobile nav toggle -->
-      <button class="docs-mobile-toggle" id="mobileNavToggle">
-        <i class="lni lni-menu"></i>
-        <span>Menu</span>
-      </button>
+      <header class="docs-header">
+        <div class="docs-header-inner">
+          <div class="docs-header-leading">
+            <button class="docs-mobile-toggle" id="mobileNavToggle" type="button" aria-label="Open documentation navigation" aria-expanded="false">
+              <i class="lni lni-menu-hamburger-1" aria-hidden="true"></i>
+              <span>Menu</span>
+            </button>
+            <a href="https://wiro.ai" class="docs-header-brand" aria-label="Wiro home">
+              <img src="https://wiro.ai/images/logos/logo/logo-black.png" alt="Wiro" />
+            </a>
+            <span class="docs-header-divider" aria-hidden="true"></span>
+            <a href="/docs/introduction" class="docs-header-product">
+              <span class="docs-header-product-root">Docs</span>
+              <span class="docs-header-product-sep" aria-hidden="true">›</span>
+              <span class="docs-header-product-page" id="docsHeaderPage">Introduction</span>
+            </a>
+          </div>
+
+          <div class="docs-header-actions">
+            <div class="docs-theme-toggle" id="themeToggle" role="group" aria-label="Theme preference">
+              <button class="docs-theme-option" type="button" data-wiro-theme="light" title="Light" aria-label="Use light theme" aria-pressed="false">
+                <i class="lni lni-sun-1" aria-hidden="true"></i>
+              </button>
+              <button class="docs-theme-option" type="button" data-wiro-theme="dark" title="Dark" aria-label="Use dark theme" aria-pressed="false">
+                <i class="lni lni-moon-half-right-5" aria-hidden="true"></i>
+              </button>
+              <button class="docs-theme-option" type="button" data-wiro-theme="system" title="System" aria-label="Use system theme" aria-pressed="false">
+                <i class="lni lni-monitor" aria-hidden="true"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
 
       <!-- Left navigation -->
       <div class="docs-nav-wrapper" id="navWrapper">
@@ -123,12 +177,9 @@
           <div class="docs-nav-inner">
             <div class="docs-nav-brand">
               <a href="https://wiro.ai" class="docs-nav-logo">
-                <img src="https://wiro.ai/images/logos/logo/logo.png" alt="Wiro" height="25" />
+                <img src="https://wiro.ai/images/logos/logo/logo-black.png" alt="Wiro" height="16" />
               </a>
               <span class="docs-nav-label">API Docs</span>
-              <button class="docs-theme-toggle" id="themeToggle" title="Toggle dark mode">
-                <i class="lni lni-night"></i>
-              </button>
             </div>
 
             <div class="docs-nav-group">
@@ -139,28 +190,28 @@
               </div>
             </div>
 
-            <button class="docs-search-trigger" id="searchTrigger">
-              <i class="lni lni-search-alt"></i>
+            <button class="docs-search-trigger" id="searchTrigger" type="button" data-search-trigger aria-haspopup="dialog">
+              <i class="lni lni-search-1"></i>
               <span>Search...</span>
               <kbd>⌘K</kbd>
             </button>
 
             <div class="docs-nav-external">
-              <a href="https://wiro.ai/explore" target="_blank" class="docs-nav-external-link"><i class="lni lni-layers"></i><span>Explore Models</span></a>
-              <a href="https://wiro.ai/blog" target="_blank" class="docs-nav-external-link"><i class="lni lni-star-empty"></i><span>Blog</span></a>
+              <a href="https://wiro.ai/explore" target="_blank" class="docs-nav-external-link"><i class="lni lni-layers-1"></i><span>Explore Models</span></a>
+              <a href="https://wiro.ai/blog" target="_blank" class="docs-nav-external-link"><i class="lni lni-star-fat"></i><span>Blog</span></a>
             </div>
 
             <div class="docs-nav-group">
               <h4 class="docs-nav-group-title">Getting Started</h4>
               <ul class="docs-nav-links">
                 <li>
-                  <a href="/docs/introduction" class="docs-nav-link" data-section="introduction"><span class="nav-emoji-icon">🐨</span><span>Introduction</span></a>
+                  <a href="/docs/introduction" class="docs-nav-link" data-section="introduction"><i class="lni lni-book-1"></i><span>Introduction</span></a>
                 </li>
                 <li>
-                  <a href="/docs/authentication" class="docs-nav-link" data-section="authentication"><i class="lni lni-lock-alt"></i><span>Authentication</span></a>
+                  <a href="/docs/authentication" class="docs-nav-link" data-section="authentication"><i class="lni lni-locked-1"></i><span>Authentication</span></a>
                 </li>
                 <li>
-                  <a href="/docs/projects" class="docs-nav-link" data-section="projects"><i class="lni lni-folder"></i><span>Projects</span></a>
+                  <a href="/docs/projects" class="docs-nav-link" data-section="projects"><i class="lni lni-folder-1"></i><span>Projects</span></a>
                 </li>
               </ul>
             </div>
@@ -169,46 +220,46 @@
               <h4 class="docs-nav-group-title">Model API Reference</h4>
               <ul class="docs-nav-links">
                 <li>
-                  <a href="/docs/models" class="docs-nav-link" data-section="models"><i class="lni lni-grid-alt"></i><span>Models</span></a>
+                  <a href="/docs/models" class="docs-nav-link" data-section="models"><i class="lni lni-layout-9"></i><span>Models</span></a>
                 </li>
                 <li>
                   <a href="/docs/run-a-model" class="docs-nav-link" data-section="run-a-model"><i class="lni lni-play"></i><span>Run a Model</span></a>
                 </li>
                 <li>
-                  <a href="/docs/model-parameters" class="docs-nav-link" data-section="model-parameters"><i class="lni lni-cog"></i><span>Model Parameters</span></a>
+                  <a href="/docs/model-parameters" class="docs-nav-link" data-section="model-parameters"><i class="lni lni-gear-1"></i><span>Model Parameters</span></a>
                 </li>
                 <li>
-                  <a href="/docs/tasks" class="docs-nav-link" data-section="tasks"><i class="lni lni-list"></i><span>Tasks</span></a>
+                  <a href="/docs/tasks" class="docs-nav-link" data-section="tasks"><i class="lni lni-menu-hamburger-1"></i><span>Tasks</span></a>
                 </li>
                 <li>
-                  <a href="/docs/llm-chat-streaming" class="docs-nav-link" data-section="llm-chat-streaming"><i class="lni lni-comments"></i><span>LLM & Chat Streaming</span></a>
+                  <a href="/docs/llm-chat-streaming" class="docs-nav-link" data-section="llm-chat-streaming"><i class="lni lni-chat-bubble-2"></i><span>LLM & Chat Streaming</span></a>
                 </li>
                 <li>
-                  <a href="/docs/websocket" class="docs-nav-link" data-section="websocket"><i class="lni lni-bolt"></i><span>WebSocket</span></a>
+                  <a href="/docs/websocket" class="docs-nav-link" data-section="websocket"><i class="lni lni-bolt-2"></i><span>WebSocket</span></a>
                 </li>
                 <li>
-                  <a href="/docs/realtime-voice-conversation" class="docs-nav-link" data-section="realtime-voice-conversation"><i class="lni lni-mic"></i><span>Realtime Voice Conversation</span></a>
+                  <a href="/docs/realtime-voice-conversation" class="docs-nav-link" data-section="realtime-voice-conversation"><i class="lni lni-microphone-1"></i><span>Realtime Voice Conversation</span></a>
                 </li>
                 <li>
-                  <a href="/docs/realtime-text-to-speech" class="docs-nav-link" data-section="realtime-text-to-speech"><i class="lni lni-volume"></i><span>Realtime Text to Speech</span></a>
+                  <a href="/docs/realtime-text-to-speech" class="docs-nav-link" data-section="realtime-text-to-speech"><i class="lni lni-volume-high"></i><span>Realtime Text to Speech</span></a>
                 </li>
                 <li>
-                  <a href="/docs/realtime-speech-to-text" class="docs-nav-link" data-section="realtime-speech-to-text"><i class="lni lni-microphone"></i><span>Realtime Speech to Text</span></a>
+                  <a href="/docs/realtime-speech-to-text" class="docs-nav-link" data-section="realtime-speech-to-text"><i class="lni lni-microphone-1"></i><span>Realtime Speech to Text</span></a>
                 </li>
                 <li>
-                  <a href="/docs/files" class="docs-nav-link" data-section="files"><i class="lni lni-upload"></i><span>Files</span></a>
+                  <a href="/docs/files" class="docs-nav-link" data-section="files"><i class="lni lni-upload-1"></i><span>Files</span></a>
                 </li>
                 <li>
-                  <a href="/docs/pricing" class="docs-nav-link" data-section="pricing"><i class="lni lni-coin"></i><span>Pricing</span></a>
+                  <a href="/docs/pricing" class="docs-nav-link" data-section="pricing"><i class="lni lni-dollar"></i><span>Pricing</span></a>
                 </li>
                 <li>
-                  <a href="/docs/concurrency-limits" class="docs-nav-link" data-section="concurrency-limits"><i class="lni lni-timer"></i><span>Concurrency Limits</span></a>
+                  <a href="/docs/concurrency-limits" class="docs-nav-link" data-section="concurrency-limits"><i class="lni lni-stopwatch"></i><span>Concurrency Limits</span></a>
                 </li>
                 <li>
-                  <a href="/docs/error-reference" class="docs-nav-link" data-section="error-reference"><i class="lni lni-warning"></i><span>Error Reference</span></a>
+                  <a href="/docs/error-reference" class="docs-nav-link" data-section="error-reference"><i class="lni lni-xmark-circle"></i><span>Error Reference</span></a>
                 </li>
                 <li>
-                  <a href="/docs/faq" class="docs-nav-link" data-section="faq"><i class="lni lni-question-circle"></i><span>FAQ</span></a>
+                  <a href="/docs/faq" class="docs-nav-link" data-section="faq"><i class="lni lni-question-mark-circle"></i><span>FAQ</span></a>
                 </li>
               </ul>
             </div>
@@ -217,29 +268,29 @@
               <h4 class="docs-nav-group-title">Agent API Reference</h4>
               <ul class="docs-nav-links">
                 <li>
-                  <a href="/docs/agent-overview" class="docs-nav-link" data-section="agent-overview"><i class="lni lni-control-panel"></i><span>Agent Overview</span></a>
+                  <a href="/docs/agent-overview" class="docs-nav-link" data-section="agent-overview"><i class="lni lni-dashboard-square-1"></i><span>Agent Overview</span></a>
                 </li>
                 <li>
-                  <a href="/docs/agent-builder" class="docs-nav-link" data-section="agent-builder"><i class="lni lni-construction"></i><span>Agent Builder</span></a>
+                  <a href="/docs/agent-builder" class="docs-nav-link" data-section="agent-builder"><i class="lni lni-hammer-1"></i><span>Agent Builder</span></a>
                 </li>
                 <li>
-                  <a href="/docs/agent-messaging" class="docs-nav-link" data-section="agent-messaging"><i class="lni lni-comments-reply"></i><span>Agent Messaging</span></a>
+                  <a href="/docs/agent-messaging" class="docs-nav-link" data-section="agent-messaging"><i class="lni lni-message-3-text"></i><span>Agent Messaging</span></a>
                 </li>
                 <li>
-                  <a href="/docs/agent-websocket" class="docs-nav-link" data-section="agent-websocket"><i class="lni lni-bolt"></i><span>Agent WebSocket</span></a>
+                  <a href="/docs/agent-websocket" class="docs-nav-link" data-section="agent-websocket"><i class="lni lni-bolt-2"></i><span>Agent WebSocket</span></a>
                 </li>
                 <li>
-                  <a href="/docs/agent-webhooks" class="docs-nav-link" data-section="agent-webhooks"><i class="lni lni-link"></i><span>Agent Webhooks</span></a>
+                  <a href="/docs/agent-webhooks" class="docs-nav-link" data-section="agent-webhooks"><i class="lni lni-link-2-angular-right"></i><span>Agent Webhooks</span></a>
                 </li>
                 <li>
-                  <a href="/docs/agent-credentials" class="docs-nav-link" data-section="agent-credentials"><i class="lni lni-key"></i><span>Agent Credentials & OAuth</span></a>
+                  <a href="/docs/agent-credentials" class="docs-nav-link" data-section="agent-credentials"><i class="lni lni-key-1"></i><span>Agent Credentials & OAuth</span></a>
                 </li>
                 <li>
-                  <a href="/docs/agent-skills" class="docs-nav-link" data-section="agent-skills"><i class="lni lni-pencil-alt"></i><span>Agent Skills</span></a>
+                  <a href="/docs/agent-skills" class="docs-nav-link" data-section="agent-skills"><i class="lni lni-pencil-1"></i><span>Agent Skills</span></a>
                 </li>
                 <li>
                   <details class="docs-nav-group-submenu is-inline">
-                    <summary class="docs-nav-link"><i class="lni lni-layers"></i><span>Skills Integration</span></summary>
+                    <summary class="docs-nav-link"><i class="lni lni-layers-1"></i><span>Skills Integration</span></summary>
                     <ul class="docs-nav-links">
                       <li>
                         <a href="/docs/integration-metaads-skills" class="docs-nav-link" data-section="integration-metaads-skills"><img src="https://wiro.ai/images/icons/skills/meta.svg" alt="" class="docs-nav-icon-img" /><span>Meta Ads</span></a>
@@ -317,19 +368,19 @@
                         <a href="/docs/integration-twiliovoice-skills" class="docs-nav-link" data-section="integration-twiliovoice-skills"><img src="https://wiro.ai/images/icons/skills/twilio.svg" alt="" class="docs-nav-icon-img" /><span>Twilio Voice</span></a>
                       </li>
                       <li>
-                        <a href="/docs/integration-webvoice-skills" class="docs-nav-link" data-section="integration-webvoice-skills"><i class="lni lni-microphone"></i><span>Web Voice</span></a>
+                        <a href="/docs/integration-webvoice-skills" class="docs-nav-link" data-section="integration-webvoice-skills"><i class="lni lni-microphone-1"></i><span>Web Voice</span></a>
                       </li>
                     </ul>
                   </details>
                 </li>
                 <li>
-                  <a href="/docs/agent-transactions" class="docs-nav-link" data-section="agent-transactions"><i class="lni lni-stats-up"></i><span>Agent Transactions</span></a>
+                  <a href="/docs/agent-transactions" class="docs-nav-link" data-section="agent-transactions"><i class="lni lni-trend-up-1"></i><span>Agent Transactions</span></a>
                 </li>
                 <li>
-                  <a href="/docs/agent-logs" class="docs-nav-link" data-section="agent-logs"><i class="lni lni-files"></i><span>Agent Logs</span></a>
+                  <a href="/docs/agent-logs" class="docs-nav-link" data-section="agent-logs"><i class="lni lni-file-multiple"></i><span>Agent Logs</span></a>
                 </li>
                 <li>
-                  <a href="/docs/agent-use-cases" class="docs-nav-link" data-section="agent-use-cases"><i class="lni lni-bulb"></i><span>Agent Use Cases</span></a>
+                  <a href="/docs/agent-use-cases" class="docs-nav-link" data-section="agent-use-cases"><i class="lni lni-bulb-2"></i><span>Agent Use Cases</span></a>
                 </li>
               </ul>
             </div>
@@ -338,16 +389,16 @@
               <h4 class="docs-nav-group-title">Organizations & Teams</h4>
               <ul class="docs-nav-links">
                 <li>
-                  <a href="/docs/organizations-overview" class="docs-nav-link" data-section="organizations-overview"><i class="lni lni-users"></i><span>Overview</span></a>
+                  <a href="/docs/organizations-overview" class="docs-nav-link" data-section="organizations-overview"><i class="lni lni-user-multiple-4"></i><span>Overview</span></a>
                 </li>
                 <li>
-                  <a href="/docs/organizations-managing-teams" class="docs-nav-link" data-section="organizations-managing-teams"><i class="lni lni-add-files"></i><span>Managing Teams</span></a>
+                  <a href="/docs/organizations-managing-teams" class="docs-nav-link" data-section="organizations-managing-teams"><i class="lni lni-file-plus-circle"></i><span>Managing Teams</span></a>
                 </li>
                 <li>
-                  <a href="/docs/organizations-billing" class="docs-nav-link" data-section="organizations-billing"><i class="lni lni-coin"></i><span>Team Billing & Spending</span></a>
+                  <a href="/docs/organizations-billing" class="docs-nav-link" data-section="organizations-billing"><i class="lni lni-dollar"></i><span>Team Billing & Spending</span></a>
                 </li>
                 <li>
-                  <a href="/docs/organizations-api-access" class="docs-nav-link" data-section="organizations-api-access"><i class="lni lni-key"></i><span>Team API Access</span></a>
+                  <a href="/docs/organizations-api-access" class="docs-nav-link" data-section="organizations-api-access"><i class="lni lni-key-1"></i><span>Team API Access</span></a>
                 </li>
               </ul>
             </div>
@@ -356,16 +407,16 @@
               <h4 class="docs-nav-group-title">Integrations</h4>
               <ul class="docs-nav-links">
                 <li>
-                  <a href="/docs/wiro-mcp-server" class="docs-nav-link" data-section="wiro-mcp-server"><i class="lni lni-code-alt"></i><span>Wiro MCP Server</span></a>
+                  <a href="/docs/wiro-mcp-server" class="docs-nav-link" data-section="wiro-mcp-server"><i class="lni lni-code-1"></i><span>Wiro MCP Server</span></a>
                 </li>
                 <li>
-                  <a href="/docs/mcp-self-hosted" class="docs-nav-link" data-section="mcp-self-hosted"><i class="lni lni-laptop"></i><span>Self-Hosted MCP</span></a>
+                  <a href="/docs/mcp-self-hosted" class="docs-nav-link" data-section="mcp-self-hosted"><i class="lni lni-laptop-2"></i><span>Self-Hosted MCP</span></a>
                 </li>
                 <li>
                   <a href="/docs/nodejs-library" class="docs-nav-link" data-section="nodejs-library"><i class="lni lni-npm"></i><span>Node.js Library</span></a>
                 </li>
                 <li>
-                  <a href="/docs/n8n-wiro-integration" class="docs-nav-link" data-section="n8n-wiro-integration"><i class="lni lni-cog"></i><span>n8n Wiro Integration</span></a>
+                  <a href="/docs/n8n-wiro-integration" class="docs-nav-link" data-section="n8n-wiro-integration"><i class="lni lni-gear-1"></i><span>n8n Wiro Integration</span></a>
                 </li>
               </ul>
             </div>
@@ -374,10 +425,10 @@
               <h4 class="docs-nav-group-title">Code Examples</h4>
               <ul class="docs-nav-links">
                 <li>
-                  <a href="/docs/code-examples" class="docs-nav-link" data-section="code-examples"><i class="lni lni-code"></i><span>Code Examples</span></a>
+                  <a href="/docs/code-examples" class="docs-nav-link" data-section="code-examples"><i class="lni lni-code-1"></i><span>Code Examples</span></a>
                 </li>
                 <li>
-                  <a href="llms.txt" class="docs-nav-link" target="_blank" rel="noopener" title="LLMs.txt"><i class="lni lni-bulb"></i><span>LLMs.txt</span></a>
+                  <a href="llms.txt" class="docs-nav-link" target="_blank" rel="noopener" title="LLMs.txt"><i class="lni lni-bulb-2"></i><span>LLMs.txt</span></a>
                 </li>
               </ul>
             </div>
@@ -394,11 +445,11 @@
               <div class="docs-page-section" data-page="introduction" style="display: block">
                 <article class="docs-section">
                   <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/introduction.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/introduction.md" download class="docs-section-md-btn">Download</a></div>
-                  <h1>Introduction <img src="https://wiro.ai/images/koala/accent-heavy-koala.png" alt="Wiro Koala" style="height: 32px; vertical-align: -6px; margin-left: 8px; display: inline" /></h1>
+                  <h1>Introduction</h1>
                   <p class="section-subtitle">Everything you need to get started with the Wiro AI platform.</p>
 
                   <section id="what-is-wiro">
-                    <h2>What is <img src="https://wiro.ai/images/logos/logo/logo.png" alt="Wiro" style="height: 20px; vertical-align: -2px; display: inline; margin-right: 2px" />?</h2>
+                    <h2>What is <img src="https://wiro.ai/images/logos/logo/logo-black.png" alt="Wiro" style="height: 20px; vertical-align: -2px; display: inline; margin-right: 2px" />?</h2>
                     <p>
                       Wiro is an AI model marketplace and API platform that lets you run
                       <strong>AI models</strong> through a single, unified API. Instead of managing infrastructure for each model provider, you make one API call to Wiro and we handle the rest.
@@ -4859,7 +4910,7 @@ if (!data.result) {
                         <span>YAML config</span>
                       </a>
                       <a href="#" class="mcp-client-card" data-toggle-target="mcp-setup-other">
-                        <i class="lni lni-plug"></i>
+                        <i class="lni lni-plug-1"></i>
                         <strong>Other Clients</strong>
                         <span>Any MCP-compatible tool</span>
                       </a>
@@ -5582,7 +5633,7 @@ if (!data.result) {
                         <span>MCP settings config</span>
                       </a>
                       <a href="#" class="mcp-client-card" data-toggle-target="sh-setup-other">
-                        <i class="lni lni-plug"></i>
+                        <i class="lni lni-plug-1"></i>
                         <strong>Other Clients</strong>
                         <span>Any MCP-compatible tool</span>
                       </a>
@@ -6152,10 +6203,10 @@ import type {
                   <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/n8n-wiro-integration.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/n8n-wiro-integration.md" download class="docs-section-md-btn">Download</a></div>
 
                   <h1>n8n Wiro Integration</h1>
-                  <div style="margin: 16px 0 20px; display: flex; align-items: center; gap: 14px">
-                    <img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/n8n.svg" alt="n8n" style="height: 36px" class="dark-invert-icon" />
-                    <span style="font-size: 1.5rem; color: var(--light-text); font-weight: 300">&times;</span>
-                    <img src="https://wiro.ai/images/logos/logo/logo.png" alt="Wiro" style="height: 16px" />
+                  <div class="docs-brand-lockup">
+                    <img src="https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/n8n.svg" alt="n8n" class="docs-brand-lockup-primary dark-invert-icon" />
+                    <span class="docs-brand-separator" aria-hidden="true">&times;</span>
+                    <img src="https://wiro.ai/images/logos/logo/logo-black.png" alt="Wiro" class="docs-brand-lockup-wiro" />
                   </div>
                   <p class="section-subtitle">Use all Wiro AI models directly in your n8n workflows — video, image, audio, LLM, 3D, and more.</p>
 
@@ -26282,8 +26333,8 @@ curl -X POST "https://api.wiro.ai/v1/Run/google/nano-banana" \
             </article>
 
             <aside class="docs-right-panel" id="codePanel">
-              <button class="docs-code-drawer-close" id="codePanelClose">
-                <i class="lni lni-close"></i>
+              <button class="docs-code-drawer-close" id="codePanelClose" type="button" aria-label="Close code panel">
+                <i class="lni lni-xmark" aria-hidden="true"></i>
               </button>
               <div class="docs-right-sticky">
                 <div class="docs-toc" id="tocPanel"></div>
@@ -26291,8 +26342,8 @@ curl -X POST "https://api.wiro.ai/v1/Run/google/nano-banana" \
               </div>
             </aside>
 
-            <button class="docs-code-drawer-toggle" id="codePanelToggle">
-              <i class="lni lni-code"></i>
+            <button class="docs-code-drawer-toggle" id="codePanelToggle" type="button" aria-label="Open code panel" aria-expanded="false">
+              <i class="lni lni-code-1" aria-hidden="true"></i>
               <span>Code</span>
             </button>
             <div class="docs-code-drawer-overlay" id="codePanelOverlay"></div>
@@ -26303,11 +26354,11 @@ curl -X POST "https://api.wiro.ai/v1/Run/google/nano-banana" \
 
     <div class="docs-search-overlay" id="searchOverlay">
       <div class="docs-search-logo">
-        <img src="https://wiro.ai/images/logos/logo/logo.png" alt="Wiro" height="20" />
+        <img src="https://wiro.ai/images/logos/logo/logo-black.png" alt="Wiro" height="20" />
       </div>
       <div class="docs-search-modal" id="searchModal">
         <div class="docs-search-header">
-          <i class="lni lni-search-alt"></i>
+          <i class="lni lni-search-1"></i>
           <input type="text" class="docs-search-input" id="searchInput" placeholder="Search documentation..." autocomplete="off" spellcheck="false" />
           <kbd class="docs-search-esc">ESC</kbd>
         </div>
@@ -26315,6 +26366,6 @@ curl -X POST "https://api.wiro.ai/v1/Run/google/nano-banana" \
       </div>
     </div>
 
-    <script type="module" src="js/app.js?v=2026050315"></script>
+    <script type="module" src="js/app.js?v=2026080103"></script>
   </body>
 </html>
