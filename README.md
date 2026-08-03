@@ -12,8 +12,6 @@
 
 [Live docs](https://wiro.ai/docs) · [Dashboard](https://wiro.ai/panel) · [Explore](https://wiro.ai/explore) · [Models](https://wiro.ai/models) · [LLMs.txt](./llms.txt)
 
-<img src="https://wiro.ai/images/koala/accent-heavy-koala.png" alt="Wiro Koala mascot" width="60" />
-
 </div>
 
 ---

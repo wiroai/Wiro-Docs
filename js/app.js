@@ -66,6 +66,48 @@ const sections = [
 ];
 
 const SHIKI_LANGS = ['bash', 'python', 'javascript', 'typescript', 'json', 'php', 'csharp', 'go', 'swift', 'kotlin', 'dart'];
+const WIRO_THEME_KEY = 'wiro-theme';
+const WIRO_THEME_VALUES = ['light', 'dark', 'system'];
+const systemThemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+// Current Wiro code-surface hues from Wiro-Web's --wiro-code-* contract.
+// Shiki emits both themes into one DOM tree so changing preference never
+// requires rebuilding code blocks or forcing an always-dark API surface.
+const WIRO_SHIKI_LIGHT = {
+  name: 'wiro-light',
+  type: 'light',
+  colors: {
+    'editor.background': '#f2efe8',
+    'editor.foreground': '#16140f',
+  },
+  settings: [
+    { settings: { foreground: '#16140f', background: '#f2efe8' } },
+    { scope: ['comment', 'punctuation.definition.comment'], settings: { foreground: '#8b877d' } },
+    { scope: ['keyword', 'storage', 'storage.type', 'support.function'], settings: { foreground: '#5f594a' } },
+    { scope: ['string', 'string.quoted', 'constant.character'], settings: { foreground: '#2e7d52' } },
+    { scope: ['constant.numeric', 'constant.language'], settings: { foreground: '#9a6a32' } },
+    { scope: ['variable', 'entity.name', 'support.type', 'meta.object-literal.key'], settings: { foreground: '#3d3a33' } },
+    { scope: ['punctuation', 'meta.brace'], settings: { foreground: '#706c62' } },
+  ],
+};
+
+const WIRO_SHIKI_DARK = {
+  name: 'wiro-dark',
+  type: 'dark',
+  colors: {
+    'editor.background': '#191713',
+    'editor.foreground': '#f7f3ea',
+  },
+  settings: [
+    { settings: { foreground: '#f7f3ea', background: '#191713' } },
+    { scope: ['comment', 'punctuation.definition.comment'], settings: { foreground: '#5c5a52' } },
+    { scope: ['keyword', 'storage', 'storage.type', 'support.function'], settings: { foreground: '#7ba8d4' } },
+    { scope: ['string', 'string.quoted', 'constant.character'], settings: { foreground: '#8fbf7a' } },
+    { scope: ['constant.numeric', 'constant.language'], settings: { foreground: '#cf9060' } },
+    { scope: ['variable', 'entity.name', 'support.type', 'meta.object-literal.key'], settings: { foreground: '#d8d1c5' } },
+    { scope: ['punctuation', 'meta.brace'], settings: { foreground: '#aaa297' } },
+  ],
+};
 
 let highlighter = null;
 let currentSlug = null;
@@ -77,7 +119,7 @@ async function initHighlighter() {
   try {
     const { createHighlighter } = await import('https://esm.sh/shiki@3');
     highlighter = await createHighlighter({
-      themes: ['github-dark'],
+      themes: [WIRO_SHIKI_LIGHT, WIRO_SHIKI_DARK],
       langs: SHIKI_LANGS,
     });
     if (currentSlug) {
@@ -102,7 +144,11 @@ function highlight(code, lang) {
   if (!highlighter || !SHIKI_LANGS.includes(lang)) {
     return `<pre style="background:transparent;margin:0;padding:16px"><code>${escapeHtml(code)}</code></pre>`;
   }
-  return highlighter.codeToHtml(code, { lang, theme: 'github-dark' });
+  return highlighter.codeToHtml(code, {
+    lang,
+    themes: { light: 'wiro-light', dark: 'wiro-dark' },
+    defaultColor: false,
+  });
 }
 
 const BASE_PATH = detectBasePath();
@@ -231,7 +277,7 @@ function renderCodePanel(examples) {
       <div class="docs-code-panel-title">Code Examples</div>
       <div class="docs-code-tabs">${tabs}</div>
       <div class="docs-code-content">
-        <button class="docs-code-copy" title="Copy to clipboard"><i class="lni lni-clipboard"></i></button>
+        <button class="docs-code-copy" type="button" title="Copy to clipboard" aria-label="Copy code to clipboard"><i class="lni lni-clipboard" aria-hidden="true"></i></button>
         <div class="docs-code-rendered">${highlighted}</div>
       </div>
     </div>
@@ -308,12 +354,15 @@ function parseCodeExamples(sectionEl) {
 function showSection(slug) {
   if (currentSlug === slug) return;
   currentSlug = slug;
+  document.documentElement.dataset.docsPage = slug;
 
   const section = sections.find((s) => s.slug === slug);
   if (!section) return;
 
   updateNavActive(slug);
   updateMeta(section);
+  const headerPage = document.getElementById('docsHeaderPage');
+  if (headerPage) headerPage.textContent = section.title;
 
   document.querySelectorAll('.docs-page-section').forEach((el) => {
     el.style.display = el.dataset.page === slug ? 'block' : 'none';
@@ -405,7 +454,11 @@ function highlightInlineCode(slug) {
     const lang = (classLang && SHIKI_LANGS.includes(classLang)) ? classLang : detectLang(raw);
     if (!lang || !SHIKI_LANGS.includes(lang)) return;
 
-    const html = highlighter.codeToHtml(raw, { lang, theme: 'github-dark' });
+    const html = highlighter.codeToHtml(raw, {
+      lang,
+      themes: { light: 'wiro-light', dark: 'wiro-dark' },
+      defaultColor: false,
+    });
     const wrapper = block.closest('pre');
     wrapper.outerHTML = html;
   });
@@ -512,8 +565,8 @@ function renderRecentSearches() {
     recents
       .map((r, i) => `<div class="docs-search-item" data-slug="${r.slug}" data-heading-id="${r.headingId || ''}">
         <div class="docs-search-item-breadcrumb">${escapeHtml(r.pageTitle)} › ${escapeHtml(r.heading)}</div>
-        <div class="docs-search-item-title"><i class="lni lni-timer"></i> ${escapeHtml(r.heading)}</div>
-        <button class="docs-search-item-remove" data-recent-idx="${i}" title="Remove">×</button>
+        <div class="docs-search-item-title"><i class="lni lni-stopwatch"></i> ${escapeHtml(r.heading)}</div>
+        <button class="docs-search-item-remove" type="button" data-recent-idx="${i}" title="Remove" aria-label="Remove recent search">×</button>
       </div>`)
       .join('');
 }
@@ -627,6 +680,7 @@ function openSearch() {
   if (!searchIndex) buildSearchIndex();
 
   overlay.classList.add('is-open');
+  document.querySelectorAll('[data-search-trigger]').forEach((trigger) => trigger.setAttribute('aria-expanded', 'true'));
   setTimeout(() => input && input.focus(), 50);
   renderRecentSearches();
 }
@@ -636,16 +690,20 @@ function closeSearch() {
   const input = document.getElementById('searchInput');
   if (overlay) overlay.classList.remove('is-open');
   if (input) input.value = '';
+  document.querySelectorAll('[data-search-trigger]').forEach((trigger) => trigger.setAttribute('aria-expanded', 'false'));
   searchSelectedIdx = -1;
 }
 
 function initSearch() {
-  const trigger = document.getElementById('searchTrigger');
+  const triggers = document.querySelectorAll('[data-search-trigger]');
   const overlay = document.getElementById('searchOverlay');
   const modal = document.getElementById('searchModal');
   const input = document.getElementById('searchInput');
 
-  if (trigger) trigger.addEventListener('click', openSearch);
+  triggers.forEach((trigger) => {
+    trigger.setAttribute('aria-expanded', 'false');
+    trigger.addEventListener('click', openSearch);
+  });
 
   if (overlay) {
     overlay.addEventListener('click', (e) => {
@@ -761,7 +819,7 @@ function buildToc(slug) {
     return;
   }
 
-  let html = '<div class="docs-toc-title"><i class="lni lni-list"></i> On this page</div>';
+  let html = '<div class="docs-toc-title"><i class="lni lni-menu-hamburger-1"></i> On this page</div>';
   html += '<ul class="docs-toc-list">';
   items.forEach((item) => {
     html += `<li class="docs-toc-item"><a href="#${item.id}" class="docs-toc-link" data-toc-id="${item.id}">${item.text}</a></li>`;
@@ -809,27 +867,64 @@ function updateTocActive(items, container) {
   });
 }
 
-function initDarkMode() {
-  const toggle = document.getElementById('themeToggle');
-  const saved = localStorage.getItem('wiro-docs-dark');
-  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const isDark = saved !== null ? saved === 'true' : prefersDark;
-
-  if (isDark) document.body.classList.add('is-dark');
-  updateDarkModeIcon(isDark);
-
-  if (toggle) {
-    toggle.addEventListener('click', () => {
-      const dark = document.body.classList.toggle('is-dark');
-      localStorage.setItem('wiro-docs-dark', dark);
-      updateDarkModeIcon(dark);
-    });
+function getWiroThemePreference() {
+  try {
+    const saved = localStorage.getItem(WIRO_THEME_KEY);
+    return WIRO_THEME_VALUES.includes(saved) ? saved : 'light';
+  } catch {
+    return 'light';
   }
 }
 
-function updateDarkModeIcon(isDark) {
-  const icon = document.querySelector('#themeToggle i');
-  if (icon) icon.className = isDark ? 'lni lni-sun' : 'lni lni-night';
+function isWiroDark(preference) {
+  return preference === 'dark' || (preference === 'system' && systemThemeQuery.matches);
+}
+
+function applyWiroTheme(preference) {
+  const normalizedPreference = WIRO_THEME_VALUES.includes(preference) ? preference : 'light';
+  const dark = isWiroDark(normalizedPreference);
+
+  document.documentElement.classList.toggle('wiro-dark', dark);
+  document.body.classList.remove('is-dark');
+
+  document.querySelectorAll('[data-wiro-theme]').forEach((button) => {
+    const active = button.dataset.wiroTheme === normalizedPreference;
+    button.classList.toggle('is-active', active);
+    button.setAttribute('aria-pressed', String(active));
+  });
+
+  const themeColor = document.querySelector('meta[name="theme-color"]');
+  if (themeColor) themeColor.setAttribute('content', dark ? '#12100d' : '#f9f8f5');
+}
+
+function setWiroThemePreference(preference) {
+  if (!WIRO_THEME_VALUES.includes(preference)) return;
+
+  try {
+    localStorage.setItem(WIRO_THEME_KEY, preference);
+  } catch {
+    // The active tab can still apply a preference when storage is unavailable.
+  }
+
+  applyWiroTheme(preference);
+}
+
+function initWiroTheme() {
+  const toggle = document.getElementById('themeToggle');
+  applyWiroTheme(getWiroThemePreference());
+
+  toggle?.querySelectorAll('[data-wiro-theme]').forEach((button) => {
+    button.addEventListener('click', () => setWiroThemePreference(button.dataset.wiroTheme));
+  });
+
+  systemThemeQuery.addEventListener('change', () => {
+    const preference = getWiroThemePreference();
+    if (preference === 'system') applyWiroTheme(preference);
+  });
+
+  window.addEventListener('storage', (event) => {
+    if (event.key === WIRO_THEME_KEY) applyWiroTheme(getWiroThemePreference());
+  });
 }
 
 function initMobileNav() {
@@ -841,12 +936,14 @@ function initMobileNav() {
     e.stopPropagation();
     const open = navWrapper.classList.toggle('is-open');
     menuToggle.classList.toggle('is-nav-open', open);
+    menuToggle.setAttribute('aria-expanded', String(open));
   });
 
   navWrapper.querySelectorAll('.docs-nav-link').forEach((link) => {
     link.addEventListener('click', () => {
       navWrapper.classList.remove('is-open');
       menuToggle.classList.remove('is-nav-open');
+      menuToggle.setAttribute('aria-expanded', 'false');
     });
   });
 
@@ -854,6 +951,7 @@ function initMobileNav() {
     if (!navWrapper.contains(e.target) && !menuToggle.contains(e.target)) {
       navWrapper.classList.remove('is-open');
       menuToggle.classList.remove('is-nav-open');
+      menuToggle.setAttribute('aria-expanded', 'false');
     }
   });
 }
@@ -866,8 +964,10 @@ function initCodeDrawer() {
 
   if (toggleBtn && panel) {
     toggleBtn.addEventListener('click', () => {
-      panel.classList.toggle('is-open');
-      if (overlay) overlay.classList.toggle('is-open');
+      const open = panel.classList.toggle('is-open');
+      toggleBtn.classList.toggle('is-open', open);
+      toggleBtn.setAttribute('aria-expanded', String(open));
+      if (overlay) overlay.classList.toggle('is-open', open);
     });
   }
 
@@ -878,8 +978,13 @@ function initCodeDrawer() {
 function closeCodeDrawer() {
   const panel = document.getElementById('codePanel');
   const overlay = document.getElementById('codePanelOverlay');
+  const toggleBtn = document.getElementById('codePanelToggle');
   if (panel) panel.classList.remove('is-open');
   if (overlay) overlay.classList.remove('is-open');
+  if (toggleBtn) {
+    toggleBtn.classList.remove('is-open');
+    toggleBtn.setAttribute('aria-expanded', 'false');
+  }
 }
 
 function navigateTo(slug) {
@@ -924,7 +1029,7 @@ function initMarkdownSectionLinks() {
 }
 
 function init() {
-  initDarkMode();
+  initWiroTheme();
   initMobileNav();
   initCodeDrawer();
   initSearch();
