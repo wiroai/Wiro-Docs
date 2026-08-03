@@ -1926,17 +1926,6 @@ html.wiro-dark .docs-nav-icon-img[src*="tiktok"] {
   color: var(--wiro-ink);
 }
 
-.docs-search-esc {
-  padding: 2px 5px;
-  border-color: var(--wiro-border);
-  border-radius: var(--wiro-radius-md);
-  background: var(--wiro-bg-warm);
-  color: var(--wiro-ink4);
-  font-family: var(--wiro-mono);
-  font-size: 10px;
-  pointer-events: none;
-}
-
 /* --------------------------------------------------------------------------
    8. Responsive adaptation using the canonical Wiro scale
    -------------------------------------------------------------------------- */
