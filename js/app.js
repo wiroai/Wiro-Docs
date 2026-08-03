@@ -69,6 +69,10 @@ const SHIKI_LANGS = ['bash', 'python', 'javascript', 'typescript', 'json', 'php'
 const WIRO_THEME_KEY = 'wiro-theme';
 const WIRO_THEME_VALUES = ['light', 'dark', 'system'];
 const systemThemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+const DOCS_SCROLL_FADE_MS = 140;
+const DOCS_SCROLL_IDLE_MS = 600;
+const docsScrollbarStates = new WeakMap();
 
 // Current Wiro code-surface hues from Wiro-Web's --wiro-code-* contract.
 // Shiki emits both themes into one DOM tree so changing preference never
@@ -1028,8 +1032,130 @@ function initMarkdownSectionLinks() {
   });
 }
 
+function isDocsScrollable(element) {
+  if (!(element instanceof HTMLElement)) return false;
+  const style = window.getComputedStyle(element);
+  const canScrollY = /(auto|scroll|overlay)/.test(style.overflowY) && element.scrollHeight > element.clientHeight + 1;
+  const canScrollX = /(auto|scroll|overlay)/.test(style.overflowX) && element.scrollWidth > element.clientWidth + 1;
+  return canScrollY || canScrollX;
+}
+
+function forEachScrollableAncestor(start, callback) {
+  let element = start instanceof Element ? start : null;
+  while (element) {
+    if (isDocsScrollable(element)) callback(element);
+    element = element.parentElement;
+  }
+}
+
+function getDocsScrollbarState(element) {
+  let state = docsScrollbarStates.get(element);
+  if (!state) {
+    state = { value: 0, frame: 0, hideTimer: 0 };
+    docsScrollbarStates.set(element, state);
+  }
+  return state;
+}
+
+function setDocsScrollbarProgress(element, progress) {
+  if (progress <= 0.001) {
+    element.style.removeProperty('--wiro-docs-scroll-thumb-color');
+    return;
+  }
+  const percentage = Math.min(100, progress * 100).toFixed(1);
+  element.style.setProperty('--wiro-docs-scroll-thumb-color', `color-mix(in srgb, transparent, var(--wiro-scroll-thumb) ${percentage}%)`);
+}
+
+function animateDocsScrollbar(element, target) {
+  const state = getDocsScrollbarState(element);
+  window.clearTimeout(state.hideTimer);
+  state.hideTimer = 0;
+  if (state.frame) window.cancelAnimationFrame(state.frame);
+
+  const from = state.value;
+  if (reducedMotionQuery.matches || Math.abs(target - from) < 0.001) {
+    state.value = target;
+    state.frame = 0;
+    setDocsScrollbarProgress(element, target);
+    return;
+  }
+
+  const startedAt = performance.now();
+  const tick = (now) => {
+    const elapsed = Math.min(1, (now - startedAt) / DOCS_SCROLL_FADE_MS);
+    const eased = elapsed * elapsed * (3 - 2 * elapsed);
+    state.value = from + (target - from) * eased;
+    setDocsScrollbarProgress(element, state.value);
+
+    if (elapsed < 1) {
+      state.frame = window.requestAnimationFrame(tick);
+    } else {
+      state.value = target;
+      state.frame = 0;
+      setDocsScrollbarProgress(element, target);
+    }
+  };
+
+  state.frame = window.requestAnimationFrame(tick);
+}
+
+function hideDocsScrollbar(element) {
+  if (element.matches(':hover') || element.contains(document.activeElement)) return;
+  animateDocsScrollbar(element, 0);
+}
+
+function initScrollbarReveal() {
+  document.addEventListener(
+    'pointerover',
+    (event) => {
+      forEachScrollableAncestor(event.target, (element) => {
+        if (!(event.relatedTarget instanceof Node) || !element.contains(event.relatedTarget)) {
+          animateDocsScrollbar(element, 1);
+        }
+      });
+    },
+    { passive: true },
+  );
+
+  document.addEventListener(
+    'pointerout',
+    (event) => {
+      forEachScrollableAncestor(event.target, (element) => {
+        if (!(event.relatedTarget instanceof Node) || !element.contains(event.relatedTarget)) {
+          hideDocsScrollbar(element);
+        }
+      });
+    },
+    { passive: true },
+  );
+
+  document.addEventListener('focusin', (event) => {
+    forEachScrollableAncestor(event.target, (element) => animateDocsScrollbar(element, 1));
+  });
+
+  document.addEventListener('focusout', (event) => {
+    forEachScrollableAncestor(event.target, (element) => {
+      window.requestAnimationFrame(() => hideDocsScrollbar(element));
+    });
+  });
+
+  document.addEventListener(
+    'scroll',
+    (event) => {
+      const element = event.target === document ? document.scrollingElement : event.target;
+      if (!(element instanceof HTMLElement) || !isDocsScrollable(element)) return;
+
+      animateDocsScrollbar(element, 1);
+      const state = getDocsScrollbarState(element);
+      state.hideTimer = window.setTimeout(() => hideDocsScrollbar(element), DOCS_SCROLL_IDLE_MS);
+    },
+    true,
+  );
+}
+
 function init() {
   initWiroTheme();
+  initScrollbarReveal();
   initMobileNav();
   initCodeDrawer();
   initSearch();
