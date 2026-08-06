@@ -1809,7 +1809,11 @@ Connect AI coding assistants to Wiro's AI models via the Model Context Protocol.
 
 [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) is an open standard that lets AI assistants use external tools directly. With the Wiro MCP server, your AI assistant can search models, run inference, track tasks, and upload files — all without leaving your editor.
 
-The hosted MCP server is available at `mcp.wiro.ai/v1` and works with clients that support Streamable HTTP plus custom request headers, including Cursor, Claude Code, Claude Desktop, Windsurf, OpenClaw, and Hermes. OAuth-only clients are not currently supported.
+The hosted MCP server is available at `mcp.wiro.ai/v1` and works with clients
+that support Streamable HTTP plus custom request headers, including Cursor,
+Claude Code, Windsurf, OpenClaw, and Hermes. Claude Desktop uses Wiro's official
+local `npx` package because its remote Custom Connectors require OAuth 2.0 and
+cannot currently send Wiro's static `Authorization` header.
 
 ## Setup
 
@@ -1843,24 +1847,30 @@ For API Key Only authentication, use `Bearer YOUR_API_KEY`. Verify with
 
 ### Claude Desktop
 
+Install Node.js 20 or later, then add this local stdio entry to
+`claude_desktop_config.json`:
+
 ```json
 {
   "mcpServers": {
     "wiro": {
-      "type": "http",
-      "url": "https://mcp.wiro.ai/v1",
-      "headers": {
-        "Authorization": "Bearer YOUR_API_KEY:YOUR_API_SECRET"
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@wiro-ai/wiro-mcp"],
+      "env": {
+        "WIRO_API_KEY": "YOUR_API_KEY",
+        "WIRO_API_SECRET": "YOUR_API_SECRET"
       }
     }
   }
 }
 ```
 
-The `"type": "http"` field is required for URL-based Claude Desktop entries.
-Use `Bearer YOUR_API_KEY` for API Key Only authentication, then fully restart
-Claude Desktop. A browser `GET /v1` returning 405 is expected because MCP uses
-authenticated `POST` requests.
+For API Key Only authentication, remove `WIRO_API_SECRET` completely. Fully quit
+and reopen Claude Desktop after saving. This runs `@wiro-ai/wiro-mcp` locally
+and provides the same 13 Wiro tools. Do not add `https://mcp.wiro.ai/v1` through
+Claude's Settings → Connectors yet; direct URL connections require OAuth, which
+the hosted Wiro endpoint does not currently provide.
 
 Claude Desktop may enforce a fixed client-side tool timeout. Wiro returns from
 each generation wait within 45 seconds; when `nextAction.tool` is

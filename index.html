@@ -4873,7 +4873,7 @@ if (!data.result) {
                   <section id="mcp-what-is">
                     <h2>What is MCP?</h2>
                     <p><a href="https://modelcontextprotocol.io/" target="_blank">Model Context Protocol</a> (MCP) is an open standard that lets AI assistants use external tools directly. With the Wiro MCP server, your AI assistant can search models, run inference, track tasks, and upload files — all without leaving your editor.</p>
-                    <p>The hosted MCP server is available at <code>mcp.wiro.ai/v1</code> and works with clients that support Streamable HTTP plus custom request headers, including Cursor, Claude Code, Claude Desktop, Windsurf, OpenClaw, and Hermes. Every request uses your own API key — nothing is stored on the server.</p>
+                    <p>The hosted MCP server is available at <code>mcp.wiro.ai/v1</code> and works with clients that support Streamable HTTP plus custom request headers, including Cursor, Claude Code, Windsurf, OpenClaw, and Hermes. Claude Desktop uses Wiro's official local <code>npx</code> package because its remote Custom Connectors do not currently accept Wiro's static <code>Authorization</code> header. Every request uses your own API key — nothing is stored on the hosted server.</p>
                     <p>You need a Wiro API key to use the MCP server. If you don't have one yet, <a href="https://wiro.ai/panel/project/new" target="_blank">create a project here</a>.</p>
 
                     <h3>Links</h3>
@@ -4904,7 +4904,7 @@ if (!data.result) {
                       <a href="#" class="mcp-client-card" data-toggle-target="mcp-setup-claude-desktop">
                         <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-claude"></use></svg>
                         <strong>Claude Desktop</strong>
-                        <span>JSON config setup</span>
+                        <span>Local npx setup</span>
                       </a>
                       <a href="#" class="mcp-client-card" data-toggle-target="mcp-setup-windsurf">
                         <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-windsurf"></use></svg>
@@ -4975,24 +4975,27 @@ if (!data.result) {
 
                       <div class="mcp-setup-panel" id="mcp-setup-claude-desktop">
                         <h3>Claude Desktop</h3>
-                        <p>Add the following to your <code>claude_desktop_config.json</code>:</p>
+                        <p>Claude Desktop's remote Custom Connectors require OAuth 2.0 and cannot currently send Wiro's static API-key header. Use the official local package instead. It provides the same 13 Wiro tools through Claude Desktop's stdio MCP support.</p>
+                        <p>Install <a href="https://nodejs.org/" target="_blank" rel="noopener">Node.js 20 or later</a>, then add the following to your <code>claude_desktop_config.json</code>:</p>
                         <pre><code class="language-json">{
   "mcpServers": {
     "wiro": {
-      "type": "http",
-      "url": "https://mcp.wiro.ai/v1",
-      "headers": {
-        "Authorization": "Bearer YOUR_API_KEY:YOUR_API_SECRET"
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@wiro-ai/wiro-mcp"],
+      "env": {
+        "WIRO_API_KEY": "YOUR_API_KEY",
+        "WIRO_API_SECRET": "YOUR_API_SECRET"
       }
     }
   }
 }</code></pre>
-                        <p>For API Key Only authentication, use <code>"Authorization": "Bearer YOUR_API_KEY"</code>. Save the file, fully quit Claude Desktop, and reopen it.</p>
-                        <p>The <code>type</code> field is required for URL-based entries. Without <code>"type": "http"</code>, Claude treats the entry as a local stdio server and skips it as invalid. To run Wiro locally instead, use the <a href="/docs/mcp-self-hosted"><code>"type": "stdio"</code> + npx setup</a>.</p>
+                        <p>For API Key Only authentication, keep <code>WIRO_API_KEY</code> and remove the <code>WIRO_API_SECRET</code> entry completely. Save the file, fully quit Claude Desktop, and reopen it.</p>
+                        <p>This setup runs the open-source <a href="https://www.npmjs.com/package/@wiro-ai/wiro-mcp" target="_blank" rel="noopener"><code>@wiro-ai/wiro-mcp</code></a> bridge on your machine and calls Wiro with your project credentials. Do not paste <code>https://mcp.wiro.ai/v1</code> into Claude's <strong>Settings → Connectors</strong> yet; URL-only Claude connections require OAuth, which the hosted Wiro endpoint does not currently provide. See <a href="/docs/mcp-self-hosted">Self-Hosted MCP</a> for the complete local package guide.</p>
                         <h4>Claude connection and timeout troubleshooting</h4>
                         <ul>
-                          <li><strong>"Not valid MCP server configurations"</strong> — ensure the remote entry contains <code>"type": "http"</code>, <code>url</code>, and <code>headers</code> exactly as shown above.</li>
-                          <li><strong>Opening <code>/v1</code> in a browser returns 405</strong> — this is expected. MCP uses authenticated <code>POST</code> requests; the endpoint intentionally rejects <code>GET</code>.</li>
+                          <li><strong>"Not valid MCP server configurations"</strong> — ensure the entry contains <code>"type": "stdio"</code>, <code>command</code>, <code>args</code>, and <code>env</code> exactly as shown above.</li>
+                          <li><strong>The Wiro tools do not appear</strong> — confirm <code>node --version</code> reports 20 or later, then fully quit and reopen Claude Desktop.</li>
                           <li><strong>A generation reaches Claude's tool timeout</strong> — Wiro waits for at most 45 seconds per call. If the task is still running, Claude should execute the returned <code>nextAction.tool: "wait_for_task"</code> until completion and must not call <code>run_model</code> again.</li>
                           <li>Do not add a <code>timeout</code> field to <code>claude_desktop_config.json</code>; Claude Desktop versions with a fixed client-side tool timeout may ignore it. Wiro's bounded wait flow is designed to remain below that boundary.</li>
                         </ul>

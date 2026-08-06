@@ -6,7 +6,11 @@ Connect AI coding assistants to Wiro's AI models via the Model Context Protocol.
 
 [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) is an open standard that lets AI assistants use external tools directly. With the Wiro MCP server, your AI assistant can search models, run inference, track tasks, and upload files — all without leaving your editor. Every request uses your own API key — nothing is stored on the server.
 
-The hosted MCP server is available at `https://mcp.wiro.ai/v1`. It works with MCP clients that support **Streamable HTTP plus custom request headers**, including Cursor, Claude Code, Claude Desktop, Windsurf, OpenClaw, and Hermes.
+The hosted MCP server is available at `https://mcp.wiro.ai/v1`. It works with
+MCP clients that support **Streamable HTTP plus custom request headers**,
+including Cursor, Claude Code, Windsurf, OpenClaw, and Hermes. Claude Desktop
+uses Wiro's official local `npx` package because its remote Custom Connectors do
+not currently accept Wiro's static `Authorization` header.
 
 You need a Wiro API key to use the MCP server. If you don't have one yet, [create a project here](https://wiro.ai/panel/project/new).
 
@@ -74,35 +78,47 @@ Claude Code.
 
 ### Claude Desktop
 
-Add the following to your `claude_desktop_config.json`:
+Claude Desktop's remote Custom Connectors require OAuth 2.0 and cannot currently
+send Wiro's static API-key header. Use the official local package instead. It
+provides the same 13 Wiro tools through Claude Desktop's stdio MCP support.
+
+Install [Node.js 20 or later](https://nodejs.org/), then add the following to
+your `claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
     "wiro": {
-      "type": "http",
-      "url": "https://mcp.wiro.ai/v1",
-      "headers": {
-        "Authorization": "Bearer YOUR_API_KEY:YOUR_API_SECRET"
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@wiro-ai/wiro-mcp"],
+      "env": {
+        "WIRO_API_KEY": "YOUR_API_KEY",
+        "WIRO_API_SECRET": "YOUR_API_SECRET"
       }
     }
   }
 }
 ```
 
-For API Key Only authentication, use `"Authorization": "Bearer YOUR_API_KEY"`.
-Save the file, fully quit Claude Desktop, and reopen it.
+For API Key Only authentication, keep `WIRO_API_KEY` and remove the
+`WIRO_API_SECRET` entry completely. Save the file, fully quit Claude Desktop,
+and reopen it.
 
-The `type` field is required for URL-based entries. Without `"type": "http"`,
-Claude treats the entry as a local stdio server and skips it as invalid.
-To run Wiro locally instead, use the [`"type": "stdio"` + npx setup](/docs/mcp-self-hosted).
+This setup runs the open-source
+[`@wiro-ai/wiro-mcp`](https://www.npmjs.com/package/@wiro-ai/wiro-mcp) bridge on
+your machine and calls Wiro with your project credentials. Do not paste
+`https://mcp.wiro.ai/v1` into Claude's **Settings → Connectors** yet; URL-only
+Claude connections require OAuth, which the hosted Wiro endpoint does not
+currently provide. See [Self-Hosted MCP](/docs/mcp-self-hosted) for the complete
+local package guide.
 
 #### Claude connection and timeout troubleshooting
 
-- **"Not valid MCP server configurations"** — ensure the remote entry contains
-  `"type": "http"`, `url`, and `headers` exactly as shown above.
-- **Opening `/v1` in a browser returns 405** — this is expected. MCP uses
-  authenticated `POST` requests; the endpoint intentionally rejects `GET`.
+- **"Not valid MCP server configurations"** — ensure the entry contains
+  `"type": "stdio"`, `command`, `args`, and `env` exactly as shown above.
+- **The Wiro tools do not appear** — confirm `node --version` reports 20 or
+  later, then fully quit and reopen Claude Desktop.
 - **A generation reaches Claude's tool timeout** — Wiro waits for at most 45
   seconds per call. If the task is still running, the response contains
   `nextAction.tool: "wait_for_task"`. Claude should execute that exact action
