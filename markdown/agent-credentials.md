@@ -1,13 +1,17 @@
 # Agent Credentials & OAuth
 
-Configure third-party service connections for your agent instances. Browse the platform's credential registry, set API keys + OAuth, and audit credential edits over time.
+Configure third-party service connections for your agent instances. Browse the platform's credential registry, set API keys, direct machine credentials, or OAuth, and audit credential edits over time.
 
 ## Overview
 
-Wiro agents connect to external services — social platforms, ad networks, email tools, CRMs — through two credential methods:
+Wiro agents connect to external services — social platforms, ad networks,
+email tools, CRMs — through three credential methods:
 
 1. **API Key credentials** — set directly via `POST /UserAgent/CredentialUpsert` (bulk field upsert per provider).
 2. **OAuth credentials** — redirect-based authorization via `POST /UserAgentOAuth/OAuthConnect`, where Wiro handles token exchange server-side.
+3. **Hybrid direct credentials** — save a machine credential, call
+   `OAuthConnect` for server-side validation/discovery, then finalize any
+   account picker without exposing provider tokens to the browser.
 
 Each external service is documented as its own **integration page** with the complete setup walkthrough, API reference, troubleshooting, and multi-tenant architecture notes. Use the catalog below to jump to the one you need.
 
@@ -33,8 +37,8 @@ Lists all credentials in the registry.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `credential_mode` | string | No | Filter by mode: `"oauth"`, `"sa"` (service account), `"api_key"`, `"multi_api_key"`, `"hybrid"` (OAuth + API key fallback), `"imap_credentials"`, `"jwt_sa"`, `"rule_only"`. |
-| `wiro_connect_pending` | boolean | No | Filter by the "Wiro mode coming soon" flag — credentials whose Wiro-shared OAuth client is still awaiting provider review (currently `facebook-pages`, `instagram`, `meta-ads`, `google-ads`, `google-merchant-center`, `youtube`, `ga4`, `linkedin`, `tiktok`). When `true`, only those credentials are returned; when `false`, only ready-to-use credentials. |
+| `credential_mode` | string | No | Filter by mode: `"oauth"`, `"sa"` (service account), `"api_key"`, `"multi_api_key"`, `"hybrid"` (OAuth plus a direct/API-key mode), `"imap_credentials"`, `"jwt_sa"`, `"rule_only"`. |
+| `wiro_connect_pending` | boolean | No | Filter by the "Wiro mode coming soon" flag — credentials whose Wiro-shared OAuth client is still awaiting provider review (currently `facebook-pages`, `instagram`, `google-ads`, `google-merchant-center`, `youtube`, `ga4`, `linkedin`, `tiktok`, and `meta-ads`). Facebook Pages, Instagram, and Meta Ads remain usable through their ready customer-owned System User and/or OAuth alternatives. |
 
 ##### Response
 
@@ -52,8 +56,13 @@ Lists all credentials in the registry.
       "brand_text_color": "#ffffff",
       "brand_logo_filter": "none",
       "docs_url": "integration-instagram-skills",
-      "credential_mode": "oauth",
-      "connection_modes": ["wiro", "own"],
+      "credential_mode": "hybrid",
+      "connection_modes": ["api_key", "own", "wiro"],
+      "default_connection_mode": "api_key",
+      "mode_badges": {
+        "api_key": "Recommended",
+        "own": "Advanced"
+      },
       "wiro_connect_pending": true,
       "credential_schema": [
         {
@@ -75,6 +84,25 @@ Lists all credentials in the registry.
           "help": "<ol><li>Meta for Developers → select your app</li><li>App Settings → Basic</li><li>Click Show next to App Secret and copy</li></ol>",
           "oauth_managed": true,
           "only_in_modes": ["own"]
+        },
+        {
+          "key": "systemusertoken",
+          "type": "password",
+          "label": "System User Token",
+          "required": true,
+          "encrypted": true,
+          "show_toggle": true,
+          "runtime_excluded": true,
+          "only_in_modes": ["api_key"]
+        },
+        {
+          "key": "accountId",
+          "type": "text",
+          "label": "Instagram Account ID",
+          "required": true,
+          "pattern": "^[0-9]+$",
+          "auto_filled_by_oauth": true,
+          "readonly_when_connected": true
         },
         {
           "key": "igusername",
@@ -99,7 +127,21 @@ Lists all credentials in the registry.
         "return_query_param": "ig_connected",
         "return_error_param": "ig_error",
         "return_error_detail_param": "ig_error_detail",
-        "account_picker": null,
+        "direct_probe": {
+          "mode": "api_key",
+          "mode_label": "System User Token",
+          "token_field": "systemusertoken",
+          "required_fields": ["systemusertoken"],
+          "public_account_fields": ["id", "name"]
+        },
+        "account_picker": {
+          "enabled": true,
+          "multi_select": false,
+          "set_endpoint": "/UserAgentOAuth/SetPickerAccounts",
+          "item_value_field": "accountId",
+          "item_label_field": "igusername",
+          "item_fields_to_save": ["accountId", "igusername"]
+        },
         "extra_step": null
       },
       "used_by_skills": ["int-instagram-post"]
@@ -115,9 +157,11 @@ Lists all credentials in the registry.
 | `icon` | `string` | Path or URL to the brand icon (relative paths absolutized server-side). |
 | `brand_color` / `brand_text_color` / `brand_logo_filter` | `string\|null` | Brand colours and CSS filter for icon rendering — same shape as on skill registry entries. |
 | `docs_url` | `string\|null` | Slug of the integration page on this docs site. Frontends prefix with `/docs/`. |
-| `credential_mode` | `string` | One of `"oauth"`, `"sa"` (service account), `"api_key"`, `"multi_api_key"`, `"hybrid"` (OAuth + API key fallback), `"imap_credentials"`, `"jwt_sa"`, `"rule_only"`. |
-| `connection_modes` | `array<string>` | The auth modes the credential supports — usually `["wiro", "own"]` for OAuth credentials, `["api_key"]` for API-key credentials, `["sa"]` for service-account credentials. Drives the auth-method picker in the panel. |
-| `wiro_connect_pending` | `boolean` | When `true`, Wiro's shared OAuth client is awaiting provider review. Currently set on 9 credentials: `facebook-pages`, `instagram`, `meta-ads`, `google-ads`, `google-merchant-center`, `youtube`, `ga4`, `linkedin`, `tiktok`. End users see a "Wiro mode coming soon" badge in the connection picker; in the meantime they can connect via **own** mode using their own developer app. The flag does not strip or hide schema fields — both `wiro` and `own` connection modes remain available; the picker (`account_picker`) is shipped intact regardless of this flag. |
+| `credential_mode` | `string` | One of `"oauth"`, `"sa"` (service account), `"api_key"`, `"multi_api_key"`, `"hybrid"` (OAuth plus a direct/API-key mode), `"imap_credentials"`, `"jwt_sa"`, `"rule_only"`. |
+| `connection_modes` | `array<string>` | The auth modes the credential supports — for example `["wiro", "own"]` for OAuth, `["api_key"]` for API-key credentials, `["sa"]` for service accounts, or `["api_key", "own", "wiro"]` for the Meta hybrids. Drives the auth-method picker in the panel. |
+| `default_connection_mode` | `string\|null` | Registry-recommended mode selected for a new, disconnected credential. Facebook Pages, Instagram, and Meta Ads default to `"api_key"` System User mode. |
+| `mode_badges` | `object` | Optional labels shown beside auth modes, such as `{ "api_key": "Recommended", "own": "Advanced" }`. |
+| `wiro_connect_pending` | `boolean` | When `true`, Wiro's shared OAuth client is awaiting provider review. Currently set on 9 credentials: `facebook-pages`, `instagram`, `google-ads`, `google-merchant-center`, `youtube`, `ga4`, `linkedin`, `tiktok`, and `meta-ads`. Ready alternative modes remain usable; Facebook Pages, Instagram, and Meta Ads expose customer-owned System User and/or OAuth paths. The flag does not strip or hide schema fields. |
 | `credential_schema` | `array<field>` | Per-field schema describing the credential form. Each entry is a `field` object — see below. |
 | `oauth_provider` | `object\|null` | OAuth wiring (endpoints, button styling, picker config) when `credential_mode` includes OAuth. `null` for non-OAuth credentials. See below. |
 | `used_by_skills` | `array<string>` | Skill names that consume this credential — useful for "which skills will this connection enable?" hints. |
@@ -138,9 +182,10 @@ Lists all credentials in the registry.
 | `help` | `string?` | HTML help text rendered under the input. |
 | `show_toggle` | `boolean?` | For `type: "password"` — render a "show / hide" toggle. |
 | `oauth_managed` | `boolean?` | `true` when the field is set as part of the OAuth flow (cannot be edited by the user once connected). |
-| `auto_filled_by_oauth` | `boolean?` | `true` when the OAuth callback writes the value (e.g. `igusername`). |
+| `auto_filled_by_oauth` | `boolean?` | `true` when the provider connection flow writes the value (e.g. `igusername` from OAuth or direct discovery). |
 | `readonly_when_connected` | `boolean?` | `true` when the field becomes read-only after a successful OAuth connection. |
 | `only_in_modes` | `array<string>?` | When set (e.g. `["own"]`), the field only appears in the listed `authmethod` mode. |
+| `runtime_excluded` | `boolean?` | `true` when a setup secret is used only by Wiro's server and must never enter the agent runtime. Meta System User tokens use this flag. |
 | `platform_managed` | `boolean?` | `true` when Wiro fills the value server-side (you can't supply it). Currently only the `sys-openai` credential schema flags every field as `platform_managed: true`, which makes the entire credential hidden from `UserAgent/Detail` and `Credentials/List` for non-admin callers. |
 | `item_schema` / `item_type` | `object?` | For array-of-object fields — describes the per-entry shape (e.g. `apple-appstore.apps[].{appname, appid}`). |
 
@@ -148,12 +193,13 @@ Lists all credentials in the registry.
 
 | Sub-field | Type | Description |
 |-----------|------|-------------|
-| `auth_method_value` | `string` | The literal `authmethod` field value the panel should write to enable Wiro-managed OAuth (typically `"wiro"`). |
+| `auth_method_value` | `string` | The provider's default OAuth `authmethod` value. It is `"wiro"` only for credentials that offer a Wiro-managed app; customer-owned-only providers use `"own"`. |
 | `connect_endpoint` / `disconnect_endpoint` / `status_endpoint` | `string` | The OAuth endpoints under `/UserAgentOAuth/...` that drive the connect / disconnect / status flow for this provider. Today every OAuth credential resolves to the unified `/UserAgentOAuth/OAuthConnect`, `/UserAgentOAuth/OAuthDisconnect`, `/UserAgentOAuth/OAuthStatus` endpoints — the field is kept on the schema for forward-compat with future per-provider overrides. |
 | `connect_button_label` / `connect_button_icon` / `connect_button_brand_color` / `connect_button_text_color` / `connect_button_logo_filter` | `string` | Branding for the "Connect with X" button. |
 | `username_field` | `string` | The credential field that holds the connected account name (e.g. `"igusername"`, `"channelname"`). |
 | `return_query_param` / `return_error_param` / `return_error_detail_param` | `string` | URL params Wiro appends to the `redirectURL` when the OAuth flow completes (success / error / detail). |
-| `account_picker` | `object\|null` | When non-null, indicates a second OAuth step is required to pick an account / page / channel (e.g. Facebook page picker, YouTube channel picker). Key fields: `set_endpoint` (always `/UserAgentOAuth/SetPickerAccounts`), `multi_select` (`true` when 1+ entries can be picked, `false` for exactly one), `item_value_field` / `item_label_field` (which entry keys identify and label each account in the response), `item_fields_to_save` (the fields each entry in the `accounts` body must carry). |
+| `account_picker` | `object\|null` | When non-null, the connection flow includes an account / page / channel picker after OAuth or direct discovery. Key fields: `set_endpoint` (always `/UserAgentOAuth/SetPickerAccounts`), `multi_select` (`true` when 1+ entries can be picked, `false` for exactly one), `item_value_field` / `item_label_field` (which entry keys identify and label each account in the response), `item_fields_to_save` (the fields each entry in the `accounts` body must carry), and optional `next` for a chained picker. `next.discover_endpoint` is `/UserAgentOAuth/DiscoverPickerItems`; its `key`, parent/item fields, `set_endpoint`, and `persist_field` define the grouped child-selection request and stored result. Meta Ads currently uses this for ad account → Facebook Pages. |
+| `direct_probe` | `object\|null` | Registry contract for a non-redirect mode: identifies the mode and write-only token field, validates it server-side, discovers selectable accounts, and declares which public account fields may be returned. |
 | `extra_step` | `object\|null` | Reserved for providers with a third onboarding step beyond OAuth + picker (currently null for every provider). |
 
 **`fieldstatus` values** — note: this is **not** part of the registry schema; it's the runtime classification stamped onto each `useragentcredentialfields` row when it's written. It controls who can see the value:
@@ -192,8 +238,13 @@ Returns the **same full credential entry** as a row from `Credentials/List` — 
     "brand_text_color": "#ffffff",
     "brand_logo_filter": "none",
     "docs_url": "integration-instagram-skills",
-    "credential_mode": "oauth",
-    "connection_modes": ["wiro", "own"],
+    "credential_mode": "hybrid",
+    "connection_modes": ["api_key", "own", "wiro"],
+    "default_connection_mode": "api_key",
+    "mode_badges": {
+      "api_key": "Recommended",
+      "own": "Advanced"
+    },
     "wiro_connect_pending": true,
     "credential_schema": [
       {
@@ -215,6 +266,25 @@ Returns the **same full credential entry** as a row from `Credentials/List` — 
         "help": "Meta for Developers → App Settings → Basic → Show next to App Secret.",
         "oauth_managed": true,
         "only_in_modes": ["own"]
+      },
+      {
+        "key": "systemusertoken",
+        "type": "password",
+        "label": "System User Token",
+        "required": true,
+        "encrypted": true,
+        "show_toggle": true,
+        "runtime_excluded": true,
+        "only_in_modes": ["api_key"]
+      },
+      {
+        "key": "accountId",
+        "type": "text",
+        "label": "Instagram Account ID",
+        "required": true,
+        "pattern": "^[0-9]+$",
+        "auto_filled_by_oauth": true,
+        "readonly_when_connected": true
       },
       {
         "key": "igusername",
@@ -239,7 +309,21 @@ Returns the **same full credential entry** as a row from `Credentials/List` — 
       "return_query_param": "ig_connected",
       "return_error_param": "ig_error",
       "return_error_detail_param": "ig_error_detail",
-      "account_picker": null,
+      "direct_probe": {
+        "mode": "api_key",
+        "mode_label": "System User Token",
+        "token_field": "systemusertoken",
+        "required_fields": ["systemusertoken"],
+        "public_account_fields": ["id", "name"]
+      },
+      "account_picker": {
+        "enabled": true,
+        "multi_select": false,
+        "set_endpoint": "/UserAgentOAuth/SetPickerAccounts",
+        "item_value_field": "accountId",
+        "item_label_field": "igusername",
+        "item_fields_to_save": ["accountId", "igusername"]
+      },
       "extra_step": null
     },
     "used_by_skills": ["int-instagram-post"]
@@ -255,9 +339,11 @@ Returns `{ "result": false, "errors": [{ "code": 404, "message": "Credential not
 
 | Integration | Auth Modes | Setup Guide |
 |-------------|------------|-------------|
-| Meta Ads | Own only (Wiro mode coming soon) | [Meta Ads Skills](/docs/integration-metaads-skills) |
-| Facebook Page | Own only (Wiro mode coming soon) | [Facebook Page Skills](/docs/integration-facebook-skills) |
-| Instagram | Own only (Wiro mode coming soon) | [Instagram Skills](/docs/integration-instagram-skills) |
+| Meta Ads | Own OAuth + System User token; Wiro-owned OAuth deferred until Advanced Access | [Meta Ads Skills](/docs/integration-metaads-skills) |
+| Shopify | Expiring offline OAuth + refresh token, or same-org client credentials (`expires_in: 86399`) | [Shopify Skills](/docs/integration-shopify-skills) |
+| Reddit | Unavailable pending Reddit Data API approval and Wiro's written commercial contract | [Reddit Skills](/docs/integration-reddit-skills) |
+| Facebook Page | System User token (recommended) + Own OAuth (advanced); Wiro mode coming soon | [Facebook Page Skills](/docs/integration-facebook-skills) |
+| Instagram | System User token (recommended) + Own Instagram OAuth (advanced); Wiro mode coming soon | [Instagram Skills](/docs/integration-instagram-skills) |
 | LinkedIn | Own only (Wiro mode coming soon) | [LinkedIn Skills](/docs/integration-linkedin-skills) |
 | Twitter / X | Wiro + Own | [Twitter Skills](/docs/integration-twitter-skills) |
 | TikTok | Wiro + Own | [TikTok Skills](/docs/integration-tiktok-skills) |
@@ -278,7 +364,11 @@ Returns `{ "result": false, "errors": [{ "code": 404, "message": "Credential not
 | Google Calendar | [Google Calendar Skills](/docs/integration-google-calendar-skills) |
 | Google Play | [Google Play Skills](/docs/integration-googleplay-skills) |
 
-> **Meta Platforms availability:** While Wiro's shared Meta App is under review by Meta, the Meta Ads, Facebook Page, and Instagram integrations must be connected using your own Meta Developer App in Development Mode. No App Review is required — users who are listed in your app's Roles (Testers/Developers) can connect without review. See each integration page for step-by-step setup.
+> **Meta Platforms availability:** Meta Ads, Facebook Pages, and Instagram all
+> offer customer-owned Business Manager System User connections now. Meta Ads
+> and Facebook Pages also offer customer-owned Facebook OAuth; Instagram offers
+> customer-owned Instagram Login OAuth. Their Wiro-shared OAuth modes remain
+> pending provider review.
 
 ### API Key Integrations
 
@@ -288,6 +378,11 @@ Returns `{ "result": false, "errors": [{ "code": 404, "message": "Credential not
 | Telegram | [Telegram Skills](/docs/integration-telegram-skills) |
 | Firebase | [Firebase Skills](/docs/integration-firebase-skills) |
 | WordPress | [WordPress Skills](/docs/integration-wordpress-skills) |
+| Shopify (same-organization client ID + secret) | [Shopify Skills](/docs/integration-shopify-skills) |
+| WooCommerce | [WooCommerce Skills](/docs/integration-woocommerce-skills) |
+| Meta Ads (System User token) | [Meta Ads Skills](/docs/integration-metaads-skills) |
+| Facebook Pages (System User token) | [Facebook Page Skills](/docs/integration-facebook-skills) |
+| Instagram (System User token) | [Instagram Skills](/docs/integration-instagram-skills) |
 | App Store Connect | [App Store Skills](/docs/integration-appstore-skills) |
 | Apollo | [Apollo Skills](/docs/integration-apollo-skills) |
 | Lemlist | [Lemlist Skills](/docs/integration-lemlist-skills) |
@@ -532,11 +627,11 @@ Own mode requires two sequential calls before initiating OAuth:
 # Step 1: Save your provider app credentials + authmethod via CredentialUpsert
 #
 # NOTE: `clientid` / `clientsecret` are normally fieldstatus="oauth_app" in the
-# template — and the API rejects user-role writes to them. The template flips
-# them to fieldstatus="user" when the credential is configured for own mode
-# (so customers can bring their own keys); on those templates the call below
-# works. If your API key gets `agent-fieldstatus-not-allowed-for-role`, the
-# template doesn't support own mode and you should use wiro mode instead.
+# template — and the API rejects user-role writes to them. Credentials that
+# support own mode expose customer app fields as user-writable. If your API
+# key gets `agent-fieldstatus-not-allowed-for-role`, inspect
+# `POST /Credentials/Detail` and use one of that credential's declared
+# `connection_modes`.
 
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -H "Content-Type: application/json" \
@@ -562,7 +657,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
   }'
 ```
 
-For Wiro mode: skip Step 1, just call Step 2 with `authmethod: "wiro"` (or omit — it defaults to `"wiro"`).
+For credentials whose `connection_modes` includes an enabled `"wiro"` mode, you can skip Step 1 and call Step 2 with `authmethod: "wiro"`. Omitting `authmethod` uses that credential's registry default. For Meta Ads, always send `"own"` or `"api_key"` while its default `"wiro"` mode is pending; Shopify and Reddit use `"own"`.
 
 ### Callback URL pattern (own mode)
 
@@ -572,7 +667,7 @@ Register this URL in your OAuth app settings on the provider's developer portal:
 https://api.wiro.ai/v1/UserAgentOAuth/{Provider}Callback
 ```
 
-Provider-specific paths: `XCallback`, `TikTokCallback`, `IGCallback`, `FBCallback`, `LICallback`, `GAdsCallback`, `MetaAdsCallback`, `MCCallback`, `YTCallback`, `GA4Callback`, `HubSpotCallback`, `MailchimpCallback`.
+Provider-specific paths: `XCallback`, `TikTokCallback`, `IGCallback`, `FBCallback`, `LICallback`, `GAdsCallback`, `MetaAdsCallback`, `MCCallback`, `YTCallback`, `GA4Callback`, `HubSpotCallback`, `MailchimpCallback`, `ShopifyCallback`, `RedditCallback`.
 
 ### Callback success & error parameters
 
@@ -590,6 +685,8 @@ Provider-specific paths: `XCallback`, `TikTokCallback`, `IGCallback`, `FBCallbac
 | GA4 | `ga4_connected=true&ga4_properties=[...]` | `ga4_error=...` (+ `ga4_error_detail=...`) |
 | HubSpot | `hubspot_connected=true&hubspot_portal=...&hubspot_name=...` | `hubspot_error=...` (+ `hubspot_error_detail=...`) |
 | Mailchimp | `mailchimp_connected=true&mailchimp_account=...` | `mailchimp_error=...` (+ `mailchimp_error_detail=...`) |
+| Shopify | `shopify_connected=true&shopify_shop=...&shopify_name=...` | `shopify_error=...` (+ `shopify_error_detail=...`) |
+| Reddit | `reddit_connected=true&reddit_username=...` | `reddit_error=...` (+ `reddit_error_detail=...`) |
 
 > **Conditional params:** `gads_accounts`, `mc_accounts`, `yt_channels`, `ga4_properties`, and `metaads_accounts` are omitted from the redirect when the provider returns zero items (for example, no accessible Google Ads customers, or a developer token is missing in Wiro mode). `fb_pages` is always present on success — Facebook returns `fb_error=no_pages` instead when the user has no administered Pages.
 
@@ -616,29 +713,36 @@ Provider-specific codes:
 
 ## Generic OAuth Endpoints
 
-All OAuth integrations share four unified endpoints. The provider is selected via a `credentialkey` body parameter (e.g. `"google-ads"`, `"twitter"`, `"facebook-pages"`):
+All OAuth integrations share five unified endpoints. The provider is selected via a `credentialkey` body parameter (e.g. `"google-ads"`, `"twitter"`, `"facebook-pages"`):
 
 | Endpoint | Purpose |
 |----------|---------|
-| `POST /UserAgentOAuth/OAuthConnect` | Start the OAuth authorize flow — returns a provider URL the browser redirects to. |
+| `POST /UserAgentOAuth/OAuthConnect` | Start OAuth and return an authorize URL, or run a registry-declared direct credential probe and return discovered accounts. |
 | `POST /UserAgentOAuth/OAuthStatus` | Check whether a provider is connected and which accounts are selected. |
 | `POST /UserAgentOAuth/OAuthDisconnect` | Clear stored credentials + tokens. |
-| `POST /UserAgentOAuth/SetPickerAccounts` | Save the user's account selection after the OAuth callback. |
+| `POST /UserAgentOAuth/DiscoverPickerItems` | Discover grouped child resources for a registry-declared chained picker after its parent accounts are selected. |
+| `POST /UserAgentOAuth/SetPickerAccounts` | Save the user's account selection after OAuth or direct discovery. |
 
-> Each provider's own callback URL — `XCallback`, `IGCallback`, `GAdsCallback`, etc. — is still per-provider because external OAuth platforms redirect to fixed URLs. Only the four endpoints above are unified.
+> Each provider's own callback URL — `XCallback`, `IGCallback`, `GAdsCallback`, etc. — is still per-provider because external OAuth platforms redirect to fixed URLs. Only the five endpoints above are unified.
 
-> Discover the full list of OAuth providers Wiro supports via [`POST /Credentials/List`](#post-credentialslist) (`credential_mode: "oauth"`). The `oauth_provider` block on each entry tells you the exact endpoint paths plus the picker contract (`account_picker`).
+> Discover the full list via [`POST /Credentials/List`](#post-credentialslist). Any entry with a non-null `oauth_provider` can use these endpoints; hybrid credentials may offer OAuth and a direct probe. The `oauth_provider` block declares exact endpoint paths, supported direct mode, and picker contract.
 
 ### POST /UserAgentOAuth/OAuthConnect
 
-Initiate OAuth — Wiro generates the provider authorize URL and a state token. Your frontend redirects the user to the returned `authorizeUrl`. After the user grants consent, the provider redirects back to Wiro's callback (per-provider), Wiro exchanges the code for tokens, and finally redirects the user to your `redirecturl` with success/error query parameters.
+For OAuth mode, Wiro generates the provider authorize URL and a state token.
+Your frontend redirects the user to `authorizeUrl`; after consent, the provider
+returns to Wiro's registry-declared callback and Wiro redirects the browser to
+your `redirecturl`. For direct modes such as Meta Ads, Facebook Pages, or
+Instagram System User tokens and Shopify client credentials, this endpoint
+validates or exchanges the already-saved credential server-side and returns
+without a browser redirect.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
-| `credentialkey` | string | Yes | OAuth credential key (e.g. `"google-ads"`, `"twitter"`, `"facebook-pages"`, `"instagram"`, `"linkedin"`, `"hubspot"`, `"mailchimp"`, `"meta-ads"`, `"google-merchant-center"`, `"youtube"`, `"ga4"`, `"tiktok"`). |
-| `redirecturl` | string | Yes | Your URL the user lands on after the OAuth flow completes (HTTPS, or `http://localhost`/`http://127.0.0.1` in development). Wiro appends provider-specific status query params. |
-| `authmethod` | string | No | `"wiro"` (default — uses Wiro's pre-configured OAuth app) or `"own"` (uses the OAuth app credentials you stored via `CredentialUpsert`). |
+| `credentialkey` | string | Yes | Credential key with an `oauth_provider` block (for example `"google-ads"`, `"twitter"`, `"meta-ads"`, `"facebook-pages"`, `"instagram"`, or `"shopify"`). |
+| `redirecturl` | string | OAuth only | Your URL after OAuth completes (HTTPS, or `http://localhost`/`http://127.0.0.1` in development). Direct probes do not use it. |
+| `authmethod` | string | No | One value from the credential's `connection_modes`, such as `"wiro"`, `"own"`, or `"api_key"`. Omission uses `oauth_provider.auth_method_value`. |
 
 ##### Response
 
@@ -650,6 +754,8 @@ Initiate OAuth — Wiro generates the provider authorize URL and a state token. 
 }
 ```
 
+Direct probes return `{ "result": true, "accounts": [{ "id": "...", "name": "..." }], "errors": [] }` and do not include `authorizeUrl`.
+
 ##### Common errors
 
 | Error message | Cause |
@@ -658,6 +764,7 @@ Initiate OAuth — Wiro generates the provider authorize URL and a state token. 
 | `Credential is not configured for the generic OAuth dispatcher: <key>` | Registry entry is partial — missing `oauth_flow` config. |
 | `Invalid redirect URL` | `redirecturl` is not HTTPS (and not localhost). |
 | `<Provider> credentials not configured` | `authmethod: "own"` but `clientid`/`clientsecret` not saved yet. |
+| Direct credential validation message | The saved direct credential fields failed the registry-declared exchange/probe, or no required account was assigned. |
 | `User agent not found or unauthorized` | `useragentguid` doesn't exist or doesn't belong to the caller. |
 
 ### POST /UserAgentOAuth/OAuthStatus
@@ -687,24 +794,91 @@ Returns whether the credential is connected and lists every account/property/pag
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `connected` | `boolean` | `true` when an access token is stored AND every required picker field is populated. |
+| `connected` | `boolean` | `true` when the active mode has a validated secret and every required picker field is populated. |
 | `accounts` | `array<{id, name}>` | The accounts/pages/properties the user selected. Empty `[]` when nothing is selected (or the credential has no picker step — e.g. Twitter/X, TikTok, HubSpot — which expose a 1-element array carrying the connected user's identifier). |
 | `connectedat` | `string` | ISO timestamp of the last successful Connect / token refresh. |
 | `tokenexpiresat` | `string` | ISO timestamp when the current access token expires. Empty for providers without a fixed expiry (e.g. Mailchimp). |
 
-> **Multi-account picker fields are JSON arrays.** Picker fields like `customerid` (Google Ads), `adaccountid` (Meta Ads), `merchantid` (Merchant Center), `channelid` (YouTube), `propertyid` (GA4), `pageid` (Facebook Pages) are stored as **JSON arrays** in the credential row when the credential's `account_picker.multi_select === true`. `UserAgent/Detail` decodes them back to native arrays. Single-select credentials persist them as scalars.
+> **Multi-account picker fields are JSON arrays.** Picker fields like
+> `customerid` (Google Ads), `adaccountid` (Meta Ads), `merchantid` (Merchant
+> Center), `channelid` (YouTube), `propertyid` (GA4), and `pageid` (Facebook
+> Pages) are stored as JSON arrays when
+> `account_picker.multi_select === true`. Single-select fields such as
+> Instagram's `accountId` are scalars.
 
-### POST /UserAgentOAuth/SetPickerAccounts
+### POST /UserAgentOAuth/DiscoverPickerItems
 
-Save the user's account selection after the OAuth callback. The endpoint accepts a list of accounts the user picked from the callback's URL params (e.g. `gads_accounts`, `metaads_accounts`, `mc_accounts`, `yt_channels`, `ga4_properties`, `fb_pages`).
-
-Single registry-driven dispatcher for the per-credential picker shape. Multi-select pickers (Google Ads, Meta Ads, Merchant Center, YouTube, GA4, Facebook Pages) accept one or more entries; single-select pickers accept exactly one.
+Discover child resources for a chained picker after the root
+`SetPickerAccounts` selection has been saved. The current chained flow is Meta
+Ads: selected ad accounts are the parents and eligible Facebook Pages are
+returned under each account. Wiro reads the active credential server-side;
+clients never send or receive access tokens.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
-| `credentialkey` | string | Yes | OAuth credential key with an `account_picker` defined. |
-| `accounts` | array | Yes | One or more account objects. Each object must carry the per-credential `item_fields_to_save` keys (see table below). |
+| `credentialkey` | string | Yes | Credential key with `account_picker.next` configured. Currently `"meta-ads"`. |
+| `pickerkey` | string | Yes | The chained picker key from the registry. Meta Ads uses `"pages"`. |
+
+##### Example — discover Meta Ads Pages
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/DiscoverPickerItems" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "meta-ads",
+    "pickerkey": "pages"
+  }'
+```
+
+##### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "pickerkey": "pages",
+  "groups": [
+    {
+      "parent": {
+        "adaccountid": "123456789",
+        "adaccountname": "Acme Ads"
+      },
+      "items": [
+        { "pageid": "111222333", "pagename": "Acme" }
+      ]
+    }
+  ]
+}
+```
+
+Each group corresponds to one selected parent account. A group may carry
+`errorcode` and an empty `items` array when discovery failed safely for that
+parent. Successful candidates are cached for the registry-declared selection
+window (five minutes for Meta Ads). Call `SetPickerAccounts` with `pickerkey`
+and one `selections[]` entry for every successful parent before that window
+expires.
+
+### POST /UserAgentOAuth/SetPickerAccounts
+
+Save either the root account selection after an OAuth callback/direct discovery,
+or a chained child-resource selection after `DiscoverPickerItems`. The endpoint
+accepts entries from the provider's public account list; clients never supply
+access tokens.
+
+The registry declares each provider's picker shape. Multi-select pickers
+(Google Ads, Meta Ads, Merchant Center, YouTube, GA4, Facebook Pages) accept one
+or more entries; Instagram's direct picker accepts exactly one.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Agent instance GUID. |
+| `credentialkey` | string | Yes | Credential key with an `account_picker` defined. |
+| `accounts` | array | Root picker only | One or more account objects. Each object must carry the per-credential `item_fields_to_save` keys (see table below). |
+| `pickerkey` | string | Chained picker only | Chained picker key returned by `DiscoverPickerItems`. |
+| `selections` | array | Chained picker only | One `{ parentvalue, items }` entry for every successfully discovered parent. `items` may be empty when the chained picker is optional. |
 
 ##### Per-credential `accounts[]` shape
 
@@ -715,7 +889,8 @@ Single registry-driven dispatcher for the per-credential picker shape. Multi-sel
 | `google-merchant-center` | `merchantid`, `accountname` | |
 | `youtube` | `channelid`, `channeltitle` | |
 | `ga4` | `propertyid`, `propertydisplayname` | |
-| `facebook-pages` | `pageid`, `fbpagename` | Per-page access tokens are pulled from the OAuth pending cache automatically — you don't supply them. The pending cache has a 15-minute TTL after the OAuth callback. |
+| `facebook-pages` | `pageid`, `fbpagename` | One or more Pages from the latest OAuth or System User discovery result. |
+| `instagram` | `accountId`, `igusername` | Exactly one account from direct System User discovery. Customer-owned Instagram OAuth does not use this picker. |
 
 ##### Example — Google Ads multi-select
 
@@ -748,6 +923,33 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
 
 The agent restarts automatically if it was running.
 
+##### Example — save Meta Ads Page mappings
+
+Call this after `DiscoverPickerItems` and include every successful parent once:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "meta-ads",
+    "pickerkey": "pages",
+    "selections": [
+      {
+        "parentvalue": "123456789",
+        "items": [
+          { "pageid": "111222333", "pagename": "Acme" }
+        ]
+      }
+    ]
+  }'
+```
+
+The response includes `pickerkey: "pages"` and the persisted, flat
+`pagemappings[]` list. Sending an empty `items` array skips Pages for that ad
+account; Meta Ads reporting and other non-Page operations remain available.
+
 ##### Common errors
 
 | Error message | Cause |
@@ -755,13 +957,20 @@ The agent restarts automatically if it was running.
 | `accounts must be a non-empty array` | `accounts` missing or empty. |
 | `Single-select picker requires exactly one account; got <N>` | Single-select credential received multiple entries. |
 | `<Provider> account not connected` | Standard picker (e.g. Google Ads) called before the OAuth callback wrote tokens. |
-| `No pending <Provider> connection. Please reconnect via OAuthConnect.` | Deferred-token picker (Facebook Pages) — pending cache expired (15-minute TTL) or missing. |
-| `Selected <field> not found in pending list: <value>` | Deferred-token picker — picked id is not in the cached list of OAuth-permitted pages. |
+| `No pending <Provider> connection. Please reconnect via OAuthConnect.` | Deferred-token picker (Facebook Pages or direct Instagram) — the 15-minute discovery window expired or is missing. |
+| `Selected <field> not found in pending list: <value>` | Deferred-token picker — the selected ID is not in the latest server-side discovery result. |
 | `Credential does not support account picker: <key>` | `credentialkey` doesn't have an `account_picker` (e.g. Twitter / TikTok / HubSpot). |
+| `Picker candidates expired. Discover them again.` | Chained picker candidates expired or the parent connection changed. Call `DiscoverPickerItems` again. |
+| `selections must include every available parent exactly once` | Chained picker request omitted or duplicated a successfully discovered parent. |
 
 ### POST /UserAgentOAuth/OAuthDisconnect
 
-Clears every stored credential field for this provider on this useragent — access/refresh tokens, picker selections (set to empty arrays for multi-select fields), all auto-filled values. User-supplied OAuth app credentials (`clientid`, `clientsecret`, `appid`, `appsecret`) and API-key alternatives (e.g. Mailchimp `apikey`) are preserved so the user can reconnect without re-entering them. The agent restarts automatically if it was running.
+Clears the active connection's tokens, picker selections, and auto-filled
+values. Customer-owned OAuth app credentials (`clientid`, `clientsecret`,
+`appid`, `appsecret`) are preserved for reconnection. An alternative API-key
+field is preserved while disconnecting OAuth, but disconnecting that direct
+mode itself clears its secret — including Meta `systemusertoken`. The agent
+restarts automatically if it was running.
 
 For providers that publish a token-revocation endpoint (currently Twitter/X and TikTok), Wiro also calls the provider's revoke endpoint as a non-critical best-effort step. Other providers only clear local credentials; the token remains valid on the provider side until it expires.
 
@@ -779,65 +988,14 @@ For providers that publish a token-revocation endpoint (currently Twitter/X and 
 }
 ```
 
-### POST /UserAgentOAuth/TokenRefresh
+### Token lifecycle
 
-> **API users don't normally call this endpoint.** Wiro's agent runtime refreshes tokens automatically via this endpoint itself — see [Automatic token refresh](#automatic-token-refresh) below. TokenRefresh is exposed publicly mainly for debugging and manual overrides.
+Wiro maintains renewable provider connections automatically while the agent is
+running. Direct Meta System User connections have no generic refresh contract:
+regenerate and reconnect an expiring or invalidated token. There is no
+customer-facing token-refresh endpoint or manual refresh action.
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | Agent instance GUID. |
-| `provider` | string | Yes | Canonical credential key — one of: `twitter`, `tiktok`, `instagram`, `facebook-pages`, `linkedin`, `google-ads`, `meta-ads`, `hubspot`, `google-merchant-center`, `youtube`, `ga4`. |
-
-**Mailchimp is not supported** — its tokens don't expire. Calling TokenRefresh with `provider: "mailchimp"` returns `Invalid provider`.
-
-##### Response
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "accesstoken": "EAAB...",
-  "refreshtoken": "AQX..."
-}
-```
-
-`refreshtoken` is empty for providers that don't issue one (Instagram, Facebook Pages, Meta Ads, Google Ads usually).
-
-### Automatic token refresh
-
-Every running agent container runs background cron jobs that call `POST /UserAgentOAuth/TokenRefresh` against this API on a schedule tuned to each provider's token lifetime. There is **nothing to set up** — as long as the agent is running, tokens are kept fresh.
-
-Refresh cadence inside the agent container:
-
-| Provider | Cron interval | Token lifetime |
-|----------|---------------|----------------|
-| HubSpot | every 20 min | 30 min |
-| Google Ads | every 45 min | 1 hour |
-| Twitter / X | every 90 min | 2 hours |
-| Instagram, Facebook, Meta Ads, LinkedIn, TikTok | once per day | 1–60 days |
-| Mailchimp | never (tokens don't expire) | — |
-
-An initial refresh also runs on every container startup, so tokens are always current by the time the first skill call goes out.
-
-**You should manually call TokenRefresh only if:**
-
-- You're debugging a stuck integration and want to force a new token immediately.
-- The agent has been stopped for longer than the token lifetime and you want to pre-warm tokens before Start.
-- You want to verify the refresh logic end-to-end for a provider.
-
-Hardcoded token TTLs that Wiro stores after each refresh:
-
-| Provider | Access Token `tokenexpiresat` | Refresh Token |
-|----------|--------------------------------|----------------|
-| Twitter / X | 2 hours | ~180 days |
-| TikTok | 1 day | ~1 year |
-| Instagram | 60 days | N/A (refreshes with current access token via `ig_refresh_token`) |
-| Facebook | 60 days | N/A (refreshes via `fb_exchange_token`) |
-| LinkedIn | 60 days | From provider response (~1 year typical) |
-| Google Ads | 1 hour | Long-lived (no expiry in typical use) |
-| Meta Ads | 60 days | N/A |
-| HubSpot | 30 minutes | Long-lived |
-| Mailchimp | No expiry | N/A |
+Use `POST /UserAgentOAuth/OAuthStatus` to monitor the connection. If it reports `connected: false`, or the provider revokes a connection that cannot be renewed, reconnect through `POST /UserAgentOAuth/OAuthConnect`. Provider-specific exceptions are documented in each integration guide.
 
 ## Web UI Behaviors (Wiro Dashboard)
 
@@ -845,10 +1003,14 @@ If you're comparing against the Wiro Dashboard, here's what happens under the ho
 
 - **Per-group save**: Each credential card has its own Save button. Saving a card calls `POST /UserAgent/CredentialUpsert` with only that group's `fields[]` (one request per card).
 - **Own mode 2-step**: When a user clicks "Connect" in own mode, the Dashboard first calls `CredentialUpsert` to save `appid`/`appsecret` + `authmethod: "own"`, then calls the Connect endpoint with `authmethod: "own"`. API users must make both calls explicitly.
+- **Recommended Meta direct mode**: Facebook Pages, Instagram, and Meta Ads
+  default to System User Token. The Dashboard saves `authmethod: "api_key"` and
+  `systemusertoken`, calls `OAuthConnect`, then completes the registry picker
+  without exposing provider tokens to browser state.
 - **Full-page redirect, not popup**: `window.location.href = authorizeUrl` — no popup windows (avoids third-party cookie issues).
-- **No manual token refresh button**: Refresh is fully automatic. `TokenRefresh` exists for debugging only.
+- **No manual token refresh button**: Wiro maintains supported connections automatically; reconnect when the Dashboard reports that authorization is required.
 - **LLM Markdown feature**: The Dashboard includes an "LLM Markdown" tab that generates a ready-to-paste prompt for AI assistants summarizing every credential field the agent needs. Useful for API users building their own configuration UIs — see the per-integration help texts for equivalent guidance.
-- **No format validation**: Wiro doesn't validate email/URL formats server-side. Malformed values fail at runtime inside the skill when it tries to use them.
+- **Registry-backed validation**: Wiro validates declared types, patterns, lengths, URLs, enum values, and provider response contracts before persisting or connecting credentials. The provider remains authoritative for permissions and asset access.
 - **Platform-managed credentials are hidden**: Groups whose fields are all flagged `platform_managed: true` (currently only `sys-openai`) are omitted from `POST /UserAgent/Detail` responses entirely. They're pre-configured by Wiro and can't be set by customers.
 
 ## Setup Required State
@@ -859,14 +1021,16 @@ If an agent has required credentials not yet filled in, it's in **Setup Required
 
 `setuprequired` flag in `UserAgent/Detail` / `UserAgent/MyAgents` is `true` when any non-optional credential is still incomplete. The server treats a credential as complete when either:
 
-- **OAuth credentials** — `_connected: true` (access token present **and** every required picker field populated), or
+- **OAuth and hybrid connection credentials** — `_connected: true` (the active
+  mode has a validated runtime token **and** every required picker field is
+  populated), or
 - **API-key credentials** — at least one field with `fieldstatus: "user"` has a non-empty value (any one user-writable field filled in makes the credential count as "entered"; there is no deeper per-field validation).
 
 The two branches are checked together: `setuprequired` stays `true` until every required credential passes one of them.
 
 ## Security
 
-- **Tokens are stored server-side** in the normalized `useragentcredentialfields` table (one row per field). `TokenRefresh` returns new tokens in its own response.
+- **Tokens are stored server-side** and are never returned by the customer-facing credential endpoints.
 - **`oauth_session` fields are always stripped** from Status, Detail, `MyAgents`, and `CredentialUpsert` responses — `accesstoken`, `refreshtoken`, `tokenexpiresat`, `pageAccessToken` and any similar rows never leave the server.
 - **`platform` fields are stripped for `user` role callers** (default for API keys without ADMIN scope). In practice this currently affects only the `sys-openai` credential — its key never leaves the server. `credentials.wiro.apikey` and `credentials.calendarific.apikey` are user-supplied and appear normally in the response.
 - **`oauth_app` fields (`clientsecret`, `appsecret`) are visible in Detail responses** after an admin / OAuth "own mode" setup writes them. If you build a customer-facing UI on top of this API, treat them as admin-only in your own layer. The append-only credential history redacts `clientsecret` to `[REDACTED]` and always redacts `oauth_session` rows; only the live row can be read.
@@ -874,19 +1038,25 @@ The two branches are checked together: `setuprequired` stays `true` until every 
 - The `redirecturl` receives only connection status parameters — no tokens, no secrets.
 - OAuth state parameters use a 15-minute TTL cache to prevent replay attacks.
 - Redirect URLs must be HTTPS (or localhost/127.0.0.1 for development).
-- Facebook Page tokens are cached server-side for 15 minutes after the OAuth callback; clients only see `{id, name}` pairs. Page access tokens never leave the server.
+- Facebook Page and direct Instagram discovery results remain server-side for
+  15 minutes while the user selects accounts. Clients receive only public
+  `{id, name}` pairs; System User and Page access tokens never leave the server.
 
 ## For Third-Party Developers
 
 If you're building a product on top of Wiro agents and need your customers to connect their own accounts:
 
 1. **Deploy** an agent instance per customer via `POST /UserAgent/Deploy`.
-2. **Connect** — your backend calls `POST /UserAgentOAuth/OAuthConnect` with `useragentguid`, `credentialkey`, and a `redirecturl` pointing back to your app.
-3. **Redirect** — send the customer's browser to the returned `authorizeUrl`.
-4. **Authorize** — customer authorizes on the provider's consent screen.
-5. **Return** — customer lands on your `redirecturl` with success/error query parameters.
-6. **Finalize** — for picker credentials (Meta Ads, Facebook Pages, Google Ads, Merchant Center, YouTube, GA4): call `POST /UserAgentOAuth/SetPickerAccounts` with the picked accounts pulled from the redirect URL params.
-7. **Verify** — call `POST /UserAgentOAuth/OAuthStatus`.
+2. **Connect** — save the chosen mode's fields, then call
+   `POST /UserAgentOAuth/OAuthConnect`.
+3. **OAuth branch** — when `authorizeUrl` is returned, redirect the customer's
+   browser, let the provider authorize, and handle the callback parameters.
+4. **Direct branch** — when `accounts` is returned, render the public account
+   list directly; there is no browser redirect.
+5. **Finalize** — for picker credentials (Meta Ads, Facebook Pages, direct
+   Instagram, Google Ads, Merchant Center, YouTube, GA4), call
+   `POST /UserAgentOAuth/SetPickerAccounts` with the selected public entries.
+6. **Verify** — call `POST /UserAgentOAuth/OAuthStatus`.
 
 Each integration page includes a **Multi-Tenant Architecture** section covering per-provider rate limits, token isolation, and white-label consent screen configuration.
 

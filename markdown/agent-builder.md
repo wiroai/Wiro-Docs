@@ -83,12 +83,14 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
   "directSkills":  ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels"],
   "agentBase": { "priceUsd": 0, "credits": 0 },
   "tokenRates": {
-    "default_model": "openai/gpt-5.4",
-    "fallback_rate": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75 },
+    "default_model": "openai/gpt-5.6-sol",
+    "fallback_rate": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25 },
     "models": {
-      "openai/gpt-5.4": { "input_per_1m": 375, "output_per_1m": 2250, "cached_input_per_1m": 37.5, "selectable": true, "label": "GPT-5.4", "tier": "balanced" },
-      "openai/gpt-5.4-mini": { "input_per_1m": 112.5, "output_per_1m": 675, "cached_input_per_1m": 11.25, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
-      "openai/gpt-5.5": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75, "selectable": true, "label": "GPT-5.5", "tier": "premium" }
+      "openai/gpt-5.6-sol": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25, "selectable": true, "label": "GPT-5.6 Sol", "tier": "premium" },
+      "openai/gpt-5.6-terra": { "input_per_1m": 250, "output_per_1m": 1500, "cached_input_per_1m": 25, "cache_write_per_1m": 312.5, "selectable": true, "label": "GPT-5.6 Terra", "tier": "balanced" },
+      "openai/gpt-5.6-luna": { "input_per_1m": 25, "output_per_1m": 150, "cached_input_per_1m": 2.5, "cache_write_per_1m": 31.25, "selectable": true, "label": "GPT-5.6 Luna", "tier": "cheap" },
+      "openai/gpt-5.5": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "selectable": true, "label": "GPT-5.5", "tier": "premium" },
+      "openai/gpt-5.4": { "input_per_1m": 312.5, "output_per_1m": 1875, "cached_input_per_1m": 31.25, "selectable": true, "label": "GPT-5.4", "tier": "balanced" }
     }
   },
   "tiers": {
@@ -165,17 +167,19 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
       "remainingcredits": 1500,
       "creditperiod": "2026-05",
       "tokenRates": {
-        "default_model": "openai/gpt-5.4",
-        "fallback_rate": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75 },
+        "default_model": "openai/gpt-5.6-sol",
+        "fallback_rate": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25 },
         "models": {
-          "openai/gpt-5.4": { "input_per_1m": 375, "output_per_1m": 2250, "cached_input_per_1m": 37.5, "selectable": true, "label": "GPT-5.4", "tier": "balanced" },
-          "openai/gpt-5.4-mini": { "input_per_1m": 112.5, "output_per_1m": 675, "cached_input_per_1m": 11.25, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
-          "openai/gpt-5.5": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75, "selectable": true, "label": "GPT-5.5", "tier": "premium" }
+          "openai/gpt-5.6-sol": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25, "selectable": true, "label": "GPT-5.6 Sol", "tier": "premium" },
+          "openai/gpt-5.6-terra": { "input_per_1m": 250, "output_per_1m": 1500, "cached_input_per_1m": 25, "cache_write_per_1m": 312.5, "selectable": true, "label": "GPT-5.6 Terra", "tier": "balanced" },
+          "openai/gpt-5.6-luna": { "input_per_1m": 25, "output_per_1m": 150, "cached_input_per_1m": 2.5, "cache_write_per_1m": 31.25, "selectable": true, "label": "GPT-5.6 Luna", "tier": "cheap" },
+          "openai/gpt-5.5": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "selectable": true, "label": "GPT-5.5", "tier": "premium" },
+          "openai/gpt-5.4": { "input_per_1m": 312.5, "output_per_1m": 1875, "cached_input_per_1m": 31.25, "selectable": true, "label": "GPT-5.4", "tier": "balanced" }
         }
       },
       "agentModel": {
-        "chatModel": "openai/gpt-5.4",
-        "cronModel": "openai/gpt-5.4",
+        "chatModel": "openai/gpt-5.6-sol",
+        "cronModel": "openai/gpt-5.4-mini",
         "voicePrepModel": "openai/gpt-5.4-mini",
         "voicePostcallModel": "openai/gpt-5.4"
       },

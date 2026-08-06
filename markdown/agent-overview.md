@@ -85,25 +85,26 @@ Per-model rates live in the `tokenRates` object, present on `Agent/Detail`, `Use
 
 ```json
 "tokenRates": {
-  "default_model": "openai/gpt-5.4",
-  "fallback_rate": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75 },
+  "default_model": "openai/gpt-5.6-sol",
+  "fallback_rate": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25 },
   "models": {
-    "openai/gpt-5.4": { "input_per_1m": 375, "output_per_1m": 2250, "cached_input_per_1m": 37.5, "selectable": true, "label": "GPT-5.4", "tier": "balanced" },
-    "openai/gpt-5.4-mini": { "input_per_1m": 112.5, "output_per_1m": 675, "cached_input_per_1m": 11.25, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
-    "openai/gpt-5.5": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75, "selectable": true, "label": "GPT-5.5", "tier": "premium" }
+    "openai/gpt-5.6-sol": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25, "selectable": true, "label": "GPT-5.6 Sol", "tier": "premium" },
+    "openai/gpt-5.6-terra": { "input_per_1m": 250, "output_per_1m": 1500, "cached_input_per_1m": 25, "cache_write_per_1m": 312.5, "selectable": true, "label": "GPT-5.6 Terra", "tier": "balanced" },
+    "openai/gpt-5.6-luna": { "input_per_1m": 25, "output_per_1m": 150, "cached_input_per_1m": 2.5, "cache_write_per_1m": 31.25, "selectable": true, "label": "GPT-5.6 Luna", "tier": "cheap" }
   }
 }
 ```
 
-Rates are quoted in **credits per 1,000,000 tokens**, and **1 credit = $0.01** (100 credits = $1). The per-turn cost is the sum of three independently rounded-up components:
+Rates are quoted in **credits per 1,000,000 tokens**, and **1 credit = $0.01** (100 credits = $1). Wiro prices every LLM call against the model that actually served that call, sums each token category across the turn, and rounds the four aggregate categories up independently:
 
 ```
-tokencost = ceil(input_tokens  × input_per_1m        / 1_000_000)
-          + ceil(output_tokens × output_per_1m       / 1_000_000)
-          + ceil(cached_tokens × cached_input_per_1m / 1_000_000)
+tokencost = ceil(Σ call_input_cost)
+          + ceil(Σ call_output_cost)
+          + ceil(Σ call_cache_read_cost)
+          + ceil(Σ call_cache_write_cost)
 ```
 
-`cached_tokens` is reported separately by the runtime, so `input_tokens` already excludes cached reads; the cached term is `0` when the model omits `cached_input_per_1m`. You don't send anything — the agent runtime reports token usage after each turn, Wiro deducts the credits, and records a ledger row with `action: "tokens"` (see [`POST /UserAgent/TransactionList`](/docs/agent-transactions#post-useragenttransactionlist)). Per-turn token counts and cost also ride on each assistant message (`inputtokens` / `outputtokens` / `tokencost` / `model` — see [Agent Messaging](/docs/agent-messaging)).
+Cache-read and cache-write categories are charged only when the selected model rate defines them. `inputtokens` contains only uncached input; `totaltokens` is always the exact sum of input, output, cache-read, and cache-write tokens. For models with `long_context_threshold_tokens`, Wiro selects the long-context rate **per LLM call** using `input + cacheRead + cacheWrite`; it never infers a surcharge from a turn-level aggregate that lost call boundaries. You don't send anything — the agent runtime reports exact call-level usage after each turn, Wiro deducts the credits once, and records a ledger row with `action: "tokens"` (see [`POST /UserAgent/TransactionList`](/docs/agent-transactions#post-useragenttransactionlist)). Per-turn token counts and cost also ride on each assistant message (`inputtokens` / `outputtokens` / `cachereadtokens` / `cachewritetokens` / `totaltokens` / `tokencost` / `model` — see [Agent Messaging](/docs/agent-messaging)).
 
 When the credit pool is exhausted, [`POST /UserAgent/Message/Send`](/docs/agent-messaging#post-useragentmessagesend) and [`POST /UserAgent/Start`](#post-useragentstart) refuse with an `Agent has no remaining credits…` error plus an `agentbalance` snapshot; renew the subscription or buy an extra credit pack to continue.
 
@@ -229,12 +230,12 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
         "pro":     { "priceUsd": 90, "credits": 2250 }
       },
       "tokenRates": {
-        "default_model": "openai/gpt-5.4",
-        "fallback_rate": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75 },
+        "default_model": "openai/gpt-5.6-sol",
+        "fallback_rate": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25 },
         "models": {
-          "openai/gpt-5.4": { "input_per_1m": 375, "output_per_1m": 2250, "cached_input_per_1m": 37.5, "selectable": true, "label": "GPT-5.4", "tier": "balanced" },
-          "openai/gpt-5.4-mini": { "input_per_1m": 112.5, "output_per_1m": 675, "cached_input_per_1m": 11.25, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
-          "openai/gpt-5.5": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75, "selectable": true, "label": "GPT-5.5", "tier": "premium" }
+          "openai/gpt-5.6-sol": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25, "selectable": true, "label": "GPT-5.6 Sol", "tier": "premium" },
+          "openai/gpt-5.6-terra": { "input_per_1m": 250, "output_per_1m": 1500, "cached_input_per_1m": 25, "cache_write_per_1m": 312.5, "selectable": true, "label": "GPT-5.6 Terra", "tier": "balanced" },
+          "openai/gpt-5.6-luna": { "input_per_1m": 25, "output_per_1m": 150, "cached_input_per_1m": 2.5, "cache_write_per_1m": 31.25, "selectable": true, "label": "GPT-5.6 Luna", "tier": "cheap" }
         }
       },
       "skills": ["int-instagram-post", "int-wiro-aimodels"],
@@ -278,7 +279,7 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
         "instagram": {
           "optional": false,
           "extra": false,
-          "_editable": { "authmethod": true, "igusername": true },
+          "_editable": { "authmethod": true, "systemusertoken": true, "igusername": true },
           "_schema": {
             "title": "Instagram",
             "icon": "https://wiro.ai/images/icons/skills/instagram.svg",
@@ -286,8 +287,10 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
             "brand_text_color": "#ffffff",
             "brand_logo_filter": "none",
             "docs_url": "integration-instagram-skills",
-            "credential_mode": "oauth",
-            "connection_modes": ["wiro", "own"],
+            "credential_mode": "hybrid",
+            "connection_modes": ["api_key", "own", "wiro"],
+            "default_connection_mode": "api_key",
+            "mode_badges": { "api_key": "Recommended", "own": "Advanced" },
             "wiro_connect_pending": true,
             "oauth_provider": {
               "auth_method_value": "wiro",
@@ -295,10 +298,23 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
               "disconnect_endpoint": "/UserAgentOAuth/OAuthDisconnect",
               "status_endpoint": "/UserAgentOAuth/OAuthStatus",
               "username_field": "igusername",
-              "account_picker": null
+              "direct_probe": {
+                "mode": "api_key",
+                "token_field": "systemusertoken",
+                "public_account_fields": ["id", "name"]
+              },
+              "account_picker": {
+                "enabled": true,
+                "multi_select": false,
+                "set_endpoint": "/UserAgentOAuth/SetPickerAccounts",
+                "item_value_field": "accountId",
+                "item_label_field": "igusername"
+              }
             },
             "fields": [
-              { "key": "authmethod", "type": "select", "label": "Auth Method", "options": ["wiro", "own"] },
+              { "key": "authmethod", "type": "select", "label": "Auth Method", "options": ["api_key", "own", "wiro"], "default": "api_key" },
+              { "key": "systemusertoken", "type": "password", "label": "System User Token", "runtime_excluded": true, "only_in_modes": ["api_key"] },
+              { "key": "accountId", "type": "text", "label": "Instagram Account ID", "auto_filled_by_oauth": true, "readonly_when_connected": true },
               { "key": "igusername", "type": "text", "label": "Connected Account", "auto_filled_by_oauth": true, "readonly_when_connected": true }
             ]
           },
@@ -322,15 +338,18 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
 
 | Flag | Type | Meaning |
 |------|------|---------|
-| `_connected` | boolean | **OAuth readiness indicator.** `true` when Wiro has a valid OAuth access token (reflected as `connectedat` / `accesstoken` on the credential) **and** every picker field declared by the template (`customerid`, `merchantid`, `channelid`, ad-account, page id, etc.) is populated. Non-OAuth credentials — API-key providers (Gmail, Apollo, Lemlist, Brevo, SendGrid, WordPress, Telegram) and service-account providers (Firebase, Google Drive, Google Play, App Store Connect) — do **not** raise `_connected` to `true` because they never write a `connectedat`; check `setuprequired` on `UserAgent/Detail` (or inspect the field values directly) to know when those are configured. |
+| `_connected` | boolean | **Connection readiness indicator.** `true` when Wiro has a validated OAuth or hybrid direct connection and every required picker field (`customerid`, `merchantid`, `channelid`, ad-account, page ID, Instagram account ID, etc.) is populated. Plain API-key and service-account providers that do not write `connectedat` can remain `false`; use `setuprequired` to determine overall setup readiness. |
 | `optional` | boolean | `true` when the template marks this credential as not required for the agent to run. Agents can start even if `optional: true` credentials are empty. |
 | `extra` | boolean | `true` when the template groups the credential under "extra integrations" in the UI (disabled by default until the user opts into the skill). |
 | `_editable` | object | Map of `fieldname → true` for fields the caller may write. Computed from the registry schema + caller role. |
-| `_schema` | object | Inlined registry descriptor — `{ title, icon, brand_color, brand_text_color, brand_logo_filter, docs_url, credential_mode, connection_modes[], wiro_connect_pending, oauth_provider, fields[] }`. Lets a UI render the form without a separate `Credentials/Detail` round-trip. |
+| `_schema` | object | Inlined registry descriptor — `{ title, icon, brand_color, brand_text_color, brand_logo_filter, docs_url, credential_mode, connection_modes[], default_connection_mode, mode_badges, wiro_connect_pending, oauth_provider, fields[] }`. Lets a UI render the form without a separate `Credentials/Detail` round-trip. |
 
 **Field redaction in responses:**
 
 - `fieldstatus: "oauth_session"` fields (`accesstoken`, `refreshtoken`, `tokenexpiresat`, `pageAccessToken`, etc.) — always stripped from every response, regardless of caller role.
+- Schema fields marked `runtime_excluded: true` — including Meta
+  `systemusertoken` — are write-only setup secrets. They never enter the agent
+  runtime and are not reflected to customer-facing credential responses.
 - `fieldstatus: "platform"` fields (currently only `credentials.sys-openai.apikey` and its `model` / `fallbacks` / `cronmodel` siblings) — stripped for API callers (role = `user`). The `sys-openai` credential entry itself is also dropped from the response. Only the daemon container ever sees the values. `credentials.wiro.apikey` and `credentials.calendarific.apikey` are operator-supplied user-input fields and appear in the response with `fieldstatus: "user"` like any other API-key credential.
 - `fieldstatus: "oauth_app"` fields (`clientsecret`, `appsecret`) — **visible to anyone who can read the credentials**. History writes redact `clientsecret` to `[REDACTED]`, but the live value is returned. Treat them as read-admin-only in your own UI layer.
 - Sentinel rows `_isoptional` / `_isextra` — never appear as fields; they're folded into the `optional` and `extra` flags above.
@@ -448,8 +467,8 @@ Both paths hit the same endpoint, but a few server-side behaviours diverge:
           "_connected": false,
           "optional": false,
           "extra": false,
-          "_editable": { "authmethod": true, "igusername": true },
-          "_schema": { "title": "Instagram", "credential_mode": "oauth", "fields": [ "..." ] },
+          "_editable": { "authmethod": true, "systemusertoken": true, "igusername": true },
+          "_schema": { "title": "Instagram", "credential_mode": "hybrid", "connection_modes": ["api_key", "own", "wiro"], "default_connection_mode": "api_key", "fields": [ "..." ] },
           "authmethod": "",
           "igusername": "",
           "connectedat": ""
@@ -466,17 +485,17 @@ Both paths hit the same endpoint, but a few server-side behaviours diverge:
       "creditperiod": "2026-05",
       "creditsyncat": null,
       "tokenRates": {
-        "default_model": "openai/gpt-5.4",
-        "fallback_rate": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75 },
+        "default_model": "openai/gpt-5.6-sol",
+        "fallback_rate": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25 },
         "models": {
-          "openai/gpt-5.4": { "input_per_1m": 375, "output_per_1m": 2250, "cached_input_per_1m": 37.5, "selectable": true, "label": "GPT-5.4", "tier": "balanced" },
-          "openai/gpt-5.4-mini": { "input_per_1m": 112.5, "output_per_1m": 675, "cached_input_per_1m": 11.25, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
-          "openai/gpt-5.5": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75, "selectable": true, "label": "GPT-5.5", "tier": "premium" }
+          "openai/gpt-5.6-sol": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25, "selectable": true, "label": "GPT-5.6 Sol", "tier": "premium" },
+          "openai/gpt-5.6-terra": { "input_per_1m": 250, "output_per_1m": 1500, "cached_input_per_1m": 25, "cache_write_per_1m": 312.5, "selectable": true, "label": "GPT-5.6 Terra", "tier": "balanced" },
+          "openai/gpt-5.6-luna": { "input_per_1m": 25, "output_per_1m": 150, "cached_input_per_1m": 2.5, "cache_write_per_1m": 31.25, "selectable": true, "label": "GPT-5.6 Luna", "tier": "cheap" }
         }
       },
       "agentModel": {
-        "chatModel": "openai/gpt-5.4",
-        "cronModel": "openai/gpt-5.4",
+        "chatModel": "openai/gpt-5.6-sol",
+        "cronModel": "openai/gpt-5.4-mini",
         "voicePrepModel": "openai/gpt-5.4-mini",
         "voicePostcallModel": "openai/gpt-5.4"
       },
@@ -618,17 +637,17 @@ Lists all agent instances deployed under your account.
       },
       "enabledSkills": ["int-instagram-post", "int-twitterx-post", "int-wiro-aimodels"],
       "tokenRates": {
-        "default_model": "openai/gpt-5.4",
-        "fallback_rate": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75 },
+        "default_model": "openai/gpt-5.6-sol",
+        "fallback_rate": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25 },
         "models": {
-          "openai/gpt-5.4": { "input_per_1m": 375, "output_per_1m": 2250, "cached_input_per_1m": 37.5, "selectable": true, "label": "GPT-5.4", "tier": "balanced" },
-          "openai/gpt-5.4-mini": { "input_per_1m": 112.5, "output_per_1m": 675, "cached_input_per_1m": 11.25, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
-          "openai/gpt-5.5": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75, "selectable": true, "label": "GPT-5.5", "tier": "premium" }
+          "openai/gpt-5.6-sol": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25, "selectable": true, "label": "GPT-5.6 Sol", "tier": "premium" },
+          "openai/gpt-5.6-terra": { "input_per_1m": 250, "output_per_1m": 1500, "cached_input_per_1m": 25, "cache_write_per_1m": 312.5, "selectable": true, "label": "GPT-5.6 Terra", "tier": "balanced" },
+          "openai/gpt-5.6-luna": { "input_per_1m": 25, "output_per_1m": 150, "cached_input_per_1m": 2.5, "cache_write_per_1m": 31.25, "selectable": true, "label": "GPT-5.6 Luna", "tier": "cheap" }
         }
       },
       "agentModel": {
-        "chatModel": "openai/gpt-5.4",
-        "cronModel": "openai/gpt-5.4",
+        "chatModel": "openai/gpt-5.6-sol",
+        "cronModel": "openai/gpt-5.4-mini",
         "voicePrepModel": "openai/gpt-5.4-mini",
         "voicePostcallModel": "openai/gpt-5.4"
       },
@@ -687,6 +706,7 @@ Retrieves full details for a single deployed agent instance, including subscript
           "extra": false,
           "_editable": {
             "authmethod": true,
+            "systemusertoken": true,
             "igusername": true
           },
           "_schema": {
@@ -696,10 +716,32 @@ Retrieves full details for a single deployed agent instance, including subscript
             "brand_text_color": "#FFFFFF",
             "brand_logo_filter": null,
             "docs_url": "/docs/integration-instagram-skills",
-            "credential_mode": "oauth_or_api_key",
-            "connection_modes": ["wiro", "own"],
+            "credential_mode": "hybrid",
+            "connection_modes": ["api_key", "own", "wiro"],
+            "default_connection_mode": "api_key",
+            "mode_badges": {
+              "api_key": "Recommended",
+              "own": "Advanced"
+            },
             "wiro_connect_pending": true,
-            "oauth_provider": "instagram",
+            "oauth_provider": {
+              "auth_method_value": "wiro",
+              "connect_endpoint": "/UserAgentOAuth/OAuthConnect",
+              "disconnect_endpoint": "/UserAgentOAuth/OAuthDisconnect",
+              "status_endpoint": "/UserAgentOAuth/OAuthStatus",
+              "direct_probe": {
+                "mode": "api_key",
+                "token_field": "systemusertoken",
+                "public_account_fields": ["id", "name"]
+              },
+              "account_picker": {
+                "enabled": true,
+                "multi_select": false,
+                "set_endpoint": "/UserAgentOAuth/SetPickerAccounts",
+                "item_value_field": "accountId",
+                "item_label_field": "igusername"
+              }
+            },
             "fields": [
               {
                 "key": "authmethod",
@@ -707,26 +749,44 @@ Retrieves full details for a single deployed agent instance, including subscript
                 "type": "select",
                 "required": true,
                 "options": [
-                  { "label": "Wiro-managed",  "value": "wiro" },
-                  { "label": "Own OAuth app", "value": "own" }
+                  { "label": "System User Token", "value": "api_key" },
+                  { "label": "Own OAuth app",     "value": "own" },
+                  { "label": "Wiro-managed",      "value": "wiro" }
                 ],
-                "default": "wiro"
+                "default": "api_key"
+              },
+              {
+                "key": "systemusertoken",
+                "label": "System User Token",
+                "type": "password",
+                "required": true,
+                "runtime_excluded": true,
+                "only_in_modes": ["api_key"]
+              },
+              {
+                "key": "accountId",
+                "label": "Instagram Account ID",
+                "type": "text",
+                "required": true,
+                "auto_filled_by_oauth": true,
+                "readonly_when_connected": true
               },
               {
                 "key": "igusername",
-                "label": "Instagram Username",
+                "label": "Connected Account",
                 "type": "text",
-                "required": true,
-                "placeholder": "@yourbusiness",
-                "help": "Your Instagram Business account username (without the @)."
+                "required": false,
+                "auto_filled_by_oauth": true,
+                "readonly_when_connected": true
               }
             ]
           },
           "_required_missing": false,
-          "authmethod": "wiro",
+          "authmethod": "api_key",
+          "accountId": "17841400000000000",
           "igusername": "mybrand",
           "connectedat": "2026-05-01T12:00:00.000Z",
-          "tokenexpiresat": null
+          "tokenexpiresat": ""
         },
         "telegram": {
           "_connected": false,
@@ -946,17 +1006,17 @@ Retrieves full details for a single deployed agent instance, including subscript
       "creditperiod": "2026-05",
       "creditsyncat": 1714694410,
       "tokenRates": {
-        "default_model": "openai/gpt-5.4",
-        "fallback_rate": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75 },
+        "default_model": "openai/gpt-5.6-sol",
+        "fallback_rate": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25 },
         "models": {
-          "openai/gpt-5.4": { "input_per_1m": 375, "output_per_1m": 2250, "cached_input_per_1m": 37.5, "selectable": true, "label": "GPT-5.4", "tier": "balanced" },
-          "openai/gpt-5.4-mini": { "input_per_1m": 112.5, "output_per_1m": 675, "cached_input_per_1m": 11.25, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
-          "openai/gpt-5.5": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75, "selectable": true, "label": "GPT-5.5", "tier": "premium" }
+          "openai/gpt-5.6-sol": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25, "selectable": true, "label": "GPT-5.6 Sol", "tier": "premium" },
+          "openai/gpt-5.6-terra": { "input_per_1m": 250, "output_per_1m": 1500, "cached_input_per_1m": 25, "cache_write_per_1m": 312.5, "selectable": true, "label": "GPT-5.6 Terra", "tier": "balanced" },
+          "openai/gpt-5.6-luna": { "input_per_1m": 25, "output_per_1m": 150, "cached_input_per_1m": 2.5, "cache_write_per_1m": 31.25, "selectable": true, "label": "GPT-5.6 Luna", "tier": "cheap" }
         }
       },
       "agentModel": {
-        "chatModel": "openai/gpt-5.4",
-        "cronModel": "openai/gpt-5.4",
+        "chatModel": "openai/gpt-5.6-sol",
+        "cronModel": "openai/gpt-5.4-mini",
         "voicePrepModel": "openai/gpt-5.4-mini",
         "voicePostcallModel": "openai/gpt-5.4"
       },
@@ -1035,7 +1095,7 @@ Retrieves full details for a single deployed agent instance, including subscript
 | `remainingcredits` | `number` | Computed: `max(0, monthlycredits + extracredits - usedcredits)`. |
 | `creditperiod` | `string` | `'YYYY-MM'` tag of the current billing window. Rolls over on subscription renewal. |
 | `creditsyncat` | `number\|null` | Unix seconds of the last agent → API usage sync (`null` before the first report). |
-| `tokenRates` | `object\|null` | Per-model token-billing rates (credits per 1,000,000 tokens). Shape: `{ default_model, fallback_rate, models: { "<slug>": { input_per_1m, output_per_1m, cached_input_per_1m?, selectable?, label?, tier? } } }`. Each turn's cost is metered from these rates (1 credit = $0.01) — see [Token Billing](#pricing-model--tiers-skills--token-billing). `null` only on registry-read failure. |
+| `tokenRates` | `object\|null` | Per-model token-billing rates (credits per 1,000,000 tokens). Shape: `{ default_model, fallback_rate, models: { "<slug>": { input_per_1m, output_per_1m, cached_input_per_1m?, cache_write_per_1m?, selectable?, label?, tier? } } }`. Each turn's cost is metered from these rates (1 credit = $0.01) — see [Token Billing](#pricing-model--tiers-skills--token-billing). `null` only on registry-read failure. |
 | `agentModel` | `object` | The resolved model slugs this instance runs: `{ chatModel, cronModel, voicePrepModel, voicePostcallModel }` (camelCase). Each falls back to the platform default when the operator hasn't overridden it. Change them via [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) using the lowercase keys `chatmodel` / `cronmodel` / `voiceprepmodel` / `voicepostcallmodel`. |
 | `enabledCommands` | `array<string>\|null` | The in-chat slash-command allowlist (camelCase read). `null` = the operator never customized it, so **all** slash commands are available. An array (including `[]`) is an explicit allowlist of command keys (no leading slash); `[]` hides the slash-command menu. Write it via [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) with the lowercase `enabledcommands` key. Also present on `MyAgents` / `PinnedAgents` rows. |
 
@@ -1072,14 +1132,14 @@ Every provider entry under `credentials.<key>` carries:
 
 | Sub-field | Type | Description |
 |-----------|------|-------------|
-| `_connected` | `boolean` | OAuth-readiness flag. `true` when Wiro has a valid access token AND every picker field (ad-account ID, page ID, channel ID, …) is populated. **Always `false`** for non-OAuth providers (API-key, service-account) — for those use `_required_missing` or inspect the field values directly. |
+| `_connected` | `boolean` | Connection-readiness flag. `true` when Wiro has a validated OAuth or hybrid direct credential and every required picker field is populated. Plain API-key and service-account providers can remain `false`; for those use `_required_missing` or inspect the field values directly. |
 | `optional` | `boolean` | `true` when the agent template marks this credential as optional (the agent can run without it; the dependent skill just won't fire). `false` for required credentials. |
 | `extra` | `boolean` | `true` when this credential surfaces in the "alternative" / secondary group on the panel (rare; most credentials are primary). |
 | `_editable` | `object` | Per-field edit map: `{ fieldname: true\|false }`. `false` means the field is read-only (managed by OAuth, platform-managed, or computed). The frontend uses this to disable inputs. |
-| `_schema` | `object` | Inline registry descriptor — `title`, `icon`, `brand_color`, `docs_url`, `credential_mode` (`oauth`, `api_key`, `oauth_or_api_key`), `connection_modes`, `oauth_provider`, plus a `fields[]` array describing every input the form should render. Lets the panel build credential cards without a separate `Credentials/Detail` round-trip. |
+| `_schema` | `object` | Inline registry descriptor — `title`, `icon`, `brand_color`, `docs_url`, `credential_mode` (`oauth`, `api_key`, `hybrid`, etc.), `connection_modes`, `default_connection_mode`, `mode_badges`, `oauth_provider`, plus a `fields[]` array describing every input the form should render. Lets the panel build credential cards without a separate `Credentials/Detail` round-trip. |
 | `_required_missing` | `boolean` | `true` when the operator should look at this credential — required + user-editable fields are still empty (or the optional card is partially filled but incomplete). Drives the "needs attention" bullet on each credential card and the aggregate count badge on the Credentials tab. `false` when the card is complete or untouched-and-optional. |
-| `connectedat` | `string\|null` | OAuth providers only: ISO timestamp of the last successful connection. |
-| `tokenexpiresat` | `number\|null` | OAuth providers only: Unix seconds when the access token expires. |
+| `connectedat` | `string\|null` | OAuth and hybrid providers: ISO timestamp of the last successful connection. |
+| `tokenexpiresat` | `string\|null` | ISO timestamp when the current token expires, or an empty value when the provider reports no fixed expiry. |
 | `<fieldname>` | `string\|number\|boolean\|array` | The actual field value as the user (or OAuth callback) saved it. Field types match `_schema.fields[].type`. Sensitive values (`oauth_session` access/refresh tokens, `clientsecret`, `password`-typed fields) are NEVER returned in this surface — they stay server-side. |
 
 ##### Subscription object
@@ -1202,7 +1262,7 @@ Writes per-agent preference toggles that are not credentials and not skill rows.
 | `useragentguid` | string | Yes | Your UserAgent instance guid. |
 | `timezone` | string\|null | No | IANA timezone identifier (e.g. `"Europe/Istanbul"`, `"America/New_York"`, `"Asia/Tokyo"`). Pass `null`, `""`, or the literal `"UTC"` to **clear** the override — the row is set back to `NULL`, which makes the propagation chain a no-op (container stays on `TZ=UTC`, no per-job `schedule.tz` injection, voice prep `current_time` stays in single-line UTC ISO form). Validated server-side via `new Intl.DateTimeFormat("en-GB", { timeZone })` — unknown zones are rejected with `invalid-timezone`. |
 | `teamsessionmode` | string | No | `"collaborative"` or `"private"`. Only meaningful when the agent is team-owned (`teamguid` is set); passing it on a personal agent is rejected with `teamsessionmode-team-only`. See [Agent Messaging](/docs/agent-messaging) for what each mode does to `Message/History` and `Sessions` scoping. |
-| `chatmodel` | string\|null | No | Canonical model slug for **chat replies** (e.g. `"openai/gpt-5.4"`). Must be a **selectable** model — i.e. `tokenRates.models[<slug>].selectable === true`; an unknown / non-selectable slug is rejected with `invalid-model-selection`. Pass `null` or `""` to clear the override and fall back to the platform default. |
+| `chatmodel` | string\|null | No | Canonical model slug for **chat replies** (e.g. `"openai/gpt-5.6-sol"`). Must be a **selectable** model — i.e. `tokenRates.models[<slug>].selectable === true`; an unknown / non-selectable slug is rejected with `invalid-model-selection`. Pass `null` or `""` to clear the override and fall back to the platform default. |
 | `cronmodel` | string\|null | No | Same rules as `chatmodel`, applied to **scheduled (cron) turns**. |
 | `voiceprepmodel` | string\|null | No | Same rules as `chatmodel`, applied to the **voice-call prep** turn (context assembled before a realtime call). |
 | `voicepostcallmodel` | string\|null | No | Same rules as `chatmodel`, applied to the **post-call summary** turn after a realtime voice call ends. |
@@ -1969,12 +2029,12 @@ Two body shapes:
     "pro":     { "priceUsd": 40, "credits": 1000 }
   },
   "tokenRates": {
-    "default_model": "openai/gpt-5.4",
-    "fallback_rate": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75 },
+    "default_model": "openai/gpt-5.6-sol",
+    "fallback_rate": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25 },
     "models": {
-      "openai/gpt-5.4": { "input_per_1m": 375, "output_per_1m": 2250, "cached_input_per_1m": 37.5, "selectable": true, "label": "GPT-5.4", "tier": "balanced" },
-      "openai/gpt-5.4-mini": { "input_per_1m": 112.5, "output_per_1m": 675, "cached_input_per_1m": 11.25, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
-      "openai/gpt-5.5": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75, "selectable": true, "label": "GPT-5.5", "tier": "premium" }
+      "openai/gpt-5.6-sol": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25, "selectable": true, "label": "GPT-5.6 Sol", "tier": "premium" },
+      "openai/gpt-5.6-terra": { "input_per_1m": 250, "output_per_1m": 1500, "cached_input_per_1m": 25, "cache_write_per_1m": 312.5, "selectable": true, "label": "GPT-5.6 Terra", "tier": "balanced" },
+      "openai/gpt-5.6-luna": { "input_per_1m": 25, "output_per_1m": 150, "cached_input_per_1m": 2.5, "cache_write_per_1m": 31.25, "selectable": true, "label": "GPT-5.6 Luna", "tier": "cheap" }
     }
   }
 }
@@ -2122,7 +2182,7 @@ Non-admin callers are rate-limited via a 30-second Redis cache keyed on `(userag
       "title": "Turn billed — 5 credits",
       "summary": { "trigger": "chat" },
       "model": "openai/gpt-5.4",
-      "tokens": { "input": 3450, "output": 820, "cacheRead": 2400, "cacheWrite": 0, "total": 4270 },
+      "tokens": { "input": 3450, "output": 820, "cacheRead": 2400, "cacheWrite": 0, "total": 6670 },
       "tokencost": 5,
       "durationMs": 4200,
       "calls": 2,
@@ -2362,17 +2422,17 @@ No request body fields are required — the caller's `tokenUUID` (or active `tea
       },
       "enabledSkills": ["int-instagram-post", "int-twitterx-post", "int-wiro-aimodels"],
       "tokenRates": {
-        "default_model": "openai/gpt-5.4",
-        "fallback_rate": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75 },
+        "default_model": "openai/gpt-5.6-sol",
+        "fallback_rate": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25 },
         "models": {
-          "openai/gpt-5.4": { "input_per_1m": 375, "output_per_1m": 2250, "cached_input_per_1m": 37.5, "selectable": true, "label": "GPT-5.4", "tier": "balanced" },
-          "openai/gpt-5.4-mini": { "input_per_1m": 112.5, "output_per_1m": 675, "cached_input_per_1m": 11.25, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
-          "openai/gpt-5.5": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75, "selectable": true, "label": "GPT-5.5", "tier": "premium" }
+          "openai/gpt-5.6-sol": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25, "selectable": true, "label": "GPT-5.6 Sol", "tier": "premium" },
+          "openai/gpt-5.6-terra": { "input_per_1m": 250, "output_per_1m": 1500, "cached_input_per_1m": 25, "cache_write_per_1m": 312.5, "selectable": true, "label": "GPT-5.6 Terra", "tier": "balanced" },
+          "openai/gpt-5.6-luna": { "input_per_1m": 25, "output_per_1m": 150, "cached_input_per_1m": 2.5, "cache_write_per_1m": 31.25, "selectable": true, "label": "GPT-5.6 Luna", "tier": "cheap" }
         }
       },
       "agentModel": {
-        "chatModel": "openai/gpt-5.4",
-        "cronModel": "openai/gpt-5.4",
+        "chatModel": "openai/gpt-5.6-sol",
+        "cronModel": "openai/gpt-5.4-mini",
         "voicePrepModel": "openai/gpt-5.4-mini",
         "voicePostcallModel": "openai/gpt-5.4"
       },

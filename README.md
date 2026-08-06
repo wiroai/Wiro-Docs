@@ -77,6 +77,9 @@
 | Agent Use Cases | `/docs/agent-use-cases` | [agent-use-cases.md](./markdown/agent-use-cases.md) |
 | **Integrations** | | |
 | Meta Ads | `/docs/integration-metaads-skills` | [integration-metaads-skills.md](./markdown/integration-metaads-skills.md) |
+| Shopify | `/docs/integration-shopify-skills` | [integration-shopify-skills.md](./markdown/integration-shopify-skills.md) |
+| WooCommerce | `/docs/integration-woocommerce-skills` | [integration-woocommerce-skills.md](./markdown/integration-woocommerce-skills.md) |
+| Reddit | `/docs/integration-reddit-skills` | [integration-reddit-skills.md](./markdown/integration-reddit-skills.md) |
 | Facebook Page | `/docs/integration-facebook-skills` | [integration-facebook-skills.md](./markdown/integration-facebook-skills.md) |
 | Instagram | `/docs/integration-instagram-skills` | [integration-instagram-skills.md](./markdown/integration-instagram-skills.md) |
 | LinkedIn | `/docs/integration-linkedin-skills` | [integration-linkedin-skills.md](./markdown/integration-linkedin-skills.md) |
@@ -171,6 +174,9 @@ Wiro-Docs/
     ├── agent-skills.md
     ├── agent-use-cases.md
     ├── integration-metaads-skills.md
+    ├── integration-shopify-skills.md
+    ├── integration-woocommerce-skills.md
+    ├── integration-reddit-skills.md
     ├── integration-facebook-skills.md
     ├── integration-instagram-skills.md
     ├── integration-linkedin-skills.md

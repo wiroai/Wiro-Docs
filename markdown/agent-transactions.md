@@ -55,7 +55,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
     "creditperiod": "2026-05",
     "creditsyncat": 1714694410,
     "byModel": [
-      { "model": "openai/gpt-5.4", "inputtokens": 128400, "outputtokens": 32100, "cachereadtokens": 86000, "cachewritetokens": 0, "totaltokens": 160500, "tokencost": 240, "turncount": 38 },
+      { "model": "openai/gpt-5.4", "inputtokens": 128400, "outputtokens": 32100, "cachereadtokens": 86000, "cachewritetokens": 0, "totaltokens": 246500, "tokencost": 240, "turncount": 38 },
       { "model": "unknown", "inputtokens": 4200, "outputtokens": 900, "cachereadtokens": 0, "cachewritetokens": 0, "totaltokens": 5100, "tokencost": 7, "turncount": 3 }
     ]
   },
@@ -74,7 +74,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "outputtokens": 820,
       "cachereadtokens": 512,
       "cachewritetokens": 0,
-      "totaltokens": 4270,
+      "totaltokens": 4782,
       "tokencost": 5,
       "processedms": 4120,
       "model": "openai/gpt-5.4",
@@ -218,11 +218,11 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 | `sessionkey` | `string\|null` | Session the deduct belongs to (deduct rows only). |
 | `agentsessionkey` | `string\|null` | Alias of `sessionkey` (same value), present on every row for a unified per-session attribution key across `TaskList` / `TransactionList` / wallet responses. |
 | `messageguid` | `string\|null` | Agent message that triggered the deduct (deduct rows only). |
-| `inputtokens` | `number\|null` | Prompt tokens billed for the turn (`action: "tokens"` rows only). |
+| `inputtokens` | `number\|null` | Uncached prompt tokens billed at the model's input rate (`action: "tokens"` rows only). |
 | `outputtokens` | `number\|null` | Completion tokens billed for the turn (`action: "tokens"` rows only). |
 | `cachereadtokens` | `number\|null` | Prompt tokens served from cache for the turn (`action: "tokens"` rows only). |
 | `cachewritetokens` | `number\|null` | Prompt tokens written to cache for the turn (`action: "tokens"` rows only). |
-| `totaltokens` | `number\|null` | Input + output tokens for the turn (`action: "tokens"` rows only). |
+| `totaltokens` | `number\|null` | Exact `inputtokens + outputtokens + cachereadtokens + cachewritetokens` sum (`action: "tokens"` rows only). |
 | `tokencost` | `number\|null` | Credit cost for the turn; equals `abs(amount)` (`action: "tokens"` rows only). |
 | `processedms` | `number\|null` | Model processing time for the turn, in milliseconds (`action: "tokens"` rows only). |
 | `model` | `string\|null` | Model id that served the turn, e.g. `"openai/gpt-5.4"` (`action: "tokens"` rows only). |

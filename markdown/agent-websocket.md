@@ -17,10 +17,10 @@ No API key or auth header is required on the WebSocket itself. Authorization is 
 1. **Connect** — open a WebSocket connection to `wss://socket.wiro.ai/v1`.
 2. **Receive welcome** — the server pushes a one-shot `connected` frame confirming the upgrade.
 3. **Subscribe** — send an `agent_info` frame with your `agenttoken`.
-4. **Receive `agent_subscribed`** — the server acknowledges the subscribe and reports the current lifecycle status (plus any already-accumulated `debugoutput`).
-5. **Stream** — listen for `agent_start` → many `agent_output` → `agent_end` / `agent_error` / `agent_cancel`.
+4. **Receive `agent_subscribed`** — the server acknowledges the subscribe and reports the current lifecycle status, accumulated answer text, and persisted `timeline[]`.
+5. **Stream** — listen for `agent_start`, `agent_timeline_delta` block updates, provisional `agent_output` answer snapshots, then `agent_end` / `agent_error` / `agent_cancel`.
 6. **Receive `agent_usage_report`** — after a successful `agent_end`, a one-shot token-usage/billing frame arrives on the same `agenttoken` (~250–500 ms later). Optional to consume; keep the socket open briefly if you need it.
-7. **Close** — disconnect once you've seen the terminal event (and `agent_usage_report`, if you want it), or keep the socket open and subscribe to the next `agenttoken`.
+7. **Close** — keep the socket open for `agent_usage_report` if needed. After completion or reconnect, read `Message/Detail` for the authoritative persisted timeline and answer.
 
 ### 1. Welcome frame (server → client)
 
@@ -93,9 +93,10 @@ Frames flow in two directions. `↓` = server → client, `↑` = client → ser
 | ↓ | `connected` | Welcome frame pushed by the server right after the WebSocket upgrade. Fires exactly once per connection. |
 | ↑ | `agent_info` | Client-initiated subscribe frame. Carries the `agenttoken` issued by `Message/Send`. Can be sent multiple times on the same socket (one per token). |
 | ↓ | `error` | Server-side rejection of a malformed subscribe (missing `agenttoken`). Connection stays open; retry with a valid frame. |
-| ↓ | `agent_subscribed` | Subscribe acknowledged. Carries the current lifecycle `status` plus any accumulated `debugoutput`. If the agent already finished before you subscribed, this frame is your snapshot of the final output and no further events will fire. |
+| ↓ | `agent_subscribed` | Subscribe acknowledged. Carries the current lifecycle `status`, accumulated `debugoutput`, `messageguid`, and persisted `timeline[]`. If the agent already finished before you subscribed, this frame is your reconnect snapshot. |
 | ↓ | `agent_start` | The bridge has opened an SSE stream to the agent container. The underlying model is now generating. Emits exactly once per message. |
-| ↓ | `agent_output` | Streaming chunk. Emits **many times** — each carries the full accumulated `raw` text so far plus real-time metrics (`speed`, `elapsedTime`, `tokenCount`, `wordCount`). Replace (don't append) your UI on each event. |
+| ↓ | `agent_timeline_delta` | One ordered public timeline-block update. Carries `messageguid` and one `block`; merge by `blockid` and that block's `version`, then sort by `callindex`, `contentindex`, and `blockid`. |
+| ↓ | `agent_output` | Provisional answer snapshot. Emits **many times** — each carries the full accumulated `raw` answer text so far plus real-time metrics (`speed`, `elapsedTime`, `tokenCount`, `wordCount`). Replace (don't append) the typing surface on each event. |
 | ↓ | `agent_end` | Terminal success event. Same payload shape as `agent_output` but contains the final complete text with total metrics. Emits at most once. |
 | ↓ | `agent_error` | Terminal failure event. `message` is either a sanitized string ("Agent is temporarily unavailable…" when an exception was caught) or a `progressGenerate` object (when the stream finished but content was a degenerate `"..."` / `"Error: internal error"`). Emits at most once. |
 | ↓ | `agent_cancel` | Terminal cancel event. Fires **only** when an already-active message is aborted mid-stream (via `Message/Cancel` or upstream abort). Cancels against a still-queued message do **not** broadcast this event — check `Message/Detail` for those. Emits at most once. |
@@ -104,7 +105,7 @@ Frames flow in two directions. `↓` = server → client, `↑` = client → ser
 
 ## Message Format
 
-Every WebSocket frame is a JSON object. All **agent lifecycle frames** (`agent_subscribed` / `agent_start` / `agent_output` / `agent_end` / `agent_error` / `agent_cancel`) — plus the post-terminal `agent_usage_report` frame — share this base shape:
+Every WebSocket frame is a JSON object. Agent stream frames (`agent_start` / `agent_timeline_delta` / `agent_output` / `agent_end` / `agent_error` / `agent_cancel`) — plus the post-terminal `agent_usage_report` frame — share this base shape:
 
 ```json
 {
@@ -119,8 +120,8 @@ Every WebSocket frame is a JSON object. All **agent lifecycle frames** (`agent_s
 |---|---|---|
 | `type` | string | Event name. See [Event Types](#event-types) for the full list. |
 | `agenttoken` | string | The token you subscribed with. Present on every agent lifecycle frame so multi-token subscribers can route the event to the right session. |
-| `message` | varies | Empty string (`""`) for `agent_start`, a `progressGenerate` object for `agent_output` / `agent_end` (and for the object-shaped `agent_error`), a plain string for string-shaped `agent_error` and `agent_cancel`, and a token-usage object for `agent_usage_report`. |
-| `result` | boolean | `true` for success-side events (`agent_subscribed` / `agent_start` / `agent_output` / `agent_end` / `agent_usage_report`), `false` for failure-side events (`agent_error` / `agent_cancel`). See [The `result` field](#the-result-field). |
+| `message` | varies | Empty string (`""`) for `agent_start`, `{ messageguid, block }` for `agent_timeline_delta`, a `progressGenerate` answer object for `agent_output` / `agent_end` (and for the object-shaped `agent_error`), a plain string for string-shaped `agent_error` and `agent_cancel`, and a token-usage object for `agent_usage_report`. |
+| `result` | boolean | `true` for success-side events (`agent_subscribed` / `agent_start` / `agent_timeline_delta` / `agent_output` / `agent_end` / `agent_usage_report`), `false` for failure-side events (`agent_error` / `agent_cancel`). See [The `result` field](#the-result-field). |
 
 The **control frames** (`connected`, `error`) use a different shape with no `agenttoken`:
 
@@ -132,13 +133,13 @@ The **control frames** (`connected`, `error`) use a different shape with no `age
 { "type": "error", "message": "agenttoken-required", "result": false }
 ```
 
-The `agent_subscribed` frame additionally carries `status` (the DB row's current status) and, when the token is known, `debugoutput` (accumulated text so far). When the token is unknown, `status` is `"unknown"` and `debugoutput` is omitted entirely.
+The `agent_subscribed` frame is a snapshot rather than a `message` wrapper. For a known token it carries `status`, `debugoutput`, `messageguid`, and `timeline` at the top level. When the token is unknown, `status` is `"unknown"` and those row-backed fields are omitted.
 
 ### agent_subscribed
 
 Sent immediately after the server accepts your subscription. The `status` field reflects where the agent currently is in its lifecycle.
 
-- If the agenttoken is **valid and pending/active** (known to the server, not yet finished), `debugoutput` is always present — an empty string `""` if nothing has streamed yet, or the accumulated text so far.
+- If the agenttoken is **valid**, `debugoutput` is always present and `timeline` is an array (possibly empty).
 - If the agenttoken is **unknown** (typo, expired, already cleaned up from the buffer), `debugoutput` is **omitted entirely** from the payload (no field at all). Always use `"debugoutput" in payload` or `payload.debugoutput !== undefined` to distinguish unknown-token from empty-output, rather than relying on truthiness.
 
 **Valid token, queued** — `debugoutput` present and empty:
@@ -149,6 +150,8 @@ Sent immediately after the server accepts your subscription. The `status` field 
   "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
   "status": "agent_queue",
   "debugoutput": "",
+  "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "timeline": [],
   "result": true
 }
 ```
@@ -207,15 +210,52 @@ Emitted multiple times as the agent generates its response. Each event contains 
     "tokenCount": 35,
     "wordCount": 28,
     "raw": "Here is the accumulated response text so far...",
-    "thinking": [],
-    "answer": ["Here is the accumulated response text so far..."],
-    "isThinking": false
+    "answer": ["Here is the accumulated response text so far..."]
   },
   "result": true
 }
 ```
 
-The `raw` field contains the full response as a single string. The `answer` array contains the same text split into segments. To display streaming text, replace your UI content with `raw` (or join `answer`) on each event.
+The `raw` field contains the provisional cumulative SSE response as a single string. The `answer` array contains the same text split into segments. Replace your typing surface with `raw` (or joined `answer`) on each event; keep merging timeline updates independently until the corresponding answer block catches up.
+
+### agent_timeline_delta
+
+Each event carries exactly one changed public block:
+
+```json
+{
+  "type": "agent_timeline_delta",
+  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
+  "message": {
+    "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+    "block": {
+      "blockid": "c0:i0",
+      "callindex": 0,
+      "contentindex": 0,
+      "type": "reasoning",
+      "text": "I’ll compare the available evidence before making a recommendation.",
+      "toollabel": null,
+      "toolstatus": null,
+      "phase": "stream",
+      "version": 4,
+      "startedat": 1743350401,
+      "updatedat": 1743350404
+    }
+  },
+  "result": true
+}
+```
+
+The hard-cutover merge contract is:
+
+1. Treat `blockid` as an opaque deterministic identity.
+2. Keep the incoming block only if there is no stored block with that ID, or its `version` is strictly greater than the stored version.
+3. Replace only that block; a newer update for one block must never evict another block.
+4. Sort the merged values by `callindex ASC`, `contentindex ASC`, then `blockid ASC`.
+
+`version` is per block, not global. A turn can therefore render `Thinking → Answer or Tool → Thinking → Answer` across multiple calls. `reasoning` blocks contain only provider-supplied OpenAI GPT-5 summaries, never raw chain-of-thought. `answer` blocks expose safe answer text. `tool` blocks expose only `toollabel` and `toolstatus`; their `text` is `null`, and tool IDs, arguments, and results are not public.
+
+The complete public block shape is `blockid`, `callindex`, `contentindex`, `type`, `text`, `toollabel`, `toolstatus`, `phase`, `version`, `startedat`, and `updatedat`. `phase` is `stream`, `end`, or `error`; timestamps can be `null` when unavailable. No additional internal correlation or execution metadata is emitted in this block.
 
 ### agent_end
 
@@ -234,9 +274,7 @@ Fires when the agent finishes responding. The structure is identical to `agent_o
     "tokenCount": 156,
     "wordCount": 118,
     "raw": "The complete agent response text...",
-    "thinking": [],
-    "answer": ["The complete agent response text..."],
-    "isThinking": false
+    "answer": ["The complete agent response text..."]
   },
   "result": true
 }
@@ -274,9 +312,7 @@ An error occurred during processing. The `message` field can take two forms — 
     "tokenCount": 3,
     "wordCount": 1,
     "raw": "...",
-    "thinking": [],
-    "answer": ["..."],
-    "isThinking": false
+    "answer": ["..."]
   },
   "result": false
 }
@@ -324,8 +360,8 @@ A post-terminal frame that reports the final token usage and billing for the tur
     "outputtokens": 820,
     "cachereadtokens": 2400,
     "cachewritetokens": 0,
-    "totaltokens": 4270,
-    "model": "openai/gpt-5.4",
+    "totaltokens": 6670,
+    "model": "openai/gpt-5.6-sol",
     "tokencost": 5,
     "processedms": 4200,
     "remainingcredits": 9995
@@ -338,12 +374,12 @@ The frame's `agenttoken` identifies the turn; the `message.messageguid` identifi
 | Field | Type | Description |
 |---|---|---|
 | `messageguid` | string | UUID of the assistant message this usage applies to. **Match it to the message row** you want to update. |
-| `inputtokens` | number | Prompt tokens sent to the model for this turn. |
+| `inputtokens` | number | Uncached prompt tokens billed at the model's input rate. |
 | `outputtokens` | number | Completion tokens generated by the model. |
 | `cachereadtokens` | number | Prompt tokens served from the provider's prompt cache (billed at the cache-read rate). |
 | `cachewritetokens` | number | Prompt tokens written to the provider's prompt cache during this turn. |
-| `totaltokens` | number | Total billable tokens for the turn. |
-| `model` | string | Provider/model slug used for this turn (e.g. `"openai/gpt-5.4"`). |
+| `totaltokens` | number | Exact sum of input, output, cache-read, and cache-write tokens for the turn. |
+| `model` | string | Provider/model slug used for this turn (e.g. `"openai/gpt-5.6-sol"`). |
 | `tokencost` | number | Credits charged for this turn. |
 | `processedms` | number | Server-side processing time for the turn, in milliseconds. |
 | `remainingcredits` | number | Your account credit balance after this turn was billed. |
@@ -406,7 +442,7 @@ Every agent lifecycle event includes a `result` boolean:
 
 | Value | Events |
 |---|---|
-| `true` | `agent_subscribed`, `agent_start`, `agent_output`, `agent_end`, `agent_usage_report` |
+| `true` | `agent_subscribed`, `agent_start`, `agent_timeline_delta`, `agent_output`, `agent_end`, `agent_usage_report` |
 | `false` | `error`, `agent_error`, `agent_cancel` |
 
 Use `result` to quickly determine whether the event represents a successful state. When `result` is `false`, inspect `message` for error details or cancellation context. The welcome `connected` frame has no `result` field — it's a one-shot ack and always implies success (you got the frame, so the upgrade worked).
@@ -420,48 +456,14 @@ Each `agent_output` and `agent_end` event includes real-time performance data in
 | `speed` | string | Current generation speed (e.g. `"12.5"`). |
 | `speedType` | string | Speed unit — always `"words/s"` for agent responses. |
 | `elapsedTime` | string | Wall-clock time since the stream started (e.g. `"2.4s"`). |
-| `tokenCount` | number | Total tokens generated so far. |
+| `tokenCount` | number | Number of answer chunks received so far. Authoritative model token counts arrive in `agent_usage_report`. |
 | `wordCount` | number | Total words in the accumulated response. |
 
 These metrics update with every `agent_output` event, allowing you to display a live speed indicator or progress bar in your UI.
 
-## Thinking Model Support
+## Timeline safety boundary
 
-When the agent is backed by a thinking-capable model (e.g. DeepSeek-R1, QwQ), the response may include thinking blocks alongside the answer:
-
-```json
-{
-  "type": "agent_output",
-  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
-  "message": {
-    "type": "progressGenerate",
-    "task": "Generate",
-    "speed": "8.3",
-    "speedType": "words/s",
-    "elapsedTime": "4.1s",
-    "tokenCount": 89,
-    "wordCount": 64,
-    "raw": "<think>Let me work through this step by step...</think>Based on my analysis...",
-    "thinking": ["Let me work through this step by step..."],
-    "answer": ["Based on my analysis..."],
-    "isThinking": true
-  },
-  "result": true
-}
-```
-
-| Field | Description |
-|---|---|
-| `isThinking` | `true` while the model is in a thinking phase, `false` when emitting the answer. |
-| `thinking` | Array of thinking block text segments. Empty if the model does not use thinking. |
-| `answer` | Array of answer text segments. This is the user-facing response. |
-| `raw` | The unprocessed output including `<think>` tags. Use `thinking` and `answer` instead for display. |
-
-**Rendering guidance:**
-
-- While `isThinking` is `true`, show a "Thinking..." indicator or render the `thinking` text in a collapsible block.
-- When `isThinking` becomes `false`, the model has finished reasoning and is now producing the answer.
-- On `agent_end`, join the `answer` array for the final display text.
+Public reasoning is available only as `type: "reasoning"` timeline blocks. Wiro publishes provider-authored summaries from supported OpenAI GPT-5 calls, not raw hidden chain-of-thought or generic provider traces. Tool blocks publish only a safe label and status. Wiro does not parse literal `<think>` tags from `agent_output`; treat any such text in `raw` as ordinary provisional answer output.
 
 ## Full Integration Example
 
@@ -510,24 +512,25 @@ ws.onopen = () => {
 ```
 ←  connected         { version: "1.0" }
 →  agent_info        { agenttoken: "..." }
-←  agent_subscribed  { status: "agent_queue", debugoutput: "" }
+←  agent_subscribed  { status: "agent_queue", debugoutput: "", timeline: [] }
 ←  agent_start       { message: "" }
+←  agent_timeline_delta { message: { messageguid: "c3d4...", block: { blockid: "c0:i0", callindex: 0, contentindex: 0, type: "reasoning", version: 1 } } }
 ←  agent_output      { message: { raw: "Quantum", wordCount: 1 } }
-←  agent_output      { message: { raw: "Quantum computing uses", wordCount: 3 } }
+←  agent_timeline_delta { message: { messageguid: "c3d4...", block: { blockid: "c0:i1", callindex: 0, contentindex: 1, type: "answer", version: 1 } } }
 ←  agent_output      { message: { raw: "Quantum computing uses qubits...", wordCount: 28 } }
 ←  agent_end         { message: { raw: "Quantum computing uses qubits that...", wordCount: 118 } }
-←  agent_usage_report { result: true, message: { messageguid: "c3d4...", totaltokens: 4270, remainingcredits: 9994 } }
+←  agent_usage_report { result: true, message: { messageguid: "c3d4...", totaltokens: 6670, remainingcredits: 9994 } }
 ```
 
-`←` = server → client, `→` = client → server. Each `agent_output` contains the full accumulated text. Replace (don't append) your display content on each event.
+`←` = server → client, `→` = client → server. `agent_output` contains provisional full accumulated answer text. Replace (don't append) that typing surface; merge timeline blocks independently.
 
 The full observable wire order for a normal turn is:
 
 ```text
-agent_queue  →  agent_start  →  agent_output × N  →  agent_end  →  agent_usage_report
+agent_queue  →  agent_start  →  (agent_timeline_delta | agent_output) × N  →  agent_end  →  agent_usage_report
 ```
 
-`agent_queue` is **not** a WebSocket frame — it's the `status` returned synchronously in the `Message/Send` response (and reflected by `agent_subscribed` if you subscribe while the message is still queued). Everything from `agent_start` onward is pushed over the socket. On the failure path, `agent_error` or `agent_cancel` takes the place of `agent_end` as the terminal frame, and **no** `agent_usage_report` follows.
+`agent_queue` is **not** a WebSocket frame — it's the `status` returned synchronously in the `Message/Send` response (and reflected by `agent_subscribed` if you subscribe while the message is still queued). Timeline and provisional answer events can interleave between start and terminal status. On the failure path, `agent_error` or `agent_cancel` takes the place of `agent_end`, and **no** `agent_usage_report` follows. `Message/Detail` is authoritative for the final persisted timeline.
 
 [`agent_wiroai_runtask`](#model-runs-the-agent-triggers) is **not** part of this linear order — it fires out-of-band (zero or more times per turn, whenever the agent launches a model run) on the **session-key** channel rather than the per-turn `agenttoken`.
 
@@ -539,6 +542,21 @@ agent_queue  →  agent_start  →  agent_output × N  →  agent_end  →  agen
 const agentToken = 'your-agent-token';
 
 const ws = new WebSocket('wss://socket.wiro.ai/v1');
+const timelineByMessage = new Map();
+
+function mergeTimelineBlock(messageguid, block) {
+  const byId = timelineByMessage.get(messageguid) || new Map();
+  const previous = byId.get(block.blockid);
+  if (!previous || block.version > previous.version) {
+    byId.set(block.blockid, block);
+  }
+  timelineByMessage.set(messageguid, byId);
+  return [...byId.values()].sort(
+    (a, b) => a.callindex - b.callindex
+      || a.contentindex - b.contentindex
+      || a.blockid.localeCompare(b.blockid)
+  );
+}
 
 ws.onopen = () => {
   console.log('Connected');
@@ -580,6 +598,12 @@ ws.onmessage = (event) => {
     case 'agent_output':
       // message is a progressGenerate object; replace (don't append) your UI.
       console.log('Streaming:', msg.message.raw);
+      break;
+
+    case 'agent_timeline_delta':
+      // Merge msg.message.block by blockid + per-block version, then sort
+      // by callindex/contentindex. Do not append in arrival order.
+      mergeTimelineBlock(msg.message.messageguid, msg.message.block);
       break;
 
     case 'agent_end':
@@ -923,6 +947,8 @@ channel.stream.listen((message) {
   "agenttoken": "aB3xK9...",
   "status": "agent_queue",
   "debugoutput": "",
+  "messageguid": "c3d4e5f6-...",
+  "timeline": [],
   "result": true
 }
 ```
@@ -945,6 +971,32 @@ channel.stream.listen((message) {
   "type": "agent_start",
   "agenttoken": "aB3xK9...",
   "message": "",
+  "result": true
+}
+```
+
+**`agent_timeline_delta`** — one public block update:
+
+```json
+{
+  "type": "agent_timeline_delta",
+  "agenttoken": "aB3xK9...",
+  "message": {
+    "messageguid": "c3d4e5f6-...",
+    "block": {
+      "blockid": "c0:i0",
+      "callindex": 0,
+      "contentindex": 0,
+      "type": "reasoning",
+      "text": "I’ll verify the relevant constraints.",
+      "toollabel": null,
+      "toolstatus": null,
+      "phase": "stream",
+      "version": 1,
+      "startedat": 1743350401,
+      "updatedat": 1743350402
+    }
+  },
   "result": true
 }
 ```
@@ -1010,7 +1062,7 @@ channel.stream.listen((message) {
   "result": true,
   "message": {
     "messageguid": "c3d4e5f6-...",
-    "totaltokens": 4270,
+    "totaltokens": 6670,
     "model": "openai/gpt-5.4",
     "tokencost": 5,
     "remainingcredits": 9995
@@ -1020,13 +1072,13 @@ channel.stream.listen((message) {
 
 ## Connection Keep-Alive
 
-The Wiro WebSocket server sends a ping every **30 seconds** to keep the connection alive. Most standard WebSocket client libraries respond to pings automatically; if your client implements a custom frame handler, make sure it sends a pong within a few seconds of each ping or the server will drop the connection. After `agent_error` / `agent_cancel` you can close the socket immediately — those are the last frames for that `agenttoken`. After `agent_end`, one more frame (`agent_usage_report`) follows ~250–500 ms later; wait for it if you need the usage/billing data, otherwise close right away.
+The Wiro WebSocket server sends a ping every **30 seconds** to keep the connection alive. Most standard WebSocket client libraries respond to pings automatically; if your client implements a custom frame handler, make sure it sends a pong within a few seconds of each ping or the server will drop the connection. After `agent_error` / `agent_cancel` you can close the socket immediately. After `agent_end`, one more frame (`agent_usage_report`) follows ~250–500 ms later; wait for it if you need usage/billing data. Read `Message/Detail` whenever you need the authoritative completed timeline.
 
 ## Correlating Events With Your Messages
 
-Every agent lifecycle frame (`agent_subscribed` / `agent_start` / `agent_output` / `agent_end` / `agent_error` / `agent_cancel`) carries `agenttoken` — this is the **only** correlation key available on the wire. These frames do **not** include `messageguid`, `sessionkey`, or `useragentguid`. If you need any of those fields to route events back to a specific message in your UI, build the mapping yourself when you call `Message/Send`.
+Every agent lifecycle frame carries `agenttoken`, so keep the mapping returned by `Message/Send`. Most stream frames do not include `messageguid`; `agent_timeline_delta` additionally carries `message.messageguid`, and `agent_subscribed` carries top-level `messageguid`. No frame carries `useragentguid`.
 
-The one exception is the post-terminal `agent_usage_report` frame, whose `message.messageguid` does name the message — but it arrives only after `agent_end`, so you still need the `agenttoken → messageguid` mapping to attribute the streaming frames.
+The post-terminal `agent_usage_report` also names `message.messageguid`, but it arrives only after `agent_end`, so you still need the `agenttoken → messageguid` mapping for start/output/end/error/cancel routing.
 
 ### Why `agenttoken` is the correlation key
 
@@ -1040,11 +1092,25 @@ The one exception is the post-terminal `agent_usage_report` frame, whose `messag
 1. Call `POST /UserAgent/Message/Send` — you get back `{ messageguid, agenttoken, status: "agent_queue", ... }`.
 2. Store the mapping `agenttoken → messageguid` (or `agenttoken → your UI message id`).
 3. Send `{ "type": "agent_info", "agenttoken }` on an open socket (new or existing — connections can be reused).
-4. In `ws.onmessage`, read `msg.agenttoken` on every agent lifecycle frame, look up your stored mapping, and update the matching UI element.
+4. In `ws.onmessage`, read `msg.agenttoken` on every lifecycle frame. For `agent_timeline_delta`, merge `msg.message.block` by `blockid` and strictly newer per-block `version`; never append in arrival order.
 5. When the turn ends, delete the mapping so it doesn't leak memory across sessions. For successful turns, wait for the trailing `agent_usage_report` (it arrives ~250–500 ms after `agent_end`) before deleting, so you can attribute the usage to the right message; for `agent_error` / `agent_cancel`, delete immediately — no usage report follows.
 
 ```javascript
 const tokenToMessageId = new Map()
+const timelineByMessageId = new Map()
+
+function mergeTimelineBlock(uiMessageId, block) {
+  const byId = timelineByMessageId.get(uiMessageId) || new Map()
+  const previous = byId.get(block.blockid)
+  if (!previous || block.version > previous.version) byId.set(block.blockid, block)
+  timelineByMessageId.set(uiMessageId, byId)
+  const timeline = [...byId.values()].sort(
+    (a, b) => a.callindex - b.callindex
+      || a.contentindex - b.contentindex
+      || a.blockid.localeCompare(b.blockid)
+  )
+  updateUI(uiMessageId, { timeline })
+}
 
 async function sendMessage(text, uiMessageId) {
   const resp = await fetch('https://api.wiro.ai/v1/UserAgent/Message/Send', {
@@ -1070,6 +1136,9 @@ ws.onmessage = (event) => {
   if (!uiMessageId) return  // unknown token — probably stale
 
   switch (msg.type) {
+    case 'agent_timeline_delta':
+      mergeTimelineBlock(uiMessageId, msg.message.block)
+      break
     case 'agent_output':
       updateUI(uiMessageId, { streaming: msg.message.raw })
       break
@@ -1123,12 +1192,12 @@ The agent keeps running server-side **regardless of whether any client is subscr
 2. **Reconnect** — open a new WebSocket to `wss://socket.wiro.ai/v1`.
 3. **Wait for welcome** — receive `{ "type": "connected", "version": "1.0" }` (optional but clean).
 4. **Re-subscribe** — send `{ "type": "agent_info", "agenttoken": "..." }` with the same token.
-5. **Handle `agent_subscribed`** — the server reports the **current** status. Three cases:
-   - `status` is `agent_queue` / `agent_start` / `agent_output` → stream is still live; accumulated text so far is in `debugoutput`. Future events will be forwarded normally.
-   - `status` is `agent_end` → the agent already finished. `debugoutput` holds the full final response. **No further WebSocket events will fire.** Fetch `POST /UserAgent/Message/Detail` for the canonical record (including `metadata`, `attachments`, `endedat`), then close the socket.
+5. **Handle `agent_subscribed`** — the server reports the **current** status and persisted `timeline[]`. Three cases:
+   - `status` is `agent_queue` / `agent_start` / `agent_output` → stream is still live; accumulated provisional answer text is in `debugoutput`. Seed your block map from `timeline`, then merge future deltas.
+   - `status` is `agent_end` → the agent already finished. `debugoutput` holds the full final response. Fetch `POST /UserAgent/Message/Detail` for the canonical record (including complete `timeline`, `metadata`, attachments, and timestamps), then close the socket.
    - `status` is `agent_error` / `agent_cancel` → the agent already failed / was cancelled. `debugoutput` may contain partial output. No further events. Fetch `POST /UserAgent/Message/Detail` for the persisted error details.
 
-On reconnect you do **not** receive replays of the past `agent_output` frames — only events emitted after re-subscribe. Use the `debugoutput` on `agent_subscribed` as the snapshot of what you missed.
+On reconnect you do **not** receive replays of past `agent_output` or `agent_timeline_delta` frames. Use `debugoutput` and `timeline` on `agent_subscribed` as the snapshot of what you missed.
 
 ### Example retry strategy
 
@@ -1200,6 +1269,7 @@ An `agenttoken` is issued per message by `POST /UserAgent/Message/Send` and stay
 |---|---|
 | `Message/Send` | Token is minted, row is inserted with `status: "agent_queue"`, broadcast to all queue subscribers. |
 | Worker picks up | Emits `agent_start` to every active subscriber. |
+| Timeline block changes | Emits one `agent_timeline_delta` update with `{ messageguid, block }`; the persisted row keeps the merged ordered timeline. |
 | Each SSE chunk | Emits `agent_output` to every active subscriber (with full accumulated `raw`). |
 | Stream finishes | Emits `agent_end` (or `agent_error` for `"..."` / internal-error content) with final `progressGenerate` payload; DB row status is updated to terminal. |
 | Usage billed | ~250–500 ms after a successful `agent_end`, emits `agent_usage_report` with final token counts, `model`, `tokencost`, and `remainingcredits`. Not emitted for replayed usage callbacks or for turns with no chat message (cron/hook turns). |

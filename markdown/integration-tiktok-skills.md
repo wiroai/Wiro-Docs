@@ -186,21 +186,9 @@ Body: `{ useragentguid, credentialkey: "tiktok" }`. Response: `connected`, `acco
 
 Body: `{ useragentguid, credentialkey: "tiktok" }`. Calls TikTok's revoke endpoint (`POST https://open.tiktokapis.com/v2/oauth/revoke/`), then clears credentials. TikTok is one of the few providers where Wiro actively revokes.
 
-### POST /UserAgentOAuth/TokenRefresh
+### Token lifecycle
 
-> Running agents refresh the TikTok token automatically via the daily maintenance cron (access token lifetime is 1 day). Use this only for debugging.
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "provider": "tiktok"
-  }'
-```
-
-See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
+Wiro maintains the TikTok connection automatically while the agent is running. If TikTok revokes the authorization or `OAuthStatus` reports `connected: false`, reconnect through the OAuth flow.
 
 ## Troubleshooting
 

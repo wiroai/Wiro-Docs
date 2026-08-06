@@ -211,21 +211,9 @@ Body: `{ useragentguid, credentialkey: "twitter" }`. Response: `connected`, `acc
 
 Body: `{ useragentguid, credentialkey: "twitter" }`. Calls X's revoke endpoint (`POST https://api.x.com/2/oauth2/revoke`) with Basic auth, then clears credentials. X is one of the few providers where Wiro actively revokes.
 
-### POST /UserAgentOAuth/TokenRefresh
+### Token lifecycle
 
-> Running agents refresh the X token automatically **every 90 minutes** (a dedicated background cron) because X access tokens only last 2 hours. Use this endpoint only for debugging or manual overrides.
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "provider": "twitter"
-  }'
-```
-
-Uses `grant_type=refresh_token`. Returns new access + refresh tokens. See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
+Wiro maintains the X connection automatically while the agent is running. If the user revokes the app or `OAuthStatus` reports `connected: false`, reconnect through the OAuth flow.
 
 ## Using the Skill
 
@@ -263,7 +251,7 @@ Free-tier X Developer apps have strict per-app rate limits. For production, move
 
 ### Token expires every 2 hours
 
-Access token lifetime is unusually short. Wiro's agent runs a dedicated background cron every 90 minutes to refresh X tokens before they expire. If the refresh cron hits a wall (e.g. user revoked the app in X settings, or X flagged the app), the next skill call fails with a 401 — reconnect is required.
+Access token lifetime is unusually short, so Wiro maintains it automatically while the agent is running. If the user revokes the app in X settings or X invalidates the authorization, the next skill call can fail with a 401 and reconnection is required.
 
 ## Multi-Tenant Architecture
 

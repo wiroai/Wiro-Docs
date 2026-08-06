@@ -78,7 +78,7 @@ For conversational agents that don't need per-user credentials. One agent instan
 
 A single product can combine both — a per-customer action agent plus a shared conversational agent sit side by side in the same frontend. For example:
 
-- One **Social Manager** instance per customer (Pattern 1) to publish posts with their own OAuth-connected accounts.
+- One **Social Manager** instance per customer (Pattern 1) to publish posts with their own connected social accounts (System User or OAuth, depending on the provider).
 - One **shared knowledge-base chat** agent (Pattern 2) that answers product, billing, or onboarding questions across all customers, using `sessionkey` to keep each user's chat separate.
 
 The two agents are independent deployments with different `useragentguid` values. Route user actions to the per-customer instance, and chat questions to the shared instance. Your backend decides which agent handles each request.
@@ -217,10 +217,10 @@ Wiro provides pre-built agent templates you can deploy immediately. Each agent s
 
 | Agent | What It Does | Credentials |
 |-------|-------------|-------------|
-| **[Social Manager](https://wiro.ai/agents/social-manager)** | Create, schedule, and publish social media content | Twitter/X, Instagram, Facebook, TikTok, LinkedIn (OAuth) |
+| **[Social Manager](https://wiro.ai/agents/social-manager)** | Create, schedule, and publish social media content | Twitter/X, TikTok, LinkedIn (OAuth); Instagram and Facebook Pages (System User recommended or own OAuth) |
 | **[Blog Content Editor](https://wiro.ai/agents/blog-content-editor)** | Write and publish blog posts (WordPress draft + publish workflow) | WordPress (App Password), Gmail (optional, for inbox requests) |
 | **[Google Ads Manager](https://wiro.ai/agents/google-ads-manager)** | Create and optimize Google Ads campaigns, daily performance reports | Google Ads (OAuth), Calendarific (API key), Google Drive (optional, Service Account) |
-| **[Meta Ads Manager](https://wiro.ai/agents/meta-ads-manager)** | Manage Facebook and Instagram ad campaigns, audience analysis | Meta Ads (OAuth), Calendarific (API key), Google Drive (optional, Service Account) |
+| **[Meta Ads Manager](https://wiro.ai/agents/meta-ads-manager)** | Manage Facebook and Instagram ad campaigns, audience analysis | Meta Ads (System User recommended or own OAuth), Calendarific (API key), Google Drive (optional, Service Account) |
 | **[Newsletter Manager](https://wiro.ai/agents/newsletter-manager)** | Design and send email newsletters to subscriber lists | Brevo, SendGrid, Mailchimp, HubSpot (any one — API key or OAuth) |
 | **[Lead Generation Manager](https://wiro.ai/agents/lead-gen-manager)** | Find and enrich leads, run multi-channel outreach, analyze replies | Apollo (API key), Lemlist (API key), HubSpot (optional, for CRM sync) |
 | **[App Review Support](https://wiro.ai/agents/app-review-support)** | Monitor app store reviews, draft responses in operator's tone | App Store Connect (private key JWT), Google Play (service account) |

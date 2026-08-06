@@ -7,11 +7,21 @@ Send messages to AI agents and receive streaming responses in real time.
 Agent messaging follows the same async pattern as [model runs](/docs/run-a-model):
 
 1. **Send** a message via REST → get an `agenttoken` immediately
-2. **Subscribe** to [Agent WebSocket](/docs/agent-websocket) with the `agenttoken` → receive streaming response chunks
+2. **Subscribe** to [Agent WebSocket](/docs/agent-websocket) with the `agenttoken` → receive ordered `agent_timeline_delta` block updates plus provisional accumulated answer text
 3. **Or poll** via the Detail endpoint to check status and fetch the completed response
 4. **Or set** a `callbackurl` to receive a webhook notification when the agent finishes
 
 This decoupled design means your application never blocks waiting for the agent to think. Send the message, hand the `agenttoken` to your frontend, and stream the response as it arrives.
+
+### Ordered turn timeline
+
+Every Detail or History message row returns a top-level `timeline[]`. It is the ordered, persisted record of the turn. A turn can contain multiple interleaved blocks, for example:
+
+`Thinking → Answer or Tool → Thinking → Answer`
+
+Each block has an opaque deterministic `blockid`, call/content ordering coordinates, `type` (`reasoning`, `answer`, or `tool`), safe public text or tool state, `phase` (`stream`, `end`, or `error`), its own monotonically increasing `version`, and timestamps. Reasoning text is a provider-supplied OpenAI GPT-5 summary, never raw hidden chain-of-thought. Tool blocks expose only `toollabel` and `toolstatus`, never a tool ID, arguments, results, or other internal execution metadata.
+
+Live WebSocket updates arrive as `agent_timeline_delta` events carrying one public block. Merge by `blockid`, replace that block only when its incoming `version` is strictly newer, then sort by `callindex`, `contentindex`, and `blockid`. `agent_subscribed.timeline` carries the persisted reconnect snapshot. `agent_output` remains provisional cumulative SSE output until the corresponding answer block catches up; after completion or reconnect, `Message/Detail` is authoritative.
 
 ## Message Lifecycle
 
@@ -43,10 +53,10 @@ Accepts either `application/json` (text-only) or `multipart/form-data` (text + f
 | `message` | string | Conditional | The user message text. Required unless sending files via multipart. |
 | `sessionkey` | string | No | Session identifier for conversation continuity. Defaults to `"default"`. |
 | `callbackurl` | string | No | Webhook URL — the system will POST the final response to this URL when the agent finishes. |
-| `model` | string | No | Canonical model slug to run **this turn** on (e.g. `"openai/gpt-5.4"`), chosen from the agent's selectable set. Validated server-side — an unknown or non-selectable slug is rejected in `errors[]` and the turn is **not** sent. Omit to use the agent's configured chat model. |
+| `model` | string | No | Canonical model slug to run **this turn** on (e.g. `"openai/gpt-5.6-sol"`), chosen from the agent's selectable set. Validated server-side — an unknown or non-selectable slug is rejected in `errors[]` and the turn is **not** sent. Omit to use the agent's configured chat model. |
 | `attachment` / `attachments[]` | file | No | Multipart only — one or more file attachments that the agent can process. |
 
-> **Per-turn model selection.** `model` selects the chat model for a single turn instead of the agent's configured default. Valid values are the agent's **selectable** slugs — the `tokenRates.models[]` entries where `selectable` is `true`, returned by `UserAgent/Detail` (see [Agent Overview](/docs/agent-overview)). The selectable slugs are `openai/gpt-5.4`, `openai/gpt-5.4-mini`, `openai/gpt-5.5`, `openai/gpt-5.5-pro`, `openai/gpt-5.2`, `openai/gpt-5.1`, `openai/gpt-5`, and `openai/gpt-5-mini` — read the live set from that field. The server forwards the chosen slug to the agent runtime as the `x-agent-model` and `x-openclaw-model` headers for that turn.
+> **Per-turn model selection.** `model` selects the chat model for a single turn instead of the agent's configured default. Valid values are the agent's **selectable** slugs — the `tokenRates.models[]` entries where `selectable` is `true`, returned by `UserAgent/Detail` (see [Agent Overview](/docs/agent-overview)). The current set includes `openai/gpt-5.6-sol` (the platform chat default), `openai/gpt-5.6-terra`, `openai/gpt-5.6-luna`, `openai/gpt-5.5`, `openai/gpt-5.5-pro`, `openai/gpt-5.4`, `openai/gpt-5.4-mini`, `openai/gpt-5.2`, `openai/gpt-5.1`, `openai/gpt-5`, and `openai/gpt-5-mini` — always read the live set from that field. The server forwards the chosen slug to the agent runtime as the `x-agent-model` and `x-openclaw-model` headers for that turn.
 
 ### Response
 
@@ -129,6 +139,34 @@ Retrieves the current status and content of a single message. You can query by e
     "content": "What are the latest trends in AI?",
     "response": "Here are the key AI trends for 2026...",
     "debugoutput": "Here are the key AI trends for 2026...",
+    "timeline": [
+      {
+        "blockid": "c0:i0",
+        "callindex": 0,
+        "contentindex": 0,
+        "type": "reasoning",
+        "text": "I’ll distinguish deployed capabilities from current research.",
+        "toollabel": null,
+        "toolstatus": null,
+        "phase": "end",
+        "version": 3,
+        "startedat": 1743350401,
+        "updatedat": 1743350405
+      },
+      {
+        "blockid": "c0:i1",
+        "callindex": 0,
+        "contentindex": 1,
+        "type": "answer",
+        "text": "Here are the key AI trends for 2026...",
+        "toollabel": null,
+        "toolstatus": null,
+        "phase": "end",
+        "version": 8,
+        "startedat": 1743350405,
+        "updatedat": 1743350408
+      }
+    ],
     "status": "agent_end",
     "metadata": {
       "type": "progressGenerate",
@@ -139,9 +177,7 @@ Retrieves the current status and content of a single message. You can query by e
       "tokenCount": 105,
       "wordCount": 118,
       "raw": "Here are the key AI trends for 2026...",
-      "thinking": [],
-      "answer": ["Here are the key AI trends for 2026..."],
-      "isThinking": false
+      "answer": ["Here are the key AI trends for 2026..."]
     },
     "attachments": [],
     "deletestatus": 0,
@@ -152,8 +188,8 @@ Retrieves the current status and content of a single message. You can query by e
     "outputtokens": 820,
     "cachereadtokens": 2400,
     "cachewritetokens": 0,
-    "totaltokens": 4270,
-    "model": "openai/gpt-5.4",
+    "totaltokens": 6670,
+    "model": "openai/gpt-5.6-sol",
     "tokencost": 5,
     "processedms": 4200
   }
@@ -170,21 +206,42 @@ Retrieves the current status and content of a single message. You can query by e
 | `content` | `string` | The original user message. |
 | `response` | `string` | The agent's full response text. Empty until `agent_end`. |
 | `debugoutput` | `string` | Accumulated output text. Updated during streaming, contains the full response after completion. |
+| `timeline` | `array` | Ordered turn blocks. Always an array; `[]` means no public blocks were persisted. Merge live deltas by `blockid` and per-block `version`, then sort by call/content order. |
 | `status` | `string` | Current message status (see Message Lifecycle). |
-| `metadata` | `object` | Parsed JSON object (API returns it already decoded). Populated from the agent bridge on `agent_end`. Fields produced by the bridge's `finalMessage` builder: `type` — always the literal `"progressGenerate"` (not the message status); `task` — always the literal `"Generate"`; `speed` — numeric words-per-second value (e.g. `14.2`); `speedType` — always `"words/s"`; `elapsedTime` — human string with unit, e.g. `"8.1s"` (NOT a number); `tokenCount`, `wordCount` — integers; `raw` — the full accumulated response text; `thinking` — array of reasoning blocks extracted from `<think>...</think>`; `answer` — array of answer chunks stripped of `<think>`; `isThinking` — always `false` in the final payload. Empty object `{}` for `agent_error`, `agent_cancel`, or when the bridge hasn't finished yet. Message status lives in the top-level `status` field — don't read it from `metadata.type`. |
+| `metadata` | `object` | Parsed JSON object (API returns it already decoded). Populated from the agent bridge on `agent_end`. Fields produced by the bridge's final progress builder include `type`, `task`, `speed`, `speedType`, `elapsedTime`, `tokenCount`, `wordCount`, `raw`, and `answer`. Timeline blocks are intentionally not stored in metadata; read the top-level `timeline` field. Empty object `{}` for `agent_error`, `agent_cancel`, or when the bridge hasn't finished yet. Message status lives in the top-level `status` field — don't read it from `metadata.type`. |
 | `attachments` | `array` | Always present as an array — empty `[]` for text-only messages. When the message was sent via multipart with files, each entry is a resolved `{url, name, type, size}` object (no further file-lookup needed). Identical shape in `Message/History` rows. |
 | `deletestatus` | `number` | Internal flag. `0` for normal messages. |
 | `createdat` | `number` | Unix timestamp (epoch seconds) when the message was created. |
 | `startedat` | `number` | Unix timestamp (epoch seconds) when the agent started processing. |
 | `endedat` | `number` | Unix timestamp (epoch seconds) when processing completed. May be empty for `agent_cancel` (cancel only sets `status` and `updatedat`). |
-| `inputtokens` | `number\|null` | Billed input (prompt) tokens for this turn's model call. Populated on the assistant turn once it completes; `null` on user-only, cron, legacy, and `model_change` marker rows. |
+| `inputtokens` | `number\|null` | Uncached input (prompt) tokens billed at the model's input rate. Populated on the assistant turn once it completes; `null` on user-only, cron, legacy, and `model_change` marker rows. |
 | `outputtokens` | `number\|null` | Billed output (completion) tokens the model generated this turn. `null` on the same non-assistant / marker / legacy rows. |
 | `cachereadtokens` | `number\|null` | Tokens served from the model's prompt cache (billed at the cached-input rate). `0` when the model reported no cache hits; `null` on non-assistant rows. |
 | `cachewritetokens` | `number\|null` | Tokens written to the prompt cache this turn. `0` when none; `null` on non-assistant rows. |
-| `totaltokens` | `number\|null` | Total tokens attributed to the turn. `null` on non-assistant rows. |
+| `totaltokens` | `number\|null` | Exact component sum: `inputtokens + outputtokens + cachereadtokens + cachewritetokens`. `null` on non-assistant rows. |
 | `model` | `string\|null` | Canonical slug of the chat model that actually ran the turn (e.g. `"openai/gpt-5.4"`), reflecting any per-turn `model` override from Send. `null` on non-assistant / marker / legacy rows. |
 | `tokencost` | `number\|null` | Credits deducted for the turn, derived from the token counts and the model's `tokenRates` (see [Agent Overview](/docs/agent-overview)). `null` on non-assistant rows. |
 | `processedms` | `number\|null` | Wall-clock model processing time for the turn, in milliseconds. `null` on non-assistant rows. |
+
+### Public timeline block fields
+
+Only the fields below are returned in browser-facing REST and WebSocket timeline blocks.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `blockid` | `string` | Opaque deterministic identity for one logical block (for example `c0:i0`). Use it as the merge key; do not parse its current format. |
+| `callindex` | `number` | Zero-based call order within the turn. Primary sort key. |
+| `contentindex` | `number` | Zero-based content order within the call. Secondary sort key. |
+| `type` | `string` | `reasoning`, `answer`, or `tool`. |
+| `text` | `string\|null` | Safe public text for `reasoning` and `answer`; `null` for tool blocks. Reasoning text is an OpenAI GPT-5 provider summary, not raw chain-of-thought. |
+| `toollabel` | `string\|null` | Safe display label for a tool block; `null` for reasoning and answer blocks. Arguments and results are never included. |
+| `toolstatus` | `string\|null` | Safe public status for a tool block; `null` for reasoning and answer blocks. |
+| `phase` | `string` | `stream`, `end`, or `error` for this block. |
+| `version` | `number` | Monotonic **within this block**. Ignore a delta whose version is not strictly newer than the stored block's version. |
+| `startedat` | `number\|null` | Block start timestamp when available. |
+| `updatedat` | `number\|null` | Most recent block update timestamp when available. |
+
+Do not compare `version` across different blocks. Keep a map keyed by `blockid`, apply per-block last-write-wins, and render `callindex ASC, contentindex ASC, blockid ASC`. This makes the result independent of HTTP/WebSocket arrival order.
 
 > **`metadata.tokenCount` vs the billing token columns.** `metadata.tokenCount` is the **live stream counter** emitted inside the `progressGenerate` payload — a running word/token tally for the in-flight response. The flat `inputtokens` / `outputtokens` / `cachereadtokens` / `cachewritetokens` / `totaltokens` / `tokencost` columns are the **final billed usage**, written once the turn completes. They measure different things: use `tokenCount` for a live progress indicator, and the flat columns for accounting and cost.
 
@@ -225,6 +282,21 @@ Retrieves conversation history for a specific agent and session. Messages are re
         "content": "What are the latest trends in AI?",
         "response": "Here are the key AI trends for 2026...",
         "debugoutput": "Here are the key AI trends for 2026...",
+        "timeline": [
+          {
+            "blockid": "c0:i0",
+            "callindex": 0,
+            "contentindex": 0,
+            "type": "reasoning",
+            "text": "I’ll distinguish deployed capabilities from current research.",
+            "toollabel": null,
+            "toolstatus": null,
+            "phase": "end",
+            "version": 3,
+            "startedat": 1743350401,
+            "updatedat": 1743350405
+          }
+        ],
         "status": "agent_end",
         "metadata": {
           "type": "progressGenerate",
@@ -235,9 +307,7 @@ Retrieves conversation history for a specific agent and session. Messages are re
           "tokenCount": 105,
           "wordCount": 118,
           "raw": "Here are the key AI trends for 2026...",
-          "thinking": [],
-          "answer": ["Here are the key AI trends for 2026..."],
-          "isThinking": false
+          "answer": ["Here are the key AI trends for 2026..."]
         },
         "attachments": [],
         "deletestatus": 0,
@@ -246,8 +316,8 @@ Retrieves conversation history for a specific agent and session. Messages are re
         "outputtokens": 820,
         "cachereadtokens": 2400,
         "cachewritetokens": 0,
-        "totaltokens": 4270,
-        "model": "openai/gpt-5.4",
+        "totaltokens": 6670,
+        "model": "openai/gpt-5.6-sol",
         "tokencost": 5,
         "processedms": 4200
       },
@@ -259,6 +329,7 @@ Retrieves conversation history for a specific agent and session. Messages are re
         "content": "",
         "response": "",
         "debugoutput": "",
+        "timeline": [],
         "status": "agent_done",
         "metadata": {
           "type": "model_change",
@@ -293,6 +364,7 @@ Retrieves conversation history for a specific agent and session. Messages are re
         "content": "Tell me more about multimodal models",
         "response": "Multimodal models combine...",
         "debugoutput": "Multimodal models combine...",
+        "timeline": [],
         "status": "agent_end",
         "metadata": {},
         "attachments": [],
@@ -316,11 +388,11 @@ Retrieves conversation history for a specific agent and session. Messages are re
 
 > Each message row carries `uuid` (sender) and a server-decorated `user` object with the full sender shape — same as `Message/Detail`. `user` is `null` for system-inserted rows (e.g. `Message/SystemInsert` writes when `uuid` is `"system"`) or when the underlying account has been deleted.
 
-> **Resuming an in-flight stream.** Every row carries the original `agenttoken` from `Message/Send`. If a returned message's `status` is non-terminal (`agent_queue`, `agent_start`, or `agent_output`), the agent is still processing it server-side. Hand the `agenttoken` to the [Agent WebSocket](/docs/agent-websocket) (`agent_info` frame) and you'll receive the remaining `agent_output` chunks plus the eventual `agent_end` event — no need to re-send the message. This is exactly how a chat UI can rehydrate live streams after a page reload.
+> **Resuming an in-flight stream.** Every row carries the original `agenttoken` from `Message/Send`. If a returned message's `status` is non-terminal (`agent_queue`, `agent_start`, or `agent_output`), the agent is still processing it server-side. Hand the `agenttoken` to the [Agent WebSocket](/docs/agent-websocket) (`agent_info` frame) and you'll receive the persisted `agent_subscribed.timeline` snapshot, subsequent `agent_timeline_delta` block updates, remaining provisional `agent_output` snapshots, and the eventual `agent_end` event — no need to re-send the message.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `messages` | `array` | Array of message objects, newest first. Each row has the **same shape as `Message/Detail`** — including the `uuid` sender, the `agenttoken` (so you can resubscribe over WebSocket if `status` is non-terminal), the decorated `user` object, and the per-turn token columns below. The array can also include `model_change` marker rows (see the note under the table). |
+| `messages` | `array` | Array of message objects, newest first. Each row has the **same shape as `Message/Detail`** — including persisted `timeline`, the `uuid` sender, the `agenttoken` (so you can resubscribe over WebSocket if `status` is non-terminal), the decorated `user` object, and the per-turn token columns below. The array can also include `model_change` marker rows (see the note under the table). |
 | `count` | `number` | Number of messages in this page. |
 | `hasmore` | `boolean` | `true` if there are older messages available. Pass the last message's `guid` as `before` to fetch the next page. |
 
@@ -328,11 +400,11 @@ Each assistant row also carries the per-turn token-accounting columns, identical
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `inputtokens` | `number\|null` | Billed input (prompt) tokens for the turn. `null` on user-only, cron, legacy, and `model_change` marker rows. |
+| `inputtokens` | `number\|null` | Uncached input (prompt) tokens billed at the model's input rate. `null` on user-only, cron, legacy, and `model_change` marker rows. |
 | `outputtokens` | `number\|null` | Billed output (completion) tokens the model generated. `null` on the same non-assistant / marker / legacy rows. |
 | `cachereadtokens` | `number\|null` | Tokens served from the model's prompt cache. `0` when none; `null` on non-assistant rows. |
 | `cachewritetokens` | `number\|null` | Tokens written to the prompt cache. `0` when none; `null` on non-assistant rows. |
-| `totaltokens` | `number\|null` | Total tokens attributed to the turn. `null` on non-assistant rows. |
+| `totaltokens` | `number\|null` | Exact component sum: `inputtokens + outputtokens + cachereadtokens + cachewritetokens`. `null` on non-assistant rows. |
 | `model` | `string\|null` | Canonical slug of the chat model that ran the turn. `null` on non-assistant / marker / legacy rows. |
 | `tokencost` | `number\|null` | Credits deducted for the turn. `null` on non-assistant rows. |
 | `processedms` | `number\|null` | Wall-clock model processing time in milliseconds. `null` on non-assistant rows. |
@@ -609,27 +681,19 @@ User B's separate conversation with the same agent:
 }
 ```
 
-## Thinking & Answer Separation
+## Multiple blocks in one turn
 
-Agent responses may include thinking blocks where the underlying model reasons through the problem before answering. The system automatically parses `<think>...</think>` tags and separates the output into structured arrays:
+A single turn is not limited to one reasoning disclosure followed by one answer. The authoritative timeline can move through multiple calls:
 
-```json
-{
-  "thinking": ["Let me analyze the user's question...", "The key factors are..."],
-  "answer": ["Based on my analysis, here are the main points..."],
-  "isThinking": false,
-  "raw": "<think>Let me analyze the user's question...</think>Based on my analysis, here are the main points..."
-}
+```text
+call 0 / content 0: reasoning  → Thinking
+call 0 / content 1: answer     → Initial answer text
+call 0 / content 2: tool       → Safe tool label/status
+call 1 / content 0: reasoning  → Thinking again
+call 1 / content 1: answer     → Final answer text
 ```
 
-- `thinking` — array of reasoning/chain-of-thought blocks. May be empty if the model doesn't use thinking.
-- `answer` — array of response chunks. This is the content to show the user.
-- `isThinking` — `true` while the model is still in a thinking phase (the `<think>` tag is open but not yet closed), `false` during the answer phase.
-- `raw` — the full accumulated raw output text including think tags.
-
-Each `agent_output` WebSocket event contains the **full accumulated** arrays up to that point — not just the new chunk. Simply replace your displayed content with the latest arrays. Use `isThinking` to show a "thinking" indicator in your UI while the model reasons.
-
-> **Tip:** Display thinking content in a collapsible section so users can optionally inspect the model's reasoning process.
+Render each reasoning block as its own accessible `Thinking` disclosure at its timeline position. Never combine reasoning blocks across calls, and never move them above or below answer/tool blocks to force an answer-first layout. Every reasoning block contains only the provider-supplied OpenAI GPT-5 summary; raw chain-of-thought is never returned. `agent_output` is still useful for immediate accumulated answer typing, but it does not define the durable block order.
 
 ## Tracking a Message
 
@@ -655,11 +719,42 @@ Connect to WebSocket and subscribe with the `agenttoken` for real-time streaming
   "type": "agent_subscribed",
   "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
   "status": "agent_queue",
+  "debugoutput": "",
+  "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "timeline": [],
   "result": true
 }
 ```
 
-**3. Streaming output event** (emitted multiple times — replace your displayed content with `message.answer` on each event):
+**3. Timeline block delta** (emitted once per changed block):
+
+```json
+{
+  "type": "agent_timeline_delta",
+  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
+  "message": {
+    "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+    "block": {
+      "blockid": "c0:i0",
+      "callindex": 0,
+      "contentindex": 0,
+      "type": "reasoning",
+      "text": "I’ll compare verified releases and adoption data.",
+      "toollabel": null,
+      "toolstatus": null,
+      "phase": "stream",
+      "version": 2,
+      "startedat": 1743350401,
+      "updatedat": 1743350403
+    }
+  },
+  "result": true
+}
+```
+
+Merge `message.block` by `blockid` and accept it only when its `version` is strictly newer than the stored version of that block.
+
+**4. Provisional streaming output event** (emitted multiple times — replace your typing surface with `message.raw` on each event):
 
 ```json
 {
@@ -674,15 +769,13 @@ Connect to WebSocket and subscribe with the `agenttoken` for real-time streaming
     "tokenCount": 156,
     "wordCount": 42,
     "raw": "Here are the key AI trends...",
-    "thinking": [],
-    "answer": ["Here are the key AI trends..."],
-    "isThinking": false
+    "answer": ["Here are the key AI trends..."]
   },
   "result": true
 }
 ```
 
-**4. Final event** (agent_end — terminal):
+**5. Final answer event** (`agent_end`):
 
 ```json
 {
@@ -697,9 +790,7 @@ Connect to WebSocket and subscribe with the `agenttoken` for real-time streaming
     "tokenCount": 412,
     "wordCount": 115,
     "raw": "Here are the key AI trends for 2026...",
-    "thinking": [],
-    "answer": ["Here are the key AI trends for 2026..."],
-    "isThinking": false
+    "answer": ["Here are the key AI trends for 2026..."]
   },
   "result": true
 }
@@ -711,12 +802,10 @@ Connect to WebSocket and subscribe with the `agenttoken` for real-time streaming
 | `message.speed` | `string` | Generation speed (e.g. `"12.4"`). |
 | `message.speedType` | `string` | Unit for speed — `"words/s"` (words per second). |
 | `message.elapsedTime` | `string` | Elapsed time since generation started (e.g. `"3.2s"`). |
-| `message.tokenCount` | `number` | Number of tokens generated so far. |
+| `message.tokenCount` | `number` | Number of answer chunks received so far. Final model tokens arrive separately in `agent_usage_report`. |
 | `message.wordCount` | `number` | Number of words generated so far. |
 | `message.raw` | `string` | Full accumulated raw output text. |
-| `message.thinking` | `string[]` | Array of thinking/reasoning blocks. |
 | `message.answer` | `string[]` | Array of answer blocks — the content to display. |
-| `message.isThinking` | `boolean` | `true` while the model is in thinking phase. |
 
 ### 2. Polling via Detail
 
@@ -750,15 +839,13 @@ Pass a `callbackurl` when sending the message. The system will POST the final re
     "tokenCount": 105,
     "wordCount": 118,
     "raw": "Here are the key AI trends for 2026...",
-    "thinking": [],
-    "answer": ["Here are the key AI trends for 2026..."],
-    "isThinking": false
+    "answer": ["Here are the key AI trends for 2026..."]
   },
   "endedat": 1743350408
 }
 ```
 
-> Payload delivered to your `callbackurl`. `metadata` is decoded into a JSON object.
+> Payload delivered to your `callbackurl`. `metadata` is decoded into a JSON object. The webhook remains answer-focused and does not embed timeline blocks; call `Message/Detail` with `messageguid` for the authoritative persisted `timeline[]`.
 
 ## Code Examples
 

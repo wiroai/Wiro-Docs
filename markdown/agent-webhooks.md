@@ -25,7 +25,7 @@ The callback URL is stored per-message. You can use different URLs for different
 
 ## Callback Payload
 
-When the agent finishes, Wiro sends a **POST** request to your `callbackurl` with `Content-Type: application/json`. The payload contains the complete message result including structured metadata.
+When the agent finishes, Wiro sends a **POST** request to your `callbackurl` with `Content-Type: application/json`. The payload is deliberately answer-focused: it contains the final answer/error and structured answer metadata, but not the ordered turn timeline.
 
 ### Successful Completion (`agent_end`)
 
@@ -45,9 +45,7 @@ When the agent finishes, Wiro sends a **POST** request to your `callbackurl` wit
     "tokenCount": 156,
     "wordCount": 118,
     "raw": "Here are today's trending topics in tech...",
-    "thinking": [],
-    "answer": ["Here are today's trending topics in tech..."],
-    "isThinking": false
+    "answer": ["Here are today's trending topics in tech..."]
   },
   "endedat": 1712050004
 }
@@ -94,28 +92,28 @@ When the agent finishes, Wiro sends a **POST** request to your `callbackurl` wit
 | `content` | string | The original user message you sent. |
 | `response` | string | The agent's full response text on success. For errors, contains the error message. For cancellation, contains the abort reason. |
 | `debugoutput` | string | Same as `response` — the full accumulated output text. Included for consistency with the polling API. |
-| `metadata` | object | Structured response data. Contains thinking/answer separation, performance metrics, and raw text. Empty object (`{}`) for error and cancel statuses. |
+| `metadata` | object | Structured answer data, performance metrics, and raw text. Timeline blocks are not embedded in webhooks. Empty object (`{}`) for error and cancel statuses. |
 | `endedat` | number | Unix timestamp (UTC seconds) when processing finished. |
 
 ### The `metadata` Object
 
-On successful completion (`agent_end`), the `metadata` object contains the structured response with thinking/answer separation and real-time metrics:
+On successful completion (`agent_end`), the `metadata` object contains the structured answer and final stream metrics:
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `type` | string | Always `"progressGenerate"`. |
 | `task` | string | Always `"Generate"`. |
-| `raw` | string | The complete response text including any `<think>` tags. |
-| `thinking` | array | Array of reasoning/chain-of-thought blocks extracted from `<think>...</think>` tags. Empty if the model doesn't use thinking. |
+| `raw` | string | The complete response text. |
 | `answer` | array | Array of response segments — the content to show the user. |
-| `isThinking` | boolean | Always `false` in webhooks (streaming is complete). |
 | `speed` | string | Final generation speed (e.g. `"14.2"`). |
 | `speedType` | string | Speed unit — `"words/s"`. |
 | `elapsedTime` | string | Total generation time (e.g. `"8.1s"`). |
-| `tokenCount` | number | Total tokens generated. |
+| `tokenCount` | number | Number of answer chunks received by the bridge. Use the message's billing columns for authoritative model tokens. |
 | `wordCount` | number | Total words in the response. |
 
 For `agent_error` and `agent_cancel`, `metadata` is an empty object `{}`. Always check `status` before accessing metadata fields.
+
+After receiving the webhook, call `POST /UserAgent/Message/Detail` with `messageguid` whenever you need the authoritative top-level `timeline[]`. It preserves the ordered reasoning, answer, and safe tool-label/status blocks for the completed turn.
 
 > **Note:** For `agent_error`, the webhook's `response` / `debugoutput` contain the **raw error** from the agent runtime (useful for debugging). The same message may be **sanitized to a user-facing string** when you read it back via `POST /UserAgent/Message/Detail`, so the two can differ. Log the webhook payload if you need the original.
 
@@ -123,7 +121,7 @@ For `agent_error` and `agent_cancel`, `metadata` is an empty object `{}`. Always
 
 | Status | Description | `response` contains | `metadata` contains |
 |--------|-------------|---------------------|---------------------|
-| `agent_end` | Agent completed successfully | Full response text | Structured data with thinking, answer, metrics |
+| `agent_end` | Agent completed successfully | Full response text | Structured answer and metrics |
 | `agent_error` | An error occurred during processing | Error message string | Empty object `{}` |
 | `agent_cancel` | Message was cancelled before completion | Cancellation reason | Empty object `{}` |
 

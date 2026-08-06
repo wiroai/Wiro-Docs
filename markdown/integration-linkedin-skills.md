@@ -181,7 +181,7 @@ Response:
 ```
 
 - `accounts[0].id` carries the connected LinkedIn member's display name (a human), **not** the Company Page name — the page is identified by `organizationid` you set in Step 6.
-- Access tokens last ~60 days; refresh tokens ~1 year (LinkedIn returns both durations in the token exchange response; the refresh token is used internally by Wiro's daily maintenance cron).
+- Access tokens last ~60 days; LinkedIn typically issues a longer-lived refresh token. Wiro maintains the connection automatically while the agent is running.
 
 ### Step 10: Start the agent
 
@@ -215,21 +215,9 @@ Body: `{ useragentguid, credentialkey: "linkedin" }`. Response: `connected`, `ac
 
 Body: `{ useragentguid, credentialkey: "linkedin" }`. Clears LinkedIn credentials (no remote revoke).
 
-### POST /UserAgentOAuth/TokenRefresh
+### Token lifecycle
 
-> Running agents refresh the LinkedIn token automatically via the daily maintenance cron. Use this only for debugging or manual overrides.
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "provider": "linkedin"
-  }'
-```
-
-Uses the stored refresh token. Returns new access + refresh tokens. See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
+Wiro maintains the LinkedIn connection automatically while the agent is running. If LinkedIn revokes the authorization or `OAuthStatus` reports `connected: false`, reconnect through the OAuth flow.
 
 ## Using the Skill
 

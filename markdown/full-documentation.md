@@ -36,10 +36,16 @@ Complete API documentation for the Wiro AI platform — run AI models through a 
 30. [Agent Transactions](#agent-transactions)
 31. [Agent Logs](#agent-logs)
 32. [Agent Use Cases](#agent-use-cases)
-33. [Organizations & Teams](#organizations--teams)
-34. [Managing Teams](#managing-teams)
-35. [Team Billing & Spending](#team-billing--spending)
-36. [Team API Access](#team-api-access)
+33. [Meta Ads Integration](#meta-ads-integration)
+34. [Facebook Page Integration](#facebook-page-integration)
+35. [Instagram Integration](#instagram-integration)
+36. [Shopify Integration](#shopify-integration)
+37. [WooCommerce Integration](#woocommerce-integration)
+38. [Reddit Integration](#reddit-integration)
+39. [Organizations & Teams](#organizations--teams)
+40. [Managing Teams](#managing-teams)
+41. [Team Billing & Spending](#team-billing--spending)
+42. [Team API Access](#team-api-access)
 
 ---
 
@@ -2161,25 +2167,26 @@ Per-model rates live in the `tokenRates` object, present on `Agent/Detail`, `Use
 
 ```json
 "tokenRates": {
-  "default_model": "openai/gpt-5.4",
-  "fallback_rate": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75 },
+  "default_model": "openai/gpt-5.6-sol",
+  "fallback_rate": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25 },
   "models": {
-    "openai/gpt-5.4": { "input_per_1m": 375, "output_per_1m": 2250, "cached_input_per_1m": 37.5, "selectable": true, "label": "GPT-5.4", "tier": "balanced" },
-    "openai/gpt-5.4-mini": { "input_per_1m": 112.5, "output_per_1m": 675, "cached_input_per_1m": 11.25, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
-    "openai/gpt-5.5": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75, "selectable": true, "label": "GPT-5.5", "tier": "premium" }
+    "openai/gpt-5.6-sol": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25, "selectable": true, "label": "GPT-5.6 Sol", "tier": "premium" },
+    "openai/gpt-5.6-terra": { "input_per_1m": 250, "output_per_1m": 1500, "cached_input_per_1m": 25, "cache_write_per_1m": 312.5, "selectable": true, "label": "GPT-5.6 Terra", "tier": "balanced" },
+    "openai/gpt-5.6-luna": { "input_per_1m": 25, "output_per_1m": 150, "cached_input_per_1m": 2.5, "cache_write_per_1m": 31.25, "selectable": true, "label": "GPT-5.6 Luna", "tier": "cheap" }
   }
 }
 ```
 
-Rates are quoted in **credits per 1,000,000 tokens**, and **1 credit = $0.01** (100 credits = $1). The per-turn cost is the sum of three independently rounded-up components:
+Rates are quoted in **credits per 1,000,000 tokens**, and **1 credit = $0.01** (100 credits = $1). Wiro prices every LLM call against the model that actually served that call, sums each token category across the turn, and rounds the four aggregate categories up independently:
 
 ```
-tokencost = ceil(input_tokens  × input_per_1m        / 1_000_000)
-          + ceil(output_tokens × output_per_1m       / 1_000_000)
-          + ceil(cached_tokens × cached_input_per_1m / 1_000_000)
+tokencost = ceil(Σ call_input_cost)
+          + ceil(Σ call_output_cost)
+          + ceil(Σ call_cache_read_cost)
+          + ceil(Σ call_cache_write_cost)
 ```
 
-`cached_tokens` is reported separately by the runtime, so `input_tokens` already excludes cached reads; the cached term is `0` when the model omits `cached_input_per_1m`. You don't send anything — the agent runtime reports token usage after each turn, Wiro deducts the credits, and records a ledger row with `action: "tokens"` (see [`POST /UserAgent/TransactionList`](/docs/agent-transactions#post-useragenttransactionlist)). Per-turn token counts and cost also ride on each assistant message (`inputtokens` / `outputtokens` / `tokencost` / `model` — see [Agent Messaging](/docs/agent-messaging)).
+Cache-read and cache-write categories are charged only when the selected model rate defines them. `inputtokens` contains only uncached input; `totaltokens` is always the exact sum of input, output, cache-read, and cache-write tokens. For models with `long_context_threshold_tokens`, Wiro selects the long-context rate **per LLM call** using `input + cacheRead + cacheWrite`; it never infers a surcharge from a turn-level aggregate that lost call boundaries. You don't send anything — the agent runtime reports exact call-level usage after each turn, Wiro deducts the credits once, and records a ledger row with `action: "tokens"` (see [`POST /UserAgent/TransactionList`](/docs/agent-transactions#post-useragenttransactionlist)). Per-turn token counts and cost also ride on each assistant message (`inputtokens` / `outputtokens` / `cachereadtokens` / `cachewritetokens` / `totaltokens` / `tokencost` / `model` — see [Agent Messaging](/docs/agent-messaging)).
 
 When the credit pool is exhausted, [`POST /UserAgent/Message/Send`](/docs/agent-messaging#post-useragentmessagesend) and [`POST /UserAgent/Start`](#post-useragentstart) refuse with an `Agent has no remaining credits…` error plus an `agentbalance` snapshot; renew the subscription or buy an extra credit pack to continue.
 
@@ -2305,12 +2312,12 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
         "pro":     { "priceUsd": 90, "credits": 2250 }
       },
       "tokenRates": {
-        "default_model": "openai/gpt-5.4",
-        "fallback_rate": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75 },
+        "default_model": "openai/gpt-5.6-sol",
+        "fallback_rate": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25 },
         "models": {
-          "openai/gpt-5.4": { "input_per_1m": 375, "output_per_1m": 2250, "cached_input_per_1m": 37.5, "selectable": true, "label": "GPT-5.4", "tier": "balanced" },
-          "openai/gpt-5.4-mini": { "input_per_1m": 112.5, "output_per_1m": 675, "cached_input_per_1m": 11.25, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
-          "openai/gpt-5.5": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75, "selectable": true, "label": "GPT-5.5", "tier": "premium" }
+          "openai/gpt-5.6-sol": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25, "selectable": true, "label": "GPT-5.6 Sol", "tier": "premium" },
+          "openai/gpt-5.6-terra": { "input_per_1m": 250, "output_per_1m": 1500, "cached_input_per_1m": 25, "cache_write_per_1m": 312.5, "selectable": true, "label": "GPT-5.6 Terra", "tier": "balanced" },
+          "openai/gpt-5.6-luna": { "input_per_1m": 25, "output_per_1m": 150, "cached_input_per_1m": 2.5, "cache_write_per_1m": 31.25, "selectable": true, "label": "GPT-5.6 Luna", "tier": "cheap" }
         }
       },
       "skills": ["int-instagram-post", "int-wiro-aimodels"],
@@ -2354,7 +2361,7 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
         "instagram": {
           "optional": false,
           "extra": false,
-          "_editable": { "authmethod": true, "igusername": true },
+          "_editable": { "authmethod": true, "systemusertoken": true, "igusername": true },
           "_schema": {
             "title": "Instagram",
             "icon": "https://wiro.ai/images/icons/skills/instagram.svg",
@@ -2362,8 +2369,10 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
             "brand_text_color": "#ffffff",
             "brand_logo_filter": "none",
             "docs_url": "integration-instagram-skills",
-            "credential_mode": "oauth",
-            "connection_modes": ["wiro", "own"],
+            "credential_mode": "hybrid",
+            "connection_modes": ["api_key", "own", "wiro"],
+            "default_connection_mode": "api_key",
+            "mode_badges": { "api_key": "Recommended", "own": "Advanced" },
             "wiro_connect_pending": true,
             "oauth_provider": {
               "auth_method_value": "wiro",
@@ -2371,10 +2380,23 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
               "disconnect_endpoint": "/UserAgentOAuth/OAuthDisconnect",
               "status_endpoint": "/UserAgentOAuth/OAuthStatus",
               "username_field": "igusername",
-              "account_picker": null
+              "direct_probe": {
+                "mode": "api_key",
+                "token_field": "systemusertoken",
+                "public_account_fields": ["id", "name"]
+              },
+              "account_picker": {
+                "enabled": true,
+                "multi_select": false,
+                "set_endpoint": "/UserAgentOAuth/SetPickerAccounts",
+                "item_value_field": "accountId",
+                "item_label_field": "igusername"
+              }
             },
             "fields": [
-              { "key": "authmethod", "type": "select", "label": "Auth Method", "options": ["wiro", "own"] },
+              { "key": "authmethod", "type": "select", "label": "Auth Method", "options": ["api_key", "own", "wiro"], "default": "api_key" },
+              { "key": "systemusertoken", "type": "password", "label": "System User Token", "runtime_excluded": true, "only_in_modes": ["api_key"] },
+              { "key": "accountId", "type": "text", "label": "Instagram Account ID", "auto_filled_by_oauth": true, "readonly_when_connected": true },
               { "key": "igusername", "type": "text", "label": "Connected Account", "auto_filled_by_oauth": true, "readonly_when_connected": true }
             ]
           },
@@ -2398,15 +2420,18 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
 
 | Flag | Type | Meaning |
 |------|------|---------|
-| `_connected` | boolean | **OAuth readiness indicator.** `true` when Wiro has a valid OAuth access token (reflected as `connectedat` / `accesstoken` on the credential) **and** every picker field declared by the template (`customerid`, `merchantid`, `channelid`, ad-account, page id, etc.) is populated. Non-OAuth credentials — API-key providers (Gmail, Apollo, Lemlist, Brevo, SendGrid, WordPress, Telegram) and service-account providers (Firebase, Google Drive, Google Play, App Store Connect) — do **not** raise `_connected` to `true` because they never write a `connectedat`; check `setuprequired` on `UserAgent/Detail` (or inspect the field values directly) to know when those are configured. |
+| `_connected` | boolean | **Connection readiness indicator.** `true` when Wiro has a validated OAuth or hybrid direct connection and every required picker field (`customerid`, `merchantid`, `channelid`, ad-account, page ID, Instagram account ID, etc.) is populated. Plain API-key and service-account providers that do not write `connectedat` can remain `false`; use `setuprequired` to determine overall setup readiness. |
 | `optional` | boolean | `true` when the template marks this credential as not required for the agent to run. Agents can start even if `optional: true` credentials are empty. |
 | `extra` | boolean | `true` when the template groups the credential under "extra integrations" in the UI (disabled by default until the user opts into the skill). |
 | `_editable` | object | Map of `fieldname → true` for fields the caller may write. Computed from the registry schema + caller role. |
-| `_schema` | object | Inlined registry descriptor — `{ title, icon, brand_color, brand_text_color, brand_logo_filter, docs_url, credential_mode, connection_modes[], wiro_connect_pending, oauth_provider, fields[] }`. Lets a UI render the form without a separate `Credentials/Detail` round-trip. |
+| `_schema` | object | Inlined registry descriptor — `{ title, icon, brand_color, brand_text_color, brand_logo_filter, docs_url, credential_mode, connection_modes[], default_connection_mode, mode_badges, wiro_connect_pending, oauth_provider, fields[] }`. Lets a UI render the form without a separate `Credentials/Detail` round-trip. |
 
 **Field redaction in responses:**
 
 - `fieldstatus: "oauth_session"` fields (`accesstoken`, `refreshtoken`, `tokenexpiresat`, `pageAccessToken`, etc.) — always stripped from every response, regardless of caller role.
+- Schema fields marked `runtime_excluded: true` — including Meta
+  `systemusertoken` — are write-only setup secrets. They never enter the agent
+  runtime and are not reflected to customer-facing credential responses.
 - `fieldstatus: "platform"` fields (currently only `credentials.sys-openai.apikey` and its `model` / `fallbacks` / `cronmodel` siblings) — stripped for API callers (role = `user`). The `sys-openai` credential entry itself is also dropped from the response. Only the daemon container ever sees the values. `credentials.wiro.apikey` and `credentials.calendarific.apikey` are operator-supplied user-input fields and appear in the response with `fieldstatus: "user"` like any other API-key credential.
 - `fieldstatus: "oauth_app"` fields (`clientsecret`, `appsecret`) — **visible to anyone who can read the credentials**. History writes redact `clientsecret` to `[REDACTED]`, but the live value is returned. Treat them as read-admin-only in your own UI layer.
 - Sentinel rows `_isoptional` / `_isextra` — never appear as fields; they're folded into the `optional` and `extra` flags above.
@@ -2524,8 +2549,8 @@ Both paths hit the same endpoint, but a few server-side behaviours diverge:
           "_connected": false,
           "optional": false,
           "extra": false,
-          "_editable": { "authmethod": true, "igusername": true },
-          "_schema": { "title": "Instagram", "credential_mode": "oauth", "fields": [ "..." ] },
+          "_editable": { "authmethod": true, "systemusertoken": true, "igusername": true },
+          "_schema": { "title": "Instagram", "credential_mode": "hybrid", "connection_modes": ["api_key", "own", "wiro"], "default_connection_mode": "api_key", "fields": [ "..." ] },
           "authmethod": "",
           "igusername": "",
           "connectedat": ""
@@ -2542,17 +2567,17 @@ Both paths hit the same endpoint, but a few server-side behaviours diverge:
       "creditperiod": "2026-05",
       "creditsyncat": null,
       "tokenRates": {
-        "default_model": "openai/gpt-5.4",
-        "fallback_rate": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75 },
+        "default_model": "openai/gpt-5.6-sol",
+        "fallback_rate": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25 },
         "models": {
-          "openai/gpt-5.4": { "input_per_1m": 375, "output_per_1m": 2250, "cached_input_per_1m": 37.5, "selectable": true, "label": "GPT-5.4", "tier": "balanced" },
-          "openai/gpt-5.4-mini": { "input_per_1m": 112.5, "output_per_1m": 675, "cached_input_per_1m": 11.25, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
-          "openai/gpt-5.5": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75, "selectable": true, "label": "GPT-5.5", "tier": "premium" }
+          "openai/gpt-5.6-sol": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25, "selectable": true, "label": "GPT-5.6 Sol", "tier": "premium" },
+          "openai/gpt-5.6-terra": { "input_per_1m": 250, "output_per_1m": 1500, "cached_input_per_1m": 25, "cache_write_per_1m": 312.5, "selectable": true, "label": "GPT-5.6 Terra", "tier": "balanced" },
+          "openai/gpt-5.6-luna": { "input_per_1m": 25, "output_per_1m": 150, "cached_input_per_1m": 2.5, "cache_write_per_1m": 31.25, "selectable": true, "label": "GPT-5.6 Luna", "tier": "cheap" }
         }
       },
       "agentModel": {
-        "chatModel": "openai/gpt-5.4",
-        "cronModel": "openai/gpt-5.4",
+        "chatModel": "openai/gpt-5.6-sol",
+        "cronModel": "openai/gpt-5.4-mini",
         "voicePrepModel": "openai/gpt-5.4-mini",
         "voicePostcallModel": "openai/gpt-5.4"
       },
@@ -2694,17 +2719,17 @@ Lists all agent instances deployed under your account.
       },
       "enabledSkills": ["int-instagram-post", "int-twitterx-post", "int-wiro-aimodels"],
       "tokenRates": {
-        "default_model": "openai/gpt-5.4",
-        "fallback_rate": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75 },
+        "default_model": "openai/gpt-5.6-sol",
+        "fallback_rate": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25 },
         "models": {
-          "openai/gpt-5.4": { "input_per_1m": 375, "output_per_1m": 2250, "cached_input_per_1m": 37.5, "selectable": true, "label": "GPT-5.4", "tier": "balanced" },
-          "openai/gpt-5.4-mini": { "input_per_1m": 112.5, "output_per_1m": 675, "cached_input_per_1m": 11.25, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
-          "openai/gpt-5.5": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75, "selectable": true, "label": "GPT-5.5", "tier": "premium" }
+          "openai/gpt-5.6-sol": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25, "selectable": true, "label": "GPT-5.6 Sol", "tier": "premium" },
+          "openai/gpt-5.6-terra": { "input_per_1m": 250, "output_per_1m": 1500, "cached_input_per_1m": 25, "cache_write_per_1m": 312.5, "selectable": true, "label": "GPT-5.6 Terra", "tier": "balanced" },
+          "openai/gpt-5.6-luna": { "input_per_1m": 25, "output_per_1m": 150, "cached_input_per_1m": 2.5, "cache_write_per_1m": 31.25, "selectable": true, "label": "GPT-5.6 Luna", "tier": "cheap" }
         }
       },
       "agentModel": {
-        "chatModel": "openai/gpt-5.4",
-        "cronModel": "openai/gpt-5.4",
+        "chatModel": "openai/gpt-5.6-sol",
+        "cronModel": "openai/gpt-5.4-mini",
         "voicePrepModel": "openai/gpt-5.4-mini",
         "voicePostcallModel": "openai/gpt-5.4"
       },
@@ -2763,6 +2788,7 @@ Retrieves full details for a single deployed agent instance, including subscript
           "extra": false,
           "_editable": {
             "authmethod": true,
+            "systemusertoken": true,
             "igusername": true
           },
           "_schema": {
@@ -2772,10 +2798,32 @@ Retrieves full details for a single deployed agent instance, including subscript
             "brand_text_color": "#FFFFFF",
             "brand_logo_filter": null,
             "docs_url": "/docs/integration-instagram-skills",
-            "credential_mode": "oauth_or_api_key",
-            "connection_modes": ["wiro", "own"],
+            "credential_mode": "hybrid",
+            "connection_modes": ["api_key", "own", "wiro"],
+            "default_connection_mode": "api_key",
+            "mode_badges": {
+              "api_key": "Recommended",
+              "own": "Advanced"
+            },
             "wiro_connect_pending": true,
-            "oauth_provider": "instagram",
+            "oauth_provider": {
+              "auth_method_value": "wiro",
+              "connect_endpoint": "/UserAgentOAuth/OAuthConnect",
+              "disconnect_endpoint": "/UserAgentOAuth/OAuthDisconnect",
+              "status_endpoint": "/UserAgentOAuth/OAuthStatus",
+              "direct_probe": {
+                "mode": "api_key",
+                "token_field": "systemusertoken",
+                "public_account_fields": ["id", "name"]
+              },
+              "account_picker": {
+                "enabled": true,
+                "multi_select": false,
+                "set_endpoint": "/UserAgentOAuth/SetPickerAccounts",
+                "item_value_field": "accountId",
+                "item_label_field": "igusername"
+              }
+            },
             "fields": [
               {
                 "key": "authmethod",
@@ -2783,26 +2831,44 @@ Retrieves full details for a single deployed agent instance, including subscript
                 "type": "select",
                 "required": true,
                 "options": [
-                  { "label": "Wiro-managed",  "value": "wiro" },
-                  { "label": "Own OAuth app", "value": "own" }
+                  { "label": "System User Token", "value": "api_key" },
+                  { "label": "Own OAuth app",     "value": "own" },
+                  { "label": "Wiro-managed",      "value": "wiro" }
                 ],
-                "default": "wiro"
+                "default": "api_key"
+              },
+              {
+                "key": "systemusertoken",
+                "label": "System User Token",
+                "type": "password",
+                "required": true,
+                "runtime_excluded": true,
+                "only_in_modes": ["api_key"]
+              },
+              {
+                "key": "accountId",
+                "label": "Instagram Account ID",
+                "type": "text",
+                "required": true,
+                "auto_filled_by_oauth": true,
+                "readonly_when_connected": true
               },
               {
                 "key": "igusername",
-                "label": "Instagram Username",
+                "label": "Connected Account",
                 "type": "text",
-                "required": true,
-                "placeholder": "@yourbusiness",
-                "help": "Your Instagram Business account username (without the @)."
+                "required": false,
+                "auto_filled_by_oauth": true,
+                "readonly_when_connected": true
               }
             ]
           },
           "_required_missing": false,
-          "authmethod": "wiro",
+          "authmethod": "api_key",
+          "accountId": "17841400000000000",
           "igusername": "mybrand",
           "connectedat": "2026-05-01T12:00:00.000Z",
-          "tokenexpiresat": null
+          "tokenexpiresat": ""
         },
         "telegram": {
           "_connected": false,
@@ -3022,17 +3088,17 @@ Retrieves full details for a single deployed agent instance, including subscript
       "creditperiod": "2026-05",
       "creditsyncat": 1714694410,
       "tokenRates": {
-        "default_model": "openai/gpt-5.4",
-        "fallback_rate": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75 },
+        "default_model": "openai/gpt-5.6-sol",
+        "fallback_rate": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25 },
         "models": {
-          "openai/gpt-5.4": { "input_per_1m": 375, "output_per_1m": 2250, "cached_input_per_1m": 37.5, "selectable": true, "label": "GPT-5.4", "tier": "balanced" },
-          "openai/gpt-5.4-mini": { "input_per_1m": 112.5, "output_per_1m": 675, "cached_input_per_1m": 11.25, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
-          "openai/gpt-5.5": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75, "selectable": true, "label": "GPT-5.5", "tier": "premium" }
+          "openai/gpt-5.6-sol": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25, "selectable": true, "label": "GPT-5.6 Sol", "tier": "premium" },
+          "openai/gpt-5.6-terra": { "input_per_1m": 250, "output_per_1m": 1500, "cached_input_per_1m": 25, "cache_write_per_1m": 312.5, "selectable": true, "label": "GPT-5.6 Terra", "tier": "balanced" },
+          "openai/gpt-5.6-luna": { "input_per_1m": 25, "output_per_1m": 150, "cached_input_per_1m": 2.5, "cache_write_per_1m": 31.25, "selectable": true, "label": "GPT-5.6 Luna", "tier": "cheap" }
         }
       },
       "agentModel": {
-        "chatModel": "openai/gpt-5.4",
-        "cronModel": "openai/gpt-5.4",
+        "chatModel": "openai/gpt-5.6-sol",
+        "cronModel": "openai/gpt-5.4-mini",
         "voicePrepModel": "openai/gpt-5.4-mini",
         "voicePostcallModel": "openai/gpt-5.4"
       },
@@ -3111,7 +3177,7 @@ Retrieves full details for a single deployed agent instance, including subscript
 | `remainingcredits` | `number` | Computed: `max(0, monthlycredits + extracredits - usedcredits)`. |
 | `creditperiod` | `string` | `'YYYY-MM'` tag of the current billing window. Rolls over on subscription renewal. |
 | `creditsyncat` | `number\|null` | Unix seconds of the last agent → API usage sync (`null` before the first report). |
-| `tokenRates` | `object\|null` | Per-model token-billing rates (credits per 1,000,000 tokens). Shape: `{ default_model, fallback_rate, models: { "<slug>": { input_per_1m, output_per_1m, cached_input_per_1m?, selectable?, label?, tier? } } }`. Each turn's cost is metered from these rates (1 credit = $0.01) — see [Token Billing](#pricing-model--tiers-skills--token-billing). `null` only on registry-read failure. |
+| `tokenRates` | `object\|null` | Per-model token-billing rates (credits per 1,000,000 tokens). Shape: `{ default_model, fallback_rate, models: { "<slug>": { input_per_1m, output_per_1m, cached_input_per_1m?, cache_write_per_1m?, selectable?, label?, tier? } } }`. Each turn's cost is metered from these rates (1 credit = $0.01) — see [Token Billing](#pricing-model--tiers-skills--token-billing). `null` only on registry-read failure. |
 | `agentModel` | `object` | The resolved model slugs this instance runs: `{ chatModel, cronModel, voicePrepModel, voicePostcallModel }` (camelCase). Each falls back to the platform default when the operator hasn't overridden it. Change them via [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) using the lowercase keys `chatmodel` / `cronmodel` / `voiceprepmodel` / `voicepostcallmodel`. |
 | `enabledCommands` | `array<string>\|null` | The in-chat slash-command allowlist (camelCase read). `null` = the operator never customized it, so **all** slash commands are available. An array (including `[]`) is an explicit allowlist of command keys (no leading slash); `[]` hides the slash-command menu. Write it via [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) with the lowercase `enabledcommands` key. Also present on `MyAgents` / `PinnedAgents` rows. |
 
@@ -3148,14 +3214,14 @@ Every provider entry under `credentials.<key>` carries:
 
 | Sub-field | Type | Description |
 |-----------|------|-------------|
-| `_connected` | `boolean` | OAuth-readiness flag. `true` when Wiro has a valid access token AND every picker field (ad-account ID, page ID, channel ID, …) is populated. **Always `false`** for non-OAuth providers (API-key, service-account) — for those use `_required_missing` or inspect the field values directly. |
+| `_connected` | `boolean` | Connection-readiness flag. `true` when Wiro has a validated OAuth or hybrid direct credential and every required picker field is populated. Plain API-key and service-account providers can remain `false`; for those use `_required_missing` or inspect the field values directly. |
 | `optional` | `boolean` | `true` when the agent template marks this credential as optional (the agent can run without it; the dependent skill just won't fire). `false` for required credentials. |
 | `extra` | `boolean` | `true` when this credential surfaces in the "alternative" / secondary group on the panel (rare; most credentials are primary). |
 | `_editable` | `object` | Per-field edit map: `{ fieldname: true\|false }`. `false` means the field is read-only (managed by OAuth, platform-managed, or computed). The frontend uses this to disable inputs. |
-| `_schema` | `object` | Inline registry descriptor — `title`, `icon`, `brand_color`, `docs_url`, `credential_mode` (`oauth`, `api_key`, `oauth_or_api_key`), `connection_modes`, `oauth_provider`, plus a `fields[]` array describing every input the form should render. Lets the panel build credential cards without a separate `Credentials/Detail` round-trip. |
+| `_schema` | `object` | Inline registry descriptor — `title`, `icon`, `brand_color`, `docs_url`, `credential_mode` (`oauth`, `api_key`, `hybrid`, etc.), `connection_modes`, `default_connection_mode`, `mode_badges`, `oauth_provider`, plus a `fields[]` array describing every input the form should render. Lets the panel build credential cards without a separate `Credentials/Detail` round-trip. |
 | `_required_missing` | `boolean` | `true` when the operator should look at this credential — required + user-editable fields are still empty (or the optional card is partially filled but incomplete). Drives the "needs attention" bullet on each credential card and the aggregate count badge on the Credentials tab. `false` when the card is complete or untouched-and-optional. |
-| `connectedat` | `string\|null` | OAuth providers only: ISO timestamp of the last successful connection. |
-| `tokenexpiresat` | `number\|null` | OAuth providers only: Unix seconds when the access token expires. |
+| `connectedat` | `string\|null` | OAuth and hybrid providers: ISO timestamp of the last successful connection. |
+| `tokenexpiresat` | `string\|null` | ISO timestamp when the current token expires, or an empty value when the provider reports no fixed expiry. |
 | `<fieldname>` | `string\|number\|boolean\|array` | The actual field value as the user (or OAuth callback) saved it. Field types match `_schema.fields[].type`. Sensitive values (`oauth_session` access/refresh tokens, `clientsecret`, `password`-typed fields) are NEVER returned in this surface — they stay server-side. |
 
 ##### Subscription object
@@ -3278,13 +3344,13 @@ Writes per-agent preference toggles that are not credentials and not skill rows.
 | `useragentguid` | string | Yes | Your UserAgent instance guid. |
 | `timezone` | string\|null | No | IANA timezone identifier (e.g. `"Europe/Istanbul"`, `"America/New_York"`, `"Asia/Tokyo"`). Pass `null`, `""`, or the literal `"UTC"` to **clear** the override — the row is set back to `NULL`, which makes the propagation chain a no-op (container stays on `TZ=UTC`, no per-job `schedule.tz` injection, voice prep `current_time` stays in single-line UTC ISO form). Validated server-side via `new Intl.DateTimeFormat("en-GB", { timeZone })` — unknown zones are rejected with `invalid-timezone`. |
 | `teamsessionmode` | string | No | `"collaborative"` or `"private"`. Only meaningful when the agent is team-owned (`teamguid` is set); passing it on a personal agent is rejected with `teamsessionmode-team-only`. See [Agent Messaging](/docs/agent-messaging) for what each mode does to `Message/History` and `Sessions` scoping. |
-| `chatmodel` | string\|null | No | Canonical model slug for **chat replies** (e.g. `"openai/gpt-5.4"`). Must be a **selectable** model — i.e. `tokenRates.models[<slug>].selectable === true`; an unknown / non-selectable slug is rejected with `invalid-model-selection`. Pass `null` or `""` to clear the override and fall back to the platform default. |
+| `chatmodel` | string\|null | No | Canonical model slug for **chat replies** (e.g. `"openai/gpt-5.6-sol"`). Must be a **selectable** model — i.e. `tokenRates.models[<slug>].selectable === true`; an unknown / non-selectable slug is rejected with `invalid-model-selection`. Pass `null` or `""` to clear the override and fall back to the platform default. |
 | `cronmodel` | string\|null | No | Same rules as `chatmodel`, applied to **scheduled (cron) turns**. |
 | `voiceprepmodel` | string\|null | No | Same rules as `chatmodel`, applied to the **voice-call prep** turn (context assembled before a realtime call). |
 | `voicepostcallmodel` | string\|null | No | Same rules as `chatmodel`, applied to the **post-call summary** turn after a realtime voice call ends. |
 | `enabledcommands` | string[] | No | Allowlist of in-chat **slash commands** the agent exposes, as an array of command keys **without** the leading slash (e.g. `["agent_help", "new_session", "agent_status"]`). Validated against the command catalog — an unknown key is rejected with `invalid-command-selection`, a non-array value with `invalid-command-list`. Order is preserved and duplicates are removed. An empty array `[]` is valid and **hides the slash-command menu** entirely. Omit the field to leave the current allowlist untouched. |
 
-> **Slash-command catalog.** Valid `enabledcommands` keys are: `agent_help`, `new_session`, `agent_status`, `agent_limits`, `last_scan`, `last_heartbeat`, `agent_restart`, `clear_all_sessions`, `clear_history`. Read the agent's current allowlist from the `enabledCommands` field (camelCase) on `UserAgent/Detail` / `MyAgents` / `PinnedAgents` — `null` there means the operator never customized it (all commands available); an array (including `[]`) is an explicit allowlist.
+> **Slash-command catalog.** Valid `enabledcommands` keys are: `agent_help`, `new_session`, `agent_status`, `agent_limits`, `last_scan`, `last_heartbeat`, `agent_restart`, `clear_all_sessions`, `clear_history`. Read the agent's current allowlist from the `enabledCommands` field (camelCase) on [`UserAgent/Detail`](#post-useragentdetail) / `MyAgents` / `PinnedAgents` — `null` there means the operator never customized it (all commands available); an array (including `[]`) is an explicit allowlist.
 
 > **Omitted fields are preserved.** The handler distinguishes between "field not in the body" and "field present with `null`/`""`/value", so a POST that carries only `timezone` does **not** touch `teamsessionmode` or any model field, and vice versa. Sending an empty body (none of the recognised fields) is rejected with `nothing-to-update` to avoid charging a no-op container restart.
 
@@ -4045,12 +4111,12 @@ Two body shapes:
     "pro":     { "priceUsd": 40, "credits": 1000 }
   },
   "tokenRates": {
-    "default_model": "openai/gpt-5.4",
-    "fallback_rate": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75 },
+    "default_model": "openai/gpt-5.6-sol",
+    "fallback_rate": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25 },
     "models": {
-      "openai/gpt-5.4": { "input_per_1m": 375, "output_per_1m": 2250, "cached_input_per_1m": 37.5, "selectable": true, "label": "GPT-5.4", "tier": "balanced" },
-      "openai/gpt-5.4-mini": { "input_per_1m": 112.5, "output_per_1m": 675, "cached_input_per_1m": 11.25, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
-      "openai/gpt-5.5": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75, "selectable": true, "label": "GPT-5.5", "tier": "premium" }
+      "openai/gpt-5.6-sol": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25, "selectable": true, "label": "GPT-5.6 Sol", "tier": "premium" },
+      "openai/gpt-5.6-terra": { "input_per_1m": 250, "output_per_1m": 1500, "cached_input_per_1m": 25, "cache_write_per_1m": 312.5, "selectable": true, "label": "GPT-5.6 Terra", "tier": "balanced" },
+      "openai/gpt-5.6-luna": { "input_per_1m": 25, "output_per_1m": 150, "cached_input_per_1m": 2.5, "cache_write_per_1m": 31.25, "selectable": true, "label": "GPT-5.6 Luna", "tier": "cheap" }
     }
   }
 }
@@ -4198,7 +4264,7 @@ Non-admin callers are rate-limited via a 30-second Redis cache keyed on `(userag
       "title": "Turn billed — 5 credits",
       "summary": { "trigger": "chat" },
       "model": "openai/gpt-5.4",
-      "tokens": { "input": 3450, "output": 820, "cacheRead": 2400, "cacheWrite": 0, "total": 4270 },
+      "tokens": { "input": 3450, "output": 820, "cacheRead": 2400, "cacheWrite": 0, "total": 6670 },
       "tokencost": 5,
       "durationMs": 4200,
       "calls": 2,
@@ -4438,17 +4504,17 @@ No request body fields are required — the caller's `tokenUUID` (or active `tea
       },
       "enabledSkills": ["int-instagram-post", "int-twitterx-post", "int-wiro-aimodels"],
       "tokenRates": {
-        "default_model": "openai/gpt-5.4",
-        "fallback_rate": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75 },
+        "default_model": "openai/gpt-5.6-sol",
+        "fallback_rate": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25 },
         "models": {
-          "openai/gpt-5.4": { "input_per_1m": 375, "output_per_1m": 2250, "cached_input_per_1m": 37.5, "selectable": true, "label": "GPT-5.4", "tier": "balanced" },
-          "openai/gpt-5.4-mini": { "input_per_1m": 112.5, "output_per_1m": 675, "cached_input_per_1m": 11.25, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
-          "openai/gpt-5.5": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75, "selectable": true, "label": "GPT-5.5", "tier": "premium" }
+          "openai/gpt-5.6-sol": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25, "selectable": true, "label": "GPT-5.6 Sol", "tier": "premium" },
+          "openai/gpt-5.6-terra": { "input_per_1m": 250, "output_per_1m": 1500, "cached_input_per_1m": 25, "cache_write_per_1m": 312.5, "selectable": true, "label": "GPT-5.6 Terra", "tier": "balanced" },
+          "openai/gpt-5.6-luna": { "input_per_1m": 25, "output_per_1m": 150, "cached_input_per_1m": 2.5, "cache_write_per_1m": 31.25, "selectable": true, "label": "GPT-5.6 Luna", "tier": "cheap" }
         }
       },
       "agentModel": {
-        "chatModel": "openai/gpt-5.4",
-        "cronModel": "openai/gpt-5.4",
+        "chatModel": "openai/gpt-5.6-sol",
+        "cronModel": "openai/gpt-5.4-mini",
         "voicePrepModel": "openai/gpt-5.4-mini",
         "voicePostcallModel": "openai/gpt-5.4"
       },
@@ -5479,12 +5545,14 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
   "directSkills":  ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels"],
   "agentBase": { "priceUsd": 0, "credits": 0 },
   "tokenRates": {
-    "default_model": "openai/gpt-5.4",
-    "fallback_rate": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75 },
+    "default_model": "openai/gpt-5.6-sol",
+    "fallback_rate": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25 },
     "models": {
-      "openai/gpt-5.4": { "input_per_1m": 375, "output_per_1m": 2250, "cached_input_per_1m": 37.5, "selectable": true, "label": "GPT-5.4", "tier": "balanced" },
-      "openai/gpt-5.4-mini": { "input_per_1m": 112.5, "output_per_1m": 675, "cached_input_per_1m": 11.25, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
-      "openai/gpt-5.5": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75, "selectable": true, "label": "GPT-5.5", "tier": "premium" }
+      "openai/gpt-5.6-sol": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25, "selectable": true, "label": "GPT-5.6 Sol", "tier": "premium" },
+      "openai/gpt-5.6-terra": { "input_per_1m": 250, "output_per_1m": 1500, "cached_input_per_1m": 25, "cache_write_per_1m": 312.5, "selectable": true, "label": "GPT-5.6 Terra", "tier": "balanced" },
+      "openai/gpt-5.6-luna": { "input_per_1m": 25, "output_per_1m": 150, "cached_input_per_1m": 2.5, "cache_write_per_1m": 31.25, "selectable": true, "label": "GPT-5.6 Luna", "tier": "cheap" },
+      "openai/gpt-5.5": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "selectable": true, "label": "GPT-5.5", "tier": "premium" },
+      "openai/gpt-5.4": { "input_per_1m": 312.5, "output_per_1m": 1875, "cached_input_per_1m": 31.25, "selectable": true, "label": "GPT-5.4", "tier": "balanced" }
     }
   },
   "tiers": {
@@ -5561,13 +5629,21 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
       "remainingcredits": 1500,
       "creditperiod": "2026-05",
       "tokenRates": {
-        "default_model": "openai/gpt-5.4",
-        "fallback_rate": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75 },
+        "default_model": "openai/gpt-5.6-sol",
+        "fallback_rate": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25 },
         "models": {
-          "openai/gpt-5.4": { "input_per_1m": 375, "output_per_1m": 2250, "cached_input_per_1m": 37.5, "selectable": true, "label": "GPT-5.4", "tier": "balanced" },
-          "openai/gpt-5.4-mini": { "input_per_1m": 112.5, "output_per_1m": 675, "cached_input_per_1m": 11.25, "selectable": true, "label": "GPT-5.4 Mini", "tier": "cheap" },
-          "openai/gpt-5.5": { "input_per_1m": 750, "output_per_1m": 4500, "cached_input_per_1m": 75, "selectable": true, "label": "GPT-5.5", "tier": "premium" }
+          "openai/gpt-5.6-sol": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25, "selectable": true, "label": "GPT-5.6 Sol", "tier": "premium" },
+          "openai/gpt-5.6-terra": { "input_per_1m": 250, "output_per_1m": 1500, "cached_input_per_1m": 25, "cache_write_per_1m": 312.5, "selectable": true, "label": "GPT-5.6 Terra", "tier": "balanced" },
+          "openai/gpt-5.6-luna": { "input_per_1m": 25, "output_per_1m": 150, "cached_input_per_1m": 2.5, "cache_write_per_1m": 31.25, "selectable": true, "label": "GPT-5.6 Luna", "tier": "cheap" },
+          "openai/gpt-5.5": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "selectable": true, "label": "GPT-5.5", "tier": "premium" },
+          "openai/gpt-5.4": { "input_per_1m": 312.5, "output_per_1m": 1875, "cached_input_per_1m": 31.25, "selectable": true, "label": "GPT-5.4", "tier": "balanced" }
         }
+      },
+      "agentModel": {
+        "chatModel": "openai/gpt-5.6-sol",
+        "cronModel": "openai/gpt-5.4-mini",
+        "voicePrepModel": "openai/gpt-5.4-mini",
+        "voicePostcallModel": "openai/gpt-5.4"
       },
       "skills": ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels"],
       "customskills": [],
@@ -5628,7 +5704,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
     "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
     "idempotencyKey": "550e8400-e29b-41d4-a716-446655440001",
     "skills": {
-      "int-wordpress-post": true
+      "int-instagram-post": true
     }
   }'
 ```
@@ -5639,17 +5715,17 @@ The response includes the new pricing snapshot and the prorated wallet debit:
 {
   "result": true,
   "errors": [],
-  "tier": "starter",
-  "prepaidWalletDelta": 2.0,
+  "tier": "pro",
+  "prepaidWalletDelta": 5.0,
   "restartTriggered": true,
   "restartedAt": 1714694520,
   "pricing": {
-    "previousPriceUsd": 3,
-    "newPriceUsd": 7,
-    "deltaUsd": 4,
-    "previousMonthlyCredits": 75,
-    "newMonthlyCredits": 175,
-    "deltaCredits": 100,
+    "previousPriceUsd": 60,
+    "newPriceUsd": 70,
+    "deltaUsd": 10,
+    "previousMonthlyCredits": 1500,
+    "newMonthlyCredits": 1750,
+    "deltaCredits": 250,
     "enabledSkills": ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels", "int-instagram-post"]
   }
 }
@@ -5798,11 +5874,21 @@ Send messages to AI agents and receive streaming responses in real time.
 Agent messaging follows the same async pattern as [model runs](/docs/run-a-model):
 
 1. **Send** a message via REST → get an `agenttoken` immediately
-2. **Subscribe** to [Agent WebSocket](/docs/agent-websocket) with the `agenttoken` → receive streaming response chunks
+2. **Subscribe** to [Agent WebSocket](/docs/agent-websocket) with the `agenttoken` → receive ordered `agent_timeline_delta` block updates plus provisional accumulated answer text
 3. **Or poll** via the Detail endpoint to check status and fetch the completed response
 4. **Or set** a `callbackurl` to receive a webhook notification when the agent finishes
 
 This decoupled design means your application never blocks waiting for the agent to think. Send the message, hand the `agenttoken` to your frontend, and stream the response as it arrives.
+
+### Ordered turn timeline
+
+Every Detail or History message row returns a top-level `timeline[]`. It is the ordered, persisted record of the turn. A turn can contain multiple interleaved blocks, for example:
+
+`Thinking → Answer or Tool → Thinking → Answer`
+
+Each block has an opaque deterministic `blockid`, call/content ordering coordinates, `type` (`reasoning`, `answer`, or `tool`), safe public text or tool state, `phase` (`stream`, `end`, or `error`), its own monotonically increasing `version`, and timestamps. Reasoning text is a provider-supplied OpenAI GPT-5 summary, never raw hidden chain-of-thought. Tool blocks expose only `toollabel` and `toolstatus`, never a tool ID, arguments, results, or other internal execution metadata.
+
+Live WebSocket updates arrive as `agent_timeline_delta` events carrying one public block. Merge by `blockid`, replace that block only when its incoming `version` is strictly newer, then sort by `callindex`, `contentindex`, and `blockid`. `agent_subscribed.timeline` carries the persisted reconnect snapshot. `agent_output` remains provisional cumulative SSE output until the corresponding answer block catches up; after completion or reconnect, `Message/Detail` is authoritative.
 
 ## Message Lifecycle
 
@@ -5834,10 +5920,10 @@ Accepts either `application/json` (text-only) or `multipart/form-data` (text + f
 | `message` | string | Conditional | The user message text. Required unless sending files via multipart. |
 | `sessionkey` | string | No | Session identifier for conversation continuity. Defaults to `"default"`. |
 | `callbackurl` | string | No | Webhook URL — the system will POST the final response to this URL when the agent finishes. |
-| `model` | string | No | Canonical model slug to run **this turn** on (e.g. `"openai/gpt-5.4"`), chosen from the agent's selectable set. Validated server-side — an unknown or non-selectable slug is rejected in `errors[]` and the turn is **not** sent. Omit to use the agent's configured chat model. |
+| `model` | string | No | Canonical model slug to run **this turn** on (e.g. `"openai/gpt-5.6-sol"`), chosen from the agent's selectable set. Validated server-side — an unknown or non-selectable slug is rejected in `errors[]` and the turn is **not** sent. Omit to use the agent's configured chat model. |
 | `attachment` / `attachments[]` | file | No | Multipart only — one or more file attachments that the agent can process. |
 
-> **Per-turn model selection.** `model` selects the chat model for a single turn instead of the agent's configured default. Valid values are the agent's **selectable** slugs — the `tokenRates.models[]` entries where `selectable` is `true`, returned by `UserAgent/Detail` (see [Agent Overview](/docs/agent-overview)). The selectable slugs are `openai/gpt-5.4`, `openai/gpt-5.4-mini`, `openai/gpt-5.5`, `openai/gpt-5.5-pro`, `openai/gpt-5.2`, `openai/gpt-5.1`, `openai/gpt-5`, and `openai/gpt-5-mini` — read the live set from that field. The server forwards the chosen slug to the agent runtime as the `x-agent-model` and `x-openclaw-model` headers for that turn.
+> **Per-turn model selection.** `model` selects the chat model for a single turn instead of the agent's configured default. Valid values are the agent's **selectable** slugs — the `tokenRates.models[]` entries where `selectable` is `true`, returned by `UserAgent/Detail` (see [Agent Overview](/docs/agent-overview)). The current set includes `openai/gpt-5.6-sol` (the platform chat default), `openai/gpt-5.6-terra`, `openai/gpt-5.6-luna`, `openai/gpt-5.5`, `openai/gpt-5.5-pro`, `openai/gpt-5.4`, `openai/gpt-5.4-mini`, `openai/gpt-5.2`, `openai/gpt-5.1`, `openai/gpt-5`, and `openai/gpt-5-mini` — always read the live set from that field. The server forwards the chosen slug to the agent runtime as the `x-agent-model` and `x-openclaw-model` headers for that turn.
 
 ### Response
 
@@ -5920,6 +6006,34 @@ Retrieves the current status and content of a single message. You can query by e
     "content": "What are the latest trends in AI?",
     "response": "Here are the key AI trends for 2026...",
     "debugoutput": "Here are the key AI trends for 2026...",
+    "timeline": [
+      {
+        "blockid": "c0:i0",
+        "callindex": 0,
+        "contentindex": 0,
+        "type": "reasoning",
+        "text": "I’ll distinguish deployed capabilities from current research.",
+        "toollabel": null,
+        "toolstatus": null,
+        "phase": "end",
+        "version": 3,
+        "startedat": 1743350401,
+        "updatedat": 1743350405
+      },
+      {
+        "blockid": "c0:i1",
+        "callindex": 0,
+        "contentindex": 1,
+        "type": "answer",
+        "text": "Here are the key AI trends for 2026...",
+        "toollabel": null,
+        "toolstatus": null,
+        "phase": "end",
+        "version": 8,
+        "startedat": 1743350405,
+        "updatedat": 1743350408
+      }
+    ],
     "status": "agent_end",
     "metadata": {
       "type": "progressGenerate",
@@ -5930,9 +6044,7 @@ Retrieves the current status and content of a single message. You can query by e
       "tokenCount": 105,
       "wordCount": 118,
       "raw": "Here are the key AI trends for 2026...",
-      "thinking": [],
-      "answer": ["Here are the key AI trends for 2026..."],
-      "isThinking": false
+      "answer": ["Here are the key AI trends for 2026..."]
     },
     "attachments": [],
     "deletestatus": 0,
@@ -5943,8 +6055,8 @@ Retrieves the current status and content of a single message. You can query by e
     "outputtokens": 820,
     "cachereadtokens": 2400,
     "cachewritetokens": 0,
-    "totaltokens": 4270,
-    "model": "openai/gpt-5.4",
+    "totaltokens": 6670,
+    "model": "openai/gpt-5.6-sol",
     "tokencost": 5,
     "processedms": 4200
   }
@@ -5961,21 +6073,42 @@ Retrieves the current status and content of a single message. You can query by e
 | `content` | `string` | The original user message. |
 | `response` | `string` | The agent's full response text. Empty until `agent_end`. |
 | `debugoutput` | `string` | Accumulated output text. Updated during streaming, contains the full response after completion. |
+| `timeline` | `array` | Ordered turn blocks. Always an array; `[]` means no public blocks were persisted. Merge live deltas by `blockid` and per-block `version`, then sort by call/content order. |
 | `status` | `string` | Current message status (see Message Lifecycle). |
-| `metadata` | `object` | Parsed JSON object (API returns it already decoded). Populated from the agent bridge on `agent_end`. Fields produced by the bridge's `finalMessage` builder: `type` — always the literal `"progressGenerate"` (not the message status); `task` — always the literal `"Generate"`; `speed` — numeric words-per-second value (e.g. `14.2`); `speedType` — always `"words/s"`; `elapsedTime` — human string with unit, e.g. `"8.1s"` (NOT a number); `tokenCount`, `wordCount` — integers; `raw` — the full accumulated response text; `thinking` — array of reasoning blocks extracted from `<think>...</think>`; `answer` — array of answer chunks stripped of `<think>`; `isThinking` — always `false` in the final payload. Empty object `{}` for `agent_error`, `agent_cancel`, or when the bridge hasn't finished yet. Message status lives in the top-level `status` field — don't read it from `metadata.type`. |
+| `metadata` | `object` | Parsed JSON object (API returns it already decoded). Populated from the agent bridge on `agent_end`. Fields produced by the bridge's final progress builder include `type`, `task`, `speed`, `speedType`, `elapsedTime`, `tokenCount`, `wordCount`, `raw`, and `answer`. Timeline blocks are intentionally not stored in metadata; read the top-level `timeline` field. Empty object `{}` for `agent_error`, `agent_cancel`, or when the bridge hasn't finished yet. Message status lives in the top-level `status` field — don't read it from `metadata.type`. |
 | `attachments` | `array` | Always present as an array — empty `[]` for text-only messages. When the message was sent via multipart with files, each entry is a resolved `{url, name, type, size}` object (no further file-lookup needed). Identical shape in `Message/History` rows. |
 | `deletestatus` | `number` | Internal flag. `0` for normal messages. |
 | `createdat` | `number` | Unix timestamp (epoch seconds) when the message was created. |
 | `startedat` | `number` | Unix timestamp (epoch seconds) when the agent started processing. |
 | `endedat` | `number` | Unix timestamp (epoch seconds) when processing completed. May be empty for `agent_cancel` (cancel only sets `status` and `updatedat`). |
-| `inputtokens` | `number\|null` | Billed input (prompt) tokens for this turn's model call. Populated on the assistant turn once it completes; `null` on user-only, cron, legacy, and `model_change` marker rows. |
+| `inputtokens` | `number\|null` | Uncached input (prompt) tokens billed at the model's input rate. Populated on the assistant turn once it completes; `null` on user-only, cron, legacy, and `model_change` marker rows. |
 | `outputtokens` | `number\|null` | Billed output (completion) tokens the model generated this turn. `null` on the same non-assistant / marker / legacy rows. |
 | `cachereadtokens` | `number\|null` | Tokens served from the model's prompt cache (billed at the cached-input rate). `0` when the model reported no cache hits; `null` on non-assistant rows. |
 | `cachewritetokens` | `number\|null` | Tokens written to the prompt cache this turn. `0` when none; `null` on non-assistant rows. |
-| `totaltokens` | `number\|null` | Total tokens attributed to the turn. `null` on non-assistant rows. |
+| `totaltokens` | `number\|null` | Exact component sum: `inputtokens + outputtokens + cachereadtokens + cachewritetokens`. `null` on non-assistant rows. |
 | `model` | `string\|null` | Canonical slug of the chat model that actually ran the turn (e.g. `"openai/gpt-5.4"`), reflecting any per-turn `model` override from Send. `null` on non-assistant / marker / legacy rows. |
 | `tokencost` | `number\|null` | Credits deducted for the turn, derived from the token counts and the model's `tokenRates` (see [Agent Overview](/docs/agent-overview)). `null` on non-assistant rows. |
 | `processedms` | `number\|null` | Wall-clock model processing time for the turn, in milliseconds. `null` on non-assistant rows. |
+
+### Public timeline block fields
+
+Only the fields below are returned in browser-facing REST and WebSocket timeline blocks.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `blockid` | `string` | Opaque deterministic identity for one logical block (for example `c0:i0`). Use it as the merge key; do not parse its current format. |
+| `callindex` | `number` | Zero-based call order within the turn. Primary sort key. |
+| `contentindex` | `number` | Zero-based content order within the call. Secondary sort key. |
+| `type` | `string` | `reasoning`, `answer`, or `tool`. |
+| `text` | `string\|null` | Safe public text for `reasoning` and `answer`; `null` for tool blocks. Reasoning text is an OpenAI GPT-5 provider summary, not raw chain-of-thought. |
+| `toollabel` | `string\|null` | Safe display label for a tool block; `null` for reasoning and answer blocks. Arguments and results are never included. |
+| `toolstatus` | `string\|null` | Safe public status for a tool block; `null` for reasoning and answer blocks. |
+| `phase` | `string` | `stream`, `end`, or `error` for this block. |
+| `version` | `number` | Monotonic **within this block**. Ignore a delta whose version is not strictly newer than the stored block's version. |
+| `startedat` | `number\|null` | Block start timestamp when available. |
+| `updatedat` | `number\|null` | Most recent block update timestamp when available. |
+
+Do not compare `version` across different blocks. Keep a map keyed by `blockid`, apply per-block last-write-wins, and render `callindex ASC, contentindex ASC, blockid ASC`. This makes the result independent of HTTP/WebSocket arrival order.
 
 > **`metadata.tokenCount` vs the billing token columns.** `metadata.tokenCount` is the **live stream counter** emitted inside the `progressGenerate` payload — a running word/token tally for the in-flight response. The flat `inputtokens` / `outputtokens` / `cachereadtokens` / `cachewritetokens` / `totaltokens` / `tokencost` columns are the **final billed usage**, written once the turn completes. They measure different things: use `tokenCount` for a live progress indicator, and the flat columns for accounting and cost.
 
@@ -6016,6 +6149,21 @@ Retrieves conversation history for a specific agent and session. Messages are re
         "content": "What are the latest trends in AI?",
         "response": "Here are the key AI trends for 2026...",
         "debugoutput": "Here are the key AI trends for 2026...",
+        "timeline": [
+          {
+            "blockid": "c0:i0",
+            "callindex": 0,
+            "contentindex": 0,
+            "type": "reasoning",
+            "text": "I’ll distinguish deployed capabilities from current research.",
+            "toollabel": null,
+            "toolstatus": null,
+            "phase": "end",
+            "version": 3,
+            "startedat": 1743350401,
+            "updatedat": 1743350405
+          }
+        ],
         "status": "agent_end",
         "metadata": {
           "type": "progressGenerate",
@@ -6026,9 +6174,7 @@ Retrieves conversation history for a specific agent and session. Messages are re
           "tokenCount": 105,
           "wordCount": 118,
           "raw": "Here are the key AI trends for 2026...",
-          "thinking": [],
-          "answer": ["Here are the key AI trends for 2026..."],
-          "isThinking": false
+          "answer": ["Here are the key AI trends for 2026..."]
         },
         "attachments": [],
         "deletestatus": 0,
@@ -6037,8 +6183,8 @@ Retrieves conversation history for a specific agent and session. Messages are re
         "outputtokens": 820,
         "cachereadtokens": 2400,
         "cachewritetokens": 0,
-        "totaltokens": 4270,
-        "model": "openai/gpt-5.4",
+        "totaltokens": 6670,
+        "model": "openai/gpt-5.6-sol",
         "tokencost": 5,
         "processedms": 4200
       },
@@ -6050,6 +6196,7 @@ Retrieves conversation history for a specific agent and session. Messages are re
         "content": "",
         "response": "",
         "debugoutput": "",
+        "timeline": [],
         "status": "agent_done",
         "metadata": {
           "type": "model_change",
@@ -6084,6 +6231,7 @@ Retrieves conversation history for a specific agent and session. Messages are re
         "content": "Tell me more about multimodal models",
         "response": "Multimodal models combine...",
         "debugoutput": "Multimodal models combine...",
+        "timeline": [],
         "status": "agent_end",
         "metadata": {},
         "attachments": [],
@@ -6107,11 +6255,11 @@ Retrieves conversation history for a specific agent and session. Messages are re
 
 > Each message row carries `uuid` (sender) and a server-decorated `user` object with the full sender shape — same as `Message/Detail`. `user` is `null` for system-inserted rows (e.g. `Message/SystemInsert` writes when `uuid` is `"system"`) or when the underlying account has been deleted.
 
-> **Resuming an in-flight stream.** Every row carries the original `agenttoken` from `Message/Send`. If a returned message's `status` is non-terminal (`agent_queue`, `agent_start`, or `agent_output`), the agent is still processing it server-side. Hand the `agenttoken` to the [Agent WebSocket](/docs/agent-websocket) (`agent_info` frame) and you'll receive the remaining `agent_output` chunks plus the eventual `agent_end` event — no need to re-send the message. This is exactly how a chat UI can rehydrate live streams after a page reload.
+> **Resuming an in-flight stream.** Every row carries the original `agenttoken` from `Message/Send`. If a returned message's `status` is non-terminal (`agent_queue`, `agent_start`, or `agent_output`), the agent is still processing it server-side. Hand the `agenttoken` to the [Agent WebSocket](/docs/agent-websocket) (`agent_info` frame) and you'll receive the persisted `agent_subscribed.timeline` snapshot, subsequent `agent_timeline_delta` block updates, remaining provisional `agent_output` snapshots, and the eventual `agent_end` event — no need to re-send the message.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `messages` | `array` | Array of message objects, newest first. Each row has the **same shape as `Message/Detail`** — including the `uuid` sender, the `agenttoken` (so you can resubscribe over WebSocket if `status` is non-terminal), the decorated `user` object, and the per-turn token columns below. The array can also include `model_change` marker rows (see the note under the table). |
+| `messages` | `array` | Array of message objects, newest first. Each row has the **same shape as `Message/Detail`** — including persisted `timeline`, the `uuid` sender, the `agenttoken` (so you can resubscribe over WebSocket if `status` is non-terminal), the decorated `user` object, and the per-turn token columns below. The array can also include `model_change` marker rows (see the note under the table). |
 | `count` | `number` | Number of messages in this page. |
 | `hasmore` | `boolean` | `true` if there are older messages available. Pass the last message's `guid` as `before` to fetch the next page. |
 
@@ -6119,11 +6267,11 @@ Each assistant row also carries the per-turn token-accounting columns, identical
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `inputtokens` | `number\|null` | Billed input (prompt) tokens for the turn. `null` on user-only, cron, legacy, and `model_change` marker rows. |
+| `inputtokens` | `number\|null` | Uncached input (prompt) tokens billed at the model's input rate. `null` on user-only, cron, legacy, and `model_change` marker rows. |
 | `outputtokens` | `number\|null` | Billed output (completion) tokens the model generated. `null` on the same non-assistant / marker / legacy rows. |
 | `cachereadtokens` | `number\|null` | Tokens served from the model's prompt cache. `0` when none; `null` on non-assistant rows. |
 | `cachewritetokens` | `number\|null` | Tokens written to the prompt cache. `0` when none; `null` on non-assistant rows. |
-| `totaltokens` | `number\|null` | Total tokens attributed to the turn. `null` on non-assistant rows. |
+| `totaltokens` | `number\|null` | Exact component sum: `inputtokens + outputtokens + cachereadtokens + cachewritetokens`. `null` on non-assistant rows. |
 | `model` | `string\|null` | Canonical slug of the chat model that ran the turn. `null` on non-assistant / marker / legacy rows. |
 | `tokencost` | `number\|null` | Credits deducted for the turn. `null` on non-assistant rows. |
 | `processedms` | `number\|null` | Wall-clock model processing time in milliseconds. `null` on non-assistant rows. |
@@ -6202,9 +6350,9 @@ Lists all conversation sessions for an agent. Returns each session's key, messag
 | `messagecount` | `number` | Total number of messages in this session. |
 | `updatedat` | `number` | Unix timestamp (epoch seconds) of the last activity in this session. |
 | `lastmessage` | `string` | The most recent message body — `useragentmessages.content` if the user sent a message, falling back to `useragentmessages.response` (assistant reply) when `content` is empty. |
-| `name` | `string?` | Optional display name set via `Message/RenameSession`. Omitted when the session was never named — fall back to your own default label (e.g. the `sessionkey` or "New chat"). |
+| `name` | `string?` | Optional display name set via [`Message/RenameSession`](#post-useragentmessagerenamesession). Omitted when the session was never named — fall back to your own default label (e.g. the `sessionkey` or "New chat"). |
 
-> **Named-but-empty sessions appear too.** A session created by `RenameSession` before its first `Message/Send` surfaces here with `messagecount: 0`, `lastmessage: ""`, and the `name` you set — so a freshly created chat shows up in the list immediately.
+> **Named-but-empty sessions appear too.** A session created by [`RenameSession`](#post-useragentmessagerenamesession) before its first `Message/Send` surfaces here with `messagecount: 0`, `lastmessage: ""`, and the `name` you set — so a freshly created chat shows up in the list immediately.
 
 > **Reserved sessionkeys filtered out (non-admin only).** The list omits internal sessions used by the runtime: `wiro:api` (gateway hooks default), `voice-prep*` (per-call prep threads), `voice-call-*` (active voice-call rows), and `cs-cron-*` (one thread per scheduled cron skill). These rows still exist on the agent — they're just hidden from operator-facing listings to keep the panel UX clean. Admin callers (`tokenUserRoles` contains `"ADMIN"`) see the full unfiltered list. The same filter is applied on `Message/History` reads and the `DeleteSession` guard.
 
@@ -6218,7 +6366,7 @@ Deletes messages in the given session for the **calling user**. This action cann
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | The agent instance GUID. |
 | `sessionkey` | string | Yes | The session key to delete. |
-| `rotate` | boolean | No | Default `false`. When `true`, after wiping the rows the server also rotates the session's memory bucket so the agent's container **forgets** the cleared turns — the next `Message/Send` on the same `sessionkey` starts a fresh reasoning context. With `false` (or omitted) the message rows are wiped but the running container may still recall them. Any display `name` set via `RenameSession` is dropped on delete. |
+| `rotate` | boolean | No | Default `false`. When `true`, after wiping the rows the server also rotates the session's memory bucket so the agent's container **forgets** the cleared turns — the next `Message/Send` on the same `sessionkey` starts a fresh reasoning context. With `false` (or omitted) the message rows are wiped but the running container may still recall them. Any display `name` set via [`RenameSession`](#post-useragentmessagerenamesession) is dropped on delete. |
 
 > **Scope of deletion:** Hard delete — the API issues `DELETE FROM useragentmessages WHERE useragentid = … AND sessionkey = …`. For non-admin callers an additional `AND uuid = <caller_uuid>` filter is appended, so only the caller's own rows in the session are purged. This holds in both private and collaborative team modes — even when `teamsessionmode: "collaborative"` (e.g. Telegram group-shared sessions) means every member sees the same thread, each member's `DeleteSession` only wipes their own contributions. Admin callers (`tokenUserRoles` contains `"ADMIN"`) bypass the uuid filter and wipe the entire session for every participant. Compare with `Message/Delete` (per-message), which is a soft-delete bumping the `deletestatus` bitmask.
 
@@ -6235,7 +6383,7 @@ Deletes messages in the given session for the **calling user**. This action cann
 
 ## **POST** /UserAgent/Message/RenameSession
 
-Sets a human-readable display **name** on a session without touching its messages or its `sessionkey`. The name is stored in a separate overlay keyed by `(useragentguid, sessionkey)` and surfaces on `Message/Sessions`. Because the `sessionkey` is unchanged, the agent's conversation memory is fully preserved across a rename.
+Sets a human-readable display **name** on a session without touching its messages or its `sessionkey`. The name is stored in a separate overlay keyed by `(useragentguid, sessionkey)` and surfaces on [`Message/Sessions`](#post-useragentmessagesessions). Because the `sessionkey` is unchanged, the agent's conversation memory is fully preserved across a rename.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -6243,7 +6391,7 @@ Sets a human-readable display **name** on a session without touching its message
 | `sessionkey` | string | Yes | The session to name. Reserved system keys (`wiro:api`, `voice-prep*`, `voice-call-*`, `cs-cron-*`) are rejected with `"Session not found"` for non-admin callers, same as `DeleteSession`. |
 | `name` | string | Yes | The display name. The server strips control characters, collapses whitespace, trims, and caps the result at **40 characters**. An empty string after sanitization is rejected with `request-parameter-required`. |
 
-> **Doubles as "create a named session".** Calling `RenameSession` with a brand-new `sessionkey` — before any `Message/Send` on it — seeds a named-but-empty session that immediately appears in `Message/Sessions` with `messagecount: 0` and `lastmessage: ""`. This is the canonical way to let a user open a fresh, titled chat before they type anything.
+> **Doubles as "create a named session".** Calling `RenameSession` with a brand-new `sessionkey` — before any `Message/Send` on it — seeds a named-but-empty session that immediately appears in [`Message/Sessions`](#post-useragentmessagesessions) with `messagecount: 0` and `lastmessage: ""`. This is the canonical way to let a user open a fresh, titled chat before they type anything.
 
 ### Request
 
@@ -6400,27 +6548,19 @@ User B's separate conversation with the same agent:
 }
 ```
 
-## Thinking & Answer Separation
+## Multiple blocks in one turn
 
-Agent responses may include thinking blocks where the underlying model reasons through the problem before answering. The system automatically parses `<think>...</think>` tags and separates the output into structured arrays:
+A single turn is not limited to one reasoning disclosure followed by one answer. The authoritative timeline can move through multiple calls:
 
-```json
-{
-  "thinking": ["Let me analyze the user's question...", "The key factors are..."],
-  "answer": ["Based on my analysis, here are the main points..."],
-  "isThinking": false,
-  "raw": "<think>Let me analyze the user's question...</think>Based on my analysis, here are the main points..."
-}
+```text
+call 0 / content 0: reasoning  → Thinking
+call 0 / content 1: answer     → Initial answer text
+call 0 / content 2: tool       → Safe tool label/status
+call 1 / content 0: reasoning  → Thinking again
+call 1 / content 1: answer     → Final answer text
 ```
 
-- `thinking` — array of reasoning/chain-of-thought blocks. May be empty if the model doesn't use thinking.
-- `answer` — array of response chunks. This is the content to show the user.
-- `isThinking` — `true` while the model is still in a thinking phase (the `<think>` tag is open but not yet closed), `false` during the answer phase.
-- `raw` — the full accumulated raw output text including think tags.
-
-Each `agent_output` WebSocket event contains the **full accumulated** arrays up to that point — not just the new chunk. Simply replace your displayed content with the latest arrays. Use `isThinking` to show a "thinking" indicator in your UI while the model reasons.
-
-> **Tip:** Display thinking content in a collapsible section so users can optionally inspect the model's reasoning process.
+Render each reasoning block as its own accessible `Thinking` disclosure at its timeline position. Never combine reasoning blocks across calls, and never move them above or below answer/tool blocks to force an answer-first layout. Every reasoning block contains only the provider-supplied OpenAI GPT-5 summary; raw chain-of-thought is never returned. `agent_output` is still useful for immediate accumulated answer typing, but it does not define the durable block order.
 
 ## Tracking a Message
 
@@ -6446,11 +6586,42 @@ Connect to WebSocket and subscribe with the `agenttoken` for real-time streaming
   "type": "agent_subscribed",
   "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
   "status": "agent_queue",
+  "debugoutput": "",
+  "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "timeline": [],
   "result": true
 }
 ```
 
-**3. Streaming output event** (emitted multiple times — replace your displayed content with `message.answer` on each event):
+**3. Timeline block delta** (emitted once per changed block):
+
+```json
+{
+  "type": "agent_timeline_delta",
+  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
+  "message": {
+    "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+    "block": {
+      "blockid": "c0:i0",
+      "callindex": 0,
+      "contentindex": 0,
+      "type": "reasoning",
+      "text": "I’ll compare verified releases and adoption data.",
+      "toollabel": null,
+      "toolstatus": null,
+      "phase": "stream",
+      "version": 2,
+      "startedat": 1743350401,
+      "updatedat": 1743350403
+    }
+  },
+  "result": true
+}
+```
+
+Merge `message.block` by `blockid` and accept it only when its `version` is strictly newer than the stored version of that block.
+
+**4. Provisional streaming output event** (emitted multiple times — replace your typing surface with `message.raw` on each event):
 
 ```json
 {
@@ -6465,15 +6636,13 @@ Connect to WebSocket and subscribe with the `agenttoken` for real-time streaming
     "tokenCount": 156,
     "wordCount": 42,
     "raw": "Here are the key AI trends...",
-    "thinking": [],
-    "answer": ["Here are the key AI trends..."],
-    "isThinking": false
+    "answer": ["Here are the key AI trends..."]
   },
   "result": true
 }
 ```
 
-**4. Final event** (agent_end — terminal):
+**5. Final answer event** (`agent_end`):
 
 ```json
 {
@@ -6488,9 +6657,7 @@ Connect to WebSocket and subscribe with the `agenttoken` for real-time streaming
     "tokenCount": 412,
     "wordCount": 115,
     "raw": "Here are the key AI trends for 2026...",
-    "thinking": [],
-    "answer": ["Here are the key AI trends for 2026..."],
-    "isThinking": false
+    "answer": ["Here are the key AI trends for 2026..."]
   },
   "result": true
 }
@@ -6502,12 +6669,10 @@ Connect to WebSocket and subscribe with the `agenttoken` for real-time streaming
 | `message.speed` | `string` | Generation speed (e.g. `"12.4"`). |
 | `message.speedType` | `string` | Unit for speed — `"words/s"` (words per second). |
 | `message.elapsedTime` | `string` | Elapsed time since generation started (e.g. `"3.2s"`). |
-| `message.tokenCount` | `number` | Number of tokens generated so far. |
+| `message.tokenCount` | `number` | Number of answer chunks received so far. Final model tokens arrive separately in `agent_usage_report`. |
 | `message.wordCount` | `number` | Number of words generated so far. |
 | `message.raw` | `string` | Full accumulated raw output text. |
-| `message.thinking` | `string[]` | Array of thinking/reasoning blocks. |
 | `message.answer` | `string[]` | Array of answer blocks — the content to display. |
-| `message.isThinking` | `boolean` | `true` while the model is in thinking phase. |
 
 ### 2. Polling via Detail
 
@@ -6541,15 +6706,13 @@ Pass a `callbackurl` when sending the message. The system will POST the final re
     "tokenCount": 105,
     "wordCount": 118,
     "raw": "Here are the key AI trends for 2026...",
-    "thinking": [],
-    "answer": ["Here are the key AI trends for 2026..."],
-    "isThinking": false
+    "answer": ["Here are the key AI trends for 2026..."]
   },
   "endedat": 1743350408
 }
 ```
 
-> Payload delivered to your `callbackurl`. `metadata` is decoded into a JSON object.
+> Payload delivered to your `callbackurl`. `metadata` is decoded into a JSON object. The webhook remains answer-focused and does not embed timeline blocks; call `Message/Detail` with `messageguid` for the authoritative persisted `timeline[]`.
 
 ## Code Examples
 
@@ -6953,10 +7116,10 @@ No API key or auth header is required on the WebSocket itself. Authorization is 
 1. **Connect** — open a WebSocket connection to `wss://socket.wiro.ai/v1`.
 2. **Receive welcome** — the server pushes a one-shot `connected` frame confirming the upgrade.
 3. **Subscribe** — send an `agent_info` frame with your `agenttoken`.
-4. **Receive `agent_subscribed`** — the server acknowledges the subscribe and reports the current lifecycle status (plus any already-accumulated `debugoutput`).
-5. **Stream** — listen for `agent_start` → many `agent_output` → `agent_end` / `agent_error` / `agent_cancel`.
+4. **Receive `agent_subscribed`** — the server acknowledges the subscribe and reports the current lifecycle status, accumulated answer text, and persisted `timeline[]`.
+5. **Stream** — listen for `agent_start`, `agent_timeline_delta` block updates, provisional `agent_output` answer snapshots, then `agent_end` / `agent_error` / `agent_cancel`.
 6. **Receive `agent_usage_report`** — after a successful `agent_end`, a one-shot token-usage/billing frame arrives on the same `agenttoken` (~250–500 ms later). Optional to consume; keep the socket open briefly if you need it.
-7. **Close** — disconnect once you've seen the terminal event (and `agent_usage_report`, if you want it), or keep the socket open and subscribe to the next `agenttoken`.
+7. **Close** — keep the socket open for `agent_usage_report` if needed. After completion or reconnect, read `Message/Detail` for the authoritative persisted timeline and answer.
 
 ### 1. Welcome frame (server → client)
 
@@ -7029,9 +7192,10 @@ Frames flow in two directions. `↓` = server → client, `↑` = client → ser
 | ↓ | `connected` | Welcome frame pushed by the server right after the WebSocket upgrade. Fires exactly once per connection. |
 | ↑ | `agent_info` | Client-initiated subscribe frame. Carries the `agenttoken` issued by `Message/Send`. Can be sent multiple times on the same socket (one per token). |
 | ↓ | `error` | Server-side rejection of a malformed subscribe (missing `agenttoken`). Connection stays open; retry with a valid frame. |
-| ↓ | `agent_subscribed` | Subscribe acknowledged. Carries the current lifecycle `status` plus any accumulated `debugoutput`. If the agent already finished before you subscribed, this frame is your snapshot of the final output and no further events will fire. |
+| ↓ | `agent_subscribed` | Subscribe acknowledged. Carries the current lifecycle `status`, accumulated `debugoutput`, `messageguid`, and persisted `timeline[]`. If the agent already finished before you subscribed, this frame is your reconnect snapshot. |
 | ↓ | `agent_start` | The bridge has opened an SSE stream to the agent container. The underlying model is now generating. Emits exactly once per message. |
-| ↓ | `agent_output` | Streaming chunk. Emits **many times** — each carries the full accumulated `raw` text so far plus real-time metrics (`speed`, `elapsedTime`, `tokenCount`, `wordCount`). Replace (don't append) your UI on each event. |
+| ↓ | `agent_timeline_delta` | One ordered public timeline-block update. Carries `messageguid` and one `block`; merge by `blockid` and that block's `version`, then sort by `callindex`, `contentindex`, and `blockid`. |
+| ↓ | `agent_output` | Provisional answer snapshot. Emits **many times** — each carries the full accumulated `raw` answer text so far plus real-time metrics (`speed`, `elapsedTime`, `tokenCount`, `wordCount`). Replace (don't append) the typing surface on each event. |
 | ↓ | `agent_end` | Terminal success event. Same payload shape as `agent_output` but contains the final complete text with total metrics. Emits at most once. |
 | ↓ | `agent_error` | Terminal failure event. `message` is either a sanitized string ("Agent is temporarily unavailable…" when an exception was caught) or a `progressGenerate` object (when the stream finished but content was a degenerate `"..."` / `"Error: internal error"`). Emits at most once. |
 | ↓ | `agent_cancel` | Terminal cancel event. Fires **only** when an already-active message is aborted mid-stream (via `Message/Cancel` or upstream abort). Cancels against a still-queued message do **not** broadcast this event — check `Message/Detail` for those. Emits at most once. |
@@ -7040,7 +7204,7 @@ Frames flow in two directions. `↓` = server → client, `↑` = client → ser
 
 ## Message Format
 
-Every WebSocket frame is a JSON object. All **agent lifecycle frames** (`agent_subscribed` / `agent_start` / `agent_output` / `agent_end` / `agent_error` / `agent_cancel`) — plus the post-terminal `agent_usage_report` frame — share this base shape:
+Every WebSocket frame is a JSON object. Agent stream frames (`agent_start` / `agent_timeline_delta` / `agent_output` / `agent_end` / `agent_error` / `agent_cancel`) — plus the post-terminal `agent_usage_report` frame — share this base shape:
 
 ```json
 {
@@ -7055,8 +7219,8 @@ Every WebSocket frame is a JSON object. All **agent lifecycle frames** (`agent_s
 |---|---|---|
 | `type` | string | Event name. See [Event Types](#event-types) for the full list. |
 | `agenttoken` | string | The token you subscribed with. Present on every agent lifecycle frame so multi-token subscribers can route the event to the right session. |
-| `message` | varies | Empty string (`""`) for `agent_start`, a `progressGenerate` object for `agent_output` / `agent_end` (and for the object-shaped `agent_error`), a plain string for string-shaped `agent_error` and `agent_cancel`, and a token-usage object for `agent_usage_report`. |
-| `result` | boolean | `true` for success-side events (`agent_subscribed` / `agent_start` / `agent_output` / `agent_end` / `agent_usage_report`), `false` for failure-side events (`agent_error` / `agent_cancel`). See [The `result` field](#the-result-field). |
+| `message` | varies | Empty string (`""`) for `agent_start`, `{ messageguid, block }` for `agent_timeline_delta`, a `progressGenerate` answer object for `agent_output` / `agent_end` (and for the object-shaped `agent_error`), a plain string for string-shaped `agent_error` and `agent_cancel`, and a token-usage object for `agent_usage_report`. |
+| `result` | boolean | `true` for success-side events (`agent_subscribed` / `agent_start` / `agent_timeline_delta` / `agent_output` / `agent_end` / `agent_usage_report`), `false` for failure-side events (`agent_error` / `agent_cancel`). See [The `result` field](#the-result-field). |
 
 The **control frames** (`connected`, `error`) use a different shape with no `agenttoken`:
 
@@ -7068,13 +7232,13 @@ The **control frames** (`connected`, `error`) use a different shape with no `age
 { "type": "error", "message": "agenttoken-required", "result": false }
 ```
 
-The `agent_subscribed` frame additionally carries `status` (the DB row's current status) and, when the token is known, `debugoutput` (accumulated text so far). When the token is unknown, `status` is `"unknown"` and `debugoutput` is omitted entirely.
+The `agent_subscribed` frame is a snapshot rather than a `message` wrapper. For a known token it carries `status`, `debugoutput`, `messageguid`, and `timeline` at the top level. When the token is unknown, `status` is `"unknown"` and those row-backed fields are omitted.
 
 ### agent_subscribed
 
 Sent immediately after the server accepts your subscription. The `status` field reflects where the agent currently is in its lifecycle.
 
-- If the agenttoken is **valid and pending/active** (known to the server, not yet finished), `debugoutput` is always present — an empty string `""` if nothing has streamed yet, or the accumulated text so far.
+- If the agenttoken is **valid**, `debugoutput` is always present and `timeline` is an array (possibly empty).
 - If the agenttoken is **unknown** (typo, expired, already cleaned up from the buffer), `debugoutput` is **omitted entirely** from the payload (no field at all). Always use `"debugoutput" in payload` or `payload.debugoutput !== undefined` to distinguish unknown-token from empty-output, rather than relying on truthiness.
 
 **Valid token, queued** — `debugoutput` present and empty:
@@ -7085,6 +7249,8 @@ Sent immediately after the server accepts your subscription. The `status` field 
   "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
   "status": "agent_queue",
   "debugoutput": "",
+  "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "timeline": [],
   "result": true
 }
 ```
@@ -7143,15 +7309,52 @@ Emitted multiple times as the agent generates its response. Each event contains 
     "tokenCount": 35,
     "wordCount": 28,
     "raw": "Here is the accumulated response text so far...",
-    "thinking": [],
-    "answer": ["Here is the accumulated response text so far..."],
-    "isThinking": false
+    "answer": ["Here is the accumulated response text so far..."]
   },
   "result": true
 }
 ```
 
-The `raw` field contains the full response as a single string. The `answer` array contains the same text split into segments. To display streaming text, replace your UI content with `raw` (or join `answer`) on each event.
+The `raw` field contains the provisional cumulative SSE response as a single string. The `answer` array contains the same text split into segments. Replace your typing surface with `raw` (or joined `answer`) on each event; keep merging timeline updates independently until the corresponding answer block catches up.
+
+### agent_timeline_delta
+
+Each event carries exactly one changed public block:
+
+```json
+{
+  "type": "agent_timeline_delta",
+  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
+  "message": {
+    "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+    "block": {
+      "blockid": "c0:i0",
+      "callindex": 0,
+      "contentindex": 0,
+      "type": "reasoning",
+      "text": "I’ll compare the available evidence before making a recommendation.",
+      "toollabel": null,
+      "toolstatus": null,
+      "phase": "stream",
+      "version": 4,
+      "startedat": 1743350401,
+      "updatedat": 1743350404
+    }
+  },
+  "result": true
+}
+```
+
+The hard-cutover merge contract is:
+
+1. Treat `blockid` as an opaque deterministic identity.
+2. Keep the incoming block only if there is no stored block with that ID, or its `version` is strictly greater than the stored version.
+3. Replace only that block; a newer update for one block must never evict another block.
+4. Sort the merged values by `callindex ASC`, `contentindex ASC`, then `blockid ASC`.
+
+`version` is per block, not global. A turn can therefore render `Thinking → Answer or Tool → Thinking → Answer` across multiple calls. `reasoning` blocks contain only provider-supplied OpenAI GPT-5 summaries, never raw chain-of-thought. `answer` blocks expose safe answer text. `tool` blocks expose only `toollabel` and `toolstatus`; their `text` is `null`, and tool IDs, arguments, and results are not public.
+
+The complete public block shape is `blockid`, `callindex`, `contentindex`, `type`, `text`, `toollabel`, `toolstatus`, `phase`, `version`, `startedat`, and `updatedat`. `phase` is `stream`, `end`, or `error`; timestamps can be `null` when unavailable. No additional internal correlation or execution metadata is emitted in this block.
 
 ### agent_end
 
@@ -7170,9 +7373,7 @@ Fires when the agent finishes responding. The structure is identical to `agent_o
     "tokenCount": 156,
     "wordCount": 118,
     "raw": "The complete agent response text...",
-    "thinking": [],
-    "answer": ["The complete agent response text..."],
-    "isThinking": false
+    "answer": ["The complete agent response text..."]
   },
   "result": true
 }
@@ -7210,9 +7411,7 @@ An error occurred during processing. The `message` field can take two forms — 
     "tokenCount": 3,
     "wordCount": 1,
     "raw": "...",
-    "thinking": [],
-    "answer": ["..."],
-    "isThinking": false
+    "answer": ["..."]
   },
   "result": false
 }
@@ -7260,8 +7459,8 @@ A post-terminal frame that reports the final token usage and billing for the tur
     "outputtokens": 820,
     "cachereadtokens": 2400,
     "cachewritetokens": 0,
-    "totaltokens": 4270,
-    "model": "openai/gpt-5.4",
+    "totaltokens": 6670,
+    "model": "openai/gpt-5.6-sol",
     "tokencost": 5,
     "processedms": 4200,
     "remainingcredits": 9995
@@ -7274,12 +7473,12 @@ The frame's `agenttoken` identifies the turn; the `message.messageguid` identifi
 | Field | Type | Description |
 |---|---|---|
 | `messageguid` | string | UUID of the assistant message this usage applies to. **Match it to the message row** you want to update. |
-| `inputtokens` | number | Prompt tokens sent to the model for this turn. |
+| `inputtokens` | number | Uncached prompt tokens billed at the model's input rate. |
 | `outputtokens` | number | Completion tokens generated by the model. |
 | `cachereadtokens` | number | Prompt tokens served from the provider's prompt cache (billed at the cache-read rate). |
 | `cachewritetokens` | number | Prompt tokens written to the provider's prompt cache during this turn. |
-| `totaltokens` | number | Total billable tokens for the turn. |
-| `model` | string | Provider/model slug used for this turn (e.g. `"openai/gpt-5.4"`). |
+| `totaltokens` | number | Exact sum of input, output, cache-read, and cache-write tokens for the turn. |
+| `model` | string | Provider/model slug used for this turn (e.g. `"openai/gpt-5.6-sol"`). |
 | `tokencost` | number | Credits charged for this turn. |
 | `processedms` | number | Server-side processing time for the turn, in milliseconds. |
 | `remainingcredits` | number | Your account credit balance after this turn was billed. |
@@ -7342,7 +7541,7 @@ Every agent lifecycle event includes a `result` boolean:
 
 | Value | Events |
 |---|---|
-| `true` | `agent_subscribed`, `agent_start`, `agent_output`, `agent_end`, `agent_usage_report` |
+| `true` | `agent_subscribed`, `agent_start`, `agent_timeline_delta`, `agent_output`, `agent_end`, `agent_usage_report` |
 | `false` | `error`, `agent_error`, `agent_cancel` |
 
 Use `result` to quickly determine whether the event represents a successful state. When `result` is `false`, inspect `message` for error details or cancellation context. The welcome `connected` frame has no `result` field — it's a one-shot ack and always implies success (you got the frame, so the upgrade worked).
@@ -7356,48 +7555,14 @@ Each `agent_output` and `agent_end` event includes real-time performance data in
 | `speed` | string | Current generation speed (e.g. `"12.5"`). |
 | `speedType` | string | Speed unit — always `"words/s"` for agent responses. |
 | `elapsedTime` | string | Wall-clock time since the stream started (e.g. `"2.4s"`). |
-| `tokenCount` | number | Total tokens generated so far. |
+| `tokenCount` | number | Number of answer chunks received so far. Authoritative model token counts arrive in `agent_usage_report`. |
 | `wordCount` | number | Total words in the accumulated response. |
 
 These metrics update with every `agent_output` event, allowing you to display a live speed indicator or progress bar in your UI.
 
-## Thinking Model Support
+## Timeline safety boundary
 
-When the agent is backed by a thinking-capable model (e.g. DeepSeek-R1, QwQ), the response may include thinking blocks alongside the answer:
-
-```json
-{
-  "type": "agent_output",
-  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
-  "message": {
-    "type": "progressGenerate",
-    "task": "Generate",
-    "speed": "8.3",
-    "speedType": "words/s",
-    "elapsedTime": "4.1s",
-    "tokenCount": 89,
-    "wordCount": 64,
-    "raw": "<think>Let me work through this step by step...</think>Based on my analysis...",
-    "thinking": ["Let me work through this step by step..."],
-    "answer": ["Based on my analysis..."],
-    "isThinking": true
-  },
-  "result": true
-}
-```
-
-| Field | Description |
-|---|---|
-| `isThinking` | `true` while the model is in a thinking phase, `false` when emitting the answer. |
-| `thinking` | Array of thinking block text segments. Empty if the model does not use thinking. |
-| `answer` | Array of answer text segments. This is the user-facing response. |
-| `raw` | The unprocessed output including `<think>` tags. Use `thinking` and `answer` instead for display. |
-
-**Rendering guidance:**
-
-- While `isThinking` is `true`, show a "Thinking..." indicator or render the `thinking` text in a collapsible block.
-- When `isThinking` becomes `false`, the model has finished reasoning and is now producing the answer.
-- On `agent_end`, join the `answer` array for the final display text.
+Public reasoning is available only as `type: "reasoning"` timeline blocks. Wiro publishes provider-authored summaries from supported OpenAI GPT-5 calls, not raw hidden chain-of-thought or generic provider traces. Tool blocks publish only a safe label and status. Wiro does not parse literal `<think>` tags from `agent_output`; treat any such text in `raw` as ordinary provisional answer output.
 
 ## Full Integration Example
 
@@ -7446,24 +7611,25 @@ ws.onopen = () => {
 ```
 ←  connected         { version: "1.0" }
 →  agent_info        { agenttoken: "..." }
-←  agent_subscribed  { status: "agent_queue", debugoutput: "" }
+←  agent_subscribed  { status: "agent_queue", debugoutput: "", timeline: [] }
 ←  agent_start       { message: "" }
+←  agent_timeline_delta { message: { messageguid: "c3d4...", block: { blockid: "c0:i0", callindex: 0, contentindex: 0, type: "reasoning", version: 1 } } }
 ←  agent_output      { message: { raw: "Quantum", wordCount: 1 } }
-←  agent_output      { message: { raw: "Quantum computing uses", wordCount: 3 } }
+←  agent_timeline_delta { message: { messageguid: "c3d4...", block: { blockid: "c0:i1", callindex: 0, contentindex: 1, type: "answer", version: 1 } } }
 ←  agent_output      { message: { raw: "Quantum computing uses qubits...", wordCount: 28 } }
 ←  agent_end         { message: { raw: "Quantum computing uses qubits that...", wordCount: 118 } }
-←  agent_usage_report { result: true, message: { messageguid: "c3d4...", totaltokens: 4270, remainingcredits: 9994 } }
+←  agent_usage_report { result: true, message: { messageguid: "c3d4...", totaltokens: 6670, remainingcredits: 9994 } }
 ```
 
-`←` = server → client, `→` = client → server. Each `agent_output` contains the full accumulated text. Replace (don't append) your display content on each event.
+`←` = server → client, `→` = client → server. `agent_output` contains provisional full accumulated answer text. Replace (don't append) that typing surface; merge timeline blocks independently.
 
 The full observable wire order for a normal turn is:
 
 ```text
-agent_queue  →  agent_start  →  agent_output × N  →  agent_end  →  agent_usage_report
+agent_queue  →  agent_start  →  (agent_timeline_delta | agent_output) × N  →  agent_end  →  agent_usage_report
 ```
 
-`agent_queue` is **not** a WebSocket frame — it's the `status` returned synchronously in the `Message/Send` response (and reflected by `agent_subscribed` if you subscribe while the message is still queued). Everything from `agent_start` onward is pushed over the socket. On the failure path, `agent_error` or `agent_cancel` takes the place of `agent_end` as the terminal frame, and **no** `agent_usage_report` follows.
+`agent_queue` is **not** a WebSocket frame — it's the `status` returned synchronously in the `Message/Send` response (and reflected by `agent_subscribed` if you subscribe while the message is still queued). Timeline and provisional answer events can interleave between start and terminal status. On the failure path, `agent_error` or `agent_cancel` takes the place of `agent_end`, and **no** `agent_usage_report` follows. `Message/Detail` is authoritative for the final persisted timeline.
 
 [`agent_wiroai_runtask`](#model-runs-the-agent-triggers) is **not** part of this linear order — it fires out-of-band (zero or more times per turn, whenever the agent launches a model run) on the **session-key** channel rather than the per-turn `agenttoken`.
 
@@ -7475,6 +7641,21 @@ agent_queue  →  agent_start  →  agent_output × N  →  agent_end  →  agen
 const agentToken = 'your-agent-token';
 
 const ws = new WebSocket('wss://socket.wiro.ai/v1');
+const timelineByMessage = new Map();
+
+function mergeTimelineBlock(messageguid, block) {
+  const byId = timelineByMessage.get(messageguid) || new Map();
+  const previous = byId.get(block.blockid);
+  if (!previous || block.version > previous.version) {
+    byId.set(block.blockid, block);
+  }
+  timelineByMessage.set(messageguid, byId);
+  return [...byId.values()].sort(
+    (a, b) => a.callindex - b.callindex
+      || a.contentindex - b.contentindex
+      || a.blockid.localeCompare(b.blockid)
+  );
+}
 
 ws.onopen = () => {
   console.log('Connected');
@@ -7516,6 +7697,12 @@ ws.onmessage = (event) => {
     case 'agent_output':
       // message is a progressGenerate object; replace (don't append) your UI.
       console.log('Streaming:', msg.message.raw);
+      break;
+
+    case 'agent_timeline_delta':
+      // Merge msg.message.block by blockid + per-block version, then sort
+      // by callindex/contentindex. Do not append in arrival order.
+      mergeTimelineBlock(msg.message.messageguid, msg.message.block);
       break;
 
     case 'agent_end':
@@ -7859,6 +8046,8 @@ channel.stream.listen((message) {
   "agenttoken": "aB3xK9...",
   "status": "agent_queue",
   "debugoutput": "",
+  "messageguid": "c3d4e5f6-...",
+  "timeline": [],
   "result": true
 }
 ```
@@ -7881,6 +8070,32 @@ channel.stream.listen((message) {
   "type": "agent_start",
   "agenttoken": "aB3xK9...",
   "message": "",
+  "result": true
+}
+```
+
+**`agent_timeline_delta`** — one public block update:
+
+```json
+{
+  "type": "agent_timeline_delta",
+  "agenttoken": "aB3xK9...",
+  "message": {
+    "messageguid": "c3d4e5f6-...",
+    "block": {
+      "blockid": "c0:i0",
+      "callindex": 0,
+      "contentindex": 0,
+      "type": "reasoning",
+      "text": "I’ll verify the relevant constraints.",
+      "toollabel": null,
+      "toolstatus": null,
+      "phase": "stream",
+      "version": 1,
+      "startedat": 1743350401,
+      "updatedat": 1743350402
+    }
+  },
   "result": true
 }
 ```
@@ -7946,7 +8161,7 @@ channel.stream.listen((message) {
   "result": true,
   "message": {
     "messageguid": "c3d4e5f6-...",
-    "totaltokens": 4270,
+    "totaltokens": 6670,
     "model": "openai/gpt-5.4",
     "tokencost": 5,
     "remainingcredits": 9995
@@ -7956,13 +8171,13 @@ channel.stream.listen((message) {
 
 ## Connection Keep-Alive
 
-The Wiro WebSocket server sends a ping every **30 seconds** to keep the connection alive. Most standard WebSocket client libraries respond to pings automatically; if your client implements a custom frame handler, make sure it sends a pong within a few seconds of each ping or the server will drop the connection. After `agent_error` / `agent_cancel` you can close the socket immediately — those are the last frames for that `agenttoken`. After `agent_end`, one more frame (`agent_usage_report`) follows ~250–500 ms later; wait for it if you need the usage/billing data, otherwise close right away.
+The Wiro WebSocket server sends a ping every **30 seconds** to keep the connection alive. Most standard WebSocket client libraries respond to pings automatically; if your client implements a custom frame handler, make sure it sends a pong within a few seconds of each ping or the server will drop the connection. After `agent_error` / `agent_cancel` you can close the socket immediately. After `agent_end`, one more frame (`agent_usage_report`) follows ~250–500 ms later; wait for it if you need usage/billing data. Read `Message/Detail` whenever you need the authoritative completed timeline.
 
 ## Correlating Events With Your Messages
 
-Every agent lifecycle frame (`agent_subscribed` / `agent_start` / `agent_output` / `agent_end` / `agent_error` / `agent_cancel`) carries `agenttoken` — this is the **only** correlation key available on the wire. These frames do **not** include `messageguid`, `sessionkey`, or `useragentguid`. If you need any of those fields to route events back to a specific message in your UI, build the mapping yourself when you call `Message/Send`.
+Every agent lifecycle frame carries `agenttoken`, so keep the mapping returned by `Message/Send`. Most stream frames do not include `messageguid`; `agent_timeline_delta` additionally carries `message.messageguid`, and `agent_subscribed` carries top-level `messageguid`. No frame carries `useragentguid`.
 
-The one exception is the post-terminal `agent_usage_report` frame, whose `message.messageguid` does name the message — but it arrives only after `agent_end`, so you still need the `agenttoken → messageguid` mapping to attribute the streaming frames.
+The post-terminal `agent_usage_report` also names `message.messageguid`, but it arrives only after `agent_end`, so you still need the `agenttoken → messageguid` mapping for start/output/end/error/cancel routing.
 
 ### Why `agenttoken` is the correlation key
 
@@ -7976,11 +8191,25 @@ The one exception is the post-terminal `agent_usage_report` frame, whose `messag
 1. Call `POST /UserAgent/Message/Send` — you get back `{ messageguid, agenttoken, status: "agent_queue", ... }`.
 2. Store the mapping `agenttoken → messageguid` (or `agenttoken → your UI message id`).
 3. Send `{ "type": "agent_info", "agenttoken }` on an open socket (new or existing — connections can be reused).
-4. In `ws.onmessage`, read `msg.agenttoken` on every agent lifecycle frame, look up your stored mapping, and update the matching UI element.
+4. In `ws.onmessage`, read `msg.agenttoken` on every lifecycle frame. For `agent_timeline_delta`, merge `msg.message.block` by `blockid` and strictly newer per-block `version`; never append in arrival order.
 5. When the turn ends, delete the mapping so it doesn't leak memory across sessions. For successful turns, wait for the trailing `agent_usage_report` (it arrives ~250–500 ms after `agent_end`) before deleting, so you can attribute the usage to the right message; for `agent_error` / `agent_cancel`, delete immediately — no usage report follows.
 
 ```javascript
 const tokenToMessageId = new Map()
+const timelineByMessageId = new Map()
+
+function mergeTimelineBlock(uiMessageId, block) {
+  const byId = timelineByMessageId.get(uiMessageId) || new Map()
+  const previous = byId.get(block.blockid)
+  if (!previous || block.version > previous.version) byId.set(block.blockid, block)
+  timelineByMessageId.set(uiMessageId, byId)
+  const timeline = [...byId.values()].sort(
+    (a, b) => a.callindex - b.callindex
+      || a.contentindex - b.contentindex
+      || a.blockid.localeCompare(b.blockid)
+  )
+  updateUI(uiMessageId, { timeline })
+}
 
 async function sendMessage(text, uiMessageId) {
   const resp = await fetch('https://api.wiro.ai/v1/UserAgent/Message/Send', {
@@ -8006,6 +8235,9 @@ ws.onmessage = (event) => {
   if (!uiMessageId) return  // unknown token — probably stale
 
   switch (msg.type) {
+    case 'agent_timeline_delta':
+      mergeTimelineBlock(uiMessageId, msg.message.block)
+      break
     case 'agent_output':
       updateUI(uiMessageId, { streaming: msg.message.raw })
       break
@@ -8059,12 +8291,12 @@ The agent keeps running server-side **regardless of whether any client is subscr
 2. **Reconnect** — open a new WebSocket to `wss://socket.wiro.ai/v1`.
 3. **Wait for welcome** — receive `{ "type": "connected", "version": "1.0" }` (optional but clean).
 4. **Re-subscribe** — send `{ "type": "agent_info", "agenttoken": "..." }` with the same token.
-5. **Handle `agent_subscribed`** — the server reports the **current** status. Three cases:
-   - `status` is `agent_queue` / `agent_start` / `agent_output` → stream is still live; accumulated text so far is in `debugoutput`. Future events will be forwarded normally.
-   - `status` is `agent_end` → the agent already finished. `debugoutput` holds the full final response. **No further WebSocket events will fire.** Fetch `POST /UserAgent/Message/Detail` for the canonical record (including `metadata`, `attachments`, `endedat`), then close the socket.
+5. **Handle `agent_subscribed`** — the server reports the **current** status and persisted `timeline[]`. Three cases:
+   - `status` is `agent_queue` / `agent_start` / `agent_output` → stream is still live; accumulated provisional answer text is in `debugoutput`. Seed your block map from `timeline`, then merge future deltas.
+   - `status` is `agent_end` → the agent already finished. `debugoutput` holds the full final response. Fetch `POST /UserAgent/Message/Detail` for the canonical record (including complete `timeline`, `metadata`, attachments, and timestamps), then close the socket.
    - `status` is `agent_error` / `agent_cancel` → the agent already failed / was cancelled. `debugoutput` may contain partial output. No further events. Fetch `POST /UserAgent/Message/Detail` for the persisted error details.
 
-On reconnect you do **not** receive replays of the past `agent_output` frames — only events emitted after re-subscribe. Use the `debugoutput` on `agent_subscribed` as the snapshot of what you missed.
+On reconnect you do **not** receive replays of past `agent_output` or `agent_timeline_delta` frames. Use `debugoutput` and `timeline` on `agent_subscribed` as the snapshot of what you missed.
 
 ### Example retry strategy
 
@@ -8136,6 +8368,7 @@ An `agenttoken` is issued per message by `POST /UserAgent/Message/Send` and stay
 |---|---|
 | `Message/Send` | Token is minted, row is inserted with `status: "agent_queue"`, broadcast to all queue subscribers. |
 | Worker picks up | Emits `agent_start` to every active subscriber. |
+| Timeline block changes | Emits one `agent_timeline_delta` update with `{ messageguid, block }`; the persisted row keeps the merged ordered timeline. |
 | Each SSE chunk | Emits `agent_output` to every active subscriber (with full accumulated `raw`). |
 | Stream finishes | Emits `agent_end` (or `agent_error` for `"..."` / internal-error content) with final `progressGenerate` payload; DB row status is updated to terminal. |
 | Usage billed | ~250–500 ms after a successful `agent_end`, emits `agent_usage_report` with final token counts, `model`, `tokencost`, and `remainingcredits`. Not emitted for replayed usage callbacks or for turns with no chat message (cron/hook turns). |
@@ -8176,7 +8409,7 @@ The callback URL is stored per-message. You can use different URLs for different
 
 ## Callback Payload
 
-When the agent finishes, Wiro sends a **POST** request to your `callbackurl` with `Content-Type: application/json`. The payload contains the complete message result including structured metadata.
+When the agent finishes, Wiro sends a **POST** request to your `callbackurl` with `Content-Type: application/json`. The payload is deliberately answer-focused: it contains the final answer/error and structured answer metadata, but not the ordered turn timeline.
 
 ### Successful Completion (`agent_end`)
 
@@ -8196,9 +8429,7 @@ When the agent finishes, Wiro sends a **POST** request to your `callbackurl` wit
     "tokenCount": 156,
     "wordCount": 118,
     "raw": "Here are today's trending topics in tech...",
-    "thinking": [],
-    "answer": ["Here are today's trending topics in tech..."],
-    "isThinking": false
+    "answer": ["Here are today's trending topics in tech..."]
   },
   "endedat": 1712050004
 }
@@ -8245,28 +8476,28 @@ When the agent finishes, Wiro sends a **POST** request to your `callbackurl` wit
 | `content` | string | The original user message you sent. |
 | `response` | string | The agent's full response text on success. For errors, contains the error message. For cancellation, contains the abort reason. |
 | `debugoutput` | string | Same as `response` — the full accumulated output text. Included for consistency with the polling API. |
-| `metadata` | object | Structured response data. Contains thinking/answer separation, performance metrics, and raw text. Empty object (`{}`) for error and cancel statuses. |
+| `metadata` | object | Structured answer data, performance metrics, and raw text. Timeline blocks are not embedded in webhooks. Empty object (`{}`) for error and cancel statuses. |
 | `endedat` | number | Unix timestamp (UTC seconds) when processing finished. |
 
 ### The `metadata` Object
 
-On successful completion (`agent_end`), the `metadata` object contains the structured response with thinking/answer separation and real-time metrics:
+On successful completion (`agent_end`), the `metadata` object contains the structured answer and final stream metrics:
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `type` | string | Always `"progressGenerate"`. |
 | `task` | string | Always `"Generate"`. |
-| `raw` | string | The complete response text including any `<think>` tags. |
-| `thinking` | array | Array of reasoning/chain-of-thought blocks extracted from `<think>...</think>` tags. Empty if the model doesn't use thinking. |
+| `raw` | string | The complete response text. |
 | `answer` | array | Array of response segments — the content to show the user. |
-| `isThinking` | boolean | Always `false` in webhooks (streaming is complete). |
 | `speed` | string | Final generation speed (e.g. `"14.2"`). |
 | `speedType` | string | Speed unit — `"words/s"`. |
 | `elapsedTime` | string | Total generation time (e.g. `"8.1s"`). |
-| `tokenCount` | number | Total tokens generated. |
+| `tokenCount` | number | Number of answer chunks received by the bridge. Use the message's billing columns for authoritative model tokens. |
 | `wordCount` | number | Total words in the response. |
 
 For `agent_error` and `agent_cancel`, `metadata` is an empty object `{}`. Always check `status` before accessing metadata fields.
+
+After receiving the webhook, call `POST /UserAgent/Message/Detail` with `messageguid` whenever you need the authoritative top-level `timeline[]`. It preserves the ordered reasoning, answer, and safe tool-label/status blocks for the completed turn.
 
 > **Note:** For `agent_error`, the webhook's `response` / `debugoutput` contain the **raw error** from the agent runtime (useful for debugging). The same message may be **sanitized to a user-facing string** when you read it back via `POST /UserAgent/Message/Detail`, so the two can differ. Log the webhook payload if you need the original.
 
@@ -8274,7 +8505,7 @@ For `agent_error` and `agent_cancel`, `metadata` is an empty object `{}`. Always
 
 | Status | Description | `response` contains | `metadata` contains |
 |--------|-------------|---------------------|---------------------|
-| `agent_end` | Agent completed successfully | Full response text | Structured data with thinking, answer, metrics |
+| `agent_end` | Agent completed successfully | Full response text | Structured answer and metrics |
 | `agent_error` | An error occurred during processing | Error message string | Empty object `{}` |
 | `agent_cancel` | Message was cancelled before completion | Cancellation reason | Empty object `{}` |
 
@@ -8407,14 +8638,18 @@ The `agenttoken` can be used to track the message via [Agent WebSocket](/docs/ag
 
 # Agent Credentials & OAuth
 
-Configure third-party service connections for your agent instances. Browse the platform's credential registry, set API keys + OAuth, and audit credential edits over time.
+Configure third-party service connections for your agent instances. Browse the platform's credential registry, set API keys, direct machine credentials, or OAuth, and audit credential edits over time.
 
 ## Overview
 
-Wiro agents connect to external services — social platforms, ad networks, email tools, CRMs — through two credential methods:
+Wiro agents connect to external services — social platforms, ad networks,
+email tools, CRMs — through three credential methods:
 
 1. **API Key credentials** — set directly via `POST /UserAgent/CredentialUpsert` (bulk field upsert per provider).
 2. **OAuth credentials** — redirect-based authorization via `POST /UserAgentOAuth/OAuthConnect`, where Wiro handles token exchange server-side.
+3. **Hybrid direct credentials** — save a machine credential, call
+   `OAuthConnect` for server-side validation/discovery, then finalize any
+   account picker without exposing provider tokens to the browser.
 
 Each external service is documented as its own **integration page** with the complete setup walkthrough, API reference, troubleshooting, and multi-tenant architecture notes. Use the catalog below to jump to the one you need.
 
@@ -8440,8 +8675,8 @@ Lists all credentials in the registry.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `credential_mode` | string | No | Filter by mode: `"oauth"`, `"sa"` (service account), `"api_key"`, `"multi_api_key"`, `"hybrid"` (OAuth + API key fallback), `"imap_credentials"`, `"jwt_sa"`, `"rule_only"`. |
-| `wiro_connect_pending` | boolean | No | Filter by the "Wiro mode coming soon" flag — credentials whose Wiro-shared OAuth client is still awaiting provider review (currently `facebook-pages`, `instagram`, `meta-ads`, `google-ads`, `google-merchant-center`, `youtube`, `ga4`, `linkedin`, `tiktok`). When `true`, only those credentials are returned; when `false`, only ready-to-use credentials. |
+| `credential_mode` | string | No | Filter by mode: `"oauth"`, `"sa"` (service account), `"api_key"`, `"multi_api_key"`, `"hybrid"` (OAuth plus a direct/API-key mode), `"imap_credentials"`, `"jwt_sa"`, `"rule_only"`. |
+| `wiro_connect_pending` | boolean | No | Filter by the "Wiro mode coming soon" flag — credentials whose Wiro-shared OAuth client is still awaiting provider review (currently `facebook-pages`, `instagram`, `google-ads`, `google-merchant-center`, `youtube`, `ga4`, `linkedin`, `tiktok`, and `meta-ads`). Facebook Pages, Instagram, and Meta Ads remain usable through their ready customer-owned System User and/or OAuth alternatives. |
 
 ##### Response
 
@@ -8459,8 +8694,13 @@ Lists all credentials in the registry.
       "brand_text_color": "#ffffff",
       "brand_logo_filter": "none",
       "docs_url": "integration-instagram-skills",
-      "credential_mode": "oauth",
-      "connection_modes": ["wiro", "own"],
+      "credential_mode": "hybrid",
+      "connection_modes": ["api_key", "own", "wiro"],
+      "default_connection_mode": "api_key",
+      "mode_badges": {
+        "api_key": "Recommended",
+        "own": "Advanced"
+      },
       "wiro_connect_pending": true,
       "credential_schema": [
         {
@@ -8482,6 +8722,25 @@ Lists all credentials in the registry.
           "help": "<ol><li>Meta for Developers → select your app</li><li>App Settings → Basic</li><li>Click Show next to App Secret and copy</li></ol>",
           "oauth_managed": true,
           "only_in_modes": ["own"]
+        },
+        {
+          "key": "systemusertoken",
+          "type": "password",
+          "label": "System User Token",
+          "required": true,
+          "encrypted": true,
+          "show_toggle": true,
+          "runtime_excluded": true,
+          "only_in_modes": ["api_key"]
+        },
+        {
+          "key": "accountId",
+          "type": "text",
+          "label": "Instagram Account ID",
+          "required": true,
+          "pattern": "^[0-9]+$",
+          "auto_filled_by_oauth": true,
+          "readonly_when_connected": true
         },
         {
           "key": "igusername",
@@ -8506,7 +8765,21 @@ Lists all credentials in the registry.
         "return_query_param": "ig_connected",
         "return_error_param": "ig_error",
         "return_error_detail_param": "ig_error_detail",
-        "account_picker": null,
+        "direct_probe": {
+          "mode": "api_key",
+          "mode_label": "System User Token",
+          "token_field": "systemusertoken",
+          "required_fields": ["systemusertoken"],
+          "public_account_fields": ["id", "name"]
+        },
+        "account_picker": {
+          "enabled": true,
+          "multi_select": false,
+          "set_endpoint": "/UserAgentOAuth/SetPickerAccounts",
+          "item_value_field": "accountId",
+          "item_label_field": "igusername",
+          "item_fields_to_save": ["accountId", "igusername"]
+        },
         "extra_step": null
       },
       "used_by_skills": ["int-instagram-post"]
@@ -8522,9 +8795,11 @@ Lists all credentials in the registry.
 | `icon` | `string` | Path or URL to the brand icon (relative paths absolutized server-side). |
 | `brand_color` / `brand_text_color` / `brand_logo_filter` | `string\|null` | Brand colours and CSS filter for icon rendering — same shape as on skill registry entries. |
 | `docs_url` | `string\|null` | Slug of the integration page on this docs site. Frontends prefix with `/docs/`. |
-| `credential_mode` | `string` | One of `"oauth"`, `"sa"` (service account), `"api_key"`, `"multi_api_key"`, `"hybrid"` (OAuth + API key fallback), `"imap_credentials"`, `"jwt_sa"`, `"rule_only"`. |
-| `connection_modes` | `array<string>` | The auth modes the credential supports — usually `["wiro", "own"]` for OAuth credentials, `["api_key"]` for API-key credentials, `["sa"]` for service-account credentials. Drives the auth-method picker in the panel. |
-| `wiro_connect_pending` | `boolean` | When `true`, Wiro's shared OAuth client is awaiting provider review. Currently set on 9 credentials: `facebook-pages`, `instagram`, `meta-ads`, `google-ads`, `google-merchant-center`, `youtube`, `ga4`, `linkedin`, `tiktok`. End users see a "Wiro mode coming soon" badge in the connection picker; in the meantime they can connect via **own** mode using their own developer app. The flag does not strip or hide schema fields — both `wiro` and `own` connection modes remain available; the picker (`account_picker`) is shipped intact regardless of this flag. |
+| `credential_mode` | `string` | One of `"oauth"`, `"sa"` (service account), `"api_key"`, `"multi_api_key"`, `"hybrid"` (OAuth plus a direct/API-key mode), `"imap_credentials"`, `"jwt_sa"`, `"rule_only"`. |
+| `connection_modes` | `array<string>` | The auth modes the credential supports — for example `["wiro", "own"]` for OAuth, `["api_key"]` for API-key credentials, `["sa"]` for service accounts, or `["api_key", "own", "wiro"]` for the Meta hybrids. Drives the auth-method picker in the panel. |
+| `default_connection_mode` | `string\|null` | Registry-recommended mode selected for a new, disconnected credential. Facebook Pages, Instagram, and Meta Ads default to `"api_key"` System User mode. |
+| `mode_badges` | `object` | Optional labels shown beside auth modes, such as `{ "api_key": "Recommended", "own": "Advanced" }`. |
+| `wiro_connect_pending` | `boolean` | When `true`, Wiro's shared OAuth client is awaiting provider review. Currently set on 9 credentials: `facebook-pages`, `instagram`, `google-ads`, `google-merchant-center`, `youtube`, `ga4`, `linkedin`, `tiktok`, and `meta-ads`. Ready alternative modes remain usable; Facebook Pages, Instagram, and Meta Ads expose customer-owned System User and/or OAuth paths. The flag does not strip or hide schema fields. |
 | `credential_schema` | `array<field>` | Per-field schema describing the credential form. Each entry is a `field` object — see below. |
 | `oauth_provider` | `object\|null` | OAuth wiring (endpoints, button styling, picker config) when `credential_mode` includes OAuth. `null` for non-OAuth credentials. See below. |
 | `used_by_skills` | `array<string>` | Skill names that consume this credential — useful for "which skills will this connection enable?" hints. |
@@ -8545,9 +8820,10 @@ Lists all credentials in the registry.
 | `help` | `string?` | HTML help text rendered under the input. |
 | `show_toggle` | `boolean?` | For `type: "password"` — render a "show / hide" toggle. |
 | `oauth_managed` | `boolean?` | `true` when the field is set as part of the OAuth flow (cannot be edited by the user once connected). |
-| `auto_filled_by_oauth` | `boolean?` | `true` when the OAuth callback writes the value (e.g. `igusername`). |
+| `auto_filled_by_oauth` | `boolean?` | `true` when the provider connection flow writes the value (e.g. `igusername` from OAuth or direct discovery). |
 | `readonly_when_connected` | `boolean?` | `true` when the field becomes read-only after a successful OAuth connection. |
 | `only_in_modes` | `array<string>?` | When set (e.g. `["own"]`), the field only appears in the listed `authmethod` mode. |
+| `runtime_excluded` | `boolean?` | `true` when a setup secret is used only by Wiro's server and must never enter the agent runtime. Meta System User tokens use this flag. |
 | `platform_managed` | `boolean?` | `true` when Wiro fills the value server-side (you can't supply it). Currently only the `sys-openai` credential schema flags every field as `platform_managed: true`, which makes the entire credential hidden from `UserAgent/Detail` and `Credentials/List` for non-admin callers. |
 | `item_schema` / `item_type` | `object?` | For array-of-object fields — describes the per-entry shape (e.g. `apple-appstore.apps[].{appname, appid}`). |
 
@@ -8555,12 +8831,13 @@ Lists all credentials in the registry.
 
 | Sub-field | Type | Description |
 |-----------|------|-------------|
-| `auth_method_value` | `string` | The literal `authmethod` field value the panel should write to enable Wiro-managed OAuth (typically `"wiro"`). |
+| `auth_method_value` | `string` | The provider's default OAuth `authmethod` value. It is `"wiro"` only for credentials that offer a Wiro-managed app; customer-owned-only providers use `"own"`. |
 | `connect_endpoint` / `disconnect_endpoint` / `status_endpoint` | `string` | The OAuth endpoints under `/UserAgentOAuth/...` that drive the connect / disconnect / status flow for this provider. Today every OAuth credential resolves to the unified `/UserAgentOAuth/OAuthConnect`, `/UserAgentOAuth/OAuthDisconnect`, `/UserAgentOAuth/OAuthStatus` endpoints — the field is kept on the schema for forward-compat with future per-provider overrides. |
 | `connect_button_label` / `connect_button_icon` / `connect_button_brand_color` / `connect_button_text_color` / `connect_button_logo_filter` | `string` | Branding for the "Connect with X" button. |
 | `username_field` | `string` | The credential field that holds the connected account name (e.g. `"igusername"`, `"channelname"`). |
 | `return_query_param` / `return_error_param` / `return_error_detail_param` | `string` | URL params Wiro appends to the `redirectURL` when the OAuth flow completes (success / error / detail). |
-| `account_picker` | `object\|null` | When non-null, indicates a second OAuth step is required to pick an account / page / channel (e.g. Facebook page picker, YouTube channel picker). Key fields: `set_endpoint` (always `/UserAgentOAuth/SetPickerAccounts`), `multi_select` (`true` when 1+ entries can be picked, `false` for exactly one), `item_value_field` / `item_label_field` (which entry keys identify and label each account in the response), `item_fields_to_save` (the fields each entry in the `accounts` body must carry). |
+| `account_picker` | `object\|null` | When non-null, the connection flow includes an account / page / channel picker after OAuth or direct discovery. Key fields: `set_endpoint` (always `/UserAgentOAuth/SetPickerAccounts`), `multi_select` (`true` when 1+ entries can be picked, `false` for exactly one), `item_value_field` / `item_label_field` (which entry keys identify and label each account in the response), `item_fields_to_save` (the fields each entry in the `accounts` body must carry), and optional `next` for a chained picker. `next.discover_endpoint` is `/UserAgentOAuth/DiscoverPickerItems`; its `key`, parent/item fields, `set_endpoint`, and `persist_field` define the grouped child-selection request and stored result. Meta Ads currently uses this for ad account → Facebook Pages. |
+| `direct_probe` | `object\|null` | Registry contract for a non-redirect mode: identifies the mode and write-only token field, validates it server-side, discovers selectable accounts, and declares which public account fields may be returned. |
 | `extra_step` | `object\|null` | Reserved for providers with a third onboarding step beyond OAuth + picker (currently null for every provider). |
 
 **`fieldstatus` values** — note: this is **not** part of the registry schema; it's the runtime classification stamped onto each `useragentcredentialfields` row when it's written. It controls who can see the value:
@@ -8599,8 +8876,13 @@ Returns the **same full credential entry** as a row from `Credentials/List` — 
     "brand_text_color": "#ffffff",
     "brand_logo_filter": "none",
     "docs_url": "integration-instagram-skills",
-    "credential_mode": "oauth",
-    "connection_modes": ["wiro", "own"],
+    "credential_mode": "hybrid",
+    "connection_modes": ["api_key", "own", "wiro"],
+    "default_connection_mode": "api_key",
+    "mode_badges": {
+      "api_key": "Recommended",
+      "own": "Advanced"
+    },
     "wiro_connect_pending": true,
     "credential_schema": [
       {
@@ -8622,6 +8904,25 @@ Returns the **same full credential entry** as a row from `Credentials/List` — 
         "help": "Meta for Developers → App Settings → Basic → Show next to App Secret.",
         "oauth_managed": true,
         "only_in_modes": ["own"]
+      },
+      {
+        "key": "systemusertoken",
+        "type": "password",
+        "label": "System User Token",
+        "required": true,
+        "encrypted": true,
+        "show_toggle": true,
+        "runtime_excluded": true,
+        "only_in_modes": ["api_key"]
+      },
+      {
+        "key": "accountId",
+        "type": "text",
+        "label": "Instagram Account ID",
+        "required": true,
+        "pattern": "^[0-9]+$",
+        "auto_filled_by_oauth": true,
+        "readonly_when_connected": true
       },
       {
         "key": "igusername",
@@ -8646,7 +8947,21 @@ Returns the **same full credential entry** as a row from `Credentials/List` — 
       "return_query_param": "ig_connected",
       "return_error_param": "ig_error",
       "return_error_detail_param": "ig_error_detail",
-      "account_picker": null,
+      "direct_probe": {
+        "mode": "api_key",
+        "mode_label": "System User Token",
+        "token_field": "systemusertoken",
+        "required_fields": ["systemusertoken"],
+        "public_account_fields": ["id", "name"]
+      },
+      "account_picker": {
+        "enabled": true,
+        "multi_select": false,
+        "set_endpoint": "/UserAgentOAuth/SetPickerAccounts",
+        "item_value_field": "accountId",
+        "item_label_field": "igusername",
+        "item_fields_to_save": ["accountId", "igusername"]
+      },
       "extra_step": null
     },
     "used_by_skills": ["int-instagram-post"]
@@ -8662,9 +8977,11 @@ Returns `{ "result": false, "errors": [{ "code": 404, "message": "Credential not
 
 | Integration | Auth Modes | Setup Guide |
 |-------------|------------|-------------|
-| Meta Ads | Own only (Wiro mode coming soon) | [Meta Ads Skills](/docs/integration-metaads-skills) |
-| Facebook Page | Own only (Wiro mode coming soon) | [Facebook Page Skills](/docs/integration-facebook-skills) |
-| Instagram | Own only (Wiro mode coming soon) | [Instagram Skills](/docs/integration-instagram-skills) |
+| Meta Ads | Own OAuth + System User token; Wiro-owned OAuth deferred until Advanced Access | [Meta Ads Skills](/docs/integration-metaads-skills) |
+| Shopify | Expiring offline OAuth + refresh token, or same-org client credentials (`expires_in: 86399`) | [Shopify Skills](/docs/integration-shopify-skills) |
+| Reddit | Unavailable pending Reddit Data API approval and Wiro's written commercial contract | [Reddit Skills](/docs/integration-reddit-skills) |
+| Facebook Page | System User token (recommended) + Own OAuth (advanced); Wiro mode coming soon | [Facebook Page Skills](/docs/integration-facebook-skills) |
+| Instagram | System User token (recommended) + Own Instagram OAuth (advanced); Wiro mode coming soon | [Instagram Skills](/docs/integration-instagram-skills) |
 | LinkedIn | Own only (Wiro mode coming soon) | [LinkedIn Skills](/docs/integration-linkedin-skills) |
 | Twitter / X | Wiro + Own | [Twitter Skills](/docs/integration-twitter-skills) |
 | TikTok | Wiro + Own | [TikTok Skills](/docs/integration-tiktok-skills) |
@@ -8685,7 +9002,11 @@ Returns `{ "result": false, "errors": [{ "code": 404, "message": "Credential not
 | Google Calendar | [Google Calendar Skills](/docs/integration-google-calendar-skills) |
 | Google Play | [Google Play Skills](/docs/integration-googleplay-skills) |
 
-> **Meta Platforms availability:** While Wiro's shared Meta App is under review by Meta, the Meta Ads, Facebook Page, and Instagram integrations must be connected using your own Meta Developer App in Development Mode. No App Review is required — users who are listed in your app's Roles (Testers/Developers) can connect without review. See each integration page for step-by-step setup.
+> **Meta Platforms availability:** Meta Ads, Facebook Pages, and Instagram all
+> offer customer-owned Business Manager System User connections now. Meta Ads
+> and Facebook Pages also offer customer-owned Facebook OAuth; Instagram offers
+> customer-owned Instagram Login OAuth. Their Wiro-shared OAuth modes remain
+> pending provider review.
 
 ### API Key Integrations
 
@@ -8695,6 +9016,11 @@ Returns `{ "result": false, "errors": [{ "code": 404, "message": "Credential not
 | Telegram | [Telegram Skills](/docs/integration-telegram-skills) |
 | Firebase | [Firebase Skills](/docs/integration-firebase-skills) |
 | WordPress | [WordPress Skills](/docs/integration-wordpress-skills) |
+| Shopify (same-organization client ID + secret) | [Shopify Skills](/docs/integration-shopify-skills) |
+| WooCommerce | [WooCommerce Skills](/docs/integration-woocommerce-skills) |
+| Meta Ads (System User token) | [Meta Ads Skills](/docs/integration-metaads-skills) |
+| Facebook Pages (System User token) | [Facebook Page Skills](/docs/integration-facebook-skills) |
+| Instagram (System User token) | [Instagram Skills](/docs/integration-instagram-skills) |
 | App Store Connect | [App Store Skills](/docs/integration-appstore-skills) |
 | Apollo | [Apollo Skills](/docs/integration-apollo-skills) |
 | Lemlist | [Lemlist Skills](/docs/integration-lemlist-skills) |
@@ -8939,11 +9265,11 @@ Own mode requires two sequential calls before initiating OAuth:
 # Step 1: Save your provider app credentials + authmethod via CredentialUpsert
 #
 # NOTE: `clientid` / `clientsecret` are normally fieldstatus="oauth_app" in the
-# template — and the API rejects user-role writes to them. The template flips
-# them to fieldstatus="user" when the credential is configured for own mode
-# (so customers can bring their own keys); on those templates the call below
-# works. If your API key gets `agent-fieldstatus-not-allowed-for-role`, the
-# template doesn't support own mode and you should use wiro mode instead.
+# template — and the API rejects user-role writes to them. Credentials that
+# support own mode expose customer app fields as user-writable. If your API
+# key gets `agent-fieldstatus-not-allowed-for-role`, inspect
+# `POST /Credentials/Detail` and use one of that credential's declared
+# `connection_modes`.
 
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -H "Content-Type: application/json" \
@@ -8969,7 +9295,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
   }'
 ```
 
-For Wiro mode: skip Step 1, just call Step 2 with `authmethod: "wiro"` (or omit — it defaults to `"wiro"`).
+For credentials whose `connection_modes` includes an enabled `"wiro"` mode, you can skip Step 1 and call Step 2 with `authmethod: "wiro"`. Omitting `authmethod` uses that credential's registry default. For Meta Ads, always send `"own"` or `"api_key"` while its default `"wiro"` mode is pending; Shopify and Reddit use `"own"`.
 
 ### Callback URL pattern (own mode)
 
@@ -8979,7 +9305,7 @@ Register this URL in your OAuth app settings on the provider's developer portal:
 https://api.wiro.ai/v1/UserAgentOAuth/{Provider}Callback
 ```
 
-Provider-specific paths: `XCallback`, `TikTokCallback`, `IGCallback`, `FBCallback`, `LICallback`, `GAdsCallback`, `MetaAdsCallback`, `MCCallback`, `YTCallback`, `GA4Callback`, `HubSpotCallback`, `MailchimpCallback`.
+Provider-specific paths: `XCallback`, `TikTokCallback`, `IGCallback`, `FBCallback`, `LICallback`, `GAdsCallback`, `MetaAdsCallback`, `MCCallback`, `YTCallback`, `GA4Callback`, `HubSpotCallback`, `MailchimpCallback`, `ShopifyCallback`, `RedditCallback`.
 
 ### Callback success & error parameters
 
@@ -8997,6 +9323,8 @@ Provider-specific paths: `XCallback`, `TikTokCallback`, `IGCallback`, `FBCallbac
 | GA4 | `ga4_connected=true&ga4_properties=[...]` | `ga4_error=...` (+ `ga4_error_detail=...`) |
 | HubSpot | `hubspot_connected=true&hubspot_portal=...&hubspot_name=...` | `hubspot_error=...` (+ `hubspot_error_detail=...`) |
 | Mailchimp | `mailchimp_connected=true&mailchimp_account=...` | `mailchimp_error=...` (+ `mailchimp_error_detail=...`) |
+| Shopify | `shopify_connected=true&shopify_shop=...&shopify_name=...` | `shopify_error=...` (+ `shopify_error_detail=...`) |
+| Reddit | `reddit_connected=true&reddit_username=...` | `reddit_error=...` (+ `reddit_error_detail=...`) |
 
 > **Conditional params:** `gads_accounts`, `mc_accounts`, `yt_channels`, `ga4_properties`, and `metaads_accounts` are omitted from the redirect when the provider returns zero items (for example, no accessible Google Ads customers, or a developer token is missing in Wiro mode). `fb_pages` is always present on success — Facebook returns `fb_error=no_pages` instead when the user has no administered Pages.
 
@@ -9023,29 +9351,36 @@ Provider-specific codes:
 
 ## Generic OAuth Endpoints
 
-All OAuth integrations share four unified endpoints. The provider is selected via a `credentialkey` body parameter (e.g. `"google-ads"`, `"twitter"`, `"facebook-pages"`):
+All OAuth integrations share five unified endpoints. The provider is selected via a `credentialkey` body parameter (e.g. `"google-ads"`, `"twitter"`, `"facebook-pages"`):
 
 | Endpoint | Purpose |
 |----------|---------|
-| `POST /UserAgentOAuth/OAuthConnect` | Start the OAuth authorize flow — returns a provider URL the browser redirects to. |
+| `POST /UserAgentOAuth/OAuthConnect` | Start OAuth and return an authorize URL, or run a registry-declared direct credential probe and return discovered accounts. |
 | `POST /UserAgentOAuth/OAuthStatus` | Check whether a provider is connected and which accounts are selected. |
 | `POST /UserAgentOAuth/OAuthDisconnect` | Clear stored credentials + tokens. |
-| `POST /UserAgentOAuth/SetPickerAccounts` | Save the user's account selection after the OAuth callback. |
+| `POST /UserAgentOAuth/DiscoverPickerItems` | Discover grouped child resources for a registry-declared chained picker after its parent accounts are selected. |
+| `POST /UserAgentOAuth/SetPickerAccounts` | Save the user's account selection after OAuth or direct discovery. |
 
-> Each provider's own callback URL — `XCallback`, `IGCallback`, `GAdsCallback`, etc. — is still per-provider because external OAuth platforms redirect to fixed URLs. Only the four endpoints above are unified.
+> Each provider's own callback URL — `XCallback`, `IGCallback`, `GAdsCallback`, etc. — is still per-provider because external OAuth platforms redirect to fixed URLs. Only the five endpoints above are unified.
 
-> Discover the full list of OAuth providers Wiro supports via [`POST /Credentials/List`](#post-credentialslist) (`credential_mode: "oauth"`). The `oauth_provider` block on each entry tells you the exact endpoint paths plus the picker contract (`account_picker`).
+> Discover the full list via [`POST /Credentials/List`](#post-credentialslist). Any entry with a non-null `oauth_provider` can use these endpoints; hybrid credentials may offer OAuth and a direct probe. The `oauth_provider` block declares exact endpoint paths, supported direct mode, and picker contract.
 
 ### POST /UserAgentOAuth/OAuthConnect
 
-Initiate OAuth — Wiro generates the provider authorize URL and a state token. Your frontend redirects the user to the returned `authorizeUrl`. After the user grants consent, the provider redirects back to Wiro's callback (per-provider), Wiro exchanges the code for tokens, and finally redirects the user to your `redirecturl` with success/error query parameters.
+For OAuth mode, Wiro generates the provider authorize URL and a state token.
+Your frontend redirects the user to `authorizeUrl`; after consent, the provider
+returns to Wiro's registry-declared callback and Wiro redirects the browser to
+your `redirecturl`. For direct modes such as Meta Ads, Facebook Pages, or
+Instagram System User tokens and Shopify client credentials, this endpoint
+validates or exchanges the already-saved credential server-side and returns
+without a browser redirect.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
-| `credentialkey` | string | Yes | OAuth credential key (e.g. `"google-ads"`, `"twitter"`, `"facebook-pages"`, `"instagram"`, `"linkedin"`, `"hubspot"`, `"mailchimp"`, `"meta-ads"`, `"google-merchant-center"`, `"youtube"`, `"ga4"`, `"tiktok"`). |
-| `redirecturl` | string | Yes | Your URL the user lands on after the OAuth flow completes (HTTPS, or `http://localhost`/`http://127.0.0.1` in development). Wiro appends provider-specific status query params. |
-| `authmethod` | string | No | `"wiro"` (default — uses Wiro's pre-configured OAuth app) or `"own"` (uses the OAuth app credentials you stored via `CredentialUpsert`). |
+| `credentialkey` | string | Yes | Credential key with an `oauth_provider` block (for example `"google-ads"`, `"twitter"`, `"meta-ads"`, `"facebook-pages"`, `"instagram"`, or `"shopify"`). |
+| `redirecturl` | string | OAuth only | Your URL after OAuth completes (HTTPS, or `http://localhost`/`http://127.0.0.1` in development). Direct probes do not use it. |
+| `authmethod` | string | No | One value from the credential's `connection_modes`, such as `"wiro"`, `"own"`, or `"api_key"`. Omission uses `oauth_provider.auth_method_value`. |
 
 ##### Response
 
@@ -9057,6 +9392,8 @@ Initiate OAuth — Wiro generates the provider authorize URL and a state token. 
 }
 ```
 
+Direct probes return `{ "result": true, "accounts": [{ "id": "...", "name": "..." }], "errors": [] }` and do not include `authorizeUrl`.
+
 ##### Common errors
 
 | Error message | Cause |
@@ -9065,6 +9402,7 @@ Initiate OAuth — Wiro generates the provider authorize URL and a state token. 
 | `Credential is not configured for the generic OAuth dispatcher: <key>` | Registry entry is partial — missing `oauth_flow` config. |
 | `Invalid redirect URL` | `redirecturl` is not HTTPS (and not localhost). |
 | `<Provider> credentials not configured` | `authmethod: "own"` but `clientid`/`clientsecret` not saved yet. |
+| Direct credential validation message | The saved direct credential fields failed the registry-declared exchange/probe, or no required account was assigned. |
 | `User agent not found or unauthorized` | `useragentguid` doesn't exist or doesn't belong to the caller. |
 
 ### POST /UserAgentOAuth/OAuthStatus
@@ -9094,24 +9432,91 @@ Returns whether the credential is connected and lists every account/property/pag
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `connected` | `boolean` | `true` when an access token is stored AND every required picker field is populated. |
+| `connected` | `boolean` | `true` when the active mode has a validated secret and every required picker field is populated. |
 | `accounts` | `array<{id, name}>` | The accounts/pages/properties the user selected. Empty `[]` when nothing is selected (or the credential has no picker step — e.g. Twitter/X, TikTok, HubSpot — which expose a 1-element array carrying the connected user's identifier). |
 | `connectedat` | `string` | ISO timestamp of the last successful Connect / token refresh. |
 | `tokenexpiresat` | `string` | ISO timestamp when the current access token expires. Empty for providers without a fixed expiry (e.g. Mailchimp). |
 
-> **Multi-account picker fields are JSON arrays.** Picker fields like `customerid` (Google Ads), `adaccountid` (Meta Ads), `merchantid` (Merchant Center), `channelid` (YouTube), `propertyid` (GA4), `pageid` (Facebook Pages) are stored as **JSON arrays** in the credential row when the credential's `account_picker.multi_select === true`. `UserAgent/Detail` decodes them back to native arrays. Single-select credentials persist them as scalars.
+> **Multi-account picker fields are JSON arrays.** Picker fields like
+> `customerid` (Google Ads), `adaccountid` (Meta Ads), `merchantid` (Merchant
+> Center), `channelid` (YouTube), `propertyid` (GA4), and `pageid` (Facebook
+> Pages) are stored as JSON arrays when
+> `account_picker.multi_select === true`. Single-select fields such as
+> Instagram's `accountId` are scalars.
 
-### POST /UserAgentOAuth/SetPickerAccounts
+### POST /UserAgentOAuth/DiscoverPickerItems
 
-Save the user's account selection after the OAuth callback. The endpoint accepts a list of accounts the user picked from the callback's URL params (e.g. `gads_accounts`, `metaads_accounts`, `mc_accounts`, `yt_channels`, `ga4_properties`, `fb_pages`).
-
-Single registry-driven dispatcher for the per-credential picker shape. Multi-select pickers (Google Ads, Meta Ads, Merchant Center, YouTube, GA4, Facebook Pages) accept one or more entries; single-select pickers accept exactly one.
+Discover child resources for a chained picker after the root
+`SetPickerAccounts` selection has been saved. The current chained flow is Meta
+Ads: selected ad accounts are the parents and eligible Facebook Pages are
+returned under each account. Wiro reads the active credential server-side;
+clients never send or receive access tokens.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
-| `credentialkey` | string | Yes | OAuth credential key with an `account_picker` defined. |
-| `accounts` | array | Yes | One or more account objects. Each object must carry the per-credential `item_fields_to_save` keys (see table below). |
+| `credentialkey` | string | Yes | Credential key with `account_picker.next` configured. Currently `"meta-ads"`. |
+| `pickerkey` | string | Yes | The chained picker key from the registry. Meta Ads uses `"pages"`. |
+
+##### Example — discover Meta Ads Pages
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/DiscoverPickerItems" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "meta-ads",
+    "pickerkey": "pages"
+  }'
+```
+
+##### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "pickerkey": "pages",
+  "groups": [
+    {
+      "parent": {
+        "adaccountid": "123456789",
+        "adaccountname": "Acme Ads"
+      },
+      "items": [
+        { "pageid": "111222333", "pagename": "Acme" }
+      ]
+    }
+  ]
+}
+```
+
+Each group corresponds to one selected parent account. A group may carry
+`errorcode` and an empty `items` array when discovery failed safely for that
+parent. Successful candidates are cached for the registry-declared selection
+window (five minutes for Meta Ads). Call `SetPickerAccounts` with `pickerkey`
+and one `selections[]` entry for every successful parent before that window
+expires.
+
+### POST /UserAgentOAuth/SetPickerAccounts
+
+Save either the root account selection after an OAuth callback/direct discovery,
+or a chained child-resource selection after `DiscoverPickerItems`. The endpoint
+accepts entries from the provider's public account list; clients never supply
+access tokens.
+
+The registry declares each provider's picker shape. Multi-select pickers
+(Google Ads, Meta Ads, Merchant Center, YouTube, GA4, Facebook Pages) accept one
+or more entries; Instagram's direct picker accepts exactly one.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Agent instance GUID. |
+| `credentialkey` | string | Yes | Credential key with an `account_picker` defined. |
+| `accounts` | array | Root picker only | One or more account objects. Each object must carry the per-credential `item_fields_to_save` keys (see table below). |
+| `pickerkey` | string | Chained picker only | Chained picker key returned by `DiscoverPickerItems`. |
+| `selections` | array | Chained picker only | One `{ parentvalue, items }` entry for every successfully discovered parent. `items` may be empty when the chained picker is optional. |
 
 ##### Per-credential `accounts[]` shape
 
@@ -9122,7 +9527,8 @@ Single registry-driven dispatcher for the per-credential picker shape. Multi-sel
 | `google-merchant-center` | `merchantid`, `accountname` | |
 | `youtube` | `channelid`, `channeltitle` | |
 | `ga4` | `propertyid`, `propertydisplayname` | |
-| `facebook-pages` | `pageid`, `fbpagename` | Per-page access tokens are pulled from the OAuth pending cache automatically — you don't supply them. The pending cache has a 15-minute TTL after the OAuth callback. |
+| `facebook-pages` | `pageid`, `fbpagename` | One or more Pages from the latest OAuth or System User discovery result. |
+| `instagram` | `accountId`, `igusername` | Exactly one account from direct System User discovery. Customer-owned Instagram OAuth does not use this picker. |
 
 ##### Example — Google Ads multi-select
 
@@ -9155,6 +9561,33 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
 
 The agent restarts automatically if it was running.
 
+##### Example — save Meta Ads Page mappings
+
+Call this after `DiscoverPickerItems` and include every successful parent once:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "meta-ads",
+    "pickerkey": "pages",
+    "selections": [
+      {
+        "parentvalue": "123456789",
+        "items": [
+          { "pageid": "111222333", "pagename": "Acme" }
+        ]
+      }
+    ]
+  }'
+```
+
+The response includes `pickerkey: "pages"` and the persisted, flat
+`pagemappings[]` list. Sending an empty `items` array skips Pages for that ad
+account; Meta Ads reporting and other non-Page operations remain available.
+
 ##### Common errors
 
 | Error message | Cause |
@@ -9162,13 +9595,20 @@ The agent restarts automatically if it was running.
 | `accounts must be a non-empty array` | `accounts` missing or empty. |
 | `Single-select picker requires exactly one account; got <N>` | Single-select credential received multiple entries. |
 | `<Provider> account not connected` | Standard picker (e.g. Google Ads) called before the OAuth callback wrote tokens. |
-| `No pending <Provider> connection. Please reconnect via OAuthConnect.` | Deferred-token picker (Facebook Pages) — pending cache expired (15-minute TTL) or missing. |
-| `Selected <field> not found in pending list: <value>` | Deferred-token picker — picked id is not in the cached list of OAuth-permitted pages. |
+| `No pending <Provider> connection. Please reconnect via OAuthConnect.` | Deferred-token picker (Facebook Pages or direct Instagram) — the 15-minute discovery window expired or is missing. |
+| `Selected <field> not found in pending list: <value>` | Deferred-token picker — the selected ID is not in the latest server-side discovery result. |
 | `Credential does not support account picker: <key>` | `credentialkey` doesn't have an `account_picker` (e.g. Twitter / TikTok / HubSpot). |
+| `Picker candidates expired. Discover them again.` | Chained picker candidates expired or the parent connection changed. Call `DiscoverPickerItems` again. |
+| `selections must include every available parent exactly once` | Chained picker request omitted or duplicated a successfully discovered parent. |
 
 ### POST /UserAgentOAuth/OAuthDisconnect
 
-Clears every stored credential field for this provider on this useragent — access/refresh tokens, picker selections (set to empty arrays for multi-select fields), all auto-filled values. User-supplied OAuth app credentials (`clientid`, `clientsecret`, `appid`, `appsecret`) and API-key alternatives (e.g. Mailchimp `apikey`) are preserved so the user can reconnect without re-entering them. The agent restarts automatically if it was running.
+Clears the active connection's tokens, picker selections, and auto-filled
+values. Customer-owned OAuth app credentials (`clientid`, `clientsecret`,
+`appid`, `appsecret`) are preserved for reconnection. An alternative API-key
+field is preserved while disconnecting OAuth, but disconnecting that direct
+mode itself clears its secret — including Meta `systemusertoken`. The agent
+restarts automatically if it was running.
 
 For providers that publish a token-revocation endpoint (currently Twitter/X and TikTok), Wiro also calls the provider's revoke endpoint as a non-critical best-effort step. Other providers only clear local credentials; the token remains valid on the provider side until it expires.
 
@@ -9186,65 +9626,14 @@ For providers that publish a token-revocation endpoint (currently Twitter/X and 
 }
 ```
 
-### POST /UserAgentOAuth/TokenRefresh
+### Token lifecycle
 
-> **API users don't normally call this endpoint.** Wiro's agent runtime refreshes tokens automatically via this endpoint itself — see [Automatic token refresh](#automatic-token-refresh) below. TokenRefresh is exposed publicly mainly for debugging and manual overrides.
+Wiro maintains renewable provider connections automatically while the agent is
+running. Direct Meta System User connections have no generic refresh contract:
+regenerate and reconnect an expiring or invalidated token. There is no
+customer-facing token-refresh endpoint or manual refresh action.
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | Agent instance GUID. |
-| `provider` | string | Yes | Canonical credential key — one of: `twitter`, `tiktok`, `instagram`, `facebook-pages`, `linkedin`, `google-ads`, `meta-ads`, `hubspot`, `google-merchant-center`, `youtube`, `ga4`. |
-
-**Mailchimp is not supported** — its tokens don't expire. Calling TokenRefresh with `provider: "mailchimp"` returns `Invalid provider`.
-
-##### Response
-
-```json
-{
-  "result": true,
-  "errors": [],
-  "accesstoken": "EAAB...",
-  "refreshtoken": "AQX..."
-}
-```
-
-`refreshtoken` is empty for providers that don't issue one (Instagram, Facebook Pages, Meta Ads, Google Ads usually).
-
-### Automatic token refresh
-
-Every running agent container runs background cron jobs that call `POST /UserAgentOAuth/TokenRefresh` against this API on a schedule tuned to each provider's token lifetime. There is **nothing to set up** — as long as the agent is running, tokens are kept fresh.
-
-Refresh cadence inside the agent container:
-
-| Provider | Cron interval | Token lifetime |
-|----------|---------------|----------------|
-| HubSpot | every 20 min | 30 min |
-| Google Ads | every 45 min | 1 hour |
-| Twitter / X | every 90 min | 2 hours |
-| Instagram, Facebook, Meta Ads, LinkedIn, TikTok | once per day | 1–60 days |
-| Mailchimp | never (tokens don't expire) | — |
-
-An initial refresh also runs on every container startup, so tokens are always current by the time the first skill call goes out.
-
-**You should manually call TokenRefresh only if:**
-
-- You're debugging a stuck integration and want to force a new token immediately.
-- The agent has been stopped for longer than the token lifetime and you want to pre-warm tokens before Start.
-- You want to verify the refresh logic end-to-end for a provider.
-
-Hardcoded token TTLs that Wiro stores after each refresh:
-
-| Provider | Access Token `tokenexpiresat` | Refresh Token |
-|----------|--------------------------------|----------------|
-| Twitter / X | 2 hours | ~180 days |
-| TikTok | 1 day | ~1 year |
-| Instagram | 60 days | N/A (refreshes with current access token via `ig_refresh_token`) |
-| Facebook | 60 days | N/A (refreshes via `fb_exchange_token`) |
-| LinkedIn | 60 days | From provider response (~1 year typical) |
-| Google Ads | 1 hour | Long-lived (no expiry in typical use) |
-| Meta Ads | 60 days | N/A |
-| HubSpot | 30 minutes | Long-lived |
-| Mailchimp | No expiry | N/A |
+Use `POST /UserAgentOAuth/OAuthStatus` to monitor the connection. If it reports `connected: false`, or the provider revokes a connection that cannot be renewed, reconnect through `POST /UserAgentOAuth/OAuthConnect`. Provider-specific exceptions are documented in each integration guide.
 
 ## Web UI Behaviors (Wiro Dashboard)
 
@@ -9252,10 +9641,14 @@ If you're comparing against the Wiro Dashboard, here's what happens under the ho
 
 - **Per-group save**: Each credential card has its own Save button. Saving a card calls `POST /UserAgent/CredentialUpsert` with only that group's `fields[]` (one request per card).
 - **Own mode 2-step**: When a user clicks "Connect" in own mode, the Dashboard first calls `CredentialUpsert` to save `appid`/`appsecret` + `authmethod: "own"`, then calls the Connect endpoint with `authmethod: "own"`. API users must make both calls explicitly.
+- **Recommended Meta direct mode**: Facebook Pages, Instagram, and Meta Ads
+  default to System User Token. The Dashboard saves `authmethod: "api_key"` and
+  `systemusertoken`, calls `OAuthConnect`, then completes the registry picker
+  without exposing provider tokens to browser state.
 - **Full-page redirect, not popup**: `window.location.href = authorizeUrl` — no popup windows (avoids third-party cookie issues).
-- **No manual token refresh button**: Refresh is fully automatic. `TokenRefresh` exists for debugging only.
+- **No manual token refresh button**: Wiro maintains supported connections automatically; reconnect when the Dashboard reports that authorization is required.
 - **LLM Markdown feature**: The Dashboard includes an "LLM Markdown" tab that generates a ready-to-paste prompt for AI assistants summarizing every credential field the agent needs. Useful for API users building their own configuration UIs — see the per-integration help texts for equivalent guidance.
-- **No format validation**: Wiro doesn't validate email/URL formats server-side. Malformed values fail at runtime inside the skill when it tries to use them.
+- **Registry-backed validation**: Wiro validates declared types, patterns, lengths, URLs, enum values, and provider response contracts before persisting or connecting credentials. The provider remains authoritative for permissions and asset access.
 - **Platform-managed credentials are hidden**: Groups whose fields are all flagged `platform_managed: true` (currently only `sys-openai`) are omitted from `POST /UserAgent/Detail` responses entirely. They're pre-configured by Wiro and can't be set by customers.
 
 ## Setup Required State
@@ -9266,14 +9659,16 @@ If an agent has required credentials not yet filled in, it's in **Setup Required
 
 `setuprequired` flag in `UserAgent/Detail` / `UserAgent/MyAgents` is `true` when any non-optional credential is still incomplete. The server treats a credential as complete when either:
 
-- **OAuth credentials** — `_connected: true` (access token present **and** every required picker field populated), or
+- **OAuth and hybrid connection credentials** — `_connected: true` (the active
+  mode has a validated runtime token **and** every required picker field is
+  populated), or
 - **API-key credentials** — at least one field with `fieldstatus: "user"` has a non-empty value (any one user-writable field filled in makes the credential count as "entered"; there is no deeper per-field validation).
 
 The two branches are checked together: `setuprequired` stays `true` until every required credential passes one of them.
 
 ## Security
 
-- **Tokens are stored server-side** in the normalized `useragentcredentialfields` table (one row per field). `TokenRefresh` returns new tokens in its own response.
+- **Tokens are stored server-side** and are never returned by the customer-facing credential endpoints.
 - **`oauth_session` fields are always stripped** from Status, Detail, `MyAgents`, and `CredentialUpsert` responses — `accesstoken`, `refreshtoken`, `tokenexpiresat`, `pageAccessToken` and any similar rows never leave the server.
 - **`platform` fields are stripped for `user` role callers** (default for API keys without ADMIN scope). In practice this currently affects only the `sys-openai` credential — its key never leaves the server. `credentials.wiro.apikey` and `credentials.calendarific.apikey` are user-supplied and appear normally in the response.
 - **`oauth_app` fields (`clientsecret`, `appsecret`) are visible in Detail responses** after an admin / OAuth "own mode" setup writes them. If you build a customer-facing UI on top of this API, treat them as admin-only in your own layer. The append-only credential history redacts `clientsecret` to `[REDACTED]` and always redacts `oauth_session` rows; only the live row can be read.
@@ -9281,19 +9676,25 @@ The two branches are checked together: `setuprequired` stays `true` until every 
 - The `redirecturl` receives only connection status parameters — no tokens, no secrets.
 - OAuth state parameters use a 15-minute TTL cache to prevent replay attacks.
 - Redirect URLs must be HTTPS (or localhost/127.0.0.1 for development).
-- Facebook Page tokens are cached server-side for 15 minutes after the OAuth callback; clients only see `{id, name}` pairs. Page access tokens never leave the server.
+- Facebook Page and direct Instagram discovery results remain server-side for
+  15 minutes while the user selects accounts. Clients receive only public
+  `{id, name}` pairs; System User and Page access tokens never leave the server.
 
 ## For Third-Party Developers
 
 If you're building a product on top of Wiro agents and need your customers to connect their own accounts:
 
 1. **Deploy** an agent instance per customer via `POST /UserAgent/Deploy`.
-2. **Connect** — your backend calls `POST /UserAgentOAuth/OAuthConnect` with `useragentguid`, `credentialkey`, and a `redirecturl` pointing back to your app.
-3. **Redirect** — send the customer's browser to the returned `authorizeUrl`.
-4. **Authorize** — customer authorizes on the provider's consent screen.
-5. **Return** — customer lands on your `redirecturl` with success/error query parameters.
-6. **Finalize** — for picker credentials (Meta Ads, Facebook Pages, Google Ads, Merchant Center, YouTube, GA4): call `POST /UserAgentOAuth/SetPickerAccounts` with the picked accounts pulled from the redirect URL params.
-7. **Verify** — call `POST /UserAgentOAuth/OAuthStatus`.
+2. **Connect** — save the chosen mode's fields, then call
+   `POST /UserAgentOAuth/OAuthConnect`.
+3. **OAuth branch** — when `authorizeUrl` is returned, redirect the customer's
+   browser, let the provider authorize, and handle the callback parameters.
+4. **Direct branch** — when `accounts` is returned, render the public account
+   list directly; there is no browser redirect.
+5. **Finalize** — for picker credentials (Meta Ads, Facebook Pages, direct
+   Instagram, Google Ads, Merchant Center, YouTube, GA4), call
+   `POST /UserAgentOAuth/SetPickerAccounts` with the selected public entries.
+6. **Verify** — call `POST /UserAgentOAuth/OAuthStatus`.
 
 Each integration page includes a **Multi-Tenant Architecture** section covering per-provider rate limits, token isolation, and white-label consent screen configuration.
 
@@ -9379,7 +9780,7 @@ Lists all skills in the registry.
 | `capability` | string | No | Filter by capability key (see [`POST /Skills/Capabilities`](#post-skillscapabilities) for the closed-set vocabulary). |
 | `user_invocable` | boolean | No | When `true`, only return skills end users can call directly through chat (filters out plumbing skills wired by the runtime). |
 | `requires_credentials` | boolean | No | Filter by whether the skill requires a credential. |
-| `wiro_connect_pending` | boolean | No | Filter by the "Wiro mode coming soon" flag — integrations whose Wiro-shared OAuth client is still awaiting provider review (currently 9 credentials: `facebook-pages`, `instagram`, `meta-ads`, `google-ads`, `google-merchant-center`, `youtube`, `ga4`, `linkedin`, `tiktok`). When `true`, only those skills are returned; when `false`, only ready-to-use skills. The flag is read off the credential, not the skill — `int-instagram-post` is pending because `instagram` is pending, etc. |
+| `wiro_connect_pending` | boolean | No | Filter by the "Wiro mode coming soon" flag — integrations whose Wiro-shared OAuth client is still awaiting provider review (currently 9 user-facing credentials: `facebook-pages`, `instagram`, `google-ads`, `google-merchant-center`, `youtube`, `ga4`, `linkedin`, `tiktok`, and `meta-ads`). Facebook Pages, Instagram, and Meta Ads remain usable through their customer-owned System User and/or OAuth alternatives. When `true`, only pending skills are returned; when `false`, only ready-to-use skills. The flag is read off the credential, not the skill. |
 | `name_in` | array<string> | No | Restrict the response to a specific list of skill names. |
 
 ##### Response
@@ -9388,7 +9789,7 @@ Lists all skills in the registry.
 {
   "result": true,
   "errors": [],
-  "total": 40,
+  "total": 45,
   "skills": [
     {
       "name": "int-instagram-post",
@@ -9452,7 +9853,15 @@ Lists all skills in the registry.
 
 > **4 weight buckets in the skill registry.** Every skill's `monthly_price_weight_usd` / `monthly_credits_weight` pair lands in one of four buckets: `ZERO` (`$0` / `0` — utility / rule-only skills), `LIGHT` (`$1` / `25` credits per month), `HEAVY` (`$2` / `50` credits per month), or `PREMIUM` (`$4` / `100` credits per month). The `(priceUsd, credits)` grid is a documentation convenience — it is **not** a named API constant; each pair emerges from the skill's own `monthly_price_weight_usd` / `monthly_credits_weight`. There are **no per-skill Pro overrides** — Pro is always derived as `Starter × tiermultiplier` (default `10`). The agent's Starter price = `Σ(enabled-skill weights)`, bumped to `$4` if the raw sum lands below the floor (with credits scaled proportionally to keep the per-credit ratio stable); Pro = `Starter × tiermultiplier`.
 
-> **Optional filter `wiro_connect_pending`.** When you query with `wiro_connect_pending: true` you get every skill whose connecting integration's Wiro-shared OAuth client is awaiting App Review — currently the Meta family (`int-instagram-post`, `int-facebookpage-post`, `int-metaads-manage`), `int-linkedin-post`, `int-tiktok-post`, and the `util-*` posting helpers paired with them. Those skills are still usable in **own** mode (your own developer app). The flag itself does not appear on the skill object — it lives on the credential entry under [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail).
+> **Optional filter `wiro_connect_pending`.** When you query with
+> `wiro_connect_pending: true` you get every skill whose connecting
+> integration's Wiro-shared OAuth client is awaiting App Review — currently
+> `int-instagram-post`, `int-facebookpage-post`, `int-linkedin-post`,
+> `int-tiktok-post`, `int-metaads-manage`, the Google OAuth skills listed
+> above, and paired `util-*` helpers. Facebook Pages, Instagram, and Meta Ads
+> already expose customer-owned System User and/or OAuth alternatives. The flag
+> itself lives on the credential entry under
+> [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail).
 
 ### **POST** /Skills/Detail
 
@@ -9520,8 +9929,13 @@ Convenience endpoint — returns the credential entry for a given skill name in 
     "brand_text_color": "#ffffff",
     "brand_logo_filter": "none",
     "docs_url": "integration-instagram-skills",
-    "credential_mode": "oauth",
-    "connection_modes": ["wiro", "own"],
+    "credential_mode": "hybrid",
+    "connection_modes": ["api_key", "own", "wiro"],
+    "default_connection_mode": "api_key",
+    "mode_badges": {
+      "api_key": "Recommended",
+      "own": "Advanced"
+    },
     "wiro_connect_pending": true,
     "credential_schema": [
       {
@@ -9543,6 +9957,25 @@ Convenience endpoint — returns the credential entry for a given skill name in 
         "help": "<ol><li>Meta for Developers → select your app</li><li>App Settings → Basic</li><li>Show next to App Secret and copy</li></ol>",
         "oauth_managed": true,
         "only_in_modes": ["own"]
+      },
+      {
+        "key": "systemusertoken",
+        "type": "password",
+        "label": "System User Token",
+        "required": true,
+        "encrypted": true,
+        "show_toggle": true,
+        "runtime_excluded": true,
+        "only_in_modes": ["api_key"]
+      },
+      {
+        "key": "accountId",
+        "type": "text",
+        "label": "Instagram Account ID",
+        "required": true,
+        "pattern": "^[0-9]+$",
+        "auto_filled_by_oauth": true,
+        "readonly_when_connected": true
       },
       {
         "key": "igusername",
@@ -9567,7 +10000,21 @@ Convenience endpoint — returns the credential entry for a given skill name in 
       "return_query_param": "ig_connected",
       "return_error_param": "ig_error",
       "return_error_detail_param": "ig_error_detail",
-      "account_picker": null,
+      "direct_probe": {
+        "mode": "api_key",
+        "mode_label": "System User Token",
+        "token_field": "systemusertoken",
+        "required_fields": ["systemusertoken"],
+        "public_account_fields": ["id", "name"]
+      },
+      "account_picker": {
+        "enabled": true,
+        "multi_select": false,
+        "set_endpoint": "/UserAgentOAuth/SetPickerAccounts",
+        "item_value_field": "accountId",
+        "item_label_field": "igusername",
+        "item_fields_to_save": ["accountId", "igusername"]
+      },
       "extra_step": null
     },
     "used_by_skills": ["int-instagram-post"]
@@ -10199,9 +10646,9 @@ Skills that depend on third-party credentials. Follow the linked integration pag
 
 | Skill | Credential Key | Integration Guide |
 |-------|----------------|-------------------|
-| `int-metaads-manage` | `meta-ads` (OAuth) | [Meta Ads Skills](/docs/integration-metaads-skills) |
-| `int-facebookpage-post` | `facebook-pages` (OAuth) | [Facebook Page Skills](/docs/integration-facebook-skills) |
-| `int-instagram-post` | `instagram` (OAuth) | [Instagram Skills](/docs/integration-instagram-skills) |
+| `int-metaads-manage` | `meta-ads` (System User or OAuth) | [Meta Ads Skills](/docs/integration-metaads-skills) |
+| `int-facebookpage-post` | `facebook-pages` (System User or OAuth) | [Facebook Page Skills](/docs/integration-facebook-skills) |
+| `int-instagram-post` | `instagram` (System User or Instagram OAuth) | [Instagram Skills](/docs/integration-instagram-skills) |
 | `int-linkedin-post` | `linkedin` (OAuth) | [LinkedIn Skills](/docs/integration-linkedin-skills) |
 | `int-twitterx-post` | `twitter` (OAuth) | [Twitter / X Skills](/docs/integration-twitter-skills) |
 | `int-tiktok-post` | `tiktok` (OAuth) | [TikTok Skills](/docs/integration-tiktok-skills) |
@@ -10361,7 +10808,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
     "creditperiod": "2026-05",
     "creditsyncat": 1714694410,
     "byModel": [
-      { "model": "openai/gpt-5.4", "inputtokens": 128400, "outputtokens": 32100, "cachereadtokens": 86000, "cachewritetokens": 0, "totaltokens": 160500, "tokencost": 240, "turncount": 38 },
+      { "model": "openai/gpt-5.4", "inputtokens": 128400, "outputtokens": 32100, "cachereadtokens": 86000, "cachewritetokens": 0, "totaltokens": 246500, "tokencost": 240, "turncount": 38 },
       { "model": "unknown", "inputtokens": 4200, "outputtokens": 900, "cachereadtokens": 0, "cachewritetokens": 0, "totaltokens": 5100, "tokencost": 7, "turncount": 3 }
     ]
   },
@@ -10380,7 +10827,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "outputtokens": 820,
       "cachereadtokens": 512,
       "cachewritetokens": 0,
-      "totaltokens": 4270,
+      "totaltokens": 4782,
       "tokencost": 5,
       "processedms": 4120,
       "model": "openai/gpt-5.4",
@@ -10524,11 +10971,11 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 | `sessionkey` | `string\|null` | Session the deduct belongs to (deduct rows only). |
 | `agentsessionkey` | `string\|null` | Alias of `sessionkey` (same value), present on every row for a unified per-session attribution key across `TaskList` / `TransactionList` / wallet responses. |
 | `messageguid` | `string\|null` | Agent message that triggered the deduct (deduct rows only). |
-| `inputtokens` | `number\|null` | Prompt tokens billed for the turn (`action: "tokens"` rows only). |
+| `inputtokens` | `number\|null` | Uncached prompt tokens billed at the model's input rate (`action: "tokens"` rows only). |
 | `outputtokens` | `number\|null` | Completion tokens billed for the turn (`action: "tokens"` rows only). |
 | `cachereadtokens` | `number\|null` | Prompt tokens served from cache for the turn (`action: "tokens"` rows only). |
 | `cachewritetokens` | `number\|null` | Prompt tokens written to cache for the turn (`action: "tokens"` rows only). |
-| `totaltokens` | `number\|null` | Input + output tokens for the turn (`action: "tokens"` rows only). |
+| `totaltokens` | `number\|null` | Exact `inputtokens + outputtokens + cachereadtokens + cachewritetokens` sum (`action: "tokens"` rows only). |
 | `tokencost` | `number\|null` | Credit cost for the turn; equals `abs(amount)` (`action: "tokens"` rows only). |
 | `processedms` | `number\|null` | Model processing time for the turn, in milliseconds (`action: "tokens"` rows only). |
 | `model` | `string\|null` | Model id that served the turn, e.g. `"openai/gpt-5.4"` (`action: "tokens"` rows only). |
@@ -10772,9 +11219,9 @@ A `token_usage` event records the token spend and credit deduction for one bille
 {
   "ts": "2026-05-03T14:02:55.310Z",
   "kind": "token_usage",
-  "title": "Token usage: 4270 tokens · 5 credits",
+  "title": "Token usage: 6670 tokens · 5 credits",
   "model": "openai/gpt-5.4",
-  "tokens": { "input": 3450, "output": 820, "cacheRead": 2400, "cacheWrite": 0, "total": 4270 },
+  "tokens": { "input": 3450, "output": 820, "cacheRead": 2400, "cacheWrite": 0, "total": 6670 },
   "tokencost": 5,
   "durationMs": 4200,
   "calls": 2,
@@ -10784,7 +11231,7 @@ A `token_usage` event records the token spend and credit deduction for one bille
 }
 ```
 
-> **Nested vs flat token fields.** The activity-log `token_usage` event nests its counts in **camelCase** under `tokens.{input, output, cacheRead, cacheWrite, total}`. This is distinct from the **flat, lowercase** columns on message rows (`inputtokens`, `outputtokens`, `cachereadtokens`, …). Same underlying data, different shape.
+> **Nested vs flat token fields.** The activity-log `token_usage` event nests its counts in **camelCase** under `tokens.{input, output, cacheRead, cacheWrite, total}`. `input` is uncached input and `total` is the exact sum of all four components. This is distinct from the **flat, lowercase** columns on message rows (`inputtokens`, `outputtokens`, `cachereadtokens`, …). Same underlying data, different shape.
 
 ## **POST** /UserAgent/Logs
 
@@ -11117,7 +11564,7 @@ Wiro publishes interactive, fullscreen showcases for the most common agent use c
 | **[Ecommerce Listings](https://wiro.ai/agents/usecase/ecommerce-listing-agent)** | Coral & Crest (swimwear) — 5 Wiro AI models (Virtual Try-On, Product-on-Model, Background Remover, Cover Image, Description), multilingual copy, auto-publish to WordPress + Instagram + Shopify, 84-product Google-Drive bulk-autonomy climax. |
 | **[Restaurant Reviews](https://wiro.ai/agents/usecase/restaurant-review-agent)** | Green Bottle Coffee — daily chat-based approvals, scheduled reports, anomaly dispatch, self-heal under a Reviews API deprecation. The "no pitch deck required" demo. |
 
-You can also browse every available pre-built agent at [wiro.ai/agents/browse](https://wiro.ai/agents/browse) (the visual mirror of [`POST /Agent/List`](#post-agentlist)). Each agent template has its own marketing page at `wiro.ai/agents/{slug}` — for example [wiro.ai/agents/social-manager](https://wiro.ai/agents/social-manager), [wiro.ai/agents/voice-receptionist](https://wiro.ai/agents/voice-receptionist), or [wiro.ai/agents/blog-content-editor](https://wiro.ai/agents/blog-content-editor) — with screenshots, default skills, credential requirements, and live tier pricing. The full URL for each agent in the [Available Agents](#available-agents) table below is `https://wiro.ai/agents/{slug}`.
+You can also browse every available pre-built agent at [wiro.ai/agents/browse](https://wiro.ai/agents/browse) (the visual mirror of [`POST /Agent/List`](/docs/agent-overview#post-agentlist)). Each agent template has its own marketing page at `wiro.ai/agents/{slug}` — for example [wiro.ai/agents/social-manager](https://wiro.ai/agents/social-manager), [wiro.ai/agents/voice-receptionist](https://wiro.ai/agents/voice-receptionist), or [wiro.ai/agents/blog-content-editor](https://wiro.ai/agents/blog-content-editor) — with screenshots, default skills, credential requirements, and live tier pricing. The full URL for each agent in the [Available Agents](#available-agents) table below is `https://wiro.ai/agents/{slug}`.
 
 ## Two Deployment Patterns
 
@@ -11179,7 +11626,7 @@ For conversational agents that don't need per-user credentials. One agent instan
 
 A single product can combine both — a per-customer action agent plus a shared conversational agent sit side by side in the same frontend. For example:
 
-- One **Social Manager** instance per customer (Pattern 1) to publish posts with their own OAuth-connected accounts.
+- One **Social Manager** instance per customer (Pattern 1) to publish posts with their own connected social accounts (System User or OAuth, depending on the provider).
 - One **shared knowledge-base chat** agent (Pattern 2) that answers product, billing, or onboarding questions across all customers, using `sessionkey` to keep each user's chat separate.
 
 The two agents are independent deployments with different `useragentguid` values. Route user actions to the per-customer instance, and chat questions to the shared instance. Your backend decides which agent handles each request.
@@ -11318,10 +11765,10 @@ Wiro provides pre-built agent templates you can deploy immediately. Each agent s
 
 | Agent | What It Does | Credentials |
 |-------|-------------|-------------|
-| **[Social Manager](https://wiro.ai/agents/social-manager)** | Create, schedule, and publish social media content | Twitter/X, Instagram, Facebook, TikTok, LinkedIn (OAuth) |
+| **[Social Manager](https://wiro.ai/agents/social-manager)** | Create, schedule, and publish social media content | Twitter/X, TikTok, LinkedIn (OAuth); Instagram and Facebook Pages (System User recommended or own OAuth) |
 | **[Blog Content Editor](https://wiro.ai/agents/blog-content-editor)** | Write and publish blog posts (WordPress draft + publish workflow) | WordPress (App Password), Gmail (optional, for inbox requests) |
 | **[Google Ads Manager](https://wiro.ai/agents/google-ads-manager)** | Create and optimize Google Ads campaigns, daily performance reports | Google Ads (OAuth), Calendarific (API key), Google Drive (optional, Service Account) |
-| **[Meta Ads Manager](https://wiro.ai/agents/meta-ads-manager)** | Manage Facebook and Instagram ad campaigns, audience analysis | Meta Ads (OAuth), Calendarific (API key), Google Drive (optional, Service Account) |
+| **[Meta Ads Manager](https://wiro.ai/agents/meta-ads-manager)** | Manage Facebook and Instagram ad campaigns, audience analysis | Meta Ads (System User recommended or own OAuth), Calendarific (API key), Google Drive (optional, Service Account) |
 | **[Newsletter Manager](https://wiro.ai/agents/newsletter-manager)** | Design and send email newsletters to subscriber lists | Brevo, SendGrid, Mailchimp, HubSpot (any one — API key or OAuth) |
 | **[Lead Generation Manager](https://wiro.ai/agents/lead-gen-manager)** | Find and enrich leads, run multi-channel outreach, analyze replies | Apollo (API key), Lemlist (API key), HubSpot (optional, for CRM sync) |
 | **[App Review Support](https://wiro.ai/agents/app-review-support)** | Monitor app store reviews, draft responses in operator's tone | App Store Connect (private key JWT), Google Play (service account) |
@@ -11362,7 +11809,7 @@ deploy = requests.post(
 )
 useragent_guid = deploy.json()["useragents"][0]["guid"]
 
-# Connect Twitter via OAuth
+# Connect Twitter via the unified OAuth flow
 connect = requests.post(
     "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect",
     headers=headers,
@@ -11396,6 +11843,2110 @@ print(message.json())
 ```
 
 Browse available agents and their capabilities via [POST /Agent/List](/docs/agent-overview#post-agentlist) or in the [Wiro dashboard](https://wiro.ai/agents).
+
+
+---
+
+# Meta Ads Integration
+
+Connect your agent to Meta's advertising platform to manage campaigns, ad sets, creatives, and performance insights across Facebook and Instagram ads.
+
+## Overview
+
+The Meta Ads integration powers the `metaads-manage` skill — creating and managing campaigns, pulling insights, managing creatives, and analyzing ad account data through direct Meta Graph / Marketing API v26 calls.
+
+**Skills that use this integration:**
+
+- `metaads-manage` — Campaign / ad set / creative CRUD, insights reporting, direct Graph API v26 operations
+- `ads-manager-common` — Shared ads helpers (works alongside `metaads-manage` and `googleads-manage`)
+
+**Agents that typically enable this integration:**
+
+- Meta Ads Manager
+- Any custom agent that needs paid-media capabilities on Meta
+
+## Availability
+
+| Path | Status | Notes |
+|------|--------|-------|
+| Wiro-owned approved-app OAuth | Pending provider approval | The registry carries this mode, but the dashboard keeps it unavailable while Wiro's Meta app is awaiting the required App Review, Advanced Access, and rollout checks. |
+| `"own"` | Available now | You create your own Meta Developer App and connect it to Wiro. No App Review required when Development Mode + App Roles is used. |
+| `"api_key"` | Available now — recommended | Paste a Business Manager System User token. No browser OAuth redirect and no App ID or App Secret is submitted to Wiro. Choose **Never** for token expiration when Meta offers it. |
+
+> **There is no app-less Meta “machine key.”** A System User token is the closest machine-to-machine option: it removes the browser OAuth flow and recurring human sign-in, but Meta generates it for a System User through a Business Portfolio and a Meta Business app. The app, System User, ad accounts, Pages, and permissions remain customer-owned.
+
+Today the two enabled modes are the recommended token-only System User path and customer-owned OAuth. Once Wiro's approved app has Advanced Access, a Wiro-owned OAuth option can be enabled without removing either customer-owned path.
+
+## Why Wiro remains on direct Graph API v26
+
+Meta's official Ads MCP is not a drop-in replacement yet. Wiro has not verified live parity for:
+
+- targeting interest search and related raw targeting queries;
+- reach/delivery estimates;
+- lead-form and lead retrieval workflows;
+- raw Graph flexibility needed for account-specific fields, edges, and versioned fallbacks;
+- some financial, media upload, and creative-management operations.
+
+Meta does not document a separate MCP “machine key”; MCP authentication still rests on Meta app/user or System User authorization. Replacing the direct integration is therefore deferred until Wiro completes live parity tests, permission/App Review checks, rate-limit and latency validation, error-shape regression tests, and a controlled rollout with rollback. Until those checks pass, Graph API v26 remains the authoritative runtime path.
+
+## Prerequisites
+
+- **A Wiro API key** — see [Authentication](/docs/authentication) for how to issue keys and sign requests.
+- **A deployed agent** — see [Agent Overview](/docs/agent-overview) and call `POST /UserAgent/Deploy` first. You need the returned `useragents[0].guid` for every step below.
+- **A Meta Business account** — [business.facebook.com](https://business.facebook.com/).
+- **For the currently enabled customer-owned paths, a Meta Developer account and Business app** — [developers.facebook.com](https://developers.facebook.com/). The future Wiro-owned OAuth path will not require each customer to create an app.
+- **For OAuth mode:** an HTTPS return URL that your backend controls. Meta's callback is the fixed Wiro URL shown below; `redirecturl` is where Wiro sends the browser after processing that callback. `http://localhost` and `http://127.0.0.1` are accepted for local development only.
+
+## Recommended: System User token (no browser OAuth)
+
+Use this path for a stable server-to-server connection owned by the customer's
+Business Portfolio.
+
+1. Open [**Meta Business Settings → Users → System Users**](https://business.facebook.com/latest/settings/system_users), then create or select a System User.
+2. Assign each required ad account with both `ADVERTISE` and `ANALYZE` tasks. For Page-backed creatives, also assign the relevant Facebook Pages.
+3. Generate a token for the Business app used by that System User. Choose **Never** under **Set expiration** when Meta offers it; some businesses are required to use an expiring token.
+4. Grant `ads_management`, `ads_read`, and `business_management`. For Page discovery and Page-backed creatives, also grant `pages_show_list`, `pages_read_engagement`, and `pages_manage_ads`.
+5. Save only the connection mode and token to Wiro:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "meta-ads", "fieldname": "authmethod", "fieldvalue": "api_key" },
+      { "credentialkey": "meta-ads", "fieldname": "systemusertoken", "fieldvalue": "YOUR_SYSTEM_USER_ACCESS_TOKEN" }
+    ]
+  }'
+```
+
+6. Ask Wiro to validate the token and discover assigned ad accounts:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "meta-ads",
+    "authmethod": "api_key"
+  }'
+```
+
+Wiro validates the token against Meta and returns only active ad accounts whose
+effective `user_tasks` contain both `ADVERTISE` and `ANALYZE`. The token is
+encrypted at rest and never reflected to the browser or API caller. Wiro does
+not require or store an App ID/App Secret for this direct mode.
+
+7. Persist one or more returned ad accounts with
+   `POST /UserAgentOAuth/SetPickerAccounts` as shown in Step 10. API clients
+   must perform this request even when only one account is returned.
+8. Optionally discover and select Page mappings with
+   `POST /UserAgentOAuth/DiscoverPickerItems`, then save them through the
+   chained `SetPickerAccounts` shape shown in Step 10b.
+
+## Customer-owned app OAuth
+
+Every curl example and response shape below matches Wiro's production behavior verified against the source code. Nothing is invented.
+
+### Step 1: Create a Meta Developer App
+
+1. Go to [developers.facebook.com/apps](https://developers.facebook.com/apps) and click **Create app**.
+2. Choose **"Other"** as the use case, then **"Business"** as the app type.
+3. Set an **App display name** (this is what your end users see on the consent screen — use your company or product name, not "Wiro").
+4. Enter an **App contact email**.
+5. Select the **Meta Business Account** that owns the ad accounts you plan to manage, then click **Create app**.
+
+You're now on the app dashboard. The app is in **Development Mode** by default — leave it there. Development Mode is exactly what lets you skip App Review.
+
+### Step 2: Add the Marketing API product
+
+1. From the app dashboard, click **Add product**.
+2. Find **"Marketing API"** and click **Set up**.
+3. No further configuration is required inside Marketing API itself — adding the product unlocks the `ads_*` permissions.
+
+### Step 3: Add "Facebook Login for Business" and register the redirect URI
+
+Meta Ads OAuth uses Facebook Login under the hood.
+
+1. Click **Add product** again.
+2. Find **"Facebook Login for Business"** and click **Set up**.
+3. Left sidebar: **Facebook Login for Business → Settings**.
+4. Scroll to **Valid OAuth Redirect URIs** and add exactly:
+
+   ```
+   https://api.wiro.ai/v1/UserAgentOAuth/MetaAdsCallback
+   ```
+
+5. **Save changes** at the bottom.
+
+> This is the single most common place where own-mode setups fail. The redirect URI must be exact — HTTPS, no trailing slash, same capitalization.
+
+### Step 4: Note the required permissions
+
+Wiro requests these exact scopes during OAuth (sourced from `data/agent-skills-registry/credentials/meta-ads.json` under `oauth_provider.oauth_flow.scopes`):
+
+```
+ads_management,ads_read,business_management,pages_show_list,pages_read_engagement,pages_manage_ads
+```
+
+| Permission | Why Wiro requests it |
+|------------|----------------------|
+| `ads_management` | Create, update, and pause campaigns, ad sets, and ads. |
+| `ads_read` | Read insights, performance metrics, and account metadata. |
+| `business_management` | Discover and validate Business-managed assets used by the full management workflow. |
+| `pages_show_list` | Discover Pages available to the connected principal for each selected ad account. |
+| `pages_read_engagement` | Read page-level engagement metrics that some creative types reference. |
+| `pages_manage_ads` | Use an assigned Page in Page-backed ad creatives. |
+
+These permissions normally require App Review/Advanced Access for a multi-tenant Live Mode app. In a customer-owned app's Development Mode they work without App Review for Facebook users listed under that app's Roles. This is a testing/customer-owned fallback and does not make Wiro's future one-click shared-app path live; that path waits for Wiro's app to receive Advanced Access.
+
+### Step 5: Copy your App ID and App Secret
+
+**App settings → Basic** → copy the **App ID**, click **Show** next to **App Secret** and copy that too.
+
+### Step 6: Add the users who will connect as Testers (only if they're not you)
+
+- Connecting your own Facebook account? You're already the app Admin; skip this step.
+- Connecting a different Facebook account (typical for SaaS customers)? Go to **App Roles → Roles → Add People** and invite them as **Testers** or **Developers**. They accept at [facebook.com/settings → Business Integrations](https://www.facebook.com/settings?tab=business_tools).
+
+Users not listed in App Roles will be blocked at the consent screen in Development Mode.
+
+### Step 7: Save your Meta App credentials to Wiro
+
+Push the `appid` and `appsecret` into the agent's `meta-ads` credential group. Wiro merges credential updates per group — fields you don't send are preserved, and credentials from other groups are untouched.
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "meta-ads", "fieldname": "appid", "fieldvalue": "YOUR_META_APP_ID" },
+      { "credentialkey": "meta-ads", "fieldname": "appsecret", "fieldvalue": "YOUR_META_APP_SECRET" },
+      { "credentialkey": "meta-ads", "fieldname": "authmethod", "fieldvalue": "own" }
+    ]
+  }'
+```
+
+Successful response (sanitized — OAuth tokens, if any, are stripped):
+
+```json
+{
+  "result": true,
+  "useragents": [
+    {
+      "guid": "your-useragent-guid",
+      "setuprequired": true,
+      "status": 0
+    }
+  ],
+  "errors": []
+}
+```
+
+> **Prepaid deploy users:** If you deployed your agent with `useprepaid: true`, the `credentials` you passed in the Deploy body were **not** saved (prepaid deploy writes only a template placeholder). You must call this Update step explicitly before initiating OAuth.
+
+> **Only user-writable fields are accepted.** `appid` and `appsecret` are user-writable in the `meta-ads` credential. Attempts to set platform-managed fields are silently ignored. Call `POST /UserAgent/Detail` and inspect the `meta-ads` credential block if you see a silent no-op.
+
+### Step 8: Initiate OAuth
+
+Start the flow with `authmethod: "own"` so Wiro uses your customer-owned `appid` and `appsecret`.
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "meta-ads",
+    "redirecturl": "https://your-app.com/settings/integrations",
+    "authmethod": "own"
+  }'
+```
+
+Response:
+
+```json
+{
+  "result": true,
+  "authorizeUrl": "https://www.facebook.com/v26.0/dialog/oauth?client_id=...&redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FUserAgentOAuth%2FMetaAdsCallback&state=...&scope=ads_management%2Cads_read%2Cbusiness_management%2Cpages_show_list%2Cpages_read_engagement%2Cpages_manage_ads",
+  "errors": []
+}
+```
+
+Redirect the user's browser to `authorizeUrl`. Full-page redirect is recommended over a popup — some browsers block third-party cookies in popups, breaking the OAuth session.
+
+> **State TTL:** Wiro caches the OAuth state for **15 minutes**. If the user takes longer to complete consent, the callback returns `metaads_error=session_expired` and you must call `OAuthConnect` again.
+
+### Step 9: Handle the callback
+
+After the user consents, Meta sends them back to Wiro's callback URL. Wiro exchanges the code for a long-lived token, verifies its App ID, expiry, data-access expiry, and required scopes through `debug_token`, then fetches the user's eligible ad accounts. It writes the token into the agent's config and redirects the user to **your** `redirecturl` with query parameters.
+
+**Success URL** looks like:
+
+```
+https://your-app.com/settings/integrations?metaads_connected=true&metaads_accounts=%5B%7B%22id%22%3A%22123456789%22%2C%22name%22%3A%22My%20Ad%20Account%22%7D%5D
+```
+
+- `metaads_accounts` is `encodeURIComponent(JSON.stringify([...]))`.
+- Each array element: `{ id, name }`.
+- The `id` has the `act_` prefix stripped by Wiro.
+- Only ad accounts with `account_status === 1` and effective `user_tasks` containing both `ADVERTISE` and `ANALYZE` are included. Read-only `ANALYZE` accounts are excluded because this skill supports mutations.
+
+Parse in the browser:
+
+```javascript
+const params = new URLSearchParams(window.location.search);
+
+if (params.get("metaads_connected") === "true") {
+  const accounts = JSON.parse(decodeURIComponent(params.get("metaads_accounts") || "[]"));
+  if (accounts.length === 0) {
+    showError("No active ad accounts found on this Meta user.");
+  } else if (accounts.length === 1) {
+    await setAdAccount(accounts[0]);
+  } else {
+    presentAccountPicker(accounts);
+  }
+} else if (params.get("metaads_error")) {
+  handleError(params.get("metaads_error"));
+}
+```
+
+### Step 10: Persist the ad account selection
+
+Persist one or more discovered ad accounts. This is **required** for the
+connection to become active. The Wiro dashboard auto-selects a sole result and
+opens a multi-select picker when several accounts are returned; API clients
+must always call this endpoint explicitly.
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "meta-ads",
+    "accounts": [
+      { "adaccountid": "123456789", "adaccountname": "My Ad Account" }
+    ]
+  }'
+```
+
+Response:
+
+```json
+{
+  "result": true,
+  "accounts": [
+    { "id": "123456789", "name": "My Ad Account" }
+  ],
+  "errors": []
+}
+```
+
+Behavior:
+
+- Pass the ad account ID **without** the `act_` prefix. If you include it, Wiro strips it automatically.
+- `adaccountname` is optional but recommended — it surfaces in `OAuthStatus` responses and dashboards.
+- Pass multiple `{ adaccountid, adaccountname }` entries to authorize the agent against several ad accounts at once.
+- If the agent was running (status `3` or `4`), Wiro marks it `status: 1` with `restartafter: true` so the daemon picks up the new ad account after the next stop cycle. No manual Start needed.
+
+### Step 10b: Discover and select Facebook Pages (optional)
+
+After the ad-account selection is saved, discover Pages that Meta reports as
+promotable for each selected account:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/DiscoverPickerItems" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "meta-ads",
+    "pickerkey": "pages"
+  }'
+```
+
+Response:
+
+```json
+{
+  "result": true,
+  "pickerkey": "pages",
+  "groups": [
+    {
+      "parent": {
+        "adaccountid": "123456789",
+        "adaccountname": "My Ad Account"
+      },
+      "items": [
+        { "pageid": "111222333", "pagename": "My Facebook Page" }
+      ]
+    }
+  ],
+  "errors": []
+}
+```
+
+Save the selected Pages within five minutes. Include every successfully
+returned parent exactly once; an empty `items` array means no Page is selected
+for that ad account:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "meta-ads",
+    "pickerkey": "pages",
+    "selections": [
+      {
+        "parentvalue": "123456789",
+        "items": [
+          { "pageid": "111222333", "pagename": "My Facebook Page" }
+        ]
+      }
+    ]
+  }'
+```
+
+The dashboard runs this chained flow automatically after ad-account selection.
+It auto-selects the only Page when there is exactly one candidate; otherwise it
+shows Pages grouped by ad account and permits multiple selections. The Page
+step is optional, so reporting and non-Page operations remain available when
+no Page is selected.
+
+### Step 11: Verify the connection
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "meta-ads"
+  }'
+```
+
+Response:
+
+```json
+{
+  "result": true,
+  "connected": true,
+  "accounts": [
+    { "id": "123456789", "name": "My Ad Account" }
+  ],
+  "pagemappings": [
+    {
+      "adaccountid": "123456789",
+      "adaccountname": "My Ad Account",
+      "pageid": "111222333",
+      "pagename": "My Facebook Page"
+    }
+  ],
+  "pickersteps": {
+    "pages": {
+      "pickerkey": "pages",
+      "optional": true,
+      "configured": true,
+      "groups": [
+        {
+          "parent": {
+            "adaccountid": "123456789",
+            "adaccountname": "My Ad Account"
+          },
+          "items": [
+            { "pageid": "111222333", "pagename": "My Facebook Page" }
+          ]
+        }
+      ]
+    }
+  },
+  "connectedat": "2026-04-17T12:00:00.000Z",
+  "tokenexpiresat": "",
+  "errors": []
+}
+```
+
+Field notes:
+
+- OAuth mode requires `authmethod: "own"` and an access token. Direct mode
+  requires `authmethod: "api_key"`, a validated `systemusertoken`, and a
+  successful probe marker; it does not require App ID or App Secret. Both modes
+  require at least one selected ad account before `connected` becomes `true`.
+- `accounts[]` carries one entry per selected ad account (`id` = `adaccountid` without `act_` prefix, `name` = `adaccountname`). Empty `name` strings appear when no `adaccountname` was supplied in Step 10.
+- `pickersteps.pages.groups[]` and `pagemappings[]` expose the saved Page
+  selections without any access token.
+- `tokenexpiresat` comes from Meta's OAuth token response. It is empty for the
+  token-only System User mode because Wiro stores the supplied token unchanged.
+  If an expiring System User token is used, the operator must replace it before
+  Meta invalidates it.
+- Meta User OAuth has no generic refresh-token contract. When a `wiro` or `own` User token expires or is invalidated, reconnect through the browser.
+
+### Step 12: Start the agent if it's not running
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+```
+
+Check `POST /UserAgent/Detail` first: if `setuprequired` is still `true`, some other credential the agent requires is missing — Start will refuse. See [Agent Credentials — Setup Required](/docs/agent-credentials#setup-required-state).
+
+Agents already running when you connected Meta Ads restart automatically.
+
+## How Meta Ads uses selected Pages
+
+Meta Ads has no scalar/default `pageid`. Step 10b persists account-scoped
+`pagemappings`, and the runtime exposes each selected ad account with its own
+`pages[]` list.
+
+- Zero Pages: only Page-backed creative creation is unavailable; reporting and
+  other account operations continue.
+- One Page under the target ad account: the agent uses it automatically.
+- Multiple Pages: the agent requires an explicit Page ID/name in the request or
+  asks the operator which Page to use. It never picks the first Page or borrows
+  a Page from another ad account.
+
+Before creating the creative, the skill verifies the chosen Page through Meta.
+The connected person or System User must still have the required Page task and
+the Page must be usable with the resolved ad account.
+
+If you need organic posting (writing posts directly to a Facebook Page rather
+than running ads), that's a separate integration — see the
+[Facebook Page integration](/docs/integration-facebook-skills). The
+`int-facebookpage-post` skill uses the `facebook-pages` credential group, not
+`meta-ads`.
+
+## API Reference
+
+All endpoints require Wiro authentication — see [Authentication](/docs/authentication) for `x-api-key` + optional signature headers.
+
+### POST /UserAgentOAuth/OAuthConnect
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Agent instance GUID. |
+| `credentialkey` | string | Yes | `"meta-ads"`. |
+| `redirecturl` | string | OAuth only | HTTPS URL (or `http://localhost` / `http://127.0.0.1` for dev) where users return after consent. Direct System User token validation does not use this field. |
+| `authmethod` | string | No | `"api_key"` for the recommended System User token mode (registry default) or `"own"` for advanced customer-owned app OAuth. |
+
+OAuth response: `{ result, authorizeUrl, errors }`. Direct System User token response: `{ result, accounts: [{id, name}], errors }` with no `authorizeUrl`. If `result: false`, inspect `errors[0].message` — common messages: `Missing useragentguid`, `Missing credentialkey`, `Missing redirecturl` (OAuth only), `Invalid redirect URL`, `User agent not found or unauthorized`, and `Meta Ads credentials not configured` (own mode without prior Update).
+
+### GET /UserAgentOAuth/MetaAdsCallback
+
+Server-side endpoint invoked by Meta. You don't call it — you only handle the final redirect back to your `redirecturl`. The callback path is per-provider — Meta Ads's stays `MetaAdsCallback`.
+
+| Query param | Meaning |
+|-------------|---------|
+| `metaads_connected=true` | OAuth completed successfully. |
+| `metaads_accounts` | URL-encoded JSON array of `{ id, name }` for active ad accounts. |
+| `metaads_error=<code>` | OAuth failed. See [Troubleshooting](#troubleshooting). |
+
+### POST /UserAgentOAuth/SetPickerAccounts
+
+The same endpoint persists both picker stages.
+
+Root ad-account selection:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Agent instance GUID. |
+| `credentialkey` | string | Yes | `"meta-ads"`. |
+| `accounts` | array | Yes | One or more `{ adaccountid, adaccountname }` entries. `adaccountid` must be without the `act_` prefix (prefix stripped automatically if sent); `adaccountname` is the display name shown in dashboards and `OAuthStatus` responses. |
+
+Response: `{ result, accounts: [{id, name}, ...], errors }`. Triggers an automatic agent restart if the agent was running.
+
+Chained Page selection, after `DiscoverPickerItems`:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Agent instance GUID. |
+| `credentialkey` | string | Yes | `"meta-ads"`. |
+| `pickerkey` | string | Yes | `"pages"`. |
+| `selections` | array | Yes | One `{ parentvalue, items }` entry for every successful discovery group. `parentvalue` is the ad account ID; each item carries `pageid` and `pagename`. Empty `items` is allowed because Pages are optional. |
+
+Response:
+`{ result, pickerkey: "pages", pagemappings: [{adaccountid, adaccountname, pageid, pagename}], errors }`.
+
+### POST /UserAgentOAuth/DiscoverPickerItems
+
+Discovers eligible Facebook Pages grouped under the already-selected ad
+accounts. This call must follow root ad-account `SetPickerAccounts`.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Agent instance GUID. |
+| `credentialkey` | string | Yes | `"meta-ads"`. |
+| `pickerkey` | string | Yes | `"pages"`. |
+
+Response:
+`{ result, pickerkey: "pages", groups: [{parent: {adaccountid, adaccountname}, items: [{pageid, pagename}], errorcode?}], errors }`.
+Wiro keeps the active token server-side and caches only secret-free candidates
+for five minutes. Call the chained `SetPickerAccounts` shape before they expire.
+
+### POST /UserAgentOAuth/OAuthStatus
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Agent instance GUID. |
+| `credentialkey` | string | Yes | `"meta-ads"`. |
+
+Response fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `connected` | boolean | `true` when the selected customer-owned mode has a validated credential and at least one selected ad account. **Note:** this reflects connection completion, not readiness of unrelated required credentials. Use `setupcomplete` from `POST /UserAgent/Detail` for whole-agent readiness. |
+| `accounts` | array | One `{ id, name }` per selected ad account (`id` = `adaccountid` without `act_` prefix, `name` = `adaccountname`). |
+| `pagemappings` | array | Flat, account-scoped Page mappings. Each entry contains `adaccountid`, optional `adaccountname`, `pageid`, and `pagename`. |
+| `pickersteps.pages` | object | Grouped Page status for UI rendering: `{ pickerkey, optional, configured, groups[] }`. |
+| `connectedat` | string | ISO timestamp of connection. |
+| `tokenexpiresat` | string | ISO expiry for OAuth tokens. Empty for direct System User mode because Wiro stores the supplied token unchanged. |
+
+### POST /UserAgentOAuth/OAuthDisconnect
+
+Body: `{ useragentguid, credentialkey: "meta-ads" }`. Clears the active token,
+probe marker, ad-account selection, and Page mappings. Customer-owned OAuth App
+ID/App Secret values are preserved for reconnect; direct mode's
+`systemusertoken` is cleared. This endpoint clears Wiro's copy, so
+administrators should also revoke the app or token in Meta Business Settings
+when immediate provider-side invalidation is required.
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthDisconnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "meta-ads"
+  }'
+```
+
+Response: `{ "result": true, "errors": [] }`. Running agents restart automatically.
+
+### Token lifecycle
+
+Wiro does not exchange or renew a direct System User token. Prefer **Never**
+expiration when Meta offers it; otherwise generate a replacement and reconnect
+before the token expires. User OAuth connections must be reconnected after Meta
+expires or invalidates them. Raw tokens and App Secrets are never exposed to the
+agent model.
+
+## Using the Skill
+
+Enable `int-metaads-manage` on the agent via `POST /UserAgent/SkillsApply` (see [Agent Skills → Toggling Integration Skills](/docs/agent-skills#toggling-integration-skills)). Adjust the cron of the built-in `cs-cron-performance-reporter` task (Meta Ads Manager) with `enabled` and `interval` only — the task body (`value`) is owned by the bundled integration skill and silently dropped on writes:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "skillkey": "cron-performance-reporter",
+    "enabled": true,
+    "interval": "0 9 * * *"
+  }'
+```
+
+To change **what** the reporter includes (thresholds, reporting preferences, holiday markets), edit the paired preference skill `ad-strategy` instead — see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preference-skills).
+
+## Troubleshooting
+
+| Error code | Meaning | What to do |
+|------------|---------|------------|
+| `missing_params` | Callback was hit without `state` or `code`. | Don't hit the callback URL directly. Start a new flow from Step 8. |
+| `session_expired` | More than 15 minutes elapsed between `OAuthConnect` and the consent return. | Call `OAuthConnect` again to refresh the state. |
+| `authorization_denied` | User clicked Cancel, or Facebook returned `error=access_denied`. In Development Mode this also happens when the user isn't listed under App Roles. | Add the user as a Tester (Step 6), have them accept, retry. |
+| `token_exchange_failed` | Facebook rejected the token exchange. Usually wrong App Secret, revoked app, or redirect URI mismatch. | Re-copy the App Secret from Settings → Basic, verify the redirect URI exactly matches, retry. |
+| `useragent_not_found` | Wrong `useragentguid` or agent doesn't belong to your API key's user. | Fetch the correct guid with `POST /UserAgent/MyAgents`. |
+| `Meta Ads credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `appid` / `appsecret` are missing. | Call `POST /UserAgent/CredentialUpsert` to add `meta-ads.appid` and `meta-ads.appsecret`, then retry `OAuthConnect`. |
+| `required_meta_scopes_missing` | `debug_token` did not report every scope required by the full management skill. | Grant the listed scopes to the app/token and reconnect. |
+| `meta_app_mismatch` | The token was issued to a different Meta App ID. | Generate or authorize the token with the same app whose App ID and Secret were saved. |
+| `meta_token_expired` | The OAuth token or its data-access window has expired. | Reconnect customer-owned OAuth. Direct mode does not use `debug_token`; replace a rejected/expired System User token in Business Settings. |
+| `no_accounts` | No active account has both `ADVERTISE` and `ANALYZE` tasks. | Assign the connected principal those tasks on an active ad account in Business Settings, then reconnect. |
+| `Picker candidates expired. Discover them again.` | More than five minutes elapsed after Page discovery, or the parent account connection changed. | Call `DiscoverPickerItems` again, then resubmit the Page selection. |
+| `selections must include every available parent exactly once` | The Page selection omitted or duplicated a successful ad-account group. | Include one `selections[]` entry per successful `groups[]` entry; use `items: []` to select no Page for a parent. |
+| `internal_error` | Unexpected server error during callback processing. | Retry once. If it persists, contact Wiro support with the timestamp and your `useragentguid`. |
+
+### "App not verified" warning on consent
+
+Facebook shows a yellow banner in Development Mode. This is expected and **not a blocker** — users listed under App Roles can click Continue and finish authorization. Users outside App Roles are hard-blocked.
+
+### `connected: false` after completing OAuth
+
+`OAuthStatus` returns `connected: true` only when the selected mode has a validated credential and at least one ad account was saved. If you skipped Step 10 (`SetPickerAccounts`), `connected` remains `false`. If account selection is complete but the status is still false, check the callback or direct-probe error and reconnect.
+
+### Token keeps expiring
+
+User OAuth and System User tokens do not have the same lifecycle:
+
+- **User OAuth (`wiro` / `own`)** — reconnect through the browser after expiry or invalidation.
+- **System User (`api_key`)** — choose **Never** expiration when Meta permits it. If Meta requires an expiring token, generate a replacement and reconnect before expiry. Wiro does not renew or exchange it.
+
+## Multi-Tenant Architecture
+
+For SaaS products connecting many customers' Meta Ads accounts through a single Wiro-powered backend:
+
+1. **Recommended today:** use one System User token per customer-owned Business Portfolio when that operating model fits. Customer-owned OAuth remains available for interactive user authorization; Wiro-owned OAuth stays disabled until Advanced Access and rollout approval.
+2. **One Wiro agent instance per customer.** Call `POST /UserAgent/Deploy` during onboarding, then complete the recommended direct steps or the advanced OAuth flow for that customer's `useragentguid`.
+3. **Tokens are isolated per agent instance.** Customer A's Meta token is never visible to Customer B — they live under different `useragentguid` values.
+4. **Consent branding follows the selected path.** Customer-owned OAuth shows the customer's app; the future simple path shows Wiro's reviewed app.
+5. **Customer-owned Development Mode:** add each connecting user to that app's Roles. Multi-tenant use outside app roles requires the appropriate App Review/Advanced Access; do not treat Development Mode as production approval.
+6. **Rate limits are per app, not per customer.** The Marketing API tier (Development → Standard → Advanced) governs aggregate call volume. See Meta's [Rate Limiting](https://developers.facebook.com/docs/graph-api/overview/rate-limiting) docs.
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials) — integration catalog hub and generic OAuth reference.
+- [Agent Overview](/docs/agent-overview) — deploying, starting, and lifecycle.
+- [Agent Skills](/docs/agent-skills) — configuring `metaads-manage` and scheduled runs.
+- [Google Ads integration](/docs/integration-googleads-skills) — for cross-platform paid campaigns.
+
+---
+
+# Facebook Page Integration
+
+Connect your agent to one or more Facebook Pages with a recommended Meta
+System User token or advanced customer-owned OAuth.
+
+## Overview
+
+The Facebook Page integration uses Meta Graph API v26 with a separate
+Page-scoped access token for every selected Page. The recommended direct mode
+accepts a Meta Business Manager System User token, validates it only on Wiro's
+server, discovers its assigned Pages, and derives the selected Page tokens.
+Neither the System User token nor the Page tokens are returned to the browser.
+Customer-owned OAuth remains available as an advanced path.
+
+**Skills that use this integration:**
+
+- `int-facebookpage-post` — Publish text, photo, and video posts to a Facebook Page
+
+**Agents that typically enable this integration:**
+
+- Social Manager
+- Any custom agent that needs Facebook Page posting
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| `"api_key"` | **Recommended** | Enter a Business Manager System User token. No App ID, App Secret, or browser redirect is entered in Wiro. |
+| `"own"` | Advanced | Use your own Meta Developer App and browser OAuth. Development Mode works for users assigned an App Role. |
+| `"wiro"` | Coming soon | Wiro's shared Meta App is under review by Meta. |
+
+## Prerequisites
+
+- **A Wiro API key** — [Authentication](/docs/authentication).
+- **A deployed agent** — [Agent Overview](/docs/agent-overview); keep the `useragents[0].guid`.
+- **A Meta Business account** — [business.facebook.com](https://business.facebook.com/).
+- **At least one Facebook Page assigned to the connecting principal** with the
+  `CREATE_CONTENT` task. Add `MODERATE` when the agent should add comments.
+- **Recommended direct mode:** a System User and the Business app used to
+  generate its token.
+- **Advanced OAuth mode:** a Meta Developer account, your own Business app, and
+  an HTTPS callback URL for your backend.
+
+## Recommended Setup: System User Token
+
+This path is selected by default in the Wiro dashboard. It avoids browser OAuth
+and does not require entering an App ID or App Secret in Wiro.
+
+### Step 1: Prepare the System User and Page assets
+
+1. Open [Meta Business Settings → Users → System Users](https://business.facebook.com/latest/settings/system_users).
+2. Create or select a System User.
+3. Assign every Facebook Page the agent may publish to with the
+   `CREATE_CONTENT` task. Also assign `MODERATE` when the agent should add
+   comments.
+4. Select **Generate new token** and choose the Business app used for the
+   integration.
+5. At **Set expiration**, choose **Never** when Meta offers it. Some businesses
+   are required to use an expiring token; reconnect Wiro with a newly generated
+   token before that token expires.
+6. Grant:
+   - `business_management`
+   - `pages_show_list`
+   - `pages_read_engagement`
+   - `pages_manage_posts`
+   - `pages_manage_engagement` when comments are needed
+   - `publish_video` when Page video publishing is needed
+
+If a permission is absent from the token dialog, add the corresponding app use
+case using Meta's
+[use-case permission mapping](https://developers.facebook.com/documentation/development/create-an-app/use-cases-permission-mapping).
+The Business app must not require `appsecret_proof` on every server request,
+because direct mode intentionally does not collect the App Secret.
+
+### Step 2: Save the token
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "facebook-pages", "fieldname": "authmethod", "fieldvalue": "api_key" },
+      { "credentialkey": "facebook-pages", "fieldname": "systemusertoken", "fieldvalue": "YOUR_SYSTEM_USER_ACCESS_TOKEN" }
+    ]
+  }'
+```
+
+The token is encrypted and write-only. It is excluded from the agent runtime
+and is never returned by customer-facing credential endpoints.
+
+### Step 3: Validate the token and discover Pages
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "facebook-pages",
+    "authmethod": "api_key"
+  }'
+```
+
+Response:
+
+```json
+{
+  "result": true,
+  "accounts": [
+    { "id": "123", "name": "Main Page" },
+    { "id": "456", "name": "Regional Page" }
+  ],
+  "errors": []
+}
+```
+
+Only Page IDs and names are returned. Wiro keeps the System User token and all
+derived Page access tokens server-side. A valid token with no assigned Page
+carrying `CREATE_CONTENT` returns an error instead of an empty successful
+connection.
+
+### Step 4: Select one or more Pages
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "facebook-pages",
+    "accounts": [
+      { "pageid": "123", "fbpagename": "Main Page" },
+      { "pageid": "456", "fbpagename": "Regional Page" }
+    ]
+  }'
+```
+
+This finalizes the connection by matching each requested Page against the
+server-side discovery result and storing only its Page-scoped runtime token.
+Call it within 15 minutes of `OAuthConnect`. The dashboard auto-selects a sole
+Page and opens a multi-select Page picker when several are returned. API
+clients must still perform this request explicitly.
+
+### Step 5: Verify the connection
+
+Call `POST /UserAgentOAuth/OAuthStatus` with
+`{ "useragentguid": "...", "credentialkey": "facebook-pages" }`. A successful
+direct connection returns the selected Pages, `connected: true`, and an empty
+`tokenexpiresat`.
+
+## Advanced Setup: Customer-Owned OAuth
+
+This path uses Meta's documented Facebook Login for Business flow.
+
+### Step 1: Create a Meta Developer App
+
+You can reuse a single Meta App for Facebook Page, Instagram, and Meta Ads.
+
+1. [developers.facebook.com/apps](https://developers.facebook.com/apps) → **Create app** → **Other** → **Business**.
+2. Enter an **App display name** (what users see on consent screens), **App contact email**, select your **Business Account**, then **Create app**.
+3. Leave it in **Development Mode**.
+
+### Step 2: Add "Facebook Login for Business" and register the redirect URI
+
+1. **Add product** → **Facebook Login for Business** → **Set up**.
+2. **Facebook Login for Business → Settings**.
+3. Under **Valid OAuth Redirect URIs**, add:
+
+   ```
+   https://api.wiro.ai/v1/UserAgentOAuth/FBCallback
+   ```
+
+4. **Save changes**.
+
+### Step 3: Note the required permissions
+
+Wiro requests these exact scopes:
+
+```
+pages_show_list,pages_manage_posts,publish_video,pages_manage_engagement,pages_read_engagement,pages_read_user_content,pages_manage_metadata,pages_messaging
+```
+
+| Permission | Why |
+|------------|-----|
+| `pages_show_list` | Enumerate the Pages the user administers. |
+| `pages_manage_posts` | Publish and manage Page posts and photos. |
+| `publish_video` | Publish videos to a Page. |
+| `pages_manage_engagement` | Add and moderate comments as the Page. |
+| `pages_read_engagement` | Read likes, comments, and shares on the Page's posts. |
+| `pages_read_user_content` | Read user-generated content on the Page (for context). |
+| `pages_manage_metadata` | Webhook subscriptions and Page metadata. |
+| `pages_messaging` | Send and receive messages on behalf of the Page (some skills use this). |
+
+These work without App Review in Development Mode for any Facebook user in App Roles.
+
+### Step 4: Copy your App ID and App Secret
+
+**App settings → Basic** → copy **App ID** and **App Secret**.
+
+### Step 5: Add other Facebook accounts as Testers (only if needed)
+
+Connecting your own Facebook account? You're the app Admin — skip. Connecting a customer's account? Add them under **App Roles → Roles → Add People → Testers**. They accept at [facebook.com/settings → Business Integrations](https://www.facebook.com/settings?tab=business_tools).
+
+### Step 6: Save your Meta App credentials to Wiro
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "facebook-pages", "fieldname": "authmethod", "fieldvalue": "own" },
+      { "credentialkey": "facebook-pages", "fieldname": "appid", "fieldvalue": "YOUR_META_APP_ID" },
+      { "credentialkey": "facebook-pages", "fieldname": "appsecret", "fieldvalue": "YOUR_META_APP_SECRET" }
+    ]
+  }'
+```
+
+Wiro merges this into only the `facebook-pages` group — other credentials are untouched.
+
+### Step 7: Initiate OAuth
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "facebook-pages",
+    "redirecturl": "https://your-app.com/settings/integrations",
+    "authmethod": "own"
+  }'
+```
+
+Response:
+
+```json
+{
+  "result": true,
+  "authorizeUrl": "https://www.facebook.com/v26.0/dialog/oauth?client_id=...&redirect_uri=...&scope=pages_show_list%2Cpages_manage_posts%2Cpublish_video%2Cpages_manage_engagement%2Cpages_read_engagement%2Cpages_read_user_content%2Cpages_manage_metadata%2Cpages_messaging&auth_type=rerequest&response_type=code&state=...",
+  "errors": []
+}
+```
+
+Redirect the user's browser to `authorizeUrl`. State has a 15-minute TTL.
+
+### Step 8: Handle the callback and list returned Pages
+
+After consent, Wiro exchanges the code for a user access token, fetches every admin-managed Page **with its page-specific access token**, caches the full list server-side, and redirects the user to your `redirecturl`.
+
+**Crucial:** Wiro does **not** auto-select a Page. The connection is incomplete until the client calls `SetPickerAccounts` with a chosen page. `POST /UserAgentOAuth/OAuthStatus` returns `connected: false` during this window.
+
+**Success URL:**
+
+```
+https://your-app.com/settings/integrations?fb_connected=true&fb_pages=%5B%7B%22id%22%3A%22123%22%2C%22name%22%3A%22Page%20A%22%7D%2C%7B%22id%22%3A%22456%22%2C%22name%22%3A%22Page%20B%22%7D%5D
+```
+
+Query parameters:
+
+| Param | Meaning |
+|-------|---------|
+| `fb_connected=true` | OAuth completed; credentials are cached server-side awaiting page selection. |
+| `fb_pages` | URL-encoded JSON array `[{ id, name }, ...]` of every admin-managed Page. The per-page access tokens stay server-side — the client only receives ID and name. |
+| `fb_error=<code>` | Failure. See [Troubleshooting](#troubleshooting). |
+
+Parse:
+
+```javascript
+const params = new URLSearchParams(window.location.search);
+
+if (params.get("fb_connected") === "true") {
+  const pages = JSON.parse(decodeURIComponent(params.get("fb_pages") || "[]"));
+
+  if (pages.length === 0) {
+    // Shouldn't normally happen — the callback returns fb_error=no_pages if the user
+    // has no Pages. But handle defensively.
+    showError("No Facebook Pages to manage.");
+  } else if (pages.length === 1) {
+    await setPickerAccounts([pages[0]]);
+  } else {
+    presentPagePicker(pages);
+  }
+} else if (params.get("fb_error")) {
+  handleError(params.get("fb_error"));
+}
+```
+
+### Step 9: Persist the page selection (required)
+
+**This step is mandatory.** The connection remains incomplete and
+`OAuthStatus` reports `connected: false` until you call `SetPickerAccounts`.
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "facebook-pages",
+    "accounts": [
+      { "pageid": "456", "fbpagename": "Page B" }
+    ]
+  }'
+```
+
+Response:
+
+```json
+{
+  "result": true,
+  "accounts": [
+    { "id": "456", "name": "Page B" }
+  ],
+  "errors": []
+}
+```
+
+Wiro validates every requested Page against the server-side discovery result,
+stores its long-lived Page access token without returning it to the client, and
+restarts a running agent so the new selection takes effect.
+
+If the 15-minute window lapses before you call `SetPickerAccounts`, you'll get
+`No pending Facebook connection. Please reconnect via OAuthConnect.` Repeat
+Step 3 for System User mode or Step 7 for OAuth.
+
+`fbpagename` is optional; if omitted, Wiro uses the name from the cached page list. The Facebook Pages picker accepts one or more entries — pass multiple `{ pageid, fbpagename }` objects to authorize the agent against several pages at once.
+
+### Step 10: Verify the connection
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "facebook-pages"
+  }'
+```
+
+Response:
+
+```json
+{
+  "result": true,
+  "connected": true,
+  "accounts": [
+    { "id": "456", "name": "Page B" }
+  ],
+  "connectedat": "2026-04-17T12:00:00.000Z",
+  "tokenexpiresat": "",
+  "errors": []
+}
+```
+
+- `connected: true` requires a validated active mode and at least one saved
+  Page, meaning `SetPickerAccounts` completed successfully.
+- `accounts[]` carries one entry per selected page (`id` = `pageid`, `name` = `fbpagename`).
+- Long-lived Facebook Page tokens have no fixed expiration date. They can still be invalidated when the user changes access, removes permissions, deauthorizes the app, or changes security-sensitive account settings.
+
+### Step 11: Start the agent if it's not running
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+```
+
+Agents already running at `SetPickerAccounts` time restart automatically to pick up the new credentials.
+
+## API Reference
+
+### POST /UserAgentOAuth/OAuthConnect
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Agent instance GUID. |
+| `credentialkey` | string | Yes | `"facebook-pages"`. |
+| `redirecturl` | string | OAuth only | HTTPS URL (or `http://localhost` / `http://127.0.0.1` for dev). Direct System User validation does not use it. |
+| `authmethod` | string | No | `"api_key"` for the recommended System User path, `"own"` for customer-owned OAuth, or `"wiro"` when Wiro-managed OAuth becomes available. Send the value explicitly. |
+
+OAuth response: `{ result, authorizeUrl, errors }`. Direct response:
+`{ result, accounts: [{id, name}], errors }` with no `authorizeUrl`.
+
+### GET /UserAgentOAuth/FBCallback
+
+Server-side. Query params appended to your `redirecturl`:
+
+| Param | Meaning |
+|-------|---------|
+| `fb_connected=true` | OAuth completed; pending payload cached awaiting `SetPickerAccounts`. |
+| `fb_pages` | URL-encoded JSON `[{id, name}, ...]` of admin-managed Pages. |
+| `fb_error=<code>` | Failure. |
+
+The callback path is per-provider — Facebook's stays `FBCallback`.
+
+### POST /UserAgentOAuth/SetPickerAccounts
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Agent instance GUID. |
+| `credentialkey` | string | Yes | `"facebook-pages"`. |
+| `accounts` | array | Yes | One or more `{ pageid, fbpagename? }` entries. The per-page access token is resolved from the latest server-side OAuth or System User discovery result — don't supply it. |
+
+Response: `{ result, accounts: [{id, name}, ...], errors }`. Triggers auto-restart if running.
+
+> Call within **15 minutes** of the OAuth callback or direct
+> `OAuthConnect` discovery. After that, restart the selected connection flow.
+
+### POST /UserAgentOAuth/OAuthStatus
+
+Body: `{ useragentguid, credentialkey: "facebook-pages" }`. Response: `connected` (only `true` when both `accesstoken` and `pageid` are set), `accounts: [{id, name}, ...]` (every selected Page), `connectedat`, and an empty `tokenexpiresat`.
+
+### POST /UserAgentOAuth/OAuthDisconnect
+
+Body: `{ useragentguid, credentialkey: "facebook-pages" }`. Clears the active
+token and Page selection without remote revocation. Direct mode also clears
+`systemusertoken`; customer-owned OAuth App ID and App Secret are preserved for
+reconnection.
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthDisconnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "facebook-pages"
+  }'
+```
+
+### Token lifecycle
+
+Selected Pages use long-lived Page tokens with no fixed expiration timestamp.
+Meta can still invalidate them when permissions, asset assignments, app access,
+or account security settings change. In direct mode, an expiring System User
+token must also be regenerated before Meta's stated expiry. If either token is
+invalidated, enter a current System User token or repeat customer-owned OAuth,
+then select the Pages again.
+
+## Using the Skill
+
+Once the Facebook Page is connected, the agent uses
+`int-facebookpage-post` to publish text, photo, and video posts. To adjust the
+Social Manager's bundled `cs-cron-content-scanner` schedule, call
+`UserAgent/CustomSkillUpsert` with `enabled` and `interval` only:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "skillkey": "cs-cron-content-scanner",
+    "enabled": true,
+    "interval": "0 */4 * * *"
+  }'
+```
+
+To change **what** the scheduled task posts (topics, tone, content angle), edit
+the paired preference skill `cs-content-tone` instead — see
+[Agent Skills → Updating Preference Skills](/docs/agent-skills#updating-preference-skills).
+
+## Troubleshooting
+
+| Error code | Meaning | What to do |
+|------------|---------|------------|
+| `missing_params` | Callback hit without `state` or `code`. | Start a new flow from Step 7. |
+| `session_expired` | >15 min between `OAuthConnect` and the callback. | Call `OAuthConnect` again. |
+| `authorization_denied` | User cancelled, or not listed in App Roles (Development Mode). | Add as Tester (Step 5), retry. |
+| `token_exchange_failed` | Wrong App Secret or redirect URI mismatch. | Re-copy App Secret; verify redirect URI exactly. |
+| `no_pages` | User has no administered Facebook Pages. | Ask the user to create/administer a Page first, retry. |
+| `useragent_not_found` | Invalid or unauthorized `useragentguid`. | Use `POST /UserAgent/MyAgents`. |
+| `Facebook Pages credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `appid` / `appsecret` are missing. | Call `POST /UserAgent/CredentialUpsert` with `facebook-pages.appid` and `facebook-pages.appsecret`, then retry. |
+| `Meta could not validate this System User token` | Direct mode received an invalid token, missing permission, or inaccessible asset. | Generate a current System User token with the documented permissions and Page assignments, save it, and retry. |
+| Valid token but no assigned Facebook Page | The System User has no Page with the `CREATE_CONTENT` task. | Assign the Page in Business Settings and reconnect. |
+| `internal_error` | Unexpected server error (includes cache write failures). | Retry once. If persistent, contact support. |
+
+### `SetPickerAccounts` returns "No pending Facebook connection"
+
+The 15-minute pending cache expired, or you passed a `pageid` that wasn't in
+the latest discovery result. Repeat Step 3 for System User mode or Step 7 for
+OAuth.
+
+### `SetPickerAccounts` returns "Selected pageid not found in pending pages list"
+
+The `pageid` you sent doesn't match any ID in the cached list. Verify you're parsing `fb_pages` correctly and sending the exact ID string.
+
+### Posts publish but as the wrong author
+
+Check `POST /UserAgent/Detail` and verify `credentials.facebook-pages.pageid` is the Page you intended. If not, disconnect and reconnect, or call `SetPickerAccounts` again within a fresh 15-minute window.
+
+### "App not verified" banner on consent
+
+Expected in Development Mode. Users in App Roles can click Continue.
+
+## Multi-Tenant Architecture
+
+1. **One Wiro agent instance per customer.**
+2. **Recommended direct mode:** each customer supplies a System User token from
+   their own Business Portfolio. No browser consent screen or shared Wiro Meta
+   app is involved.
+3. **Advanced OAuth mode:** each customer-owned Meta app controls its own App
+   Roles, review status, and consent branding.
+4. **Every Page token is isolated** per useragent. Customer A's token is never
+   returned to or shared with Customer B.
+5. **Asset tasks must remain current.** Losing `CREATE_CONTENT` or `MODERATE`
+   access invalidates the corresponding publish or comment capability. Monitor
+   `OAuthStatus` and require reconnection when it becomes disconnected.
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Overview](/docs/agent-overview)
+- [Agent Skills](/docs/agent-skills)
+- [Meta Ads integration](/docs/integration-metaads-skills) — separate product; used for paid media, not organic posting.
+- [Instagram integration](/docs/integration-instagram-skills)
+- [Meta for Developers — Pages API](https://developers.facebook.com/docs/pages-api)
+- [Meta for Developers — System User API calls](https://developers.facebook.com/docs/marketing-api/system-users/guides/api-calls/)
+
+---
+
+# Instagram Integration
+
+Connect your agent to an Instagram professional account with a recommended Meta
+System User token or advanced customer-owned Instagram OAuth.
+
+## Overview
+
+The Instagram integration supports two official Meta paths. Recommended direct
+mode uses a Business Manager System User and the Facebook Page linked to an
+Instagram Business or Creator account. Advanced mode uses Instagram API with
+Instagram Login directly and does not require a Facebook Page. Both paths keep
+tokens server-side and publish through Graph API v26.
+
+The two token types use different official hosts: System User mode derives a
+Facebook Page access token and publishes through `graph.facebook.com/v26.0`;
+Instagram Login issues an Instagram User access token and publishes through
+`graph.instagram.com/v26.0`. Wiro selects the matching host automatically.
+
+**Skills that use this integration:**
+
+- `int-instagram-post` — Publish feed carousels, reels, and stories
+
+**Agents that typically enable this integration:**
+
+- Social Manager
+- Any custom agent that needs Instagram publishing
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| `"api_key"` | **Recommended** | Enter a Business Manager System User token. Wiro discovers eligible linked Instagram professional accounts without browser OAuth. |
+| `"own"` | Advanced | Use your own Meta Business app and Instagram Login OAuth. This path does not require a linked Facebook Page. |
+| `"wiro"` | Coming soon | Wiro's shared Meta App is under review. |
+
+## Prerequisites
+
+- **A Wiro API key** — [Authentication](/docs/authentication).
+- **A deployed agent** — [Agent Overview](/docs/agent-overview); keep the `useragents[0].guid`.
+- **A Meta Business account** — [business.facebook.com](https://business.facebook.com/).
+- **An Instagram Business or Creator account** — personal accounts cannot use
+  content publishing.
+- **Recommended direct mode:** a System User, the Business app used to generate
+  its token, and a Facebook Page linked to the Instagram professional account.
+- **Advanced OAuth mode:** a Meta Developer account, an app configured for
+  Instagram Login, and an HTTPS callback URL. A Facebook Page is not required
+  for this mode.
+
+### Preparing the Instagram account
+
+For recommended System User mode:
+
+1. In the Instagram mobile app: **Settings → Account → Switch to Professional Account** → pick **Business** or **Creator**.
+2. In [Meta Business Suite](https://business.facebook.com/): select the Facebook Page that should own the Instagram account → **Settings → Linked accounts → Instagram → Connect account**. Sign in with the Instagram account and grant manage permissions.
+
+Without both steps, Facebook Graph API cannot discover the professional account
+from the System User's assigned Pages.
+
+For advanced Instagram Login OAuth, only step 1 is required. Meta's Instagram
+Login flow accesses the professional account directly and does not require a
+Facebook Page.
+
+## Recommended Setup: System User Token
+
+This is the dashboard's default path. Wiro uses the System User token only on
+the server to discover assigned Pages, find their linked Instagram professional
+accounts, and derive the Page access token required by the Facebook Login form
+of Instagram Content Publishing.
+
+### Step 1: Assign the Page and Instagram assets
+
+1. Complete [Preparing the Instagram account](#preparing-the-instagram-account).
+2. Open [Meta Business Settings → Users → System Users](https://business.facebook.com/latest/settings/system_users).
+3. Create or select a System User.
+4. Assign the linked Facebook Page with `CREATE_CONTENT`.
+5. Assign the Instagram account's **Content** task.
+6. Select **Generate new token** and choose the Business app used for this
+   integration.
+7. At **Set expiration**, choose **Never** when Meta offers it. If Meta requires
+   an expiring token for the business, regenerate and reconnect before expiry.
+8. Grant:
+   - `business_management`
+   - `instagram_basic`
+   - `instagram_content_publish`
+   - `pages_show_list`
+   - `pages_read_engagement`
+   - `ads_read`
+   - `ads_management`
+
+Meta's Page-linked publishing contract requires both ads permissions when the
+Page role is granted through Business Manager.
+
+If a permission does not appear, add the matching app use case through Meta's
+[use-case permission mapping](https://developers.facebook.com/documentation/development/create-an-app/use-cases-permission-mapping).
+The Business app must not require `appsecret_proof` on every request because
+direct mode does not collect its App Secret.
+
+### Step 2: Save the token
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "instagram", "fieldname": "authmethod", "fieldvalue": "api_key" },
+      { "credentialkey": "instagram", "fieldname": "systemusertoken", "fieldvalue": "YOUR_SYSTEM_USER_ACCESS_TOKEN" }
+    ]
+  }'
+```
+
+The System User token is encrypted, write-only, excluded from the agent
+runtime, and never returned by customer-facing credential endpoints.
+
+### Step 3: Validate and discover Instagram accounts
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "instagram",
+    "authmethod": "api_key"
+  }'
+```
+
+Response:
+
+```json
+{
+  "result": true,
+  "accounts": [
+    { "id": "17841400000000000", "name": "my_brand" }
+  ],
+  "errors": []
+}
+```
+
+Only public IDs and usernames are returned. The System User and derived Page
+tokens stay server-side.
+
+### Step 4: Select the Instagram account
+
+Instagram is a single-select picker. Send exactly one discovered account:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "instagram",
+    "accounts": [
+      { "accountId": "17841400000000000", "igusername": "my_brand" }
+    ]
+  }'
+```
+
+Call this within 15 minutes of `OAuthConnect`. Wiro matches the selection
+against its server-side discovery result and stores the derived Page-scoped
+runtime token. The dashboard auto-selects a sole result; API clients must still
+call this endpoint explicitly. If several linked professional accounts are
+returned, the dashboard opens the single-select Instagram picker.
+
+### Step 5: Verify the connection
+
+Call `POST /UserAgentOAuth/OAuthStatus` with
+`{ "useragentguid": "...", "credentialkey": "instagram" }`. A successful
+direct connection returns the selected numeric account ID and username,
+`connected: true`, and an empty `tokenexpiresat`.
+
+## Advanced Setup: Customer-Owned Instagram OAuth
+
+### Step 1: Create a Meta Developer App
+
+You may reuse a compatible Business app that already has the Instagram product
+configured.
+
+1. [developers.facebook.com/apps](https://developers.facebook.com/apps) → **Create app** → **Other** → **Business**.
+2. App display name, contact email, Business Account → **Create app**.
+3. Leave in **Development Mode**.
+
+### Step 2: Add the "Instagram" product
+
+1. From the app dashboard, **Add product**.
+2. Find **"Instagram"** (not "Instagram Basic Display" — that's for personal accounts and is being deprecated).
+3. **Set up**.
+
+### Step 3: Configure the OAuth redirect URI
+
+1. Left sidebar: **Instagram → API setup with Instagram login**.
+2. Scroll to **Business login settings** → **OAuth settings**.
+3. Add to **Valid OAuth Redirect URIs**:
+
+   ```
+   https://api.wiro.ai/v1/UserAgentOAuth/IGCallback
+   ```
+
+4. **Save changes**.
+
+> Note: Instagram OAuth has its own authorize URL at `instagram.com/oauth/authorize` (not `facebook.com/…`), but the redirect URI is still registered inside the Meta Developer App.
+
+### Step 4: Note the required permissions
+
+Wiro requests these exact scopes:
+
+```
+instagram_business_basic,instagram_business_content_publish,instagram_business_manage_messages,instagram_business_manage_comments,instagram_business_manage_insights
+```
+
+| Permission | Why |
+|------------|-----|
+| `instagram_business_basic` | Basic account info, profile data. |
+| `instagram_business_content_publish` | Publish feed, carousel, reel, and story content. |
+| `instagram_business_manage_messages` | Read and reply to DMs (used by some skills). |
+| `instagram_business_manage_comments` | Read, reply, hide, delete comments. |
+| `instagram_business_manage_insights` | Read engagement insights for posts and profile. |
+
+These work without App Review in Development Mode for any Facebook user in App Roles. **No `pages_*` scopes are requested** — Instagram Login uses its own scope family.
+
+### Step 5: Copy your App ID and App Secret
+
+**App settings → Basic** → copy **App ID**, click **Show** → copy **App Secret**.
+
+### Step 6: Add users as Testers (only if needed)
+
+If the connecting person is not the app Admin, add them under **App Roles →
+Roles → Add People → Testers** and have them accept before starting OAuth.
+
+### Step 7: Save your Meta App credentials to Wiro
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "instagram", "fieldname": "authmethod", "fieldvalue": "own" },
+      { "credentialkey": "instagram", "fieldname": "appid", "fieldvalue": "YOUR_META_APP_ID" },
+      { "credentialkey": "instagram", "fieldname": "appsecret", "fieldvalue": "YOUR_META_APP_SECRET" }
+    ]
+  }'
+```
+
+### Step 8: Initiate OAuth
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "instagram",
+    "redirecturl": "https://your-app.com/settings/integrations",
+    "authmethod": "own"
+  }'
+```
+
+Response:
+
+```json
+{
+  "result": true,
+  "authorizeUrl": "https://www.instagram.com/oauth/authorize?client_id=...&redirect_uri=...&scope=instagram_business_basic%2Cinstagram_business_content_publish%2Cinstagram_business_manage_messages%2Cinstagram_business_manage_comments%2Cinstagram_business_manage_insights&response_type=code&state=...",
+  "errors": []
+}
+```
+
+### Step 9: Handle the callback
+
+After consent, Wiro exchanges the code for a short-lived token, upgrades it to a long-lived token via `graph.instagram.com/access_token?grant_type=ig_exchange_token`, fetches the Instagram user info, and redirects the user back.
+
+**Success URL:**
+
+```
+https://your-app.com/settings/integrations?ig_connected=true&ig_username=my_brand
+```
+
+Parse:
+
+```javascript
+const params = new URLSearchParams(window.location.search);
+
+if (params.get("ig_connected") === "true") {
+  const username = params.get("ig_username");
+  showSuccess(`Connected @${username}`);
+} else if (params.get("ig_error")) {
+  handleError(params.get("ig_error"));
+}
+```
+
+Advanced Instagram Login OAuth has **no secondary selection step**. The
+authorized Instagram professional account is written directly by the callback.
+The `SetPickerAccounts` step applies only to recommended System User mode.
+
+### Step 10: Verify the connection
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "instagram"
+  }'
+```
+
+```json
+{
+  "result": true,
+  "connected": true,
+  "accounts": [
+    { "id": "17841400000000000", "name": "my_brand" }
+  ],
+  "connectedat": "2026-04-17T12:00:00.000Z",
+  "tokenexpiresat": "2026-06-16T12:00:00.000Z",
+  "errors": []
+}
+```
+
+- `connected: true` requires the active mode's validated secret plus the
+  selected or authorized Instagram account.
+- `accounts[0].id` = numeric Instagram professional account ID.
+- `accounts[0].name` = Instagram username without `@`.
+- `tokenexpiresat` is empty for direct System User mode and approximately 60
+  days for customer-owned Instagram OAuth.
+- **No `refreshtokenexpiresat`** — Instagram does not expose a separate refresh token for this connection.
+
+### Step 11: Start the agent if it's not running
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+```
+
+## API Reference
+
+### POST /UserAgentOAuth/OAuthConnect
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Agent instance GUID. |
+| `credentialkey` | string | Yes | `"instagram"`. |
+| `redirecturl` | string | OAuth only | HTTPS URL (or localhost/127.0.0.1 for dev). Direct System User validation does not use it. |
+| `authmethod` | string | No | `"api_key"` for recommended System User mode, `"own"` for customer-owned Instagram OAuth, or `"wiro"` when Wiro-managed OAuth becomes available. Send the value explicitly. |
+
+OAuth response: `{ result, authorizeUrl, errors }`. Direct response:
+`{ result, accounts: [{id, name}], errors }` with no `authorizeUrl`.
+
+### GET /UserAgentOAuth/IGCallback
+
+Server-side. Query params appended to your `redirecturl`:
+
+| Param | Meaning |
+|-------|---------|
+| `ig_connected=true` | OAuth succeeded. |
+| `ig_username` | Connected Instagram handle (without `@`). |
+| `ig_error=<code>` | Failure. |
+
+The callback path is per-provider — Instagram's stays `IGCallback`.
+
+### POST /UserAgentOAuth/SetPickerAccounts
+
+Used only by direct System User mode after `OAuthConnect` discovery.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Agent instance GUID. |
+| `credentialkey` | string | Yes | `"instagram"`. |
+| `accounts` | array | Yes | Exactly one `{ accountId, igusername? }` entry from the latest discovery response. Do not supply an access token. |
+
+Call within 15 minutes of direct discovery. The response contains
+`{ result, accounts: [{id, name}], errors }` and restarts a running agent after
+the selection is persisted.
+
+### POST /UserAgentOAuth/OAuthStatus
+
+Body: `{ useragentguid, credentialkey: "instagram" }`. Response: `connected`,
+`accounts: [{id, name}]` where `id` is the numeric account ID and `name` is the
+username, `connectedat`, and `tokenexpiresat`.
+
+### POST /UserAgentOAuth/OAuthDisconnect
+
+Body: `{ useragentguid, credentialkey: "instagram" }`. Clears the active token
+and selected account without remote revocation. Direct mode also clears
+`systemusertoken`; customer-owned OAuth App ID and App Secret are preserved for
+reconnection.
+
+### Token lifecycle
+
+Wiro refreshes renewable customer-owned Instagram OAuth tokens while the agent
+is running. Direct mode uses a System User token plus a derived Page token with
+no fixed expiry recorded by Wiro. Meta can still invalidate either token when
+permissions, asset assignments, or account security change; expiring System
+User tokens must be regenerated before Meta's stated expiry. If `OAuthStatus`
+reports `connected: false`, reconnect using the active mode.
+
+## Using the Skill
+
+Once the Instagram professional account is connected, the agent uses
+`int-instagram-post` to publish feed carousels, reels, and stories. To adjust
+the Social Manager's bundled `cs-cron-content-scanner` schedule, call
+`UserAgent/CustomSkillUpsert` with `enabled` and `interval` only:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "skillkey": "cs-cron-content-scanner",
+    "enabled": true,
+    "interval": "0 */4 * * *"
+  }'
+```
+
+To change **what** the scheduled task posts (topics, tone, hashtag rules,
+caption style), edit the paired preference skill `cs-content-tone` instead —
+see [Agent Skills → Updating Preference Skills](/docs/agent-skills#updating-preference-skills).
+
+## Troubleshooting
+
+| Error code | Meaning | What to do |
+|------------|---------|------------|
+| `missing_params` | Callback hit without `state` or `code`. | Start a new flow from Step 8. |
+| `session_expired` | >15 min between `OAuthConnect` and callback. | Call `OAuthConnect` again. |
+| `authorization_denied` | User cancelled, or not in App Roles (Development Mode). | Add as Tester (Step 6), retry. |
+| `token_exchange_failed` | Wrong App Secret, redirect URI mismatch, or Instagram rejected the authorization code. | Re-copy the App Secret, verify the redirect URI, and retry Instagram Login. |
+| `useragent_not_found` | Invalid or unauthorized guid. | Use `POST /UserAgent/MyAgents`. |
+| `Instagram credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `appid` / `appsecret` are missing. | `POST /UserAgent/CredentialUpsert` with `instagram.appid` and `instagram.appsecret`. |
+| `Meta could not validate this System User token` | Direct mode received an invalid token, missing permission, or inaccessible asset. | Generate a current token with the documented permissions and asset assignments, save it, and retry. |
+| Valid token but no connected Instagram professional account | No assigned Page exposes a linked professional account with `CREATE_CONTENT`. | Link the account to the Page, assign both assets to the System User, and reconnect. |
+| `internal_error` | Unexpected server error. | Retry. If persistent, contact support. |
+
+### "No Instagram Business Account found" during OAuth
+
+In System User mode, the account is still Personal, is not linked to an
+assigned Facebook Page, or the Page lacks `CREATE_CONTENT`. In advanced
+Instagram OAuth mode, the usual cause is a Personal account or an app-role /
+permission problem. Follow the mode-specific prerequisites above.
+
+### Publishing fails with "media upload failed"
+
+Common causes:
+
+- Image resolution too low (<320px) or aspect ratio outside Instagram's allowed ranges.
+- Media that does not meet Meta's current format, duration, size, or codec
+  requirements.
+- Instagram account switched back to Personal after connection — the token becomes invalid. Ask the user to switch back to Business and reconnect.
+
+## Multi-Tenant Architecture
+
+1. **One Wiro agent instance per customer.**
+2. **Recommended direct mode:** each customer supplies a System User token from
+   its own Business Portfolio and assigns its own Page plus Instagram assets.
+3. **Advanced OAuth mode:** each customer-owned Meta app controls its own App
+   Roles, review status, and Instagram consent branding.
+4. **Page linkage is mode-specific.** It is mandatory for System User mode but
+   not for Instagram API with Instagram Login.
+5. **Tokens are isolated per useragent** and are never returned to another
+   customer or to the browser.
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Overview](/docs/agent-overview)
+- [Agent Skills](/docs/agent-skills)
+- [Facebook Page integration](/docs/integration-facebook-skills) — Page linkage is required for System User mode, not Instagram Login OAuth.
+- [Meta Ads integration](/docs/integration-metaads-skills) — for Instagram-placement paid ads.
+- [Meta for Developers — Instagram Graph API](https://developers.facebook.com/docs/instagram-api)
+- [Meta for Developers — Content Publishing API comparison](https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/content-publishing/)
+
+---
+
+# Shopify Integration
+
+Connect a Wiro agent to Shopify's official GraphQL Admin API 2026-07 to manage products, variants, inventory, orders, customers, discounts, collections, and fulfillments.
+
+## Overview
+
+The Shopify integration powers the `shopify-manage` skill. It uses only the official GraphQL Admin API pinned to `2026-07`; the REST Admin API, `latest`, `unstable`, and release-candidate schemas are outside the contract.
+
+**Available connection modes:**
+
+| Mode | Status | Best for |
+|------|--------|----------|
+| Client ID + Secret (`"api_key"`) | Available | Server-to-server automation when the Dev Dashboard app and store belong to the same Shopify organization. Tokens report `expires_in: 86399` and are re-exchanged before expiry. |
+| Customer-owned app OAuth (`"own"`) | Available | Apps installed on merchant stores in another organization. Uses an expiring offline access token plus rotating refresh token. |
+
+Wiro does not provide a shared Shopify OAuth app. Both modes use customer-owned credentials.
+
+## Prerequisites
+
+- A deployed Wiro agent with the `shopify-manage` skill enabled.
+- A Shopify store and permission to install or create apps.
+- The canonical store hostname, for example `example-store.myshopify.com`. Custom storefront domains are not accepted for Admin API authentication.
+
+## Option A: Client ID + Secret
+
+### 1. Create and install a Dev Dashboard app
+
+In Shopify's Dev Dashboard:
+
+1. Create an app in the same Shopify organization as the target store.
+2. Configure only the Admin API scopes the agent needs.
+3. Release an app version and install it on the store.
+4. Copy the Client ID and Client Secret from the app's **Settings** page.
+
+Product, inventory, order, customer, discount, fulfillment, and location operations require their matching read/write scopes. The app can do only what its granted scopes and the installing staff account permit.
+
+Shopify's client-credentials grant works only when both the app and store belong to the same organization. For a merchant store in another organization, use Option B.
+
+### 2. Save the store and app credentials
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "shopify", "fieldname": "authmethod", "fieldvalue": "api_key" },
+      { "credentialkey": "shopify", "fieldname": "shopdomain", "fieldvalue": "example-store.myshopify.com" },
+      { "credentialkey": "shopify", "fieldname": "clientid", "fieldvalue": "YOUR_SHOPIFY_CLIENT_ID" },
+      { "credentialkey": "shopify", "fieldname": "clientsecret", "fieldvalue": "YOUR_SHOPIFY_CLIENT_SECRET" }
+    ]
+  }'
+```
+
+### 3. Validate the connection
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "shopify",
+    "authmethod": "api_key"
+  }'
+```
+
+This is a server-side credential exchange and probe, not a browser redirect. Wiro submits the Shopify client-credentials form (`grant_type=client_credentials`, Client ID, and Client Secret) to the canonical shop, receives an access token whose `expires_in` is exactly `86399` seconds, verifies the shop identity, and stores the connection. Running agents re-exchange the client credentials before expiry; the Client Secret is never sent to the GraphQL Admin API.
+
+## Option B: Customer-owned app OAuth
+
+### 1. Configure the Shopify app
+
+Create or select the customer's app in the Shopify Dev Dashboard and add this exact redirect URL:
+
+```text
+https://api.wiro.ai/v1/UserAgentOAuth/ShopifyCallback
+```
+
+The authorization-code grant requests an **expiring offline** token. Wiro validates the callback before exchanging the code:
+
+- the callback HMAC is computed with the app's Client Secret over the alphabetically sorted callback query fields after removing `hmac` and `signature`;
+- comparison is timing-safe, and the callback `state` and canonical `shop` must match the connection that Wiro started;
+- the authorization code is sent only to that shop's `/admin/oauth/access_token` endpoint as `application/x-www-form-urlencoded`, with `expiring=1`.
+
+This callback-query HMAC is not Shopify's webhook-signature format, and it is not computed over the token form body.
+
+### 2. Save app credentials
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "shopify", "fieldname": "authmethod", "fieldvalue": "own" },
+      { "credentialkey": "shopify", "fieldname": "shopdomain", "fieldvalue": "example-store.myshopify.com" },
+      { "credentialkey": "shopify", "fieldname": "clientid", "fieldvalue": "YOUR_SHOPIFY_CLIENT_ID" },
+      { "credentialkey": "shopify", "fieldname": "clientsecret", "fieldvalue": "YOUR_SHOPIFY_CLIENT_SECRET" }
+    ]
+  }'
+```
+
+### 3. Start OAuth
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "shopify",
+    "authmethod": "own",
+    "redirecturl": "https://your-app.example/settings/integrations"
+  }'
+```
+
+Open the returned `authorizeUrl` in the user's browser. After consent, Wiro exchanges the code for an expiring offline access token and refresh token, records both provider expiry values, verifies the shop through GraphQL, and redirects to your `redirecturl` with `shopify_connected=true`. Refresh uses `grant_type=refresh_token`; Shopify can rotate both tokens, so Wiro stores each replacement atomically rather than reusing an old refresh token.
+
+## Check or disconnect
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "useragentguid": "your-useragent-guid", "credentialkey": "shopify" }'
+```
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthDisconnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "useragentguid": "your-useragent-guid", "credentialkey": "shopify" }'
+```
+
+## Runtime behavior
+
+- Endpoint: `https://{shop}.myshopify.com/admin/api/2026-07/graphql.json`
+- Authentication: `X-Shopify-Access-Token`
+- Client-credentials tokens report `expires_in: 86399` and are re-exchanged automatically before expiry.
+- Customer-owned OAuth uses expiring offline access and refresh tokens. Wiro refreshes and atomically replaces the pair before the access token expires; reconnect is required if the refresh authorization expires or is revoked.
+- Reads are paginated with GraphQL cursors.
+- Every mutation checks both top-level `errors` and mutation-specific `userErrors`.
+- Products are created as drafts unless publication is explicitly requested.
+- Missing scopes are treated as hard permission boundaries; the agent does not switch authentication methods or attempt a workaround.
+
+## Mutation safety
+
+- **Compare-and-set inventory:** `inventorySetQuantities` includes the last-read quantity for each inventory item/location. A stale comparison stops the write; Wiro re-reads state instead of bypassing the conflict.
+- **Scoped idempotency:** Wiro reuses one stable key only for mutations whose 2026-07 schema documents native idempotency. It does not attach an idempotency directive to arbitrary GraphQL mutations.
+- **Ambiguous outcomes:** timeout, disconnect, throttle, or 5xx after transmission is `unknown`, not an automatic retry. Wiro queries the natural resource key and reconciles remote state first.
+- **Collections:** membership changes use only collection mutations supported by the 2026-07 schema. Deprecated legacy collection add/remove operations are not used.
+- **Protected customer data:** nominal customer scopes may still require Shopify protected-customer-data approval and staff permissions. Wiro requests the minimum fields needed and does not put customer PII, addresses, order details, or payment data into its mutation ledger.
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Skills](/docs/agent-skills)
+- [Shopify Admin API access scopes](https://shopify.dev/docs/api/usage/access-scopes)
+- [Shopify client-credentials grant](https://shopify.dev/docs/apps/build/authentication-authorization/access-tokens/client-credentials-grant)
+- [Shopify authorization-code grant](https://shopify.dev/docs/apps/build/authentication-authorization/access-tokens/authorization-code-grant)
+
+---
+
+# WooCommerce Integration
+
+Connect a Wiro agent directly to a WooCommerce store with a REST API consumer key and secret.
+
+## Overview
+
+The `woocommerce-manage` skill uses WooCommerce's official, current recommended WP REST API namespace, `wc/v3`, to work with products, variations, taxonomy, inventory, orders, refunds, coupons, customers, reports, and supported store settings.
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| Consumer key + consumer secret | Available | Direct HTTPS Basic Authentication. No OAuth app or browser redirect. |
+
+## Prerequisites
+
+- A deployed Wiro agent with the `woocommerce-manage` skill enabled.
+- A public HTTPS WooCommerce store with REST API routing enabled.
+- A WordPress user with the minimum permissions needed for the requested operations.
+
+## Setup
+
+### 1. Create a WooCommerce REST API key
+
+In WordPress Admin:
+
+1. Open **WooCommerce → Settings → Advanced → REST API**.
+2. Select **Add key**.
+3. Choose the WordPress user the agent should act as.
+4. Choose **Read/Write** only if the agent must modify the store; otherwise use **Read**.
+5. Generate the key and copy both the consumer key and consumer secret.
+
+### 2. Save credentials
+
+Use the store's public base URL. Keep an existing WordPress subdirectory, but omit `/wp-json/wc/v3`, query strings, fragments, and the trailing slash.
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "woocommerce", "fieldname": "storeurl", "fieldvalue": "https://store.example.com" },
+      { "credentialkey": "woocommerce", "fieldname": "consumerkey", "fieldvalue": "ck_..." },
+      { "credentialkey": "woocommerce", "fieldname": "consumersecret", "fieldvalue": "cs_..." }
+    ]
+  }'
+```
+
+### 3. Start or restart the agent
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+```
+
+## Credential fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `storeurl` | string | Public HTTPS store URL, without the WooCommerce REST path. |
+| `consumerkey` | secret string | WooCommerce consumer key, normally beginning with `ck_`. |
+| `consumersecret` | secret string | WooCommerce consumer secret, normally beginning with `cs_`. |
+
+## Runtime behavior
+
+- Base endpoint: `{storeurl}/wp-json/wc/v3`
+- Authentication: HTTPS Basic Auth with the consumer key and secret.
+- Credentials are never added to URL query parameters.
+- Collection endpoints use page-number pagination and inspect `X-WP-TotalPages`.
+- The agent reads the current resource before a write and verifies the resource after a successful mutation.
+- Ambiguous create/update outcomes are reconciled by reading remote state before any retry. WooCommerce has no universal idempotency header.
+- Refund amount, currency, line items, restock behavior, and gateway behavior must be explicit; the agent does not infer them.
+
+### Products, inventory, and batch requests
+
+- Product and variation writes use documented fields such as `manage_stock`, `stock_quantity`, `stock_status`, and `backorders`. Wiro does **not** treat `low_stock_amount` as a supported product/variation mutation field.
+- `POST /products/batch` accepts `create`, `update`, and `delete` arrays. It is a convenience batch, not one atomic transaction: inspect every returned array item, and reconcile each item independently.
+- A top-level 2xx response does not mean every batch item succeeded. Do not retry the whole batch after a partial or ambiguous result; retrying confirmed successes can duplicate creates.
+- WooCommerce has no universal idempotency-key header. Wiro uses natural keys such as SKU/slug, records one ledger entry per item, and reads remote state before retrying an uncertain write.
+
+### Settings
+
+- Read groups with `GET /settings`, group options with `GET /settings/{group_id}`, and one option with `GET /settings/{group_id}/{option_id}`.
+- Update one writable option with `PUT /settings/{group_id}/{option_id}`.
+- Batch-update writable options in one group with `POST /settings/{group_id}/batch` and an `update` array. This endpoint does not create or delete arbitrary settings.
+- Payment gateways and shipping zones are separate resources, not generic setting options.
+
+### Errors and rate limits
+
+WooCommerce/WordPress errors use the HTTP status plus a JSON object shaped like `{ code, message, data }`; `data.status` commonly repeats the status. For batch calls, also inspect each returned item.
+
+Core `wc/v3` does not publish one built-in global request quota or standardized rate-limit header contract. A store, host, WAF, reverse proxy, or plugin can still return `429`. When it does, honor `Retry-After` or another explicit reset header if present; otherwise stop and retry later with conservative backoff. Do not copy the optional WooCommerce **Store API** `RateLimit-*` contract onto `wc/v3`.
+
+## Troubleshooting
+
+- **400:** The payload, field, or state transition is invalid. Read the response's `code`, `message`, and `data`; do not infer success from a partially populated object.
+- **401:** The key/secret is invalid, revoked, or belongs to a different store.
+- **403:** The key's WordPress user or permission level cannot access the resource.
+- **404 under `/wp-json/wc/v3`:** The store URL or WordPress subdirectory is wrong, WooCommerce REST routing is unavailable, or permalinks need configuration.
+- **409:** The resource changed or conflicts with current state. Re-read it before deciding whether a new write is appropriate.
+- **429:** A store-specific limiter blocked the request. Follow the headers that store actually returned; `wc/v3` itself does not guarantee `Retry-After`.
+- **5xx or transport timeout after a write:** The outcome is unknown. Reconcile by resource ID or natural key before any retry.
+- **WAF or reverse proxy failures:** Allow authenticated requests to the WooCommerce REST route without redirecting to another hostname.
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Skills](/docs/agent-skills)
+- [WooCommerce REST API documentation](https://woocommerce.github.io/woocommerce-rest-api-docs/)
+
+---
+
+# Reddit Integration
+
+Technical contract for connecting a Wiro agent to Reddit with a customer-owned Reddit web app. The endpoints remain documented, but the feature is not available until Reddit approves Wiro's commercial use and a written commercial contract is in force.
+
+## Overview
+
+The `reddit-post` skill supports:
+
+- connected-user identity;
+- subscribed and contributor subreddits;
+- subreddit rules;
+- text and link submissions;
+- comments and replies;
+- editing or deleting only content authored by the connected Reddit identity.
+
+Voting, private messages, chat, moderation queues, bulk posting, mass cross-posting, scraping, and browser automation are out of scope.
+
+> **Unavailable pending Reddit approval.** Wiro is a commercial product. A checkbox or customer-owned app does not authorize commercial Data API use. Wiro will not enable this integration until Reddit has granted explicit Data API approval for the use case and both parties have completed the required written commercial contract.
+
+## Availability and policy requirements
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| Customer-owned OAuth app (`"own"`) | Unavailable pending Wiro approval/contract | The authorization-code endpoints and callback contract are implemented, but production access remains disabled. |
+| Wiro shared app | Not offered | Each operator supplies and controls its own Reddit app. |
+| Permanent pasted bearer token | Not supported | Access and refresh tokens are managed by the OAuth callback. |
+
+The prerequisites are cumulative:
+
+1. Reddit Data API approval for Wiro's described use case.
+2. Reddit's explicit written commercial approval and completed contract.
+3. A registered developer profile and visible App profile label.
+4. A dedicated app account used only for app functions, not a mixed-use personal account.
+5. A customer-owned Reddit `web app` registered with the Wiro callback.
+
+Wiro's `apiaccessapproved: true` field is only an operator attestation. It grants no rights, does not replace Reddit review or the commercial contract, and does not make the currently unavailable feature usable.
+
+## Prerequisites
+
+- A deployed Wiro agent with the `reddit-post` skill enabled.
+- A dedicated Reddit app account.
+- A customer-owned Reddit app created as type **web app**.
+- A registered Reddit developer profile and App profile label that accurately describes the app and its commercial purpose.
+- Confirmed Reddit Data API approval plus Wiro's written commercial contract with Reddit.
+
+## Technical setup after approval
+
+The requests below describe the hard-cutover API contract for rollout readiness. They do not bypass the availability gate above.
+
+### 1. Create the Reddit web app
+
+Create the app in Reddit's developer settings and use this exact redirect URI:
+
+```text
+https://api.wiro.ai/v1/UserAgentOAuth/RedditCallback
+```
+
+Copy the app's client ID and client secret. The developer profile, App profile label, and dedicated app account must remain attached to this app; do not create duplicate accounts or apps to evade review or limits.
+
+### 2. Save app credentials and the operator attestation
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "reddit", "fieldname": "authmethod", "fieldvalue": "own" },
+      { "credentialkey": "reddit", "fieldname": "clientid", "fieldvalue": "YOUR_REDDIT_CLIENT_ID" },
+      { "credentialkey": "reddit", "fieldname": "clientsecret", "fieldvalue": "YOUR_REDDIT_CLIENT_SECRET" },
+      { "credentialkey": "reddit", "fieldname": "apiaccessapproved", "fieldvalue": true }
+    ]
+  }'
+```
+
+### 3. Start OAuth
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "reddit",
+    "authmethod": "own",
+    "redirecturl": "https://your-app.example/settings/integrations"
+  }'
+```
+
+Open the returned `authorizeUrl` in the user's browser. Wiro requests these scopes:
+
+```text
+identity read mysubreddits submit edit history
+```
+
+`history` is used only for bounded recovery: after an ambiguous create/reply outcome, Wiro may inspect at most the connected user's latest 25 submissions/comments to determine whether the write landed. It is not permission for broad history collection.
+
+The flow requests `duration=permanent`, allowing Wiro to refresh the one-hour access token with the callback-managed refresh token. After consent, the browser returns to your `redirecturl` with `reddit_connected=true` and the connected username. Production OAuth remains blocked until Wiro's approval/contract gate is complete.
+
+## Check or disconnect
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "useragentguid": "your-useragent-guid", "credentialkey": "reddit" }'
+```
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthDisconnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "useragentguid": "your-useragent-guid", "credentialkey": "reddit" }'
+```
+
+## Runtime safeguards
+
+- Authenticated API calls use `https://oauth.reddit.com`; OAuth token calls use `https://www.reddit.com`.
+- Every request includes the compliant, distinctive User-Agent `Wiro-Agent-Reddit/1.0 client/<CLIENT_ID> (+https://wiro.ai)`. Wiro does not use a browser/default User-Agent or misidentify the client.
+- The agent reads subreddit rules before a write.
+- One approval covers one concrete subreddit or fullname and one payload. A request to post everywhere is refused.
+- The agent blocks duplicate and near-duplicate submissions and does not fan a single payload out across communities.
+- Edits and deletes require a fresh ownership check against the connected Reddit username.
+- Ambiguous write outcomes are not automatically retried.
+- Recovery reads are bounded to the latest 25 items and require the `history` scope; no scraping or broad history retention is permitted.
+
+## Rate limits
+
+Reddit documents OAuth limits through the response headers:
+
+- `X-Ratelimit-Used`
+- `X-Ratelimit-Remaining`
+- `X-Ratelimit-Reset` (seconds until reset)
+
+The 100 queries-per-minute OAuth-client limit, averaged over a 10-minute window, applies only to clients that Reddit has found eligible for free Data API access. It is not a commercial entitlement. Wiro follows the limits and commercial terms assigned by Reddit; response headers and the executed contract are authoritative. Calls are sequential, and Wiro enters cooldown on HTTP 429 or a Reddit `RATELIMIT` error without retrying before reset.
+
+## Deletion and retention obligations
+
+- Wiro stores only bounded mutation/recovery metadata needed to prevent duplicate writes; it does not build or retain a broad Reddit history dataset.
+- If a Reddit post or comment is deleted, all retained title, body, URL, and related content must be removed. If an account is deleted, retained user IDs and author-identifying references must also be removed.
+- De-identified or anonymized copies of deleted Reddit content are not retained as a workaround.
+- Stored Reddit data is routinely minimized and deletion checks follow Reddit's contract and compliance tooling; Reddit recommends removing stored user data/content within 48 hours.
+- Disconnecting the integration stops new access but does not weaken obligations to honor content/account deletions already received.
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Skills](/docs/agent-skills)
+- [Reddit Developer Terms](https://redditinc.com/policies/developer-terms)
+- [Reddit Data API Terms](https://redditinc.com/policies/data-api-terms)
+- [Reddit API rules](https://github.com/reddit-archive/reddit/wiki/API)
+
+---
 
 # Organizations & Teams
 

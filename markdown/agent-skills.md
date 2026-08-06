@@ -45,7 +45,7 @@ Lists all skills in the registry.
 | `capability` | string | No | Filter by capability key (see [`POST /Skills/Capabilities`](#post-skillscapabilities) for the closed-set vocabulary). |
 | `user_invocable` | boolean | No | When `true`, only return skills end users can call directly through chat (filters out plumbing skills wired by the runtime). |
 | `requires_credentials` | boolean | No | Filter by whether the skill requires a credential. |
-| `wiro_connect_pending` | boolean | No | Filter by the "Wiro mode coming soon" flag — integrations whose Wiro-shared OAuth client is still awaiting provider review (currently 9 credentials: `facebook-pages`, `instagram`, `meta-ads`, `google-ads`, `google-merchant-center`, `youtube`, `ga4`, `linkedin`, `tiktok`). When `true`, only those skills are returned; when `false`, only ready-to-use skills. The flag is read off the credential, not the skill — `int-instagram-post` is pending because `instagram` is pending, etc. |
+| `wiro_connect_pending` | boolean | No | Filter by the "Wiro mode coming soon" flag — integrations whose Wiro-shared OAuth client is still awaiting provider review (currently 9 user-facing credentials: `facebook-pages`, `instagram`, `google-ads`, `google-merchant-center`, `youtube`, `ga4`, `linkedin`, `tiktok`, and `meta-ads`). Facebook Pages, Instagram, and Meta Ads remain usable through their customer-owned System User and/or OAuth alternatives. When `true`, only pending skills are returned; when `false`, only ready-to-use skills. The flag is read off the credential, not the skill. |
 | `name_in` | array<string> | No | Restrict the response to a specific list of skill names. |
 
 ##### Response
@@ -54,7 +54,7 @@ Lists all skills in the registry.
 {
   "result": true,
   "errors": [],
-  "total": 40,
+  "total": 45,
   "skills": [
     {
       "name": "int-instagram-post",
@@ -118,7 +118,15 @@ Lists all skills in the registry.
 
 > **4 weight buckets in the skill registry.** Every skill's `monthly_price_weight_usd` / `monthly_credits_weight` pair lands in one of four buckets: `ZERO` (`$0` / `0` — utility / rule-only skills), `LIGHT` (`$1` / `25` credits per month), `HEAVY` (`$2` / `50` credits per month), or `PREMIUM` (`$4` / `100` credits per month). The `(priceUsd, credits)` grid is a documentation convenience — it is **not** a named API constant; each pair emerges from the skill's own `monthly_price_weight_usd` / `monthly_credits_weight`. There are **no per-skill Pro overrides** — Pro is always derived as `Starter × tiermultiplier` (default `10`). The agent's Starter price = `Σ(enabled-skill weights)`, bumped to `$4` if the raw sum lands below the floor (with credits scaled proportionally to keep the per-credit ratio stable); Pro = `Starter × tiermultiplier`.
 
-> **Optional filter `wiro_connect_pending`.** When you query with `wiro_connect_pending: true` you get every skill whose connecting integration's Wiro-shared OAuth client is awaiting App Review — currently the Meta family (`int-instagram-post`, `int-facebookpage-post`, `int-metaads-manage`), `int-linkedin-post`, `int-tiktok-post`, and the `util-*` posting helpers paired with them. Those skills are still usable in **own** mode (your own developer app). The flag itself does not appear on the skill object — it lives on the credential entry under [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail).
+> **Optional filter `wiro_connect_pending`.** When you query with
+> `wiro_connect_pending: true` you get every skill whose connecting
+> integration's Wiro-shared OAuth client is awaiting App Review — currently
+> `int-instagram-post`, `int-facebookpage-post`, `int-linkedin-post`,
+> `int-tiktok-post`, `int-metaads-manage`, the Google OAuth skills listed
+> above, and paired `util-*` helpers. Facebook Pages, Instagram, and Meta Ads
+> already expose customer-owned System User and/or OAuth alternatives. The flag
+> itself lives on the credential entry under
+> [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail).
 
 ### **POST** /Skills/Detail
 
@@ -186,8 +194,13 @@ Convenience endpoint — returns the credential entry for a given skill name in 
     "brand_text_color": "#ffffff",
     "brand_logo_filter": "none",
     "docs_url": "integration-instagram-skills",
-    "credential_mode": "oauth",
-    "connection_modes": ["wiro", "own"],
+    "credential_mode": "hybrid",
+    "connection_modes": ["api_key", "own", "wiro"],
+    "default_connection_mode": "api_key",
+    "mode_badges": {
+      "api_key": "Recommended",
+      "own": "Advanced"
+    },
     "wiro_connect_pending": true,
     "credential_schema": [
       {
@@ -209,6 +222,25 @@ Convenience endpoint — returns the credential entry for a given skill name in 
         "help": "<ol><li>Meta for Developers → select your app</li><li>App Settings → Basic</li><li>Show next to App Secret and copy</li></ol>",
         "oauth_managed": true,
         "only_in_modes": ["own"]
+      },
+      {
+        "key": "systemusertoken",
+        "type": "password",
+        "label": "System User Token",
+        "required": true,
+        "encrypted": true,
+        "show_toggle": true,
+        "runtime_excluded": true,
+        "only_in_modes": ["api_key"]
+      },
+      {
+        "key": "accountId",
+        "type": "text",
+        "label": "Instagram Account ID",
+        "required": true,
+        "pattern": "^[0-9]+$",
+        "auto_filled_by_oauth": true,
+        "readonly_when_connected": true
       },
       {
         "key": "igusername",
@@ -233,7 +265,21 @@ Convenience endpoint — returns the credential entry for a given skill name in 
       "return_query_param": "ig_connected",
       "return_error_param": "ig_error",
       "return_error_detail_param": "ig_error_detail",
-      "account_picker": null,
+      "direct_probe": {
+        "mode": "api_key",
+        "mode_label": "System User Token",
+        "token_field": "systemusertoken",
+        "required_fields": ["systemusertoken"],
+        "public_account_fields": ["id", "name"]
+      },
+      "account_picker": {
+        "enabled": true,
+        "multi_select": false,
+        "set_endpoint": "/UserAgentOAuth/SetPickerAccounts",
+        "item_value_field": "accountId",
+        "item_label_field": "igusername",
+        "item_fields_to_save": ["accountId", "igusername"]
+      },
       "extra_step": null
     },
     "used_by_skills": ["int-instagram-post"]
@@ -865,9 +911,9 @@ Skills that depend on third-party credentials. Follow the linked integration pag
 
 | Skill | Credential Key | Integration Guide |
 |-------|----------------|-------------------|
-| `int-metaads-manage` | `meta-ads` (OAuth) | [Meta Ads Skills](/docs/integration-metaads-skills) |
-| `int-facebookpage-post` | `facebook-pages` (OAuth) | [Facebook Page Skills](/docs/integration-facebook-skills) |
-| `int-instagram-post` | `instagram` (OAuth) | [Instagram Skills](/docs/integration-instagram-skills) |
+| `int-metaads-manage` | `meta-ads` (System User or OAuth) | [Meta Ads Skills](/docs/integration-metaads-skills) |
+| `int-facebookpage-post` | `facebook-pages` (System User or OAuth) | [Facebook Page Skills](/docs/integration-facebook-skills) |
+| `int-instagram-post` | `instagram` (System User or Instagram OAuth) | [Instagram Skills](/docs/integration-instagram-skills) |
 | `int-linkedin-post` | `linkedin` (OAuth) | [LinkedIn Skills](/docs/integration-linkedin-skills) |
 | `int-twitterx-post` | `twitter` (OAuth) | [Twitter / X Skills](/docs/integration-twitter-skills) |
 | `int-tiktok-post` | `tiktok` (OAuth) | [TikTok Skills](/docs/integration-tiktok-skills) |

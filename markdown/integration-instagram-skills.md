@@ -1,14 +1,24 @@
 # Instagram Integration
 
-Connect your agent to an Instagram Business Account to publish feed posts, carousels, reels, and stories.
+Connect your agent to an Instagram professional account with a recommended Meta
+System User token or advanced customer-owned Instagram OAuth.
 
 ## Overview
 
-The Instagram integration uses Meta's Graph API against an Instagram Business (or Creator) account that's linked to a Facebook Page.
+The Instagram integration supports two official Meta paths. Recommended direct
+mode uses a Business Manager System User and the Facebook Page linked to an
+Instagram Business or Creator account. Advanced mode uses Instagram API with
+Instagram Login directly and does not require a Facebook Page. Both paths keep
+tokens server-side and publish through Graph API v26.
+
+The two token types use different official hosts: System User mode derives a
+Facebook Page access token and publishes through `graph.facebook.com/v26.0`;
+Instagram Login issues an Instagram User access token and publishes through
+`graph.instagram.com/v26.0`. Wiro selects the matching host automatically.
 
 **Skills that use this integration:**
 
-- `instagram-post` — Publish feed carousels, reels, and stories
+- `int-instagram-post` — Publish feed carousels, reels, and stories
 
 **Agents that typically enable this integration:**
 
@@ -19,32 +29,154 @@ The Instagram integration uses Meta's Graph API against an Instagram Business (o
 
 | Mode | Status | Notes |
 |------|--------|-------|
+| `"api_key"` | **Recommended** | Enter a Business Manager System User token. Wiro discovers eligible linked Instagram professional accounts without browser OAuth. |
+| `"own"` | Advanced | Use your own Meta Business app and Instagram Login OAuth. This path does not require a linked Facebook Page. |
 | `"wiro"` | Coming soon | Wiro's shared Meta App is under review. |
-| `"own"` | Available now | Use your own Meta Developer App in Development Mode — no App Review required. |
 
 ## Prerequisites
 
 - **A Wiro API key** — [Authentication](/docs/authentication).
 - **A deployed agent** — [Agent Overview](/docs/agent-overview); keep the `useragents[0].guid`.
 - **A Meta Business account** — [business.facebook.com](https://business.facebook.com/).
-- **A Meta Developer account** — [developers.facebook.com](https://developers.facebook.com/).
-- **An Instagram Business or Creator account** — personal Instagram accounts cannot be connected via the Graph API.
-- **An HTTPS callback URL** for your backend.
+- **An Instagram Business or Creator account** — personal accounts cannot use
+  content publishing.
+- **Recommended direct mode:** a System User, the Business app used to generate
+  its token, and a Facebook Page linked to the Instagram professional account.
+- **Advanced OAuth mode:** a Meta Developer account, an app configured for
+  Instagram Login, and an HTTPS callback URL. A Facebook Page is not required
+  for this mode.
 
 ### Preparing the Instagram account
 
-Before the user can complete OAuth:
+For recommended System User mode:
 
 1. In the Instagram mobile app: **Settings → Account → Switch to Professional Account** → pick **Business** or **Creator**.
 2. In [Meta Business Suite](https://business.facebook.com/): select the Facebook Page that should own the Instagram account → **Settings → Linked accounts → Instagram → Connect account**. Sign in with the Instagram account and grant manage permissions.
 
-Without both steps, the Graph API won't return the Instagram account during OAuth.
+Without both steps, Facebook Graph API cannot discover the professional account
+from the System User's assigned Pages.
 
-## Complete Integration Walkthrough
+For advanced Instagram Login OAuth, only step 1 is required. Meta's Instagram
+Login flow accesses the professional account directly and does not require a
+Facebook Page.
+
+## Recommended Setup: System User Token
+
+This is the dashboard's default path. Wiro uses the System User token only on
+the server to discover assigned Pages, find their linked Instagram professional
+accounts, and derive the Page access token required by the Facebook Login form
+of Instagram Content Publishing.
+
+### Step 1: Assign the Page and Instagram assets
+
+1. Complete [Preparing the Instagram account](#preparing-the-instagram-account).
+2. Open [Meta Business Settings → Users → System Users](https://business.facebook.com/latest/settings/system_users).
+3. Create or select a System User.
+4. Assign the linked Facebook Page with `CREATE_CONTENT`.
+5. Assign the Instagram account's **Content** task.
+6. Select **Generate new token** and choose the Business app used for this
+   integration.
+7. At **Set expiration**, choose **Never** when Meta offers it. If Meta requires
+   an expiring token for the business, regenerate and reconnect before expiry.
+8. Grant:
+   - `business_management`
+   - `instagram_basic`
+   - `instagram_content_publish`
+   - `pages_show_list`
+   - `pages_read_engagement`
+   - `ads_read`
+   - `ads_management`
+
+Meta's Page-linked publishing contract requires both ads permissions when the
+Page role is granted through Business Manager.
+
+If a permission does not appear, add the matching app use case through Meta's
+[use-case permission mapping](https://developers.facebook.com/documentation/development/create-an-app/use-cases-permission-mapping).
+The Business app must not require `appsecret_proof` on every request because
+direct mode does not collect its App Secret.
+
+### Step 2: Save the token
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "instagram", "fieldname": "authmethod", "fieldvalue": "api_key" },
+      { "credentialkey": "instagram", "fieldname": "systemusertoken", "fieldvalue": "YOUR_SYSTEM_USER_ACCESS_TOKEN" }
+    ]
+  }'
+```
+
+The System User token is encrypted, write-only, excluded from the agent
+runtime, and never returned by customer-facing credential endpoints.
+
+### Step 3: Validate and discover Instagram accounts
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "instagram",
+    "authmethod": "api_key"
+  }'
+```
+
+Response:
+
+```json
+{
+  "result": true,
+  "accounts": [
+    { "id": "17841400000000000", "name": "my_brand" }
+  ],
+  "errors": []
+}
+```
+
+Only public IDs and usernames are returned. The System User and derived Page
+tokens stay server-side.
+
+### Step 4: Select the Instagram account
+
+Instagram is a single-select picker. Send exactly one discovered account:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "instagram",
+    "accounts": [
+      { "accountId": "17841400000000000", "igusername": "my_brand" }
+    ]
+  }'
+```
+
+Call this within 15 minutes of `OAuthConnect`. Wiro matches the selection
+against its server-side discovery result and stores the derived Page-scoped
+runtime token. The dashboard auto-selects a sole result; API clients must still
+call this endpoint explicitly. If several linked professional accounts are
+returned, the dashboard opens the single-select Instagram picker.
+
+### Step 5: Verify the connection
+
+Call `POST /UserAgentOAuth/OAuthStatus` with
+`{ "useragentguid": "...", "credentialkey": "instagram" }`. A successful
+direct connection returns the selected numeric account ID and username,
+`connected: true`, and an empty `tokenexpiresat`.
+
+## Advanced Setup: Customer-Owned Instagram OAuth
 
 ### Step 1: Create a Meta Developer App
 
-If you already have one for Meta Ads or Facebook Page, reuse it.
+You may reuse a compatible Business app that already has the Instagram product
+configured.
 
 1. [developers.facebook.com/apps](https://developers.facebook.com/apps) → **Create app** → **Other** → **Business**.
 2. App display name, contact email, Business Account → **Create app**.
@@ -72,7 +204,7 @@ If you already have one for Meta Ads or Facebook Page, reuse it.
 
 ### Step 4: Note the required permissions
 
-Wiro requests these exact scopes (sourced from `data/agent-skills-registry/credentials/instagram.json` under `oauth_provider.oauth_flow.scopes`):
+Wiro requests these exact scopes:
 
 ```
 instagram_business_basic,instagram_business_content_publish,instagram_business_manage_messages,instagram_business_manage_comments,instagram_business_manage_insights
@@ -94,7 +226,8 @@ These work without App Review in Development Mode for any Facebook user in App R
 
 ### Step 6: Add users as Testers (only if needed)
 
-If the connecting person isn't the app Admin, add them under **App Roles → Roles → Add People → Testers**. The Facebook account they accept with must be the one linked to the Instagram Business Account via Meta Business Suite.
+If the connecting person is not the app Admin, add them under **App Roles →
+Roles → Add People → Testers** and have them accept before starting OAuth.
 
 ### Step 7: Save your Meta App credentials to Wiro
 
@@ -159,7 +292,9 @@ if (params.get("ig_connected") === "true") {
 }
 ```
 
-Instagram has **no secondary selection step** — the Business Account tied to the chosen Facebook Page is used directly.
+Advanced Instagram Login OAuth has **no secondary selection step**. The
+authorized Instagram professional account is written directly by the callback.
+The `SetPickerAccounts` step applies only to recommended System User mode.
 
 ### Step 10: Verify the connection
 
@@ -178,7 +313,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
   "result": true,
   "connected": true,
   "accounts": [
-    { "id": "my_brand", "name": "my_brand" }
+    { "id": "17841400000000000", "name": "my_brand" }
   ],
   "connectedat": "2026-04-17T12:00:00.000Z",
   "tokenexpiresat": "2026-06-16T12:00:00.000Z",
@@ -186,10 +321,13 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
 }
 ```
 
-- `connected: true` requires an `accesstoken` and `authmethod` (`"wiro"` or `"own"`).
-- `accounts[0].id` = Instagram handle (without `@`).
-- `tokenexpiresat` = ~60 days from connection.
-- **No `refreshtokenexpiresat`** — Instagram long-lived tokens don't use refresh tokens; they refresh via `grant_type=ig_refresh_token`.
+- `connected: true` requires the active mode's validated secret plus the
+  selected or authorized Instagram account.
+- `accounts[0].id` = numeric Instagram professional account ID.
+- `accounts[0].name` = Instagram username without `@`.
+- `tokenexpiresat` is empty for direct System User mode and approximately 60
+  days for customer-owned Instagram OAuth.
+- **No `refreshtokenexpiresat`** — Instagram does not expose a separate refresh token for this connection.
 
 ### Step 11: Start the agent if it's not running
 
@@ -208,8 +346,11 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
 | `credentialkey` | string | Yes | `"instagram"`. |
-| `redirecturl` | string | Yes | HTTPS URL (or localhost/127.0.0.1 for dev). |
-| `authmethod` | string | No | `"wiro"` (default) or `"own"`. |
+| `redirecturl` | string | OAuth only | HTTPS URL (or localhost/127.0.0.1 for dev). Direct System User validation does not use it. |
+| `authmethod` | string | No | `"api_key"` for recommended System User mode, `"own"` for customer-owned Instagram OAuth, or `"wiro"` when Wiro-managed OAuth becomes available. Send the value explicitly. |
+
+OAuth response: `{ result, authorizeUrl, errors }`. Direct response:
+`{ result, accounts: [{id, name}], errors }` with no `authorizeUrl`.
 
 ### GET /UserAgentOAuth/IGCallback
 
@@ -223,33 +364,48 @@ Server-side. Query params appended to your `redirecturl`:
 
 The callback path is per-provider — Instagram's stays `IGCallback`.
 
+### POST /UserAgentOAuth/SetPickerAccounts
+
+Used only by direct System User mode after `OAuthConnect` discovery.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Agent instance GUID. |
+| `credentialkey` | string | Yes | `"instagram"`. |
+| `accounts` | array | Yes | Exactly one `{ accountId, igusername? }` entry from the latest discovery response. Do not supply an access token. |
+
+Call within 15 minutes of direct discovery. The response contains
+`{ result, accounts: [{id, name}], errors }` and restarts a running agent after
+the selection is persisted.
+
 ### POST /UserAgentOAuth/OAuthStatus
 
-Body: `{ useragentguid, credentialkey: "instagram" }`. Response: `connected`, `accounts: [{id, name}]` (1-element with the connected Instagram handle), `connectedat`, `tokenexpiresat`.
+Body: `{ useragentguid, credentialkey: "instagram" }`. Response: `connected`,
+`accounts: [{id, name}]` where `id` is the numeric account ID and `name` is the
+username, `connectedat`, and `tokenexpiresat`.
 
 ### POST /UserAgentOAuth/OAuthDisconnect
 
-Body: `{ useragentguid, credentialkey: "instagram" }`. Clears Instagram credentials (no remote revoke).
+Body: `{ useragentguid, credentialkey: "instagram" }`. Clears the active token
+and selected account without remote revocation. Direct mode also clears
+`systemusertoken`; customer-owned OAuth App ID and App Secret are preserved for
+reconnection.
 
-### POST /UserAgentOAuth/TokenRefresh
+### Token lifecycle
 
-> Running agents refresh the Instagram token automatically via the daily maintenance cron. Use this only for debugging or manual overrides.
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "provider": "instagram"
-  }'
-```
-
-Uses `grant_type=ig_refresh_token` with the current access token (Instagram has no separate refresh token). See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
+Wiro refreshes renewable customer-owned Instagram OAuth tokens while the agent
+is running. Direct mode uses a System User token plus a derived Page token with
+no fixed expiry recorded by Wiro. Meta can still invalidate either token when
+permissions, asset assignments, or account security change; expiring System
+User tokens must be regenerated before Meta's stated expiry. If `OAuthStatus`
+reports `connected: false`, reconnect using the active mode.
 
 ## Using the Skill
 
-Once the Instagram Business account is connected, the agent's scheduled tasks use the `instagram-post` platform skill to publish feed carousels, reels, and stories. To adjust the cron of the built-in `cron-content-scanner` task (Social Manager), call `UserAgent/CustomSkillUpsert` with `enabled` and `interval` only — the task body (`value`) is owned by the bundled integration skill and silently dropped on writes:
+Once the Instagram professional account is connected, the agent uses
+`int-instagram-post` to publish feed carousels, reels, and stories. To adjust
+the Social Manager's bundled `cs-cron-content-scanner` schedule, call
+`UserAgent/CustomSkillUpsert` with `enabled` and `interval` only:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
@@ -257,13 +413,15 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skillkey": "cron-content-scanner",
+    "skillkey": "cs-cron-content-scanner",
     "enabled": true,
     "interval": "0 */4 * * *"
   }'
 ```
 
-To change **what** the scheduled task posts (topics, tone, hashtag rules, caption style), edit the paired preference skill `content-tone` instead — see [Agent Skills → Updating Preference Skills](/docs/agent-skills#updating-preference-skills).
+To change **what** the scheduled task posts (topics, tone, hashtag rules,
+caption style), edit the paired preference skill `cs-content-tone` instead —
+see [Agent Skills → Updating Preference Skills](/docs/agent-skills#updating-preference-skills).
 
 ## Troubleshooting
 
@@ -272,36 +430,47 @@ To change **what** the scheduled task posts (topics, tone, hashtag rules, captio
 | `missing_params` | Callback hit without `state` or `code`. | Start a new flow from Step 8. |
 | `session_expired` | >15 min between `OAuthConnect` and callback. | Call `OAuthConnect` again. |
 | `authorization_denied` | User cancelled, or not in App Roles (Development Mode). | Add as Tester (Step 6), retry. |
-| `token_exchange_failed` | Wrong App Secret, redirect URI mismatch, or no linked Instagram Business Account. | Re-copy App Secret; verify redirect URI; verify IG Business → FB Page linkage. |
+| `token_exchange_failed` | Wrong App Secret, redirect URI mismatch, or Instagram rejected the authorization code. | Re-copy the App Secret, verify the redirect URI, and retry Instagram Login. |
 | `useragent_not_found` | Invalid or unauthorized guid. | Use `POST /UserAgent/MyAgents`. |
 | `Instagram credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `appid` / `appsecret` are missing. | `POST /UserAgent/CredentialUpsert` with `instagram.appid` and `instagram.appsecret`. |
+| `Meta could not validate this System User token` | Direct mode received an invalid token, missing permission, or inaccessible asset. | Generate a current token with the documented permissions and asset assignments, save it, and retry. |
+| Valid token but no connected Instagram professional account | No assigned Page exposes a linked professional account with `CREATE_CONTENT`. | Link the account to the Page, assign both assets to the System User, and reconnect. |
 | `internal_error` | Unexpected server error. | Retry. If persistent, contact support. |
 
 ### "No Instagram Business Account found" during OAuth
 
-Most common cause: the Instagram account is still in Personal mode, or not linked to a Facebook Page the user administers. Walk through the [Preparing the Instagram account](#preparing-the-instagram-account) checklist.
+In System User mode, the account is still Personal, is not linked to an
+assigned Facebook Page, or the Page lacks `CREATE_CONTENT`. In advanced
+Instagram OAuth mode, the usual cause is a Personal account or an app-role /
+permission problem. Follow the mode-specific prerequisites above.
 
 ### Publishing fails with "media upload failed"
 
 Common causes:
 
 - Image resolution too low (<320px) or aspect ratio outside Instagram's allowed ranges.
-- Videos exceeding allowed durations (feed: 60s, reel: 90s, story: 60s).
+- Media that does not meet Meta's current format, duration, size, or codec
+  requirements.
 - Instagram account switched back to Personal after connection — the token becomes invalid. Ask the user to switch back to Business and reconnect.
 
 ## Multi-Tenant Architecture
 
-1. **One Meta Developer App** per product, same for Facebook, Instagram, Meta Ads.
-2. **One Wiro agent instance per customer.**
-3. **Each customer's Facebook user must be added to App Roles** until you go Live Mode.
-4. **Business Account linkage is strict.** Build pre-flight validation during onboarding — the Graph API returns `instagram_business_account` on the Page object only when the linkage is set up.
-5. **Tokens are isolated per agent instance.**
+1. **One Wiro agent instance per customer.**
+2. **Recommended direct mode:** each customer supplies a System User token from
+   its own Business Portfolio and assigns its own Page plus Instagram assets.
+3. **Advanced OAuth mode:** each customer-owned Meta app controls its own App
+   Roles, review status, and Instagram consent branding.
+4. **Page linkage is mode-specific.** It is mandatory for System User mode but
+   not for Instagram API with Instagram Login.
+5. **Tokens are isolated per useragent** and are never returned to another
+   customer or to the browser.
 
 ## Related
 
 - [Agent Credentials & OAuth](/docs/agent-credentials)
 - [Agent Overview](/docs/agent-overview)
 - [Agent Skills](/docs/agent-skills)
-- [Facebook Page integration](/docs/integration-facebook-skills) — the Facebook Page linkage is mandatory for Instagram.
+- [Facebook Page integration](/docs/integration-facebook-skills) — Page linkage is required for System User mode, not Instagram Login OAuth.
 - [Meta Ads integration](/docs/integration-metaads-skills) — for Instagram-placement paid ads.
 - [Meta for Developers — Instagram Graph API](https://developers.facebook.com/docs/instagram-api)
+- [Meta for Developers — Content Publishing API comparison](https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/content-publishing/)

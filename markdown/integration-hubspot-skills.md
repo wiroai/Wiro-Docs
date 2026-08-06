@@ -159,7 +159,7 @@ Response:
 }
 ```
 
-> **HubSpot tokens expire in 30 minutes.** This is the shortest token lifetime of any Wiro integration. Every running agent has a dedicated background cron that refreshes HubSpot tokens **every 20 minutes** — you never need to call TokenRefresh from your own app. If you see stale tokens despite the agent being running, check agent logs for refresh failures.
+> **HubSpot tokens expire in 30 minutes.** Wiro maintains the connection automatically while the agent is running. If authorization is revoked, reconnect HubSpot through the OAuth flow.
 
 Note: For HubSpot, the unified `OAuthStatus` mirrors the saved `portalname` into both `accounts[0].id` and `accounts[0].name` (HubSpot has no separate picker — there's exactly one portal per OAuth grant). The numeric `portalid` is captured by `HubSpotCallback` as `hubspot_portal=<id>` on the redirect URL but is not re-surfaced by `OAuthStatus`.
 
@@ -193,21 +193,9 @@ Body: `{ useragentguid, credentialkey: "hubspot" }`. Response: `connected`, `acc
 
 Body: `{ useragentguid, credentialkey: "hubspot" }`. Clears HubSpot credentials (no remote revoke).
 
-### POST /UserAgentOAuth/TokenRefresh
+### Token lifecycle
 
-> Running agents refresh HubSpot tokens automatically **every 20 minutes** (tokens last 30 minutes). Use this endpoint only for debugging.
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/TokenRefresh" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "provider": "hubspot"
-  }'
-```
-
-Returns new access + refresh tokens. See [Automatic token refresh](/docs/agent-credentials#automatic-token-refresh).
+Wiro maintains the HubSpot connection automatically while the agent is running. If HubSpot revokes the authorization or `OAuthStatus` reports `connected: false`, reconnect through OAuth.
 
 ## Using the Skill
 
@@ -242,11 +230,11 @@ Usually a missing scope. Look up the specific HubSpot API endpoint you're hittin
 
 ### Token expired error at runtime
 
-HubSpot's 30-minute token lifetime makes refresh critical. The agent container runs the HubSpot refresh cron every 20 minutes, so stale tokens should only appear if:
+HubSpot's 30-minute token lifetime makes continuous authorization important. If you see a token-expired error:
 
 - The agent is stopped (status 0/1/6). Start it: `POST /UserAgent/Start`.
-- The refresh token was revoked in HubSpot's app management UI. User must reconnect.
-- The refresh cron itself is failing — check agent logs via dashboard or support.
+- The authorization may have been revoked in HubSpot's app management UI. Reconnect the user.
+- If the agent is running and reconnection does not resolve it, contact Wiro support.
 
 ## Multi-Tenant Architecture
 

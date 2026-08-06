@@ -126,7 +126,7 @@ Response:
 }
 ```
 
-> **Mailchimp tokens don't expire.** `OAuthStatus` responses for Mailchimp don't include `tokenexpiresat`. There's no `TokenRefresh` support for Mailchimp either — it's excluded from the valid providers list.
+> **Mailchimp tokens don't expire.** `OAuthStatus` responses for Mailchimp don't include `tokenexpiresat`. Reconnect only if the authorization is revoked or otherwise invalidated.
 
 ## Option B: Direct API Key (No OAuth)
 
@@ -186,9 +186,9 @@ Body: `{ useragentguid, credentialkey: "mailchimp" }`. Response: `connected`, `a
 
 Body: `{ useragentguid, credentialkey: "mailchimp" }`. Clears credentials (no remote revoke — Mailchimp doesn't expose a revoke endpoint for OAuth tokens).
 
-### TokenRefresh
+### Token lifecycle
 
-**Not supported for Mailchimp.** Calling `POST /UserAgentOAuth/TokenRefresh` with `provider: "mailchimp"` returns an error — Mailchimp tokens don't expire, so refresh is unnecessary.
+Mailchimp OAuth tokens do not expire. Reconnect only if the user revokes the authorization or the connection is otherwise invalidated.
 
 ## Using the Skill
 
