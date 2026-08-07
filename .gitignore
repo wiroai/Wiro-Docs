@@ -1,4 +1,5 @@
 .cursor/
+ecosystem.config.cjs
 .DS_Store
 *.swp
 *.swo

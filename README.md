@@ -117,11 +117,6 @@ Before running locally, set the base path to empty in `index.html`:
 <html lang="en" data-base-path="">
 ```
 
-On production, use PM2 with the included ecosystem config:
-```bash
-pm2 startOrReload ecosystem.config.cjs --env prod
-```
-
 Open **http://localhost:8000/docs/** (or the printed URL).
 
 ---
@@ -135,7 +130,6 @@ Wiro-Docs/
 ├── .gitignore
 ├── index.html                  # All doc sections inline (LLM-friendly)
 ├── serve.js                    # Node server with SSR meta injection for SEO
-├── ecosystem.config.cjs        # PM2 config for production deployment
 ├── llms.txt                    # Machine-readable API summary
 ├── sitemap.xml                 # Sitemap with priorities and change frequencies
 ├── robots.txt                  # Crawler directives with sitemap reference
