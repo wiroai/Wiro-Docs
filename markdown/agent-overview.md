@@ -305,7 +305,7 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
               },
               "account_picker": {
                 "enabled": true,
-                "multi_select": false,
+                "multi_select": true,
                 "set_endpoint": "/UserAgentOAuth/SetPickerAccounts",
                 "item_value_field": "accountId",
                 "item_label_field": "igusername"
@@ -736,7 +736,7 @@ Retrieves full details for a single deployed agent instance, including subscript
               },
               "account_picker": {
                 "enabled": true,
-                "multi_select": false,
+                "multi_select": true,
                 "set_endpoint": "/UserAgentOAuth/SetPickerAccounts",
                 "item_value_field": "accountId",
                 "item_label_field": "igusername"

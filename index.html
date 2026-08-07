@@ -6838,7 +6838,7 @@ pro.credits = starter.credits × tiermultiplier
               },
               &quot;account_picker&quot;: {
                 &quot;enabled&quot;: true,
-                &quot;multi_select&quot;: false,
+                &quot;multi_select&quot;: true,
                 &quot;set_endpoint&quot;: &quot;/UserAgentOAuth/SetPickerAccounts&quot;,
                 &quot;item_value_field&quot;: &quot;accountId&quot;,
                 &quot;item_label_field&quot;: &quot;igusername&quot;
@@ -7481,7 +7481,7 @@ pro.credits = starter.credits × tiermultiplier
               },
               &quot;account_picker&quot;: {
                 &quot;enabled&quot;: true,
-                &quot;multi_select&quot;: false,
+                &quot;multi_select&quot;: true,
                 &quot;set_endpoint&quot;: &quot;/UserAgentOAuth/SetPickerAccounts&quot;,
                 &quot;item_value_field&quot;: &quot;accountId&quot;,
                 &quot;item_label_field&quot;: &quot;igusername&quot;
@@ -15546,7 +15546,7 @@ email tools, CRMs — through three credential methods:</p>
         },
         &quot;account_picker&quot;: {
           &quot;enabled&quot;: true,
-          &quot;multi_select&quot;: false,
+          &quot;multi_select&quot;: true,
           &quot;set_endpoint&quot;: &quot;/UserAgentOAuth/SetPickerAccounts&quot;,
           &quot;item_value_field&quot;: &quot;accountId&quot;,
           &quot;item_label_field&quot;: &quot;igusername&quot;,
@@ -15969,7 +15969,7 @@ email tools, CRMs — through three credential methods:</p>
       },
       &quot;account_picker&quot;: {
         &quot;enabled&quot;: true,
-        &quot;multi_select&quot;: false,
+        &quot;multi_select&quot;: true,
         &quot;set_endpoint&quot;: &quot;/UserAgentOAuth/SetPickerAccounts&quot;,
         &quot;item_value_field&quot;: &quot;accountId&quot;,
         &quot;item_label_field&quot;: &quot;igusername&quot;,
@@ -16873,10 +16873,10 @@ without a browser redirect.</p>
 <blockquote>
 <p><strong>Multi-account picker fields are JSON arrays.</strong> Picker fields like
 <code>customerid</code> (Google Ads), <code>adaccountid</code> (Meta Ads), <code>merchantid</code> (Merchant
-Center), <code>channelid</code> (YouTube), <code>propertyid</code> (GA4), and <code>pageid</code> (Facebook
-Pages) are stored as JSON arrays when
-<code>account_picker.multi_select === true</code>. Single-select fields such as
-Instagram's <code>accountId</code> are scalars.</p>
+Center), <code>channelid</code> (YouTube), <code>propertyid</code> (GA4), <code>pageid</code> (Facebook
+Pages), and direct Instagram's <code>accountId</code> are stored as JSON arrays when
+<code>account_picker.multi_select === true</code>. Instagram Login OAuth also stores its
+single authorized account as a one-entry array.</p>
 </blockquote>
 <h3 id="post-useragentoauthdiscoverpickeritems">POST /UserAgentOAuth/DiscoverPickerItems</h3>
 <p>Discover child resources for a chained picker after the root
@@ -16958,8 +16958,8 @@ or a chained child-resource selection after <code>DiscoverPickerItems</code>. Th
 accepts entries from the provider's public account list; clients never supply
 access tokens.</p>
 <p>The registry declares each provider's picker shape. Multi-select pickers
-(Google Ads, Meta Ads, Merchant Center, YouTube, GA4, Facebook Pages) accept one
-or more entries; Instagram's direct picker accepts exactly one.</p>
+(Google Ads, Meta Ads, Merchant Center, YouTube, GA4, Facebook Pages, and direct
+Instagram) accept one or more entries.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -17051,7 +17051,7 @@ or more entries; Instagram's direct picker accepts exactly one.</p>
 <tr>
 <td><code>instagram</code></td>
 <td><code>accountId</code>, <code>igusername</code></td>
-<td>Exactly one account from direct System User discovery. Customer-owned Instagram OAuth does not use this picker.</td>
+<td>One or more accounts from direct System User discovery. Customer-owned Instagram OAuth does not use this picker and writes one authorized account directly.</td>
 </tr>
 </tbody>
 </table>
@@ -17825,7 +17825,7 @@ customer-facing token-refresh endpoint or manual refresh action.</p>
       },
       &quot;account_picker&quot;: {
         &quot;enabled&quot;: true,
-        &quot;multi_select&quot;: false,
+        &quot;multi_select&quot;: true,
         &quot;set_endpoint&quot;: &quot;/UserAgentOAuth/SetPickerAccounts&quot;,
         &quot;item_value_field&quot;: &quot;accountId&quot;,
         &quot;item_label_field&quot;: &quot;igusername&quot;,
@@ -22033,11 +22033,11 @@ if (params.get("fb_connected") === "true") {
                 <article class="docs-section">
                   <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/integration-instagram-skills.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/integration-instagram-skills.md" download class="docs-section-md-btn">Download</a></div>
                   <h1>Instagram Integration</h1>
-                  <p class="section-subtitle">Connect your agent to an Instagram professional account with a recommended Meta System User token or advanced customer-owned Instagram OAuth.</p>
+                  <p class="section-subtitle">Connect your agent to one or more Instagram professional accounts with a recommended Meta System User token, or one account through advanced customer-owned Instagram OAuth.</p>
 
                   <section id="overview">
                     <h2>Overview</h2>
-                    <p>The Instagram integration supports two official Meta paths. Recommended direct mode uses a Business Manager System User and the Facebook Page linked to an Instagram Business or Creator account. Advanced mode uses Instagram API with Instagram Login directly and does not require a Facebook Page. Both paths keep tokens server-side and publish through Graph API v26.</p>
+                    <p>The Instagram integration supports two official Meta paths. Recommended direct mode uses a Business Manager System User and the Facebook Pages linked to Instagram Business or Creator accounts; it supports selecting one or more discovered professional accounts. Advanced mode uses Instagram API with Instagram Login directly, authorizes one account per OAuth connection, and does not require a Facebook Page. Both paths keep tokens server-side and publish through Graph API v26.</p>
                     <p>The two token types use different official hosts: System User mode derives a Facebook Page access token and publishes through <code>graph.facebook.com/v26.0</code>; Instagram Login issues an Instagram User access token and publishes through <code>graph.instagram.com/v26.0</code>. Wiro selects the matching host automatically.</p>
                     <p><strong>Skills that use this integration:</strong></p>
                     <ul>
@@ -22088,8 +22088,8 @@ if (params.get("fb_connected") === "true") {
                       <li><strong>A Wiro API key</strong> — <a href="/docs/authentication" class="docs-link">Authentication</a>.</li>
                       <li><strong>A deployed agent</strong> — <a href="/docs/agent-overview" class="docs-link">Agent Overview</a>; keep the <code>useragents[0].guid</code>.</li>
                       <li><strong>A Meta Business account</strong> — <a href="https://business.facebook.com/" class="docs-link" target="_blank">business.facebook.com</a>.</li>
-                      <li><strong>An Instagram Business or Creator account</strong> — personal accounts cannot use content publishing.</li>
-                      <li><strong>Recommended direct mode:</strong> a System User, the Business app used to generate its token, and a Facebook Page linked to the Instagram professional account.</li>
+                      <li><strong>One or more Instagram Business or Creator accounts</strong> — personal accounts cannot use content publishing.</li>
+                      <li><strong>Recommended direct mode:</strong> a System User, the Business app used to generate its token, and a Facebook Page linked to each Instagram professional account the agent may use.</li>
                       <li><strong>Advanced OAuth mode:</strong> a Meta Developer account, an app configured for Instagram Login, and an HTTPS callback URL. A Facebook Page is not required for this mode.</li>
                     </ul>
 
@@ -22112,8 +22112,8 @@ if (params.get("fb_connected") === "true") {
                       <li>Complete <a href="#preparing-the-instagram-account" class="docs-link">Preparing the Instagram account</a>.</li>
                       <li>Open <a href="https://business.facebook.com/latest/settings/system_users" class="docs-link" target="_blank" rel="noopener">Meta Business Settings → Users → System Users</a>.</li>
                       <li>Create or select a System User.</li>
-                      <li>Assign the linked Facebook Page with <code>CREATE_CONTENT</code>.</li>
-                      <li>Assign the Instagram account's <strong>Content</strong> task.</li>
+                      <li>Assign every linked Facebook Page the agent may use with <code>CREATE_CONTENT</code>.</li>
+                      <li>Assign each Instagram account's <strong>Content</strong> task.</li>
                       <li>Select <strong>Generate new token</strong> and choose the Business app used for this integration.</li>
                       <li>At <strong>Set expiration</strong>, choose <strong>Never</strong> when Meta offers it. If Meta requires an expiring token, regenerate and reconnect before expiry.</li>
                       <li>Grant <code>business_management</code>, <code>instagram_basic</code>, <code>instagram_content_publish</code>, <code>pages_show_list</code>, <code>pages_read_engagement</code>, <code>ads_read</code>, and <code>ads_management</code>.</li>
@@ -22153,8 +22153,8 @@ if (params.get("fb_connected") === "true") {
 }</code></pre>
                     <p>Only public IDs and usernames are returned. The System User and derived Page tokens stay server-side.</p>
 
-                    <h3>Step 4: Select the Instagram account</h3>
-                    <p>Instagram is a single-select picker. Send exactly one discovered account:</p>
+                    <h3>Step 4: Select the Instagram accounts</h3>
+                    <p>Instagram is a multi-select picker in recommended System User mode. Send one or more entries from the latest discovery response:</p>
                     <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
@@ -22162,13 +22162,14 @@ if (params.get("fb_connected") === "true") {
     "useragentguid": "your-useragent-guid",
     "credentialkey": "instagram",
     "accounts": [
-      { "accountId": "17841400000000000", "igusername": "my_brand" }
+      { "accountId": "17841400000000000", "igusername": "my_brand" },
+      { "accountId": "17841400000000001", "igusername": "my_second_brand" }
     ]
   }'</code></pre>
-                    <p>Call this within 15 minutes of <code>OAuthConnect</code>. Wiro matches the selection against its server-side discovery result and stores the derived Page-scoped runtime token. The dashboard auto-selects a sole result; API clients must still call this endpoint explicitly. If several linked professional accounts are returned, the dashboard opens the single-select Instagram picker.</p>
+                    <p>Call this within 15 minutes of <code>OAuthConnect</code>. Wiro matches the selection against its server-side discovery result and stores each derived Page-scoped runtime token. The dashboard auto-selects a sole result; API clients must still call this endpoint explicitly. If several linked professional accounts are returned, the dashboard opens a checkbox picker and saves every selected account with its own server-side Page token.</p>
 
                     <h3>Step 5: Verify the connection</h3>
-                    <p>Call <code>POST /UserAgentOAuth/OAuthStatus</code> with <code>{ "useragentguid": "...", "credentialkey": "instagram" }</code>. A successful direct connection returns the selected numeric account ID and username, <code>connected: true</code>, and an empty <code>tokenexpiresat</code>.</p>
+                    <p>Call <code>POST /UserAgentOAuth/OAuthStatus</code> with <code>{ "useragentguid": "...", "credentialkey": "instagram" }</code>. A successful direct connection returns every selected numeric account ID and username in <code>accounts[]</code>, <code>connected: true</code>, and an empty <code>tokenexpiresat</code>.</p>
                   </section>
 
                   <section id="advanced-customer-owned-instagram-oauth">
@@ -22291,7 +22292,7 @@ if (params.get("ig_connected") === "true") {
 } else if (params.get("ig_error")) {
   handleError(params.get("ig_error"));
 }</code></pre>
-                    <p>Advanced Instagram Login OAuth has <strong>no secondary selection step</strong>. The authorized Instagram professional account is written directly by the callback. The <code>SetPickerAccounts</code> step applies only to recommended System User mode.</p>
+                    <p>Advanced Instagram Login OAuth has <strong>no secondary selection step</strong>. The authorized Instagram professional account is written directly by the callback as a one-entry account/token array, matching the same runtime contract as System User mode. The <code>SetPickerAccounts</code> step applies only to recommended System User mode.</p>
 
                     <h3>Step 10: Verify the connection</h3>
                     <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
@@ -22313,8 +22314,9 @@ if (params.get("ig_connected") === "true") {
 }</code></pre>
                     <ul>
                       <li><code>connected: true</code> requires the active mode's validated secret plus the selected or authorized Instagram account.</li>
-                      <li><code>accounts[0].id</code> = numeric Instagram professional account ID.</li>
-                      <li><code>accounts[0].name</code> = Instagram username without <code>@</code>.</li>
+                      <li>Each <code>accounts[].id</code> is a selected numeric Instagram professional account ID.</li>
+                      <li>Each <code>accounts[].name</code> is its Instagram username without <code>@</code>.</li>
+                      <li>Recommended System User mode can return multiple entries. Advanced Instagram Login OAuth returns one entry because one account is authorized per consent.</li>
                       <li><code>tokenexpiresat</code> is empty for direct System User mode and approximately 60 days for customer-owned Instagram OAuth.</li>
                       <li>
                         Instagram does not expose a separate refresh token for this connection.
@@ -22428,7 +22430,7 @@ if (params.get("ig_connected") === "true") {
                             <td><code>accounts</code></td>
                             <td>array</td>
                             <td>Yes</td>
-                            <td>Exactly one <code>{ accountId, igusername? }</code> entry from the latest discovery response. Do not supply an access token.</td>
+                            <td>One or more <code>{ accountId, igusername? }</code> entries from the latest discovery response. Do not supply access tokens.</td>
                           </tr>
                         </tbody>
                       </table>
@@ -22447,7 +22449,7 @@ if (params.get("ig_connected") === "true") {
 
                   <section id="using-the-skill">
                     <h2>Using the Skill</h2>
-                    <p>Once the Instagram professional account is connected, the agent uses <code>int-instagram-post</code> to publish feed carousels, reels, and stories. To adjust the Social Manager's bundled <code>cs-cron-content-scanner</code> schedule, call <code>POST /UserAgent/CustomSkillUpsert</code> with <code>enabled</code> and <code>interval</code> only:</p>
+                    <p>Once Instagram professional accounts are connected, the agent uses <code>int-instagram-post</code> to publish feed carousels, reels, and stories. A request must identify one account when multiple are connected; the agent never guesses or publishes to all accounts from an ambiguous instruction. To adjust the Social Manager's bundled <code>cs-cron-content-scanner</code> schedule, call <code>POST /UserAgent/CustomSkillUpsert</code> with <code>enabled</code> and <code>interval</code> only:</p>
                     <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \

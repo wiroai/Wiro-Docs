@@ -274,7 +274,7 @@ Convenience endpoint — returns the credential entry for a given skill name in 
       },
       "account_picker": {
         "enabled": true,
-        "multi_select": false,
+        "multi_select": true,
         "set_endpoint": "/UserAgentOAuth/SetPickerAccounts",
         "item_value_field": "accountId",
         "item_label_field": "igusername",

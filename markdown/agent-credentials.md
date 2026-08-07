@@ -136,7 +136,7 @@ Lists all credentials in the registry.
         },
         "account_picker": {
           "enabled": true,
-          "multi_select": false,
+          "multi_select": true,
           "set_endpoint": "/UserAgentOAuth/SetPickerAccounts",
           "item_value_field": "accountId",
           "item_label_field": "igusername",
@@ -318,7 +318,7 @@ Returns the **same full credential entry** as a row from `Credentials/List` — 
       },
       "account_picker": {
         "enabled": true,
-        "multi_select": false,
+        "multi_select": true,
         "set_endpoint": "/UserAgentOAuth/SetPickerAccounts",
         "item_value_field": "accountId",
         "item_label_field": "igusername",
@@ -801,10 +801,10 @@ Returns whether the credential is connected and lists every account/property/pag
 
 > **Multi-account picker fields are JSON arrays.** Picker fields like
 > `customerid` (Google Ads), `adaccountid` (Meta Ads), `merchantid` (Merchant
-> Center), `channelid` (YouTube), `propertyid` (GA4), and `pageid` (Facebook
-> Pages) are stored as JSON arrays when
-> `account_picker.multi_select === true`. Single-select fields such as
-> Instagram's `accountId` are scalars.
+> Center), `channelid` (YouTube), `propertyid` (GA4), `pageid` (Facebook
+> Pages), and direct Instagram's `accountId` are stored as JSON arrays when
+> `account_picker.multi_select === true`. Instagram Login OAuth also stores its
+> single authorized account as a one-entry array.
 
 ### POST /UserAgentOAuth/DiscoverPickerItems
 
@@ -869,8 +869,8 @@ accepts entries from the provider's public account list; clients never supply
 access tokens.
 
 The registry declares each provider's picker shape. Multi-select pickers
-(Google Ads, Meta Ads, Merchant Center, YouTube, GA4, Facebook Pages) accept one
-or more entries; Instagram's direct picker accepts exactly one.
+(Google Ads, Meta Ads, Merchant Center, YouTube, GA4, Facebook Pages, and direct
+Instagram) accept one or more entries.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -890,7 +890,7 @@ or more entries; Instagram's direct picker accepts exactly one.
 | `youtube` | `channelid`, `channeltitle` | |
 | `ga4` | `propertyid`, `propertydisplayname` | |
 | `facebook-pages` | `pageid`, `fbpagename` | One or more Pages from the latest OAuth or System User discovery result. |
-| `instagram` | `accountId`, `igusername` | Exactly one account from direct System User discovery. Customer-owned Instagram OAuth does not use this picker. |
+| `instagram` | `accountId`, `igusername` | One or more accounts from direct System User discovery. Customer-owned Instagram OAuth does not use this picker and writes one authorized account directly. |
 
 ##### Example — Google Ads multi-select
 
