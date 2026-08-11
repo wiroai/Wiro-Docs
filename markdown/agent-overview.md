@@ -120,7 +120,7 @@ Deploying and running an agent follows this flow:
 
 1. **Browse** — call `POST /Agent/List` to discover available agents in the catalog
 2. **Deploy** — call `POST /UserAgent/Deploy` with `useprepaid: true` and `tier` (`"starter"` or `"pro"`). The selected tier price is debited from your prepaid wallet immediately and a 30-day subscription row is created.
-3. **Configure** — if the agent requires credentials (API keys, OAuth tokens), set them per-provider with `POST /UserAgent/CredentialUpsert`, or per-skill with `POST /UserAgent/CustomSkillUpsert`. See [Agent Credentials](/docs/agent-credentials) for details
+3. **Configure** — set integration and optional Telegram, Slack, or Discord credentials with `POST /UserAgent/CredentialUpsert`, and preferences with `POST /UserAgent/CustomSkillUpsert`. See [Agent Credentials](/docs/agent-credentials) for details
 4. **Start** — call `POST /UserAgent/Start` to queue the agent for launch
 5. **Running** — the agent's container starts and the agent becomes available for conversation
 6. **Chat** — send messages via `POST /UserAgent/Message/Send`. See [Agent Messaging](/docs/agent-messaging) for the full messaging API
@@ -356,6 +356,22 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
 
 API callers see the non-sensitive fields (public identifiers like `clientid`, display-only values like `igusername`, flags like `authmethod`, and the flags above).
 
+**Communication channel fields** are returned separately from skill and
+integration credentials:
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `communicationChannels` | array | Full external-channel catalog for this instance. Each row includes `id`, `title`, `credentialkey`, `required_fields`, `capabilities`, `schema`, `enabled`, `configured`, and `missingfields`. Use `schema.fields` to render the setup form. |
+| `enabledChannels` | string[] | External channel IDs whose registry-declared activation credentials are complete. Current values are `telegram`, `slack`, and `discord`. Web chat is always available and is not included. |
+| `teamsessionmode` | string | The unified Chat Mode. `"private"` isolates team members' Wiro web-chat histories and agent memory plus approved external-channel DM operators; `"collaborative"` shares those histories and runtime contexts. Web and external-channel message lists remain separate transports. Room and thread conversations remain room-scoped. |
+
+The catalog is registry-driven, so all agent templates and existing useragents
+can discover new channels without adding template-specific rows. Availability
+does not mean activation: an external channel turns on automatically only when
+all of its `required_fields`, including immutable operator IDs, are complete.
+Existing agents use the normal `CredentialUpsert` flow; there is no separate
+channel switch.
+
 ### Deploy & Manage
 
 All endpoints below require authentication.
@@ -368,7 +384,15 @@ Creates a new agent instance from a catalog template, **or** builds a brand-new 
 
 Prepaid deploy (`useprepaid: true` + `tier`) charges your wallet for the chosen tier price immediately and inserts a 30-day subscription row (`plan: "agent"`, `provider: "prepaid"`). **Every fresh Deploy lands at `status: 6` first** — the row is then auto-queued to `status: 2` (Queued) once the prepaid subscription is provisioned. No manual `UserAgent/Start` is needed for prepaid deploys; the daemon picks the row up from the queue.
 
-If you pass `credentials`, `skills`, or `customskills` at the top level of the Deploy body they are **applied server-side in the same call** (one-shot deploy + initial setup) — note that inline credentials only accept flat string/number fields and can't populate nested arrays (firebase accounts, drive folders, app-store apps); use `POST /UserAgent/CredentialUpsert` afterwards for those. See [Agent Credentials → Prepaid deploy — inline setup supported](/docs/agent-credentials#prepaid-deploy--inline-setup-supported-with-limitations) for the full rules.
+If you pass `credentials`, `skills`, or `customskills` at the top level of the
+Deploy body they are applied server-side in the same call. Chat Mode is not a
+Builder/Deploy input: team deploys start collaborative and personal deploys
+start private, then owners can change the value with `UpdateSettings`. Complete
+channel credential groups activate automatically. Arrays such as
+`allowedusers`, Telegram `groups`, Slack `channels`, and Discord `guilds` are
+validated against the public registry schema. See
+[Agent Credentials → Communication Channels](/docs/agent-credentials#communication-channels)
+for the channel contract.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -379,7 +403,7 @@ If you pass `credentials`, `skills`, or `customskills` at the top level of the D
 | `cover` | string | No | Optional cover image URL. Custom builds only — template deploys clone the agent's cover automatically. |
 | `useprepaid` | boolean | Yes | Must be `true` for API deploys. Pays the tier price from your wallet balance in a single server-side call. |
 | `tier` | string | No | Tier selection: `"starter"` (default) or `"pro"`. Determines the price + credits debited to your wallet at deploy time. The param name is `tier` — any other value (including typos) is silently coerced to `"starter"`, so a misspelled key yields a Starter-tier instance instead of an error. |
-| `credentials` | object | No | Inline credentials to apply server-side (flat fields only — see Agent Credentials). |
+| `credentials` | object | No | Inline credential groups. If a communication-channel group is included, its matching `credentials[credential_key]` object must contain all channel `required_fields`; completeness activates that channel automatically. |
 | `skills` | object | No | Inline skill toggles `{ "skillname": true \| false }`. For custom builds this seeds the initial skill set; for template deploys it overlays the template defaults. |
 | `customskills` | array | No | Inline custom skill rows. Each entry: `{ key, value?, interval?, enabled?, description?, _user_created? }`. |
 
@@ -418,12 +442,11 @@ If you pass `credentials`, `skills`, or `customskills` at the top level of the D
   "tier": "pro",
   "skills": {
     "int-gmail-check":    true,
-    "int-telegram-post":  true,
     "int-wiro-aimodels": true
   },
   "credentials": {
     "gmail":    { "account": "agent@company.com", "apppassword": "xxxx xxxx xxxx xxxx" },
-    "telegram": { "bottoken": "123456:ABC-DEF...", "allowedusers": "[\"761381461\"]", "sessionmode": "private" }
+    "telegram": { "bottoken": "123456:ABC-DEF...", "allowedusers": ["761381461"] }
   }
 }
 ```
@@ -499,7 +522,7 @@ Both paths hit the same endpoint, but a few server-side behaviours diverge:
         "voicePrepModel": "openai/gpt-5.4-mini",
         "voicePostcallModel": "openai/gpt-5.4"
       },
-      "teamsessionmode": "",
+      "teamsessionmode": "private",
       "status": 6,
       "setuprequired": true,
       "pinned": false,
@@ -609,7 +632,7 @@ Lists all agent instances deployed under your account.
       "creditsyncat": 1714694410,
       "status": 4,
       "pinned": true,
-      "teamsessionmode": "",
+      "teamsessionmode": "private",
       "setuprequired": false,
       "subscription": {
         "plan": "agent",
@@ -698,7 +721,7 @@ Retrieves full details for a single deployed agent instance, including subscript
       "status": 4,
       "pinned": true,
       "setuprequired": false,
-      "teamsessionmode": "",
+      "teamsessionmode": "private",
       "credentials": {
         "instagram": {
           "_connected": true,
@@ -795,17 +818,17 @@ Retrieves full details for a single deployed agent instance, including subscript
           "_editable": {
             "bottoken":     true,
             "allowedusers": true,
-            "sessionmode":  true
+            "groups":       true
           },
           "_schema": {
-            "title": "Telegram Bot",
-            "icon": "https://wiro.ai/images/icons/credentials/telegram.svg",
-            "brand_color": "#2AABEE",
+            "title": "Telegram",
+            "icon": "https://wiro.ai/images/icons/skills/telegram.svg",
+            "brand_color": "#24a1de",
             "brand_text_color": "#FFFFFF",
-            "brand_logo_filter": null,
+            "brand_logo_filter": "brightness(0) invert(1)",
             "docs_url": "/docs/integration-telegram-skills",
             "credential_mode": "api_key",
-            "connection_modes": ["api_key"],
+            "connection_modes": [],
             "wiro_connect_pending": false,
             "oauth_provider": null,
             "fields": [
@@ -819,29 +842,27 @@ Retrieves full details for a single deployed agent instance, including subscript
               },
               {
                 "key": "allowedusers",
-                "label": "Allowed Telegram User IDs",
-                "type": "text",
+                "label": "Allowed User IDs",
+                "type": "string-array",
                 "required": false,
-                "placeholder": "[\"761381461\", \"823901274\"]",
-                "help": "JSON array of Telegram user / chat IDs that may DM the bot. Empty = open to anyone."
+                "pattern": "^\\d{5,}$"
               },
               {
-                "key": "sessionmode",
-                "label": "Session Mode",
-                "type": "select",
-                "required": true,
-                "options": [
-                  { "label": "Private (one session per user)", "value": "private" },
-                  { "label": "Group (one session per chat)",   "value": "group"   }
-                ],
-                "default": "private"
+                "key": "groups",
+                "label": "Allowed Telegram Groups",
+                "type": "object-array",
+                "required": false,
+                "item_schema": [
+                  { "key": "chatid", "type": "text", "required": true, "pattern": "^-\\d{5,}$" },
+                  { "key": "allowedusers", "type": "string-array", "required": true, "pattern": "^\\d{5,}$" }
+                ]
               }
             ]
           },
           "_required_missing": false,
           "bottoken": "",
-          "allowedusers": "",
-          "sessionmode": "private"
+          "allowedusers": [],
+          "groups": []
         },
         "wordpress": {
           "_connected": false,
@@ -1116,7 +1137,7 @@ Retrieves full details for a single deployed agent instance, including subscript
 | `scheduledskills` | `array` | Composed list of **cron** skills (`cs-cron-*`). Same shape as `customskills` plus `interval` (cron expression). `_source` ∈ `"skill-bundle"` (preset cron) \| `"user-created"`. |
 | `skills` | `array<object>` | Currently-enabled integration skills. Each entry: `{ name, enabled: true, _edited, _user_created }`. Toggle via `SkillsApply` (single-skill or batch). Note: object array (not string array). |
 | `skillsmeta` | `object` | Inline registry snapshot keyed by skill name — `title`, `icon`, `brand_color`, `category`, `docs_url`, `credential_key`, `requires_credentials`, `user_invocable`, `description`. Lets the panel render skill chips without a `Skills/List` round-trip. |
-| `teamsessionmode` | `string` | `"collaborative"` or `"private"` for team agents; empty string `""` for personal agents. Drives `Message/History` filtering: collaborative sessions show every team member's messages, private sessions filter by the caller's `uuid`. Write with [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) (team admins / owner only). |
+| `teamsessionmode` | `string` | The unified Chat Mode: `"collaborative"` or `"private"` for every agent. For team agents it drives `Message/History`, `Sessions`, and native web-chat memory scope; for all agents it also drives Telegram, Slack, and Discord DM scope. Team deployments/transfers default collaborative; personal deployments/team detachments default private. Write with [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) (team admins / owner only). |
 | `timezone` | `string\|null` | Operator-selected IANA timezone (e.g. `"Europe/Istanbul"`, `"America/New_York"`). `null` means **system default (UTC)** — the agent container runs `TZ=UTC` and `current_time` in voice prep stays in UTC ISO form. When set, propagates through `settings.json.useragentTimezone` → container `TZ` env → cron `schedule.tz` → caller-facing voice prep / business-hours rendering. Write with [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings). |
 
 **Subscription & template**
@@ -1181,7 +1202,7 @@ Updates an agent instance's **scalar fields only** (title, description, categori
 > | Toggle one or more integration skills on/off (with optional tier change) | [`POST /UserAgent/SkillsApply`](#post-useragentskillsapply) |
 > | Upgrade Starter → Pro | [`POST /UserAgent/UpgradeTier`](#post-useragentupgradetier) |
 > | Upload a cover image (multipart) | [`POST /UserAgent/Cover`](#post-useragentcover) |
-> | Per-agent timezone or team chat session mode | [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) |
+> | Per-agent timezone or unified Chat Mode | [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) |
 > | View / download / purge activity logs | [`POST /UserAgent/Logs`](#post-useragentlogs) · [`LogsList`](#post-useragentlogslist) · [`LogsFile`](#post-useragentlogsfile) · [`LogsDelete`](#post-useragentlogsdelete) |
 > | Soft-delete a useragent | [`POST /UserAgent/Delete`](#post-useragentdelete) |
 
@@ -1214,7 +1235,7 @@ Updates an agent instance's **scalar fields only** (title, description, categori
       "status": 1,
       "pinned": false,
       "setuprequired": false,
-      "teamsessionmode": "",
+      "teamsessionmode": "private",
       "timezone": null,
       "agent": {
         "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
@@ -1251,7 +1272,7 @@ Updates an agent instance's **scalar fields only** (title, description, categori
 
 #### **POST** /UserAgent/UpdateSettings
 
-Writes per-agent preference toggles that are not credentials and not skill rows. Exposes `timezone` (operator-selected IANA zone, propagates into the agent container's `TZ` env, cron `schedule.tz`, and caller-facing voice prep), `teamsessionmode` (team workspace session mode), the four **model overrides** — `chatmodel`, `cronmodel`, `voiceprepmodel`, `voicepostcallmodel` — that choose which LLM the agent uses for chat replies, scheduled (cron) turns, voice-call prep, and the post-call summary turn, and `enabledcommands` (the in-chat slash-command allowlist). Submit any subset in the same call — partial updates are supported and untouched fields keep their current value.
+Writes per-agent preference toggles that are not credentials and not skill rows. Exposes `timezone` (operator-selected IANA zone, propagates into the agent container's `TZ` env, cron `schedule.tz`, and caller-facing voice prep), `teamsessionmode` (the one Chat Mode for team web-chat history and external-channel DMs), the four **model overrides** — `chatmodel`, `cronmodel`, `voiceprepmodel`, `voicepostcallmodel` — that choose which LLM the agent uses for chat replies, scheduled (cron) turns, voice-call prep, and the post-call summary turn, and `enabledcommands` (the in-chat slash-command allowlist). Submit any subset in the same call — partial updates are supported and untouched fields keep their current value.
 
 **Permission**: owner OR team admin (the same `requireRole: "admin"` gate as `/UserAgent/Update`). Team members cannot flip these knobs.
 
@@ -1261,7 +1282,7 @@ Writes per-agent preference toggles that are not credentials and not skill rows.
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Your UserAgent instance guid. |
 | `timezone` | string\|null | No | IANA timezone identifier (e.g. `"Europe/Istanbul"`, `"America/New_York"`, `"Asia/Tokyo"`). Pass `null`, `""`, or the literal `"UTC"` to **clear** the override — the row is set back to `NULL`, which makes the propagation chain a no-op (container stays on `TZ=UTC`, no per-job `schedule.tz` injection, voice prep `current_time` stays in single-line UTC ISO form). Validated server-side via `new Intl.DateTimeFormat("en-GB", { timeZone })` — unknown zones are rejected with `invalid-timezone`. |
-| `teamsessionmode` | string | No | `"collaborative"` or `"private"`. Only meaningful when the agent is team-owned (`teamguid` is set); passing it on a personal agent is rejected with `teamsessionmode-team-only`. See [Agent Messaging](/docs/agent-messaging) for what each mode does to `Message/History` and `Sessions` scoping. |
+| `teamsessionmode` | string | No | Unified Chat Mode: `"private"` isolates each team member's Wiro web-chat history and native agent memory plus each approved external-channel DM operator; `"collaborative"` shares both runtime contexts. Personal agents can set it because external-channel DMs can have multiple operators. Web and external-channel message lists remain separate transports; room/thread sessions remain room-scoped. Channel activation remains credential-derived. |
 | `chatmodel` | string\|null | No | Canonical model slug for **chat replies** (e.g. `"openai/gpt-5.6-sol"`). Must be a **selectable** model — i.e. `tokenRates.models[<slug>].selectable === true`; an unknown / non-selectable slug is rejected with `invalid-model-selection`. Pass `null` or `""` to clear the override and fall back to the platform default. |
 | `cronmodel` | string\|null | No | Same rules as `chatmodel`, applied to **scheduled (cron) turns**. |
 | `voiceprepmodel` | string\|null | No | Same rules as `chatmodel`, applied to the **voice-call prep** turn (context assembled before a realtime call). |
@@ -1295,7 +1316,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
     "timezone": null
   }'
 
-# Flip team chat session mode (team-owned agents only)
+# Change the one Chat Mode for team web chat and external-channel DMs
 curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
   -H "Authorization: Bearer $WIRO_API_KEY" \
   -H "Content-Type: application/json" \
@@ -1352,8 +1373,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
 | 400 | `request-parameter-required` | `useragentguid` missing from the body. |
 | 400 | `nothing-to-update` | Body had none of the recognised fields (`timezone`, `teamsessionmode`, a model override, or `enabledcommands`). |
 | 400 | `invalid-timezone` | `timezone` wasn't a string the runtime's `Intl.DateTimeFormat` could resolve. |
-| 400 | `teamsessionmode-team-only` | `teamsessionmode` was set on a personal (non-team) agent. |
-| 400 | `teamsessionmode-invalid` | `teamsessionmode` wasn't `"collaborative"` or `"private"`. |
+| 400 | `teamsessionmode must be private or collaborative` | `teamsessionmode` wasn't one of the two supported values. |
+| 400 | `directchatmode is not accepted` | Obsolete separate mode was sent instead of unified `teamsessionmode`. |
 | 400 | `invalid-model-selection` | A model override (`chatmodel` / `cronmodel` / `voiceprepmodel` / `voicepostcallmodel`) was an unknown or non-selectable slug (`tokenRates.models[<slug>].selectable !== true`). |
 | 400 | `invalid-command-list` | `enabledcommands` was present but not an array. |
 | 400 | `invalid-command-selection` | `enabledcommands` contained a key that isn't in the slash-command catalog. |
@@ -1400,7 +1421,7 @@ If you already have a hosted URL, use `POST /UserAgent/Update` with `cover: "<ur
       "creditsyncat": 1714694400,
       "status": 4,
       "pinned": false,
-      "teamsessionmode": "",
+      "teamsessionmode": "private",
       "agent": {
         "guid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
         "title": "Instagram Manager",
@@ -1432,6 +1453,11 @@ If you already have a hosted URL, use `POST /UserAgent/Update` with `cover: "<ur
 Writes one or more credential fields for one or multiple providers in a single call.
 
 If the agent is **starting** or **running**, completing the upsert triggers an automatic restart (`restartafter: true`).
+
+Telegram, Slack, and Discord are optional credential groups. A channel appears
+in `enabledChannels` automatically when all of its catalog `required_fields`
+are complete. Clear any required field to disable it; there is no separate
+channel-enable endpoint or persisted switch.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -1906,7 +1932,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
     "skills": {
       "int-instagram-post": true,
       "int-twitterx-post":  true,
-      "int-telegram-post":  false
+      "int-reddit-post":     false
     }
   }'
 ```
@@ -1993,7 +2019,7 @@ Two body shapes:
   "tier": "pro",
   "skillOverrides": {
     "int-instagram-post": true,
-    "int-telegram-post":  false
+    "int-reddit-post":    false
   }
 }
 ```
@@ -2394,7 +2420,7 @@ No request body fields are required — the caller's `tokenUUID` (or active `tea
       "creditsyncat": 1714694410,
       "status": 4,
       "pinned": true,
-      "teamsessionmode": "",
+      "teamsessionmode": "private",
       "setuprequired": false,
       "subscription": {
         "plan": "agent",
@@ -2923,7 +2949,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
     "title": "Inbox Watcher",
     "useprepaid": true,
     "tier": "pro",
-    "skills": { "int-gmail-check": true, "int-telegram-post": true, "int-wiro-aimodels": true }
+    "skills": { "int-gmail-check": true, "int-wiro-aimodels": true }
   }'
 
 # Live pricing preview before committing a skill change

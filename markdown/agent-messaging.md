@@ -256,7 +256,7 @@ Retrieves conversation history for a specific agent and session. Messages are re
 | `limit` | number | No | Maximum number of messages to return. Defaults to `50`, max `200`. |
 | `before` | string | No | Message GUID to use as cursor — returns only messages created before this one. Omit for the most recent messages. |
 
-> **Team agents:** If the agent's `teamsessionmode` is `collaborative`, History returns messages from **all team members** in the session. In the default `private` mode, History only returns messages sent by the caller's own `uuid`. Same applies to `Sessions` listing.
+> **Team agents:** If the agent's `teamsessionmode` is `collaborative`, History returns messages from **all team members** in the session and their turns use one shared native agent-memory session. In `private` mode, History only returns messages sent by the caller's own `uuid` and memory stays per operator. The same visibility rule applies to `Sessions` listing.
 
 ### Response
 

@@ -48,6 +48,51 @@ Pick the skill names you want to enable. Each skill descriptor tells you:
 
 > **Use [`POST /Skills/Capabilities`](/docs/agent-skills#post-skillscapabilities)** to discover the closed-set capability vocabulary (the high-level tasks skills can perform). Useful when you want to find every skill that can "post-content" or "send-email".
 
+## Step 1b — Discover Communication Channels
+
+The same `POST /Skills/List` response also includes a top-level `channels[]`
+catalog. Channel discovery is registry-driven and does not depend on which
+marketplace template you deploy.
+
+```json
+{
+  "result": true,
+  "channels": [
+    {
+      "id": "telegram",
+      "credential_key": "telegram",
+      "title": "Telegram",
+      "required_fields": ["bottoken", "allowedusers"],
+      "capabilities": {
+        "direct": true,
+        "rooms": true,
+        "threads": true,
+        "roles": false,
+        "command_menu": true
+      },
+      "credential": {
+        "key": "telegram",
+        "credential_schema": ["..."]
+      }
+    }
+  ]
+}
+```
+
+The current external channel IDs are `telegram`, `slack`, and `discord`.
+`channels[]` is returned in full even when the request filters `skills[]`.
+Render each channel's form from `credential.credential_schema` and use
+`required_fields` to decide which values must be present before the operator can
+connect it. A channel activates automatically when every required value is
+complete.
+
+Web chat and the Messaging API are always available. External channels have no
+separate enablement parameter: pass a complete channel group in Deploy's
+`credentials` object, or add it later with
+`POST /UserAgent/CredentialUpsert`. The channel activates automatically when
+all `required_fields` are complete. Channels do not add skills or change agent
+pricing.
+
 ## Step 2 — Live Pricing Preview
 
 Before you commit, fetch the live tier price for the proposed skill set with [`POST /UserAgent/PricingPreview`](/docs/agent-overview#post-useragentpricingpreview) — the **draft** mode runs without touching any DB state.
@@ -131,7 +176,10 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
     },
     "credentials": {
       "gmail":    { "account": "agent@company.com", "apppassword": "xxxx xxxx xxxx xxxx" },
-      "telegram": { "bottoken": "123456:ABC-DEF...", "allowedusers": "[\"761381461\"]", "sessionmode": "private" }
+      "telegram": {
+        "bottoken": "123456:ABC-DEF...",
+        "allowedusers": ["761381461"]
+      }
     },
     "customskills": [
       {
@@ -196,9 +244,11 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
           "_user_created": true
         }
       ],
+      "enabledChannels": ["telegram"],
+      "teamsessionmode": "private",
       "credentials": {
         "gmail":    { "_connected": false, "optional": false, "extra": false, "account": "agent@company.com", "apppassword": "[present]" },
-        "telegram": { "_connected": false, "optional": false, "extra": false, "bottoken": "[present]", "allowedusers": "[\"761381461\"]", "sessionmode": "private" }
+        "telegram": { "_connected": false, "optional": false, "extra": false, "bottoken": "[present]", "allowedusers": ["761381461"] }
       },
       "agent": {
         "custom": true,
@@ -225,6 +275,7 @@ Notes on the response:
 - `agent.custom: true` — the synthesized template placeholder. Same shape as a template's `agent` block but no `slug` / `cover` / `categories` (custom builds aren't in the marketplace).
 - `scheduledskills` already contains the cron from the Deploy body, with the canonical `cs-cron-` prefix added by the server.
 - `status: 2` — Deploy auto-queued the instance because `useprepaid: true` provisioned a subscription in the same call. The daemon picks the row up from the queue; you do **not** need to call `POST /UserAgent/Start` after a prepaid deploy.
+- Communication-channel credentials are validated independently from `skills`. Every channel group present in `credentials` must contain all of its `required_fields` or Deploy fails without leaving a partial agent behind.
 
 ## Step 4 — Refine Skills After Deploy
 
@@ -308,7 +359,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   "skills": { "int-gmail-check": true, "int-wordpress-post": true },
   "credentials": {
     "gmail":    { "account": "agent@company.com", "apppassword": "xxxx xxxx xxxx xxxx" },
-    "telegram": { "bottoken": "123456:ABC-DEF...", "allowedusers": "[\"761381461\"]", "sessionmode": "private" }
+    "telegram": { "bottoken": "123456:ABC-DEF...", "allowedusers": ["761381461"] }
   },
   "customskills": [
     {

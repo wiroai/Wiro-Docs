@@ -23,9 +23,93 @@ Each external service is documented as its own **integration page** with the com
 | Inspect a single credential schema | [`POST /Credentials/Detail`](#post-credentialsdetail) (public) |
 | Find the credential a skill needs | [`POST /Skills/CredentialSchema`](/docs/agent-skills#post-skillscredentialschema) (public) |
 | Write one or more credential fields | [`POST /UserAgent/CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert) |
+| Discover external communication channels | [`POST /Skills/List`](/docs/agent-skills#post-skillslist) → `channels[]` (public) |
+| Connect or disable an external channel | [`POST /UserAgent/CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert) |
 | Read version history of a credential | [`POST /UserAgent/CredentialFieldHistory`](/docs/agent-overview#post-useragentcredentialfieldhistory) |
 
 > Read responses from `POST /UserAgent/Detail` / `POST /UserAgent/MyAgents` expose the composed `credentials` tree (each provider with its `_connected` / `optional` / `extra` / `_editable` / `_schema` flags), the `customskills[]` array, the `scheduledskills[]` array (cron skills), the `skills[]` array of enabled skill names, the `tokenRates` + `agentModel` objects, and the flat credit fields (`monthlycredits`, `extracredits`, `usedcredits`, `remainingcredits`, `creditperiod`, `creditsyncat`) as **top-level fields** on the useragent object. See [Agent Overview](/docs/agent-overview) for the full endpoint catalog.
+
+## Communication Channels
+
+Every Wiro agent is reachable through web chat and the Agent Messaging API
+without additional configuration. Telegram, Slack, and Discord are optional
+external channels. They are available to every marketplace template and custom
+agent, but remain disabled until every registry-declared activation credential
+is complete. There is no separate enable switch on an existing agent.
+
+Channels are not skills and do not affect pricing. Discover them from the
+top-level `channels[]` array returned by public `POST /Skills/List`:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/Skills/List" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+Each row contains:
+
+| Field | Description |
+|-------|-------------|
+| `id` | Channel identifier (`telegram`, `slack`, or `discord`). |
+| `credential_key` | Key used inside the `credentials` object. |
+| `required_fields` | Fields that must all be populated for automatic activation. |
+| `capabilities` | Public UI hints for direct messages, rooms, threads, role allowlists, and command menus. |
+| `credential` | Full form descriptor, including `credential_schema`, labels, validation patterns, and setup help. |
+
+Use `POST /UserAgent/CredentialUpsert` for an existing useragent. Send all
+activation fields in one `fields[]` request when connecting a channel:
+
+```json
+{
+  "useragentguid": "your-useragent-guid",
+  "fields": [
+    {
+      "credentialkey": "telegram",
+      "fieldname": "bottoken",
+      "fieldvalue": "123456:ABC-DEF..."
+    },
+    {
+      "credentialkey": "telegram",
+      "fieldname": "allowedusers",
+      "fieldvalue": ["761381461"]
+    },
+    {
+      "credentialkey": "telegram",
+      "fieldname": "groups",
+      "fieldvalue": [
+        {
+          "chatid": "-1001234567890",
+          "allowedusers": ["761381461"]
+        }
+      ]
+    }
+  ]
+}
+```
+
+For a new useragent, include the complete channel group in `credentials`. The
+channel activates from those credentials; Deploy accepts neither an
+`enabledchannels` toggle nor a chat-mode field. Configure Chat Mode after
+deployment with `teamsessionmode` in `POST /UserAgent/UpdateSettings`.
+
+| Channel | Required fields | Optional scoped access |
+|---------|-----------------|------------------------|
+| Telegram | `bottoken`, `allowedusers[]` | `groups[]` rows with negative `chatid` and room-specific `allowedusers[]`. |
+| Slack | `bottoken`, `apptoken`, `workspaceid`, `allowedusers[]` | `channels[]` rows with immutable `channelid` and room-specific `allowedusers[]`. Enable Socket Mode and grant the app token `connections:write`. |
+| Discord | `bottoken`, `allowedusers[]` | `applicationid`; `guilds[]` rows with `guildid`, `channelids[]`, and optional `allowedusers[]` / `allowedroles[]`. |
+
+`teamsessionmode: "private"` isolates each approved direct-message operator
+and each team member's Wiro web-chat history and native agent memory.
+`"collaborative"` shares those runtime contexts. Team deployments and
+transfers default to collaborative; personal deployments and team detachments
+default to private. Web and external-channel message lists remain separate
+transports, and room/thread sessions remain scoped to their room.
+
+Send immutable platform IDs only. Display names, usernames, email addresses,
+and free-form room names are not authorization identifiers. Unlisted users and
+rooms are rejected, and room messages must mention the bot. To disable a
+channel, clear at least one of its `required_fields` with `CredentialUpsert`.
+Completing the required fields again reactivates it automatically.
 
 ## Credential Registry Endpoints
 
@@ -171,7 +255,7 @@ Lists all credentials in the registry.
 | Sub-field | Type | Description |
 |-----------|------|-------------|
 | `key` | `string` | Field name (matches the database column under `useragentcredentialfields.fieldname`). |
-| `type` | `string` | Input type: `"text"`, `"password"`, `"select"`, `"boolean"`, `"fileinput"` (public asset, written via `CredentialFileUpload` multipart — e.g. Twilio `holdaudio`/`holdmusic`), `"fileinput-base64"` (secret stored encrypted at rest, sent inline via `CredentialUpsert` — e.g. Google Drive `serviceaccountjson`, Apple App Store `privatekey`), `"custom"`. |
+| `type` | `string` | Input type: `"text"`, `"password"`, `"select"`, `"boolean"`, `"string-array"`, `"object-array"`, `"fileinput"` (public asset, written via `CredentialFileUpload` multipart), `"fileinput-base64"` (secret sent inline via `CredentialUpsert`), or `"custom"`. |
 | `label` | `string` | Display label for the form input. |
 | `required` | `boolean` | Whether the field must be filled before the agent can use the integration. |
 | `placeholder` | `string?` | Placeholder text for the input. |
@@ -558,7 +642,7 @@ Response: `{ "result": true, "applied": 2, "errors": [] }`. `applied` is the cou
 
 - **Only `fieldstatus: "user"` fields may be written by API callers.** The template marks OAuth app keys (`oauth_app`), OAuth tokens (`oauth_session`), OAuth picker selections (`oauth_picker`), and platform-managed values (`platform`) with non-user statuses — the API rejects attempts to write them directly with `agent-fieldstatus-not-allowed-for-role`. OAuth-managed values are written by Wiro's OAuth callback flow, not by your API.
 - **Reserved fieldnames are rejected.** Any `fieldname` starting with `_` (e.g. `_isoptional`, `_isextra`) is a sentinel used by the template itself and cannot be set by API callers.
-- Credential groups that don't exist in the template cannot be created — you can only write fields for credential keys the agent declares.
+- Standard integration credential groups must be declared by the agent template. Communication-channel credentials are the exception: every useragent may create the channel groups published in `POST /Skills/List` → `channels[]`, using `CredentialUpsert` or inline Deploy credentials.
 - **Nested arrays** (`firebase.accounts[].apps[]`, `google-drive.folders[]`, `apple-appstore.apps[]`, etc.) are supported via the optional `parentfield` (dotted path) and `ordinal` (array index) on each field row. Send the complete desired list — positional merge applies: indices you don't send are kept from the previous state, unless you explicitly send an empty set to clear them.
 - Use `POST /UserAgent/Detail` to inspect which fields each credential exposes, and the `_connected` / `optional` / `extra` flags that describe its readiness state.
 
@@ -566,12 +650,13 @@ Response: `{ "result": true, "applied": 2, "errors": [] }`. `applied` is the cou
 
 If you call `POST /UserAgent/Deploy` with `useprepaid: true`, you may pass `credentials`, `customskills` (or the equivalent key `customskills`), and `skills` at the **top level of the Deploy body**. The server applies them to the normalized child tables in the same call (one-shot deploy + initial setup).
 
-**Deploy body `credentials` limitations:**
+**Deploy body `credentials` rules:**
 
-- Only **flat fields** are accepted — values must be `string` or `number`. Nested object values are ignored.
-- Nested arrays (`firebase.accounts[]`, `google-drive.folders[]`, `apple-appstore.apps[]`, `google-play.apps[]`) **cannot be set via the Deploy body**. Deploy an empty instance first, then call `POST /UserAgent/CredentialUpsert` with `parentfield`/`ordinal` rows to populate arrays.
-- Fieldnames starting with `_` (sentinel rows like `_isoptional`, `_isextra`) are silently skipped.
-- All fields written through Deploy are set to `fieldstatus: "user"` automatically — you can't choose a different fieldstatus from the Deploy body. Use `POST /UserAgent/CredentialUpsert` afterwards if you need admin-only statuses.
+- Values are validated against each credential's public registry schema.
+- Registry-declared `string-array` and `object-array` fields are accepted as native JSON arrays. This includes channel allowlists (`allowedusers`, Telegram `groups`, Slack `channels`, Discord `guilds`).
+- Fieldnames starting with `_` are reserved and ignored.
+- All caller-supplied fields use the normal user-writable classification. OAuth session tokens and platform-managed settings cannot be injected through Deploy.
+- If `credentials` includes a communication-channel group, all of that channel's `required_fields` must be present. A missing or invalid activation credential fails Deploy instead of creating a partially configured channel.
 
 **Deploy body `customskills` semantics:**
 

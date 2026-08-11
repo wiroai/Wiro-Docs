@@ -7,6 +7,7 @@ Configure agent behavior with editable preferences, scheduled automation tasks, 
 | Operation | Endpoint |
 |-----------|----------|
 | Browse all skills (registry) | [`POST /Skills/List`](#post-skillslist) (public) |
+| Browse communication channels and their credential schemas | [`POST /Skills/List`](#post-skillslist) → `channels[]` (public) |
 | Inspect a single skill | [`POST /Skills/Detail`](#post-skillsdetail) (public) |
 | Find the credential a skill needs | [`POST /Skills/CredentialSchema`](#post-skillscredentialschema) (public) |
 | List the closed-set capability vocabulary | [`POST /Skills/Capabilities`](#post-skillscapabilities) (public) |
@@ -81,6 +82,26 @@ Lists all skills in the registry.
         "billing_model": "tokens"
       }
     }
+  ],
+  "channels": [
+    {
+      "id": "telegram",
+      "plugin": "telegram",
+      "credential_key": "telegram",
+      "title": "Telegram",
+      "required_fields": ["bottoken", "allowedusers"],
+      "capabilities": {
+        "direct": true,
+        "rooms": true,
+        "threads": true,
+        "roles": false,
+        "command_menu": true
+      },
+      "credential": {
+        "key": "telegram",
+        "credential_schema": ["..."]
+      }
+    }
   ]
 }
 ```
@@ -107,6 +128,15 @@ Lists all skills in the registry.
 | `deprecated` | `boolean` | `true` for skills slated for removal — `replacement` (if any) names the migration target. |
 | `replacement` | `string\|null` | When `deprecated: true`, the registry-recommended successor skill name. |
 | `pricing` | `object` | Per-skill pricing recipe (see below). |
+
+`channels[]` is a separate, unfiltered catalog returned alongside `skills[]`.
+Skill filters do not remove channel rows. Each channel includes its stable
+`id`, `credential_key`, activation `required_fields`, UI-facing
+`capabilities`, and the full registry `credential` descriptor. Use these values
+to render channel setup. Save the matching credential group through
+[`UserAgent/CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert);
+the channel activates automatically when every `required_fields` value is
+complete. Channels are not skills and do not affect pricing.
 
 **`pricing` object:**
 

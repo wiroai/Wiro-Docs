@@ -15,7 +15,9 @@ Adding a Telegram bot gives you a third, complementary channel — useful when y
 - Give **off-dashboard access** to team members who don't log into wiro.ai but still want to message the agent.
 - Pipe **scheduled status reports** from cron skills into a shared Telegram channel.
 
-You can skip this integration entirely — agents keep working through web chat and the API regardless. When the bot token is missing or `allowedusers` is empty, the Telegram plugin inside the agent is disabled automatically and no messages flow through it.
+You can skip this integration entirely — agents keep working through web chat
+and the API regardless. Telegram activates automatically only after both
+`bottoken` and `allowedusers` are configured.
 
 ## Availability
 
@@ -48,7 +50,7 @@ Each allowed user must message the bot first.
 
 Alternative: each user can DM [@userinfobot](https://t.me/userinfobot) in Telegram to get their own ID.
 
-### Step 3: Save to Wiro
+### Step 3: Save Telegram credentials on the UserAgent
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
@@ -57,23 +59,49 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -d '{
     "useragentguid": "your-useragent-guid",
     "fields": [
-      { "credentialkey": "telegram", "fieldname": "bottoken",     "fieldvalue": "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11" },
-      { "credentialkey": "telegram", "fieldname": "allowedusers", "fieldvalue": "[\"761381461\",\"987654321\"]" },
-      { "credentialkey": "telegram", "fieldname": "sessionmode",  "fieldvalue": "private" }
+      {
+        "credentialkey": "telegram",
+        "fieldname": "bottoken",
+        "fieldvalue": "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
+      },
+      {
+        "credentialkey": "telegram",
+        "fieldname": "allowedusers",
+        "fieldvalue": ["761381461", "987654321"]
+      },
+      {
+        "credentialkey": "telegram",
+        "fieldname": "groups",
+        "fieldvalue": [
+          {
+            "chatid": "-1001234567890",
+            "allowedusers": ["761381461"]
+          }
+        ]
+      }
     ]
   }'
 ```
 
-> `allowedusers` is a JSON-encoded string array inside `fieldvalue` because the underlying column is `TEXT`. The agent runtime parses it back into an array at startup. `sessionmode` accepts the short string form (`"private"` / `"collaborative"`) on the API — the dashboard's full option-object array is a UI concern only.
+Send `allowedusers` and `groups` as native JSON arrays. `groups` is optional;
+omit it when the bot should be usable only in direct messages.
 
-### Step 4: Start the agent
+If you are deploying a new agent, place the complete `telegram` group in
+`credentials`. Do not send an `enabledchannels` switch or chat-mode field to
+`POST /UserAgent/Deploy`; change Chat Mode after deployment when needed.
+
+### Step 4: Verify the applied state
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Detail" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{ "guid": "your-useragent-guid" }'
 ```
+
+Confirm that `enabledChannels` contains `"telegram"` and the Telegram row in
+`communicationChannels` reports `enabled: true`, `configured: true`, and an
+empty `missingfields` array.
 
 ## Credential Fields
 
@@ -81,54 +109,39 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 |-------|------|-------------|
 | `bottoken` | string | BotFather token (`<bot_id>:<secret>`). |
 | `allowedusers` | string[] | Array of Telegram user IDs (numeric strings) allowed to interact. Messages from IDs outside this list are ignored. |
-| `sessionmode` | object[] \| string | Session selection. See below. |
+| `groups` | object[] | Optional room allowlist. Each row is `{ "chatid": "-100...", "allowedusers": ["..."] }`. Group/supergroup IDs must be negative numeric strings. |
 
-### sessionmode format
+### Chat Mode
 
-`sessionmode` is an **array of option objects**, with exactly one having `selected: true`:
-
-```json
-[
-  {
-    "value": "private",
-    "text": "Private — each user has their own conversation",
-    "selected": true
-  },
-  {
-    "value": "collaborative",
-    "text": "Collaborative — all users share the same conversation",
-    "selected": false
-  }
-]
-```
-
-This matches Wiro's dropdown format. A simpler string form is also accepted at the backend (`"private"` or `"collaborative"`) but the array form is what the dashboard UI produces.
+`teamsessionmode` is the agent's single Chat Mode setting, not a Telegram
+credential. Set it after deployment with `POST /UserAgent/UpdateSettings`.
+The same value also controls team members' Wiro web-chat history.
 
 | Mode | Behavior |
 |------|----------|
-| `private` (default) | Each allowed user has an isolated conversation with the agent. Messages from user A are never visible to user B. Maps internally to `session.dmScope = "per-channel-peer"`. |
-| `collaborative` | All allowed users share one conversation. Any user sees and can respond to any message. Maps to `session.dmScope = "main"`. |
+| `private` | Each allowed direct-message user has an isolated conversation with the agent. Personal deployments and team detachments use this default. |
+| `collaborative` | Approved direct-message users share one conversation. Team deployments and transfers use this default. |
 
-## Runtime Behavior
+Group conversations are always scoped to their own group and do not merge into
+the shared direct-message conversation.
 
-Env vars inside the agent container:
+## Access Behavior
 
-- `TELEGRAM_BOT_TOKEN` ← `credentials.telegram.bottoken`
-- `GATEWAY_TOKEN` ← internal gateway token
-
-`allowedusers` is **not** an env var. It's serialized two ways during container startup:
-
-1. **JSON file** `/.../credentials/telegram-allowFrom.json` — the full array, used by the gateway to filter incoming messages.
-2. **Template substitution** — `__TELEGRAM_ALLOW_FROM__` in `openclaw.json` (JSON array) and `__TELEGRAM_CHAT_ID__` in `AGENTS.md` (CSV) are replaced at runtime.
-
-The Telegram integration plugin inside the agent is **disabled automatically** if `allowedusers` is empty or `bottoken` is missing — no messages flow.
+- Direct messages are accepted only from IDs in the top-level `allowedusers`.
+- Group messages are accepted only in configured `groups[].chatid` rooms and
+  only from that room's `allowedusers`.
+- Group turns must mention the bot.
+- Usernames and display names are never accepted as authorization values.
+- Telegram is optional. Clear either `bottoken` or `allowedusers` with
+  `CredentialUpsert` to disable it; completing both fields reactivates it.
 
 ## Troubleshooting
 
 - **Bot doesn't respond:** Verify `bottoken` is correct and the sender's Telegram user ID is in `allowedusers`.
 - **"Unauthorized" (401) from Telegram API:** BotFather regenerated the token, invalidating the old one. Create a new token and update.
 - **Rate limits:** Telegram bots are limited to ~30 messages/second globally. For burst broadcasts, plan around this.
-- **Collaborative mode confusion:** If users don't see each other's messages, re-save `sessionmode` with `collaborative` as `selected: true` and restart the agent.
+- **Bot works in DMs but not a group:** Add the negative group chat ID and the sender's immutable user ID to the same `groups[]` row, then mention the bot.
+- **Collaborative mode confusion:** Call `UserAgent/UpdateSettings` with `teamsessionmode: "collaborative"`.
 
 ## Related
 
