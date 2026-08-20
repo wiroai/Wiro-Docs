@@ -4982,7 +4982,7 @@ if (!data.result) {
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.2.2"],
       "env": {
         "WIRO_API_KEY": "YOUR_API_KEY",
         "WIRO_API_SECRET": "YOUR_API_SECRET"
@@ -4991,11 +4991,13 @@ if (!data.result) {
   }
 }</code></pre>
                         <p>For API Key Only authentication, keep <code>WIRO_API_KEY</code> and remove the <code>WIRO_API_SECRET</code> entry completely. Save the file, fully quit Claude Desktop, and reopen it.</p>
+                        <p>Pin the current published version (<code>@wiro-ai/wiro-mcp@1.2.2</code>) in <code>args</code>. Unversioned <code>npx</code> can keep an older cached build after a package update.</p>
                         <p>This setup runs the open-source <a href="https://www.npmjs.com/package/@wiro-ai/wiro-mcp" target="_blank" rel="noopener"><code>@wiro-ai/wiro-mcp</code></a> bridge on your machine and calls Wiro with your project credentials. Do not paste <code>https://mcp.wiro.ai/v1</code> into Claude's <strong>Settings → Connectors</strong> yet; URL-only Claude connections require OAuth, which the hosted Wiro endpoint does not currently provide. See <a href="/docs/mcp-self-hosted">Self-Hosted MCP</a> for the complete local package guide.</p>
                         <h4>Claude connection and timeout troubleshooting</h4>
                         <ul>
                           <li><strong>"Not valid MCP server configurations"</strong> — ensure the entry contains <code>"type": "stdio"</code>, <code>command</code>, <code>args</code>, and <code>env</code> exactly as shown above.</li>
                           <li><strong>The Wiro tools do not appear</strong> — confirm <code>node --version</code> reports 20 or later, then fully quit and reopen Claude Desktop.</li>
+                          <li><strong>Tools appear but every call fails immediately</strong> — pin <code>@wiro-ai/wiro-mcp@1.2.2</code> as shown above so <code>npx</code> does not reuse an older cached package, then fully quit and reopen Claude Desktop.</li>
                           <li><strong>A generation reaches Claude's tool timeout</strong> — Wiro waits for at most 45 seconds per call. If the task is still running, Claude should execute the returned <code>nextAction.tool: "wait_for_task"</code> until completion and must not call <code>run_model</code> again.</li>
                           <li>Do not add a <code>timeout</code> field to <code>claude_desktop_config.json</code>; Claude Desktop versions with a fixed client-side tool timeout may ignore it. Wiro's bounded wait flow is designed to remain below that boundary.</li>
                         </ul>
@@ -5611,7 +5613,7 @@ if (!data.result) {
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.2.2"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -5619,7 +5621,7 @@ if (!data.result) {
     }
   }
 }</code></pre>
-                    <p>That's it. Your assistant now has access to all Wiro AI models.</p>
+                    <p>That's it. Your assistant now has access to all Wiro AI models. The <code>args</code> entry pins the current published version (<code>@wiro-ai/wiro-mcp@1.2.2</code>) so <code>npx</code> does not reuse an older cached build.</p>
                   </section>
 
                   <section id="self-hosted-setup">
@@ -5662,7 +5664,7 @@ if (!data.result) {
   "mcpServers": {
     "wiro": {
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.2.2"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -5673,7 +5675,7 @@ if (!data.result) {
                       </div>
                       <div class="mcp-setup-panel" id="sh-setup-claude-code">
                         <h3>Claude Code</h3>
-                        <pre><code class="language-bash">claude mcp add wiro -- npx -y @wiro-ai/wiro-mcp</code></pre>
+                        <pre><code class="language-bash">claude mcp add wiro -- npx -y @wiro-ai/wiro-mcp@1.2.2</code></pre>
                         <p>Then set environment variables:</p>
                         <pre><code class="language-bash">export WIRO_API_KEY="your-api-key"
 export WIRO_API_SECRET="your-api-secret"</code></pre>
@@ -5686,7 +5688,7 @@ export WIRO_API_SECRET="your-api-secret"</code></pre>
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.2.2"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -5702,7 +5704,7 @@ export WIRO_API_SECRET="your-api-secret"</code></pre>
   "mcpServers": {
     "wiro": {
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.2.2"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -5714,7 +5716,7 @@ export WIRO_API_SECRET="your-api-secret"</code></pre>
                       <div class="mcp-setup-panel" id="sh-setup-other">
                         <h3>Other Clients</h3>
                         <p>Any MCP client that supports the <strong>stdio</strong> transport can connect. The command is:</p>
-                        <pre><code class="language-bash">npx -y @wiro-ai/wiro-mcp</code></pre>
+                        <pre><code class="language-bash">npx -y @wiro-ai/wiro-mcp@1.2.2</code></pre>
                         <p>Set <code>WIRO_API_KEY</code> and <code>WIRO_API_SECRET</code> as environment variables in your client's MCP configuration.</p>
                       </div>
                     </div>

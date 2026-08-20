@@ -12,7 +12,7 @@ Add to your AI assistant's MCP config:
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.2.2"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -22,7 +22,9 @@ Add to your AI assistant's MCP config:
 }
 ```
 
-That's it. Your assistant now has access to all Wiro AI models.
+That's it. Your assistant now has access to all Wiro AI models. The `args`
+entry pins the current published version (`@wiro-ai/wiro-mcp@1.2.2`) so `npx`
+does not reuse an older cached build.
 
 ## Setup
 
@@ -33,7 +35,7 @@ Open MCP settings (`Cmd+Shift+P` → "Open MCP settings") and add the config abo
 ### Claude Code
 
 ```bash
-claude mcp add wiro -- npx -y @wiro-ai/wiro-mcp
+claude mcp add wiro -- npx -y @wiro-ai/wiro-mcp@1.2.2
 ```
 
 Then set `WIRO_API_KEY` and `WIRO_API_SECRET` environment variables.
@@ -48,7 +50,7 @@ Add to `claude_desktop_config.json`:
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.2.2"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -67,7 +69,7 @@ Add to your MCP settings:
   "mcpServers": {
     "wiro": {
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.2.2"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
