@@ -5,10 +5,11 @@ const sections = [
   { slug: 'authentication', title: 'Authentication', description: 'Authenticate with the Wiro API using Bearer tokens or query-string API keys. Learn how to generate and manage your credentials securely.' },
   { slug: 'projects', title: 'Projects', description: 'Create projects to organize your Wiro API usage. Each project has its own API key, usage tracking, and webhook configuration.' },
   { slug: 'models', title: 'Models', description: 'Browse, search, and discover AI models on Wiro. Filter by category, view pricing, parameters, and sample outputs for each model.' },
-  { slug: 'run-a-model', title: 'Run a Model', description: 'Execute any AI model on Wiro with a single POST request. Pass parameters, upload files, and receive outputs — all through one unified endpoint.' },
+  { slug: 'run-a-model', title: 'Run a Model', description: 'Execute any AI model on Wiro with a single POST request, or wait on /sync for a finite task. Pass parameters, upload files, and receive outputs.' },
+  { slug: 'completions-api', title: 'Direct LLM Gateway', description: 'Use Wiro LLMs through OpenAI Chat Completions, OpenAI Responses, Anthropic Messages, and a beta Cursor-compatible route on llm.wiro.ai.' },
   { slug: 'model-parameters', title: 'Model Parameters', description: 'Understand Wiro model parameter types including text, numeric, file uploads, dropdowns, and boolean inputs. Learn about content-type handling.' },
   { slug: 'tasks', title: 'Tasks', description: 'Track the status and results of your Wiro API tasks. Poll for completion, retrieve outputs, and handle asynchronous model execution.' },
-  { slug: 'llm-chat-streaming', title: 'LLM & Chat Streaming', description: 'Stream large language model responses in real time with Server-Sent Events. Supports thinking/answer separation and multi-turn chat history.' },
+  { slug: 'llm-chat-streaming', title: 'LLM & Chat Streaming', description: 'Stream LLM responses with cumulative ordered text and tool-call segments over WebSocket, plus session history and multi-turn conversations.' },
   { slug: 'websocket', title: 'WebSocket', description: 'Receive real-time task progress and completion updates via WebSocket connections. Avoid polling and get instant status changes for your Wiro tasks.' },
   { slug: 'realtime-voice-conversation', title: 'Realtime Voice', description: 'Build interactive voice conversation applications using Wiro realtime AI models. Stream audio input and receive spoken responses in real time.' },
   { slug: 'realtime-text-to-speech', title: 'Realtime Text to Speech', description: 'Stream text-to-speech audio in real time. Send text and receive synthesized audio chunks via WebSocket for instant speech playback.' },
@@ -25,8 +26,8 @@ const sections = [
   { slug: 'n8n-wiro-integration', title: 'n8n Wiro Integration', description: 'Use all Wiro AI models as drag-and-drop nodes in n8n workflows. Install the community node for video, image, audio, LLM, and 3D automation.' },
   { slug: 'agent-overview', title: 'Agent Overview', description: 'Deploy and manage autonomous AI agents with the Wiro Agent API. Browse the catalog, configure instances, select models, and understand skill-driven tiers with per-turn token billing.' },
   { slug: 'agent-builder', title: 'Agent Builder', description: 'Build a custom agent from scratch — pick your own skill set, preview the live tier price, and deploy in one call. PricingPreview, custom: true Deploy, SkillsApply.' },
-  { slug: 'agent-messaging', title: 'Agent Messaging', description: 'Send messages to AI agents, stream answers and separate reasoning summaries, manage sessions, poll status, and handle asynchronous agent interactions.' },
-  { slug: 'agent-websocket', title: 'Agent WebSocket', description: 'Receive real-time agent answers and separate provider-supplied reasoning-summary snapshots via WebSocket, with lifecycle and usage events.' },
+  { slug: 'agent-messaging', title: 'Agent Messaging', description: 'Send messages to AI agents and consume an ordered timeline of safe reasoning, answer, and tool label/status blocks with authoritative Detail recovery.' },
+  { slug: 'agent-websocket', title: 'Agent WebSocket', description: 'Receive agent_timeline_delta public block updates, merge by opaque blockid and strictly newer per-block version, and stream provisional cumulative answer text.' },
   { slug: 'agent-webhooks', title: 'Agent Webhooks', description: 'Receive agent response notifications via HTTP webhooks. Configure callback URLs for async message processing with automatic retries.' },
   { slug: 'agent-credentials', title: 'Agent Credentials & OAuth', description: 'Configure agent credentials via API keys, direct machine credentials, or OAuth flows. Connect third-party services like Twitter, Google Ads, Meta, HubSpot, and more.' },
   { slug: 'agent-skills', title: 'Agent Skills', description: 'Configure agent behavior with editable preferences, scheduled automation tasks, and skill toggles. Browse the skill registry, capabilities, and per-skill pricing recipes.' },
@@ -34,9 +35,9 @@ const sections = [
   { slug: 'agent-logs', title: 'Agent Logs', description: 'Per-instance activity feed — tool calls, scheduled cron runs, message exchanges, and turn boundaries — for any deployed agent.' },
   { slug: 'agent-use-cases', title: 'Agent Use Cases', description: 'Learn how to build products with Wiro Agents. Deploy agents for your customers, integrate OAuth flows, and create multi-agent workflows.' },
   { slug: 'integration-metaads-skills', title: 'Meta Ads Integration', description: 'Use direct Graph API v26 with recommended token-only System User mode or advanced customer-owned OAuth, then select ad accounts and optional account-scoped Facebook Pages.' },
-  { slug: 'integration-shopify-skills', title: 'Shopify Integration', description: 'Connect Shopify Admin API through a customer-owned OAuth app or same-organization Client ID and Secret with automatic 24-hour token rotation.' },
+  { slug: 'integration-shopify-skills', title: 'Shopify Integration', description: 'Use GraphQL Admin API 2026-07 with same-organization client credentials (86399-second tokens) or expiring offline OAuth access and refresh tokens.' },
   { slug: 'integration-woocommerce-skills', title: 'WooCommerce Integration', description: 'Connect a Wiro agent directly to WooCommerce REST API v3 with a customer-owned consumer key and secret.' },
-  { slug: 'integration-reddit-skills', title: 'Reddit Integration', description: 'Connect a Wiro agent through a customer-owned Reddit web app with approval-aware posting, reply, edit, and delete safeguards.' },
+  { slug: 'integration-reddit-skills', title: 'Reddit Integration', description: 'Review the technical Reddit OAuth contract; the commercial feature remains unavailable until Reddit approval and Wiro’s written contract are complete.' },
   { slug: 'integration-facebook-skills', title: 'Facebook Page Integration', description: 'Publish to one or more Facebook Pages with a recommended Business Manager System User token or advanced customer-owned OAuth through Meta Graph API v26.' },
   { slug: 'integration-instagram-skills', title: 'Instagram Integration', description: 'Publish to Instagram professional accounts with a recommended System User connection or advanced Instagram Login OAuth through Graph API v26.' },
   { slug: 'integration-linkedin-skills', title: 'LinkedIn Integration', description: 'LinkedIn Company Page publishing via Community Management API. OAuth 2.0 setup with organizationId configuration.' },
@@ -431,19 +432,38 @@ function initSetupToggle(slug) {
     const panels = section.querySelector(`[data-toggle-panels="${groupName}"]`);
     if (!panels) return;
 
+    const activateTarget = (targetId) => {
+      const card = Array.from(grid.querySelectorAll('.mcp-client-card[data-toggle-target]')).find((candidate) => candidate.dataset.toggleTarget === targetId);
+      const target = Array.from(panels.querySelectorAll('.mcp-setup-panel')).find((candidate) => candidate.id === targetId);
+      if (!card || !target) return null;
+
+      grid.querySelectorAll('.mcp-client-card').forEach((candidate) => candidate.classList.remove('is-active'));
+      card.classList.add('is-active');
+      panels.querySelectorAll('.mcp-setup-panel').forEach((candidate) => candidate.classList.remove('is-visible'));
+      target.classList.add('is-visible');
+      return target;
+    };
+
     grid.querySelectorAll('.mcp-client-card[data-toggle-target]').forEach((card) => {
       card.addEventListener('click', (e) => {
+        if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
         e.preventDefault();
         const targetId = card.dataset.toggleTarget;
-
-        grid.querySelectorAll('.mcp-client-card').forEach((c) => c.classList.remove('is-active'));
-        card.classList.add('is-active');
-
-        panels.querySelectorAll('.mcp-setup-panel').forEach((p) => p.classList.remove('is-visible'));
-        const target = panels.querySelector(`#${targetId}`);
-        if (target) target.classList.add('is-visible');
+        if (!targetId || !activateTarget(targetId)) return;
+        history.replaceState(history.state, '', `${window.location.pathname}${window.location.search}#${encodeURIComponent(targetId)}`);
       });
     });
+
+    let linkedTargetId = '';
+    try {
+      linkedTargetId = decodeURIComponent(window.location.hash.slice(1));
+    } catch {
+      linkedTargetId = '';
+    }
+    const linkedTarget = linkedTargetId ? activateTarget(linkedTargetId) : null;
+    if (linkedTarget) {
+      requestAnimationFrame(() => linkedTarget.scrollIntoView({ block: 'start' }));
+    }
   });
 }
 
