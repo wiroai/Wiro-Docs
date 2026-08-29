@@ -4,3 +4,6 @@ ecosystem.config.cjs
 *.swp
 *.swo
 *~
+
+# Local Claude Code skills (internal, never publish)
+.claude/
