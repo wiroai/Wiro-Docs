@@ -30,19 +30,19 @@ Registration message format:
 
 | Message Type | Description |
 |--------------|-------------|
-| `task_queue` | The task is queued and waiting to be picked up by an available worker. |
-| `task_accept` | A worker has accepted the task and is preparing for execution. |
-| `task_preprocess_start` | Optional preprocessing has started (downloading input files from URLs, converting file types, validating parameters). |
-| `task_preprocess_end` | Preprocessing completed. All inputs are ready for GPU assignment. |
-| `task_assign` | The task has been assigned to a specific GPU. The model is being loaded into memory. |
-| `task_start` | The model command has started executing. Inference is now running on the GPU. |
-| `task_output` | The model is producing output. Emitted **multiple times** — each stdout write sends a new message. For LLMs, each token/chunk arrives as a separate event for real-time streaming. |
-| `task_error` | The model wrote to stderr. This is an **interim log event**, not a final failure — many models write warnings to stderr during normal operation. The task may still succeed. |
-| `task_output_full` | The complete accumulated stdout log, sent once after the model process finishes. |
-| `task_error_full` | The complete accumulated stderr log, sent once after the model process finishes. |
-| `task_end` | The model process has exited. Fires **before** post-processing — do not use this to determine success. Wait for `task_postprocess_end` instead. |
-| `task_postprocess_start` | Post-processing has started. The system is preparing output files — encoding, uploading to CDN, generating access URLs. |
-| `task_postprocess_end` | Post-processing completed. Check `pexit` to determine success (`"0"` = success). The `outputs` array contains the final files. **This is the event to listen for.** |
+| `task_queue` | The task is queued and waiting to start. |
+| `task_accept` | The task was accepted and is preparing for execution. |
+| `task_preprocess_start` | Optional input preparation has started. |
+| `task_preprocess_end` | Input preparation completed. |
+| `task_assign` | Execution capacity was assigned and the model is preparing to start. |
+| `task_start` | Model execution started. |
+| `task_output` | The model is producing output. Emitted **multiple times**; LLM events carry the latest cumulative ordered `message.segments` snapshot. |
+| `task_error` | An interim diagnostic event. It is not terminal; continue listening for completion. |
+| `task_output_full` | Signals that output collection ended. Treat it as a lifecycle event. |
+| `task_error_full` | Signals that error-output collection ended. Treat it as a lifecycle event. |
+| `task_end` | Model execution ended. This is not the final success signal; wait for `task_postprocess_end`. |
+| `task_postprocess_start` | Final output preparation started. |
+| `task_postprocess_end` | Post-processing completed. Check `success` and `exitCode` (`0` = success). The `message` array contains final outputs. **This is the event to listen for.** |
 | `task_cancel` | The task was cancelled (if queued) or killed (if running) by the user. |
 
 ### Message Format
@@ -53,13 +53,17 @@ Every WebSocket message is a JSON object with this base structure:
 {
   "type": "task_accept",
   "id": "534574",
-  "tasktoken": "eDcCm5yyUfIvMFspTwww49OUfgXkQt",
   "message": null,
-  "result": true
+  "result": true,
+  "success": null,
+  "terminal": false,
+  "exitCode": null
 }
 ```
 
 The `type` field indicates the status. The `message` field varies by type — it's `null` for lifecycle events, a string or object for output events, and an array for the final result.
+
+Use the top-level `id` to correlate server events with the submitted task.
 
 ### Lifecycle Events
 
@@ -71,7 +75,6 @@ These events signal task state changes. The `message` field is `null`:
 {
   "type": "task_assign",
   "id": "534574",
-  "tasktoken": "eDcCm5yy...",
   "message": null,
   "result": true
 }
@@ -86,7 +89,6 @@ These events signal task state changes. The `message` field is `null`:
 {
   "type": "task_output",
   "id": "534574",
-  "tasktoken": "eDcCm5yy...",
   "message": {
     "type": "progressGenerate",
     "task": "Generate",
@@ -105,27 +107,37 @@ These events signal task state changes. The `message` field is `null`:
 {
   "type": "task_output",
   "id": "534574",
-  "tasktoken": "eDcCm5yy...",
   "message": "Processing complete.",
   "result": true
 }
 ```
 
-**LLM models** — `message` is a structured object with thinking/answer arrays. See [LLM & Chat Streaming](/docs/llm-chat-streaming) for full details:
+**LLM models** — `message.segments` is the cumulative ordered output snapshot.
+Replace it on every event. The final active item's `text` grows as chunks arrive,
+so render it before completion; a new item appears when the output phase changes.
+See [LLM & Chat Streaming](/docs/llm-chat-streaming) for full details:
 
 ```json
 {
   "type": "task_output",
   "id": "534574",
-  "tasktoken": "eDcCm5yy...",
   "message": {
     "type": "progressGenerate",
     "task": "Generate",
     "speed": "12.4",
     "speedType": "words/s",
-    "raw": "Quantum computing uses qubits...",
-    "thinking": ["Let me analyze this..."],
-    "answer": ["Quantum computing uses qubits..."],
+    "segments": [
+      { "type": "thinking", "text": "Let me analyze this..." },
+      { "type": "answer", "text": "Quantum computing uses qubits..." }
+    ],
+    "finishreason": "stop",
+    "usage": {
+      "input_tokens": 18,
+      "input_tokens_details": { "cached_tokens": 6 },
+      "output_tokens": 11,
+      "output_tokens_details": { "reasoning_tokens": 4 },
+      "total_tokens": 29
+    },
     "isThinking": false,
     "elapsedTime": "3s"
   },
@@ -133,15 +145,33 @@ These events signal task state changes. The `message` field is `null`:
 }
 ```
 
+`message.segments` is always the full accumulated snapshot. Text entries use
+`thinking` or `answer`. Tool-capable models can also emit `function_call`
+entries with `arguments`, or `custom_tool_call` entries with `input`; both
+include `id`, `call_id`, `name`, and `status`.
+
+`message.finishreason` and `message.usage` are final-turn
+metadata and can be absent from earlier `task_output` snapshots:
+
+- `finishreason` is `stop`, `tool_calls`, `length`, `content_filter`, or
+  `error`. Execute a tool only when its segment status is `completed` and the
+  finish reason is `tool_calls`.
+- `usage` contains normalized token and server-tool counters. Input totals
+  already include cache reads/writes; output totals already include reasoning.
+  Do not add details to `total_tokens`, and use Task Detail `totalcost` for the
+  billed amount.
+
+Inspect `finishreason` after completion so truncation and content filtering are
+not mistaken for a normal stop.
+
 ### Error Events
 
-`task_error` is an interim stderr log, not a final failure:
+`task_error` is an interim diagnostic event, not a final failure:
 
 ```json
 {
   "type": "task_error",
   "id": "534574",
-  "tasktoken": "eDcCm5yy...",
   "message": "UserWarning: Some weights were not initialized...",
   "result": true
 }
@@ -149,41 +179,15 @@ These events signal task state changes. The `message` field is `null`:
 
 ### Full Output Events
 
-Sent once after the process exits. Contains the complete accumulated log:
+`task_output_full` and `task_error_full` are lifecycle signals. Continue
+listening for `task_postprocess_end`, or use authenticated `POST /Task/Detail`
+to retrieve the persisted task.
 
 ```json
-// Standard model
 {
   "type": "task_output_full",
   "id": "534574",
-  "tasktoken": "eDcCm5yy...",
-  "message": {
-    "raw": "0%|...| 0/10\n10%|█| 1/10\n...\n100%|██████████| 10/10\nDone."
-  },
-  "result": true
-}
-
-// LLM model — includes thinking/answer separation
-{
-  "type": "task_output_full",
-  "id": "534574",
-  "tasktoken": "eDcCm5yy...",
-  "message": {
-    "raw": "<think>Let me analyze...</think>Quantum computing uses qubits...",
-    "thinking": ["Let me analyze this step by step..."],
-    "answer": ["Quantum computing uses qubits that can exist in superposition..."]
-  },
-  "result": true
-}
-
-// Stderr log (only sent if stderr is non-empty)
-{
-  "type": "task_error_full",
-  "id": "534574",
-  "tasktoken": "eDcCm5yy...",
-  "message": {
-    "raw": "UserWarning: Some weights were not initialized..."
-  },
+  "message": "",
   "result": true
 }
 ```
@@ -197,31 +201,41 @@ Sent once after the process exits. Contains the complete accumulated log:
 {
   "type": "task_postprocess_end",
   "id": "534574",
-  "tasktoken": "eDcCm5yy...",
   "message": [{
     "name": "0.png",
     "contenttype": "image/png",
     "size": "202472",
     "url": "https://cdn1.wiro.ai/.../0.png"
   }],
-  "result": true
+  "result": true,
+  "success": true,
+  "terminal": true,
+  "exitCode": 0
 }
 
 // LLM model — structured raw content
 {
   "type": "task_postprocess_end",
   "id": "534574",
-  "tasktoken": "eDcCm5yy...",
   "message": [{
     "contenttype": "raw",
     "content": {
       "prompt": "Explain quantum computing",
-      "raw": "Quantum computing uses qubits...",
-      "thinking": [],
-      "answer": ["Quantum computing uses qubits..."]
+      "segments": [
+        { "type": "answer", "text": "Quantum computing uses qubits..." }
+      ],
+      "finishreason": "stop",
+      "usage": {
+        "input_tokens": 18,
+        "output_tokens": 11,
+        "total_tokens": 29
+      }
     }
   }],
-  "result": true
+  "result": true,
+  "success": true,
+  "terminal": true,
+  "exitCode": 0
 }
 ```
 
@@ -234,7 +248,6 @@ These events are exclusive to realtime models ([voice conversation](/docs/realti
 {
   "type": "task_stream_ready",
   "id": "534574",
-  "tasktoken": "eDcCm5yy...",
   "result": true
 }
 
@@ -242,7 +255,6 @@ These events are exclusive to realtime models ([voice conversation](/docs/realti
 {
   "type": "task_stream_end",
   "id": "534574",
-  "tasktoken": "eDcCm5yy...",
   "result": true
 }
 
@@ -250,13 +262,16 @@ These events are exclusive to realtime models ([voice conversation](/docs/realti
 {
   "type": "task_cost",
   "id": "534574",
-  "tasktoken": "eDcCm5yy...",
   "turnCost": 0.002,
   "cumulativeCost": 0.012,
   "usage": { "input_tokens": 150, "output_tokens": 89 },
   "result": true
 }
 ```
+
+`task_cost.usage` is the provider-specific realtime usage payload for that
+turn. It is separate from the normalized structured finite-LLM `message.usage`
+contract described above and can omit `total_tokens` or detail objects.
 
 ## Binary Frames
 
@@ -639,21 +654,20 @@ channel.stream.listen((message) {
 
 ```json
 // task_queue
-{"type": "task_queue", "tasktoken": "eDcCm5yy..."}
+{"type": "task_queue", "id": "534574", "message": null}
 
 // task_start
-{"type": "task_start", "tasktoken": "eDcCm5yy..."}
+{"type": "task_start", "id": "534574", "message": null}
 
 // task_output (streaming log)
-{"type": "task_output", "tasktoken": "eDcCm5yy...", "message": "Step 1/10..."}
+{"type": "task_output", "id": "534574", "message": "Step 1/10..."}
 
 // task_postprocess_end (outputs ready)
-{"type": "task_postprocess_end", "tasktoken": "eDcCm5yy...", "message": [
-  {"name": "0.png", "url": "https://cdn1.wiro.ai/.../0.png", "size": "202472"}
-]}
+{"type": "task_postprocess_end", "id": "534574", "success": true, "exitCode": 0,
+ "message": [{"name": "0.png", "url": "https://cdn1.wiro.ai/.../0.png"}]}
 
 // task_end
-{"type": "task_end", "tasktoken": "eDcCm5yy..."}
+{"type": "task_end", "id": "534574", "terminal": false}
 ```
 
 ## Agent WebSocket Events

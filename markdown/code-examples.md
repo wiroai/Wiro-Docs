@@ -43,8 +43,9 @@ RUN_RESPONSE=$(curl -s -X POST "$BASE_URL/Run/{owner-slug}/{model-slug}" \
   -H "x-api-key: $API_KEY" \
   -d '{"prompt": "A cyberpunk cityscape at night", "width": 1024, "height": 1024}')
 
-TASK_TOKEN=$(echo $RUN_RESPONSE | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['taskid'])")
-echo "Task ID: $TASK_TOKEN"
+TASK_ID=$(echo "$RUN_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['taskid'])")
+TASK_TOKEN=$(echo "$RUN_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['socketaccesstoken'])")
+echo "Task ID: $TASK_ID"
 
 # 2. Poll for results
 while true; do
@@ -53,15 +54,15 @@ while true; do
     -H "x-api-key: $API_KEY" \
     -d "{\"tasktoken\": \"$TASK_TOKEN\"}")
 
-  STATUS=$(echo $TASK_RESPONSE | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['status'])")
+  STATUS=$(echo "$TASK_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['tasklist'][0]['status'])")
   echo "Status: $STATUS"
 
-  if [ "$STATUS" = "end" ]; then
+  if [ "$STATUS" = "task_postprocess_end" ]; then
     echo "Done! Output:"
     echo $TASK_RESPONSE | python3 -m json.tool
     break
-  elif [ "$STATUS" = "error" ] || [ "$STATUS" = "cancel" ]; then
-    echo "Task failed or cancelled"
+  elif [ "$STATUS" = "task_cancel" ]; then
+    echo "Task cancelled"
     break
   fi
 
@@ -95,8 +96,8 @@ run_resp = requests.post(
     }
 )
 run_data = run_resp.json()
-task_token = run_data["data"]["taskid"]
-print(f"Task ID: {task_token}")
+task_token = run_data["socketaccesstoken"]
+print(f"Task ID: {run_data['taskid']}")
 
 # 2. Poll for results
 while True:
@@ -105,15 +106,15 @@ while True:
         headers=headers,
         json={"tasktoken": task_token}
     )
-    task = task_resp.json()["data"]
+    task = task_resp.json()["tasklist"][0]
     status = task["status"]
     print(f"Status: {status}")
 
-    if status == "end":
-        print("Done! Output:", task.get("output"))
+    if status == "task_postprocess_end":
+        print("Done! Outputs:", task.get("outputs"))
         break
-    elif status in ("error", "cancel"):
-        print("Task failed or cancelled")
+    elif status == "task_cancel":
+        print("Task cancelled")
         break
 
     time.sleep(3)
@@ -144,8 +145,8 @@ async function main() {
     },
     { headers }
   );
-  const taskToken = runResp.data.data.taskid;
-  console.log('Task ID:', taskToken);
+  const taskToken = runResp.data.socketaccesstoken;
+  console.log('Task ID:', runResp.data.taskid);
 
   // 2. Poll for results
   while (true) {
@@ -154,15 +155,16 @@ async function main() {
       { tasktoken: taskToken },
       { headers }
     );
-    const { status, output } = taskResp.data.data;
+    const task = taskResp.data.tasklist[0];
+    const { status } = task;
     console.log('Status:', status);
 
-    if (status === 'end') {
-      console.log('Done! Output:', output);
+    if (status === 'task_postprocess_end') {
+      console.log('Done! Outputs:', task.outputs);
       break;
     }
-    if (status === 'error' || status === 'cancel') {
-      console.log('Task failed or cancelled');
+    if (status === 'task_cancel') {
+      console.log('Task cancelled');
       break;
     }
 
@@ -203,24 +205,25 @@ $runResp = apiPost("$baseUrl/Run/{owner-slug}/{model-slug}", [
     'width' => 1024,
     'height' => 1024,
 ], $apiKey);
-$taskToken = $runResp['data']['taskid'];
-echo "Task ID: $taskToken\n";
+$taskToken = $runResp['socketaccesstoken'];
+echo "Task ID: {$runResp['taskid']}\n";
 
 // 2. Poll for results
 while (true) {
     $taskResp = apiPost("$baseUrl/Task/Detail", [
         'tasktoken' => $taskToken,
     ], $apiKey);
-    $status = $taskResp['data']['status'];
+    $task = $taskResp['tasklist'][0];
+    $status = $task['status'];
     echo "Status: $status\n";
 
-    if ($status === 'end') {
-        echo "Done! Output:\n";
-        print_r($taskResp['data']['output']);
+    if ($status === 'task_postprocess_end') {
+        echo "Done! Outputs:\n";
+        print_r($task['outputs']);
         break;
     }
-    if (in_array($status, ['error', 'cancel'])) {
-        echo "Task failed or cancelled\n";
+    if ($status === 'task_cancel') {
+        echo "Task cancelled\n";
         break;
     }
 
@@ -248,8 +251,8 @@ var runResp = await http.PostAsJsonAsync($"{baseUrl}/Run/{owner-slug}/{model-slu
     height = 1024
 });
 var runData = await runResp.Content.ReadFromJsonAsync<JsonElement>();
-var taskToken = runData.GetProperty("data").GetProperty("taskid").GetString();
-Console.WriteLine($"Task ID: {taskToken}");
+var taskToken = runData.GetProperty("socketaccesstoken").GetString();
+Console.WriteLine($"Task ID: {runData.GetProperty("taskid").GetString()}");
 
 // 2. Poll for results
 while (true) {
@@ -257,16 +260,17 @@ while (true) {
         tasktoken = taskToken
     });
     var taskData = await taskResp.Content.ReadFromJsonAsync<JsonElement>();
-    var status = taskData.GetProperty("data").GetProperty("status").GetString();
+    var task = taskData.GetProperty("tasklist")[0];
+    var status = task.GetProperty("status").GetString();
     Console.WriteLine($"Status: {status}");
 
-    if (status == "end") {
+    if (status == "task_postprocess_end") {
         Console.WriteLine("Done!");
-        Console.WriteLine(taskData.GetProperty("data").GetProperty("output").ToString());
+        Console.WriteLine(task.GetProperty("outputs").ToString());
         break;
     }
-    if (status == "error" || status == "cancel") {
-        Console.WriteLine("Task failed or cancelled");
+    if (status == "task_cancel") {
+        Console.WriteLine("Task cancelled");
         break;
     }
 
@@ -300,23 +304,22 @@ let runResp = try await apiPost("/Run/{owner-slug}/{model-slug}", body: [
     "width": 1024,
     "height": 1024
 ])
-let runData = runResp["data"] as! [String: Any]
-let taskToken = runData["taskid"] as! String
-print("Task ID: \(taskToken)")
+let taskToken = runResp["socketaccesstoken"] as! String
+print("Task ID: \(runResp["taskid"] ?? "")")
 
 // 2. Poll for results
 while true {
     let taskResp = try await apiPost("/Task/Detail", body: ["tasktoken": taskToken])
-    let taskData = taskResp["data"] as! [String: Any]
+    let taskData = (taskResp["tasklist"] as! [[String: Any]])[0]
     let status = taskData["status"] as! String
     print("Status: \(status)")
 
-    if status == "end" {
-        print("Done! Output: \(taskData["output"] ?? "")")
+    if status == "task_postprocess_end" {
+        print("Done! Outputs: \(taskData["outputs"] ?? [])")
         break
     }
-    if status == "error" || status == "cancel" {
-        print("Task failed or cancelled")
+    if status == "task_cancel" {
+        print("Task cancelled")
         break
     }
 
@@ -353,21 +356,22 @@ Future<void> main() async {
     'width': 1024,
     'height': 1024,
   });
-  final taskToken = runResp['data']['taskid'];
-  print('Task ID: $taskToken');
+  final taskToken = runResp['socketaccesstoken'];
+  print('Task ID: ${runResp['taskid']}');
 
   // 2. Poll for results
   while (true) {
     final taskResp = await apiPost('/Task/Detail', {'tasktoken': taskToken});
-    final status = taskResp['data']['status'];
+    final task = taskResp['tasklist'][0];
+    final status = task['status'];
     print('Status: $status');
 
-    if (status == 'end') {
-      print('Done! Output: ${taskResp['data']['output']}');
+    if (status == 'task_postprocess_end') {
+      print('Done! Outputs: ${task['outputs']}');
       break;
     }
-    if (status == 'error' || status == 'cancel') {
-      print('Task failed or cancelled');
+    if (status == 'task_cancel') {
+      print('Task cancelled');
       break;
     }
 
@@ -410,23 +414,23 @@ fun main() {
         "width" to 1024,
         "height" to 1024
     ))
-    val taskToken = runResp.getAsJsonObject("data").get("taskid").asString
-    println("Task ID: $taskToken")
+    val taskToken = runResp.get("socketaccesstoken").asString
+    println("Task ID: ${runResp.get("taskid").asString}")
 
     // 2. Poll for results
     while (true) {
         val taskResp = apiPost("/Task/Detail", mapOf("tasktoken" to taskToken))
-        val taskData = taskResp.getAsJsonObject("data")
+        val taskData = taskResp.getAsJsonArray("tasklist")[0].asJsonObject
         val status = taskData.get("status").asString
         println("Status: $status")
 
         when (status) {
-            "end" -> {
-                println("Done! Output: ${taskData.get("output")}")
+            "task_postprocess_end" -> {
+                println("Done! Outputs: ${taskData.get("outputs")}")
                 return
             }
-            "error", "cancel" -> {
-                println("Task failed or cancelled")
+            "task_cancel" -> {
+                println("Task cancelled")
                 return
             }
         }
@@ -481,25 +485,24 @@ func main() {
 		"width":  1024,
 		"height": 1024,
 	})
-	runData := runResp["data"].(map[string]interface{})
-	taskToken := runData["taskid"].(string)
-	fmt.Printf("Task ID: %s\n", taskToken)
+	taskToken := runResp["socketaccesstoken"].(string)
+	fmt.Printf("Task ID: %s\n", runResp["taskid"].(string))
 
 	// 2. Poll for results
 	for {
 		taskResp, _ := apiPost("/Task/Detail", map[string]interface{}{
 			"tasktoken": taskToken,
 		})
-		taskData := taskResp["data"].(map[string]interface{})
+		taskData := taskResp["tasklist"].([]interface{})[0].(map[string]interface{})
 		status := taskData["status"].(string)
 		fmt.Printf("Status: %s\n", status)
 
 		switch status {
-		case "end":
-			fmt.Printf("Done! Output: %v\n", taskData["output"])
+		case "task_postprocess_end":
+			fmt.Printf("Done! Outputs: %v\n", taskData["outputs"])
 			return
-		case "error", "cancel":
-			fmt.Println("Task failed or cancelled")
+		case "task_cancel":
+			fmt.Println("Task cancelled")
 			return
 		}
 

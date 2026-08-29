@@ -62,7 +62,7 @@
     <meta name="theme-color" content="#f9f8f5" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,450;14..32,500;14..32,550;14..32,600;14..32,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,450;14..32,500;14..32,550;14..32,600;14..32,700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="css/lineicons-free.css?v=2026080302" />
     <link rel="stylesheet" href="css/docs.css?v=2026052625" />
     <link rel="stylesheet" href="css/wiro-foundation.css?v=2026080302" />
@@ -234,7 +234,7 @@
                   <a href="/docs/tasks" class="docs-nav-link" data-section="tasks"><i class="lni lni-menu-hamburger-1"></i><span>Tasks</span></a>
                 </li>
                 <li>
-                  <a href="/docs/llm-chat-streaming" class="docs-nav-link" data-section="llm-chat-streaming"><i class="lni lni-chat-bubble-2"></i><span>LLM & Chat Streaming</span></a>
+                  <a href="/docs/llm-chat-streaming" class="docs-nav-link" data-section="llm-chat-streaming"><i class="lni lni-chat-bubble-2"></i><span>LLM &amp; Chat Streaming</span></a>
                 </li>
                 <li>
                   <a href="/docs/websocket" class="docs-nav-link" data-section="websocket"><i class="lni lni-bolt-2"></i><span>WebSocket</span></a>
@@ -285,7 +285,7 @@
                   <a href="/docs/agent-webhooks" class="docs-nav-link" data-section="agent-webhooks"><i class="lni lni-link-2-angular-right"></i><span>Agent Webhooks</span></a>
                 </li>
                 <li>
-                  <a href="/docs/agent-credentials" class="docs-nav-link" data-section="agent-credentials"><i class="lni lni-key-1"></i><span>Agent Credentials & OAuth</span></a>
+                  <a href="/docs/agent-credentials" class="docs-nav-link" data-section="agent-credentials"><i class="lni lni-key-1"></i><span>Agent Credentials &amp; OAuth</span></a>
                 </li>
                 <li>
                   <a href="/docs/agent-skills" class="docs-nav-link" data-section="agent-skills"><i class="lni lni-pencil-1"></i><span>Agent Skills</span></a>
@@ -397,7 +397,7 @@
             </div>
 
             <div class="docs-nav-group">
-              <h4 class="docs-nav-group-title">Organizations & Teams</h4>
+              <h4 class="docs-nav-group-title">Organizations &amp; Teams</h4>
               <ul class="docs-nav-links">
                 <li>
                   <a href="/docs/organizations-overview" class="docs-nav-link" data-section="organizations-overview"><i class="lni lni-user-multiple-4"></i><span>Overview</span></a>
@@ -406,7 +406,7 @@
                   <a href="/docs/organizations-managing-teams" class="docs-nav-link" data-section="organizations-managing-teams"><i class="lni lni-file-plus-circle"></i><span>Managing Teams</span></a>
                 </li>
                 <li>
-                  <a href="/docs/organizations-billing" class="docs-nav-link" data-section="organizations-billing"><i class="lni lni-dollar"></i><span>Team Billing & Spending</span></a>
+                  <a href="/docs/organizations-billing" class="docs-nav-link" data-section="organizations-billing"><i class="lni lni-dollar"></i><span>Team Billing &amp; Spending</span></a>
                 </li>
                 <li>
                   <a href="/docs/organizations-api-access" class="docs-nav-link" data-section="organizations-api-access"><i class="lni lni-key-1"></i><span>Team API Access</span></a>
@@ -1259,6 +1259,7 @@
                       /Run/{owner-slug}/{model-slug}
                     </h2>
                     <p>Starts an AI model run. The endpoint accepts model-specific parameters and returns a <strong>task ID</strong> you can use to track progress via <a href="/docs/tasks" class="docs-link">polling</a>, <a href="/docs/websocket" class="docs-link">WebSocket</a>, or <strong>webhook</strong> by providing a <code>callbackUrl</code> parameter — Wiro will POST the result to your URL when the task completes.</p>
+                    <p>If you want one HTTP request to wait for the finished task, use <a href="#run-sync" class="docs-link">POST /Run/{owner}/{model}/sync</a> on this same API host. For OpenAI, Anthropic, or Cursor LLM protocols, see the <a href="/docs/completions-api" class="docs-link">Direct LLM Gateway</a>.</p>
                   </section>
 
                   <section id="content-types">
@@ -1322,6 +1323,188 @@
 }</code></pre>
                   </section>
 
+                  <section id="run-llm-tools">
+                    <h2>Direct LLM turns and tool calls</h2>
+                    <p>Models whose Tool Detail response includes the <code>llm-tool-call</code> category accept six optional ordinary model parameters on both asynchronous Run and <code>/sync</code>: <code>messages</code>, <code>tools</code>, <code>tool_choice</code>, <code>parallel_tool_calls</code>, <code>previousTaskToken</code>, and <code>toolOutputs</code>. Tool Detail marks them <code>advanced: true</code> only to place them in the Advanced section of catalog-driven UIs; they use the same <code>parameters</code> object and Run transport as every other model parameter. Send JSON values directly, and use exactly one of <code>prompt</code> or non-empty <code>messages</code> on a first turn.</p>
+                    <pre><code>{
+  "messages": [{
+    "role": "user",
+    "content": "What is the weather in Paris?"
+  }],
+  "tools": [{
+    "type": "function",
+    "function": {
+      "name": "get_weather",
+      "description": "Return current weather for a city",
+      "parameters": {
+        "type": "object",
+        "properties": { "city": { "type": "string" } },
+        "required": ["city"],
+        "additionalProperties": false
+      },
+      "strict": true
+    }
+  }],
+  "tool_choice": "auto",
+  "parallel_tool_calls": true,
+  "session_id": "weather-session-1"
+}</code></pre>
+                    <pre><code>// Node.js
+const response = await fetch(
+  "https://api.wiro.ai/v1/Run/claude/fable-5/sync",
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": process.env.WIRO_API_KEY
+    },
+    body: JSON.stringify({
+      messages: [{
+        role: "user",
+        content: "What is the weather in Paris?"
+      }],
+      tools: [{
+        type: "function",
+        function: {
+          name: "get_weather",
+          parameters: {
+            type: "object",
+            properties: { city: { type: "string" } },
+            required: ["city"]
+          }
+        }
+      }],
+      tool_choice: "auto",
+      parallel_tool_calls: true,
+      session_id: "weather-session-1",
+    })
+  }
+);</code></pre>
+                    <p>Wiro never executes caller-defined tools. A tool request is returned in <code>outputs[].content.segments</code> as its own ordered timeline item. Function calls use <code>arguments</code>, custom grammar/free-form calls use <code>input</code>, and both include stable <code>id</code>, <code>call_id</code>, <code>name</code>, and <code>status</code> fields. Execute a call only when its status is <code>completed</code> and the turn's <code>finishreason</code> is <code>tool_calls</code>; <code>incomplete</code> calls may contain truncated input and must never be executed.</p>
+                    <p>The same structured LLM fields appear in three response locations:</p>
+                    <ul>
+                      <li>WebSocket <code>task_output</code>: <code>message.segments</code> is the live cumulative snapshot; final-only metadata may be absent while generation is still running.</li>
+                      <li>WebSocket <code>task_postprocess_end</code>: <code>message[].content</code> contains the persisted final output.</li>
+                      <li>Task Detail and non-streaming <code>/sync</code>: <code>tasklist[0].outputs[].content</code> contains the persisted final output.</li>
+                    </ul>
+                    <p>Inside that content:</p>
+                    <ul>
+                      <li><code>segments</code> is the authoritative ordered text/tool-call timeline.</li>
+                      <li><code>finishreason</code> explains why generation stopped: <code>stop</code>, <code>tool_calls</code>, <code>length</code>, <code>content_filter</code>, or <code>error</code>. Handle <code>length</code>, <code>content_filter</code>, and <code>error</code> as non-normal model completion.</li>
+                      <li><code>usage</code> contains normalized token and server-tool counters. <code>input_tokens</code> includes cache reads and cache writes; <code>output_tokens</code> includes reasoning; and <code>total_tokens</code> is exactly <code>input_tokens + output_tokens</code>. Therefore, do not add detail counters to the total. Optional <code>input_tokens_details</code> can include <code>cached_tokens</code>, <code>cache_write_tokens</code>, five-minute and one-hour cache-write subsets, and text/audio/image/video counters. Optional <code>output_tokens_details</code> can include reasoning, text/audio/image/video, and accepted/rejected prediction counters. Optional <code>server_tool_use</code> contains request counts rather than tokens. Providers omit unsupported counters. There is no cached-output counter because prompt caching applies to input context, not previously generated output. <code>usage</code> is informational and is used by protocol-compatible LLM responses; use the task-level <code>totalcost</code> for the actual billed amount.</li>
+                    </ul>
+                    <p>For a final <code>llm-tool-call</code> result, rely on <code>pexit: "0"</code> and require <code>finishreason</code>. Structured-output validation failures set a non-zero <code>pexit</code>.</p>
+                    <pre><code>{
+  "segments": [{
+    "type": "function_call",
+    "id": "fc_01",
+    "call_id": "call_01",
+    "name": "get_weather",
+    "arguments": "{\"city\":\"Paris\"}",
+    "status": "completed"
+  }],
+  "finishreason": "tool_calls",
+  "usage": {
+    "input_tokens": 84,
+    "input_tokens_details": {
+      "cached_tokens": 24,
+      "cache_write_tokens": 8,
+      "cache_write_5m_tokens": 8,
+      "text_tokens": 84
+    },
+    "output_tokens": 21,
+    "output_tokens_details": {
+      "reasoning_tokens": 9,
+      "text_tokens": 21
+    },
+    "total_tokens": 105,
+    "server_tool_use": {
+      "web_search_requests": 1
+    }
+  }
+}</code></pre>
+                    <p>For tool-output continuation, execute the tool in your application and send another Run request with the first request's returned <code>socketaccesstoken</code> as <code>previousTaskToken</code>, the same <code>session_id</code>, and one matching entry in <code>toolOutputs</code> for every executed call. Do not send <code>prompt</code>, <code>messages</code>, <code>tools</code>, <code>tool_choice</code>, <code>parallel_tool_calls</code>, or <code>response_format</code> on this continuation.</p>
+                    <pre><code>{
+  "previousTaskToken": "task-token",
+  "toolOutputs": [{
+    "call_id": "call_01",
+    "output": {
+      "temperature_c": 12,
+      "condition": "rain"
+    }
+  }],
+  "session_id": "weather-session-1"
+}</code></pre>
+                    <h3>Stateful turn continuation</h3>
+                    <p>For a stateful follow-up that is not submitting tool outputs, pass the prior completed Run output's <code>socketaccesstoken</code> as <code>previousTaskToken</code>, keep the same <code>session_id</code>, and provide exactly one new input: a non-blank <code>prompt</code> or a non-empty <code>messages</code> array. Normal <code>tools</code> and <code>tool_choice</code> fields remain available for the new turn. Do not send <code>toolOutputs</code>.</p>
+                    <p>Use the <code>socketaccesstoken</code> returned by a completed task from the same project, model, and session.</p>
+                    <pre><code>{
+  "previousTaskToken": "task-token",
+  "prompt": "Give me one concrete example.",
+  "session_id": "weather-session-1"
+}</code></pre>
+                    <p>For OpenAI-compatible clients, <code>previous_response_id</code> remains the preferred public field on <code>/v1/responses</code>; do not send <code>previousTaskToken</code> to that endpoint. Direct asynchronous Run and <code>/sync</code> clients use <code>previousTaskToken</code>.</p>
+                    <p>For cumulative SSE or WebSocket snapshots, replace the previous <code>segments</code> array. Do not append the complete array again. A call can move from <code>in_progress</code> to <code>completed</code> while keeping the same IDs. The final <code>pexit: "0"</code> remains the success indicator.</p>
+                  </section>
+
+                  <section id="run-sync">
+                    <h2>
+                      <span class="endpoint-badge post">POST</span>
+                      /Run/{owner-slug}/{model-slug}/sync
+                    </h2>
+                    <p>Wait for any finite model on <code>https://api.wiro.ai/v1</code>. This starts the same billed task as asynchronous Run, then returns final Task Detail JSON or streams generic task events. It is not an OpenAI or Anthropic protocol. Training and realtime models are rejected.</p>
+                    <pre><code>curl -X POST \
+  "https://api.wiro.ai/v1/Run/claude/fable-5/sync" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "prompt": "Reply with one concise sentence about Türkiye.",
+    "session_id": "fable-sync-example",
+    "effort": "medium",
+    "webSearch": "false",
+    "maxOutputTokens": 128
+  }'</code></pre>
+                    <p>Without streaming, the request stays open and returns Task Detail-compatible JSON. Check <code>tasklist[0].pexit</code>; <code>"0"</code> means the model task succeeded. For LLM tasks, <code>outputs</code> contains the structured result and <code>debugoutput</code> contains merged plain text.</p>
+                    <pre><code>{
+  "result": true,
+  "total": "1",
+  "tasklist": [{
+    "id": "2221",
+    "status": "task_postprocess_end",
+    "pexit": "0",
+    "outputs": []
+  }],
+  "errors": []
+}</code></pre>
+                    <p>Add <code>?stream=true</code> or send <code>Accept: text/event-stream</code> for named generic events: <code>start</code>, cumulative task snapshots as <code>task_output</code>, a final <code>done</code>, and periodic <code>: keep-alive</code> comments. Generic SSE does not use <code>[DONE]</code>. LLM <code>task_output</code> events contain one ordered <code>segments</code> array. Text items use <code>thinking</code> or <code>answer</code>; tool items use <code>function_call</code> or <code>custom_tool_call</code>.</p>
+                    <pre><code>event: task_output
+data: {
+  "id": "2221",
+  "status": "task_output",
+  "pexit": null,
+  "segments": [
+    { "type": "thinking", "text": "Checking the constraints..." },
+    { "type": "answer", "text": "Here is the result." }
+  ]
+}</code></pre>
+                    <p>Each LLM <code>segments</code> value is the full accumulated ordered snapshot, not only the latest delta. Replace your previously stored segment list with each event instead of appending the whole array again. While generation is active, the final item's <code>text</code>, <code>arguments</code>, or <code>input</code> grows in place as chunks arrive; render each snapshot immediately instead of waiting for <code>done</code>. A new item is added when the output phase changes. Render <code>thinking</code> items as optional reasoning progress, <code>answer</code> items as the model response, and tool items as application-executed calls. The final <code>done</code> event contains Task Detail-compatible JSON; inspect <code>tasklist[0].pexit</code> to determine success.</p>
+                    <pre><code>curl -N -X POST \
+  "https://api.wiro.ai/v1/Run/claude/fable-5/sync?stream=true" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Accept: text/event-stream" \
+  -d '{
+    "prompt": "Reply with one concise sentence about Türkiye.",
+    "session_id": "fable-stream-example",
+    "effort": "medium",
+    "webSearch": "false",
+    "maxOutputTokens": 128
+  }'</code></pre>
+                    <p>Disconnecting or reaching the 40-minute wait timeout ends only the synchronous wait; the task keeps running. A non-streaming timeout returns HTTP <code>504</code> with <code>taskid</code> and <code>socketaccesstoken</code> so you can resume tracking it through Task Detail or WebSocket. Only <code>task_postprocess_end</code> and <code>task_cancel</code> close the wait. <code>task_error</code> does not close a task. Errors use Wiro's <code>result</code>/<code>errors</code> envelope. Sync is an additional execution method; asynchronous Run remains unchanged.</p>
+                    <pre><code>/v1/Run/{owner-slug}/{model-slug}/sync?stream=true</code></pre>
+                    <p>OpenAI Chat/Responses, Anthropic Messages, and Cursor clients belong on <code>https://llm.wiro.ai</code>. See the <a href="/docs/completions-api" class="docs-link">Direct LLM Gateway</a>.</p>
+                  </section>
+
                   <section id="run-flow">
                     <h2>Full Flow</h2>
                     <p>The typical workflow after calling the Run endpoint:</p>
@@ -1329,7 +1512,7 @@
                       <li><strong>Run</strong> — call <code>POST /Run/{owner-slug}/{model-slug}</code> and receive a task ID</li>
                       <li><strong>Track</strong> — connect via WebSocket or poll <code>POST /Task/Detail</code></li>
                       <li><strong>Receive</strong> — get outputs as the model produces them (streaming or final)</li>
-                      <li><strong>Complete</strong> — task reaches <code>end</code> status with full results</li>
+                      <li><strong>Complete</strong> — task reaches <code>task_postprocess_end</code>; verify <code>pexit: "0"</code> and read its outputs</li>
                     </ol>
                     <p>
                       For real-time streaming, use the WebSocket connection with the
@@ -1353,7 +1536,7 @@
                     {
                       "label": "Python",
                       "language": "python",
-                      "code": "import requests\n\nheaders = {\n    \"x-api-key\": \"YOUR_API_KEY\",\n    \"Content-Type\": \"application/json\"\n}\n\n# JSON request\nresponse = requests.post(\n    \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\",\n    headers=headers,\n    json={\n        \"prompt\": \"A futuristic city at sunset\",\n        \"negative_prompt\": \"blurry, low quality\",\n        \"width\": 1024,\n        \"height\": 1024\n    }\n)\ndata = response.json()\ntask_id = data[\"data\"][\"taskid\"]\nsocket_token = data[\"data\"][\"socketaccesstoken\"]\nprint(f\"Task ID: {task_id}\")\n\n# Multipart request (file upload)\nfiles = {\"image\": open(\"photo.jpg\", \"rb\")}\nform_data = {\"scale\": \"4\"}\nresp_multi = requests.post(\n    \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\",\n    headers={\"x-api-key\": \"YOUR_API_KEY\"},\n    files=files,\n    data=form_data\n)"
+                      "code": "import requests\n\nheaders = {\n    \"x-api-key\": \"YOUR_API_KEY\",\n    \"Content-Type\": \"application/json\"\n}\n\n# JSON request\nresponse = requests.post(\n    \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\",\n    headers=headers,\n    json={\n        \"prompt\": \"A futuristic city at sunset\",\n        \"negative_prompt\": \"blurry, low quality\",\n        \"width\": 1024,\n        \"height\": 1024\n    }\n)\ndata = response.json()\ntask_id = data[\"taskid\"]\nsocket_token = data[\"socketaccesstoken\"]\nprint(f\"Task ID: {task_id}\")\n\n# Multipart request (file upload)\nfiles = {\"image\": open(\"photo.jpg\", \"rb\")}\nform_data = {\"scale\": \"4\"}\nresp_multi = requests.post(\n    \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\",\n    headers={\"x-api-key\": \"YOUR_API_KEY\"},\n    files=files,\n    data=form_data\n)"
                     },
                     {
                       "label": "Node.js",
@@ -1391,11 +1574,662 @@
                       "code": "import 'dart:convert';\nimport 'package:http/http.dart' as http;\n\nfinal response = await http.post(\n  Uri.parse('https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}'),\n  headers: {\n    'Content-Type': 'application/json',\n    'x-api-key': 'YOUR_API_KEY',\n  },\n  body: jsonEncode({\n    'prompt': 'A futuristic city at sunset',\n    'negative_prompt': 'blurry, low quality',\n    'width': 1024,\n    'height': 1024,\n  }),\n);\nprint(response.body);"
                     },
                     {
+                      "label": "curl (Sync wait)",
+                      "language": "bash",
+                      "code": "# Wait for a finite model on api.wiro.ai\ncurl -X POST \"https://api.wiro.ai/v1/Run/claude/fable-5/sync\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"prompt\": \"Reply with one concise sentence about Türkiye.\",\n    \"session_id\": \"fable-sync-example\",\n    \"effort\": \"medium\",\n    \"webSearch\": \"false\",\n    \"maxOutputTokens\": 128\n  }'"
+                    },
+                    {
+                      "label": "curl (Sync SSE)",
+                      "language": "bash",
+                      "code": "curl -N -X POST \"https://api.wiro.ai/v1/Run/claude/fable-5/sync?stream=true\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -H \"Accept: text/event-stream\" \\\n  -d '{\n    \"prompt\": \"Reply with one concise sentence about Türkiye.\",\n    \"session_id\": \"fable-stream-example\",\n    \"effort\": \"medium\",\n    \"webSearch\": \"false\",\n    \"maxOutputTokens\": 128\n  }'"
+                    },
+                    {
                       "label": "Response",
                       "language": "json",
                       "code": "{\n  \"result\": true,\n  \"errors\": [],\n  \"taskid\": \"2221\",\n  \"socketaccesstoken\": \"eDcCm5yyUfIvMFspTwww49OUfgXkQt\"\n}"
                     }
                   ]
+                </script>
+              </div>
+
+              <!-- ==================== DIRECT LLM GATEWAY ==================== -->
+              <div class="docs-page-section" data-page="completions-api" style="display: none">
+                <article class="docs-section">
+                  <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/completions-api.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/completions-api.md" download class="docs-section-md-btn">Download</a></div>
+                  <h1>Direct LLM Gateway</h1>
+                  <p class="section-subtitle">Use Wiro LLMs through OpenAI Chat Completions, OpenAI Responses, Anthropic Messages, and a beta Cursor-compatible route.</p>
+
+                  <div class="docs-callout info">
+                    <strong>Base URLs:</strong> OpenAI-compatible clients use <code>https://llm.wiro.ai/v1</code>. Clients that append <code>/v1</code> themselves, including Anthropic SDKs and Claude Code, use origin <code>https://llm.wiro.ai</code>. Cursor clients that append <code>/chat/completions</code> use <code>https://llm.wiro.ai/v1/cursor</code>. Asynchronous Run, Task, and the original Wiro File API remain on <code>https://api.wiro.ai/v1</code>; WebSocket remains on <code>wss://socket.wiro.ai/v1</code>. The Direct LLM Gateway also provides compatible <code>/v1/files</code> routes backed by the same authenticated project storage.
+                  </div>
+                  <p>The gateway uses the same Wiro task, project-access, team-policy, and billing system as the Run API. Discover a model before calling it: supported endpoints, parameters, modalities, tools, reasoning, and limits are model-specific.</p>
+                  <p>Direct LLM responses never expose Wiro Run/Sync <code>segments</code>. Each route returns only its selected protocol's native JSON and streaming events: OpenAI Chat chunks, OpenAI Responses events, Anthropic Messages events, or Chat-compatible Cursor events. OpenClaw and Hermes receive the native transport they configure.</p>
+                  <p>In this release, <code>stream: true</code> provides protocol-compatible SSE ordering after the provider request completes and the authenticated structured turn is persisted. Do not interpret first-event timing as live provider token latency.</p>
+                  <p>Model IDs use lowercase <code>owner/model</code> form. Do not send a provider-only model name: discover the exact ID and protocol capabilities first.</p>
+
+                  <section id="gateway-endpoints">
+                    <h2>Choose an endpoint</h2>
+                    <ul>
+                      <li><code>POST /v1/Run/{owner}/{project}</code> remains the asynchronous task-creation endpoint on <code>api.wiro.ai</code>.</li>
+                      <li><code>POST /v1/Run/{owner}/{project}/sync</code> is the generic finite-model wait on <code>api.wiro.ai</code>; see <a href="/docs/run-a-model" class="docs-link">Run a Model</a>. It is not a Direct LLM protocol.</li>
+                      <li><code>GET /v1/models</code> lists verified <code>llm-tool-call</code> models in the authenticated project/team context; <code>GET /v1/chat/models</code> is equivalent.</li>
+                      <li><code>GET /v1/models/{owner}/{model}</code> returns one model's contract.</li>
+                      <li><code>POST</code>, <code>GET</code>, and <code>DELETE /v1/files</code> compatibility routes use the authenticated project's existing Wiro file storage.</li>
+                      <li><code>POST /v1/chat/completions</code> uses OpenAI Chat JSON/SSE.</li>
+                      <li><code>POST /v1/responses</code> uses OpenAI Responses JSON and named SSE.</li>
+                      <li><code>POST /v1/messages</code> uses Anthropic Messages JSON/SSE.</li>
+                      <li><code>POST /v1/messages/count_tokens</code> estimates Anthropic input tokens before a run.</li>
+                      <li><code>POST /v1/cursor/chat/completions</code> is a beta compatibility route that accepts strict Responses-shaped input and returns Chat JSON/SSE.</li>
+                      <li><code>GET /v1/generation?id=...</code> returns authorized generation metadata.</li>
+                    </ul>
+                    <div class="docs-callout">
+                      <strong>Separate methods:</strong> <code>/sync</code> is a newly added generic wait method on <code>api.wiro.ai</code>; it does not replace asynchronous Run. Direct LLM routes remain separate on <code>llm.wiro.ai</code>.
+                    </div>
+                    <p>The asynchronous Run route returns <code>taskid</code> and <code>socketaccesstoken</code> immediately; retrieve its result through Task Detail, WebSocket, or a callback. The generic <code>/sync</code> wait is an additional method on <code>api.wiro.ai</code>; it does not replace asynchronous Run. Direct LLM routes remain separate on <code>llm.wiro.ai</code>.</p>
+                    <p>Training and realtime models are not accepted by <code>/sync</code> or the Direct LLM Gateway. Use their existing training or realtime APIs.</p>
+                  </section>
+
+                  <section id="gateway-authentication">
+                    <h2>Authentication</h2>
+                    <h3>Project credentials</h3>
+                    <p>Model discovery/detail, the protocol routes, and <code>/generation</code> all use the authenticated project's credentials. Compatible clients should use project Bearer authentication:</p>
+                    <ul>
+                      <li>API Key Only: <code>Authorization: Bearer YOUR_API_KEY</code></li>
+                      <li>Signature: <code>Authorization: Bearer YOUR_API_KEY:YOUR_API_SECRET</code>, or the base64 encoding of that pair</li>
+                    </ul>
+                    <p>The same endpoints also accept <code>x-api-key</code> containing either <code>YOUR_API_KEY</code> or <code>YOUR_API_KEY:YOUR_API_SECRET</code>. Direct LLM routes do not accept the Run API's <code>x-nonce</code>/<code>x-signature</code> HMAC trio. If Bearer and <code>x-api-key</code> are sent together, they must contain the same complete project credential. Mismatched keys or secrets and malformed credentials return <code>401</code> without cross-project fallback.</p>
+                    <p>Never expose a project key or secret in browser or mobile application code.</p>
+                    <p>Anthropic Messages requires <code>x-api-key</code>. Send <code>YOUR_API_KEY</code> for an API Key Only project or <code>YOUR_API_KEY:YOUR_API_SECRET</code> for a Signature project. Generic <code>/sync</code> waits stay on <code>api.wiro.ai</code> and use normal Run headers.</p>
+                    <h3>Session identifier</h3>
+                    <p><code>session_id</code> is the only public session field. It is optional on Chat Completions, Anthropic Messages, and the beta Cursor route, and must contain 1–128 letters, digits, <code>.</code>, <code>_</code>, <code>:</code>, or <code>-</code>. Reuse the same value for related turns. Wiro maps it to a project-scoped internal session; it does not replace the protocol's normal client-history requirements. Responses uses <code>previous_response_id</code> instead, and <code>/v1/messages/count_tokens</code> does not accept <code>session_id</code>.</p>
+                  </section>
+
+                  <section id="gateway-models">
+                    <h2>Discover models and capabilities</h2>
+                    <h3><span class="endpoint-badge get">GET</span> /v1/models</h3>
+                    <pre><code>curl "https://llm.wiro.ai/v1/models?search=openai%2Fgpt-5-6-sol&amp;limit=1" \
+  -H "Authorization: Bearer YOUR_API_KEY"</code></pre>
+                    <p><code>GET /v1/chat/models</code> returns the same authenticated, team-filtered list. The gateway catalog is separate from the full catalog at <code>POST /v1/Tool/List</code>.</p>
+                    <pre><code>{
+  "object": "list",
+  "data": [
+    {
+      "id": "openai/gpt-5-6-sol",
+      "canonical_slug": "openai/gpt-5-6-sol",
+      "name": "GPT 5.6 Sol by OpenAI (Vision)",
+      "description": "GPT 5.6 Sol is OpenAI's flagship reasoning and vision model for agentic coding, research, and image Q&amp;A in one chat.",
+      "context_length": 1050000,
+      "architecture": {
+        "modality": "text+image-&gt;text",
+        "input_modalities": ["text", "image"],
+        "output_modalities": ["text"]
+      },
+      "pricing": {
+        "prompt": "0.000005",
+        "completion": "0.00003"
+      },
+      "top_provider": {
+        "context_length": 1050000,
+        "max_completion_tokens": null
+      },
+      "supported_parameters": [
+        "include_reasoning",
+        "parallel_tool_calls",
+        "reasoning",
+        "response_format",
+        "structured_outputs",
+        "tool_choice",
+        "tools"
+      ],
+      "default_parameters": {},
+      "object": "model",
+      "type": "model",
+      "created": null,
+      "created_at": null,
+      "owned_by": "openai",
+      "display_name": "GPT 5.6 Sol by OpenAI (Vision)",
+      "max_input_tokens": 1050000,
+      "max_tokens": null,
+      "capabilities": {
+        "endpoints": ["anthropic", "chat", "cursor", "responses"],
+        "input_modalities": ["text", "image"],
+        "output": ["text", "reasoning", "function_calls", "custom_tool_calls"],
+        "function_tools": true,
+        "custom_tools": true,
+        "structured_outputs": true,
+        "structured_output_modes": ["json_object", "json_schema"],
+        "strict_json_schema": true,
+        "generation_controls": ["reasoning_effort"]
+      },
+      "x_wiro": {
+        "pricing_source": {
+          "name": "wiro-pricing-catalog",
+          "schema_version": 1,
+          "revision": "3a2430b5188fcaf69b5d7af1cb40d0a59062cc37",
+          "sha256": "f74c5d378dfd8b28360b2464dc2590711550df501a7c6c7f9b673db105f7798f",
+          "source_model": "openai/gpt-5.6-sol",
+          "basis": "local-rate"
+        },
+        "pricing_tiers": null
+      }
+    }
+  ],
+  "total_count": 1,
+  "links": {
+    "next": null
+  },
+  "has_more": false,
+  "first_id": "openai/gpt-5-6-sol",
+  "last_id": "openai/gpt-5-6-sol"
+}</code></pre>
+                    <p>The example is intentionally explicit about nullable values that have a Wiro source. Context, modalities, and pricing come from the audited local gateway catalog; live Run parameters and capability flags come from the selected model's current <code>Tool/Detail</code> contract. Fields without a Wiro source are omitted instead of being copied from OpenRouter with <code>null</code> placeholders. <code>pricing.prompt</code> and <code>pricing.completion</code> are USD-per-token strings. Models with tiered rates expose those exact bands in <code>x_wiro.pricing_tiers</code>. Pricing and context fields can be <code>null</code> for catalog entries without audited local metadata.</p>
+                    <p>The list accepts:</p>
+                    <ul>
+                      <li><code>search</code> (at most 256 bytes), <code>order=asc|desc</code>, and <code>limit=1..1000</code></li>
+                      <li><code>after</code>/<code>after_id</code> or <code>before</code>/<code>before_id</code> cursors</li>
+                    </ul>
+                    <p>The default order is ascending and the default limit is <code>1000</code>. <code>total_count</code> counts the filtered catalog. <code>links.next</code> is a relative next-page URL or <code>null</code>.</p>
+                    <p>The discovery list contains only team-allowed models verified with the <code>llm-tool-call</code> category. Other LLMs are not advertised by this endpoint; when you already know an exact <code>owner/model</code> ID, you can still submit it to a compatible Direct LLM route or use the normal Run API.</p>
+                    <p>Before each request:</p>
+                    <ol>
+                      <li>Confirm <code>anthropic</code>, <code>chat</code>, <code>cursor</code>, or <code>responses</code> in <code>capabilities.endpoints</code>.</li>
+                      <li>Use <code>supported_parameters</code> to gate optional public request controls. Required protocol fields such as <code>model</code>, <code>input</code>, <code>messages</code>, or Anthropic <code>max_tokens</code> are not repeated there.</li>
+                      <li>Check <code>capabilities.input_modalities</code> for canonical <code>text</code>, <code>image</code>, or <code>document</code>. OpenRouter-style <code>architecture.input_modalities</code> represents documents as <code>file</code>.</li>
+                      <li>Check <code>capabilities.output</code>, <code>function_tools</code>, <code>custom_tools</code>, <code>structured_outputs</code>, <code>structured_output_modes</code>, <code>strict_json_schema</code>, and <code>generation_controls</code>.</li>
+                      <li>Treat <code>context_length</code>, <code>max_input_tokens</code>, <code>max_tokens</code>, pricing, and usage as model-specific. A nullable field is not permission to infer a value from another model.</li>
+                    </ol>
+                    <p>Every discoverable model currently publishes the same four endpoint labels. Capability differences are expressed through modalities, supported parameters, tool flags, structured-output flags, reasoning controls, and limits.</p>
+                    <h3><span class="endpoint-badge get">GET</span> /v1/models/{owner}/{model}</h3>
+                    <pre><code>curl "https://llm.wiro.ai/v1/models/openai/gpt-5-6-sol" \
+  -H "Authorization: Bearer YOUR_API_KEY"</code></pre>
+                    <p>The detail route returns the same complete model object as the matching list entry. Query parameters are rejected on detail routes. An unavailable, non-gateway, or team-blocked model returns <code>model_not_found</code> without exposing private catalog state.</p>
+                  </section>
+
+                  <section id="gateway-sync">
+                    <h2>Generic finite task completion</h2>
+                    <p><code>POST /v1/Run/{owner}/{project}/sync</code> lives on <code>https://api.wiro.ai/v1</code>, not this gateway. See <a href="/docs/run-a-model" class="docs-link">Run a Model</a> for JSON wait, SSE, and timeout recovery. Direct LLM clients should use Chat, Responses, Messages, or Cursor below.</p>
+                  </section>
+
+                  <section id="gateway-usage">
+                    <h2>Usage contract</h2>
+                    <p>When the upstream model reports usage, Wiro returns normalized counters in the selected protocol's native shape:</p>
+                    <ul>
+                      <li>Chat and Cursor use <code>prompt_tokens</code>, optional <code>prompt_tokens_details</code>, <code>completion_tokens</code>, optional <code>completion_tokens_details</code>, and <code>total_tokens</code>.</li>
+                      <li>Responses uses <code>input_tokens</code>, <code>input_tokens_details</code>, <code>output_tokens</code>, <code>output_tokens_details</code>, and <code>total_tokens</code>.</li>
+                      <li>Anthropic Messages uses cache-exclusive <code>input_tokens</code>, <code>output_tokens</code>, optional <code>cache_read_input_tokens</code>, optional <code>cache_creation_input_tokens</code>, and optional five-minute/one-hour <code>cache_creation</code> detail.</li>
+                    </ul>
+                    <p>For Chat and Responses, input/prompt totals are cache-inclusive. Their input detail objects (optional on Chat/Cursor, always present on Responses) can identify <code>cached_tokens</code>, <code>cache_write_tokens</code>, <code>cache_write_5m_tokens</code>, <code>cache_write_1h_tokens</code>, and reported text/audio/image/video tokens. Output/completion totals are reasoning-inclusive; the corresponding output detail can identify <code>reasoning_tokens</code>, reported text/audio/image/video tokens, and accepted/rejected prediction tokens. Cache TTL values are subsets of <code>cache_write_tokens</code>, and all detail counters are already included in their parent total. Never add them to <code>total_tokens</code>.</p>
+                    <p>There is intentionally no <code>cached_output_tokens</code> field. Provider prompt caches reuse input context; they do not report previously generated output as cached output usage.</p>
+                    <p>Optional <code>server_tool_use</code> values count requests, not tokens. Providers omit unsupported counters, so clients must not require every detail key. Chat, Cursor, and Responses expose Wiro's billed amount as <code>usage.cost</code>; Anthropic exposes it as <code>usage.cost_usd</code>. The asynchronous Run/Task contract keeps the billed amount at task-level <code>totalcost</code>.</p>
+                  </section>
+
+                  <section id="gateway-files">
+                    <h2>Files compatibility</h2>
+                    <p>The gateway's Files routes are a compatibility view over the authenticated Wiro project's existing upload folder. Uploads, lists, retrieval, and deletion use the same storage as <code>File/Upload</code>, <code>File/List</code>, and <code>File/Delete</code> on <code>api.wiro.ai</code>; the gateway does not create a second file database.</p>
+                    <p>The supported routes are:</p>
+                    <div class="table-wrapper">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Method</th>
+                            <th>Route</th>
+                            <th>Behavior</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td><span class="endpoint-badge post">POST</span></td>
+                            <td><code>/v1/files</code></td>
+                            <td>Uploads one multipart field named <code>file</code></td>
+                          </tr>
+                          <tr>
+                            <td><span class="endpoint-badge get">GET</span></td>
+                            <td><code>/v1/files</code></td>
+                            <td>Lists files in the authenticated project's upload folder</td>
+                          </tr>
+                          <tr>
+                            <td><span class="endpoint-badge get">GET</span></td>
+                            <td><code>/v1/files/{file_id}</code></td>
+                            <td>Returns file metadata</td>
+                          </tr>
+                          <tr>
+                            <td><span class="endpoint-badge get">GET</span></td>
+                            <td><code>/v1/files/{file_id}/content</code></td>
+                            <td>Checks ownership, then redirects with <code>307</code> to the validated public CDN URL</td>
+                          </tr>
+                          <tr>
+                            <td><span class="endpoint-badge delete">DELETE</span></td>
+                            <td><code>/v1/files/{file_id}</code></td>
+                            <td>Deletes the project file</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    <p>File IDs use <code>file-...</code> form and are valid only inside the project whose credentials created or listed them. A missing, deleted, or foreign ID returns <code>file_not_found</code>; the gateway never falls back to another project.</p>
+
+                    <h3>OpenAI Files</h3>
+                    <p>OpenAI clients use Bearer authentication. The only supported OpenAI purpose is <code>assistants</code>:</p>
+                    <pre><code>import fs from 'node:fs';
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  apiKey: process.env.WIRO_BEARER_CREDENTIAL,
+  baseURL: 'https://llm.wiro.ai/v1',
+});
+
+const file = await client.files.create({
+  file: fs.createReadStream('input.png'),
+  purpose: 'assistants',
+});
+
+const page = await client.files.list({ limit: 20, order: 'desc' });
+const metadata = await client.files.retrieve(file.id);
+const content = await client.files.content(file.id);
+await client.files.delete(file.id);</code></pre>
+                    <p>OpenAI list queries accept <code>after</code>/<code>after_id</code>, <code>before</code>/<code>before_id</code>, <code>limit=1..1000</code>, <code>order=asc|desc</code>, and <code>purpose=assistants</code>. The default limit is <code>20</code> and the default order is descending. File metadata uses OpenAI's <code>object: "file"</code>, <code>bytes</code>, Unix <code>created_at</code>, <code>filename</code>, <code>purpose</code>, <code>status</code>, and <code>status_details</code> fields.</p>
+
+                    <h3>Anthropic Files</h3>
+                    <p>Anthropic SDKs use origin <code>https://llm.wiro.ai</code> and send the required <code>anthropic-version: 2023-06-01</code> header; that header selects the Anthropic file metadata shape:</p>
+                    <pre><code>import fs from 'node:fs';
+import Anthropic from '@anthropic-ai/sdk';
+
+const client = new Anthropic({
+  baseURL: 'https://llm.wiro.ai',
+  apiKey: process.env.WIRO_API_KEY,
+});
+
+const file = await client.files.upload({
+  file: fs.createReadStream('context.pdf'),
+});
+
+const page = await client.files.list({ limit: 20 });
+const metadata = await client.files.retrieveMetadata(file.id);
+const content = await client.files.download(file.id);
+await client.files.delete(file.id);</code></pre>
+                    <p>Anthropic list queries accept <code>page</code>, legacy <code>after_id</code>/<code>before_id</code>, and <code>limit=1..1000</code>. The response includes <code>next_page</code>, <code>has_more</code>, <code>first_id</code>, and <code>last_id</code>. Metadata uses ISO <code>created_at</code>, <code>filename</code>, <code>mime_type</code>, <code>size_bytes</code>, <code>type: "file"</code>, <code>downloadable</code>, and <code>expires_at</code>. Wiro-backed files do not expire, so <code>expires_at</code> is <code>null</code>.</p>
+
+                    <h3>Limits and model input</h3>
+                    <p>Gateway uploads are limited to 50 MiB per file. Empty files, multiple file parts, unknown multipart fields, and filenames over 1024 bytes are rejected. ZIP uploads are rejected because Wiro's standard File API extracts archives, which cannot represent the one-upload/one-file contract expected by these SDKs. The compatibility catalog reads at most 10,000 project files; that safety bound is not a storage quota. The original Wiro File API has its own documented limits.</p>
+                    <p>Use the returned ID only where the selected protocol accepts file references. For example, OpenAI Responses image input can use <code>{ "type": "input_image", "file_id": "file-..." }</code>, while Anthropic document input uses <code>{ "type": "file", "file_id": "file-..." }</code> inside its <code>source</code> object. Before Run, the gateway verifies project ownership and MIME type, then replaces the Wiro file ID with its existing public URL. Image references accept GIF, JPEG, PNG, or WebP; document references accept PDF or plain text. Invalid MIME combinations return <code>invalid_media_type</code> before model execution.</p>
+                    <p>Public HTTPS URLs and validated data/base64 content remain available when the model advertises the corresponding modality. A Wiro <code>file-...</code> ID is not a provider file ID and is never forwarded to OpenAI, Anthropic, xAI, or another provider.</p>
+                  </section>
+
+                  <section id="gateway-chat">
+                    <h2>OpenAI Chat Completions</h2>
+                    <h3><span class="endpoint-badge post">POST</span> /v1/chat/completions</h3>
+                    <p>Use a model that includes <code>chat</code> in <code>capabilities.endpoints</code>.</p>
+                    <pre><code>curl -X POST "https://llm.wiro.ai/v1/chat/completions" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-5-6-sol",
+    "messages": [
+      { "role": "system", "content": "You are a concise assistant." },
+      { "role": "user", "content": "What is SSE?" }
+    ],
+    "stream": false
+  }'</code></pre>
+                    <p>The endpoint accepts <code>system</code>, <code>developer</code>, <code>user</code>, and <code>assistant</code> messages, plus <code>tool</code> results for preceding assistant tool calls. Each request is client-history: send the required conversation history in <code>messages</code>. Calls do not create a saved Wiro Chat session.</p>
+                    <p>Text is always available. OpenAI-style image and document content parts are accepted only when the selected model advertises those input modalities. Gateway output is text; this route is not an image, audio, or video generation API. Remote media must use a public HTTPS URL or a validated data/base64 source; supported Wiro gateway file IDs may also be used. Private-network and non-HTTP fetch targets are rejected. Provider-native file IDs are not accepted as Wiro file IDs.</p>
+                    <p>Generation fields such as <code>temperature</code>, <code>top_p</code>, <code>max_tokens</code>, <code>max_completion_tokens</code>, penalties, <code>seed</code>, <code>stop</code>, <code>reasoning</code>, and <code>response_format</code> are capability-gated. <code>n</code> must be <code>1</code>, <code>logprobs</code> must be <code>false</code>, and <code>stop</code> accepts at most four non-empty values without semicolons. Use <code>capabilities.structured_outputs</code> before requesting a non-text <code>response_format</code>.</p>
+                    <p>Standard function tools use <code>tools</code>, <code>tool_choice</code>, and <code>parallel_tool_calls</code>. Returned function calls use <code>{ "id": "...", "type": "function", "function": { "name": "...", "arguments": "..." } }</code> entries in <code>message.tool_calls</code>. Execute calls only when <code>finish_reason</code> is <code>tool_calls</code>; <code>length</code> and <code>content_filter</code> turns can contain partial tool data that must not be executed. Preserve the returned assistant message unchanged, then append matching <code>role: "tool"</code> results with <code>tool_call_id</code>. Wiro does not execute tools on the caller's behalf.</p>
+                    <p>When the model advertises <code>custom_tools</code>, Chat also accepts the nested custom tool shape:</p>
+                    <pre><code>{
+  "type": "custom",
+  "custom": {
+    "name": "airport_code",
+    "format": {
+      "type": "grammar",
+      "syntax": "regex",
+      "definition": "[A-Z]{3}"
+    }
+  }
+}</code></pre>
+                    <p>Use a matching nested custom <code>tool_choice</code>. Returned custom calls use <code>{ "id": "...", "type": "custom", "custom": { "name": "...", "input": "..." } }</code> entries in <code>message.tool_calls</code>. Execute them client-side and append <code>role: "tool"</code> results with the same <code>tool_call_id</code>, just as for function calls.</p>
+                    <p>Reasoning is model-specific. Public model reasoning can appear in <code>message.reasoning</code> and <code>message.reasoning_details</code>; use the advertised reasoning controls and supported efforts. Tool/reasoning combinations are also model-specific, so do not infer support from another model.</p>
+                    <p>Final responses use <code>chat.completion</code>. Native <code>usage</code> is conditional: a successful completion is still returned when usage counters remain unavailable.</p>
+                    <p>For streaming, set body-level <code>"stream": true</code>. Text arrives in <code>choices[0].delta.content</code>, reasoning in <code>delta.reasoning</code> and <code>reasoning_details</code>, and function calls in <code>delta.tool_calls</code>. Concatenate tool argument fragments by call <code>index</code>. The stream terminates with <code>data: [DONE]</code>. With <code>stream_options.include_usage: true</code>, Wiro emits a final empty-choices usage chunk before <code>[DONE]</code> only when native counters are available.</p>
+                    <p>If a failure happens after Chat SSE has started, Wiro emits an OpenAI error object in a <code>data:</code> frame, then <code>data: [DONE]</code>, and closes the connection. The same midstream rule applies to the beta Cursor route. Once SSE headers have been sent, the original HTTP status cannot communicate that later failure.</p>
+                    <h3>OpenAI SDK</h3>
+                    <pre><code>import OpenAI from 'openai';
+
+const client = new OpenAI({
+  apiKey: process.env.WIRO_BEARER_CREDENTIAL,
+  baseURL: 'https://llm.wiro.ai/v1',
+});
+
+const completion = await client.chat.completions.create({
+  model: 'openai/gpt-5-6-sol',
+  messages: [{ role: 'user', content: 'Hello' }],
+});</code></pre>
+                    <p>For a Signature project, <code>WIRO_BEARER_CREDENTIAL</code> is <code>YOUR_API_KEY:YOUR_API_SECRET</code>.</p>
+                  </section>
+
+                  <section id="gateway-responses">
+                    <h2>OpenAI Responses</h2>
+                    <h3><span class="endpoint-badge post">POST</span> /v1/responses</h3>
+                    <p>Use a model that includes <code>responses</code> in <code>capabilities.endpoints</code>. <code>input</code> can be a string or Responses items; <code>instructions</code>, tools, text formatting, multimodal input, reasoning, and generation controls are capability-gated. Remote media follows the same public-HTTPS/data/base64/Wiro-file-ID restrictions as Chat.</p>
+                    <pre><code>curl -X POST "https://llm.wiro.ai/v1/responses" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-5-6-sol",
+    "instructions": "Answer in one paragraph.",
+    "input": "Explain server-sent events.",
+    "store": true,
+    "stream": false
+  }'</code></pre>
+                    <p>Final responses use the official <code>response</code> object with an opaque ID such as <code>resp_...</code> and an <code>output</code> item array. Items can include messages, public reasoning, function calls, and custom tool calls. Execute only tool items with <code>status: "completed"</code> from a completed response; never execute tool items from an incomplete response. Native <code>usage</code> can be absent.</p>
+                    <h3>Stored response continuation</h3>
+                    <p><code>store</code> defaults to <code>true</code> for OpenAI compatibility. Set <code>store: false</code> for a one-off response that will not be used as <code>previous_response_id</code>.</p>
+                    <p>Use the ID of a stored <code>completed</code> or <code>incomplete</code> response as <code>previous_response_id</code>. Never execute partial tool calls from an incomplete parent:</p>
+                    <pre><code>{
+  "model": "openai/gpt-5-6-sol",
+  "previous_response_id": "resp_2221",
+  "input": [{
+    "type": "message",
+    "role": "user",
+    "content": [{
+      "type": "input_text",
+      "text": "Give me one concrete example."
+    }]
+  }],
+  "store": true
+}</code></pre>
+                    <p><code>previous_response_id</code> is the public continuation field for this gateway route. Do not send <code>previousTaskToken</code> to <code>/v1/responses</code>. Direct Run clients use <code>previousTaskToken</code> as described in <a href="/docs/run-a-model" class="docs-link">Run a Model</a>. <code>session_id</code> is not accepted by Responses; use stored <code>previous_response_id</code> continuation instead.</p>
+                    <p>A stored response can be continued for up to 30 days by the same authenticated user, project, team, and model. Expired, unstored, unavailable, or mismatched responses return <code>response_not_found</code>; failed and cancelled responses are not continuable. Chains are limited to 32 responses, and the conversation plus requested output must fit the selected model's context window.</p>
+                    <p><code>store</code> is not accepted on <code>/v1/chat/completions</code>; these persistence rules apply specifically to <code>/v1/responses</code>.</p>
+                    <h3>Stored response retrieval and deletion</h3>
+                    <p>Retrieve a stored response with <code>GET /v1/responses/{response_id}</code>. Delete it with <code>DELETE /v1/responses/{response_id}</code>; a successful deletion returns HTTP <code>204</code> with an empty body. <code>POST /v1/responses/{response_id}/cancel</code> is not supported and returns <code>response_cancel_not_supported</code>.</p>
+                    <h3>Function and custom grammar tools</h3>
+                    <p>Responses function tools use the standard top-level <code>name</code>, <code>description</code>, <code>parameters</code>, and optional <code>strict</code> shape. When a function call is returned, submit its result in the next request as a <code>function_call_output</code> input item with the same <code>call_id</code>.</p>
+                    <p>Models with <code>capabilities.custom_tools: true</code> also accept free-form or grammar-constrained tools:</p>
+                    <pre><code>{
+  "type": "custom",
+  "name": "sql_query",
+  "description": "Produce one read-only SQL query.",
+  "format": {
+    "type": "grammar",
+    "syntax": "regex",
+    "definition": "^SELECT .+;$"
+  }
+}</code></pre>
+                    <p>Grammar <code>syntax</code> is <code>regex</code> or <code>lark</code>. Use <code>format: { "type": "text" }</code> for a free-form custom tool. When a <code>custom_tool_call</code> is returned, submit its result in the next request as a <code>custom_tool_call_output</code> input item with the matching <code>call_id</code>. <code>function_call_output</code> and <code>custom_tool_call_output</code> are next-request input types, distinct from the returned <code>function_call</code> and <code>custom_tool_call</code> output items. Tool execution always remains in your application.</p>
+                    <h3>Responses SSE</h3>
+                    <p>Set <code>"stream": true</code> for official named Responses events, including <code>response.created</code>, <code>response.in_progress</code>, output-item/content-part events, text and reasoning deltas, <code>response.function_call_arguments.delta</code>/<code>.done</code>, and <code>response.custom_tool_call_input.delta</code>/<code>.done</code>. Every <code>response.*</code> payload carries a monotonically increasing <code>sequence_number</code>, starting at <code>0</code>. Ignore <code>: keep-alive</code> comments.</p>
+                    <p>The terminal event is <code>response.completed</code> or <code>response.incomplete</code>. A midstream failure emits <code>response.failed</code>. Wiro then emits <code>data: [DONE]</code> and closes the Responses stream; the official SDK consumes that sentinel.</p>
+                  </section>
+
+                  <section id="gateway-anthropic">
+                    <h2>Anthropic Messages</h2>
+                    <h3><span class="endpoint-badge post">POST</span> /v1/messages</h3>
+                    <p>Use a model that includes <code>anthropic</code> in <code>capabilities.endpoints</code>.</p>
+                    <p>Anthropic SDKs normally send:</p>
+                    <ul>
+                      <li><code>x-api-key: YOUR_API_KEY</code> for an API Key Only project, or <code>x-api-key: YOUR_API_KEY:YOUR_API_SECRET</code> for a Signature project</li>
+                      <li><code>anthropic-version: 2023-06-01</code></li>
+                      <li>Optional <code>anthropic-beta</code> labels, comma-separated or repeated</li>
+                    </ul>
+                    <p><code>x-api-key</code> and <code>anthropic-version</code> are both required. An optional Bearer header is accepted only when it resolves to the same complete credential. Beta headers identify requested compatibility features; they do not override model capabilities. <code>?beta=true</code> is also accepted as a beta-route marker.</p>
+                    <pre><code>curl -X POST "https://llm.wiro.ai/v1/messages" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude/sonnet-5",
+    "max_tokens": 1024,
+    "system": "Be concise.",
+    "messages": [{
+      "role": "user",
+      "content": "What is SSE?"
+    }],
+    "stream": false
+  }'</code></pre>
+                    <p><code>max_tokens</code> is required and positive. Messages use Anthropic <code>user</code> and <code>assistant</code> roles; system instructions belong in the top-level <code>system</code> field. Content can include <code>text</code>, model-advertised <code>image</code> or <code>document</code> input, <code>tool_use</code>, <code>tool_result</code>, and supported thinking blocks. Remote media uses validated public HTTPS, data/base64, or Wiro gateway file references.</p>
+                    <p>Messages is client-history: resend the prior <code>user</code>/<code>assistant</code> content and tool blocks required for each turn. It does not use Responses storage or <code>previous_response_id</code>.</p>
+                    <p>Anthropic function tools use <code>name</code>, <code>description</code>, and <code>input_schema</code>. <code>tool_choice</code> supports Anthropic <code>auto</code>, <code>any</code>, <code>tool</code>, and <code>none</code> choices. Anthropic's optional <code>type: "custom"</code> still denotes an ordinary client function tool with <code>input_schema</code>; it is not OpenAI's free-form custom grammar shape. Tool calls are returned as <code>tool_use</code>; your application executes them and sends <code>tool_result</code>. Provider-hosted tools, hosted containers, and remote MCP servers are rejected by this release. Execute <code>tool_use</code> blocks only when <code>stop_reason</code> is <code>tool_use</code>; do not execute tool data from <code>max_tokens</code> or <code>refusal</code> turns.</p>
+                    <p>Thinking controls use:</p>
+                    <pre><code>{ "thinking": { "type": "enabled", "budget_tokens": 2048 } }</code></pre>
+                    <p><code>type</code> can be <code>enabled</code>, <code>adaptive</code>, or <code>disabled</code>. Check <code>supported_parameters</code> for public reasoning controls and <code>capabilities.output</code> for reasoning output. Do not fabricate or alter signature or redacted-thinking blocks returned by the model.</p>
+                    <p>Final responses use the Anthropic <code>message</code> object with opaque <code>msg_...</code> request IDs; they are not Wiro task IDs. Public output content contains <code>text</code> and <code>tool_use</code> blocks. Internal model reasoning is not projected as Anthropic <code>thinking</code> or <code>redacted_thinking</code> output. Usage is included only when native counters are available.</p>
+                    <p>For streaming, set <code>"stream": true</code>. The SSE sequence uses Anthropic events such as <code>message_start</code>, <code>content_block_start</code>, <code>content_block_delta</code>, <code>content_block_stop</code>, <code>message_delta</code>, and <code>message_stop</code>, with <code>ping</code> keepalives. A midstream failure emits Anthropic's native <code>error</code> event and closes the connection. A successful stream ends with <code>message_stop</code> and connection close; it does not emit <code>[DONE]</code>. Text blocks use <code>text_delta</code>, and <code>tool_use</code> blocks use <code>input_json_delta</code>. The gateway does not emit <code>thinking_delta</code>.</p>
+                    <h3>Anthropic SDKs and Claude Code</h3>
+                    <p>The official Node and Python SDKs must use origin <code>https://llm.wiro.ai</code>, not the OpenAI <code>/v1</code> base:</p>
+                    <pre><code>import Anthropic from '@anthropic-ai/sdk';
+
+const client = new Anthropic({
+  baseURL: 'https://llm.wiro.ai',
+  apiKey: process.env.WIRO_API_KEY,
+});
+const message = await client.messages.create({
+  model: 'claude/sonnet-5',
+  max_tokens: 1024,
+  messages: [{ role: 'user', content: 'Hello' }],
+});</code></pre>
+                    <p><code>WIRO_API_KEY</code> is <code>YOUR_API_KEY</code> for an API Key Only project or <code>YOUR_API_KEY:YOUR_API_SECRET</code> for a Signature project. Python uses the equivalent <code>base_url</code> and <code>api_key</code> options.</p>
+                    <p>For Claude Code with a Signature project:</p>
+                    <pre><code>ANTHROPIC_BASE_URL="https://llm.wiro.ai" \
+ANTHROPIC_API_KEY="YOUR_API_KEY:YOUR_API_SECRET" \
+ANTHROPIC_MODEL="claude/sonnet-5" \
+CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY=1 \
+claude</code></pre>
+                    <p>For an API Key Only project, set <code>ANTHROPIC_API_KEY</code> to <code>YOUR_API_KEY</code>. Model discovery uses Wiro's authenticated <code>/v1/models</code> route with <code>limit=1000</code>. Claude Code adds only discovered IDs containing <code>claude</code> or <code>anthropic</code> to its picker; set <code>ANTHROPIC_MODEL</code> explicitly for any other compatible ID. Native Messages, client tools, streaming, beta headers, thinking continuation, and token-counting calls remain subject to the selected model's advertised capabilities. Provider-hosted tools remain outside this release even when a client beta can describe them.</p>
+                    <h3><span class="endpoint-badge post">POST</span> /v1/messages/count_tokens</h3>
+                    <pre><code>curl -X POST "https://llm.wiro.ai/v1/messages/count_tokens" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude/sonnet-5",
+    "system": "Be concise.",
+    "messages": [{ "role": "user", "content": "Hello" }]
+  }'</code></pre>
+                    <pre><code>{ "input_tokens": 28 }</code></pre>
+                    <p>This is a local preflight estimate over the submitted Anthropic payload, not authoritative billing or provider-native usage. The estimate endpoint is part of the Anthropic compatibility route; the model catalog does not label it as native token counting.</p>
+                  </section>
+
+                  <section id="gateway-cursor">
+                    <h2><span class="badge beta">Beta</span> Cursor-compatible chat</h2>
+                    <h3><span class="endpoint-badge post">POST</span> /v1/cursor/chat/completions</h3>
+                    <p>Use a model that includes <code>cursor</code> in <code>capabilities.endpoints</code>. This route is beta and may evolve. It accepts Responses-style <code>input</code> and optional <code>instructions</code>. Chat <code>messages</code> are rejected rather than guessed. It always returns an OpenAI <code>chat.completion</code> object and does not provide Responses persistence: <code>previous_response_id</code> is disabled and <code>store</code> is forced off.</p>
+                    <pre><code>curl -X POST "https://llm.wiro.ai/v1/cursor/chat/completions" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-5-6-sol",
+    "input": "Summarize this function.",
+    "stream": true
+  }'</code></pre>
+                    <p>Function tools, custom tools, grammar tools, reasoning, and input modalities remain model-capability-gated. Streaming always uses Chat chunks and terminates with <code>data: [DONE]</code>; it never switches to Responses SSE.</p>
+                    <p>Clients that append <code>/chat/completions</code> can use <code>https://llm.wiro.ai/v1/cursor</code> as their beta base URL.</p>
+                  </section>
+
+                  <section id="gateway-generation">
+                    <h2>Generation metadata</h2>
+                    <h3><span class="endpoint-badge get">GET</span> /v1/generation?id=</h3>
+                    <p>Look up terminal metadata using the exact public ID emitted by the protocol route: the response <code>id</code> for Chat, Cursor, or Responses, and the <code>request-id</code> response header for Messages. The equivalent path form is <code>GET /v1/generation/{public-id}</code>.</p>
+                    <pre><code>curl "https://llm.wiro.ai/v1/generation?id=resp_01HZX7Y8Q9" \
+  -H "Authorization: Bearer YOUR_API_KEY"</code></pre>
+                    <pre><code>{
+  "data": {
+    "id": "resp_01HZX7Y8Q9",
+    "model": "openai/gpt-5-6-sol",
+    "protocol": "responses",
+    "status": "completed",
+    "created_at": "2026-08-21T12:00:00.000Z",
+    "completed_at": "2026-08-21T12:00:03.000Z",
+    "usage": {
+      "input_tokens": 20,
+      "input_tokens_details": {
+        "cached_tokens": 0,
+        "cache_write_tokens": 0
+      },
+      "output_tokens": 12,
+      "output_tokens_details": {
+        "reasoning_tokens": 4
+      },
+      "total_tokens": 32
+    },
+    "upstream_metered_cost": 0.0021,
+    "upstream_elapsed_seconds": 3
+  }
+}</code></pre>
+                    <p><code>protocol</code> is <code>chat</code>, <code>cursor</code>, <code>messages</code>, or <code>responses</code>. <code>status</code> is <code>completed</code>, <code>failed</code>, or <code>incomplete</code>. <code>created_at</code> and <code>completed_at</code> are ISO 8601 strings.</p>
+                    <p>When token counters are available, <code>usage</code> follows the selected protocol:</p>
+                    <ul>
+                      <li><code>responses</code>: <code>input_tokens</code>, <code>input_tokens_details</code> with <code>cached_tokens</code> and <code>cache_write_tokens</code>, <code>output_tokens</code>, <code>output_tokens_details.reasoning_tokens</code>, and <code>total_tokens</code>.</li>
+                      <li><code>chat</code> and <code>cursor</code>: <code>prompt_tokens</code>, optional <code>prompt_tokens_details</code>, <code>completion_tokens</code>, optional <code>completion_tokens_details</code>, and <code>total_tokens</code>.</li>
+                      <li><code>messages</code>: <code>input_tokens</code>, <code>output_tokens</code>, and nullable <code>cache_creation_input_tokens</code> and <code>cache_read_input_tokens</code>. This shape does not add <code>total_tokens</code>.</li>
+                    </ul>
+                    <p><code>usage</code> is <code>null</code> when no valid counters were recorded. <code>upstream_metered_cost</code> and <code>upstream_elapsed_seconds</code> are finite upstream task counters when available, otherwise <code>null</code>; cost is not duplicated inside metadata <code>usage</code>.</p>
+                    <p>Only the owning authenticated project can read a generation. Missing, expired, and foreign IDs all return <code>generation_not_found</code>. This endpoint is terminal observability metadata, not task output: it does not return a Wiro task ID, generated content, or continuation state. Read generated content from the original protocol JSON or SSE response.</p>
+                  </section>
+
+                  <section id="gateway-clients">
+                    <h2>Connect an agent</h2>
+                    <p>Point a compatible client at <code>llm.wiro.ai</code>. Discover the exact lowercase <code>owner/model</code> ID first. Use a project Bearer credential: API Key Only projects send <code>YOUR_API_KEY</code>; Signature projects send <code>YOUR_API_KEY:YOUR_API_SECRET</code>. Generic finite-model waits stay on <a href="/docs/run-a-model" class="docs-link">Run a Model /sync</a>.</p>
+                    <div class="mcp-client-grid" data-toggle-group="llm-setup">
+                      <a href="/docs/completions-api#llm-setup-cursor" class="mcp-client-card is-active" data-toggle-target="llm-setup-cursor">
+                        <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-cursor"></use></svg>
+                        <strong>Cursor</strong>
+                      </a>
+                      <a href="/docs/completions-api#llm-setup-claude-code" class="mcp-client-card" data-toggle-target="llm-setup-claude-code">
+                        <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-claude"></use></svg>
+                        <strong>Claude Code</strong>
+                      </a>
+                      <a href="/docs/completions-api#llm-setup-vscode" class="mcp-client-card" data-toggle-target="llm-setup-vscode">
+                        <svg class="mcp-client-logo" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 4.75h16v11.5H4zM8.5 19.25h7M12 16.25v3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                        <strong>VS Code</strong>
+                      </a>
+                      <a href="/docs/completions-api#llm-setup-windsurf" class="mcp-client-card" data-toggle-target="llm-setup-windsurf">
+                        <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-windsurf"></use></svg>
+                        <strong>Windsurf</strong>
+                      </a>
+                      <a href="/docs/completions-api#llm-setup-openclaw" class="mcp-client-card" data-toggle-target="llm-setup-openclaw">
+                        <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-openclaw"></use></svg>
+                        <strong>OpenClaw</strong>
+                      </a>
+                      <a href="/docs/completions-api#llm-setup-hermes" class="mcp-client-card" data-toggle-target="llm-setup-hermes">
+                        <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-hermes"></use></svg>
+                        <strong>Hermes</strong>
+                      </a>
+                    </div>
+                    <div class="mcp-setup-panels" data-toggle-panels="llm-setup">
+                      <div class="mcp-setup-panel is-visible" id="llm-setup-cursor">
+                        <h3>Cursor</h3>
+                        <p>In a Cursor build or extension that supports a custom OpenAI base URL and sends Responses-shaped input at its appended <code>/chat/completions</code> path, register the exact Wiro model and use the beta Cursor base below. Cursor's proprietary transport is not inferred: Chat <code>messages</code> sent to this beta path are rejected.</p>
+                        <pre><code>Base URL: https://llm.wiro.ai/v1/cursor
+API key: YOUR_API_KEY
+Model: openai/gpt-5-6-sol</code></pre>
+                        <p>For a Signature project, enter <code>YOUR_API_KEY:YOUR_API_SECRET</code> as the API key value so the client sends it as a Bearer credential.</p>
+                      </div>
+                      <div class="mcp-setup-panel" id="llm-setup-claude-code">
+                        <h3>Claude Code</h3>
+                        <p>Claude Code and official Anthropic SDKs use origin <code>https://llm.wiro.ai</code> because they append <code>/v1/messages</code>. Set <code>ANTHROPIC_API_KEY</code> to the full project credential for either project type.</p>
+                        <pre><code>ANTHROPIC_BASE_URL="https://llm.wiro.ai" \
+ANTHROPIC_API_KEY="YOUR_API_KEY:YOUR_API_SECRET" \
+ANTHROPIC_MODEL="claude/sonnet-5" \
+CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY=1 \
+claude</code></pre>
+                      </div>
+                      <div class="mcp-setup-panel" id="llm-setup-vscode">
+                        <h3>VS Code</h3>
+                        <p>Use any VS Code extension that accepts an OpenAI-compatible base URL and custom model ID.</p>
+                        <pre><code>Base URL: https://llm.wiro.ai/v1
+API key: YOUR_API_KEY:YOUR_API_SECRET
+Model: claude/sonnet-5</code></pre>
+                        <p>For an API Key Only project, use only <code>YOUR_API_KEY</code>. Select the Chat Completions or Responses protocol expected by the extension.</p>
+                      </div>
+                      <div class="mcp-setup-panel" id="llm-setup-windsurf">
+                        <h3>Windsurf</h3>
+                        <p>Windsurf Cascade has no native arbitrary-provider registration in this release. A setup is in scope only through a tested extension or client that can set a custom OpenAI base URL to <code>https://llm.wiro.ai/v1</code> for <code>/chat/completions</code> or <code>/responses</code>. Do not describe this as native Cascade support.</p>
+                      </div>
+                      <div class="mcp-setup-panel" id="llm-setup-openclaw">
+                        <h3>OpenClaw</h3>
+                        <p>Use the model-declared transport after reading <code>GET /v1/models/{owner}/{model}</code>: <code>openai-completions</code>, <code>openai-responses</code>, or <code>anthropic-messages</code>. OpenAI transports use the <code>/v1</code> base; Anthropic uses the origin.</p>
+                        <pre><code>{
+  "models": {
+    "providers": {
+      "wiro": {
+        "baseUrl": "https://llm.wiro.ai/v1",
+        "apiKey": "${WIRO_BEARER_CREDENTIAL}",
+        "api": "openai-completions",
+        "models": [{ "id": "openai/gpt-5-6-sol", "name": "GPT 5.6 Sol" }]
+      }
+    }
+  }
+}</code></pre>
+                      </div>
+                      <div class="mcp-setup-panel" id="llm-setup-hermes">
+                        <h3>Hermes</h3>
+                        <p>Hermes function-calling clients, Cline, Roo Code, and Continue can use OpenAI Chat when they accept a custom base URL. Optional tools, reasoning, and modalities still follow the selected model's metadata.</p>
+                        <pre><code>providers:
+  wiro:
+    base_url: "https://llm.wiro.ai/v1"
+    api_key: "${WIRO_BEARER_CREDENTIAL}"</code></pre>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section id="gateway-boundaries">
+                    <h2>Deliberate boundaries</h2>
+                    <p>The Direct LLM Gateway does not currently provide:</p>
+                    <ul>
+                      <li>Provider-hosted web search, file search, code interpreter, computer-use, or remote MCP tool execution; Wiro returns tool calls for your client to run</li>
+                      <li>A native Gemini <code>generateContent</code> protocol</li>
+                      <li>Embeddings or reranking</li>
+                      <li>Automatic model routing or fallback routing</li>
+                      <li>Bring-your-own-provider-key (BYOK) execution</li>
+                      <li>Dedicated image, audio, or video generation through the Chat, Responses, Messages, or Cursor-compatible routes</li>
+                      <li>The legacy <code>/v1/completions</code> endpoint</li>
+                    </ul>
+                    <p>Use Wiro's normal <a href="/docs/run-a-model" class="docs-link">Run or /sync APIs</a> for supported finite media-generation models. Image and document <strong>input</strong> to an LLM is distinct from media generation and remains available when the selected model advertises it.</p>
+                    <p>Remote media fetches must use public HTTPS; validated data/base64 sources and Wiro gateway file IDs are accepted only where the selected protocol/model supports them. Provider-native file IDs are not interchangeable.</p>
+                  </section>
+
+                  <section id="gateway-errors">
+                    <h2>Errors</h2>
+                    <p>Error responses preserve the selected public protocol:</p>
+                    <ul>
+                      <li>Chat, Responses, Cursor, model, and generation errors use the OpenAI-style <code>{ "error": { "message", "type", "param", "code" } }</code> shape.</li>
+                      <li>Anthropic routes use <code>{ "type": "error", "error": { "type", "message" } }</code>.</li>
+                    </ul>
+                    <p>Generic <code>/sync</code> waits on <code>api.wiro.ai</code> use the normal Wiro <code>result</code>/<code>errors</code> envelope.</p>
+                    <p>After a stream starts, inspect SSE events rather than the HTTP status: Chat and Cursor emit an error <code>data:</code> frame followed by <code>[DONE]</code>, Responses emits <code>response.failed</code>, and Anthropic emits <code>error</code>.</p>
+                    <p>Common codes include <code>invalid_model</code>, <code>model_not_found</code>, <code>unsupported_model_type</code>, <code>unsupported_parameter</code>, <code>response_not_found</code>, <code>response_chain_too_deep</code>, <code>invalid_generation_id</code>, <code>generation_not_found</code>, <code>completion_timeout</code>, <code>model_execution_failed</code>, <code>task_cancelled</code>, and <code>unsupported_capability</code>. Files routes can also return <code>file_not_found</code>, <code>file_too_large</code>, <code>invalid_multipart</code>, <code>missing_file</code>, <code>invalid_filename</code>, <code>invalid_media_type</code>, <code>invalid_pagination</code>, <code>invalid_query</code>, <code>file_catalog_too_large</code>, <code>file_content_unavailable</code>, <code>file_api_unavailable</code>, and <code>invalid_file_response</code>.</p>
+                    <p>Gateway-origin and upstream execution failures use HTTP <code>500</code> with their specific error code; the public protocol does not return HTTP <code>502</code>. Responses under <code>/v1</code> include <code>ratelimit-limit</code>, <code>ratelimit-remaining</code>, <code>ratelimit-reset</code>, <code>request-id</code>, and <code>x-request-id</code>. A rate-limit response also includes <code>retry-after</code>.</p>
+                    <p>Protocol execution POST bodies must be JSON and are limited to 16 MiB. Files uploads are multipart and use the separate 50 MiB file limit. Unsupported fields that could change execution fail instead of being silently accepted. A model task can also fail after HTTP validation; preserve the protocol error and status rather than treating every <code>2xx</code> task creation as a successful model answer.</p>
+                  </section>
+                </article>
+
+                <script type="application/json" class="code-examples-data">
+[
+                  {
+                                    "label": "OpenAI Chat",
+                                    "language": "bash",
+                                    "code": "curl -X POST \"https://llm.wiro.ai/v1/chat/completions\" \\\n  -H \"Authorization: Bearer YOUR_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"model\": \"openai/gpt-5-6-sol\",\n    \"messages\": [{ \"role\": \"user\", \"content\": \"Hello\" }]\n  }' "
+                  },
+                  {
+                                    "label": "OpenAI Responses",
+                                    "language": "bash",
+                                    "code": "curl -X POST \"https://llm.wiro.ai/v1/responses\" \\\n  -H \"Authorization: Bearer YOUR_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"model\": \"openai/gpt-5-6-sol\",\n    \"input\": \"Hello\",\n    \"store\": true\n  }' "
+                  },
+                  {
+                                    "label": "Anthropic Messages",
+                                    "language": "bash",
+                                    "code": "curl -X POST \"https://llm.wiro.ai/v1/messages\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -H \"anthropic-version: 2023-06-01\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"model\": \"claude/sonnet-5\",\n    \"max_tokens\": 1024,\n    \"messages\": [{ \"role\": \"user\", \"content\": \"Hello\" }]\n  }' "
+                  },
+                  {
+                                    "label": "Cursor Chat (Beta)",
+                                    "language": "bash",
+                                    "code": "curl -X POST \"https://llm.wiro.ai/v1/cursor/chat/completions\" \\\n  -H \"Authorization: Bearer YOUR_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"model\": \"openai/gpt-5-6-sol\",\n    \"input\": \"Hello\"\n  }' "
+                  },
+                  {
+                                    "label": "Node.js SDK",
+                                    "language": "javascript",
+                                    "code": "import OpenAI from 'openai';\n\nconst client = new OpenAI({\n  apiKey: process.env.WIRO_BEARER_CREDENTIAL,\n  baseURL: 'https://llm.wiro.ai/v1',\n});\n\nconst response = await client.responses.create({\n  model: 'openai/gpt-5-6-sol',\n  input: 'Hello',\n});"
+                  }
+]
                 </script>
               </div>
 
@@ -1763,15 +2597,15 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                           </tr>
                           <tr>
                             <td><code>task_error</code></td>
-                            <td>As a live WebSocket event, this means the model wrote to stderr and is an <strong>interim log</strong>, not necessarily a failure. As the persisted <code>status</code> returned by Task/Detail, it represents a fatal pre-execution failure and is terminal.</td>
+                            <td>As a live WebSocket event, this means the model wrote to stderr and is an <strong>interim log</strong>, not necessarily a failure. As the persisted <code>status</code> returned by Task/Detail, it marks a pre-execution failure awaiting recovery or requeue; it does not close the task.</td>
                           </tr>
                           <tr>
                             <td><code>task_output_full</code></td>
-                            <td>The complete accumulated stdout log, sent once after the model process finishes. Contains the full output history in a single message.</td>
+                            <td>Signals that process stdout collection ended. Raw accumulated stdout is not exposed on the public socket.</td>
                           </tr>
                           <tr>
                             <td><code>task_error_full</code></td>
-                            <td>The complete accumulated stderr log, sent once after the model process finishes.</td>
+                            <td>Signals that process stderr collection ended. Raw accumulated stderr is not exposed on the public socket.</td>
                           </tr>
                           <tr>
                             <td><code>task_end</code></td>
@@ -1783,7 +2617,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                           </tr>
                           <tr>
                             <td><code>task_postprocess_end</code></td>
-                            <td>Post-processing completed. Check <code>pexit</code> to determine success: <code>"0"</code> = success, any other value = error. The <code>outputs</code> array contains the final files with CDN URLs, content types, and sizes. <strong>This is the event you should listen for</strong> to get the final results.</td>
+                            <td>Post-processing completed. On the public WebSocket, check <code>success</code> and <code>exitCode</code> (<code>0</code> = success); the <code>message</code> array contains sanitized outputs. Task/Detail continues to use <code>pexit</code> as its primary success indicator. <strong>This is the event you should listen for</strong> to get final results.</td>
                           </tr>
                           <tr>
                             <td><code>task_cancel</code></td>
@@ -1823,15 +2657,15 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
 
                   <section id="determining-success">
                     <h2>Determining Success or Failure</h2>
-                    <p>Normal model executions, both successful and failed, reach <code>task_postprocess_end</code>. Check <code>pexit</code> or <code>outputs</code> (or both) to determine the result. A fatal setup failure may stop earlier with persisted <code>status: "task_error"</code> and a <code>debugerror</code>.</p>
+                    <p>Normal model executions, both successful and failed, reach <code>task_postprocess_end</code>. Check <code>pexit</code> or <code>outputs</code> (or both) to determine the result. A setup failure may temporarily set persisted <code>status: "task_error"</code> with a <code>debugerror</code>, but clients must keep waiting until <code>task_postprocess_end</code> or <code>task_cancel</code>.</p>
 
                     <ul>
                       <li><code>pexit</code> — the process exit code. <code>"0"</code> means success, any other value means the model encountered an error. This is the most reliable indicator.</li>
-                      <li><code>outputs</code> — the output array. For non-LLM models, this contains CDN file URLs. For LLM models, this contains a structured entry with <code>contenttype: "raw"</code> holding the response text, thinking, and answer arrays. If it's empty or missing, the task likely failed.</li>
+                      <li><code>outputs</code> — the output array. For non-LLM models, this contains CDN file URLs. For LLM models, this contains a structured entry with <code>contenttype: "raw"</code> and ordered <code>content.segments</code>. If it's empty or missing, the task likely failed.</li>
                     </ul>
 
                     <div class="info-callout">
-                      <p><strong>Note:</strong> For <strong>LLM models</strong>, <code>outputs</code> contains a single entry with <code>contenttype: "raw"</code> and a <code>content</code> object holding <code>prompt</code>, <code>raw</code>, <code>thinking</code>, and <code>answer</code>. The merged plain text is also available in <code>debugoutput</code>. Always use <code>pexit</code> as the primary success check.</p>
+                      <p><strong>Note:</strong> For <strong>LLM models</strong>, <code>outputs</code> contains a structured entry with <code>contenttype: "raw"</code> and ordered <code>content.segments</code>. The merged plain text is also available in <code>debugoutput</code>. Always use <code>pexit</code> as the primary success check.</p>
                     </div>
 
                     <pre><code>// Success (image/audio model): pexit "0", file outputs with CDN URLs
@@ -1854,8 +2688,25 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
     "content": {
       "prompt": "Say hello",
       "raw": "Hello! How can I help you today?",
-      "thinking": [],
-      "answer": ["Hello! How can I help you today?"]
+      "segments": [
+        {
+          "type": "answer",
+          "text": "Hello! How can I help you today?"
+        }
+      ],
+      "finishreason": "stop",
+      "usage": {
+        "input_tokens": 12,
+        "input_tokens_details": {
+          "cached_tokens": 4,
+          "cache_write_tokens": 2
+        },
+        "output_tokens": 9,
+        "output_tokens_details": {
+          "reasoning_tokens": 2
+        },
+        "total_tokens": 21
+      }
     }
   }]
 }
@@ -1867,7 +2718,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
 }</code></pre>
 
                     <div class="info-callout">
-                      <p><strong>Important:</strong> Do not confuse the live <code>task_error</code> WebSocket log event with persisted <code>status: "task_error"</code> in Task/Detail. The event is interim; the database status is a terminal pre-execution failure.</p>
+                      <p><strong>Important:</strong> Do not confuse the live <code>task_error</code> WebSocket log event with persisted <code>status: "task_error"</code> in Task/Detail. Both are non-terminal; only <code>task_postprocess_end</code> and <code>task_cancel</code> close the task.</p>
                     </div>
                   </section>
 
@@ -1893,8 +2744,56 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
 
                   <section id="llm-models">
                     <h2>LLM Models</h2>
-                    <p>For LLM (Large Language Model) requests, the model's response is available in two places: as merged plain text in <code>debugoutput</code>, and as a structured entry in the <code>outputs</code> array with <code>contenttype: "raw"</code>. The structured output includes separate <code>thinking</code> and <code>answer</code> arrays alongside the original <code>prompt</code> and full <code>raw</code> text.</p>
-                    <p>For real-time streaming of LLM responses, use <a href="/docs/websocket" class="docs-link">WebSocket</a> instead of polling. Each <code>task_output</code> event delivers a chunk of the response as it's generated, giving your users an instant, token-by-token experience.</p>
+                    <p>For LLM requests, <code>outputs</code> contains a structured entry with <code>contenttype: "raw"</code> and ordered <code>content.segments</code>; <code>debugoutput</code> contains the merged plain text. Use the representation that matches your UI.</p>
+                    <p>For real-time streaming, use <a href="/docs/websocket" class="docs-link">WebSocket</a>. Each LLM <code>task_output</code> event contains the latest cumulative <code>message.segments</code> snapshot; replace your previous snapshot instead of appending it.</p>
+                    <h3>Structured LLM content fields</h3>
+                    <p>Task Detail returns these fields under <code>tasklist[0].outputs[].content</code>. The final WebSocket <code>task_postprocess_end</code> event returns the same content under <code>message[].content</code>.</p>
+                    <div class="docs-comparison-table">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Field</th>
+                            <th>When you need it</th>
+                            <th>Description</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td><code>raw</code></td>
+                            <td>Optional</td>
+                            <td>Merged public model text. <code>debugoutput</code> provides the same compatibility view at task level.</td>
+                          </tr>
+                          <tr>
+                            <td><code>thinking</code> / <code>answer</code></td>
+                            <td>Optional</td>
+                            <td>Convenience arrays split from text output. Use <code>segments</code> when exact ordering or tools matter.</td>
+                          </tr>
+                          <tr>
+                            <td><code>segments</code></td>
+                            <td>All structured/tool integrations</td>
+                            <td>Authoritative cumulative ordered timeline. Text entries are <code>thinking</code> or <code>answer</code>; tool entries are <code>function_call</code> or <code>custom_tool_call</code>.</td>
+                          </tr>
+                          <tr>
+                            <td><code>finishreason</code></td>
+                            <td>Completion and tool handling</td>
+                            <td><code>stop</code>, <code>tool_calls</code>, <code>length</code>, <code>content_filter</code>, or <code>error</code>. Execute completed tool entries only when this is <code>tool_calls</code>.</td>
+                          </tr>
+                          <tr>
+                            <td><code>usage</code></td>
+                            <td>Token reporting</td>
+                            <td>Normalized token and server-tool counters. It may be omitted when the provider does not report usage. It is not the billed amount.</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    <p>Within <code>usage</code>, <code>input_tokens</code> already includes cache-read and cache-write tokens, <code>output_tokens</code> already includes reasoning tokens, and <code>total_tokens</code> equals <code>input_tokens + output_tokens</code>. Never add detail counters to the total. Known optional counters are:</p>
+                    <ul>
+                      <li><code>input_tokens_details</code>: <code>cached_tokens</code>, <code>cache_write_tokens</code>, <code>cache_write_5m_tokens</code>, <code>cache_write_1h_tokens</code>, <code>text_tokens</code>, <code>audio_tokens</code>, <code>image_tokens</code>, and <code>video_tokens</code>.</li>
+                      <li><code>output_tokens_details</code>: <code>reasoning_tokens</code>, <code>text_tokens</code>, <code>audio_tokens</code>, <code>image_tokens</code>, <code>video_tokens</code>, <code>accepted_prediction_tokens</code>, and <code>rejected_prediction_tokens</code>.</li>
+                      <li><code>server_tool_use</code>: <code>web_search_requests</code>, <code>web_fetch_requests</code>, <code>file_search_requests</code>, <code>image_generation_requests</code>, <code>code_execution_requests</code>, <code>bash_code_execution_requests</code>, <code>text_editor_code_execution_requests</code>, and <code>computer_use_requests</code>.</li>
+                    </ul>
+                    <p>The five-minute and one-hour cache-write counters are subsets of <code>cache_write_tokens</code>. Server-tool values count requests, not tokens. Providers omit counters they do not support. There is no cached-output counter because prompt caching applies to input context. Use task-level <code>totalcost</code> for the amount charged.</p>
+                    <p>Plain-text integrations can use <code>debugoutput</code>. Tool integrations must inspect <code>segments</code>, <code>finishreason</code>, and <code>pexit</code>. A final structured validation failure produces a non-zero <code>pexit</code>.</p>
                   </section>
 
                   <section id="task-detail">
@@ -1999,12 +2898,12 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                           <tr>
                             <td><code>debugoutput</code></td>
                             <td><code>string</code></td>
-                            <td>Accumulated stdout output. For LLM models, contains the merged response text.</td>
+                            <td>Accumulated text output. For LLM models, contains the merged response text.</td>
                           </tr>
                           <tr>
                             <td><code>debugerror</code></td>
                             <td><code>string</code></td>
-                            <td>Accumulated stderr or a fatal pre-execution error message.</td>
+                            <td>Accumulated error text or a fatal pre-execution error message.</td>
                           </tr>
                           <tr>
                             <td><code>starttime</code></td>
@@ -2056,7 +2955,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                       <span class="endpoint-badge post">POST</span>
                       /Task/Cancel
                     </h2>
-                    <p>Cancels a task that is still in the <code>queue</code> stage. Tasks that have already been assigned to a worker cannot be cancelled — use Kill instead.</p>
+                    <p>Cancels a task that is still in the <code>queue</code> stage. Use Kill for a running task.</p>
 
                     <div class="docs-param-table">
                       <div class="docs-param-table-wrapper">
@@ -2210,12 +3109,12 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                     {
                       "label": "Python",
                       "language": "python",
-                      "code": "import requests, time\n\nheaders = {\n    \"x-api-key\": \"YOUR_API_KEY\",\n    \"Content-Type\": \"application/json\"\n}\n\ntask_token = \"abc123-def456-ghi789\"\ntask_id = \"534574\"\n\n# Poll task detail until completion\nwhile True:\n    resp = requests.post(\n        \"https://api.wiro.ai/v1/Task/Detail\",\n        headers=headers,\n        json={\"tasktoken\": task_token}\n    )\n    task = resp.json()[\"tasklist\"][0]\n    print(f\"Status: {task['status']}\")\n\n    if task[\"status\"] == \"task_postprocess_end\":\n        if task[\"pexit\"] == \"0\":\n            print(\"Outputs:\", task[\"outputs\"])\n        else:\n            print(\"Failed: pexit\", task[\"pexit\"])\n        break\n    elif task[\"status\"] in (\"task_error\", \"task_cancel\"):\n        print(\"Task failed or cancelled\")\n        break\n\n    time.sleep(3)\n\n# Cancel a queued task\nrequests.post(\n    \"https://api.wiro.ai/v1/Task/Cancel\",\n    headers=headers,\n    json={\"taskid\": task_id}\n)\n\n# Kill a running task\nrequests.post(\n    \"https://api.wiro.ai/v1/Task/Kill\",\n    headers=headers,\n    json={\"socketaccesstoken\": task_token}\n)"
+                      "code": "import requests, time\n\nheaders = {\n    \"x-api-key\": \"YOUR_API_KEY\",\n    \"Content-Type\": \"application/json\"\n}\n\ntask_token = \"abc123-def456-ghi789\"\ntask_id = \"534574\"\n\n# Poll task detail until completion\nwhile True:\n    resp = requests.post(\n        \"https://api.wiro.ai/v1/Task/Detail\",\n        headers=headers,\n        json={\"tasktoken\": task_token}\n    )\n    task = resp.json()[\"tasklist\"][0]\n    print(f\"Status: {task['status']}\")\n\n    if task[\"status\"] == \"task_postprocess_end\":\n        if task[\"pexit\"] == \"0\":\n            print(\"Outputs:\", task[\"outputs\"])\n        else:\n            print(\"Failed: pexit\", task[\"pexit\"])\n        break\n    elif task[\"status\"] == \"task_cancel\":\n        print(\"Task cancelled\")\n        break\n\n    time.sleep(3)\n\n# Cancel a queued task\nrequests.post(\n    \"https://api.wiro.ai/v1/Task/Cancel\",\n    headers=headers,\n    json={\"taskid\": task_id}\n)\n\n# Kill a running task\nrequests.post(\n    \"https://api.wiro.ai/v1/Task/Kill\",\n    headers=headers,\n    json={\"socketaccesstoken\": task_token}\n)"
                     },
                     {
                       "label": "Node.js",
                       "language": "javascript",
-                      "code": "const axios = require('axios');\n\nconst headers = {\n  'x-api-key': 'YOUR_API_KEY',\n  'Content-Type': 'application/json'\n};\n\nconst taskToken = 'abc123-def456-ghi789';\nconst taskId = '534574';\n\n// Poll task detail until completion\nasync function pollTask() {\n  while (true) {\n    const resp = await axios.post(\n      'https://api.wiro.ai/v1/Task/Detail',\n      { tasktoken: taskToken },\n      { headers }\n    );\n    const task = resp.data.tasklist[0];\n    console.log('Status:', task.status);\n\n    if (task.status === 'task_postprocess_end') {\n      if (task.pexit === '0') {\n        console.log('Outputs:', task.outputs);\n      } else {\n        console.log('Failed: pexit', task.pexit);\n      }\n      break;\n    }\n    if (task.status === 'task_error' || task.status === 'task_cancel') {\n      console.log('Task failed or cancelled');\n      break;\n    }\n\n    await new Promise(r => setTimeout(r, 3000));\n  }\n}\n\n// Cancel / Kill\nawait axios.post('https://api.wiro.ai/v1/Task/Cancel',\n  { taskid: taskId }, { headers });\n\nawait axios.post('https://api.wiro.ai/v1/Task/Kill',\n  { socketaccesstoken: taskToken }, { headers });"
+                      "code": "const axios = require('axios');\n\nconst headers = {\n  'x-api-key': 'YOUR_API_KEY',\n  'Content-Type': 'application/json'\n};\n\nconst taskToken = 'abc123-def456-ghi789';\nconst taskId = '534574';\n\n// Poll task detail until completion\nasync function pollTask() {\n  while (true) {\n    const resp = await axios.post(\n      'https://api.wiro.ai/v1/Task/Detail',\n      { tasktoken: taskToken },\n      { headers }\n    );\n    const task = resp.data.tasklist[0];\n    console.log('Status:', task.status);\n\n    if (task.status === 'task_postprocess_end') {\n      if (task.pexit === '0') {\n        console.log('Outputs:', task.outputs);\n      } else {\n        console.log('Failed: pexit', task.pexit);\n      }\n      break;\n    }\n    if (task.status === 'task_cancel') {\n      console.log('Task cancelled');\n      break;\n    }\n\n    await new Promise(r => setTimeout(r, 3000));\n  }\n}\n\n// Cancel / Kill\nawait axios.post('https://api.wiro.ai/v1/Task/Cancel',\n  { taskid: taskId }, { headers });\n\nawait axios.post('https://api.wiro.ai/v1/Task/Kill',\n  { socketaccesstoken: taskToken }, { headers });"
                     },
                     {
                       "label": "PHP",
@@ -2261,16 +3160,17 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                 <article class="docs-section">
                   <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/llm-chat-streaming.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/llm-chat-streaming.md" download class="docs-section-md-btn">Download</a></div>
                   <h1>LLM &amp; Chat Streaming</h1>
-                  <p class="section-subtitle">Stream LLM responses in real time with thinking/answer separation, session history, and multi-turn conversations.</p>
+                  <p class="section-subtitle">Stream LLM responses in real time with ordered output segments, session history, and multi-turn conversations.</p>
 
                   <section id="llm-overview">
                     <h2>Overview</h2>
                     <p>LLM (Large Language Model) requests on Wiro work differently from standard model runs:</p>
                     <ul>
                       <li>Responses are available as structured content in the <code>outputs</code> array (<code>contenttype: "raw"</code>) and as merged text in <code>debugoutput</code></li>
-                      <li>Streaming <code>task_output</code> messages contain structured <code>thinking</code> and <code>answer</code> arrays — not plain strings</li>
+                      <li>Streaming <code>task_output</code> messages contain ordered text/tool-call <code>segments</code> — not plain strings</li>
                       <li>Multi-turn conversations are supported via <code>session_id</code> and <code>user_id</code> parameters</li>
                       <li><code>pexit</code> is the primary success indicator</li>
+                      <li>The <a href="/docs/completions-api" class="docs-link">Direct LLM Gateway</a> offers OpenAI Chat/Responses, Anthropic Messages, and beta Cursor-compatible routes on <code>llm.wiro.ai</code>. Generic <code>/sync</code> waits stay on <a href="/docs/run-a-model" class="docs-link">Run a Model</a>.</li>
                     </ul>
                     <p>Available LLM models include:</p>
                     <ul>
@@ -2298,8 +3198,8 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                             <tr>
                               <td><code class="param-name">session_id</code></td>
                               <td><span class="param-type">string</span></td>
-                              <td><span class="param-required">No</span></td>
-                              <td class="param-desc">UUID identifying the conversation session. The server stores chat history per session — reuse the same ID for follow-up messages to maintain full context.</td>
+                              <td><span class="param-required">No*</span></td>
+                              <td class="param-desc">Non-empty conversation identifier (up to 256 UTF-8 bytes). Reuse the same ID for follow-up messages.</td>
                             </tr>
                             <tr>
                               <td><code class="param-name">user_id</code></td>
@@ -2331,48 +3231,57 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
   "user_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7"
 }</code></pre>
                     <div class="info-callout">
-                      <p><strong>Tip:</strong> Generate a new UUID for <code>session_id</code> when starting a fresh conversation. Reuse it for all follow-up messages — the server automatically stores and retrieves the full chat history for that session. To start a new conversation with no prior context, simply generate a new UUID.</p>
+                      <p><code>session_id</code> is optional on a first turn but required when continuing with <code>previousTaskToken</code>. Reuse the same <code>session_id</code> value on continuation. The value may contain up to 256 UTF-8 bytes; a UUID is allowed but not required.</p>
                     </div>
                   </section>
 
                   <section id="llm-thinking-answer">
-                    <h2>Thinking &amp; Answer Phases</h2>
-                    <p>Many LLM models separate their output into two phases:</p>
+                    <h2>Ordered Output Segments</h2>
+                    <p>LLM output is an ordered timeline with up to four segment types:</p>
                     <ul>
-                      <li><strong>Thinking</strong> — the model's internal reasoning process (chain-of-thought)</li>
+                      <li><strong>Thinking</strong> — reasoning text exposed by the selected model</li>
                       <li><strong>Answer</strong> — the final response to the user</li>
+                      <li><strong>Function call</strong> — JSON arguments for an application-defined function</li>
+                      <li><strong>Custom tool call</strong> — grammar-constrained or free-form tool input</li>
                     </ul>
                     <p>When streaming via WebSocket, <code>task_output</code> messages for LLM models contain a structured object (not a plain string):</p>
                     <pre><code>// LLM task_output message format
 {
   "type": "task_output",
   "id": "534574",
-  "tasktoken": "eDcCm5yy...",
   "message": {
     "type": "progressGenerate",
     "task": "Generate",
     "speed": "12.4",
     "speedType": "words/s",
-    "raw": "&lt;think&gt;Let me analyze...&lt;/think&gt;Quantum computing uses qubits...",
-    "thinking": ["Let me analyze this step by step...", "The key factors are..."],
-    "answer": ["Quantum computing uses qubits that can exist in superposition..."],
+    "segments": [
+      { "type": "thinking", "text": "Let me analyze this step by step..." },
+      { "type": "answer", "text": "Quantum computing uses qubits that can exist in superposition..." }
+    ],
+    "finishreason": "stop",
+    "usage": {
+      "input_tokens": 18,
+      "input_tokens_details": { "cached_tokens": 6 },
+      "output_tokens": 11,
+      "output_tokens_details": { "reasoning_tokens": 4 },
+      "total_tokens": 29
+    },
     "isThinking": false,
     "elapsedTime": "3s"
   }
 }</code></pre>
-                    <p>Both <code>thinking</code> and <code>answer</code> are arrays of strings. A model may alternate between thinking and answering multiple times during a single response. The arrays are indexed in pairs — <code>thinking[0]</code> corresponds to <code>answer[0]</code>, <code>thinking[1]</code> to <code>answer[1]</code>, and so on:</p>
-                    <pre><code>// Multi-turn thinking/answer cycle
+                    <p>A model may alternate between thinking and answering multiple times during one response. The <code>segments</code> array preserves the exact order, including consecutive items of the same type:</p>
+                    <pre><code>// Ordered output segments
 {
-  "thinking": [
-    "Let me break this into parts...",        // thinking[0]
-    "Now let me verify my reasoning..."       // thinking[1]
-  ],
-  "answer": [
-    "Quantum computing uses qubits...",       // answer[0] — response after thinking[0]
-    "To summarize: qubits can be 0, 1, or..." // answer[1] — response after thinking[1]
+  "segments": [
+    { "type": "thinking", "text": "Let me break this into parts..." },
+    { "type": "thinking", "text": "Now let me verify my reasoning..." },
+    { "type": "answer", "text": "Quantum computing uses qubits..." },
+    { "type": "thinking", "text": "I should clarify one detail..." },
+    { "type": "answer", "text": "To summarize: qubits can be 0, 1, or..." }
   ]
 }</code></pre>
-                    <p>Each <code>task_output</code> event contains the <strong>full accumulated</strong> arrays up to that point — not just the new chunk. Simply replace your displayed content with the latest arrays. Use <code>isThinking</code> to show a "thinking" indicator in your UI while the model reasons.</p>
+                    <p>Each <code>task_output</code> event contains the <strong>full accumulated</strong> segment snapshot, not only the latest delta. Replace your stored segment list with the newest array; do not append the complete array again. The active final item's <code>text</code> grows in place as chunks arrive, so render every snapshot before the response completes. A new item is appended only when the output phase changes. Render items in array order and use <code>isThinking</code> to show an active reasoning indicator.</p>
                     <div class="docs-comparison-table">
                       <table>
                         <thead>
@@ -2384,19 +3293,19 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                         </thead>
                         <tbody>
                           <tr>
-                            <td><code>message.raw</code></td>
+                            <td><code>message.segments</code></td>
+                            <td><code>array</code></td>
+                            <td>Full ordered text/tool-call snapshot. Replace the prior array rather than appending it.</td>
+                          </tr>
+                          <tr>
+                            <td><code>message.finishreason</code></td>
                             <td><code>string</code></td>
-                            <td>Full accumulated raw output including thinking tags.</td>
+                            <td>Final reason: <code>stop</code>, <code>tool_calls</code>, <code>length</code>, <code>content_filter</code>, or <code>error</code>. Usually absent until the turn finishes.</td>
                           </tr>
                           <tr>
-                            <td><code>message.thinking</code></td>
-                            <td><code>string[]</code></td>
-                            <td>Array of reasoning/chain-of-thought chunks. May be empty for models without thinking.</td>
-                          </tr>
-                          <tr>
-                            <td><code>message.answer</code></td>
-                            <td><code>string[]</code></td>
-                            <td>Array of response chunks. This is the content to show the user.</td>
+                            <td><code>message.usage</code></td>
+                            <td><code>object</code></td>
+                            <td>Final normalized token/server-tool counters. Detail counters are already included in input/output totals.</td>
                           </tr>
                           <tr>
                             <td><code>message.isThinking</code></td>
@@ -2422,8 +3331,9 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                       </table>
                     </div>
                     <div class="info-callout">
-                      <p><strong>Note:</strong> Standard (non-LLM) models send <code>message</code> as a progress object or plain string. LLM models send it as a structured object with <code>thinking</code>, <code>answer</code>, and metadata fields. Check the <code>message.type</code> to distinguish.</p>
+                      <p><strong>Note:</strong> Standard models may send <code>message</code> as a progress object or plain string. For LLM rendering, first verify that <code>message.segments</code> is an array.</p>
                     </div>
+                    <p>Tool entries carry stable <code>id</code>, <code>call_id</code>, <code>name</code>, and <code>status</code>. <code>function_call</code> uses a JSON <code>arguments</code> string; <code>custom_tool_call</code> uses <code>input</code>. Execute only a <code>completed</code> call from a final turn whose <code>finishreason</code> is <code>tool_calls</code>. Earlier snapshots may contain <code>in_progress</code> or <code>incomplete</code> calls and must not trigger execution.</p>
                   </section>
 
                   <section id="llm-streaming-flow">
@@ -2432,15 +3342,15 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                     <ol>
                       <li><strong>Run</strong> the model with <code>prompt</code>, <code>session_id</code>, and <code>user_id</code></li>
                       <li><strong>Connect</strong> to WebSocket and send <code>task_info</code></li>
-                      <li><strong>Receive</strong> <code>task_output</code> messages — each contains the growing <code>thinking</code> and <code>answer</code> arrays</li>
-                      <li><strong>Display</strong> the latest <code>answer</code> array content to the user (optionally show <code>thinking</code> in a collapsible section)</li>
-                      <li><strong>Complete</strong> — on <code>task_postprocess_end</code>, check <code>pexit</code> for success</li>
+                      <li><strong>Receive</strong> <code>task_output</code> messages containing cumulative ordered <code>segments</code></li>
+                      <li><strong>Replace</strong> your stored snapshot and render <code>answer</code> items; optionally show <code>thinking</code> items and collect tool calls</li>
+                      <li><strong>Complete</strong> — on <code>task_postprocess_end</code>, check <code>exitCode</code> on WebSocket or <code>pexit</code> in Task Detail, then inspect <code>finishreason</code></li>
                     </ol>
                   </section>
 
                   <section id="llm-polling">
                     <h2>Polling Alternative</h2>
-                    <p>If you don't need real-time streaming, you can poll <a href="/docs/tasks" class="docs-link">POST /Task/Detail</a> instead. The response includes both <code>debugoutput</code> (merged plain text) and a structured entry in <code>outputs</code> with separate <code>thinking</code> and <code>answer</code> arrays:</p>
+                    <p>If you don't need real-time streaming, you can poll <a href="/docs/tasks" class="docs-link">POST /Task/Detail</a> instead. The response includes both <code>debugoutput</code> (merged plain text) and ordered <code>segments</code> in the structured <code>outputs</code> entry:</p>
                     <pre><code>{
   "result": true,
   "tasklist": [{
@@ -2452,15 +3362,34 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
       "content": {
         "prompt": "What is quantum computing?",
         "raw": "Quantum computing uses qubits that can exist in superposition...",
-        "thinking": [],
-        "answer": ["Quantum computing uses qubits that can exist in superposition..."]
+        "segments": [
+          {
+            "type": "answer",
+            "text": "Quantum computing uses qubits that can exist in superposition..."
+          }
+        ],
+        "finishreason": "stop",
+        "usage": {
+          "input_tokens": 18,
+          "output_tokens": 11,
+          "total_tokens": 29
+        }
       }
     }]
   }]
 }</code></pre>
                     <div class="info-callout">
-                      <p><strong>Note:</strong> <code>debugoutput</code> contains the merged plain text (thinking + answer combined). The <code>outputs</code> array provides the structured breakdown with separate <code>thinking</code> and <code>answer</code> arrays. For real-time token streaming, use WebSocket instead.</p>
+                      <p><strong>Note:</strong> Read <code>outputs[].content.segments</code> for structured output. <code>debugoutput</code> contains merged plain text. For real-time delivery, use WebSocket instead.</p>
                     </div>
+                  </section>
+
+                  <section id="llm-completions-alternative">
+                    <h2>Completions Alternative</h2>
+                    <p>For a single HTTP connection instead of manual Run plus WebSocket setup:</p>
+                    <ul>
+                      <li>Use <code>POST /v1/Run/{owner}/{project}/sync?stream=true</code> on <code>https://api.wiro.ai/v1</code> for generic task-event SSE. See <a href="/docs/run-a-model" class="docs-link">Run a Model</a>.</li>
+                      <li>Use the <a href="/docs/completions-api" class="docs-link">Direct LLM Gateway</a> on <code>https://llm.wiro.ai</code> for OpenAI Chat chunks ending in <code>[DONE]</code>, Responses named events, or Anthropic events ending in <code>message_stop</code>.</li>
+                    </ul>
                   </section>
                 </article>
 
@@ -2469,27 +3398,27 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                     {
                       "label": "JavaScript",
                       "language": "javascript",
-                      "code": "// LLM Streaming via WebSocket\n\nconst socketToken = 'YOUR_SOCKET_ACCESS_TOKEN';\nconst ws = new WebSocket('wss://socket.wiro.ai/v1');\n\nlet thinking = [];\nlet answer = [];\n\nws.onopen = () => {\n  ws.send(JSON.stringify({\n    type: 'task_info',\n    tasktoken: socketToken\n  }));\n};\n\nws.onmessage = (event) => {\n  const msg = JSON.parse(event.data);\n\n  if (msg.type === 'task_output') {\n    // LLM messages have structured object\n    if (typeof msg.message === 'object' &&\n        msg.message.answer) {\n      thinking = msg.message.thinking || [];\n      answer = msg.message.answer || [];\n\n      // Display answer to user\n      console.log('Answer:', answer.join('\\n'));\n\n      // Optionally show thinking\n      if (thinking.length > 0) {\n        console.log('Thinking:', thinking.join('\\n'));\n      }\n    }\n  }\n\n  if (msg.type === 'task_postprocess_end') {\n    console.log('\\n--- Complete ---');\n    console.log('Final answer:', answer.join('\\n'));\n    ws.close();\n  }\n};"
+                      "code": "// LLM Streaming via WebSocket\n\nconst socketToken = 'YOUR_SOCKET_ACCESS_TOKEN';\nconst ws = new WebSocket('wss://socket.wiro.ai/v1');\n\nlet segments = [];\n\nconst textFor = (type) => segments\n  .filter((segment) => segment.type === type)\n  .map((segment) => segment.text)\n  .join('');\n\nws.onopen = () => {\n  ws.send(JSON.stringify({\n    type: 'task_info',\n    tasktoken: socketToken\n  }));\n};\n\nws.onmessage = (event) => {\n  const msg = JSON.parse(event.data);\n\n  if (msg.type === 'task_output' &&\n      Array.isArray(msg.message?.segments)) {\n    // Each event is a complete snapshot: replace, do not append.\n    segments = msg.message.segments;\n    console.log('Answer:', textFor('answer'));\n\n    const thinking = textFor('thinking');\n    if (thinking) console.log('Thinking:', thinking);\n  }\n\n  if (msg.type === 'task_postprocess_end') {\n    console.log('\\n--- Complete ---');\n    console.log('Final answer:', textFor('answer'));\n    ws.close();\n  }\n};"
                     },
                     {
                       "label": "Python",
                       "language": "python",
-                      "code": "import asyncio\nimport json\nimport websockets\nimport requests\nimport uuid\n\nAPI_KEY = 'YOUR_API_KEY'\nSESSION_ID = str(uuid.uuid4())\nUSER_ID = str(uuid.uuid4())\n\n# 1. Run the LLM\nrun_resp = requests.post(\n    'https://api.wiro.ai/v1/Run/openai/gpt-5-2',\n    headers={\n        'x-api-key': API_KEY,\n        'Content-Type': 'application/json'\n    },\n    json={\n        'prompt': 'Explain quantum computing',\n        'session_id': SESSION_ID,\n        'user_id': USER_ID\n    }\n)\ndata = run_resp.json()\ntoken = data['socketaccesstoken']\n\n# 2. Stream response via WebSocket\nasync def stream():\n    async with websockets.connect(\n        'wss://socket.wiro.ai/v1'\n    ) as ws:\n        await ws.send(json.dumps({\n            'type': 'task_info',\n            'tasktoken': token\n        }))\n\n        async for raw in ws:\n            msg = json.loads(raw)\n\n            if msg['type'] == 'task_output':\n                m = msg.get('message', {})\n                if isinstance(m, dict):\n                    thinking = m.get('thinking', [])\n                    answer = m.get('answer', [])\n                    if answer:\n                        print('Answer:',\n                            '\\n'.join(answer))\n\n            if msg['type'] == 'task_postprocess_end':\n                print('Done')\n                break\n\nasyncio.run(stream())"
+                      "code": "import asyncio\nimport json\nimport websockets\nimport requests\nimport uuid\n\nAPI_KEY = 'YOUR_API_KEY'\nSESSION_ID = str(uuid.uuid4())\nUSER_ID = str(uuid.uuid4())\n\n# 1. Run the LLM\nrun_resp = requests.post(\n    'https://api.wiro.ai/v1/Run/openai/gpt-5-2',\n    headers={\n        'x-api-key': API_KEY,\n        'Content-Type': 'application/json'\n    },\n    json={\n        'prompt': 'Explain quantum computing',\n        'session_id': SESSION_ID,\n        'user_id': USER_ID\n    }\n)\ndata = run_resp.json()\ntoken = data['socketaccesstoken']\n\n# 2. Stream response via WebSocket\nasync def stream():\n    segments = []\n    async with websockets.connect(\n        'wss://socket.wiro.ai/v1'\n    ) as ws:\n        await ws.send(json.dumps({\n            'type': 'task_info',\n            'tasktoken': token\n        }))\n\n        async for raw in ws:\n            msg = json.loads(raw)\n\n            if msg['type'] == 'task_output':\n                message = msg.get('message', {})\n                next_segments = message.get('segments') \\\n                    if isinstance(message, dict) else None\n                if isinstance(next_segments, list):\n                    # Complete snapshot: replace, do not append.\n                    segments = next_segments\n                    answer = ''.join(\n                        item['text'] for item in segments\n                        if item.get('type') == 'answer'\n                    )\n                    print('Answer:', answer)\n\n            if msg['type'] == 'task_postprocess_end':\n                print('Done')\n                break\n\nasyncio.run(stream())"
                     },
                     {
                       "label": "Node.js",
                       "language": "javascript",
-                      "code": "const WebSocket = require('ws');\nconst axios = require('axios');\nconst { v4: uuid } = require('uuid');\n\nconst API_KEY = 'YOUR_API_KEY';\nconst SESSION_ID = uuid();\nconst USER_ID = uuid();\n\nasync function main() {\n  // 1. Run the LLM\n  const { data } = await axios.post(\n    'https://api.wiro.ai/v1/Run/openai/gpt-5-2',\n    {\n      prompt: 'Explain quantum computing',\n      session_id: SESSION_ID,\n      user_id: USER_ID\n    },\n    {\n      headers: {\n        'x-api-key': API_KEY,\n        'Content-Type': 'application/json'\n      }\n    }\n  );\n\n  // 2. Stream via WebSocket\n  const ws = new WebSocket('wss://socket.wiro.ai/v1');\n\n  ws.on('open', () => {\n    ws.send(JSON.stringify({\n      type: 'task_info',\n      tasktoken: data.socketaccesstoken\n    }));\n  });\n\n  ws.on('message', (raw) => {\n    const msg = JSON.parse(raw.toString());\n\n    if (msg.type === 'task_output') {\n      const m = msg.message;\n      if (typeof m === 'object' && m.answer) {\n        process.stdout.write(\n          '\\r' + m.answer.join(''));\n        if (m.thinking && m.thinking.length) {\n          // Thinking available separately\n        }\n      }\n    }\n\n    if (msg.type === 'task_postprocess_end') {\n      console.log('\\nDone');\n      ws.close();\n    }\n  });\n}\n\nmain();"
+                      "code": "const WebSocket = require('ws');\nconst axios = require('axios');\nconst { v4: uuid } = require('uuid');\n\nconst API_KEY = 'YOUR_API_KEY';\nconst SESSION_ID = uuid();\nconst USER_ID = uuid();\n\nasync function main() {\n  // 1. Run the LLM\n  const { data } = await axios.post(\n    'https://api.wiro.ai/v1/Run/openai/gpt-5-2',\n    {\n      prompt: 'Explain quantum computing',\n      session_id: SESSION_ID,\n      user_id: USER_ID\n    },\n    {\n      headers: {\n        'x-api-key': API_KEY,\n        'Content-Type': 'application/json'\n      }\n    }\n  );\n\n  // 2. Stream via WebSocket\n  const ws = new WebSocket('wss://socket.wiro.ai/v1');\n\n  ws.on('open', () => {\n    ws.send(JSON.stringify({\n      type: 'task_info',\n      tasktoken: data.socketaccesstoken\n    }));\n  });\n\n  ws.on('message', (raw) => {\n    const msg = JSON.parse(raw.toString());\n    const nextSegments = msg.message?.segments;\n\n    if (msg.type === 'task_output' &&\n        Array.isArray(nextSegments)) {\n      // Complete snapshot: replace, do not append.\n      const answer = nextSegments\n        .filter(({ type }) => type === 'answer')\n        .map(({ text }) => text)\n        .join('');\n      process.stdout.write('\\r' + answer);\n    }\n\n    if (msg.type === 'task_postprocess_end') {\n      console.log('\\nDone');\n      ws.close();\n    }\n  });\n}\n\nmain();"
                     },
                     {
                       "label": "Polling",
                       "language": "python",
-                      "code": "import requests\nimport time\n\nAPI_KEY = 'YOUR_API_KEY'\n\n# 1. Run the LLM\nrun = requests.post(\n    'https://api.wiro.ai/v1/Run/openai/gpt-5-2',\n    headers={\n        'x-api-key': API_KEY,\n        'Content-Type': 'application/json'\n    },\n    json={'prompt': 'Explain quantum computing'}\n).json()\n\ntask_id = run['taskid']\n\n# 2. Poll until complete\nwhile True:\n    resp = requests.post(\n        'https://api.wiro.ai/v1/Task/Detail',\n        headers={\n            'x-api-key': API_KEY,\n            'Content-Type': 'application/json'\n        },\n        json={'taskid': task_id}\n    ).json()\n\n    task = resp['tasklist'][0]\n    status = task['status']\n    print(f'Status: {status}')\n\n    if status == 'task_postprocess_end':\n        if task['pexit'] == '0':\n            # Merged text in debugoutput\n            print('Response:',\n                task['debugoutput'])\n            # Structured output with thinking/answer\n            out = task['outputs'][0]\n            if out['contenttype'] == 'raw':\n                print('Thinking:',\n                    out['content']['thinking'])\n                print('Answer:',\n                    out['content']['answer'])\n        else:\n            print('Error: pexit =',\n                task['pexit'])\n        break\n\n    time.sleep(2)"
+                      "code": "import requests\nimport time\n\nAPI_KEY = 'YOUR_API_KEY'\n\n# 1. Run the LLM\nrun = requests.post(\n    'https://api.wiro.ai/v1/Run/openai/gpt-5-2',\n    headers={\n        'x-api-key': API_KEY,\n        'Content-Type': 'application/json'\n    },\n    json={'prompt': 'Explain quantum computing'}\n).json()\n\ntask_id = run['taskid']\n\n# 2. Poll until complete\nwhile True:\n    resp = requests.post(\n        'https://api.wiro.ai/v1/Task/Detail',\n        headers={\n            'x-api-key': API_KEY,\n            'Content-Type': 'application/json'\n        },\n        json={'taskid': task_id}\n    ).json()\n\n    task = resp['tasklist'][0]\n    status = task['status']\n    print(f'Status: {status}')\n\n    if status == 'task_postprocess_end':\n        if task['pexit'] == '0':\n            print('Response:', task['debugoutput'])\n            output = task['outputs'][0]\n            if output['contenttype'] == 'raw':\n                segments = output['content']['segments']\n                answer = ''.join(\n                    item['text'] for item in segments\n                    if item['type'] == 'answer'\n                )\n                print('Answer:', answer)\n        else:\n            print('Error: pexit =', task['pexit'])\n        break\n\n    time.sleep(2)"
                     },
                     {
                       "label": "Message Format",
                       "language": "json",
-                      "code": "{\n  \"_comment\": \"LLM task_output message (structured)\",\n  \"type\": \"task_output\",\n  \"id\": \"534574\",\n  \"tasktoken\": \"eDcCm5yy...\",\n  \"message\": {\n    \"type\": \"progressGenerate\",\n    \"task\": \"Generate\",\n    \"speed\": \"12.4\",\n    \"speedType\": \"words/s\",\n    \"raw\": \"<think>Let me break this down...</think>Quantum computing is...\",\n    \"thinking\": [\n      \"Let me break this down step by step...\",\n      \"The key concept here is superposition...\"\n    ],\n    \"answer\": [\n      \"Quantum computing is a type of computation...\",\n      \"To summarize: it uses qubits that can be 0, 1, or both.\"\n    ],\n    \"isThinking\": false,\n    \"elapsedTime\": \"3s\"\n  }\n}\n\n// thinking[0] -> answer[0], thinking[1] -> answer[1]\n// The model can think and answer multiple times\n\n// Compare: Standard model task_output (progress object)\n// { \"type\": \"task_output\", \"message\": \"Processing step 1/10...\" }\n\n// Compare: Realtime voice task_output (transcript prefix)\n// { \"type\": \"task_output\", \"message\": \"TRANSCRIPT_AI:Hello!\" }"
+                      "code": "{\n  \"type\": \"task_output\",\n  \"id\": \"534574\",\n  \"message\": {\n    \"type\": \"progressGenerate\",\n    \"task\": \"Generate\",\n    \"speed\": \"12.4\",\n    \"speedType\": \"words/s\",\n    \"segments\": [\n      {\n        \"type\": \"thinking\",\n        \"text\": \"Let me break this down step by step...\"\n      },\n      {\n        \"type\": \"answer\",\n        \"text\": \"Quantum computing is a type of computation...\"\n      },\n      {\n        \"type\": \"thinking\",\n        \"text\": \"I should clarify one more detail...\"\n      },\n      {\n        \"type\": \"answer\",\n        \"text\": \"To summarize: it uses qubits that can be 0, 1, or both.\"\n      }\n    ],\n    \"isThinking\": false,\n    \"elapsedTime\": \"3s\"\n  }\n}\n\n// Each task_output contains the full cumulative segments snapshot.\n// Replace your previous snapshot instead of appending this array."
                     }
                   ]
                 </script>
@@ -2539,55 +3468,55 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                         <tbody>
                           <tr>
                             <td><code>task_queue</code></td>
-                            <td>The task is queued and waiting to be picked up by an available worker.</td>
+                            <td>The task is queued and waiting to start.</td>
                           </tr>
                           <tr>
                             <td><code>task_accept</code></td>
-                            <td>A worker has accepted the task and is preparing for execution.</td>
+                            <td>The task was accepted and is preparing for execution.</td>
                           </tr>
                           <tr>
                             <td><code>task_preprocess_start</code></td>
-                            <td>Optional preprocessing has started (downloading input files from URLs, converting file types, validating parameters).</td>
+                            <td>Optional input preparation has started.</td>
                           </tr>
                           <tr>
                             <td><code>task_preprocess_end</code></td>
-                            <td>Preprocessing completed. All inputs are ready for GPU assignment.</td>
+                            <td>Input preparation completed.</td>
                           </tr>
                           <tr>
                             <td><code>task_assign</code></td>
-                            <td>The task has been assigned to a specific GPU. The model is being loaded into memory.</td>
+                            <td>Execution capacity was assigned and the model is preparing to start.</td>
                           </tr>
                           <tr>
                             <td><code>task_start</code></td>
-                            <td>The model command has started executing. Inference is now running on the GPU.</td>
+                            <td>Model execution started.</td>
                           </tr>
                           <tr>
                             <td><code>task_output</code></td>
-                            <td>The model is producing output. Emitted <strong>multiple times</strong> — each stdout write sends a new message. For LLMs, each token/chunk arrives as a separate event for real-time streaming.</td>
+                            <td>The model is producing output. Emitted <strong>multiple times</strong>; LLM events carry the latest cumulative ordered <code>message.segments</code> snapshot.</td>
                           </tr>
                           <tr>
                             <td><code>task_error</code></td>
-                            <td>The model wrote to stderr. This is an <strong>interim log event</strong>, not a final failure — many models write warnings to stderr during normal operation. The task may still succeed.</td>
+                            <td>An interim diagnostic event. It is not terminal; continue listening for completion.</td>
                           </tr>
                           <tr>
                             <td><code>task_output_full</code></td>
-                            <td>The complete accumulated stdout log, sent once after the model process finishes.</td>
+                            <td>Signals that output collection ended. Treat it as a lifecycle event.</td>
                           </tr>
                           <tr>
                             <td><code>task_error_full</code></td>
-                            <td>The complete accumulated stderr log, sent once after the model process finishes.</td>
+                            <td>Signals that error-output collection ended. Treat it as a lifecycle event.</td>
                           </tr>
                           <tr>
                             <td><code>task_end</code></td>
-                            <td>The model process has exited. Fires <strong>before</strong> post-processing — do not use this to determine success. Wait for <code>task_postprocess_end</code> instead.</td>
+                            <td>Model execution ended. This is not the final success signal; wait for <code>task_postprocess_end</code>.</td>
                           </tr>
                           <tr>
                             <td><code>task_postprocess_start</code></td>
-                            <td>Post-processing has started. The system is preparing output files — encoding, uploading to CDN, generating access URLs.</td>
+                            <td>Final output preparation started.</td>
                           </tr>
                           <tr>
                             <td><code>task_postprocess_end</code></td>
-                            <td>Post-processing completed. Check <code>pexit</code> to determine success (<code>"0"</code> = success). The <code>outputs</code> array contains the final files. <strong>This is the event to listen for.</strong></td>
+                            <td>Post-processing completed. Check <code>success</code> and <code>exitCode</code> (<code>0</code> = success). The <code>message</code> array contains final outputs. <strong>This is the event to listen for.</strong></td>
                           </tr>
                           <tr>
                             <td><code>task_cancel</code></td>
@@ -2602,11 +3531,14 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                     <pre><code>{
   "type": "task_accept",
   "id": "534574",
-  "tasktoken": "eDcCm5yyUfIvMFspTwww49OUfgXkQt",
   "message": null,
-  "result": true
+  "result": true,
+  "success": null,
+  "terminal": false,
+  "exitCode": null
 }</code></pre>
                     <p>The <code>type</code> field indicates the status. The <code>message</code> field varies by type — it's <code>null</code> for lifecycle events, a string or object for output events, and an array for the final result.</p>
+                    <p>Use the top-level <code>id</code> to correlate server events with the submitted task.</p>
 
                     <h3>Lifecycle Events</h3>
                     <p>These events signal task state changes. The <code>message</code> field is <code>null</code>:</p>
@@ -2615,7 +3547,6 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
 {
   "type": "task_assign",
   "id": "534574",
-  "tasktoken": "eDcCm5yy...",
   "message": null,
   "result": true
 }</code></pre>
@@ -2626,7 +3557,6 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
 {
   "type": "task_output",
   "id": "534574",
-  "tasktoken": "eDcCm5yy...",
   "message": {
     "type": "progressGenerate",
     "task": "Generate",
@@ -2645,73 +3575,58 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
 {
   "type": "task_output",
   "id": "534574",
-  "tasktoken": "eDcCm5yy...",
   "message": "Processing complete.",
   "result": true
 }</code></pre>
-                    <p><strong>LLM models</strong> — <code>message</code> is a structured object with thinking/answer arrays. See <a href="/docs/llm-chat-streaming" class="docs-link">LLM &amp; Chat Streaming</a> for full details:</p>
+                    <p><strong>LLM models</strong> — <code>message.segments</code> is the cumulative ordered output snapshot. Replace it on every event. The final active item's <code>text</code> grows as chunks arrive, so render it before completion; a new item appears when the output phase changes. See <a href="/docs/llm-chat-streaming" class="docs-link">LLM &amp; Chat Streaming</a> for full details:</p>
                     <pre><code>{
   "type": "task_output",
   "id": "534574",
-  "tasktoken": "eDcCm5yy...",
   "message": {
     "type": "progressGenerate",
     "task": "Generate",
     "speed": "12.4",
     "speedType": "words/s",
-    "raw": "Quantum computing uses qubits...",
-    "thinking": ["Let me analyze this..."],
-    "answer": ["Quantum computing uses qubits..."],
+    "segments": [
+      { "type": "thinking", "text": "Let me analyze this..." },
+      { "type": "answer", "text": "Quantum computing uses qubits..." }
+    ],
+    "finishreason": "stop",
+    "usage": {
+      "input_tokens": 18,
+      "input_tokens_details": { "cached_tokens": 6 },
+      "output_tokens": 11,
+      "output_tokens_details": { "reasoning_tokens": 4 },
+      "total_tokens": 29
+    },
     "isThinking": false,
     "elapsedTime": "3s"
   },
   "result": true
 }</code></pre>
+                    <p><code>message.segments</code> is always the full accumulated snapshot. Text entries use <code>thinking</code> or <code>answer</code>. Tool-capable models can also emit <code>function_call</code> entries with <code>arguments</code>, or <code>custom_tool_call</code> entries with <code>input</code>; both include <code>id</code>, <code>call_id</code>, <code>name</code>, and <code>status</code>.</p>
+                    <p><code>message.finishreason</code> and <code>message.usage</code> are final-turn metadata and can be absent from earlier <code>task_output</code> snapshots:</p>
+                    <ul>
+                      <li><code>finishreason</code> is <code>stop</code>, <code>tool_calls</code>, <code>length</code>, <code>content_filter</code>, or <code>error</code>. Execute a tool only when its segment status is <code>completed</code> and the finish reason is <code>tool_calls</code>.</li>
+                      <li><code>usage</code> contains normalized token and server-tool counters. Input totals already include cache reads/writes; output totals already include reasoning. Do not add details to <code>total_tokens</code>, and use Task Detail <code>totalcost</code> for the billed amount.</li>
+                    </ul>
+                    <p>Inspect <code>finishreason</code> after completion so truncation and content filtering are not mistaken for a normal stop.</p>
 
                     <h3>Error Events</h3>
-                    <p><code>task_error</code> is an interim stderr log, not a final failure. The <code>message</code> is a string or progress object:</p>
+                    <p><code>task_error</code> is an interim diagnostic event, not a final failure. The <code>message</code> is a string or progress object:</p>
                     <pre><code>{
   "type": "task_error",
   "id": "534574",
-  "tasktoken": "eDcCm5yy...",
   "message": "UserWarning: Some weights were not initialized...",
   "result": true
 }</code></pre>
 
                     <h3>Full Output Events</h3>
-                    <p>Sent once after the process exits. Contains the complete accumulated log:</p>
-                    <pre><code>// Standard model
-{
+                    <p><code>task_output_full</code> and <code>task_error_full</code> are lifecycle signals. Continue listening for <code>task_postprocess_end</code>, or use authenticated <code>POST /Task/Detail</code> to retrieve the persisted task.</p>
+                    <pre><code>{
   "type": "task_output_full",
   "id": "534574",
-  "tasktoken": "eDcCm5yy...",
-  "message": {
-    "raw": "0%|...| 0/10\n10%|█| 1/10\n...\n100%|██████████| 10/10\nDone."
-  },
-  "result": true
-}
-
-// LLM model — includes thinking/answer separation
-{
-  "type": "task_output_full",
-  "id": "534574",
-  "tasktoken": "eDcCm5yy...",
-  "message": {
-    "raw": "&lt;think&gt;Let me analyze...&lt;/think&gt;Quantum computing uses qubits...",
-    "thinking": ["Let me analyze this step by step..."],
-    "answer": ["Quantum computing uses qubits that can exist in superposition..."]
-  },
-  "result": true
-}
-
-// Stderr log (only sent if stderr is non-empty)
-{
-  "type": "task_error_full",
-  "id": "534574",
-  "tasktoken": "eDcCm5yy...",
-  "message": {
-    "raw": "UserWarning: Some weights were not initialized..."
-  },
+  "message": "",
   "result": true
 }</code></pre>
 
@@ -2721,31 +3636,41 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
 {
   "type": "task_postprocess_end",
   "id": "534574",
-  "tasktoken": "eDcCm5yy...",
   "message": [{
     "name": "0.png",
     "contenttype": "image/png",
     "size": "202472",
     "url": "https://cdn1.wiro.ai/.../0.png"
   }],
-  "result": true
+  "result": true,
+  "success": true,
+  "terminal": true,
+  "exitCode": 0
 }
 
 // LLM model — structured raw content
 {
   "type": "task_postprocess_end",
   "id": "534574",
-  "tasktoken": "eDcCm5yy...",
   "message": [{
     "contenttype": "raw",
     "content": {
       "prompt": "Explain quantum computing",
-      "raw": "Quantum computing uses qubits...",
-      "thinking": [],
-      "answer": ["Quantum computing uses qubits..."]
+      "segments": [
+        { "type": "answer", "text": "Quantum computing uses qubits..." }
+      ],
+      "finishreason": "stop",
+      "usage": {
+        "input_tokens": 18,
+        "output_tokens": 11,
+        "total_tokens": 29
+      }
     }
   }],
-  "result": true
+  "result": true,
+  "success": true,
+  "terminal": true,
+  "exitCode": 0
 }</code></pre>
 
                     <h3>Realtime Events</h3>
@@ -2754,7 +3679,6 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
 {
   "type": "task_stream_ready",
   "id": "534574",
-  "tasktoken": "eDcCm5yy...",
   "result": true
 }
 
@@ -2762,7 +3686,6 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
 {
   "type": "task_stream_end",
   "id": "534574",
-  "tasktoken": "eDcCm5yy...",
   "result": true
 }
 
@@ -2770,12 +3693,12 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
 {
   "type": "task_cost",
   "id": "534574",
-  "tasktoken": "eDcCm5yy...",
   "turnCost": 0.002,
   "cumulativeCost": 0.012,
   "usage": { "input_tokens": 150, "output_tokens": 89 },
   "result": true
 }</code></pre>
+                    <p><code>task_cost.usage</code> is the provider-specific realtime usage payload for that turn. It is separate from the normalized structured finite-LLM <code>message.usage</code> contract described above and can omit <code>total_tokens</code> or detail objects.</p>
                   </section>
 
                   <section id="ws-binary">
@@ -2844,7 +3767,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                     {
                       "label": "Messages",
                       "language": "json",
-                      "code": "// task_queue\n{\"type\": \"task_queue\", \"tasktoken\": \"eDcCm5yy...\"}\n\n// task_start\n{\"type\": \"task_start\", \"tasktoken\": \"eDcCm5yy...\"}\n\n// task_output (streaming log)\n{\"type\": \"task_output\", \"tasktoken\": \"eDcCm5yy...\", \"message\": \"Step 1/10...\"}\n\n// task_postprocess_end (outputs ready)\n{\"type\": \"task_postprocess_end\", \"tasktoken\": \"eDcCm5yy...\", \"message\": [\n  {\"name\": \"0.png\", \"url\": \"https://cdn1.wiro.ai/.../0.png\", \"size\": \"202472\"}\n]}\n\n// task_end\n{\"type\": \"task_end\", \"tasktoken\": \"eDcCm5yy...\"}"
+                      "code": "// task_queue\n{\"type\": \"task_queue\", \"id\": \"534574\", \"message\": null}\n\n// task_start\n{\"type\": \"task_start\", \"id\": \"534574\", \"message\": null}\n\n// task_output (streaming log)\n{\"type\": \"task_output\", \"id\": \"534574\", \"message\": \"Step 1/10...\"}\n\n// task_postprocess_end (outputs ready)\n{\"type\": \"task_postprocess_end\", \"id\": \"534574\", \"success\": true, \"exitCode\": 0, \"message\": [\n  {\"name\": \"0.png\", \"url\": \"https://cdn1.wiro.ai/.../0.png\"}\n]}\n\n// task_end\n{\"type\": \"task_end\", \"id\": \"534574\", \"terminal\": false}"
                     }
                   ]
                 </script>
@@ -4410,7 +5333,7 @@ if (msg.type === 'task_output' &amp;&amp;
                     <h2>Run Errors</h2>
                     <p>Returned by <code>POST /Run/{owner}/{model}</code>.</p>
 
-                    <h3>Balance & Limits</h3>
+                    <h3>Balance &amp; Limits</h3>
                     <table>
                       <thead>
                         <tr>
@@ -4817,47 +5740,47 @@ if (!data.result) {
                     {
                       "label": "curl",
                       "language": "bash",
-                      "code": "#!/bin/bash\n# Wiro API — End-to-End Example (curl)\n\nAPI_KEY=\"YOUR_API_KEY\"\nBASE_URL=\"https://api.wiro.ai/v1\"\n\n# 1. Run a model\necho \"Starting model run...\"\nRUN_RESPONSE=$(curl -s -X POST \"$BASE_URL/Run/{owner-slug}/{model-slug}\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: $API_KEY\" \\\n  -d '{\"prompt\": \"A cyberpunk cityscape at night\", \"width\": 1024, \"height\": 1024}')\n\nTASK_TOKEN=$(echo $RUN_RESPONSE | python3 -c \"import sys,json; print(json.load(sys.stdin)['socketaccesstoken'])\")\nTASK_ID=$(echo $RUN_RESPONSE | python3 -c \"import sys,json; print(json.load(sys.stdin)['taskid'])\")\necho \"Task ID: $TASK_ID\"\n\n# 2. Poll for results\nwhile true; do\n  TASK_RESPONSE=$(curl -s -X POST \"$BASE_URL/Task/Detail\" \\\n    -H \"Content-Type: application/json\" \\\n    -H \"x-api-key: $API_KEY\" \\\n    -d \"{\\\"tasktoken\\\": \\\"$TASK_TOKEN\\\"}\")\n\n  STATUS=$(echo $TASK_RESPONSE | python3 -c \"import sys,json; print(json.load(sys.stdin)['tasklist'][0]['status'])\")\n  echo \"Status: $STATUS\"\n\n  if [ \"$STATUS\" = \"task_postprocess_end\" ]; then\n    echo \"Done! Output:\"\n    echo $TASK_RESPONSE | python3 -m json.tool\n    break\n  elif [ \"$STATUS\" = \"error\" ] || [ \"$STATUS\" = \"cancel\" ]; then\n    echo \"Task failed or cancelled\"\n    break\n  fi\n\n  sleep 3\ndone"
+                      "code": "#!/bin/bash\n# Wiro API — End-to-End Example (curl)\n\nAPI_KEY=\"YOUR_API_KEY\"\nBASE_URL=\"https://api.wiro.ai/v1\"\n\n# 1. Run a model\necho \"Starting model run...\"\nRUN_RESPONSE=$(curl -s -X POST \"$BASE_URL/Run/{owner-slug}/{model-slug}\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: $API_KEY\" \\\n  -d '{\"prompt\": \"A cyberpunk cityscape at night\", \"width\": 1024, \"height\": 1024}')\n\nTASK_ID=$(echo \"$RUN_RESPONSE\" | python3 -c \"import sys,json; print(json.load(sys.stdin)['taskid'])\")\nTASK_TOKEN=$(echo \"$RUN_RESPONSE\" | python3 -c \"import sys,json; print(json.load(sys.stdin)['socketaccesstoken'])\")\necho \"Task ID: $TASK_ID\"\n\n# 2. Poll for results\nwhile true; do\n  TASK_RESPONSE=$(curl -s -X POST \"$BASE_URL/Task/Detail\" \\\n    -H \"Content-Type: application/json\" \\\n    -H \"x-api-key: $API_KEY\" \\\n    -d \"{\\\"tasktoken\\\": \\\"$TASK_TOKEN\\\"}\")\n\n  STATUS=$(echo \"$TASK_RESPONSE\" | python3 -c \"import sys,json; print(json.load(sys.stdin)['tasklist'][0]['status'])\")\n  echo \"Status: $STATUS\"\n\n  if [ \"$STATUS\" = \"task_postprocess_end\" ]; then\n    echo \"Done! Output:\"\n    echo $TASK_RESPONSE | python3 -m json.tool\n    break\n  elif [ \"$STATUS\" = \"task_cancel\" ]; then\n    echo \"Task cancelled\"\n    break\n  fi\n\n  sleep 3\ndone"
                     },
                     {
                       "label": "Python",
                       "language": "python",
-                      "code": "import requests\nimport time\n\nAPI_KEY = \"YOUR_API_KEY\"\nBASE_URL = \"https://api.wiro.ai/v1\"\n\nheaders = {\n    \"x-api-key\": API_KEY,\n    \"Content-Type\": \"application/json\"\n}\n\n# 1. Run a model\nprint(\"Starting model run...\")\nrun_resp = requests.post(\n    f\"{BASE_URL}/Run/{owner-slug}/{model-slug}\",\n    headers=headers,\n    json={\n        \"prompt\": \"A cyberpunk cityscape at night\",\n        \"width\": 1024,\n        \"height\": 1024\n    }\n)\nrun_data = run_resp.json()\ntask_token = run_data[\"data\"][\"taskid\"]\nprint(f\"Task ID: {task_token}\")\n\n# 2. Poll for results\nwhile True:\n    task_resp = requests.post(\n        f\"{BASE_URL}/Task/Detail\",\n        headers=headers,\n        json={\"tasktoken\": task_token}\n    )\n    task = task_resp.json()[\"data\"]\n    status = task[\"status\"]\n    print(f\"Status: {status}\")\n\n    if status == \"end\":\n        print(\"Done! Output:\", task.get(\"output\"))\n        break\n    elif status in (\"error\", \"cancel\"):\n        print(\"Task failed or cancelled\")\n        break\n\n    time.sleep(3)"
+                      "code": "import requests\nimport time\n\nAPI_KEY = \"YOUR_API_KEY\"\nBASE_URL = \"https://api.wiro.ai/v1\"\n\nheaders = {\n    \"x-api-key\": API_KEY,\n    \"Content-Type\": \"application/json\"\n}\n\n# 1. Run a model\nprint(\"Starting model run...\")\nrun_resp = requests.post(\n    f\"{BASE_URL}/Run/{owner-slug}/{model-slug}\",\n    headers=headers,\n    json={\n        \"prompt\": \"A cyberpunk cityscape at night\",\n        \"width\": 1024,\n        \"height\": 1024\n    }\n)\nrun_data = run_resp.json()\ntask_token = run_data[\"socketaccesstoken\"]\nprint(f\"Task ID: {run_data['taskid']}\")\n\n# 2. Poll for results\nwhile True:\n    task_resp = requests.post(\n        f\"{BASE_URL}/Task/Detail\",\n        headers=headers,\n        json={\"tasktoken\": task_token}\n    )\n    task = task_resp.json()[\"tasklist\"][0]\n    status = task[\"status\"]\n    print(f\"Status: {status}\")\n\n    if status == \"task_postprocess_end\":\n        print(\"Done! Outputs:\", task.get(\"outputs\"))\n        break\n    elif status == \"task_cancel\":\n        print(\"Task cancelled\")\n        break\n\n    time.sleep(3)"
                     },
                     {
                       "label": "Node.js",
                       "language": "javascript",
-                      "code": "const axios = require('axios');\n\nconst API_KEY = 'YOUR_API_KEY';\nconst BASE_URL = 'https://api.wiro.ai/v1';\n\nconst headers = {\n  'x-api-key': API_KEY,\n  'Content-Type': 'application/json'\n};\n\nasync function main() {\n  // 1. Run a model\n  console.log('Starting model run...');\n  const runResp = await axios.post(\n    `${BASE_URL}/Run/{owner-slug}/{model-slug}`,\n    {\n      prompt: 'A cyberpunk cityscape at night',\n      width: 1024,\n      height: 1024\n    },\n    { headers }\n  );\n  const taskToken = runResp.data.socketaccesstoken;\n  console.log('Task ID:', runResp.data.taskid);\n\n  // 2. Poll for results\n  while (true) {\n    const taskResp = await axios.post(\n      `${BASE_URL}/Task/Detail`,\n      { tasktoken: taskToken },\n      { headers }\n    );\n    const task = taskResp.data.tasklist[0];\n    console.log('Status:', task.status);\n\n    if (task.status === 'task_postprocess_end') {\n      if (task.pexit === '0') {\n        console.log('Done! Outputs:', task.outputs);\n      }\n      break;\n    }\n    if (task.status === 'task_cancel' || status === 'cancel') {\n      console.log('Task failed or cancelled');\n      break;\n    }\n\n    await new Promise(r => setTimeout(r, 3000));\n  }\n}\n\nmain();"
+                      "code": "const axios = require('axios');\n\nconst API_KEY = 'YOUR_API_KEY';\nconst BASE_URL = 'https://api.wiro.ai/v1';\n\nconst headers = {\n  'x-api-key': API_KEY,\n  'Content-Type': 'application/json'\n};\n\nasync function main() {\n  // 1. Run a model\n  console.log('Starting model run...');\n  const runResp = await axios.post(\n    `${BASE_URL}/Run/{owner-slug}/{model-slug}`,\n    {\n      prompt: 'A cyberpunk cityscape at night',\n      width: 1024,\n      height: 1024\n    },\n    { headers }\n  );\n  const taskToken = runResp.data.socketaccesstoken;\n  console.log('Task ID:', runResp.data.taskid);\n\n  // 2. Poll for results\n  while (true) {\n    const taskResp = await axios.post(\n      `${BASE_URL}/Task/Detail`,\n      { tasktoken: taskToken },\n      { headers }\n    );\n    const task = taskResp.data.tasklist[0];\n    const { status } = task;\n    console.log('Status:', status);\n\n    if (status === 'task_postprocess_end') {\n      console.log('Done! Outputs:', task.outputs);\n      break;\n    }\n    if (status === 'task_cancel') {\n      console.log('Task cancelled');\n      break;\n    }\n\n    await new Promise(r => setTimeout(r, 3000));\n  }\n}\n\nmain();"
                     },
                     {
                       "label": "PHP",
                       "language": "php",
-                      "code": "<?php\n$apiKey = 'YOUR_API_KEY';\n$baseUrl = 'https://api.wiro.ai/v1';\n\nfunction apiPost($url, $data, $apiKey) {\n    $ch = curl_init($url);\n    curl_setopt_array($ch, [\n        CURLOPT_POST => true,\n        CURLOPT_RETURNTRANSFER => true,\n        CURLOPT_HTTPHEADER => [\n            'Content-Type: application/json',\n            'x-api-key: ' . $apiKey,\n        ],\n        CURLOPT_POSTFIELDS => json_encode($data),\n    ]);\n    $response = curl_exec($ch);\n    curl_close($ch);\n    return json_decode($response, true);\n}\n\n// 1. Run a model\necho \"Starting model run...\\n\";\n$runResp = apiPost(\"$baseUrl/Run/{owner-slug}/{model-slug}\", [\n    'prompt' => 'A cyberpunk cityscape at night',\n    'width' => 1024,\n    'height' => 1024,\n], $apiKey);\n$taskToken = $runResp['data']['taskid'];\necho \"Task ID: $taskToken\\n\";\n\n// 2. Poll for results\nwhile (true) {\n    $taskResp = apiPost(\"$baseUrl/Task/Detail\", [\n        'tasktoken' => $taskToken,\n    ], $apiKey);\n    $status = $taskResp['data']['status'];\n    echo \"Status: $status\\n\";\n\n    if ($status === 'end') {\n        echo \"Done! Output:\\n\";\n        print_r($taskResp['data']['output']);\n        break;\n    }\n    if (in_array($status, ['error', 'cancel'])) {\n        echo \"Task failed or cancelled\\n\";\n        break;\n    }\n\n    sleep(3);\n}"
+                      "code": "<?php\n$apiKey = 'YOUR_API_KEY';\n$baseUrl = 'https://api.wiro.ai/v1';\n\nfunction apiPost($url, $data, $apiKey) {\n    $ch = curl_init($url);\n    curl_setopt_array($ch, [\n        CURLOPT_POST => true,\n        CURLOPT_RETURNTRANSFER => true,\n        CURLOPT_HTTPHEADER => [\n            'Content-Type: application/json',\n            'x-api-key: ' . $apiKey,\n        ],\n        CURLOPT_POSTFIELDS => json_encode($data),\n    ]);\n    $response = curl_exec($ch);\n    curl_close($ch);\n    return json_decode($response, true);\n}\n\n// 1. Run a model\necho \"Starting model run...\\n\";\n$runResp = apiPost(\"$baseUrl/Run/{owner-slug}/{model-slug}\", [\n    'prompt' => 'A cyberpunk cityscape at night',\n    'width' => 1024,\n    'height' => 1024,\n], $apiKey);\n$taskToken = $runResp['socketaccesstoken'];\necho \"Task ID: {$runResp['taskid']}\\n\";\n\n// 2. Poll for results\nwhile (true) {\n    $taskResp = apiPost(\"$baseUrl/Task/Detail\", [\n        'tasktoken' => $taskToken,\n    ], $apiKey);\n    $task = $taskResp['tasklist'][0];\n    $status = $task['status'];\n    echo \"Status: $status\\n\";\n\n    if ($status === 'task_postprocess_end') {\n        echo \"Done! Outputs:\\n\";\n        print_r($task['outputs']);\n        break;\n    }\n    if ($status === 'task_cancel') {\n        echo \"Task cancelled\\n\";\n        break;\n    }\n\n    sleep(3);\n}"
                     },
                     {
                       "label": "C#",
                       "language": "csharp",
-                      "code": "using System.Net.Http.Json;\nusing System.Text.Json;\n\nvar apiKey = \"YOUR_API_KEY\";\nvar baseUrl = \"https://api.wiro.ai/v1\";\n\nusing var http = new HttpClient();\nhttp.DefaultRequestHeaders.Add(\"x-api-key\", apiKey);\n\n// 1. Run a model\nConsole.WriteLine(\"Starting model run...\");\nvar runResp = await http.PostAsJsonAsync($\"{baseUrl}/Run/{owner-slug}/{model-slug}\", new {\n    prompt = \"A cyberpunk cityscape at night\",\n    width = 1024,\n    height = 1024\n});\nvar runData = await runResp.Content.ReadFromJsonAsync<JsonElement>();\nvar taskToken = runData.GetProperty(\"data\").GetProperty(\"taskid\").GetString();\nConsole.WriteLine($\"Task ID: {taskToken}\");\n\n// 2. Poll for results\nwhile (true) {\n    var taskResp = await http.PostAsJsonAsync($\"{baseUrl}/Task/Detail\", new {\n        tasktoken = taskToken\n    });\n    var taskData = await taskResp.Content.ReadFromJsonAsync<JsonElement>();\n    var status = taskData.GetProperty(\"data\").GetProperty(\"status\").GetString();\n    Console.WriteLine($\"Status: {status}\");\n\n    if (status == \"end\") {\n        Console.WriteLine(\"Done!\");\n        Console.WriteLine(taskData.GetProperty(\"data\").GetProperty(\"output\").ToString());\n        break;\n    }\n    if (status == \"error\" || status == \"cancel\") {\n        Console.WriteLine(\"Task failed or cancelled\");\n        break;\n    }\n\n    await Task.Delay(3000);\n}"
+                      "code": "using System.Net.Http.Json;\nusing System.Text.Json;\n\nvar apiKey = \"YOUR_API_KEY\";\nvar baseUrl = \"https://api.wiro.ai/v1\";\n\nusing var http = new HttpClient();\nhttp.DefaultRequestHeaders.Add(\"x-api-key\", apiKey);\n\n// 1. Run a model\nConsole.WriteLine(\"Starting model run...\");\nvar runResp = await http.PostAsJsonAsync($\"{baseUrl}/Run/{owner-slug}/{model-slug}\", new {\n    prompt = \"A cyberpunk cityscape at night\",\n    width = 1024,\n    height = 1024\n});\nvar runData = await runResp.Content.ReadFromJsonAsync<JsonElement>();\nvar taskToken = runData.GetProperty(\"socketaccesstoken\").GetString();\nConsole.WriteLine($\"Task ID: {runData.GetProperty(\"taskid\").GetString()}\");\n\n// 2. Poll for results\nwhile (true) {\n    var taskResp = await http.PostAsJsonAsync($\"{baseUrl}/Task/Detail\", new {\n        tasktoken = taskToken\n    });\n    var taskData = await taskResp.Content.ReadFromJsonAsync<JsonElement>();\n    var task = taskData.GetProperty(\"tasklist\")[0];\n    var status = task.GetProperty(\"status\").GetString();\n    Console.WriteLine($\"Status: {status}\");\n\n    if (status == \"task_postprocess_end\") {\n        Console.WriteLine(\"Done!\");\n        Console.WriteLine(task.GetProperty(\"outputs\").ToString());\n        break;\n    }\n    if (status == \"task_cancel\") {\n        Console.WriteLine(\"Task cancelled\");\n        break;\n    }\n\n    await Task.Delay(3000);\n}"
                     },
                     {
                       "label": "Swift",
                       "language": "swift",
-                      "code": "import Foundation\n\nlet apiKey = \"YOUR_API_KEY\"\nlet baseUrl = \"https://api.wiro.ai/v1\"\n\nfunc apiPost(_ endpoint: String, body: [String: Any]) async throws -> [String: Any] {\n    var request = URLRequest(url: URL(string: \"\\(baseUrl)\\(endpoint)\")!)\n    request.httpMethod = \"POST\"\n    request.addValue(\"application/json\", forHTTPHeaderField: \"Content-Type\")\n    request.addValue(apiKey, forHTTPHeaderField: \"x-api-key\")\n    request.httpBody = try JSONSerialization.data(withJSONObject: body)\n\n    let (data, _) = try await URLSession.shared.data(for: request)\n    return try JSONSerialization.jsonObject(with: data) as! [String: Any]\n}\n\n// 1. Run a model\nprint(\"Starting model run...\")\nlet runResp = try await apiPost(\"/Run/{owner-slug}/{model-slug}\", body: [\n    \"prompt\": \"A cyberpunk cityscape at night\",\n    \"width\": 1024,\n    \"height\": 1024\n])\nlet runData = runResp[\"data\"] as! [String: Any]\nlet taskToken = runData[\"taskid\"] as! String\nprint(\"Task ID: \\(taskToken)\")\n\n// 2. Poll for results\nwhile true {\n    let taskResp = try await apiPost(\"/Task/Detail\", body: [\"tasktoken\": taskToken])\n    let taskData = taskResp[\"data\"] as! [String: Any]\n    let status = taskData[\"status\"] as! String\n    print(\"Status: \\(status)\")\n\n    if status == \"end\" {\n        print(\"Done! Output: \\(taskData[\"output\"] ?? \"\")\")\n        break\n    }\n    if status == \"error\" || status == \"cancel\" {\n        print(\"Task failed or cancelled\")\n        break\n    }\n\n    try await Task.sleep(nanoseconds: 3_000_000_000)\n}"
+                      "code": "import Foundation\n\nlet apiKey = \"YOUR_API_KEY\"\nlet baseUrl = \"https://api.wiro.ai/v1\"\n\nfunc apiPost(_ endpoint: String, body: [String: Any]) async throws -> [String: Any] {\n    var request = URLRequest(url: URL(string: \"\\(baseUrl)\\(endpoint)\")!)\n    request.httpMethod = \"POST\"\n    request.addValue(\"application/json\", forHTTPHeaderField: \"Content-Type\")\n    request.addValue(apiKey, forHTTPHeaderField: \"x-api-key\")\n    request.httpBody = try JSONSerialization.data(withJSONObject: body)\n\n    let (data, _) = try await URLSession.shared.data(for: request)\n    return try JSONSerialization.jsonObject(with: data) as! [String: Any]\n}\n\n// 1. Run a model\nprint(\"Starting model run...\")\nlet runResp = try await apiPost(\"/Run/{owner-slug}/{model-slug}\", body: [\n    \"prompt\": \"A cyberpunk cityscape at night\",\n    \"width\": 1024,\n    \"height\": 1024\n])\nlet taskToken = runResp[\"socketaccesstoken\"] as! String\nprint(\"Task ID: \\(runResp[\"taskid\"] ?? \"\")\")\n\n// 2. Poll for results\nwhile true {\n    let taskResp = try await apiPost(\"/Task/Detail\", body: [\"tasktoken\": taskToken])\n    let taskData = (taskResp[\"tasklist\"] as! [[String: Any]])[0]\n    let status = taskData[\"status\"] as! String\n    print(\"Status: \\(status)\")\n\n    if status == \"task_postprocess_end\" {\n        print(\"Done! Outputs: \\(taskData[\"outputs\"] ?? [])\")\n        break\n    }\n    if status == \"task_cancel\" {\n        print(\"Task cancelled\")\n        break\n    }\n\n    try await Task.sleep(nanoseconds: 3_000_000_000)\n}"
                     },
                     {
                       "label": "Dart",
                       "language": "dart",
-                      "code": "import 'dart:convert';\nimport 'package:http/http.dart' as http;\n\nconst apiKey = 'YOUR_API_KEY';\nconst baseUrl = 'https://api.wiro.ai/v1';\n\nFuture<Map<String, dynamic>> apiPost(String endpoint, Map<String, dynamic> body) async {\n  final response = await http.post(\n    Uri.parse('$baseUrl$endpoint'),\n    headers: {\n      'Content-Type': 'application/json',\n      'x-api-key': apiKey,\n    },\n    body: jsonEncode(body),\n  );\n  return jsonDecode(response.body);\n}\n\nFuture<void> main() async {\n  // 1. Run a model\n  print('Starting model run...');\n  final runResp = await apiPost('/Run/{owner-slug}/{model-slug}', {\n    'prompt': 'A cyberpunk cityscape at night',\n    'width': 1024,\n    'height': 1024,\n  });\n  final taskToken = runResp['data']['taskid'];\n  print('Task ID: $taskToken');\n\n  // 2. Poll for results\n  while (true) {\n    final taskResp = await apiPost('/Task/Detail', {'tasktoken': taskToken});\n    final status = taskResp['data']['status'];\n    print('Status: $status');\n\n    if (status == 'end') {\n      print('Done! Output: ${taskResp['data']['output']}');\n      break;\n    }\n    if (status == 'error' || status == 'cancel') {\n      print('Task failed or cancelled');\n      break;\n    }\n\n    await Future.delayed(Duration(seconds: 3));\n  }\n}"
+                      "code": "import 'dart:convert';\nimport 'package:http/http.dart' as http;\n\nconst apiKey = 'YOUR_API_KEY';\nconst baseUrl = 'https://api.wiro.ai/v1';\n\nFuture<Map<String, dynamic>> apiPost(String endpoint, Map<String, dynamic> body) async {\n  final response = await http.post(\n    Uri.parse('$baseUrl$endpoint'),\n    headers: {\n      'Content-Type': 'application/json',\n      'x-api-key': apiKey,\n    },\n    body: jsonEncode(body),\n  );\n  return jsonDecode(response.body);\n}\n\nFuture<void> main() async {\n  // 1. Run a model\n  print('Starting model run...');\n  final runResp = await apiPost('/Run/{owner-slug}/{model-slug}', {\n    'prompt': 'A cyberpunk cityscape at night',\n    'width': 1024,\n    'height': 1024,\n  });\n  final taskToken = runResp['socketaccesstoken'];\n  print('Task ID: ${runResp['taskid']}');\n\n  // 2. Poll for results\n  while (true) {\n    final taskResp = await apiPost('/Task/Detail', {'tasktoken': taskToken});\n    final task = taskResp['tasklist'][0];\n    final status = task['status'];\n    print('Status: $status');\n\n    if (status == 'task_postprocess_end') {\n      print('Done! Outputs: ${task['outputs']}');\n      break;\n    }\n    if (status == 'task_cancel') {\n      print('Task cancelled');\n      break;\n    }\n\n    await Future.delayed(Duration(seconds: 3));\n  }\n}"
                     },
                     {
                       "label": "Kotlin",
                       "language": "kotlin",
-                      "code": "import java.net.URI\nimport java.net.http.HttpClient\nimport java.net.http.HttpRequest\nimport java.net.http.HttpResponse\nimport com.google.gson.Gson\nimport com.google.gson.JsonObject\n\nval apiKey = \"YOUR_API_KEY\"\nval baseUrl = \"https://api.wiro.ai/v1\"\nval client = HttpClient.newHttpClient()\nval gson = Gson()\n\nfun apiPost(endpoint: String, body: Map<String, Any?>): JsonObject {\n    val request = HttpRequest.newBuilder()\n        .uri(URI.create(\"$baseUrl$endpoint\"))\n        .header(\"Content-Type\", \"application/json\")\n        .header(\"x-api-key\", apiKey)\n        .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))\n        .build()\n    val response = client.send(request, HttpResponse.BodyHandlers.ofString())\n    return gson.fromJson(response.body(), JsonObject::class.java)\n}\n\nfun main() {\n    // 1. Run a model\n    println(\"Starting model run...\")\n    val runResp = apiPost(\"/Run/{owner-slug}/{model-slug}\", mapOf(\n        \"prompt\" to \"A cyberpunk cityscape at night\",\n        \"width\" to 1024,\n        \"height\" to 1024\n    ))\n    val taskToken = runResp.getAsJsonObject(\"data\").get(\"taskid\").asString\n    println(\"Task ID: $taskToken\")\n\n    // 2. Poll for results\n    while (true) {\n        val taskResp = apiPost(\"/Task/Detail\", mapOf(\"tasktoken\" to taskToken))\n        val taskData = taskResp.getAsJsonObject(\"data\")\n        val status = taskData.get(\"status\").asString\n        println(\"Status: $status\")\n\n        when (status) {\n            \"end\" -> {\n                println(\"Done! Output: ${taskData.get(\"output\")}\")\n                return\n            }\n            \"error\", \"cancel\" -> {\n                println(\"Task failed or cancelled\")\n                return\n            }\n        }\n\n        Thread.sleep(3000)\n    }\n}"
+                      "code": "import java.net.URI\nimport java.net.http.HttpClient\nimport java.net.http.HttpRequest\nimport java.net.http.HttpResponse\nimport com.google.gson.Gson\nimport com.google.gson.JsonObject\n\nval apiKey = \"YOUR_API_KEY\"\nval baseUrl = \"https://api.wiro.ai/v1\"\nval client = HttpClient.newHttpClient()\nval gson = Gson()\n\nfun apiPost(endpoint: String, body: Map<String, Any?>): JsonObject {\n    val request = HttpRequest.newBuilder()\n        .uri(URI.create(\"$baseUrl$endpoint\"))\n        .header(\"Content-Type\", \"application/json\")\n        .header(\"x-api-key\", apiKey)\n        .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))\n        .build()\n    val response = client.send(request, HttpResponse.BodyHandlers.ofString())\n    return gson.fromJson(response.body(), JsonObject::class.java)\n}\n\nfun main() {\n    // 1. Run a model\n    println(\"Starting model run...\")\n    val runResp = apiPost(\"/Run/{owner-slug}/{model-slug}\", mapOf(\n        \"prompt\" to \"A cyberpunk cityscape at night\",\n        \"width\" to 1024,\n        \"height\" to 1024\n    ))\n    val taskToken = runResp.get(\"socketaccesstoken\").asString\n    println(\"Task ID: ${runResp.get(\"taskid\").asString}\")\n\n    // 2. Poll for results\n    while (true) {\n        val taskResp = apiPost(\"/Task/Detail\", mapOf(\"tasktoken\" to taskToken))\n        val taskData = taskResp.getAsJsonArray(\"tasklist\")[0].asJsonObject\n        val status = taskData.get(\"status\").asString\n        println(\"Status: $status\")\n\n        when (status) {\n            \"task_postprocess_end\" -> {\n                println(\"Done! Outputs: ${taskData.get(\"outputs\")}\")\n                return\n            }\n            \"task_cancel\" -> {\n                println(\"Task cancelled\")\n                return\n            }\n        }\n\n        Thread.sleep(3000)\n    }\n}"
                     },
                     {
                       "label": "Go",
                       "language": "go",
-                      "code": "package main\n\nimport (\n\t\"bytes\"\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"io\"\n\t\"net/http\"\n\t\"time\"\n)\n\nconst (\n\tapiKey  = \"YOUR_API_KEY\"\n\tbaseURL = \"https://api.wiro.ai/v1\"\n)\n\nfunc apiPost(endpoint string, body map[string]interface{}) (map[string]interface{}, error) {\n\tjsonBody, _ := json.Marshal(body)\n\treq, _ := http.NewRequest(\"POST\", baseURL+endpoint, bytes.NewBuffer(jsonBody))\n\treq.Header.Set(\"Content-Type\", \"application/json\")\n\treq.Header.Set(\"x-api-key\", apiKey)\n\n\tresp, err := http.DefaultClient.Do(req)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\tdefer resp.Body.Close()\n\n\tdata, _ := io.ReadAll(resp.Body)\n\tvar result map[string]interface{}\n\tjson.Unmarshal(data, &result)\n\treturn result, nil\n}\n\nfunc main() {\n\t// 1. Run a model\n\tfmt.Println(\"Starting model run...\")\n\trunResp, _ := apiPost(\"/Run/{owner-slug}/{model-slug}\", map[string]interface{}{\n\t\t\"prompt\": \"A cyberpunk cityscape at night\",\n\t\t\"width\":  1024,\n\t\t\"height\": 1024,\n\t})\n\trunData := runResp[\"data\"].(map[string]interface{})\n\ttaskToken := runData[\"taskid\"].(string)\n\tfmt.Printf(\"Task ID: %s\\n\", taskToken)\n\n\t// 2. Poll for results\n\tfor {\n\t\ttaskResp, _ := apiPost(\"/Task/Detail\", map[string]interface{}{\n\t\t\t\"tasktoken\": taskToken,\n\t\t})\n\t\ttaskData := taskResp[\"data\"].(map[string]interface{})\n\t\tstatus := taskData[\"status\"].(string)\n\t\tfmt.Printf(\"Status: %s\\n\", status)\n\n\t\tswitch status {\n\t\tcase \"end\":\n\t\t\tfmt.Printf(\"Done! Output: %v\\n\", taskData[\"output\"])\n\t\t\treturn\n\t\tcase \"error\", \"cancel\":\n\t\t\tfmt.Println(\"Task failed or cancelled\")\n\t\t\treturn\n\t\t}\n\n\t\ttime.Sleep(3 * time.Second)\n\t}\n}"
+                      "code": "package main\n\nimport (\n\t\"bytes\"\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"io\"\n\t\"net/http\"\n\t\"time\"\n)\n\nconst (\n\tapiKey  = \"YOUR_API_KEY\"\n\tbaseURL = \"https://api.wiro.ai/v1\"\n)\n\nfunc apiPost(endpoint string, body map[string]interface{}) (map[string]interface{}, error) {\n\tjsonBody, _ := json.Marshal(body)\n\treq, _ := http.NewRequest(\"POST\", baseURL+endpoint, bytes.NewBuffer(jsonBody))\n\treq.Header.Set(\"Content-Type\", \"application/json\")\n\treq.Header.Set(\"x-api-key\", apiKey)\n\n\tresp, err := http.DefaultClient.Do(req)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\tdefer resp.Body.Close()\n\n\tdata, _ := io.ReadAll(resp.Body)\n\tvar result map[string]interface{}\n\tjson.Unmarshal(data, &result)\n\treturn result, nil\n}\n\nfunc main() {\n\t// 1. Run a model\n\tfmt.Println(\"Starting model run...\")\n\trunResp, _ := apiPost(\"/Run/{owner-slug}/{model-slug}\", map[string]interface{}{\n\t\t\"prompt\": \"A cyberpunk cityscape at night\",\n\t\t\"width\":  1024,\n\t\t\"height\": 1024,\n\t})\n\ttaskToken := runResp[\"socketaccesstoken\"].(string)\n\tfmt.Printf(\"Task ID: %s\\n\", runResp[\"taskid\"].(string))\n\n\t// 2. Poll for results\n\tfor {\n\t\ttaskResp, _ := apiPost(\"/Task/Detail\", map[string]interface{}{\n\t\t\t\"tasktoken\": taskToken,\n\t\t})\n\t\ttaskData := taskResp[\"tasklist\"].([]interface{})[0].(map[string]interface{})\n\t\tstatus := taskData[\"status\"].(string)\n\t\tfmt.Printf(\"Status: %s\\n\", status)\n\n\t\tswitch status {\n\t\tcase \"task_postprocess_end\":\n\t\t\tfmt.Printf(\"Done! Outputs: %v\\n\", taskData[\"outputs\"])\n\t\t\treturn\n\t\tcase \"task_cancel\":\n\t\t\tfmt.Println(\"Task cancelled\")\n\t\t\treturn\n\t\t}\n\n\t\ttime.Sleep(3 * time.Second)\n\t}\n}"
                     }
                   ]
                 </script>
@@ -4982,7 +5905,7 @@ if (!data.result) {
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.2.2"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.3.0"],
       "env": {
         "WIRO_API_KEY": "YOUR_API_KEY",
         "WIRO_API_SECRET": "YOUR_API_SECRET"
@@ -4991,13 +5914,13 @@ if (!data.result) {
   }
 }</code></pre>
                         <p>For API Key Only authentication, keep <code>WIRO_API_KEY</code> and remove the <code>WIRO_API_SECRET</code> entry completely. Save the file, fully quit Claude Desktop, and reopen it.</p>
-                        <p>Pin the current published version (<code>@wiro-ai/wiro-mcp@1.2.2</code>) in <code>args</code>. Unversioned <code>npx</code> can keep an older cached build after a package update.</p>
+                        <p>Pin the current published version (<code>@wiro-ai/wiro-mcp@1.3.0</code>) in <code>args</code>. Unversioned <code>npx</code> can keep an older cached build after a package update.</p>
                         <p>This setup runs the open-source <a href="https://www.npmjs.com/package/@wiro-ai/wiro-mcp" target="_blank" rel="noopener"><code>@wiro-ai/wiro-mcp</code></a> bridge on your machine and calls Wiro with your project credentials. Do not paste <code>https://mcp.wiro.ai/v1</code> into Claude's <strong>Settings → Connectors</strong> yet; URL-only Claude connections require OAuth, which the hosted Wiro endpoint does not currently provide. See <a href="/docs/mcp-self-hosted">Self-Hosted MCP</a> for the complete local package guide.</p>
                         <h4>Claude connection and timeout troubleshooting</h4>
                         <ul>
                           <li><strong>"Not valid MCP server configurations"</strong> — ensure the entry contains <code>"type": "stdio"</code>, <code>command</code>, <code>args</code>, and <code>env</code> exactly as shown above.</li>
                           <li><strong>The Wiro tools do not appear</strong> — confirm <code>node --version</code> reports 20 or later, then fully quit and reopen Claude Desktop.</li>
-                          <li><strong>Tools appear but every call fails immediately</strong> — pin <code>@wiro-ai/wiro-mcp@1.2.2</code> as shown above so <code>npx</code> does not reuse an older cached package, then fully quit and reopen Claude Desktop.</li>
+                          <li><strong>Tools appear but every call fails immediately</strong> — pin <code>@wiro-ai/wiro-mcp@1.3.0</code> as shown above so <code>npx</code> does not reuse an older cached package, then fully quit and reopen Claude Desktop.</li>
                           <li><strong>A generation reaches Claude's tool timeout</strong> — Wiro waits for at most 45 seconds per call. If the task is still running, Claude should execute the returned <code>nextAction.tool: "wait_for_task"</code> until completion and must not call <code>run_model</code> again.</li>
                           <li>Do not add a <code>timeout</code> field to <code>claude_desktop_config.json</code>; Claude Desktop versions with a fixed client-side tool timeout may ignore it. Wiro's bounded wait flow is designed to remain below that boundary.</li>
                         </ul>
@@ -5428,7 +6351,7 @@ if (!data.result) {
                     </table>
                     <p>Returns the task's current <code>status</code>, <code>pexit</code> (process exit code), <code>outputs</code> (file URLs), <code>debugoutput</code> (LLM responses), <code>elapsedseconds</code>, and <code>totalcost</code>.</p>
                     <p><strong>Determining success:</strong> Check <code>pexit</code> — <code>"0"</code> means success, any other value means failure. For LLM models, the response is available as structured content in <code>outputs</code> (with <code>contenttype: "raw"</code>) and as merged text in <code>debugoutput</code>. See <a href="/docs/tasks">Tasks</a> for the full task lifecycle.</p>
-                    <p>A live WebSocket <code>task_error</code> event is an interim stderr log, while persisted <code>status: "task_error"</code> returned by Task/Detail is a terminal pre-execution failure.</p>
+                    <p>A live WebSocket <code>task_error</code> event is an interim stderr log, while persisted <code>status: "task_error"</code> returned by Task/Detail marks a pre-execution recovery state. Neither closes the task; <code>wait_for_task</code> continues until <code>task_postprocess_end</code> or <code>task_cancel</code>.</p>
 
                     <h3>list_tasks</h3>
                     <p>List recent model-generation tasks owned by the authenticated project. Calls <code>POST /Task/List</code> without a <code>uuid</code>; Wiro derives the owner from the API credential.</p>
@@ -5613,7 +6536,7 @@ if (!data.result) {
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.2.2"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.3.0"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -5621,7 +6544,7 @@ if (!data.result) {
     }
   }
 }</code></pre>
-                    <p>That's it. Your assistant now has access to all Wiro AI models. The <code>args</code> entry pins the current published version (<code>@wiro-ai/wiro-mcp@1.2.2</code>) so <code>npx</code> does not reuse an older cached build.</p>
+                    <p>That's it. Your assistant now has access to all Wiro AI models. The <code>args</code> entry pins the current published version (<code>@wiro-ai/wiro-mcp@1.3.0</code>) so <code>npx</code> does not reuse an older cached build.</p>
                   </section>
 
                   <section id="self-hosted-setup">
@@ -5664,7 +6587,7 @@ if (!data.result) {
   "mcpServers": {
     "wiro": {
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.2.2"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.3.0"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -5675,7 +6598,7 @@ if (!data.result) {
                       </div>
                       <div class="mcp-setup-panel" id="sh-setup-claude-code">
                         <h3>Claude Code</h3>
-                        <pre><code class="language-bash">claude mcp add wiro -- npx -y @wiro-ai/wiro-mcp@1.2.2</code></pre>
+                        <pre><code class="language-bash">claude mcp add wiro -- npx -y @wiro-ai/wiro-mcp@1.3.0</code></pre>
                         <p>Then set environment variables:</p>
                         <pre><code class="language-bash">export WIRO_API_KEY="your-api-key"
 export WIRO_API_SECRET="your-api-secret"</code></pre>
@@ -5688,7 +6611,7 @@ export WIRO_API_SECRET="your-api-secret"</code></pre>
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.2.2"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.3.0"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -5704,7 +6627,7 @@ export WIRO_API_SECRET="your-api-secret"</code></pre>
   "mcpServers": {
     "wiro": {
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.2.2"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.3.0"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -5716,7 +6639,7 @@ export WIRO_API_SECRET="your-api-secret"</code></pre>
                       <div class="mcp-setup-panel" id="sh-setup-other">
                         <h3>Other Clients</h3>
                         <p>Any MCP client that supports the <strong>stdio</strong> transport can connect. The command is:</p>
-                        <pre><code class="language-bash">npx -y @wiro-ai/wiro-mcp@1.2.2</code></pre>
+                        <pre><code class="language-bash">npx -y @wiro-ai/wiro-mcp@1.3.0</code></pre>
                         <p>Set <code>WIRO_API_KEY</code> and <code>WIRO_API_SECRET</code> as environment variables in your client's MCP configuration.</p>
                       </div>
                     </div>
@@ -9694,7 +10617,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </tr>
 <tr>
 <td><code>skills</code></td>
-<td>array<string></td>
+<td>array&lt;string&gt;</td>
 <td>A</td>
 <td>Draft mode only — the proposed enabled skill set.</td>
 </tr>
@@ -14131,7 +15054,7 @@ func main() {
 </tr>
 <tr>
 <td><code>categories</code></td>
-<td>array<string></td>
+<td>array&lt;string&gt;</td>
 <td>The model's categories (e.g. <code>["image"]</code>, <code>["video"]</code>).</td>
 </tr>
 <tr>
@@ -17534,7 +18457,7 @@ customer-facing token-refresh endpoint or manual refresh action.</p>
 </tr>
 <tr>
 <td><code>name_in</code></td>
-<td>array<string></td>
+<td>array&lt;string&gt;</td>
 <td>No</td>
 <td>Restrict the response to a specific list of skill names.</td>
 </tr>
@@ -29030,7 +29953,7 @@ print(message.json())</code></pre>
                 <article class="docs-section">
                   <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/organizations-overview.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/organizations-overview.md" download class="docs-section-md-btn">Download</a></div>
 
-                  <h1>Organizations & Teams</h1>
+                  <h1>Organizations &amp; Teams</h1>
                   <p class="section-subtitle">Collaborate with your team under a shared workspace with unified billing, access controls, and resource management.</p>
 
                   <section id="overview">
@@ -29221,7 +30144,7 @@ Organization (created by you)
                     <h2>What's Next</h2>
                     <ul>
                       <li><a href="/docs/organizations-managing-teams">Managing Teams</a> — Create organizations, invite members, manage roles and permissions</li>
-                      <li><a href="/docs/organizations-billing">Team Billing & Spending</a> — Wallets, spend limits, model access controls, and budget alerts</li>
+                      <li><a href="/docs/organizations-billing">Team Billing &amp; Spending</a> — Wallets, spend limits, model access controls, and budget alerts</li>
                       <li><a href="/docs/organizations-api-access">Team API Access</a> — How workspace context works with API keys and context guards</li>
                     </ul>
                   </section>
@@ -29517,8 +30440,8 @@ Organization (created by you)
                   <section id="whats-next-managing">
                     <h2>What's Next</h2>
                     <ul>
-                      <li><a href="/docs/organizations-overview">Organizations & Teams Overview</a> — Concepts and workspace hierarchy</li>
-                      <li><a href="/docs/organizations-billing">Team Billing & Spending</a> — Wallets, spend limits, and model access controls</li>
+                      <li><a href="/docs/organizations-overview">Organizations &amp; Teams Overview</a> — Concepts and workspace hierarchy</li>
+                      <li><a href="/docs/organizations-billing">Team Billing &amp; Spending</a> — Wallets, spend limits, and model access controls</li>
                       <li><a href="/docs/organizations-api-access">Team API Access</a> — How context works in API requests</li>
                     </ul>
                   </section>
@@ -29530,7 +30453,7 @@ Organization (created by you)
                 <article class="docs-section">
                   <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/organizations-billing.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/organizations-billing.md" download class="docs-section-md-btn">Download</a></div>
 
-                  <h1>Team Billing & Spending</h1>
+                  <h1>Team Billing &amp; Spending</h1>
                   <p class="section-subtitle">Manage team wallets, set spend limits, control model access, and track usage across members.</p>
 
                   <section id="team-wallets">
@@ -29807,7 +30730,7 @@ Organization (created by you)
                   <section id="whats-next-billing">
                     <h2>What's Next</h2>
                     <ul>
-                      <li><a href="/docs/organizations-overview">Organizations & Teams Overview</a> — Concepts and workspace hierarchy</li>
+                      <li><a href="/docs/organizations-overview">Organizations &amp; Teams Overview</a> — Concepts and workspace hierarchy</li>
                       <li><a href="/docs/organizations-managing-teams">Managing Teams</a> — Create organizations, invite members, manage roles</li>
                       <li><a href="/docs/organizations-api-access">Team API Access</a> — How context works in API requests</li>
                       <li><a href="/docs/pricing">Pricing</a> — General pricing information</li>
@@ -29968,9 +30891,9 @@ curl -X POST "https://api.wiro.ai/v1/Run/google/nano-banana" \
                   <section id="whats-next-api">
                     <h2>What's Next</h2>
                     <ul>
-                      <li><a href="/docs/organizations-overview">Organizations & Teams Overview</a> — Concepts and workspace hierarchy</li>
+                      <li><a href="/docs/organizations-overview">Organizations &amp; Teams Overview</a> — Concepts and workspace hierarchy</li>
                       <li><a href="/docs/organizations-managing-teams">Managing Teams</a> — Create organizations, invite members, manage roles</li>
-                      <li><a href="/docs/organizations-billing">Team Billing & Spending</a> — Wallets, spend limits, and model access controls</li>
+                      <li><a href="/docs/organizations-billing">Team Billing &amp; Spending</a> — Wallets, spend limits, and model access controls</li>
                       <li><a href="/docs/authentication">Authentication</a> — API key setup and authentication methods</li>
                       <li><a href="/docs/projects">Projects</a> — Project management and API credentials</li>
                     </ul>

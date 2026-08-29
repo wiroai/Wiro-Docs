@@ -91,7 +91,7 @@ your `claude_desktop_config.json`:
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.2.2"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.3.0"],
       "env": {
         "WIRO_API_KEY": "YOUR_API_KEY",
         "WIRO_API_SECRET": "YOUR_API_SECRET"
@@ -105,7 +105,7 @@ For API Key Only authentication, keep `WIRO_API_KEY` and remove the
 `WIRO_API_SECRET` entry completely. Save the file, fully quit Claude Desktop,
 and reopen it.
 
-Pin the current published version (`@wiro-ai/wiro-mcp@1.2.2`) in `args`.
+Pin the current published version (`@wiro-ai/wiro-mcp@1.3.0`) in `args`.
 Unversioned `npx` can keep an older cached build after a package update.
 
 This setup runs the open-source
@@ -123,7 +123,7 @@ local package guide.
 - **The Wiro tools do not appear** — confirm `node --version` reports 20 or
   later, then fully quit and reopen Claude Desktop.
 - **Tools appear but every call fails immediately** — pin
-  `@wiro-ai/wiro-mcp@1.2.2` as shown above so `npx` does not reuse an older
+  `@wiro-ai/wiro-mcp@1.3.0` as shown above so `npx` does not reuse an older
   cached package, then fully quit and reopen Claude Desktop.
 - **A generation reaches Claude's tool timeout** — Wiro waits for at most 45
   seconds per call. If the task is still running, the response contains
@@ -493,8 +493,9 @@ Returns the task's current `status`, `pexit` (process exit code), `outputs` (fil
 **Determining success:** Check `pexit` — `"0"` means success, any other value means failure. For LLM models, the response is available as structured content in `outputs` (with `contenttype: "raw"`) and as merged plain text in `debugoutput`. See [Tasks](/docs/tasks) for the full task lifecycle.
 
 `task_error` needs context: a live WebSocket event with that name is an interim
-stderr log, while `status: "task_error"` returned by Task/Detail represents a
-fatal pre-execution database state and is terminal.
+stderr log, while `status: "task_error"` returned by Task/Detail marks a
+pre-execution recovery state. Neither closes the task; `wait_for_task` continues
+until `task_postprocess_end` or `task_cancel`.
 
 ### list_tasks
 

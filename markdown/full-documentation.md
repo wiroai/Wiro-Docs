@@ -9,44 +9,45 @@ Complete API documentation for the Wiro AI platform — run AI models through a 
 3. [Projects](#projects)
 4. [Models](#models)
 5. [Run a Model](#run-a-model)
-6. [Model Parameters](#model-parameters)
-7. [Tasks](#tasks)
-8. [LLM Streaming](#llm-streaming)
-9. [WebSocket](#websocket)
-10. [Realtime Voice](#realtime-voice)
-11. [Realtime Text to Speech](#realtime-text-to-speech)
-12. [Realtime Speech to Text](#realtime-speech-to-text)
-13. [Files](#files)
-14. [Concurrency Limits](#concurrency-limits)
-15. [Error Reference](#error-reference)
-16. [Code Examples](#code-examples)
-17. [Pricing](#pricing)
-18. [FAQ](#faq)
-19. [MCP Server](#mcp-server)
-20. [Self-Hosted MCP](#self-hosted-mcp)
-21. [Node.js Library](#nodejs-library)
-22. [n8n Wiro Integration](#n8n-wiro-integration)
-23. [Agent Overview](#agent-overview)
-24. [Agent Builder](#agent-builder)
-25. [Agent Messaging](#agent-messaging)
-26. [Agent WebSocket](#agent-websocket)
-27. [Agent Webhooks](#agent-webhooks)
-28. [Agent Credentials & OAuth](#agent-credentials--oauth)
-29. [Agent Skills](#agent-skills)
-30. [Agent Transactions](#agent-transactions)
-31. [Agent Logs](#agent-logs)
-32. [Agent Use Cases](#agent-use-cases)
-33. [Meta Ads Integration](#meta-ads-integration)
-34. [Facebook Page Integration](#facebook-page-integration)
-35. [Instagram Integration](#instagram-integration)
-36. [Shopify Integration](#shopify-integration)
-37. [WooCommerce Integration](#woocommerce-integration)
-38. [Reddit Integration](#reddit-integration)
-39. [Organizations & Teams](#organizations--teams)
-40. [Managing Teams](#managing-teams)
-41. [Team Billing & Spending](#team-billing--spending)
-42. [Team API Access](#team-api-access)
-43. [Telegram Integration](#telegram-integration)
+6. [Direct LLM Gateway](#direct-llm-gateway)
+7. [Model Parameters](#model-parameters)
+8. [Tasks](#tasks)
+9. [LLM Streaming](#llm-streaming)
+10. [WebSocket](#websocket)
+11. [Realtime Voice](#realtime-voice)
+12. [Realtime Text to Speech](#realtime-text-to-speech)
+13. [Realtime Speech to Text](#realtime-speech-to-text)
+14. [Files](#files)
+15. [Concurrency Limits](#concurrency-limits)
+16. [Error Reference](#error-reference)
+17. [Code Examples](#code-examples)
+18. [Pricing](#pricing)
+19. [FAQ](#faq)
+20. [MCP Server](#mcp-server)
+21. [Self-Hosted MCP](#self-hosted-mcp)
+22. [Node.js Library](#nodejs-library)
+23. [n8n Wiro Integration](#n8n-wiro-integration)
+24. [Agent Overview](#agent-overview)
+25. [Agent Builder](#agent-builder)
+26. [Agent Messaging](#agent-messaging)
+27. [Agent WebSocket](#agent-websocket)
+28. [Agent Webhooks](#agent-webhooks)
+29. [Agent Credentials & OAuth](#agent-credentials--oauth)
+30. [Agent Skills](#agent-skills)
+31. [Agent Transactions](#agent-transactions)
+32. [Agent Logs](#agent-logs)
+33. [Agent Use Cases](#agent-use-cases)
+34. [Meta Ads Integration](#meta-ads-integration)
+35. [Facebook Page Integration](#facebook-page-integration)
+36. [Instagram Integration](#instagram-integration)
+37. [Shopify Integration](#shopify-integration)
+38. [WooCommerce Integration](#woocommerce-integration)
+39. [Reddit Integration](#reddit-integration)
+40. [Organizations & Teams](#organizations--teams)
+41. [Managing Teams](#managing-teams)
+42. [Team Billing & Spending](#team-billing--spending)
+43. [Team API Access](#team-api-access)
+44. [Telegram Integration](#telegram-integration)
 
 ---
 
@@ -347,6 +348,11 @@ Execute any AI model with a single API call and get real-time updates.
 
 Starts an AI model run. The endpoint accepts model-specific parameters and returns a **task ID** you can use to track progress via [polling](#tasks), [WebSocket](#websocket), or **webhook** by providing a `callbackUrl` parameter — Wiro will POST the result to your URL when the task completes.
 
+If you want one HTTP request to wait for the finished task, use
+[POST /Run/{owner}/{model}/sync](#run-sync) on this same API host. For OpenAI,
+Anthropic, or Cursor LLM protocols, see the
+[Direct LLM Gateway](#direct-llm-gateway).
+
 ## Content Types
 
 ### JSON (application/json)
@@ -381,6 +387,298 @@ A successful run returns a task ID and a WebSocket access token:
 }
 ```
 
+## Direct LLM turns and tool calls
+
+Models whose Tool Detail response includes the `llm-tool-call` category accept
+six optional ordinary model parameters on both asynchronous Run and `/sync`:
+`messages`, `tools`, `tool_choice`, `parallel_tool_calls`,
+`previousTaskToken`, and `toolOutputs`. Tool Detail marks them `advanced: true`
+only to place them in the Advanced section of catalog-driven UIs; they use the
+same `parameters` object and Run transport as every other model parameter.
+Send JSON values directly, and use exactly one of `prompt` or non-empty
+`messages` on a first turn.
+
+```json
+{
+  "messages": [{
+    "role": "user",
+    "content": "What is the weather in Paris?"
+  }],
+  "tools": [{
+    "type": "function",
+    "function": {
+      "name": "get_weather",
+      "description": "Return current weather for a city",
+      "parameters": {
+        "type": "object",
+        "properties": { "city": { "type": "string" } },
+        "required": ["city"],
+        "additionalProperties": false
+      },
+      "strict": true
+    }
+  }],
+  "tool_choice": "auto",
+  "parallel_tool_calls": true,
+  "session_id": "weather-session-1"
+}
+```
+
+```js
+// Node.js
+const response = await fetch(
+  "https://api.wiro.ai/v1/Run/claude/fable-5/sync",
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": process.env.WIRO_API_KEY
+    },
+    body: JSON.stringify({
+      messages: [{
+        role: "user",
+        content: "What is the weather in Paris?"
+      }],
+      tools: [{
+        type: "function",
+        function: {
+          name: "get_weather",
+          parameters: {
+            type: "object",
+            properties: { city: { type: "string" } },
+            required: ["city"]
+          }
+        }
+      }],
+      tool_choice: "auto",
+      parallel_tool_calls: true,
+      session_id: "weather-session-1",
+    })
+  }
+);
+```
+
+Wiro never executes caller-defined tools. A tool request is returned in
+`outputs[].content.segments` as its own ordered timeline item. Function calls
+use `arguments`, custom grammar/free-form calls use `input`, and both include
+stable `id`, `call_id`, `name`, and `status` fields. Execute a call only when
+its status is `completed` and the turn's `finishreason` is `tool_calls`;
+`incomplete` calls may contain truncated input and must never be executed.
+
+The same structured LLM fields appear in three response locations:
+
+- WebSocket `task_output`: `message.segments` is the live cumulative snapshot;
+  final-only metadata may be absent while generation is still running.
+- WebSocket `task_postprocess_end`: `message[].content` contains the persisted
+  final output.
+- Task Detail and non-streaming `/sync`:
+  `tasklist[0].outputs[].content` contains the persisted final output.
+
+Inside that content:
+
+- `segments` is the authoritative ordered text/tool-call timeline.
+- `finishreason` explains why generation stopped: `stop`, `tool_calls`,
+  `length`, `content_filter`, or `error`. Handle `length`, `content_filter`,
+  and `error` as non-normal model completion.
+- `usage` contains normalized token and server-tool counters. `input_tokens`
+  includes cache reads and cache writes; `output_tokens` includes reasoning;
+  and `total_tokens` is exactly `input_tokens + output_tokens`. Therefore, do
+  not add detail counters to the total. Optional `input_tokens_details` can
+  include `cached_tokens`, `cache_write_tokens`, five-minute and one-hour cache
+  write subsets, and text/audio/image/video counters. Optional
+  `output_tokens_details` can include reasoning, text/audio/image/video, and
+  accepted/rejected prediction counters. Optional `server_tool_use` contains
+  request counts rather than tokens. Providers omit unsupported counters.
+  There is no cached-output counter because prompt caching applies to input
+  context, not previously generated output.
+  `usage` is informational and is used by protocol-compatible LLM responses;
+  use the task-level `totalcost` for the actual billed amount.
+
+For a final `llm-tool-call` result, rely on `pexit: "0"` and require
+`finishreason`. Structured-output validation failures set a non-zero `pexit`.
+
+```json
+{
+  "segments": [{
+    "type": "function_call",
+    "id": "fc_01",
+    "call_id": "call_01",
+    "name": "get_weather",
+    "arguments": "{\"city\":\"Paris\"}",
+    "status": "completed"
+  }],
+  "finishreason": "tool_calls",
+  "usage": {
+    "input_tokens": 84,
+    "input_tokens_details": {
+      "cached_tokens": 24,
+      "cache_write_tokens": 8,
+      "cache_write_5m_tokens": 8,
+      "text_tokens": 84
+    },
+    "output_tokens": 21,
+    "output_tokens_details": {
+      "reasoning_tokens": 9,
+      "text_tokens": 21
+    },
+    "total_tokens": 105,
+    "server_tool_use": {
+      "web_search_requests": 1
+    }
+  }
+}
+```
+
+For tool-output continuation, execute the tool in your application and send
+another Run request with the first request's returned `socketaccesstoken` as
+`previousTaskToken`, the same `session_id`, and one matching entry in
+`toolOutputs` for every executed call. Do not send `prompt`, `messages`,
+`tools`, `tool_choice`, `parallel_tool_calls`, or `response_format` on this
+continuation.
+
+```json
+{
+  "previousTaskToken": "task-token",
+  "toolOutputs": [{
+    "call_id": "call_01",
+    "output": {
+      "temperature_c": 12,
+      "condition": "rain"
+    }
+  }],
+  "session_id": "weather-session-1"
+}
+```
+
+### Stateful turn continuation
+
+For a stateful follow-up that is not submitting tool outputs, pass the prior
+completed Run output's `socketaccesstoken` as `previousTaskToken`, keep the same
+`session_id`, and provide exactly one new input: a non-blank `prompt` or a
+non-empty `messages` array. Normal `tools` and `tool_choice` fields remain
+available for the new turn. Do not send `toolOutputs`.
+
+Use the `socketaccesstoken` returned by a completed task from the same project,
+model, and session.
+
+```json
+{
+  "previousTaskToken": "task-token",
+  "prompt": "Give me one concrete example.",
+  "session_id": "weather-session-1"
+}
+```
+
+For OpenAI-compatible clients, `previous_response_id` remains the preferred
+public field on `/v1/responses`; do not send `previousTaskToken` to that
+endpoint. Direct asynchronous Run and `/sync` clients use `previousTaskToken`.
+
+For cumulative SSE or WebSocket snapshots, replace the previous `segments`
+array. Do not append the complete array again. A call can move from
+`in_progress` to `completed` while keeping the same IDs. The final
+`pexit: "0"` remains the success indicator.
+
+<a id="run-sync"></a>
+
+## **POST** /Run/{owner-slug}/{model-slug}/sync
+
+Wait for any finite model on `https://api.wiro.ai/v1`. This starts the same
+billed task as asynchronous Run, then returns final Task Detail JSON or streams
+generic task events. It is not an OpenAI or Anthropic protocol. Training and
+realtime models are rejected.
+
+```bash
+curl -X POST \
+  "https://api.wiro.ai/v1/Run/claude/fable-5/sync" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "prompt": "Reply with one concise sentence about Türkiye.",
+    "session_id": "fable-sync-example",
+    "effort": "medium",
+    "webSearch": "false",
+    "maxOutputTokens": 128
+  }'
+```
+
+Without streaming, the request stays open and returns Task Detail-compatible
+JSON. Check `tasklist[0].pexit`; `"0"` means the model task succeeded. For LLM
+tasks, `outputs` contains the structured result and `debugoutput` contains
+merged plain text.
+
+```json
+{
+  "result": true,
+  "total": "1",
+  "tasklist": [{
+    "id": "2221",
+    "status": "task_postprocess_end",
+    "pexit": "0",
+    "outputs": []
+  }],
+  "errors": []
+}
+```
+
+Add `?stream=true` or send `Accept: text/event-stream` for named generic
+events: `start`, cumulative task snapshots as `task_output`, a final `done`,
+and periodic `: keep-alive` comments. Generic SSE does not use `[DONE]`. LLM
+`task_output` events contain one ordered `segments` array. Text items use
+`thinking` or `answer`; tool items use `function_call` or `custom_tool_call`.
+
+```text
+event: task_output
+data: {
+  "id": "2221",
+  "status": "task_output",
+  "pexit": null,
+  "segments": [
+    { "type": "thinking", "text": "Checking the constraints..." },
+    { "type": "answer", "text": "Here is the result." }
+  ]
+}
+```
+
+Each LLM `segments` value is the full accumulated ordered snapshot, not only
+the latest delta. Replace your previously stored segment list with each event
+instead of appending the whole array again. While generation is active, the
+final item's `text`, `arguments`, or `input` grows in place as chunks arrive;
+render each snapshot immediately instead of waiting for `done`. A new item is
+added when the output phase changes. Render `thinking` items as optional
+reasoning progress, `answer` items as the model response, and tool items as
+application-executed calls. The final `done` event contains Task
+Detail-compatible JSON; inspect `tasklist[0].pexit` to determine success.
+
+```bash
+curl -N -X POST \
+  "https://api.wiro.ai/v1/Run/claude/fable-5/sync?stream=true" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Accept: text/event-stream" \
+  -d '{
+    "prompt": "Reply with one concise sentence about Türkiye.",
+    "session_id": "fable-stream-example",
+    "effort": "medium",
+    "webSearch": "false",
+    "maxOutputTokens": 128
+  }'
+```
+
+Disconnecting or reaching the 40-minute wait timeout ends only the synchronous
+wait; the task keeps running. A non-streaming timeout returns HTTP `504` with
+`taskid` and `socketaccesstoken` so you can resume tracking it through Task
+Detail or WebSocket. Only `task_postprocess_end` and `task_cancel` close the
+wait. `task_error` does not close a task. Errors use Wiro's `result`/`errors`
+envelope. Sync is an additional execution method; asynchronous Run remains
+unchanged.
+
+```text
+/v1/Run/{owner-slug}/{model-slug}/sync?stream=true
+```
+
+OpenAI Chat/Responses, Anthropic Messages, and Cursor clients belong on
+`https://llm.wiro.ai`. See the [Direct LLM Gateway](#direct-llm-gateway).
+
 ## Full Flow
 
 The typical workflow after calling the Run endpoint:
@@ -388,9 +686,1041 @@ The typical workflow after calling the Run endpoint:
 1. **Run** — call `POST /Run/{owner-slug}/{model-slug}` and receive a task ID
 2. **Track** — connect via WebSocket or poll `POST /Task/Detail`
 3. **Receive** — get outputs as the model produces them (streaming or final)
-4. **Complete** — task reaches `end` status with full results
+4. **Complete** — task reaches `task_postprocess_end`; verify `pexit: "0"` and
+   read its outputs
 
 For real-time streaming, use the WebSocket connection with the `socketaccesstoken` returned in the run response. For simpler integrations, poll the Task Detail endpoint every few seconds.
+
+---
+
+# Direct LLM Gateway
+
+Use Wiro models through OpenAI Chat Completions, OpenAI Responses, Anthropic
+Messages, and a beta Cursor-compatible chat route. The gateway uses the same
+Wiro task, project-access, team-policy, and billing system as the Run API.
+
+OpenAI-compatible clients use base URL:
+
+```text
+https://llm.wiro.ai/v1
+```
+
+Clients that append `/v1` themselves, including Anthropic SDKs and Claude
+Code, use origin `https://llm.wiro.ai`. Cursor clients that append
+`/chat/completions` use beta base `https://llm.wiro.ai/v1/cursor`.
+
+Asynchronous Run, Task, the original Wiro File API, and WebSocket remain on
+`https://api.wiro.ai/v1` and `wss://socket.wiro.ai/v1`. The Direct LLM Gateway
+also provides OpenAI/Anthropic-compatible `/v1/files` routes backed by that
+same authenticated project storage.
+
+Direct LLM responses never expose Wiro Run/Sync `segments`. Each route returns
+only its selected protocol's native JSON and streaming events: OpenAI Chat
+chunks, OpenAI Responses events, Anthropic Messages events, or Chat-compatible
+Cursor events. OpenClaw and Hermes receive the native transport they configure.
+
+In this release, `stream: true` provides protocol-compatible SSE ordering after
+the provider request completes and the authenticated structured turn is
+persisted. Do not interpret first-event timing as live provider token latency.
+
+Model IDs use lowercase `owner/model` form. Do not send a provider-only model
+name: discover the exact ID and protocol capabilities first.
+
+## Choose an endpoint
+
+- `POST /v1/Run/{owner}/{project}` remains the asynchronous task-creation
+  endpoint on `api.wiro.ai`.
+- `POST /v1/Run/{owner}/{project}/sync` is the generic finite-model wait on
+  `api.wiro.ai`; see [Run a Model](#run-a-model). It is not a Direct LLM
+  protocol.
+- `GET /v1/models` lists verified `llm-tool-call` models available in the
+  authenticated project/team context.
+  `GET /v1/chat/models` is an equivalent compatibility alias.
+- `GET /v1/models/{owner}/{model}` returns one model's exact gateway contract.
+- `POST`, `GET`, and `DELETE /v1/files` compatibility routes use the
+  authenticated project's existing Wiro file storage.
+- `POST /v1/chat/completions` uses OpenAI Chat JSON and SSE.
+- `POST /v1/responses` uses OpenAI Responses JSON and official named SSE
+  events.
+- `POST /v1/messages` uses Anthropic Messages JSON and SSE.
+- `POST /v1/messages/count_tokens` estimates Anthropic input tokens before a
+  run.
+- `POST /v1/cursor/chat/completions` is a beta compatibility route. It accepts
+  strict Responses-shaped `input` and always returns Chat JSON/SSE.
+- `GET /v1/generation?id=...` returns project-authorized generation metadata.
+
+The asynchronous Run route returns `taskid` and `socketaccesstoken` immediately;
+retrieve its result through Task Detail, WebSocket, or a callback. The generic
+`/sync` wait is an additional method on `api.wiro.ai`; it does not replace
+asynchronous Run. Direct LLM routes remain separate on `llm.wiro.ai`.
+
+Training and realtime models are not accepted by `/sync` or the direct LLM
+gateway. Use their existing training or realtime APIs.
+
+## Authentication
+
+### Project credentials
+
+Model discovery/detail, the protocol routes, and `/generation` all use
+the authenticated project's credentials. Standard compatible clients should
+send a project Bearer credential:
+
+- API Key Only project:
+  `Authorization: Bearer YOUR_API_KEY`
+- Signature project:
+  `Authorization: Bearer YOUR_API_KEY:YOUR_API_SECRET`
+
+The Signature Bearer value may instead be the base64 encoding of
+`YOUR_API_KEY:YOUR_API_SECRET`.
+
+The same endpoints also accept `x-api-key` containing either `YOUR_API_KEY` or
+`YOUR_API_KEY:YOUR_API_SECRET`. Direct LLM routes do not accept the Run API's
+`x-nonce`/`x-signature` HMAC trio.
+
+If `Authorization` and `x-api-key` are sent together, both must identify the
+same complete project credential. A mismatched key or secret, or a malformed
+Bearer credential returns `401`; Wiro does not silently choose one credential
+or fall back to another project.
+
+Never expose a project key or secret in browser or mobile application code.
+
+Anthropic Messages requires `x-api-key`. Send `YOUR_API_KEY` for an API Key
+Only project or `YOUR_API_KEY:YOUR_API_SECRET` for a Signature project.
+Generic `/sync` waits stay on `api.wiro.ai` and use normal Run headers.
+
+### Session identifier
+
+`session_id` is the only public session field. It is optional on Chat
+Completions, Anthropic Messages, and the beta Cursor route, and must contain
+1–128 letters, digits, `.`, `_`, `:`, or `-`. Reuse the same value for related
+turns. Wiro maps it to a project-scoped internal session; it does not replace
+the protocol's normal client-history requirements. Responses uses
+`previous_response_id` instead, and `/v1/messages/count_tokens` does not accept
+`session_id`.
+
+## Discover models and capabilities
+
+### **GET** /v1/models
+
+```bash
+curl "https://llm.wiro.ai/v1/models?search=openai%2Fgpt-5-6-sol&limit=1" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+`GET /v1/chat/models` returns the same authenticated, team-filtered list. This
+gateway catalog is separate from the full website/model catalog at
+`POST /v1/Tool/List`.
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "openai/gpt-5-6-sol",
+      "canonical_slug": "openai/gpt-5-6-sol",
+      "name": "GPT 5.6 Sol by OpenAI (Vision)",
+      "description": "GPT 5.6 Sol is OpenAI's flagship reasoning and vision model for agentic coding, research, and image Q&A in one chat.",
+      "context_length": 1050000,
+      "architecture": {
+        "modality": "text+image->text",
+        "input_modalities": ["text", "image"],
+        "output_modalities": ["text"]
+      },
+      "pricing": {
+        "prompt": "0.000005",
+        "completion": "0.00003"
+      },
+      "top_provider": {
+        "context_length": 1050000,
+        "max_completion_tokens": null
+      },
+      "supported_parameters": [
+        "include_reasoning",
+        "parallel_tool_calls",
+        "reasoning",
+        "response_format",
+        "structured_outputs",
+        "tool_choice",
+        "tools"
+      ],
+      "default_parameters": {},
+      "object": "model",
+      "type": "model",
+      "created": null,
+      "created_at": null,
+      "owned_by": "openai",
+      "display_name": "GPT 5.6 Sol by OpenAI (Vision)",
+      "max_input_tokens": 1050000,
+      "max_tokens": null,
+      "capabilities": {
+        "endpoints": ["anthropic", "chat", "cursor", "responses"],
+        "input_modalities": ["text", "image"],
+        "output": ["text", "reasoning", "function_calls", "custom_tool_calls"],
+        "function_tools": true,
+        "custom_tools": true,
+        "structured_outputs": true,
+        "structured_output_modes": ["json_object", "json_schema"],
+        "strict_json_schema": true,
+        "generation_controls": ["reasoning_effort"]
+      },
+      "x_wiro": {
+        "pricing_source": {
+          "name": "wiro-pricing-catalog",
+          "schema_version": 1,
+          "revision": "3a2430b5188fcaf69b5d7af1cb40d0a59062cc37",
+          "sha256": "f74c5d378dfd8b28360b2464dc2590711550df501a7c6c7f9b673db105f7798f",
+          "source_model": "openai/gpt-5.6-sol",
+          "basis": "local-rate"
+        },
+        "pricing_tiers": null
+      }
+    }
+  ],
+  "total_count": 1,
+  "links": {
+    "next": null
+  },
+  "has_more": false,
+  "first_id": "openai/gpt-5-6-sol",
+  "last_id": "openai/gpt-5-6-sol"
+}
+```
+
+The example is intentionally explicit about nullable values that have a Wiro
+source. Context, modalities, and pricing come from the audited local gateway
+catalog; live Run parameters and capability flags come from the selected
+model's current `Tool/Detail` contract. Fields without a Wiro source are
+omitted instead of being copied from OpenRouter with `null` placeholders.
+`pricing.prompt` and `pricing.completion` are USD-per-token strings.
+Models with tiered rates expose those exact bands in `x_wiro.pricing_tiers`.
+Pricing and context fields can be `null` for catalog entries without audited
+local metadata.
+
+The list accepts:
+
+- `search` (at most 256 bytes), `order=asc|desc`, and `limit=1..1000`
+- `after`/`after_id` or `before`/`before_id` cursors
+
+The default order is ascending and the default limit is `1000`. `total_count`
+counts the filtered catalog. `links.next` is a relative next-page URL or
+`null`.
+
+The discovery list contains only team-allowed models verified with the
+`llm-tool-call` category. Other LLMs are not advertised by this endpoint; when
+you already know an exact `owner/model` ID, you can still submit it to a
+compatible Direct LLM route or use the normal Run API.
+
+Before each request:
+
+1. Confirm `anthropic`, `chat`, `cursor`, or `responses` in
+   `capabilities.endpoints`.
+2. Use `supported_parameters` to gate optional public request controls.
+   Required protocol fields such as `model`, `input`, `messages`, or Anthropic
+   `max_tokens` are not repeated there.
+3. Check `capabilities.input_modalities` for canonical `text`, `image`, or
+   `document`. OpenRouter-style `architecture.input_modalities` represents
+   documents as `file`.
+4. Check `capabilities.output`, `function_tools`, `custom_tools`,
+   `structured_outputs`, `structured_output_modes`, `strict_json_schema`, and
+   `generation_controls`.
+5. Treat `context_length`, `max_input_tokens`, `max_tokens`, pricing, and usage
+   as model-specific. A nullable field is not permission to infer a value from
+   another model.
+
+Every discoverable model currently publishes the same four endpoint labels.
+Capability differences are expressed through modalities, supported parameters,
+tool flags, structured-output flags, reasoning controls, and limits.
+
+### **GET** /v1/models/{owner}/{model}
+
+```bash
+curl "https://llm.wiro.ai/v1/models/openai/gpt-5-6-sol" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+The detail route returns the same complete model object as the matching list
+entry. Query parameters are rejected on detail routes. An unavailable,
+non-gateway, or team-blocked model returns `model_not_found` without exposing
+private catalog state.
+
+## Generic finite task completion
+
+`POST /v1/Run/{owner}/{project}/sync` lives on `https://api.wiro.ai/v1`, not
+this gateway. See [Run a Model](#run-a-model) for JSON wait, SSE, and
+timeout recovery. Direct LLM clients should use Chat, Responses, Messages, or
+Cursor below.
+
+## Usage contract
+
+When the upstream model reports usage, Wiro returns normalized counters in the
+selected protocol's native shape:
+
+- Chat and Cursor use `prompt_tokens`, optional `prompt_tokens_details`,
+  `completion_tokens`, optional `completion_tokens_details`, and
+  `total_tokens`.
+- Responses uses `input_tokens`, `input_tokens_details`, `output_tokens`,
+  `output_tokens_details`, and `total_tokens`.
+- Anthropic Messages uses cache-exclusive `input_tokens`, `output_tokens`,
+  optional `cache_read_input_tokens`, optional
+  `cache_creation_input_tokens`, and optional five-minute/one-hour
+  `cache_creation` detail.
+
+For Chat and Responses, input/prompt totals are cache-inclusive. Their input
+detail objects (optional on Chat/Cursor, always present on Responses) can
+identify `cached_tokens`, `cache_write_tokens`,
+`cache_write_5m_tokens`, `cache_write_1h_tokens`, and reported
+text/audio/image/video tokens. Output/completion totals are
+reasoning-inclusive; the corresponding output detail can identify
+`reasoning_tokens`, reported text/audio/image/video tokens, and
+accepted/rejected prediction tokens. Cache TTL values are subsets of
+`cache_write_tokens`, and all detail counters are already included in their
+parent total. Never add them to `total_tokens`.
+
+There is intentionally no `cached_output_tokens` field. Provider prompt caches
+reuse input context; they do not report previously generated output as cached
+output usage.
+
+Optional `server_tool_use` values count requests, not tokens. Providers omit
+unsupported counters, so clients must not require every detail key. Chat,
+Cursor, and Responses expose Wiro's billed amount as `usage.cost`; Anthropic
+exposes it as `usage.cost_usd`. The asynchronous Run/Task contract keeps the
+billed amount at task-level `totalcost`.
+
+## Files compatibility
+
+The gateway's Files routes are a compatibility view over the authenticated
+Wiro project's existing upload folder. Uploads, lists, retrieval, and deletion
+use the same storage as `File/Upload`, `File/List`, and `File/Delete` on
+`api.wiro.ai`; the gateway does not create a second file database.
+
+The supported routes are:
+
+- `POST /v1/files` uploads one multipart field named `file`.
+- `GET /v1/files` lists files in the authenticated project's upload folder.
+- `GET /v1/files/{file_id}` returns file metadata.
+- `GET /v1/files/{file_id}/content` checks ownership, then redirects with
+  `307` to the validated public CDN URL.
+- `DELETE /v1/files/{file_id}` deletes the project file.
+
+File IDs use `file-...` form and are valid only inside the project whose
+credentials created or listed them. A missing, deleted, or foreign ID returns
+`file_not_found`; the gateway never falls back to another project.
+
+### OpenAI Files
+
+OpenAI clients use Bearer authentication. The only supported OpenAI purpose is
+`assistants`:
+
+```javascript
+import fs from 'node:fs';
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  apiKey: process.env.WIRO_BEARER_CREDENTIAL,
+  baseURL: 'https://llm.wiro.ai/v1',
+});
+
+const file = await client.files.create({
+  file: fs.createReadStream('input.png'),
+  purpose: 'assistants',
+});
+
+const page = await client.files.list({ limit: 20, order: 'desc' });
+const metadata = await client.files.retrieve(file.id);
+const content = await client.files.content(file.id);
+await client.files.delete(file.id);
+```
+
+OpenAI list queries accept `after`/`after_id`, `before`/`before_id`,
+`limit=1..1000`, `order=asc|desc`, and `purpose=assistants`. The default limit
+is `20` and the default order is descending. File metadata uses OpenAI's
+`object: "file"`, `bytes`, Unix `created_at`, `filename`, `purpose`,
+`status`, and `status_details` fields.
+
+### Anthropic Files
+
+Anthropic SDKs use origin `https://llm.wiro.ai` and send the required
+`anthropic-version: 2023-06-01` header; that header selects the Anthropic file
+metadata shape:
+
+```javascript
+import fs from 'node:fs';
+import Anthropic from '@anthropic-ai/sdk';
+
+const client = new Anthropic({
+  baseURL: 'https://llm.wiro.ai',
+  apiKey: process.env.WIRO_API_KEY,
+});
+
+const file = await client.files.upload({
+  file: fs.createReadStream('context.pdf'),
+});
+
+const page = await client.files.list({ limit: 20 });
+const metadata = await client.files.retrieveMetadata(file.id);
+const content = await client.files.download(file.id);
+await client.files.delete(file.id);
+```
+
+Anthropic list queries accept `page`, legacy `after_id`/`before_id`, and
+`limit=1..1000`. The response includes `next_page`, `has_more`, `first_id`,
+and `last_id`. Metadata uses ISO `created_at`, `filename`, `mime_type`,
+`size_bytes`, `type: "file"`, `downloadable`, and `expires_at`. Wiro-backed
+files do not expire, so `expires_at` is `null`.
+
+### Limits and model input
+
+Gateway uploads are limited to 50 MiB per file. Empty files, multiple file
+parts, unknown multipart fields, and filenames over 1024 bytes are rejected.
+ZIP uploads are rejected because Wiro's standard File API extracts archives,
+which cannot represent the one-upload/one-file contract expected by these SDKs.
+The compatibility catalog reads at most 10,000 project files; that safety bound
+is not a storage quota. The original Wiro File API has its own documented
+limits.
+
+Use the returned ID only where the selected protocol accepts file references.
+For example, OpenAI Responses image input can use
+`{ "type": "input_image", "file_id": "file-..." }`, while Anthropic document
+input uses `{ "type": "file", "file_id": "file-..." }` inside its `source`
+object. Before Run, the gateway verifies project ownership and MIME type, then
+replaces the Wiro file ID with its existing public URL. Image references accept
+GIF, JPEG, PNG, or WebP; document references accept PDF or plain text. Invalid
+MIME combinations return `invalid_media_type` before model execution.
+
+Public HTTPS URLs and validated data/base64 content remain available when the
+model advertises the corresponding modality. A Wiro `file-...` ID is not a
+provider file ID and is never forwarded to OpenAI, Anthropic, xAI, or another
+provider.
+
+## OpenAI Chat Completions
+
+### **POST** /v1/chat/completions
+
+Use a model that includes `chat` in `capabilities.endpoints`.
+
+```bash
+curl -X POST "https://llm.wiro.ai/v1/chat/completions" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-5-6-sol",
+    "messages": [
+      { "role": "system", "content": "You are a concise assistant." },
+      { "role": "user", "content": "What is SSE?" }
+    ],
+    "stream": false
+  }'
+```
+
+The endpoint accepts `system`, `developer`, `user`, and `assistant` messages,
+plus `tool` results for preceding assistant tool calls. Each request is
+client-history: send the required conversation history in `messages`. Calls do
+not create a saved Wiro Chat session.
+
+Text is always available. OpenAI-style image and document content parts are
+accepted only when the selected model advertises those input modalities.
+Gateway output is text; this route is not an image, audio, or video generation
+API. Remote media must use a public HTTPS URL or a validated data/base64
+source; supported Wiro gateway file IDs may also be used. Private-network and
+non-HTTP fetch targets are rejected. Provider-native file IDs are not accepted
+as Wiro file IDs.
+
+Generation fields such as `temperature`, `top_p`, `max_tokens`,
+`max_completion_tokens`, penalties, `seed`, `stop`, `reasoning`, and
+`response_format` are capability-gated. `n` must be `1`, `logprobs` must be
+`false`, and `stop` accepts at most four non-empty values without semicolons.
+Use `capabilities.structured_outputs` before requesting a non-text
+`response_format`.
+
+Standard OpenAI function tools use `tools`, `tool_choice`, and
+`parallel_tool_calls`. Returned function calls use
+`{ "id": "...", "type": "function", "function": { "name": "...", "arguments": "..." } }`
+entries in `message.tool_calls`. Execute calls only when `finish_reason` is
+`tool_calls`; a `length` or `content_filter` turn can contain partial tool data
+that must not be executed. Preserve the returned assistant message unchanged,
+then append matching `role: "tool"` results with `tool_call_id`. Wiro does not
+execute tools on the caller's behalf.
+
+When the model advertises `custom_tools`, Chat also accepts the nested custom
+tool shape:
+
+```json
+{
+  "type": "custom",
+  "custom": {
+    "name": "airport_code",
+    "format": {
+      "type": "grammar",
+      "syntax": "regex",
+      "definition": "[A-Z]{3}"
+    }
+  }
+}
+```
+
+Use a matching nested custom `tool_choice`. Returned custom calls use
+`{ "id": "...", "type": "custom", "custom": { "name": "...", "input": "..." } }`
+entries in `message.tool_calls`. Execute them client-side and append
+`role: "tool"` results with the same `tool_call_id`, just as for function calls.
+
+Reasoning is model-specific. Public model reasoning can appear in
+`message.reasoning` and `message.reasoning_details`; use the advertised
+reasoning controls and supported efforts. Tool/reasoning combinations are also
+model-specific, so do not infer support from another model.
+
+Final responses use `chat.completion`. Native `usage` is conditional: a
+successful completion is still returned when usage counters remain
+unavailable.
+
+For streaming, set body-level `"stream": true`. Text arrives in
+`choices[0].delta.content`, reasoning in `delta.reasoning` and
+`reasoning_details`, and function calls in `delta.tool_calls`. Concatenate tool
+argument fragments by call `index`. The stream terminates with:
+
+```text
+data: [DONE]
+```
+
+With `stream_options.include_usage: true`, Wiro emits a final empty-choices
+usage chunk before `[DONE]` only when native counters are available.
+
+If a failure happens after Chat SSE has started, Wiro emits an OpenAI error
+object in a `data:` frame, then `data: [DONE]`, and closes the connection.
+The same midstream rule applies to the beta Cursor route. Once SSE headers have
+been sent, the original HTTP status cannot communicate that later failure.
+
+### OpenAI SDK
+
+```javascript
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  apiKey: process.env.WIRO_BEARER_CREDENTIAL,
+  baseURL: 'https://llm.wiro.ai/v1',
+});
+
+const completion = await client.chat.completions.create({
+  model: 'openai/gpt-5-6-sol',
+  messages: [{ role: 'user', content: 'Hello' }],
+});
+```
+
+For a Signature project, `WIRO_BEARER_CREDENTIAL` is
+`YOUR_API_KEY:YOUR_API_SECRET`.
+
+## OpenAI Responses
+
+### **POST** /v1/responses
+
+Use a model that includes `responses` in `capabilities.endpoints`. `input` can
+be a string or Responses items; `instructions`, tools, text formatting,
+multimodal input, reasoning, and generation controls are capability-gated.
+Remote media follows the same public-HTTPS/data/base64/Wiro-file-ID
+restrictions as Chat.
+
+```bash
+curl -X POST "https://llm.wiro.ai/v1/responses" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-5-6-sol",
+    "instructions": "Answer in one paragraph.",
+    "input": "Explain server-sent events.",
+    "store": true,
+    "stream": false
+  }'
+```
+
+Final responses use the official `response` object with an opaque ID such as
+`resp_...` and an `output` item array. Items can include messages, public reasoning,
+function calls, and custom tool calls. Execute only tool items with
+`status: "completed"` from a completed response; never execute tool items from
+an incomplete response. Native `usage` can be absent.
+
+### Stored response continuation
+
+`store` defaults to `true` for OpenAI compatibility. Set `store: false` for a
+one-off response that will not be used as `previous_response_id`.
+
+Use the ID of a stored `completed` or `incomplete` response as
+`previous_response_id`. Never execute partial tool calls from an incomplete
+parent:
+
+```json
+{
+  "model": "openai/gpt-5-6-sol",
+  "previous_response_id": "resp_2221",
+  "input": [{
+    "type": "message",
+    "role": "user",
+    "content": [{
+      "type": "input_text",
+      "text": "Give me one concrete example."
+    }]
+  }],
+  "store": true
+}
+```
+
+`previous_response_id` is the public continuation field for this gateway route.
+Do not send `previousTaskToken` to `/v1/responses`. Direct Run clients use
+`previousTaskToken` as described in [Run a Model](#run-a-model).
+`session_id` is not accepted by Responses; use stored
+`previous_response_id` continuation instead.
+
+A stored response can be continued for up to 30 days by the same authenticated
+user, project, team, and model. Expired, unstored, unavailable, or mismatched
+responses return `response_not_found`; failed and cancelled responses are not
+continuable. Chains are limited to 32 responses, and the conversation plus
+requested output must fit the selected model's context window.
+
+`store` is not accepted on `/v1/chat/completions`; these persistence rules apply
+specifically to `/v1/responses`.
+
+### Stored response retrieval and deletion
+
+Retrieve a stored response with `GET /v1/responses/{response_id}`. Delete it
+with `DELETE /v1/responses/{response_id}`; a successful deletion returns HTTP
+`204` with an empty body. `POST /v1/responses/{response_id}/cancel` is not
+supported and returns `response_cancel_not_supported`.
+
+### Function and custom grammar tools
+
+Responses function tools use the standard top-level `name`, `description`,
+`parameters`, and optional `strict` shape. When a function call is returned,
+submit its result in the next request as a `function_call_output` input item
+with the same `call_id`.
+
+Models with `capabilities.custom_tools: true` also accept free-form or
+grammar-constrained tools:
+
+```json
+{
+  "type": "custom",
+  "name": "sql_query",
+  "description": "Produce one read-only SQL query.",
+  "format": {
+    "type": "grammar",
+    "syntax": "regex",
+    "definition": "^SELECT .+;$"
+  }
+}
+```
+
+Grammar `syntax` is `regex` or `lark`. Use `format: { "type": "text" }` for a
+free-form custom tool. When a `custom_tool_call` is returned, submit its result
+in the next request as a `custom_tool_call_output` input item with the matching
+`call_id`. `function_call_output` and `custom_tool_call_output` are next-request
+input types, distinct from the returned `function_call` and
+`custom_tool_call` output items. Tool execution always remains in your
+application.
+
+### Responses SSE
+
+Set `"stream": true` for official named Responses events, including
+`response.created`, `response.in_progress`, output-item/content-part events,
+text and reasoning deltas,
+`response.function_call_arguments.delta`/`.done`, and
+`response.custom_tool_call_input.delta`/`.done`. Every `response.*` payload
+carries a monotonically increasing `sequence_number`, starting at `0`. Ignore
+`: keep-alive` comments.
+
+The terminal event is `response.completed` or `response.incomplete`. A
+midstream failure emits `response.failed`. Wiro then emits `data: [DONE]` and
+closes the Responses stream; the official SDK consumes that sentinel.
+
+## Anthropic Messages
+
+### **POST** /v1/messages
+
+Use a model that includes `anthropic` in `capabilities.endpoints`.
+
+Anthropic SDKs normally send:
+
+- `x-api-key: YOUR_API_KEY` for an API Key Only project, or
+  `x-api-key: YOUR_API_KEY:YOUR_API_SECRET` for a Signature project
+- `anthropic-version: 2023-06-01`
+- optional `anthropic-beta` labels, comma-separated or repeated
+
+`x-api-key` and `anthropic-version` are both required. An optional Bearer header
+is accepted only when it resolves to the same complete credential.
+Beta headers identify requested compatibility features; they do not override
+model capabilities. `?beta=true` is also accepted as a beta-route marker.
+
+```bash
+curl -X POST "https://llm.wiro.ai/v1/messages" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude/sonnet-5",
+    "max_tokens": 1024,
+    "system": "Be concise.",
+    "messages": [{
+      "role": "user",
+      "content": "What is SSE?"
+    }],
+    "stream": false
+  }'
+```
+
+`max_tokens` is required and positive. Messages use Anthropic `user` and
+`assistant` roles; system instructions belong in the top-level `system` field.
+Content can include `text`, model-advertised `image` or `document` input,
+`tool_use`, `tool_result`, and supported thinking blocks. Remote media uses
+validated public HTTPS, data/base64, or Wiro gateway file references.
+
+Messages is client-history: resend the prior `user`/`assistant` content and
+tool blocks required for each turn. It does not use Responses storage or
+`previous_response_id`.
+
+Anthropic function tools use `name`, `description`, and `input_schema`.
+`tool_choice` supports Anthropic `auto`, `any`, `tool`, and `none` choices.
+Anthropic's optional `type: "custom"` still denotes an ordinary client
+function tool with `input_schema`; it is not OpenAI's free-form custom grammar
+shape. Tool calls are returned as `tool_use`; your application executes them
+and sends `tool_result`. Provider-hosted tools, hosted containers, and remote
+MCP servers are rejected by this release. Execute `tool_use` blocks only when
+`stop_reason` is `tool_use`; do not execute tool data from `max_tokens` or
+`refusal` turns.
+
+Thinking controls use:
+
+```json
+{ "thinking": { "type": "enabled", "budget_tokens": 2048 } }
+```
+
+`type` can be `enabled`, `adaptive`, or `disabled`. Check
+`supported_parameters` for public reasoning controls and
+`capabilities.output` for reasoning output. Do not fabricate or alter
+signature or redacted-thinking blocks returned by the model.
+
+Final responses use the Anthropic `message` object with opaque `msg_...` request
+IDs; they are not Wiro task IDs. Public output content contains `text` and
+`tool_use` blocks. Internal model reasoning is not projected as Anthropic
+`thinking` or `redacted_thinking` output. Usage is included only when native
+counters are available.
+
+For streaming, set `"stream": true`. The SSE sequence uses Anthropic events
+such as `message_start`, `content_block_start`, `content_block_delta`,
+`content_block_stop`, `message_delta`, and `message_stop`, with `ping`
+keepalives. A midstream failure emits Anthropic's native `error` event and
+closes the connection. A successful stream ends with `message_stop` and
+connection close; it does not emit `[DONE]`. Text blocks use `text_delta`, and
+`tool_use` blocks use `input_json_delta`. The gateway does not emit
+`thinking_delta`.
+
+### Anthropic SDKs and Claude Code
+
+The official Node and Python SDKs must use origin `https://llm.wiro.ai`, not
+the OpenAI `/v1` base:
+
+```javascript
+import Anthropic from '@anthropic-ai/sdk';
+
+const client = new Anthropic({
+  baseURL: 'https://llm.wiro.ai',
+  apiKey: process.env.WIRO_API_KEY,
+});
+const message = await client.messages.create({
+  model: 'claude/sonnet-5',
+  max_tokens: 1024,
+  messages: [{ role: 'user', content: 'Hello' }],
+});
+```
+
+`WIRO_API_KEY` is `YOUR_API_KEY` for an API Key Only project or
+`YOUR_API_KEY:YOUR_API_SECRET` for a Signature project. Python uses the
+equivalent `base_url` and `api_key` options.
+
+For Claude Code with a Signature project:
+
+```bash
+ANTHROPIC_BASE_URL="https://llm.wiro.ai" \
+ANTHROPIC_API_KEY="YOUR_API_KEY:YOUR_API_SECRET" \
+ANTHROPIC_MODEL="claude/sonnet-5" \
+CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY=1 \
+claude
+```
+
+For an API Key Only project, set `ANTHROPIC_API_KEY` to `YOUR_API_KEY`.
+Model discovery uses Wiro's authenticated `/v1/models` route with `limit=1000`.
+Claude Code adds only discovered IDs containing
+`claude` or `anthropic` to its picker; set `ANTHROPIC_MODEL` explicitly for
+any other compatible ID. Native Messages, client tools,
+streaming, beta headers, thinking continuation, and token-counting calls remain
+subject to the selected model's advertised capabilities. Provider-hosted tools
+remain outside this release even when a client beta can describe them.
+
+### **POST** /v1/messages/count_tokens
+
+```bash
+curl -X POST "https://llm.wiro.ai/v1/messages/count_tokens" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude/sonnet-5",
+    "system": "Be concise.",
+    "messages": [{ "role": "user", "content": "Hello" }]
+  }'
+```
+
+```json
+{ "input_tokens": 28 }
+```
+
+This is a local preflight estimate over the submitted Anthropic payload, not
+authoritative billing or provider-native usage. The estimate endpoint is part
+of the Anthropic compatibility route; the model catalog does not label it as
+native token counting.
+
+## Beta Cursor-compatible chat
+
+### **POST** /v1/cursor/chat/completions
+
+Use a model that includes `cursor` in `capabilities.endpoints`. This route is
+beta and may evolve. It accepts Responses-style `input` and optional
+`instructions`. Chat `messages` are rejected rather than guessed. It always returns an OpenAI
+`chat.completion` object and does not provide Responses persistence:
+`previous_response_id` is disabled and `store` is forced off.
+
+```bash
+curl -X POST "https://llm.wiro.ai/v1/cursor/chat/completions" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-5-6-sol",
+    "input": "Summarize this function.",
+    "stream": true
+  }'
+```
+
+Function tools, custom tools, grammar tools, reasoning, and input modalities
+remain model-capability-gated. Streaming always uses Chat chunks and terminates
+with `data: [DONE]`; it never switches to Responses SSE.
+
+Clients that append `/chat/completions` can use
+`https://llm.wiro.ai/v1/cursor` as their beta base URL.
+
+## Generation metadata
+
+### **GET** /v1/generation?id=
+
+Look up terminal metadata using the exact public ID emitted by the protocol
+route: the response `id` for Chat, Cursor, or Responses, and the `request-id`
+response header for Messages. The equivalent path form is
+`GET /v1/generation/{public-id}`.
+
+```bash
+curl "https://llm.wiro.ai/v1/generation?id=resp_01HZX7Y8Q9" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+```json
+{
+  "data": {
+    "id": "resp_01HZX7Y8Q9",
+    "model": "openai/gpt-5-6-sol",
+    "protocol": "responses",
+    "status": "completed",
+    "created_at": "2026-08-21T12:00:00.000Z",
+    "completed_at": "2026-08-21T12:00:03.000Z",
+    "usage": {
+      "input_tokens": 20,
+      "input_tokens_details": {
+        "cached_tokens": 0,
+        "cache_write_tokens": 0
+      },
+      "output_tokens": 12,
+      "output_tokens_details": {
+        "reasoning_tokens": 4
+      },
+      "total_tokens": 32
+    },
+    "upstream_metered_cost": 0.0021,
+    "upstream_elapsed_seconds": 3
+  }
+}
+```
+
+`protocol` is `chat`, `cursor`, `messages`, or `responses`. `status` is
+`completed`, `failed`, or `incomplete`. `created_at` and `completed_at` are ISO
+8601 strings.
+
+When token counters are available, `usage` follows the selected protocol:
+
+- `responses`: `input_tokens`, `input_tokens_details` with `cached_tokens` and
+  `cache_write_tokens`, `output_tokens`,
+  `output_tokens_details.reasoning_tokens`, and `total_tokens`.
+- `chat` and `cursor`: `prompt_tokens`, optional `prompt_tokens_details`,
+  `completion_tokens`, optional `completion_tokens_details`, and
+  `total_tokens`.
+- `messages`: `input_tokens`, `output_tokens`, and nullable
+  `cache_creation_input_tokens` and `cache_read_input_tokens`. This shape does
+  not add `total_tokens`.
+
+`usage` is `null` when no valid counters were recorded.
+`upstream_metered_cost` and `upstream_elapsed_seconds` are finite upstream task
+counters when available, otherwise `null`; cost is not duplicated inside
+metadata `usage`.
+
+Only the owning authenticated project can read a generation. Missing, expired,
+and foreign IDs all return `generation_not_found`. This endpoint is terminal
+observability metadata, not task output: it does not return a Wiro task ID,
+generated content, or continuation state. Read generated content from the
+original protocol JSON or SSE response.
+
+## Connect an agent
+
+Point a compatible client at `llm.wiro.ai`. Discover the exact lowercase
+`owner/model` ID first. OpenAI-compatible clients use a project Bearer
+credential. Anthropic-compatible clients put the same project credential in
+`x-api-key`: `YOUR_API_KEY` for API Key Only or
+`YOUR_API_KEY:YOUR_API_SECRET` for Signature.
+Generic finite-model waits stay on [Run a Model](#run-a-model).
+
+### Cursor
+
+In a Cursor build or extension that supports a custom OpenAI base URL and sends
+Responses-shaped input at its appended `/chat/completions` path, register the
+exact Wiro model and use the beta Cursor base below. Cursor's proprietary
+transport is not inferred: Chat `messages` sent to this beta path are rejected.
+
+```text
+Base URL: https://llm.wiro.ai/v1/cursor
+API key: YOUR_API_KEY
+Model: openai/gpt-5-6-sol
+```
+
+For a Signature project, enter `YOUR_API_KEY:YOUR_API_SECRET` as the API key
+value so the client sends it as a Bearer credential.
+
+### Claude Code
+
+Claude Code and official Anthropic SDKs use origin `https://llm.wiro.ai`
+because they append `/v1/messages`. Both project types use
+`ANTHROPIC_API_KEY`; Signature projects set it to the full
+`YOUR_API_KEY:YOUR_API_SECRET` pair.
+
+```bash
+ANTHROPIC_BASE_URL="https://llm.wiro.ai" \
+ANTHROPIC_API_KEY="YOUR_API_KEY:YOUR_API_SECRET" \
+ANTHROPIC_MODEL="claude/sonnet-5" \
+CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY=1 \
+claude
+```
+
+### Windsurf
+
+Windsurf Cascade has no native arbitrary-provider registration in this
+release. A setup is in scope only through a tested extension or client that
+can set a custom OpenAI base URL to `https://llm.wiro.ai/v1` for
+`/chat/completions` or `/responses`. Do not describe this as native Cascade
+support.
+
+### VS Code
+
+VS Code extensions such as Cline, Roo Code, and Continue can use Wiro when
+their provider configuration supports an OpenAI-compatible custom base URL.
+Use `https://llm.wiro.ai/v1`, the exact advertised model ID, and the project
+Bearer credential. Route and optional feature support still comes from
+`GET /v1/models/{owner}/{model}`.
+
+### OpenClaw
+
+Use the model-declared transport after reading
+`GET /v1/models/{owner}/{model}`: `openai-completions`, `openai-responses`, or
+`anthropic-messages`. OpenAI transports use the `/v1` base; Anthropic uses the
+origin.
+
+```json
+{
+  "models": {
+    "providers": {
+      "wiro": {
+        "baseUrl": "https://llm.wiro.ai/v1",
+        "apiKey": "${WIRO_BEARER_CREDENTIAL}",
+        "api": "openai-completions",
+        "models": [{ "id": "openai/gpt-5-6-sol", "name": "GPT 5.6 Sol" }]
+      }
+    }
+  }
+}
+```
+
+### Hermes
+
+Hermes function-calling clients, Cline, Roo Code, and Continue can use OpenAI
+Chat when they accept a custom base URL. Optional tools, reasoning, and
+modalities still follow the selected model's metadata.
+
+```yaml
+providers:
+  wiro:
+    base_url: "https://llm.wiro.ai/v1"
+    api_key: "${WIRO_BEARER_CREDENTIAL}"
+```
+
+## Deliberate boundaries
+
+The Direct LLM Gateway does not currently provide:
+
+- provider-hosted web search, file search, code interpreter, computer-use, or
+  remote MCP tool execution; Wiro returns tool calls for your client to run
+- a native Gemini `generateContent` protocol
+- embeddings or reranking
+- automatic model routing or fallback routing
+- bring-your-own-provider-key (BYOK) execution
+- dedicated image, audio, or video generation through the Chat, Responses,
+  Messages, or Cursor-compatible routes
+- the legacy `/v1/completions` endpoint
+
+Use Wiro's normal [Run or /sync APIs](#run-a-model) for supported finite
+media-generation models. Image and document **input** to an LLM is distinct from
+media generation and remains available when the selected model advertises it.
+Remote media fetches must use public HTTPS; validated data/base64 sources and
+Wiro gateway file IDs are accepted only where the selected protocol/model
+supports them. Provider-native file IDs are not interchangeable.
+
+## Errors
+
+Error responses preserve the selected public protocol:
+
+- Chat, Responses, Cursor, model, and generation errors use the
+  OpenAI-style `{ "error": { "message", "type", "param", "code" } }` shape.
+- Anthropic routes use
+  `{ "type": "error", "error": { "type", "message" } }`.
+
+Generic `/sync` waits on `api.wiro.ai` use the normal Wiro `result`/`errors`
+envelope.
+
+After a stream starts, inspect SSE events rather than the HTTP status: Chat and
+Cursor emit an error `data:` frame followed by `[DONE]`, Responses emits
+`response.failed`, and Anthropic emits `error`.
+
+Common codes include `invalid_model`, `model_not_found`,
+`unsupported_model_type`, `unsupported_parameter`, `response_not_found`,
+`response_chain_too_deep`, `invalid_generation_id`, `generation_not_found`,
+`completion_timeout`, `model_execution_failed`, `task_cancelled`, and
+`unsupported_capability`. Files routes can also return `file_not_found`,
+`file_too_large`, `invalid_multipart`, `missing_file`, `invalid_filename`,
+`invalid_media_type`, `invalid_pagination`, `invalid_query`,
+`file_catalog_too_large`, `file_content_unavailable`, `file_api_unavailable`,
+and `invalid_file_response`.
+
+Gateway-origin and upstream execution failures use HTTP `500` with their
+specific error code; the public protocol does not return HTTP `502`.
+Responses under `/v1` include `ratelimit-limit`, `ratelimit-remaining`,
+`ratelimit-reset`, `request-id`, and `x-request-id`. A rate-limit response also
+includes `retry-after`.
+
+Protocol execution POST bodies must be JSON and are limited to 16 MiB. Files
+uploads are multipart and use the separate 50 MiB file limit. Unsupported
+fields that could change execution fail instead of being silently accepted. A
+model task can also fail after HTTP validation; preserve the protocol error and
+status rather than treating every `2xx` task creation as a successful model
+answer.
 
 ---
 
@@ -636,12 +1966,12 @@ Every model run creates a task that progresses through a defined set of stages:
 | `task_assign` | The task has been assigned to a specific GPU. The model is being loaded into memory. This may take a few seconds depending on the model size. |
 | `task_start` | The model command has started executing. Inference is now running on the GPU. |
 | `task_output` | The model is producing output. This event is emitted **multiple times** — each time the model writes to stdout, a new `task_output` message is sent via WebSocket. For LLM models, each token/chunk arrives as a separate `task_output` event, enabling real-time streaming. |
-| `task_error` | As a live WebSocket event, this means the model wrote to stderr and is an **interim log**, not necessarily a failure. As persisted `status` in Task/Detail, it represents a fatal pre-execution failure and is terminal. |
-| `task_output_full` | The complete accumulated stdout log, sent once after the model process finishes. Contains the full output history in a single message. |
-| `task_error_full` | The complete accumulated stderr log, sent once after the model process finishes. |
+| `task_error` | As a live WebSocket event, this means the model wrote to stderr and is an **interim log**, not necessarily a failure. As persisted `status` in Task/Detail, it marks a pre-execution failure awaiting recovery or requeue; it does not close the task. |
+| `task_output_full` | Signals that process stdout collection ended. Raw accumulated stdout is not exposed on the public socket. |
+| `task_error_full` | Signals that process stderr collection ended. Raw accumulated stderr is not exposed on the public socket. |
 | `task_end` | The model process has exited. Emitted once. This fires **before** post-processing — do not use this event to determine success. Wait for `task_postprocess_end` instead. |
 | `task_postprocess_start` | Post-processing has started. The system is preparing the output files — encoding, uploading to CDN, and generating access URLs. |
-| `task_postprocess_end` | Post-processing completed. Check `pexit` to determine success: `"0"` = success, any other value = error. The `outputs` array contains the final files with CDN URLs, content types, and sizes. **This is the event you should listen for** to get the final results. |
+| `task_postprocess_end` | Post-processing completed. On the public WebSocket, check `success` and `exitCode` (`0` = success); `message` contains sanitized outputs. Task/Detail continues to use `pexit` as its primary success indicator. **This is the event you should listen for** to get final results. |
 | `task_cancel` | The task was cancelled (if queued) or killed (if running) by the user. |
 
 ### Realtime Conversation Only
@@ -658,13 +1988,17 @@ The following statuses are exclusive to realtime conversation models (e.g. voice
 
 Normal model executions, both successful and failed, reach
 `task_postprocess_end`. Check `pexit` or `outputs` (or both) to determine the
-result. A fatal setup failure may stop earlier with persisted
-`status: "task_error"` and a `debugerror`:
+result. A setup failure may temporarily set persisted `status: "task_error"`
+with a `debugerror`, but clients must keep waiting until
+`task_postprocess_end` or `task_cancel`:
 
 - `pexit` — the process exit code. `"0"` means success, any other value means the model encountered an error. This is the most reliable indicator.
 - `outputs` — the output files array. For non-LLM models, a successful run populates this with CDN URLs. If it's empty or missing, the task likely failed.
 
-> **Note:** For **LLM models**, `outputs` contains a structured entry with `contenttype: "raw"` and the response broken into `prompt`, `raw`, `thinking`, and `answer` fields. The merged plain text is also available in `debugoutput`. Always use `pexit` as the primary success check.
+> **Note:** For **LLM models**, `outputs` contains a structured entry with
+> `contenttype: "raw"` and ordered `content.segments`. The merged plain text is
+> also available in `debugoutput`. Always use `pexit` as the primary success
+> check.
 
 ```json
 // Success (image/audio model): pexit "0", outputs present
@@ -686,8 +2020,25 @@ result. A fatal setup failure may stop earlier with persisted
     "content": {
       "prompt": "Hello!",
       "raw": "Hello! How can I help you today?",
-      "thinking": [],
-      "answer": ["Hello! How can I help you today?"]
+      "segments": [
+        {
+          "type": "answer",
+          "text": "Hello! How can I help you today?"
+        }
+      ],
+      "finishreason": "stop",
+      "usage": {
+        "input_tokens": 12,
+        "input_tokens_details": {
+          "cached_tokens": 4,
+          "cache_write_tokens": 2
+        },
+        "output_tokens": 9,
+        "output_tokens_details": {
+          "reasoning_tokens": 2
+        },
+        "total_tokens": 21
+      }
     }
   }],
   "debugoutput": "Hello! How can I help you today?"
@@ -701,14 +2052,59 @@ result. A fatal setup failure may stop earlier with persisted
 ```
 
 > **Important:** Do not confuse the live `task_error` WebSocket log event with
-> persisted `status: "task_error"` in Task/Detail. The event is interim; the
-> database status is a terminal pre-execution failure.
+> persisted `status: "task_error"` in Task/Detail. Both are non-terminal; only
+> `task_postprocess_end` and `task_cancel` close the task.
 
 ## LLM Models
 
-For LLM (Large Language Model) requests, the model's response is available in two places: `outputs` contains a structured entry with `contenttype: "raw"` and the response broken into `prompt`, `raw`, `thinking`, and `answer` fields; `debugoutput` contains the merged plain text. When polling with Task Detail, use either field depending on whether you need structured or plain-text access.
+For LLM requests, `outputs` contains a structured entry with
+`contenttype: "raw"` and ordered `content.segments`; `debugoutput` contains the
+merged plain text. Use the representation that matches your UI.
 
-For real-time streaming of LLM responses, use [WebSocket](#websocket) instead of polling. Each `task_output` event delivers a chunk of the response as it's generated, giving your users an instant, token-by-token experience.
+For real-time streaming, use [WebSocket](#websocket). Each LLM `task_output`
+event contains the latest cumulative `message.segments` snapshot; replace your
+previous snapshot instead of appending it.
+
+### Structured LLM content fields
+
+Task Detail returns these fields under
+`tasklist[0].outputs[].content`. The final WebSocket
+`task_postprocess_end` event returns the same content under
+`message[].content`.
+
+| Field | When you need it | Description |
+|-------|------------------|-------------|
+| `raw` | Optional | Merged public model text. `debugoutput` provides the same compatibility view at task level. |
+| `thinking` / `answer` | Optional | Convenience arrays split from text output. Use `segments` when exact ordering or tools matter. |
+| `segments` | All structured/tool integrations | Authoritative cumulative ordered timeline. Text entries are `thinking` or `answer`; tool entries are `function_call` or `custom_tool_call`. |
+| `finishreason` | Completion and tool handling | `stop`, `tool_calls`, `length`, `content_filter`, or `error`. Execute completed tool entries only when this is `tool_calls`. |
+| `usage` | Token reporting | Normalized token and server-tool counters. It may be omitted when the provider does not report usage. It is not the billed amount. |
+
+Within `usage`, `input_tokens` already includes cache-read and cache-write
+tokens, `output_tokens` already includes reasoning tokens, and `total_tokens`
+equals `input_tokens + output_tokens`. Never add detail counters to the total.
+Known optional counters are:
+
+- `input_tokens_details`: `cached_tokens`, `cache_write_tokens`,
+  `cache_write_5m_tokens`, `cache_write_1h_tokens`, `text_tokens`,
+  `audio_tokens`, `image_tokens`, and `video_tokens`.
+- `output_tokens_details`: `reasoning_tokens`, `text_tokens`, `audio_tokens`,
+  `image_tokens`, `video_tokens`, `accepted_prediction_tokens`, and
+  `rejected_prediction_tokens`.
+- `server_tool_use`: `web_search_requests`, `web_fetch_requests`,
+  `file_search_requests`, `image_generation_requests`,
+  `code_execution_requests`, `bash_code_execution_requests`,
+  `text_editor_code_execution_requests`, and `computer_use_requests`.
+
+The five-minute and one-hour cache-write counters are subsets of
+`cache_write_tokens`. Server-tool values count requests, not tokens. Providers
+omit counters they do not support. There is no cached-output counter because
+prompt caching applies to input context. Use task-level `totalcost` for the
+amount charged.
+
+Plain-text integrations can use `debugoutput`. Tool integrations must inspect
+`segments`, `finishreason`, and `pexit`. A final structured validation failure
+produces a non-zero `pexit`.
 
 ## **POST** /Task/Detail
 
@@ -761,8 +2157,8 @@ Retrieves the current status and output of a task. You can query by either `task
 | `parameters` | `object` | The input parameters sent in the run request. |
 | `status` | `string` | Current task status (see Task Lifecycle). |
 | `pexit` | `string` | Process exit code. `"0"` = success. |
-| `debugoutput` | `string` | Accumulated stdout. For LLM models, contains the merged response text. |
-| `debugerror` | `string` | Accumulated stderr or a fatal pre-execution error message. |
+| `debugoutput` | `string` | Accumulated text output. For LLM models, contains the merged response text. |
+| `debugerror` | `string` | Accumulated error text or a fatal pre-execution error message. |
 | `starttime` | `string` | Unix timestamp when execution started. |
 | `endtime` | `string` | Unix timestamp when execution ended. |
 | `elapsedseconds` | `string` | Total execution time in seconds. |
@@ -774,7 +2170,7 @@ Retrieves the current status and output of a task. You can query by either `task
 
 ## **POST** /Task/Cancel
 
-Cancels a task that is still in the `queue` stage. Tasks that have already been assigned to a worker cannot be cancelled — use Kill instead.
+Cancels a task that is still in the `queue` stage. Use Kill for a running task.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -828,16 +2224,20 @@ After deletion:
 
 # LLM & Chat Streaming
 
-Stream LLM responses in real time with thinking/answer separation, session history, and multi-turn conversations.
+Stream LLM responses in real time with ordered output segments, session history, and multi-turn conversations.
 
 ## Overview
 
 LLM (Large Language Model) requests on Wiro work differently from standard model runs:
 
 - Responses are available as structured content in `outputs` (with `contenttype: "raw"`) and as merged plain text in `debugoutput`
-- Streaming `task_output` messages contain structured `thinking` and `answer` arrays — not plain strings
+- Streaming `task_output` messages contain ordered text/tool-call `segments` —
+  not plain strings
 - Multi-turn conversations are supported via `session_id` and `user_id` parameters
 - `pexit` is the primary success indicator
+- The [Direct LLM Gateway](#direct-llm-gateway) offers OpenAI Chat/Responses,
+  Anthropic Messages, and beta Cursor-compatible routes on `llm.wiro.ai`.
+  Generic `/sync` waits stay on [Run a Model](#run-a-model).
 
 Available LLM models include:
 
@@ -851,7 +2251,7 @@ Wiro maintains conversation history per session. By sending a `session_id` and `
 
 | Parameter    | Type   | Required | Description                                                              |
 | ------------ | ------ | -------- | ------------------------------------------------------------------------ |
-| `session_id` | string | No       | UUID identifying the conversation session. Reuse for follow-up messages. |
+| `session_id` | string | No\*     | Non-empty conversation identifier (up to 256 UTF-8 bytes). Reuse it for follow-up messages. |
 | `user_id`    | string | No       | UUID identifying the user.                                               |
 | `prompt`     | string | Yes      | The user's message or question.                                          |
 
@@ -871,31 +2271,41 @@ Wiro maintains conversation history per session. By sending a `session_id` and `
 }
 ```
 
-> **Tip:** Generate a UUID for `session_id` when starting a new conversation. Pass the same UUID for all follow-up messages to maintain context.
+`session_id` is optional on a first turn but required when continuing with
+`previousTaskToken`. Reuse the same `session_id` value on continuation. The
+value may contain up to 256 UTF-8 bytes; a UUID is allowed but not required.
 
-## Thinking & Answer Phases
+## Ordered Output Segments
 
-Many LLM models separate their output into two phases:
+LLM output is an ordered timeline with up to four segment types:
 
-- **Thinking** — the model's internal reasoning process (chain-of-thought)
+- **Thinking** — reasoning text exposed by the selected model
 - **Answer** — the final response to the user
+- **Function call** — JSON arguments for an application-defined function
+- **Custom tool call** — grammar-constrained or free-form tool input
 
-A model may alternate between thinking and answering multiple times during a single response. The arrays are indexed in pairs — `thinking[0]` corresponds to `answer[0]`, `thinking[1]` to `answer[1]`, and so on:
+A model may alternate between thinking and answering multiple times during one
+response. The `segments` array preserves the exact order, including consecutive
+items of the same type:
 
 ```json
 {
-  "thinking": [
-    "Let me break this into parts...",
-    "Now let me verify my reasoning..."
-  ],
-  "answer": [
-    "Quantum computing uses qubits...",
-    "To summarize: qubits can be 0, 1, or..."
+  "segments": [
+    { "type": "thinking", "text": "Let me break this into parts..." },
+    { "type": "thinking", "text": "Now let me verify my reasoning..." },
+    { "type": "answer", "text": "Quantum computing uses qubits..." },
+    { "type": "thinking", "text": "I should clarify one detail..." },
+    { "type": "answer", "text": "To summarize: qubits can be 0, 1, or..." }
   ]
 }
 ```
 
-Each `task_output` event contains the **full accumulated** arrays up to that point — not just the new chunk. Simply replace your displayed content with the latest arrays. Use `isThinking` to show a "thinking" indicator in your UI while the model reasons.
+Each `task_output` event contains the **full accumulated** segment snapshot, not
+only the latest delta. Replace your stored segment list with the newest array;
+do not append the complete array again. The active final item's `text` grows in
+place as chunks arrive, so render every snapshot before the response completes.
+A new item is appended only when the output phase changes. Render items in
+array order and use `isThinking` to show an active reasoning indicator.
 
 When streaming via WebSocket, `task_output` messages for LLM models contain a structured object:
 
@@ -903,15 +2313,24 @@ When streaming via WebSocket, `task_output` messages for LLM models contain a st
 {
   "type": "task_output",
   "id": "534574",
-  "tasktoken": "eDcCm5yy...",
   "message": {
-    "type": "answer",
-    "thinking": ["Let me analyze this step by step...", "The key factors are..."],
-    "answer": ["Quantum computing uses qubits that can exist in superposition..."],
-    "raw": "Quantum computing uses qubits that can exist in superposition...",
+    "type": "progressGenerate",
+    "task": "Generate",
+    "speed": "12.4",
+    "speedType": "words/s",
+    "segments": [
+      { "type": "thinking", "text": "Let me analyze this step by step..." },
+      { "type": "answer", "text": "Quantum computing uses qubits that can exist in superposition..." }
+    ],
+    "finishreason": "stop",
+    "usage": {
+      "input_tokens": 18,
+      "input_tokens_details": { "cached_tokens": 6 },
+      "output_tokens": 11,
+      "output_tokens_details": { "reasoning_tokens": 4 },
+      "total_tokens": 29
+    },
     "isThinking": false,
-    "speed": "48.5",
-    "speedType": "t/s",
     "elapsedTime": "3s"
   }
 }
@@ -919,24 +2338,33 @@ When streaming via WebSocket, `task_output` messages for LLM models contain a st
 
 | Field              | Type       | Description                                                     |
 | ------------------ | ---------- | --------------------------------------------------------------- |
-| `message.type`        | `string`   | Phase indicator: `"thinking"` during reasoning, `"answer"` during response. |
-| `message.thinking`    | `string[]` | Array of reasoning/chain-of-thought chunks. May be empty.       |
-| `message.answer`      | `string[]` | Array of response chunks. This is the content to show the user. |
-| `message.raw`         | `string`   | The full accumulated raw output text (thinking + answer merged). |
+| `message.type`        | `string`   | Progress payload type; currently `"progressGenerate"`.          |
+| `message.segments`    | `array`    | Full ordered text/tool-call snapshot. Replace the prior array rather than appending it. |
+| `message.finishreason` | `string` | Final reason: `stop`, `tool_calls`, `length`, `content_filter`, or `error`. Usually absent until the turn finishes. |
+| `message.usage` | `object` | Final normalized token/server-tool counters. Detail counters are already included in input/output totals. |
 | `message.isThinking`  | `boolean`  | `true` while the model is in the thinking phase, `false` during the answer phase. |
 | `message.speed`       | `string`   | Generation speed (e.g. "12.4").                                 |
-| `message.speedType`   | `string`   | Unit for speed, typically `"t/s"` (tokens per second).          |
+| `message.speedType`   | `string`   | Unit for speed, typically `"words/s"`.                          |
 | `message.elapsedTime` | `string`   | Elapsed time since generation started (e.g. "3s", "1m 5s").    |
 
-> **Note:** Standard (non-LLM) models send `message` as a plain string. LLM models send it as a `{ thinking, answer }` object. Check the type before parsing.
+> **Note:** Standard models may send `message` as a progress object or plain
+> string. For LLM rendering, first verify that `message.segments` is an array.
+
+Tool entries carry stable `id`, `call_id`, `name`, and `status`.
+`function_call` uses a JSON `arguments` string; `custom_tool_call` uses
+`input`. Execute only a `completed` call from a final turn whose
+`finishreason` is `tool_calls`. Earlier snapshots may contain `in_progress`
+or `incomplete` calls and must not trigger execution.
 
 ## Streaming Flow
 
 1. **Run** the model with `prompt`, `session_id`, and `user_id`
 2. **Connect** to WebSocket and send `task_info`
-3. **Receive** `task_output` messages — each contains the growing `thinking` and `answer` arrays
-4. **Display** the latest `answer` array content to the user (optionally show `thinking` in a collapsible section)
-5. **Complete** — on `task_postprocess_end`, check `pexit` for success
+3. **Receive** `task_output` messages containing cumulative ordered `segments`
+4. **Replace** your stored snapshot and render `answer` items; optionally show
+   `thinking` items and collect tool calls
+5. **Complete** — on `task_postprocess_end`, check `exitCode` on WebSocket or
+   `pexit` in Task Detail, then inspect `finishreason`
 
 ## Polling Alternative
 
@@ -955,8 +2383,18 @@ If you don't need real-time streaming, poll `POST /Task/Detail` instead. The fin
         "content": {
           "prompt": "What is quantum computing?",
           "raw": "Quantum computing uses qubits that can exist in superposition...",
-          "thinking": [],
-          "answer": ["Quantum computing uses qubits that can exist in superposition..."]
+          "segments": [
+            {
+              "type": "answer",
+              "text": "Quantum computing uses qubits that can exist in superposition..."
+            }
+        ],
+        "finishreason": "stop",
+        "usage": {
+          "input_tokens": 18,
+          "output_tokens": 11,
+          "total_tokens": 29
+        }
         }
       }]
     }
@@ -964,7 +2402,20 @@ If you don't need real-time streaming, poll `POST /Task/Detail` instead. The fin
 }
 ```
 
-> **Note:** When polling, `outputs` contains the structured response with separate `thinking` and `answer` fields, while `debugoutput` contains the merged plain text. For real-time token-by-token delivery, use WebSocket streaming instead.
+> **Note:** When polling, read the ordered `outputs[].content.segments` array
+> for structured output. `debugoutput` contains merged plain text. For real-time
+> delivery, use WebSocket streaming instead.
+
+## Completions Alternative
+
+For a single HTTP connection instead of manual Run plus WebSocket setup:
+
+- Use `POST /v1/Run/{owner}/{project}/sync?stream=true` on
+  `https://api.wiro.ai/v1` for generic task-event SSE. See
+  [Run a Model](#run-a-model).
+- Use the [Direct LLM Gateway](#direct-llm-gateway) on `https://llm.wiro.ai`
+  for OpenAI Chat chunks ending in `[DONE]`, Responses named events, or
+  Anthropic events ending in `message_stop`.
 
 ---
 
@@ -1000,19 +2451,19 @@ Registration message format:
 
 | Message Type             | Description                                         |
 | ------------------------ | --------------------------------------------------- |
-| `task_queue` | The task is queued and waiting to be picked up by an available worker. |
-| `task_accept` | A worker has accepted the task and is preparing for execution. |
-| `task_preprocess_start` | Optional preprocessing has started (downloading input files from URLs, converting file types, validating parameters). |
-| `task_preprocess_end` | Preprocessing completed. All inputs are ready for GPU assignment. |
-| `task_assign` | The task has been assigned to a specific GPU. The model is being loaded into memory. |
-| `task_start` | The model command has started executing. Inference is now running on the GPU. |
-| `task_output` | The model is producing output. Emitted **multiple times** — each stdout write sends a new message. For LLMs, each token/chunk arrives as a separate event for real-time streaming. |
-| `task_error` | The model wrote to stderr. This is an **interim log event**, not a final failure — many models write warnings to stderr during normal operation. The task may still succeed. |
-| `task_output_full` | The complete accumulated stdout log, sent once after the model process finishes. |
-| `task_error_full` | The complete accumulated stderr log, sent once after the model process finishes. |
-| `task_end` | The model process has exited. Fires **before** post-processing — do not use this to determine success. Wait for `task_postprocess_end` instead. |
-| `task_postprocess_start` | Post-processing has started. The system is preparing output files — encoding, uploading to CDN, generating access URLs. |
-| `task_postprocess_end` | Post-processing completed. Check `pexit` to determine success (`"0"` = success). The `outputs` array contains the final files. **This is the event to listen for.** |
+| `task_queue` | The task is queued and waiting to start. |
+| `task_accept` | The task was accepted and is preparing for execution. |
+| `task_preprocess_start` | Optional input preparation has started. |
+| `task_preprocess_end` | Input preparation completed. |
+| `task_assign` | Execution capacity was assigned and the model is preparing to start. |
+| `task_start` | Model execution started. |
+| `task_output` | The model is producing output. Emitted **multiple times**; LLM events carry the latest cumulative ordered `message.segments` snapshot. |
+| `task_error` | An interim diagnostic event. It is not terminal; continue listening for completion. |
+| `task_output_full` | Signals that output collection ended. Treat it as a lifecycle event. |
+| `task_error_full` | Signals that error-output collection ended. Treat it as a lifecycle event. |
+| `task_end` | Model execution ended. This is not the final success signal; wait for `task_postprocess_end`. |
+| `task_postprocess_start` | Final output preparation started. |
+| `task_postprocess_end` | Post-processing completed. Check public `success` and `exitCode` (`0` = success); `message` contains sanitized outputs. **This is the event to listen for.** |
 | `task_cancel` | The task was cancelled (if queued) or killed (if running) by the user. |
 
 ### Message Format
@@ -1023,13 +2474,17 @@ Every WebSocket message is a JSON object with this base structure:
 {
   "type": "task_accept",
   "id": "534574",
-  "tasktoken": "eDcCm5yyUfIvMFspTwww49OUfgXkQt",
   "message": null,
-  "result": true
+  "result": true,
+  "success": null,
+  "terminal": false,
+  "exitCode": null
 }
 ```
 
 The `type` field indicates the status. The `message` field varies by type — it's `null` for lifecycle events, a string or object for output events, and an array for the final result.
+
+Use the top-level `id` to correlate server events with the submitted task.
 
 ### Lifecycle Events
 
@@ -1043,7 +2498,6 @@ Lifecycle events (`task_accept`, `task_preprocess_start`, `task_preprocess_end`,
 {
   "type": "task_output",
   "id": "534574",
-  "tasktoken": "eDcCm5yy...",
   "message": {
     "type": "progressGenerate",
     "task": "Generate",
@@ -1059,19 +2513,76 @@ Lifecycle events (`task_accept`, `task_preprocess_start`, `task_preprocess_end`,
 }
 ```
 
-**LLM models** — `message` is a structured object with thinking/answer arrays (see LLM & Chat Streaming section).
+**LLM models** — `message.segments` is the cumulative ordered output snapshot.
+Replace it on every event. The final active item's `text` grows as chunks arrive,
+so render it before completion; a new item appears when the output phase changes
+(see LLM & Chat Streaming).
+
+```json
+{
+  "type": "task_output",
+  "id": "534574",
+  "message": {
+    "type": "progressGenerate",
+    "task": "Generate",
+    "speed": "12.4",
+    "speedType": "words/s",
+    "segments": [
+      { "type": "thinking", "text": "Let me analyze this..." },
+      { "type": "answer", "text": "Quantum computing uses qubits..." }
+    ],
+    "finishreason": "stop",
+    "usage": {
+      "input_tokens": 18,
+      "input_tokens_details": { "cached_tokens": 6 },
+      "output_tokens": 11,
+      "output_tokens_details": { "reasoning_tokens": 4 },
+      "total_tokens": 29
+    },
+    "isThinking": false,
+    "elapsedTime": "3s"
+  },
+  "result": true
+}
+```
+
+Text segments use `thinking` or `answer`. Tool-capable models can also emit
+`function_call` segments with `arguments`, or `custom_tool_call` segments with
+`input`; both carry `id`, `call_id`, `name`, and `status`.
+
+`message.finishreason` and `message.usage` are final-turn
+metadata and can be absent from earlier `task_output` snapshots:
+
+- `finishreason` is `stop`, `tool_calls`, `length`, `content_filter`, or
+  `error`. Execute a tool only when its segment status is `completed` and the
+  finish reason is `tool_calls`.
+- `usage` contains normalized token and server-tool counters. Input totals
+  already include cache reads/writes; output totals already include reasoning.
+  Do not add details to `total_tokens`, and use Task Detail `totalcost` for the
+  billed amount.
+
+Inspect `finishreason` after completion so truncation and content filtering are
+not mistaken for a normal stop.
 
 ### Full Output Events
 
-`task_output_full` and `task_error_full` are sent once after the process exits. `message` is `{ raw: "..." }` for standard models, or `{ raw, thinking, answer }` for LLM models.
+`task_output_full` and `task_error_full` are lifecycle signals. Continue
+listening for `task_postprocess_end`, or use authenticated `POST /Task/Detail`
+to retrieve the persisted task.
 
 ### Final Result
 
-`task_postprocess_end` — `message` contains the `outputs` array (file URLs for standard models, structured raw content for LLM models).
+`task_postprocess_end` — `message` contains sanitized outputs. Check `success`
+and `exitCode`; use authenticated Task/Detail when the full persisted task is
+needed. For LLM tasks, each final raw output repeats `segments`,
+`finishreason`, and optional `usage` under `message[].content`.
 
 ### Realtime Events
 
-`task_stream_ready`, `task_stream_end` have no `message` field. `task_cost` includes `turnCost`, `cumulativeCost`, and `usage` fields.
+`task_stream_ready`, `task_stream_end` have no `message` field. `task_cost`
+includes `turnCost`, `cumulativeCost`, and a provider-specific realtime `usage`
+payload. That payload is separate from normalized structured finite-LLM
+`message.usage` and can omit `total_tokens` or detail objects.
 
 ## Binary Frames
 
@@ -1661,6 +3172,49 @@ All examples perform the same steps:
 3. Poll the task status (`POST /Task/Detail`)
 4. Print the final output
 
+### curl
+
+```bash
+#!/bin/bash
+# Wiro API — End-to-End Example (curl)
+
+API_KEY="YOUR_API_KEY"
+BASE_URL="https://api.wiro.ai/v1"
+
+# 1. Run a model
+echo "Starting model run..."
+RUN_RESPONSE=$(curl -s -X POST "$BASE_URL/Run/{owner-slug}/{model-slug}" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: $API_KEY" \
+  -d '{"prompt": "A cyberpunk cityscape at night", "width": 1024, "height": 1024}')
+
+TASK_ID=$(echo "$RUN_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['taskid'])")
+TASK_TOKEN=$(echo "$RUN_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['socketaccesstoken'])")
+echo "Task ID: $TASK_ID"
+
+# 2. Poll for results
+while true; do
+  TASK_RESPONSE=$(curl -s -X POST "$BASE_URL/Task/Detail" \
+    -H "Content-Type: application/json" \
+    -H "x-api-key: $API_KEY" \
+    -d "{\"tasktoken\": \"$TASK_TOKEN\"}")
+
+  STATUS=$(echo "$TASK_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['tasklist'][0]['status'])")
+  echo "Status: $STATUS"
+
+  if [ "$STATUS" = "task_postprocess_end" ]; then
+    echo "Done! Output:"
+    echo $TASK_RESPONSE | python3 -m json.tool
+    break
+  elif [ "$STATUS" = "task_cancel" ]; then
+    echo "Task cancelled"
+    break
+  fi
+
+  sleep 3
+done
+```
+
 ### Python
 
 ```python
@@ -1687,8 +3241,8 @@ run_resp = requests.post(
     }
 )
 run_data = run_resp.json()
-task_token = run_data["data"]["taskid"]
-print(f"Task ID: {task_token}")
+task_token = run_data["socketaccesstoken"]
+print(f"Task ID: {run_data['taskid']}")
 
 # 2. Poll for results
 while True:
@@ -1697,15 +3251,15 @@ while True:
         headers=headers,
         json={"tasktoken": task_token}
     )
-    task = task_resp.json()["data"]
+    task = task_resp.json()["tasklist"][0]
     status = task["status"]
     print(f"Status: {status}")
 
-    if status == "end":
-        print("Done! Output:", task.get("output"))
+    if status == "task_postprocess_end":
+        print("Done! Outputs:", task.get("outputs"))
         break
-    elif status in ("error", "cancel"):
-        print("Task failed or cancelled")
+    elif status == "task_cancel":
+        print("Task cancelled")
         break
 
     time.sleep(3)
@@ -1714,43 +3268,48 @@ while True:
 ### Node.js
 
 ```javascript
-const axios = require("axios");
+const axios = require('axios');
 
-const API_KEY = "YOUR_API_KEY";
-const BASE_URL = "https://api.wiro.ai/v1";
+const API_KEY = 'YOUR_API_KEY';
+const BASE_URL = 'https://api.wiro.ai/v1';
 
 const headers = {
-  "x-api-key": API_KEY,
-  "Content-Type": "application/json",
+  'x-api-key': API_KEY,
+  'Content-Type': 'application/json'
 };
 
 async function main() {
   // 1. Run a model
-  console.log("Starting model run...");
+  console.log('Starting model run...');
   const runResp = await axios.post(
     `${BASE_URL}/Run/{owner-slug}/{model-slug}`,
     {
-      prompt: "A cyberpunk cityscape at night",
+      prompt: 'A cyberpunk cityscape at night',
       width: 1024,
-      height: 1024,
+      height: 1024
     },
-    { headers },
+    { headers }
   );
-  const taskToken = runResp.data.data.taskid;
-  console.log("Task ID:", taskToken);
+  const taskToken = runResp.data.socketaccesstoken;
+  console.log('Task ID:', runResp.data.taskid);
 
   // 2. Poll for results
   while (true) {
-    const taskResp = await axios.post(`${BASE_URL}/Task/Detail`, { tasktoken: taskToken }, { headers });
-    const { status, output } = taskResp.data.data;
-    console.log("Status:", status);
+    const taskResp = await axios.post(
+      `${BASE_URL}/Task/Detail`,
+      { tasktoken: taskToken },
+      { headers }
+    );
+    const task = taskResp.data.tasklist[0];
+    const { status } = task;
+    console.log('Status:', status);
 
-    if (status === "end") {
-      console.log("Done! Output:", output);
+    if (status === 'task_postprocess_end') {
+      console.log('Done! Outputs:', task.outputs);
       break;
     }
-    if (status === "error" || status === "cancel") {
-      console.log("Task failed or cancelled");
+    if (status === 'task_cancel') {
+      console.log('Task cancelled');
       break;
     }
 
@@ -1761,43 +3320,340 @@ async function main() {
 main();
 ```
 
-### curl
+### PHP
 
-```bash
-#!/bin/bash
-API_KEY="YOUR_API_KEY"
-BASE_URL="https://api.wiro.ai/v1"
+```php
+<?php
+$apiKey = 'YOUR_API_KEY';
+$baseUrl = 'https://api.wiro.ai/v1';
 
-# 1. Run a model
-RUN_RESPONSE=$(curl -s -X POST "$BASE_URL/Run/{owner-slug}/{model-slug}" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: $API_KEY" \
-  -d '{"prompt": "A cyberpunk cityscape at night", "width": 1024, "height": 1024}')
+function apiPost($url, $data, $apiKey) {
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_POST => true,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => [
+            'Content-Type: application/json',
+            'x-api-key: ' . $apiKey,
+        ],
+        CURLOPT_POSTFIELDS => json_encode($data),
+    ]);
+    $response = curl_exec($ch);
+    curl_close($ch);
+    return json_decode($response, true);
+}
 
-TASK_TOKEN=$(echo $RUN_RESPONSE | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['taskid'])")
-echo "Task ID: $TASK_TOKEN"
+// 1. Run a model
+echo "Starting model run...\n";
+$runResp = apiPost("$baseUrl/Run/{owner-slug}/{model-slug}", [
+    'prompt' => 'A cyberpunk cityscape at night',
+    'width' => 1024,
+    'height' => 1024,
+], $apiKey);
+$taskToken = $runResp['socketaccesstoken'];
+echo "Task ID: {$runResp['taskid']}\n";
 
-# 2. Poll for results
-while true; do
-  TASK_RESPONSE=$(curl -s -X POST "$BASE_URL/Task/Detail" \
-    -H "Content-Type: application/json" \
-    -H "x-api-key: $API_KEY" \
-    -d "{\"tasktoken\": \"$TASK_TOKEN\"}")
+// 2. Poll for results
+while (true) {
+    $taskResp = apiPost("$baseUrl/Task/Detail", [
+        'tasktoken' => $taskToken,
+    ], $apiKey);
+    $task = $taskResp['tasklist'][0];
+    $status = $task['status'];
+    echo "Status: $status\n";
 
-  STATUS=$(echo $TASK_RESPONSE | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['status'])")
-  echo "Status: $STATUS"
+    if ($status === 'task_postprocess_end') {
+        echo "Done! Outputs:\n";
+        print_r($task['outputs']);
+        break;
+    }
+    if ($status === 'task_cancel') {
+        echo "Task cancelled\n";
+        break;
+    }
 
-  if [ "$STATUS" = "end" ]; then
-    echo "Done!"
-    echo $TASK_RESPONSE | python3 -m json.tool
-    break
-  elif [ "$STATUS" = "error" ] || [ "$STATUS" = "cancel" ]; then
-    echo "Task failed or cancelled"
-    break
-  fi
+    sleep(3);
+}
+```
 
-  sleep 3
-done
+### C#
+
+```csharp
+using System.Net.Http.Json;
+using System.Text.Json;
+
+var apiKey = "YOUR_API_KEY";
+var baseUrl = "https://api.wiro.ai/v1";
+
+using var http = new HttpClient();
+http.DefaultRequestHeaders.Add("x-api-key", apiKey);
+
+// 1. Run a model
+Console.WriteLine("Starting model run...");
+var runResp = await http.PostAsJsonAsync($"{baseUrl}/Run/{owner-slug}/{model-slug}", new {
+    prompt = "A cyberpunk cityscape at night",
+    width = 1024,
+    height = 1024
+});
+var runData = await runResp.Content.ReadFromJsonAsync<JsonElement>();
+var taskToken = runData.GetProperty("socketaccesstoken").GetString();
+Console.WriteLine($"Task ID: {runData.GetProperty("taskid").GetString()}");
+
+// 2. Poll for results
+while (true) {
+    var taskResp = await http.PostAsJsonAsync($"{baseUrl}/Task/Detail", new {
+        tasktoken = taskToken
+    });
+    var taskData = await taskResp.Content.ReadFromJsonAsync<JsonElement>();
+    var task = taskData.GetProperty("tasklist")[0];
+    var status = task.GetProperty("status").GetString();
+    Console.WriteLine($"Status: {status}");
+
+    if (status == "task_postprocess_end") {
+        Console.WriteLine("Done!");
+        Console.WriteLine(task.GetProperty("outputs").ToString());
+        break;
+    }
+    if (status == "task_cancel") {
+        Console.WriteLine("Task cancelled");
+        break;
+    }
+
+    await Task.Delay(3000);
+}
+```
+
+### Swift
+
+```swift
+import Foundation
+
+let apiKey = "YOUR_API_KEY"
+let baseUrl = "https://api.wiro.ai/v1"
+
+func apiPost(_ endpoint: String, body: [String: Any]) async throws -> [String: Any] {
+    var request = URLRequest(url: URL(string: "\(baseUrl)\(endpoint)")!)
+    request.httpMethod = "POST"
+    request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.addValue(apiKey, forHTTPHeaderField: "x-api-key")
+    request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+    let (data, _) = try await URLSession.shared.data(for: request)
+    return try JSONSerialization.jsonObject(with: data) as! [String: Any]
+}
+
+// 1. Run a model
+print("Starting model run...")
+let runResp = try await apiPost("/Run/{owner-slug}/{model-slug}", body: [
+    "prompt": "A cyberpunk cityscape at night",
+    "width": 1024,
+    "height": 1024
+])
+let taskToken = runResp["socketaccesstoken"] as! String
+print("Task ID: \(runResp["taskid"] ?? "")")
+
+// 2. Poll for results
+while true {
+    let taskResp = try await apiPost("/Task/Detail", body: ["tasktoken": taskToken])
+    let taskData = (taskResp["tasklist"] as! [[String: Any]])[0]
+    let status = taskData["status"] as! String
+    print("Status: \(status)")
+
+    if status == "task_postprocess_end" {
+        print("Done! Outputs: \(taskData["outputs"] ?? [])")
+        break
+    }
+    if status == "task_cancel" {
+        print("Task cancelled")
+        break
+    }
+
+    try await Task.sleep(nanoseconds: 3_000_000_000)
+}
+```
+
+### Dart
+
+```dart
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+const apiKey = 'YOUR_API_KEY';
+const baseUrl = 'https://api.wiro.ai/v1';
+
+Future<Map<String, dynamic>> apiPost(String endpoint, Map<String, dynamic> body) async {
+  final response = await http.post(
+    Uri.parse('$baseUrl$endpoint'),
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+    },
+    body: jsonEncode(body),
+  );
+  return jsonDecode(response.body);
+}
+
+Future<void> main() async {
+  // 1. Run a model
+  print('Starting model run...');
+  final runResp = await apiPost('/Run/{owner-slug}/{model-slug}', {
+    'prompt': 'A cyberpunk cityscape at night',
+    'width': 1024,
+    'height': 1024,
+  });
+  final taskToken = runResp['socketaccesstoken'];
+  print('Task ID: ${runResp['taskid']}');
+
+  // 2. Poll for results
+  while (true) {
+    final taskResp = await apiPost('/Task/Detail', {'tasktoken': taskToken});
+    final task = taskResp['tasklist'][0];
+    final status = task['status'];
+    print('Status: $status');
+
+    if (status == 'task_postprocess_end') {
+      print('Done! Outputs: ${task['outputs']}');
+      break;
+    }
+    if (status == 'task_cancel') {
+      print('Task cancelled');
+      break;
+    }
+
+    await Future.delayed(Duration(seconds: 3));
+  }
+}
+```
+
+### Kotlin
+
+```kotlin
+import java.net.URI
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
+import com.google.gson.Gson
+import com.google.gson.JsonObject
+
+val apiKey = "YOUR_API_KEY"
+val baseUrl = "https://api.wiro.ai/v1"
+val client = HttpClient.newHttpClient()
+val gson = Gson()
+
+fun apiPost(endpoint: String, body: Map<String, Any?>): JsonObject {
+    val request = HttpRequest.newBuilder()
+        .uri(URI.create("$baseUrl$endpoint"))
+        .header("Content-Type", "application/json")
+        .header("x-api-key", apiKey)
+        .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(body)))
+        .build()
+    val response = client.send(request, HttpResponse.BodyHandlers.ofString())
+    return gson.fromJson(response.body(), JsonObject::class.java)
+}
+
+fun main() {
+    // 1. Run a model
+    println("Starting model run...")
+    val runResp = apiPost("/Run/{owner-slug}/{model-slug}", mapOf(
+        "prompt" to "A cyberpunk cityscape at night",
+        "width" to 1024,
+        "height" to 1024
+    ))
+    val taskToken = runResp.get("socketaccesstoken").asString
+    println("Task ID: ${runResp.get("taskid").asString}")
+
+    // 2. Poll for results
+    while (true) {
+        val taskResp = apiPost("/Task/Detail", mapOf("tasktoken" to taskToken))
+        val taskData = taskResp.getAsJsonArray("tasklist")[0].asJsonObject
+        val status = taskData.get("status").asString
+        println("Status: $status")
+
+        when (status) {
+            "task_postprocess_end" -> {
+                println("Done! Outputs: ${taskData.get("outputs")}")
+                return
+            }
+            "task_cancel" -> {
+                println("Task cancelled")
+                return
+            }
+        }
+
+        Thread.sleep(3000)
+    }
+}
+```
+
+### Go
+
+```go
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"time"
+)
+
+const (
+	apiKey  = "YOUR_API_KEY"
+	baseURL = "https://api.wiro.ai/v1"
+)
+
+func apiPost(endpoint string, body map[string]interface{}) (map[string]interface{}, error) {
+	jsonBody, _ := json.Marshal(body)
+	req, _ := http.NewRequest("POST", baseURL+endpoint, bytes.NewBuffer(jsonBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-api-key", apiKey)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	data, _ := io.ReadAll(resp.Body)
+	var result map[string]interface{}
+	json.Unmarshal(data, &result)
+	return result, nil
+}
+
+func main() {
+	// 1. Run a model
+	fmt.Println("Starting model run...")
+	runResp, _ := apiPost("/Run/{owner-slug}/{model-slug}", map[string]interface{}{
+		"prompt": "A cyberpunk cityscape at night",
+		"width":  1024,
+		"height": 1024,
+	})
+	taskToken := runResp["socketaccesstoken"].(string)
+	fmt.Printf("Task ID: %s\n", runResp["taskid"].(string))
+
+	// 2. Poll for results
+	for {
+		taskResp, _ := apiPost("/Task/Detail", map[string]interface{}{
+			"tasktoken": taskToken,
+		})
+		taskData := taskResp["tasklist"].([]interface{})[0].(map[string]interface{})
+		status := taskData["status"].(string)
+		fmt.Printf("Status: %s\n", status)
+
+		switch status {
+		case "task_postprocess_end":
+			fmt.Printf("Done! Outputs: %v\n", taskData["outputs"])
+			return
+		case "task_cancel":
+			fmt.Println("Task cancelled")
+			return
+		}
+
+		time.Sleep(3 * time.Second)
+	}
+}
 ```
 
 ---
@@ -1857,7 +3713,7 @@ Install Node.js 20 or later, then add this local stdio entry to
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.2.2"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.3.0"],
       "env": {
         "WIRO_API_KEY": "YOUR_API_KEY",
         "WIRO_API_SECRET": "YOUR_API_SECRET"
@@ -1868,7 +3724,7 @@ Install Node.js 20 or later, then add this local stdio entry to
 ```
 
 For API Key Only authentication, remove `WIRO_API_SECRET` completely. Fully quit
-and reopen Claude Desktop after saving. Pin `@wiro-ai/wiro-mcp@1.2.2` in `args`
+and reopen Claude Desktop after saving. Pin `@wiro-ai/wiro-mcp@1.3.0` in `args`
 so `npx` does not reuse an older cached build. This runs the local package
 and provides the same 13 Wiro tools. Do not add `https://mcp.wiro.ai/v1` through
 Claude's Settings → Connectors yet; direct URL connections require OAuth, which
@@ -1950,6 +3806,8 @@ API Key Only: `Authorization: Bearer YOUR_API_KEY`
 
 If a generation exceeds the wait budget, continue with `wait_for_task` using
 the returned token. Do not call `run_model` again for the same request.
+`task_error` remains non-terminal in Task/Detail; the wait ends only at
+`task_postprocess_end` or `task_cancel`.
 Tools advertise typed input/output schemas and return `structuredContent` with
 stable task states and an executable `nextAction` for reliable LLM chaining.
 Completed media responses include standard MCP resource links plus an
@@ -1971,7 +3829,7 @@ Run the Wiro MCP server locally on your own machine using npx.
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.2.2"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.3.0"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -1983,7 +3841,7 @@ Run the Wiro MCP server locally on your own machine using npx.
 
 The self-hosted server exposes the same 13 tools as the hosted server,
 including bounded `run_model`, `wait_for_task`, and optional short waits through
-`get_task.wait_seconds`. Pin `@wiro-ai/wiro-mcp@1.2.2` in the npx `args` so
+`get_task.wait_seconds`. Pin `@wiro-ai/wiro-mcp@1.3.0` in the npx `args` so
 clients do not reuse an older cached package.
 
 ## Environment Variables

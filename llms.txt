@@ -12,10 +12,11 @@
 
 - [Introduction](https://wiro.ai/docs/introduction): Platform overview and getting started
 - [Authentication](https://wiro.ai/docs/authentication): API key and HMAC signature auth methods
-- [Run a Model](https://wiro.ai/docs/run-a-model): Execute any AI model with a single POST call
+- [Run a Model](https://wiro.ai/docs/run-a-model): Start asynchronous model tasks or wait for finite completion through `/sync`
+- [Direct LLM Gateway](https://wiro.ai/docs/completions-api): Use Wiro LLMs through OpenAI Chat/Responses, Anthropic Messages, beta Cursor compatibility, OpenRouter-style model discovery, and OpenAI/Anthropic Files compatibility on `llm.wiro.ai`
 - [Tasks](https://wiro.ai/docs/tasks): Track model runs, check status, get outputs
-- [WebSocket](https://wiro.ai/docs/websocket): Real-time streaming for model outputs
-- [LLM & Chat Streaming](https://wiro.ai/docs/llm-chat-streaming): Token-by-token LLM response streaming
+- [WebSocket](https://wiro.ai/docs/websocket): Real-time task lifecycle and cumulative LLM segment snapshots
+- [LLM & Chat Streaming](https://wiro.ai/docs/llm-chat-streaming): Structured LLM outputs, session history, and ordered text/tool-call segments
 - [Realtime Voice](https://wiro.ai/docs/realtime-voice-conversation): Two-way audio conversations with AI
 - [Realtime Text to Speech](https://wiro.ai/docs/realtime-text-to-speech): Stream synthesized speech over WebSocket — server → client only
 - [Realtime Speech to Text](https://wiro.ai/docs/realtime-speech-to-text): Stream mic audio, receive live transcripts — client → server audio, JSON back
@@ -160,6 +161,325 @@ Response:
 { "result": true, "errors": [], "taskid": "2221", "socketaccesstoken": "eDcCm5yyUfIvMFspTwww49OUfgXkQt" }
 ```
 
+Direct Run LLM turns and tool calls:
+- Models with category `llm-tool-call` expose six ordinary model parameters
+  on asynchronous Run and `/sync`: `messages`, `tools`, `tool_choice`,
+  `parallel_tool_calls`, `previousTaskToken`, and `toolOutputs`.
+- Tool Detail marks them `advanced: true` only for UI grouping. They use the
+  same `parameters` object and Run transport as every other model parameter.
+- Send JSON values directly; use exactly one of `prompt` or non-empty
+  `messages` on the first turn.
+- LLM output uses four distinct cumulative segment types: `thinking` and
+  `answer` carry `text`; `function_call` and `custom_tool_call` carry IDs,
+  name, status, and `arguments` or `input`.
+- Execute only calls with `status: "completed"` from a turn whose
+  `finishreason` is `tool_calls`; never execute `incomplete` calls.
+- Live WebSocket fields are under `task_output.message`; final WebSocket fields
+  are under `task_postprocess_end.message[].content`; Task Detail fields are
+  under `tasklist[0].outputs[].content`.
+- `finishreason` is `stop`, `tool_calls`, `length`, `content_filter`, or
+  `error`.
+- `usage` includes cache-inclusive `input_tokens`, reasoning-inclusive
+  `output_tokens`, their `total_tokens` sum, optional cache-write TTL,
+  text/audio/image/video/reasoning/prediction details, and optional server-tool
+  request counts. Detail counters must not be added to totals; `totalcost` is
+  the billed amount.
+- There is no `cached_output_tokens`: provider prompt caching applies to input
+  context, not previously generated output.
+- Final structured validation failures use non-zero `pexit`; no parser-health
+  field is public.
+- Wiro does not execute caller tools. Continue with the first run's
+  `socketaccesstoken` in `previousTaskToken` and matching `{call_id, output}` rows in
+  `toolOutputs`.
+- Keep the same `session_id` value stable. Do not send
+  prompt/messages/tools/tool_choice/parallel_tool_calls/response_format on a
+  `previousTaskToken` + `toolOutputs` continuation.
+- For a stateful follow-up without tool outputs, pass the prior completed Run
+  task's `socketaccesstoken` as `previousTaskToken` and exactly one new prompt or
+  non-empty messages array. Normal tools/tool_choice remain available. Do not
+  include `toolOutputs`.
+- Use the `socketaccesstoken` returned by a completed task from the same project,
+  model, and session.
+- OpenAI-compatible clients should use `previous_response_id` on
+  `/v1/responses`. Direct Run and `/sync` clients use `previousTaskToken`.
+
+### Direct LLM Gateway
+OpenAI-compatible client base URL: `https://llm.wiro.ai/v1`
+Clients that append `/v1` themselves (Anthropic SDKs, Claude Code): origin
+`https://llm.wiro.ai`
+Claude Code: `ANTHROPIC_BASE_URL=https://llm.wiro.ai`
+Cursor clients that append `/chat/completions`: `https://llm.wiro.ai/v1/cursor`
+Asynchronous Run/Task and the original Wiro File API remain on
+`https://api.wiro.ai/v1`; WebSocket remains on `wss://socket.wiro.ai/v1`.
+Direct `/v1/files` compatibility routes use that same authenticated project
+storage.
+Direct LLM routes never return Wiro Run/Sync `segments`; they emit only the
+selected OpenAI, Anthropic, or Cursor-compatible native JSON/SSE schema.
+Current `stream: true` routes publish protocol-compatible buffered deltas after
+the provider request and authenticated turn persistence complete; first-event
+timing is not live provider token latency.
+Model IDs: lowercase `owner/model`.
+
+Authentication for model discovery/detail, `/chat/completions`,
+`/responses`, `/messages`, `/messages/count_tokens`,
+`/cursor/chat/completions`, `/files`, and `/generation`:
+- API Key Only Bearer: `Authorization: Bearer YOUR_API_KEY`
+- Signature Bearer: `Authorization: Bearer YOUR_API_KEY:YOUR_API_SECRET`
+  (raw or base64-encoded pair)
+- Header alternative: `x-api-key` contains `YOUR_API_KEY` for API Key Only or
+  `YOUR_API_KEY:YOUR_API_SECRET` for Signature projects.
+- Direct LLM routes do not accept the Run API's `x-nonce`/`x-signature` HMAC
+  trio.
+If Bearer and `x-api-key` are both present, their complete project credentials
+must match. Wrong or mismatched credentials return 401 without fallback.
+`session_id` is the only public session field. Chat, Anthropic Messages, and
+the beta Cursor route accept an optional 1–128 character value using letters,
+digits, `.`, `_`, `:`, or `-`. Reuse it for related turns; it does not replace
+client history. Responses uses `previous_response_id`, and count_tokens rejects
+`session_id`.
+
+Existing asynchronous execution:
+- `POST /v1/Run/{owner}/{project}` returns `taskid` and
+  `socketaccesstoken` immediately.
+- Recover with Task Detail/WebSocket/callback. Task Detail uses `pexit == "0"`
+  as the primary success signal; LLM `debugoutput` is merged plain text and
+  `outputs` contains structured content.
+
+Generic finite completion (hosted on `https://api.wiro.ai`):
+- `POST /v1/Run/{owner}/{project}/sync`
+- Same billed task as asynchronous Run; not an OpenAI/Anthropic protocol.
+- Accepts normal Run headers and the normal JSON/multipart model body.
+- Final mode returns Task Detail-compatible JSON; `tasklist[0].pexit == "0"` is
+  success.
+- `?stream=true` or `Accept: text/event-stream` emits generic named task events
+  ending in `done`, with no `[DONE]`.
+- LLM `task_output` events carry cumulative ordered `segments`. Text segments
+  are `thinking`/`answer`; tool segments are
+  `function_call`/`custom_tool_call`. Replace the prior segment snapshot on
+  each event rather than appending the full array. The final active item's
+  `text`, `arguments`, or `input` grows in place as chunks arrive; render it
+  before `done`, and expect a new item only when the output phase changes.
+- The final `done` event contains Task Detail-compatible JSON; use
+  `tasklist[0].pexit == "0"` as the success signal.
+- Disconnect or the 40-minute wait timeout ends only the wait; the task keeps
+  running and the timeout response includes recovery identifiers.
+- Only `task_postprocess_end` and `task_cancel` close the wait; `task_error`
+  remains in progress.
+- `/sync` is a newly added execution method; asynchronous Run remains
+  unchanged.
+
+Model discovery:
+- `GET /v1/models`
+- `GET /v1/chat/models` (equivalent alias)
+- `GET /v1/models/{owner}/{model}`
+List queries accept `search` (maximum 256 bytes), `order=asc|desc`,
+`limit=1..1000`, and either `after`/`after_id` or `before`/`before_id`.
+The default is ascending order with limit 1000. The envelope includes
+`total_count`, `links.next`, `has_more`, `first_id`, and `last_id`; detail
+routes reject query parameters.
+Responses expose OpenRouter-style `canonical_slug`, `name`, `description`,
+`context_length`, `architecture`, exact per-token pricing strings,
+`top_provider`, `supported_parameters`, `default_parameters`, Wiro
+compatibility fields, and `x_wiro` audited pricing-source metadata. Tiered
+models expose exact bands in `x_wiro.pricing_tiers`. Fields without a Wiro
+source are omitted instead of being copied from OpenRouter with `null`
+placeholders. Source-backed values can remain `null`; they are never guessed or
+replaced by zero.
+Canonical route values are `anthropic`, `chat`, `cursor`, and `responses` in
+`capabilities.endpoints`. Check `capabilities.input_modalities`,
+`capabilities.output`, `function_tools`, `custom_tools`, `structured_outputs`,
+`structured_output_modes`, `strict_json_schema`, and `generation_controls`.
+Every discoverable model currently publishes all four endpoint labels;
+capability differences are represented by the other model metadata fields.
+OpenRouter `architecture.input_modalities` represents canonical `document` as
+`file`.
+Capabilities are model-specific. The authenticated project/team-filtered list
+contains only models verified with `llm-tool-call`. Other LLMs are not
+advertised there but may still be addressed explicitly through a compatible
+Direct LLM route or the normal Run API. This catalog is separate from
+`POST /v1/Tool/List`.
+
+Files compatibility:
+- Backed by the authenticated project's existing Wiro upload folder; no
+  separate file database is created.
+- `POST /v1/files` uploads one multipart `file`.
+- `GET /v1/files` lists files.
+- `GET /v1/files/{file_id}` returns metadata.
+- `GET /v1/files/{file_id}/content` verifies ownership and redirects with 307
+  to a validated public CDN URL.
+- `DELETE /v1/files/{file_id}` deletes the underlying project file.
+- IDs use `file-...` form and are project-scoped. Missing, deleted, and foreign
+  IDs all return `file_not_found`.
+- OpenAI format is selected without `anthropic-version`. Upload
+  `purpose`, when present, must be `assistants`. List supports
+  `after`/`after_id`, `before`/`before_id`, `limit=1..1000`,
+  `order=asc|desc`, and `purpose=assistants`.
+- Anthropic format requires `anthropic-version: 2023-06-01`. Upload omits
+  purpose; list supports `page`, legacy `after_id`/`before_id`, and
+  `limit=1..1000`.
+  Metadata uses ISO time, MIME/size fields, `downloadable`, and
+  `expires_at: null`.
+- Upload limit is 50 MiB. Empty/multiple files, unknown fields, filenames over
+  1024 bytes, and ZIP archives are rejected. The compatibility catalog safety
+  bound is 10,000 files; it is not the storage quota.
+- A supported protocol media block can reference a Wiro `file-...` ID. Before
+  Run, the gateway validates ownership and MIME type and converts the ID to
+  its existing public URL. Images allow GIF/JPEG/PNG/WebP; documents allow PDF
+  or plain text. A Wiro file ID is not a provider-native file ID.
+
+OpenAI Chat:
+- `POST /v1/chat/completions`
+- Requires `chat` in `capabilities.endpoints`.
+- Client-history OpenAI messages; text plus model-advertised image/document
+  input.
+- Function calls are returned in `message.tool_calls` with `type: "function"`
+  and nested `function.{name,arguments}`. Custom calls use `type: "custom"`
+  and nested `custom.{name,input}`. Tool-result continuation is
+  caller-executed with matching `role: "tool"` messages and `tool_call_id`.
+- Execute Chat calls only when `finish_reason` is `tool_calls`; never execute
+  partial tool data from `length` or `content_filter` turns.
+- Models advertising `custom_tools` also accept Chat's nested custom-tool
+  grammar shape and matching nested custom `tool_choice`.
+- Structured output, reasoning, generation controls, and tool combinations are
+  model-specific.
+- Remote media uses public HTTPS, validated data/base64, or a supported Wiro
+  gateway file ID; private and non-HTTP fetch targets are rejected.
+- Final object is `chat.completion`; native usage can be absent.
+- Body `stream: true` emits Chat chunks ending in `data: [DONE]`.
+- Midstream errors use an OpenAI error `data:` frame, then `[DONE]`.
+
+OpenAI Responses:
+- `POST /v1/responses`
+- Requires `responses` in `capabilities.endpoints`.
+- Supports string/item `input`, instructions, model-advertised modalities,
+  function/custom tools, regex or Lark grammar tools, structured text format,
+  and reasoning.
+- `store` defaults true for OpenAI compatibility. A `store: false` response
+  cannot be used as `previous_response_id`.
+- `previous_response_id` is the continuation field on `/v1/responses`. Direct
+  Run clients use the cataloged `previousTaskToken`; Responses rejects
+  `session_id`.
+- A stored completed or incomplete response can be continued through
+  `previous_response_id` for up to 30 days; failed and cancelled responses
+  cannot.
+- Execute only completed tool items from a completed response; never execute a
+  partial tool call from an incomplete response.
+- Returned model calls are `function_call` or `custom_tool_call` output items.
+  Submit caller-executed results in the next request as
+  `function_call_output` or `custom_tool_call_output` input items with the
+  matching `call_id`; the call-output types are inputs, not generation
+  `segments`.
+- Continuation requires the same user, project, team, and model. Foreign,
+  expired, unstored, and mismatched IDs return `response_not_found`; chains are
+  limited to 32 and must fit the model context window.
+- `GET /v1/responses/{response_id}` retrieves a stored response.
+  `DELETE /v1/responses/{response_id}` returns HTTP 204 with an empty body.
+  The cancel route is unsupported and returns `response_cancel_not_supported`.
+- Named `response.*` SSE carries monotonically increasing `sequence_number`
+  values, including function-call argument and custom-tool input
+  `.delta`/`.done` events. It ends with
+  `response.completed`/`response.incomplete`, or `response.failed` on a
+  midstream error, followed by `data: [DONE]`.
+
+Anthropic Messages:
+- `POST /v1/messages`
+- Requires `anthropic` in `capabilities.endpoints`.
+- Anthropic clients must send `x-api-key: YOUR_API_KEY` for API Key Only or
+  `x-api-key: YOUR_API_KEY:YOUR_API_SECRET` for Signature projects.
+- `anthropic-version: 2023-06-01` is required. Optional `anthropic-beta` labels
+  and `?beta=true` are accepted but never override model capabilities.
+- Supports top-level system, required positive max_tokens, Anthropic
+  client-history user/assistant content, model-advertised image/document input, client-run
+  `tool_use`/`tool_result`, and enabled/adaptive/disabled thinking when
+  advertised. Optional tool `type: "custom"` remains a client function tool
+  with `input_schema`; it is not OpenAI's free-form grammar shape.
+- Provider-hosted tools, hosted containers, and remote MCP servers are rejected.
+- Execute `tool_use` only when `stop_reason` is `tool_use`; never execute tool
+  data from `max_tokens` or `refusal` turns.
+- Final output content contains `text` and `tool_use`; internal model reasoning
+  is not projected as Anthropic `thinking` or `redacted_thinking` output.
+- Native SSE includes `ping`, uses `text_delta` for text and
+  `input_json_delta` for tool input, ends successfully with `message_stop`, and
+  emits `error` on midstream failure. It never emits `thinking_delta` or
+  `[DONE]`.
+- `POST /v1/messages/count_tokens` returns a preflight input-token estimate,
+  not authoritative billing or provider-native usage. The model catalog does
+  not label this local estimate as native token counting.
+- Official Anthropic SDKs use origin `https://llm.wiro.ai` and set
+  `apiKey`/`api_key` to the complete project credential.
+- Claude Code sets `ANTHROPIC_BASE_URL=https://llm.wiro.ai`,
+  `ANTHROPIC_API_KEY` to the complete project credential, for example
+  `ANTHROPIC_MODEL=claude/sonnet-5`, and
+  `CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY=1`.
+- Discovery requests `/v1/models?limit=1000` and Claude Code adds only IDs
+  containing `claude` or `anthropic`; configure other compatible IDs directly.
+
+Beta Cursor compatibility:
+- `POST /v1/cursor/chat/completions`
+- Requires `cursor` in `capabilities.endpoints`.
+- Accepts Responses-style `input`/`instructions`; Chat `messages` are rejected.
+- Always returns Chat JSON/SSE and always ends streams with `[DONE]`.
+- Midstream errors follow the Chat error-frame-then-`[DONE]` contract.
+- Responses storage/continuation is disabled.
+- Clients appending `/chat/completions` use base
+  `https://llm.wiro.ai/v1/cursor`.
+
+Generation metadata:
+- `GET /v1/generation?id=<public-id>` and
+  `GET /v1/generation/<public-id>` are equivalent.
+- Use the exact response `id` for Chat, Cursor, or Responses; use the
+  `request-id` response header for Messages.
+- Returns `id`, `model`, `protocol`, terminal `status`
+  (`completed`/`failed`/`incomplete`), ISO `created_at`/`completed_at`,
+  protocol-shaped `usage`, `upstream_metered_cost`, and
+  `upstream_elapsed_seconds`.
+- Responses usage uses input/output token fields and detail objects;
+  Chat/Cursor uses prompt/completion token fields and optional details;
+  Messages uses input/output plus nullable cache-creation/cache-read fields.
+  Usage is `null` when no counters were recorded.
+- Missing, expired, and foreign IDs return `generation_not_found`. This is
+  terminal observability metadata, not task output: no task ID, generated
+  content, or reusable response data is returned.
+
+Client compatibility and boundaries:
+- OpenAI SDKs use base `https://llm.wiro.ai/v1`; Anthropic SDKs and Claude Code
+  use origin `https://llm.wiro.ai`.
+- Cursor clients that append `/chat/completions` use
+  `https://llm.wiro.ai/v1/cursor`.
+- OpenClaw can use a model's declared `openai-completions`,
+  `openai-responses`, or `anthropic-messages` transport.
+- Hermes function-calling clients, Cline, Roo Code, and Continue can use Chat
+  when their custom-provider setup accepts a base URL.
+- No native Windsurf Cascade provider route is documented; only tested
+  extension/client-mediated custom-endpoint routes are in scope.
+- No hosted web/file-search, code-interpreter, computer-use, or remote MCP tool
+  execution; no native Gemini protocol, embeddings/reranking, automatic
+  routing/fallback, BYOK provider execution, dedicated protocol-route media
+  generation, or legacy
+  `/v1/completions`.
+- Use [Run or /sync on api.wiro.ai](https://wiro.ai/docs/run-a-model) for supported finite media models. Model-advertised image
+  or document input to an LLM is not media generation. Remote fetches require
+  public HTTPS; data/base64 and Wiro gateway file IDs remain
+  capability-gated. Provider-native file IDs are not interchangeable.
+
+Errors:
+- Chat/Responses/Cursor/model/generation contract errors use OpenAI error shape.
+- Messages/count_tokens use Anthropic error shape.
+- Files use the selected OpenAI or Anthropic shape and can return
+  `file_not_found`, `file_too_large`, `invalid_multipart`, `missing_file`,
+  `invalid_filename`, `invalid_media_type`, `invalid_pagination`,
+  `invalid_query`, `file_catalog_too_large`, `file_content_unavailable`,
+  `file_api_unavailable`, or `invalid_file_response`.
+- Generic `/sync` on `api.wiro.ai` uses Wiro result/errors shape.
+- Midstream Chat/Cursor errors emit an error frame then `[DONE]`; Responses uses
+  `response.failed`; Anthropic uses named `error` events.
+- Gateway-origin and upstream execution failures use HTTP 500, never 502.
+- `/v1` responses include `ratelimit-limit`, `ratelimit-remaining`,
+  `ratelimit-reset`, `request-id`, and `x-request-id`; rate-limit responses
+  also include `retry-after`.
+- Protocol execution JSON POST bodies are limited to 16 MiB. Multipart Files
+  uploads use the separate 50 MiB limit.
+
 ### Task Detail
 POST /Task/Detail
 
@@ -171,7 +491,7 @@ Or by ID: `{ "taskid": "534574" }`
 
 Response includes: `id`, `status`, `pexit`, `debugoutput`, `debugerror`, `outputs`, `elapsedseconds`, `totalcost`, `modeldescription`, `modelslugowner`, `modelslugproject`.
 
-**Determining success:** Check `pexit` field. `"0"` = success, any other value = error. This is the most reliable indicator. For LLM models, the response is available as structured content in `outputs` (with `contenttype: "raw"` containing `prompt`, `raw`, `thinking`, `answer`) and as merged plain text in `debugoutput`.
+**Determining success:** Check `pexit` field. `"0"` = success, any other value = error. This is the most reliable indicator. For LLM models, the response is available as structured content in `outputs` (with `contenttype: "raw"` containing `prompt`, `raw`, `thinking`, `answer`, and authoritative ordered `segments`; segment types are `thinking`, `answer`, `function_call`, and `custom_tool_call`) and as merged plain text in `debugoutput`.
 
 ### Cancel Task (queued only)
 POST /Task/Cancel — `{ "taskid": "534574" }`
@@ -257,7 +577,8 @@ POST /UserAgentOAuth/GoogleDriveListFolders - Discover Drive folders accessible 
 
 task_queue → task_accept → task_preprocess_start → task_preprocess_end → task_assign → task_start → task_output → task_output_full → task_end → task_postprocess_start → task_postprocess_end
 
-Additional: task_error (interim stderr log as a live WebSocket event; terminal pre-execution failure when persisted as Task/Detail `status`), task_error_full (full stderr log), task_cancel
+Additional: task_error (interim, non-terminal), task_output_full and
+task_error_full (lifecycle signals), task_cancel
 
 Realtime only: task_stream_ready, task_stream_end, task_cost
 
@@ -270,30 +591,41 @@ Register task:
 { "type": "task_info", "tasktoken": "YOUR_SOCKET_ACCESS_TOKEN" }
 ```
 
-Receive status messages as the task progresses. Listen for `task_postprocess_end` to get final results.
+Receive status messages as the task progresses and correlate them by top-level
+`id`. Listen for `task_postprocess_end`; check `success` and `exitCode`, then
+read final outputs from `message`.
 
 ## LLM & Chat Streaming
 
-LLM responses are available in both `outputs` (structured, with `contenttype: "raw"`) and `debugoutput` (merged plain text). Streaming `task_output` messages contain structured objects:
+LLM responses are available in both `outputs` (structured, with
+`contenttype: "raw"`) and `debugoutput` (merged plain text). Streaming
+`task_output` messages contain cumulative ordered segments:
 
 ```json
-{ "type": "task_output", "message": { "raw": "full text...", "thinking": ["reasoning..."], "answer": ["response text..."], "isThinking": false, "speed": "12.4", "speedType": "words/s", "elapsedTime": "3s" } }
+{ "type": "task_output", "message": { "segments": [{ "type": "thinking", "text": "model-exposed reasoning..." }, { "type": "answer", "text": "response text..." }, { "type": "function_call", "id": "fc_1", "call_id": "call_1", "name": "lookup", "arguments": "{\"query\":\"Wiro\"}", "status": "completed" }, { "type": "custom_tool_call", "id": "ctc_1", "call_id": "call_2", "name": "sql_query", "input": "SELECT 1;", "status": "completed" }], "isThinking": false, "speed": "12.4", "speedType": "words/s", "elapsedTime": "3s" } }
 ```
 
-- `raw`: full accumulated output including thinking tags
-- `thinking`: chain-of-thought reasoning (may be empty)
-- `answer`: user-facing response
+- `segments`: ordered output items. `thinking`/`answer` use `text`;
+  `function_call` uses `arguments`; `custom_tool_call` uses `input`.
 - `isThinking`: whether the model is currently in a thinking phase
-- Both `thinking` and `answer` are arrays that grow with each streaming update
+- Each event is the full accumulated snapshot; replace the previous array
+- The active final item's `text`, `arguments`, or `input` grows before completion
+- Render `answer` items as the response and optionally show `thinking` items
+- Execute only completed calls from a turn whose `finishreason` is `tool_calls`.
+  Run continuations send results through `toolOutputs`.
+- `function_call_output` and `custom_tool_call_output` are typed next-request
+  inputs for the Responses API; they are not output `segments`.
 
 ### Multi-turn Conversations
-Use `session_id` (UUID) to maintain chat history across requests. Server stores conversation context per session.
+Use the non-empty `session_id` field to maintain chat history across requests.
+The value may contain up to 256 UTF-8 bytes; it does not have to be a UUID.
 
 ```json
 { "prompt": "What is quantum computing?", "session_id": "550e8400-e29b-41d4-a716-446655440000", "user_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7" }
 ```
 
-Reuse the same `session_id` for follow-ups. New UUID = fresh conversation.
+Reuse the same value for follow-ups. It is optional on the first turn
+and required with `previousTaskToken`; a new value starts a fresh conversation.
 
 Available LLM models: https://wiro.ai/models (filter by LLM category)
 
@@ -471,14 +803,14 @@ Wiro provides an MCP (Model Context Protocol) server for AI assistants.
 Endpoint: https://mcp.wiro.ai/v1
 Transport: Streamable HTTP (stateless)
 Auth: `Authorization: Bearer apiKey:apiSecret` (signature) or `Bearer apiKey` (apikey-only) — plain text, no base64
-Claude Desktop: remote Custom Connectors require OAuth 2.0, so do not add the hosted URL directly. With Node.js 20+, configure a local stdio server using `{ "type": "stdio", "command": "npx", "args": ["-y", "@wiro-ai/wiro-mcp@1.2.2"], "env": { "WIRO_API_KEY": "...", "WIRO_API_SECRET": "..." } }`; omit `WIRO_API_SECRET` entirely for API Key Only projects, then fully restart Claude Desktop. Pin the published version in `args` so `npx` does not reuse an older cached build. Claude Desktop may ignore custom timeout fields, so follow Wiro's bounded `run_model → wait_for_task` next actions instead of resubmitting a generation.
+Claude Desktop: remote Custom Connectors require OAuth 2.0, so do not add the hosted URL directly. With Node.js 20+, configure a local stdio server using `{ "type": "stdio", "command": "npx", "args": ["-y", "@wiro-ai/wiro-mcp@1.3.0"], "env": { "WIRO_API_KEY": "...", "WIRO_API_SECRET": "..." } }`; omit `WIRO_API_SECRET` entirely for API Key Only projects, then fully restart Claude Desktop. Pin the published version in `args` so `npx` does not reuse an older cached build. Claude Desktop may ignore custom timeout fields, so follow Wiro's bounded `run_model → wait_for_task` next actions instead of resubmitting a generation.
 OpenClaw: configure `mcp.servers.wiro` with `transport: "streamable-http"`, `connectionTimeoutMs: 10000`, and an environment-backed Authorization header; verify with `openclaw mcp doctor wiro --probe`, or on older releases use `openclaw mcp show wiro`, restart, and run `/tools verbose`.
 Hermes: configure `mcp_servers.wiro` in `~/.hermes/config.yaml`, keep `WIRO_MCP_AUTH` in `~/.hermes/.env`, then run `/reload-mcp` and `/tools`.
 The hosted endpoint requires a client that supports Streamable HTTP plus custom headers. OAuth-only clients are not currently supported.
 
 ### Self-Hosted (npx)
 ```json
-{ "command": "npx", "args": ["-y", "@wiro-ai/wiro-mcp@1.2.2"], "env": { "WIRO_API_KEY": "...", "WIRO_API_SECRET": "..." } }
+{ "command": "npx", "args": ["-y", "@wiro-ai/wiro-mcp@1.3.0"], "env": { "WIRO_API_KEY": "...", "WIRO_API_SECRET": "..." } }
 ```
 
 ### MCP Tools (13 total)

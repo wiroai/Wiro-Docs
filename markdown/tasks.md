@@ -19,12 +19,12 @@ Every model run creates a task that progresses through a defined set of stages:
 | `task_assign` | The task has been assigned to a specific GPU. The model is being loaded into memory. This may take a few seconds depending on the model size. |
 | `task_start` | The model command has started executing. Inference is now running on the GPU. |
 | `task_output` | The model is producing output. This event is emitted **multiple times** — each time the model writes to stdout, a new `task_output` message is sent via WebSocket. For LLM models, each token/chunk arrives as a separate `task_output` event, enabling real-time streaming. |
-| `task_error` | As a live WebSocket event, this means the model wrote to stderr and is an **interim log**, not necessarily a failure. As the persisted `status` returned by Task/Detail, it represents a fatal pre-execution failure (for example, output-folder setup failed) and is terminal. |
-| `task_output_full` | The complete accumulated stdout log, sent once after the model process finishes. Contains the full output history in a single message. |
-| `task_error_full` | The complete accumulated stderr log, sent once after the model process finishes. |
+| `task_error` | As a live WebSocket event, this means the model wrote to stderr and is an **interim log**, not necessarily a failure. As the persisted `status` returned by Task/Detail, it marks a pre-execution failure awaiting recovery or requeue; it does not close the task. |
+| `task_output_full` | Signals that process stdout collection ended. Raw accumulated stdout is not exposed on the public socket. |
+| `task_error_full` | Signals that process stderr collection ended. Raw accumulated stderr is not exposed on the public socket. |
 | `task_end` | The model process has exited. Emitted once. This fires **before** post-processing — do not use this event to determine success. Wait for `task_postprocess_end` instead. |
 | `task_postprocess_start` | Post-processing has started. The system is preparing the output files — encoding, uploading to CDN, and generating access URLs. |
-| `task_postprocess_end` | Post-processing completed. Check `pexit` to determine success: `"0"` = success, any other value = error. The `outputs` array contains the final files with CDN URLs, content types, and sizes. **This is the event you should listen for** to get the final results. |
+| `task_postprocess_end` | Post-processing completed. On the public WebSocket, check `success` and `exitCode` (`0` = success); the `message` array contains sanitized outputs. Task/Detail continues to use `pexit` as its primary success indicator. **This is the event you should listen for** to get final results. |
 | `task_cancel` | The task was cancelled (if queued) or killed (if running) by the user. |
 
 ### Realtime Sessions
@@ -41,13 +41,17 @@ The following statuses are exclusive to realtime models (voice conversation, tex
 
 Normal model executions, both successful and failed, reach
 `task_postprocess_end`. The status alone does not tell you whether execution
-succeeded; check `pexit` or `outputs` (or both). A fatal setup failure may stop
-earlier with persisted `status: "task_error"` and a `debugerror` instead:
+succeeded; check `pexit` or `outputs` (or both). A setup failure may temporarily
+set persisted `status: "task_error"` with a `debugerror`, but clients must keep
+waiting until `task_postprocess_end` or `task_cancel`:
 
 - `pexit` — the process exit code. `"0"` means success, any other value means the model encountered an error. This is the most reliable indicator.
 - `outputs` — the output files array. For non-LLM models, a successful run populates this with CDN URLs. If it's empty or missing, the task likely failed.
 
-> **Note:** For **LLM models**, `outputs` contains a structured entry with `contenttype: "raw"` and the response broken into `prompt`, `raw`, `thinking`, and `answer` fields. The merged plain text is also available in `debugoutput`. Always use `pexit` as the primary success check.
+> **Note:** For **LLM models**, `outputs` contains a structured entry with
+> `contenttype: "raw"` and ordered `content.segments`. The merged plain text is
+> also available in `debugoutput`. Always use `pexit` as the primary success
+> check.
 
 ```json
 // Success (image/audio model): pexit "0", outputs present
@@ -69,8 +73,25 @@ earlier with persisted `status: "task_error"` and a `debugerror` instead:
     "content": {
       "prompt": "Hello!",
       "raw": "Hello! How can I help you today?",
-      "thinking": [],
-      "answer": ["Hello! How can I help you today?"]
+      "segments": [
+        {
+          "type": "answer",
+          "text": "Hello! How can I help you today?"
+        }
+      ],
+      "finishreason": "stop",
+      "usage": {
+        "input_tokens": 12,
+        "input_tokens_details": {
+          "cached_tokens": 4,
+          "cache_write_tokens": 2
+        },
+        "output_tokens": 9,
+        "output_tokens_details": {
+          "reasoning_tokens": 2
+        },
+        "total_tokens": 21
+      }
     }
   }],
   "debugoutput": "Hello! How can I help you today?"
@@ -84,8 +105,8 @@ earlier with persisted `status: "task_error"` and a `debugerror` instead:
 ```
 
 > **Important:** Do not confuse the live `task_error` WebSocket log event with
-> persisted `status: "task_error"` in Task/Detail. The event is interim; the
-> database status is a terminal pre-execution failure.
+> persisted `status: "task_error"` in Task/Detail. Both are non-terminal; only
+> `task_postprocess_end` and `task_cancel` close the task.
 
 ## Billing & Cost
 
@@ -113,9 +134,54 @@ Use the `totalcost` field to track spending per task. For more details on how co
 
 ## LLM Models
 
-For LLM (Large Language Model) requests, the model's response is available in two places: `outputs` contains a structured entry with `contenttype: "raw"` and the response broken into `prompt`, `raw`, `thinking`, and `answer` fields; `debugoutput` contains the merged plain text. When polling with Task Detail, use either field depending on whether you need structured or plain-text access.
+For LLM requests, `outputs` contains a structured entry with
+`contenttype: "raw"` and ordered `content.segments`; `debugoutput` contains the
+merged plain text. Use the representation that matches your UI.
 
-For real-time streaming of LLM responses, use [WebSocket](/docs/websocket) instead of polling. Each `task_output` event delivers a chunk of the response as it's generated, giving your users an instant, token-by-token experience.
+For real-time streaming, use [WebSocket](/docs/websocket). Each LLM
+`task_output` event contains the latest cumulative `message.segments` snapshot;
+replace your previous snapshot instead of appending it.
+
+### Structured LLM content fields
+
+Task Detail returns these fields under
+`tasklist[0].outputs[].content`. The final WebSocket
+`task_postprocess_end` event returns the same content under
+`message[].content`.
+
+| Field | When you need it | Description |
+|-------|------------------|-------------|
+| `raw` | Optional | Merged public model text. `debugoutput` provides the same compatibility view at task level. |
+| `thinking` / `answer` | Optional | Convenience arrays split from text output. Use `segments` when exact ordering or tools matter. |
+| `segments` | All structured/tool integrations | Authoritative cumulative ordered timeline. Text entries are `thinking` or `answer`; tool entries are `function_call` or `custom_tool_call`. |
+| `finishreason` | Completion and tool handling | `stop`, `tool_calls`, `length`, `content_filter`, or `error`. Execute completed tool entries only when this is `tool_calls`. |
+| `usage` | Token reporting | Normalized token and server-tool counters. It may be omitted when the provider does not report usage. It is not the billed amount. |
+
+Within `usage`, `input_tokens` already includes cache-read and cache-write
+tokens, `output_tokens` already includes reasoning tokens, and `total_tokens`
+equals `input_tokens + output_tokens`. Never add detail counters to the total.
+Known optional counters are:
+
+- `input_tokens_details`: `cached_tokens`, `cache_write_tokens`,
+  `cache_write_5m_tokens`, `cache_write_1h_tokens`, `text_tokens`,
+  `audio_tokens`, `image_tokens`, and `video_tokens`.
+- `output_tokens_details`: `reasoning_tokens`, `text_tokens`, `audio_tokens`,
+  `image_tokens`, `video_tokens`, `accepted_prediction_tokens`, and
+  `rejected_prediction_tokens`.
+- `server_tool_use`: `web_search_requests`, `web_fetch_requests`,
+  `file_search_requests`, `image_generation_requests`,
+  `code_execution_requests`, `bash_code_execution_requests`,
+  `text_editor_code_execution_requests`, and `computer_use_requests`.
+
+The five-minute and one-hour cache-write counters are subsets of
+`cache_write_tokens`. Server-tool values count requests, not tokens. Providers
+omit counters they do not support. There is no cached-output counter because
+prompt caching applies to input context. Use task-level `totalcost` for the
+amount charged.
+
+Plain-text integrations can use `debugoutput`. Tool integrations must inspect
+`segments`, `finishreason`, and `pexit`. A final structured validation failure
+produces a non-zero `pexit`.
 
 ## **POST** /Task/Detail
 
@@ -164,8 +230,8 @@ Retrieves the current status and output of a task. You can query by either `task
 | `parameters` | `object` | The input parameters sent in the run request. |
 | `status` | `string` | Current task status (see Task Lifecycle). |
 | `pexit` | `string` | Process exit code. `"0"` = success. |
-| `debugoutput` | `string` | Accumulated stdout. For LLM models, contains the merged response text. |
-| `debugerror` | `string` | Accumulated stderr or a fatal pre-execution error message. |
+| `debugoutput` | `string` | Accumulated text output. For LLM models, contains the merged response text. |
+| `debugerror` | `string` | Accumulated error text or a fatal pre-execution error message. |
 | `starttime` | `string` | Unix timestamp when execution started. |
 | `endtime` | `string` | Unix timestamp when execution ended. |
 | `elapsedseconds` | `string` | Total execution time in seconds. |
@@ -177,7 +243,7 @@ Retrieves the current status and output of a task. You can query by either `task
 
 ## **POST** /Task/Cancel
 
-Cancels a task that is still in the `queue` stage. Tasks that have already been assigned to a worker cannot be cancelled — use Kill instead.
+Cancels a task that is still in the `queue` stage. Use Kill for a running task.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -295,8 +361,8 @@ while True:
         print("Outputs:", task["outputs"])
         print("Success:", task["pexit"] == "0")
         break
-    elif status in ("task_error", "task_cancel"):
-        print("Task failed or cancelled")
+    elif status == "task_cancel":
+        print("Task cancelled")
         break
 
     time.sleep(3)
@@ -346,8 +412,8 @@ async function pollTask() {
       console.log('Success:', pexit === '0');
       break;
     }
-    if (status === 'task_error' || status === 'task_cancel') {
-      console.log('Task failed or cancelled');
+    if (status === 'task_cancel') {
+      console.log('Task cancelled');
       break;
     }
 
