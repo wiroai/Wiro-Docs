@@ -51,6 +51,7 @@
 | Projects | `/docs/projects` | [projects.md](./markdown/projects.md) |
 | Models | `/docs/models` | [models.md](./markdown/models.md) |
 | Run a Model | `/docs/run-a-model` | [run-a-model.md](./markdown/run-a-model.md) |
+| Direct LLM Gateway | `/docs/completions-api` | [completions-api.md](./markdown/completions-api.md) |
 | Model Parameters | `/docs/model-parameters` | [model-parameters.md](./markdown/model-parameters.md) |
 | Tasks | `/docs/tasks` | [tasks.md](./markdown/tasks.md) |
 | LLM & Chat Streaming | `/docs/llm-chat-streaming` | [llm-chat-streaming.md](./markdown/llm-chat-streaming.md) |
