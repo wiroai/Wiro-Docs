@@ -1621,11 +1621,68 @@ support.
 
 ### VS Code
 
-VS Code extensions such as Cline, Roo Code, and Continue can use Wiro when
-their provider configuration supports an OpenAI-compatible custom base URL.
-Use `https://llm.wiro.ai/v1`, the exact advertised model ID, and the project
-Bearer credential. Route and optional feature support still comes from
-`GET /v1/models/{owner}/{model}`.
+VS Code Chat registers Wiro as a custom endpoint. Open the Command Palette,
+run **Chat: Manage Language Models**, then **Add Models → Custom Endpoint**
+and answer the three prompts:
+
+```
+URL:      https://llm.wiro.ai/v1
+API Key:  YOUR_API_KEY:YOUR_API_SECRET
+API Type: Chat Completions
+```
+
+A Signature project sends `YOUR_API_KEY:YOUR_API_SECRET` in the API Key
+prompt; an API Key Only project sends just `YOUR_API_KEY`. Choose **Chat
+Completions** as the API type — the Responses and Messages options change the
+request shape VS Code sends.
+
+VS Code then opens `chatLanguageModels.json` with one empty model for you to
+fill in. Leave the generated `name`, `vendor`, `apiKey` and `apiType` alone and
+describe the models you want. Each entry needs the full endpoint in `url`, not
+the base:
+
+```json
+[
+  {
+    "name": "https://llm.wiro.ai/v1",
+    "vendor": "customendpoint",
+    "apiKey": "${input:chat.lm.secret.xxxxxxxx}",
+    "apiType": "chat-completions",
+    "models": [
+      {
+        "id": "openai/gpt-5-6-sol",
+        "name": "GPT 5.6 Sol (Wiro)",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1050000,
+        "maxOutputTokens": 65536
+      },
+      {
+        "id": "claude/sonnet-5",
+        "name": "Claude Sonnet 5 (Wiro)",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1000000,
+        "maxOutputTokens": 128000
+      }
+    ]
+  }
+]
+```
+
+`id` is the lowercase `owner/model` from `GET /v1/models`; `name` is only the
+label shown in the model picker. Do not guess the rest —
+`GET /v1/models/{owner}/{model}` reports each model's real limits, so read
+`capabilities.function_tools` for `toolCalling`,
+`capabilities.input_modalities` for `vision`, and `max_input_tokens` /
+`max_tokens` for the two token fields. Save the file and reopen the model
+picker; the entries appear under the endpoint's name.
+
+Any other VS Code extension that accepts a custom OpenAI base URL — Cline, Roo
+Code, Continue — works the same way: point it at `https://llm.wiro.ai/v1` with
+the same credential and a model ID from the catalog.
 
 ### OpenClaw
 
