@@ -826,12 +826,12 @@ Cursor route below.
 2. **View All Models** — the settings pane lists only the models Cursor ships
    with. `View All Models`, at the bottom, opens the full list where custom ones
    live.
-3. **+ Add Custom Model** — type the exact lowercase `owner/model` ID — the same
-   IDs VS Code takes, listed below. Repeat for each model you want. Cursor shows
-   whatever you type in its picker, so a parenthesised label is read and
-   discarded at either end: `(Wiro AI) claude/sonnet-5` and
-   `claude/sonnet-5 (Wiro AI)` both resolve to `claude/sonnet-5`. Leading keeps
-   every Wiro model together in the picker.
+3. **+ Add Custom Model** — type the exact lowercase `owner/model` ID, prefixed
+   with `(Wiro AI)`; the list below is ready to paste. Repeat for each model you
+   want. Cursor shows whatever you type in its picker, so the prefix keeps every
+   Wiro model together there; the gateway reads it and discards it, so
+   `(Wiro AI) claude/sonnet-5` resolves to `claude/sonnet-5`. Underneath the
+   label these are the same IDs VS Code takes.
 
    ![Cursor's custom model list showing four Wiro models, each labelled (Wiro
    AI), with the Add Custom Model button below them.](assets/cursor-custom-llm.png)
@@ -852,8 +852,8 @@ Cursor route below.
 9. **Verify** — press `Verify`. A failure here is normally the base URL carrying
    `/chat/completions`, or a built-in model still switched on.
 
-Every model the gateway serves today, labelled and ready to paste one at a time;
-drop the `(Wiro AI)` part, or move it to the end, as you prefer. The same set
+Every model the gateway serves today, ready to paste one at a time; drop the
+`(Wiro AI)` prefix if you would rather not label them. The same set
 is in [the catalog](https://wiro.ai/models?categories=llm-tool-call) and behind
 `GET /v1/models`.
 
