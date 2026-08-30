@@ -723,6 +723,21 @@ button {
   scrollbar-width: thin;
 }
 
+/* A screenshot inside a step: bordered so a dark UI capture reads as a picture
+   of an app rather than a hole in the page, and never wider than the column. */
+.docs-steps figure {
+  margin: 12px 0 0;
+}
+
+.docs-steps figure img {
+  display: block;
+  width: 100%;
+  max-width: 560px;
+  height: auto;
+  border: 1px solid var(--fade-grey-dark-3);
+  border-radius: 8px;
+}
+
 .docs-section strong {
   color: inherit;
 }

@@ -134,10 +134,12 @@ Cursor route below.
 3. **+ Add Custom Model** — type the exact lowercase `owner/model` ID — the same
    IDs VS Code takes, listed below. Repeat for each model you want. Cursor shows
    whatever you type in its picker, so a parenthesised label is read and
-   discarded at either end: `claude/sonnet-5 (Wiro AI)` and
-   `(Wiro AI) claude/sonnet-5` both resolve to `claude/sonnet-5`. Trailing keeps
-   the model name legible where the picker truncates; leading groups every Wiro
-   model together once the list is sorted.
+   discarded at either end: `(Wiro AI) claude/sonnet-5` and
+   `claude/sonnet-5 (Wiro AI)` both resolve to `claude/sonnet-5`. Leading keeps
+   every Wiro model together in the picker.
+
+   ![Cursor's custom model list showing four Wiro models, each labelled (Wiro
+   AI), with the Add Custom Model button below them.](assets/cursor-custom-llm.png)
 4. **OpenAI API Key** — put the project credential in the `OpenAI API Key` field;
    that is the field Cursor uses for the overridden endpoint.
    `YOUR_API_KEY:YOUR_API_SECRET` for a Signature project, `YOUR_API_KEY` alone
@@ -156,31 +158,31 @@ Cursor route below.
    `/chat/completions`, or a built-in model still switched on.
 
 Every model the gateway serves today, labelled and ready to paste one at a time;
-drop the `(Wiro AI)` part, or move it to the front, as you prefer. The same set
+drop the `(Wiro AI)` part, or move it to the end, as you prefer. The same set
 is in [the catalog](https://wiro.ai/models?categories=llm-tool-call) and behind
 `GET /v1/models`.
 
 ```
-bytedance/seed-v2-1-turbo (Wiro AI)
-bytedance/seed-v2-lite (Wiro AI)
-bytedance/seed-v2-mini (Wiro AI)
-bytedance/seed-v2-pro (Wiro AI)
-claude/fable-5 (Wiro AI)
-claude/opus-5 (Wiro AI)
-claude/sonnet-5 (Wiro AI)
-openai/gpt-5-2 (Wiro AI)
-openai/gpt-5-4 (Wiro AI)
-openai/gpt-5-4-mini (Wiro AI)
-openai/gpt-5-4-nano (Wiro AI)
-openai/gpt-5-5 (Wiro AI)
-openai/gpt-5-6-luna (Wiro AI)
-openai/gpt-5-6-sol (Wiro AI)
-openai/gpt-5-6-terra (Wiro AI)
-openai/gpt-5-mini (Wiro AI)
-openai/gpt-5-nano (Wiro AI)
-xai/grok-4-1-fast (Wiro AI)
-xai/grok-4-20 (Wiro AI)
-xai/grok-4-5 (Wiro AI)
+(Wiro AI) bytedance/seed-v2-1-turbo
+(Wiro AI) bytedance/seed-v2-lite
+(Wiro AI) bytedance/seed-v2-mini
+(Wiro AI) bytedance/seed-v2-pro
+(Wiro AI) claude/fable-5
+(Wiro AI) claude/opus-5
+(Wiro AI) claude/sonnet-5
+(Wiro AI) openai/gpt-5-2
+(Wiro AI) openai/gpt-5-4
+(Wiro AI) openai/gpt-5-4-mini
+(Wiro AI) openai/gpt-5-4-nano
+(Wiro AI) openai/gpt-5-5
+(Wiro AI) openai/gpt-5-6-luna
+(Wiro AI) openai/gpt-5-6-sol
+(Wiro AI) openai/gpt-5-6-terra
+(Wiro AI) openai/gpt-5-mini
+(Wiro AI) openai/gpt-5-nano
+(Wiro AI) xai/grok-4-1-fast
+(Wiro AI) xai/grok-4-20
+(Wiro AI) xai/grok-4-5
 ```
 
 The override covers the chat and agent panel. Tab autocomplete and inline edit
