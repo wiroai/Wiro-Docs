@@ -834,7 +834,7 @@ Cursor route below.
    every Wiro model together in the picker.
 
    ![Cursor's custom model list showing four Wiro models, each labelled (Wiro
-   AI), with the Add Custom Model button below them.](assets/cursor-custom-llm.png)
+   AI), with the Add Custom Model button below them.](css/cursor-custom-llm.png)
 4. **OpenAI API Key** — put the project credential in the `OpenAI API Key` field;
    that is the field Cursor uses for the overridden endpoint.
    `YOUR_API_KEY:YOUR_API_SECRET` for a Signature project, `YOUR_API_KEY` alone
