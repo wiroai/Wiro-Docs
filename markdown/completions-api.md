@@ -205,6 +205,7 @@ extension required.
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
+        "maxInputTokens": 500000,
         "maxOutputTokens": 65536
       },
       {
@@ -213,6 +214,7 @@ extension required.
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
+        "maxInputTokens": 256000,
         "maxOutputTokens": 65536
       }
     ]
@@ -228,10 +230,10 @@ extension required.
   `GET /v1/models/{owner}/{model}`: `capabilities.function_tools`,
   `capabilities.input_modalities`, `max_input_tokens`, `max_tokens`. Do not
   guess.
-- **A missing context length is fine.** Some models report no
-  `max_input_tokens` — the last two entries above are real examples. Leave
-  `maxInputTokens` out for those rather than inventing a number; VS Code will
-  flag the field as absent, not wrong.
+- **`maxInputTokens` is not optional.** VS Code sizes every conversation
+  against it and answers *"Could not compact conversation"* on each turn when a
+  model omits it, before any request reaches the gateway. Take the number from
+  `max_input_tokens`; every catalog model reports one.
 
 Save the file and reopen the model picker; the models appear under **Wiro AI**.
 Any other VS Code extension that takes a custom OpenAI base URL — Cline, Roo

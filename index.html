@@ -1754,6 +1754,7 @@ claude</code></pre>
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
+        "maxInputTokens": 500000,
         "maxOutputTokens": 65536
       },
       {
@@ -1762,6 +1763,7 @@ claude</code></pre>
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
+        "maxInputTokens": 256000,
         "maxOutputTokens": 65536
       }
     ]
@@ -1772,7 +1774,7 @@ claude</code></pre>
                           <li><code>name</code> &mdash; a free label, shown in the picker.</li>
                           <li><code>url</code> &mdash; the <strong>full endpoint</strong>, not the base. This is why the group name is not a URL.</li>
                           <li><code>toolCalling</code>, <code>vision</code>, <code>maxInputTokens</code>, <code>maxOutputTokens</code> &mdash; read them from <code>GET /v1/models/{owner}/{model}</code>: <code>capabilities.function_tools</code>, <code>capabilities.input_modalities</code>, <code>max_input_tokens</code>, <code>max_tokens</code>. Do not guess.</li>
-                          <li><strong>A missing context length is fine.</strong> Some models report no <code>max_input_tokens</code> &mdash; the last two entries above are real examples. Leave <code>maxInputTokens</code> out for those rather than inventing a number; VS Code will flag the field as absent, not wrong.</li>
+                          <li><strong><code>maxInputTokens</code> is not optional.</strong> VS Code sizes every conversation against it and answers <em>&ldquo;Could not compact conversation&rdquo;</em> on each turn when a model omits it, before any request reaches the gateway. Take the number from <code>max_input_tokens</code>; every catalog model reports one.</li>
                         </ul>
                         <p>Save the file and reopen the model picker; the models appear under <strong>Wiro AI</strong>. Any other VS Code extension that takes a custom OpenAI base URL &mdash; Cline, Roo Code, Continue &mdash; works the same way: point it at <code>https://llm.wiro.ai/v1</code> with the same credential and a model ID from the catalog.</p>
                       </div>
