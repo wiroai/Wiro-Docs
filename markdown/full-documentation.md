@@ -821,22 +821,58 @@ Cursor reaches the gateway through its OpenAI base URL override, which it
 appends `/chat/completions` to. Point it at the normal `/v1` base, not the beta
 Cursor route below.
 
-1. **Open model settings** — Cursor Settings → `Models`.
-2. **Override the base URL** — turn on `Override OpenAI Base URL` and enter
-   `https://llm.wiro.ai/v1`. Cursor adds `/chat/completions` itself, so do not
-   append it.
-3. **Set the key** — put the project credential in the `OpenAI API Key` field;
+1. **Open the model settings** — Command Palette (`Cmd+Shift+P`, `Ctrl+Shift+P`
+   on Windows) → `Cursor Settings: Models`.
+2. **View All Models** — the settings pane lists only the models Cursor ships
+   with. `View All Models`, at the bottom, opens the full list where custom ones
+   live.
+3. **+ Add Custom Model** — type the exact lowercase `owner/model` ID — the same
+   IDs VS Code takes, listed below. Repeat for each model you want. Cursor shows
+   whatever you type in its model picker, so a trailing label is fine:
+   `claude/sonnet-5 (Wiro AI)` resolves to `claude/sonnet-5`.
+4. **OpenAI API Key** — put the project credential in the `OpenAI API Key` field;
    that is the field Cursor uses for the overridden endpoint.
    `YOUR_API_KEY:YOUR_API_SECRET` for a Signature project, `YOUR_API_KEY` alone
    for API Key Only.
-4. **Add the model** — `+ Add Custom Model`, then paste the exact lowercase
-   `owner/model` ID — `openai/gpt-5-6-sol`, say — and enable it.
-5. **Disable the built-in models** — while the override is on, Cursor sends its
+5. **Turn the key on** — flip the switch beside the field. It reads
+   `Secret saved` once Cursor has stored the credential.
+6. **Override OpenAI Base URL** — turn that switch on too. It sits directly
+   under the key.
+7. **Enter the base URL** — `https://llm.wiro.ai/v1`. Cursor appends
+   `/chat/completions` itself, so do not add it.
+8. **Disable the built-in models** — while the override is on, Cursor sends its
    own model names to your endpoint too, and those do not exist in the Wiro
    catalog. Leave only the models you added enabled, or every request fails with
    an unknown model.
-6. **Verify** — press `Verify`. A failure here is normally the base URL carrying
+9. **Verify** — press `Verify`. A failure here is normally the base URL carrying
    `/chat/completions`, or a built-in model still switched on.
+
+Every model the gateway serves today, ready to paste one at a time; the same set
+is in [the catalog](https://wiro.ai/models?categories=llm-tool-call) and behind
+`GET /v1/models`.
+
+```
+bytedance/seed-v2-1-turbo
+bytedance/seed-v2-lite
+bytedance/seed-v2-mini
+bytedance/seed-v2-pro
+claude/fable-5
+claude/opus-5
+claude/sonnet-5
+openai/gpt-5-2
+openai/gpt-5-4
+openai/gpt-5-4-mini
+openai/gpt-5-4-nano
+openai/gpt-5-5
+openai/gpt-5-6-luna
+openai/gpt-5-6-sol
+openai/gpt-5-6-terra
+openai/gpt-5-mini
+openai/gpt-5-nano
+xai/grok-4-1-fast
+xai/grok-4-20
+xai/grok-4-5
+```
 
 The override covers the chat and agent panel. Tab autocomplete and inline edit
 keep using Cursor's own backend whatever you configure here, so they are
