@@ -1699,12 +1699,27 @@ claude</code></pre>
                       </div>
                       <div class="mcp-setup-panel" id="llm-setup-vscode">
                         <h3>VS Code</h3>
-                        <p>VS Code Chat registers Wiro as a custom endpoint. Open the Command Palette, run <strong>Chat: Manage Language Models</strong>, then <strong>Add Models</strong>. A provider list opens &mdash; Anthropic, Azure, Google, OpenAI, OpenRouter, xAI, Ollama &mdash; with <strong>Custom Endpoint</strong> last, below the separator. Pick it and answer the three prompts:</p>
-                        <pre><code>Group Name: Wiro AI
-API Key:    YOUR_API_KEY:YOUR_API_SECRET
-API Type:   Chat Completions</code></pre>
-                        <p><strong>Group Name</strong> arrives pre-filled with &ldquo;Custom Endpoint&rdquo; and is only a label &mdash; it titles the two prompts that follow and heads the group in the model picker, so give it something readable like <code>Wiro AI</code>. Nothing here asks for a base URL: every model carries its own full endpoint in the JSON below. A Signature project sends <code>YOUR_API_KEY:YOUR_API_SECRET</code> in the API Key prompt; an API Key Only project sends just <code>YOUR_API_KEY</code>. Choose <strong>Chat Completions</strong> as the API type — the Responses and Messages options change the request shape VS Code sends.</p>
-                        <p>VS Code then opens <code>chatLanguageModels.json</code> with one empty model for you to fill in. Leave the generated <code>name</code>, <code>vendor</code>, <code>apiKey</code> and <code>apiType</code> alone and describe the models you want. Each entry needs the full endpoint in <code>url</code>, not the base:</p>
+                        <p>VS Code Chat reaches the gateway through its own built-in custom endpoint &mdash; no extension required.</p>
+                        <ol class="docs-steps">
+                          <li>
+                            <strong>Open the model manager</strong> <span>Command Palette &rarr; <code>Chat: Manage Language Models</code>.</span>
+                          </li>
+                          <li>
+                            <strong>Add a provider</strong> <span><strong>+ Add Models</strong> opens a provider list &mdash; Anthropic, Azure, Google, OpenAI, OpenRouter, xAI, Ollama. Pick <strong>Custom Endpoint</strong>, last, below the separator.</span>
+                          </li>
+                          <li>
+                            <strong>Group Name</strong> <span>Arrives pre-filled with &ldquo;Custom Endpoint&rdquo;; replace it with <code>Wiro AI</code>. It is only a label: it titles the next two prompts and heads the group in the model picker. Nothing here asks for a base URL, because each model carries its own endpoint.</span>
+                          </li>
+                          <li>
+                            <strong>API Key</strong> <span><code>YOUR_API_KEY:YOUR_API_SECRET</code> for a Signature project, <code>YOUR_API_KEY</code> alone for API Key Only. VS Code keeps it in its secret store; the file holds only a <code>${input:&hellip;}</code> reference.</span>
+                          </li>
+                          <li>
+                            <strong>API Type</strong> <span>Choose <strong>Chat Completions</strong>. Responses and Messages change the request shape VS Code sends.</span>
+                          </li>
+                          <li>
+                            <strong>Describe the models</strong> <span>VS Code opens <code>chatLanguageModels.json</code> with one empty model. Leave <code>name</code>, <code>vendor</code>, <code>apiKey</code> and <code>apiType</code> as generated and fill the <code>models</code> array.</span>
+                          </li>
+                        </ol>
                         <pre><code>[
   {
     "name": "Wiro AI",
@@ -1733,8 +1748,13 @@ API Type:   Chat Completions</code></pre>
     ]
   }
 ]</code></pre>
-                        <p><code>id</code> is the lowercase <code>owner/model</code> from <code>GET /v1/models</code>; <code>name</code> is only the label shown in the model picker. Do not guess the rest &mdash; <code>GET /v1/models/{owner}/{model}</code> reports each model's real limits, so read <code>capabilities.function_tools</code> for <code>toolCalling</code>, <code>capabilities.input_modalities</code> for <code>vision</code>, and <code>max_input_tokens</code> / <code>max_tokens</code> for the two token fields. Save the file and reopen the model picker; the entries appear under the endpoint's name.</p>
-                        <p>Any other VS Code extension that accepts a custom OpenAI base URL works the same way: point it at <code>https://llm.wiro.ai/v1</code> with the same credential and a model ID from the catalog.</p>
+                        <ul>
+                          <li><code>id</code> &mdash; the lowercase <code>owner/model</code> from <code>GET /v1/models</code>.</li>
+                          <li><code>name</code> &mdash; a free label, shown in the picker.</li>
+                          <li><code>url</code> &mdash; the <strong>full endpoint</strong>, not the base. This is why the group name is not a URL.</li>
+                          <li><code>toolCalling</code>, <code>vision</code>, <code>maxInputTokens</code>, <code>maxOutputTokens</code> &mdash; read them from <code>GET /v1/models/{owner}/{model}</code>: <code>capabilities.function_tools</code>, <code>capabilities.input_modalities</code>, <code>max_input_tokens</code>, <code>max_tokens</code>. Do not guess.</li>
+                        </ul>
+                        <p>Save the file and reopen the model picker; the models appear under <strong>Wiro AI</strong>. Any other VS Code extension that takes a custom OpenAI base URL &mdash; Cline, Roo Code, Continue &mdash; works the same way: point it at <code>https://llm.wiro.ai/v1</code> with the same credential and a model ID from the catalog.</p>
                       </div>
                       <div class="mcp-setup-panel" id="llm-setup-windsurf">
                         <h3>Windsurf</h3>

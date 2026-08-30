@@ -153,32 +153,25 @@ support.
 
 ### VS Code
 
-VS Code Chat registers Wiro as a custom endpoint. Open the Command Palette,
-run **Chat: Manage Language Models**, then **Add Models**. A provider list
-opens — Anthropic, Azure, Google, OpenAI, OpenRouter, xAI, Ollama — with
-**Custom Endpoint** last, below the separator. Pick it and answer the three
-prompts:
+VS Code Chat reaches the gateway through its own built-in custom endpoint — no
+extension required.
 
-```
-Group Name: Wiro AI
-API Key:    YOUR_API_KEY:YOUR_API_SECRET
-API Type:   Chat Completions
-```
-
-**Group Name** arrives pre-filled with "Custom Endpoint" and is only a label —
-it titles the two prompts that follow and heads the group in the model picker,
-so give it something readable like `Wiro AI`. Nothing here asks for a base URL:
-every model carries its own full endpoint in the JSON below.
-
-A Signature project sends `YOUR_API_KEY:YOUR_API_SECRET` in the API Key
-prompt; an API Key Only project sends just `YOUR_API_KEY`. Choose **Chat
-Completions** as the API type — the Responses and Messages options change the
-request shape VS Code sends.
-
-VS Code then opens `chatLanguageModels.json` with one empty model for you to
-fill in. Leave the generated `name`, `vendor`, `apiKey` and `apiType` alone and
-describe the models you want. Each entry needs the full endpoint in `url`, not
-the base:
+1. **Open the model manager** — Command Palette → `Chat: Manage Language Models`.
+2. **Add a provider** — **+ Add Models** opens a provider list (Anthropic,
+   Azure, Google, OpenAI, OpenRouter, xAI, Ollama). Pick **Custom Endpoint**,
+   last, below the separator.
+3. **Group Name** — arrives pre-filled with "Custom Endpoint"; replace it with
+   `Wiro AI`. It is only a label: it titles the next two prompts and heads the
+   group in the model picker. Nothing here asks for a base URL, because each
+   model carries its own endpoint.
+4. **API Key** — `YOUR_API_KEY:YOUR_API_SECRET` for a Signature project,
+   `YOUR_API_KEY` alone for API Key Only. VS Code keeps it in its secret store;
+   the file holds only a `${input:…}` reference.
+5. **API Type** — choose **Chat Completions**. Responses and Messages change the
+   request shape VS Code sends.
+6. **Describe the models** — VS Code opens `chatLanguageModels.json` with one
+   empty model. Leave `name`, `vendor`, `apiKey` and `apiType` as generated and
+   fill the `models` array.
 
 ```json
 [
@@ -211,15 +204,17 @@ the base:
 ]
 ```
 
-`id` is the lowercase `owner/model` from `GET /v1/models`; `name` is only the
-label shown in the model picker. Do not guess the rest —
-`GET /v1/models/{owner}/{model}` reports each model's real limits, so read
-`capabilities.function_tools` for `toolCalling`,
-`capabilities.input_modalities` for `vision`, and `max_input_tokens` /
-`max_tokens` for the two token fields. Save the file and reopen the model
-picker; the entries appear under the endpoint's name.
+- `id` — the lowercase `owner/model` from `GET /v1/models`.
+- `name` — a free label, shown in the picker.
+- `url` — the **full endpoint**, not the base. This is why the group name is not
+  a URL.
+- `toolCalling`, `vision`, `maxInputTokens`, `maxOutputTokens` — read them from
+  `GET /v1/models/{owner}/{model}`: `capabilities.function_tools`,
+  `capabilities.input_modalities`, `max_input_tokens`, `max_tokens`. Do not
+  guess.
 
-Any other VS Code extension that accepts a custom OpenAI base URL — Cline, Roo
+Save the file and reopen the model picker; the models appear under **Wiro AI**.
+Any other VS Code extension that takes a custom OpenAI base URL — Cline, Roo
 Code, Continue — works the same way: point it at `https://llm.wiro.ai/v1` with
 the same credential and a model ID from the catalog.
 
