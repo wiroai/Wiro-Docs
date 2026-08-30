@@ -1702,7 +1702,7 @@ data: {
                             <strong>View All Models</strong> <span>The settings pane lists only the models Cursor ships with. <code>View All Models</code>, at the bottom, opens the full list where custom ones live.</span>
                           </li>
                           <li>
-                            <strong>+ Add Custom Model</strong> <span>Type the exact lowercase <code>owner/model</code> ID &mdash; the same IDs VS Code takes, listed below. Repeat for each model you want. Cursor shows whatever you type in its model picker, so a trailing label is fine: <code>claude/sonnet-5 (Wiro AI)</code> resolves to <code>claude/sonnet-5</code>.</span>
+                            <strong>+ Add Custom Model</strong> <span>Type the exact lowercase <code>owner/model</code> ID &mdash; the same IDs VS Code takes, listed below. Repeat for each model you want. Cursor shows whatever you type in its picker, so a parenthesised label is read and discarded at either end: <code>claude/sonnet-5 (Wiro AI)</code> and <code>(Wiro AI) claude/sonnet-5</code> both resolve to <code>claude/sonnet-5</code>. Trailing keeps the model name legible where the picker truncates; leading groups every Wiro model together once the list is sorted.</span>
                           </li>
                           <li>
                             <strong>OpenAI API Key</strong> <span>Put the project credential in the <code>OpenAI API Key</code> field &mdash; that is the field Cursor uses for the overridden endpoint. <code>YOUR_API_KEY:YOUR_API_SECRET</code> for a Signature project, <code>YOUR_API_KEY</code> alone for API Key Only.</span>
@@ -1723,27 +1723,27 @@ data: {
                             <strong>Verify</strong> <span>Press <code>Verify</code>. A failure here is normally the base URL carrying <code>/chat/completions</code>, or a built-in model still switched on.</span>
                           </li>
                         </ol>
-                        <p>Every model the gateway serves today, ready to paste one at a time; the same set is in <a href="https://wiro.ai/models?categories=llm-tool-call" class="docs-link">the catalog</a> and behind <a href="#gateway-models" class="docs-link"><code>GET /v1/models</code></a>.</p>
-                        <pre class="pre-scroll"><code>bytedance/seed-v2-1-turbo
-bytedance/seed-v2-lite
-bytedance/seed-v2-mini
-bytedance/seed-v2-pro
-claude/fable-5
-claude/opus-5
-claude/sonnet-5
-openai/gpt-5-2
-openai/gpt-5-4
-openai/gpt-5-4-mini
-openai/gpt-5-4-nano
-openai/gpt-5-5
-openai/gpt-5-6-luna
-openai/gpt-5-6-sol
-openai/gpt-5-6-terra
-openai/gpt-5-mini
-openai/gpt-5-nano
-xai/grok-4-1-fast
-xai/grok-4-20
-xai/grok-4-5</code></pre>
+                        <p>Every model the gateway serves today, labelled and ready to paste one at a time; drop the <code>(Wiro AI)</code> part, or move it to the front, as you prefer. The same set is in <a href="https://wiro.ai/models?categories=llm-tool-call" class="docs-link">the catalog</a> and behind <a href="#gateway-models" class="docs-link"><code>GET /v1/models</code></a>.</p>
+                        <pre class="pre-scroll"><code>bytedance/seed-v2-1-turbo (Wiro AI)
+bytedance/seed-v2-lite (Wiro AI)
+bytedance/seed-v2-mini (Wiro AI)
+bytedance/seed-v2-pro (Wiro AI)
+claude/fable-5 (Wiro AI)
+claude/opus-5 (Wiro AI)
+claude/sonnet-5 (Wiro AI)
+openai/gpt-5-2 (Wiro AI)
+openai/gpt-5-4 (Wiro AI)
+openai/gpt-5-4-mini (Wiro AI)
+openai/gpt-5-4-nano (Wiro AI)
+openai/gpt-5-5 (Wiro AI)
+openai/gpt-5-6-luna (Wiro AI)
+openai/gpt-5-6-sol (Wiro AI)
+openai/gpt-5-6-terra (Wiro AI)
+openai/gpt-5-mini (Wiro AI)
+openai/gpt-5-nano (Wiro AI)
+xai/grok-4-1-fast (Wiro AI)
+xai/grok-4-20 (Wiro AI)
+xai/grok-4-5 (Wiro AI)</code></pre>
                         <p>The override covers the chat and agent panel. Tab autocomplete and inline edit keep using Cursor's own backend whatever you configure here, so they are unaffected either way.</p>
                         <p>The separate beta route at <code>https://llm.wiro.ai/v1/cursor</code> takes a Responses-shaped body and rejects Chat Completions <code>messages</code>. The Cursor app sends <code>messages</code>, so that route is for clients built against the Responses dialect, not for this setup.</p>
                       </div>
