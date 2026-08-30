@@ -893,6 +893,22 @@ extension required.
         "vision": true,
         "maxInputTokens": 1000000,
         "maxOutputTokens": 128000
+      },
+      {
+        "id": "xai/grok-4-5",
+        "name": "Grok 4.5 (Wiro)",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxOutputTokens": 65536
+      },
+      {
+        "id": "bytedance/seed-v2-pro",
+        "name": "Seed V2 Pro (Wiro)",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxOutputTokens": 65536
       }
     ]
   }
@@ -907,6 +923,10 @@ extension required.
   `GET /v1/models/{owner}/{model}`: `capabilities.function_tools`,
   `capabilities.input_modalities`, `max_input_tokens`, `max_tokens`. Do not
   guess.
+- **A missing context length is fine.** Some models report no
+  `max_input_tokens` — the last two entries above are real examples. Leave
+  `maxInputTokens` out for those rather than inventing a number; VS Code will
+  flag the field as absent, not wrong.
 
 Save the file and reopen the model picker; the models appear under **Wiro AI**.
 Any other VS Code extension that takes a custom OpenAI base URL — Cline, Roo
