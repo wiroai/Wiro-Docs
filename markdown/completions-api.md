@@ -931,10 +931,15 @@ run **Chat: Manage Language Models**, then **Add Models → Custom Endpoint**
 and answer the three prompts:
 
 ```
-URL:      https://llm.wiro.ai/v1
-API Key:  YOUR_API_KEY:YOUR_API_SECRET
-API Type: Chat Completions
+Group Name: https://llm.wiro.ai/v1
+API Key:    YOUR_API_KEY:YOUR_API_SECRET
+API Type:   Chat Completions
 ```
+
+**Group Name** arrives pre-filled with "Custom Endpoint" and is only a label:
+there is no base-URL prompt, because every model carries its own full endpoint
+in the JSON below. Naming the group after the base URL keeps the two prompts
+that follow, and the model picker, self-describing.
 
 A Signature project sends `YOUR_API_KEY:YOUR_API_SECRET` in the API Key
 prompt; an API Key Only project sends just `YOUR_API_KEY`. Choose **Chat
