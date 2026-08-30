@@ -164,14 +164,14 @@ support.
 VS Code Chat reaches the gateway through its own built-in custom endpoint — no
 extension required.
 
-1. **Open the model manager** — Command Palette → `Chat: Manage Language Models`.
+1. **Open the model manager** — Command Palette (`Cmd+Shift+P`, `Ctrl+Shift+P`
+   on Windows) → `Chat: Manage Language Models`.
 2. **Add a provider** — **+ Add Models** opens a provider list (Anthropic,
    Azure, Google, OpenAI, OpenRouter, xAI, Ollama). Pick **Custom Endpoint**,
    last, below the separator.
 3. **Group Name** — arrives pre-filled with "Custom Endpoint"; replace it with
-   `Wiro AI`. It is only a label: it titles the next two prompts and heads the
-   group in the model picker. Nothing here asks for a base URL, because each
-   model carries its own endpoint.
+   `Wiro AI`. It is a label — it titles the next two prompts and groups the
+   models in the picker.
 4. **API Key** — `YOUR_API_KEY:YOUR_API_SECRET` for a Signature project,
    `YOUR_API_KEY` alone for API Key Only. VS Code keeps it in its secret store;
    the file holds only a `${input:…}` reference.
@@ -232,8 +232,7 @@ extension required.
 
 - `id` — the lowercase `owner/model` from `GET /v1/models`.
 - `name` — a free label, shown in the picker.
-- `url` — the **full endpoint**, not the base. This is why the group name is not
-  a URL.
+- `url` — the **full endpoint**, not the base URL. Every model repeats it.
 - `toolCalling`, `vision`, `maxInputTokens`, `maxOutputTokens` — read them from
   `GET /v1/models/{owner}/{model}`: `capabilities.function_tools`,
   `capabilities.input_modalities`, `max_input_tokens`, `max_tokens`. Do not

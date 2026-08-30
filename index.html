@@ -1710,13 +1710,13 @@ claude</code></pre>
                         <p>VS Code Chat reaches the gateway through its own built-in custom endpoint &mdash; no extension required.</p>
                         <ol class="docs-steps">
                           <li>
-                            <strong>Open the model manager</strong> <span>Command Palette &rarr; <code>Chat: Manage Language Models</code>.</span>
+                            <strong>Open the model manager</strong> <span>Command Palette (<code>Cmd+Shift+P</code>, <code>Ctrl+Shift+P</code> on Windows) &rarr; <code>Chat: Manage Language Models</code>.</span>
                           </li>
                           <li>
                             <strong>Add a provider</strong> <span><strong>+ Add Models</strong> opens a provider list &mdash; Anthropic, Azure, Google, OpenAI, OpenRouter, xAI, Ollama. Pick <strong>Custom Endpoint</strong>, last, below the separator.</span>
                           </li>
                           <li>
-                            <strong>Group Name</strong> <span>Arrives pre-filled with &ldquo;Custom Endpoint&rdquo;; replace it with <code>Wiro AI</code>. It is only a label: it titles the next two prompts and heads the group in the model picker. Nothing here asks for a base URL, because each model carries its own endpoint.</span>
+                            <strong>Group Name</strong> <span>Arrives pre-filled with &ldquo;Custom Endpoint&rdquo;; replace it with <code>Wiro AI</code>. It is a label &mdash; it titles the next two prompts and groups the models in the picker.</span>
                           </li>
                           <li>
                             <strong>API Key</strong> <span><code>YOUR_API_KEY:YOUR_API_SECRET</code> for a Signature project, <code>YOUR_API_KEY</code> alone for API Key Only. VS Code keeps it in its secret store; the file holds only a <code>${input:&hellip;}</code> reference.</span>
@@ -1777,7 +1777,7 @@ claude</code></pre>
                         <ul>
                           <li><code>id</code> &mdash; the lowercase <code>owner/model</code> from <code>GET /v1/models</code>.</li>
                           <li><code>name</code> &mdash; a free label, shown in the picker.</li>
-                          <li><code>url</code> &mdash; the <strong>full endpoint</strong>, not the base. This is why the group name is not a URL.</li>
+                          <li><code>url</code> &mdash; the <strong>full endpoint</strong>, not the base URL. Every model repeats it.</li>
                           <li><code>toolCalling</code>, <code>vision</code>, <code>maxInputTokens</code>, <code>maxOutputTokens</code> &mdash; read them from <code>GET /v1/models/{owner}/{model}</code>: <code>capabilities.function_tools</code>, <code>capabilities.input_modalities</code>, <code>max_input_tokens</code>, <code>max_tokens</code>. Do not guess.</li>
                           <li><strong><code>maxInputTokens</code> is not optional.</strong> VS Code sizes every conversation against it and answers <em>&ldquo;Could not compact conversation&rdquo;</em> on each turn when a model omits it, before any request reaches the gateway. Take the number from <code>max_input_tokens</code>; every catalog model reports one.</li>
                         </ul>
