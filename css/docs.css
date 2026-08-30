@@ -715,6 +715,14 @@ button {
   font-size: inherit;
 }
 
+/* A listing long enough to bury the prose under it — the full model config —
+   scrolls inside itself rather than pushing the rest of the section away. */
+.docs-section pre.pre-scroll {
+  max-height: 420px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
 .docs-section strong {
   color: inherit;
 }
