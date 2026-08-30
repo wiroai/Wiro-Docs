@@ -1690,11 +1690,29 @@ data: {
                     <div class="mcp-setup-panels" data-toggle-panels="llm-setup">
                       <div class="mcp-setup-panel is-visible" id="llm-setup-cursor">
                         <h3>Cursor</h3>
-                        <p>In a Cursor build or extension that supports a custom OpenAI base URL and sends Responses-shaped input at its appended <code>/chat/completions</code> path, register the exact Wiro model and use the beta Cursor base below. Cursor's proprietary transport is not inferred: Chat <code>messages</code> sent to this beta path are rejected.</p>
-                        <pre><code>Base URL: https://llm.wiro.ai/v1/cursor
-API key: YOUR_API_KEY
-Model: openai/gpt-5-6-sol</code></pre>
-                        <p>For a Signature project, enter <code>YOUR_API_KEY:YOUR_API_SECRET</code> as the API key value so the client sends it as a Bearer credential.</p>
+                        <p>Cursor reaches the gateway through its OpenAI base URL override, which it appends <code>/chat/completions</code> to. Point it at the normal <code>/v1</code> base, not the beta Cursor route below.</p>
+                        <ol class="docs-steps">
+                          <li>
+                            <strong>Open model settings</strong> <span>Cursor Settings &rarr; <code>Models</code>.</span>
+                          </li>
+                          <li>
+                            <strong>Override the base URL</strong> <span>Turn on <code>Override OpenAI Base URL</code> and enter <code>https://llm.wiro.ai/v1</code>. Cursor adds <code>/chat/completions</code> itself, so do not append it.</span>
+                          </li>
+                          <li>
+                            <strong>Set the key</strong> <span>Put the project credential in the <code>OpenAI API Key</code> field &mdash; that is the field Cursor uses for the overridden endpoint. <code>YOUR_API_KEY:YOUR_API_SECRET</code> for a Signature project, <code>YOUR_API_KEY</code> alone for API Key Only.</span>
+                          </li>
+                          <li>
+                            <strong>Add the model</strong> <span><code>+ Add Custom Model</code>, then paste the exact lowercase <code>owner/model</code> ID &mdash; <code>openai/gpt-5-6-sol</code>, say &mdash; and enable it.</span>
+                          </li>
+                          <li>
+                            <strong>Disable the built-in models</strong> <span>While the override is on, Cursor sends its own model names to your endpoint too, and those do not exist in the Wiro catalog. Leave only the models you added enabled, or every request fails with an unknown model.</span>
+                          </li>
+                          <li>
+                            <strong>Verify</strong> <span>Press <code>Verify</code>. A failure here is normally the base URL carrying <code>/chat/completions</code>, or a built-in model still switched on.</span>
+                          </li>
+                        </ol>
+                        <p>The override covers the chat and agent panel. Tab autocomplete and inline edit keep using Cursor's own backend whatever you configure here, so they are unaffected either way.</p>
+                        <p>The separate beta route at <code>https://llm.wiro.ai/v1/cursor</code> takes a Responses-shaped body and rejects Chat Completions <code>messages</code>. The Cursor app sends <code>messages</code>, so that route is for clients built against the Responses dialect, not for this setup.</p>
                       </div>
                       <div class="mcp-setup-panel" id="llm-setup-claude-code">
                         <h3>Claude Code</h3>

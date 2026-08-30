@@ -122,19 +122,35 @@ Generic finite-model waits stay on [Run a Model](/docs/run-a-model).
 
 ### Cursor
 
-In a Cursor build or extension that supports a custom OpenAI base URL and sends
-Responses-shaped input at its appended `/chat/completions` path, register the
-exact Wiro model and use the beta Cursor base below. Cursor's proprietary
-transport is not inferred: Chat `messages` sent to this beta path are rejected.
+Cursor reaches the gateway through its OpenAI base URL override, which it
+appends `/chat/completions` to. Point it at the normal `/v1` base, not the beta
+Cursor route below.
 
-```text
-Base URL: https://llm.wiro.ai/v1/cursor
-API key: YOUR_API_KEY
-Model: openai/gpt-5-6-sol
-```
+1. **Open model settings** — Cursor Settings → `Models`.
+2. **Override the base URL** — turn on `Override OpenAI Base URL` and enter
+   `https://llm.wiro.ai/v1`. Cursor adds `/chat/completions` itself, so do not
+   append it.
+3. **Set the key** — put the project credential in the `OpenAI API Key` field;
+   that is the field Cursor uses for the overridden endpoint.
+   `YOUR_API_KEY:YOUR_API_SECRET` for a Signature project, `YOUR_API_KEY` alone
+   for API Key Only.
+4. **Add the model** — `+ Add Custom Model`, then paste the exact lowercase
+   `owner/model` ID — `openai/gpt-5-6-sol`, say — and enable it.
+5. **Disable the built-in models** — while the override is on, Cursor sends its
+   own model names to your endpoint too, and those do not exist in the Wiro
+   catalog. Leave only the models you added enabled, or every request fails with
+   an unknown model.
+6. **Verify** — press `Verify`. A failure here is normally the base URL carrying
+   `/chat/completions`, or a built-in model still switched on.
 
-For a Signature project, enter `YOUR_API_KEY:YOUR_API_SECRET` as the API key
-value so the client sends it as a Bearer credential.
+The override covers the chat and agent panel. Tab autocomplete and inline edit
+keep using Cursor's own backend whatever you configure here, so they are
+unaffected either way.
+
+The separate beta route at `https://llm.wiro.ai/v1/cursor` takes a
+Responses-shaped body and rejects Chat Completions `messages`. The Cursor app
+sends `messages`, so that route is for clients built against the Responses
+dialect, not for this setup.
 
 ### Claude Code
 
