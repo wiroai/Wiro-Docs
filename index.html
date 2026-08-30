@@ -1702,7 +1702,7 @@ data: {
                             <strong>View All Models</strong> <span>The settings pane lists only the models Cursor ships with. <code>View All Models</code>, at the bottom, opens the full list where custom ones live.</span>
                           </li>
                           <li>
-                            <strong>+ Add Custom Model</strong> <span>Type the exact lowercase <code>owner/model</code> ID, prefixed with <code>(Wiro AI)</code> &mdash; the list below is ready to paste. Repeat for each model you want. Cursor shows whatever you type in its picker, so the prefix keeps every Wiro model together there; the gateway reads it and discards it, so <code>(Wiro AI) claude/sonnet-5</code> resolves to <code>claude/sonnet-5</code>. Underneath the label these are the same IDs VS Code takes.</span>
+                            <strong>+ Add Custom Model</strong> <span>Type the exact lowercase <code>owner/model</code> ID &mdash; the same IDs VS Code takes, listed below. Repeat for each model you want. Cursor shows whatever you type in its picker, so a parenthesised label is read and discarded at either end: <code>(Wiro AI) claude/sonnet-5</code> and <code>claude/sonnet-5 (Wiro AI)</code> both resolve to <code>claude/sonnet-5</code>. Leading keeps every Wiro model together in the picker.</span>
                             <figure>
                               <img src="assets/cursor-custom-llm.png" alt="Cursor's custom model list showing four Wiro models, each labelled (Wiro AI), with the Add Custom Model button below them." width="1408" height="524" loading="lazy" decoding="async" />
                             </figure>
@@ -1726,7 +1726,7 @@ data: {
                             <strong>Verify</strong> <span>Press <code>Verify</code>. A failure here is normally the base URL carrying <code>/chat/completions</code>, or a built-in model still switched on.</span>
                           </li>
                         </ol>
-                        <p>Every model the gateway serves today, ready to paste one at a time; drop the <code>(Wiro AI)</code> prefix if you would rather not label them. The same set is in <a href="https://wiro.ai/models?categories=llm-tool-call" class="docs-link">the catalog</a> and behind <a href="#gateway-models" class="docs-link"><code>GET /v1/models</code></a>.</p>
+                        <p>Every model the gateway serves today, labelled and ready to paste one at a time; drop the <code>(Wiro AI)</code> part, or move it to the end, as you prefer. The same set is in <a href="https://wiro.ai/models?categories=llm-tool-call" class="docs-link">the catalog</a> and behind <a href="#gateway-models" class="docs-link"><code>GET /v1/models</code></a>.</p>
                         <pre class="pre-scroll"><code>(Wiro AI) bytedance/seed-v2-1-turbo
 (Wiro AI) bytedance/seed-v2-lite
 (Wiro AI) bytedance/seed-v2-mini
