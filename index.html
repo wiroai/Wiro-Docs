@@ -1713,7 +1713,7 @@ claude</code></pre>
                             <strong>Open the model manager</strong> <span>Command Palette (<code>Cmd+Shift+P</code>, <code>Ctrl+Shift+P</code> on Windows) &rarr; <code>Chat: Manage Language Models</code>.</span>
                           </li>
                           <li>
-                            <strong>Add a provider</strong> <span><strong>+ Add Models</strong> opens a provider list &mdash; Anthropic, Azure, Google, OpenAI, OpenRouter, xAI, Ollama. Pick <strong>Custom Endpoint</strong>, last, below the separator.</span>
+                            <strong>Add a provider</strong> <span><code>+ Add Models</code> opens a provider list &mdash; Anthropic, Azure, Google, OpenAI, OpenRouter, xAI, Ollama. Pick <code>Custom Endpoint</code>, last, below the separator.</span>
                           </li>
                           <li>
                             <strong>Group Name</strong> <span>Arrives pre-filled with &ldquo;Custom Endpoint&rdquo;; replace it with <code>Wiro AI</code>. It is a label &mdash; it titles the next two prompts and groups the models in the picker.</span>
@@ -1722,10 +1722,10 @@ claude</code></pre>
                             <strong>API Key</strong> <span><code>YOUR_API_KEY:YOUR_API_SECRET</code> for a Signature project, <code>YOUR_API_KEY</code> alone for API Key Only. VS Code keeps it in its secret store; the file holds only a <code>${input:&hellip;}</code> reference.</span>
                           </li>
                           <li>
-                            <strong>API Type</strong> <span>Choose <strong>Chat Completions</strong>. Responses and Messages change the request shape VS Code sends.</span>
+                            <strong>API Type</strong> <span>Choose <code>Chat Completions</code>. Responses and Messages change the request shape VS Code sends.</span>
                           </li>
                           <li>
-                            <strong>Describe the models</strong> <span>VS Code opens <code>chatLanguageModels.json</code> with one empty model. Leave <code>name</code>, <code>vendor</code>, <code>apiKey</code> and <code>apiType</code> as generated and fill the <code>models</code> array.</span>
+                            <strong>Describe the models</strong> <span>VS Code opens <code>chatLanguageModels.json</code> with one empty model. Leave <code>name</code>, <code>vendor</code>, <code>apiKey</code> and <code>apiType</code> as generated and fill the <code>models</code> array. Below is every model the gateway serves today, ready to paste; the same set is in <a href="https://wiro.ai/models?categories=llm-tool-call" class="docs-link">the catalog</a> and behind <a href="#gateway-models" class="docs-link"><code>GET /v1/models</code></a>.</span>
                           </li>
                         </ol>
                         <pre><code>[
@@ -1736,30 +1736,30 @@ claude</code></pre>
     "apiType": "chat-completions",
     "models": [
       {
-        "id": "openai/gpt-5-6-sol",
-        "name": "GPT 5.6 Sol (Wiro)",
+        "id": "bytedance/seed-v2-1-turbo",
+        "name": "Seed V2 1 Turbo (Wiro)",
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
-        "maxInputTokens": 1050000,
+        "maxInputTokens": 256000,
         "maxOutputTokens": 65536
       },
       {
-        "id": "claude/sonnet-5",
-        "name": "Claude Sonnet 5 (Wiro)",
+        "id": "bytedance/seed-v2-lite",
+        "name": "Seed V2 Lite (Wiro)",
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
-        "maxInputTokens": 1000000,
-        "maxOutputTokens": 128000
+        "maxInputTokens": 256000,
+        "maxOutputTokens": 65536
       },
       {
-        "id": "xai/grok-4-5",
-        "name": "Grok 4.5 (Wiro)",
+        "id": "bytedance/seed-v2-mini",
+        "name": "Seed V2 Mini (Wiro)",
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
-        "maxInputTokens": 500000,
+        "maxInputTokens": 256000,
         "maxOutputTokens": 65536
       },
       {
@@ -1769,6 +1769,150 @@ claude</code></pre>
         "toolCalling": true,
         "vision": true,
         "maxInputTokens": 256000,
+        "maxOutputTokens": 65536
+      },
+      {
+        "id": "claude/fable-5",
+        "name": "Fable 5 (Wiro)",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1000000,
+        "maxOutputTokens": 128000
+      },
+      {
+        "id": "claude/opus-5",
+        "name": "Opus 5 (Wiro)",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1000000,
+        "maxOutputTokens": 128000
+      },
+      {
+        "id": "claude/sonnet-5",
+        "name": "Sonnet 5 (Wiro)",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1000000,
+        "maxOutputTokens": 128000
+      },
+      {
+        "id": "openai/gpt-5-2",
+        "name": "Gpt 5 2 (Wiro)",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 400000,
+        "maxOutputTokens": 65536
+      },
+      {
+        "id": "openai/gpt-5-4",
+        "name": "Gpt 5 4 (Wiro)",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1050000,
+        "maxOutputTokens": 65536
+      },
+      {
+        "id": "openai/gpt-5-4-mini",
+        "name": "Gpt 5 4 Mini (Wiro)",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 400000,
+        "maxOutputTokens": 65536
+      },
+      {
+        "id": "openai/gpt-5-4-nano",
+        "name": "Gpt 5 4 Nano (Wiro)",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 400000,
+        "maxOutputTokens": 65536
+      },
+      {
+        "id": "openai/gpt-5-5",
+        "name": "Gpt 5 5 (Wiro)",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1050000,
+        "maxOutputTokens": 65536
+      },
+      {
+        "id": "openai/gpt-5-6-luna",
+        "name": "Gpt 5 6 Luna (Wiro)",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1050000,
+        "maxOutputTokens": 65536
+      },
+      {
+        "id": "openai/gpt-5-6-sol",
+        "name": "Gpt 5 6 Sol (Wiro)",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1050000,
+        "maxOutputTokens": 65536
+      },
+      {
+        "id": "openai/gpt-5-6-terra",
+        "name": "Gpt 5 6 Terra (Wiro)",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1050000,
+        "maxOutputTokens": 65536
+      },
+      {
+        "id": "openai/gpt-5-mini",
+        "name": "Gpt 5 Mini (Wiro)",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 400000,
+        "maxOutputTokens": 65536
+      },
+      {
+        "id": "openai/gpt-5-nano",
+        "name": "Gpt 5 Nano (Wiro)",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 400000,
+        "maxOutputTokens": 65536
+      },
+      {
+        "id": "xai/grok-4-1-fast",
+        "name": "Grok 4 1 Fast (Wiro)",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 2000000,
+        "maxOutputTokens": 65536
+      },
+      {
+        "id": "xai/grok-4-20",
+        "name": "Grok 4 20 (Wiro)",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 2000000,
+        "maxOutputTokens": 65536
+      },
+      {
+        "id": "xai/grok-4-5",
+        "name": "Grok 4 5 (Wiro)",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 500000,
         "maxOutputTokens": 65536
       }
     ]
