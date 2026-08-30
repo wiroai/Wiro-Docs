@@ -103,6 +103,161 @@ the protocol's normal client-history requirements. Responses uses
 `previous_response_id` instead, and `/v1/messages/count_tokens` does not accept
 `session_id`.
 
+## Connect an agent
+
+Point a compatible client at `llm.wiro.ai`. Discover the exact lowercase
+`owner/model` ID first. OpenAI-compatible clients use a project Bearer
+credential. Anthropic-compatible clients put the same project credential in
+`x-api-key`: `YOUR_API_KEY` for API Key Only or
+`YOUR_API_KEY:YOUR_API_SECRET` for Signature.
+Generic finite-model waits stay on [Run a Model](/docs/run-a-model).
+
+### Cursor
+
+In a Cursor build or extension that supports a custom OpenAI base URL and sends
+Responses-shaped input at its appended `/chat/completions` path, register the
+exact Wiro model and use the beta Cursor base below. Cursor's proprietary
+transport is not inferred: Chat `messages` sent to this beta path are rejected.
+
+```text
+Base URL: https://llm.wiro.ai/v1/cursor
+API key: YOUR_API_KEY
+Model: openai/gpt-5-6-sol
+```
+
+For a Signature project, enter `YOUR_API_KEY:YOUR_API_SECRET` as the API key
+value so the client sends it as a Bearer credential.
+
+### Claude Code
+
+Claude Code and official Anthropic SDKs use origin `https://llm.wiro.ai`
+because they append `/v1/messages`. Both project types use
+`ANTHROPIC_API_KEY`; Signature projects set it to the full
+`YOUR_API_KEY:YOUR_API_SECRET` pair.
+
+```bash
+ANTHROPIC_BASE_URL="https://llm.wiro.ai" \
+ANTHROPIC_API_KEY="YOUR_API_KEY:YOUR_API_SECRET" \
+ANTHROPIC_MODEL="claude/sonnet-5" \
+CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY=1 \
+claude
+```
+
+### Windsurf
+
+Windsurf Cascade has no native arbitrary-provider registration in this
+release. A setup is in scope only through a tested extension or client that
+can set a custom OpenAI base URL to `https://llm.wiro.ai/v1` for
+`/chat/completions` or `/responses`. Do not describe this as native Cascade
+support.
+
+### VS Code
+
+VS Code Chat registers Wiro as a custom endpoint. Open the Command Palette,
+run **Chat: Manage Language Models**, then **Add Models**. A provider list
+opens — Anthropic, Azure, Google, OpenAI, OpenRouter, xAI, Ollama — with
+**Custom Endpoint** last, below the separator. Pick it and answer the three
+prompts:
+
+```
+Group Name: Wiro AI
+API Key:    YOUR_API_KEY:YOUR_API_SECRET
+API Type:   Chat Completions
+```
+
+**Group Name** arrives pre-filled with "Custom Endpoint" and is only a label —
+it titles the two prompts that follow and heads the group in the model picker,
+so give it something readable like `Wiro AI`. Nothing here asks for a base URL:
+every model carries its own full endpoint in the JSON below.
+
+A Signature project sends `YOUR_API_KEY:YOUR_API_SECRET` in the API Key
+prompt; an API Key Only project sends just `YOUR_API_KEY`. Choose **Chat
+Completions** as the API type — the Responses and Messages options change the
+request shape VS Code sends.
+
+VS Code then opens `chatLanguageModels.json` with one empty model for you to
+fill in. Leave the generated `name`, `vendor`, `apiKey` and `apiType` alone and
+describe the models you want. Each entry needs the full endpoint in `url`, not
+the base:
+
+```json
+[
+  {
+    "name": "Wiro AI",
+    "vendor": "customendpoint",
+    "apiKey": "${input:chat.lm.secret.xxxxxxxx}",
+    "apiType": "chat-completions",
+    "models": [
+      {
+        "id": "openai/gpt-5-6-sol",
+        "name": "GPT 5.6 Sol (Wiro)",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1050000,
+        "maxOutputTokens": 65536
+      },
+      {
+        "id": "claude/sonnet-5",
+        "name": "Claude Sonnet 5 (Wiro)",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1000000,
+        "maxOutputTokens": 128000
+      }
+    ]
+  }
+]
+```
+
+`id` is the lowercase `owner/model` from `GET /v1/models`; `name` is only the
+label shown in the model picker. Do not guess the rest —
+`GET /v1/models/{owner}/{model}` reports each model's real limits, so read
+`capabilities.function_tools` for `toolCalling`,
+`capabilities.input_modalities` for `vision`, and `max_input_tokens` /
+`max_tokens` for the two token fields. Save the file and reopen the model
+picker; the entries appear under the endpoint's name.
+
+Any other VS Code extension that accepts a custom OpenAI base URL — Cline, Roo
+Code, Continue — works the same way: point it at `https://llm.wiro.ai/v1` with
+the same credential and a model ID from the catalog.
+
+### OpenClaw
+
+Use the model-declared transport after reading
+`GET /v1/models/{owner}/{model}`: `openai-completions`, `openai-responses`, or
+`anthropic-messages`. OpenAI transports use the `/v1` base; Anthropic uses the
+origin.
+
+```json
+{
+  "models": {
+    "providers": {
+      "wiro": {
+        "baseUrl": "https://llm.wiro.ai/v1",
+        "apiKey": "${WIRO_BEARER_CREDENTIAL}",
+        "api": "openai-completions",
+        "models": [{ "id": "openai/gpt-5-6-sol", "name": "GPT 5.6 Sol" }]
+      }
+    }
+  }
+}
+```
+
+### Hermes
+
+Hermes function-calling clients, Cline, Roo Code, and Continue can use OpenAI
+Chat when they accept a custom base URL. Optional tools, reasoning, and
+modalities still follow the selected model's metadata.
+
+```yaml
+providers:
+  wiro:
+    base_url: "https://llm.wiro.ai/v1"
+    api_key: "${WIRO_BEARER_CREDENTIAL}"
+```
+
 ## Discover models and capabilities
 
 ### **GET** /v1/models
@@ -875,161 +1030,6 @@ and foreign IDs all return `generation_not_found`. This endpoint is terminal
 observability metadata, not task output: it does not return a Wiro task ID,
 generated content, or continuation state. Read generated content from the
 original protocol JSON or SSE response.
-
-## Connect an agent
-
-Point a compatible client at `llm.wiro.ai`. Discover the exact lowercase
-`owner/model` ID first. OpenAI-compatible clients use a project Bearer
-credential. Anthropic-compatible clients put the same project credential in
-`x-api-key`: `YOUR_API_KEY` for API Key Only or
-`YOUR_API_KEY:YOUR_API_SECRET` for Signature.
-Generic finite-model waits stay on [Run a Model](/docs/run-a-model).
-
-### Cursor
-
-In a Cursor build or extension that supports a custom OpenAI base URL and sends
-Responses-shaped input at its appended `/chat/completions` path, register the
-exact Wiro model and use the beta Cursor base below. Cursor's proprietary
-transport is not inferred: Chat `messages` sent to this beta path are rejected.
-
-```text
-Base URL: https://llm.wiro.ai/v1/cursor
-API key: YOUR_API_KEY
-Model: openai/gpt-5-6-sol
-```
-
-For a Signature project, enter `YOUR_API_KEY:YOUR_API_SECRET` as the API key
-value so the client sends it as a Bearer credential.
-
-### Claude Code
-
-Claude Code and official Anthropic SDKs use origin `https://llm.wiro.ai`
-because they append `/v1/messages`. Both project types use
-`ANTHROPIC_API_KEY`; Signature projects set it to the full
-`YOUR_API_KEY:YOUR_API_SECRET` pair.
-
-```bash
-ANTHROPIC_BASE_URL="https://llm.wiro.ai" \
-ANTHROPIC_API_KEY="YOUR_API_KEY:YOUR_API_SECRET" \
-ANTHROPIC_MODEL="claude/sonnet-5" \
-CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY=1 \
-claude
-```
-
-### Windsurf
-
-Windsurf Cascade has no native arbitrary-provider registration in this
-release. A setup is in scope only through a tested extension or client that
-can set a custom OpenAI base URL to `https://llm.wiro.ai/v1` for
-`/chat/completions` or `/responses`. Do not describe this as native Cascade
-support.
-
-### VS Code
-
-VS Code Chat registers Wiro as a custom endpoint. Open the Command Palette,
-run **Chat: Manage Language Models**, then **Add Models**. A provider list
-opens — Anthropic, Azure, Google, OpenAI, OpenRouter, xAI, Ollama — with
-**Custom Endpoint** last, below the separator. Pick it and answer the three
-prompts:
-
-```
-Group Name: Wiro AI
-API Key:    YOUR_API_KEY:YOUR_API_SECRET
-API Type:   Chat Completions
-```
-
-**Group Name** arrives pre-filled with "Custom Endpoint" and is only a label —
-it titles the two prompts that follow and heads the group in the model picker,
-so give it something readable like `Wiro AI`. Nothing here asks for a base URL:
-every model carries its own full endpoint in the JSON below.
-
-A Signature project sends `YOUR_API_KEY:YOUR_API_SECRET` in the API Key
-prompt; an API Key Only project sends just `YOUR_API_KEY`. Choose **Chat
-Completions** as the API type — the Responses and Messages options change the
-request shape VS Code sends.
-
-VS Code then opens `chatLanguageModels.json` with one empty model for you to
-fill in. Leave the generated `name`, `vendor`, `apiKey` and `apiType` alone and
-describe the models you want. Each entry needs the full endpoint in `url`, not
-the base:
-
-```json
-[
-  {
-    "name": "Wiro AI",
-    "vendor": "customendpoint",
-    "apiKey": "${input:chat.lm.secret.xxxxxxxx}",
-    "apiType": "chat-completions",
-    "models": [
-      {
-        "id": "openai/gpt-5-6-sol",
-        "name": "GPT 5.6 Sol (Wiro)",
-        "url": "https://llm.wiro.ai/v1/chat/completions",
-        "toolCalling": true,
-        "vision": true,
-        "maxInputTokens": 1050000,
-        "maxOutputTokens": 65536
-      },
-      {
-        "id": "claude/sonnet-5",
-        "name": "Claude Sonnet 5 (Wiro)",
-        "url": "https://llm.wiro.ai/v1/chat/completions",
-        "toolCalling": true,
-        "vision": true,
-        "maxInputTokens": 1000000,
-        "maxOutputTokens": 128000
-      }
-    ]
-  }
-]
-```
-
-`id` is the lowercase `owner/model` from `GET /v1/models`; `name` is only the
-label shown in the model picker. Do not guess the rest —
-`GET /v1/models/{owner}/{model}` reports each model's real limits, so read
-`capabilities.function_tools` for `toolCalling`,
-`capabilities.input_modalities` for `vision`, and `max_input_tokens` /
-`max_tokens` for the two token fields. Save the file and reopen the model
-picker; the entries appear under the endpoint's name.
-
-Any other VS Code extension that accepts a custom OpenAI base URL — Cline, Roo
-Code, Continue — works the same way: point it at `https://llm.wiro.ai/v1` with
-the same credential and a model ID from the catalog.
-
-### OpenClaw
-
-Use the model-declared transport after reading
-`GET /v1/models/{owner}/{model}`: `openai-completions`, `openai-responses`, or
-`anthropic-messages`. OpenAI transports use the `/v1` base; Anthropic uses the
-origin.
-
-```json
-{
-  "models": {
-    "providers": {
-      "wiro": {
-        "baseUrl": "https://llm.wiro.ai/v1",
-        "apiKey": "${WIRO_BEARER_CREDENTIAL}",
-        "api": "openai-completions",
-        "models": [{ "id": "openai/gpt-5-6-sol", "name": "GPT 5.6 Sol" }]
-      }
-    }
-  }
-}
-```
-
-### Hermes
-
-Hermes function-calling clients, Cline, Roo Code, and Continue can use OpenAI
-Chat when they accept a custom base URL. Optional tools, reasoning, and
-modalities still follow the selected model's metadata.
-
-```yaml
-providers:
-  wiro:
-    base_url: "https://llm.wiro.ai/v1"
-    api_key: "${WIRO_BEARER_CREDENTIAL}"
-```
 
 ## Deliberate boundaries
 

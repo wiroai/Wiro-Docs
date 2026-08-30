@@ -1650,6 +1650,123 @@ data: {
                     <p><code>session_id</code> is the only public session field. It is optional on Chat Completions, Anthropic Messages, and the beta Cursor route, and must contain 1–128 letters, digits, <code>.</code>, <code>_</code>, <code>:</code>, or <code>-</code>. Reuse the same value for related turns. Wiro maps it to a project-scoped internal session; it does not replace the protocol's normal client-history requirements. Responses uses <code>previous_response_id</code> instead, and <code>/v1/messages/count_tokens</code> does not accept <code>session_id</code>.</p>
                   </section>
 
+                  <section id="gateway-clients">
+                    <h2>Connect an agent</h2>
+                    <p>Point a compatible client at <code>llm.wiro.ai</code>. Discover the exact lowercase <code>owner/model</code> ID first. Use a project Bearer credential: API Key Only projects send <code>YOUR_API_KEY</code>; Signature projects send <code>YOUR_API_KEY:YOUR_API_SECRET</code>. Generic finite-model waits stay on <a href="/docs/run-a-model" class="docs-link">Run a Model /sync</a>.</p>
+                    <div class="mcp-client-grid" data-toggle-group="llm-setup">
+                      <a href="/docs/completions-api#llm-setup-cursor" class="mcp-client-card is-active" data-toggle-target="llm-setup-cursor">
+                        <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-cursor"></use></svg>
+                        <strong>Cursor</strong>
+                      </a>
+                      <a href="/docs/completions-api#llm-setup-claude-code" class="mcp-client-card" data-toggle-target="llm-setup-claude-code">
+                        <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-claude"></use></svg>
+                        <strong>Claude Code</strong>
+                      </a>
+                      <a href="/docs/completions-api#llm-setup-vscode" class="mcp-client-card" data-toggle-target="llm-setup-vscode">
+                        <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-vscode"></use></svg>
+                        <strong>VS Code</strong>
+                      </a>
+                      <a href="/docs/completions-api#llm-setup-windsurf" class="mcp-client-card" data-toggle-target="llm-setup-windsurf">
+                        <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-windsurf"></use></svg>
+                        <strong>Windsurf</strong>
+                      </a>
+                      <a href="/docs/completions-api#llm-setup-openclaw" class="mcp-client-card" data-toggle-target="llm-setup-openclaw">
+                        <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-openclaw"></use></svg>
+                        <strong>OpenClaw</strong>
+                      </a>
+                      <a href="/docs/completions-api#llm-setup-hermes" class="mcp-client-card" data-toggle-target="llm-setup-hermes">
+                        <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-hermes"></use></svg>
+                        <strong>Hermes</strong>
+                      </a>
+                    </div>
+                    <div class="mcp-setup-panels" data-toggle-panels="llm-setup">
+                      <div class="mcp-setup-panel is-visible" id="llm-setup-cursor">
+                        <h3>Cursor</h3>
+                        <p>In a Cursor build or extension that supports a custom OpenAI base URL and sends Responses-shaped input at its appended <code>/chat/completions</code> path, register the exact Wiro model and use the beta Cursor base below. Cursor's proprietary transport is not inferred: Chat <code>messages</code> sent to this beta path are rejected.</p>
+                        <pre><code>Base URL: https://llm.wiro.ai/v1/cursor
+API key: YOUR_API_KEY
+Model: openai/gpt-5-6-sol</code></pre>
+                        <p>For a Signature project, enter <code>YOUR_API_KEY:YOUR_API_SECRET</code> as the API key value so the client sends it as a Bearer credential.</p>
+                      </div>
+                      <div class="mcp-setup-panel" id="llm-setup-claude-code">
+                        <h3>Claude Code</h3>
+                        <p>Claude Code and official Anthropic SDKs use origin <code>https://llm.wiro.ai</code> because they append <code>/v1/messages</code>. Set <code>ANTHROPIC_API_KEY</code> to the full project credential for either project type.</p>
+                        <pre><code>ANTHROPIC_BASE_URL="https://llm.wiro.ai" \
+ANTHROPIC_API_KEY="YOUR_API_KEY:YOUR_API_SECRET" \
+ANTHROPIC_MODEL="claude/sonnet-5" \
+CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY=1 \
+claude</code></pre>
+                      </div>
+                      <div class="mcp-setup-panel" id="llm-setup-vscode">
+                        <h3>VS Code</h3>
+                        <p>VS Code Chat registers Wiro as a custom endpoint. Open the Command Palette, run <strong>Chat: Manage Language Models</strong>, then <strong>Add Models</strong>. A provider list opens &mdash; Anthropic, Azure, Google, OpenAI, OpenRouter, xAI, Ollama &mdash; with <strong>Custom Endpoint</strong> last, below the separator. Pick it and answer the three prompts:</p>
+                        <pre><code>Group Name: Wiro AI
+API Key:    YOUR_API_KEY:YOUR_API_SECRET
+API Type:   Chat Completions</code></pre>
+                        <p><strong>Group Name</strong> arrives pre-filled with &ldquo;Custom Endpoint&rdquo; and is only a label &mdash; it titles the two prompts that follow and heads the group in the model picker, so give it something readable like <code>Wiro AI</code>. Nothing here asks for a base URL: every model carries its own full endpoint in the JSON below. A Signature project sends <code>YOUR_API_KEY:YOUR_API_SECRET</code> in the API Key prompt; an API Key Only project sends just <code>YOUR_API_KEY</code>. Choose <strong>Chat Completions</strong> as the API type — the Responses and Messages options change the request shape VS Code sends.</p>
+                        <p>VS Code then opens <code>chatLanguageModels.json</code> with one empty model for you to fill in. Leave the generated <code>name</code>, <code>vendor</code>, <code>apiKey</code> and <code>apiType</code> alone and describe the models you want. Each entry needs the full endpoint in <code>url</code>, not the base:</p>
+                        <pre><code>[
+  {
+    "name": "Wiro AI",
+    "vendor": "customendpoint",
+    "apiKey": "${input:chat.lm.secret.xxxxxxxx}",
+    "apiType": "chat-completions",
+    "models": [
+      {
+        "id": "openai/gpt-5-6-sol",
+        "name": "GPT 5.6 Sol (Wiro)",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1050000,
+        "maxOutputTokens": 65536
+      },
+      {
+        "id": "claude/sonnet-5",
+        "name": "Claude Sonnet 5 (Wiro)",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1000000,
+        "maxOutputTokens": 128000
+      }
+    ]
+  }
+]</code></pre>
+                        <p><code>id</code> is the lowercase <code>owner/model</code> from <code>GET /v1/models</code>; <code>name</code> is only the label shown in the model picker. Do not guess the rest &mdash; <code>GET /v1/models/{owner}/{model}</code> reports each model's real limits, so read <code>capabilities.function_tools</code> for <code>toolCalling</code>, <code>capabilities.input_modalities</code> for <code>vision</code>, and <code>max_input_tokens</code> / <code>max_tokens</code> for the two token fields. Save the file and reopen the model picker; the entries appear under the endpoint's name.</p>
+                        <p>Any other VS Code extension that accepts a custom OpenAI base URL works the same way: point it at <code>https://llm.wiro.ai/v1</code> with the same credential and a model ID from the catalog.</p>
+                      </div>
+                      <div class="mcp-setup-panel" id="llm-setup-windsurf">
+                        <h3>Windsurf</h3>
+                        <p>Windsurf Cascade has no native arbitrary-provider registration in this release. A setup is in scope only through a tested extension or client that can set a custom OpenAI base URL to <code>https://llm.wiro.ai/v1</code> for <code>/chat/completions</code> or <code>/responses</code>. Do not describe this as native Cascade support.</p>
+                      </div>
+                      <div class="mcp-setup-panel" id="llm-setup-openclaw">
+                        <h3>OpenClaw</h3>
+                        <p>Use the model-declared transport after reading <code>GET /v1/models/{owner}/{model}</code>: <code>openai-completions</code>, <code>openai-responses</code>, or <code>anthropic-messages</code>. OpenAI transports use the <code>/v1</code> base; Anthropic uses the origin.</p>
+                        <pre><code>{
+  "models": {
+    "providers": {
+      "wiro": {
+        "baseUrl": "https://llm.wiro.ai/v1",
+        "apiKey": "${WIRO_BEARER_CREDENTIAL}",
+        "api": "openai-completions",
+        "models": [{ "id": "openai/gpt-5-6-sol", "name": "GPT 5.6 Sol" }]
+      }
+    }
+  }
+}</code></pre>
+                      </div>
+                      <div class="mcp-setup-panel" id="llm-setup-hermes">
+                        <h3>Hermes</h3>
+                        <p>Hermes function-calling clients, Cline, Roo Code, and Continue can use OpenAI Chat when they accept a custom base URL. Optional tools, reasoning, and modalities still follow the selected model's metadata.</p>
+                        <pre><code>providers:
+  wiro:
+    base_url: "https://llm.wiro.ai/v1"
+    api_key: "${WIRO_BEARER_CREDENTIAL}"</code></pre>
+                      </div>
+                    </div>
+                  </section>
+
                   <section id="gateway-models">
                     <h2>Discover models and capabilities</h2>
                     <h3><span class="endpoint-badge get">GET</span> /v1/models</h3>
@@ -2089,123 +2206,6 @@ claude</code></pre>
                     </ul>
                     <p><code>usage</code> is <code>null</code> when no valid counters were recorded. <code>upstream_metered_cost</code> and <code>upstream_elapsed_seconds</code> are finite upstream task counters when available, otherwise <code>null</code>; cost is not duplicated inside metadata <code>usage</code>.</p>
                     <p>Only the owning authenticated project can read a generation. Missing, expired, and foreign IDs all return <code>generation_not_found</code>. This endpoint is terminal observability metadata, not task output: it does not return a Wiro task ID, generated content, or continuation state. Read generated content from the original protocol JSON or SSE response.</p>
-                  </section>
-
-                  <section id="gateway-clients">
-                    <h2>Connect an agent</h2>
-                    <p>Point a compatible client at <code>llm.wiro.ai</code>. Discover the exact lowercase <code>owner/model</code> ID first. Use a project Bearer credential: API Key Only projects send <code>YOUR_API_KEY</code>; Signature projects send <code>YOUR_API_KEY:YOUR_API_SECRET</code>. Generic finite-model waits stay on <a href="/docs/run-a-model" class="docs-link">Run a Model /sync</a>.</p>
-                    <div class="mcp-client-grid" data-toggle-group="llm-setup">
-                      <a href="/docs/completions-api#llm-setup-cursor" class="mcp-client-card is-active" data-toggle-target="llm-setup-cursor">
-                        <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-cursor"></use></svg>
-                        <strong>Cursor</strong>
-                      </a>
-                      <a href="/docs/completions-api#llm-setup-claude-code" class="mcp-client-card" data-toggle-target="llm-setup-claude-code">
-                        <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-claude"></use></svg>
-                        <strong>Claude Code</strong>
-                      </a>
-                      <a href="/docs/completions-api#llm-setup-vscode" class="mcp-client-card" data-toggle-target="llm-setup-vscode">
-                        <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-vscode"></use></svg>
-                        <strong>VS Code</strong>
-                      </a>
-                      <a href="/docs/completions-api#llm-setup-windsurf" class="mcp-client-card" data-toggle-target="llm-setup-windsurf">
-                        <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-windsurf"></use></svg>
-                        <strong>Windsurf</strong>
-                      </a>
-                      <a href="/docs/completions-api#llm-setup-openclaw" class="mcp-client-card" data-toggle-target="llm-setup-openclaw">
-                        <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-openclaw"></use></svg>
-                        <strong>OpenClaw</strong>
-                      </a>
-                      <a href="/docs/completions-api#llm-setup-hermes" class="mcp-client-card" data-toggle-target="llm-setup-hermes">
-                        <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-hermes"></use></svg>
-                        <strong>Hermes</strong>
-                      </a>
-                    </div>
-                    <div class="mcp-setup-panels" data-toggle-panels="llm-setup">
-                      <div class="mcp-setup-panel is-visible" id="llm-setup-cursor">
-                        <h3>Cursor</h3>
-                        <p>In a Cursor build or extension that supports a custom OpenAI base URL and sends Responses-shaped input at its appended <code>/chat/completions</code> path, register the exact Wiro model and use the beta Cursor base below. Cursor's proprietary transport is not inferred: Chat <code>messages</code> sent to this beta path are rejected.</p>
-                        <pre><code>Base URL: https://llm.wiro.ai/v1/cursor
-API key: YOUR_API_KEY
-Model: openai/gpt-5-6-sol</code></pre>
-                        <p>For a Signature project, enter <code>YOUR_API_KEY:YOUR_API_SECRET</code> as the API key value so the client sends it as a Bearer credential.</p>
-                      </div>
-                      <div class="mcp-setup-panel" id="llm-setup-claude-code">
-                        <h3>Claude Code</h3>
-                        <p>Claude Code and official Anthropic SDKs use origin <code>https://llm.wiro.ai</code> because they append <code>/v1/messages</code>. Set <code>ANTHROPIC_API_KEY</code> to the full project credential for either project type.</p>
-                        <pre><code>ANTHROPIC_BASE_URL="https://llm.wiro.ai" \
-ANTHROPIC_API_KEY="YOUR_API_KEY:YOUR_API_SECRET" \
-ANTHROPIC_MODEL="claude/sonnet-5" \
-CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY=1 \
-claude</code></pre>
-                      </div>
-                      <div class="mcp-setup-panel" id="llm-setup-vscode">
-                        <h3>VS Code</h3>
-                        <p>VS Code Chat registers Wiro as a custom endpoint. Open the Command Palette, run <strong>Chat: Manage Language Models</strong>, then <strong>Add Models</strong>. A provider list opens &mdash; Anthropic, Azure, Google, OpenAI, OpenRouter, xAI, Ollama &mdash; with <strong>Custom Endpoint</strong> last, below the separator. Pick it and answer the three prompts:</p>
-                        <pre><code>Group Name: Wiro AI
-API Key:    YOUR_API_KEY:YOUR_API_SECRET
-API Type:   Chat Completions</code></pre>
-                        <p><strong>Group Name</strong> arrives pre-filled with &ldquo;Custom Endpoint&rdquo; and is only a label &mdash; it titles the two prompts that follow and heads the group in the model picker, so give it something readable like <code>Wiro AI</code>. Nothing here asks for a base URL: every model carries its own full endpoint in the JSON below. A Signature project sends <code>YOUR_API_KEY:YOUR_API_SECRET</code> in the API Key prompt; an API Key Only project sends just <code>YOUR_API_KEY</code>. Choose <strong>Chat Completions</strong> as the API type — the Responses and Messages options change the request shape VS Code sends.</p>
-                        <p>VS Code then opens <code>chatLanguageModels.json</code> with one empty model for you to fill in. Leave the generated <code>name</code>, <code>vendor</code>, <code>apiKey</code> and <code>apiType</code> alone and describe the models you want. Each entry needs the full endpoint in <code>url</code>, not the base:</p>
-                        <pre><code>[
-  {
-    "name": "Wiro AI",
-    "vendor": "customendpoint",
-    "apiKey": "${input:chat.lm.secret.xxxxxxxx}",
-    "apiType": "chat-completions",
-    "models": [
-      {
-        "id": "openai/gpt-5-6-sol",
-        "name": "GPT 5.6 Sol (Wiro)",
-        "url": "https://llm.wiro.ai/v1/chat/completions",
-        "toolCalling": true,
-        "vision": true,
-        "maxInputTokens": 1050000,
-        "maxOutputTokens": 65536
-      },
-      {
-        "id": "claude/sonnet-5",
-        "name": "Claude Sonnet 5 (Wiro)",
-        "url": "https://llm.wiro.ai/v1/chat/completions",
-        "toolCalling": true,
-        "vision": true,
-        "maxInputTokens": 1000000,
-        "maxOutputTokens": 128000
-      }
-    ]
-  }
-]</code></pre>
-                        <p><code>id</code> is the lowercase <code>owner/model</code> from <code>GET /v1/models</code>; <code>name</code> is only the label shown in the model picker. Do not guess the rest &mdash; <code>GET /v1/models/{owner}/{model}</code> reports each model's real limits, so read <code>capabilities.function_tools</code> for <code>toolCalling</code>, <code>capabilities.input_modalities</code> for <code>vision</code>, and <code>max_input_tokens</code> / <code>max_tokens</code> for the two token fields. Save the file and reopen the model picker; the entries appear under the endpoint's name.</p>
-                        <p>Any other VS Code extension that accepts a custom OpenAI base URL works the same way: point it at <code>https://llm.wiro.ai/v1</code> with the same credential and a model ID from the catalog.</p>
-                      </div>
-                      <div class="mcp-setup-panel" id="llm-setup-windsurf">
-                        <h3>Windsurf</h3>
-                        <p>Windsurf Cascade has no native arbitrary-provider registration in this release. A setup is in scope only through a tested extension or client that can set a custom OpenAI base URL to <code>https://llm.wiro.ai/v1</code> for <code>/chat/completions</code> or <code>/responses</code>. Do not describe this as native Cascade support.</p>
-                      </div>
-                      <div class="mcp-setup-panel" id="llm-setup-openclaw">
-                        <h3>OpenClaw</h3>
-                        <p>Use the model-declared transport after reading <code>GET /v1/models/{owner}/{model}</code>: <code>openai-completions</code>, <code>openai-responses</code>, or <code>anthropic-messages</code>. OpenAI transports use the <code>/v1</code> base; Anthropic uses the origin.</p>
-                        <pre><code>{
-  "models": {
-    "providers": {
-      "wiro": {
-        "baseUrl": "https://llm.wiro.ai/v1",
-        "apiKey": "${WIRO_BEARER_CREDENTIAL}",
-        "api": "openai-completions",
-        "models": [{ "id": "openai/gpt-5-6-sol", "name": "GPT 5.6 Sol" }]
-      }
-    }
-  }
-}</code></pre>
-                      </div>
-                      <div class="mcp-setup-panel" id="llm-setup-hermes">
-                        <h3>Hermes</h3>
-                        <p>Hermes function-calling clients, Cline, Roo Code, and Continue can use OpenAI Chat when they accept a custom base URL. Optional tools, reasoning, and modalities still follow the selected model's metadata.</p>
-                        <pre><code>providers:
-  wiro:
-    base_url: "https://llm.wiro.ai/v1"
-    api_key: "${WIRO_BEARER_CREDENTIAL}"</code></pre>
-                      </div>
-                    </div>
                   </section>
 
                   <section id="gateway-boundaries">
