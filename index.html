@@ -2140,15 +2140,15 @@ claude</code></pre>
                       </div>
                       <div class="mcp-setup-panel" id="llm-setup-vscode">
                         <h3>VS Code</h3>
-                        <p>VS Code Chat registers Wiro as a custom endpoint. Open the Command Palette, run <strong>Chat: Manage Language Models</strong>, then <strong>Add Models &rarr; Custom Endpoint</strong> and answer the three prompts:</p>
-                        <pre><code>Group Name: https://llm.wiro.ai/v1
+                        <p>VS Code Chat registers Wiro as a custom endpoint. Open the Command Palette, run <strong>Chat: Manage Language Models</strong>, then <strong>Add Models</strong>. A provider list opens &mdash; Anthropic, Azure, Google, OpenAI, OpenRouter, xAI, Ollama &mdash; with <strong>Custom Endpoint</strong> last, below the separator. Pick it and answer the three prompts:</p>
+                        <pre><code>Group Name: Wiro AI
 API Key:    YOUR_API_KEY:YOUR_API_SECRET
 API Type:   Chat Completions</code></pre>
-                        <p><strong>Group Name</strong> arrives pre-filled with &ldquo;Custom Endpoint&rdquo; and is only a label: there is no base-URL prompt, because every model carries its own full endpoint in the JSON below. Naming the group after the base URL keeps the two prompts that follow, and the model picker, self-describing. A Signature project sends <code>YOUR_API_KEY:YOUR_API_SECRET</code> in the API Key prompt; an API Key Only project sends just <code>YOUR_API_KEY</code>. Choose <strong>Chat Completions</strong> as the API type — the Responses and Messages options change the request shape VS Code sends.</p>
+                        <p><strong>Group Name</strong> arrives pre-filled with &ldquo;Custom Endpoint&rdquo; and is only a label &mdash; it titles the two prompts that follow and heads the group in the model picker, so give it something readable like <code>Wiro AI</code>. Nothing here asks for a base URL: every model carries its own full endpoint in the JSON below. A Signature project sends <code>YOUR_API_KEY:YOUR_API_SECRET</code> in the API Key prompt; an API Key Only project sends just <code>YOUR_API_KEY</code>. Choose <strong>Chat Completions</strong> as the API type — the Responses and Messages options change the request shape VS Code sends.</p>
                         <p>VS Code then opens <code>chatLanguageModels.json</code> with one empty model for you to fill in. Leave the generated <code>name</code>, <code>vendor</code>, <code>apiKey</code> and <code>apiType</code> alone and describe the models you want. Each entry needs the full endpoint in <code>url</code>, not the base:</p>
                         <pre><code>[
   {
-    "name": "https://llm.wiro.ai/v1",
+    "name": "Wiro AI",
     "vendor": "customendpoint",
     "apiKey": "${input:chat.lm.secret.xxxxxxxx}",
     "apiType": "chat-completions",

@@ -1622,19 +1622,21 @@ support.
 ### VS Code
 
 VS Code Chat registers Wiro as a custom endpoint. Open the Command Palette,
-run **Chat: Manage Language Models**, then **Add Models → Custom Endpoint**
-and answer the three prompts:
+run **Chat: Manage Language Models**, then **Add Models**. A provider list
+opens — Anthropic, Azure, Google, OpenAI, OpenRouter, xAI, Ollama — with
+**Custom Endpoint** last, below the separator. Pick it and answer the three
+prompts:
 
 ```
-Group Name: https://llm.wiro.ai/v1
+Group Name: Wiro AI
 API Key:    YOUR_API_KEY:YOUR_API_SECRET
 API Type:   Chat Completions
 ```
 
-**Group Name** arrives pre-filled with "Custom Endpoint" and is only a label:
-there is no base-URL prompt, because every model carries its own full endpoint
-in the JSON below. Naming the group after the base URL keeps the two prompts
-that follow, and the model picker, self-describing.
+**Group Name** arrives pre-filled with "Custom Endpoint" and is only a label —
+it titles the two prompts that follow and heads the group in the model picker,
+so give it something readable like `Wiro AI`. Nothing here asks for a base URL:
+every model carries its own full endpoint in the JSON below.
 
 A Signature project sends `YOUR_API_KEY:YOUR_API_SECRET` in the API Key
 prompt; an API Key Only project sends just `YOUR_API_KEY`. Choose **Chat
@@ -1649,7 +1651,7 @@ the base:
 ```json
 [
   {
-    "name": "https://llm.wiro.ai/v1",
+    "name": "Wiro AI",
     "vendor": "customendpoint",
     "apiKey": "${input:chat.lm.secret.xxxxxxxx}",
     "apiType": "chat-completions",
