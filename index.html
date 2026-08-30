@@ -1655,7 +1655,12 @@ data: {
 
                   <section id="gateway-clients">
                     <h2>Connect an agent</h2>
-                    <p>Point a compatible client at <code>llm.wiro.ai</code>. Discover the exact lowercase <code>owner/model</code> ID first. Use a project Bearer credential: API Key Only projects send <code>YOUR_API_KEY</code>; Signature projects send <code>YOUR_API_KEY:YOUR_API_SECRET</code>. Generic finite-model waits stay on <a href="/docs/run-a-model" class="docs-link">Run a Model /sync</a>.</p>
+                    <p>Point a compatible client at <code>llm.wiro.ai</code>. Use a project Bearer credential: API Key Only projects send <code>YOUR_API_KEY</code>; Signature projects send <code>YOUR_API_KEY:YOUR_API_SECRET</code>. Generic finite-model waits stay on <a href="/docs/run-a-model" class="docs-link">Run a Model /sync</a>.</p>
+                    <p>Every client below needs the exact lowercase <code>owner/model</code> ID. Two places give it to you:</p>
+                    <ul>
+                      <li><a href="https://wiro.ai/models?categories=llm-tool-call" class="docs-link">The catalog, filtered to gateway models</a> &mdash; browse them, open one, and copy the ID from its page.</li>
+                      <li><a href="#gateway-models" class="docs-link"><code>GET /v1/models</code></a> &mdash; the same set as JSON, scoped to what your project and team can actually run. <code>GET /v1/models/{owner}/{model}</code> then reports that model's routes, modalities, tool support and token limits.</li>
+                    </ul>
                     <div class="mcp-client-grid" data-toggle-group="llm-setup">
                       <a href="/docs/completions-api#llm-setup-cursor" class="mcp-client-card is-active" data-toggle-target="llm-setup-cursor">
                         <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-cursor"></use></svg>

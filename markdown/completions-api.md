@@ -105,11 +105,19 @@ the protocol's normal client-history requirements. Responses uses
 
 ## Connect an agent
 
-Point a compatible client at `llm.wiro.ai`. Discover the exact lowercase
-`owner/model` ID first. OpenAI-compatible clients use a project Bearer
-credential. Anthropic-compatible clients put the same project credential in
-`x-api-key`: `YOUR_API_KEY` for API Key Only or
+Point a compatible client at `llm.wiro.ai`. OpenAI-compatible clients use a
+project Bearer credential. Anthropic-compatible clients put the same project
+credential in `x-api-key`: `YOUR_API_KEY` for API Key Only or
 `YOUR_API_KEY:YOUR_API_SECRET` for Signature.
+
+Every client below needs the exact lowercase `owner/model` ID. Two places give
+it to you:
+
+- [The catalog, filtered to gateway models](https://wiro.ai/models?categories=llm-tool-call)
+  — browse them, open one, and copy the ID from its page.
+- `GET /v1/models` — the same set as JSON, scoped to what your project and team
+  can actually run. `GET /v1/models/{owner}/{model}` then reports that model's
+  routes, modalities, tool support and token limits.
 Generic finite-model waits stay on [Run a Model](/docs/run-a-model).
 
 ### Cursor
