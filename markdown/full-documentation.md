@@ -1410,16 +1410,71 @@ across as many turns as the task needs.
 
 ### Hermes
 
-Hermes function-calling clients, Cline, Roo Code, and Continue can use OpenAI
-Chat when they accept a custom base URL. Optional tools, reasoning, and
-modalities still follow the selected model's metadata.
+Hermes Agent, from Nous Research, reaches the gateway as a custom provider.
+Its whole configuration is one file:
+
+```
+~/.hermes/config.yaml
+```
+
+Set `HERMES_HOME` to put it elsewhere; the project's own Docker image already
+points it at `/opt/data`. The file the repository ships as
+`cli-config.yaml.example` is read under the name `config.yaml`.
+
+1. **Install** — `curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash`
+   on macOS, Linux and WSL2; `iex (irm https://hermes-agent.nousresearch.com/install.ps1)`
+   in PowerShell. The repository also carries a `Dockerfile` and a
+   `docker-compose.yml`.
+2. **Choose the custom provider** — `provider: "custom"` is Hermes' name for any
+   OpenAI-compatible endpoint; `ollama`, `vllm` and `llamacpp` are aliases of
+   it. With it, `base_url` is what decides where the request goes.
+3. **Fill `api_key`** — `YOUR_API_KEY:YOUR_API_SECRET` for a Signature project,
+   `YOUR_API_KEY` alone for API Key Only.
+4. **Name the model** — `model.default` takes one ID from the list below.
+   Hermes holds a single default rather than a list, so the `(Wiro)` label is
+   there for your own benefit; the gateway strips it either way.
+5. **Run a turn** — `hermes -z "your prompt"` for one shot, `hermes chat` for a
+   session. Add `--yolo` when you want the agent to use its tools without
+   stopping for approval.
+6. **Switch models** — `hermes -m "(Wiro) xai/grok-4-1-fast" -z "your prompt"`
+   overrides the default for one run; `hermes model` changes it for good.
 
 ```yaml
-providers:
-  wiro:
-    base_url: "https://llm.wiro.ai/v1"
-    api_key: "${WIRO_BEARER_CREDENTIAL}"
+model:
+  default: "(Wiro) openai/gpt-5-6-sol"
+  provider: "custom"
+  base_url: "https://llm.wiro.ai/v1"
+  api_key: "YOUR_API_KEY:YOUR_API_SECRET"
 ```
+
+Every model the gateway serves today. The same set is in the catalog and behind
+`GET /v1/models`.
+
+```
+(Wiro) bytedance/seed-v2-1-turbo
+(Wiro) bytedance/seed-v2-lite
+(Wiro) bytedance/seed-v2-mini
+(Wiro) bytedance/seed-v2-pro
+(Wiro) claude/fable-5
+(Wiro) claude/opus-5
+(Wiro) claude/sonnet-5
+(Wiro) openai/gpt-5-2
+(Wiro) openai/gpt-5-4
+(Wiro) openai/gpt-5-4-mini
+(Wiro) openai/gpt-5-4-nano
+(Wiro) openai/gpt-5-5
+(Wiro) openai/gpt-5-6-luna
+(Wiro) openai/gpt-5-6-sol
+(Wiro) openai/gpt-5-6-terra
+(Wiro) openai/gpt-5-mini
+(Wiro) openai/gpt-5-nano
+(Wiro) xai/grok-4-1-fast
+(Wiro) xai/grok-4-20
+(Wiro) xai/grok-4-5
+```
+
+Tool calling works through the gateway, so the agent can run its own tools
+across as many turns as the task needs.
 
 ## Discover models and capabilities
 

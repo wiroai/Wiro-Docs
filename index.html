@@ -2184,11 +2184,56 @@ cd /path/to/your/project &amp;&amp; claude --model "(Wiro) openai/gpt-5-nano"</c
                       </div>
                       <div class="mcp-setup-panel" id="llm-setup-hermes">
                         <h3>Hermes</h3>
-                        <p>Hermes function-calling clients, Cline, Roo Code, and Continue can use OpenAI Chat when they accept a custom base URL. Optional tools, reasoning, and modalities still follow the selected model's metadata.</p>
-                        <pre><code>providers:
-  wiro:
-    base_url: "https://llm.wiro.ai/v1"
-    api_key: "${WIRO_BEARER_CREDENTIAL}"</code></pre>
+                        <p><a href="https://github.com/NousResearch/hermes-agent" class="docs-link">Hermes Agent</a>, from Nous Research, reaches the gateway as a custom provider. Its whole configuration is one file:</p>
+                        <pre><code>~/.hermes/config.yaml</code></pre>
+                        <p>Set <code>HERMES_HOME</code> to put it elsewhere; the project&rsquo;s own Docker image already points it at <code>/opt/data</code>. The file the repository ships as <code>cli-config.yaml.example</code> is read under the name <code>config.yaml</code>.</p>
+                        <ol class="docs-steps">
+                          <li>
+                            <strong>Install</strong> <span><code>curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash</code> on macOS, Linux and WSL2; <code>iex (irm https://hermes-agent.nousresearch.com/install.ps1)</code> in PowerShell. The repository also carries a <code>Dockerfile</code> and a <code>docker-compose.yml</code>.</span>
+                          </li>
+                          <li>
+                            <strong>Choose the custom provider</strong> <span><code>provider: &quot;custom&quot;</code> is Hermes&rsquo; name for any OpenAI-compatible endpoint &mdash; <code>ollama</code>, <code>vllm</code> and <code>llamacpp</code> are aliases of it. With it, <code>base_url</code> is what decides where the request goes.</span>
+                          </li>
+                          <li>
+                            <strong>Fill <code>api_key</code></strong> <span><code>YOUR_API_KEY:YOUR_API_SECRET</code> for a Signature project, <code>YOUR_API_KEY</code> alone for API Key Only.</span>
+                          </li>
+                          <li>
+                            <strong>Name the model</strong> <span><code>model.default</code> takes one ID from the list below. Hermes holds a single default rather than a list, so the <code>(Wiro)</code> label is there for your own benefit; the gateway strips it either way.</span>
+                          </li>
+                          <li>
+                            <strong>Run a turn</strong> <span><code>hermes -z &quot;your prompt&quot;</code> for one shot, <code>hermes chat</code> for a session. Add <code>--yolo</code> when you want the agent to use its tools without stopping for approval.</span>
+                          </li>
+                          <li>
+                            <strong>Switch models</strong> <span><code>hermes -m &quot;(Wiro) xai/grok-4-1-fast&quot; -z &quot;your prompt&quot;</code> overrides the default for one run; <code>hermes model</code> changes it for good.</span>
+                          </li>
+                        </ol>
+                        <pre><code>model:
+  default: &quot;(Wiro) openai/gpt-5-6-sol&quot;
+  provider: &quot;custom&quot;
+  base_url: &quot;https://llm.wiro.ai/v1&quot;
+  api_key: &quot;YOUR_API_KEY:YOUR_API_SECRET&quot;</code></pre>
+                        <p>Every model the gateway serves today. The same set is in <a href="https://wiro.ai/models?categories=llm-tool-call" class="docs-link">the catalog</a> and behind <a href="#gateway-models" class="docs-link"><code>GET /v1/models</code></a>.</p>
+                        <pre class="pre-scroll"><code>(Wiro) bytedance/seed-v2-1-turbo
+(Wiro) bytedance/seed-v2-lite
+(Wiro) bytedance/seed-v2-mini
+(Wiro) bytedance/seed-v2-pro
+(Wiro) claude/fable-5
+(Wiro) claude/opus-5
+(Wiro) claude/sonnet-5
+(Wiro) openai/gpt-5-2
+(Wiro) openai/gpt-5-4
+(Wiro) openai/gpt-5-4-mini
+(Wiro) openai/gpt-5-4-nano
+(Wiro) openai/gpt-5-5
+(Wiro) openai/gpt-5-6-luna
+(Wiro) openai/gpt-5-6-sol
+(Wiro) openai/gpt-5-6-terra
+(Wiro) openai/gpt-5-mini
+(Wiro) openai/gpt-5-nano
+(Wiro) xai/grok-4-1-fast
+(Wiro) xai/grok-4-20
+(Wiro) xai/grok-4-5</code></pre>
+                        <p>Tool calling works through the gateway, so the agent can run its own tools across as many turns as the task needs.</p>
                       </div>
                     </div>
                   </section>
