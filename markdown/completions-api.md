@@ -207,10 +207,10 @@ models whatever you configure.
    npm i -g @anthropic-ai/claude-code
    ```
 
-2. **Write the settings file** — create `.claude/settings.json` in the folder
-   you want to open Claude Code in. Put it in the project you will be working
-   in; every session started from that folder uses the gateway, and your other
-   projects are untouched.
+2. **Write the settings file** — two places take it, and the file is the same in
+   both. Pick by how widely you want the gateway used.
+
+   **Every folder on this machine** — `~/.claude/settings.json`:
 
    ```json
    {
@@ -224,15 +224,35 @@ models whatever you configure.
    }
    ```
 
+   **One project only** — `<project>/.claude/settings.json`, in the folder you
+   will open Claude Code in. Your other projects keep whatever they were using.
+   If that folder is a git repository, put it in `.claude/settings.local.json`
+   instead, which is not committed — the credential should not reach the shared
+   file:
+
+   ```json
+   {
+     "env": {
+       "ANTHROPIC_BASE_URL": "https://llm.wiro.ai",
+       "ANTHROPIC_API_KEY": "YOUR_API_KEY:YOUR_API_SECRET",
+       "ANTHROPIC_MODEL": "(Wiro AI) openai/gpt-5-6-sol",
+       "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY": "1",
+       "CLAUDE_CODE_MAX_CONTEXT_TOKENS": "1050000"
+     }
+   }
+   ```
    `ANTHROPIC_BASE_URL` carries no `/v1` here — Anthropic clients append the
    path themselves. `ANTHROPIC_API_KEY` takes `YOUR_API_KEY:YOUR_API_SECRET`
    for a Signature project, or `YOUR_API_KEY` alone for API Key Only.
-   `ANTHROPIC_MODEL` is any ID from the list below, not only the `claude/`
-   ones. The `(Wiro AI)` prefix is optional and the gateway strips it; Claude
-   Code prints whatever you write in its session header, so it earns its place
-   there. `CLAUDE_CODE_MAX_CONTEXT_TOKENS` is the chosen model's context window:
-   Claude Code does not recognise these model names and otherwise assumes 200k,
-   discarding history long before it needs to.
+   `ANTHROPIC_MODEL` is the model the session opens with, and is any ID from
+   the list below, not only the `claude/` ones; the `(Wiro AI)` prefix is
+   optional and the gateway strips it, but Claude Code prints whatever you
+   write in its session header. `CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY`
+   fills the `/model` picker from the gateway rather than leaving it on
+   Anthropic's own list. `CLAUDE_CODE_MAX_CONTEXT_TOKENS` must match the
+   context window of the model you set — Claude Code does not recognise these
+   names, so it otherwise assumes 200k and discards history long before it
+   needs to.
 
 3. **Open Claude Code in that folder**:
 
