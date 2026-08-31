@@ -955,17 +955,35 @@ models whatever you configure.
    cd /path/to/your/project && claude
    ```
 
-4. **Answer the first-run prompts** — a new install asks for a colour theme,
-   shows its security notes, and offers terminal setup. Answer them once.
-5. **Approve the key** — `Detected a custom API key in your environment — do
-   you want to use this API key?` Choose `Yes`. Claude Code remembers the
-   answer, and a key you decline is ignored from then on without asking again.
-   Using `ANTHROPIC_AUTH_TOKEN` instead of `ANTHROPIC_API_KEY` skips this
-   prompt entirely; the gateway takes the credential in either header.
-6. **Check the header, then start** — the session header names the model you
-   configured, `(Wiro AI) openai/gpt-5-6-sol · API Usage Billing`, and `/model` switches
-   between the models the gateway serves. While a gateway credential is set,
-   your own Claude subscription is not used and its limits do not apply.
+4. **Answer the first-run prompts** — a new install asks three things in a row:
+   a colour theme, its security notes (`Press Enter to continue`), and whether
+   to apply `Claude Code's terminal setup`. Answer them once.
+5. **Allow the project's MCP servers, if it has any** — a folder that declares
+   MCP servers gets `New MCP server found in this project` before the session
+   opens. Nothing here concerns the gateway; choose whatever you would normally
+   choose.
+6. **Approve the key** — `Detected a custom API key in your environment — do you
+   want to use this API key?` The cursor starts on `No (recommended)`, so move
+   up to `Yes` and confirm. Claude Code remembers the answer, and a key you
+   decline is ignored from then on without asking again. Using
+   `ANTHROPIC_AUTH_TOKEN` instead of `ANTHROPIC_API_KEY` skips this prompt
+   entirely; the gateway takes the credential in either header.
+7. **Check the header, then start** — the session header names the model you
+   configured, `(Wiro AI) openai/gpt-5-6-sol · API Usage Billing`. While a
+   gateway credential is set, your own Claude subscription is not used and its
+   limits do not apply.
+8. **Switching models** — `/model` lists what Claude Code calls Claude models,
+   and the gateway's `claude/` ones appear there marked `From gateway`, under
+   their catalogue titles: `claude/opus-5` reads as `Claude Opus 5 (opus-5) Text
+   Model`. The picker leaves the rest out by design; its own note says to name
+   those with `--model`:
+
+   ```bash
+   claude --model xai/grok-4-1-fast
+   ```
+
+   Setting `ANTHROPIC_MODEL` in the settings file does the same thing for every
+   session in that scope.
 
 Every model the gateway serves today, with the context window for
 `CLAUDE_CODE_MAX_CONTEXT_TOKENS`. The same values come from `GET /v1/models` as

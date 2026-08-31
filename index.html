@@ -1785,12 +1785,15 @@ data: {
                             <strong>Open Claude Code in that folder</strong> <span><code>cd /path/to/your/project &amp;&amp; claude</code></span>
                           </li>
                           <li>
-                            <strong>Answer the first-run prompts</strong> <span>A new install asks for a colour theme, shows its security notes, and offers terminal setup. Answer them once.</span>
+                            <strong>Answer the first-run prompts</strong> <span>A new install asks three things in a row: a colour theme, its security notes (<code>Press Enter to continue</code>), and whether to apply <code>Claude Code&rsquo;s terminal setup</code>. Answer them once.</span>
                           </li>
                           <li>
-                            <strong>Approve the key</strong> <span><code>Detected a custom API key in your environment &mdash; do you want to use this API key?</code> Choose <code>Yes</code>. Claude Code remembers the answer, and a key you decline is ignored from then on without asking again. Using <code>ANTHROPIC_AUTH_TOKEN</code> instead of <code>ANTHROPIC_API_KEY</code> skips this prompt entirely; the gateway takes the credential in either header.</span>
+                            <strong>Allow the project&rsquo;s MCP servers, if it has any</strong> <span>A folder that declares MCP servers gets <code>New MCP server found in this project</code> before the session opens. Nothing here concerns the gateway &mdash; choose whatever you would normally choose.</span>
                           </li>
                           <li>
+                            <strong>Approve the key</strong> <span><code>Detected a custom API key in your environment &mdash; do you want to use this API key?</code> The cursor starts on <code>No (recommended)</code>, so move up to <code>Yes</code> and confirm. Claude Code remembers the answer, and a key you decline is ignored from then on without asking again. Using <code>ANTHROPIC_AUTH_TOKEN</code> instead of <code>ANTHROPIC_API_KEY</code> skips this prompt entirely; the gateway takes the credential in either header.</span>
+                          </li>
+<li>
                             <strong>Check the header, then start</strong> <span>The session header names the model you configured &mdash; <code>(Wiro AI) openai/gpt-5-6-sol &middot; API Usage Billing</code>. While a gateway credential is set, your own Claude subscription is not used and its limits do not apply.</span>
                           </li>
                           <li>
