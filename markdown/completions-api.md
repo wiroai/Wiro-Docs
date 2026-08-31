@@ -267,29 +267,19 @@ models whatever you configure.
    MCP servers gets `New MCP server found in this project` before the session
    opens. Nothing here concerns the gateway; choose whatever you would normally
    choose.
-6. **Dismiss the key prompt, if it appears** — `Detected a custom API key in
-   your environment` asks about a key exported in your shell, not the one in the
-   settings file; a file you have just written needs no approval. If you
-   configured the gateway through the settings file, as above, answer `No` and
-   the session still opens on it. Answer `Yes` only when the shell export is how
-   you meant to configure it; a key you decline is ignored from then on without
-   asking again.
-7. **Check the header, then start** — the session header names the model you
-   configured, `(Wiro AI) openai/gpt-5-6-sol · API Usage Billing`. While a
-   gateway credential is set, your own Claude subscription is not used and its
-   limits do not apply.
-8. **Switching models** — `/model` lists what Claude Code calls Claude models,
-   and the gateway's `claude/` ones appear there marked `From gateway`, under
-   their catalogue titles: `claude/opus-5` reads as `Claude Opus 5 (opus-5) Text
-   Model`. The picker leaves the rest out by design; its own note says to name
-   those with `--model`:
+6. **Answer the key prompt** — `Do you want to use this API key?` → `No`. It
+   asks about a key exported in your shell, not the one you just put in the
+   settings file.
+7. **Check the header, then start** — it names the model you configured:
+   `(Wiro AI) openai/gpt-5-6-sol · API Usage Billing`. Your Claude subscription
+   is not used while a gateway credential is set.
+8. **Switching models** — `/model` lists Claude models only, so the gateway's
+   `claude/` ones show as `From gateway` and the rest do not appear. Name those
+   on the command line, or in `ANTHROPIC_MODEL`:
 
    ```bash
    claude --model xai/grok-4-1-fast
    ```
-
-   Setting `ANTHROPIC_MODEL` in the settings file does the same thing for every
-   session in that scope.
 
 Every model the gateway serves today, with the context window for
 `CLAUDE_CODE_MAX_CONTEXT_TOKENS`. The same values come from `GET /v1/models` as
