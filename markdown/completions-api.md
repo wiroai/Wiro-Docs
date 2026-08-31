@@ -217,7 +217,7 @@ models whatever you configure.
      "env": {
        "ANTHROPIC_BASE_URL": "https://llm.wiro.ai",
        "ANTHROPIC_API_KEY": "YOUR_API_KEY:YOUR_API_SECRET",
-       "ANTHROPIC_MODEL": "openai/gpt-5-6-sol",
+       "ANTHROPIC_MODEL": "(Wiro AI) openai/gpt-5-6-sol",
        "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY": "1",
        "CLAUDE_CODE_MAX_CONTEXT_TOKENS": "1050000"
      }
@@ -228,7 +228,9 @@ models whatever you configure.
    path themselves. `ANTHROPIC_API_KEY` takes `YOUR_API_KEY:YOUR_API_SECRET`
    for a Signature project, or `YOUR_API_KEY` alone for API Key Only.
    `ANTHROPIC_MODEL` is any ID from the list below, not only the `claude/`
-   ones. `CLAUDE_CODE_MAX_CONTEXT_TOKENS` is the chosen model's context window:
+   ones. The `(Wiro AI)` prefix is optional and the gateway strips it; Claude
+   Code prints whatever you write in its session header, so it earns its place
+   there. `CLAUDE_CODE_MAX_CONTEXT_TOKENS` is the chosen model's context window:
    Claude Code does not recognise these model names and otherwise assumes 200k,
    discarding history long before it needs to.
 
@@ -246,7 +248,7 @@ models whatever you configure.
    Using `ANTHROPIC_AUTH_TOKEN` instead of `ANTHROPIC_API_KEY` skips this
    prompt entirely; the gateway takes the credential in either header.
 6. **Check the header, then start** — the session header names the model you
-   configured, `openai/gpt-5-6-sol · API Usage Billing`, and `/model` switches
+   configured, `(Wiro AI) openai/gpt-5-6-sol · API Usage Billing`, and `/model` switches
    between the models the gateway serves. While a gateway credential is set,
    your own Claude subscription is not used and its limits do not apply.
 
@@ -255,28 +257,28 @@ Every model the gateway serves today, with the context window for
 `context_length`.
 
 ```
-Model ID                     Context
-------------------------------------
-bytedance/seed-v2-1-turbo     256000
-bytedance/seed-v2-lite        256000
-bytedance/seed-v2-mini        256000
-bytedance/seed-v2-pro         256000
-claude/fable-5               1000000
-claude/opus-5                1000000
-claude/sonnet-5              1000000
-openai/gpt-5-2                400000
-openai/gpt-5-4               1050000
-openai/gpt-5-4-mini           400000
-openai/gpt-5-4-nano           400000
-openai/gpt-5-5               1050000
-openai/gpt-5-6-luna          1050000
-openai/gpt-5-6-sol           1050000
-openai/gpt-5-6-terra         1050000
-openai/gpt-5-mini             400000
-openai/gpt-5-nano             400000
-xai/grok-4-1-fast            2000000
-xai/grok-4-20                2000000
-xai/grok-4-5                  500000
+Model ID                               Context
+----------------------------------------------
+(Wiro AI) bytedance/seed-v2-1-turbo     256000
+(Wiro AI) bytedance/seed-v2-lite        256000
+(Wiro AI) bytedance/seed-v2-mini        256000
+(Wiro AI) bytedance/seed-v2-pro         256000
+(Wiro AI) claude/fable-5               1000000
+(Wiro AI) claude/opus-5                1000000
+(Wiro AI) claude/sonnet-5              1000000
+(Wiro AI) openai/gpt-5-2                400000
+(Wiro AI) openai/gpt-5-4               1050000
+(Wiro AI) openai/gpt-5-4-mini           400000
+(Wiro AI) openai/gpt-5-4-nano           400000
+(Wiro AI) openai/gpt-5-5               1050000
+(Wiro AI) openai/gpt-5-6-luna          1050000
+(Wiro AI) openai/gpt-5-6-sol           1050000
+(Wiro AI) openai/gpt-5-6-terra         1050000
+(Wiro AI) openai/gpt-5-mini             400000
+(Wiro AI) openai/gpt-5-nano             400000
+(Wiro AI) xai/grok-4-1-fast            2000000
+(Wiro AI) xai/grok-4-20                2000000
+(Wiro AI) xai/grok-4-5                  500000
 ```
 
 If Claude Code opens to the login screen instead of a session, the settings file
