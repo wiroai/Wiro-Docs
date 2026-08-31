@@ -211,11 +211,74 @@ claude
 
 ### Windsurf
 
-Windsurf Cascade has no native arbitrary-provider registration in this
-release. A setup is in scope only through a tested extension or client that
-can set a custom OpenAI base URL to `https://llm.wiro.ai/v1` for
-`/chat/completions` or `/responses`. Do not describe this as native Cascade
-support.
+Windsurf now ships as **Devin Desktop**; the application is `Devin.app` and its
+docs redirect to `docs.devin.ai`. Cascade, its own agent, has no setting for an
+external provider — there is no base URL to override and no custom model to
+register, so it cannot be pointed at this gateway. What does work is running a
+different agent inside the same editor. The steps below use
+[Cline](https://open-vsx.org/extension/saoudrizwan/claude-dev), which is free
+and Apache-2.0; Roo Code and Continue configure the same way.
+
+1. **Open the extension marketplace** — Command Palette (`Cmd+Shift+P`,
+   `Ctrl+Shift+P` on Windows) → `Extensions: Install Extensions`. The menu bar
+   gets you to the same place: `Devin → Preferences → Extensions`.
+2. **Install Cline** — search `cline` and install the one published by
+   `saoudrizwan`. Devin resolves extensions through the Open VSX mirror, so
+   this is the same build VS Code carries.
+3. **Open the panel** — Command Palette → `Cline: Focus on View`.
+4. **Bring my own API key** — Cline asks how you will use it. Pick the fourth
+   option, `Bring my own API key`, then `Continue`. The other three are Cline's
+   own billing; `Login to Cline` is not needed.
+5. **API Provider** — choose `OpenAI Compatible`, not `OpenAI`; that one goes to
+   the official OpenAI API.
+6. **Base URL** — `https://llm.wiro.ai/v1`. Cline appends the route itself.
+7. **OpenAI Compatible API Key** — `YOUR_API_KEY:YOUR_API_SECRET` for a
+   Signature project, `YOUR_API_KEY` alone for API Key Only. Cline keeps it
+   locally.
+8. **Model ID** — one ID from the list below; Cline holds a single model per
+   configuration rather than a list. The `(Wiro AI)` prefix is optional and the
+   gateway strips it; it earns its place here by showing up in the status bar,
+   as `openai-compat: (Wiro AI) openai/gpt-5-6-sol`.
+9. **Open `MODEL CONFIGURATION` and set the context window** — this one matters.
+   Cline does not know a custom model, so it assumes `128K` and starts dropping
+   history long before it needs to. Put the real number from the list below into
+   `Context Window size`, and tick `Computer Use` so tool calling is enabled —
+   without it the agent cannot run tools. `Max Output Tokens` and the price
+   fields are in the same section.
+10. **Continue, and send a message** — the status bar names the model you
+    configured. `Plan` and `Act` can each hold a different model, and saved API
+    configuration profiles let you keep one per model and switch between them.
+
+Every model the gateway serves today, with the context window Cline needs. The
+same numbers come from `GET /v1/models` as `context_length` and `max_tokens`.
+
+```
+Model ID                               Context    Max Output
+------------------------------------------------------------
+(Wiro AI) bytedance/seed-v2-1-turbo     256000         65536
+(Wiro AI) bytedance/seed-v2-lite        256000         65536
+(Wiro AI) bytedance/seed-v2-mini        256000         65536
+(Wiro AI) bytedance/seed-v2-pro         256000         65536
+(Wiro AI) claude/fable-5               1000000        128000
+(Wiro AI) claude/opus-5                1000000        128000
+(Wiro AI) claude/sonnet-5              1000000        128000
+(Wiro AI) openai/gpt-5-2                400000         65536
+(Wiro AI) openai/gpt-5-4               1050000         65536
+(Wiro AI) openai/gpt-5-4-mini           400000         65536
+(Wiro AI) openai/gpt-5-4-nano           400000         65536
+(Wiro AI) openai/gpt-5-5               1050000         65536
+(Wiro AI) openai/gpt-5-6-luna          1050000         65536
+(Wiro AI) openai/gpt-5-6-sol           1050000         65536
+(Wiro AI) openai/gpt-5-6-terra         1050000         65536
+(Wiro AI) openai/gpt-5-mini             400000         65536
+(Wiro AI) openai/gpt-5-nano             400000         65536
+(Wiro AI) xai/grok-4-1-fast            2000000         65536
+(Wiro AI) xai/grok-4-20                2000000         65536
+(Wiro AI) xai/grok-4-5                  500000         65536
+```
+
+None of this touches Cascade, which keeps using Windsurf's own models. The
+editor is Devin, the agent is Cline, and the models are Wiro's.
 
 ### VS Code
 
