@@ -11,8 +11,7 @@ LLM (Large Language Model) requests on Wiro work differently from standard model
   not plain strings
 - Multi-turn conversations are supported via `session_id` and `user_id` parameters
 - `pexit` is the primary success indicator
-- The [Direct LLM Gateway](/docs/completions-api) offers OpenAI Chat/Responses,
-  Anthropic Messages, and beta Cursor-compatible routes on `llm.wiro.ai`.
+- The [Direct LLM Gateway](/docs/completions-api) offers OpenAI Chat/Responses and Anthropic Messages on `llm.wiro.ai`.
   Generic `/sync` waits stay on [Run a Model](/docs/run-a-model).
 
 Available LLM models include:

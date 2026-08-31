@@ -1,7 +1,7 @@
 # Direct LLM Gateway
 
 Use Wiro models through OpenAI Chat Completions, OpenAI Responses, Anthropic
-Messages, and a beta Cursor-compatible chat route. The gateway uses the same
+Messages. The gateway uses the same
 Wiro task, project-access, team-policy, and billing system as the Run API.
 
 OpenAI-compatible clients use base URL:
@@ -11,8 +11,7 @@ https://llm.wiro.ai/v1
 ```
 
 Clients that append `/v1` themselves, including Anthropic SDKs and Claude
-Code, use origin `https://llm.wiro.ai`. Cursor clients that append
-`/chat/completions` use beta base `https://llm.wiro.ai/v1/cursor`.
+Code, use origin `https://llm.wiro.ai`.
 
 Asynchronous Run, Task, the original Wiro File API, and WebSocket remain on
 `https://api.wiro.ai/v1` and `wss://socket.wiro.ai/v1`. The Direct LLM Gateway
@@ -21,8 +20,7 @@ same authenticated project storage.
 
 Direct LLM responses never expose Wiro Run/Sync `segments`. Each route returns
 only its selected protocol's native JSON and streaming events: OpenAI Chat
-chunks, OpenAI Responses events, Anthropic Messages events, or Chat-compatible
-Cursor events. OpenClaw and Hermes receive the native transport they configure.
+chunks, OpenAI Responses events, or Anthropic Messages events. OpenClaw and Hermes receive the native transport they configure.
 
 In this release, `stream: true` provides protocol-compatible SSE ordering after
 the provider request completes and the authenticated structured turn is
@@ -50,8 +48,6 @@ name: discover the exact ID and protocol capabilities first.
 - `POST /v1/messages` uses Anthropic Messages JSON and SSE.
 - `POST /v1/messages/count_tokens` estimates Anthropic input tokens before a
   run.
-- `POST /v1/cursor/chat/completions` is a beta compatibility route. It accepts
-  strict Responses-shaped `input` and always returns Chat JSON/SSE.
 - `GET /v1/generation?id=...` returns project-authorized generation metadata.
 
 The asynchronous Run route returns `taskid` and `socketaccesstoken` immediately;
@@ -96,7 +92,7 @@ Generic `/sync` waits stay on `api.wiro.ai` and use normal Run headers.
 ### Session identifier
 
 `session_id` is the only public session field. It is optional on Chat
-Completions, Anthropic Messages, and the beta Cursor route, and must contain
+Completions and Anthropic Messages, and must contain
 1–128 letters, digits, `.`, `_`, `:`, or `-`. Reuse the same value for related
 turns. Wiro maps it to a project-scoped internal session; it does not replace
 the protocol's normal client-history requirements. Responses uses
@@ -123,8 +119,7 @@ Generic finite-model waits stay on [Run a Model](/docs/run-a-model).
 ### Cursor
 
 Cursor reaches the gateway through its OpenAI base URL override, which it
-appends `/chat/completions` to. Point it at the normal `/v1` base, not the beta
-Cursor route below.
+appends `/chat/completions` to. Point it at the normal `/v1` base.
 
 1. **Open the model settings** — Command Palette (`Cmd+Shift+P`, `Ctrl+Shift+P`
    on Windows) → `Cursor Settings: Models`.
@@ -188,11 +183,6 @@ is in [the catalog](https://wiro.ai/models?categories=llm-tool-call) and behind
 The override covers the chat and agent panel. Tab autocomplete and inline edit
 keep using Cursor's own backend whatever you configure here, so they are
 unaffected either way.
-
-The separate beta route at `https://llm.wiro.ai/v1/cursor` takes a
-Responses-shaped body and rejects Chat Completions `messages`. The Cursor app
-sends `messages`, so that route is for clients built against the Responses
-dialect, not for this setup.
 
 ### Claude Code
 
@@ -781,6 +771,106 @@ Every model the gateway serves today. The same set is in the catalog and behind
 Tool calling works through the gateway, so the agent can run its own tools
 across as many turns as the task needs.
 
+### OpenAI SDK
+
+The official `openai` package talks to the gateway unchanged — only
+`baseURL` moves. Everything below was run against every model the gateway
+serves.
+
+1. **Install** — `npm i openai`. The Python package works the same way with
+   `base_url`.
+2. **Point the client at the gateway** — `baseURL` is
+   `https://llm.wiro.ai/v1`. `apiKey` takes `YOUR_API_KEY:YOUR_API_SECRET`
+   for a Signature project, `YOUR_API_KEY` alone for API Key Only.
+3. **Name a model** — any ID from the list below. The `(Wiro)` label is
+   optional and stripped on arrival, so `openai/gpt-5-6-sol` works just as
+   well.
+4. **Give reasoning models room** — `max_completion_tokens` covers reasoning as
+   well as the answer. Too small a budget returns `finish_reason: "length"`
+   with empty content — not an error, just a spent budget. 512 is a safe floor,
+   more for long answers.
+
+```javascript
+import OpenAI from "openai";
+
+const client = new OpenAI({
+  apiKey: "YOUR_API_KEY:YOUR_API_SECRET",
+  baseURL: "https://llm.wiro.ai/v1",
+});
+
+const completion = await client.chat.completions.create({
+  model: "(Wiro) openai/gpt-5-6-sol",
+  max_completion_tokens: 512,
+  messages: [{ role: "user", content: "Hello" }],
+});
+
+console.log(completion.choices[0].message.content);
+```
+
+`client.models.list()` returns the same catalog, and
+`client.responses.create()` reaches the Responses route. Streaming works on
+both.
+
+Tool calling runs the whole loop — the call, the result, and further turns
+after it:
+
+```javascript
+const tools = [{
+  type: "function",
+  function: {
+    name: "get_weather",
+    description: "Get weather",
+    parameters: {
+      type: "object",
+      properties: { city: { type: "string" } },
+      required: ["city"],
+    },
+  },
+}];
+
+const messages = [{ role: "user", content: "Weather in Istanbul?" }];
+const first = await client.chat.completions.create({
+  model: "(Wiro) openai/gpt-5-6-sol", max_completion_tokens: 512, tools, messages,
+});
+
+const call = first.choices[0].message.tool_calls[0];
+messages.push(first.choices[0].message, {
+  role: "tool",
+  tool_call_id: call.id,
+  content: JSON.stringify({ temperature_c: 21 }),
+});
+
+const second = await client.chat.completions.create({
+  model: "(Wiro) openai/gpt-5-6-sol", max_completion_tokens: 512, tools, messages,
+});
+```
+
+Every model the gateway serves today. The same set is in the catalog and behind
+`GET /v1/models`.
+
+```
+(Wiro) bytedance/seed-v2-1-turbo
+(Wiro) bytedance/seed-v2-lite
+(Wiro) bytedance/seed-v2-mini
+(Wiro) bytedance/seed-v2-pro
+(Wiro) claude/fable-5
+(Wiro) claude/opus-5
+(Wiro) claude/sonnet-5
+(Wiro) openai/gpt-5-2
+(Wiro) openai/gpt-5-4
+(Wiro) openai/gpt-5-4-mini
+(Wiro) openai/gpt-5-4-nano
+(Wiro) openai/gpt-5-5
+(Wiro) openai/gpt-5-6-luna
+(Wiro) openai/gpt-5-6-sol
+(Wiro) openai/gpt-5-6-terra
+(Wiro) openai/gpt-5-mini
+(Wiro) openai/gpt-5-nano
+(Wiro) xai/grok-4-1-fast
+(Wiro) xai/grok-4-20
+(Wiro) xai/grok-4-5
+```
+
 ## Discover models and capabilities
 
 ### **GET** /v1/models
@@ -1169,27 +1259,12 @@ usage chunk before `[DONE]` only when native counters are available.
 
 If a failure happens after Chat SSE has started, Wiro emits an OpenAI error
 object in a `data:` frame, then `data: [DONE]`, and closes the connection.
-The same midstream rule applies to the beta Cursor route. Once SSE headers have
+Once SSE headers have
 been sent, the original HTTP status cannot communicate that later failure.
 
-### OpenAI SDK
-
-```javascript
-import OpenAI from 'openai';
-
-const client = new OpenAI({
-  apiKey: process.env.WIRO_BEARER_CREDENTIAL,
-  baseURL: 'https://llm.wiro.ai/v1',
-});
-
-const completion = await client.chat.completions.create({
-  model: 'openai/gpt-5-6-sol',
-  messages: [{ role: 'user', content: 'Hello' }],
-});
-```
-
-For a Signature project, `WIRO_BEARER_CREDENTIAL` is
-`YOUR_API_KEY:YOUR_API_SECRET`.
+The official `openai` package reaches this route with nothing changed but
+`baseURL`; the full setup, with tool calling and the model list, is under
+OpenAI SDK above.
 
 ## OpenAI Responses
 
@@ -1457,35 +1532,6 @@ This is a local preflight estimate over the submitted Anthropic payload, not
 authoritative billing or provider-native usage. The estimate endpoint is part
 of the Anthropic compatibility route; the model catalog does not label it as
 native token counting.
-
-## Beta Cursor-compatible chat
-
-### **POST** /v1/cursor/chat/completions
-
-Use a model that includes `cursor` in `capabilities.endpoints`. This route is
-beta and may evolve. It accepts Responses-style `input` and optional
-`instructions`. Chat `messages` are rejected rather than guessed. It always returns an OpenAI
-`chat.completion` object and does not provide Responses persistence:
-`previous_response_id` is disabled and `store` is forced off.
-
-```bash
-curl -X POST "https://llm.wiro.ai/v1/cursor/chat/completions" \
-  -H "Authorization: Bearer YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "openai/gpt-5-6-sol",
-    "input": "Summarize this function.",
-    "stream": true
-  }'
-```
-
-Function tools, custom tools, grammar tools, reasoning, and input modalities
-remain model-capability-gated. Streaming always uses Chat chunks and terminates
-with `data: [DONE]`; it never switches to Responses SSE.
-
-Clients that append `/chat/completions` can use
-`https://llm.wiro.ai/v1/cursor` as their beta base URL.
-
 ## Generation metadata
 
 ### **GET** /v1/generation?id=
@@ -1564,8 +1610,8 @@ The Direct LLM Gateway does not currently provide:
 - embeddings or reranking
 - automatic model routing or fallback routing
 - bring-your-own-provider-key (BYOK) execution
-- dedicated image, audio, or video generation through the Chat, Responses,
-  Messages, or Cursor-compatible routes
+- dedicated image, audio, or video generation through the Chat, Responses, or
+  Messages routes
 - the legacy `/v1/completions` endpoint
 
 Use Wiro's normal [Run or /sync APIs](/docs/run-a-model) for supported finite

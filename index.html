@@ -143,6 +143,9 @@
             />
           </g>
         </symbol>
+        <symbol id="mcp-client-icon-openai" viewBox="0 0 24 24">
+          <path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.0379-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z" />
+        </symbol>
       </defs>
     </svg>
     <div class="docs-layout" id="app">
@@ -1609,10 +1612,10 @@ data: {
                 <article class="docs-section">
                   <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/completions-api.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/completions-api.md" download class="docs-section-md-btn">Download</a></div>
                   <h1>Direct LLM Gateway</h1>
-                  <p class="section-subtitle">Use Wiro LLMs through OpenAI Chat Completions, OpenAI Responses, Anthropic Messages, and a beta Cursor-compatible route.</p>
+                  <p class="section-subtitle">Use Wiro LLMs through OpenAI Chat Completions, OpenAI Responses, and Anthropic Messages.</p>
 
                   <div class="docs-callout info">
-                    <strong>Base URLs:</strong> OpenAI-compatible clients use <code>https://llm.wiro.ai/v1</code>. Clients that append <code>/v1</code> themselves, including Anthropic SDKs and Claude Code, use origin <code>https://llm.wiro.ai</code>. Cursor clients that append <code>/chat/completions</code> use <code>https://llm.wiro.ai/v1/cursor</code>. Asynchronous Run, Task, and the original Wiro File API remain on <code>https://api.wiro.ai/v1</code>; WebSocket remains on <code>wss://socket.wiro.ai/v1</code>. The Direct LLM Gateway also provides compatible <code>/v1/files</code> routes backed by the same authenticated project storage.
+                    <strong>Base URLs:</strong> OpenAI-compatible clients use <code>https://llm.wiro.ai/v1</code>. Clients that append <code>/v1</code> themselves, including Anthropic SDKs and Claude Code, use origin <code>https://llm.wiro.ai</code>. Asynchronous Run, Task, and the original Wiro File API remain on <code>https://api.wiro.ai/v1</code>; WebSocket remains on <code>wss://socket.wiro.ai/v1</code>. The Direct LLM Gateway also provides compatible <code>/v1/files</code> routes backed by the same authenticated project storage.
                   </div>
                   <p>The gateway uses the same Wiro task, project-access, team-policy, and billing system as the Run API. Discover a model before calling it: supported endpoints, parameters, modalities, tools, reasoning, and limits are model-specific.</p>
                   <p>Direct LLM responses never expose Wiro Run/Sync <code>segments</code>. Each route returns only its selected protocol's native JSON and streaming events: OpenAI Chat chunks, OpenAI Responses events, Anthropic Messages events, or Chat-compatible Cursor events. OpenClaw and Hermes receive the native transport they configure.</p>
@@ -1631,7 +1634,6 @@ data: {
                       <li><code>POST /v1/responses</code> uses OpenAI Responses JSON and named SSE.</li>
                       <li><code>POST /v1/messages</code> uses Anthropic Messages JSON/SSE.</li>
                       <li><code>POST /v1/messages/count_tokens</code> estimates Anthropic input tokens before a run.</li>
-                      <li><code>POST /v1/cursor/chat/completions</code> is a beta compatibility route that accepts strict Responses-shaped input and returns Chat JSON/SSE.</li>
                       <li><code>GET /v1/generation?id=...</code> returns authorized generation metadata.</li>
                     </ul>
                     <div class="docs-callout">
@@ -1653,7 +1655,7 @@ data: {
                     <p>Never expose a project key or secret in browser or mobile application code.</p>
                     <p>Anthropic Messages requires <code>x-api-key</code>. Send <code>YOUR_API_KEY</code> for an API Key Only project or <code>YOUR_API_KEY:YOUR_API_SECRET</code> for a Signature project. Generic <code>/sync</code> waits stay on <code>api.wiro.ai</code> and use normal Run headers.</p>
                     <h3>Session identifier</h3>
-                    <p><code>session_id</code> is the only public session field. It is optional on Chat Completions, Anthropic Messages, and the beta Cursor route, and must contain 1–128 letters, digits, <code>.</code>, <code>_</code>, <code>:</code>, or <code>-</code>. Reuse the same value for related turns. Wiro maps it to a project-scoped internal session; it does not replace the protocol's normal client-history requirements. Responses uses <code>previous_response_id</code> instead, and <code>/v1/messages/count_tokens</code> does not accept <code>session_id</code>.</p>
+                    <p><code>session_id</code> is the only public session field. It is optional on Chat Completions and Anthropic Messages, and must contain 1–128 letters, digits, <code>.</code>, <code>_</code>, <code>:</code>, or <code>-</code>. Reuse the same value for related turns. Wiro maps it to a project-scoped internal session; it does not replace the protocol's normal client-history requirements. Responses uses <code>previous_response_id</code> instead, and <code>/v1/messages/count_tokens</code> does not accept <code>session_id</code>.</p>
                   </section>
 
                   <section id="gateway-clients">
@@ -1689,11 +1691,15 @@ data: {
                         <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-hermes"></use></svg>
                         <strong>Hermes</strong>
                       </a>
+                      <a href="/docs/completions-api#llm-setup-openai-sdk" class="mcp-client-card" data-toggle-target="llm-setup-openai-sdk">
+                        <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-openai"></use></svg>
+                        <strong>OpenAI SDK</strong>
+                      </a>
                     </div>
                     <div class="mcp-setup-panels" data-toggle-panels="llm-setup">
                       <div class="mcp-setup-panel is-visible" id="llm-setup-cursor">
                         <h3>Cursor</h3>
-                        <p>Cursor reaches the gateway through its OpenAI base URL override, which it appends <code>/chat/completions</code> to. Point it at the normal <code>/v1</code> base, not the beta Cursor route below.</p>
+                        <p>Cursor reaches the gateway through its OpenAI base URL override, which it appends <code>/chat/completions</code> to. Point it at the normal <code>/v1</code> base.</p>
                         <ol class="docs-steps">
                           <li>
                             <strong>Open the model settings</strong> <span>Command Palette (<code>Cmd+Shift+P</code>, <code>Ctrl+Shift+P</code> on Windows) &rarr; <code>Cursor Settings: Models</code>.</span>
@@ -1748,7 +1754,6 @@ data: {
 (Wiro) xai/grok-4-20
 (Wiro) xai/grok-4-5</code></pre>
                         <p>The override covers the chat and agent panel. Tab autocomplete and inline edit keep using Cursor's own backend whatever you configure here, so they are unaffected either way.</p>
-                        <p>The separate beta route at <code>https://llm.wiro.ai/v1/cursor</code> takes a Responses-shaped body and rejects Chat Completions <code>messages</code>. The Cursor app sends <code>messages</code>, so that route is for clients built against the Responses dialect, not for this setup.</p>
                       </div>
                       <div class="mcp-setup-panel" id="llm-setup-claude-code">
                         <h3>Claude Code</h3>
@@ -2235,6 +2240,89 @@ cd /path/to/your/project &amp;&amp; claude --model "(Wiro) openai/gpt-5-nano"</c
 (Wiro) xai/grok-4-5</code></pre>
                         <p>Tool calling works through the gateway, so the agent can run its own tools across as many turns as the task needs.</p>
                       </div>
+                      <div class="mcp-setup-panel" id="llm-setup-openai-sdk">
+                        <h3>OpenAI SDK</h3>
+                        <p>The official <a href="https://github.com/openai/openai-node" class="docs-link">openai</a> package talks to the gateway unchanged &mdash; only <code>baseURL</code> moves. Everything below was run against every model the gateway serves.</p>
+                        <ol class="docs-steps">
+                          <li>
+                            <strong>Install</strong> <span><code>npm i openai</code>. The Python package works the same way with <code>base_url</code>.</span>
+                          </li>
+                          <li>
+                            <strong>Point the client at the gateway</strong> <span><code>baseURL</code> is <code>https://llm.wiro.ai/v1</code>. <code>apiKey</code> takes <code>YOUR_API_KEY:YOUR_API_SECRET</code> for a Signature project, <code>YOUR_API_KEY</code> alone for API Key Only.</span>
+                          </li>
+                          <li>
+                            <strong>Name a model</strong> <span>Any ID from the list below. The <code>(Wiro)</code> label is optional and stripped on arrival, so <code>openai/gpt-5-6-sol</code> works just as well.</span>
+                          </li>
+                          <li>
+                            <strong>Give reasoning models room</strong> <span><code>max_completion_tokens</code> covers reasoning as well as the answer. Too small a budget returns <code>finish_reason: &quot;length&quot;</code> with empty content &mdash; not an error, just a spent budget. 512 is a safe floor, more for long answers.</span>
+                          </li>
+                        </ol>
+                        <pre><code>import OpenAI from &quot;openai&quot;;
+
+const client = new OpenAI({
+  apiKey: &quot;YOUR_API_KEY:YOUR_API_SECRET&quot;,
+  baseURL: &quot;https://llm.wiro.ai/v1&quot;,
+});
+
+const completion = await client.chat.completions.create({
+  model: &quot;(Wiro) openai/gpt-5-6-sol&quot;,
+  max_completion_tokens: 512,
+  messages: [{ role: &quot;user&quot;, content: &quot;Hello&quot; }],
+});
+
+console.log(completion.choices[0].message.content);</code></pre>
+                        <p><code>client.models.list()</code> returns the same catalog, and <code>client.responses.create()</code> reaches <a href="#gateway-responses" class="docs-link">the Responses route</a>. Streaming works on both.</p>
+                        <p>Tool calling runs the whole loop &mdash; the call, the result, and further turns after it:</p>
+                        <pre><code>const tools = [{
+  type: &quot;function&quot;,
+  function: {
+    name: &quot;get_weather&quot;,
+    description: &quot;Get weather&quot;,
+    parameters: {
+      type: &quot;object&quot;,
+      properties: { city: { type: &quot;string&quot; } },
+      required: [&quot;city&quot;],
+    },
+  },
+}];
+
+const messages = [{ role: &quot;user&quot;, content: &quot;Weather in Istanbul?&quot; }];
+const first = await client.chat.completions.create({
+  model: &quot;(Wiro) openai/gpt-5-6-sol&quot;, max_completion_tokens: 512, tools, messages,
+});
+
+const call = first.choices[0].message.tool_calls[0];
+messages.push(first.choices[0].message, {
+  role: &quot;tool&quot;,
+  tool_call_id: call.id,
+  content: JSON.stringify({ temperature_c: 21 }),
+});
+
+const second = await client.chat.completions.create({
+  model: &quot;(Wiro) openai/gpt-5-6-sol&quot;, max_completion_tokens: 512, tools, messages,
+});</code></pre>
+                        <p>Every model the gateway serves today. The same set is in <a href="https://wiro.ai/models?categories=llm-tool-call" class="docs-link">the catalog</a> and behind <a href="#gateway-models" class="docs-link"><code>GET /v1/models</code></a>.</p>
+                        <pre class="pre-scroll"><code>(Wiro) bytedance/seed-v2-1-turbo
+(Wiro) bytedance/seed-v2-lite
+(Wiro) bytedance/seed-v2-mini
+(Wiro) bytedance/seed-v2-pro
+(Wiro) claude/fable-5
+(Wiro) claude/opus-5
+(Wiro) claude/sonnet-5
+(Wiro) openai/gpt-5-2
+(Wiro) openai/gpt-5-4
+(Wiro) openai/gpt-5-4-mini
+(Wiro) openai/gpt-5-4-nano
+(Wiro) openai/gpt-5-5
+(Wiro) openai/gpt-5-6-luna
+(Wiro) openai/gpt-5-6-sol
+(Wiro) openai/gpt-5-6-terra
+(Wiro) openai/gpt-5-mini
+(Wiro) openai/gpt-5-nano
+(Wiro) xai/grok-4-1-fast
+(Wiro) xai/grok-4-20
+(Wiro) xai/grok-4-5</code></pre>
+                      </div>
                     </div>
                   </section>
 
@@ -2285,7 +2373,7 @@ cd /path/to/your/project &amp;&amp; claude --model "(Wiro) openai/gpt-5-nano"</c
       "max_input_tokens": 1050000,
       "max_tokens": null,
       "capabilities": {
-        "endpoints": ["anthropic", "chat", "cursor", "responses"],
+        "endpoints": ["anthropic", "chat", "responses"],
         "input_modalities": ["text", "image"],
         "output": ["text", "reasoning", "function_calls", "custom_tool_calls"],
         "function_tools": true,
@@ -2326,7 +2414,7 @@ cd /path/to/your/project &amp;&amp; claude --model "(Wiro) openai/gpt-5-nano"</c
                     <p>The discovery list contains only team-allowed models verified with the <code>llm-tool-call</code> category. Other LLMs are not advertised by this endpoint; when you already know an exact <code>owner/model</code> ID, you can still submit it to a compatible Direct LLM route or use the normal Run API.</p>
                     <p>Before each request:</p>
                     <ol>
-                      <li>Confirm <code>anthropic</code>, <code>chat</code>, <code>cursor</code>, or <code>responses</code> in <code>capabilities.endpoints</code>.</li>
+                      <li>Confirm <code>anthropic</code>, <code>chat</code>, or <code>responses</code> in <code>capabilities.endpoints</code>.</li>
                       <li>Use <code>supported_parameters</code> to gate optional public request controls. Required protocol fields such as <code>model</code>, <code>input</code>, <code>messages</code>, or Anthropic <code>max_tokens</code> are not repeated there.</li>
                       <li>Check <code>capabilities.input_modalities</code> for canonical <code>text</code>, <code>image</code>, or <code>document</code>. OpenRouter-style <code>architecture.input_modalities</code> represents documents as <code>file</code>.</li>
                       <li>Check <code>capabilities.output</code>, <code>function_tools</code>, <code>custom_tools</code>, <code>structured_outputs</code>, <code>structured_output_modes</code>, <code>strict_json_schema</code>, and <code>generation_controls</code>.</li>
@@ -2348,7 +2436,7 @@ cd /path/to/your/project &amp;&amp; claude --model "(Wiro) openai/gpt-5-nano"</c
                     <h2>Usage contract</h2>
                     <p>When the upstream model reports usage, Wiro returns normalized counters in the selected protocol's native shape:</p>
                     <ul>
-                      <li>Chat and Cursor use <code>prompt_tokens</code>, optional <code>prompt_tokens_details</code>, <code>completion_tokens</code>, optional <code>completion_tokens_details</code>, and <code>total_tokens</code>.</li>
+                      <li>Chat uses <code>prompt_tokens</code>, optional <code>prompt_tokens_details</code>, <code>completion_tokens</code>, optional <code>completion_tokens_details</code>, and <code>total_tokens</code>.</li>
                       <li>Responses uses <code>input_tokens</code>, <code>input_tokens_details</code>, <code>output_tokens</code>, <code>output_tokens_details</code>, and <code>total_tokens</code>.</li>
                       <li>Anthropic Messages uses cache-exclusive <code>input_tokens</code>, <code>output_tokens</code>, optional <code>cache_read_input_tokens</code>, optional <code>cache_creation_input_tokens</code>, and optional five-minute/one-hour <code>cache_creation</code> detail.</li>
                     </ul>
@@ -2483,20 +2571,8 @@ await client.files.delete(file.id);</code></pre>
                     <p>Reasoning is model-specific. Public model reasoning can appear in <code>message.reasoning</code> and <code>message.reasoning_details</code>; use the advertised reasoning controls and supported efforts. Tool/reasoning combinations are also model-specific, so do not infer support from another model.</p>
                     <p>Final responses use <code>chat.completion</code>. Native <code>usage</code> is conditional: a successful completion is still returned when usage counters remain unavailable.</p>
                     <p>For streaming, set body-level <code>"stream": true</code>. Text arrives in <code>choices[0].delta.content</code>, reasoning in <code>delta.reasoning</code> and <code>reasoning_details</code>, and function calls in <code>delta.tool_calls</code>. Concatenate tool argument fragments by call <code>index</code>. The stream terminates with <code>data: [DONE]</code>. With <code>stream_options.include_usage: true</code>, Wiro emits a final empty-choices usage chunk before <code>[DONE]</code> only when native counters are available.</p>
-                    <p>If a failure happens after Chat SSE has started, Wiro emits an OpenAI error object in a <code>data:</code> frame, then <code>data: [DONE]</code>, and closes the connection. The same midstream rule applies to the beta Cursor route. Once SSE headers have been sent, the original HTTP status cannot communicate that later failure.</p>
-                    <h3>OpenAI SDK</h3>
-                    <pre><code>import OpenAI from 'openai';
-
-const client = new OpenAI({
-  apiKey: process.env.WIRO_BEARER_CREDENTIAL,
-  baseURL: 'https://llm.wiro.ai/v1',
-});
-
-const completion = await client.chat.completions.create({
-  model: 'openai/gpt-5-6-sol',
-  messages: [{ role: 'user', content: 'Hello' }],
-});</code></pre>
-                    <p>For a Signature project, <code>WIRO_BEARER_CREDENTIAL</code> is <code>YOUR_API_KEY:YOUR_API_SECRET</code>.</p>
+                    <p>If a failure happens after Chat SSE has started, Wiro emits an OpenAI error object in a <code>data:</code> frame, then <code>data: [DONE]</code>, and closes the connection.</p>
+                    <p>The official <code>openai</code> package reaches this route with nothing changed but <code>baseURL</code>; the full setup, with tool calling and the model list, is under <a href="#llm-setup-openai-sdk" class="docs-link">OpenAI SDK</a> above.</p>
                   </section>
 
                   <section id="gateway-responses">
@@ -2622,26 +2698,10 @@ claude</code></pre>
                     <p>This is a local preflight estimate over the submitted Anthropic payload, not authoritative billing or provider-native usage. The estimate endpoint is part of the Anthropic compatibility route; the model catalog does not label it as native token counting.</p>
                   </section>
 
-                  <section id="gateway-cursor">
-                    <h2><span class="badge beta">Beta</span> Cursor-compatible chat</h2>
-                    <h3><span class="endpoint-badge post">POST</span> /v1/cursor/chat/completions</h3>
-                    <p>Use a model that includes <code>cursor</code> in <code>capabilities.endpoints</code>. This route is beta and may evolve. It accepts Responses-style <code>input</code> and optional <code>instructions</code>. Chat <code>messages</code> are rejected rather than guessed. It always returns an OpenAI <code>chat.completion</code> object and does not provide Responses persistence: <code>previous_response_id</code> is disabled and <code>store</code> is forced off.</p>
-                    <pre><code>curl -X POST "https://llm.wiro.ai/v1/cursor/chat/completions" \
-  -H "Authorization: Bearer YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "openai/gpt-5-6-sol",
-    "input": "Summarize this function.",
-    "stream": true
-  }'</code></pre>
-                    <p>Function tools, custom tools, grammar tools, reasoning, and input modalities remain model-capability-gated. Streaming always uses Chat chunks and terminates with <code>data: [DONE]</code>; it never switches to Responses SSE.</p>
-                    <p>Clients that append <code>/chat/completions</code> can use <code>https://llm.wiro.ai/v1/cursor</code> as their beta base URL.</p>
-                  </section>
-
                   <section id="gateway-generation">
                     <h2>Generation metadata</h2>
                     <h3><span class="endpoint-badge get">GET</span> /v1/generation?id=</h3>
-                    <p>Look up terminal metadata using the exact public ID emitted by the protocol route: the response <code>id</code> for Chat, Cursor, or Responses, and the <code>request-id</code> response header for Messages. The equivalent path form is <code>GET /v1/generation/{public-id}</code>.</p>
+                    <p>Look up terminal metadata using the exact public ID emitted by the protocol route: the response <code>id</code> for Chat or Responses, and the <code>request-id</code> response header for Messages. The equivalent path form is <code>GET /v1/generation/{public-id}</code>.</p>
                     <pre><code>curl "https://llm.wiro.ai/v1/generation?id=resp_01HZX7Y8Q9" \
   -H "Authorization: Bearer YOUR_API_KEY"</code></pre>
                     <pre><code>{
@@ -2688,7 +2748,7 @@ claude</code></pre>
                       <li>Embeddings or reranking</li>
                       <li>Automatic model routing or fallback routing</li>
                       <li>Bring-your-own-provider-key (BYOK) execution</li>
-                      <li>Dedicated image, audio, or video generation through the Chat, Responses, Messages, or Cursor-compatible routes</li>
+                      <li>Dedicated image, audio, or video generation through the Chat, Responses, or Messages routes</li>
                       <li>The legacy <code>/v1/completions</code> endpoint</li>
                     </ul>
                     <p>Use Wiro's normal <a href="/docs/run-a-model" class="docs-link">Run or /sync APIs</a> for supported finite media-generation models. Image and document <strong>input</strong> to an LLM is distinct from media generation and remains available when the selected model advertises it.</p>
@@ -2726,11 +2786,6 @@ claude</code></pre>
                                     "label": "Anthropic Messages",
                                     "language": "bash",
                                     "code": "curl -X POST \"https://llm.wiro.ai/v1/messages\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -H \"anthropic-version: 2023-06-01\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"model\": \"claude/sonnet-5\",\n    \"max_tokens\": 1024,\n    \"messages\": [{ \"role\": \"user\", \"content\": \"Hello\" }]\n  }' "
-                  },
-                  {
-                                    "label": "Cursor Chat (Beta)",
-                                    "language": "bash",
-                                    "code": "curl -X POST \"https://llm.wiro.ai/v1/cursor/chat/completions\" \\\n  -H \"Authorization: Bearer YOUR_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"model\": \"openai/gpt-5-6-sol\",\n    \"input\": \"Hello\"\n  }' "
                   },
                   {
                                     "label": "Node.js SDK",
@@ -3678,7 +3733,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                       <li>Streaming <code>task_output</code> messages contain ordered text/tool-call <code>segments</code> — not plain strings</li>
                       <li>Multi-turn conversations are supported via <code>session_id</code> and <code>user_id</code> parameters</li>
                       <li><code>pexit</code> is the primary success indicator</li>
-                      <li>The <a href="/docs/completions-api" class="docs-link">Direct LLM Gateway</a> offers OpenAI Chat/Responses, Anthropic Messages, and beta Cursor-compatible routes on <code>llm.wiro.ai</code>. Generic <code>/sync</code> waits stay on <a href="/docs/run-a-model" class="docs-link">Run a Model</a>.</li>
+                      <li>The <a href="/docs/completions-api" class="docs-link">Direct LLM Gateway</a> offers OpenAI Chat/Responses and Anthropic Messages on <code>llm.wiro.ai</code>. Generic <code>/sync</code> waits stay on <a href="/docs/run-a-model" class="docs-link">Run a Model</a>.</li>
                     </ul>
                     <p>Available LLM models include:</p>
                     <ul>
