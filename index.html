@@ -1752,12 +1752,61 @@ data: {
                       </div>
                       <div class="mcp-setup-panel" id="llm-setup-claude-code">
                         <h3>Claude Code</h3>
-                        <p>Claude Code and official Anthropic SDKs use origin <code>https://llm.wiro.ai</code> because they append <code>/v1/messages</code>. Set <code>ANTHROPIC_API_KEY</code> to the full project credential for either project type.</p>
-                        <pre><code>ANTHROPIC_BASE_URL="https://llm.wiro.ai" \
-ANTHROPIC_API_KEY="YOUR_API_KEY:YOUR_API_SECRET" \
-ANTHROPIC_MODEL="claude/sonnet-5" \
-CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY=1 \
-claude</code></pre>
+                        <p>Claude Code reads the gateway through the Anthropic Messages protocol. This is the <strong>terminal</strong> Claude Code: the desktop app manages its own provider and cannot be pointed at a gateway, so its model picker keeps listing Anthropic&rsquo;s models whatever you configure.</p>
+                        <ol class="docs-steps">
+                          <li>
+                            <strong>Install the CLI</strong> <span>In a terminal: <code>npm i -g @anthropic-ai/claude-code</code></span>
+                          </li>
+                          <li>
+                            <strong>Write the settings file</strong> <span>Create <code>.claude/settings.json</code> in the folder you want to open Claude Code in &mdash; the contents are below. Put it in the project you will be working in; every session started from that folder uses the gateway, and your other projects are untouched.</span>
+                            <pre><code>{
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://llm.wiro.ai",
+    "ANTHROPIC_API_KEY": "YOUR_API_KEY:YOUR_API_SECRET",
+    "ANTHROPIC_MODEL": "openai/gpt-5-6-sol",
+    "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY": "1",
+    "CLAUDE_CODE_MAX_CONTEXT_TOKENS": "1050000"
+  }
+}</code></pre>
+                            <span><code>ANTHROPIC_BASE_URL</code> carries no <code>/v1</code> here &mdash; Anthropic clients append the path themselves. <code>ANTHROPIC_API_KEY</code> takes <code>YOUR_API_KEY:YOUR_API_SECRET</code> for a Signature project, or <code>YOUR_API_KEY</code> alone for API Key Only. <code>ANTHROPIC_MODEL</code> is any ID from the list below, not only the <code>claude/</code> ones. <code>CLAUDE_CODE_MAX_CONTEXT_TOKENS</code> is the chosen model&rsquo;s context window: Claude Code does not recognise these model names and otherwise assumes 200k, discarding history long before it needs to.</span>
+                          </li>
+                          <li>
+                            <strong>Open Claude Code in that folder</strong> <span><code>cd /path/to/your/project &amp;&amp; claude</code></span>
+                          </li>
+                          <li>
+                            <strong>Answer the first-run prompts</strong> <span>A new install asks for a colour theme, shows its security notes, and offers terminal setup. Answer them once.</span>
+                          </li>
+                          <li>
+                            <strong>Approve the key</strong> <span><code>Detected a custom API key in your environment &mdash; do you want to use this API key?</code> Choose <code>Yes</code>. Claude Code remembers the answer, and a key you decline is ignored from then on without asking again. Using <code>ANTHROPIC_AUTH_TOKEN</code> instead of <code>ANTHROPIC_API_KEY</code> skips this prompt entirely; the gateway takes the credential in either header.</span>
+                          </li>
+                          <li>
+                            <strong>Check the header, then start</strong> <span>The session header names the model you configured &mdash; <code>openai/gpt-5-6-sol &middot; API Usage Billing</code> &mdash; and <code>/model</code> switches between the models the gateway serves. While a gateway credential is set, your own Claude subscription is not used and its limits do not apply.</span>
+                          </li>
+                        </ol>
+                        <p>Every model the gateway serves today, with the context window for <code>CLAUDE_CODE_MAX_CONTEXT_TOKENS</code>. The same values come from <a href="#gateway-models" class="docs-link"><code>GET /v1/models</code></a> as <code>context_length</code>.</p>
+                        <pre class="pre-scroll"><code>Model ID                     Context
+------------------------------------
+bytedance/seed-v2-1-turbo     256000
+bytedance/seed-v2-lite        256000
+bytedance/seed-v2-mini        256000
+bytedance/seed-v2-pro         256000
+claude/fable-5               1000000
+claude/opus-5                1000000
+claude/sonnet-5              1000000
+openai/gpt-5-2                400000
+openai/gpt-5-4               1050000
+openai/gpt-5-4-mini           400000
+openai/gpt-5-4-nano           400000
+openai/gpt-5-5               1050000
+openai/gpt-5-6-luna          1050000
+openai/gpt-5-6-sol           1050000
+openai/gpt-5-6-terra         1050000
+openai/gpt-5-mini             400000
+openai/gpt-5-nano             400000
+xai/grok-4-1-fast            2000000
+xai/grok-4-20                2000000
+xai/grok-4-5                  500000</code></pre>
+                        <p>If Claude Code opens to the login screen instead of a session, the settings file was not read in time: a project <code>.claude/settings.json</code> applies only after the first-run prompts and the folder trust prompt above. Answer those once and reopen, or put the same <code>env</code> block in <code>~/.claude/settings.json</code>, which is read before them and applies to every folder.</p>
                       </div>
                       <div class="mcp-setup-panel" id="llm-setup-vscode">
                         <h3>VS Code</h3>

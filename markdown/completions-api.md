@@ -196,18 +196,94 @@ dialect, not for this setup.
 
 ### Claude Code
 
-Claude Code and official Anthropic SDKs use origin `https://llm.wiro.ai`
-because they append `/v1/messages`. Both project types use
-`ANTHROPIC_API_KEY`; Signature projects set it to the full
-`YOUR_API_KEY:YOUR_API_SECRET` pair.
+Claude Code reads the gateway through the Anthropic Messages protocol. This is
+the **terminal** Claude Code: the desktop app manages its own provider and
+cannot be pointed at a gateway, so its model picker keeps listing Anthropic's
+models whatever you configure.
 
-```bash
-ANTHROPIC_BASE_URL="https://llm.wiro.ai" \
-ANTHROPIC_API_KEY="YOUR_API_KEY:YOUR_API_SECRET" \
-ANTHROPIC_MODEL="claude/sonnet-5" \
-CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY=1 \
-claude
+1. **Install the CLI** — in a terminal:
+
+   ```bash
+   npm i -g @anthropic-ai/claude-code
+   ```
+
+2. **Write the settings file** — create `.claude/settings.json` in the folder
+   you want to open Claude Code in. Put it in the project you will be working
+   in; every session started from that folder uses the gateway, and your other
+   projects are untouched.
+
+   ```json
+   {
+     "env": {
+       "ANTHROPIC_BASE_URL": "https://llm.wiro.ai",
+       "ANTHROPIC_API_KEY": "YOUR_API_KEY:YOUR_API_SECRET",
+       "ANTHROPIC_MODEL": "openai/gpt-5-6-sol",
+       "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY": "1",
+       "CLAUDE_CODE_MAX_CONTEXT_TOKENS": "1050000"
+     }
+   }
+   ```
+
+   `ANTHROPIC_BASE_URL` carries no `/v1` here — Anthropic clients append the
+   path themselves. `ANTHROPIC_API_KEY` takes `YOUR_API_KEY:YOUR_API_SECRET`
+   for a Signature project, or `YOUR_API_KEY` alone for API Key Only.
+   `ANTHROPIC_MODEL` is any ID from the list below, not only the `claude/`
+   ones. `CLAUDE_CODE_MAX_CONTEXT_TOKENS` is the chosen model's context window:
+   Claude Code does not recognise these model names and otherwise assumes 200k,
+   discarding history long before it needs to.
+
+3. **Open Claude Code in that folder**:
+
+   ```bash
+   cd /path/to/your/project && claude
+   ```
+
+4. **Answer the first-run prompts** — a new install asks for a colour theme,
+   shows its security notes, and offers terminal setup. Answer them once.
+5. **Approve the key** — `Detected a custom API key in your environment — do
+   you want to use this API key?` Choose `Yes`. Claude Code remembers the
+   answer, and a key you decline is ignored from then on without asking again.
+   Using `ANTHROPIC_AUTH_TOKEN` instead of `ANTHROPIC_API_KEY` skips this
+   prompt entirely; the gateway takes the credential in either header.
+6. **Check the header, then start** — the session header names the model you
+   configured, `openai/gpt-5-6-sol · API Usage Billing`, and `/model` switches
+   between the models the gateway serves. While a gateway credential is set,
+   your own Claude subscription is not used and its limits do not apply.
+
+Every model the gateway serves today, with the context window for
+`CLAUDE_CODE_MAX_CONTEXT_TOKENS`. The same values come from `GET /v1/models` as
+`context_length`.
+
 ```
+Model ID                     Context
+------------------------------------
+bytedance/seed-v2-1-turbo     256000
+bytedance/seed-v2-lite        256000
+bytedance/seed-v2-mini        256000
+bytedance/seed-v2-pro         256000
+claude/fable-5               1000000
+claude/opus-5                1000000
+claude/sonnet-5              1000000
+openai/gpt-5-2                400000
+openai/gpt-5-4               1050000
+openai/gpt-5-4-mini           400000
+openai/gpt-5-4-nano           400000
+openai/gpt-5-5               1050000
+openai/gpt-5-6-luna          1050000
+openai/gpt-5-6-sol           1050000
+openai/gpt-5-6-terra         1050000
+openai/gpt-5-mini             400000
+openai/gpt-5-nano             400000
+xai/grok-4-1-fast            2000000
+xai/grok-4-20                2000000
+xai/grok-4-5                  500000
+```
+
+If Claude Code opens to the login screen instead of a session, the settings file
+was not read in time: a project `.claude/settings.json` applies only after the
+first-run prompts and the folder trust prompt above. Answer those once and
+reopen, or put the same `env` block in `~/.claude/settings.json`, which is read
+before them and applies to every folder.
 
 ### Windsurf
 
