@@ -267,12 +267,13 @@ models whatever you configure.
    MCP servers gets `New MCP server found in this project` before the session
    opens. Nothing here concerns the gateway; choose whatever you would normally
    choose.
-6. **Approve the key** — `Detected a custom API key in your environment — do you
-   want to use this API key?` The cursor starts on `No (recommended)`, so move
-   up to `Yes` and confirm. Claude Code remembers the answer, and a key you
-   decline is ignored from then on without asking again. Using
-   `ANTHROPIC_AUTH_TOKEN` instead of `ANTHROPIC_API_KEY` skips this prompt
-   entirely; the gateway takes the credential in either header.
+6. **Dismiss the key prompt, if it appears** — `Detected a custom API key in
+   your environment` asks about a key exported in your shell, not the one in the
+   settings file; a file you have just written needs no approval. If you
+   configured the gateway through the settings file, as above, answer `No` and
+   the session still opens on it. Answer `Yes` only when the shell export is how
+   you meant to configure it; a key you decline is ignored from then on without
+   asking again.
 7. **Check the header, then start** — the session header names the model you
    configured, `(Wiro AI) openai/gpt-5-6-sol · API Usage Billing`. While a
    gateway credential is set, your own Claude subscription is not used and its
