@@ -225,7 +225,8 @@ and Apache-2.0; Roo Code and Continue configure the same way.
 2. **Install Cline** — search `cline` and install the one published by
    `saoudrizwan`. Devin resolves extensions through the Open VSX mirror, so
    this is the same build VS Code carries.
-3. **Open the panel** — Command Palette → `Cline: Focus on View`.
+3. **Open the panel** — Command Palette (`Cmd+Shift+P`, `Ctrl+Shift+P` on
+   Windows) → `Cline: Focus on View`.
 4. **Bring my own API key** — Cline asks how you will use it. Pick the fourth
    option, `Bring my own API key`, then `Continue`. The other three are Cline's
    own billing; `Login to Cline` is not needed.
