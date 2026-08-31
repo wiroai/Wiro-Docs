@@ -1796,7 +1796,23 @@ data: {
 <li>
                             <strong>Check the header, then start</strong> <span>It names the model you configured: <code>(Wiro AI) openai/gpt-5-6-sol &middot; API Usage Billing</code>. Your Claude subscription is not used while a gateway credential is set.</span>
                           </li>
-                          </ol>
+                          <li>
+                            <strong>Switching models</strong> <span>Open on another model for one session:</span>
+                            <pre><code>cd /path/to/your/project &amp;&amp; claude --model "(Wiro AI) xai/grok-4-1-fast"
+cd /path/to/your/project &amp;&amp; claude --model "(Wiro AI) bytedance/seed-v2-pro"
+cd /path/to/your/project &amp;&amp; claude --model "(Wiro AI) openai/gpt-5-nano"</code></pre>
+                            <span>Or change <code>ANTHROPIC_MODEL</code> in the settings file, which every session in that scope then opens on. Move <code>CLAUDE_CODE_MAX_CONTEXT_TOKENS</code> with it &mdash; Grok 4.1 Fast holds 2M where GPT 5.6 Sol holds 1.05M:</span>
+                            <pre><code>{
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://llm.wiro.ai",
+    "ANTHROPIC_API_KEY": "YOUR_API_KEY:YOUR_API_SECRET",
+    "ANTHROPIC_MODEL": "(Wiro AI) xai/grok-4-1-fast",
+    "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY": "1",
+    "CLAUDE_CODE_MAX_CONTEXT_TOKENS": "2000000"
+  }
+}</code></pre>
+                          </li>
+                        </ol>
                         <p>Every model the gateway serves today, with the context window for <code>CLAUDE_CODE_MAX_CONTEXT_TOKENS</code>. The same values come from <a href="#gateway-models" class="docs-link"><code>GET /v1/models</code></a> as <code>context_length</code>.</p>
                         <pre class="pre-scroll"><code>Model ID                               Context
 ----------------------------------------------
@@ -1820,20 +1836,6 @@ data: {
 (Wiro AI) xai/grok-4-1-fast            2000000
 (Wiro AI) xai/grok-4-20                2000000
 (Wiro AI) xai/grok-4-5                  500000</code></pre>
-                        <p><strong>Opening on one of the other models.</strong> Name it on the command line, for that session only:</p>
-                        <pre><code>cd /path/to/your/project &amp;&amp; claude --model "(Wiro AI) xai/grok-4-1-fast"
-cd /path/to/your/project &amp;&amp; claude --model "(Wiro AI) bytedance/seed-v2-pro"
-cd /path/to/your/project &amp;&amp; claude --model "(Wiro AI) openai/gpt-5-nano"</code></pre>
-                        <p>Or change <code>ANTHROPIC_MODEL</code> in the settings file, which every session in that scope then opens on. Give <code>CLAUDE_CODE_MAX_CONTEXT_TOKENS</code> the new model&rsquo;s window from the list above &mdash; Grok 4.1 Fast holds 2M where GPT 5.6 Sol holds 1.05M:</p>
-                        <pre><code>{
-  "env": {
-    "ANTHROPIC_BASE_URL": "https://llm.wiro.ai",
-    "ANTHROPIC_API_KEY": "YOUR_API_KEY:YOUR_API_SECRET",
-    "ANTHROPIC_MODEL": "(Wiro AI) xai/grok-4-1-fast",
-    "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY": "1",
-    "CLAUDE_CODE_MAX_CONTEXT_TOKENS": "2000000"
-  }
-}</code></pre>
                         <p>If Claude Code opens to the login screen instead of a session, the settings file was not read in time: a project <code>.claude/settings.json</code> applies only after the first-run prompts and the folder trust prompt above. Answer those once and reopen, or put the same <code>env</code> block in <code>~/.claude/settings.json</code>, which is read before them and applies to every folder.</p>
                       </div>
                       <div class="mcp-setup-panel" id="llm-setup-vscode">

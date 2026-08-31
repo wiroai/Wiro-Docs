@@ -277,6 +277,29 @@ Every model the gateway serves today, with the context window for
 `CLAUDE_CODE_MAX_CONTEXT_TOKENS`. The same values come from `GET /v1/models` as
 `context_length`.
 
+8. **Switching models** — open on another model for one session:
+
+   ```bash
+   cd /path/to/your/project && claude --model "(Wiro AI) xai/grok-4-1-fast"
+   cd /path/to/your/project && claude --model "(Wiro AI) bytedance/seed-v2-pro"
+   cd /path/to/your/project && claude --model "(Wiro AI) openai/gpt-5-nano"
+   ```
+
+   Or change `ANTHROPIC_MODEL` in the settings file, which every session in that
+   scope then opens on. Move `CLAUDE_CODE_MAX_CONTEXT_TOKENS` with it — Grok 4.1
+   Fast holds 2M where GPT 5.6 Sol holds 1.05M:
+
+   ```json
+   {
+     "env": {
+       "ANTHROPIC_BASE_URL": "https://llm.wiro.ai",
+       "ANTHROPIC_API_KEY": "YOUR_API_KEY:YOUR_API_SECRET",
+       "ANTHROPIC_MODEL": "(Wiro AI) xai/grok-4-1-fast",
+       "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY": "1",
+       "CLAUDE_CODE_MAX_CONTEXT_TOKENS": "2000000"
+     }
+   }
+   ```
 ```
 Model ID                               Context
 ----------------------------------------------
@@ -300,32 +323,6 @@ Model ID                               Context
 (Wiro AI) xai/grok-4-1-fast            2000000
 (Wiro AI) xai/grok-4-20                2000000
 (Wiro AI) xai/grok-4-5                  500000
-```
-
-**Opening on one of the other models.** Name it on the command line, for that
-session only:
-
-```bash
-cd /path/to/your/project && claude --model "(Wiro AI) xai/grok-4-1-fast"
-cd /path/to/your/project && claude --model "(Wiro AI) bytedance/seed-v2-pro"
-cd /path/to/your/project && claude --model "(Wiro AI) openai/gpt-5-nano"
-```
-
-Or change `ANTHROPIC_MODEL` in the settings file, which every session in that
-scope then opens on. Give `CLAUDE_CODE_MAX_CONTEXT_TOKENS` the new model's
-window from the list above — Grok 4.1 Fast holds 2M where GPT 5.6 Sol holds
-1.05M:
-
-```json
-{
-  "env": {
-    "ANTHROPIC_BASE_URL": "https://llm.wiro.ai",
-    "ANTHROPIC_API_KEY": "YOUR_API_KEY:YOUR_API_SECRET",
-    "ANTHROPIC_MODEL": "(Wiro AI) xai/grok-4-1-fast",
-    "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY": "1",
-    "CLAUDE_CODE_MAX_CONTEXT_TOKENS": "2000000"
-  }
-}
 ```
 
 If Claude Code opens to the login screen instead of a session, the settings file
