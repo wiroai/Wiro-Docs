@@ -273,10 +273,6 @@ models whatever you configure.
 7. **Check the header, then start** — it names the model you configured:
    `(Wiro AI) openai/gpt-5-6-sol · API Usage Billing`. Your Claude subscription
    is not used while a gateway credential is set.
-8. **Switching models** — `/model` lists Claude models only, so the gateway's
-   `claude/` ones show as `From gateway` and the rest do not appear. Reach those
-   two ways, both shown below the list.
-
 Every model the gateway serves today, with the context window for
 `CLAUDE_CODE_MAX_CONTEXT_TOKENS`. The same values come from `GET /v1/models` as
 `context_length`.
