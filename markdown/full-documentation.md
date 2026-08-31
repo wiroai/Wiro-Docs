@@ -829,8 +829,8 @@ Cursor route below.
 3. **+ Add Custom Model** — type the exact lowercase `owner/model` ID — the same
    IDs VS Code takes, listed below. Repeat for each model you want. Cursor shows
    whatever you type in its picker, so a parenthesised label is read and
-   discarded at either end: `(Wiro AI) claude/sonnet-5` and
-   `claude/sonnet-5 (Wiro AI)` both resolve to `claude/sonnet-5`. Leading keeps
+   discarded at either end: `(Wiro) claude/sonnet-5` and
+   `claude/sonnet-5 (Wiro)` both resolve to `claude/sonnet-5`. Leading keeps
    every Wiro model together in the picker.
 
    ![Cursor's custom model list showing four Wiro models, each labelled (Wiro
@@ -853,31 +853,31 @@ Cursor route below.
    `/chat/completions`, or a built-in model still switched on.
 
 Every model the gateway serves today, labelled and ready to paste one at a time;
-drop the `(Wiro AI)` part, or move it to the end, as you prefer. The same set
+drop the `(Wiro)` part, or move it to the end, as you prefer. The same set
 is in [the catalog](https://wiro.ai/models?categories=llm-tool-call) and behind
 `GET /v1/models`.
 
 ```
-(Wiro AI) bytedance/seed-v2-1-turbo
-(Wiro AI) bytedance/seed-v2-lite
-(Wiro AI) bytedance/seed-v2-mini
-(Wiro AI) bytedance/seed-v2-pro
-(Wiro AI) claude/fable-5
-(Wiro AI) claude/opus-5
-(Wiro AI) claude/sonnet-5
-(Wiro AI) openai/gpt-5-2
-(Wiro AI) openai/gpt-5-4
-(Wiro AI) openai/gpt-5-4-mini
-(Wiro AI) openai/gpt-5-4-nano
-(Wiro AI) openai/gpt-5-5
-(Wiro AI) openai/gpt-5-6-luna
-(Wiro AI) openai/gpt-5-6-sol
-(Wiro AI) openai/gpt-5-6-terra
-(Wiro AI) openai/gpt-5-mini
-(Wiro AI) openai/gpt-5-nano
-(Wiro AI) xai/grok-4-1-fast
-(Wiro AI) xai/grok-4-20
-(Wiro AI) xai/grok-4-5
+(Wiro) bytedance/seed-v2-1-turbo
+(Wiro) bytedance/seed-v2-lite
+(Wiro) bytedance/seed-v2-mini
+(Wiro) bytedance/seed-v2-pro
+(Wiro) claude/fable-5
+(Wiro) claude/opus-5
+(Wiro) claude/sonnet-5
+(Wiro) openai/gpt-5-2
+(Wiro) openai/gpt-5-4
+(Wiro) openai/gpt-5-4-mini
+(Wiro) openai/gpt-5-4-nano
+(Wiro) openai/gpt-5-5
+(Wiro) openai/gpt-5-6-luna
+(Wiro) openai/gpt-5-6-sol
+(Wiro) openai/gpt-5-6-terra
+(Wiro) openai/gpt-5-mini
+(Wiro) openai/gpt-5-nano
+(Wiro) xai/grok-4-1-fast
+(Wiro) xai/grok-4-20
+(Wiro) xai/grok-4-5
 ```
 
 The override covers the chat and agent panel. Tab autocomplete and inline edit
@@ -912,7 +912,7 @@ models whatever you configure.
      "env": {
        "ANTHROPIC_BASE_URL": "https://llm.wiro.ai",
        "ANTHROPIC_API_KEY": "YOUR_API_KEY:YOUR_API_SECRET",
-       "ANTHROPIC_MODEL": "(Wiro AI) openai/gpt-5-6-sol",
+       "ANTHROPIC_MODEL": "(Wiro) openai/gpt-5-6-sol",
        "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY": "1",
        "CLAUDE_CODE_MAX_CONTEXT_TOKENS": "1050000"
      }
@@ -930,7 +930,7 @@ models whatever you configure.
      "env": {
        "ANTHROPIC_BASE_URL": "https://llm.wiro.ai",
        "ANTHROPIC_API_KEY": "YOUR_API_KEY:YOUR_API_SECRET",
-       "ANTHROPIC_MODEL": "(Wiro AI) openai/gpt-5-6-sol",
+       "ANTHROPIC_MODEL": "(Wiro) openai/gpt-5-6-sol",
        "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY": "1",
        "CLAUDE_CODE_MAX_CONTEXT_TOKENS": "1050000"
      }
@@ -940,7 +940,7 @@ models whatever you configure.
    path themselves. `ANTHROPIC_API_KEY` takes `YOUR_API_KEY:YOUR_API_SECRET`
    for a Signature project, or `YOUR_API_KEY` alone for API Key Only.
    `ANTHROPIC_MODEL` is the model the session opens with, and is any ID from
-   the list below, not only the `claude/` ones; the `(Wiro AI)` prefix is
+   the list below, not only the `claude/` ones; the `(Wiro)` prefix is
    optional and the gateway strips it, but Claude Code prints whatever you
    write in its session header. `CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY`
    fills the `/model` picker from the gateway rather than leaving it on
@@ -966,7 +966,7 @@ models whatever you configure.
    asks about a key exported in your shell, not the one you just put in the
    settings file.
 7. **Check the header, then start** — it names the model you configured:
-   `(Wiro AI) openai/gpt-5-6-sol · API Usage Billing`. Your Claude subscription
+   `(Wiro) openai/gpt-5-6-sol · API Usage Billing`. Your Claude subscription
    is not used while a gateway credential is set.
 Every model the gateway serves today, with the context window for
 `CLAUDE_CODE_MAX_CONTEXT_TOKENS`. The same values come from `GET /v1/models` as
@@ -975,9 +975,9 @@ Every model the gateway serves today, with the context window for
 8. **Switching models** — open on another model for one session:
 
    ```bash
-   cd /path/to/your/project && claude --model "(Wiro AI) xai/grok-4-1-fast"
-   cd /path/to/your/project && claude --model "(Wiro AI) bytedance/seed-v2-pro"
-   cd /path/to/your/project && claude --model "(Wiro AI) openai/gpt-5-nano"
+   cd /path/to/your/project && claude --model "(Wiro) xai/grok-4-1-fast"
+   cd /path/to/your/project && claude --model "(Wiro) bytedance/seed-v2-pro"
+   cd /path/to/your/project && claude --model "(Wiro) openai/gpt-5-nano"
    ```
 
    Or change `ANTHROPIC_MODEL` in the settings file, which every session in that
@@ -989,35 +989,35 @@ Every model the gateway serves today, with the context window for
      "env": {
        "ANTHROPIC_BASE_URL": "https://llm.wiro.ai",
        "ANTHROPIC_API_KEY": "YOUR_API_KEY:YOUR_API_SECRET",
-       "ANTHROPIC_MODEL": "(Wiro AI) xai/grok-4-1-fast",
+       "ANTHROPIC_MODEL": "(Wiro) xai/grok-4-1-fast",
        "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY": "1",
        "CLAUDE_CODE_MAX_CONTEXT_TOKENS": "2000000"
      }
    }
    ```
 ```
-Model ID                               Context
-----------------------------------------------
-(Wiro AI) bytedance/seed-v2-1-turbo     256000
-(Wiro AI) bytedance/seed-v2-lite        256000
-(Wiro AI) bytedance/seed-v2-mini        256000
-(Wiro AI) bytedance/seed-v2-pro         256000
-(Wiro AI) claude/fable-5               1000000
-(Wiro AI) claude/opus-5                1000000
-(Wiro AI) claude/sonnet-5              1000000
-(Wiro AI) openai/gpt-5-2                400000
-(Wiro AI) openai/gpt-5-4               1050000
-(Wiro AI) openai/gpt-5-4-mini           400000
-(Wiro AI) openai/gpt-5-4-nano           400000
-(Wiro AI) openai/gpt-5-5               1050000
-(Wiro AI) openai/gpt-5-6-luna          1050000
-(Wiro AI) openai/gpt-5-6-sol           1050000
-(Wiro AI) openai/gpt-5-6-terra         1050000
-(Wiro AI) openai/gpt-5-mini             400000
-(Wiro AI) openai/gpt-5-nano             400000
-(Wiro AI) xai/grok-4-1-fast            2000000
-(Wiro AI) xai/grok-4-20                2000000
-(Wiro AI) xai/grok-4-5                  500000
+Model ID                            Context
+-------------------------------------------
+(Wiro) bytedance/seed-v2-1-turbo     256000
+(Wiro) bytedance/seed-v2-lite        256000
+(Wiro) bytedance/seed-v2-mini        256000
+(Wiro) bytedance/seed-v2-pro         256000
+(Wiro) claude/fable-5               1000000
+(Wiro) claude/opus-5                1000000
+(Wiro) claude/sonnet-5              1000000
+(Wiro) openai/gpt-5-2                400000
+(Wiro) openai/gpt-5-4               1050000
+(Wiro) openai/gpt-5-4-mini           400000
+(Wiro) openai/gpt-5-4-nano           400000
+(Wiro) openai/gpt-5-5               1050000
+(Wiro) openai/gpt-5-6-luna          1050000
+(Wiro) openai/gpt-5-6-sol           1050000
+(Wiro) openai/gpt-5-6-terra         1050000
+(Wiro) openai/gpt-5-mini             400000
+(Wiro) openai/gpt-5-nano             400000
+(Wiro) xai/grok-4-1-fast            2000000
+(Wiro) xai/grok-4-20                2000000
+(Wiro) xai/grok-4-5                  500000
 ```
 
 If Claude Code opens to the login screen instead of a session, the settings file
@@ -1054,9 +1054,9 @@ and Apache-2.0; Roo Code and Continue configure the same way.
    Signature project, `YOUR_API_KEY` alone for API Key Only. Cline keeps it
    locally.
 8. **Model ID** — one ID from the list below; Cline holds a single model per
-   configuration rather than a list. The `(Wiro AI)` prefix is optional and the
+   configuration rather than a list. The `(Wiro)` prefix is optional and the
    gateway strips it; it earns its place here by showing up in the status bar,
-   as `openai-compat: (Wiro AI) openai/gpt-5-6-sol`.
+   as `openai-compat: (Wiro) openai/gpt-5-6-sol`.
 9. **Open `MODEL CONFIGURATION` and set the context window** — this one matters.
    Cline does not know a custom model, so it assumes `128K` and starts dropping
    history long before it needs to. Put the real number from the list below into
@@ -1071,28 +1071,28 @@ Every model the gateway serves today, with the context window Cline needs. The
 same numbers come from `GET /v1/models` as `context_length` and `max_tokens`.
 
 ```
-Model ID                               Context    Max Output
-------------------------------------------------------------
-(Wiro AI) bytedance/seed-v2-1-turbo     256000         65536
-(Wiro AI) bytedance/seed-v2-lite        256000         65536
-(Wiro AI) bytedance/seed-v2-mini        256000         65536
-(Wiro AI) bytedance/seed-v2-pro         256000         65536
-(Wiro AI) claude/fable-5               1000000        128000
-(Wiro AI) claude/opus-5                1000000        128000
-(Wiro AI) claude/sonnet-5              1000000        128000
-(Wiro AI) openai/gpt-5-2                400000         65536
-(Wiro AI) openai/gpt-5-4               1050000         65536
-(Wiro AI) openai/gpt-5-4-mini           400000         65536
-(Wiro AI) openai/gpt-5-4-nano           400000         65536
-(Wiro AI) openai/gpt-5-5               1050000         65536
-(Wiro AI) openai/gpt-5-6-luna          1050000         65536
-(Wiro AI) openai/gpt-5-6-sol           1050000         65536
-(Wiro AI) openai/gpt-5-6-terra         1050000         65536
-(Wiro AI) openai/gpt-5-mini             400000         65536
-(Wiro AI) openai/gpt-5-nano             400000         65536
-(Wiro AI) xai/grok-4-1-fast            2000000         65536
-(Wiro AI) xai/grok-4-20                2000000         65536
-(Wiro AI) xai/grok-4-5                  500000         65536
+Model ID                            Context    Max Output
+---------------------------------------------------------
+(Wiro) bytedance/seed-v2-1-turbo     256000         65536
+(Wiro) bytedance/seed-v2-lite        256000         65536
+(Wiro) bytedance/seed-v2-mini        256000         65536
+(Wiro) bytedance/seed-v2-pro         256000         65536
+(Wiro) claude/fable-5               1000000        128000
+(Wiro) claude/opus-5                1000000        128000
+(Wiro) claude/sonnet-5              1000000        128000
+(Wiro) openai/gpt-5-2                400000         65536
+(Wiro) openai/gpt-5-4               1050000         65536
+(Wiro) openai/gpt-5-4-mini           400000         65536
+(Wiro) openai/gpt-5-4-nano           400000         65536
+(Wiro) openai/gpt-5-5               1050000         65536
+(Wiro) openai/gpt-5-6-luna          1050000         65536
+(Wiro) openai/gpt-5-6-sol           1050000         65536
+(Wiro) openai/gpt-5-6-terra         1050000         65536
+(Wiro) openai/gpt-5-mini             400000         65536
+(Wiro) openai/gpt-5-nano             400000         65536
+(Wiro) xai/grok-4-1-fast            2000000         65536
+(Wiro) xai/grok-4-20                2000000         65536
+(Wiro) xai/grok-4-5                  500000         65536
 ```
 
 None of this touches Cascade, which keeps using Windsurf's own models. The
@@ -1133,7 +1133,7 @@ extension required.
     "models": [
       {
         "id": "bytedance/seed-v2-1-turbo",
-        "name": "Seed V2 1 Turbo (Wiro)",
+        "name": "(Wiro) Seed V2.1 Turbo",
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
@@ -1142,7 +1142,7 @@ extension required.
       },
       {
         "id": "bytedance/seed-v2-lite",
-        "name": "Seed V2 Lite (Wiro)",
+        "name": "(Wiro) Seed V2 Lite",
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
@@ -1151,7 +1151,7 @@ extension required.
       },
       {
         "id": "bytedance/seed-v2-mini",
-        "name": "Seed V2 Mini (Wiro)",
+        "name": "(Wiro) Seed V2 Mini",
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
@@ -1160,7 +1160,7 @@ extension required.
       },
       {
         "id": "bytedance/seed-v2-pro",
-        "name": "Seed V2 Pro (Wiro)",
+        "name": "(Wiro) Seed V2 Pro",
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
@@ -1169,7 +1169,7 @@ extension required.
       },
       {
         "id": "claude/fable-5",
-        "name": "Fable 5 (Wiro)",
+        "name": "(Wiro) Fable 5",
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
@@ -1178,7 +1178,7 @@ extension required.
       },
       {
         "id": "claude/opus-5",
-        "name": "Opus 5 (Wiro)",
+        "name": "(Wiro) Opus 5",
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
@@ -1187,7 +1187,7 @@ extension required.
       },
       {
         "id": "claude/sonnet-5",
-        "name": "Sonnet 5 (Wiro)",
+        "name": "(Wiro) Sonnet 5",
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
@@ -1196,7 +1196,7 @@ extension required.
       },
       {
         "id": "openai/gpt-5-2",
-        "name": "Gpt 5 2 (Wiro)",
+        "name": "(Wiro) GPT-5.2",
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
@@ -1205,7 +1205,7 @@ extension required.
       },
       {
         "id": "openai/gpt-5-4",
-        "name": "Gpt 5 4 (Wiro)",
+        "name": "(Wiro) GPT-5.4",
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
@@ -1214,7 +1214,7 @@ extension required.
       },
       {
         "id": "openai/gpt-5-4-mini",
-        "name": "Gpt 5 4 Mini (Wiro)",
+        "name": "(Wiro) GPT-5.4 Mini",
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
@@ -1223,7 +1223,7 @@ extension required.
       },
       {
         "id": "openai/gpt-5-4-nano",
-        "name": "Gpt 5 4 Nano (Wiro)",
+        "name": "(Wiro) GPT-5.4 Nano",
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
@@ -1232,7 +1232,7 @@ extension required.
       },
       {
         "id": "openai/gpt-5-5",
-        "name": "Gpt 5 5 (Wiro)",
+        "name": "(Wiro) GPT-5.5",
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
@@ -1241,7 +1241,7 @@ extension required.
       },
       {
         "id": "openai/gpt-5-6-luna",
-        "name": "Gpt 5 6 Luna (Wiro)",
+        "name": "(Wiro) GPT-5.6 Luna",
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
@@ -1250,7 +1250,7 @@ extension required.
       },
       {
         "id": "openai/gpt-5-6-sol",
-        "name": "Gpt 5 6 Sol (Wiro)",
+        "name": "(Wiro) GPT-5.6 Sol",
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
@@ -1259,7 +1259,7 @@ extension required.
       },
       {
         "id": "openai/gpt-5-6-terra",
-        "name": "Gpt 5 6 Terra (Wiro)",
+        "name": "(Wiro) GPT-5.6 Terra",
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
@@ -1268,7 +1268,7 @@ extension required.
       },
       {
         "id": "openai/gpt-5-mini",
-        "name": "Gpt 5 Mini (Wiro)",
+        "name": "(Wiro) GPT-5 Mini",
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
@@ -1277,7 +1277,7 @@ extension required.
       },
       {
         "id": "openai/gpt-5-nano",
-        "name": "Gpt 5 Nano (Wiro)",
+        "name": "(Wiro) GPT-5 Nano",
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
@@ -1286,7 +1286,7 @@ extension required.
       },
       {
         "id": "xai/grok-4-1-fast",
-        "name": "Grok 4 1 Fast (Wiro)",
+        "name": "(Wiro) Grok 4.1 Fast",
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
@@ -1295,7 +1295,7 @@ extension required.
       },
       {
         "id": "xai/grok-4-20",
-        "name": "Grok 4 20 (Wiro)",
+        "name": "(Wiro) Grok 4.20",
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
@@ -1304,7 +1304,7 @@ extension required.
       },
       {
         "id": "xai/grok-4-5",
-        "name": "Grok 4 5 (Wiro)",
+        "name": "(Wiro) Grok 4.5",
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
@@ -1335,10 +1335,39 @@ the same credential and a model ID from the catalog.
 
 ### OpenClaw
 
-Use the model-declared transport after reading
-`GET /v1/models/{owner}/{model}`: `openai-completions`, `openai-responses`, or
-`anthropic-messages`. OpenAI transports use the `/v1` base; Anthropic uses the
-origin.
+OpenClaw registers the gateway as a custom provider in its own config file.
+Everything below lives in one file:
+
+```
+~/.openclaw/openclaw.json                     macOS, Linux
+%USERPROFILE%\.openclaw\openclaw.json         Windows
+```
+
+Set `OPENCLAW_CONFIG_PATH` to put it elsewhere, or run
+`openclaw --profile <name>` to keep a separate one under `~/.openclaw-<name>`.
+
+1. **Install** — `npm i -g openclaw`.
+2. **Name the provider** — the key under `providers`, `wiro` below, becomes the
+   prefix you select a model with, as `wiro/<id>`. Pick any name; the rest of
+   this page assumes `wiro`.
+3. **Match `api` to the model transport** — read it from
+   `GET /v1/models/{owner}/{model}`. `openai-completions` and
+   `openai-responses` take the `/v1` base; `anthropic-messages` takes the
+   origin, `https://llm.wiro.ai`, with no `/v1`. One provider block per
+   transport if you mix them.
+4. **Fill `apiKey`** — `YOUR_API_KEY:YOUR_API_SECRET` for a Signature project,
+   `YOUR_API_KEY` alone for API Key Only.
+5. **List the models** — each entry takes an `id` and a display `name`. The
+   `id` is what reaches the gateway, so the `(Wiro)` label is optional there
+   and stripped on arrival; the `name` is only ever shown to you. Both carry it
+   below so the CLI and the picker read the same.
+6. **Run a turn** —
+   `openclaw agent --local --model "wiro/(Wiro) xai/grok-4-1-fast" -m "your prompt"`.
+   `--local` runs the embedded agent against these credentials; without it the
+   turn goes through an OpenClaw gateway instead.
+
+Every model the gateway serves today, ready to paste as the whole `models`
+array. The same set is in the catalog and behind `GET /v1/models`.
 
 ```json
 {
@@ -1346,14 +1375,38 @@ origin.
     "providers": {
       "wiro": {
         "baseUrl": "https://llm.wiro.ai/v1",
-        "apiKey": "${WIRO_BEARER_CREDENTIAL}",
+        "apiKey": "YOUR_API_KEY:YOUR_API_SECRET",
         "api": "openai-completions",
-        "models": [{ "id": "openai/gpt-5-6-sol", "name": "GPT 5.6 Sol" }]
+        "models": [
+          { "id": "(Wiro) bytedance/seed-v2-1-turbo", "name": "(Wiro) Seed V2.1 Turbo" },
+          { "id": "(Wiro) bytedance/seed-v2-lite", "name": "(Wiro) Seed V2 Lite" },
+          { "id": "(Wiro) bytedance/seed-v2-mini", "name": "(Wiro) Seed V2 Mini" },
+          { "id": "(Wiro) bytedance/seed-v2-pro", "name": "(Wiro) Seed V2 Pro" },
+          { "id": "(Wiro) claude/fable-5", "name": "(Wiro) Fable 5" },
+          { "id": "(Wiro) claude/opus-5", "name": "(Wiro) Opus 5" },
+          { "id": "(Wiro) claude/sonnet-5", "name": "(Wiro) Sonnet 5" },
+          { "id": "(Wiro) openai/gpt-5-2", "name": "(Wiro) GPT-5.2" },
+          { "id": "(Wiro) openai/gpt-5-4", "name": "(Wiro) GPT-5.4" },
+          { "id": "(Wiro) openai/gpt-5-4-mini", "name": "(Wiro) GPT-5.4 Mini" },
+          { "id": "(Wiro) openai/gpt-5-4-nano", "name": "(Wiro) GPT-5.4 Nano" },
+          { "id": "(Wiro) openai/gpt-5-5", "name": "(Wiro) GPT-5.5" },
+          { "id": "(Wiro) openai/gpt-5-6-luna", "name": "(Wiro) GPT-5.6 Luna" },
+          { "id": "(Wiro) openai/gpt-5-6-sol", "name": "(Wiro) GPT-5.6 Sol" },
+          { "id": "(Wiro) openai/gpt-5-6-terra", "name": "(Wiro) GPT-5.6 Terra" },
+          { "id": "(Wiro) openai/gpt-5-mini", "name": "(Wiro) GPT-5 Mini" },
+          { "id": "(Wiro) openai/gpt-5-nano", "name": "(Wiro) GPT-5 Nano" },
+          { "id": "(Wiro) xai/grok-4-1-fast", "name": "(Wiro) Grok 4.1 Fast" },
+          { "id": "(Wiro) xai/grok-4-20", "name": "(Wiro) Grok 4.20" },
+          { "id": "(Wiro) xai/grok-4-5", "name": "(Wiro) Grok 4.5" }
+        ]
       }
     }
   }
 }
 ```
+
+Tool calling works through the gateway, so the agent can run its own tools
+across as many turns as the task needs.
 
 ### Hermes
 
