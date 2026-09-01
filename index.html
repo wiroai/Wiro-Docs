@@ -1274,7 +1274,7 @@
                       /Run/{owner-slug}/{model-slug}
                     </h2>
                     <p>Starts an AI model run. The endpoint accepts model-specific parameters and returns a <strong>task ID</strong> you can use to track progress via <a href="/docs/tasks" class="docs-link">polling</a>, <a href="/docs/websocket" class="docs-link">WebSocket</a>, or <strong>webhook</strong> by providing a <code>callbackUrl</code> parameter — Wiro will POST the result to your URL when the task completes.</p>
-                    <p>If you want one HTTP request to wait for the finished task, use <a href="#run-sync" class="docs-link">POST /Run/{owner}/{model}/sync</a> on this same API host. For OpenAI, Anthropic, or Cursor LLM protocols, see the <a href="/docs/completions-api" class="docs-link">Direct LLM Gateway</a>.</p>
+                    <p>If you want one HTTP request to wait for the finished task, use <a href="#run-sync" class="docs-link">POST /Run/{owner}/{model}/sync</a> on this same API host. For OpenAI or Anthropic LLM protocols, see the <a href="/docs/completions-api" class="docs-link">Direct LLM Gateway</a>.</p>
                   </section>
 
                   <section id="content-types">
@@ -1618,7 +1618,7 @@ data: {
                     <strong>Base URLs:</strong> OpenAI-compatible clients use <code>https://llm.wiro.ai/v1</code>. Clients that append <code>/v1</code> themselves, including Anthropic SDKs and Claude Code, use origin <code>https://llm.wiro.ai</code>. Asynchronous Run, Task, and the original Wiro File API remain on <code>https://api.wiro.ai/v1</code>; WebSocket remains on <code>wss://socket.wiro.ai/v1</code>. The Direct LLM Gateway also provides compatible <code>/v1/files</code> routes backed by the same authenticated project storage.
                   </div>
                   <p>The gateway uses the same Wiro task, project-access, team-policy, and billing system as the Run API. Discover a model before calling it: supported endpoints, parameters, modalities, tools, reasoning, and limits are model-specific.</p>
-                  <p>Direct LLM responses never expose Wiro Run/Sync <code>segments</code>. Each route returns only its selected protocol's native JSON and streaming events: OpenAI Chat chunks, OpenAI Responses events, Anthropic Messages events, or Chat-compatible Cursor events. OpenClaw and Hermes receive the native transport they configure.</p>
+                  <p>Direct LLM responses never expose Wiro Run/Sync <code>segments</code>. Each route returns only its selected protocol's native JSON and streaming events: OpenAI Chat chunks, OpenAI Responses events, or Anthropic Messages events. OpenClaw and Hermes receive the native transport they configure.</p>
                   <p>In this release, <code>stream: true</code> provides protocol-compatible SSE ordering after the provider request completes and the authenticated structured turn is persisted. Do not interpret first-event timing as live provider token latency.</p>
                   <p>Model IDs use lowercase <code>owner/model</code> form. Do not send a provider-only model name: discover the exact ID and protocol capabilities first.</p>
 
@@ -2429,7 +2429,7 @@ const second = await client.chat.completions.create({
 
                   <section id="gateway-sync">
                     <h2>Generic finite task completion</h2>
-                    <p><code>POST /v1/Run/{owner}/{project}/sync</code> lives on <code>https://api.wiro.ai/v1</code>, not this gateway. See <a href="/docs/run-a-model" class="docs-link">Run a Model</a> for JSON wait, SSE, and timeout recovery. Direct LLM clients should use Chat, Responses, Messages, or Cursor below.</p>
+                    <p><code>POST /v1/Run/{owner}/{project}/sync</code> lives on <code>https://api.wiro.ai/v1</code>, not this gateway. See <a href="/docs/run-a-model" class="docs-link">Run a Model</a> for JSON wait, SSE, and timeout recovery. Direct LLM clients should use Chat, Responses, or Messages below.</p>
                   </section>
 
                   <section id="gateway-usage">
@@ -2440,9 +2440,9 @@ const second = await client.chat.completions.create({
                       <li>Responses uses <code>input_tokens</code>, <code>input_tokens_details</code>, <code>output_tokens</code>, <code>output_tokens_details</code>, and <code>total_tokens</code>.</li>
                       <li>Anthropic Messages uses cache-exclusive <code>input_tokens</code>, <code>output_tokens</code>, optional <code>cache_read_input_tokens</code>, optional <code>cache_creation_input_tokens</code>, and optional five-minute/one-hour <code>cache_creation</code> detail.</li>
                     </ul>
-                    <p>For Chat and Responses, input/prompt totals are cache-inclusive. Their input detail objects (optional on Chat/Cursor, always present on Responses) can identify <code>cached_tokens</code>, <code>cache_write_tokens</code>, <code>cache_write_5m_tokens</code>, <code>cache_write_1h_tokens</code>, and reported text/audio/image/video tokens. Output/completion totals are reasoning-inclusive; the corresponding output detail can identify <code>reasoning_tokens</code>, reported text/audio/image/video tokens, and accepted/rejected prediction tokens. Cache TTL values are subsets of <code>cache_write_tokens</code>, and all detail counters are already included in their parent total. Never add them to <code>total_tokens</code>.</p>
+                    <p>For Chat and Responses, input/prompt totals are cache-inclusive. Their input detail objects (optional on Chat, always present on Responses) can identify <code>cached_tokens</code>, <code>cache_write_tokens</code>, <code>cache_write_5m_tokens</code>, <code>cache_write_1h_tokens</code>, and reported text/audio/image/video tokens. Output/completion totals are reasoning-inclusive; the corresponding output detail can identify <code>reasoning_tokens</code>, reported text/audio/image/video tokens, and accepted/rejected prediction tokens. Cache TTL values are subsets of <code>cache_write_tokens</code>, and all detail counters are already included in their parent total. Never add them to <code>total_tokens</code>.</p>
                     <p>There is intentionally no <code>cached_output_tokens</code> field. Provider prompt caches reuse input context; they do not report previously generated output as cached output usage.</p>
-                    <p>Optional <code>server_tool_use</code> values count requests, not tokens. Providers omit unsupported counters, so clients must not require every detail key. Chat, Cursor, and Responses expose Wiro's billed amount as <code>usage.cost</code>; Anthropic exposes it as <code>usage.cost_usd</code>. The asynchronous Run/Task contract keeps the billed amount at task-level <code>totalcost</code>.</p>
+                    <p>Optional <code>server_tool_use</code> values count requests, not tokens. Providers omit unsupported counters, so clients must not require every detail key. Chat and Responses expose Wiro's billed amount as <code>usage.cost</code>; Anthropic exposes it as <code>usage.cost_usd</code>. The asynchronous Run/Task contract keeps the billed amount at task-level <code>totalcost</code>.</p>
                   </section>
 
                   <section id="gateway-files">
@@ -2759,11 +2759,11 @@ claude</code></pre>
                     <h2>Errors</h2>
                     <p>Error responses preserve the selected public protocol:</p>
                     <ul>
-                      <li>Chat, Responses, Cursor, model, and generation errors use the OpenAI-style <code>{ "error": { "message", "type", "param", "code" } }</code> shape.</li>
+                      <li>Chat, Responses, model, and generation errors use the OpenAI-style <code>{ "error": { "message", "type", "param", "code" } }</code> shape.</li>
                       <li>Anthropic routes use <code>{ "type": "error", "error": { "type", "message" } }</code>.</li>
                     </ul>
                     <p>Generic <code>/sync</code> waits on <code>api.wiro.ai</code> use the normal Wiro <code>result</code>/<code>errors</code> envelope.</p>
-                    <p>After a stream starts, inspect SSE events rather than the HTTP status: Chat and Cursor emit an error <code>data:</code> frame followed by <code>[DONE]</code>, Responses emits <code>response.failed</code>, and Anthropic emits <code>error</code>.</p>
+                    <p>After a stream starts, inspect SSE events rather than the HTTP status: Chat emits an error <code>data:</code> frame followed by <code>[DONE]</code>, Responses emits <code>response.failed</code>, and Anthropic emits <code>error</code>.</p>
                     <p>Common codes include <code>invalid_model</code>, <code>model_not_found</code>, <code>unsupported_model_type</code>, <code>unsupported_parameter</code>, <code>response_not_found</code>, <code>response_chain_too_deep</code>, <code>invalid_generation_id</code>, <code>generation_not_found</code>, <code>completion_timeout</code>, <code>model_execution_failed</code>, <code>task_cancelled</code>, and <code>unsupported_capability</code>. Files routes can also return <code>file_not_found</code>, <code>file_too_large</code>, <code>invalid_multipart</code>, <code>missing_file</code>, <code>invalid_filename</code>, <code>invalid_media_type</code>, <code>invalid_pagination</code>, <code>invalid_query</code>, <code>file_catalog_too_large</code>, <code>file_content_unavailable</code>, <code>file_api_unavailable</code>, and <code>invalid_file_response</code>.</p>
                     <p>Gateway-origin and upstream execution failures use HTTP <code>500</code> with their specific error code; the public protocol does not return HTTP <code>502</code>. Responses under <code>/v1</code> include <code>ratelimit-limit</code>, <code>ratelimit-remaining</code>, <code>ratelimit-reset</code>, <code>request-id</code>, and <code>x-request-id</code>. A rate-limit response also includes <code>retry-after</code>.</p>
                     <p>Protocol execution POST bodies must be JSON and are limited to 16 MiB. Files uploads are multipart and use the separate 50 MiB file limit. Unsupported fields that could change execution fail instead of being silently accepted. A model task can also fail after HTTP validation; preserve the protocol error and status rather than treating every <code>2xx</code> task creation as a successful model answer.</p>

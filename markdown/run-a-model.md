@@ -7,8 +7,7 @@ Execute any AI model with a single API call and get real-time updates.
 Starts an AI model run. The endpoint accepts model-specific parameters and returns a **task ID** you can use to track progress via [polling](/docs/tasks), [WebSocket](/docs/websocket), or **webhook** by providing a `callbackUrl` parameter — Wiro will POST the result to your URL when the task completes.
 
 If you want one HTTP request to wait for the finished task, use
-[POST /Run/{owner}/{model}/sync](#run-sync) on this same API host. For OpenAI,
-Anthropic, or Cursor LLM protocols, see the
+[POST /Run/{owner}/{model}/sync](#run-sync) on this same API host. For OpenAI or Anthropic LLM protocols, see the
 [Direct LLM Gateway](/docs/completions-api).
 
 ## Content Types

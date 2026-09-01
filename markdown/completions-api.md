@@ -1020,15 +1020,15 @@ private catalog state.
 
 `POST /v1/Run/{owner}/{project}/sync` lives on `https://api.wiro.ai/v1`, not
 this gateway. See [Run a Model](/docs/run-a-model) for JSON wait, SSE, and
-timeout recovery. Direct LLM clients should use Chat, Responses, Messages, or
-Cursor below.
+timeout recovery. Direct LLM clients should use Chat, Responses, or Messages
+below.
 
 ## Usage contract
 
 When the upstream model reports usage, Wiro returns normalized counters in the
 selected protocol's native shape:
 
-- Chat and Cursor use `prompt_tokens`, optional `prompt_tokens_details`,
+- Chat uses `prompt_tokens`, optional `prompt_tokens_details`,
   `completion_tokens`, optional `completion_tokens_details`, and
   `total_tokens`.
 - Responses uses `input_tokens`, `input_tokens_details`, `output_tokens`,
@@ -1039,7 +1039,7 @@ selected protocol's native shape:
   `cache_creation` detail.
 
 For Chat and Responses, input/prompt totals are cache-inclusive. Their input
-detail objects (optional on Chat/Cursor, always present on Responses) can
+detail objects (optional on Chat, always present on Responses) can
 identify `cached_tokens`, `cache_write_tokens`,
 `cache_write_5m_tokens`, `cache_write_1h_tokens`, and reported
 text/audio/image/video tokens. Output/completion totals are
@@ -1054,8 +1054,8 @@ reuse input context; they do not report previously generated output as cached
 output usage.
 
 Optional `server_tool_use` values count requests, not tokens. Providers omit
-unsupported counters, so clients must not require every detail key. Chat,
-Cursor, and Responses expose Wiro's billed amount as `usage.cost`; Anthropic
+unsupported counters, so clients must not require every detail key. Chat and
+Responses expose Wiro's billed amount as `usage.cost`; Anthropic
 exposes it as `usage.cost_usd`. The asynchronous Run/Task contract keeps the
 billed amount at task-level `totalcost`.
 
@@ -1537,7 +1537,7 @@ native token counting.
 ### **GET** /v1/generation?id=
 
 Look up terminal metadata using the exact public ID emitted by the protocol
-route: the response `id` for Chat, Cursor, or Responses, and the `request-id`
+route: the response `id` for Chat or Responses, and the `request-id`
 response header for Messages. The equivalent path form is
 `GET /v1/generation/{public-id}`.
 
@@ -1625,7 +1625,7 @@ supports them. Provider-native file IDs are not interchangeable.
 
 Error responses preserve the selected public protocol:
 
-- Chat, Responses, Cursor, model, and generation errors use the
+- Chat, Responses, model, and generation errors use the
   OpenAI-style `{ "error": { "message", "type", "param", "code" } }` shape.
 - Anthropic routes use
   `{ "type": "error", "error": { "type", "message" } }`.
@@ -1633,8 +1633,7 @@ Error responses preserve the selected public protocol:
 Generic `/sync` waits on `api.wiro.ai` use the normal Wiro `result`/`errors`
 envelope.
 
-After a stream starts, inspect SSE events rather than the HTTP status: Chat and
-Cursor emit an error `data:` frame followed by `[DONE]`, Responses emits
+After a stream starts, inspect SSE events rather than the HTTP status: Chat emits an error `data:` frame followed by `[DONE]`, Responses emits
 `response.failed`, and Anthropic emits `error`.
 
 Common codes include `invalid_model`, `model_not_found`,
