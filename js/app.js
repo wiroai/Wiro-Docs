@@ -486,8 +486,22 @@ function highlightInlineCode(slug) {
       themes: { light: 'wiro-light', dark: 'wiro-dark' },
       defaultColor: false,
     });
+    // Shiki kendi <pre>'sini uretiyor; outerHTML ile degistirmek yazarin koydugu
+    // SINIFLARI DUSURUYORDU. Olculdu: VS Code panelindeki model JSON'u
+    // pre-scroll tasiyor ama Shiki'den sonra sinifi yok ve max-height: none --
+    // yani sayfayi asagi dogru metrelerce uzatiyordu. Ayni blok duz metin olsa
+    // (Cursor listesi gibi) Shiki'ye hic girmedigi icin duzgun scroll oluyordu,
+    // bu yuzden fark gozden kaciyordu. Sinifi tasiyoruz.
     const wrapper = block.closest('pre');
-    wrapper.outerHTML = html;
+    const holder = document.createElement('template');
+    holder.innerHTML = html.trim();
+    const replacement = holder.content.querySelector('pre');
+    if (replacement) {
+      wrapper.classList.forEach((name) => replacement.classList.add(name));
+      wrapper.replaceWith(replacement);
+    } else {
+      wrapper.outerHTML = html;
+    }
   });
 }
 
