@@ -871,7 +871,6 @@ is in [the catalog](https://wiro.ai/models?categories=llm-tool-call) and behind
 (Wiro) google/gemini-3-8-flash
 (Wiro) google/gemini-3-flash
 (Wiro) google/gemini-3-pro
-(Wiro) meta-llama/llama-3-1-8b-instruct
 (Wiro) meta-llama/llama-3-2-3b-instruct
 (Wiro) mistralai/mistral-7b-instruct-v0-3
 (Wiro) mistralai/mistral-nemo-instruct-2407
@@ -1044,7 +1043,6 @@ Model ID                                     Context
 (Wiro) google/gemini-3-8-flash               1048576
 (Wiro) google/gemini-3-flash                 1048576
 (Wiro) google/gemini-3-pro                   1048576
-(Wiro) meta-llama/llama-3-1-8b-instruct       131072
 (Wiro) meta-llama/llama-3-2-3b-instruct       131072
 (Wiro) mistralai/mistral-7b-instruct-v0-3      32768
 (Wiro) mistralai/mistral-nemo-instruct-2407   131072
@@ -1303,15 +1301,6 @@ same numbers come from `GET /v1/models` as `context_length` and `max_tokens`.
         "vision": true,
         "maxInputTokens": 1048576,
         "maxOutputTokens": 65536
-      },
-      {
-        "id": "meta-llama/llama-3-1-8b-instruct",
-        "name": "(Wiro) Llama 3.1 8B Instruct",
-        "url": "https://llm.wiro.ai/v1/chat/completions",
-        "toolCalling": true,
-        "vision": false,
-        "maxInputTokens": 131072,
-        "maxOutputTokens": 2048
       },
       {
         "id": "meta-llama/llama-3-2-3b-instruct",
@@ -1700,7 +1689,6 @@ Model ID                                     Context  Max Output
 (Wiro) google/gemini-3-8-flash               1048576       65536
 (Wiro) google/gemini-3-flash                 1048576       65536
 (Wiro) google/gemini-3-pro                   1048576       65536
-(Wiro) meta-llama/llama-3-1-8b-instruct       131072        2048
 (Wiro) meta-llama/llama-3-2-3b-instruct       131072        2048
 (Wiro) mistralai/mistral-7b-instruct-v0-3      32768        2048
 (Wiro) mistralai/mistral-nemo-instruct-2407   131072        2048
@@ -1823,7 +1811,6 @@ array. The same set is in the catalog and behind `GET /v1/models`.
           { "id": "(Wiro) google/gemini-3-8-flash", "name": "(Wiro) Gemini 3.8 Flash" },
           { "id": "(Wiro) google/gemini-3-flash", "name": "(Wiro) Gemini 3 Flash" },
           { "id": "(Wiro) google/gemini-3-pro", "name": "(Wiro) Gemini 3 Pro" },
-          { "id": "(Wiro) meta-llama/llama-3-1-8b-instruct", "name": "(Wiro) Llama 3.1 8B Instruct" },
           { "id": "(Wiro) meta-llama/llama-3-2-3b-instruct", "name": "(Wiro) Llama 3.2 3B Instruct" },
           { "id": "(Wiro) mistralai/mistral-7b-instruct-v0-3", "name": "(Wiro) Mistral 7B Instruct v0.3" },
           { "id": "(Wiro) mistralai/mistral-nemo-instruct-2407", "name": "(Wiro) Mistral Nemo Instruct" },
@@ -1932,7 +1919,6 @@ Every model the gateway serves today. The same set is in the catalog and behind
 (Wiro) google/gemini-3-8-flash
 (Wiro) google/gemini-3-flash
 (Wiro) google/gemini-3-pro
-(Wiro) meta-llama/llama-3-1-8b-instruct
 (Wiro) meta-llama/llama-3-2-3b-instruct
 (Wiro) mistralai/mistral-7b-instruct-v0-3
 (Wiro) mistralai/mistral-nemo-instruct-2407
@@ -2071,7 +2057,6 @@ Every model the gateway serves today. The same set is in the catalog and behind
 (Wiro) google/gemini-3-8-flash
 (Wiro) google/gemini-3-flash
 (Wiro) google/gemini-3-pro
-(Wiro) meta-llama/llama-3-1-8b-instruct
 (Wiro) meta-llama/llama-3-2-3b-instruct
 (Wiro) mistralai/mistral-7b-instruct-v0-3
 (Wiro) mistralai/mistral-nemo-instruct-2407
