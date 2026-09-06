@@ -871,7 +871,9 @@ is in [the catalog](https://wiro.ai/models?categories=llm-tool-call) and behind
 (Wiro) google/gemini-3-8-flash
 (Wiro) google/gemini-3-flash
 (Wiro) google/gemini-3-pro
+(Wiro) meta-llama/llama-3-1-8b-instruct
 (Wiro) meta-llama/llama-3-2-3b-instruct
+(Wiro) mistralai/mistral-7b-instruct-v0-3
 (Wiro) mistralai/mistral-nemo-instruct-2407
 (Wiro) openai/gpt-5-2
 (Wiro) openai/gpt-5-4
@@ -890,6 +892,7 @@ is in [the catalog](https://wiro.ai/models?categories=llm-tool-call) and behind
 (Wiro) qwen/qwen2-5-3b-instruct
 (Wiro) qwen/qwen2-5-7b-instruct
 (Wiro) qwen/qwen2-5-coder-32b-instruct
+(Wiro) qwen/qwen2-5-coder-7b-instruct
 (Wiro) qwen/qwen3-30b-a3b
 (Wiro) qwen/qwen3-30b-a3b-thinking-2507
 (Wiro) qwen/qwen3-32b
@@ -903,7 +906,6 @@ is in [the catalog](https://wiro.ai/models?categories=llm-tool-call) and behind
 (Wiro) qwen/qwen3-8-27b
 (Wiro) qwen/qwen3-8-27b-obliterated
 (Wiro) qwen/qwen3-8-27b-uncensored
-(Wiro) qwen/qwen3-coder-30b-a3b-instruct
 (Wiro) xai/grok-4-1-fast
 (Wiro) xai/grok-4-20
 (Wiro) xai/grok-4-5
@@ -1042,7 +1044,9 @@ Model ID                                     Context
 (Wiro) google/gemini-3-8-flash               1048576
 (Wiro) google/gemini-3-flash                 1048576
 (Wiro) google/gemini-3-pro                   1048576
+(Wiro) meta-llama/llama-3-1-8b-instruct       131072
 (Wiro) meta-llama/llama-3-2-3b-instruct       131072
+(Wiro) mistralai/mistral-7b-instruct-v0-3      32768
 (Wiro) mistralai/mistral-nemo-instruct-2407   131072
 (Wiro) openai/gpt-5-2                         400000
 (Wiro) openai/gpt-5-4                        1050000
@@ -1061,6 +1065,7 @@ Model ID                                     Context
 (Wiro) qwen/qwen2-5-3b-instruct                32768
 (Wiro) qwen/qwen2-5-7b-instruct                32768
 (Wiro) qwen/qwen2-5-coder-32b-instruct         32768
+(Wiro) qwen/qwen2-5-coder-7b-instruct          32768
 (Wiro) qwen/qwen3-30b-a3b                      40960
 (Wiro) qwen/qwen3-30b-a3b-thinking-2507       262144
 (Wiro) qwen/qwen3-32b                          40960
@@ -1074,7 +1079,6 @@ Model ID                                     Context
 (Wiro) qwen/qwen3-8-27b                       262144
 (Wiro) qwen/qwen3-8-27b-obliterated           262144
 (Wiro) qwen/qwen3-8-27b-uncensored            262144
-(Wiro) qwen/qwen3-coder-30b-a3b-instruct      262144
 (Wiro) xai/grok-4-1-fast                     2000000
 (Wiro) xai/grok-4-20                         2000000
 (Wiro) xai/grok-4-5                           500000
@@ -1301,12 +1305,30 @@ same numbers come from `GET /v1/models` as `context_length` and `max_tokens`.
         "maxOutputTokens": 65536
       },
       {
+        "id": "meta-llama/llama-3-1-8b-instruct",
+        "name": "(Wiro) Llama 3.1 8B Instruct",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": false,
+        "maxInputTokens": 131072,
+        "maxOutputTokens": 2048
+      },
+      {
         "id": "meta-llama/llama-3-2-3b-instruct",
         "name": "(Wiro) Llama 3.2 3B Instruct",
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": false,
         "maxInputTokens": 131072,
+        "maxOutputTokens": 2048
+      },
+      {
+        "id": "mistralai/mistral-7b-instruct-v0-3",
+        "name": "(Wiro) Mistral 7B Instruct v0.3",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": false,
+        "maxInputTokens": 32768,
         "maxOutputTokens": 2048
       },
       {
@@ -1472,6 +1494,15 @@ same numbers come from `GET /v1/models` as `context_length` and `max_tokens`.
         "maxOutputTokens": 2048
       },
       {
+        "id": "qwen/qwen2-5-coder-7b-instruct",
+        "name": "(Wiro) Qwen2.5 Coder 7B Instruct",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": false,
+        "maxInputTokens": 32768,
+        "maxOutputTokens": 2048
+      },
+      {
         "id": "qwen/qwen3-30b-a3b",
         "name": "(Wiro) Qwen3 30B A3B",
         "url": "https://llm.wiro.ai/v1/chat/completions",
@@ -1589,15 +1620,6 @@ same numbers come from `GET /v1/models` as `context_length` and `max_tokens`.
         "maxOutputTokens": 16384
       },
       {
-        "id": "qwen/qwen3-coder-30b-a3b-instruct",
-        "name": "(Wiro) Qwen3 Coder 30B A3B Instruct",
-        "url": "https://llm.wiro.ai/v1/chat/completions",
-        "toolCalling": true,
-        "vision": false,
-        "maxInputTokens": 262144,
-        "maxOutputTokens": 2048
-      },
-      {
         "id": "xai/grok-4-1-fast",
         "name": "(Wiro) Grok 4.1 Fast",
         "url": "https://llm.wiro.ai/v1/chat/completions",
@@ -1678,7 +1700,9 @@ Model ID                                     Context  Max Output
 (Wiro) google/gemini-3-8-flash               1048576       65536
 (Wiro) google/gemini-3-flash                 1048576       65536
 (Wiro) google/gemini-3-pro                   1048576       65536
+(Wiro) meta-llama/llama-3-1-8b-instruct       131072        2048
 (Wiro) meta-llama/llama-3-2-3b-instruct       131072        2048
+(Wiro) mistralai/mistral-7b-instruct-v0-3      32768        2048
 (Wiro) mistralai/mistral-nemo-instruct-2407   131072        2048
 (Wiro) openai/gpt-5-2                         400000       65536
 (Wiro) openai/gpt-5-4                        1050000       65536
@@ -1697,6 +1721,7 @@ Model ID                                     Context  Max Output
 (Wiro) qwen/qwen2-5-3b-instruct                32768        2048
 (Wiro) qwen/qwen2-5-7b-instruct                32768        2048
 (Wiro) qwen/qwen2-5-coder-32b-instruct         32768        2048
+(Wiro) qwen/qwen2-5-coder-7b-instruct          32768        2048
 (Wiro) qwen/qwen3-30b-a3b                      40960        4096
 (Wiro) qwen/qwen3-30b-a3b-thinking-2507       262144        4096
 (Wiro) qwen/qwen3-32b                          40960        4096
@@ -1710,7 +1735,6 @@ Model ID                                     Context  Max Output
 (Wiro) qwen/qwen3-8-27b                       262144       16384
 (Wiro) qwen/qwen3-8-27b-obliterated           262144       16384
 (Wiro) qwen/qwen3-8-27b-uncensored            262144       16384
-(Wiro) qwen/qwen3-coder-30b-a3b-instruct      262144        2048
 (Wiro) xai/grok-4-1-fast                     2000000       65536
 (Wiro) xai/grok-4-20                         2000000       65536
 (Wiro) xai/grok-4-5                           500000       65536
@@ -1799,7 +1823,9 @@ array. The same set is in the catalog and behind `GET /v1/models`.
           { "id": "(Wiro) google/gemini-3-8-flash", "name": "(Wiro) Gemini 3.8 Flash" },
           { "id": "(Wiro) google/gemini-3-flash", "name": "(Wiro) Gemini 3 Flash" },
           { "id": "(Wiro) google/gemini-3-pro", "name": "(Wiro) Gemini 3 Pro" },
+          { "id": "(Wiro) meta-llama/llama-3-1-8b-instruct", "name": "(Wiro) Llama 3.1 8B Instruct" },
           { "id": "(Wiro) meta-llama/llama-3-2-3b-instruct", "name": "(Wiro) Llama 3.2 3B Instruct" },
+          { "id": "(Wiro) mistralai/mistral-7b-instruct-v0-3", "name": "(Wiro) Mistral 7B Instruct v0.3" },
           { "id": "(Wiro) mistralai/mistral-nemo-instruct-2407", "name": "(Wiro) Mistral Nemo Instruct" },
           { "id": "(Wiro) openai/gpt-5-2", "name": "(Wiro) GPT-5.2" },
           { "id": "(Wiro) openai/gpt-5-4", "name": "(Wiro) GPT-5.4" },
@@ -1818,6 +1844,7 @@ array. The same set is in the catalog and behind `GET /v1/models`.
           { "id": "(Wiro) qwen/qwen2-5-3b-instruct", "name": "(Wiro) Qwen2.5 3B Instruct" },
           { "id": "(Wiro) qwen/qwen2-5-7b-instruct", "name": "(Wiro) Qwen2.5 7B Instruct" },
           { "id": "(Wiro) qwen/qwen2-5-coder-32b-instruct", "name": "(Wiro) Qwen2.5 Coder 32B Instruct" },
+          { "id": "(Wiro) qwen/qwen2-5-coder-7b-instruct", "name": "(Wiro) Qwen2.5 Coder 7B Instruct" },
           { "id": "(Wiro) qwen/qwen3-30b-a3b", "name": "(Wiro) Qwen3 30B A3B" },
           { "id": "(Wiro) qwen/qwen3-30b-a3b-thinking-2507", "name": "(Wiro) Qwen3 30B A3B Thinking" },
           { "id": "(Wiro) qwen/qwen3-32b", "name": "(Wiro) Qwen3 32B" },
@@ -1831,7 +1858,6 @@ array. The same set is in the catalog and behind `GET /v1/models`.
           { "id": "(Wiro) qwen/qwen3-8-27b", "name": "(Wiro) Qwen3.8 27B" },
           { "id": "(Wiro) qwen/qwen3-8-27b-obliterated", "name": "(Wiro) Qwen3.8 27B Obliterated" },
           { "id": "(Wiro) qwen/qwen3-8-27b-uncensored", "name": "(Wiro) Qwen3.8 27B Uncensored" },
-          { "id": "(Wiro) qwen/qwen3-coder-30b-a3b-instruct", "name": "(Wiro) Qwen3 Coder 30B A3B Instruct" },
           { "id": "(Wiro) xai/grok-4-1-fast", "name": "(Wiro) Grok 4.1 Fast" },
           { "id": "(Wiro) xai/grok-4-20", "name": "(Wiro) Grok 4.20" },
           { "id": "(Wiro) xai/grok-4-5", "name": "(Wiro) Grok 4.5" }
@@ -1906,7 +1932,9 @@ Every model the gateway serves today. The same set is in the catalog and behind
 (Wiro) google/gemini-3-8-flash
 (Wiro) google/gemini-3-flash
 (Wiro) google/gemini-3-pro
+(Wiro) meta-llama/llama-3-1-8b-instruct
 (Wiro) meta-llama/llama-3-2-3b-instruct
+(Wiro) mistralai/mistral-7b-instruct-v0-3
 (Wiro) mistralai/mistral-nemo-instruct-2407
 (Wiro) openai/gpt-5-2
 (Wiro) openai/gpt-5-4
@@ -1925,6 +1953,7 @@ Every model the gateway serves today. The same set is in the catalog and behind
 (Wiro) qwen/qwen2-5-3b-instruct
 (Wiro) qwen/qwen2-5-7b-instruct
 (Wiro) qwen/qwen2-5-coder-32b-instruct
+(Wiro) qwen/qwen2-5-coder-7b-instruct
 (Wiro) qwen/qwen3-30b-a3b
 (Wiro) qwen/qwen3-30b-a3b-thinking-2507
 (Wiro) qwen/qwen3-32b
@@ -1938,7 +1967,6 @@ Every model the gateway serves today. The same set is in the catalog and behind
 (Wiro) qwen/qwen3-8-27b
 (Wiro) qwen/qwen3-8-27b-obliterated
 (Wiro) qwen/qwen3-8-27b-uncensored
-(Wiro) qwen/qwen3-coder-30b-a3b-instruct
 (Wiro) xai/grok-4-1-fast
 (Wiro) xai/grok-4-20
 (Wiro) xai/grok-4-5
@@ -2043,7 +2071,9 @@ Every model the gateway serves today. The same set is in the catalog and behind
 (Wiro) google/gemini-3-8-flash
 (Wiro) google/gemini-3-flash
 (Wiro) google/gemini-3-pro
+(Wiro) meta-llama/llama-3-1-8b-instruct
 (Wiro) meta-llama/llama-3-2-3b-instruct
+(Wiro) mistralai/mistral-7b-instruct-v0-3
 (Wiro) mistralai/mistral-nemo-instruct-2407
 (Wiro) openai/gpt-5-2
 (Wiro) openai/gpt-5-4
@@ -2062,6 +2092,7 @@ Every model the gateway serves today. The same set is in the catalog and behind
 (Wiro) qwen/qwen2-5-3b-instruct
 (Wiro) qwen/qwen2-5-7b-instruct
 (Wiro) qwen/qwen2-5-coder-32b-instruct
+(Wiro) qwen/qwen2-5-coder-7b-instruct
 (Wiro) qwen/qwen3-30b-a3b
 (Wiro) qwen/qwen3-30b-a3b-thinking-2507
 (Wiro) qwen/qwen3-32b
@@ -2075,7 +2106,6 @@ Every model the gateway serves today. The same set is in the catalog and behind
 (Wiro) qwen/qwen3-8-27b
 (Wiro) qwen/qwen3-8-27b-obliterated
 (Wiro) qwen/qwen3-8-27b-uncensored
-(Wiro) qwen/qwen3-coder-30b-a3b-instruct
 (Wiro) xai/grok-4-1-fast
 (Wiro) xai/grok-4-20
 (Wiro) xai/grok-4-5
