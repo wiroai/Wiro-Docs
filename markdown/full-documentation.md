@@ -860,6 +860,17 @@ is in [the catalog](https://wiro.ai/models?categories=llm-tool-call) and behind
 (Wiro) claude/fable-5
 (Wiro) claude/opus-5
 (Wiro) claude/sonnet-5
+(Wiro) deepseek/v4-flash
+(Wiro) deepseek/v4-pro
+(Wiro) glm/5-2
+(Wiro) google/gemini-2-5-flash
+(Wiro) google/gemini-3-5-flash
+(Wiro) google/gemini-3-5-flash-lite
+(Wiro) google/gemini-3-6-flash
+(Wiro) google/gemini-3-7-flash
+(Wiro) google/gemini-3-8-flash
+(Wiro) google/gemini-3-flash
+(Wiro) google/gemini-3-pro
 (Wiro) meta-llama/llama-3-2-3b-instruct
 (Wiro) mistralai/mistral-nemo-instruct-2407
 (Wiro) openai/gpt-5-2
@@ -1020,6 +1031,17 @@ Model ID                                     Context
 (Wiro) claude/fable-5                        1000000
 (Wiro) claude/opus-5                         1000000
 (Wiro) claude/sonnet-5                       1000000
+(Wiro) deepseek/v4-flash                     1048576
+(Wiro) deepseek/v4-pro                       1048576
+(Wiro) glm/5-2                               1048576
+(Wiro) google/gemini-2-5-flash               1048576
+(Wiro) google/gemini-3-5-flash               1048576
+(Wiro) google/gemini-3-5-flash-lite          1048576
+(Wiro) google/gemini-3-6-flash               1048576
+(Wiro) google/gemini-3-7-flash               1048576
+(Wiro) google/gemini-3-8-flash               1048576
+(Wiro) google/gemini-3-flash                 1048576
+(Wiro) google/gemini-3-pro                   1048576
 (Wiro) meta-llama/llama-3-2-3b-instruct       131072
 (Wiro) mistralai/mistral-nemo-instruct-2407   131072
 (Wiro) openai/gpt-5-2                         400000
@@ -1178,6 +1200,105 @@ same numbers come from `GET /v1/models` as `context_length` and `max_tokens`.
         "vision": true,
         "maxInputTokens": 1000000,
         "maxOutputTokens": 128000
+      },
+      {
+        "id": "deepseek/v4-flash",
+        "name": "(Wiro) DeepSeek V4 Flash",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": false,
+        "maxInputTokens": 1048576,
+        "maxOutputTokens": 384000
+      },
+      {
+        "id": "deepseek/v4-pro",
+        "name": "(Wiro) DeepSeek V4 Pro",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": false,
+        "maxInputTokens": 1048576,
+        "maxOutputTokens": 384000
+      },
+      {
+        "id": "glm/5-2",
+        "name": "(Wiro) GLM 5.2",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": false,
+        "maxInputTokens": 1048576,
+        "maxOutputTokens": 128000
+      },
+      {
+        "id": "google/gemini-2-5-flash",
+        "name": "(Wiro) Gemini 2.5 Flash",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1048576,
+        "maxOutputTokens": 65536
+      },
+      {
+        "id": "google/gemini-3-5-flash",
+        "name": "(Wiro) Gemini 3.5 Flash",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1048576,
+        "maxOutputTokens": 65536
+      },
+      {
+        "id": "google/gemini-3-5-flash-lite",
+        "name": "(Wiro) Gemini 3.5 Flash-Lite",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1048576,
+        "maxOutputTokens": 65536
+      },
+      {
+        "id": "google/gemini-3-6-flash",
+        "name": "(Wiro) Gemini 3.6 Flash",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1048576,
+        "maxOutputTokens": 65536
+      },
+      {
+        "id": "google/gemini-3-7-flash",
+        "name": "(Wiro) Gemini 3.7 Flash",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1048576,
+        "maxOutputTokens": 65536
+      },
+      {
+        "id": "google/gemini-3-8-flash",
+        "name": "(Wiro) Gemini 3.8 Flash",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1048576,
+        "maxOutputTokens": 65536
+      },
+      {
+        "id": "google/gemini-3-flash",
+        "name": "(Wiro) Gemini 3 Flash",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1048576,
+        "maxOutputTokens": 65536
+      },
+      {
+        "id": "google/gemini-3-pro",
+        "name": "(Wiro) Gemini 3 Pro",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1048576,
+        "maxOutputTokens": 65536
       },
       {
         "id": "meta-llama/llama-3-2-3b-instruct",
@@ -1546,6 +1667,17 @@ Model ID                                     Context  Max Output
 (Wiro) claude/fable-5                        1000000      128000
 (Wiro) claude/opus-5                         1000000      128000
 (Wiro) claude/sonnet-5                       1000000      128000
+(Wiro) deepseek/v4-flash                     1048576      384000
+(Wiro) deepseek/v4-pro                       1048576      384000
+(Wiro) glm/5-2                               1048576      128000
+(Wiro) google/gemini-2-5-flash               1048576       65536
+(Wiro) google/gemini-3-5-flash               1048576       65536
+(Wiro) google/gemini-3-5-flash-lite          1048576       65536
+(Wiro) google/gemini-3-6-flash               1048576       65536
+(Wiro) google/gemini-3-7-flash               1048576       65536
+(Wiro) google/gemini-3-8-flash               1048576       65536
+(Wiro) google/gemini-3-flash                 1048576       65536
+(Wiro) google/gemini-3-pro                   1048576       65536
 (Wiro) meta-llama/llama-3-2-3b-instruct       131072        2048
 (Wiro) mistralai/mistral-nemo-instruct-2407   131072        2048
 (Wiro) openai/gpt-5-2                         400000       65536
@@ -1656,6 +1788,17 @@ array. The same set is in the catalog and behind `GET /v1/models`.
           { "id": "(Wiro) claude/fable-5", "name": "(Wiro) Fable 5" },
           { "id": "(Wiro) claude/opus-5", "name": "(Wiro) Opus 5" },
           { "id": "(Wiro) claude/sonnet-5", "name": "(Wiro) Sonnet 5" },
+          { "id": "(Wiro) deepseek/v4-flash", "name": "(Wiro) DeepSeek V4 Flash" },
+          { "id": "(Wiro) deepseek/v4-pro", "name": "(Wiro) DeepSeek V4 Pro" },
+          { "id": "(Wiro) glm/5-2", "name": "(Wiro) GLM 5.2" },
+          { "id": "(Wiro) google/gemini-2-5-flash", "name": "(Wiro) Gemini 2.5 Flash" },
+          { "id": "(Wiro) google/gemini-3-5-flash", "name": "(Wiro) Gemini 3.5 Flash" },
+          { "id": "(Wiro) google/gemini-3-5-flash-lite", "name": "(Wiro) Gemini 3.5 Flash-Lite" },
+          { "id": "(Wiro) google/gemini-3-6-flash", "name": "(Wiro) Gemini 3.6 Flash" },
+          { "id": "(Wiro) google/gemini-3-7-flash", "name": "(Wiro) Gemini 3.7 Flash" },
+          { "id": "(Wiro) google/gemini-3-8-flash", "name": "(Wiro) Gemini 3.8 Flash" },
+          { "id": "(Wiro) google/gemini-3-flash", "name": "(Wiro) Gemini 3 Flash" },
+          { "id": "(Wiro) google/gemini-3-pro", "name": "(Wiro) Gemini 3 Pro" },
           { "id": "(Wiro) meta-llama/llama-3-2-3b-instruct", "name": "(Wiro) Llama 3.2 3B Instruct" },
           { "id": "(Wiro) mistralai/mistral-nemo-instruct-2407", "name": "(Wiro) Mistral Nemo Instruct" },
           { "id": "(Wiro) openai/gpt-5-2", "name": "(Wiro) GPT-5.2" },
@@ -1752,6 +1895,17 @@ Every model the gateway serves today. The same set is in the catalog and behind
 (Wiro) claude/fable-5
 (Wiro) claude/opus-5
 (Wiro) claude/sonnet-5
+(Wiro) deepseek/v4-flash
+(Wiro) deepseek/v4-pro
+(Wiro) glm/5-2
+(Wiro) google/gemini-2-5-flash
+(Wiro) google/gemini-3-5-flash
+(Wiro) google/gemini-3-5-flash-lite
+(Wiro) google/gemini-3-6-flash
+(Wiro) google/gemini-3-7-flash
+(Wiro) google/gemini-3-8-flash
+(Wiro) google/gemini-3-flash
+(Wiro) google/gemini-3-pro
 (Wiro) meta-llama/llama-3-2-3b-instruct
 (Wiro) mistralai/mistral-nemo-instruct-2407
 (Wiro) openai/gpt-5-2
@@ -1878,6 +2032,17 @@ Every model the gateway serves today. The same set is in the catalog and behind
 (Wiro) claude/fable-5
 (Wiro) claude/opus-5
 (Wiro) claude/sonnet-5
+(Wiro) deepseek/v4-flash
+(Wiro) deepseek/v4-pro
+(Wiro) glm/5-2
+(Wiro) google/gemini-2-5-flash
+(Wiro) google/gemini-3-5-flash
+(Wiro) google/gemini-3-5-flash-lite
+(Wiro) google/gemini-3-6-flash
+(Wiro) google/gemini-3-7-flash
+(Wiro) google/gemini-3-8-flash
+(Wiro) google/gemini-3-flash
+(Wiro) google/gemini-3-pro
 (Wiro) meta-llama/llama-3-2-3b-instruct
 (Wiro) mistralai/mistral-nemo-instruct-2407
 (Wiro) openai/gpt-5-2
