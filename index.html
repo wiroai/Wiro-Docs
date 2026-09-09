@@ -361,7 +361,7 @@
                         <a href="/docs/integration-google-calendar-skills" class="docs-nav-link" data-section="integration-google-calendar-skills"><img src="https://wiro.ai/images/icons/skills/googlecalendar.svg" alt="" class="docs-nav-icon-img" /><span>Google Calendar</span></a>
                       </li>
                       <li>
-                        <a href="/docs/integration-serper-search-skills" class="docs-nav-link" data-section="integration-serper-search-skills"><img src="https://wiro.ai/images/icons/skills/serper.svg" alt="" class="docs-nav-icon-img" /><span>Google Web Search</span></a>
+                        <a href="/docs/integration-serper-search-skills" class="docs-nav-link" data-section="integration-serper-search-skills"><img src="https://wiro.ai/images/icons/skills/serper.svg" alt="" class="docs-nav-icon-img" /><span>Serper Web Search</span></a>
                       </li>
                       <li>
                         <a href="/docs/integration-gmail-skills" class="docs-nav-link" data-section="integration-gmail-skills"><img src="https://wiro.ai/images/icons/skills/gmail.svg" alt="" class="docs-nav-icon-img" /><span>Gmail</span></a>
@@ -18200,8 +18200,8 @@ pending provider review.</p>
 </thead>
 <tbody>
 <tr>
-<td>Google Web Search</td>
-<td><a href="/docs/integration-serper-search-skills">Google Web Search Skills</a></td>
+<td>Serper Web Search</td>
+<td><a href="/docs/integration-serper-search-skills">Serper Web Search Skills</a></td>
 </tr>
 <tr>
 <td>Gmail</td>
@@ -27830,7 +27830,7 @@ Agent → POST /v1beta/properties/123456789:runReport
               <div class="docs-page-section" data-page="integration-serper-search-skills" style="display: none">
                 <article class="docs-section">
                   <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/integration-serper-search-skills.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/integration-serper-search-skills.md" download class="docs-section-md-btn">Download</a></div>
-                  <h1>Google Web Search Integration</h1>
+                  <h1>Serper Web Search Integration</h1>
                   <p class="section-subtitle">Give your agent real Google search results as clean JSON — via Serper.dev — so content, research, and marketing agents can find current sources before they write.</p>
 
                   <section id="overview">
@@ -27898,10 +27898,10 @@ Agent → POST /v1beta/properties/123456789:runReport
       { "credentialkey": "serper", "fieldname": "apikey", "fieldvalue": "YOUR_SERPER_API_KEY" }
     ]
   }'</code></pre>
-                    <p>Or fill it in the panel: <strong><a href="https://wiro.ai/panel/agents" target="_blank" rel="noopener">My Agents</a></strong> → open agent → <strong>Credentials → Google Web Search</strong>.</p>
+                    <p>Or fill it in the panel: <strong><a href="https://wiro.ai/panel/agents" target="_blank" rel="noopener">My Agents</a></strong> → open agent → <strong>Credentials → Serper Web Search</strong>.</p>
 
                     <h3>Step 3: Enable the skill</h3>
-                    <p>Google Web Search ships <strong>available but off</strong>. Turn <code>int-serper-search</code> on for the agent:</p>
+                    <p>Serper Web Search ships <strong>available but off</strong>. Turn <code>int-serper-search</code> on for the agent:</p>
                     <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
@@ -27947,7 +27947,7 @@ Agent → POST /v1beta/properties/123456789:runReport
   "extra": true,
   "apikey": "***encrypted***"
 }</code></pre>
-                    <p><code>optional</code> and <code>extra</code> are <code>true</code> because Google Web Search is an optional add-on: its credential card surfaces on the content presets even before the skill is toggled on.</p>
+                    <p><code>optional</code> and <code>extra</code> are <code>true</code> because Serper Web Search is an optional add-on: its credential card surfaces on the content presets even before the skill is toggled on.</p>
                   </section>
 
                   <section id="query-options">

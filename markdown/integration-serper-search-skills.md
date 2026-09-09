@@ -1,4 +1,4 @@
-# Google Web Search Integration
+# Serper Web Search Integration
 
 Give your agent real Google search results as clean JSON — via Serper.dev — so content, research, and marketing agents can find current sources before they write.
 
@@ -53,11 +53,11 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   }'
 ```
 
-Or fill it in the panel: **[My Agents](https://wiro.ai/panel/agents)** → open agent → **Credentials → Google Web Search**.
+Or fill it in the panel: **[My Agents](https://wiro.ai/panel/agents)** → open agent → **Credentials → Serper Web Search**.
 
 ### Step 3: Enable the skill
 
-Google Web Search ships **available but off**. Turn `int-serper-search` on for the agent:
+Serper Web Search ships **available but off**. Turn `int-serper-search` on for the agent:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
@@ -97,7 +97,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 }
 ```
 
-`optional` and `extra` are `true` because Google Web Search is an optional add-on: its credential card surfaces on the content presets even before the skill is toggled on.
+`optional` and `extra` are `true` because Serper Web Search is an optional add-on: its credential card surfaces on the content presets even before the skill is toggled on.
 
 ## Query options
 
