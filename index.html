@@ -361,7 +361,7 @@
                         <a href="/docs/integration-google-calendar-skills" class="docs-nav-link" data-section="integration-google-calendar-skills"><img src="https://wiro.ai/images/icons/skills/googlecalendar.svg" alt="" class="docs-nav-icon-img" /><span>Google Calendar</span></a>
                       </li>
                       <li>
-                        <a href="/docs/integration-google-search-skills" class="docs-nav-link" data-section="integration-google-search-skills"><img src="https://wiro.ai/images/icons/skills/google-search.svg" alt="" class="docs-nav-icon-img" /><span>Google Web Search</span></a>
+                        <a href="/docs/integration-serper-search-skills" class="docs-nav-link" data-section="integration-serper-search-skills"><img src="https://wiro.ai/images/icons/skills/serper.svg" alt="" class="docs-nav-icon-img" /><span>Google Web Search</span></a>
                       </li>
                       <li>
                         <a href="/docs/integration-gmail-skills" class="docs-nav-link" data-section="integration-gmail-skills"><img src="https://wiro.ai/images/icons/skills/gmail.svg" alt="" class="docs-nav-icon-img" /><span>Gmail</span></a>
@@ -18201,7 +18201,7 @@ pending provider review.</p>
 <tbody>
 <tr>
 <td>Google Web Search</td>
-<td><a href="/docs/integration-google-search-skills">Google Web Search Skills</a></td>
+<td><a href="/docs/integration-serper-search-skills">Google Web Search Skills</a></td>
 </tr>
 <tr>
 <td>Gmail</td>
@@ -27827,19 +27827,19 @@ Agent → POST /v1beta/properties/123456789:runReport
               </div>
 
               <!-- ==================== INTEGRATION: GOOGLE WEB SEARCH ==================== -->
-              <div class="docs-page-section" data-page="integration-google-search-skills" style="display: none">
+              <div class="docs-page-section" data-page="integration-serper-search-skills" style="display: none">
                 <article class="docs-section">
-                  <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/integration-google-search-skills.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/integration-google-search-skills.md" download class="docs-section-md-btn">Download</a></div>
+                  <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/integration-serper-search-skills.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/integration-serper-search-skills.md" download class="docs-section-md-btn">Download</a></div>
                   <h1>Google Web Search Integration</h1>
-                  <p class="section-subtitle">Give your agent real open-web search — clean, structured Google results instead of scraped HTML — so content, research, and marketing agents can find current sources before they write.</p>
+                  <p class="section-subtitle">Give your agent real Google search results as clean JSON — via Serper.dev — so content, research, and marketing agents can find current sources before they write.</p>
 
                   <section id="overview">
                     <h2>Overview</h2>
-                    <p>The Google Web Search integration calls the <strong>Google Programmable Search / Custom Search JSON API v1</strong> with the operator's own Google API key and a Programmable Search Engine ID (<code>cx</code>). The agent gets ranked results as JSON (title, link, snippet), then reads the most relevant pages with its <code>web_fetch</code> tool. No HTML scraping, no bot-blocking.</p>
-                    <p>This is a <strong>static API-key integration</strong> — the same simple auth pattern as <a href="/docs/integration-wordpress-skills">WordPress</a>, no OAuth and no service account. Each operator brings their own Google project, so the free quota (100 queries/day) and any overage billing stay under their control.</p>
+                    <p>This integration returns Google's organic results as structured JSON (title, link, snippet) through <a href="https://serper.dev" target="_blank" rel="noopener">Serper.dev</a>. The agent gets ranked Google results, then reads the most relevant pages with its <code>web_fetch</code> tool — no HTML scraping, no bot-blocking.</p>
+                    <p><strong>Why Serper and not Google's own API?</strong> Google's Custom Search JSON API is being retired (it shuts down on 2027-01-01) and no longer offers a whole-web mode for new engines. Serper returns the same Google results with none of the Google Cloud / <code>cx</code> setup, plus a generous free tier.</p>
                     <p><strong>Skills that use this integration:</strong></p>
                     <ul>
-                      <li><code>int-google-search</code> — Search the public web via the Custom Search JSON API. Supports freshness (<code>dateRestrict</code>), locale (<code>gl</code> / <code>hl</code> / <code>lr</code>), and site filters; returns <code>title</code> / <code>link</code> / <code>snippet</code> for downstream <code>web_fetch</code>.</li>
+                      <li><code>int-serper-search</code> — Search the web via Serper's Google Search endpoint. Supports freshness (<code>tbs</code>) and locale (<code>gl</code> / <code>hl</code>); returns <code>title</code> / <code>link</code> / <code>snippet</code> for downstream <code>web_fetch</code>.</li>
                     </ul>
                     <p><strong>Agents that typically enable this integration:</strong></p>
                     <ul>
@@ -27859,9 +27859,9 @@ Agent → POST /v1beta/properties/123456789:runReport
                           </thead>
                           <tbody>
                             <tr>
-                              <td>API Key + Search Engine ID (cx)</td>
+                              <td>API Key (Serper.dev)</td>
                               <td>Available</td>
-                              <td>A Google Cloud API key with the Custom Search API enabled, plus a Programmable Search Engine configured to "Search the entire web".</td>
+                              <td>A Serper.dev API key. Returns real Google results as JSON. Free tier: 2,500 searches; then ~$1 per 1,000.</td>
                             </tr>
                           </tbody>
                         </table>
@@ -27874,53 +27874,44 @@ Agent → POST /v1beta/properties/123456789:runReport
                     <ul>
                       <li><strong>A Wiro API key</strong> — <a href="/docs/authentication">Authentication</a>.</li>
                       <li><strong>A deployed agent</strong> — <a href="/docs/agent-overview">Agent Overview</a>.</li>
-                      <li><strong>A Google account.</strong></li>
-                      <li><strong>A Google Cloud project</strong> to host the API key and the Custom Search API.</li>
+                      <li><strong>A Serper.dev account</strong> — free, no credit card.</li>
                     </ul>
                   </section>
 
                   <section id="setup">
                     <h2>Setup</h2>
 
-                    <h3>Step 1: Create the API key and enable the Custom Search API</h3>
+                    <h3>Step 1: Get a Serper.dev API key</h3>
                     <ol>
-                      <li>Open <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">Google Cloud Console → APIs &amp; Services → Credentials</a> and pick or create a project.</li>
-                      <li>Click <strong>Create credentials → API key</strong> and copy the key (it starts with <code>AIza</code>).</li>
-                      <li>In the same project open <strong>Enabled APIs &amp; Services → + Enable APIs</strong>, search <strong>Custom Search API</strong>, and enable it.</li>
+                      <li>Sign up at <a href="https://serper.dev" target="_blank" rel="noopener">serper.dev</a> — no credit card; new accounts get <strong>2,500 free searches</strong>.</li>
+                      <li>Open the dashboard and copy your <strong>API key</strong> from the <strong>API Key</strong> section.</li>
                     </ol>
+                    <div class="info-callout"><p>No Google Cloud project, no Programmable Search Engine, and no <code>cx</code> — Serper handles whole-web Google search behind a single key.</p></div>
 
-                    <h3>Step 2: Create a Programmable Search Engine (cx)</h3>
-                    <ol>
-                      <li>Go to the <a href="https://programmablesearchengine.google.com/controlpanel/all" target="_blank" rel="noopener">Programmable Search Engine control panel</a> and click <strong>Add</strong>.</li>
-                      <li>Give it any name and create it, then open <strong>Setup → Basics</strong> and turn <strong>"Search the entire web"</strong> ON.</li>
-                      <li>Copy the <strong>Search engine ID</strong> (<code>cx</code>, looks like <code>a12bc3d4e5f6g7h8i</code>).</li>
-                    </ol>
-
-                    <h3>Step 3: Save credentials to Wiro</h3>
+                    <h3>Step 2: Save the credential to Wiro</h3>
                     <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
     "fields": [
-      { "credentialkey": "google-search", "fieldname": "apikey", "fieldvalue": "AIza..." },
-      { "credentialkey": "google-search", "fieldname": "cx",     "fieldvalue": "a12bc3d4e5f6g7h8i" }
+      { "credentialkey": "serper", "fieldname": "apikey", "fieldvalue": "YOUR_SERPER_API_KEY" }
     ]
   }'</code></pre>
-                    <p>Or fill them in the panel: <strong><a href="https://wiro.ai/panel/agents" target="_blank" rel="noopener">My Agents</a></strong> → open agent → <strong>Credentials → Google Web Search</strong>.</p>
+                    <p>Or fill it in the panel: <strong><a href="https://wiro.ai/panel/agents" target="_blank" rel="noopener">My Agents</a></strong> → open agent → <strong>Credentials → Google Web Search</strong>.</p>
 
-                    <h3>Step 4: Enable the skill</h3>
-                    <p>Google Web Search ships <strong>available but off</strong>. Turn <code>int-google-search</code> on for the agent:</p>
+                    <h3>Step 3: Enable the skill</h3>
+                    <p>Google Web Search ships <strong>available but off</strong>. Turn <code>int-serper-search</code> on for the agent:</p>
                     <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skills": [ { "name": "int-google-search", "enabled": true } ]
+    "skills": [ { "name": "int-serper-search", "enabled": true } ]
   }'</code></pre>
                     <p>Or flip the toggle in the panel under <strong>Skills</strong>.</p>
 
-                    <h3>Step 5: Start the agent</h3>
+                    <h3>Step 4: Start the agent</h3>
                     <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
@@ -27940,13 +27931,7 @@ Agent → POST /v1beta/properties/123456789:runReport
                               <td><code>apikey</code></td>
                               <td>string (secret)</td>
                               <td>Yes</td>
-                              <td>Google Cloud API key with the Custom Search API enabled. Encrypted at rest.</td>
-                            </tr>
-                            <tr>
-                              <td><code>cx</code></td>
-                              <td>string</td>
-                              <td>Yes</td>
-                              <td>Programmable Search Engine ID. A public identifier (it appears in request URLs), so it is stored in plain text — not a secret.</td>
+                              <td>Serper.dev API key. Encrypted at rest.</td>
                             </tr>
                           </tbody>
                         </table>
@@ -27956,57 +27941,55 @@ Agent → POST /v1beta/properties/123456789:runReport
 
                   <section id="credentials-schema">
                     <h2>Credentials schema (as returned by <code>POST /UserAgent/Detail</code>)</h2>
-                    <pre><code class="language-json">"google-search": {
+                    <pre><code class="language-json">"serper": {
   "_connected": true,
   "optional": true,
   "extra": true,
-  "apikey": "***encrypted***",
-  "cx": "a12bc3d4e5f6g7h8i"
+  "apikey": "***encrypted***"
 }</code></pre>
                     <p><code>optional</code> and <code>extra</code> are <code>true</code> because Google Web Search is an optional add-on: its credential card surfaces on the content presets even before the skill is toggled on.</p>
                   </section>
 
                   <section id="query-options">
                     <h2>Query options</h2>
-                    <p>The skill builds a single request to <code>https://www.googleapis.com/customsearch/v1</code>. Beyond the required <code>key</code>, <code>cx</code>, and <code>q</code>, the useful parameters are:</p>
+                    <p>The skill sends a single <code>POST https://google.serper.dev/search</code> with an <code>X-API-KEY</code> header and a JSON body. Beyond the required <code>q</code>, the useful fields are:</p>
                     <div class="docs-param-table">
                       <div class="docs-param-table-wrapper">
                         <table>
                           <thead>
-                            <tr><th>Param</th><th>Description</th></tr>
+                            <tr><th>Field</th><th>Description</th></tr>
                           </thead>
                           <tbody>
-                            <tr><td><code>num</code></td><td>Results per page, 1–10 (default 10).</td></tr>
-                            <tr><td><code>start</code></td><td>1-based index of the first result for pagination (1, 11, 21 …); the API reaches at most 100 results.</td></tr>
-                            <tr><td><code>dateRestrict</code></td><td>Freshness filter: <code>d[n]</code> days, <code>w[n]</code> weeks, <code>m[n]</code> months, <code>y[n]</code> years (e.g. <code>d7</code> = past week). Use for news / "latest".</td></tr>
-                            <tr><td><code>sort</code></td><td><code>date</code> to sort by recency instead of relevance.</td></tr>
-                            <tr><td><code>gl</code> / <code>hl</code> / <code>lr</code></td><td>Country bias / interface language / language restrict (e.g. <code>gl=us</code>, <code>hl=en</code>, <code>lr=lang_en</code>).</td></tr>
-                            <tr><td><code>siteSearch</code> + <code>siteSearchFilter</code></td><td>Limit to (<code>i</code>) or exclude (<code>e</code>) a domain, e.g. <code>siteSearch=reuters.com&amp;siteSearchFilter=i</code>.</td></tr>
-                            <tr><td><code>safe</code></td><td><code>active</code> to filter explicit results, <code>off</code> otherwise.</td></tr>
+                            <tr><td><code>q</code></td><td>Query string (required).</td></tr>
+                            <tr><td><code>num</code></td><td>Results to return (default 10). More than 10 counts as 2 searches on the Serper quota.</td></tr>
+                            <tr><td><code>page</code></td><td>1-based page number for pagination.</td></tr>
+                            <tr><td><code>gl</code> / <code>hl</code></td><td>Country bias / interface language (e.g. <code>gl=us</code>, <code>hl=en</code>).</td></tr>
+                            <tr><td><code>tbs</code></td><td>Freshness filter: <code>qdr:d</code> day, <code>qdr:w</code> week, <code>qdr:m</code> month, <code>qdr:y</code> year.</td></tr>
+                            <tr><td><code>autocorrect</code></td><td><code>true</code> / <code>false</code> (default true).</td></tr>
                           </tbody>
                         </table>
                       </div>
                     </div>
+                    <p>Results are in <code>.organic[]</code> (<code>title</code>, <code>link</code>, <code>snippet</code>, <code>position</code>); a response may also carry <code>answerBox</code>, <code>knowledgeGraph</code>, <code>peopleAlsoAsk</code> and <code>relatedSearches</code>. Other endpoints on the same host/header: <code>/news</code>, <code>/images</code>, <code>/scholar</code>, <code>/places</code>, <code>/shopping</code>.</p>
                   </section>
 
                   <section id="quota-billing">
                     <h2>Quota &amp; billing</h2>
                     <ul>
-                      <li><strong>Free tier:</strong> 100 queries/day per Google project.</li>
-                      <li><strong>Beyond free:</strong> $5 per 1,000 queries, up to 10,000/day.</li>
+                      <li><strong>Free tier:</strong> 2,500 searches per Serper account (no credit card).</li>
+                      <li><strong>Beyond free:</strong> about $1 per 1,000 searches, dropping toward $0.30 at scale. Credits expire 6 months after purchase.</li>
                     </ul>
-                    <p>Google's search quota and cost are billed by <strong>Google</strong> to the operator's own Google Cloud account — separate from Wiro credits. The skill's own turns are billed by Wiro on real LLM token usage like any other skill.</p>
+                    <p>Serper's search quota and cost are billed by <strong>Serper</strong> to the operator's own account — separate from Wiro credits. The skill's own turns are billed by Wiro on real LLM token usage like any other skill.</p>
                   </section>
 
                   <section id="troubleshooting">
                     <h2>Troubleshooting</h2>
                     <ul>
-                      <li><strong>400 <code>invalid argument</code>:</strong> Malformed query or a bad <code>cx</code>. Check the Search engine ID and that <strong>"Search the entire web"</strong> is ON.</li>
-                      <li><strong>403 <code>accessNotConfigured</code> / "API not enabled":</strong> The Custom Search API isn't enabled in the Cloud project. Re-do Step 1.</li>
-                      <li><strong>403 <code>dailyLimitExceeded</code> / quota:</strong> The 100/day free quota is exhausted — wait for reset or enable billing in Google Cloud.</li>
-                      <li><strong>429:</strong> Rate limited — the agent stops for the turn instead of hammering.</li>
-                      <li><strong>Empty <code>items</code>:</strong> Zero results for the query — the agent reports "no results" rather than retrying.</li>
-                      <li><strong>Agent says "not connected" with both fields filled:</strong> The agent restarts to pick up new credentials; give it a moment after saving, then retry.</li>
+                      <li><strong>401 / 403:</strong> API key missing or invalid — re-copy it from the Serper dashboard.</li>
+                      <li><strong>400:</strong> Malformed JSON body or missing <code>q</code>.</li>
+                      <li><strong>429:</strong> Out of Serper credits or rate limited — top up credits or slow down.</li>
+                      <li><strong>Empty <code>organic</code>:</strong> Zero results for the query — the agent reports "no results" rather than retrying.</li>
+                      <li><strong>Agent says "not connected" with the key filled:</strong> The agent restarts to pick up new credentials; give it a moment after saving, then retry.</li>
                     </ul>
                   </section>
 
@@ -28015,7 +27998,6 @@ Agent → POST /v1beta/properties/123456789:runReport
                     <ul>
                       <li><a href="/docs/agent-credentials">Agent Credentials &amp; OAuth</a></li>
                       <li><a href="/docs/agent-skills">Agent Skills</a></li>
-                      <li><a href="/docs/integration-wordpress-skills">WordPress Skills</a> — same static API-key auth pattern</li>
                       <li><a href="/docs/agent-use-cases">Blog Content Editor use cases</a></li>
                     </ul>
                   </section>

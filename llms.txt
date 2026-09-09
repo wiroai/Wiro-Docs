@@ -55,7 +55,7 @@ OAuth integrations:
 - [Google Calendar](https://wiro.ai/docs/integration-google-calendar-skills): Per-user service account + per-calendar sharing. Read availability, draft events. Used by appointment-booking and voice-receptionist agents.
 
 API key integrations:
-- [Google Web Search](https://wiro.ai/docs/integration-google-search-skills): operator's own Google API key + Programmable Search Engine `cx`; Custom Search JSON API v1 returns clean title/link/snippet results for `web_fetch`; 100 queries/day free tier, then $5/1000; `www.googleapis.com` only
+- [Google Web Search](https://wiro.ai/docs/integration-serper-search-skills): real Google results as JSON via Serper.dev (skill `int-serper-search`, credential key `serper`) — Google's own Custom Search JSON API is being retired, so this uses Serper; `POST google.serper.dev/search` with an `X-API-KEY` header returns `.organic[]` title/link/snippet for `web_fetch`; 2,500 free searches, then ~$1/1000
 - [WooCommerce](https://wiro.ai/docs/integration-woocommerce-skills): official `wc/v3` over HTTPS Basic Auth; per-item batch reconciliation and store-specific rate-limit handling
 - [Gmail](https://wiro.ai/docs/integration-gmail-skills): App Password via IMAP/SMTP
 - [Telegram](https://wiro.ai/docs/integration-telegram-skills): Optional bot channel, immutable user/group allowlists, and private/collaborative direct-chat modes

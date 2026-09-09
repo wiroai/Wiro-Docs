@@ -142,7 +142,7 @@
   <url><loc>https://wiro.ai/docs/integration-mailchimp-skills</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://wiro.ai/docs/integration-googledrive-skills</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://wiro.ai/docs/integration-google-calendar-skills</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://wiro.ai/docs/integration-google-search-skills</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://wiro.ai/docs/integration-serper-search-skills</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://wiro.ai/docs/integration-gmail-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://wiro.ai/docs/integration-telegram-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://wiro.ai/docs/integration-firebase-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
