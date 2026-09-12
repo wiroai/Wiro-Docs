@@ -120,7 +120,7 @@ Secure your API requests with signature-based or simple key authentication.
 
 ## Overview
 
-Wiro supports two authentication methods. You choose the method when [creating a project](https://wiro.ai/panel/project/new) — it cannot be changed afterward.
+Wiro supports two authentication methods. You choose the method when [creating a project](https://wiro.ai/panel/project/new) and can switch it later in the project's settings on the [Projects page](https://wiro.ai/panel/project). Your API key and secret stay the same, and the change applies right away, so your requests must then use the new method.
 
 **Available methods:** Signature-Based (Recommended) | API Key Only (Simple)
 
@@ -208,7 +208,7 @@ After creating a project, your API key (and secret, if signature-based) are disp
 From the [Projects page](https://wiro.ai/panel/project) in your Dashboard, you can:
 
 - **Update name** — rename your project at any time
-- **Regenerate keys** — invalidates existing keys and generates new ones
+- **Change authentication method** — switch between Signature-Based and API Key Only; your API key and secret stay the same
 - **View usage** — see API calls, costs, and task history
 - **Delete project** — permanently removes the project and revokes all keys
 
@@ -281,11 +281,11 @@ Returns full details for a specific model, including its input parameters, prici
 
 #### Request Parameters
 
-| Parameter     | Type    | Required | Description                          |
-| ------------- | ------- | -------- | ------------------------------------ |
-| `slugowner`   | string  | Yes      | Model owner slug (e.g. stability-ai) |
-| `slugproject` | string  | Yes      | Model project slug (e.g. sdxl)       |
-| `summary`     | boolean | No       | Return summarized data               |
+| Parameter     | Type    | Required | Description                           |
+| ------------- | ------- | -------- | ------------------------------------- |
+| `slugowner`   | string  | Yes      | Model owner slug (e.g. google)        |
+| `slugproject` | string  | Yes      | Model project slug (e.g. nano-banana) |
+| `summary`     | boolean | No       | Return summarized data                |
 
 ### Response
 
@@ -295,40 +295,49 @@ Returns full details for a specific model, including its input parameters, prici
   "errors": [],
   "tool": [
     {
-      "id": "1611",
-      "title": "Virtual Try-on",
-      "slugowner": "wiro",
-      "slugproject": "Virtual Try-On",
-      "cleanslugowner": "wiro",
-      "cleanslugproject": "virtual-try-on",
-      "description": "Integrate the Wiro Virtual Try-On API...",
-      "image": "https://cdn.wiro.ai/uploads/models/...",
+      "id": "1562",
+      "title": "Nano Banana API: Create Mobile & Web Apps with Nano Banana",
+      "slugowner": "google",
+      "slugproject": "nano-banana",
+      "cleanslugowner": "google",
+      "cleanslugproject": "nano-banana",
+      "description": "Google's Gemini 2.5 Flash Image Preview, also known as Nano Banana, model for text-to-image and image-to-image generation.",
+      "image": "https://cdn.wiro.ai/uploads/models/google-nano-banana-cover.webp",
       "computingtime": "10 seconds",
-      "readme": "<p>The Wiro Virtual Try-On AI model...</p>",
-      "categories": ["tool", "image-to-image", "image-editing"],
-      "parameters": null,
-      "inspire": [
+      "readme": "Google's Gemini 2.5 Flash Image Preview model for text-to-image and image-to-image generation.",
+      "categories": ["tool", "partner", "google", "image-to-image", "compare-landscape", "use-agent", "quick-showcase", "text-to-image", "price-list", "fast-inference", "image-editing", "nogpu-pipeline"],
+      "parameters": [
         {
-          "inputImageHuman": "https://cdn.wiro.ai/uploads/sampleinputs/...",
-          "inputImageClothes": ["https://cdn.wiro.ai/..."]
+          "title": "",
+          "subtitle": "",
+          "items": [
+            { "id": "inputImage", "type": "combinefileinput", "required": false, "advanced": false },
+            { "id": "prompt", "type": "textarea", "required": true, "advanced": false },
+            { "id": "temperature", "type": "float", "required": false, "advanced": true },
+            { "id": "aspectRatio", "type": "select", "required": false, "advanced": true },
+            { "id": "safetySetting", "type": "select", "required": false, "advanced": true }
+          ]
         }
       ],
-      "samples": ["https://cdn.wiro.ai/uploads/models/..."],
-      "tags": [],
+      "inspire": [
+        { "prompt": "Create a Spider Man image flying over Warsaw", "inputImage": "" }
+      ],
+      "samples": ["https://cdn.wiro.ai/uploads/models/google-nano-banana-sample-15.webp"],
+      "tags": ["google"],
       "marketplace": 1,
       "onlymembers": "1",
-      "dynamicprice": "[{\"inputs\":{},\"price\":0.09,\"priceMethod\":\"cpr\"}]",
-      "averagepoint": "5.00",
-      "commentcount": "1",
-      "ratedusercount": "3",
+      "dynamicprice": [{ "inputs": {}, "price": 0.039, "priceMethod": "cpo" }],
+      "averagepoint": "4.38",
+      "commentcount": "10",
+      "ratedusercount": "8",
       "taskstat": {
-        "runcount": 672,
-        "successcount": "254",
-        "errorcount": "198",
-        "lastruntime": "1774007585"
+        "runcount": "531554",
+        "successcount": "510396",
+        "errorcount": "21240",
+        "lastruntime": "1789217220"
       },
-      "seotitle": "AI Virtual Try-On: Integrate Realistic Apparel Fitting",
-      "seodescription": "Integrate the Wiro Virtual Try-On API..."
+      "seotitle": "Nano Banana API: Create Mobile & Web Apps with Nano Banana",
+      "seodescription": null
     }
   ]
 }
@@ -3734,6 +3743,26 @@ metadata and can be absent from earlier `task_output` snapshots:
 
 Inspect `finishreason` after completion so truncation and content filtering are
 not mistaken for a normal stop.
+
+### Error Events
+
+`task_error` is an interim diagnostic event, not a failure. It arrives while
+the task keeps running, usually because the model wrote to stderr. The stderr
+text is never exposed: `message` is an empty string, `success` stays `null`,
+and there is no `error` field. `task_error_full` has the same shape. Only
+`task_postprocess_end` reports the outcome:
+
+```json
+{
+  "type": "task_error",
+  "id": "534574",
+  "message": "",
+  "result": true,
+  "success": null,
+  "terminal": false,
+  "exitCode": null
+}
+```
 
 ### Full Output Events
 
@@ -17921,7 +17950,7 @@ Create a project inside a team, then use its API key. The team context is resolv
 ```bash
 # 1. Create a project in team context (from dashboard or API)
 # 2. Use the project's API key — billing goes to team wallet
-curl -X POST "https://api.wiro.ai/v1/Run/stability-ai/sdxl" \
+curl -X POST "https://api.wiro.ai/v1/Run/google/nano-banana" \
   -H "x-api-key: YOUR_TEAM_PROJECT_API_KEY" \
   -d '{"prompt": "A mountain landscape"}'
 ```

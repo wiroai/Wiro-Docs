@@ -4,7 +4,7 @@ Secure your API requests with signature-based or simple key authentication.
 
 ## Overview
 
-Wiro supports two authentication methods. You choose the method when [creating a project](https://wiro.ai/panel/project/new) — it cannot be changed afterward.
+Wiro supports two authentication methods. You choose the method when [creating a project](https://wiro.ai/panel/project/new) and can switch it later in the project's settings on the [Projects page](https://wiro.ai/panel/project). Your API key and secret stay the same, and the change applies right away, so your requests must then use the new method.
 
 **Available methods:** Signature-Based (Recommended) | API Key Only (Simple)
 
@@ -67,7 +67,7 @@ export YOUR_API_KEY="your-api-key"
 export YOUR_API_SECRET="your-api-secret"
 export NONCE=$(date +%s)
 export SIGNATURE=$(echo -n "${YOUR_API_SECRET}${NONCE}" | \
-  openssl dgst -sha256 -hmac "${YOUR_API_KEY}")
+  openssl dgst -sha256 -hmac "${YOUR_API_KEY}" | awk '{print $NF}')
 
 curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
   -H "Content-Type: application/json" \

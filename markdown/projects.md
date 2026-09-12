@@ -32,7 +32,7 @@ After creating a project, your API key (and secret, if signature-based) are disp
 From the [Projects page](https://wiro.ai/panel/project) in your Dashboard, you can:
 
 - **Update name** — rename your project at any time
-- **Regenerate keys** — invalidates existing keys and generates new ones
+- **Change authentication method** — switch between Signature-Based and API Key Only; your API key and secret stay the same
 - **View usage** — see API calls, costs, and task history
 - **Delete project** — permanently removes the project and revokes all keys
 
@@ -44,7 +44,7 @@ Regenerating keys immediately invalidates the old ones. Update your application 
 
 ```bash
 # Use your project API key in any request
-curl -X POST "https://api.wiro.ai/v1/Run/stability-ai/sdxl" \
+curl -X POST "https://api.wiro.ai/v1/Run/google/nano-banana" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_PROJECT_API_KEY" \
   -d '{"prompt": "A sunset over mountains"}'
@@ -58,7 +58,7 @@ import requests
 API_KEY = "YOUR_PROJECT_API_KEY"
 
 response = requests.post(
-    "https://api.wiro.ai/v1/Run/stability-ai/sdxl",
+    "https://api.wiro.ai/v1/Run/google/nano-banana",
     headers={
         "x-api-key": API_KEY,
         "Content-Type": "application/json"
@@ -76,7 +76,7 @@ const axios = require('axios');
 const API_KEY = 'YOUR_PROJECT_API_KEY';
 
 const response = await axios.post(
-  'https://api.wiro.ai/v1/Run/stability-ai/sdxl',
+  'https://api.wiro.ai/v1/Run/google/nano-banana',
   { prompt: 'A sunset over mountains' },
   {
     headers: {

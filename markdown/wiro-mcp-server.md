@@ -406,7 +406,7 @@ Search Wiro's model catalog by keyword, category, owner, or any combination. Cal
 |-----------|------|-------------|
 | `search` | string (optional) | Free-text search, e.g. `"flux"`, `"video generation"` |
 | `categories` | string[] (optional) | Filter by category: `text-to-image`, `text-to-video`, `image-to-video`, `llm`, `text-to-speech`, `image-editing`, etc. |
-| `slugowner` | string (optional) | Filter by model owner slug, e.g. `"openai"`, `"stability-ai"`, `"klingai"` |
+| `slugowner` | string (optional) | Filter by model owner slug, e.g. `"openai"`, `"google"`, `"klingai"` |
 | `sort` | string (optional) | Sort by: `relevance`, `time`, `ratedusercount`, `commentcount`, `averagepoint` |
 | `start` | number (optional) | Pagination offset (default 0) |
 | `limit` | number (optional) | Max results (default 20, max 100) |

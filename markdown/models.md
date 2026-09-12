@@ -65,8 +65,8 @@ Returns full details for a specific model, including its input parameters, prici
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `slugowner` | string | Yes | Model owner slug (e.g. stability-ai) |
-| `slugproject` | string | Yes | Model project slug (e.g. sdxl) |
+| `slugowner` | string | Yes | Model owner slug (e.g. google) |
+| `slugproject` | string | Yes | Model project slug (e.g. nano-banana) |
 | `summary` | boolean | No | Return summarized data |
 
 ### Response
@@ -76,40 +76,49 @@ Returns full details for a specific model, including its input parameters, prici
   "result": true,
   "errors": [],
   "tool": [{
-    "id": "1611",
-    "title": "Virtual Try-on",
-    "slugowner": "wiro",
-    "slugproject": "Virtual Try-On",
-    "cleanslugowner": "wiro",
-    "cleanslugproject": "virtual-try-on",
-    "description": "Integrate the Wiro Virtual Try-On API...",
-    "image": "https://cdn.wiro.ai/uploads/models/...",
+    "id": "1562",
+    "title": "Nano Banana API: Create Mobile & Web Apps with Nano Banana",
+    "slugowner": "google",
+    "slugproject": "nano-banana",
+    "cleanslugowner": "google",
+    "cleanslugproject": "nano-banana",
+    "description": "Google's Gemini 2.5 Flash Image Preview, also known as Nano Banana, model for text-to-image and image-to-image generation.",
+    "image": "https://cdn.wiro.ai/uploads/models/google-nano-banana-cover.webp",
     "computingtime": "10 seconds",
-    "readme": "<p>The Wiro Virtual Try-On AI model...</p>",
-    "categories": ["tool", "image-to-image", "image-editing"],
-    "parameters": null,
-    "inspire": [
+    "readme": "Google's Gemini 2.5 Flash Image Preview model for text-to-image and image-to-image generation.",
+    "categories": ["tool", "partner", "google", "image-to-image", "compare-landscape", "use-agent", "quick-showcase", "text-to-image", "price-list", "fast-inference", "image-editing", "nogpu-pipeline"],
+    "parameters": [
       {
-        "inputImageHuman": "https://cdn.wiro.ai/uploads/sampleinputs/...",
-        "inputImageClothes": ["https://cdn.wiro.ai/..."]
+        "title": "",
+        "subtitle": "",
+        "items": [
+          { "id": "inputImage", "type": "combinefileinput", "required": false, "advanced": false },
+          { "id": "prompt", "type": "textarea", "required": true, "advanced": false },
+          { "id": "temperature", "type": "float", "required": false, "advanced": true },
+          { "id": "aspectRatio", "type": "select", "required": false, "advanced": true },
+          { "id": "safetySetting", "type": "select", "required": false, "advanced": true }
+        ]
       }
     ],
-    "samples": ["https://cdn.wiro.ai/uploads/models/..."],
-    "tags": [],
+    "inspire": [
+      { "prompt": "Create a Spider Man image flying over Warsaw", "inputImage": "" }
+    ],
+    "samples": ["https://cdn.wiro.ai/uploads/models/google-nano-banana-sample-15.webp"],
+    "tags": ["google"],
     "marketplace": 1,
     "onlymembers": "1",
-    "dynamicprice": "[{\"inputs\":{},\"price\":0.09,\"priceMethod\":\"cpr\"}]",
-    "averagepoint": "5.00",
-    "commentcount": "1",
-    "ratedusercount": "3",
+    "dynamicprice": [{ "inputs": {}, "price": 0.039, "priceMethod": "cpo" }],
+    "averagepoint": "4.38",
+    "commentcount": "10",
+    "ratedusercount": "8",
     "taskstat": {
-      "runcount": 672,
-      "successcount": "254",
-      "errorcount": "198",
-      "lastruntime": "1774007585"
+      "runcount": "531554",
+      "successcount": "510396",
+      "errorcount": "21240",
+      "lastruntime": "1789217220"
     },
-    "seotitle": "AI Virtual Try-On: Integrate Realistic Apparel Fitting",
-    "seodescription": "Integrate the Wiro Virtual Try-On API..."
+    "seotitle": "Nano Banana API: Create Mobile & Web Apps with Nano Banana",
+    "seodescription": null
   }]
 }
 ```
@@ -145,8 +154,8 @@ curl -X POST "https://api.wiro.ai/v1/Tool/Detail" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "slugowner": "stability-ai",
-    "slugproject": "sdxl"
+    "slugowner": "google",
+    "slugproject": "nano-banana"
   }'
 ```
 
@@ -180,8 +189,8 @@ detail_resp = requests.post(
     "https://api.wiro.ai/v1/Tool/Detail",
     headers=headers,
     json={
-        "slugowner": "stability-ai",
-        "slugproject": "sdxl"
+        "slugowner": "google",
+        "slugproject": "nano-banana"
     }
 )
 model = detail_resp.json()
@@ -215,7 +224,7 @@ console.log(listResp.data);
 // Get model detail
 const detailResp = await axios.post(
   'https://api.wiro.ai/v1/Tool/Detail',
-  { slugowner: 'stability-ai', slugproject: 'sdxl' },
+  { slugowner: 'google', slugproject: 'nano-banana' },
   { headers }
 );
 console.log(detailResp.data);
@@ -412,22 +421,31 @@ print(response.body);
   "result": true,
   "errors": [],
   "tool": [{
-    "id": "1611",
-    "title": "Virtual Try-on",
-    "slugowner": "wiro",
-    "slugproject": "Virtual Try-On",
-    "cleanslugowner": "wiro",
-    "cleanslugproject": "virtual-try-on",
-    "description": "...",
-    "readme": "<p>...</p>",
-    "categories": ["tool", "image-to-image", "image-editing"],
-    "parameters": null,
-    "inspire": [{ "inputImageHuman": "https://...", "inputImageClothes": ["https://..."] }],
-    "samples": ["https://cdn.wiro.ai/uploads/models/..."],
-    "dynamicprice": "[{\"inputs\":{},\"price\":0.09,\"priceMethod\":\"cpr\"}]",
-    "averagepoint": "5.00",
-    "taskstat": { "runcount": 672, "successcount": "254" },
-    "seotitle": "AI Virtual Try-On: Integrate Realistic Apparel Fitting"
+    "id": "1562",
+    "title": "Nano Banana API: Create Mobile & Web Apps with Nano Banana",
+    "slugowner": "google",
+    "slugproject": "nano-banana",
+    "cleanslugowner": "google",
+    "cleanslugproject": "nano-banana",
+    "description": "Google's Gemini 2.5 Flash Image Preview, also known as Nano Banana, model for text-to-image and image-to-image generation.",
+    "categories": ["tool", "partner", "google", "image-to-image", "compare-landscape", "use-agent", "quick-showcase", "text-to-image", "price-list", "fast-inference", "image-editing", "nogpu-pipeline"],
+    "parameters": [{
+      "title": "",
+      "subtitle": "",
+      "items": [
+        { "id": "inputImage", "type": "combinefileinput", "required": false },
+        { "id": "prompt", "type": "textarea", "required": true },
+        { "id": "temperature", "type": "float", "required": false },
+        { "id": "aspectRatio", "type": "select", "required": false },
+        { "id": "safetySetting", "type": "select", "required": false }
+      ]
+    }],
+    "inspire": [{ "prompt": "Create a Spider Man image flying over Warsaw", "inputImage": "" }],
+    "samples": ["https://cdn.wiro.ai/uploads/models/google-nano-banana-sample-15.webp"],
+    "dynamicprice": [{ "inputs": {}, "price": 0.039, "priceMethod": "cpo" }],
+    "averagepoint": "4.38",
+    "taskstat": { "runcount": "531554", "successcount": "510396" },
+    "seotitle": "Nano Banana API: Create Mobile & Web Apps with Nano Banana"
   }]
 }
 ```

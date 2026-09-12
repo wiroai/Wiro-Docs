@@ -614,7 +614,7 @@
                     <h2>Overview</h2>
                     <p>
                       Wiro supports two authentication methods. You choose the method when
-                      <a href="https://wiro.ai/panel/project/new" class="docs-link">creating a project</a> — it cannot be changed afterward.
+                      <a href="https://wiro.ai/panel/project/new" class="docs-link">creating a project</a> and can switch it later in the project's settings on the <a href="https://wiro.ai/panel/project" class="docs-link">Projects page</a>. Your API key and secret stay the same, and the change applies right away, so your requests must then use the new method.
                     </p>
 
                     <div class="auth-method-toggle" id="authMethodToggle">
@@ -760,7 +760,7 @@
                       {
                         "label": "curl",
                         "language": "bash",
-                        "code": "export YOUR_API_KEY=\"your-api-key\"\nexport YOUR_API_SECRET=\"your-api-secret\"\nexport NONCE=$(date +%s)\nexport SIGNATURE=$(echo -n \"${YOUR_API_SECRET}${NONCE}\" | \\\n  openssl dgst -sha256 -hmac \"${YOUR_API_KEY}\")\n\ncurl -X POST \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: ${YOUR_API_KEY}\" \\\n  -H \"x-nonce: ${NONCE}\" \\\n  -H \"x-signature: ${SIGNATURE}\" \\\n  -d '{\"prompt\": \"Hello, world!\"}'"
+                        "code": "export YOUR_API_KEY=\"your-api-key\"\nexport YOUR_API_SECRET=\"your-api-secret\"\nexport NONCE=$(date +%s)\nexport SIGNATURE=$(echo -n \"${YOUR_API_SECRET}${NONCE}\" | \\\n  openssl dgst -sha256 -hmac \"${YOUR_API_KEY}\" | awk '{print $NF}')\n\ncurl -X POST \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: ${YOUR_API_KEY}\" \\\n  -H \"x-nonce: ${NONCE}\" \\\n  -H \"x-signature: ${SIGNATURE}\" \\\n  -d '{\"prompt\": \"Hello, world!\"}'"
                       },
                       {
                         "label": "Python",
@@ -913,7 +913,7 @@
                     <p>From the <a href="https://wiro.ai/panel/project" class="docs-link">Projects page</a> in your Dashboard, you can:</p>
                     <ul>
                       <li><strong>Update name</strong> — rename your project at any time</li>
-                      <li><strong>Regenerate keys</strong> — invalidates existing keys and generates new ones</li>
+                      <li><strong>Change authentication method</strong> — switch between Signature-Based and API Key Only; your API key and secret stay the same</li>
                       <li><strong>View usage</strong> — see API calls, costs, and task history</li>
                       <li><strong>Delete project</strong> — permanently removes the project and revokes all keys</li>
                     </ul>
@@ -926,17 +926,17 @@
                     {
                       "label": "curl",
                       "language": "bash",
-                      "code": "# Use your project API key in any request\ncurl -X POST \"https://api.wiro.ai/v1/Run/stability-ai/sdxl\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_PROJECT_API_KEY\" \\\n  -d '{\"prompt\": \"A sunset over mountains\"}'"
+                      "code": "# Use your project API key in any request\ncurl -X POST \"https://api.wiro.ai/v1/Run/google/nano-banana\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_PROJECT_API_KEY\" \\\n  -d '{\"prompt\": \"A sunset over mountains\"}'"
                     },
                     {
                       "label": "Python",
                       "language": "python",
-                      "code": "import requests\n\nAPI_KEY = \"YOUR_PROJECT_API_KEY\"\n\nresponse = requests.post(\n    \"https://api.wiro.ai/v1/Run/stability-ai/sdxl\",\n    headers={\n        \"x-api-key\": API_KEY,\n        \"Content-Type\": \"application/json\"\n    },\n    json={\"prompt\": \"A sunset over mountains\"}\n)\nprint(response.json())"
+                      "code": "import requests\n\nAPI_KEY = \"YOUR_PROJECT_API_KEY\"\n\nresponse = requests.post(\n    \"https://api.wiro.ai/v1/Run/google/nano-banana\",\n    headers={\n        \"x-api-key\": API_KEY,\n        \"Content-Type\": \"application/json\"\n    },\n    json={\"prompt\": \"A sunset over mountains\"}\n)\nprint(response.json())"
                     },
                     {
                       "label": "Node.js",
                       "language": "javascript",
-                      "code": "const axios = require('axios');\n\nconst API_KEY = 'YOUR_PROJECT_API_KEY';\n\nconst response = await axios.post(\n  'https://api.wiro.ai/v1/Run/stability-ai/sdxl',\n  { prompt: 'A sunset over mountains' },\n  {\n    headers: {\n      'x-api-key': API_KEY,\n      'Content-Type': 'application/json'\n    }\n  }\n);\nconsole.log(response.data);"
+                      "code": "const axios = require('axios');\n\nconst API_KEY = 'YOUR_PROJECT_API_KEY';\n\nconst response = await axios.post(\n  'https://api.wiro.ai/v1/Run/google/nano-banana',\n  { prompt: 'A sunset over mountains' },\n  {\n    headers: {\n      'x-api-key': API_KEY,\n      'Content-Type': 'application/json'\n    }\n  }\n);\nconsole.log(response.data);"
                     },
                     {
                       "label": "PHP",
@@ -1121,13 +1121,13 @@
                               <td><code class="param-name">slugowner</code></td>
                               <td><span class="param-type">string</span></td>
                               <td><span class="param-required is-required">Yes</span></td>
-                              <td class="param-desc">Model owner slug (e.g. stability-ai)</td>
+                              <td class="param-desc">Model owner slug (e.g. google)</td>
                             </tr>
                             <tr>
                               <td><code class="param-name">slugproject</code></td>
                               <td><span class="param-type">string</span></td>
                               <td><span class="param-required is-required">Yes</span></td>
-                              <td class="param-desc">Model project slug (e.g. sdxl)</td>
+                              <td class="param-desc">Model project slug (e.g. nano-banana)</td>
                             </tr>
                             <tr>
                               <td><code class="param-name">summary</code></td>
@@ -1145,40 +1145,49 @@
   "result": true,
   "errors": [],
   "tool": [{
-    "id": "1611",
-    "title": "Virtual Try-on",
-    "slugowner": "wiro",
-    "slugproject": "Virtual Try-On",
-    "cleanslugowner": "wiro",
-    "cleanslugproject": "virtual-try-on",
-    "description": "Integrate the Wiro Virtual Try-On API...",
-    "image": "https://cdn.wiro.ai/uploads/models/...",
+    "id": "1562",
+    "title": "Nano Banana API: Create Mobile &amp; Web Apps with Nano Banana",
+    "slugowner": "google",
+    "slugproject": "nano-banana",
+    "cleanslugowner": "google",
+    "cleanslugproject": "nano-banana",
+    "description": "Google's Gemini 2.5 Flash Image Preview, also known as Nano Banana, model for text-to-image and image-to-image generation.",
+    "image": "https://cdn.wiro.ai/uploads/models/google-nano-banana-cover.webp",
     "computingtime": "10 seconds",
-    "readme": "&lt;p&gt;The Wiro Virtual Try-On AI model...&lt;/p&gt;",
-    "categories": ["tool", "image-to-image", "image-editing"],
-    "parameters": null,
-    "inspire": [
+    "readme": "Google's Gemini 2.5 Flash Image Preview model for text-to-image and image-to-image generation.",
+    "categories": ["tool", "partner", "google", "image-to-image", "compare-landscape", "use-agent", "quick-showcase", "text-to-image", "price-list", "fast-inference", "image-editing", "nogpu-pipeline"],
+    "parameters": [
       {
-        "inputImageHuman": "https://cdn.wiro.ai/uploads/sampleinputs/...",
-        "inputImageClothes": ["https://cdn.wiro.ai/..."]
+        "title": "",
+        "subtitle": "",
+        "items": [
+          { "id": "inputImage", "type": "combinefileinput", "required": false, "advanced": false },
+          { "id": "prompt", "type": "textarea", "required": true, "advanced": false },
+          { "id": "temperature", "type": "float", "required": false, "advanced": true },
+          { "id": "aspectRatio", "type": "select", "required": false, "advanced": true },
+          { "id": "safetySetting", "type": "select", "required": false, "advanced": true }
+        ]
       }
     ],
-    "samples": ["https://cdn.wiro.ai/uploads/models/..."],
-    "tags": [],
+    "inspire": [
+      { "prompt": "Create a Spider Man image flying over Warsaw", "inputImage": "" }
+    ],
+    "samples": ["https://cdn.wiro.ai/uploads/models/google-nano-banana-sample-15.webp"],
+    "tags": ["google"],
     "marketplace": 1,
     "onlymembers": "1",
-    "dynamicprice": "[{\"inputs\":{},\"price\":0.09,\"priceMethod\":\"cpr\"}]",
-    "averagepoint": "5.00",
-    "commentcount": "1",
-    "ratedusercount": "3",
+    "dynamicprice": [{ "inputs": {}, "price": 0.039, "priceMethod": "cpo" }],
+    "averagepoint": "4.38",
+    "commentcount": "10",
+    "ratedusercount": "8",
     "taskstat": {
-      "runcount": 672,
-      "successcount": "254",
-      "errorcount": "198",
-      "lastruntime": "1774007585"
+      "runcount": "531554",
+      "successcount": "510396",
+      "errorcount": "21240",
+      "lastruntime": "1789217220"
     },
-    "seotitle": "AI Virtual Try-On: Integrate Realistic Apparel Fitting",
-    "seodescription": "Integrate the Wiro Virtual Try-On API..."
+    "seotitle": "Nano Banana API: Create Mobile &amp; Web Apps with Nano Banana",
+    "seodescription": null
   }]
 }</code></pre>
                   </section>
@@ -1208,17 +1217,17 @@
                     {
                       "label": "curl (Detail)",
                       "language": "bash",
-                      "code": "curl -X POST \"https://api.wiro.ai/v1/Tool/Detail\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"slugowner\": \"stability-ai\",\n    \"slugproject\": \"sdxl\"\n  }'"
+                      "code": "curl -X POST \"https://api.wiro.ai/v1/Tool/Detail\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"slugowner\": \"google\",\n    \"slugproject\": \"nano-banana\"\n  }'"
                     },
                     {
                       "label": "Python",
                       "language": "python",
-                      "code": "import requests\n\nheaders = {\n    \"x-api-key\": \"YOUR_API_KEY\",\n    \"Content-Type\": \"application/json\"\n}\n\n# List models\nlist_resp = requests.post(\n    \"https://api.wiro.ai/v1/Tool/List\",\n    headers=headers,\n    json={\n        \"start\": \"0\",\n        \"limit\": \"20\",\n        \"search\": \"stable diffusion\",\n        \"categories\": [\"image-generation\"],\n        \"hideworkflows\": True,\n        \"summary\": True\n    }\n)\nmodels = list_resp.json()\n\n# Get model detail\ndetail_resp = requests.post(\n    \"https://api.wiro.ai/v1/Tool/Detail\",\n    headers=headers,\n    json={\n        \"slugowner\": \"stability-ai\",\n        \"slugproject\": \"sdxl\"\n    }\n)\nmodel = detail_resp.json()"
+                      "code": "import requests\n\nheaders = {\n    \"x-api-key\": \"YOUR_API_KEY\",\n    \"Content-Type\": \"application/json\"\n}\n\n# List models\nlist_resp = requests.post(\n    \"https://api.wiro.ai/v1/Tool/List\",\n    headers=headers,\n    json={\n        \"start\": \"0\",\n        \"limit\": \"20\",\n        \"search\": \"stable diffusion\",\n        \"categories\": [\"image-generation\"],\n        \"hideworkflows\": True,\n        \"summary\": True\n    }\n)\nmodels = list_resp.json()\n\n# Get model detail\ndetail_resp = requests.post(\n    \"https://api.wiro.ai/v1/Tool/Detail\",\n    headers=headers,\n    json={\n        \"slugowner\": \"google\",\n        \"slugproject\": \"nano-banana\"\n    }\n)\nmodel = detail_resp.json()"
                     },
                     {
                       "label": "Node.js",
                       "language": "javascript",
-                      "code": "const axios = require('axios');\n\nconst headers = {\n  'x-api-key': 'YOUR_API_KEY',\n  'Content-Type': 'application/json'\n};\n\n// List models\nconst listResp = await axios.post(\n  'https://api.wiro.ai/v1/Tool/List',\n  {\n    start: '0',\n    limit: '20',\n    search: 'stable diffusion',\n    categories: ['image-generation'],\n    hideworkflows: true,\n    summary: true\n  },\n  { headers }\n);\nconsole.log(listResp.data);\n\n// Get model detail\nconst detailResp = await axios.post(\n  'https://api.wiro.ai/v1/Tool/Detail',\n  { slugowner: 'stability-ai', slugproject: 'sdxl' },\n  { headers }\n);\nconsole.log(detailResp.data);"
+                      "code": "const axios = require('axios');\n\nconst headers = {\n  'x-api-key': 'YOUR_API_KEY',\n  'Content-Type': 'application/json'\n};\n\n// List models\nconst listResp = await axios.post(\n  'https://api.wiro.ai/v1/Tool/List',\n  {\n    start: '0',\n    limit: '20',\n    search: 'stable diffusion',\n    categories: ['image-generation'],\n    hideworkflows: true,\n    summary: true\n  },\n  { headers }\n);\nconsole.log(listResp.data);\n\n// Get model detail\nconst detailResp = await axios.post(\n  'https://api.wiro.ai/v1/Tool/Detail',\n  { slugowner: 'google', slugproject: 'nano-banana' },\n  { headers }\n);\nconsole.log(detailResp.data);"
                     },
                     {
                       "label": "PHP",
@@ -1258,7 +1267,7 @@
                     {
                       "label": "Response (Detail)",
                       "language": "json",
-                      "code": "{\n  \"result\": true,\n  \"errors\": [],\n  \"tool\": [{\n    \"id\": \"1611\",\n    \"title\": \"Virtual Try-on\",\n    \"slugowner\": \"wiro\",\n    \"slugproject\": \"Virtual Try-On\",\n    \"cleanslugowner\": \"wiro\",\n    \"cleanslugproject\": \"virtual-try-on\",\n    \"description\": \"...\",\n    \"readme\": \"<p>...</p>\",\n    \"categories\": [\"tool\", \"image-to-image\", \"image-editing\"],\n    \"parameters\": null,\n    \"inspire\": [{ \"inputImageHuman\": \"https://...\", \"inputImageClothes\": [\"https://...\"] }],\n    \"samples\": [\"https://cdn.wiro.ai/uploads/models/...\"],\n    \"dynamicprice\": \"[{\\\"inputs\\\":{},\\\"price\\\":0.09,\\\"priceMethod\\\":\\\"cpr\\\"}]\",\n    \"averagepoint\": \"5.00\",\n    \"taskstat\": { \"runcount\": 672, \"successcount\": \"254\" },\n    \"seotitle\": \"AI Virtual Try-On: Integrate Realistic Apparel Fitting\"\n  }]\n}"
+                      "code": "{\n  \"result\": true,\n  \"errors\": [],\n  \"tool\": [{\n    \"id\": \"1562\",\n    \"title\": \"Nano Banana API: Create Mobile & Web Apps with Nano Banana\",\n    \"slugowner\": \"google\",\n    \"slugproject\": \"nano-banana\",\n    \"cleanslugowner\": \"google\",\n    \"cleanslugproject\": \"nano-banana\",\n    \"description\": \"Google's Gemini 2.5 Flash Image Preview, also known as Nano Banana, model for text-to-image and image-to-image generation.\",\n    \"categories\": [\"tool\", \"partner\", \"google\", \"image-to-image\", \"compare-landscape\", \"use-agent\", \"quick-showcase\", \"text-to-image\", \"price-list\", \"fast-inference\", \"image-editing\", \"nogpu-pipeline\"],\n    \"parameters\": [{\n      \"title\": \"\",\n      \"subtitle\": \"\",\n      \"items\": [\n        { \"id\": \"inputImage\", \"type\": \"combinefileinput\", \"required\": false },\n        { \"id\": \"prompt\", \"type\": \"textarea\", \"required\": true },\n        { \"id\": \"temperature\", \"type\": \"float\", \"required\": false },\n        { \"id\": \"aspectRatio\", \"type\": \"select\", \"required\": false },\n        { \"id\": \"safetySetting\", \"type\": \"select\", \"required\": false }\n      ]\n    }],\n    \"inspire\": [{ \"prompt\": \"Create a Spider Man image flying over Warsaw\", \"inputImage\": \"\" }],\n    \"samples\": [\"https://cdn.wiro.ai/uploads/models/google-nano-banana-sample-15.webp\"],\n    \"dynamicprice\": [{ \"inputs\": {}, \"price\": 0.039, \"priceMethod\": \"cpo\" }],\n    \"averagepoint\": \"4.38\",\n    \"taskstat\": { \"runcount\": \"531554\", \"successcount\": \"510396\" },\n    \"seotitle\": \"Nano Banana API: Create Mobile & Web Apps with Nano Banana\"\n  }]\n}"
                     }
                   ]
                 </script>
@@ -4704,12 +4713,15 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                     <p>Inspect <code>finishreason</code> after completion so truncation and content filtering are not mistaken for a normal stop.</p>
 
                     <h3>Error Events</h3>
-                    <p><code>task_error</code> is an interim diagnostic event, not a final failure. The <code>message</code> is a string or progress object:</p>
+                    <p><code>task_error</code> is an interim diagnostic event, not a failure. It arrives while the task keeps running, usually because the model wrote to stderr. The stderr text is never exposed: <code>message</code> is an empty string, <code>success</code> stays <code>null</code>, and there is no <code>error</code> field. <code>task_error_full</code> has the same shape. Only <code>task_postprocess_end</code> reports the outcome:</p>
                     <pre><code>{
   "type": "task_error",
   "id": "534574",
-  "message": "UserWarning: Some weights were not initialized...",
-  "result": true
+  "message": "",
+  "result": true,
+  "success": null,
+  "terminal": false,
+  "exitCode": null
 }</code></pre>
 
                     <h3>Full Output Events</h3>
@@ -7280,7 +7292,7 @@ if (!data.result) {
                         <tr>
                           <td><code>slugowner</code></td>
                           <td>string (optional)</td>
-                          <td>Filter by model owner slug, e.g. <code>"openai"</code>, <code>"stability-ai"</code>, <code>"klingai"</code></td>
+                          <td>Filter by model owner slug, e.g. <code>"openai"</code>, <code>"google"</code>, <code>"klingai"</code></td>
                         </tr>
                         <tr>
                           <td><code>sort</code></td>

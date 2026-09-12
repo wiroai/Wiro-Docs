@@ -95,7 +95,7 @@ API key integrations:
 
 ## Authentication
 
-Two methods (chosen when creating a project — cannot be changed afterward):
+Two methods, chosen when creating a project. You can switch later in the project's settings; the API key and secret stay the same, and requests must then use the new method.
 
 ### Signature-Based (Recommended)
 HMAC-SHA256 for enhanced security. Ideal for client-side/mobile apps.
@@ -129,7 +129,7 @@ POST /Tool/List
 POST /Tool/Detail
 
 ```json
-{ "slugowner": "stability-ai", "slugproject": "sdxl" }
+{ "slugowner": "google", "slugproject": "nano-banana" }
 ```
 
 Returns model info including `parameters` array with input definitions (types: text, textarea, select, range, fileinput, multifileinput, combinefileinput).

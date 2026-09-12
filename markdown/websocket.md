@@ -166,14 +166,21 @@ not mistaken for a normal stop.
 
 ### Error Events
 
-`task_error` is an interim diagnostic event, not a final failure:
+`task_error` is an interim diagnostic event, not a failure. It arrives while
+the task keeps running, usually because the model wrote to stderr. The stderr
+text is never exposed: `message` is an empty string, `success` stays `null`,
+and there is no `error` field. `task_error_full` has the same shape. Only
+`task_postprocess_end` reports the outcome:
 
 ```json
 {
   "type": "task_error",
   "id": "534574",
-  "message": "UserWarning: Some weights were not initialized...",
-  "result": true
+  "message": "",
+  "result": true,
+  "success": null,
+  "terminal": false,
+  "exitCode": null
 }
 ```
 

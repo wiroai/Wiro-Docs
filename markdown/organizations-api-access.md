@@ -109,7 +109,7 @@ Create a project inside a team, then use its API key. The team context is resolv
 ```bash
 # 1. Create a project in team context (from dashboard or API)
 # 2. Use the project's API key — billing goes to team wallet
-curl -X POST "https://api.wiro.ai/v1/Run/stability-ai/sdxl" \
+curl -X POST "https://api.wiro.ai/v1/Run/google/nano-banana" \
   -H "x-api-key: YOUR_TEAM_PROJECT_API_KEY" \
   -d '{"prompt": "A mountain landscape"}'
 ```

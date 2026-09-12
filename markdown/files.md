@@ -107,7 +107,7 @@ signature-authenticated project, include the nonce and signature headers:
 NONCE="$(date +%s)"
 SIGNATURE="$(printf '%s' "${YOUR_API_SECRET}${NONCE}" \
   | openssl dgst -sha256 -hmac "${YOUR_API_KEY}" \
-  | awk '{print $2}')"
+  | awk '{print $NF}')"
 
 curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
   -H "Content-Type: application/json" \
