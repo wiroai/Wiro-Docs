@@ -1,8 +1,7 @@
 # Direct LLM Gateway
 
-Use Wiro models through OpenAI Chat Completions, OpenAI Responses, Anthropic
-Messages. The gateway uses the same
-Wiro task, project-access, team-policy, and billing system as the Run API.
+Use Wiro LLMs through OpenAI Chat Completions, OpenAI Responses, and Anthropic
+Messages.
 
 OpenAI-compatible clients use base URL:
 
@@ -17,6 +16,11 @@ Asynchronous Run, Task, the original Wiro File API, and WebSocket remain on
 `https://api.wiro.ai/v1` and `wss://socket.wiro.ai/v1`. The Direct LLM Gateway
 also provides OpenAI/Anthropic-compatible `/v1/files` routes backed by that
 same authenticated project storage.
+
+The gateway uses the same Wiro task, project-access, team-policy, and billing
+system as the Run API. Discover a model before calling it: supported
+endpoints, parameters, modalities, tools, reasoning, and limits are
+model-specific.
 
 Direct LLM responses never expose Wiro Run/Sync `segments`. Each route returns
 only its selected protocol's native JSON and streaming events: OpenAI Chat
@@ -49,6 +53,10 @@ name: discover the exact ID and protocol capabilities first.
 - `POST /v1/messages/count_tokens` estimates Anthropic input tokens before a
   run.
 - `GET /v1/generation?id=...` returns project-authorized generation metadata.
+
+> **Separate methods:** `/sync` is a newly added generic wait method on
+> `api.wiro.ai`; it does not replace asynchronous Run. Direct LLM routes remain
+> separate on `llm.wiro.ai`.
 
 The asynchronous Run route returns `taskid` and `socketaccesstoken` immediately;
 retrieve its result through Task Detail, WebSocket, or a callback. The generic
@@ -85,8 +93,9 @@ or fall back to another project.
 
 Never expose a project key or secret in browser or mobile application code.
 
-Anthropic Messages requires `x-api-key`. Send `YOUR_API_KEY` for an API Key
-Only project or `YOUR_API_KEY:YOUR_API_SECRET` for a Signature project.
+Anthropic Messages takes the credential in `x-api-key`, where Anthropic SDKs
+send it, or in an `Authorization: Bearer` header. Send `YOUR_API_KEY` for an
+API Key Only project or `YOUR_API_KEY:YOUR_API_SECRET` for a Signature project.
 Generic `/sync` waits stay on `api.wiro.ai` and use normal Run headers.
 
 ### Session identifier
@@ -101,10 +110,10 @@ the protocol's normal client-history requirements. Responses uses
 
 ## Connect an agent
 
-Point a compatible client at `llm.wiro.ai`. OpenAI-compatible clients use a
-project Bearer credential. Anthropic-compatible clients put the same project
-credential in `x-api-key`: `YOUR_API_KEY` for API Key Only or
-`YOUR_API_KEY:YOUR_API_SECRET` for Signature.
+Point a compatible client at `llm.wiro.ai`. Use a project Bearer credential:
+API Key Only projects send `YOUR_API_KEY`; Signature projects send
+`YOUR_API_KEY:YOUR_API_SECRET`. Generic finite-model waits stay on
+[Run a Model /sync](/docs/run-a-model).
 
 Every client below needs the exact lowercase `owner/model` ID. Two places give
 it to you:
@@ -114,7 +123,6 @@ it to you:
 - `GET /v1/models` — the same set as JSON, scoped to what your project and team
   can actually run. `GET /v1/models/{owner}/{model}` then reports that model's
   routes, modalities, tool support and token limits.
-Generic finite-model waits stay on [Run a Model](/docs/run-a-model).
 
 ### Cursor
 
@@ -273,8 +281,10 @@ models whatever you configure.
    the list below, not only the `claude/` ones; the `(Wiro)` prefix is
    optional and the gateway strips it, but Claude Code prints whatever you
    write in its session header. `CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY`
-   fills the `/model` picker from the gateway rather than leaving it on
-   Anthropic's own list. `CLAUDE_CODE_MAX_CONTEXT_TOKENS` must match the
+   adds gateway models to the `/model` picker, but Claude Code keeps only IDs
+   containing `claude` or `anthropic`, so the picker gains the `claude/` models
+   alone; open any other model with `ANTHROPIC_MODEL` or `--model`.
+   `CLAUDE_CODE_MAX_CONTEXT_TOKENS` must match the
    context window of the model you set — Claude Code does not recognise these
    names, so it otherwise assumes 200k and discards history long before it
    needs to.
@@ -298,11 +308,6 @@ models whatever you configure.
 7. **Check the header, then start** — it names the model you configured:
    `(Wiro) openai/gpt-5-6-sol · API Usage Billing`. Your Claude subscription
    is not used while a gateway credential is set.
-Every model the gateway serves today, with the context window for
-`CLAUDE_CODE_MAX_CONTEXT_TOKENS`. The same values come from `GET /v1/models` as
-`context_length`. For a Wiro-hosted model that number is the window of the
-checkpoint we actually run, which can be smaller than the one its model card
-advertises.
 
 8. **Switching models** — open on another model for one session:
 
@@ -327,6 +332,13 @@ advertises.
      }
    }
    ```
+
+Every model the gateway serves today, with the context window for
+`CLAUDE_CODE_MAX_CONTEXT_TOKENS`. The same values come from `GET /v1/models` as
+`context_length`. For a Wiro-hosted model that number is the window of the
+checkpoint we actually run, which can be smaller than the one its model card
+advertises.
+
 ```
 Model ID                                     Context
 ----------------------------------------------------
@@ -393,51 +405,32 @@ first-run prompts and the folder trust prompt above. Answer those once and
 reopen, or put the same `env` block in `~/.claude/settings.json`, which is read
 before them and applies to every folder.
 
-### Windsurf
+### VS Code
 
-Windsurf now ships as **Devin Desktop**; the application is `Devin.app` and its
-docs redirect to `docs.devin.ai`. Cascade, its own agent, has no setting for an
-external provider — there is no base URL to override and no custom model to
-register, so it cannot be pointed at this gateway. What does work is running a
-different agent inside the same editor. The steps below use
-[Cline](https://open-vsx.org/extension/saoudrizwan/claude-dev), which is free
-and Apache-2.0; Roo Code and Continue configure the same way.
+VS Code Chat reaches the gateway through its own built-in custom endpoint — no
+extension required.
 
-1. **Open the extension marketplace** — Command Palette (`Cmd+Shift+P`,
-   `Ctrl+Shift+P` on Windows) → `Extensions: Install Extensions`. The menu bar
-   gets you to the same place: `Devin → Preferences → Extensions`.
-2. **Install Cline** — search `cline` and install the one published by
-   `saoudrizwan`. Devin resolves extensions through the Open VSX mirror, so
-   this is the same build VS Code carries.
-3. **Open the panel** — Command Palette (`Cmd+Shift+P`, `Ctrl+Shift+P` on
-   Windows) → `Cline: Focus on View`.
-4. **Bring my own API key** — Cline asks how you will use it. Pick the fourth
-   option, `Bring my own API key`, then `Continue`. The other three are Cline's
-   own billing; `Login to Cline` is not needed.
-5. **API Provider** — choose `OpenAI Compatible`, not `OpenAI`; that one goes to
-   the official OpenAI API.
-6. **Base URL** — `https://llm.wiro.ai/v1`. Cline appends the route itself.
-7. **OpenAI Compatible API Key** — `YOUR_API_KEY:YOUR_API_SECRET` for a
-   Signature project, `YOUR_API_KEY` alone for API Key Only. Cline keeps it
-   locally.
-8. **Model ID** — one ID from the list below; Cline holds a single model per
-   configuration rather than a list. The `(Wiro)` prefix is optional and the
-   gateway strips it; it earns its place here by showing up in the status bar,
-   as `openai-compat: (Wiro) openai/gpt-5-6-sol`.
-9. **Open `MODEL CONFIGURATION` and set the context window** — this one matters.
-   Cline does not know a custom model, so it assumes `128K` and starts dropping
-   history long before it needs to. Put the real number from the list below into
-   `Context Window size`, and tick `Computer Use` so tool calling is enabled —
-   without it the agent cannot run tools. `Max Output Tokens` and the price
-   fields are in the same section.
-10. **Continue, and send a message** — the status bar names the model you
-    configured. `Plan` and `Act` can each hold a different model, and saved API
-    configuration profiles let you keep one per model and switch between them.
+1. **Open the model manager** — Command Palette (`Cmd+Shift+P`, `Ctrl+Shift+P`
+   on Windows) → `Chat: Manage Language Models`.
+2. **Add a provider** — `+ Add Models` opens a provider list (Anthropic,
+   Azure, Google, OpenAI, OpenRouter, xAI, Ollama). Pick `Custom Endpoint`,
+   last, below the separator.
+3. **Group Name** — arrives pre-filled with "Custom Endpoint"; replace it with
+   `Wiro AI`. It is a label — it titles the next two prompts and groups the
+   models in the picker.
+4. **API Key** — `YOUR_API_KEY:YOUR_API_SECRET` for a Signature project,
+   `YOUR_API_KEY` alone for API Key Only. VS Code keeps it in its secret store;
+   the file holds only a `${input:…}` reference.
+5. **API Type** — choose `Chat Completions`. Responses and Messages change the
+   request shape VS Code sends.
+6. **Describe the models** — VS Code opens `chatLanguageModels.json` with one
+   empty model. Leave `name`, `vendor`, `apiKey` and `apiType` as generated and
+   fill the `models` array. Below is every model the gateway serves today, ready
+   to paste; the same set is in
+   [the catalog](https://wiro.ai/models?categories=llm-tool-call) and behind
+   `GET /v1/models`.
 
-Every model the gateway serves today, with the context window Cline needs. The
-same numbers come from `GET /v1/models` as `context_length` and `max_tokens`.
-
-```
+```json
 [
   {
     "name": "Wiro AI",
@@ -945,35 +938,71 @@ same numbers come from `GET /v1/models` as `context_length` and `max_tokens`.
 ]
 ```
 
-None of this touches Cascade, which keeps using Windsurf's own models. The
-editor is Devin, the agent is Cline, and the models are Wiro's.
+- `id` — the lowercase `owner/model` from `GET /v1/models`.
+- `name` — a free label, shown in the picker.
+- `url` — the **full endpoint**, not the base URL. Every model repeats it.
+- `toolCalling`, `vision`, `maxInputTokens`, `maxOutputTokens` — read them from
+  `GET /v1/models/{owner}/{model}`: `capabilities.function_tools`,
+  `capabilities.input_modalities`, `max_input_tokens`, `max_tokens`. Do not
+  guess.
+- **`maxInputTokens` is not optional.** VS Code sizes every conversation
+  against it and answers *"Could not compact conversation"* on each turn when a
+  model omits it, before any request reaches the gateway. Take the number from
+  `max_input_tokens`; every catalog model reports one. For a Wiro-hosted model it
+  is the window of the checkpoint we run rather than the model family's advertised
+  maximum -- Qwen2.5 7B reports 32,768 here although its card says 131,072,
+  because that is what the shipped configuration sets.
 
-### VS Code
+Save the file and reopen the model picker; the models appear under **Wiro AI**.
+Any other VS Code extension that takes a custom OpenAI base URL — Cline, Roo
+Code, Continue — works the same way: point it at `https://llm.wiro.ai/v1` with
+the same credential and a model ID from the catalog.
 
-VS Code Chat reaches the gateway through its own built-in custom endpoint — no
-extension required.
+### Windsurf
 
-1. **Open the model manager** — Command Palette (`Cmd+Shift+P`, `Ctrl+Shift+P`
-   on Windows) → `Chat: Manage Language Models`.
-2. **Add a provider** — `+ Add Models` opens a provider list (Anthropic,
-   Azure, Google, OpenAI, OpenRouter, xAI, Ollama). Pick `Custom Endpoint`,
-   last, below the separator.
-3. **Group Name** — arrives pre-filled with "Custom Endpoint"; replace it with
-   `Wiro AI`. It is a label — it titles the next two prompts and groups the
-   models in the picker.
-4. **API Key** — `YOUR_API_KEY:YOUR_API_SECRET` for a Signature project,
-   `YOUR_API_KEY` alone for API Key Only. VS Code keeps it in its secret store;
-   the file holds only a `${input:…}` reference.
-5. **API Type** — choose `Chat Completions`. Responses and Messages change the
-   request shape VS Code sends.
-6. **Describe the models** — VS Code opens `chatLanguageModels.json` with one
-   empty model. Leave `name`, `vendor`, `apiKey` and `apiType` as generated and
-   fill the `models` array. Below is every model the gateway serves today, ready
-   to paste; the same set is in
-   [the catalog](https://wiro.ai/models?categories=llm-tool-call) and behind
-   `GET /v1/models`.
+Windsurf now ships as **Devin Desktop**; the application is `Devin.app` and its
+docs redirect to `docs.devin.ai`. Cascade, its own agent, has no setting for an
+external provider — there is no base URL to override and no custom model to
+register, so it cannot be pointed at this gateway. What does work is running a
+different agent inside the same editor. The steps below use
+[Cline](https://open-vsx.org/extension/saoudrizwan/claude-dev), which is free
+and Apache-2.0; Roo Code and Continue configure the same way.
 
-```json
+1. **Open the extension marketplace** — Command Palette (`Cmd+Shift+P`,
+   `Ctrl+Shift+P` on Windows) → `Extensions: Install Extensions`. The menu bar
+   gets you to the same place: `Devin → Preferences → Extensions`.
+2. **Install Cline** — search `cline` and install the one published by
+   `saoudrizwan`. Devin resolves extensions through the Open VSX mirror, so
+   this is the same build VS Code carries.
+3. **Open the panel** — Command Palette (`Cmd+Shift+P`, `Ctrl+Shift+P` on
+   Windows) → `Cline: Focus on View`.
+4. **Bring my own API key** — Cline asks how you will use it. Pick the fourth
+   option, `Bring my own API key`, then `Continue`. The other three are Cline's
+   own billing; `Login to Cline` is not needed.
+5. **API Provider** — choose `OpenAI Compatible`, not `OpenAI`; that one goes to
+   the official OpenAI API.
+6. **Base URL** — `https://llm.wiro.ai/v1`. Cline appends the route itself.
+7. **OpenAI Compatible API Key** — `YOUR_API_KEY:YOUR_API_SECRET` for a
+   Signature project, `YOUR_API_KEY` alone for API Key Only. Cline keeps it
+   locally.
+8. **Model ID** — one ID from the list below; Cline holds a single model per
+   configuration rather than a list. The `(Wiro)` prefix is optional and the
+   gateway strips it; it earns its place here by showing up in the status bar,
+   as `openai-compat: (Wiro) openai/gpt-5-6-sol`.
+9. **Open `MODEL CONFIGURATION` and set the context window** — this one matters.
+   Cline does not know a custom model, so it assumes `128K` and starts dropping
+   history long before it needs to. Put the real number from the list below into
+   `Context Window size`, and tick `Computer Use` so tool calling is enabled —
+   without it the agent cannot run tools. `Max Output Tokens` and the price
+   fields are in the same section.
+10. **Continue, and send a message** — the status bar names the model you
+    configured. `Plan` and `Act` can each hold a different model, and saved API
+    configuration profiles let you keep one per model and switch between them.
+
+Every model the gateway serves today, with the context window Cline needs. The
+same numbers come from `GET /v1/models` as `context_length` and `max_tokens`.
+
+```
 Model ID                                     Context  Max Output
 ----------------------------------------------------------------
 (Wiro) bytedance/seed-v2-1-turbo              256000       65536
@@ -1033,25 +1062,8 @@ Model ID                                     Context  Max Output
 (Wiro) xai/grok-4-5                           500000       65536
 ```
 
-- `id` — the lowercase `owner/model` from `GET /v1/models`.
-- `name` — a free label, shown in the picker.
-- `url` — the **full endpoint**, not the base URL. Every model repeats it.
-- `toolCalling`, `vision`, `maxInputTokens`, `maxOutputTokens` — read them from
-  `GET /v1/models/{owner}/{model}`: `capabilities.function_tools`,
-  `capabilities.input_modalities`, `max_input_tokens`, `max_tokens`. Do not
-  guess.
-- **`maxInputTokens` is not optional.** VS Code sizes every conversation
-  against it and answers *"Could not compact conversation"* on each turn when a
-  model omits it, before any request reaches the gateway. Take the number from
-  `max_input_tokens`; every catalog model reports one. For a Wiro-hosted model it
-  is the window of the checkpoint we run rather than the model family's advertised
-  maximum -- Qwen2.5 7B reports 32,768 here although its card says 131,072,
-  because that is what the shipped configuration sets.
-
-Save the file and reopen the model picker; the models appear under **Wiro AI**.
-Any other VS Code extension that takes a custom OpenAI base URL — Cline, Roo
-Code, Continue — works the same way: point it at `https://llm.wiro.ai/v1` with
-the same credential and a model ID from the catalog.
+None of this touches Cascade, which keeps using Windsurf's own models. The
+editor is Devin, the agent is Cline, and the models are Wiro's.
 
 ### OpenClaw
 
@@ -1456,7 +1468,7 @@ gateway catalog is separate from the full website/model catalog at
       "max_input_tokens": 1050000,
       "max_tokens": null,
       "capabilities": {
-        "endpoints": ["anthropic", "chat", "cursor", "responses"],
+        "endpoints": ["anthropic", "chat", "responses"],
         "input_modalities": ["text", "image"],
         "output": ["text", "reasoning", "function_calls", "custom_tool_calls"],
         "function_tools": true,
@@ -1515,8 +1527,7 @@ compatible Direct LLM route or use the normal Run API.
 
 Before each request:
 
-1. Confirm `anthropic`, `chat`, `cursor`, or `responses` in
-   `capabilities.endpoints`.
+1. Confirm `anthropic`, `chat`, or `responses` in `capabilities.endpoints`.
 2. Use `supported_parameters` to gate optional public request controls.
    Required protocol fields such as `model`, `input`, `messages`, or Anthropic
    `max_tokens` are not repeated there.
@@ -1530,7 +1541,7 @@ Before each request:
    as model-specific. A nullable field is not permission to infer a value from
    another model.
 
-Every discoverable model currently publishes the same four endpoint labels.
+Every discoverable model currently publishes the same endpoint labels.
 Capability differences are expressed through modalities, supported parameters,
 tool flags, structured-output flags, reasoning controls, and limits.
 
@@ -1789,8 +1800,6 @@ usage chunk before `[DONE]` only when native counters are available.
 
 If a failure happens after Chat SSE has started, Wiro emits an OpenAI error
 object in a `data:` frame, then `data: [DONE]`, and closes the connection.
-Once SSE headers have
-been sent, the original HTTP status cannot communicate that later failure.
 
 The official `openai` package reaches this route with nothing changed but
 `baseURL`; the full setup, with tool calling and the model list, is under
@@ -1930,10 +1939,11 @@ Anthropic SDKs normally send:
 - `anthropic-version: 2023-06-01`
 - optional `anthropic-beta` labels, comma-separated or repeated
 
-`x-api-key` and `anthropic-version` are both required. An optional Bearer header
-is accepted only when it resolves to the same complete credential.
-Beta headers identify requested compatibility features; they do not override
-model capabilities. `?beta=true` is also accepted as a beta-route marker.
+`anthropic-version` is required. The credential can arrive in `x-api-key` or in
+an `Authorization: Bearer` header; when both are sent, they must resolve to the
+same complete credential. Beta headers identify requested compatibility
+features; they do not override model capabilities. `?beta=true` is also
+accepted as a beta-route marker.
 
 ```bash
 curl -X POST "https://llm.wiro.ai/v1/messages" \
@@ -2103,7 +2113,7 @@ curl "https://llm.wiro.ai/v1/generation?id=resp_01HZX7Y8Q9" \
 }
 ```
 
-`protocol` is `chat`, `cursor`, `messages`, or `responses`. `status` is
+`protocol` is `chat`, `messages`, or `responses`. `status` is
 `completed`, `failed`, or `incomplete`. `created_at` and `completed_at` are ISO
 8601 strings.
 
@@ -2112,7 +2122,7 @@ When token counters are available, `usage` follows the selected protocol:
 - `responses`: `input_tokens`, `input_tokens_details` with `cached_tokens` and
   `cache_write_tokens`, `output_tokens`,
   `output_tokens_details.reasoning_tokens`, and `total_tokens`.
-- `chat` and `cursor`: `prompt_tokens`, optional `prompt_tokens_details`,
+- `chat`: `prompt_tokens`, optional `prompt_tokens_details`,
   `completion_tokens`, optional `completion_tokens_details`, and
   `total_tokens`.
 - `messages`: `input_tokens`, `output_tokens`, and nullable

@@ -1656,7 +1656,7 @@ data: {
                     </ul>
                     <p>The same endpoints also accept <code>x-api-key</code> containing either <code>YOUR_API_KEY</code> or <code>YOUR_API_KEY:YOUR_API_SECRET</code>. Direct LLM routes do not accept the Run API's <code>x-nonce</code>/<code>x-signature</code> HMAC trio. If Bearer and <code>x-api-key</code> are sent together, they must contain the same complete project credential. Mismatched keys or secrets and malformed credentials return <code>401</code> without cross-project fallback.</p>
                     <p>Never expose a project key or secret in browser or mobile application code.</p>
-                    <p>Anthropic Messages requires <code>x-api-key</code>. Send <code>YOUR_API_KEY</code> for an API Key Only project or <code>YOUR_API_KEY:YOUR_API_SECRET</code> for a Signature project. Generic <code>/sync</code> waits stay on <code>api.wiro.ai</code> and use normal Run headers.</p>
+                    <p>Anthropic Messages takes the credential in <code>x-api-key</code>, where Anthropic SDKs send it, or in an <code>Authorization: Bearer</code> header. Send <code>YOUR_API_KEY</code> for an API Key Only project or <code>YOUR_API_KEY:YOUR_API_SECRET</code> for a Signature project. Generic <code>/sync</code> waits stay on <code>api.wiro.ai</code> and use normal Run headers.</p>
                     <h3>Session identifier</h3>
                     <p><code>session_id</code> is the only public session field. It is optional on Chat Completions and Anthropic Messages, and must contain 1–128 letters, digits, <code>.</code>, <code>_</code>, <code>:</code>, or <code>-</code>. Reuse the same value for related turns. Wiro maps it to a project-scoped internal session; it does not replace the protocol's normal client-history requirements. Responses uses <code>previous_response_id</code> instead, and <code>/v1/messages/count_tokens</code> does not accept <code>session_id</code>.</p>
                   </section>
@@ -1822,7 +1822,7 @@ data: {
     "CLAUDE_CODE_MAX_CONTEXT_TOKENS": "1050000"
   }
 }</code></pre>
-                            <span><code>ANTHROPIC_BASE_URL</code> carries no <code>/v1</code> here &mdash; Anthropic clients append the path themselves. <code>ANTHROPIC_API_KEY</code> takes <code>YOUR_API_KEY:YOUR_API_SECRET</code> for a Signature project, or <code>YOUR_API_KEY</code> alone for API Key Only. <code>ANTHROPIC_MODEL</code> is the model the session opens with, and is any ID from the list below, not only the <code>claude/</code> ones; the <code>(Wiro)</code> prefix is optional and the gateway strips it, but Claude Code prints whatever you write in its session header. <code>CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY</code> fills the <code>/model</code> picker from the gateway rather than leaving it on Anthropic&rsquo;s own list. <code>CLAUDE_CODE_MAX_CONTEXT_TOKENS</code> must match the context window of the model you set &mdash; Claude Code does not recognise these names, so it otherwise assumes 200k and discards history long before it needs to.</span>
+                            <span><code>ANTHROPIC_BASE_URL</code> carries no <code>/v1</code> here &mdash; Anthropic clients append the path themselves. <code>ANTHROPIC_API_KEY</code> takes <code>YOUR_API_KEY:YOUR_API_SECRET</code> for a Signature project, or <code>YOUR_API_KEY</code> alone for API Key Only. <code>ANTHROPIC_MODEL</code> is the model the session opens with, and is any ID from the list below, not only the <code>claude/</code> ones; the <code>(Wiro)</code> prefix is optional and the gateway strips it, but Claude Code prints whatever you write in its session header. <code>CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY</code> adds gateway models to the <code>/model</code> picker, but Claude Code keeps only IDs containing <code>claude</code> or <code>anthropic</code>, so the picker gains the <code>claude/</code> models alone; open any other model with <code>ANTHROPIC_MODEL</code> or <code>--model</code>. <code>CLAUDE_CODE_MAX_CONTEXT_TOKENS</code> must match the context window of the model you set &mdash; Claude Code does not recognise these names, so it otherwise assumes 200k and discards history long before it needs to.</span>
                             </li>
                           <li>
                             <strong>Open Claude Code in that folder</strong> <span><code>cd /path/to/your/project &amp;&amp; claude</code></span>
@@ -2948,7 +2948,7 @@ const second = await client.chat.completions.create({
                       <li>Check <code>capabilities.output</code>, <code>function_tools</code>, <code>custom_tools</code>, <code>structured_outputs</code>, <code>structured_output_modes</code>, <code>strict_json_schema</code>, and <code>generation_controls</code>.</li>
                       <li>Treat <code>context_length</code>, <code>max_input_tokens</code>, <code>max_tokens</code>, pricing, and usage as model-specific. A nullable field is not permission to infer a value from another model.</li>
                     </ol>
-                    <p>Every discoverable model currently publishes the same four endpoint labels. Capability differences are expressed through modalities, supported parameters, tool flags, structured-output flags, reasoning controls, and limits.</p>
+                    <p>Every discoverable model currently publishes the same endpoint labels. Capability differences are expressed through modalities, supported parameters, tool flags, structured-output flags, reasoning controls, and limits.</p>
                     <h3><span class="endpoint-badge get">GET</span> /v1/models/{owner}/{model}</h3>
                     <pre><code>curl "https://llm.wiro.ai/v1/models/openai/gpt-5-6-sol" \
   -H "Authorization: Bearer YOUR_API_KEY"</code></pre>
@@ -3168,7 +3168,7 @@ await client.files.delete(file.id);</code></pre>
                       <li><code>anthropic-version: 2023-06-01</code></li>
                       <li>Optional <code>anthropic-beta</code> labels, comma-separated or repeated</li>
                     </ul>
-                    <p><code>x-api-key</code> and <code>anthropic-version</code> are both required. An optional Bearer header is accepted only when it resolves to the same complete credential. Beta headers identify requested compatibility features; they do not override model capabilities. <code>?beta=true</code> is also accepted as a beta-route marker.</p>
+                    <p><code>anthropic-version</code> is required. The credential can arrive in <code>x-api-key</code> or in an <code>Authorization: Bearer</code> header; when both are sent, they must resolve to the same complete credential. Beta headers identify requested compatibility features; they do not override model capabilities. <code>?beta=true</code> is also accepted as a beta-route marker.</p>
                     <pre><code>curl -X POST "https://llm.wiro.ai/v1/messages" \
   -H "x-api-key: YOUR_API_KEY" \
   -H "anthropic-version: 2023-06-01" \
@@ -3256,11 +3256,11 @@ claude</code></pre>
     "upstream_elapsed_seconds": 3
   }
 }</code></pre>
-                    <p><code>protocol</code> is <code>chat</code>, <code>cursor</code>, <code>messages</code>, or <code>responses</code>. <code>status</code> is <code>completed</code>, <code>failed</code>, or <code>incomplete</code>. <code>created_at</code> and <code>completed_at</code> are ISO 8601 strings.</p>
+                    <p><code>protocol</code> is <code>chat</code>, <code>messages</code>, or <code>responses</code>. <code>status</code> is <code>completed</code>, <code>failed</code>, or <code>incomplete</code>. <code>created_at</code> and <code>completed_at</code> are ISO 8601 strings.</p>
                     <p>When token counters are available, <code>usage</code> follows the selected protocol:</p>
                     <ul>
                       <li><code>responses</code>: <code>input_tokens</code>, <code>input_tokens_details</code> with <code>cached_tokens</code> and <code>cache_write_tokens</code>, <code>output_tokens</code>, <code>output_tokens_details.reasoning_tokens</code>, and <code>total_tokens</code>.</li>
-                      <li><code>chat</code> and <code>cursor</code>: <code>prompt_tokens</code>, optional <code>prompt_tokens_details</code>, <code>completion_tokens</code>, optional <code>completion_tokens_details</code>, and <code>total_tokens</code>.</li>
+                      <li><code>chat</code>: <code>prompt_tokens</code>, optional <code>prompt_tokens_details</code>, <code>completion_tokens</code>, optional <code>completion_tokens_details</code>, and <code>total_tokens</code>.</li>
                       <li><code>messages</code>: <code>input_tokens</code>, <code>output_tokens</code>, and nullable <code>cache_creation_input_tokens</code> and <code>cache_read_input_tokens</code>. This shape does not add <code>total_tokens</code>.</li>
                     </ul>
                     <p><code>usage</code> is <code>null</code> when no valid counters were recorded. <code>upstream_metered_cost</code> and <code>upstream_elapsed_seconds</code> are finite upstream task counters when available, otherwise <code>null</code>; cost is not duplicated inside metadata <code>usage</code>.</p>
