@@ -15,11 +15,11 @@ The two paths produce the **same useragent shape** at the end (same `customskill
 
 | Aspect | Template deploy | Custom build |
 |--------|-----------------|--------------|
-| `useragents.agentid` | The catalog row id | `null` |
+| Linked marketplace template | The template you deployed | None |
 | Pricing recipe | Computed from the template's default skill set | Computed from the skills **you** toggled on |
 | `agent.tiers` on the response | Template's tier numbers | Live-resolved per-instance tier numbers |
 | `agent.cover` on the response | Template's cover image | The `cover` you sent at Deploy (or a placeholder) |
-| Cascade updates | When admin pushes a preset edit, your useragent reconciles | No template — the agent is fully owned by you |
+| Cascade updates | When Wiro updates the template, your useragent reconciles | No template — the agent is fully owned by you |
 
 > **Custom builds don't share a marketplace listing.** They are private to your account; nothing about a custom agent appears on `/Agent/List` or `/Agent/Detail`. Discovery happens through your own product surface.
 
@@ -441,7 +441,7 @@ When you toggle a skill on or off, the active subscription is automatically pror
 
 - **Skill set must produce a `> $0` price.** Custom builds with no paid skills are rejected with `Subscription price must be greater than $0. Add at least one paid skill or set agent base price.` The `agentBase` floor (`$9 / 1000 credits`) is the implicit minimum unless every enabled skill is free / utility.
 - **Conflict / dependency violations are surfaced eagerly.** If you toggle on two mutually-exclusive skills, `SkillsApply` returns code `102` with a `conflicts[]` array; if a `depends_on` is missing, code `101` with `deps[]`. Resolve in the UI before committing.
-- **Custom builds receive the same auto-restart on configuration changes** as template deploys (status `3`/`4` → status `1` with `restartafter: true`).
+- **Custom builds receive the same auto-restart on configuration changes** as template deploys (status `3`/`4` → status `1`, then re-queued).
 - **Cover image:** custom builds can ship a `cover` URL in the Deploy body, or upload one later via [`POST /UserAgent/Cover`](/docs/agent-overview#post-useragentcover).
 - **The agent's persona** is editable via the standard `customskills` flow. Add a `cs-persona` strategy via `CustomSkillUpsert` to set the agent's voice, role, and constraints.
 

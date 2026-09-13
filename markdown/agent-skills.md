@@ -200,7 +200,7 @@ Returns a single skill by name.
 }
 ```
 
-Returns the **full registry entry** — same shape as a row from `Skills/List`. The endpoint surfaces every field the registry has stored; Wiro never trims the response based on caller role. If the skill is not found you get `{ "result": false, "errors": [{ "code": 404, "message": "Skill not found: <name>" }] }`.
+Returns the **full registry entry** — same shape as a row from `Skills/List`. The endpoint surfaces every field the registry has stored. If the skill is not found you get `{ "result": false, "errors": [{ "code": 404, "message": "Skill not found: <name>" }] }`.
 
 ### **POST** /Skills/CredentialSchema
 
@@ -445,7 +445,7 @@ Once you've deployed a useragent, its current custom skills live under `customsk
 | `description` | string | Human-readable description. **Writable only on user-created rows.** Sending `description` for a preset strategy or a skill-bundled cron is rejected with `customskill-preset-description-not-editable`. |
 | `enabled` | boolean | Whether the skill is active. **Writable for both strategies (`cs-*`) and crons (`cs-cron-*`)** — a disabled strategy is suppressed end-to-end (kept in the merged `customskills[]` so the IDE sees it, but skipped during `start.sh`'s `SKILL.md` write and dropped from the agent's `<available_skills>` block). |
 | `interval` | string \| null | Cron expression for scheduled execution, or `null` for preference skills. Writable on cron skills; ignored on preferences. |
-| `_source` | string | `preset-strategy` (editable preference), `skill-bundle` (cron owned by an integration skill), or `user-created` (cron added via `CustomSkillUpsert` with `usercreated: true`). |
+| `_source` | string | `preset-strategy` (editable preference), `skill-bundle` (cron owned by an integration skill), or `user-created` (cron added via `CustomSkillUpsert`). |
 | `_editable` | boolean | Convenience flag: `true` for preset strategies and user-created rows (you can write `value`), `false` for skill-bundled crons (you can only write `enabled` / `interval`). |
 | `_user_created` | boolean | Present (and `true`) only on `_source: "user-created"` rows. Omitted on preset strategies and skill-bundled crons. |
 
@@ -536,7 +536,6 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
     "value": "Every Monday, check the inbox and report the count to Telegram.",
     "interval": "0 9 * * 1",
     "enabled": true,
-    "usercreated": true,
     "description": "Weekly inbox health check"
   }'
 ```
@@ -672,7 +671,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillHistory" \
 }
 ```
 
-Each entry carries the **BEFORE** state of the action that produced it (the audit-write fires before the table mutation), plus server-computed `prev_*`, `after_*`, and `changed_fields[]` so you don't have to walk the list yourself. `changedby_user` is the resolved actor object — `null` for system / cron writes (sentinel `changedby`) or deleted users. Full field reference and revert flow live in [Agent Overview → CustomSkillHistory](/docs/agent-overview#post-useragentcustomskillhistory).
+Each entry carries the **BEFORE** state of the action that produced it (the history entry is written before the change is applied), plus server-computed `prev_*`, `after_*`, and `changed_fields[]` so you don't have to walk the list yourself. `changedby_user` is the resolved actor object — `null` for system / cron writes (sentinel `changedby`) or deleted users. Full field reference and revert flow live in [Agent Overview → CustomSkillHistory](/docs/agent-overview#post-useragentcustomskillhistory).
 
 Revert to the preset default:
 
@@ -1018,8 +1017,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Detail" \
 | Write `interval` | `CustomSkillUpsert` | **No — silently dropped** (strategies aren't scheduled) | Yes | Yes |
 | Write `enabled` | `CustomSkillUpsert` | Yes (disabling suppresses the strategy end-to-end) | Yes | Yes |
 | Write `description` | `CustomSkillUpsert` | **No — rejected** with `customskill-preset-description-not-editable` | **No — rejected** with `customskill-preset-description-not-editable` | Yes |
-| Create | `CustomSkillUpsert` with `usercreated: true` | n/a | n/a | Yes |
-| Rename key (+ optional description) | `CustomSkillRename` | **No — preset-forbidden**, renames cascade through admin endpoint | **No — preset-forbidden** | Yes (flavour preserved; `cs-cron-*` ↔ `cs-*` rejected) |
+| Create | `CustomSkillUpsert` with a new key | n/a | n/a | Yes |
+| Rename key (+ optional description) | `CustomSkillRename` | **No — preset-forbidden** | **No — preset-forbidden** | Yes (flavour preserved; `cs-cron-*` ↔ `cs-*` rejected) |
 | Delete | `CustomSkillDelete` | **Rejected with `suggestion: "disable-via-upsert"`** | **Rejected with `suggestion: "disable-via-upsert"`** | Yes (hard delete — live row + full history purged) |
 | Read history | `CustomSkillHistory` | Yes | Yes (only `enabled` / `interval` writes show up) | Yes (post-rename, the chain is migrated under the new key; a `rename` event marks the transition) |
 | Revert to preset | `CustomSkillRevert` (`source: "preset"`) | Yes | Yes (resets `interval` / `enabled` to preset defaults) | Yes (deletes the row if no preset baseline exists) |
@@ -1042,4 +1041,4 @@ Skills occasionally evolve on Wiro's side — new preset strategies, new bundled
 | Preset strategy removed upstream | Removed from your instance on the next reconciliation. |
 | User-created cron | Always preserved. |
 
-Cascade reconciliation is async — admin pushes an `Agent/CustomSkillUpsert`, which enqueues a job that fans out to every deployed useragent in the background. Per-useragent edits (`useredited: true`) are protected from being overwritten by the cascade.
+Cascade reconciliation is async — each template update enqueues a job that fans out to every deployed useragent in the background. Per-useragent edits (`useredited: true`) are protected from being overwritten by the cascade.

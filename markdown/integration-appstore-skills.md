@@ -77,7 +77,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   }'
 ```
 
-For multiple App Store IDs, append more `apps`-prefixed ordinal rows. Positional merge applies — sending no `apps` rows leaves the existing list untouched; to clear, send a single ordinal-0 row with `fieldname: "appname"` and `fieldvalue: ""`.
+For multiple App Store IDs, append more `apps`-prefixed ordinal rows. Positional merge applies — sending no `apps` rows leaves the existing list untouched; to clear the list, send `{ "credentialkey": "apple-appstore", "fieldname": "apps", "fieldvalue": [] }`.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|

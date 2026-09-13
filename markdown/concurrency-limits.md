@@ -13,6 +13,8 @@ Your concurrency limit is determined by your current account balance:
 - When your balance is **$250 or below**, you can run concurrent tasks equal to **10% of your current USD balance** (minimum 1).
 - When your balance is **above $250**, there is **no concurrency limit**.
 
+For a team project's API key (or the team workspace in the dashboard), the limit uses the **team wallet's** balance, and every unfinished team task counts toward it, whichever member started it. Personal tasks count only against your personal balance. See [Team Billing & Spending](/docs/organizations-billing).
+
 ### Examples
 
 | Account Balance | Concurrent Task Limit |

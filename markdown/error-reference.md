@@ -94,6 +94,7 @@ These errors are returned by the `POST /Run/{owner}/{model}` endpoint.
 | Model not found | `1` | "slug-owner-project-not-exist" |
 | User banned | `0` | "Your account has been suspended. Please contact support if you believe this is a mistake." |
 | Permission denied | `0` | "You don't have any permission for this action." |
+| Model blocked by your team | `0` | "This model is not available for your team" |
 
 ### Training Model Errors
 

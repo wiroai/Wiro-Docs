@@ -40,8 +40,8 @@ name: discover the exact ID and protocol capabilities first.
 - `POST /v1/Run/{owner}/{project}/sync` is the generic finite-model wait on
   `api.wiro.ai`; see [Run a Model](/docs/run-a-model). It is not a Direct LLM
   protocol.
-- `GET /v1/models` lists verified `llm-tool-call` models available in the
-  authenticated project/team context.
+- `GET /v1/models` lists verified `llm-tool-call` models. The list is not
+  filtered by a team's Model Access settings; those apply when a model runs.
   `GET /v1/chat/models` is an equivalent compatibility alias.
 - `GET /v1/models/{owner}/{model}` returns one model's exact gateway contract.
 - `POST`, `GET`, and `DELETE /v1/files` compatibility routes use the
@@ -120,9 +120,8 @@ it to you:
 
 - [The catalog, filtered to gateway models](https://wiro.ai/models?categories=llm-tool-call)
   — browse them, open one, and copy the ID from its page.
-- `GET /v1/models` — the same set as JSON, scoped to what your project and team
-  can actually run. `GET /v1/models/{owner}/{model}` then reports that model's
-  routes, modalities, tool support and token limits.
+- `GET /v1/models` — the same set as JSON. `GET /v1/models/{owner}/{model}`
+  then reports that model's routes, modalities, tool support and token limits.
 
 ### Cursor
 
@@ -1422,9 +1421,8 @@ curl "https://llm.wiro.ai/v1/models?search=openai%2Fgpt-5-6-sol&limit=1" \
   -H "Authorization: Bearer YOUR_API_KEY"
 ```
 
-`GET /v1/chat/models` returns the same authenticated, team-filtered list. This
-gateway catalog is separate from the full website/model catalog at
-`POST /v1/Tool/List`.
+`GET /v1/chat/models` returns the same authenticated list. This gateway catalog
+is separate from the full website/model catalog at `POST /v1/Tool/List`.
 
 ```json
 {
@@ -1520,10 +1518,11 @@ The default order is ascending and the default limit is `1000`. `total_count`
 counts the filtered catalog. `links.next` is a relative next-page URL or
 `null`.
 
-The discovery list contains only team-allowed models verified with the
-`llm-tool-call` category. Other LLMs are not advertised by this endpoint; when
-you already know an exact `owner/model` ID, you can still submit it to a
-compatible Direct LLM route or use the normal Run API.
+The discovery list contains the models verified with the `llm-tool-call`
+category. It is not filtered by team Model Access: a model your team blocks is
+still listed, but calling it fails. Other LLMs are not advertised by this
+endpoint; when you already know an exact `owner/model` ID, you can still submit
+it to a compatible Direct LLM route or use the normal Run API.
 
 Before each request:
 
@@ -1553,9 +1552,9 @@ curl "https://llm.wiro.ai/v1/models/openai/gpt-5-6-sol" \
 ```
 
 The detail route returns the same complete model object as the matching list
-entry. Query parameters are rejected on detail routes. An unavailable,
-non-gateway, or team-blocked model returns `model_not_found` without exposing
-private catalog state.
+entry. Query parameters are rejected on detail routes. An unavailable or
+non-gateway model returns `model_not_found` without exposing private catalog
+state. Team Model Access is checked when the model runs, not on this route.
 
 ## Generic finite task completion
 
@@ -2175,6 +2174,14 @@ envelope.
 
 After a stream starts, inspect SSE events rather than the HTTP status: Chat emits an error `data:` frame followed by `[DONE]`, Responses emits
 `response.failed`, and Anthropic emits `error`.
+
+A model blocked by your team's Model Access settings is refused before it runs
+with HTTP `403` and the message `This model is not available for your team`. Chat and
+Responses return type `permission_error`, code `permission_denied` and param
+`model`; Anthropic routes return type `permission_error`. A streamed Responses
+request is different: its stream is already open, so it answers `200` and ends
+with `response.failed` carrying code `permission_denied` and the same message,
+like other errors that happen when the run is submitted.
 
 Common codes include `invalid_model`, `model_not_found`,
 `unsupported_model_type`, `unsupported_parameter`, `response_not_found`,

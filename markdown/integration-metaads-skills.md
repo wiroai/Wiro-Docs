@@ -182,25 +182,19 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   }'
 ```
 
-Successful response (sanitized — OAuth tokens, if any, are stripped):
+Successful response:
 
 ```json
 {
   "result": true,
-  "useragents": [
-    {
-      "guid": "your-useragent-guid",
-      "setuprequired": true,
-      "status": 0
-    }
-  ],
-  "errors": []
+  "errors": [],
+  "applied": 3
 }
 ```
 
-> **Prepaid deploy users:** If you deployed your agent with `useprepaid: true`, the `credentials` you passed in the Deploy body were **not** saved (prepaid deploy writes only a template placeholder). You must call this Update step explicitly before initiating OAuth.
+> **Credentials sent at Deploy:** Deploy saves `appid`, `appsecret` and `authmethod` sent in the `meta-ads` group of its `credentials` body when they pass validation, but it doesn't report a result for each field. Call this step anyway and check its response before initiating OAuth.
 
-> **Only user-writable fields are accepted.** `appid` and `appsecret` are user-writable in the `meta-ads` credential. Attempts to set platform-managed fields are silently ignored. Call `POST /UserAgent/Detail` and inspect the `meta-ads` credential block if you see a silent no-op.
+> **Only user-writable fields are accepted.** `appid` and `appsecret` are user-writable in the `meta-ads` credential. Fields the connection flow fills in (the ad account and the selected Facebook Pages) are rejected with `<Field label> is managed by the connection flow` in `errors[]`, and nothing in that request is saved. `appid` and `appsecret` are not returned by `POST /UserAgent/Detail`, so check `result` and `errors[]` on the `CredentialUpsert` response to confirm the write.
 
 ### Step 8: Initiate OAuth
 
@@ -303,7 +297,7 @@ Behavior:
 - Pass the ad account ID **without** the `act_` prefix. If you include it, Wiro strips it automatically.
 - `adaccountname` is optional but recommended — it surfaces in `OAuthStatus` responses and dashboards.
 - Pass multiple `{ adaccountid, adaccountname }` entries to authorize the agent against several ad accounts at once.
-- If the agent was running (status `3` or `4`), Wiro marks it `status: 1` with `restartafter: true` so the daemon picks up the new ad account after the next stop cycle. No manual Start needed.
+- If the agent was running (status `3` or `4`), Wiro marks it `status: 1` and restarts it after the stop cycle, so the daemon picks up the new ad account. No manual Start needed.
 
 ### Step 10b: Discover and select Facebook Pages (optional)
 

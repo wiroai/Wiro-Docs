@@ -21,7 +21,7 @@ Organization (created by you)
 │   ├── Team Wallet
 │   ├── Team Projects
 │   ├── Team Agents
-│   └── Members (owner, admins, members)
+│   └── Members (admins, members)
 ├── Team B
 │   ├── Team Wallet
 │   ├── Team Projects
@@ -40,8 +40,8 @@ When you make an API request or use the dashboard, you operate in one of two con
 
 | Context | Resources you see | Wallet charged | How to activate |
 |---------|-------------------|----------------|-----------------|
-| **Personal** | Your personal projects, agents, tasks | Your personal wallet | Default — use a personal project API key |
-| **Team** | Team projects, team agents, team tasks | Team wallet | Use a team project API key |
+| **Personal** | Your personal projects, agents, tasks | Your personal wallet | Default. In the dashboard, choose Personal with **Switch Workspace** (or **Switch to Personal** on the Organizations page); in the API, use a personal project API key |
+| **Team** | Team projects, team agents, team tasks | Team wallet | In the dashboard, choose the team with **Switch Workspace** (or **Switch** on the Organizations page); in the API, use a team project API key |
 
 Switching context changes which projects, agents, and wallet you interact with. Resources in one context are isolated from the other — personal agents cannot see team projects, and team agents cannot access personal resources.
 
@@ -59,7 +59,7 @@ Each workspace is fully isolated:
 Projects and agents can be transferred between workspaces:
 
 - **Personal → Team** — move a project or agent from your personal workspace into a team you have admin access to
-- **Team → Personal** — move a project or agent from a team back to your personal workspace
+- **Team → Personal** — move a project you created, or an agent you deployed, from a team you have admin access to back to your personal workspace. Only the original creator or deployer can do this.
 - **Team → Team** — move a project or agent between teams you have admin access to in the same or different organizations
 
 When a resource is transferred, its billing context changes immediately. Future tasks on a transferred project will be billed to the new workspace's wallet. Transfer operations are available in the dashboard and via the API.
@@ -77,7 +77,9 @@ An **organization** is a management container — it does not hold resources dir
 | Has members | No (members belong to teams) | Yes |
 | Can be created by | Any user | Organization owner |
 | Can be deleted by | Organization owner | Organization owner |
-| Can be restored | Yes (by owner) | Yes (when org is restored) |
+| Can be restored | Yes, by the owner | No separate restore. Teams archived when their organization was deleted come back when it is restored |
+
+Restoring an organization does not move projects or agents back into its teams. They stay in the personal workspaces of the people who created or deployed them until transferred back.
 
 A single user can own multiple organizations, and each organization can contain multiple teams.
 
@@ -85,20 +87,20 @@ A single user can own multiple organizations, and each organization can contain 
 
 | Role | Scope | Permissions |
 |------|-------|-------------|
-| **Owner** | Organization | Create/delete teams, manage all team members, delete/restore organization, transfer agents and projects |
-| **Admin** | Team | Manage team settings (spend limits, model access), invite/remove members, transfer agents and projects |
-| **Member** | Team | Use team resources (run models, send agent messages), view spending summaries |
+| **Owner** | Organization | Create and remove teams; edit, remove, and restore the organization. The owner is added as an admin of every team they create and can't be demoted to member, so they also have all Admin permissions there |
+| **Admin** | Team | Edit team settings (name, spend limit, budget alert, model access); invite members and cancel invitations; change roles and per-member spend limits; remove members; deploy and manage team agents; edit and delete team projects; transfer agents, projects, and credit; redeem coupons into the team wallet; set up, change, and turn off the team wallet's auto-pay |
+| **Member** | Team | Run models and create projects in the team workspace (billed to the team wallet), chat with team agents, and view the member list and every member's spending |
 
-The organization creator is automatically the owner. When a team is created, the organization owner is added as an implicit admin. Additional members are invited via email and must accept the invitation to join.
+The organization creator is automatically the owner. When the owner creates a team, including the Default Team created with the organization, they are added to it as an admin member. Additional members are invited by email and join once they accept the invitation, signed in with the invited email address, within 72 hours.
 
 ## Getting Started
 
-1. **Create an organization** — go to your [Dashboard](https://wiro.ai/panel/organization) and click "Create Organization"
-2. **Create a team** — inside the organization, create a team with a name
+1. **Create an organization** — go to your [Dashboard](https://wiro.ai/panel/organization) and click "Create Organization". A team named "Default Team" is created automatically, with you as its admin.
+2. **Add more teams (optional)** — as the organization owner, click "Create Team" on the organization card to add another team, for example one per project
 3. **Invite members** — send email invitations to your teammates
-4. **Fund the team wallet** — deposit credits or redeem coupons in the team context
-5. **Create projects** — create API projects within the team to start running models
-6. **Deploy agents** — deploy agent instances within the team for shared access
+4. **Fund the team wallet** — switch to the team workspace and add credit. Admins and the owner can also move credit from their personal wallet with **Transfer Credit** and redeem coupons into the team wallet
+5. **Create projects** — with the team workspace selected, create API projects. Their API keys run models on the team wallet
+6. **Deploy agents** — team admins can deploy agent instances within the team for shared access
 
 For step-by-step instructions, see [Managing Teams](/docs/organizations-managing-teams).
 

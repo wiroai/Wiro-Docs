@@ -8,11 +8,11 @@ Every Wiro agent container runs a small **wiro-commands plugin** that appends on
 
 A daily JSONL file is written for each calendar day; files older than 7 days are gzipped, files older than 180 days are deleted by the agent's daily maintenance cron.
 
-The endpoints below are **owner-or-team-member** scoped. Team admins can read any team agent; outside callers receive `useragent-access-denied`.
+The endpoints below are **owner-or-team-admin** scoped. Plain members of the agent's team receive `useragent-team-admin-required` (code `97`); outside callers receive `useragent-access-denied`.
 
 | Endpoint | Purpose |
 |----------|---------|
-| `POST /UserAgent/Logs` | Live tail (last N events for today, or a specific date). Cached server-side for 30s on non-admin callers to absorb polling. |
+| `POST /UserAgent/Logs` | Live tail (last N events for today, or a specific date). Cached server-side for 30s to absorb polling. |
 | `POST /UserAgent/LogsList` | List the date strings (`YYYY-MM-DD`) for which an activity file exists. |
 | `POST /UserAgent/LogsFile` | Read the **full** JSONL file for a specific date. |
 | `POST /UserAgent/LogsDelete` | Delete one date's activity file (and its gzipped sibling). Idempotent. |
@@ -386,9 +386,10 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/LogsDelete" \
 |-------|------|
 | `useragentguid is required` | Missing required parameter |
 | `date is required` | `LogsFile` / `LogsDelete` without `date` |
-| `useragent-access-denied` | Caller is neither owner, team admin, nor admin |
-| `Agent is not assigned to a worker. It may not be running.` | The useragent has no `workerid` (it's never been started, or has been re-allocated) |
-| `Worker not found` | The agent's worker row is missing — internal data inconsistency |
+| `useragent-access-denied` | Caller is neither the owner nor on the agent's team |
+| `useragent-team-admin-required` | Caller is a member of the agent's team but not a team admin (code `97`) |
+| `Agent is not assigned to a worker. It may not be running.` | The useragent isn't assigned to a worker (it's never been started, or has been re-allocated) |
+| `Worker not found` | The agent's worker is no longer available — internal inconsistency |
 | `Failed to fetch activity from worker` | The worker side rejected the request (worker offline, network blip) — retry |
 | `Failed to fetch activity dates from worker` / `Failed to delete activity file from worker` / `Failed to fetch activity file from worker` | Same as above for the matching endpoint |
 

@@ -86,7 +86,7 @@ Or save through the panel: **[My Agents](https://wiro.ai/panel/agents)** → ope
 After saving credentials, the response includes:
 
 - `twilioWebhooksUpdated` — numbers whose `VoiceUrl` was successfully written.
-- `twilioWebhookSkipped` — numbers skipped, with the reason (e.g. *no matching IncomingPhoneNumber on Twilio account*).
+- `twilioWebhookSkipped` — a single reason string, returned instead of `twilioWebhooksUpdated` when the `VoiceUrl` step was skipped (e.g. *no matching IncomingPhoneNumber on Twilio account*).
 - `twilioWebhooksFailed` — Twilio API errors per number, if any.
 - `twilioWebhookError` — present **instead of** the three fields above when the entire auto-webhook flow throws (e.g. Twilio API outage, invalid Account SID format, network error). Holds a single error string. Treat as "no numbers were configured this round; retry the save".
 
@@ -171,7 +171,7 @@ Retrieve the last N realtime voice sessions for a useragent — regardless of wh
 
 ### POST /UserAgent/TwilioCallHistory/List
 
-> **Despite the Twilio-named path, this endpoint returns both Twilio and Web Channel sessions.** They share the same `agentmessages` storage (`metadata.type` starts with `realtime_session` in either case), so a single feed is enough to audit every voice exchange the agent had.
+> **Despite the Twilio-named path, this endpoint returns both Twilio and Web Channel sessions.** Both are stored as agent messages (`metadata.type` starts with `realtime_session` in either case), so a single feed is enough to audit every voice exchange the agent had.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/TwilioCallHistory/List" \
@@ -229,13 +229,13 @@ Response:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `messageguid` | string | The agentmessages row guid that records this session. Use it with `POST /UserAgent/Message/Detail` to fetch the full transcript metadata. |
+| `messageguid` | string | The guid of the message that records this session. Use it with `POST /UserAgent/Message/Detail` to fetch the full transcript metadata. |
 | `agenttoken` | string | The per-message agent token. Use it on `Message/Detail` / `Message/Cancel` like any other agent message. |
 | `channel` | `"twilio" \| "web"` | Source channel. Determines the `callerInfo` shape and whether `callsid` is a Twilio Call SID or a Web session id. |
 | `callsid` | string \| null | Twilio Call SID (`channel: "twilio"`) or internal `voice-call-<id>` session id (`channel: "web"`). |
 | `callerInfo` | object | Channel-specific. Twilio: `{ number, country }` (E.164 phone + ISO-2 country). Web: `{ page_url, display_identifier? }` — `display_identifier` is omitted unless the embedding page validated an identifier (`session_metadata.display_identifier` whose whole-string match passes the allowlist). |
 | `callerProfile` | string \| null | Free-text prep summary (`prepSummary`) the agent wrote before the audio bridge opened — used to brief the realtime model on caller context. `null` until prep finishes (and on rejected rows). |
-| `status` | string | Mirrors `agentmessages.metadata.type` verbatim. Values: `realtime_session_incoming` (call accepted, prep running), `realtime_session_active` (audio bridge live), `realtime_session_rejected` (rejected before audio, e.g. concurrent-limit), or **`realtime_session`** (no suffix — final/completed). The bare `realtime_session` is the only value that means "ended cleanly" — it is **not** the string `"completed"`. |
+| `status` | string | Mirrors the message's `metadata.type` verbatim. Values: `realtime_session_incoming` (call accepted, prep running), `realtime_session_active` (audio bridge live), `realtime_session_rejected` (rejected before audio, e.g. concurrent-limit), or **`realtime_session`** (no suffix — final/completed). The bare `realtime_session` is the only value that means "ended cleanly" — it is **not** the string `"completed"`. |
 | `endReason` | string \| null | Set on completed (`realtime_session`) rows only. One of: `wiro_completed` (graceful end), `wiro_cancelled`, `wiro_disconnect`, `wiro_error`, `max_duration` (Twilio cap or `maxcallseconds` hit), `browser_disconnect` (Web only), `twilio_disconnect` (Twilio only). Rejected rows leave `endReason: null` and instead carry `metadata.reason` (`concurrent_limit`, `agent_prep_timeout`, `realtime_ws_open_failed`, `realtime_stream_timeout`) — fetch via `Message/Detail`. |
 | `durationSeconds` | number \| null | Wall-clock duration. `null` while in-progress. |
 | `modelSlug` | string \| null | Realtime model used (e.g. `gpt-realtime-mini`). |

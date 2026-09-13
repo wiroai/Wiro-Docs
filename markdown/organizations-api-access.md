@@ -4,16 +4,17 @@ How workspace context is resolved in API requests, and how access controls prote
 
 ## Context Resolution
 
-Every authenticated API request resolves to a workspace context — either **personal** or a specific **team**. The context is determined **automatically** by the project's assignment:
+Every authenticated API request resolves to a workspace context — either **personal** or a specific **team**. When you authenticate with a project API key (`x-api-key`), the context is determined **automatically** by the project's assignment:
 
 - If the project belongs to a team → team context is activated
 - If the project is personal → personal context is activated
 
-You do not need to send any additional headers. The API key carries the context implicitly.
+You do not need to send any additional headers. Team headers are ignored on API key requests, so a key always works in its own project's workspace. To work in another workspace, use a key from a project in that workspace. In the dashboard, requests use the workspace you pick with **Switch Workspace**.
 
 ```bash
 # This project is assigned to a team — team context is automatic
 curl -X POST "https://api.wiro.ai/v1/Run/google/nano-banana" \
+  -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_TEAM_PROJECT_API_KEY" \
   -d '{"prompt": "Hello"}'
 ```
@@ -21,15 +22,20 @@ curl -X POST "https://api.wiro.ai/v1/Run/google/nano-banana" \
 ```bash
 # This project is personal — personal context is automatic
 curl -X POST "https://api.wiro.ai/v1/Run/google/nano-banana" \
+  -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_PERSONAL_API_KEY" \
   -d '{"prompt": "Hello"}'
 ```
 
+These examples use API-key-only authentication. For projects that use signature authentication, also send `x-nonce` and `x-signature` (see [Authentication](/docs/authentication)).
+
 Create a project inside a team to get a team API key, or use a personal project for personal context. The same `x-api-key` header works for both — no extra configuration needed.
+
+A team project's API key does not depend on its creator's team membership. If the member who created the project is removed from the team, the project stays in the team and its key keeps working and charging the team wallet. Delete the project to revoke the key. While the project's creator is a team member, runs made with the key count toward that user's member spend limit; after they are removed, only the team spend limit applies.
 
 ## What Gets Filtered by Context
 
-When a workspace context is active, all list and query endpoints return only resources belonging to that context:
+When a workspace context is active, these list endpoints return only resources belonging to that context:
 
 | Endpoint | Personal context returns | Team context returns |
 |----------|------------------------|---------------------|
@@ -41,6 +47,8 @@ When a workspace context is active, all list and query endpoints return only res
 | `Wallet/List` | Personal wallet | Team wallet |
 | `Wallet/TransactionList` | Personal transactions | Team transactions |
 | `Coupon/UserList` | Personal coupons | Team coupons |
+
+Model listings show the same models in every workspace (only favorites are kept per workspace). Team model access rules apply when a model runs, not when models are listed.
 
 ## Agent Context Guards
 
@@ -54,6 +62,8 @@ Wiro enforces strict context isolation for agent operations. When you interact w
 | Team A | Personal | **Blocked** |
 | Team A | Team B | **Blocked** |
 
+A matching context is required, but it is not always enough. Any active team member can message a team agent and use its conversation endpoints. Subscription and billing actions (`CreateExtraCreditCheckout`, `CancelSubscription`, `RenewSubscription`, `UpgradeTier`, `CreateSubscriptionCheckout`, `SkillsApply`, `SkillToggle`) are limited to the member who deployed the agent and team admins. Other members get code `97`: "Only a team admin can perform this action on a team-owned agent." With an API key, these checks apply to the user who created the key's project.
+
 ### Protected Endpoints
 
 The following agent endpoints enforce context guards:
@@ -61,14 +71,20 @@ The following agent endpoints enforce context guards:
 - `UserAgent/Message/Send` — send a message to an agent
 - `UserAgent/Message/History` — view conversation history
 - `UserAgent/Message/Sessions` — list conversation sessions
-- `UserAgent/Message/Delete` — delete a conversation
-- `UserAgent/Deploy` — deploy a new agent (team context must match)
+- `UserAgent/Message/DeleteSession` — delete a conversation
+- `UserAgent/Message/RenameSession` — rename a conversation
 - `UserAgent/CreateExtraCreditCheckout` — purchase extra credits
 - `UserAgent/CancelSubscription` — cancel subscription
 - `UserAgent/RenewSubscription` — renew subscription
 - `UserAgent/UpgradeTier` — upgrade tier (Starter → Pro)
 - `UserAgent/CreateSubscriptionCheckout` — subscribe a not-yet-subscribed useragent
+- `UserAgent/PricingPreview` — pricing preview for an existing agent
 - `UserAgent/SkillsApply` — change skill set (single or batch) on a custom build (auto-prorates)
+- `UserAgent/SkillToggle` — toggle a single skill on a custom build
+
+`SkillsApply` and `SkillToggle` enforce the context guard for team agents only. A personal agent's owner can change its skills from any workspace.
+
+`UserAgent/Deploy` creates the agent in your current workspace. With a team project API key the agent is deployed into that team, and the user who created the project must be a team admin. Otherwise the call fails with code `97`: "Only a team admin can perform this action on a team-owned agent."
 
 ### Error Response
 
@@ -94,7 +110,21 @@ Or for the reverse case:
   "errors": [
     {
       "code": 0,
-      "message": "This agent is personal. Switch to your personal context to access it."
+      "message": "This agent is in your personal workspace. Switch to personal context to access it."
+    }
+  ]
+}
+```
+
+If the agent belongs to a different team than your current context:
+
+```json
+{
+  "result": false,
+  "errors": [
+    {
+      "code": 0,
+      "message": "This agent belongs to a different team."
     }
   ]
 }
@@ -110,11 +140,12 @@ Create a project inside a team, then use its API key. The team context is resolv
 # 1. Create a project in team context (from dashboard or API)
 # 2. Use the project's API key — billing goes to team wallet
 curl -X POST "https://api.wiro.ai/v1/Run/google/nano-banana" \
+  -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_TEAM_PROJECT_API_KEY" \
   -d '{"prompt": "A mountain landscape"}'
 ```
 
-The task is created with the team's `teamguid`. The cost is deducted from the team wallet. The task appears in the team's usage statistics.
+The task is created with the team's `teamguid`. The cost is deducted from the team wallet. The task appears in the team's usage statistics. The team's model access rules and spend limits also apply. A model the team doesn't allow fails with "This model is not available for your team", and runs stop once the team or member spend limit is reached. See [Team Billing & Spending](/docs/organizations-billing).
 
 ### Listing Team Agents with API Key
 
@@ -122,6 +153,7 @@ Use a team project API key to list agents deployed in the team:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/MyAgents" \
+  -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_TEAM_PROJECT_API_KEY" \
   -d '{"limit": 10}'
 ```
@@ -135,6 +167,7 @@ The API key must belong to the same team as the agent:
 ```bash
 # Works — team project + team agent in the same team
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
+  -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_TEAM_PROJECT_API_KEY" \
   -d '{"useragentguid": "agent-guid-here", "message": "Hello"}'
 ```
@@ -142,6 +175,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
 ```bash
 # Fails — personal project + team agent = context mismatch
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
+  -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_PERSONAL_API_KEY" \
   -d '{"useragentguid": "team-agent-guid-here", "message": "Hello"}'
 # Returns: "This agent belongs to a team. Switch to the team context to access it."

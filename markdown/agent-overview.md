@@ -53,7 +53,7 @@ For full details, see [Authentication](/docs/authentication).
 
 ## Pricing Model — Tiers, Skills & Token Billing
 
-Agent pricing is **fully derived from the agent's enabled skill set** plus a per-template `tiermultiplier`. There are no fixed `agent.basemonthlypriceusd` columns and no `useragents.rate*cost` overrides — those were dropped in favor of skill-driven pricing. The single source of truth is the skill registry, exposed via [`POST /Skills/List`](/docs/agent-skills#post-skillslist) and [`POST /Skills/Detail`](/docs/agent-skills#post-skillsdetail).
+Agent pricing is **fully derived from the agent's enabled skill set** plus a per-template `tiermultiplier`. There is no fixed monthly base price per template and no per-agent rate override — both were dropped in favor of skill-driven pricing. The single source of truth is the skill registry, exposed via [`POST /Skills/List`](/docs/agent-skills#post-skillslist) and [`POST /Skills/Detail`](/docs/agent-skills#post-skillsdetail).
 
 Pricing has **two layers**: a monthly **tier** (price + credit pool, set by the enabled skills) and **per-turn token billing** (each message / cron / voice-prep turn deducts credits from that pool, metered by the tokens the agent's model consumes).
 
@@ -81,7 +81,7 @@ pro.credits = starter.credits × tiermultiplier
 
 The monthly tier buys a **credit pool**; each turn the agent runs (a chat reply, a scheduled cron tick, or a voice-prep turn) deducts credits from that pool, **metered by the tokens its model consumes**. There are no flat per-action costs — what a turn costs depends on the model and how many input / output / cached tokens it used.
 
-Per-model rates live in the `tokenRates` object, present on `Agent/Detail`, `UserAgent/Detail`, `MyAgents`, `PinnedAgents`, and `PricingPreview`. The marketplace catalog (`Agent/Detail`) and `PricingPreview` return only the **selectable** models; a deployed instance's `UserAgent/Detail` / `MyAgents` / `PinnedAgents` return the **full** model map (so historical model-change markers and token-usage tooltips can still resolve a model that ops later marked non-selectable). Internal ops metadata (`$`-prefixed keys) is stripped from every response:
+Per-model rates live in the `tokenRates` object, present on `Agent/Detail`, `UserAgent/Detail`, `MyAgents`, `PinnedAgents`, and `PricingPreview`. The marketplace catalog (`Agent/Detail`) and `PricingPreview` return only the **selectable** models; a deployed instance's `UserAgent/Detail` / `MyAgents` / `PinnedAgents` return the **full** model map (so historical model-change markers and token-usage tooltips can still resolve a model that was later marked non-selectable). Internal metadata (`$`-prefixed keys) is stripped from every response:
 
 ```json
 "tokenRates": {
@@ -139,9 +139,9 @@ Every deployed agent instance has a numeric status that reflects its current sta
 | `5` | Error | Agent encountered an error during execution. Call Start to retry. |
 | `6` | Setup Required | Agent needs credentials or configuration before it can start. Provide them via `CredentialUpsert` / `CustomSkillUpsert` / `SkillsApply`. |
 
-### Automatic Restart (`restartafter`)
+### Automatic Restart
 
-When you mutate an agent's configuration while it is **starting** (status `3`) or **running** (status `4`), the system automatically triggers a restart cycle: the agent is moved to **Stopping** (status `1`) with `restartafter` set to `true`. Once the container fully stops, the system automatically re-queues it, applying the new configuration on startup.
+When you mutate an agent's configuration while it is **starting** (status `3`) or **running** (status `4`), the system automatically triggers a restart cycle: the agent is moved to **Stopping** (status `1`) and flagged to restart. Once the container fully stops, the system automatically re-queues it, applying the new configuration on startup.
 
 This means you can update credentials, toggle skills, or change a custom skill on a running agent without manually stopping and starting it.
 
@@ -194,7 +194,7 @@ Lists available agents in the catalog. This is a **public endpoint** — no auth
 }
 ```
 
-> `Agent/List` returns only catalog-header columns plus inlined `tiers` (so the catalog card can render the price without a per-row `Agent/Detail` round-trip). The `id` / `totalrun` / `activerun` columns are stripped for the public role. Call `POST /Agent/Detail` with `type: "full"` when you need the full template (skills map, credential schema, custom skills, scheduled skills).
+> `Agent/List` returns only catalog-header columns plus inlined `tiers` (so the catalog card can render the price without a per-row `Agent/Detail` round-trip). The `id` / `totalrun` / `activerun` columns are not returned. Call `POST /Agent/Detail` with `type: "full"` when you need the full template (skills map, credential schema, custom skills, scheduled skills).
 
 #### **POST** /Agent/Detail
 
@@ -341,20 +341,20 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
 | `_connected` | boolean | **Connection readiness indicator.** `true` when Wiro has a validated OAuth or hybrid direct connection and every required picker field (`customerid`, `merchantid`, `channelid`, ad-account, page ID, Instagram account ID, etc.) is populated. Plain API-key and service-account providers that do not write `connectedat` can remain `false`; use `setuprequired` to determine overall setup readiness. |
 | `optional` | boolean | `true` when the template marks this credential as not required for the agent to run. Agents can start even if `optional: true` credentials are empty. |
 | `extra` | boolean | `true` when the template groups the credential under "extra integrations" in the UI (disabled by default until the user opts into the skill). |
-| `_editable` | object | Map of `fieldname → true` for fields the caller may write. Computed from the registry schema + caller role. |
+| `_editable` | object | Map of `fieldname → true` for fields the caller may write. Computed from the registry schema. |
 | `_schema` | object | Inlined registry descriptor — `{ title, icon, brand_color, brand_text_color, brand_logo_filter, docs_url, credential_mode, connection_modes[], default_connection_mode, mode_badges, wiro_connect_pending, oauth_provider, fields[] }`. Lets a UI render the form without a separate `Credentials/Detail` round-trip. |
 
 **Field redaction in responses:**
 
-- `fieldstatus: "oauth_session"` fields (`accesstoken`, `refreshtoken`, `tokenexpiresat`, `pageAccessToken`, etc.) — always stripped from every response, regardless of caller role.
+- `fieldstatus: "oauth_session"` fields (`accesstoken`, `refreshtoken`, `tokenexpiresat`, `pageAccessToken`, etc.) — always stripped from every response.
 - Schema fields marked `runtime_excluded: true` — including Meta
   `systemusertoken` — are write-only setup secrets. They never enter the agent
   runtime and are not reflected to customer-facing credential responses.
-- `fieldstatus: "platform"` fields (currently only `credentials.sys-openai.apikey` and its `model` / `fallbacks` / `cronmodel` siblings) — stripped for API callers (role = `user`). The `sys-openai` credential entry itself is also dropped from the response. Only the daemon container ever sees the values. `credentials.wiro.apikey` and `credentials.calendarific.apikey` are operator-supplied user-input fields and appear in the response with `fieldstatus: "user"` like any other API-key credential.
-- `fieldstatus: "oauth_app"` fields (`clientsecret`, `appsecret`) — **visible to anyone who can read the credentials**. History writes redact `clientsecret` to `[REDACTED]`, but the live value is returned. Treat them as read-admin-only in your own UI layer.
+- `fieldstatus: "platform"` fields (every `sys-openai` field, plus Reddit's three approval flags `developerprofileverified`, `dataapiaccessapproved` and `commercialwrittenapproval`) — stripped from every API response. The `sys-openai` credential entry itself is also dropped from the response. Only the daemon container ever sees the values. `credentials.wiro.apikey` and `credentials.calendarific.apikey` are operator-supplied user-input fields and appear in the response with `fieldstatus: "user"` like any other API-key credential.
+- `fieldstatus: "oauth_app"` fields (`clientid` / `clientsecret`, `appid` / `appsecret`) — stripped from Detail responses, even after an own-mode OAuth setup writes them. History writes redact `clientsecret` to `[REDACTED]`.
 - Sentinel rows `_isoptional` / `_isextra` — never appear as fields; they're folded into the `optional` and `extra` flags above.
 
-API callers see the non-sensitive fields (public identifiers like `clientid`, display-only values like `igusername`, flags like `authmethod`, and the flags above).
+API callers see the non-sensitive fields (display-only values like `igusername`, flags like `authmethod`, and the flags above).
 
 **Communication channel fields** are returned separately from skill and
 integration credentials:
@@ -407,18 +407,21 @@ for the channel contract.
 | `skills` | object | No | Inline skill toggles `{ "skillname": true \| false }`. For custom builds this seeds the initial skill set; for template deploys it overlays the template defaults. |
 | `customskills` | array | No | Inline custom skill rows. Each entry: `{ key, value?, interval?, enabled?, description?, _user_created? }`. |
 
-**Headers:** Standard API authentication — `x-api-key` for key-based projects, or `x-nonce` + `x-signature` for signature-based projects (see [Authentication](/docs/authentication)). For **team-scoped deploys** (when an end user deploys via a team project), pass `teamGUID: <team-guid>` as an additional request header; the API validates the caller is a team admin before writing the instance row.
+**Headers:** Standard API authentication — `x-api-key` for key-based projects, or `x-nonce` + `x-signature` for signature-based projects (see [Authentication](/docs/authentication)). To deploy into a team, use the credentials of a project that belongs to that team: the agent is created in the project's team, and the project's owner must be an admin of that team (otherwise code `97`). No extra header is needed.
 
-> **`teamGUID` header usage across endpoints** — the requirement differs per endpoint:
+> **Team agents** — every call runs in the workspace of the project behind your credentials; a `teamGUID` request header is ignored.
 >
-> | Endpoint | `teamGUID` header |
-> |----------|-------------------|
-> | `UserAgent/Deploy` | Pass when deploying into a team project; validated against team admin before insert |
-> | `UserAgent/Message/Send`, `Message/Detail`, `Message/History`, `Message/Sessions`, `Message/Cancel`, `Message/DeleteSession` | **Required for team agents.** Messaging endpoints call `validateAgentContext(teamGUID, ...)` and reject if the header is missing or doesn't match a team the caller belongs to |
-> | `UserAgent/Detail`, `UserAgent/Update`, `UserAgent/Start`, `UserAgent/Stop`, `UserAgent/MyAgents` | Optional — these endpoints fall back to "am I a member of this agent's team?" check, so the header isn't strictly needed if your user already has team membership. Passing it is still recommended for explicitness and to avoid ambiguity on multi-team users |
-> | `UserAgent/CancelSubscription`, `UserAgent/CreateExtraCreditCheckout`, `UserAgent/UpgradeTier`, `UserAgent/RenewSubscription`, `UserAgent/CreateSubscriptionCheckout` | **Required for team agents** — subscription / billing operations also validate team context explicitly |
+> | Endpoint | Team agents |
+> |----------|-------------|
+> | `UserAgent/Deploy` | A team project's credentials deploy into that team; the project's owner must be a team admin |
+> | `UserAgent/Message/Send`, `Message/History`, `Message/Sessions`, `Message/DeleteSession`, `Message/RenameSession` | The project's workspace must match the agent's workspace |
+> | `UserAgent/CancelSubscription`, `UserAgent/CreateExtraCreditCheckout`, `UserAgent/UpgradeTier`, `UserAgent/RenewSubscription`, `UserAgent/CreateSubscriptionCheckout`, `UserAgent/PricingPreview`, `UserAgent/SkillsApply`, `UserAgent/SkillToggle` | The project's workspace must match the agent's workspace |
+> | `UserAgent/Message/Detail`, `Message/Cancel` | No workspace match; they only return or cancel messages sent by the project's owner |
+> | `UserAgent/Detail` | No workspace match; the project's owner must own the agent or be a member of its team |
+> | `UserAgent/Update`, `UserAgent/Start`, `UserAgent/Stop` | No workspace match; the project's owner must own the agent or be an admin of its team (plain members get code `97`) |
+> | `UserAgent/MyAgents` | Lists only the agents in the project's workspace |
 >
-> Personal (non-team) agents ignore this header. If you see `"You are not a member of this team"` or `"Agent not found"` errors on messaging endpoints, you're likely missing the header on a team agent.
+> A mismatch returns `"This agent belongs to a team. Switch to the team context to access it."`, `"This agent is in your personal workspace. Switch to personal context to access it."` or `"This agent belongs to a different team."` Use a team project's key for team agents and a personal project's key for personal agents.
 
 ##### Request body — template deploy (recommended API pattern)
 
@@ -459,14 +462,14 @@ Both paths hit the same endpoint, but a few server-side behaviours diverge:
 
 | Aspect | Template deploy (`agentguid`) | Custom build (`custom: true`) |
 |--------|------------------------------|-------------------------------|
-| `agentid` on the new useragent row | Snapshotted from the resolved template | `null` — no template back-reference |
+| Linked marketplace template | Snapshotted from the resolved template | None — no template back-reference |
 | `categories` | Cloned from the agent template | `null` (custom agents have no marketplace categories) |
 | `cover` | Cloned from `agent.cover` automatically | Optional — pass `cover` in the body if you want one |
 | `tiermultiplier` | **Snapshotted from `agent.tiermultiplier`** so future template tweaks don't retroactively change pricing on already-deployed instances | Fixed at the platform default (`10`) |
-| Bundled cron skills | Cloned from the template's preset customskills (`cloneAgentCustomSkillsToUserAgent`) | Materialized from the standalone cron registry based on the enabled skill set (`cloneCustomAgentBundledCrons`) |
+| Bundled cron skills | Cloned from the template's preset custom skills | Materialized from the standalone cron registry based on the enabled skill set |
 | Onboarding placeholders | None — the template ships its own preset strategies | One invocation-only `cs-my-custom-strategy` and one scheduled `cs-cron-my-scheduled-task` are seeded so the panel always has something to render under "Custom Skills" / "Scheduled Skills" |
-| Platform-managed credentials (currently `sys-openai` only) | Inherited from the template's preset `agentcredentialfields` | Seeded directly onto the useragent so `composeRuntimeConfig` has a non-empty merge input |
-| Marketplace counter (`agents.totalrun`) | Bumped by 1 | Not touched (custom agents have no template to count against) |
+| Platform-managed credentials (currently `sys-openai` only) | Inherited from the template's preset credentials | Seeded directly onto the useragent so its runtime configuration is complete |
+| Marketplace run counter | Bumped by 1 | Not touched (custom agents have no template to count against) |
 | `tiers` / `extracreditpacks` in the response | Read from the template definition | Pre-subscribe state — `tiers` reflects the live registry pricing for the toggled skills, `extracreditpacks: []` until the subscription provisions |
 
 ##### Response
@@ -561,7 +564,7 @@ The Deploy response reflects the same composed shape you get from `UserAgent/Det
 | `setuprequired: true` | Any non-optional credential is missing. While `true`, `Start` rejects with `Agent setup is not complete`. |
 | `setuprequired: false` | All non-optional credentials complete. The next `POST /UserAgent/Update` call flips the row 6 → 0 if it was sitting at Setup Required; `Start` then launches it normally. |
 
-> **Subscription on deploy:** the `useragents.subscription` field is **not** included in the Deploy response (it's assembled from the `subscriptions` table). A prepaid subscription row (`plan: "agent"`, provider `prepaid`, `tier` matches what you passed) is inserted server-side during the Deploy call — call `POST /UserAgent/Detail` with the returned `guid` to read the subscription object back.
+> **Subscription on deploy:** the `subscription` object is **not** included in the Deploy response. A prepaid subscription (`plan: "agent"`, provider `prepaid`, `tier` matches what you passed) is created server-side during the Deploy call — call `POST /UserAgent/Detail` with the returned `guid` to read the subscription object back.
 
 Next steps for the API integration flow:
 
@@ -573,7 +576,7 @@ Next steps for the API integration flow:
 
 ##### Idempotency — duplicate Deploy guard
 
-Deploy rejects a second call from the same `(uuid, agentid, teamguid)` tuple within a 10-second window. Custom builds (`agentid IS NULL`) dedup on `(uuid, title, teamguid)` instead. The rejection carries a top-level `existingUserAgentGuid` field so callers can adopt the row that already won the race instead of retrying:
+Deploy rejects a second call from the same caller for the same template and team within a 10-second window. Custom builds (no template) are matched on caller, `title` and team instead. The rejection carries a top-level `existingUserAgentGuid` field so callers can adopt the agent that already won the race instead of retrying:
 
 ```json
 {
@@ -1145,7 +1148,7 @@ Retrieves full details for a single deployed agent instance, including subscript
 | Field | Type | Description |
 |-------|------|-------------|
 | `subscription` | `object\|null` | Active subscription info (see "Subscription object" below), or `null` when the agent has no active subscription. For API-deployed instances this is always `provider: "prepaid"`, `plan: "agent"`. |
-| `agent` | `object` | Parent template summary: `{ guid, title, slug, headline, description, cover, icon, categories, tiermultiplier, tiers, extracreditpacks }`. For custom builds (`agentid: null` / `agentguid: null`) this is a synthesized placeholder with the same shape **plus** `agent.custom: true`; `agent.guid`, `agent.title`, `agent.cover` mirror the useragent itself in that case. |
+| `agent` | `object` | Parent template summary: `{ guid, title, slug, headline, description, cover, icon, categories, tiermultiplier, tiers, extracreditpacks }`. For custom builds (`agent.custom: true`) it's a synthesized placeholder instead: `{ custom: true, slug, cover: null, icon: null, tiermultiplier, tiers, extracreditpacks }`, with no `guid`, `title`, `headline`, `description` or `categories`. Read the agent's title and cover from the useragent itself. |
 
 ##### Credential object shape
 
@@ -1179,7 +1182,7 @@ Every provider entry under `credentials.<key>` carries:
 
 #### **POST** /UserAgent/Update
 
-Updates an agent instance's **scalar fields only** (title, description, categories, cover URL). If the agent is currently **starting (status `3`)** or **running (status `4`)**, this triggers an automatic restart to apply the new settings (the agent is moved to Stopping with `restartafter: true`, and re-queued after it fully stops).
+Updates an agent instance's **scalar fields only** (title, description, categories, cover URL). If the agent is currently **starting (status `3`)** or **running (status `4`)**, this triggers an automatic restart to apply the new settings (the agent is moved to Stopping, and re-queued after it fully stops).
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -1276,7 +1279,7 @@ Writes per-agent preference toggles that are not credentials and not skill rows.
 
 **Permission**: owner OR team admin (the same `requireRole: "admin"` gate as `/UserAgent/Update`). Team members cannot flip these knobs.
 
-**Restart**: if the agent is **starting (status `3`)** or **running (status `4`)**, the call auto-stops the container with `restartafter: true` so the daemon worker picks up the fresh `settings.json` (new timezone, session mode, and / or model selection) on the next launch cycle. Status `0`/`1`/`2`/`5`/`6` agents take effect on the next manual `Start` without a soft-stop.
+**Restart**: if the agent is **starting (status `3`)** or **running (status `4`)**, the call auto-stops the container and schedules a restart so the daemon worker picks up the fresh `settings.json` (new timezone, session mode, and / or model selection) on the next launch cycle. Status `0`/`1`/`2`/`5`/`6` agents take effect on the next manual `Start` without a soft-stop.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -1378,12 +1381,13 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
 | 400 | `invalid-model-selection` | A model override (`chatmodel` / `cronmodel` / `voiceprepmodel` / `voicepostcallmodel`) was an unknown or non-selectable slug (`tokenRates.models[<slug>].selectable !== true`). |
 | 400 | `invalid-command-list` | `enabledcommands` was present but not an array. |
 | 400 | `invalid-command-selection` | `enabledcommands` contained a key that isn't in the slash-command catalog. |
-| 403 | `useragent-access-denied` | Caller is neither the owner nor a team admin on a team-owned agent. |
+| 403 | `useragent-access-denied` | Caller is neither the owner nor on the agent's team. |
+| 403 | `useragent-team-admin-required` | Caller is a member of the agent's team but not a team admin. Carries `errors[0].code: 97`. |
 | 500 | `failed-to-update-useragent` | DB write failed (transient — safe to retry). |
 
 #### **POST** /UserAgent/Cover
 
-Uploads a new cover image for the agent instance via multipart. Mirrors the `/User/Avatar` pattern — accepts `jpg`, `png`, `gif`, `jpeg`, `webp`; converts to webp; uploads to S3; writes the resulting CDN URL into `useragents.cover`.
+Uploads a new cover image for the agent instance via multipart. Mirrors the `/User/Avatar` pattern — accepts `jpg`, `png`, `gif`, `jpeg`, `webp`; converts to webp; uploads to S3; saves the resulting CDN URL as the agent's `cover`.
 
 If you already have a hosted URL, use `POST /UserAgent/Update` with `cover: "<url>"` instead.
 
@@ -1452,7 +1456,7 @@ If you already have a hosted URL, use `POST /UserAgent/Update` with `cover: "<ur
 
 Writes one or more credential fields for one or multiple providers in a single call.
 
-If the agent is **starting** or **running**, completing the upsert triggers an automatic restart (`restartafter: true`).
+If the agent is **starting** or **running**, completing the upsert triggers an automatic restart.
 
 Telegram, Slack, and Discord are optional credential groups. A channel appears
 in `enabledChannels` automatically when all of its catalog `required_fields`
@@ -1470,7 +1474,7 @@ Each field row:
 |-------|------|-------------|
 | `credentialkey` | string | The provider key — e.g. `"instagram"`, `"google-ads"`, `"wordpress"`, `"telegram"`. Must match one of the credentials declared in `credentials` on `/UserAgent/Detail`. |
 | `fieldname` | string | Field inside that credential — e.g. `"apikey"`, `"clientid"`, `"bottoken"`. Must not start with `_` (reserved for internal sentinels such as `_isoptional`, `_isextra`). |
-| `fieldvalue` | string \| number | The value to write. Empty string is allowed (effectively clears the field). |
+| `fieldvalue` | string \| number \| array | The value to write. An empty string clears an optional single-value field; send `[]` to clear a list field. Clearing a required field fails validation, except on Telegram, Slack and Discord, where it disables the channel. |
 | `fieldstatus` | string | **Server-managed — ignored from the request body for API callers.** The value is derived from the registry / OAuth flow on the server side (e.g. `user` for hand-edited fields, `oauth_session` for tokens written by the OAuth callback, `oauth_app` for app credentials, etc.). Do not set this field — the field is stripped before any write. |
 | `parentfield` | string | Optional. Dotted path when the credential has a nested array (e.g. `"accounts.0.apps"` for `firebase.accounts[0].apps[*]`). |
 | `ordinal` | number | Optional. Array index inside `parentfield`. Defaults to `0`. |
@@ -1497,22 +1501,22 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
 { "result": true, "applied": 3, "errors": [] }
 ```
 
-`applied` is the number of rows actually written. Any row that fails validation (reserved fieldname, invalid fieldstatus for your role) is skipped and reported in `errors` without rolling back the others.
+`applied` is the number of rows saved without an error; a row sent with its current value still counts. Every row is validated before anything is written. If any row fails validation (for example a reserved fieldname, a Wiro-managed field or an OAuth token field), the whole request is rejected and nothing is saved: the response has `result: false`, one `errors` entry per invalid row, and no `applied`. If a save fails after validation has passed, the other rows are still saved and the response has `result: false`, the `applied` count, and each failed row in `errors`. Re-sending the same request is safe.
 
 > **Twilio Voice — extra response fields.** When any `twilio-voice` field is touched, `CredentialUpsert` also auto-configures each Twilio phone number's `VoiceUrl` and surfaces the result on the response:
 >
 > | Field | Type | Meaning |
 > |-------|------|---------|
 > | `twilioWebhooksUpdated` | `string[]` | E.164 numbers whose `VoiceUrl` was just pointed at the Wiro Twilio webhook. |
-> | `twilioWebhookSkipped` | `string[]` | Numbers already pointing at the right URL (no change made). |
-> | `twilioWebhooksFailed` | `string[]` | Numbers the API tried to update but Twilio rejected (e.g. number not in the credentialed account). |
+> | `twilioWebhookSkipped` | `string` | Returned instead of `twilioWebhooksUpdated` when the `VoiceUrl` step was skipped, with the reason: the Twilio credentials are incomplete, the credential has no phone numbers, or none of its numbers is on the Twilio account. |
+> | `twilioWebhooksFailed` | `object[]` | One `{ phoneNumber, error }` entry per number whose update Twilio rejected. |
 > | `twilioWebhookError` | `string` | Top-level message when the entire VoiceUrl-rewrite flow failed (auth error, network outage). The credential rows are still saved — only the auto-configuration step failed. |
 >
 > Treat all four fields as best-effort: the credential write itself never depends on Twilio's API call succeeding. See [Twilio Voice Integration](/docs/integration-twiliovoice-skills) for the full lifecycle.
 
 #### **POST** /UserAgent/CredentialFileUpload
 
-Multipart-upload sibling of `CredentialUpsert` for credential fields whose registry schema declares `type: "fileinput"` — typically large binary assets that don't fit comfortably in a JSON body (e.g. Twilio voice greeting MP3, custom hold music). The endpoint stores the blob under your account's MyUploads area, writes the resulting reference into the credential field via the same `upsertUserAgentCredentialField` path used by `CredentialUpsert`, and triggers an automatic restart so the new URL flows into the daemon's `settings.json` on the next start.
+Multipart-upload sibling of `CredentialUpsert` for credential fields whose registry schema declares `type: "fileinput"` — typically large binary assets that don't fit comfortably in a JSON body (e.g. Twilio voice greeting MP3, custom hold music). The endpoint stores the blob under your account's MyUploads area, writes the resulting reference into the credential field the same way `CredentialUpsert` does, and triggers an automatic restart so the new URL flows into the daemon's `settings.json` on the next start.
 
 Unlike `CredentialUpsert`, this endpoint expects `multipart/form-data` — pass the metadata as form fields and the blob in a `file` part.
 
@@ -1566,7 +1570,7 @@ The `url` is the public, AES-keyed CDN URL the daemon will fetch at runtime. The
 
 Writes a single custom skill — either a **strategy** (instructions read by other skills at runtime) or a **scheduled task** (`cs-cron-*`).
 
-The endpoint auto-normalises the skillkey to its canonical form. Bare slugs become `cs-<slug>`; if you also send `interval` (a non-empty cron string), the slug is treated as a cron and becomes `cs-cron-<slug>`. So `"weekly-health-check"` with `interval: "0 9 * * 1"` is stored as `cs-cron-weekly-health-check`. The `usercreated` flag is **not** consulted by the prefix logic — pass `interval` (or send the prefixed `cs-cron-…` key explicitly) to land in the Scheduled Skills tab.
+The endpoint auto-normalises the skillkey to its canonical form. Bare slugs become `cs-<slug>`; if you also send `interval` (a non-empty cron string), the slug is treated as a cron and becomes `cs-cron-<slug>`. So `"weekly-health-check"` with `interval: "0 9 * * 1"` is stored as `cs-cron-weekly-health-check`. Pass `interval` (or send the prefixed `cs-cron-…` key explicitly) to land in the Scheduled Skills tab. Rows created through this endpoint are stored with `usercreated: true`, so they can later be renamed or deleted; updating an existing row keeps its current `usercreated` value, so a preset row stays preset.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -1576,7 +1580,6 @@ The endpoint auto-normalises the skillkey to its canonical form. Bare slugs beco
 | `interval` | string | No | Cron expression (e.g. `"0 */4 * * *"`). Only persisted on `cs-cron-*` rows. |
 | `enabled` | boolean | No | Turn the skill on or off. **Writable for both strategies (`cs-*`) and crons (`cs-cron-*`)** — a disabled strategy is suppressed end-to-end (the IDE still shows it but the runtime drops it from `<available_skills>` and the per-skill `SKILL.md` write is skipped). Defaults to `true` on insert. |
 | `description` | string | No | Only persisted for user-created skills (preset descriptions are template-owned). |
-| `usercreated` | boolean | No | **Admin-only override.** Non-admin callers: the request value is ignored — `usercreated` is server-managed (`INSERT` writes `true`, `UPDATE` preserves the row's current source so a preset row cannot be flipped into a user-created one). Admin (`tokenUserRoles` contains `"ADMIN"`) callers may explicitly set `true` / `false` to control whether the end user can delete the row from the panel. **Has no effect on the cron prefix** — flavour is decided by `interval` / explicit `cs-cron-` prefix only. |
 
 > **Description-only edits skip the restart.** If you only change `description` (and the row's functional fields — `value`, `interval`, `enabled` — stay the same), the agent is **not** restarted. Functional changes still trigger the standard auto-restart.
 
@@ -1601,7 +1604,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
 
 #### **POST** /UserAgent/CustomSkillRename
 
-Renames a user-created custom skill, optionally updating its description in the same atomic write. Only rows with `usercreated: true` can be renamed through this endpoint — preset-owned rows reject with `agent-customskill-rename-preset-forbidden` (preset renames cascade through the admin `/Agent/CustomSkillRename` channel instead).
+Renames a user-created custom skill, optionally updating its description in the same atomic write. Only rows with `usercreated: true` can be renamed — preset-owned rows reject with `agent-customskill-rename-preset-forbidden`.
 
 The skillkey flavour is preserved: a `cs-cron-*` scheduled task stays scheduled, a `cs-*` strategy stays a strategy. Cross-flavour renames are rejected — delete + re-create via `CustomSkillUpsert` with the right kind if you need to switch sections.
 
@@ -1640,7 +1643,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillRename" \
 
 | Error message key | When |
 |---|---|
-| `agent-customskill-rename-preset-forbidden` | Target row has `usercreated: false` (preset-owned). Preset renames go through the admin `/Agent/CustomSkillRename` cascade. |
+| `agent-customskill-rename-preset-forbidden` | Target row has `usercreated: false` (preset-owned). |
 | `agent-customskill-rename-flavour-mismatch` | Caller tried to rename `cs-cron-*` ↔ `cs-*`. Delete + re-create with the right kind instead. |
 | `agent-customskill-rename-collision` | `newskillkey` already exists on this useragent. |
 | `agent-customskill-rename-same-key` | `oldskillkey` equals canonicalised `newskillkey` — nothing to change. |
@@ -1695,7 +1698,7 @@ Removes a user-created custom skill. The endpoint enforces a **hybrid delete pol
 | Row type | Delete result |
 |----------|--------------|
 | User-created (`usercreated: true`) on any agent | **Allowed** — row is hard-deleted, agent restarts. |
-| Registry-owned / preset-owned (`usercreated: false`) on a **template** agent (the row also exists in the agent's preset `agentcustomskills`) | **Rejected** — `"This skill belongs to the agent preset and cannot be deleted."` Disable it via `CustomSkillUpsert` with `enabled: false` instead. |
+| Registry-owned / preset-owned (`usercreated: false`) on a **template** agent (the skill also exists in the template's preset skills) | **Rejected** — `"This skill belongs to the agent preset and cannot be deleted."` Disable it via `CustomSkillUpsert` with `enabled: false` instead. |
 | Registry-owned (`usercreated: false`) on a **custom-build** agent (no preset to compare against) | **Rejected** — `"This skill is registry-owned and cannot be deleted."` Disable it via `CustomSkillUpsert` with `enabled: false` instead. Custom builds carry registry-seeded rows (e.g. `cs-approval-policy`, bundled `cs-cron-*` clones) whose runtime contract the agent depends on, even though there's no template back-reference. |
 
 In both reject branches the response carries `suggestion: "disable-via-upsert"` so panel UIs can offer a "Disable instead" CTA without re-querying the registry.
@@ -1797,10 +1800,10 @@ Returns the version history for one custom skill on a useragent — a per-write 
 }
 ```
 
-> **Field semantics.** Each row captures the **BEFORE** state of the action that produced it (audit-write fires before the table mutation). The server-computed `after_*` and `prev_*` fields give you the resolved AFTER + previous-version snapshots without you having to walk the list manually:
+> **Field semantics.** Each row captures the **BEFORE** state of the action that produced it (the history entry is written before the change is applied). The server-computed `after_*` and `prev_*` fields give you the resolved AFTER + previous-version snapshots without you having to walk the list manually:
 >
 > - `prev_*` — value as of the immediately-older entry (`null` for the oldest row).
-> - `after_*` — value the row was left with after this action committed: pulled from the next-newer entry's BEFORE state, or from the live `useragentcustomskills` row for the newest entry. `null` when `operation: "delete-user"` (row was removed).
+> - `after_*` — value the row was left with after this action committed: pulled from the next-newer entry's BEFORE state, or from the skill's current live state for the newest entry. `null` when `operation: "delete-user"` (row was removed).
 > - `changed_fields[]` — names of fields whose value differs from the immediately-older entry. Subset of `["value", "interval", "enabled"]`.
 > - `changedby_user` — resolved actor object (full shape: `uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`). `null` when `changedby` is a sentinel like `"system"` / `"backfill-*"` (cron / migration writes) or when the user record was deleted.
 
@@ -1834,7 +1837,7 @@ Reverts a custom skill to either (a) the agent template's preset default or (b) 
 
 Returns the per-field write history for one credential group on a useragent. Sensitive values are redacted at read time as a belt-and-suspenders guard:
 - `oauth_session` fields (access / refresh tokens) **never** appear in history at all — they're stripped before persisting.
-- `clientsecret` and similar `oauth_app` secret fields are stored as `[REDACTED]` in history rows (the live row carries the real secret — read it via `UserAgent/Detail`).
+- `clientsecret` and similar `oauth_app` secret fields are stored as `[REDACTED]` in history rows (the live value stays server-side — `UserAgent/Detail` doesn't return it either).
 - The platform-managed `sys-openai` credential short-circuits to an empty `entries[]` (no user-facing history to show).
 
 | Parameter | Type | Required | Description |
@@ -1903,7 +1906,7 @@ Returns the per-field write history for one credential group on a useragent. Sen
 
 #### **POST** /UserAgent/SkillsApply
 
-Applies a batch of skill toggles + an optional tier change in a single transactional unit. **This is the only skill-toggle endpoint API consumers should use** — even when you're flipping a single skill, send it as a one-entry `skills` map. The single-skill alternative (`SkillToggle`) is not part of the public API surface.
+Applies a batch of skill toggles + an optional tier change in a single transactional unit. **This is the only skill-toggle endpoint API consumers should use** — even when you're flipping a single skill, send it as a one-entry `skills` map. The single-skill `SkillToggle` endpoint also exists, but `SkillsApply` is the one to use from the API.
 
 Designed for both the Skill Editor modal (multiple toggles in one save) and one-off API mutations:
 
@@ -1914,10 +1917,12 @@ Designed for both the Skill Editor modal (multiple toggles in one save) and one-
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | Your UserAgent instance guid (custom build only for non-admin callers) |
+| `useragentguid` | string | Yes | Your UserAgent instance guid (custom build only) |
 | `skills` | object | Yes | Map of `{ "skillname": true \| false }` for every skill you want to set. Skills not in the map keep their current state. |
 | `tier` | string | No | `"starter"` or `"pro"` — change the tier in the same call. **Pro → Starter downgrade is rejected** (cancel + re-subscribe instead). |
 | `idempotencyKey` | string | Yes | Caller-generated unique key (UUID recommended). Replays of the same key return the cached response without re-running the saga. |
+
+**Headers:** No extra header is needed. For team agents, use an API key from a project in the agent's team — keys from another workspace are rejected.
 
 ##### Request
 
@@ -2112,7 +2117,7 @@ Starts a stopped agent instance. The agent is moved to Queued (status `2`) and p
 }
 ```
 
-> `useragents` is always returned (empty array on Start) because the endpoint uses the shared `UserAgentResultModel` — just `result` and `errors` carry the outcome here.
+> `useragents` is always returned (empty array on Start) because Start returns the standard agent response shape — just `result` and `errors` carry the outcome here.
 
 Start will fail (returns `{ "result": false, "errors": [...] }`) if:
 - The agent is already running or queued
@@ -2140,21 +2145,21 @@ Stops a running agent instance. If the agent is Queued (status `2`), it is immed
 
 #### **POST** /UserAgent/Delete
 
-Soft-deletes a useragent. The row stays in the database (so the audit trail in `agenttransactions`, `useragentcredentialfieldshistory`, `useragentcustomskillshistory`, `agentmessages` keeps its FK targets intact) but `deletedat` + `deletedby` are stamped, the agent is unpinned, and every read path (`Detail`, `MyAgents`, `Start`, `Stop`, daemon config compose, cron reconcile) automatically excludes the tombstoned row.
+Soft-deletes a useragent. Delete stamps `deletedat` (returned in the response) and unpins the agent; it doesn't erase the agent's history (transactions, credential and custom-skill change history, messages). The agent is then excluded from `Detail`, `MyAgents`, `Start`, `Stop`, the agent runtime and its scheduled jobs, and `TransactionList`, `CredentialFieldHistory`, `CustomSkillHistory`, `Logs`, `LogsList`, `LogsFile` and `LogsDelete` return `useragent-not-found` (code `95`) for it, so export anything you need before deleting.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Your UserAgent instance guid. `guid` is also accepted as an alias. |
 
-**Headers:** Pass `teamGUID: <team-guid>` when the target agent belongs to a team project; the caller must be the row owner or a team admin (plain team members are rejected with code `97`).
+**Headers:** No extra header is needed. The caller must be the row owner or a team admin (plain team members are rejected with code `97`).
 
 ##### Guards (run in this order)
 
 1. **Access** — owner of the row or a team admin of the UA's team. Members get `useragent-team-admin-required` (code `97`); strangers get `useragent-access-denied` (code `96`); unknown / already-deleted rows get `useragent-not-found` (code `95`).
 2. **Status** — must be in a clean terminal state: `0` (Stopped), `5` (Error), or `6` (Setup Required). Anything in flight (`1` Stopping, `2` Queued, `3` Starting, `4` Running) is rejected with `useragent-delete-running` — Stop the agent first and wait for status `0`.
-3. **Active subscription** — any `subscriptions.status='active'` row blocks delete (`useragent-delete-sub-active`). Cancel the subscription first; expired / cancelled / refunded / no-sub all pass.
+3. **Active subscription** — a subscription with `status: "active"` blocks delete (`useragent-delete-sub-active`). `CancelSubscription` doesn't lift this right away: the subscription stays `active` until its period ends (`cancelsAt`) and is then marked expired. An expired, cancelled or refunded subscription, or none at all, passes.
 
-The write is idempotent — calling `Delete` on an already-deleted row no-ops the second `UPDATE` (`AND deletedat IS NULL`) and you still get `result: true`.
+Delete is safe to repeat: calling it again on an agent that's already deleted normally returns `useragent-not-found` (code `95`, as in guard 1), so treat that code on a retry as already deleted. The stored `deletedat` never changes.
 
 ##### Response
 
@@ -2177,7 +2182,7 @@ The write is idempotent — calling `Delete` on an already-deleted row no-ops th
 | `useragent-access-denied` (96) | Caller is not the owner and not a member of the UA's team |
 | `useragent-team-admin-required` (97) | Caller is a team member but not a team admin on the UA's team |
 | `useragent-delete-running` | Status is `1` / `2` / `3` / `4` — call `Stop` first and retry once status reaches `0` |
-| `useragent-delete-sub-active` | An active subscription is still attached — call `CancelSubscription` first |
+| `useragent-delete-sub-active` | An active subscription is still attached. After `CancelSubscription` it stays active until the period ends (`cancelsAt`); retry once it has expired |
 
 #### **POST** /UserAgent/Logs
 
@@ -2189,11 +2194,11 @@ Live activity feed for a useragent — what the agent did, when, and (post-rollo
 | `date` | string | No | Activity date in `YYYY-MM-DD` (or `"today"`). Default: `"today"`. |
 | `lines` | number | No | Tail size — most recent N rows. Default `200`, capped at `5000`. |
 
-**Headers:** Owner-or-team-member access. Pass `teamGUID: <team-guid>` for team-scoped agents.
+**Headers:** No extra header is needed. Access: the agent's owner or a team admin of the agent's team (plain team members are rejected with code `97`).
 
-##### Rate limit (non-admin callers)
+##### Rate limit
 
-Non-admin callers are rate-limited via a 30-second Redis cache keyed on `(useragentguid, date, lines)`. The first call within a 30s window hits the worker; subsequent calls within the window receive the cached payload. Admins (`tokenUserRoles` includes `ADMIN`) bypass entirely. Tune your polling cadence to ≥30s for non-admin tokens to avoid serving stale data — the cache TTL was chosen to match the panel's lowest non-admin polling interval.
+Calls are rate-limited via a 30-second server-side cache keyed on `(useragentguid, date, lines)`. The first call within a 30s window hits the worker; subsequent calls within the window receive the cached payload. Tune your polling cadence to ≥30s to avoid serving stale data — the cache TTL was chosen to match the panel's lowest polling interval.
 
 ##### Response
 
@@ -2290,8 +2295,8 @@ Non-admin callers are rate-limited via a 30-second Redis cache keyed on `(userag
 | Error | When |
 |-------|------|
 | `useragentguid is required` | Missing `useragentguid` in the body |
-| `Agent is not assigned to a worker. It may not be running.` | The useragent has never been deployed to a worker (no `workerid` set yet) |
-| `Worker not found` | Worker row was removed mid-flight (extremely rare) |
+| `Agent is not assigned to a worker. It may not be running.` | The useragent has never been deployed to a worker yet |
+| `Worker not found` | The agent's worker is no longer available (extremely rare) |
 | `Failed to fetch activity from worker` | Worker host unreachable / internal error during the tail |
 
 #### **POST** /UserAgent/LogsList
@@ -2333,7 +2338,7 @@ Removes one date's activity JSONL file (and its gzipped sibling if present) from
 | `useragentguid` | string | Yes | Your UserAgent instance guid |
 | `date` | string | Yes | Activity date to purge (`YYYY-MM-DD`). |
 
-**Headers:** Owner-or-team-member access. Pass `teamGUID: <team-guid>` for team-scoped agents.
+**Headers:** No extra header is needed. Access: the agent's owner or a team admin of the agent's team (plain team members are rejected with code `97`).
 
 ##### Response
 
@@ -2357,7 +2362,7 @@ Downloads the **full** day's activity log (no `lines` cap). Use this when you ne
 | `useragentguid` | string | Yes | Your UserAgent instance guid |
 | `date` | string | Yes | Activity date to download (`YYYY-MM-DD`). |
 
-**Headers:** Owner-or-team-member access. Pass `teamGUID: <team-guid>` for team-scoped agents.
+**Headers:** No extra header is needed. Access: the agent's owner or a team admin of the agent's team (plain team members are rejected with code `97`).
 
 ##### Response
 
@@ -2392,7 +2397,7 @@ Pins or unpins an agent instance from the user's pinned-agents quick list. Pinne
 
 Lists the user's pinned agents. Returns the **same composed shape as `MyAgents`** — every field that appears on a `MyAgents` row appears here, just filtered to `pinned: true`.
 
-No request body fields are required — the caller's `tokenUUID` (or active `teamGUID` header) scopes the response.
+No request body fields are required — the workspace of your API key's project scopes the response.
 
 ##### Response
 
@@ -2528,7 +2533,7 @@ Starts a browser-embedded realtime voice session with the agent. Returns a short
 ```
 
 - **Auth** — same Bearer / API key path as every other `UserAgent/*` endpoint. Bearer requests additionally enforce an Origin allow-list (`https://wiro.ai`, `https://www.wiro.ai`, plus `http://localhost:*` in non-production); API-key requests skip the Origin check.
-- **Rate limit** — fixed 60 sessions/hour per operator (hashed key — raw uuid never logged). Override with `AGENT_WEB_REALTIME_RATE_LIMIT_PER_HOUR`. Fast-fail sessions are decremented back from the counter.
+- **Rate limit** — fixed 60 sessions/hour per operator (the operator identity is hashed and never logged raw). Fast-fail sessions are decremented back from the counter.
 - **Full WebSocket protocol, control frames, and JS snippet** — [Web Voice](/docs/integration-webvoice-skills).
 
 ##### Common errors
@@ -2566,7 +2571,7 @@ Cancels a `WebStart`-initiated session **before the WebSocket handshake**. Use i
 
 #### **POST** /UserAgent/TwilioCallHistory/List
 
-Returns the last N realtime voice sessions for a useragent — **both Twilio and Web channels** despite the Twilio-named path, since they share the same `agentmessages.metadata.type` realtime_session prefix. Owner / team-member access only.
+Returns the last N realtime voice sessions for a useragent — **both Twilio and Web channels** despite the Twilio-named path, since both are stored as messages whose `metadata.type` starts with `realtime_session`. Owner / team-member access only.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -2614,7 +2619,7 @@ Returns the last N realtime voice sessions for a useragent — **both Twilio and
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `messageguid` | string | The `agentmessages.guid` row that holds this call. Use it with `Message/Detail` for the full transcript. |
+| `messageguid` | string | The guid of the message that holds this call. Use it with `Message/Detail` for the full transcript. |
 | `agenttoken` | string | Useragent token. Same value across all rows for a given agent. |
 | `channel` | `"twilio"` \| `"web"` | Which voice surface served the call. |
 | `callsid` | string | Twilio Call SID for `channel: "twilio"`; the internal session id (`voice-call-*`) for `channel: "web"`. |
@@ -2690,7 +2695,7 @@ Schedules the subscription to end at the current billing period's expiry — a *
 |-----------|------|----------|-------------|
 | `guid` | string | Yes | Your UserAgent instance guid |
 
-**Headers:** Pass `teamGUID: <team-guid>` when the target agent belongs to a team project (the endpoint validates team context explicitly for all billing mutations).
+**Headers:** No extra header is needed. For team agents, use an API key from a project in the agent's team — keys from another workspace are rejected.
 
 ##### Response
 
@@ -2712,7 +2717,8 @@ Schedules the subscription to end at the current billing period's expiry — a *
 | Error | When |
 |-------|------|
 | `No active subscription found for this agent` | `status != "active"` on the subscription row |
-| `User agent not found` | Caller doesn't own the useragent and isn't a team admin |
+| `User agent not found` | Caller doesn't own the agent and isn't on its team |
+| `Only a team admin can perform this action on a team-owned agent.` | Caller is a member of the agent's team but not a team admin (code `97`) |
 
 #### **POST** /UserAgent/UpgradeTier
 
@@ -2725,7 +2731,7 @@ Upgrades the active subscription from **Starter → Pro**. The capability surfac
 | `guid` | string | Yes | Your UserAgent instance guid |
 | `targetTier` | string | Yes | Must be `"pro"` (`"starter"` is rejected with the downgrade error). The parameter name is `targetTier` — passing it as `tier` returns `"targetTier must be 'starter' or 'pro'"` instead of being silently coerced. |
 
-**Headers:** Pass `teamGUID: <team-guid>` when the target agent belongs to a team project.
+**Headers:** No extra header is needed. For team agents, use an API key from a project in the agent's team — keys from another workspace are rejected.
 
 API-deployed agents always upgrade through the prepaid path. The endpoint debits the prorated upgrade fee `Math.max(0, ((P_pro − P_starter) / totalDays) × remainingDays)` from your wallet synchronously, updates the subscription row + useragent snapshot to Pro pricing / credits inline, and restarts the daemon to refresh `settings.json`. Existing extra credits and `usedcredits` are preserved.
 
@@ -2756,7 +2762,7 @@ The endpoint inspects the current subscription state and picks the right operati
 |-----------|------|----------|-------------|
 | `guid` | string | Yes | Your UserAgent instance guid |
 
-**Headers:** Pass `teamGUID: <team-guid>` when the target agent belongs to a team project.
+**Headers:** No extra header is needed. For team agents, use an API key from a project in the agent's team — keys from another workspace are rejected.
 
 > Renewal pricing is **snapshot-driven** — `monthlypriceusd` and `monthlycredits` are read straight off the useragent row (last touched by `Deploy`, `SkillsApply`, or `UpgradeTier`). Skill-registry weight changes between renewals do **not** propagate; the user keeps the price they last agreed to. To pick up new pricing, the user must explicitly call `SkillsApply` or `UpgradeTier` (both re-snapshot in the same transaction).
 
@@ -2791,7 +2797,7 @@ Called after the subscription has expired (daily cron flipped it to `status: "ex
 }
 ```
 
-- Updates the `subscriptions` row in place: `status: "active"`, `type: "renewal"`, `currentperiodstart: now`, `currentperiodend: now + 30 days`, `pendingdowngrade: null`.
+- Renews the subscription in place: `status` becomes `"active"`, a new 30-day period starts now (`currentperiodend` moves to now + 30 days), and `pendingdowngrade` is cleared to `null`.
 - Debits `amount` (the snapshot `monthlypriceusd`) from the wallet (caller's personal wallet, or the agent's team wallet if the agent is team-scoped).
 - Zeroes `usedcredits` and stamps the new `creditperiod`. Existing extra credits are preserved.
 - If the agent was in `status: 0` (Stopped) or `5` (Error), it's auto-queued back to `2` (Queued) — the daemon picks it up on the next cycle, no extra `Start` call needed. Statuses `1`/`2`/`3`/`4` are mid-flight and the daemon settles them on its own.
@@ -2848,7 +2854,7 @@ Called after the subscription has expired (daily cron flipped it to `status: "ex
 | **Tier price** | `agent.tiers.{starter,pro}.price` | Snapshotted on the useragent at deploy as `monthlypriceusd`. Pro = Starter × `tiermultiplier`. |
 | **Monthly credits** | `agent.tiers.{starter,pro}.credits` | Snapshotted on the useragent at deploy as `monthlycredits`. Pro = Starter × `tiermultiplier`. |
 | **Per-turn token cost** | `tokenRates` (per-model) | Each chat / cron / voice-prep turn deducts credits metered by the tokens its model consumes (1 credit = $0.01). Tier-independent — Pro just buys a larger monthly credit pool. |
-| **Tier multiplier** | `agent.tiermultiplier` | Default `10`. Snapshotted on the useragent at deploy so admin tweaks don't retroactively change live instances (existing instances keep the multiplier they were deployed under). |
+| **Tier multiplier** | `agent.tiermultiplier` | Default `10`. Snapshotted on the useragent at deploy so later template changes don't retroactively change live instances (existing instances keep the multiplier they were deployed under). |
 | **Extra credit packs** | `agent.extracreditpacks[]` | Per-useragent — derived as 5x / 10x / 20x of `monthlycredits`. Pro tier only (Starter has empty array). |
 
 ### Payment Method
@@ -2880,9 +2886,9 @@ Agent-specific errors you may encounter:
 | `Agent is already stopped` | Stop called on an agent with status `0` |
 | `Agent is currently stopping, please wait` | Start called on an agent with status `1` |
 | `Agent is in error state, use Start to retry` | Stop called on an agent with status `5` |
-| `Duplicate deploy: an identical agent ("<title>") was already deployed Ns ago. Open the existing one in your panel, or wait a few seconds and retry.` | `Deploy` called a second time within 10s for the same `(uuid, agentid, teamguid)` tuple (custom builds: `(uuid, title, teamguid)`). Carries `errors[0].code: 99` and a top-level `existingUserAgentGuid` field. |
+| `Duplicate deploy: an identical agent ("<title>") was already deployed Ns ago. Open the existing one in your panel, or wait a few seconds and retry.` | `Deploy` called a second time within 10s for the same caller, template and team (custom builds: same caller, `title` and team). Carries `errors[0].code: 99` and a top-level `existingUserAgentGuid` field. |
 | `Agent setup is not complete. Please fill in your credentials before starting.` | Status is `6` — call `CredentialUpsert` / `SkillsApply` / `CustomSkillUpsert` to provide required values |
-| `Subscription required — please subscribe to this agent before starting it.` | `Start` called on a row with no active subscription AND no spendable extras (`extracredits - usedcredits ≤ 0`). Most often hit after a subscription expires with empty extras — call `RenewSubscription` (`useprepaid: true`) to continue. Admin-role callers bypass this guard. |
+| `Subscription required — please subscribe to this agent before starting it.` | `Start` called on a row with no active subscription AND no spendable extras (`extracredits - usedcredits ≤ 0`). Most often hit after a subscription expires with empty extras — call `RenewSubscription` (`useprepaid: true`) to continue. |
 | `No credits available. Please renew your subscription or purchase extra credits.` | Monthly and extra credits are both exhausted |
 | `Cannot edit skills on a template agent — only custom-built agents support skill editing.` | `SkillsApply` called on a template-deploy useragent (returned with error code `100`). Skills are inherited from the template — to change them, deploy a custom build (`Deploy` with `custom: true`) instead. |
 | `Subscription already active for this useragent. Cancel or modify the existing subscription instead.` | `CreateSubscriptionCheckout` called when a sub already exists |

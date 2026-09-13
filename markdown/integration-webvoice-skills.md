@@ -317,7 +317,7 @@ The bridge transcodes server-side if a downstream model needs a different sample
 
 ## Rate Limits
 
-- **60 sessions / hour per operator** (fixed window). The operator identity is hashed (`sha256(tokenUUID).slice(0, 16)`) before it ever hits Redis — no raw uuid logged. Override per environment with `AGENT_WEB_REALTIME_RATE_LIMIT_PER_HOUR`.
+- **60 sessions / hour per operator** (fixed window). The operator identity is hashed and never logged raw.
 - Fast-fail sessions (prep timeout, model rejecting the realtime session, WS upgrade error) **decrement the counter back** so a flaky downstream doesn't burn through quota during an incident.
 - **Origin allow-list** (Bearer auth path only) — `https://wiro.ai` / `https://www.wiro.ai` (plus `http://localhost:3000` / `http://localhost:8080` in non-production). The API-key path skips the Origin check because key + IP whitelist already authenticated the caller.
 
@@ -341,7 +341,7 @@ Every WebStart call is scoped by:
 - **`sessionId`** (`vws-<uuid-v4>`) — opaque, never reused. Carried inside the JWT, never in the WS URL — same "single endpoint, first-message token" pattern Wiro uses for its native realtime models.
 - **`useragentguid` + caller uuid** — written into the JWT payload so the bridge can authorise the connection without re-hitting the DB.
 - **Origin allow-list** (Bearer path only) — defence-in-depth against a stolen localStorage Bearer being weaponised from a third-party site.
-- **Per-operator rate-limit key** — hashed before hitting Redis, so log inspection can't deanonymise users.
+- **Per-operator rate-limit key** — hashed, so logs never carry the raw operator identity.
 - **Channel-isolated upgrade handlers** — `/v1/AgentRealtime/Web` and `/v1/AgentRealtime/Twilio` are distinct upgrade handlers on the same process; one cannot read the other's session state. Adding a new provider in the future is a single new handler under the same `/v1/AgentRealtime/<NewChannel>` prefix — no nginx config churn.
 
 ## Related
