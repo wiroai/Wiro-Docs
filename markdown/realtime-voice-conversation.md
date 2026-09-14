@@ -128,7 +128,7 @@ When the server receives this:
 
 On the client side, stop audio playback immediately when the user triggers an interrupt. This gives instant feedback (AI voice cuts off) while the server processes the signal.
 
-> **Tip:** Some models support natural interruption — if the user starts speaking while the AI is talking, the model may stop on its own. The explicit `task_session_interrupt` signal provides a reliable, manual interrupt for all models.
+> **Tip:** Some models support natural interruption — if the user starts speaking while the AI is talking, the model may stop on its own. Models whose provider does its own barge-in (the OpenAI realtime family and ElevenLabs) may handle interruption natively, while the explicit `task_session_interrupt` signal stops the current reply on Wiro-hosted realtime models.
 
 ## Ending a Session
 
@@ -145,7 +145,7 @@ After sending this, the server will process any remaining audio, send final cost
 
 > **Safety:** If the client disconnects without sending `task_session_end`, the server automatically terminates the session to prevent the pipeline from running indefinitely (and the provider from continuing to charge). Always send `task_session_end` explicitly for a clean shutdown.
 
-> **Insufficient balance:** If the wallet runs out of balance during a realtime session, the server automatically stops the session. You will still receive the final `task_cost` and `task_end` events.
+> **Insufficient balance:** The session is charged turn by turn as it runs. When a charged turn uses up your available balance (the team wallet's balance when you use a team project's API key), the server stops the session right after that turn. That turn is charged in full, and so is any final usage reported while the session closes, so your balance can end slightly below zero. You still receive the final `task_cost` and `task_end` events.
 
 ## Code Examples
 

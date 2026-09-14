@@ -62,7 +62,7 @@ Wiro enforces strict context isolation for agent operations. When you interact w
 | Team A | Personal | **Blocked** |
 | Team A | Team B | **Blocked** |
 
-A matching context is required, but it is not always enough. Any active team member can message a team agent and use its conversation endpoints. Subscription and billing actions (`CreateExtraCreditCheckout`, `CancelSubscription`, `RenewSubscription`, `UpgradeTier`, `CreateSubscriptionCheckout`, `SkillsApply`, `SkillToggle`) are limited to the member who deployed the agent and team admins. Other members get code `97`: "Only a team admin can perform this action on a team-owned agent." With an API key, these checks apply to the user who created the key's project.
+A matching context is required, but it is not always enough. Any active team member can message a team agent and use its conversation endpoints. Subscription and billing actions (`CreateSubscriptionCheckout`, `RenewSubscription`, `CancelSubscription`, `UpgradeTier`, `CreateExtraCreditCheckout`) are limited to the member who deployed the agent, team admins and the organization owner. The organization owner can pay for a team agent by card or from the team wallet. Cancelling a team agent's card plan needs a team admin or the organization owner. `SkillsApply` and `SkillToggle` are limited to the member who deployed the agent and team admins. Other members get code `97`: "Only a team admin can perform this action on a team-owned agent." With an API key, these checks apply to the user who created the key's project. Card checkouts for a team agent are refused on that path: `CreateSubscriptionCheckout`, `UpgradeTier` and `CreateExtraCreditCheckout` would open the session on the key project creator's own saved billing details, so pay from the team wallet (`useprepaid: true`) or use the dashboard.
 
 ### Protected Endpoints
 
@@ -73,6 +73,7 @@ The following agent endpoints enforce context guards:
 - `UserAgent/Message/Sessions` — list conversation sessions
 - `UserAgent/Message/DeleteSession` — delete a conversation
 - `UserAgent/Message/RenameSession` — rename a conversation
+- `UserAgent/Message/Delete` — hide your own messages
 - `UserAgent/CreateExtraCreditCheckout` — purchase extra credits
 - `UserAgent/CancelSubscription` — cancel subscription
 - `UserAgent/RenewSubscription` — renew subscription
@@ -81,8 +82,9 @@ The following agent endpoints enforce context guards:
 - `UserAgent/PricingPreview` — pricing preview for an existing agent
 - `UserAgent/SkillsApply` — change skill set (single or batch) on a custom build (auto-prorates)
 - `UserAgent/SkillToggle` — toggle a single skill on a custom build
+- `UserAgent/Realtime/WebStart` — start a web voice session
 
-`SkillsApply` and `SkillToggle` enforce the context guard for team agents only. A personal agent's owner can change its skills from any workspace.
+`Message/Delete`, `SkillsApply` and `SkillToggle` enforce the context guard for team agents only; a personal agent's owner can call them from any workspace. `Realtime/WebStart` also checks team agents only: the member who deployed the agent can call it from any workspace while they are still an active member of the agent's team, so a website voice backend keeps working on a personal project key. Outside the team's context, a caller who has left the team gets the context mismatch error.
 
 `UserAgent/Deploy` creates the agent in your current workspace. With a team project API key the agent is deployed into that team, and the user who created the project must be a team admin. Otherwise the call fails with code `97`: "Only a team admin can perform this action on a team-owned agent."
 

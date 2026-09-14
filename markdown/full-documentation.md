@@ -3850,13 +3850,16 @@ ws.onopen = function () {
 
 During a realtime session, you'll receive these WebSocket events:
 
-| Event               | Description                                                              |
-| ------------------- | ------------------------------------------------------------------------ |
-| `task_stream_ready` | Session is ready — start sending microphone audio                        |
-| `task_stream_end`   | AI finished speaking for this turn — you can speak again                 |
-| `task_cost`         | Cost update per turn — includes `turnCost`, `cumulativeCost`, and `usage` (raw cost breakdown from the model provider) |
-| `task_output`       | Transcript messages prefixed with `TRANSCRIPT_USER:` or `TRANSCRIPT_AI:` |
-| `task_end`          | The model process has exited. Post-processing follows — wait for `task_postprocess_end` to close the connection. |
+| Event                    | Direction       | Description                                                              |
+| ------------------------ | --------------- | ------------------------------------------------------------------------ |
+| `task_stream_ready`      | server → client | Session is ready — start sending microphone audio                        |
+| `task_stream_end`        | server → client | AI finished speaking for this turn — you can speak again                 |
+| `task_cost`              | server → client | Cost update per turn — includes `turnCost`, `cumulativeCost`, and `usage` (raw cost breakdown from the model provider) |
+| `task_output`            | server → client | Transcript messages prefixed with `TRANSCRIPT_USER:` or `TRANSCRIPT_AI:` |
+| `task_end`               | server → client | The model process has exited. Post-processing follows — wait for `task_postprocess_end` to close the connection. |
+| `task_postprocess_end`   | server → client | Post-processing complete — safe to close the WebSocket connection        |
+| `task_session_end`       | client → server | Gracefully end the session                                               |
+| `task_session_interrupt` | client → server | Interrupt AI speech — stops playback and lets the user speak             |
 
 ## Audio Format
 
@@ -3920,6 +3923,26 @@ Both user and AI speech are transcribed automatically. Transcripts arrive as `ta
 }
 ```
 
+## Interrupting AI Speech
+
+While the AI is speaking, you can interrupt it to take over the conversation. Send `task_session_interrupt`:
+
+```json
+{
+  "type": "task_session_interrupt",
+  "tasktoken": "YOUR_SOCKET_ACCESS_TOKEN"
+}
+```
+
+When the server receives this:
+- The AI immediately stops generating audio
+- A final `task_stream_end` is sent for the interrupted turn
+- The session continues — the user can speak and the AI will respond to the next input
+
+On the client side, stop audio playback immediately when the user triggers an interrupt. This gives instant feedback (AI voice cuts off) while the server processes the signal.
+
+> **Tip:** Some models support natural interruption — if the user starts speaking while the AI is talking, the model may stop on its own. Models whose provider does its own barge-in (the OpenAI realtime family and ElevenLabs) may handle interruption natively, while the explicit `task_session_interrupt` signal stops the current reply on Wiro-hosted realtime models.
+
 ## Ending a Session
 
 To gracefully end a realtime session, send `task_session_end`:
@@ -3935,7 +3958,7 @@ After sending this, the server will process any remaining audio, send final cost
 
 > **Safety:** If the client disconnects without sending `task_session_end`, the server automatically terminates the session to prevent the pipeline from running indefinitely (and the provider from continuing to charge). Always send `task_session_end` explicitly for a clean shutdown.
 
-> **Insufficient balance:** If the wallet runs out of balance during a realtime session, the server automatically stops the session. You will still receive the final `task_cost` and `task_end` events.
+> **Insufficient balance:** The session is charged turn by turn as it runs. When a charged turn uses up your available balance (the team wallet's balance when you use a team project's API key), the server stops the session right after that turn. That turn is charged in full, and so is any final usage reported while the session closes, so your balance can end slightly below zero. You still receive the final `task_cost` and `task_end` events.
 
 ---
 
@@ -4027,6 +4050,8 @@ After sending this, the server will finish any in-progress generation, send fina
 For TTS sessions, the stream often ends naturally when the model finishes generating audio for the provided text. In this case, you'll receive `task_stream_end` followed by `task_end` without needing to send `task_session_end`. However, it's good practice to send it explicitly for a clean shutdown, especially if you want to stop playback early.
 
 > **Safety:** If the client disconnects without sending `task_session_end`, the server automatically terminates the session to prevent the pipeline from running indefinitely. Always send `task_session_end` explicitly for a clean shutdown.
+
+> **Insufficient balance:** The session is charged turn by turn as it runs. When a charged turn uses up your available balance (the team wallet's balance when you use a team project's API key), the server stops the session right after that turn. That turn is charged in full, and so is any final usage reported while the session closes, so your balance can end slightly below zero. You still receive the final `task_cost` and `task_end` events.
 
 ---
 
@@ -4138,6 +4163,8 @@ To gracefully end a realtime session, send `task_session_end`:
 After sending this, the server processes any remaining buffered audio, sends final transcript and cost events, and then emits `task_postprocess_end`. Wait for `task_postprocess_end` before closing the WebSocket.
 
 > **Safety:** If the client disconnects without sending `task_session_end`, the server automatically terminates the session to prevent the pipeline from running indefinitely. Always send `task_session_end` explicitly for a clean shutdown.
+
+> **Insufficient balance:** The session is charged turn by turn as it runs. When a charged turn uses up your available balance (the team wallet's balance when you use a team project's API key), the server stops the session right after that turn. That turn is charged in full, and so is any final usage reported while the session closes, so your balance can end slightly below zero. You still receive the final `task_cost` and `task_end` events.
 
 ---
 
@@ -5609,16 +5636,18 @@ for the channel contract.
 
 **Headers:** Standard API authentication — `x-api-key` for key-based projects, or `x-nonce` + `x-signature` for signature-based projects (see [Authentication](/docs/authentication)). To deploy into a team, use the credentials of a project that belongs to that team: the agent is created in the project's team, and the project's owner must be an admin of that team (otherwise code `97`). No extra header is needed.
 
-> **Team agents** — every call runs in the workspace of the project behind your credentials; a `teamGUID` request header is ignored.
+> **Team agents** — every call runs in the workspace of the project behind your credentials; workspace headers sent with the request are ignored.
 >
 > | Endpoint | Team agents |
 > |----------|-------------|
 > | `UserAgent/Deploy` | A team project's credentials deploy into that team; the project's owner must be a team admin |
 > | `UserAgent/Message/Send`, `Message/History`, `Message/Sessions`, `Message/DeleteSession`, `Message/RenameSession` | The project's workspace must match the agent's workspace |
+> | `UserAgent/Message/Delete` | For team agents, the project's workspace must match the agent's workspace; it only hides messages sent by the project's owner |
 > | `UserAgent/CancelSubscription`, `UserAgent/CreateExtraCreditCheckout`, `UserAgent/UpgradeTier`, `UserAgent/RenewSubscription`, `UserAgent/CreateSubscriptionCheckout`, `UserAgent/PricingPreview`, `UserAgent/SkillsApply`, `UserAgent/SkillToggle` | The project's workspace must match the agent's workspace |
 > | `UserAgent/Message/Detail`, `Message/Cancel` | No workspace match; they only return or cancel messages sent by the project's owner |
 > | `UserAgent/Detail` | No workspace match; the project's owner must own the agent or be a member of its team |
 > | `UserAgent/Update`, `UserAgent/Start`, `UserAgent/Stop` | No workspace match; the project's owner must own the agent or be an admin of its team (plain members get code `97`) |
+> | `UserAgent/Realtime/WebStart` | The project's owner must have deployed the agent. For a team agent, use that team's project key, or a key whose owner is still a member of the team |
 > | `UserAgent/MyAgents` | Lists only the agents in the project's workspace |
 >
 > A mismatch returns `"This agent belongs to a team. Switch to the team context to access it."`, `"This agent is in your personal workspace. Switch to personal context to access it."` or `"This agent belongs to a different team."` Use a team project's key for team agents and a personal project's key for personal agents.
@@ -7299,6 +7328,14 @@ Subscribes a useragent that doesn't yet have an active subscription. Wallet is d
 
 If the useragent already has an active subscription, the call rejects with `Subscription already active for this useragent. Cancel or modify the existing subscription instead.`
 
+If a card checkout for the agent is still open (for example, one started in the Wiro panel), it is closed before the wallet is charged, so the agent is never paid for twice. The call is refused, and nothing is charged, when:
+
+| Error | When |
+|-------|------|
+| `A payment for this agent is already being processed. It usually finishes within a minute; refresh to see the subscription.` | A card payment for the agent has gone through and its subscription is still being set up. The response also carries `checkoutpending: true`; call `UserAgent/Detail` in a minute instead of retrying |
+| `A checkout for this agent is already being opened. Try again in a moment.` | Another subscription request for the same agent is in progress |
+| `We couldn't confirm this agent's previous checkout. Please try again in a minute.` | The agent's previous card checkout couldn't be checked |
+
 #### **POST** /UserAgent/Start
 
 Starts a stopped agent instance. The agent is moved to Queued (status `2`) and picked up by a worker. Also valid for agents in Error state (`5`) — Start re-queues them for another launch attempt.
@@ -7345,7 +7382,7 @@ Stops a running agent instance. If the agent is Queued (status `2`), it is immed
 
 #### **POST** /UserAgent/Delete
 
-Soft-deletes a useragent. Delete stamps `deletedat` (returned in the response) and unpins the agent; it doesn't erase the agent's history (transactions, credential and custom-skill change history, messages). The agent is then excluded from `Detail`, `MyAgents`, `Start`, `Stop`, the agent runtime and its scheduled jobs, and `TransactionList`, `CredentialFieldHistory`, `CustomSkillHistory`, `Logs`, `LogsList`, `LogsFile` and `LogsDelete` return `useragent-not-found` (code `95`) for it, so export anything you need before deleting.
+Soft-deletes a useragent. Delete stamps `deletedat` (returned in the response) and unpins the agent; it doesn't erase the agent's history (transactions, credential and custom-skill change history, messages). The agent is then excluded from `Detail`, `MyAgents`, `Start`, `Stop`, the agent runtime and its scheduled jobs, and `TransactionList`, `CredentialFieldHistory`, `CustomSkillHistory`, `Logs`, `LogsList`, `LogsFile`, `LogsDelete`, `Message/History`, `Message/Sessions`, `Message/DeleteSession`, `Message/RenameSession` and `Message/Delete` return `useragent-not-found` (code `95`) for it, so export anything you need before deleting.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -7356,10 +7393,10 @@ Soft-deletes a useragent. Delete stamps `deletedat` (returned in the response) a
 ##### Guards (run in this order)
 
 1. **Access** — owner of the row or a team admin of the UA's team. Members get `useragent-team-admin-required` (code `97`); strangers get `useragent-access-denied` (code `96`); unknown / already-deleted rows get `useragent-not-found` (code `95`).
-2. **Status** — must be in a clean terminal state: `0` (Stopped), `5` (Error), or `6` (Setup Required). Anything in flight (`1` Stopping, `2` Queued, `3` Starting, `4` Running) is rejected with `useragent-delete-running` — Stop the agent first and wait for status `0`.
+2. **Status** — must be in a clean terminal state: `0` (Stopped), `5` (Error), or `6` (Setup Required); `5` passes only once the agent no longer holds its runtime. Anything in flight (`1` Stopping, `2` Queued, `3` Starting, `4` Running) is rejected with `useragent-delete-running`, and so is an errored agent that still holds its runtime — Stop the agent first and wait for status `0`.
 3. **Active subscription** — a subscription with `status: "active"` blocks delete (`useragent-delete-sub-active`). `CancelSubscription` doesn't lift this right away: the subscription stays `active` until its period ends (`cancelsAt`) and is then marked expired. An expired, cancelled or refunded subscription, or none at all, passes.
 
-Delete is safe to repeat: calling it again on an agent that's already deleted normally returns `useragent-not-found` (code `95`, as in guard 1), so treat that code on a retry as already deleted. The stored `deletedat` never changes.
+Delete is safe to repeat: calling it again on an agent that's already deleted returns `useragent-not-found` (code `95`, as in guard 1), so treat that code on a retry as already deleted. The stored `deletedat` never changes.
 
 ##### Response
 
@@ -7381,7 +7418,7 @@ Delete is safe to repeat: calling it again on an agent that's already deleted no
 | `useragent-not-found` (95) | Unknown guid, or the row is already soft-deleted |
 | `useragent-access-denied` (96) | Caller is not the owner and not a member of the UA's team |
 | `useragent-team-admin-required` (97) | Caller is a team member but not a team admin on the UA's team |
-| `useragent-delete-running` | Status is `1` / `2` / `3` / `4` — call `Stop` first and retry once status reaches `0` |
+| `useragent-delete-running` | Status is `1` / `2` / `3` / `4`, or `5` while the agent still holds its runtime — call `Stop` first and retry once status reaches `0` |
 | `useragent-delete-sub-active` | An active subscription is still attached. After `CancelSubscription` it stays active until the period ends (`cancelsAt`); retry once it has expired |
 
 #### **POST** /UserAgent/Logs
@@ -7700,7 +7737,7 @@ Returns the latest message GUID per pinned agent. Compare each `lastmessageguid`
 
 ### Voice & Realtime
 
-Endpoints for browser-based realtime voice sessions plus the unified call history for both Web and Twilio channels. Per-channel setup, JWT contracts, and the WebSocket protocol live on the dedicated pages:
+Endpoints for browser-based realtime voice sessions plus the unified call history for both Web and Twilio channels. Per-channel setup, session handles, and the WebSocket protocol live on the dedicated pages:
 
 | Operation | Endpoint |
 |-----------|----------|
@@ -7710,7 +7747,7 @@ Endpoints for browser-based realtime voice sessions plus the unified call histor
 
 #### **POST** /UserAgent/Realtime/WebStart
 
-Starts a browser-embedded realtime voice session with the agent. Returns a short-lived JWT (5 min) and the WebSocket URL the browser opens to stream microphone audio. The browser presents the JWT as the first WS message (`{ type: "session_start", sessionToken }`); the WebSocket path itself doesn't carry the sessionId.
+Starts a browser-embedded realtime voice session with the agent. Returns two opaque one-time handles, valid for 5 minutes (until `expiresAt`), and the WebSocket URL the browser opens to stream microphone audio. The browser presents `sessionToken` as the first WS message (`{ type: "session_start", sessionToken }`), and `cancelToken` is for `Realtime/Cancel`. The WebSocket path carries no session identifier.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -7723,10 +7760,10 @@ Starts a browser-embedded realtime voice session with the agent. Returns a short
 ```json
 {
   "result": true,
-  "errors": [],
-  "sessionId": "vws-9d2d4b6e-3f6b-4c1a-8a7e-1f5a0b2c3d4e",
+  "correlationId": "voice_3fK9xQ2LmVb7TzR1pWc8NdYa",
   "wsUrl": "wss://socket.wiro.ai/v1/AgentRealtime/Web",
-  "sessionToken": "<5-min HS256 JWT>",
+  "sessionToken": "<opaque one-time session handle>",
+  "cancelToken": "<opaque one-time cancel handle>",
   "expiresAt": 1748212800000,
   "estimatedReadyMs": 8000
 }
@@ -7741,6 +7778,8 @@ Starts a browser-embedded realtime voice session with the agent. Returns a short
 | Error | When |
 |-------|------|
 | `useragentguid required` | Missing useragent reference. |
+| `This agent belongs to a team. Switch to the team context to access it.` | Team agent called from a personal workspace or personal project key by a caller who is no longer a member of the agent's team. |
+| `This agent belongs to a different team.` | Team agent called from another team's workspace or project key by a caller who is no longer a member of the agent's team. |
 | `Agent is not running` | Useragent is not in `status: 4`. |
 | `util-web-channel not enabled` | Toggle the skill via `SkillsApply` (custom builds) or pick a preset that bundles it. |
 | `web voice only available from Wiro-Web (Bearer auth) or via API key` | Bearer auth with an Origin outside the allow-list. |
@@ -7748,24 +7787,23 @@ Starts a browser-embedded realtime voice session with the agent. Returns a short
 
 #### **POST** /UserAgent/Realtime/Cancel
 
-Cancels a `WebStart`-initiated session **before the WebSocket handshake**. Use it when the browser can't progress past the mic-permission prompt, or the user changes their mind. Idempotent — repeated calls return the same shape.
+Cancels a `WebStart`-initiated session **before the WebSocket handshake**. Use it when the browser can't progress past the mic-permission prompt, or the user changes their mind. The cancel handle works once; reusing it returns `invalid token`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `sessionId` | string | Yes | The `sessionId` returned by `WebStart`. |
-| `sessionToken` | string | Yes | The same JWT `WebStart` returned. Proves the caller actually owns this `sessionId` — the server verifies the signature and checks `payload.sessionId === body.sessionId`. |
+| `cancelToken` | string | Yes | The `cancelToken` returned by `WebStart`. One-time, valid until `expiresAt`; only the user who called `WebStart` can use it. |
 
 ##### Response
 
 ```json
-{ "result": true, "sessionId": "vws-9d2d4b6e-...", "cancelled": true }
+{ "result": true, "correlationId": "voice_3fK9xQ2LmVb7TzR1pWc8NdYa", "cancelled": true }
 ```
 
 | HTTP | Error |
 |------|-------|
-| 400 | `sessionId and sessionToken required` |
-| 401 | `invalid token` (signature mismatch, expired, malformed) |
-| 403 | `sessionId mismatch` (JWT claim doesn't match body) |
+| 400 | `cancelToken required` |
+| 401 | `invalid token` (unknown, already used or expired handle) |
+| 403 | `access denied` (the handle was issued to another user) |
 
 > Without this call, the server-side agent prep `WebStart` kicked off lingers for ~5 minutes (the fallback cleanup guard) before being released — calling `Cancel` immediately frees the prep state and releases the held realtime session slot.
 
@@ -7912,13 +7950,23 @@ Schedules the subscription to end at the current billing period's expiry — a *
 - To reverse the cancellation **before** the period ends, call `POST /UserAgent/RenewSubscription` — it clears the flag without charging the wallet again.
 - When the period actually ends, the daily cron marks the subscription `"expired"` and stops the agent (`status: 0`). At that point the user must call `POST /UserAgent/RenewSubscription` (or `CreateSubscriptionCheckout` for a fresh sub) to continue.
 
+##### Team agents paid by card
+
+A team agent subscribed by card from the Wiro panel is billed to the card of the member who subscribed. For that plan the call schedules the card subscription to end at the end of the current period instead:
+
+- `cancelsAt` is the end of the current period. The agent keeps running until then, and the subscription ends at that point.
+- `subscription.pendingdowngrade` isn't set, and `RenewSubscription` can't undo the cancellation. Only the member whose card pays for the plan can undo it, from their own billing portal.
+- Only team admins and the organization owner can cancel it. Other members get code `97`, including the member who deployed the agent.
+
 **Common errors:**
 
 | Error | When |
 |-------|------|
 | `No active subscription found for this agent` | `status != "active"` on the subscription row |
 | `User agent not found` | Caller doesn't own the agent and isn't on its team |
-| `Only a team admin can perform this action on a team-owned agent.` | Caller is a member of the agent's team but not a team admin (code `97`) |
+| `Only a team admin can perform this action on a team-owned agent.` | Caller is a member of the agent's team but not a team admin (code `97`). For a team agent paid by card, this includes the member who deployed the agent |
+| `A switch to prepaid billing is already scheduled for this plan.` | A team agent's card plan that is already set to move to wallet billing at the end of the period |
+| `We couldn't schedule the cancellation. Please try again in a minute.` | A team agent's card plan, when the change couldn't be confirmed with the card payment provider |
 
 #### **POST** /UserAgent/UpgradeTier
 
@@ -8001,6 +8049,7 @@ Called after the subscription has expired (daily cron flipped it to `status: "ex
 - Debits `amount` (the snapshot `monthlypriceusd`) from the wallet (caller's personal wallet, or the agent's team wallet if the agent is team-scoped).
 - Zeroes `usedcredits` and stamps the new `creditperiod`. Existing extra credits are preserved.
 - If the agent was in `status: 0` (Stopped) or `5` (Error), it's auto-queued back to `2` (Queued) — the daemon picks it up on the next cycle, no extra `Start` call needed. Statuses `1`/`2`/`3`/`4` are mid-flight and the daemon settles them on its own.
+- A card checkout still open for the agent (for example, one started in the Wiro panel) is closed before the wallet is charged, so the agent is never paid for twice.
 
 **Common errors:**
 
@@ -8010,6 +8059,9 @@ Called after the subscription has expired (daily cron flipped it to `status: "ex
 | `No expired subscription found to renew` | No active sub and no expired sub — agent was never subscribed, or data is gone |
 | `Renewal pricing must be greater than $0. Add at least one paid skill or set agent base price.` | The persisted `monthlypriceusd` snapshot is $0 (custom build with all-free skills); add a paid skill via `SkillsApply` before renewing |
 | `Insufficient wallet balance. Required: $X.XX, Available: $Y.YY` | Wallet (personal or team) can't cover the renewal price |
+| `A payment for this agent is already being processed. It usually finishes within a minute; refresh to see the subscription.` | A card payment for the agent has gone through and its subscription is still being set up; nothing is charged. The response also carries `checkoutpending: true` |
+| `A checkout for this agent is already being opened. Try again in a moment.` | Another subscription request for the same agent is in progress; nothing is charged |
+| `We couldn't confirm this agent's previous checkout. Please try again in a minute.` | The agent's previous card checkout couldn't be checked; nothing is charged |
 
 ##### Full subscription lifecycle (prepaid)
 
@@ -8085,7 +8137,7 @@ Agent-specific errors you may encounter:
 | `Agent is already queued to start` | Start called on an agent with status `2` |
 | `Agent is already stopped` | Stop called on an agent with status `0` |
 | `Agent is currently stopping, please wait` | Start called on an agent with status `1` |
-| `Agent is in error state, use Start to retry` | Stop called on an agent with status `5` |
+| `Agent is in error state, use Start to retry` | Stop called on an agent with status `5` that has nothing left to stop; an errored agent that still holds its runtime is accepted and moves to `1` (Stopping) |
 | `Duplicate deploy: an identical agent ("<title>") was already deployed Ns ago. Open the existing one in your panel, or wait a few seconds and retry.` | `Deploy` called a second time within 10s for the same caller, template and team (custom builds: same caller, `title` and team). Carries `errors[0].code: 99` and a top-level `existingUserAgentGuid` field. |
 | `Agent setup is not complete. Please fill in your credentials before starting.` | Status is `6` — call `CredentialUpsert` / `SkillsApply` / `CustomSkillUpsert` to provide required values |
 | `Subscription required — please subscribe to this agent before starting it.` | `Start` called on a row with no active subscription AND no spendable extras (`extracredits - usedcredits ≤ 0`). Most often hit after a subscription expires with empty extras — call `RenewSubscription` (`useprepaid: true`) to continue. |
@@ -8101,6 +8153,7 @@ Agent-specific errors you may encounter:
 | `Insufficient wallet balance. Required: $X.XX, Available: $Y.YY` | `UpgradeTier` — wallet can't cover the prorated upgrade charge |
 | `Wallet deduction failed: {error}` | `UpgradeTier` — wallet write itself failed (rare; transient backend error) |
 | `Agent not found or access denied` | Message endpoint with invalid useragentguid |
+| `User agent not found` (code `95`) | `Message/History`, `Message/Sessions`, `Message/DeleteSession`, `Message/RenameSession` or `Message/Delete` called for an agent that has been deleted |
 | `Agent is not running. Current status: {n}` | `Message/Send` when not running. Response includes `agentstatus` (the integer) so the FE can branch. |
 | `Agent has no remaining credits. Renew your subscription or buy a credit pack to continue.` | `Message/Send` while `remainingcredits <= 0`. Response includes `agentbalance` for the FE to render a "Buy credits" CTA. |
 | `Message not found` | `Detail` / `Cancel` with invalid messageguid |
@@ -9629,7 +9682,7 @@ Each item:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `messageguid` | string | The message to delete. Must belong to the agent identified by `useragentguid`, and its `uuid` must be yours: any other `messageguid` (for example, another team member's message in a shared session) is skipped silently and the call still returns `result: true`. |
+| `messageguid` | string | The message to delete. Must belong to the agent identified by `useragentguid`, and its `uuid` must be yours: any other `messageguid` (for example, another team member's message in a shared session) is skipped silently and the call still returns `result: true`. On a team agent, any active member of the agent's team can call this from the team's workspace; it still hides only your own messages. |
 | `side` | string | One of `"user"`, `"agent"`, or `"both"`. Sets these bits in the message's `deletestatus` bitmask: `user → 1`, `agent → 3`, `both → 3`. **`agent` and `both` both produce `3`** (full hide on both sides) — there is no `side` value that hides only the agent's view while keeping the row visible to the user. |
 
 > **Soft delete, not hard delete.** Deleted messages are kept with `deletestatus` set rather than erased. `Message/History` only returns messages whose `deletestatus` is **`0`** — i.e. a message is hidden the moment any bit is set, regardless of which side flagged it. To wipe a whole session hard-and-fast (no soft-delete trail), use [`Message/DeleteSession`](#post-useragentmessagedeletesession) instead.
@@ -14105,7 +14158,7 @@ Returns the ledger rows for a single useragent sorted **newest-first**, plus a s
 | `limit` | number | No | Max rows to return. Default `50`, max `500`. |
 | `start` | number | No | Offset for pagination. Default `0`. |
 
-**Authorization:** the agent's owner or a team admin of the agent's team (plain team members are rejected with code `97`). No extra header is needed.
+**Authorization:** the agent's owner, a team admin of the agent's team or the organization owner (plain team members are rejected with code `97`). No extra header is needed.
 
 ##### Request
 
@@ -18071,7 +18124,7 @@ Wiro enforces strict context isolation for agent operations. When you interact w
 | Team A | Personal | **Blocked** |
 | Team A | Team B | **Blocked** |
 
-A matching context is required, but it is not always enough. Any active team member can message a team agent and use its conversation endpoints. Subscription and billing actions (`CreateExtraCreditCheckout`, `CancelSubscription`, `RenewSubscription`, `UpgradeTier`, `CreateSubscriptionCheckout`, `SkillsApply`, `SkillToggle`) are limited to the member who deployed the agent and team admins. Other members get code `97`: "Only a team admin can perform this action on a team-owned agent." With an API key, these checks apply to the user who created the key's project.
+A matching context is required, but it is not always enough. Any active team member can message a team agent and use its conversation endpoints. Subscription and billing actions (`CreateSubscriptionCheckout`, `RenewSubscription`, `CancelSubscription`, `UpgradeTier`, `CreateExtraCreditCheckout`) are limited to the member who deployed the agent, team admins and the organization owner. The organization owner can pay for a team agent by card or from the team wallet. Cancelling a team agent's card plan needs a team admin or the organization owner. `SkillsApply` and `SkillToggle` are limited to the member who deployed the agent and team admins. Other members get code `97`: "Only a team admin can perform this action on a team-owned agent." With an API key, these checks apply to the user who created the key's project. Card checkouts for a team agent are refused on that path: `CreateSubscriptionCheckout`, `UpgradeTier` and `CreateExtraCreditCheckout` would open the session on the key project creator's own saved billing details, so pay from the team wallet (`useprepaid: true`) or use the dashboard.
 
 ### Protected Endpoints
 
@@ -18082,6 +18135,7 @@ The following agent endpoints enforce context guards:
 - `UserAgent/Message/Sessions` — list conversation sessions
 - `UserAgent/Message/DeleteSession` — delete a conversation
 - `UserAgent/Message/RenameSession` — rename a conversation
+- `UserAgent/Message/Delete` — hide your own messages
 - `UserAgent/CreateExtraCreditCheckout` — purchase extra credits
 - `UserAgent/CancelSubscription` — cancel subscription
 - `UserAgent/RenewSubscription` — renew subscription
@@ -18090,8 +18144,9 @@ The following agent endpoints enforce context guards:
 - `UserAgent/PricingPreview` — pricing preview for an existing agent
 - `UserAgent/SkillsApply` — change skill set (single or batch) on a custom build (auto-prorates)
 - `UserAgent/SkillToggle` — toggle a single skill on a custom build
+- `UserAgent/Realtime/WebStart` — start a web voice session
 
-`SkillsApply` and `SkillToggle` enforce the context guard for team agents only. A personal agent's owner can change its skills from any workspace.
+`Message/Delete`, `SkillsApply` and `SkillToggle` enforce the context guard for team agents only; a personal agent's owner can call them from any workspace. `Realtime/WebStart` also checks team agents only: the member who deployed the agent can call it from any workspace while they are still an active member of the agent's team, so a website voice backend keeps working on a personal project key. Outside the team's context, a caller who has left the team gets the context mismatch error.
 
 `UserAgent/Deploy` creates the agent in your current workspace. With a team project API key the agent is deployed into that team, and the user who created the project must be a team admin. Otherwise the call fails with code `97`: "Only a team admin can perform this action on a team-owned agent."
 

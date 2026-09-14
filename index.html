@@ -4950,29 +4950,50 @@ ws.onopen = function() {
                         <thead>
                           <tr>
                             <th>Event</th>
+                            <th>Direction</th>
                             <th>Description</th>
                           </tr>
                         </thead>
                         <tbody>
                           <tr>
                             <td><code>task_stream_ready</code></td>
+                            <td>server → client</td>
                             <td>Session is ready — start sending microphone audio</td>
                           </tr>
                           <tr>
                             <td><code>task_stream_end</code></td>
+                            <td>server → client</td>
                             <td>AI finished speaking for this turn — you can speak again</td>
                           </tr>
                           <tr>
                             <td><code>task_cost</code></td>
+                            <td>server → client</td>
                             <td>Cost update per turn — includes <code>turnCost</code>, <code>cumulativeCost</code>, and <code>usage</code> (raw cost breakdown from the model provider)</td>
                           </tr>
                           <tr>
                             <td><code>task_output</code></td>
+                            <td>server → client</td>
                             <td>Transcript messages prefixed with <code>TRANSCRIPT_USER:</code> or <code>TRANSCRIPT_AI:</code></td>
                           </tr>
                           <tr>
                             <td><code>task_end</code></td>
+                            <td>server → client</td>
                             <td>The model process has exited. Post-processing follows — wait for <code>task_postprocess_end</code> to close the connection.</td>
+                          </tr>
+                          <tr>
+                            <td><code>task_postprocess_end</code></td>
+                            <td>server → client</td>
+                            <td>Post-processing complete — safe to close the WebSocket connection</td>
+                          </tr>
+                          <tr>
+                            <td><code>task_session_end</code></td>
+                            <td>client → server</td>
+                            <td>Gracefully end the session</td>
+                          </tr>
+                          <tr>
+                            <td><code>task_session_interrupt</code></td>
+                            <td>client → server</td>
+                            <td>Interrupt AI speech — stops playback and lets the user speak</td>
                           </tr>
                         </tbody>
                       </table>
@@ -5066,6 +5087,25 @@ ws.onopen = function() {
 }</code></pre>
                   </section>
 
+                  <section id="realtime-interrupt">
+                    <h2>Interrupting AI Speech</h2>
+                    <p>While the AI is speaking, you can interrupt it to take over the conversation. Send <code>task_session_interrupt</code>:</p>
+                    <pre><code>{
+  "type": "task_session_interrupt",
+  "tasktoken": "YOUR_SOCKET_ACCESS_TOKEN"
+}</code></pre>
+                    <p>When the server receives this:</p>
+                    <ul>
+                      <li>The AI immediately stops generating audio</li>
+                      <li>A final <code>task_stream_end</code> is sent for the interrupted turn</li>
+                      <li>The session continues — the user can speak and the AI will respond to the next input</li>
+                    </ul>
+                    <p>On the client side, stop audio playback immediately when the user triggers an interrupt. This gives instant feedback (AI voice cuts off) while the server processes the signal.</p>
+                    <div class="info-callout">
+                      <p><strong>Tip:</strong> Some models support natural interruption — if the user starts speaking while the AI is talking, the model may stop on its own. Models whose provider does its own barge-in (the OpenAI realtime family and ElevenLabs) may handle interruption natively, while the explicit <code>task_session_interrupt</code> signal stops the current reply on Wiro-hosted realtime models.</p>
+                    </div>
+                  </section>
+
                   <section id="realtime-end-session">
                     <h2>Ending a Session</h2>
                     <p>To gracefully end a realtime session, send <code>task_session_end</code>:</p>
@@ -5078,7 +5118,7 @@ ws.onopen = function() {
                       <p><strong>Safety:</strong> If the client disconnects without sending <code>task_session_end</code>, the server automatically terminates the session to prevent the pipeline from running indefinitely (and the provider from continuing to charge). Always send <code>task_session_end</code> explicitly for a clean shutdown.</p>
                     </div>
                     <div class="info-callout">
-                      <p><strong>Insufficient balance:</strong> If the wallet runs out of balance during a realtime session, the server automatically stops the session. You will still receive the final <code>task_cost</code> and <code>task_end</code> events.</p>
+                      <p><strong>Insufficient balance:</strong> The session is charged turn by turn as it runs. When a charged turn uses up your available balance (the team wallet's balance when you use a team project's API key), the server stops the session right after that turn. That turn is charged in full, and so is any final usage reported while the session closes, so your balance can end slightly below zero. You still receive the final <code>task_cost</code> and <code>task_end</code> events.</p>
                     </div>
                   </section>
                 </article>
@@ -5088,7 +5128,7 @@ ws.onopen = function() {
                     {
                       "label": "JavaScript",
                       "language": "javascript",
-                      "code": "// Realtime Voice Session — Connect and Handle Events\n\nvar socketToken = 'YOUR_SOCKET_ACCESS_TOKEN';\nvar ws = new WebSocket('wss://socket.wiro.ai/v1');\n\nws.onopen = function() {\n  ws.send(JSON.stringify({ type: 'task_info', tasktoken: socketToken }));\n};\n\nws.onmessage = function(event) {\n  if (event.data instanceof Blob) {\n    handleAudioResponse(event.data);\n    return;\n  }\n\n  var msg = JSON.parse(event.data);\n\n  if (msg.type === 'task_stream_ready') {\n    console.log('Session ready — start microphone');\n    startMicrophone(ws, socketToken);\n  }\n\n  if (msg.type === 'task_stream_end') {\n    console.log('AI finished speaking');\n  }\n\n  if (msg.type === 'task_cost') {\n    console.log('Turn cost:', msg.turnCost,\n      'Total:', msg.cumulativeCost);\n  }\n\n  if (msg.type === 'task_output' &&\n      typeof msg.message === 'string') {\n    if (msg.message.startsWith('TRANSCRIPT_USER:')) {\n      console.log('You:', msg.message.substring(16));\n    }\n    if (msg.message.startsWith('TRANSCRIPT_AI:')) {\n      console.log('AI:', msg.message.substring(14));\n    }\n  }\n\n  if (msg.type === 'task_end') {\n    console.log('Session ended');\n    stopMicrophone();\n    ws.close();\n  }\n};\n\nfunction endSession() {\n  ws.send(JSON.stringify({\n    type: 'task_session_end',\n    tasktoken: socketToken\n  }));\n}"
+                      "code": "// Realtime Voice Session — Connect and Handle Events\n\nvar socketToken = 'YOUR_SOCKET_ACCESS_TOKEN';\nvar ws = new WebSocket('wss://socket.wiro.ai/v1');\n\nws.onopen = function() {\n  ws.send(JSON.stringify({ type: 'task_info', tasktoken: socketToken }));\n};\n\nws.onmessage = function(event) {\n  if (event.data instanceof Blob) {\n    handleAudioResponse(event.data);\n    return;\n  }\n\n  var msg = JSON.parse(event.data);\n\n  if (msg.type === 'task_stream_ready') {\n    console.log('Session ready — start microphone');\n    startMicrophone(ws, socketToken);\n  }\n\n  if (msg.type === 'task_stream_end') {\n    console.log('AI finished speaking');\n  }\n\n  if (msg.type === 'task_cost') {\n    console.log('Turn cost:', msg.turnCost,\n      'Total:', msg.cumulativeCost);\n  }\n\n  if (msg.type === 'task_output' &&\n      typeof msg.message === 'string') {\n    if (msg.message.startsWith('TRANSCRIPT_USER:')) {\n      console.log('You:', msg.message.substring(16));\n    }\n    if (msg.message.startsWith('TRANSCRIPT_AI:')) {\n      console.log('AI:', msg.message.substring(14));\n    }\n  }\n\n  if (msg.type === 'task_end') {\n    console.log('Session ended');\n    stopMicrophone();\n    ws.close();\n  }\n};\n\nfunction interruptAI() {\n  ws.send(JSON.stringify({\n    type: 'task_session_interrupt',\n    tasktoken: socketToken\n  }));\n}\n\nfunction endSession() {\n  ws.send(JSON.stringify({\n    type: 'task_session_end',\n    tasktoken: socketToken\n  }));\n}"
                     },
                     {
                       "label": "Mic Capture",
@@ -5113,7 +5153,7 @@ ws.onopen = function() {
                     {
                       "label": "Format",
                       "language": "json",
-                      "code": "{\n  \"audio_format\": {\n    \"codec\": \"PCM\",\n    \"bit_depth\": \"16-bit Int16\",\n    \"sample_rate\": 24000,\n    \"channels\": 1,\n    \"byte_order\": \"little-endian\"\n  },\n  \"binary_frame\": \"tasktoken|pcm_audio_data\",\n  \"recommended_chunk\": {\n    \"samples\": 4800,\n    \"duration_ms\": 200,\n    \"bytes\": 9600\n  },\n  \"events\": {\n    \"task_stream_ready\": \"Start sending audio\",\n    \"task_stream_end\": \"AI finished speaking\",\n    \"task_cost\": \"Cost per turn + cumulative\",\n    \"task_output\": \"TRANSCRIPT_USER: / TRANSCRIPT_AI:\",\n    \"task_session_end\": \"Send to end session\",\n    \"task_end\": \"Server ended session\"\n  }\n}"
+                      "code": "{\n  \"audio_format\": {\n    \"codec\": \"PCM\",\n    \"bit_depth\": \"16-bit Int16\",\n    \"sample_rate\": 24000,\n    \"channels\": 1,\n    \"byte_order\": \"little-endian\"\n  },\n  \"binary_frame\": \"tasktoken|pcm_audio_data\",\n  \"recommended_chunk\": {\n    \"samples\": 4800,\n    \"duration_ms\": 200,\n    \"bytes\": 9600\n  },\n  \"events\": {\n    \"task_stream_ready\": \"Start sending audio\",\n    \"task_stream_end\": \"AI finished speaking\",\n    \"task_cost\": \"Cost per turn + cumulative\",\n    \"task_output\": \"TRANSCRIPT_USER: / TRANSCRIPT_AI:\",\n    \"task_session_interrupt\": \"Send to interrupt AI speech\",\n    \"task_session_end\": \"Send to end session\",\n    \"task_end\": \"Server ended session\"\n  }\n}"
                     }
                   ]
                 </script>
@@ -5361,7 +5401,7 @@ task_postprocess_end  ← safe to close WebSocket</code></pre>
                       <p><strong>Safety:</strong> If the client disconnects without sending <code>task_session_end</code>, the server automatically terminates the session to prevent the pipeline from running indefinitely (and the provider from continuing to charge). Always send <code>task_session_end</code> explicitly for a clean shutdown.</p>
                     </div>
                     <div class="info-callout">
-                      <p><strong>Insufficient balance:</strong> If the wallet runs out of balance during a realtime session, the server automatically stops the session. You will still receive the final <code>task_cost</code> and <code>task_end</code> events.</p>
+                      <p><strong>Insufficient balance:</strong> The session is charged turn by turn as it runs. When a charged turn uses up your available balance (the team wallet's balance when you use a team project's API key), the server stops the session right after that turn. That turn is charged in full, and so is any final usage reported while the session closes, so your balance can end slightly below zero. You still receive the final <code>task_cost</code> and <code>task_end</code> events.</p>
                     </div>
                   </section>
                 </article>
@@ -5659,7 +5699,7 @@ if (msg.type === 'task_output' &amp;&amp;
                       <p><strong>Safety:</strong> If the client disconnects without sending <code>task_session_end</code>, the server automatically terminates the session to prevent the pipeline from running indefinitely (and the provider from continuing to charge). Always send <code>task_session_end</code> explicitly for a clean shutdown.</p>
                     </div>
                     <div class="info-callout">
-                      <p><strong>Insufficient balance:</strong> If the wallet runs out of balance during a realtime session, the server automatically stops the session. You will still receive the final <code>task_cost</code> and <code>task_end</code> events.</p>
+                      <p><strong>Insufficient balance:</strong> The session is charged turn by turn as it runs. When a charged turn uses up your available balance (the team wallet's balance when you use a team project's API key), the server stops the session right after that turn. That turn is charged in full, and so is any final usage reported while the session closes, so your balance can end slightly below zero. You still receive the final <code>task_cost</code> and <code>task_end</code> events.</p>
                     </div>
                   </section>
                 </article>
@@ -9055,7 +9095,7 @@ pro.credits = starter.credits × tiermultiplier
 </div>
 <p><strong>Headers:</strong> Standard API authentication — <code>x-api-key</code> for key-based projects, or <code>x-nonce</code> + <code>x-signature</code> for signature-based projects (see <a href="/docs/authentication">Authentication</a>). To deploy into a team, use the credentials of a project that belongs to that team: the agent is created in the project's team, and the project's owner must be an admin of that team (otherwise code <code>97</code>). No extra header is needed.</p>
 <blockquote>
-<p><strong>Team agents</strong> — every call runs in the workspace of the project behind your credentials; a <code>teamGUID</code> request header is ignored.</p>
+<p><strong>Team agents</strong> — every call runs in the workspace of the project behind your credentials; workspace headers sent with the request are ignored.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -9075,6 +9115,10 @@ pro.credits = starter.credits × tiermultiplier
 <td>The project's workspace must match the agent's workspace</td>
 </tr>
 <tr>
+<td><code>UserAgent/Message/Delete</code></td>
+<td>For team agents, the project's workspace must match the agent's workspace; it only hides messages sent by the project's owner</td>
+</tr>
+<tr>
 <td><code>UserAgent/CancelSubscription</code>, <code>UserAgent/CreateExtraCreditCheckout</code>, <code>UserAgent/UpgradeTier</code>, <code>UserAgent/RenewSubscription</code>, <code>UserAgent/CreateSubscriptionCheckout</code>, <code>UserAgent/PricingPreview</code>, <code>UserAgent/SkillsApply</code>, <code>UserAgent/SkillToggle</code></td>
 <td>The project's workspace must match the agent's workspace</td>
 </tr>
@@ -9089,6 +9133,10 @@ pro.credits = starter.credits × tiermultiplier
 <tr>
 <td><code>UserAgent/Update</code>, <code>UserAgent/Start</code>, <code>UserAgent/Stop</code></td>
 <td>No workspace match; the project's owner must own the agent or be an admin of its team (plain members get code <code>97</code>)</td>
+</tr>
+<tr>
+<td><code>UserAgent/Realtime/WebStart</code></td>
+<td>The project's owner must have deployed the agent. For a team agent, use that team's project key, or a key whose owner is still a member of the team</td>
 </tr>
 <tr>
 <td><code>UserAgent/MyAgents</code></td>
@@ -11846,6 +11894,33 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 }
 </code></pre>
 <p>If the useragent already has an active subscription, the call rejects with <code>Subscription already active for this useragent. Cancel or modify the existing subscription instead.</code></p>
+<p>If a card checkout for the agent is still open (for example, one started in the Wiro panel), it is closed before the wallet is charged, so the agent is never paid for twice. The call is refused, and nothing is charged, when:</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>A payment for this agent is already being processed. It usually finishes within a minute; refresh to see the subscription.</code></td>
+<td>A card payment for the agent has gone through and its subscription is still being set up. The response also carries <code>checkoutpending: true</code>; call <code>UserAgent/Detail</code> in a minute instead of retrying</td>
+</tr>
+<tr>
+<td><code>A checkout for this agent is already being opened. Try again in a moment.</code></td>
+<td>Another subscription request for the same agent is in progress</td>
+</tr>
+<tr>
+<td><code>We couldn't confirm this agent's previous checkout. Please try again in a minute.</code></td>
+<td>The agent's previous card checkout couldn't be checked</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
 <h4 id="post-useragentstart"><strong>POST</strong> /UserAgent/Start</h4>
 <p>Starts a stopped agent instance. The agent is moved to Queued (status <code>2</code>) and picked up by a worker. Also valid for agents in Error state (<code>5</code>) — Start re-queues them for another launch attempt.</p>
 <div class="docs-param-table">
@@ -11917,7 +11992,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 }
 </code></pre>
 <h4 id="post-useragentdelete"><strong>POST</strong> /UserAgent/Delete</h4>
-<p>Soft-deletes a useragent. Delete stamps <code>deletedat</code> (returned in the response) and unpins the agent; it doesn't erase the agent's history (transactions, credential and custom-skill change history, messages). The agent is then excluded from <code>Detail</code>, <code>MyAgents</code>, <code>Start</code>, <code>Stop</code>, the agent runtime and its scheduled jobs, and <code>TransactionList</code>, <code>CredentialFieldHistory</code>, <code>CustomSkillHistory</code>, <code>Logs</code>, <code>LogsList</code>, <code>LogsFile</code> and <code>LogsDelete</code> return <code>useragent-not-found</code> (code <code>95</code>) for it, so export anything you need before deleting.</p>
+<p>Soft-deletes a useragent. Delete stamps <code>deletedat</code> (returned in the response) and unpins the agent; it doesn't erase the agent's history (transactions, credential and custom-skill change history, messages). The agent is then excluded from <code>Detail</code>, <code>MyAgents</code>, <code>Start</code>, <code>Stop</code>, the agent runtime and its scheduled jobs, and <code>TransactionList</code>, <code>CredentialFieldHistory</code>, <code>CustomSkillHistory</code>, <code>Logs</code>, <code>LogsList</code>, <code>LogsFile</code>, <code>LogsDelete</code>, <code>Message/History</code>, <code>Message/Sessions</code>, <code>Message/DeleteSession</code>, <code>Message/RenameSession</code> and <code>Message/Delete</code> return <code>useragent-not-found</code> (code <code>95</code>) for it, so export anything you need before deleting.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -11944,10 +12019,10 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <h5 id="guards-run-in-this-order">Guards (run in this order)</h5>
 <ol>
 <li><strong>Access</strong> — owner of the row or a team admin of the UA's team. Members get <code>useragent-team-admin-required</code> (code <code>97</code>); strangers get <code>useragent-access-denied</code> (code <code>96</code>); unknown / already-deleted rows get <code>useragent-not-found</code> (code <code>95</code>).</li>
-<li><strong>Status</strong> — must be in a clean terminal state: <code>0</code> (Stopped), <code>5</code> (Error), or <code>6</code> (Setup Required). Anything in flight (<code>1</code> Stopping, <code>2</code> Queued, <code>3</code> Starting, <code>4</code> Running) is rejected with <code>useragent-delete-running</code> — Stop the agent first and wait for status <code>0</code>.</li>
+<li><strong>Status</strong> — must be in a clean terminal state: <code>0</code> (Stopped), <code>5</code> (Error), or <code>6</code> (Setup Required); <code>5</code> passes only once the agent no longer holds its runtime. Anything in flight (<code>1</code> Stopping, <code>2</code> Queued, <code>3</code> Starting, <code>4</code> Running) is rejected with <code>useragent-delete-running</code>, and so is an errored agent that still holds its runtime — Stop the agent first and wait for status <code>0</code>.</li>
 <li><strong>Active subscription</strong> — a subscription with <code>status: "active"</code> blocks delete (<code>useragent-delete-sub-active</code>). <code>CancelSubscription</code> doesn't lift this right away: the subscription stays <code>active</code> until its period ends (<code>cancelsAt</code>) and is then marked expired. An expired, cancelled or refunded subscription, or none at all, passes.</li>
 </ol>
-<p>Delete is safe to repeat: calling it again on an agent that's already deleted normally returns <code>useragent-not-found</code> (code <code>95</code>, as in guard 1), so treat that code on a retry as already deleted. The stored <code>deletedat</code> never changes.</p>
+<p>Delete is safe to repeat: calling it again on an agent that's already deleted returns <code>useragent-not-found</code> (code <code>95</code>, as in guard 1), so treat that code on a retry as already deleted. The stored <code>deletedat</code> never changes.</p>
 <h5 id="response_19">Response</h5>
 <pre><code class="language-json">{
   &quot;result&quot;: true,
@@ -11983,7 +12058,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </tr>
 <tr>
 <td><code>useragent-delete-running</code></td>
-<td>Status is <code>1</code> / <code>2</code> / <code>3</code> / <code>4</code> — call <code>Stop</code> first and retry once status reaches <code>0</code></td>
+<td>Status is <code>1</code> / <code>2</code> / <code>3</code> / <code>4</code>, or <code>5</code> while the agent still holds its runtime — call <code>Stop</code> first and retry once status reaches <code>0</code></td>
 </tr>
 <tr>
 <td><code>useragent-delete-sub-active</code></td>
@@ -12508,7 +12583,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 }
 </code></pre>
 <h3 id="voice-realtime">Voice &amp; Realtime</h3>
-<p>Endpoints for browser-based realtime voice sessions plus the unified call history for both Web and Twilio channels. Per-channel setup, JWT contracts, and the WebSocket protocol live on the dedicated pages:</p>
+<p>Endpoints for browser-based realtime voice sessions plus the unified call history for both Web and Twilio channels. Per-channel setup, session handles, and the WebSocket protocol live on the dedicated pages:</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -12536,7 +12611,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </div>
 </div>
 <h4 id="post-useragentrealtimewebstart"><strong>POST</strong> /UserAgent/Realtime/WebStart</h4>
-<p>Starts a browser-embedded realtime voice session with the agent. Returns a short-lived JWT (5 min) and the WebSocket URL the browser opens to stream microphone audio. The browser presents the JWT as the first WS message (<code>{ type: "session_start", sessionToken }</code>); the WebSocket path itself doesn't carry the sessionId.</p>
+<p>Starts a browser-embedded realtime voice session with the agent. Returns two opaque one-time handles, valid for 5 minutes (until <code>expiresAt</code>), and the WebSocket URL the browser opens to stream microphone audio. The browser presents <code>sessionToken</code> as the first WS message (<code>{ type: "session_start", sessionToken }</code>), and <code>cancelToken</code> is for <code>Realtime/Cancel</code>. The WebSocket path carries no session identifier.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -12574,10 +12649,10 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <h5 id="response_27">Response</h5>
 <pre><code class="language-json">{
   &quot;result&quot;: true,
-  &quot;errors&quot;: [],
-  &quot;sessionId&quot;: &quot;vws-9d2d4b6e-3f6b-4c1a-8a7e-1f5a0b2c3d4e&quot;,
+  &quot;correlationId&quot;: &quot;voice_3fK9xQ2LmVb7TzR1pWc8NdYa&quot;,
   &quot;wsUrl&quot;: &quot;wss://socket.wiro.ai/v1/AgentRealtime/Web&quot;,
-  &quot;sessionToken&quot;: &quot;&lt;5-min HS256 JWT&gt;&quot;,
+  &quot;sessionToken&quot;: &quot;&lt;opaque one-time session handle&gt;&quot;,
+  &quot;cancelToken&quot;: &quot;&lt;opaque one-time cancel handle&gt;&quot;,
   &quot;expiresAt&quot;: 1748212800000,
   &quot;estimatedReadyMs&quot;: 8000
 }
@@ -12603,6 +12678,14 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <td>Missing useragent reference.</td>
 </tr>
 <tr>
+<td><code>This agent belongs to a team. Switch to the team context to access it.</code></td>
+<td>Team agent called from a personal workspace or personal project key by a caller who is no longer a member of the agent's team.</td>
+</tr>
+<tr>
+<td><code>This agent belongs to a different team.</code></td>
+<td>Team agent called from another team's workspace or project key by a caller who is no longer a member of the agent's team.</td>
+</tr>
+<tr>
 <td><code>Agent is not running</code></td>
 <td>Useragent is not in <code>status: 4</code>.</td>
 </tr>
@@ -12623,7 +12706,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </div>
 </div>
 <h4 id="post-useragentrealtimecancel"><strong>POST</strong> /UserAgent/Realtime/Cancel</h4>
-<p>Cancels a <code>WebStart</code>-initiated session <strong>before the WebSocket handshake</strong>. Use it when the browser can't progress past the mic-permission prompt, or the user changes their mind. Idempotent — repeated calls return the same shape.</p>
+<p>Cancels a <code>WebStart</code>-initiated session <strong>before the WebSocket handshake</strong>. Use it when the browser can't progress past the mic-permission prompt, or the user changes their mind. The cancel handle works once; reusing it returns <code>invalid token</code>.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -12637,23 +12720,17 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </thead>
 <tbody>
 <tr>
-<td><code>sessionId</code></td>
+<td><code>cancelToken</code></td>
 <td>string</td>
 <td>Yes</td>
-<td>The <code>sessionId</code> returned by <code>WebStart</code>.</td>
-</tr>
-<tr>
-<td><code>sessionToken</code></td>
-<td>string</td>
-<td>Yes</td>
-<td>The same JWT <code>WebStart</code> returned. Proves the caller actually owns this <code>sessionId</code> — the server verifies the signature and checks <code>payload.sessionId === body.sessionId</code>.</td>
+<td>The <code>cancelToken</code> returned by <code>WebStart</code>. One-time, valid until <code>expiresAt</code>; only the user who called <code>WebStart</code> can use it.</td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
 <h5 id="response_28">Response</h5>
-<pre><code class="language-json">{ &quot;result&quot;: true, &quot;sessionId&quot;: &quot;vws-9d2d4b6e-...&quot;, &quot;cancelled&quot;: true }
+<pre><code class="language-json">{ &quot;result&quot;: true, &quot;correlationId&quot;: &quot;voice_3fK9xQ2LmVb7TzR1pWc8NdYa&quot;, &quot;cancelled&quot;: true }
 </code></pre>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -12667,15 +12744,15 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <tbody>
 <tr>
 <td>400</td>
-<td><code>sessionId and sessionToken required</code></td>
+<td><code>cancelToken required</code></td>
 </tr>
 <tr>
 <td>401</td>
-<td><code>invalid token</code> (signature mismatch, expired, malformed)</td>
+<td><code>invalid token</code> (unknown, already used or expired handle)</td>
 </tr>
 <tr>
 <td>403</td>
-<td><code>sessionId mismatch</code> (JWT claim doesn't match body)</td>
+<td><code>access denied</code> (the handle was issued to another user)</td>
 </tr>
 </tbody>
 </table>
@@ -12954,6 +13031,13 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <li>To reverse the cancellation <strong>before</strong> the period ends, call <code>POST /UserAgent/RenewSubscription</code> — it clears the flag without charging the wallet again.</li>
 <li>When the period actually ends, the daily cron marks the subscription <code>"expired"</code> and stops the agent (<code>status: 0</code>). At that point the user must call <code>POST /UserAgent/RenewSubscription</code> (or <code>CreateSubscriptionCheckout</code> for a fresh sub) to continue.</li>
 </ul>
+<h5 id="cancel-team-agents-paid-by-card">Team agents paid by card</h5>
+<p>A team agent subscribed by card from the Wiro panel is billed to the card of the member who subscribed. For that plan the call schedules the card subscription to end at the end of the current period instead:</p>
+<ul>
+<li><code>cancelsAt</code> is the end of the current period. The agent keeps running until then, and the subscription ends at that point.</li>
+<li><code>subscription.pendingdowngrade</code> isn't set, and <code>RenewSubscription</code> can't undo the cancellation. Only the member whose card pays for the plan can undo it, from their own billing portal.</li>
+<li>Only team admins and the organization owner can cancel it. Other members get code <code>97</code>, including the member who deployed the agent.</li>
+</ul>
 <p><strong>Common errors:</strong></p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -12975,7 +13059,15 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </tr>
 <tr>
 <td><code>Only a team admin can perform this action on a team-owned agent.</code></td>
-<td>Caller is a member of the agent's team but not a team admin (code <code>97</code>)</td>
+<td>Caller is a member of the agent's team but not a team admin (code <code>97</code>). For a team agent paid by card, this includes the member who deployed the agent</td>
+</tr>
+<tr>
+<td><code>A switch to prepaid billing is already scheduled for this plan.</code></td>
+<td>A team agent's card plan that is already set to move to wallet billing at the end of the period</td>
+</tr>
+<tr>
+<td><code>We couldn't schedule the cancellation. Please try again in a minute.</code></td>
+<td>A team agent's card plan, when the change couldn't be confirmed with the card payment provider</td>
 </tr>
 </tbody>
 </table>
@@ -13087,6 +13179,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <li>Debits <code>amount</code> (the snapshot <code>monthlypriceusd</code>) from the wallet (caller's personal wallet, or the agent's team wallet if the agent is team-scoped).</li>
 <li>Zeroes <code>usedcredits</code> and stamps the new <code>creditperiod</code>. Existing extra credits are preserved.</li>
 <li>If the agent was in <code>status: 0</code> (Stopped) or <code>5</code> (Error), it's auto-queued back to <code>2</code> (Queued) — the daemon picks it up on the next cycle, no extra <code>Start</code> call needed. Statuses <code>1</code>/<code>2</code>/<code>3</code>/<code>4</code> are mid-flight and the daemon settles them on its own.</li>
+<li>A card checkout still open for the agent (for example, one started in the Wiro panel) is closed before the wallet is charged, so the agent is never paid for twice.</li>
 </ul>
 <p><strong>Common errors:</strong></p>
 <div class="docs-param-table">
@@ -13114,6 +13207,18 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <tr>
 <td><code>Insufficient wallet balance. Required: $X.XX, Available: $Y.YY</code></td>
 <td>Wallet (personal or team) can't cover the renewal price</td>
+</tr>
+<tr>
+<td><code>A payment for this agent is already being processed. It usually finishes within a minute; refresh to see the subscription.</code></td>
+<td>A card payment for the agent has gone through and its subscription is still being set up; nothing is charged. The response also carries <code>checkoutpending: true</code></td>
+</tr>
+<tr>
+<td><code>A checkout for this agent is already being opened. Try again in a moment.</code></td>
+<td>Another subscription request for the same agent is in progress; nothing is charged</td>
+</tr>
+<tr>
+<td><code>We couldn't confirm this agent's previous checkout. Please try again in a minute.</code></td>
+<td>The agent's previous card checkout couldn't be checked; nothing is charged</td>
 </tr>
 </tbody>
 </table>
@@ -13246,7 +13351,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </tr>
 <tr>
 <td><code>Agent is in error state, use Start to retry</code></td>
-<td>Stop called on an agent with status <code>5</code></td>
+<td>Stop called on an agent with status <code>5</code> that has nothing left to stop; an errored agent that still holds its runtime is accepted and moves to <code>1</code> (Stopping)</td>
 </tr>
 <tr>
 <td><code>Duplicate deploy: an identical agent ("&lt;title&gt;") was already deployed Ns ago. Open the existing one in your panel, or wait a few seconds and retry.</code></td>
@@ -13307,6 +13412,10 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <tr>
 <td><code>Agent not found or access denied</code></td>
 <td>Message endpoint with invalid useragentguid</td>
+</tr>
+<tr>
+<td><code>User agent not found</code> (code <code>95</code>)</td>
+<td><code>Message/History</code>, <code>Message/Sessions</code>, <code>Message/DeleteSession</code>, <code>Message/RenameSession</code> or <code>Message/Delete</code> called for an agent that has been deleted</td>
 </tr>
 <tr>
 <td><code>Agent is not running. Current status: {n}</code></td>
@@ -14882,7 +14991,7 @@ print(response.body);
 <tr>
 <td><code>messageguid</code></td>
 <td>string</td>
-<td>The message to delete. Must belong to the agent identified by <code>useragentguid</code>, and its <code>uuid</code> must be yours: any other <code>messageguid</code> (for example, another team member's message in a shared session) is skipped silently and the call still returns <code>result: true</code>.</td>
+<td>The message to delete. Must belong to the agent identified by <code>useragentguid</code>, and its <code>uuid</code> must be yours: any other <code>messageguid</code> (for example, another team member's message in a shared session) is skipped silently and the call still returns <code>result: true</code>. On a team agent, any active member of the agent's team can call this from the team's workspace; it still hides only your own messages.</td>
 </tr>
 <tr>
 <td><code>side</code></td>
@@ -21638,7 +21747,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
                         </table>
                       </div>
                     </div>
-                    <p><strong>Authorization:</strong> the agent's owner or a team admin of the agent's team (plain team members are rejected with code <code>97</code>). No extra header is needed.</p>
+                    <p><strong>Authorization:</strong> the agent's owner, a team admin of the agent's team or the organization owner (plain team members are rejected with code <code>97</code>). No extra header is needed.</p>
 
                     <h3>Request</h3>
                     <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
@@ -30321,7 +30430,7 @@ base64 -b 0 play-service-account.json &gt; play-sa.b64</code></pre>
                     <h2>Setup</h2>
 
                     <h3>Step 1: Start a session — <code>POST /UserAgent/Realtime/WebStart</code></h3>
-                    <p>Issues a short-lived JWT (5 min TTL) bound to a fresh <code>sessionId</code> and to your agent. The browser presents that JWT to the WebSocket on first connect — no API key ever needs to reach the browser.</p>
+                    <p>Issues two opaque, one-time handles, both valid until <code>expiresAt</code> (5 minutes after issue): a <code>sessionToken</code> the browser presents to the WebSocket on first connect, and a <code>cancelToken</code> for <code>Realtime/Cancel</code>. No API key ever needs to reach the browser.</p>
                     <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/Realtime/WebStart" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
@@ -30343,7 +30452,7 @@ base64 -b 0 play-service-account.json &gt; play-sa.b64</code></pre>
                               <td><code>useragentguid</code></td>
                               <td>string</td>
                               <td>Yes</td>
-                              <td>Useragent instance guid. Must be owned by the caller (or a team agent the caller is a member of), must be in <code>status: 4</code> (Running), and must have <code>util-web-channel</code> enabled.</td>
+                              <td>Useragent instance guid. Must be an agent you deployed (for a team agent, call with that team's project key or workspace, or remain an active member of the team), must be in <code>status: 4</code> (Running), and must have <code>util-web-channel</code> enabled.</td>
                             </tr>
                             <tr>
                               <td><code>session_metadata</code></td>
@@ -30370,9 +30479,10 @@ base64 -b 0 play-service-account.json &gt; play-sa.b64</code></pre>
                     <p>Response:</p>
                     <pre><code class="language-json">{
   "result": true,
-  "sessionId": "vws-9d2d4b6e-3f6b-4c1a-8a7e-1f5a0b2c3d4e",
+  "correlationId": "voice_3fK9xQ2LmVb7TzR1pWc8NdYa",
   "wsUrl": "wss://socket.wiro.ai/v1/AgentRealtime/Web",
-  "sessionToken": "eyJwYXlsb2FkIjoidnNidS05ZDJkLi4ufQ.aGV4LWhtYWMtc2lnbmF0dXJl",
+  "sessionToken": "&lt;opaque one-time session handle&gt;",
+  "cancelToken": "&lt;opaque one-time cancel handle&gt;",
   "expiresAt": 1748212800000,
   "estimatedReadyMs": 8000
 }</code></pre>
@@ -30384,8 +30494,8 @@ base64 -b 0 play-service-account.json &gt; play-sa.b64</code></pre>
                           </thead>
                           <tbody>
                             <tr>
-                              <td><code>sessionId</code></td>
-                              <td>Opaque <code>vws-&lt;uuid-v4&gt;</code> identifier. Use it on <code>Realtime/Cancel</code>; the bridge also resolves it from the JWT after WebSocket connect.</td>
+                              <td><code>correlationId</code></td>
+                              <td>Random public identifier for this session. Use it as the audio frame prefix (Step 2); server audio frames and the <code>Realtime/Cancel</code> response carry it too.</td>
                             </tr>
                             <tr>
                               <td><code>wsUrl</code></td>
@@ -30393,11 +30503,15 @@ base64 -b 0 play-service-account.json &gt; play-sa.b64</code></pre>
                             </tr>
                             <tr>
                               <td><code>sessionToken</code></td>
-                              <td>HS256-signed bearer token. <strong>Two-segment, JWT-like</strong> (<code>&lt;base64url(payload)&gt;.&lt;base64url(hmac)&gt;</code>) — there is no header segment, so standard JWT libraries (<code>jsonwebtoken</code>, <code>jose</code>, <code>PyJWT</code>) reject it as malformed. Decode the first segment with <code>base64url → JSON.parse</code> if you need to inspect it. Payload: <code>{ sessionId, useragentguid, uuid, callerInfo, rateKey, iat, exp }</code> — <code>uuid</code> is the <strong>useragent's</strong> uuid (not the calling user's), <code>iat</code>/<code>exp</code> are auto-injected, TTL 300 s. Send the whole token as the <strong>first</strong> WebSocket message body; never reuse after the WS handshake.</td>
+                              <td>Opaque one-time handle, valid until <code>expiresAt</code>; don't parse it. Send it as the <strong>first</strong> WebSocket message (<code>{ type: "session_start", sessionToken }</code>); it works only once.</td>
+                            </tr>
+                            <tr>
+                              <td><code>cancelToken</code></td>
+                              <td>Opaque one-time handle for <code>Realtime/Cancel</code> (Step 3), valid until <code>expiresAt</code>. Only the user who called <code>WebStart</code> can use it.</td>
                             </tr>
                             <tr>
                               <td><code>expiresAt</code></td>
-                              <td>Wallclock JWT expiry in ms since epoch. After this point the browser must call <code>WebStart</code> again for a fresh token.</td>
+                              <td>Expiry of both handles, in ms since epoch (5 minutes after issue). After this point, call <code>WebStart</code> again for fresh handles.</td>
                             </tr>
                             <tr>
                               <td><code>estimatedReadyMs</code></td>
@@ -30410,14 +30524,14 @@ base64 -b 0 play-service-account.json &gt; play-sa.b64</code></pre>
                     <div class="info-callout"><p>The endpoint also kicks off an asynchronous <strong>agent prep</strong> so the realtime model has the agent's system prompt + memory warm by the time the browser finishes the WS handshake. That's why a separate <code>Realtime/Cancel</code> call exists — if the browser never makes it to the WS step (mic permission denied, user changed their mind), Cancel tears the prep down immediately instead of leaving the warmed session to idle until the cleanup guard fires.</p></div>
 
                     <h3>Step 2: Connect the WebSocket</h3>
-                    <p>Open a WebSocket to the returned <code>wsUrl</code> and send the <code>session_start</code> JSON frame <strong>within 10 seconds</strong>. After that, frame microphone audio as 24 kHz mono PCM int16 with a <code>&lt;sessionId&gt;|</code> text prefix. <strong>Server-sent binary audio frames use the same prefix shape — you must strip it before feeding the bytes to Web Audio.</strong></p>
+                    <p>Open a WebSocket to the returned <code>wsUrl</code> and send the <code>session_start</code> JSON frame <strong>within 10 seconds</strong>. After that, frame microphone audio as 24 kHz mono PCM int16 with a <code>&lt;correlationId&gt;|</code> text prefix. <strong>Server-sent binary audio frames use the same prefix shape — you must strip it before feeding the bytes to Web Audio.</strong></p>
                     <p>The example below boots a working voice call end-to-end: it acquires the mic, mounts an <code>AudioWorklet</code> that emits 24 kHz Int16 PCM, opens the WebSocket, presents the token, handles every server frame the bridge actually sends, and plays the agent's audio back through <code>AudioContext</code>. Drop it into a page paired with the worklet at <code>audio-processor.js</code> shown below.</p>
                     <pre><code class="language-javascript">// ===== voice-client.js — runs in the browser =====
 
 // 1. POST /UserAgent/Realtime/WebStart from YOUR backend, then pass the
-//    sessionId / wsUrl / sessionToken down to the page. Never expose your
-//    Wiro API key to the page.
-const { sessionId, wsUrl, sessionToken } = await fetch("/api/voice/start").then((r) =&gt; r.json());
+//    correlationId / wsUrl / sessionToken / cancelToken down to the page.
+//    Never expose your Wiro API key to the page.
+const { correlationId, wsUrl, sessionToken, cancelToken } = await fetch("/api/voice/start").then((r) =&gt; r.json());
 
 const audioCtx = new AudioContext({ sampleRate: 24000 });
 await audioCtx.audioWorklet.addModule("/audio-processor.js");
@@ -30496,7 +30610,7 @@ async function startMicCapture() {
   workletNode = new AudioWorkletNode(audioCtx, "pcm-24k-processor");
   source.connect(workletNode);
 
-  const sessionMarker = new TextEncoder().encode(sessionId);
+  const sessionMarker = new TextEncoder().encode(correlationId);
   workletNode.port.onmessage = (e) =&gt; {
     const pcmBytes = new Uint8Array(e.data);
     const frame = new Uint8Array(sessionMarker.length + 1 + pcmBytes.byteLength);
@@ -30541,13 +30655,12 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                     <div class="info-callout"><p><strong>Sample rate trick.</strong> Browsers treat <code>getUserMedia({audio:{sampleRate:24000}})</code> as a hint, not a guarantee — most capture at 48 kHz. The <code>AudioContext({sampleRate: 24000})</code> wrapper does the resampling for you on the <code>MediaStreamSource → AudioWorkletNode</code> graph, so the worklet always sees 24 kHz Float32 input. If you create the context at any other rate you'll ship the wrong sample rate and the agent will sound chipmunked or slowed.</p></div>
 
                     <h3>Step 3 (optional): Cancel a stale session — <code>POST /UserAgent/Realtime/Cancel</code></h3>
-                    <p>If the browser can't progress past <code>WebStart</code> (mic permission denied, user navigated away, tab crashed), call <code>Realtime/Cancel</code> so the server-side agent prep tears down immediately instead of waiting on the 5-minute cleanup guard. Idempotent — safe to call from a beacon / <code>pagehide</code> handler.</p>
+                    <p>If the browser can't progress past <code>WebStart</code> (mic permission denied, user navigated away, tab crashed), call <code>Realtime/Cancel</code> so the server-side agent prep tears down immediately instead of waiting on the 5-minute cleanup guard. Send the <code>cancelToken</code> from <code>WebStart</code>, authenticated as the user who called <code>WebStart</code>; each cancel handle works once.</p>
                     <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/Realtime/Cancel" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "sessionId": "vws-9d2d4b6e-3f6b-4c1a-8a7e-1f5a0b2c3d4e",
-    "sessionToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    "cancelToken": "CANCEL_TOKEN_FROM_WEBSTART"
   }'</code></pre>
                     <div class="docs-param-table">
                       <div class="docs-param-table-wrapper">
@@ -30557,23 +30670,17 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                           </thead>
                           <tbody>
                             <tr>
-                              <td><code>sessionId</code></td>
+                              <td><code>cancelToken</code></td>
                               <td>string</td>
                               <td>Yes</td>
-                              <td>The <code>sessionId</code> returned by <code>WebStart</code>.</td>
-                            </tr>
-                            <tr>
-                              <td><code>sessionToken</code></td>
-                              <td>string</td>
-                              <td>Yes</td>
-                              <td>The same JWT <code>WebStart</code> returned. Used to prove the caller actually owns this <code>sessionId</code> — server verifies the signature with <code>BRIDGE_JWT_SECRET</code> and checks <code>payload.sessionId === body.sessionId</code>.</td>
+                              <td>The <code>cancelToken</code> returned by <code>WebStart</code>. One-time, valid until <code>expiresAt</code>; only the user who called <code>WebStart</code> can use it.</td>
                             </tr>
                           </tbody>
                         </table>
                       </div>
                     </div>
                     <p>Response:</p>
-                    <pre><code class="language-json">{ "result": true, "sessionId": "vws-9d2d4b6e-...", "cancelled": true }</code></pre>
+                    <pre><code class="language-json">{ "result": true, "correlationId": "voice_3fK9xQ2LmVb7TzR1pWc8NdYa", "cancelled": true }</code></pre>
                     <div class="docs-param-table">
                       <div class="docs-param-table-wrapper">
                         <table>
@@ -30583,24 +30690,24 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                           <tbody>
                             <tr>
                               <td>400</td>
-                              <td><code>sessionId and sessionToken required</code></td>
-                              <td>Either field missing.</td>
+                              <td><code>cancelToken required</code></td>
+                              <td><code>cancelToken</code> is missing.</td>
                             </tr>
                             <tr>
                               <td>401</td>
                               <td><code>invalid token</code></td>
-                              <td>JWT signature mismatch, expired, or malformed.</td>
+                              <td>Unknown, already used or expired handle.</td>
                             </tr>
                             <tr>
                               <td>403</td>
-                              <td><code>sessionId mismatch</code></td>
-                              <td>The JWT's <code>sessionId</code> claim doesn't match the body's <code>sessionId</code>.</td>
+                              <td><code>access denied</code></td>
+                              <td>The handle was issued to another user.</td>
                             </tr>
                           </tbody>
                         </table>
                       </div>
                     </div>
-                    <div class="info-callout"><p>No-op when the session is already cleaned up (Bridge teardown, prior Cancel, or 5-min cleanup guard). The endpoint always returns <code>cancelled: true</code> on success — there's no separate "already cleaned" signal.</p></div>
+                    <div class="info-callout"><p>No-op when the session is already cleaned up (bridge teardown or the 5-min cleanup guard). The endpoint always returns <code>cancelled: true</code> on success — there's no separate "already cleaned" signal. Reusing a cancel handle returns <code>invalid token</code>.</p></div>
                   </section>
 
                   <section id="websocket-protocol">
@@ -30608,8 +30715,8 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                     <p>The browser bridge lives at <code>wss://&lt;env&gt;/v1/AgentRealtime/Web</code>. The same prefix hosts the Twilio Media Streams handler at <code>/v1/AgentRealtime/Twilio</code>, but you never call that directly — Twilio's auto-configured <code>VoiceUrl</code> points at it.</p>
 
                     <h3>First message (text frame)</h3>
-                    <pre><code class="language-json">{ "type": "session_start", "sessionToken": "&lt;jwt-from-WebStart&gt;" }</code></pre>
-                    <p>Must arrive within 10 seconds of the WebSocket <code>open</code> event. Late or malformed → the server closes the socket with no further messages. The JWT verify resolves the <code>sessionId</code> server-side; you never need to put <code>sessionId</code> in the URL.</p>
+                    <pre><code class="language-json">{ "type": "session_start", "sessionToken": "&lt;sessionToken-from-WebStart&gt;" }</code></pre>
+                    <p>Must arrive within 10 seconds of the WebSocket <code>open</code> event. Late or malformed → the server closes the socket with no further messages. The handle works once and only until <code>expiresAt</code>; an unknown, used or expired handle closes the socket the same way. The URL carries no session identifier.</p>
 
                     <h3>Audio frames (binary, both directions)</h3>
                     <div class="docs-param-table">
@@ -30625,7 +30732,7 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                             </tr>
                             <tr>
                               <td>Frame</td>
-                              <td><code>&lt;sessionId&gt;|&lt;binary-pcm&gt;</code> — UTF-8 text prefix (the same <code>vws-&lt;uuid&gt;</code> returned by <code>WebStart</code>) + <code>|</code> (0x7C) separator + raw PCM bytes. Same shape as the <a href="/docs/realtime-voice-conversation#audio-format">Realtime Voice Conversation</a> channel. <strong>Both directions</strong> use this prefix — when you receive a binary frame from the server you must locate the first <code>0x7C</code> byte and slice everything after it as <code>Int16Array</code>.</td>
+                              <td><code>&lt;correlationId&gt;|&lt;binary-pcm&gt;</code> — UTF-8 text prefix (the <code>correlationId</code> returned by <code>WebStart</code>) + <code>|</code> (0x7C) separator + raw PCM bytes. Same shape as the <a href="/docs/realtime-voice-conversation#audio-format">Realtime Voice Conversation</a> channel. <strong>Both directions</strong> use this prefix — when you receive a binary frame from the server you must locate the first <code>0x7C</code> byte and slice everything after it as <code>Int16Array</code>.</td>
                             </tr>
                           </tbody>
                         </table>
@@ -30685,7 +30792,7 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                             </tr>
                             <tr>
                               <td>Binary frame</td>
-                              <td>Agent audio chunk — <code>&lt;sessionId&gt;|&lt;int16-pcm-24khz-mono&gt;</code>. Strip the prefix and feed the PCM tail to Web Audio.</td>
+                              <td>Agent audio chunk — <code>&lt;correlationId&gt;|&lt;int16-pcm-24khz-mono&gt;</code>. Strip the prefix and feed the PCM tail to Web Audio.</td>
                             </tr>
                             <tr>
                               <td><code>{ "type": "session_end", "reason": "...", "message"?: "...", "error"?: "..." }</code></td>
@@ -30698,7 +30805,7 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
 
                     <h3>Session lifetime</h3>
                     <ul>
-                      <li>The JWT is valid for <strong>300 seconds</strong> from issue. Conversations that need to live longer simply call <code>WebStart</code> again before the JWT expires — there's no in-band refresh.</li>
+                      <li>The <code>sessionToken</code> handle is valid for <strong>300 seconds</strong> from issue (until <code>expiresAt</code>) and works once, so the browser must send <code>session_start</code> before then. To connect again, call <code>WebStart</code> for fresh handles — there's no in-band refresh.</li>
                       <li>The <code>WebStart</code>-armed 5-minute pre-WS cleanup guard is cancelled the moment the bridge accepts your <code>session_start</code> frame, so once the call is live you only ever pay for active audio.</li>
                     </ul>
                   </section>
@@ -30737,7 +30844,19 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                               <td>403</td>
                               <td><code>96</code></td>
                               <td><code>useragent-access-denied</code></td>
-                              <td>Caller doesn't own the useragent and isn't a member of its team.</td>
+                              <td>Caller didn't deploy the useragent.</td>
+                            </tr>
+                            <tr>
+                              <td>200</td>
+                              <td>—</td>
+                              <td><code>This agent belongs to a team. Switch to the team context to access it.</code></td>
+                              <td>Team agent called from a personal workspace or personal project key by a caller who is no longer a member of the agent's team.</td>
+                            </tr>
+                            <tr>
+                              <td>200</td>
+                              <td>—</td>
+                              <td><code>This agent belongs to a different team.</code></td>
+                              <td>Team agent called from another team's workspace or project key by a caller who is no longer a member of the agent's team.</td>
                             </tr>
                             <tr>
                               <td>200</td>
@@ -30779,8 +30898,8 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                     <h2>Multi-Tenant Architecture</h2>
                     <p>Every WebStart call is scoped by:</p>
                     <ul>
-                      <li><strong><code>sessionId</code></strong> (<code>vws-&lt;uuid-v4&gt;</code>) — opaque, never reused. Carried inside the JWT, never in the WS URL — same "single endpoint, first-message token" pattern Wiro uses for its native realtime models.</li>
-                      <li><strong><code>useragentguid</code> + caller uuid</strong> — written into the JWT payload so the bridge can authorise the connection without re-hitting the DB.</li>
+                      <li><strong>One-time handles</strong> — <code>sessionToken</code> and <code>cancelToken</code> are opaque, random and single-use, valid until <code>expiresAt</code>. Nothing readable travels in the handle or the WS URL — same "single endpoint, first-message token" pattern Wiro uses for its native realtime models.</li>
+                      <li><strong><code>useragentguid</code> + caller uuid</strong> — kept on the server behind the handle, never sent to the browser; the bridge re-checks the agent when the browser connects.</li>
                       <li><strong>Origin allow-list</strong> (Bearer path only) — defence-in-depth against a stolen localStorage Bearer being weaponised from a third-party site.</li>
                       <li><strong>Per-operator rate-limit key</strong> — hashed, so logs never carry the raw operator identity.</li>
                       <li><strong>Channel-isolated upgrade handlers</strong> — <code>/v1/AgentRealtime/Web</code> and <code>/v1/AgentRealtime/Twilio</code> are distinct upgrade handlers on the same process; one cannot read the other's session state. Adding a new provider in the future is a single new handler under the same <code>/v1/AgentRealtime/&lt;NewChannel&gt;</code> prefix — no nginx config churn.</li>
@@ -32848,7 +32967,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/google/nano-banana" \
                         </table>
                       </div>
                     </div>
-                    <p>A matching context is required, but it is not always enough. Any active team member can message a team agent and use its conversation endpoints. Subscription and billing actions (<code>CreateExtraCreditCheckout</code>, <code>CancelSubscription</code>, <code>RenewSubscription</code>, <code>UpgradeTier</code>, <code>CreateSubscriptionCheckout</code>, <code>SkillsApply</code>, <code>SkillToggle</code>) are limited to the member who deployed the agent and team admins. Other members get code <code>97</code>: "Only a team admin can perform this action on a team-owned agent." With an API key, these checks apply to the user who created the key's project.</p>
+                    <p>A matching context is required, but it is not always enough. Any active team member can message a team agent and use its conversation endpoints. Subscription and billing actions (<code>CreateSubscriptionCheckout</code>, <code>RenewSubscription</code>, <code>CancelSubscription</code>, <code>UpgradeTier</code>, <code>CreateExtraCreditCheckout</code>) are limited to the member who deployed the agent, team admins and the organization owner. The organization owner can pay for a team agent by card or from the team wallet. Cancelling a team agent's card plan needs a team admin or the organization owner. <code>SkillsApply</code> and <code>SkillToggle</code> are limited to the member who deployed the agent and team admins. Other members get code <code>97</code>: "Only a team admin can perform this action on a team-owned agent." With an API key, these checks apply to the user who created the key's project. Card checkouts for a team agent are refused on that path: <code>CreateSubscriptionCheckout</code>, <code>UpgradeTier</code> and <code>CreateExtraCreditCheckout</code> would open the session on the key project creator's own saved billing details, so pay from the team wallet (<code>useprepaid: true</code>) or use the dashboard.</p>
 
                     <h3>Protected Endpoints</h3>
                     <p>The following agent endpoints enforce context guards:</p>
@@ -32858,6 +32977,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/google/nano-banana" \
                       <li><code>UserAgent/Message/Sessions</code> — list conversation sessions</li>
                       <li><code>UserAgent/Message/DeleteSession</code> — delete a conversation</li>
                       <li><code>UserAgent/Message/RenameSession</code> — rename a conversation</li>
+                      <li><code>UserAgent/Message/Delete</code> — hide your own messages</li>
                       <li><code>UserAgent/CreateExtraCreditCheckout</code> — purchase extra credits</li>
                       <li><code>UserAgent/CancelSubscription</code> — cancel subscription</li>
                       <li><code>UserAgent/RenewSubscription</code> — renew subscription</li>
@@ -32866,8 +32986,9 @@ curl -X POST "https://api.wiro.ai/v1/Run/google/nano-banana" \
                       <li><code>UserAgent/PricingPreview</code> — pricing preview for an existing agent</li>
                       <li><code>UserAgent/SkillsApply</code> — change skill set (single or batch) on a custom build (auto-prorates)</li>
                       <li><code>UserAgent/SkillToggle</code> — toggle a single skill on a custom build</li>
+                      <li><code>UserAgent/Realtime/WebStart</code> — start a web voice session</li>
                     </ul>
-                    <p><code>SkillsApply</code> and <code>SkillToggle</code> enforce the context guard for team agents only. A personal agent's owner can change its skills from any workspace.</p>
+                    <p><code>Message/Delete</code>, <code>SkillsApply</code> and <code>SkillToggle</code> enforce the context guard for team agents only; a personal agent's owner can call them from any workspace. <code>Realtime/WebStart</code> also checks team agents only: the member who deployed the agent can call it from any workspace while they are still an active member of the agent's team, so a website voice backend keeps working on a personal project key. Outside the team's context, a caller who has left the team gets the context mismatch error.</p>
                     <p><code>UserAgent/Deploy</code> creates the agent in your current workspace. With a team project API key the agent is deployed into that team, and the user who created the project must be a team admin. Otherwise the call fails with code <code>97</code>: "Only a team admin can perform this action on a team-owned agent."</p>
 
                     <h3>Error Response</h3>

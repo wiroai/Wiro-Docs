@@ -139,7 +139,7 @@ After sending this, the server processes any remaining buffered audio, sends fin
 
 > **Safety:** If the client disconnects without sending `task_session_end`, the server automatically terminates the session to prevent the pipeline from running indefinitely (and the provider from continuing to charge). Always send `task_session_end` explicitly for a clean shutdown.
 
-> **Insufficient balance:** If the wallet runs out of balance during a realtime session, the server automatically stops the session. You will still receive the final `task_cost` and `task_end` events.
+> **Insufficient balance:** The session is charged turn by turn as it runs. When a charged turn uses up your available balance (the team wallet's balance when you use a team project's API key), the server stops the session right after that turn. That turn is charged in full, and so is any final usage reported while the session closes, so your balance can end slightly below zero. You still receive the final `task_cost` and `task_end` events.
 
 ## Code Examples
 

@@ -29,7 +29,7 @@ Returns the ledger rows for a single useragent sorted **newest-first**, plus a s
 | `limit` | number | No | Max rows to return. Default `50`, max `500`. |
 | `start` | number | No | Offset for pagination. Default `0`. |
 
-**Authorization:** the agent's owner or a team admin of the agent's team (plain team members are rejected with code `97`). No extra header is needed.
+**Authorization:** the agent's owner, a team admin of the agent's team or the organization owner (plain team members are rejected with code `97`). No extra header is needed.
 
 ##### Request
 
