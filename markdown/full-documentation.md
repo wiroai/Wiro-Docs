@@ -6808,7 +6808,7 @@ The endpoint auto-normalises the skillkey to its canonical form. Bare slugs beco
 | `value` | string | No | Strategy body / cron prompt text. Editable for preset strategies and user-created entries; bundled crons silently drop `value` writes. |
 | `interval` | string | No | Cron expression (e.g. `"0 */4 * * *"`). Only persisted on `cs-cron-*` rows. |
 | `enabled` | boolean | No | Turn the skill on or off. **Writable for both strategies (`cs-*`) and crons (`cs-cron-*`)** — a disabled strategy is suppressed end-to-end (the IDE still shows it but the runtime drops it from `<available_skills>` and the per-skill `SKILL.md` write is skipped). Defaults to `true` on insert. |
-| `description` | string | No | Only persisted for user-created skills (preset descriptions are template-owned). |
+| `description` | string | No | Only persisted for user-created skills (preset descriptions are template-owned). On a preset row, sending the current description back unchanged is ignored; a different text is rejected with `customskill-preset-description-not-editable`. |
 
 > **Description-only edits skip the restart.** If you only change `description` (and the row's functional fields — `value`, `interval`, `enabled` — stay the same), the agent is **not** restarted. Functional changes still trigger the standard auto-restart.
 
@@ -13524,7 +13524,7 @@ Once you've deployed a useragent, its current custom skills live under `customsk
 |-------|------|-------------|
 | `key` | string | Canonical key. **Always carries the `cs-` runtime prefix.** Strategies are `cs-<slug>`; crons are `cs-cron-<slug>`. The server normalises bare slugs you send to `CustomSkillUpsert` — `"content-tone"` becomes `cs-content-tone`, `"weekly-health-check"` with `interval: "0 9 * * 1"` becomes `cs-cron-weekly-health-check`. |
 | `value` | string | Skill instructions / cron prompt body. Populated only for editable preference skills and user-created entries; bundled crons have it empty. |
-| `description` | string | Human-readable description. **Writable only on user-created rows.** Sending `description` for a preset strategy or a skill-bundled cron is rejected with `customskill-preset-description-not-editable`. |
+| `description` | string | Human-readable description. **Writable only on user-created rows.** Sending a *different* `description` for a preset strategy or a skill-bundled cron is rejected with `customskill-preset-description-not-editable`; sending the current one back unchanged is ignored. |
 | `enabled` | boolean | Whether the skill is active. **Writable for both strategies (`cs-*`) and crons (`cs-cron-*`)** — a disabled strategy is suppressed end-to-end (kept in the merged `customskills[]` so the IDE sees it, but skipped during `start.sh`'s `SKILL.md` write and dropped from the agent's `<available_skills>` block). |
 | `interval` | string \| null | Cron expression for scheduled execution, or `null` for preference skills. Writable on cron skills; ignored on preferences. |
 | `_source` | string | `preset-strategy` (editable preference), `skill-bundle` (cron owned by an integration skill), or `user-created` (cron added via `CustomSkillUpsert`). |
@@ -14098,7 +14098,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Detail" \
 | Write `value` | `CustomSkillUpsert` | Yes | **No — silently dropped** (skill owns the cron body) | Yes |
 | Write `interval` | `CustomSkillUpsert` | **No — silently dropped** (strategies aren't scheduled) | Yes | Yes |
 | Write `enabled` | `CustomSkillUpsert` | Yes (disabling suppresses the strategy end-to-end) | Yes | Yes |
-| Write `description` | `CustomSkillUpsert` | **No — rejected** with `customskill-preset-description-not-editable` | **No — rejected** with `customskill-preset-description-not-editable` | Yes |
+| Write `description` | `CustomSkillUpsert` | **No — a changed text is rejected** with `customskill-preset-description-not-editable` (the current text is ignored) | **No — a changed text is rejected** with `customskill-preset-description-not-editable` (the current text is ignored) | Yes |
 | Create | `CustomSkillUpsert` with a new key | n/a | n/a | Yes |
 | Rename key (+ optional description) | `CustomSkillRename` | **No — preset-forbidden** | **No — preset-forbidden** | Yes (flavour preserved; `cs-cron-*` ↔ `cs-*` rejected) |
 | Delete | `CustomSkillDelete` | **Rejected with `suggestion: "disable-via-upsert"`** | **Rejected with `suggestion: "disable-via-upsert"`** | Yes (hard delete — live row + full history purged) |

@@ -11048,7 +11048,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <td><code>description</code></td>
 <td>string</td>
 <td>No</td>
-<td>Only persisted for user-created skills (preset descriptions are template-owned).</td>
+<td>Only persisted for user-created skills (preset descriptions are template-owned). On a preset row, sending the current description back unchanged is ignored; a different text is rejected with <code>customskill-preset-description-not-editable</code>.</td>
 </tr>
 </tbody>
 </table>
@@ -20242,7 +20242,7 @@ customer-facing token-refresh endpoint or manual refresh action.</p>
 <tr>
 <td><code>description</code></td>
 <td>string</td>
-<td>Human-readable description. <strong>Writable only on user-created rows.</strong> Sending <code>description</code> for a preset strategy or a skill-bundled cron is rejected with <code>customskill-preset-description-not-editable</code>.</td>
+<td>Human-readable description. <strong>Writable only on user-created rows.</strong> Sending a <em>different</em> <code>description</code> for a preset strategy or a skill-bundled cron is rejected with <code>customskill-preset-description-not-editable</code>; sending the current one back unchanged is ignored.</td>
 </tr>
 <tr>
 <td><code>enabled</code></td>
@@ -21106,8 +21106,8 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <tr>
 <td>Write <code>description</code></td>
 <td><code>CustomSkillUpsert</code></td>
-<td><strong>No — rejected</strong> with <code>customskill-preset-description-not-editable</code></td>
-<td><strong>No — rejected</strong> with <code>customskill-preset-description-not-editable</code></td>
+<td><strong>No — a changed text is rejected</strong> with <code>customskill-preset-description-not-editable</code> (the current text is ignored)</td>
+<td><strong>No — a changed text is rejected</strong> with <code>customskill-preset-description-not-editable</code> (the current text is ignored)</td>
 <td>Yes</td>
 </tr>
 <tr>

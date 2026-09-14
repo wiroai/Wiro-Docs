@@ -1581,7 +1581,7 @@ The endpoint auto-normalises the skillkey to its canonical form. Bare slugs beco
 | `value` | string | No | Strategy body / cron prompt text. Editable for preset strategies and user-created entries; bundled crons silently drop `value` writes. |
 | `interval` | string | No | Cron expression (e.g. `"0 */4 * * *"`). Only persisted on `cs-cron-*` rows. |
 | `enabled` | boolean | No | Turn the skill on or off. **Writable for both strategies (`cs-*`) and crons (`cs-cron-*`)** — a disabled strategy is suppressed end-to-end (the IDE still shows it but the runtime drops it from `<available_skills>` and the per-skill `SKILL.md` write is skipped). Defaults to `true` on insert. |
-| `description` | string | No | Only persisted for user-created skills (preset descriptions are template-owned). |
+| `description` | string | No | Only persisted for user-created skills (preset descriptions are template-owned). On a preset row, sending the current description back unchanged is ignored; a different text is rejected with `customskill-preset-description-not-editable`. |
 
 > **Description-only edits skip the restart.** If you only change `description` (and the row's functional fields — `value`, `interval`, `enabled` — stay the same), the agent is **not** restarted. Functional changes still trigger the standard auto-restart.
 
