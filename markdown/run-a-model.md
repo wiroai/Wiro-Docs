@@ -47,11 +47,16 @@ A successful run returns a task ID and a WebSocket access token:
 ## Direct LLM turns and tool calls
 
 Models whose Tool Detail response includes the `llm-tool-call` category accept
-six optional ordinary model parameters on both asynchronous Run and `/sync`:
-`messages`, `tools`, `tool_choice`, `parallel_tool_calls`,
-`previousTaskToken`, and `toolOutputs`. Tool Detail marks them `advanced: true`
-only to place them in the Advanced section of catalog-driven UIs; they use the
-same `parameters` object and Run transport as every other model parameter.
+seven optional ordinary model parameters on both asynchronous Run and `/sync`:
+`messages`, `tools`, `tool_choice`, `parallel_tool_calls`, `response_format`,
+`previousTaskToken`, and `toolOutputs`. `response_format` is present only on
+models that declare it, and it uses the flat shape `{"type":"json_object"}` or
+`{"type":"json_schema","name":"person","schema":{...}}` — not Chat's nested
+`json_schema` wrapper. A mode the model does not declare is rejected at
+`$.response_format.type` before the task is created. Tool Detail marks them
+`advanced: true` only to place them in the Advanced section of catalog-driven
+UIs; they use the same `parameters` object and Run transport as every other
+model parameter.
 Send JSON values directly, and use exactly one of `prompt` or non-empty
 `messages` on a first turn.
 
@@ -191,7 +196,11 @@ another Run request with the first request's returned `socketaccesstoken` as
 `previousTaskToken`, the same `session_id`, and one matching entry in
 `toolOutputs` for every executed call. Do not send `prompt`, `messages`,
 `tools`, `tool_choice`, `parallel_tool_calls`, or `response_format` on this
-continuation.
+continuation. `prompt`, `messages`, `tools`, `tool_choice` and
+`response_format` are rejected outright; `parallel_tool_calls` is ignored. The
+tools, tool choice, and
+response format stored with the first turn are reapplied automatically, so a
+JSON contract set on the first turn still holds after the tool round-trip.
 
 ```json
 {
@@ -212,8 +221,10 @@ continuation.
 For a stateful follow-up that is not submitting tool outputs, pass the prior
 completed Run output's `socketaccesstoken` as `previousTaskToken`, keep the same
 `session_id`, and provide exactly one new input: a non-blank `prompt` or a
-non-empty `messages` array. Normal `tools` and `tool_choice` fields remain
-available for the new turn. Do not send `toolOutputs`.
+non-empty `messages` array. The `tools`, `tool_choice`, `parallel_tool_calls`,
+and `response_format` of the earlier turn carry over automatically; you may
+resend an identical copy, but a different value is rejected as a continuation
+mismatch. Do not send `toolOutputs`.
 
 Use the `socketaccesstoken` returned by a completed task from the same project,
 model, and session.

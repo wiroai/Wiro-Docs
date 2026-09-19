@@ -1352,7 +1352,7 @@
 
                   <section id="run-llm-tools">
                     <h2>Direct LLM turns and tool calls</h2>
-                    <p>Models whose Tool Detail response includes the <code>llm-tool-call</code> category accept six optional ordinary model parameters on both asynchronous Run and <code>/sync</code>: <code>messages</code>, <code>tools</code>, <code>tool_choice</code>, <code>parallel_tool_calls</code>, <code>previousTaskToken</code>, and <code>toolOutputs</code>. Tool Detail marks them <code>advanced: true</code> only to place them in the Advanced section of catalog-driven UIs; they use the same <code>parameters</code> object and Run transport as every other model parameter. Send JSON values directly, and use exactly one of <code>prompt</code> or non-empty <code>messages</code> on a first turn.</p>
+                    <p>Models whose Tool Detail response includes the <code>llm-tool-call</code> category accept seven optional ordinary model parameters on both asynchronous Run and <code>/sync</code>: <code>messages</code>, <code>tools</code>, <code>tool_choice</code>, <code>parallel_tool_calls</code>, <code>response_format</code>, <code>previousTaskToken</code>, and <code>toolOutputs</code>. <code>response_format</code> is present only on models that declare it, and it uses the flat shape <code>{"type":"json_object"}</code> or <code>{"type":"json_schema","name":"person","schema":{...}}</code> — not Chat's nested <code>json_schema</code> wrapper. A mode the model does not declare is rejected at <code>$.response_format.type</code> before the task is created. Tool Detail marks them <code>advanced: true</code> only to place them in the Advanced section of catalog-driven UIs; they use the same <code>parameters</code> object and Run transport as every other model parameter. Send JSON values directly, and use exactly one of <code>prompt</code> or non-empty <code>messages</code> on a first turn.</p>
                     <pre><code>{
   "messages": [{
     "role": "user",
@@ -1450,7 +1450,7 @@ const response = await fetch(
     }
   }
 }</code></pre>
-                    <p>For tool-output continuation, execute the tool in your application and send another Run request with the first request's returned <code>socketaccesstoken</code> as <code>previousTaskToken</code>, the same <code>session_id</code>, and one matching entry in <code>toolOutputs</code> for every executed call. Do not send <code>prompt</code>, <code>messages</code>, <code>tools</code>, <code>tool_choice</code>, <code>parallel_tool_calls</code>, or <code>response_format</code> on this continuation.</p>
+                    <p>For tool-output continuation, execute the tool in your application and send another Run request with the first request's returned <code>socketaccesstoken</code> as <code>previousTaskToken</code>, the same <code>session_id</code>, and one matching entry in <code>toolOutputs</code> for every executed call. Do not send <code>prompt</code>, <code>messages</code>, <code>tools</code>, <code>tool_choice</code>, <code>parallel_tool_calls</code>, or <code>response_format</code> on this continuation. <code>prompt</code>, <code>messages</code>, <code>tools</code>, <code>tool_choice</code> and <code>response_format</code> are rejected outright; <code>parallel_tool_calls</code> is ignored. The tools, tool choice, and response format stored with the first turn are reapplied automatically, so a JSON contract set on the first turn still holds after the tool round-trip.</p>
                     <pre><code>{
   "previousTaskToken": "task-token",
   "toolOutputs": [{
@@ -1463,7 +1463,7 @@ const response = await fetch(
   "session_id": "weather-session-1"
 }</code></pre>
                     <h3>Stateful turn continuation</h3>
-                    <p>For a stateful follow-up that is not submitting tool outputs, pass the prior completed Run output's <code>socketaccesstoken</code> as <code>previousTaskToken</code>, keep the same <code>session_id</code>, and provide exactly one new input: a non-blank <code>prompt</code> or a non-empty <code>messages</code> array. Normal <code>tools</code> and <code>tool_choice</code> fields remain available for the new turn. Do not send <code>toolOutputs</code>.</p>
+                    <p>For a stateful follow-up that is not submitting tool outputs, pass the prior completed Run output's <code>socketaccesstoken</code> as <code>previousTaskToken</code>, keep the same <code>session_id</code>, and provide exactly one new input: a non-blank <code>prompt</code> or a non-empty <code>messages</code> array. The <code>tools</code>, <code>tool_choice</code>, <code>parallel_tool_calls</code>, and <code>response_format</code> of the earlier turn carry over automatically; you may resend an identical copy, but a different value is rejected as a continuation mismatch. Do not send <code>toolOutputs</code>.</p>
                     <p>Use the <code>socketaccesstoken</code> returned by a completed task from the same project, model, and session.</p>
                     <pre><code>{
   "previousTaskToken": "task-token",
@@ -2875,12 +2875,12 @@ const second = await client.chat.completions.create({
     {
       "id": "openai/gpt-5-6-sol",
       "canonical_slug": "openai/gpt-5-6-sol",
-      "name": "GPT 5.6 Sol by OpenAI (Vision)",
-      "description": "GPT 5.6 Sol is OpenAI's flagship reasoning and vision model for agentic coding, research, and image Q&amp;A in one chat.",
+      "name": "(Wiro) GPT 5.6 Sol by OpenAI (Vision)",
+      "description": "OpenAI’s GPT 5.6 Sol is a flagship reasoning model that can analyze images and produce detailed text answers for coding, research, and visual Q&amp;A.",
       "context_length": 1050000,
       "architecture": {
-        "modality": "text+image-&gt;text",
-        "input_modalities": ["text", "image"],
+        "modality": "text+image+file-&gt;text",
+        "input_modalities": ["text", "image", "file"],
         "output_modalities": ["text"]
       },
       "pricing": {
@@ -2889,12 +2889,13 @@ const second = await client.chat.completions.create({
       },
       "top_provider": {
         "context_length": 1050000,
-        "max_completion_tokens": null
+        "max_completion_tokens": 65536
       },
       "supported_parameters": [
-        "include_reasoning",
+        "max_completion_tokens",
+        "max_tokens",
         "parallel_tool_calls",
-        "reasoning",
+        "reasoning_effort",
         "response_format",
         "structured_outputs",
         "tool_choice",
@@ -2903,22 +2904,22 @@ const second = await client.chat.completions.create({
       "default_parameters": {},
       "object": "model",
       "type": "model",
-      "created": null,
-      "created_at": null,
+      "created": 1783670833,
+      "created_at": "2026-07-10T08:07:13.000Z",
       "owned_by": "openai",
-      "display_name": "GPT 5.6 Sol by OpenAI (Vision)",
+      "display_name": "(Wiro) GPT 5.6 Sol by OpenAI (Vision)",
       "max_input_tokens": 1050000,
-      "max_tokens": null,
+      "max_tokens": 65536,
       "capabilities": {
         "endpoints": ["anthropic", "chat", "responses"],
-        "input_modalities": ["text", "image"],
-        "output": ["text", "reasoning", "function_calls", "custom_tool_calls"],
+        "input_modalities": ["text", "image", "document"],
+        "output": ["text", "function_calls", "custom_tool_calls"],
         "function_tools": true,
         "custom_tools": true,
         "structured_outputs": true,
         "structured_output_modes": ["json_object", "json_schema"],
         "strict_json_schema": true,
-        "generation_controls": ["reasoning_effort"]
+        "generation_controls": ["max_output_tokens", "reasoning_effort", "verbosity"]
       },
       "x_wiro": {
         "pricing_source": {
@@ -2958,6 +2959,7 @@ const second = await client.chat.completions.create({
                       <li>Treat <code>context_length</code>, <code>max_input_tokens</code>, <code>max_tokens</code>, pricing, and usage as model-specific. A nullable field is not permission to infer a value from another model.</li>
                     </ol>
                     <p>Every discoverable model currently publishes the same endpoint labels. Capability differences are expressed through modalities, supported parameters, tool flags, structured-output flags, reasoning controls, and limits.</p>
+                    <p>Structured-output support is per model, not per family: read <code>structured_output_modes</code> and <code>strict_json_schema</code> on the model you are about to call. Some models declare both <code>json_object</code> and <code>json_schema</code>, some declare only one of them, and some declare no structured output at all. A model whose runtime cannot constrain decoding can promise a valid JSON document but nothing about the schema, so it declares <code>json_object</code> alone. <code>strict_json_schema</code> is separate again: a model can accept <code>json_schema</code> and still refuse <code>"strict": true</code>.</p>
                     <h3><span class="endpoint-badge get">GET</span> /v1/models/{owner}/{model}</h3>
                     <pre><code>curl "https://llm.wiro.ai/v1/models/openai/gpt-5-6-sol" \
   -H "Authorization: Bearer YOUR_API_KEY"</code></pre>
@@ -3090,7 +3092,26 @@ await client.files.delete(file.id);</code></pre>
   }'</code></pre>
                     <p>The endpoint accepts <code>system</code>, <code>developer</code>, <code>user</code>, and <code>assistant</code> messages, plus <code>tool</code> results for preceding assistant tool calls. Each request is client-history: send the required conversation history in <code>messages</code>. Calls do not create a saved Wiro Chat session.</p>
                     <p>Text is always available. OpenAI-style image and document content parts are accepted only when the selected model advertises those input modalities. Gateway output is text; this route is not an image, audio, or video generation API. Remote media must use a public HTTPS URL or a validated data/base64 source; supported Wiro gateway file IDs may also be used. Private-network and non-HTTP fetch targets are rejected. Provider-native file IDs are not accepted as Wiro file IDs.</p>
-                    <p>Generation fields such as <code>temperature</code>, <code>top_p</code>, <code>max_tokens</code>, <code>max_completion_tokens</code>, penalties, <code>seed</code>, <code>stop</code>, <code>reasoning</code>, and <code>response_format</code> are capability-gated. <code>n</code> must be <code>1</code>, <code>logprobs</code> must be <code>false</code>, and <code>stop</code> accepts at most four non-empty values without semicolons. Use <code>capabilities.structured_outputs</code> before requesting a non-text <code>response_format</code>.</p>
+                    <p>Generation fields such as <code>temperature</code>, <code>top_p</code>, <code>max_tokens</code>, <code>max_completion_tokens</code>, penalties, <code>seed</code>, <code>stop</code>, <code>reasoning</code>, and <code>response_format</code> are capability-gated. <code>n</code> must be <code>1</code>, <code>logprobs</code> must be <code>false</code>, and <code>stop</code> accepts at most four non-empty values without semicolons. Use <code>capabilities.structured_outputs</code> before requesting a non-text <code>response_format</code>, then match the exact mode: <code>json_object</code> and <code>json_schema</code> are declared independently in <code>capabilities.structured_output_modes</code>, and <code>"strict": true</code> inside a <code>json_schema</code> request additionally requires <code>capabilities.strict_json_schema</code>. A mode the model does not declare is refused with HTTP 400, code <code>unsupported_capability</code> and <code>param: "response_format"</code>, before any task is created or billed.</p>
+                    <p>Structured output uses OpenAI's two <code>response_format</code> shapes. <code>json_object</code> asks only for a valid JSON document:</p>
+                    <pre><code>{ "response_format": { "type": "json_object" } }</code></pre>
+                    <p><code>json_schema</code> is nested: the definition sits under a <code>json_schema</code> key rather than beside <code>type</code>.</p>
+                    <pre><code>{
+  "response_format": {
+    "type": "json_schema",
+    "json_schema": {
+      "name": "person",
+      "schema": {
+        "type": "object",
+        "properties": { "full_name": { "type": "string" } },
+        "required": ["full_name"],
+        "additionalProperties": false
+      },
+      "strict": true
+    }
+  }
+}</code></pre>
+                    <p>The definition accepts <code>name</code>, <code>schema</code>, <code>description</code>, and <code>strict</code>, and rejects any other key. <code>name</code> is required and must match <code>^[A-Za-z0-9_-]{1,64}$</code>; a missing or invalid name returns <code>invalid_schema</code>. <code>schema</code> must have an object root, may reference only local <code>#</code> fragments, and may nest at most 24 levels. <code>json_object</code> guarantees parseable JSON but guarantees nothing about which keys appear, so use <code>json_schema</code> when the key names matter.</p>
                     <p>Standard function tools use <code>tools</code>, <code>tool_choice</code>, and <code>parallel_tool_calls</code>. Returned function calls use <code>{ "id": "...", "type": "function", "function": { "name": "...", "arguments": "..." } }</code> entries in <code>message.tool_calls</code>. Execute calls only when <code>finish_reason</code> is <code>tool_calls</code>; <code>length</code> and <code>content_filter</code> turns can contain partial tool data that must not be executed. Preserve the returned assistant message unchanged, then append matching <code>role: "tool"</code> results with <code>tool_call_id</code>. Wiro does not execute tools on the caller's behalf.</p>
                     <p>When the model advertises <code>custom_tools</code>, Chat also accepts the nested custom tool shape:</p>
                     <pre><code>{
@@ -3115,7 +3136,7 @@ await client.files.delete(file.id);</code></pre>
                   <section id="gateway-responses">
                     <h2>OpenAI Responses</h2>
                     <h3><span class="endpoint-badge post">POST</span> /v1/responses</h3>
-                    <p>Use a model that includes <code>responses</code> in <code>capabilities.endpoints</code>. <code>input</code> can be a string or Responses items; <code>instructions</code>, tools, text formatting, multimodal input, reasoning, and generation controls are capability-gated. Remote media follows the same public-HTTPS/data/base64/Wiro-file-ID restrictions as Chat.</p>
+                    <p>Use a model that includes <code>responses</code> in <code>capabilities.endpoints</code>. <code>input</code> can be a string or Responses items; <code>instructions</code>, tools, <code>text.format</code> structured output, multimodal input, reasoning, and generation controls are capability-gated. Remote media follows the same public-HTTPS/data/base64/Wiro-file-ID restrictions as Chat.</p>
                     <pre><code>curl -X POST "https://llm.wiro.ai/v1/responses" \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -3126,6 +3147,23 @@ await client.files.delete(file.id);</code></pre>
     "store": true,
     "stream": false
   }'</code></pre>
+                    <p>Structured output on this route is <code>text.format</code>, and it uses the flat shape rather than Chat's nested one: <code>name</code>, <code>schema</code>, and <code>strict</code> sit beside <code>type</code>.</p>
+                    <pre><code>{
+  "text": {
+    "format": {
+      "type": "json_schema",
+      "name": "person",
+      "schema": {
+        "type": "object",
+        "properties": { "full_name": { "type": "string" } },
+        "required": ["full_name"],
+        "additionalProperties": false
+      },
+      "strict": true
+    }
+  }
+}</code></pre>
+                    <p><code>{ "text": { "format": { "type": "json_object" } } }</code> is also accepted. The same <code>capabilities.structured_output_modes</code> and <code>capabilities.strict_json_schema</code> gates apply; the <code>responses</code> endpoint label does not by itself mean structured output is available. A top-level <code>response_format</code> is accepted as an alternative to <code>text.format</code>, but sending both returns HTTP 400 with <code>param: "text"</code>.</p>
                     <p>Final responses use the official <code>response</code> object with an opaque ID such as <code>resp_...</code> and an <code>output</code> item array. Items can include messages, public reasoning, function calls, and custom tool calls. Execute only tool items with <code>status: "completed"</code> from a completed response; never execute tool items from an incomplete response. Native <code>usage</code> can be absent.</p>
                     <h3>Stored response continuation</h3>
                     <p><code>store</code> defaults to <code>true</code> for OpenAI compatibility. Set <code>store: false</code> for a one-off response that will not be used as <code>previous_response_id</code>.</p>
@@ -3195,6 +3233,34 @@ await client.files.delete(file.id);</code></pre>
                     <p><code>max_tokens</code> is required and positive. Messages use Anthropic <code>user</code> and <code>assistant</code> roles; system instructions belong in the top-level <code>system</code> field. Content can include <code>text</code>, model-advertised <code>image</code> or <code>document</code> input, <code>tool_use</code>, <code>tool_result</code>, and supported thinking blocks. Remote media uses validated public HTTPS, data/base64, or Wiro gateway file references.</p>
                     <p>Messages is client-history: resend the prior <code>user</code>/<code>assistant</code> content and tool blocks required for each turn. It does not use Responses storage or <code>previous_response_id</code>.</p>
                     <p>Anthropic function tools use <code>name</code>, <code>description</code>, and <code>input_schema</code>. <code>tool_choice</code> supports Anthropic <code>auto</code>, <code>any</code>, <code>tool</code>, and <code>none</code> choices. Anthropic's optional <code>type: "custom"</code> still denotes an ordinary client function tool with <code>input_schema</code>; it is not OpenAI's free-form custom grammar shape. Tool calls are returned as <code>tool_use</code>; your application executes them and sends <code>tool_result</code>. Provider-hosted tools, hosted containers, and remote MCP servers are rejected by this release. Execute <code>tool_use</code> blocks only when <code>stop_reason</code> is <code>tool_use</code>; do not execute tool data from <code>max_tokens</code> or <code>refusal</code> turns.</p>
+                    <p>Structured output uses <code>output_config</code>, not <code>response_format</code>. This route accepts <code>json_schema</code> only, and always requests it strictly:</p>
+                    <pre><code>curl -X POST "https://llm.wiro.ai/v1/messages" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude/sonnet-5",
+    "max_tokens": 1024,
+    "messages": [{
+      "role": "user",
+      "content": "Who wrote Dune, and in what year?"
+    }],
+    "output_config": {
+      "format": {
+        "type": "json_schema",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "author": { "type": "string" },
+            "year": { "type": "integer" }
+          },
+          "required": ["author", "year"],
+          "additionalProperties": false
+        }
+      }
+    }
+  }'</code></pre>
+                    <p><code>output_config.format</code> takes exactly <code>type</code> and <code>schema</code>. Both are required, and any other key is rejected, including OpenAI's <code>name</code> and <code>strict</code>. The gateway applies strict JSON Schema output on this route unconditionally, so the model must declare <code>capabilities.strict_json_schema</code> as well as <code>json_schema</code> in <code>capabilities.structured_output_modes</code>. <code>{"type": "json_object"}</code> is refused here for every model. <code>output_config.effort</code> is the separate reasoning control and can be sent alongside <code>format</code>. A top-level <code>response_format</code> is not a Messages field and is rejected as an unsupported parameter. Anthropic error bodies carry only <code>type</code> and <code>message</code>, so a capability refusal arrives here without the <code>code</code> and <code>param</code> fields the OpenAI routes return.</p>
                     <p>Thinking controls use:</p>
                     <pre><code>{ "thinking": { "type": "enabled", "budget_tokens": 2048 } }</code></pre>
                     <p><code>type</code> can be <code>enabled</code>, <code>adaptive</code>, or <code>disabled</code>. Check <code>supported_parameters</code> for public reasoning controls and <code>capabilities.output</code> for reasoning output. Do not fabricate or alter signature or redacted-thinking blocks returned by the model.</p>
@@ -3303,6 +3369,7 @@ claude</code></pre>
                     <p>After a stream starts, inspect SSE events rather than the HTTP status: Chat emits an error <code>data:</code> frame followed by <code>[DONE]</code>, Responses emits <code>response.failed</code>, and Anthropic emits <code>error</code>.</p>
                     <p>A model blocked by your team's Model Access settings is refused before it runs with HTTP <code>403</code> and the message <code>This model is not available for your team</code>. Chat and Responses return type <code>permission_error</code>, code <code>permission_denied</code> and param <code>model</code>; Anthropic routes return type <code>permission_error</code>. A streamed Responses request is different: its stream is already open, so it answers <code>200</code> and ends with <code>response.failed</code> carrying code <code>permission_denied</code> and the same message, like other errors that happen when the run is submitted.</p>
                     <p>Common codes include <code>invalid_model</code>, <code>model_not_found</code>, <code>unsupported_model_type</code>, <code>unsupported_parameter</code>, <code>response_not_found</code>, <code>response_chain_too_deep</code>, <code>invalid_generation_id</code>, <code>generation_not_found</code>, <code>completion_timeout</code>, <code>model_execution_failed</code>, <code>task_cancelled</code>, and <code>unsupported_capability</code>. Files routes can also return <code>file_not_found</code>, <code>file_too_large</code>, <code>invalid_multipart</code>, <code>missing_file</code>, <code>invalid_filename</code>, <code>invalid_media_type</code>, <code>invalid_pagination</code>, <code>invalid_query</code>, <code>file_catalog_too_large</code>, <code>file_content_unavailable</code>, <code>file_api_unavailable</code>, and <code>invalid_file_response</code>.</p>
+                    <p><code>unsupported_capability</code> means the model does not declare something the request asked for. A structured-output mode missing from <code>capabilities.structured_output_modes</code> carries <code>param: "response_format"</code> and the message <code>Model '&lt;id&gt;' does not support json_object structured output</code>; <code>"strict": true</code> on a model without <code>capabilities.strict_json_schema</code> uses the same code with <code>does not support strict JSON Schema output</code>; tool controls on a model that declares neither <code>function_tools</code> nor <code>custom_tools</code> carry <code>param: "tool_choice"</code>. The request is refused during validation, so no task is created and nothing is billed. Anthropic routes report the same refusal in the Anthropic error shape, which carries only <code>type</code> and <code>message</code>.</p>
                     <p>Gateway-origin and upstream execution failures use HTTP <code>500</code> with their specific error code; the public protocol does not return HTTP <code>502</code>. Responses under <code>/v1</code> include <code>ratelimit-limit</code>, <code>ratelimit-remaining</code>, <code>ratelimit-reset</code>, <code>request-id</code>, and <code>x-request-id</code>. A rate-limit response also includes <code>retry-after</code>.</p>
                     <p>Protocol execution POST bodies must be JSON and are limited to 16 MiB. Files uploads are multipart and use the separate 50 MiB file limit. Unsupported fields that could change execution fail instead of being silently accepted. A model task can also fail after HTTP validation; preserve the protocol error and status rather than treating every <code>2xx</code> task creation as a successful model answer.</p>
                   </section>

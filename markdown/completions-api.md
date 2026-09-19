@@ -1431,12 +1431,12 @@ is separate from the full website/model catalog at `POST /v1/Tool/List`.
     {
       "id": "openai/gpt-5-6-sol",
       "canonical_slug": "openai/gpt-5-6-sol",
-      "name": "GPT 5.6 Sol by OpenAI (Vision)",
-      "description": "GPT 5.6 Sol is OpenAI's flagship reasoning and vision model for agentic coding, research, and image Q&A in one chat.",
+      "name": "(Wiro) GPT 5.6 Sol by OpenAI (Vision)",
+      "description": "OpenAI’s GPT 5.6 Sol is a flagship reasoning model that can analyze images and produce detailed text answers for coding, research, and visual Q&A.",
       "context_length": 1050000,
       "architecture": {
-        "modality": "text+image->text",
-        "input_modalities": ["text", "image"],
+        "modality": "text+image+file->text",
+        "input_modalities": ["text", "image", "file"],
         "output_modalities": ["text"]
       },
       "pricing": {
@@ -1445,12 +1445,13 @@ is separate from the full website/model catalog at `POST /v1/Tool/List`.
       },
       "top_provider": {
         "context_length": 1050000,
-        "max_completion_tokens": null
+        "max_completion_tokens": 65536
       },
       "supported_parameters": [
-        "include_reasoning",
+        "max_completion_tokens",
+        "max_tokens",
         "parallel_tool_calls",
-        "reasoning",
+        "reasoning_effort",
         "response_format",
         "structured_outputs",
         "tool_choice",
@@ -1459,22 +1460,22 @@ is separate from the full website/model catalog at `POST /v1/Tool/List`.
       "default_parameters": {},
       "object": "model",
       "type": "model",
-      "created": null,
-      "created_at": null,
+      "created": 1783670833,
+      "created_at": "2026-07-10T08:07:13.000Z",
       "owned_by": "openai",
-      "display_name": "GPT 5.6 Sol by OpenAI (Vision)",
+      "display_name": "(Wiro) GPT 5.6 Sol by OpenAI (Vision)",
       "max_input_tokens": 1050000,
-      "max_tokens": null,
+      "max_tokens": 65536,
       "capabilities": {
         "endpoints": ["anthropic", "chat", "responses"],
-        "input_modalities": ["text", "image"],
-        "output": ["text", "reasoning", "function_calls", "custom_tool_calls"],
+        "input_modalities": ["text", "image", "document"],
+        "output": ["text", "function_calls", "custom_tool_calls"],
         "function_tools": true,
         "custom_tools": true,
         "structured_outputs": true,
         "structured_output_modes": ["json_object", "json_schema"],
         "strict_json_schema": true,
-        "generation_controls": ["reasoning_effort"]
+        "generation_controls": ["max_output_tokens", "reasoning_effort", "verbosity"]
       },
       "x_wiro": {
         "pricing_source": {
@@ -1543,6 +1544,15 @@ Before each request:
 Every discoverable model currently publishes the same endpoint labels.
 Capability differences are expressed through modalities, supported parameters,
 tool flags, structured-output flags, reasoning controls, and limits.
+
+Structured-output support is per model, not per family: read
+`structured_output_modes` and `strict_json_schema` on the model you are about
+to call. Some models declare both `json_object` and `json_schema`, some declare
+only one of them, and some declare no structured output at all. A model whose
+runtime cannot constrain decoding can promise a valid JSON document but nothing
+about the schema, so it declares `json_object` alone. `strict_json_schema` is
+separate again: a model can accept `json_schema` and still refuse
+`"strict": true`.
 
 ### **GET** /v1/models/{owner}/{model}
 
@@ -1743,7 +1753,48 @@ Generation fields such as `temperature`, `top_p`, `max_tokens`,
 `response_format` are capability-gated. `n` must be `1`, `logprobs` must be
 `false`, and `stop` accepts at most four non-empty values without semicolons.
 Use `capabilities.structured_outputs` before requesting a non-text
-`response_format`.
+`response_format`, then match the exact mode: `json_object` and `json_schema`
+are declared independently in `capabilities.structured_output_modes`, and
+`"strict": true` inside a `json_schema` request additionally requires
+`capabilities.strict_json_schema`. A mode the model does not declare is refused
+with HTTP 400, code `unsupported_capability` and `param: "response_format"`,
+before any task is created or billed.
+
+Structured output uses OpenAI's two `response_format` shapes. `json_object`
+asks only for a valid JSON document:
+
+```json
+{ "response_format": { "type": "json_object" } }
+```
+
+`json_schema` is nested: the definition sits under a `json_schema` key rather
+than beside `type`.
+
+```json
+{
+  "response_format": {
+    "type": "json_schema",
+    "json_schema": {
+      "name": "person",
+      "schema": {
+        "type": "object",
+        "properties": { "full_name": { "type": "string" } },
+        "required": ["full_name"],
+        "additionalProperties": false
+      },
+      "strict": true
+    }
+  }
+}
+```
+
+The definition accepts `name`, `schema`, `description`, and `strict`, and
+rejects any other key. `name` is required and must match
+`^[A-Za-z0-9_-]{1,64}$`; a missing or invalid name returns `invalid_schema`.
+`schema` must have an object root, may reference only local `#` fragments, and
+may nest at most 24 levels. `json_object` guarantees parseable JSON but
+guarantees nothing about which keys appear, so use `json_schema` when the key
+names matter.
 
 Standard OpenAI function tools use `tools`, `tool_choice`, and
 `parallel_tool_calls`. Returned function calls use
@@ -1809,10 +1860,10 @@ OpenAI SDK above.
 ### **POST** /v1/responses
 
 Use a model that includes `responses` in `capabilities.endpoints`. `input` can
-be a string or Responses items; `instructions`, tools, text formatting,
-multimodal input, reasoning, and generation controls are capability-gated.
-Remote media follows the same public-HTTPS/data/base64/Wiro-file-ID
-restrictions as Chat.
+be a string or Responses items; `instructions`, tools, `text.format` structured
+output, multimodal input, reasoning, and generation controls are
+capability-gated. Remote media follows the same
+public-HTTPS/data/base64/Wiro-file-ID restrictions as Chat.
 
 ```bash
 curl -X POST "https://llm.wiro.ai/v1/responses" \
@@ -1826,6 +1877,35 @@ curl -X POST "https://llm.wiro.ai/v1/responses" \
     "stream": false
   }'
 ```
+
+Structured output on this route is `text.format`, and it uses the flat shape
+rather than Chat's nested one: `name`, `schema`, and `strict` sit beside
+`type`.
+
+```json
+{
+  "text": {
+    "format": {
+      "type": "json_schema",
+      "name": "person",
+      "schema": {
+        "type": "object",
+        "properties": { "full_name": { "type": "string" } },
+        "required": ["full_name"],
+        "additionalProperties": false
+      },
+      "strict": true
+    }
+  }
+}
+```
+
+`{ "text": { "format": { "type": "json_object" } } }` is also accepted. The
+same `capabilities.structured_output_modes` and
+`capabilities.strict_json_schema` gates apply; the `responses` endpoint label
+does not by itself mean structured output is available. A top-level
+`response_format` is accepted as an alternative to `text.format`, but sending
+both returns HTTP 400 with `param: "text"`.
 
 Final responses use the official `response` object with an opaque ID such as
 `resp_...` and an `output` item array. Items can include messages, public reasoning,
@@ -1980,6 +2060,49 @@ and sends `tool_result`. Provider-hosted tools, hosted containers, and remote
 MCP servers are rejected by this release. Execute `tool_use` blocks only when
 `stop_reason` is `tool_use`; do not execute tool data from `max_tokens` or
 `refusal` turns.
+
+Structured output uses `output_config`, not `response_format`. This route
+accepts `json_schema` only, and always requests it strictly:
+
+```bash
+curl -X POST "https://llm.wiro.ai/v1/messages" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude/sonnet-5",
+    "max_tokens": 1024,
+    "messages": [{
+      "role": "user",
+      "content": "Who wrote Dune, and in what year?"
+    }],
+    "output_config": {
+      "format": {
+        "type": "json_schema",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "author": { "type": "string" },
+            "year": { "type": "integer" }
+          },
+          "required": ["author", "year"],
+          "additionalProperties": false
+        }
+      }
+    }
+  }'
+```
+
+`output_config.format` takes exactly `type` and `schema`. Both are required,
+and any other key is rejected, including OpenAI's `name` and `strict`. The
+gateway applies strict JSON Schema output on this route unconditionally, so the
+model must declare `capabilities.strict_json_schema` as well as `json_schema`
+in `capabilities.structured_output_modes`. `{"type": "json_object"}` is refused
+here for every model. `output_config.effort` is the separate reasoning control
+and can be sent alongside `format`. A top-level `response_format` is not a
+Messages field and is rejected as an unsupported parameter. Anthropic error
+bodies carry only `type` and `message`, so a capability refusal arrives here
+without the `code` and `param` fields the OpenAI routes return.
 
 Thinking controls use:
 
@@ -2192,6 +2315,17 @@ Common codes include `invalid_model`, `model_not_found`,
 `invalid_media_type`, `invalid_pagination`, `invalid_query`,
 `file_catalog_too_large`, `file_content_unavailable`, `file_api_unavailable`,
 and `invalid_file_response`.
+
+`unsupported_capability` means the model does not declare something the request
+asked for. A structured-output mode missing from
+`capabilities.structured_output_modes` carries `param: "response_format"` and
+the message `Model '<id>' does not support json_object structured output`;
+`"strict": true` on a model without `capabilities.strict_json_schema` uses the
+same code with `does not support strict JSON Schema output`; tool controls on a
+model that declares neither `function_tools` nor `custom_tools` carry
+`param: "tool_choice"`. The request is refused during validation, so no task is
+created and nothing is billed. Anthropic routes report the same refusal in the
+Anthropic error shape, which carries only `type` and `message`.
 
 Gateway-origin and upstream execution failures use HTTP `500` with their
 specific error code; the public protocol does not return HTTP `502`.

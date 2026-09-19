@@ -163,9 +163,14 @@ Response:
 ```
 
 Direct Run LLM turns and tool calls:
-- Models with category `llm-tool-call` expose six ordinary model parameters
+- Models with category `llm-tool-call` expose seven ordinary model parameters
   on asynchronous Run and `/sync`: `messages`, `tools`, `tool_choice`,
-  `parallel_tool_calls`, `previousTaskToken`, and `toolOutputs`.
+  `parallel_tool_calls`, `response_format`, `previousTaskToken`, and
+  `toolOutputs`. `response_format` appears only on models that declare it and
+  uses the flat `{"type":"json_object"}` or
+  `{"type":"json_schema","name","schema","strict"?}` shape, not Chat's nested
+  wrapper. An undeclared mode is rejected at `$.response_format.type` before
+  the task is created.
 - Tool Detail marks them `advanced: true` only for UI grouping. They use the
   same `parameters` object and Run transport as every other model parameter.
 - Send JSON values directly; use exactly one of `prompt` or non-empty
@@ -194,11 +199,17 @@ Direct Run LLM turns and tool calls:
   `toolOutputs`.
 - Keep the same `session_id` value stable. Do not send
   prompt/messages/tools/tool_choice/parallel_tool_calls/response_format on a
-  `previousTaskToken` + `toolOutputs` continuation.
+  `previousTaskToken` + `toolOutputs` continuation; prompt, messages, tools,
+  tool_choice and response_format are rejected, and parallel_tool_calls is
+  ignored.
+  The stored tools, tool choice, and response format are reapplied
+  automatically, so a JSON contract set on the first turn survives the tool
+  round-trip.
 - For a stateful follow-up without tool outputs, pass the prior completed Run
   task's `socketaccesstoken` as `previousTaskToken` and exactly one new prompt or
-  non-empty messages array. Normal tools/tool_choice remain available. Do not
-  include `toolOutputs`.
+  non-empty messages array. The stored tools, tool_choice, parallel_tool_calls
+  and response_format carry over; an identical resend is allowed, a different
+  value is a continuation mismatch. Do not include `toolOutputs`.
 - Use the `socketaccesstoken` returned by a completed task from the same project,
   model, and session.
 - OpenAI-compatible clients should use `previous_response_id` on
@@ -291,6 +302,12 @@ Canonical route values are `anthropic`, `chat`, and `responses` in
 `structured_output_modes`, `strict_json_schema`, and `generation_controls`.
 Every discoverable model currently publishes the same endpoint labels;
 capability differences are represented by the other model metadata fields.
+Structured-output support is per model, not per family: read
+`structured_output_modes` and `strict_json_schema` on the model you are about
+to call. Some models declare both modes, some only one, and some none. A model
+whose runtime cannot constrain decoding can promise a valid JSON document but
+nothing about the schema, so it declares `json_object` alone.
+`strict_json_schema` is separate again.
 OpenRouter `architecture.input_modalities` represents canonical `document` as
 `file`.
 Capabilities are model-specific. The authenticated list contains only models
@@ -340,8 +357,16 @@ OpenAI Chat:
   partial tool data from `length` or `content_filter` turns.
 - Models advertising `custom_tools` also accept Chat's nested custom-tool
   grammar shape and matching nested custom `tool_choice`.
-- Structured output, reasoning, generation controls, and tool combinations are
-  model-specific.
+- `response_format` accepts `{"type":"json_object"}` or the nested
+  `{"type":"json_schema","json_schema":{"name","schema","description"?,"strict"?}}`.
+  `name` is required and must match `^[A-Za-z0-9_-]{1,64}$`; the schema needs
+  an object root, local `#` references only, and at most 24 levels. The mode
+  must appear in `capabilities.structured_output_modes`; `"strict": true` also
+  requires `capabilities.strict_json_schema`. An undeclared mode is HTTP 400
+  `unsupported_capability` with `param: "response_format"`, before task
+  creation or billing. `json_object` guarantees parseable JSON but not which
+  keys appear.
+- Reasoning, generation controls, and tool combinations are model-specific.
 - Remote media uses public HTTPS, validated data/base64, or a supported Wiro
   gateway file ID; private and non-HTTP fetch targets are rejected.
 - Final object is `chat.completion`; native usage can be absent.
@@ -352,8 +377,13 @@ OpenAI Responses:
 - `POST /v1/responses`
 - Requires `responses` in `capabilities.endpoints`.
 - Supports string/item `input`, instructions, model-advertised modalities,
-  function/custom tools, regex or Lark grammar tools, structured text format,
-  and reasoning.
+  function/custom tools, regex or Lark grammar tools, and reasoning.
+- Structured output is `text.format`, using the flat shape
+  `{"type":"json_schema","name","schema","strict"?}` or
+  `{"type":"json_object"}`. It is gated by
+  `capabilities.structured_output_modes`, not by the `responses` endpoint
+  label. A top-level `response_format` is an accepted alternative, but sending
+  both it and `text.format` is HTTP 400 with `param: "text"`.
 - `store` defaults true for OpenAI compatibility. A `store: false` response
   cannot be used as `previous_response_id`.
 - `previous_response_id` is the continuation field on `/v1/responses`. Direct
@@ -395,6 +425,14 @@ Anthropic Messages:
   advertised. Optional tool `type: "custom"` remains a client function tool
   with `input_schema`; it is not OpenAI's free-form grammar shape.
 - Provider-hosted tools, hosted containers, and remote MCP servers are rejected.
+- Structured output is `output_config.format`, `json_schema` only, always
+  strict: `{"output_config":{"format":{"type":"json_schema","schema":{...}}}}`.
+  It takes exactly `type` and `schema`; `name` and `strict` are rejected, and
+  `json_object` is refused on this route for every model. It requires
+  `capabilities.strict_json_schema` as well as `json_schema` in
+  `capabilities.structured_output_modes`. `output_config.effort` is the
+  separate reasoning control and rides alongside `format`. A top-level
+  `response_format` is not accepted here.
 - Execute `tool_use` only when `stop_reason` is `tool_use`; never execute tool
   data from `max_tokens` or `refusal` turns.
 - Final output content contains `text` and `tool_use`; internal model reasoning
