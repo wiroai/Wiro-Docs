@@ -1050,9 +1050,10 @@ models whatever you configure.
 
 Every model the gateway serves today, with the context window for
 `CLAUDE_CODE_MAX_CONTEXT_TOKENS`. The same values come from `GET /v1/models` as
-`context_length`. For a Wiro-hosted model that number is the window of the
-checkpoint we actually run, which can be smaller than the one its model card
-advertises.
+`context_length`. For a Wiro-hosted model that number is the prompt the GPU it
+runs on actually has room for, measured on the fleet -- usually well below the
+window its checkpoint was built for, and below what its model card advertises.
+Set the variable to the number the catalog reports, not the card's.
 
 ```
 Model ID                                     Context
@@ -1075,9 +1076,9 @@ Model ID                                     Context
 (Wiro) google/gemini-3-8-flash               1048576
 (Wiro) google/gemini-3-flash                 1048576
 (Wiro) google/gemini-3-pro                   1048576
-(Wiro) meta-llama/llama-3-2-3b-instruct       131072
-(Wiro) mistralai/mistral-7b-instruct-v0-3      32768
-(Wiro) mistralai/mistral-nemo-instruct-2407   131072
+(Wiro) meta-llama/llama-3-2-3b-instruct        51200
+(Wiro) mistralai/mistral-7b-instruct-v0-3      17408
+(Wiro) mistralai/mistral-nemo-instruct-2407    35840
 (Wiro) openai/gpt-5-2                         400000
 (Wiro) openai/gpt-5-4                        1050000
 (Wiro) openai/gpt-5-4-mini                    400000
@@ -1090,25 +1091,25 @@ Model ID                                     Context
 (Wiro) openai/gpt-5-nano                      400000
 (Wiro) qwen/qwen2-5-0-5b-instruct              32768
 (Wiro) qwen/qwen2-5-1-5b-instruct              32768
-(Wiro) qwen/qwen2-5-14b-instruct               32768
-(Wiro) qwen/qwen2-5-32b-instruct               32768
+(Wiro) qwen/qwen2-5-14b-instruct               29696
+(Wiro) qwen/qwen2-5-32b-instruct               17408
 (Wiro) qwen/qwen2-5-3b-instruct                32768
 (Wiro) qwen/qwen2-5-7b-instruct                32768
-(Wiro) qwen/qwen2-5-coder-32b-instruct         32768
+(Wiro) qwen/qwen2-5-coder-32b-instruct         17408
 (Wiro) qwen/qwen2-5-coder-7b-instruct          32768
-(Wiro) qwen/qwen3-30b-a3b                      40960
-(Wiro) qwen/qwen3-30b-a3b-thinking-2507       262144
-(Wiro) qwen/qwen3-32b                          40960
-(Wiro) qwen/qwen3-5-27b                       262144
-(Wiro) qwen/qwen3-5-27b-heretic               262144
-(Wiro) qwen/qwen3-5-4b                        262144
-(Wiro) qwen/qwen3-5-4b-heretic                262144
-(Wiro) qwen/qwen3-5-9b                        262144
-(Wiro) qwen/qwen3-5-9b-heretic                262144
-(Wiro) qwen/qwen3-6-27b                       262144
-(Wiro) qwen/qwen3-8-27b                       262144
-(Wiro) qwen/qwen3-8-27b-obliterated           262144
-(Wiro) qwen/qwen3-8-27b-uncensored            262144
+(Wiro) qwen/qwen3-30b-a3b                       7168
+(Wiro) qwen/qwen3-30b-a3b-thinking-2507         7168
+(Wiro) qwen/qwen3-32b                          17408
+(Wiro) qwen/qwen3-5-27b                        25600
+(Wiro) qwen/qwen3-5-27b-heretic                25600
+(Wiro) qwen/qwen3-5-4b                         72704
+(Wiro) qwen/qwen3-5-4b-heretic                 72704
+(Wiro) qwen/qwen3-5-9b                         25600
+(Wiro) qwen/qwen3-5-9b-heretic                 25600
+(Wiro) qwen/qwen3-6-27b                        25600
+(Wiro) qwen/qwen3-8-27b                        25600
+(Wiro) qwen/qwen3-8-27b-obliterated            25600
+(Wiro) qwen/qwen3-8-27b-uncensored             25600
 (Wiro) xai/grok-4-1-fast                     2000000
 (Wiro) xai/grok-4-20                         2000000
 (Wiro) xai/grok-4-5                           500000
@@ -1321,7 +1322,7 @@ extension required.
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": false,
-        "maxInputTokens": 131072,
+        "maxInputTokens": 51200,
         "maxOutputTokens": 2048
       },
       {
@@ -1330,7 +1331,7 @@ extension required.
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": false,
-        "maxInputTokens": 32768,
+        "maxInputTokens": 17408,
         "maxOutputTokens": 2048
       },
       {
@@ -1339,7 +1340,7 @@ extension required.
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": false,
-        "maxInputTokens": 131072,
+        "maxInputTokens": 35840,
         "maxOutputTokens": 2048
       },
       {
@@ -1456,7 +1457,7 @@ extension required.
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": false,
-        "maxInputTokens": 32768,
+        "maxInputTokens": 29696,
         "maxOutputTokens": 2048
       },
       {
@@ -1465,7 +1466,7 @@ extension required.
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": false,
-        "maxInputTokens": 32768,
+        "maxInputTokens": 17408,
         "maxOutputTokens": 2048
       },
       {
@@ -1492,7 +1493,7 @@ extension required.
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": false,
-        "maxInputTokens": 32768,
+        "maxInputTokens": 17408,
         "maxOutputTokens": 2048
       },
       {
@@ -1510,7 +1511,7 @@ extension required.
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": false,
-        "maxInputTokens": 40960,
+        "maxInputTokens": 7168,
         "maxOutputTokens": 4096
       },
       {
@@ -1519,7 +1520,7 @@ extension required.
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": false,
-        "maxInputTokens": 262144,
+        "maxInputTokens": 7168,
         "maxOutputTokens": 4096
       },
       {
@@ -1528,7 +1529,7 @@ extension required.
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": false,
-        "maxInputTokens": 40960,
+        "maxInputTokens": 17408,
         "maxOutputTokens": 4096
       },
       {
@@ -1537,7 +1538,7 @@ extension required.
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": false,
-        "maxInputTokens": 262144,
+        "maxInputTokens": 25600,
         "maxOutputTokens": 16384
       },
       {
@@ -1546,7 +1547,7 @@ extension required.
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": false,
-        "maxInputTokens": 262144,
+        "maxInputTokens": 25600,
         "maxOutputTokens": 16384
       },
       {
@@ -1555,7 +1556,7 @@ extension required.
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": false,
-        "maxInputTokens": 262144,
+        "maxInputTokens": 72704,
         "maxOutputTokens": 16384
       },
       {
@@ -1564,7 +1565,7 @@ extension required.
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": false,
-        "maxInputTokens": 262144,
+        "maxInputTokens": 72704,
         "maxOutputTokens": 16384
       },
       {
@@ -1573,7 +1574,7 @@ extension required.
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": false,
-        "maxInputTokens": 262144,
+        "maxInputTokens": 25600,
         "maxOutputTokens": 16384
       },
       {
@@ -1582,7 +1583,7 @@ extension required.
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": false,
-        "maxInputTokens": 262144,
+        "maxInputTokens": 25600,
         "maxOutputTokens": 16384
       },
       {
@@ -1591,7 +1592,7 @@ extension required.
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": false,
-        "maxInputTokens": 262144,
+        "maxInputTokens": 25600,
         "maxOutputTokens": 16384
       },
       {
@@ -1600,7 +1601,7 @@ extension required.
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": false,
-        "maxInputTokens": 262144,
+        "maxInputTokens": 25600,
         "maxOutputTokens": 16384
       },
       {
@@ -1609,7 +1610,7 @@ extension required.
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": false,
-        "maxInputTokens": 262144,
+        "maxInputTokens": 25600,
         "maxOutputTokens": 16384
       },
       {
@@ -1618,7 +1619,7 @@ extension required.
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": false,
-        "maxInputTokens": 262144,
+        "maxInputTokens": 25600,
         "maxOutputTokens": 16384
       },
       {
@@ -1664,9 +1665,14 @@ extension required.
   against it and answers *"Could not compact conversation"* on each turn when a
   model omits it, before any request reaches the gateway. Take the number from
   `max_input_tokens`; every catalog model reports one. For a Wiro-hosted model it
-  is the window of the checkpoint we run rather than the model family's advertised
-  maximum -- Qwen2.5 7B reports 32,768 here although its card says 131,072,
-  because that is what the shipped configuration sets.
+  is the input that deployment actually admits, measured on the running fleet --
+  not the model family's advertised maximum, and not the window of the checkpoint
+  either. Qwen2.5 7B reports 32,768, which is what its shipped configuration sets
+  although its card says 131,072; Qwen3.8 27B reports 25,600 even though the
+  checkpoint it runs was built for 262,144, because the GPU it is resident on has
+  room for that much prompt and no more. Send more than the number says and the
+  extra is trimmed off the oldest end of the conversation before the model sees
+  it.
 
 Save the file and reopen the model picker; the models appear under **Wiro AI**.
 Any other VS Code extension that takes a custom OpenAI base URL — Cline, Roo
@@ -1738,9 +1744,9 @@ Model ID                                     Context  Max Output
 (Wiro) google/gemini-3-8-flash               1048576       65536
 (Wiro) google/gemini-3-flash                 1048576       65536
 (Wiro) google/gemini-3-pro                   1048576       65536
-(Wiro) meta-llama/llama-3-2-3b-instruct       131072        2048
-(Wiro) mistralai/mistral-7b-instruct-v0-3      32768        2048
-(Wiro) mistralai/mistral-nemo-instruct-2407   131072        2048
+(Wiro) meta-llama/llama-3-2-3b-instruct        51200        2048
+(Wiro) mistralai/mistral-7b-instruct-v0-3      17408        2048
+(Wiro) mistralai/mistral-nemo-instruct-2407    35840        2048
 (Wiro) openai/gpt-5-2                         400000       65536
 (Wiro) openai/gpt-5-4                        1050000       65536
 (Wiro) openai/gpt-5-4-mini                    400000       65536
@@ -1753,25 +1759,25 @@ Model ID                                     Context  Max Output
 (Wiro) openai/gpt-5-nano                      400000       65536
 (Wiro) qwen/qwen2-5-0-5b-instruct              32768        2048
 (Wiro) qwen/qwen2-5-1-5b-instruct              32768        2048
-(Wiro) qwen/qwen2-5-14b-instruct               32768        2048
-(Wiro) qwen/qwen2-5-32b-instruct               32768        2048
+(Wiro) qwen/qwen2-5-14b-instruct               29696        2048
+(Wiro) qwen/qwen2-5-32b-instruct               17408        2048
 (Wiro) qwen/qwen2-5-3b-instruct                32768        2048
 (Wiro) qwen/qwen2-5-7b-instruct                32768        2048
-(Wiro) qwen/qwen2-5-coder-32b-instruct         32768        2048
+(Wiro) qwen/qwen2-5-coder-32b-instruct         17408        2048
 (Wiro) qwen/qwen2-5-coder-7b-instruct          32768        2048
-(Wiro) qwen/qwen3-30b-a3b                      40960        4096
-(Wiro) qwen/qwen3-30b-a3b-thinking-2507       262144        4096
-(Wiro) qwen/qwen3-32b                          40960        4096
-(Wiro) qwen/qwen3-5-27b                       262144       16384
-(Wiro) qwen/qwen3-5-27b-heretic               262144       16384
-(Wiro) qwen/qwen3-5-4b                        262144       16384
-(Wiro) qwen/qwen3-5-4b-heretic                262144       16384
-(Wiro) qwen/qwen3-5-9b                        262144       16384
-(Wiro) qwen/qwen3-5-9b-heretic                262144       16384
-(Wiro) qwen/qwen3-6-27b                       262144       16384
-(Wiro) qwen/qwen3-8-27b                       262144       16384
-(Wiro) qwen/qwen3-8-27b-obliterated           262144       16384
-(Wiro) qwen/qwen3-8-27b-uncensored            262144       16384
+(Wiro) qwen/qwen3-30b-a3b                       7168        4096
+(Wiro) qwen/qwen3-30b-a3b-thinking-2507         7168        4096
+(Wiro) qwen/qwen3-32b                          17408        4096
+(Wiro) qwen/qwen3-5-27b                        25600       16384
+(Wiro) qwen/qwen3-5-27b-heretic                25600       16384
+(Wiro) qwen/qwen3-5-4b                         72704       16384
+(Wiro) qwen/qwen3-5-4b-heretic                 72704       16384
+(Wiro) qwen/qwen3-5-9b                         25600       16384
+(Wiro) qwen/qwen3-5-9b-heretic                 25600       16384
+(Wiro) qwen/qwen3-6-27b                        25600       16384
+(Wiro) qwen/qwen3-8-27b                        25600       16384
+(Wiro) qwen/qwen3-8-27b-obliterated            25600       16384
+(Wiro) qwen/qwen3-8-27b-uncensored             25600       16384
 (Wiro) xai/grok-4-1-fast                     2000000       65536
 (Wiro) xai/grok-4-20                         2000000       65536
 (Wiro) xai/grok-4-5                           500000       65536
