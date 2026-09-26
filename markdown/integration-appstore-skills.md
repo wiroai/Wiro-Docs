@@ -17,6 +17,7 @@ The App Store Connect integration uses ES256-signed JWT authentication with App 
 - App Review Support
 - App Event Manager
 - Meta Ads Manager (uses a simpler `apps` array shape — see below)
+- TikTok Ads Manager (uses a simpler `apps` array shape — see below)
 
 ## Availability
 

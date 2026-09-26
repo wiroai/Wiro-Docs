@@ -14,6 +14,7 @@ The Google Drive integration uses a Google Cloud service account with folder acc
 
 - Google Ads Manager (creative assets for campaigns)
 - Meta Ads Manager (creative assets for campaigns)
+- TikTok Ads Manager (creative assets for campaigns)
 - Social Manager (post-ready media library)
 
 ## Availability

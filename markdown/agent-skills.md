@@ -887,6 +887,7 @@ All three requests succeed independently. The agent restarts once — the server
 | Lead Generation Manager | `lead-strategy` | ICP definition, outreach tone |
 | Google Ads Manager | `ad-strategy` | Target audience, budget goals |
 | Meta Ads Manager | `ad-strategy` | Target audience, creative preferences |
+| TikTok Ads Manager | `ad-strategy`, `tiktok-ads-strategy` | Target audience, budget goals; TikTok tracking gates, kill thresholds, placement, Spark Ads and Smart+ rules |
 
 ### Scheduled Tasks
 
@@ -916,6 +917,10 @@ All three requests succeed independently. The agent restarts once — the server
 | Meta Ads Manager | `cron-audience-scanner` | `0 10 * * 1` | Audience analysis |
 | Meta Ads Manager | `cron-holiday-ad-planner` | `0 10 * * 3` | Holiday campaign planning |
 | Meta Ads Manager | `cron-drive-scanner` | `0 10 * * *` | Google Drive creative asset scanning (disabled by default) |
+| TikTok Ads Manager | `cron-tiktokads-performance-reporter` | `0 9 * * *` | Performance reporting per advertiser, plus the 30-day reconnect reminder (reads `ad-strategy` and `tiktok-ads-strategy`) |
+| TikTok Ads Manager | `cron-tiktokads-audience-scanner` | `0 10 * * 1` | Audience and account health analysis |
+| TikTok Ads Manager | `cron-tiktokads-holiday-planner` | `0 10 * * 3` | Holiday campaign planning |
+| TikTok Ads Manager | `cron-tiktokads-drive-scanner` | `0 10 * * *` | Google Drive creative asset scanning (runs daily; does nothing until Google Drive is connected) |
 
 ### How Preference and Scheduled Skills Work Together
 
@@ -941,6 +946,7 @@ Skills that depend on third-party credentials. Follow the linked integration pag
 | Skill | Credential Key | Integration Guide |
 |-------|----------------|-------------------|
 | `int-metaads-manage` | `meta-ads` (System User or OAuth) | [Meta Ads Skills](/docs/integration-metaads-skills) |
+| `int-tiktok-ads` | `tiktok-ads` (Wiro OAuth) | [TikTok Ads Skills](/docs/integration-tiktokads-skills) |
 | `int-facebookpage-post` | `facebook-pages` (System User or OAuth) | [Facebook Page Skills](/docs/integration-facebook-skills) |
 | `int-instagram-post` | `instagram` (System User or Instagram OAuth) | [Instagram Skills](/docs/integration-instagram-skills) |
 | `int-linkedin-post` | `linkedin` (OAuth) | [LinkedIn Skills](/docs/integration-linkedin-skills) |
@@ -980,7 +986,7 @@ Agents can optionally forward operator notifications to a Telegram bot via the `
 - The agent container gets `WIRO_API_KEY` as an env var only when both `int-wiro-aimodels` is enabled **and** a `wiro.apikey` value has been written.
 - `int-wiro-aimodels` is marked `user_invocable: true` in the registry — end-user messages can trigger it directly, and other skills / scheduled tasks invoke it internally when they need to generate content.
 
-Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, Google Ads) ship with `int-wiro-aimodels: true`. Templates that don't need AI generation (App Review Support, Lead Generation Manager) ship with `int-wiro-aimodels: false`. Either way, the agent stays at `status: 6` (Setup Required) until you upsert the `wiro` credential — same as any other API-key integration.
+Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, TikTok Ads, Google Ads) ship with `int-wiro-aimodels: true`. Templates that don't need AI generation (App Review Support, Lead Generation Manager) ship with `int-wiro-aimodels: false`. Either way, the agent stays at `status: 6` (Setup Required) until you upsert the `wiro` credential — same as any other API-key integration.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \

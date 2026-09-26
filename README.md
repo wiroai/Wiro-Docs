@@ -78,6 +78,7 @@
 | Agent Use Cases | `/docs/agent-use-cases` | [agent-use-cases.md](./markdown/agent-use-cases.md) |
 | **Integrations** | | |
 | Meta Ads | `/docs/integration-metaads-skills` | [integration-metaads-skills.md](./markdown/integration-metaads-skills.md) |
+| TikTok Ads | `/docs/integration-tiktokads-skills` | [integration-tiktokads-skills.md](./markdown/integration-tiktokads-skills.md) |
 | Shopify | `/docs/integration-shopify-skills` | [integration-shopify-skills.md](./markdown/integration-shopify-skills.md) |
 | WooCommerce | `/docs/integration-woocommerce-skills` | [integration-woocommerce-skills.md](./markdown/integration-woocommerce-skills.md) |
 | Reddit | `/docs/integration-reddit-skills` | [integration-reddit-skills.md](./markdown/integration-reddit-skills.md) |
@@ -169,6 +170,7 @@ Wiro-Docs/
     ├── agent-skills.md
     ├── agent-use-cases.md
     ├── integration-metaads-skills.md
+    ├── integration-tiktokads-skills.md
     ├── integration-shopify-skills.md
     ├── integration-woocommerce-skills.md
     ├── integration-reddit-skills.md

@@ -651,3 +651,4 @@ For SaaS products connecting many customers' Meta Ads accounts through a single 
 - [Agent Overview](/docs/agent-overview) — deploying, starting, and lifecycle.
 - [Agent Skills](/docs/agent-skills) — configuring `metaads-manage` and scheduled runs.
 - [Google Ads integration](/docs/integration-googleads-skills) — for cross-platform paid campaigns.
+- [TikTok Ads integration](/docs/integration-tiktokads-skills) — for cross-platform paid campaigns.

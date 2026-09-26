@@ -330,4 +330,5 @@ Test tokens can only query accounts in your own MCC hierarchy. For customer acco
 - [Agent Overview](/docs/agent-overview)
 - [Agent Skills](/docs/agent-skills)
 - [Meta Ads integration](/docs/integration-metaads-skills)
+- [TikTok Ads integration](/docs/integration-tiktokads-skills)
 - [Google Ads API docs](https://developers.google.com/google-ads/api/docs/start)

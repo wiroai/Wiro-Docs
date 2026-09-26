@@ -425,6 +425,7 @@ Returns `{ "result": false, "errors": [{ "code": 404, "message": "Credential not
 | Integration | Auth Modes | Setup Guide |
 |-------------|------------|-------------|
 | Meta Ads | Own OAuth + System User token; Wiro-owned OAuth deferred until Advanced Access | [Meta Ads Skills](/docs/integration-metaads-skills) |
+| TikTok Ads | Wiro only (TikTok for Business; authorization lasts 30 days, reconnect to renew) | [TikTok Ads Skills](/docs/integration-tiktokads-skills) |
 | Shopify | Expiring offline OAuth + refresh token, or same-org client credentials (`expires_in: 86399`) | [Shopify Skills](/docs/integration-shopify-skills) |
 | Reddit | Unavailable pending Reddit Data API approval and Wiro's written commercial contract | [Reddit Skills](/docs/integration-reddit-skills) |
 | Facebook Page | System User token (recommended) + Own OAuth (advanced); Wiro mode coming soon | [Facebook Page Skills](/docs/integration-facebook-skills) |
@@ -504,7 +505,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
 
 > **Don't confuse `credentials.wiro.apikey` with your operator-level Wiro API key.** `credentials.wiro.apikey` is the per-agent project key the agent container uses to call Wiro models internally (gets exported as `WIRO_API_KEY` env var inside the container). The `x-api-key` header you send to Wiro endpoints from your own backend is your operator key — entirely separate (see [Authentication](/docs/authentication)).
 
-Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, Google Ads) ship with `int-wiro-aimodels: true` enabled — but the agent stays in `status: 6` (Setup Required) until the operator supplies a `wiro` project key.
+Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, TikTok Ads, Google Ads) ship with `int-wiro-aimodels: true` enabled — but the agent stays in `status: 6` (Setup Required) until the operator supplies a `wiro` project key.
 
 ### Calendarific in your agent
 
@@ -526,7 +527,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   }'
 ```
 
-Templates that scan global holidays (App Event Manager, Push Notification Manager, Meta Ads, Google Ads) ship with `int-calendarific: true`. As with Wiro AI Models, the agent stays in `status: 6` until a key is provided.
+Templates that scan global holidays (App Event Manager, Push Notification Manager, Meta Ads, TikTok Ads, Google Ads) ship with `int-calendarific: true`. As with Wiro AI Models, the agent stays in `status: 6` until a key is provided.
 
 ## Platform-Managed Credentials
 
@@ -747,7 +748,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
   }'
 ```
 
-For credentials whose `connection_modes` includes an enabled `"wiro"` mode, you can skip Step 1 and call Step 2 with `authmethod: "wiro"`. Omitting `authmethod` uses that credential's registry default. For Meta Ads, always send `"own"` or `"api_key"` while its default `"wiro"` mode is pending; Shopify and Reddit use `"own"`.
+For credentials whose `connection_modes` includes an enabled `"wiro"` mode, you can skip Step 1 and call Step 2 with `authmethod: "wiro"`. Omitting `authmethod` uses that credential's registry default. For Meta Ads, always send `"own"` or `"api_key"` while its default `"wiro"` mode is pending; Shopify and Reddit use `"own"`. TikTok Ads accepts only `"wiro"`.
 
 ### Callback URL pattern (own mode)
 
@@ -757,7 +758,7 @@ Register this URL in your OAuth app settings on the provider's developer portal:
 https://api.wiro.ai/v1/UserAgentOAuth/{Provider}Callback
 ```
 
-Provider-specific paths: `XCallback`, `TikTokCallback`, `IGCallback`, `FBCallback`, `LICallback`, `GAdsCallback`, `MetaAdsCallback`, `MCCallback`, `YTCallback`, `GA4Callback`, `HubSpotCallback`, `MailchimpCallback`, `ShopifyCallback`, `RedditCallback`.
+Provider-specific paths: `XCallback`, `TikTokCallback`, `IGCallback`, `FBCallback`, `LICallback`, `GAdsCallback`, `MetaAdsCallback`, `MCCallback`, `YTCallback`, `GA4Callback`, `HubSpotCallback`, `MailchimpCallback`, `ShopifyCallback`, `RedditCallback`. TikTok Ads uses `TikTokAdsCallback`, but it is Wiro-managed only, so there is no app of your own to register it in.
 
 ### Callback success & error parameters
 
@@ -770,6 +771,7 @@ Provider-specific paths: `XCallback`, `TikTokCallback`, `IGCallback`, `FBCallbac
 | LinkedIn | `li_connected=true&li_name=...` | `li_error=...` (+ `li_error_detail=...`) |
 | Google Ads | `gads_connected=true&gads_accounts=[...]` | `gads_error=...` (+ `gads_error_detail=...`) |
 | Meta Ads | `metaads_connected=true&metaads_accounts=[...]` | `metaads_error=...` (+ `metaads_error_detail=...`) |
+| TikTok Ads | `tiktokads_connected=true&tiktokads_advertisers=[...]` | `tiktokads_error=...` |
 | Merchant Center | `mc_connected=true&mc_accounts=[...]` | `mc_error=...` (+ `mc_error_detail=...`) |
 | YouTube | `yt_connected=true&yt_channels=[...]` | `yt_error=...` (+ `yt_error_detail=...`) |
 | GA4 | `ga4_connected=true&ga4_properties=[...]` | `ga4_error=...` (+ `ga4_error_detail=...`) |
@@ -778,7 +780,7 @@ Provider-specific paths: `XCallback`, `TikTokCallback`, `IGCallback`, `FBCallbac
 | Shopify | `shopify_connected=true&shopify_shop=...&shopify_name=...` | `shopify_error=...` (+ `shopify_error_detail=...`) |
 | Reddit | `reddit_connected=true&reddit_username=...` | `reddit_error=...` (+ `reddit_error_detail=...`) |
 
-> **Conditional params:** `gads_accounts`, `mc_accounts`, `yt_channels`, `ga4_properties`, and `metaads_accounts` are omitted from the redirect when the provider returns zero items (for example, no accessible Google Ads customers, or a developer token is missing in Wiro mode). `fb_pages` is always present on success — Facebook returns `fb_error=no_pages` instead when the user has no administered Pages.
+> **Conditional params:** `gads_accounts`, `mc_accounts`, `yt_channels`, `ga4_properties`, and `metaads_accounts` are omitted from the redirect when the provider returns zero items (for example, no accessible Google Ads customers, or a developer token is missing in Wiro mode). `fb_pages` is always present on success — Facebook returns `fb_error=no_pages` instead when the user has no administered Pages. `tiktokads_advertisers` is likewise always present on success — the callback returns `tiktokads_error=no_accounts` instead when no advertiser is available.
 
 Common error codes across providers:
 
@@ -886,11 +888,11 @@ Returns whether the credential is connected and lists every account/property/pag
 |-------|------|-------------|
 | `connected` | `boolean` | `true` when the active mode has a validated secret and every required picker field is populated. |
 | `accounts` | `array<{id, name}>` | The accounts/pages/properties the user selected. Empty `[]` when nothing is selected (or the credential has no picker step — e.g. Twitter/X, TikTok, HubSpot — which expose a 1-element array carrying the connected user's identifier). |
-| `connectedat` | `string` | ISO timestamp of the last successful Connect / token refresh. |
+| `connectedat` | `string` | ISO timestamp of the last successful Connect. Automatic token refreshes do not change it. |
 | `tokenexpiresat` | `string` | ISO timestamp when the current access token expires. Empty for providers without a fixed expiry (e.g. Mailchimp). |
 
 > **Multi-account picker fields are JSON arrays.** Picker fields like
-> `customerid` (Google Ads), `adaccountid` (Meta Ads), `merchantid` (Merchant
+> `customerid` (Google Ads), `adaccountid` (Meta Ads), `advertiserid` (TikTok Ads), `merchantid` (Merchant
 > Center), `channelid` (YouTube), `propertyid` (GA4), `pageid` (Facebook
 > Pages), and direct Instagram's `accountId` are stored as JSON arrays when
 > `account_picker.multi_select === true`. Instagram Login OAuth also stores its
@@ -959,7 +961,7 @@ accepts entries from the provider's public account list; clients never supply
 access tokens.
 
 The registry declares each provider's picker shape. Multi-select pickers
-(Google Ads, Meta Ads, Merchant Center, YouTube, GA4, Facebook Pages, and direct
+(Google Ads, Meta Ads, TikTok Ads, Merchant Center, YouTube, GA4, Facebook Pages, and direct
 Instagram) accept one or more entries.
 
 | Parameter | Type | Required | Description |
@@ -976,6 +978,7 @@ Instagram) accept one or more entries.
 |------------|------------------------|-------|
 | `google-ads` | `customerid`, `customerdescriptivename` | `customerid` is 10 digits; dashes/letters stripped server-side. |
 | `meta-ads` | `adaccountid`, `adaccountname` | `act_` prefix stripped server-side. |
+| `tiktok-ads` | `advertiserid`, `advertisername` | Numeric advertiser ID; non-digits stripped server-side. Each call replaces the previous selection. |
 | `google-merchant-center` | `merchantid`, `accountname` | |
 | `youtube` | `channelid`, `channeltitle` | |
 | `ga4` | `propertyid`, `propertydisplayname` | |
@@ -1146,7 +1149,7 @@ If you're building a product on top of Wiro agents and need your customers to co
    browser, let the provider authorize, and handle the callback parameters.
 4. **Direct branch** — when `accounts` is returned, render the public account
    list directly; there is no browser redirect.
-5. **Finalize** — for picker credentials (Meta Ads, Facebook Pages, direct
+5. **Finalize** — for picker credentials (Meta Ads, TikTok Ads, Facebook Pages, direct
    Instagram, Google Ads, Merchant Center, YouTube, GA4), call
    `POST /UserAgentOAuth/SetPickerAccounts` with the selected public entries.
 6. **Verify** — call `POST /UserAgentOAuth/OAuthStatus`.

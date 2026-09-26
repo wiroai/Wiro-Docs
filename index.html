@@ -313,6 +313,9 @@
                         <a href="/docs/integration-metaads-skills" class="docs-nav-link" data-section="integration-metaads-skills"><img src="https://wiro.ai/images/icons/skills/meta.svg" alt="" class="docs-nav-icon-img" /><span>Meta Ads</span></a>
                       </li>
                       <li>
+                        <a href="/docs/integration-tiktokads-skills" class="docs-nav-link" data-section="integration-tiktokads-skills"><img src="https://wiro.ai/images/icons/skills/tiktok.svg" alt="" class="docs-nav-icon-img" /><span>TikTok Ads</span></a>
+                      </li>
+                      <li>
                         <a href="/docs/integration-shopify-skills" class="docs-nav-link" data-section="integration-shopify-skills"><img src="assets/shopify.svg" alt="" class="docs-nav-icon-img" /><span>Shopify</span></a>
                       </li>
                       <li>
@@ -18299,6 +18302,11 @@ email tools, CRMs — through three credential methods:</p>
 <td><a href="/docs/integration-metaads-skills">Meta Ads Skills</a></td>
 </tr>
 <tr>
+<td>TikTok Ads</td>
+<td>Wiro only (TikTok for Business; authorization lasts 30 days, reconnect to renew)</td>
+<td><a href="/docs/integration-tiktokads-skills">TikTok Ads Skills</a></td>
+</tr>
+<tr>
 <td>Shopify</td>
 <td>Expiring offline OAuth + refresh token, or same-org client credentials (<code>expires_in: 86399</code>)</td>
 <td><a href="/docs/integration-shopify-skills">Shopify Skills</a></td>
@@ -18514,7 +18522,7 @@ pending provider review.</p>
 <blockquote>
 <p><strong>Don't confuse <code>credentials.wiro.apikey</code> with your operator-level Wiro API key.</strong> <code>credentials.wiro.apikey</code> is the per-agent project key the agent container uses to call Wiro models internally (gets exported as <code>WIRO_API_KEY</code> env var inside the container). The <code>x-api-key</code> header you send to Wiro endpoints from your own backend is your operator key — entirely separate (see <a href="/docs/authentication">Authentication</a>).</p>
 </blockquote>
-<p>Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, Google Ads) ship with <code>int-wiro-aimodels: true</code> enabled — but the agent stays in <code>status: 6</code> (Setup Required) until the operator supplies a <code>wiro</code> project key.</p>
+<p>Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, TikTok Ads, Google Ads) ship with <code>int-wiro-aimodels: true</code> enabled — but the agent stays in <code>status: 6</code> (Setup Required) until the operator supplies a <code>wiro</code> project key.</p>
 <h3 id="calendarific-in-your-agent">Calendarific in your agent</h3>
 <p>The <code>int-calendarific</code> skill discovers global holidays and observances across 230+ countries via the <a href="https://calendarific.com/">Calendarific</a> API. The free tier (1,000 calls/month) covers most agent use cases.</p>
 <ul>
@@ -18532,7 +18540,7 @@ pending provider review.</p>
     ]
   }'
 </code></pre>
-<p>Templates that scan global holidays (App Event Manager, Push Notification Manager, Meta Ads, Google Ads) ship with <code>int-calendarific: true</code>. As with Wiro AI Models, the agent stays in <code>status: 6</code> until a key is provided.</p>
+<p>Templates that scan global holidays (App Event Manager, Push Notification Manager, Meta Ads, TikTok Ads, Google Ads) ship with <code>int-calendarific: true</code>. As with Wiro AI Models, the agent stays in <code>status: 6</code> until a key is provided.</p>
 <h2 id="platform-managed-credentials">Platform-Managed Credentials</h2>
 <p>One credential is fully <strong>managed by Wiro</strong> — you don't provide it and you can't see it in API responses:</p>
 <ul>
@@ -18800,12 +18808,12 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect&quot; \
     &quot;authmethod&quot;: &quot;own&quot;
   }'
 </code></pre>
-<p>For credentials whose <code>connection_modes</code> includes an enabled <code>"wiro"</code> mode, you can skip Step 1 and call Step 2 with <code>authmethod: "wiro"</code>. Omitting <code>authmethod</code> uses that credential's registry default. For Meta Ads, always send <code>"own"</code> or <code>"api_key"</code> while its default <code>"wiro"</code> mode is pending; Shopify and Reddit use <code>"own"</code>.</p>
+<p>For credentials whose <code>connection_modes</code> includes an enabled <code>"wiro"</code> mode, you can skip Step 1 and call Step 2 with <code>authmethod: "wiro"</code>. Omitting <code>authmethod</code> uses that credential's registry default. For Meta Ads, always send <code>"own"</code> or <code>"api_key"</code> while its default <code>"wiro"</code> mode is pending; Shopify and Reddit use <code>"own"</code>. TikTok Ads accepts only <code>"wiro"</code>.</p>
 <h3 id="callback-url-pattern-own-mode">Callback URL pattern (own mode)</h3>
 <p>Register this URL in your OAuth app settings on the provider's developer portal:</p>
 <pre><code>https://api.wiro.ai/v1/UserAgentOAuth/{Provider}Callback
 </code></pre>
-<p>Provider-specific paths: <code>XCallback</code>, <code>TikTokCallback</code>, <code>IGCallback</code>, <code>FBCallback</code>, <code>LICallback</code>, <code>GAdsCallback</code>, <code>MetaAdsCallback</code>, <code>MCCallback</code>, <code>YTCallback</code>, <code>GA4Callback</code>, <code>HubSpotCallback</code>, <code>MailchimpCallback</code>, <code>ShopifyCallback</code>, <code>RedditCallback</code>.</p>
+<p>Provider-specific paths: <code>XCallback</code>, <code>TikTokCallback</code>, <code>IGCallback</code>, <code>FBCallback</code>, <code>LICallback</code>, <code>GAdsCallback</code>, <code>MetaAdsCallback</code>, <code>MCCallback</code>, <code>YTCallback</code>, <code>GA4Callback</code>, <code>HubSpotCallback</code>, <code>MailchimpCallback</code>, <code>ShopifyCallback</code>, <code>RedditCallback</code>. TikTok Ads uses <code>TikTokAdsCallback</code>, but it is Wiro-managed only, so there is no app of your own to register it in.</p>
 <h3 id="callback-success-error-parameters">Callback success &amp; error parameters</h3>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -18854,6 +18862,11 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect&quot; \
 <td><code>metaads_error=...</code> (+ <code>metaads_error_detail=...</code>)</td>
 </tr>
 <tr>
+<td>TikTok Ads</td>
+<td><code>tiktokads_connected=true&amp;tiktokads_advertisers=[...]</code></td>
+<td><code>tiktokads_error=...</code></td>
+</tr>
+<tr>
 <td>Merchant Center</td>
 <td><code>mc_connected=true&amp;mc_accounts=[...]</code></td>
 <td><code>mc_error=...</code> (+ <code>mc_error_detail=...</code>)</td>
@@ -18893,7 +18906,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect&quot; \
 </div>
 </div>
 <blockquote>
-<p><strong>Conditional params:</strong> <code>gads_accounts</code>, <code>mc_accounts</code>, <code>yt_channels</code>, <code>ga4_properties</code>, and <code>metaads_accounts</code> are omitted from the redirect when the provider returns zero items (for example, no accessible Google Ads customers, or a developer token is missing in Wiro mode). <code>fb_pages</code> is always present on success — Facebook returns <code>fb_error=no_pages</code> instead when the user has no administered Pages.</p>
+<p><strong>Conditional params:</strong> <code>gads_accounts</code>, <code>mc_accounts</code>, <code>yt_channels</code>, <code>ga4_properties</code>, and <code>metaads_accounts</code> are omitted from the redirect when the provider returns zero items (for example, no accessible Google Ads customers, or a developer token is missing in Wiro mode). <code>fb_pages</code> is always present on success — Facebook returns <code>fb_error=no_pages</code> instead when the user has no administered Pages. <code>tiktokads_advertisers</code> is likewise always present on success — the callback returns <code>tiktokads_error=no_accounts</code> instead when no advertiser is available.</p>
 </blockquote>
 <p>Common error codes across providers:</p>
 <div class="docs-param-table">
@@ -19169,7 +19182,7 @@ without a browser redirect.</p>
 <tr>
 <td><code>connectedat</code></td>
 <td><code>string</code></td>
-<td>ISO timestamp of the last successful Connect / token refresh.</td>
+<td>ISO timestamp of the last successful Connect. Automatic token refreshes do not change it.</td>
 </tr>
 <tr>
 <td><code>tokenexpiresat</code></td>
@@ -19182,7 +19195,7 @@ without a browser redirect.</p>
 </div>
 <blockquote>
 <p><strong>Multi-account picker fields are JSON arrays.</strong> Picker fields like
-<code>customerid</code> (Google Ads), <code>adaccountid</code> (Meta Ads), <code>merchantid</code> (Merchant
+<code>customerid</code> (Google Ads), <code>adaccountid</code> (Meta Ads), <code>advertiserid</code> (TikTok Ads), <code>merchantid</code> (Merchant
 Center), <code>channelid</code> (YouTube), <code>propertyid</code> (GA4), <code>pageid</code> (Facebook
 Pages), and direct Instagram's <code>accountId</code> are stored as JSON arrays when
 <code>account_picker.multi_select === true</code>. Instagram Login OAuth also stores its
@@ -19268,7 +19281,7 @@ or a chained child-resource selection after <code>DiscoverPickerItems</code>. Th
 accepts entries from the provider's public account list; clients never supply
 access tokens.</p>
 <p>The registry declares each provider's picker shape. Multi-select pickers
-(Google Ads, Meta Ads, Merchant Center, YouTube, GA4, Facebook Pages, and direct
+(Google Ads, Meta Ads, TikTok Ads, Merchant Center, YouTube, GA4, Facebook Pages, and direct
 Instagram) accept one or more entries.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -19337,6 +19350,11 @@ Instagram) accept one or more entries.</p>
 <td><code>meta-ads</code></td>
 <td><code>adaccountid</code>, <code>adaccountname</code></td>
 <td><code>act_</code> prefix stripped server-side.</td>
+</tr>
+<tr>
+<td><code>tiktok-ads</code></td>
+<td><code>advertiserid</code>, <code>advertisername</code></td>
+<td>Numeric advertiser ID; non-digits stripped server-side. Each call replaces the previous selection.</td>
 </tr>
 <tr>
 <td><code>google-merchant-center</code></td>
@@ -19564,7 +19582,7 @@ customer-facing token-refresh endpoint or manual refresh action.</p>
    browser, let the provider authorize, and handle the callback parameters.</li>
 <li><strong>Direct branch</strong> — when <code>accounts</code> is returned, render the public account
    list directly; there is no browser redirect.</li>
-<li><strong>Finalize</strong> — for picker credentials (Meta Ads, Facebook Pages, direct
+<li><strong>Finalize</strong> — for picker credentials (Meta Ads, TikTok Ads, Facebook Pages, direct
    Instagram, Google Ads, Merchant Center, YouTube, GA4), call
    <code>POST /UserAgentOAuth/SetPickerAccounts</code> with the selected public entries.</li>
 <li><strong>Verify</strong> — call <code>POST /UserAgentOAuth/OAuthStatus</code>.</li>
@@ -20779,6 +20797,11 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <td><code>ad-strategy</code></td>
 <td>Target audience, creative preferences</td>
 </tr>
+<tr>
+<td>TikTok Ads Manager</td>
+<td><code>ad-strategy</code>, <code>tiktok-ads-strategy</code></td>
+<td>Target audience, budget goals; TikTok tracking gates, kill thresholds, placement, Spark Ads and Smart+ rules</td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -20931,6 +20954,30 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <td><code>0 10 * * *</code></td>
 <td>Google Drive creative asset scanning (disabled by default)</td>
 </tr>
+<tr>
+<td>TikTok Ads Manager</td>
+<td><code>cron-tiktokads-performance-reporter</code></td>
+<td><code>0 9 * * *</code></td>
+<td>Performance reporting per advertiser, plus the 30-day reconnect reminder (reads <code>ad-strategy</code> and <code>tiktok-ads-strategy</code>)</td>
+</tr>
+<tr>
+<td>TikTok Ads Manager</td>
+<td><code>cron-tiktokads-audience-scanner</code></td>
+<td><code>0 10 * * 1</code></td>
+<td>Audience and account health analysis</td>
+</tr>
+<tr>
+<td>TikTok Ads Manager</td>
+<td><code>cron-tiktokads-holiday-planner</code></td>
+<td><code>0 10 * * 3</code></td>
+<td>Holiday campaign planning</td>
+</tr>
+<tr>
+<td>TikTok Ads Manager</td>
+<td><code>cron-tiktokads-drive-scanner</code></td>
+<td><code>0 10 * * *</code></td>
+<td>Google Drive creative asset scanning (runs daily; does nothing until Google Drive is connected)</td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -20968,6 +21015,11 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <td><code>int-metaads-manage</code></td>
 <td><code>meta-ads</code> (System User or OAuth)</td>
 <td><a href="/docs/integration-metaads-skills">Meta Ads Skills</a></td>
+</tr>
+<tr>
+<td><code>int-tiktok-ads</code></td>
+<td><code>tiktok-ads</code> (Wiro OAuth)</td>
+<td><a href="/docs/integration-tiktokads-skills">TikTok Ads Skills</a></td>
 </tr>
 <tr>
 <td><code>int-facebookpage-post</code></td>
@@ -21114,7 +21166,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <li>The agent container gets <code>WIRO_API_KEY</code> as an env var only when both <code>int-wiro-aimodels</code> is enabled <strong>and</strong> a <code>wiro.apikey</code> value has been written.</li>
 <li><code>int-wiro-aimodels</code> is marked <code>user_invocable: true</code> in the registry — end-user messages can trigger it directly, and other skills / scheduled tasks invoke it internally when they need to generate content.</li>
 </ul>
-<p>Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, Google Ads) ship with <code>int-wiro-aimodels: true</code>. Templates that don't need AI generation (App Review Support, Lead Generation Manager) ship with <code>int-wiro-aimodels: false</code>. Either way, the agent stays at <code>status: 6</code> (Setup Required) until you upsert the <code>wiro</code> credential — same as any other API-key integration.</p>
+<p>Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, TikTok Ads, Google Ads) ship with <code>int-wiro-aimodels: true</code>. Templates that don't need AI generation (App Review Support, Lead Generation Manager) ship with <code>int-wiro-aimodels: false</code>. Either way, the agent stays at <code>status: 6</code> (Setup Required) until you upsert the <code>wiro</code> credential — same as any other API-key integration.</p>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CredentialUpsert&quot; \
   -H &quot;Content-Type: application/json&quot; \
   -H &quot;x-api-key: YOUR_API_KEY&quot; \
@@ -23345,6 +23397,656 @@ agent model.</p>
 <li><a href="/docs/agent-credentials">Agent Credentials &amp; OAuth</a> — integration catalog hub and generic OAuth reference.</li>
 <li><a href="/docs/agent-overview">Agent Overview</a> — deploying, starting, and lifecycle.</li>
 <li><a href="/docs/agent-skills">Agent Skills</a> — configuring <code>metaads-manage</code> and scheduled runs.</li>
+<li><a href="/docs/integration-googleads-skills">Google Ads integration</a> — for cross-platform paid campaigns.</li>
+<li><a href="/docs/integration-tiktokads-skills">TikTok Ads integration</a> — for cross-platform paid campaigns.</li>
+</ul>
+                </article>
+              </div>
+
+              <!-- ==================== INTEGRATION: TIKTOK ADS ==================== -->
+              <div class="docs-page-section" data-page="integration-tiktokads-skills" style="display: none">
+                <article class="docs-section">
+                  <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/integration-tiktokads-skills.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/integration-tiktokads-skills.md" download class="docs-section-md-btn">Download</a></div>
+<h1 id="tiktok-ads-integration">TikTok Ads Integration</h1>
+<p class="section-subtitle">Connect your agent to TikTok's advertising platform to report on and manage campaigns, ad groups, ads, audiences, and creatives through TikTok's official TikTok for Business MCP server.</p>
+<h2 id="overview">Overview</h2>
+<p>The TikTok Ads integration powers the <code>int-tiktok-ads</code> skill (TikTok Ads Manager). The agent works through TikTok's official <strong>TikTok for Business MCP server</strong> (Model Context Protocol), which exposes TikTok API for Business v1.3 capabilities as tools: reporting, campaign / ad group / ad management, Upgraded Smart+, audiences, creatives, Spark Ads, and TikTok's own diagnosis tools.</p>
+<p>This integration covers <strong>advertising only</strong>. It does not post organic videos to a TikTok profile — that is the separate <a href="/docs/integration-tiktok-skills">TikTok integration</a>, which uses its own <code>tiktok</code> credential.</p>
+<p><strong>Skills that use this integration:</strong></p>
+<ul>
+<li><code>int-tiktok-ads</code> — Reporting, campaign / ad group / ad management, Upgraded Smart+ and GMV Max, audiences, creatives, Spark Ads, and diagnosis</li>
+<li><code>util-ads-manager-common</code> and <code>util-ads-playbook</code> — Shared ads helpers (approval flow, recommendations queue, daily report template, kill / scale / test playbook), also used by the Meta Ads and Google Ads skills</li>
+</ul>
+<p><strong>Agents that typically enable this integration:</strong></p>
+<ul>
+<li>TikTok Ads Manager (prebuilt; <code>int-tiktok-ads</code> is on by default)</li>
+<li>Any Custom Build agent that needs paid-media capabilities on TikTok</li>
+</ul>
+<h2 id="availability">Availability</h2>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Status</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>"wiro"</code></td>
+<td>Available — the only mode</td>
+<td>One-click connect through Wiro's TikTok for Business app. You don't create a developer app, request an API key, or go through app review.</td>
+</tr>
+<tr>
+<td>Customer-owned app or pasted token</td>
+<td>Not offered</td>
+<td>TikTok Ads has no <code>"own"</code> or <code>"api_key"</code> mode. <code>OAuthConnect</code> rejects any other <code>authmethod</code> with <code>Unsupported connection mode for TikTok Ads</code>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<blockquote>
+<p><strong>Authorization lasts 30 days.</strong> TikTok ends every TikTok for Business authorization 30 days after it is granted, and refreshing the access token does not extend it. Reconnect with the same TikTok for Business account to renew it — see "The 30-day authorization" below.</p>
+</blockquote>
+<h2 id="prerequisites">Prerequisites</h2>
+<ul>
+<li><strong>A TikTok for Business account with access to at least one advertiser</strong> (ad account) — for example through TikTok Ads Manager or membership in a Business Center. For the agent to make changes, not just report, that account needs a role on the advertiser that allows campaign management.</li>
+<li><strong>An agent with <code>int-tiktok-ads</code> enabled</strong> — TikTok Ads Manager has it on by default. On a Custom Build agent, enable it with <code>POST /UserAgent/SkillsApply</code> (see "Using the Skill" below). Skill changes are only available on Custom Build agents.</li>
+<li><strong>For API integrations only:</strong> a Wiro API key (<a href="/docs/authentication">Authentication</a>), a deployed agent (<a href="/docs/agent-overview">Agent Overview</a>) and its <code>useragentguid</code>, and an HTTPS return URL that your backend controls. <code>http://localhost</code> and <code>http://127.0.0.1</code> are accepted for local development only.</li>
+</ul>
+<h2 id="connect-in-the-wiro-dashboard">Connect in the Wiro dashboard</h2>
+<ol>
+<li>Open your agent, go to <strong>Credentials</strong>, and find the <strong>TikTok Ads</strong> card.</li>
+<li>Click <strong>Connect TikTok for Business</strong>.</li>
+<li>Sign in to TikTok for Business and approve the consent screen. It names the app <strong>Wiro AI</strong> and asks for the <code>mcp:tt4b</code> permission scope.</li>
+<li>Back in Wiro, pick the advertisers the agent may manage. You can select several; when your account has exactly one advertiser, it is selected for you.</li>
+<li>Wiro saves the selection and restarts the agent if it was running, so the agent picks up the new connection.</li>
+</ol>
+<h2 id="the-30-day-authorization">The 30-day authorization</h2>
+<ul>
+<li>TikTok ends every TikTok for Business authorization <strong>30 days</strong> after it is granted. Refreshing the access token does not extend it; this is TikTok's rule, not a Wiro setting.</li>
+<li>To renew, reconnect with the same TikTok for Business account: click <strong>Disconnect</strong> on the TikTok Ads card, then <strong>Connect TikTok for Business</strong> again and confirm the advertisers. A different TikTok for Business account may see different advertisers.</li>
+<li>From 7 days before the end, the daily performance report opens its Risk Flags &amp; Account Health section with the end date and a reconnect reminder. When you chat with the agent in that window, it mentions the end date once at the top of its reply.</li>
+<li>After the authorization ends, the daily performance report sends a one-line notice that TikTok Ads reporting stopped and asks you to reconnect. The other TikTok Ads scheduled tasks stay quiet until you reconnect.</li>
+<li>Expiry does not pause your ads. Campaigns keep delivering in TikTok; only the agent loses access.</li>
+<li>The short-lived access tokens (about 24 hours) are renewed by Wiro automatically. You never see or handle a TikTok token.</li>
+</ul>
+<h2 id="advertiser-selection">Advertiser selection</h2>
+<ul>
+<li>The agent works only on the advertisers you selected when you connected. Any request for another advertiser is refused.</li>
+<li>To change the selection, click <strong>Disconnect</strong> on the TikTok Ads card, then connect again and pick the advertisers you want.</li>
+<li>Until at least one advertiser is selected, an agent that requires TikTok Ads (such as TikTok Ads Manager) stays in Setup Required and cannot start.</li>
+</ul>
+<h2 id="what-the-agent-can-do">What the agent can do</h2>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>What the agent does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Reporting</td>
+<td>Account, campaign, ad group, and ad metrics (spend, impressions, clicks, CTR, CPC, CPM, conversions, cost per conversion, ROAS, video views and watch time); age, gender, and country breakdowns; placement (TikTok, Pangle, Global App Bundle) and device platform breakdowns; asynchronous reports for long date ranges; Upgraded Smart+ creative reports; GMV Max reports.</td>
+</tr>
+<tr>
+<td>Campaign management</td>
+<td>Create and update campaigns, ad groups, and ads; pause, enable, or delete them; change budgets and schedules; copy campaigns; run split tests; set up automated rules; manage search negative keywords.</td>
+</tr>
+<tr>
+<td>Upgraded Smart+ and GMV Max</td>
+<td>Create, update, and change the status of Upgraded Smart+ campaigns. Update and report on existing GMV Max campaigns.</td>
+</tr>
+<tr>
+<td>Audiences</td>
+<td>Custom and lookalike audiences, saved audiences, audience size estimates, and audience insights.</td>
+</tr>
+<tr>
+<td>Creatives</td>
+<td>Upload images and videos by URL, choose music, generate creatives with Wiro AI models (when the Wiro AI Models skill is set up), check creative fatigue, run video fix tasks, and preview ads.</td>
+</tr>
+<tr>
+<td>Spark Ads</td>
+<td>Promote posts from your own TikTok account linked to the advertiser, or authorize a creator's post with the Spark Ads code the creator sends you.</td>
+</tr>
+<tr>
+<td>Placement control</td>
+<td>Pangle block lists and inventory filters.</td>
+</tr>
+<tr>
+<td>Diagnosis</td>
+<td>TikTok's own diagnosis tools for delivery and performance issues (no spend, low spend, high CPA, creative fatigue).</td>
+</tr>
+<tr>
+<td>Ad comments</td>
+<td>Reply to or hide comments on ads, and manage blocked words.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<h2 id="what-the-agent-cannot-do">What the agent cannot do</h2>
+<p>These operations are not available through this integration, by design. When you ask for one, the agent tells you it is not available instead of trying another way.</p>
+<ul>
+<li><strong>Business Center administration.</strong></li>
+<li><strong>Billing, payments, balances, invoices, or fund transfers.</strong> TikTok charges ad spend to the advertiser's own payment method; handle billing in TikTok Ads Manager.</li>
+<li><strong>Downloading lead data.</strong> Lead generation campaigns can be reported on (cost per lead) and paused.</li>
+<li><strong>TikTok One (Creator Marketplace).</strong></li>
+<li><strong>Catalogs.</strong></li>
+<li><strong>Pixel and event configuration.</strong></li>
+<li><strong>Reach &amp; Frequency purchases.</strong></li>
+<li><strong>Creating GMV Max campaigns.</strong> TikTok starts them delivering as soon as they are created, so create them in TikTok Ads Manager; the agent can then report on them and apply approved updates.</li>
+<li><strong>Customer-file audiences.</strong> They need an audience file upload; create them in TikTok Ads Manager.</li>
+<li><strong>Organic posting to a TikTok profile.</strong> Use the <a href="/docs/integration-tiktok-skills">TikTok integration</a>.</li>
+</ul>
+<h2 id="safety-and-approvals">Safety and approvals</h2>
+<ul>
+<li><strong>Every change goes through the agent's approval policy</strong> (the <code>approval-policy</code> custom skill). By default the agent describes the change (object, IDs, old and new value, reason) and waits for your approval. Reads — reports, lookups, previews — never need approval.</li>
+<li><strong>New objects start paused.</strong> Campaigns, ad groups, ads, Upgraded Smart+ campaigns, and campaign copies are always created paused. Turning one on is a separate change that needs its own approval.</li>
+<li><strong>Deletes happen only when you ask.</strong> Campaigns, ad groups, ads, audiences, creative assets, blocked words, ad comments, and search negative keywords can be deleted on request, after approval. Deleting cannot be undone. The agent never deletes on its own; when it recommends stopping something, it pauses it.</li>
+<li><strong>Rejected changes are not retried.</strong> If TikTok rejects a change, the agent reports TikTok's message and request ID and stops.</li>
+<li><strong>Scheduled tasks only read from TikTok.</strong> They put proposed changes into the recommendations queue; a change runs only after you approve it in chat (for example <code>apply 1</code>).</li>
+<li><strong>Budgets are in the advertiser's currency, not cents.</strong> The agent confirms the currency before changing a budget and states it in the approval request. TikTok requires a new budget to be at least 105% of what has already been spent and does not accept budget changes between 23:55 and 00:00 advertiser time.</li>
+<li><strong>Rate limits.</strong> TikTok allows most tools 3 requests per second per tool for each TikTok for Business user; a few, such as asynchronous report creation and campaign copies, have lower limits per app. When TikTok rate-limits a report or lookup, the agent backs off and retries; a rate-limited change is reported and not retried.</li>
+<li><strong>No secrets in chat.</strong> The agent never asks for a TikTok password or token. The only code you paste is a Spark Ads authorization code.</li>
+</ul>
+<h2 id="scheduled-tasks">Scheduled tasks</h2>
+<p>TikTok Ads Manager ships with these scheduled tasks. Times use the agent's time zone.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Task</th>
+<th>Skill key</th>
+<th>Default schedule</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Daily performance report</td>
+<td><code>cron-tiktokads-performance-reporter</code></td>
+<td><code>0 9 * * *</code> (daily 09:00)</td>
+<td>Account, campaign, placement, device, country, and ad-level performance for the last 7 days, anomaly checks, and recommendations. Carries the 30-day reconnect reminder and the expiry notice.</td>
+</tr>
+<tr>
+<td>Weekly audience &amp; account health scan</td>
+<td><code>cron-tiktokads-audience-scanner</code></td>
+<td><code>0 10 * * 1</code> (Mondays 10:00)</td>
+<td>Age, gender, and placement breakdowns, creative health, custom audience status, rejected or stuck ads, audience fatigue, and new targeting ideas.</td>
+</tr>
+<tr>
+<td>Drive creative scanner</td>
+<td><code>cron-tiktokads-drive-scanner</code></td>
+<td><code>0 10 * * *</code> (daily 10:00)</td>
+<td>Looks for new creative folders in Google Drive and proposes TikTok campaigns for them. Runs daily; does nothing until Google Drive is connected and has creative folders.</td>
+</tr>
+<tr>
+<td>Holiday campaign planner</td>
+<td><code>cron-tiktokads-holiday-planner</code></td>
+<td><code>0 10 * * 3</code> (Wednesdays 10:00)</td>
+<td>Scans upcoming holidays from the holiday calendar (Calendarific) and suggests seasonal campaigns. Does nothing until Calendarific is connected.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Shared ads tasks also cover TikTok Ads: the nightly <code>cron-ads-recommendation-cleanup</code> expires stale recommendations, and the optional Adjust creative ROAS report (<code>cron-adjust-creative-roas-reporter</code>) cross-checks TikTok spend when Adjust is connected.</p>
+<p>To change <strong>what</strong> the tasks look for, edit these custom skills (stored as <code>cs-&lt;key&gt;</code>) rather than the tasks:</p>
+<ul>
+<li><code>tiktok-ads-strategy</code> — TikTok-specific knobs: tracking quality gates, kill thresholds, placement strategy, Spark Ads and Smart+ rules.</li>
+<li><code>ad-strategy</code> — cross-platform KPI thresholds, shared with Meta Ads and Google Ads.</li>
+<li><code>approval-policy</code> — which changes wait for approval.</li>
+</ul>
+<h2 id="multiple-advertisers">Multiple advertisers</h2>
+<ul>
+<li>Scheduled tasks run once per selected advertiser. Each report is headed with the advertiser's name and ID and uses that advertiser's currency and time zone.</li>
+<li>In chat, name the advertiser when more than one is selected; otherwise the agent asks which one to use. A single request or change never mixes advertisers.</li>
+<li>The 30-day reminder appears in each advertiser's daily report; the expiry notice is sent once for the whole connection.</li>
+</ul>
+<h2 id="connect-through-the-api">Connect through the API</h2>
+<p>Use this flow when you build your own settings screen on top of Wiro agents. Every request is authenticated as described in <a href="/docs/authentication">Authentication</a>.</p>
+<h3 id="step-1-start-the-connection">Step 1: Start the connection</h3>
+<pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -H &quot;x-api-key: YOUR_API_KEY&quot; \
+  -d '{
+    &quot;useragentguid&quot;: &quot;your-useragent-guid&quot;,
+    &quot;credentialkey&quot;: &quot;tiktok-ads&quot;,
+    &quot;redirecturl&quot;: &quot;https://your-app.com/settings/integrations&quot;
+  }'
+</code></pre>
+<p>Response:</p>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;authorizeUrl&quot;: &quot;https://business-api.tiktok.com/portal/mcp-tt4b-authorize?client_id=...&amp;redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FUserAgentOAuth%2FTikTokAdsCallback&amp;scope=mcp%3Att4b&amp;response_type=code&amp;state=...&amp;code_challenge=...&amp;code_challenge_method=S256&amp;resource=...&quot;
+}
+</code></pre>
+<p>Redirect the user's browser to <code>authorizeUrl</code> with a full-page redirect rather than a popup. Wiro adds the PKCE challenge itself, so you never handle a code verifier or client secret. <code>authmethod</code> can be omitted: <code>"wiro"</code> is the default and the only accepted value.</p>
+<blockquote>
+<p><strong>State TTL:</strong> Wiro keeps the OAuth state for <strong>15 minutes</strong>. If the user takes longer on TikTok's consent screen, the connection fails with <code>tiktokads_error=session_expired</code> and you must call <code>OAuthConnect</code> again.</p>
+</blockquote>
+<h3 id="step-2-handle-the-return">Step 2: Handle the return</h3>
+<p>After the user approves, TikTok sends them to Wiro's callback (<code>https://api.wiro.ai/v1/UserAgentOAuth/TikTokAdsCallback</code>). Wiro exchanges the code, lists the advertisers the TikTok for Business user can access, stores the tokens server-side, and redirects the browser to your <code>redirecturl</code>.</p>
+<p><strong>Success URL</strong> looks like:</p>
+<pre><code>https://your-app.com/settings/integrations?tiktokads_connected=true&amp;tiktokads_advertisers=%5B%7B%22id%22%3A%227012345678901234567%22%2C%22name%22%3A%22Brand%20X%22%7D%5D
+</code></pre>
+<ul>
+<li><code>tiktokads_advertisers</code> is <code>encodeURIComponent(JSON.stringify([...]))</code>.</li>
+<li>Each element is <code>{ id, name }</code>: <code>id</code> is the numeric advertiser ID as a string, <code>name</code> is the advertiser name.</li>
+<li>The list is never empty on success. When no advertiser can be listed, the callback returns <code>tiktokads_error=no_accounts</code> instead.</li>
+<li>On a first connection (or after <code>OAuthDisconnect</code>), nothing is selected yet: the connection becomes active only after Step 3, even when a single advertiser is returned. Reconnecting without <code>OAuthDisconnect</code> keeps the previous selection.</li>
+</ul>
+<p>Parse in the browser:</p>
+<pre><code class="language-javascript">const params = new URLSearchParams(window.location.search);
+
+if (params.get(&quot;tiktokads_connected&quot;) === &quot;true&quot;) {
+  const advertisers = JSON.parse(params.get(&quot;tiktokads_advertisers&quot;) || &quot;[]&quot;);
+  if (advertisers.length === 1) {
+    await saveAdvertisers(advertisers);
+  } else {
+    presentAdvertiserPicker(advertisers);
+  }
+} else if (params.get(&quot;tiktokads_error&quot;)) {
+  handleError(params.get(&quot;tiktokads_error&quot;));
+}
+</code></pre>
+<h3 id="step-3-save-the-advertiser-selection">Step 3: Save the advertiser selection</h3>
+<p>This call is <strong>required</strong>. The Wiro dashboard selects a sole advertiser automatically, but API clients must always send the selection themselves.</p>
+<pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -H &quot;x-api-key: YOUR_API_KEY&quot; \
+  -d '{
+    &quot;useragentguid&quot;: &quot;your-useragent-guid&quot;,
+    &quot;credentialkey&quot;: &quot;tiktok-ads&quot;,
+    &quot;accounts&quot;: [
+      { &quot;advertiserid&quot;: &quot;7012345678901234567&quot;, &quot;advertisername&quot;: &quot;Brand X&quot; }
+    ]
+  }'
+</code></pre>
+<p>Response:</p>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;accounts&quot;: [
+    { &quot;id&quot;: &quot;7012345678901234567&quot;, &quot;name&quot;: &quot;Brand X&quot; }
+  ]
+}
+</code></pre>
+<p>Behavior:</p>
+<ul>
+<li>Send one or more <code>{ advertiserid, advertisername }</code> entries picked from <code>tiktokads_advertisers</code> (<code>id</code> becomes <code>advertiserid</code>, <code>name</code> becomes <code>advertisername</code>). Non-digits in <code>advertiserid</code> are stripped server-side.</li>
+<li>Each call replaces the previous selection.</li>
+<li>If the agent was running, Wiro restarts it so it picks up the selection. No manual Start needed.</li>
+</ul>
+<h3 id="step-4-verify-the-connection">Step 4: Verify the connection</h3>
+<pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -H &quot;x-api-key: YOUR_API_KEY&quot; \
+  -d '{
+    &quot;useragentguid&quot;: &quot;your-useragent-guid&quot;,
+    &quot;credentialkey&quot;: &quot;tiktok-ads&quot;
+  }'
+</code></pre>
+<p>Response:</p>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;connected&quot;: true,
+  &quot;accounts&quot;: [
+    { &quot;id&quot;: &quot;7012345678901234567&quot;, &quot;name&quot;: &quot;Brand X&quot; }
+  ],
+  &quot;connectedat&quot;: &quot;2026-09-26T08:14:00.000Z&quot;,
+  &quot;tokenexpiresat&quot;: &quot;2026-09-27T08:14:00.000Z&quot;
+}
+</code></pre>
+<p>Field notes:</p>
+<ul>
+<li><code>connected</code> is <code>true</code> when the connection has a current access token and at least one advertiser is selected.</li>
+<li><code>connectedat</code> is when the user authorized. The authorization ends 30 days after this time.</li>
+<li><code>tokenexpiresat</code> is the expiry of the current access token (about 24 hours), not the end of the 30-day authorization. Wiro renews the access token while the agent is running, so this value moves forward about once a day.</li>
+<li>If the agent has been stopped for more than a day, <code>connected</code> can read <code>false</code> until the agent runs again. Starting the agent renews the access token as long as the 30-day authorization has not ended.</li>
+</ul>
+<h3 id="step-5-start-the-agent-if-its-not-running">Step 5: Start the agent if it's not running</h3>
+<pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/Start&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -H &quot;x-api-key: YOUR_API_KEY&quot; \
+  -d '{ &quot;guid&quot;: &quot;your-useragent-guid&quot; }'
+</code></pre>
+<p>Check <code>POST /UserAgent/Detail</code> first: if <code>setuprequired</code> is still <code>true</code>, TikTok Ads or some other credential the agent requires is incomplete, and Start will refuse. See <a href="/docs/agent-credentials#setup-required-state">Agent Credentials — Setup Required</a>.</p>
+<p>Agents already running when you connected TikTok Ads restart automatically.</p>
+<h2 id="credential-fields">Credential fields</h2>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>advertiserid</code></td>
+<td>array of strings</td>
+<td>Numeric IDs of the selected advertisers. Required. Written by <code>SetPickerAccounts</code>.</td>
+</tr>
+<tr>
+<td><code>advertisername</code></td>
+<td>array of strings</td>
+<td>Names of the selected advertisers, in the same order. Written by <code>SetPickerAccounts</code>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Both fields are returned by <code>POST /UserAgent/Detail</code> and are managed by the connection flow: <code>POST /UserAgent/CredentialUpsert</code> rejects writes to them (for example <code>Advertiser ID is managed by the connection flow</code>). Access and refresh tokens are stored server-side and are never returned by any endpoint.</p>
+<h2 id="api-reference">API Reference</h2>
+<p>All endpoints require Wiro authentication — see <a href="/docs/authentication">Authentication</a> for <code>x-api-key</code> + optional signature headers.</p>
+<h3 id="post-useragentoauthoauthconnect">POST /UserAgentOAuth/OAuthConnect</h3>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>useragentguid</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>Agent instance GUID.</td>
+</tr>
+<tr>
+<td><code>credentialkey</code></td>
+<td>string</td>
+<td>Yes</td>
+<td><code>"tiktok-ads"</code>.</td>
+</tr>
+<tr>
+<td><code>redirecturl</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>HTTPS URL (or <code>http://localhost</code> / <code>http://127.0.0.1</code> for development) where the browser returns after TikTok.</td>
+</tr>
+<tr>
+<td><code>authmethod</code></td>
+<td>string</td>
+<td>No</td>
+<td><code>"wiro"</code> — the default and the only accepted value.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Response: <code>{ result, errors, authorizeUrl }</code>. If <code>result: false</code>, inspect <code>errors[0].message</code> — common messages: <code>Request parameter [useragentguid] required</code>, <code>Request parameter [credentialkey] required</code>, <code>Request parameter [redirecturl] required</code>, <code>Invalid redirect URL</code>, <code>User agent not found or unauthorized</code>, <code>Unsupported connection mode for TikTok Ads</code>, and <code>TikTok Ads credentials not configured</code>.</p>
+<h3 id="get-useragentoauthtiktokadscallback">GET /UserAgentOAuth/TikTokAdsCallback</h3>
+<p>Server-side endpoint invoked by TikTok. You don't call it — you only handle the final redirect back to your <code>redirecturl</code>. The callback path is per-provider — TikTok Ads's is <code>TikTokAdsCallback</code>, separate from the organic TikTok integration's <code>TikTokCallback</code>.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Query param</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>tiktokads_connected=true</code></td>
+<td>Authorization completed.</td>
+</tr>
+<tr>
+<td><code>tiktokads_advertisers</code></td>
+<td>URL-encoded JSON array of <code>{ id, name }</code> for the advertisers the TikTok for Business user can access. Always at least one entry.</td>
+</tr>
+<tr>
+<td><code>tiktokads_error=&lt;code&gt;</code></td>
+<td>The connection failed. See Troubleshooting below.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<h3 id="post-useragentoauthsetpickeraccounts">POST /UserAgentOAuth/SetPickerAccounts</h3>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>useragentguid</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>Agent instance GUID.</td>
+</tr>
+<tr>
+<td><code>credentialkey</code></td>
+<td>string</td>
+<td>Yes</td>
+<td><code>"tiktok-ads"</code>.</td>
+</tr>
+<tr>
+<td><code>accounts</code></td>
+<td>array</td>
+<td>Yes</td>
+<td>One or more <code>{ advertiserid, advertisername }</code> entries. <code>advertiserid</code> is the numeric advertiser ID (non-digits stripped); <code>advertisername</code> is the display name shown in dashboards and <code>OAuthStatus</code> responses.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Response: <code>{ result, errors, accounts: [{id, name}, ...] }</code>. Replaces the previous selection and triggers an automatic agent restart if the agent was running. Returns <code>TikTok Ads account not connected</code> when no completed connection exists yet.</p>
+<h3 id="post-useragentoauthoauthstatus">POST /UserAgentOAuth/OAuthStatus</h3>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>useragentguid</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>Agent instance GUID.</td>
+</tr>
+<tr>
+<td><code>credentialkey</code></td>
+<td>string</td>
+<td>Yes</td>
+<td><code>"tiktok-ads"</code>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Response fields:</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>connected</code></td>
+<td>boolean</td>
+<td><code>true</code> when the connection has a current access token and at least one selected advertiser. <strong>Note:</strong> this reflects the TikTok Ads connection only. Use <code>setuprequired</code> from <code>POST /UserAgent/Detail</code> for whole-agent readiness.</td>
+</tr>
+<tr>
+<td><code>accounts</code></td>
+<td>array</td>
+<td>One <code>{ id, name }</code> per selected advertiser (<code>id</code> = <code>advertiserid</code>, <code>name</code> = <code>advertisername</code>).</td>
+</tr>
+<tr>
+<td><code>connectedat</code></td>
+<td>string</td>
+<td>ISO timestamp of the authorization. The 30-day authorization ends 30 days after it.</td>
+</tr>
+<tr>
+<td><code>tokenexpiresat</code></td>
+<td>string</td>
+<td>ISO expiry of the current access token (about 24 hours ahead while the agent runs).</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<h3 id="post-useragentoauthoauthdisconnect">POST /UserAgentOAuth/OAuthDisconnect</h3>
+<p>Body: <code>{ useragentguid, credentialkey: "tiktok-ads" }</code>. Asks TikTok to revoke the authorization and clears the connection in Wiro: tokens, connection time, and the advertiser selection. The Wiro side is cleared even if TikTok's revoke request fails. An access token TikTok issued earlier may stay valid at TikTok for up to 24 hours, but the agent no longer has it.</p>
+<pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgentOAuth/OAuthDisconnect&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -H &quot;x-api-key: YOUR_API_KEY&quot; \
+  -d '{
+    &quot;useragentguid&quot;: &quot;your-useragent-guid&quot;,
+    &quot;credentialkey&quot;: &quot;tiktok-ads&quot;
+  }'
+</code></pre>
+<p>Response: <code>{ "result": true, "errors": [] }</code>. Running agents restart automatically.</p>
+<h3 id="token-lifecycle">Token lifecycle</h3>
+<p>Wiro renews the 24-hour access token automatically while the agent is running. The authorization behind it lasts 30 days from <code>connectedat</code> and cannot be extended by refreshing. To renew it, run the flow again: <code>OAuthDisconnect</code>, then <code>OAuthConnect</code>, the callback, and <code>SetPickerAccounts</code>. There is no customer-facing token-refresh endpoint, and raw tokens are never exposed to the agent model or to API callers.</p>
+<h2 id="using-the-skill">Using the Skill</h2>
+<p>TikTok Ads Manager has <code>int-tiktok-ads</code> on by default. On a Custom Build agent, enable it via <code>POST /UserAgent/SkillsApply</code> (see <a href="/docs/agent-skills#toggling-integration-skills">Agent Skills → Toggling Integration Skills</a>); skill changes are only available on Custom Build agents. Adjust the cron of a bundled task such as the daily performance report with <code>enabled</code> and <code>interval</code> only — the task body (<code>value</code>) is owned by the bundled integration skill and silently dropped on writes:</p>
+<pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -H &quot;x-api-key: YOUR_API_KEY&quot; \
+  -d '{
+    &quot;useragentguid&quot;: &quot;your-useragent-guid&quot;,
+    &quot;skillkey&quot;: &quot;cron-tiktokads-performance-reporter&quot;,
+    &quot;enabled&quot;: true,
+    &quot;interval&quot;: &quot;0 9 * * *&quot;
+  }'
+</code></pre>
+<p>To change <strong>what</strong> the reports include (tracking quality gates, kill thresholds, placement strategy, Spark Ads and Smart+ rules), edit the preference skill <code>tiktok-ads-strategy</code> (stored as <code>cs-tiktok-ads-strategy</code>), or <code>ad-strategy</code> for cross-platform thresholds — see <a href="/docs/agent-skills#updating-preference-skills">Agent Skills → Updating Preferences</a>.</p>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Error code</th>
+<th>Meaning</th>
+<th>What to do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>missing_params</code></td>
+<td>The callback was opened without an OAuth <code>state</code>.</td>
+<td>Don't open the callback URL directly. Start a new flow with <code>OAuthConnect</code>.</td>
+</tr>
+<tr>
+<td><code>session_expired</code></td>
+<td>More than 15 minutes passed between <code>OAuthConnect</code> and the return from TikTok, or the state was already used.</td>
+<td>Call <code>OAuthConnect</code> again.</td>
+</tr>
+<tr>
+<td><code>authorization_denied</code></td>
+<td>The user cancelled on TikTok's consent screen, or TikTok returned an error instead of an authorization code.</td>
+<td>Start again and approve the consent screen.</td>
+</tr>
+<tr>
+<td><code>token_exchange_failed</code></td>
+<td>TikTok did not return a usable access and refresh token for the authorization code.</td>
+<td>Start a new flow. If it persists, contact Wiro support.</td>
+</tr>
+<tr>
+<td><code>no_accounts</code></td>
+<td>Sign-in worked, but no advertiser could be listed for this TikTok for Business user: the user has no advertiser access, or TikTok's advertiser lookup failed.</td>
+<td>Get access to an advertiser in TikTok Ads Manager or Business Center, then connect again. If this user already has advertiser access, try connecting again.</td>
+</tr>
+<tr>
+<td><code>account_list_too_large</code></td>
+<td>The TikTok for Business user can access more than 500 advertisers.</td>
+<td>Connect with a TikTok for Business user that has access to fewer advertisers.</td>
+</tr>
+<tr>
+<td><code>useragent_not_found</code></td>
+<td>The agent was deleted, or is no longer owned by the account that started the flow, before TikTok returned.</td>
+<td>Start again with <code>OAuthConnect</code> for an existing agent.</td>
+</tr>
+<tr>
+<td><code>internal_error</code></td>
+<td>Unexpected server error during callback processing.</td>
+<td>Retry once. If it persists, contact Wiro support with the timestamp and your <code>useragentguid</code>.</td>
+</tr>
+<tr>
+<td><code>Unsupported connection mode for TikTok Ads</code></td>
+<td>Returned in <code>OAuthConnect</code>'s <code>errors[]</code> when <code>authmethod</code> is anything other than <code>"wiro"</code>.</td>
+<td>Omit <code>authmethod</code> or send <code>"wiro"</code>.</td>
+</tr>
+<tr>
+<td><code>TikTok Ads credentials not configured</code></td>
+<td>Returned in <code>OAuthConnect</code>'s <code>errors[]</code> when TikTok Ads is not yet enabled on Wiro's side.</td>
+<td>Contact Wiro support.</td>
+</tr>
+<tr>
+<td><code>TikTok Ads account not connected</code></td>
+<td>Returned by <code>SetPickerAccounts</code> before the TikTok authorization completed.</td>
+<td>Finish Steps 1-2, then save the selection.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Because no valid state is left to read your <code>redirecturl</code> from, <code>missing_params</code> and <code>session_expired</code> send the browser to <code>https://wiro.ai</code> with the error parameter instead of to your app.</p>
+<h3 id="no-accounts-available-after-signing-in">"No accounts available" after signing in</h3>
+<p>Either the TikTok for Business user you signed in with has no advertiser access, or TikTok's advertiser lookup failed. Get access to an advertiser in TikTok Ads Manager or through Business Center membership, then connect again. If this user already has advertiser access, try connecting again.</p>
+<h3 id="the-agent-says-the-tiktok-ads-connection-expired">The agent says the TikTok Ads connection expired</h3>
+<p>The 30-day authorization ended. Click <strong>Disconnect</strong> on the TikTok Ads card, then connect again with the same TikTok for Business account and confirm the advertisers. Your campaigns kept running in TikTok in the meantime.</p>
+<h3 id="a-change-was-refused">A change was refused</h3>
+<p>The action is outside what this integration allows (see "What the agent cannot do"), it targets an advertiser that was not selected, or the TikTok for Business user's role on the advertiser does not allow campaign management. Change roles in TikTok's business settings; change the advertiser selection by disconnecting and connecting again.</p>
+<h3 id="a-report-metric-is-rejected-by-tiktok">A report metric is rejected by TikTok</h3>
+<p>Nothing to do. The agent drops the metric TikTok rejected and runs the report again without it.</p>
+<h3 id="connected-false-after-completing-the-flow"><code>connected: false</code> after completing the flow</h3>
+<p><code>OAuthStatus</code> returns <code>connected: true</code> only when there is a current access token and at least one advertiser is saved. If you skipped Step 3 (<code>SetPickerAccounts</code>), <code>connected</code> stays <code>false</code>. If the selection is saved, check whether the 30-day authorization has ended (reconnect) or the agent has been stopped for more than a day (start it).</p>
+<h2 id="multi-tenant-architecture">Multi-Tenant Architecture</h2>
+<p>For SaaS products connecting many customers' TikTok Ads accounts through a single Wiro-powered backend:</p>
+<ol>
+<li><strong>One Wiro agent instance per customer.</strong> Call <code>POST /UserAgent/Deploy</code> during onboarding, then run the connection flow for that customer's <code>useragentguid</code>. Each customer signs in with their own TikTok for Business account.</li>
+<li><strong>Tokens are isolated per agent instance.</strong> Customer A's TikTok authorization is never visible to Customer B — they live under different <code>useragentguid</code> values.</li>
+<li><strong>The consent screen shows Wiro AI.</strong> There is no customer-owned app mode, so the consent screen cannot be white-labeled.</li>
+<li><strong>Plan for the 30-day renewal.</strong> Every customer has to reconnect every 30 days. Track <code>connectedat</code> from <code>OAuthStatus</code> and prompt the customer before the 30 days are up.</li>
+<li><strong>Rate limits are mostly per TikTok for Business user.</strong> TikTok allows most tools 3 requests per second per tool for each user; asynchronous report creation and campaign copies have lower per-app limits that all connections share.</li>
+</ol>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="/docs/agent-credentials">Agent Credentials &amp; OAuth</a> — integration catalog hub and generic OAuth reference.</li>
+<li><a href="/docs/agent-overview">Agent Overview</a> — deploying, starting, and lifecycle.</li>
+<li><a href="/docs/agent-skills">Agent Skills</a> — configuring <code>int-tiktok-ads</code> and scheduled runs.</li>
+<li><a href="/docs/integration-tiktok-skills">TikTok integration</a> — organic video posting to a TikTok profile (separate <code>tiktok</code> credential).</li>
+<li><a href="/docs/integration-metaads-skills">Meta Ads integration</a> — for cross-platform paid campaigns.</li>
 <li><a href="/docs/integration-googleads-skills">Google Ads integration</a> — for cross-platform paid campaigns.</li>
 </ul>
                 </article>
@@ -25972,6 +26674,7 @@ if (params.get("x_connected") === "true") {
                       <li><a href="/docs/agent-credentials" class="docs-link">Agent Credentials &amp; OAuth</a></li>
                       <li><a href="/docs/agent-overview" class="docs-link">Agent Overview</a></li>
                       <li><a href="/docs/agent-skills" class="docs-link">Agent Skills</a></li>
+                      <li><a href="/docs/integration-tiktokads-skills" class="docs-link">TikTok Ads integration</a> — separate product for paid advertising; this page covers organic posting only.</li>
                       <li><a href="https://developers.tiktok.com/" class="docs-link" target="_blank">TikTok for Developers</a></li>
                     </ul>
                   </section>
@@ -26401,6 +27104,7 @@ if (params.get("gads_connected") === "true") {
                       <li><a href="/docs/agent-overview" class="docs-link">Agent Overview</a></li>
                       <li><a href="/docs/agent-skills" class="docs-link">Agent Skills</a></li>
                       <li><a href="/docs/integration-metaads-skills" class="docs-link">Meta Ads integration</a></li>
+                      <li><a href="/docs/integration-tiktokads-skills" class="docs-link">TikTok Ads integration</a></li>
                       <li><a href="https://developers.google.com/google-ads/api/docs/start" class="docs-link" target="_blank">Google Ads API docs</a></li>
                     </ul>
                   </section>
@@ -26614,6 +27318,7 @@ Agent → POST /youtubeAnalytics/v2/reports
                     <ul>
                       <li>Google Ads Manager</li>
                       <li>Meta Ads Manager</li>
+                      <li>TikTok Ads Manager</li>
                       <li>Any agent that needs to audit ad-reported conversions against GA4</li>
                     </ul>
                   </section>
@@ -27633,6 +28338,7 @@ Agent → POST /v1beta/properties/123456789:runReport
                     <ul>
                       <li>Google Ads Manager (creative assets for campaigns)</li>
                       <li>Meta Ads Manager (creative assets for campaigns)</li>
+                      <li>TikTok Ads Manager (creative assets for campaigns)</li>
                       <li>Social Manager (post-ready media library)</li>
                     </ul>
                   </section>
@@ -29030,6 +29736,7 @@ base64 -b 0 firebase-service-account.json > firebase-sa.b64</code></pre>
                       <li>App Review Support</li>
                       <li>App Event Manager</li>
                       <li>Meta Ads Manager (uses a simpler <code>apps</code> array shape — see below)</li>
+                      <li>TikTok Ads Manager (uses a simpler <code>apps</code> array shape — see below)</li>
                     </ul>
                   </section>
 
@@ -29217,6 +29924,7 @@ base64 -b 0 AuthKey_ABC1234DEF.p8 > appstore-key.b64</code></pre>
                     <ul>
                       <li>App Review Support</li>
                       <li>Meta Ads Manager (uses the simpler <code>apps</code> array shape)</li>
+                      <li>TikTok Ads Manager (uses the simpler <code>apps</code> array shape)</li>
                     </ul>
                   </section>
 

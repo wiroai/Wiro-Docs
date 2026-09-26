@@ -14,6 +14,7 @@ The GA4 integration uses Google OAuth 2.0 with the GA4 Data API v1beta and the G
 
 - Google Ads Manager
 - Meta Ads Manager
+- TikTok Ads Manager
 - Any agent that needs to audit ad-reported conversions against GA4
 
 ## Availability

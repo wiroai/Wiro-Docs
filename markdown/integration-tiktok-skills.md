@@ -217,4 +217,5 @@ Until your TikTok app is audited, publishing may be limited to private posts or 
 - [Agent Credentials & OAuth](/docs/agent-credentials)
 - [Agent Overview](/docs/agent-overview)
 - [Agent Skills](/docs/agent-skills)
+- [TikTok Ads integration](/docs/integration-tiktokads-skills) — separate product for paid advertising; this page covers organic posting only.
 - [TikTok for Developers](https://developers.tiktok.com/)

@@ -15,6 +15,7 @@ The Google Play integration uses a Google Cloud service account with API access 
 
 - App Review Support
 - Meta Ads Manager (uses the simpler `apps` array shape)
+- TikTok Ads Manager (uses the simpler `apps` array shape)
 
 ## Availability
 
