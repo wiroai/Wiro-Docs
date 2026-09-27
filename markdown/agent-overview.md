@@ -739,7 +739,7 @@ Retrieves full details for a single deployed agent instance, including subscript
           },
           "_schema": {
             "title": "Instagram",
-            "icon": "https://wiro.ai/images/icons/credentials/instagram.svg",
+            "icon": "https://wiro.ai/images/icons/skills/instagram.svg",
             "brand_color": "#E4405F",
             "brand_text_color": "#FFFFFF",
             "brand_logo_filter": null,
@@ -880,7 +880,7 @@ Retrieves full details for a single deployed agent instance, including subscript
           },
           "_schema": {
             "title": "WordPress",
-            "icon": "https://wiro.ai/images/icons/credentials/wordpress.svg",
+            "icon": "https://wiro.ai/images/icons/skills/wordpress.svg",
             "brand_color": "#21759B",
             "brand_text_color": "#FFFFFF",
             "brand_logo_filter": null,
