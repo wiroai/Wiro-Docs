@@ -180,6 +180,42 @@ function getSectionIndex(slug) {
   return sections.findIndex((s) => s.slug === slug);
 }
 
+function getSectionElement(slug) {
+  return document.querySelector(`.docs-page-section[data-page="${slug}"]`);
+}
+
+// Links from before path URLs look like /docs#/slug; the fragment never
+// reaches the server, so the page has to follow it.
+function parseLegacyHash(hash) {
+  const match = /^#\/([^#?]+?)\/?$/.exec(hash || '');
+  if (!match) return null;
+  let slug;
+  try {
+    slug = decodeURIComponent(match[1]);
+  } catch {
+    return null;
+  }
+  return sections.find((s) => s.slug === slug) ? slug : null;
+}
+
+function decodeFragment(hash) {
+  try {
+    return decodeURIComponent((hash || '').replace(/^#/, ''));
+  } catch {
+    return '';
+  }
+}
+
+// Looks only inside the shown section: the full index.html repeats some ids
+// across sections, and an id in a hidden one cannot be scrolled to.
+function scrollToAnchor(id, behavior = 'smooth') {
+  const active = id && currentSlug ? getSectionElement(currentSlug) : null;
+  const target = active ? Array.from(active.querySelectorAll('[id]')).find((el) => el.id === id) : null;
+  if (!target) return false;
+  target.scrollIntoView({ behavior, block: 'start' });
+  return true;
+}
+
 function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str;
@@ -614,7 +650,46 @@ function renderRecentSearches() {
       .join('');
 }
 
+// Served pages carry one section plus serve.js's index of all of them; the
+// full index.html has no index but every section inline, so scan the DOM.
 function buildSearchIndex() {
+  searchIndex = readEmbeddedSearchIndex() || buildSearchIndexFromDom();
+}
+
+function readEmbeddedSearchIndex() {
+  const el = document.getElementById('docs-search-index');
+  if (!el) return null;
+  try {
+    const data = JSON.parse(el.textContent);
+    const entries = [];
+    (data.sections || []).forEach((section) => {
+      const sectionObj = sections.find((s) => s.slug === section.slug);
+      if (!sectionObj) return;
+      // rest is the match-only text past the 300-character excerpt.
+      (section.headings || []).forEach(([headingId, heading, text = '', rest = '']) => {
+        entries.push({
+          slug: section.slug,
+          pageTitle: sectionObj.title,
+          headingId,
+          heading,
+          text,
+          searchable: (heading + ' ' + text + rest).toLowerCase(),
+        });
+      });
+    });
+    return entries;
+  } catch {
+    return null;
+  }
+}
+
+function findSectionForAnchor(id) {
+  if (!searchIndex) buildSearchIndex();
+  const entry = searchIndex.find((item) => item.headingId === id);
+  return entry ? entry.slug : null;
+}
+
+function buildSearchIndexFromDom() {
   const entries = [];
 
   document.querySelectorAll('.docs-page-section[data-page]').forEach((section) => {
@@ -648,7 +723,7 @@ function buildSearchIndex() {
     });
   });
 
-  searchIndex = entries;
+  return entries;
 }
 
 function searchDocs(query) {
@@ -803,12 +878,8 @@ function initSearch() {
     }
 
     closeSearch();
-    navigateTo(slug);
-    if (headingId) {
-      setTimeout(() => {
-        const target = document.getElementById(headingId);
-        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 100);
+    if (navigateTo(slug, headingId ? `#${encodeURIComponent(headingId)}` : '') && headingId) {
+      setTimeout(() => scrollToAnchor(headingId), 100);
     }
   });
 
@@ -1030,33 +1101,111 @@ function closeCodeDrawer() {
   }
 }
 
-function navigateTo(slug) {
-  if (slug === currentSlug) return;
-  history.pushState({ slug }, '', `${BASE_PATH}/${slug}`);
-  showSection(slug);
+// A served page holds only its own section, so any other section is a
+// separate document and reaching it is a normal page load. The full
+// index.html still has every section inline and switches in place.
+// Returns false when the page is being left.
+function navigateTo(slug, hash = '') {
+  if (!getSectionElement(slug)) {
+    window.location.assign(`${BASE_PATH}/${slug}${hash}`);
+    return false;
+  }
+  if (slug !== currentSlug) {
+    history.pushState({ slug }, '', `${BASE_PATH}/${slug}${hash}`);
+    showSection(slug);
+  }
+  return true;
 }
 
 function onPopState() {
-  showSection(getSlugFromPath());
+  if (!currentSlug) return;
+  const slug = getSlugFromPath();
+  if (slug === currentSlug) return;
+  if (getSectionElement(slug)) showSection(slug);
+  else window.location.reload();
 }
 
 function initLinkInterception() {
   const prefix = BASE_PATH ? BASE_PATH + '/' : '/';
 
   document.addEventListener('click', (e) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     const link = e.target.closest('a[href]');
-    if (!link) return;
+    if (!link || link.target === '_blank' || link.hasAttribute('download')) return;
 
     const href = link.getAttribute('href');
-    if (!href || !href.startsWith(prefix)) return;
-    if (link.target === '_blank') return;
+    if (!href) return;
 
-    const slug = href.slice(prefix.length);
+    const legacySlug = parseLegacyHash(href);
+    if (legacySlug) {
+      e.preventDefault();
+      navigateTo(legacySlug);
+      return;
+    }
+
+    // <base href="/docs/"> resolves a bare #anchor against /docs/, which would
+    // load the introduction. Scroll on this page, or open the page that has it.
+    if (href.startsWith('#')) {
+      e.preventDefault();
+      const id = decodeFragment(href);
+      if (!id) return;
+      if (scrollToAnchor(id)) {
+        history.replaceState(history.state, '', `${window.location.pathname}${window.location.search}#${encodeURIComponent(id)}`);
+        return;
+      }
+      const owner = findSectionForAnchor(id);
+      if (owner && owner !== currentSlug && navigateTo(owner, `#${encodeURIComponent(id)}`)) {
+        setTimeout(() => scrollToAnchor(id), 100);
+      }
+      return;
+    }
+
+    if (!href.startsWith(prefix)) return;
+    const hashAt = href.indexOf('#');
+    const hash = hashAt === -1 ? '' : href.slice(hashAt);
+    const slug = (hashAt === -1 ? href : href.slice(0, hashAt)).slice(prefix.length).replace(/\/$/, '');
     if (!slug || !sections.find((s) => s.slug === slug)) return;
+    // Another page: let the browser load it.
+    if (!getSectionElement(slug)) return;
 
     e.preventDefault();
-    navigateTo(slug);
+    const id = decodeFragment(hash);
+    if (slug !== currentSlug) {
+      navigateTo(slug, hash);
+      if (id) setTimeout(() => scrollToAnchor(id), 100);
+    } else if (id && scrollToAnchor(id)) {
+      history.replaceState(history.state, '', `${window.location.pathname}${window.location.search}#${encodeURIComponent(id)}`);
+    }
   });
+}
+
+// Unknown paths get the frame and a not-found message from the server: there
+// is no section to show and no canonical to set, only empty panels to settle.
+function showNotFound() {
+  const rightPanel = document.getElementById('codePanel');
+  const center = document.querySelector('.docs-center');
+  if (rightPanel) rightPanel.classList.add('is-empty');
+  if (center) center.classList.add('no-code-panel');
+}
+
+// Every section is a page load, so the sidebar starts at the top each time;
+// scroll it (and only it) to the active link.
+function revealActiveNavLink() {
+  const nav = document.querySelector('.docs-nav-scroll');
+  const link = nav ? nav.querySelector('.docs-nav-link.is-active') : null;
+  if (!link) return;
+  const navRect = nav.getBoundingClientRect();
+  const linkRect = link.getBoundingClientRect();
+  if (linkRect.top >= navRect.top && linkRect.bottom <= navRect.bottom) return;
+  nav.scrollTop += linkRect.top - navRect.top - (nav.clientHeight - linkRect.height) / 2;
+}
+
+// showSection() scrolls the content to the top; a /docs/slug#heading link
+// (search results, cross-page anchors) should land on the heading.
+function scrollToLocationHash() {
+  const id = decodeFragment(window.location.hash);
+  if (!id || id.startsWith('/')) return;
+  requestAnimationFrame(() => scrollToAnchor(id, 'auto'));
 }
 
 /** Each section's View/Download buttons use markdown/{slug}.md — slug comes from data-page. */
@@ -1177,6 +1326,12 @@ function initScrollbarReveal() {
 }
 
 function init() {
+  const legacySlug = parseLegacyHash(window.location.hash);
+  if (legacySlug && !getSectionElement(legacySlug)) {
+    window.location.replace(`${BASE_PATH}/${legacySlug}`);
+    return;
+  }
+
   initWiroTheme();
   initScrollbarReveal();
   initMobileNav();
@@ -1187,12 +1342,23 @@ function init() {
 
   window.addEventListener('popstate', onPopState);
 
-  const slug = getSlugFromPath();
+  if (document.querySelector('[data-docs-not-found]')) {
+    showNotFound();
+    return;
+  }
+
+  let slug = legacySlug || getSlugFromPath();
+  if (!getSectionElement(slug)) {
+    const present = document.querySelector('.docs-page-section[data-page]');
+    if (present) slug = present.dataset.page;
+  }
   const rootPaths = BASE_PATH ? [BASE_PATH, BASE_PATH + '/'] : ['/', ''];
-  if (rootPaths.includes(window.location.pathname)) {
-    history.replaceState({ slug }, '', `${BASE_PATH}/${slug}`);
+  if (legacySlug || rootPaths.includes(window.location.pathname)) {
+    history.replaceState({ slug }, '', `${BASE_PATH}/${slug}${legacySlug ? '' : window.location.hash}`);
   }
   showSection(slug);
+  revealActiveNavLink();
+  scrollToLocationHash();
 
   initHighlighter();
 }

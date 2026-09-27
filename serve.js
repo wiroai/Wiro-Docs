@@ -86,58 +86,385 @@ const sections = [
 
 const sectionMap = Object.fromEntries(sections.map(s => [s.slug, s]));
 
-let indexHtmlCache = null;
-let indexHtmlMtime = 0;
-function getIndexHtml() {
-  const filePath = path.join(ROOT, 'index.html');
-  const mtime = fs.statSync(filePath).mtimeMs;
-  if (indexHtmlCache === null || mtime !== indexHtmlMtime) {
-    indexHtmlCache = fs.readFileSync(filePath, 'utf8');
-    indexHtmlMtime = mtime;
-  }
-  return indexHtmlCache;
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 
+// index.html has written these tags self-closing (` />`) since its Prettier
+// reformat, which silently broke patterns that expected `">`; accept both.
+// Replacer functions keep a `$` in the text from acting as a backreference.
 function injectMeta(html, section) {
-  const title = `${section.title} - Wiro API Docs`;
-  const desc = section.description;
+  const title = escapeHtml(`${section.title} - Wiro API Docs`);
+  const desc = escapeHtml(section.description);
   const url = `https://wiro.ai${BASE}/${section.slug}`;
 
-  html = html.replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`);
+  html = html.replace(/<title>[^<]*<\/title>/, () => `<title>${title}</title>`);
   html = html.replace(
-    /<meta name="description" content="[^"]*">/,
-    `<meta name="description" content="${desc}">`
+    /<meta\s+name="description"\s+content="[^"]*"\s*\/?>/,
+    () => `<meta name="description" content="${desc}" />`
   );
   html = html.replace(
-    /<meta property="og:title" content="[^"]*">/,
-    `<meta property="og:title" content="${title}">`
+    /<meta\s+property="og:title"\s+content="[^"]*"\s*\/?>/,
+    () => `<meta property="og:title" content="${title}" />`
   );
   html = html.replace(
-    /<meta property="og:description" content="[^"]*">/,
-    `<meta property="og:description" content="${desc}">`
+    /<meta\s+property="og:description"\s+content="[^"]*"\s*\/?>/,
+    () => `<meta property="og:description" content="${desc}" />`
   );
   html = html.replace(
-    /<meta property="og:url" content="[^"]*">/,
-    `<meta property="og:url" content="${url}">`
+    /<meta\s+property="og:url"\s+content="[^"]*"\s*\/?>/,
+    () => `<meta property="og:url" content="${url}" />`
   );
   html = html.replace(
-    /<meta name="twitter:title" content="[^"]*">/,
-    `<meta name="twitter:title" content="${title}">`
+    /<meta\s+name="twitter:title"\s+content="[^"]*"\s*\/?>/,
+    () => `<meta name="twitter:title" content="${title}" />`
   );
   html = html.replace(
-    /<meta name="twitter:description" content="[^"]*">/,
-    `<meta name="twitter:description" content="${desc}">`
+    /<meta\s+name="twitter:description"\s+content="[^"]*"\s*\/?>/,
+    () => `<meta name="twitter:description" content="${desc}" />`
   );
   html = html.replace(
-    /<link rel="canonical" href="[^"]*">/,
-    `<link rel="canonical" href="${url}">`
+    /<link\s+rel="canonical"\s+href="[^"]*"\s*\/?>/,
+    () => `<link rel="canonical" href="${url}" />`
+  );
+  html = html.replace(
+    /(<script type="application\/ld\+json">)([\s\S]*?)(<\/script>)/,
+    (match, open, json, close) => {
+      let data;
+      try {
+        data = JSON.parse(json);
+      } catch {
+        return match;
+      }
+      data.name = data.headline = `${section.title} - Wiro API Docs`;
+      data.description = section.description;
+      data.url = url;
+      if (data.mainEntityOfPage) data.mainEntityOfPage['@id'] = url;
+      return `${open}${JSON.stringify(data).replace(/</g, '\\u003c')}${close}`;
+    }
   );
 
   return html;
 }
 
+function setHeaderPage(html, text) {
+  return html.replace(
+    /(<span class="docs-header-product-page" id="docsHeaderPage">)[^<]*/,
+    (match, prefix) => `${prefix}${escapeHtml(text)}`
+  );
+}
+
+// Unknown paths get the frame with a 404: no canonical, and noindex so they
+// stop counting as soft-404 copies of the introduction.
+function injectNotFoundMeta(html) {
+  html = html.replace(/<title>[^<]*<\/title>/, () => '<title>Page Not Found - Wiro API Docs</title>\n    <meta name="robots" content="noindex" />');
+  html = html.replace(/\s*<link\s+rel="canonical"\s+href="[^"]*"\s*\/?>/g, '');
+  return setHeaderPage(html, 'Not found');
+}
+
+const SECTION_OPEN = '<div class="docs-page-section" data-page="';
+const SECTION_LIST_END = '<nav class="docs-pagination"';
+const SECTION_DISPLAY = /(<div class="docs-page-section" data-page="[^"]+" style="display:\s*)(?:block|none)/;
+const EMPTY_PAGINATION = '<nav class="docs-pagination" id="docsPagination"></nav>';
+
+// A section's markup begins at the banner comment directly above it, if any.
+function sectionStart(html, index) {
+  const commentEnd = html.lastIndexOf('-->', index);
+  if (commentEnd !== -1 && /^\s*$/.test(html.slice(commentEnd + 3, index))) {
+    return html.lastIndexOf('<!--', commentEnd);
+  }
+  return index;
+}
+
+// index.html keeps every section inline for view-source and LLM readers, but
+// each /docs/<slug> URL is its own document: the frame (head, header, sidebar
+// with every link, layout) around that one section. Serving the whole ~2 MB
+// file for 68 URLs got them clustered as duplicates and cut at Google's 2 MB.
+// Split once per index.html version: frame before the first section, each
+// section's markup, and the frame after the last one.
+function splitDocs(html) {
+  const pages = new Map();
+  const first = html.indexOf(SECTION_OPEN);
+  const listEnd = first === -1 ? -1 : html.indexOf(SECTION_LIST_END, first);
+  if (listEnd === -1) return { pages, head: '', tail: '' };
+
+  for (let open = first; open !== -1 && open < listEnd;) {
+    const next = html.indexOf(SECTION_OPEN, open + SECTION_OPEN.length);
+    const end = next === -1 || next > listEnd ? listEnd : sectionStart(html, next);
+    const slug = html.slice(open + SECTION_OPEN.length, html.indexOf('"', open + SECTION_OPEN.length));
+    if (!pages.has(slug)) pages.set(slug, html.slice(sectionStart(html, open), end));
+    open = next;
+  }
+
+  let tail = html.slice(listEnd);
+  const bodyEnd = tail.lastIndexOf('</body>');
+  const indexTag = `<script type="application/json" id="docs-search-index">${buildSearchIndex(pages)}</script>\n  `;
+  tail = bodyEnd === -1 ? tail + indexTag : tail.slice(0, bodyEnd) + indexTag + tail.slice(bodyEnd);
+
+  return { pages, head: html.slice(0, sectionStart(html, first)), tail };
+}
+
+// ---------------------------------------------------------------------------
+// Search index. app.js used to scan all 68 sections in the DOM; with one
+// section per page it reads this instead (content is never fetched by JS).
+// Same entries as that scan: every h2/h3, its own id or its parent's, and the
+// sibling blocks after it up to the next sibling h1-h3, stopping after the
+// block that takes the text past 300 characters. Results show the first 300
+// characters; search matches the whole text, so each entry carries the rest
+// separately. Cutting the match text at 300 made about a quarter of the words
+// the scan found (max_tokens, json_schema, finish_reason) return nothing.
+// ---------------------------------------------------------------------------
+
+const SEARCH_TEXT_CHARS = 300;
+// Only a runaway guard: a heading follows its sibling blocks, not this cap.
+const SEARCH_MATCH_CAP = 20000;
+const VOID_TAGS = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr']);
+const RAW_TEXT_TAGS = new Set(['script', 'style', 'template', 'textarea']);
+const BLOCK_TAGS = new Set([
+  'address', 'article', 'aside', 'blockquote', 'br', 'dd', 'details', 'div', 'dl', 'dt', 'figcaption', 'figure',
+  'footer', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'header', 'hr', 'li', 'main', 'nav', 'ol', 'p', 'pre', 'section',
+  'summary', 'table', 'tbody', 'td', 'tfoot', 'th', 'thead', 'tr', 'ul',
+]);
+const NAMED_ENTITIES = {
+  amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: '\u00a0',
+  mdash: '—', ndash: '–', rarr: '→', larr: '←', harr: '↔', rsquo: '’', lsquo: '‘',
+  rdquo: '”', ldquo: '“', times: '×', middot: '·', hellip: '…', bull: '•',
+  copy: '©', reg: '®', trade: '™',
+};
+const ID_ATTRIBUTE = /(?:^|\s)id\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/i;
+
+function decodeEntities(text) {
+  return text.replace(/&(#[xX][0-9a-fA-F]+|#\d+|[a-zA-Z][a-zA-Z0-9]*);/g, (entity, code) => {
+    if (code[0] === '#') {
+      const point = code[1] === 'x' || code[1] === 'X' ? parseInt(code.slice(2), 16) : parseInt(code.slice(1), 10);
+      return point > 0 && point <= 0x10ffff ? String.fromCodePoint(point) : entity;
+    }
+    return Object.prototype.hasOwnProperty.call(NAMED_ENTITIES, code) ? NAMED_ENTITIES[code] : entity;
+  });
+}
+
+function idAttribute(attrs) {
+  const match = ID_ATTRIBUTE.exec(attrs);
+  if (!match) return '';
+  return decodeEntities(match[1] !== undefined ? match[1] : match[2] !== undefined ? match[2] : match[3]);
+}
+
+function excerpt(text) {
+  return text.replace(/\s+/g, ' ').trim().slice(0, SEARCH_TEXT_CHARS);
+}
+
+// A small tag-stack walk over one section's markup; enough for the
+// Prettier-formatted, explicitly closed HTML in index.html. Text is only
+// decoded while a heading or an unfilled window is collecting it.
+function indexHeadings(markup) {
+  const entries = [];
+  const stack = [];
+  let followers = [];
+  let heading = null;
+  let textStart = 0;
+  let match;
+  const tagPattern = /<!--[\s\S]*?-->|<(\/?)([a-zA-Z][a-zA-Z0-9-]*)((?:[^>"']|"[^"]*"|'[^']*')*)>/g;
+
+  const addText = (from, to) => {
+    if ((!heading && followers.length === 0) || from >= to) return;
+    const text = decodeEntities(markup.slice(from, to)).replace(/\s+/g, ' ');
+    if (heading) heading.text += text;
+    for (const follower of followers) follower.entry.text += text;
+    followers = followers.filter((follower) => follower.entry.text.length <= SEARCH_MATCH_CAP);
+  };
+  const addBreak = () => {
+    if (heading) heading.text += ' ';
+    for (const follower of followers) follower.entry.text += ' ';
+  };
+
+  while ((match = tagPattern.exec(markup))) {
+    addText(textStart, match.index);
+    textStart = tagPattern.lastIndex;
+    if (match[1] === undefined) continue;
+
+    const name = match[2].toLowerCase();
+    const attrs = match[3];
+    if (BLOCK_TAGS.has(name)) addBreak();
+
+    if (match[1] === '/') {
+      let at = stack.length - 1;
+      while (at >= 0 && stack[at].name !== name) at--;
+      if (at >= 0) stack.length = at;
+      if (heading && stack.length <= heading.depth) {
+        const text = heading.text.replace(/\s+/g, ' ').trim();
+        if (text) {
+          const entry = { id: heading.id, heading: text, text: '' };
+          entries.push(entry);
+          followers.push({ entry, depth: heading.depth });
+        }
+        heading = null;
+      }
+      // A heading's text runs until its parent ends, or until the sibling
+      // block that took it past 300 characters has closed...
+      if (followers.length) {
+        followers = followers.filter((follower) => stack.length > follower.depth
+          || (stack.length === follower.depth
+            && follower.entry.text.replace(/\s+/g, ' ').trim().length <= SEARCH_TEXT_CHARS));
+      }
+      continue;
+    }
+
+    if (RAW_TEXT_TAGS.has(name)) {
+      const end = new RegExp(`</${name}\\s*>`, 'gi');
+      end.lastIndex = tagPattern.lastIndex;
+      const found = end.exec(markup);
+      // The DOM scan read textContent, which includes the code examples' JSON
+      // (script.code-examples-data); match on it too, but never on CSS.
+      if (name !== 'style' && followers.length) {
+        const raw = markup.slice(tagPattern.lastIndex, found ? found.index : markup.length).replace(/\s+/g, ' ');
+        for (const follower of followers) follower.entry.text += ` ${raw} `;
+        followers = followers.filter((follower) => follower.entry.text.length <= SEARCH_MATCH_CAP);
+      }
+      tagPattern.lastIndex = textStart = found ? end.lastIndex : markup.length;
+      continue;
+    }
+
+    // ...or until a sibling h1-h3 begins.
+    if (name === 'h1' || name === 'h2' || name === 'h3') {
+      if (followers.length) followers = followers.filter((follower) => stack.length !== follower.depth);
+      if (name !== 'h1' && !heading) {
+        const parent = stack[stack.length - 1];
+        heading = { depth: stack.length, id: idAttribute(attrs) || (parent ? idAttribute(parent.attrs) : ''), text: '' };
+      }
+    }
+    if (!VOID_TAGS.has(name) && !/\/\s*$/.test(attrs)) stack.push({ name, attrs });
+  }
+  addText(textStart, markup.length);
+
+  return entries.map((entry) => {
+    const text = entry.text.replace(/\s+/g, ' ').trim();
+    const rest = text.slice(SEARCH_TEXT_CHARS);
+    return rest ? [entry.id, entry.heading, excerpt(text), rest] : [entry.id, entry.heading, excerpt(text)];
+  });
+}
+
+// JSON inside <script>: escape `<` so no text can close the element early.
+function buildSearchIndex(pages) {
+  const index = [];
+  for (const [slug, markup] of pages) {
+    const section = sectionMap[slug];
+    if (section) index.push({ slug, title: section.title, headings: indexHeadings(markup) });
+  }
+  return JSON.stringify({ sections: index }).replace(/</g, '\\u003c');
+}
+
+// ---------------------------------------------------------------------------
+// Pages
+// ---------------------------------------------------------------------------
+
+let docsCache = null;
+function getDocs() {
+  const filePath = path.join(ROOT, 'index.html');
+  const mtime = fs.statSync(filePath).mtimeMs;
+  if (docsCache === null || docsCache.mtime !== mtime) {
+    const raw = fs.readFileSync(filePath);
+    const docs = splitDocs(raw.toString('utf8'));
+    if (docs.pages.size === 0) console.warn('index.html: no docs sections found, serving the whole file for every page');
+    docsCache = { ...docs, raw, mtime };
+  }
+  return docsCache;
+}
+
+// Same neighbours and markup as app.js renderPagination(), which replaces it.
+function renderPagination(slug) {
+  const idx = sections.findIndex((s) => s.slug === slug);
+  let html = '';
+  if (idx > 0) {
+    const prev = sections[idx - 1];
+    html += `<a href="${BASE}/${prev.slug}" class="docs-pagination-link prev">
+      <i class="lni lni-arrow-left"></i>
+      <span><small>Previous</small>${escapeHtml(prev.title)}</span>
+    </a>`;
+  }
+  if (idx !== -1 && idx < sections.length - 1) {
+    const next = sections[idx + 1];
+    html += `<a href="${BASE}/${next.slug}" class="docs-pagination-link next">
+      <span><small>Next</small>${escapeHtml(next.title)}</span>
+      <i class="lni lni-arrow-right"></i>
+    </a>`;
+  }
+  return `<nav class="docs-pagination" id="docsPagination">${html}</nav>`;
+}
+
+function renderSectionPage(docs, section) {
+  const head = setHeaderPage(injectMeta(docs.head, section), section.title);
+  const body = docs.pages.get(section.slug).replace(SECTION_DISPLAY, (match, prefix) => `${prefix}block`);
+  const tail = docs.tail.replace(EMPTY_PAGINATION, () => renderPagination(section.slug));
+  return head + body + tail;
+}
+
+const NOT_FOUND_SECTION = `<!-- ==================== NOT FOUND ==================== -->
+              <div class="docs-not-found" data-docs-not-found>
+                <article class="docs-section">
+                  <h1>Page not found</h1>
+                  <p class="section-subtitle">There is no documentation page at this address.</p>
+                  <p>Pick a page from the navigation, search the documentation, or start with the <a href="${BASE}/introduction">Introduction</a>.</p>
+                </article>
+              </div>
+
+              `;
+
+function renderNotFoundPage(docs) {
+  return injectNotFoundMeta(docs.head) + NOT_FOUND_SECTION + docs.tail;
+}
+
+// Maps a URL path to a path inside ROOT. Decoding happens once, before the
+// resolve, so ../ and %2e%2e%2f are the same thing to the prefix check; dot
+// entries (.git, .claude, .env) are never served.
+function resolveRequestPath(urlPath) {
+  let decoded;
+  try {
+    decoded = decodeURIComponent(urlPath);
+  } catch {
+    return { status: 400 };
+  }
+  if (decoded.includes('\0')) return { status: 400 };
+
+  const filePath = path.resolve(ROOT, `.${decoded.startsWith('/') ? '' : '/'}${decoded}`);
+  if (filePath !== ROOT && !filePath.startsWith(ROOT + path.sep)) return { status: 403 };
+
+  const relPath = path.relative(ROOT, filePath).split(path.sep).join('/');
+  if (relPath.split('/').some((part) => part.startsWith('.'))) return { status: 404 };
+  return { filePath, relPath };
+}
+
+function isFile(filePath) {
+  try {
+    return fs.statSync(filePath).isFile();
+  } catch {
+    return false;
+  }
+}
+
 const STATIC_CACHE_CONTROL = 'public, max-age=300, must-revalidate';
 const HTML_CACHE_CONTROL = 'no-cache, no-store, must-revalidate';
+const STATUS_TEXT = { 400: 'Bad Request', 403: 'Forbidden', 404: 'Not Found', 500: 'Internal Server Error' };
+
+function sendText(res, status) {
+  res.writeHead(status, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': HTML_CACHE_CONTROL });
+  res.end(STATUS_TEXT[status] || String(status));
+}
+
+function sendHtml(res, status, body, docs) {
+  res.writeHead(status, {
+    'Content-Type': 'text/html; charset=utf-8',
+    'Cache-Control': HTML_CACHE_CONTROL,
+    'Pragma': 'no-cache',
+    'Expires': '0',
+    'X-Deploy-Version': String(docs.mtime),
+  });
+  res.end(body);
+}
 
 http.createServer((req, res) => {
   let urlPath = req.url.split('?')[0];
@@ -145,34 +472,53 @@ http.createServer((req, res) => {
   if (urlPath.startsWith(BASE + '/')) urlPath = urlPath.slice(BASE.length);
   else if (urlPath === BASE) urlPath = '/';
 
-  const filePath = path.join(ROOT, urlPath);
-  const isRootHtml = urlPath === '/' || urlPath === '/index.html';
+  const resolved = resolveRequestPath(urlPath);
+  if (resolved.status) {
+    sendText(res, resolved.status);
+    return;
+  }
+  const { filePath, relPath } = resolved;
 
-  if (!isRootHtml && fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+  if (relPath !== '' && relPath !== 'index.html' && isFile(filePath)) {
     const ext = path.extname(filePath);
     res.writeHead(200, {
       'Content-Type': MIME[ext] || 'application/octet-stream',
       'Cache-Control': STATIC_CACHE_CONTROL,
     });
-    fs.createReadStream(filePath).pipe(res);
+    fs.createReadStream(filePath).on('error', () => res.destroy()).pipe(res);
     return;
   }
 
-  const slug = urlPath.replace(/^\//, '').replace(/\/$/, '') || 'introduction';
+  let docs;
+  try {
+    docs = getDocs();
+  } catch (err) {
+    console.error('index.html could not be loaded:', err.message);
+    sendText(res, 500);
+    return;
+  }
+
+  // The file itself, byte for byte: every section inline, for LLMs and
+  // view-source readers. Also the fallback if the split ever finds nothing.
+  if (relPath === 'index.html' || docs.pages.size === 0) {
+    sendHtml(res, 200, docs.raw, docs);
+    return;
+  }
+
+  const slug = relPath || 'introduction';
   const section = sectionMap[slug];
+  if (section && docs.pages.has(slug)) {
+    sendHtml(res, 200, renderSectionPage(docs, section), docs);
+    return;
+  }
 
-  let html = getIndexHtml();
-  if (section) html = injectMeta(html, section);
-
-  res.writeHead(200, {
-    'Content-Type': 'text/html; charset=utf-8',
-    'Cache-Control': HTML_CACHE_CONTROL,
-    'Pragma': 'no-cache',
-    'Expires': '0',
-    'X-Deploy-Version': String(indexHtmlMtime),
-  });
-  res.end(html);
+  sendHtml(res, 404, renderNotFoundPage(docs), docs);
 }).listen(PORT, () => {
+  try {
+    getDocs();
+  } catch (err) {
+    console.error('index.html could not be loaded:', err.message);
+  }
   console.log(`Docs server running at http://localhost:${PORT}${BASE}/`);
   if (typeof process.send === 'function') {
     process.send('ready');
