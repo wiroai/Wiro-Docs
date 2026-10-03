@@ -984,9 +984,10 @@ function updateTocActive(items, container) {
 function getWiroThemePreference() {
   try {
     const saved = localStorage.getItem(WIRO_THEME_KEY);
-    return WIRO_THEME_VALUES.includes(saved) ? saved : 'light';
+    // No saved choice = follow the device; only an explicit pick is stored.
+    return WIRO_THEME_VALUES.includes(saved) ? saved : 'system';
   } catch {
-    return 'light';
+    return 'system';
   }
 }
 
@@ -995,7 +996,7 @@ function isWiroDark(preference) {
 }
 
 function applyWiroTheme(preference) {
-  const normalizedPreference = WIRO_THEME_VALUES.includes(preference) ? preference : 'light';
+  const normalizedPreference = WIRO_THEME_VALUES.includes(preference) ? preference : 'system';
   const dark = isWiroDark(normalizedPreference);
 
   document.documentElement.classList.toggle('wiro-dark', dark);
