@@ -333,7 +333,8 @@ button {
 }
 
 .is-dark .docs-nav-icon-img[src*="twitterx"],
-.is-dark .docs-nav-icon-img[src*="tiktok"] {
+.is-dark .docs-nav-icon-img[src*="tiktok"],
+.is-dark .docs-nav-icon-img[src*="roasit"] {
   filter: invert(1);
 }
 

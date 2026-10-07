@@ -1575,7 +1575,8 @@ html.wiro-dark .mcp-client-card.is-active .mcp-client-logo {
 
 html.wiro-dark .dark-invert-icon,
 html.wiro-dark .docs-nav-icon-img[src*="twitterx"],
-html.wiro-dark .docs-nav-icon-img[src*="tiktok"] {
+html.wiro-dark .docs-nav-icon-img[src*="tiktok"],
+html.wiro-dark .docs-nav-icon-img[src*="roasit"] {
   filter: invert(1);
 }
 
