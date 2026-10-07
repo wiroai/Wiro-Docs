@@ -472,6 +472,7 @@ Returns `{ "result": false, "errors": [{ "code": 404, "message": "Credential not
 | App Store Connect | [App Store Skills](/docs/integration-appstore-skills) |
 | Apollo | [Apollo Skills](/docs/integration-apollo-skills) |
 | Lemlist | [Lemlist Skills](/docs/integration-lemlist-skills) |
+| Roasit | [Roasit Skills](/docs/integration-roasit-skills) |
 | Brevo | [Brevo Skills](/docs/integration-brevo-skills) |
 | SendGrid | [SendGrid Skills](/docs/integration-sendgrid-skills) |
 | Twilio Voice | [Twilio Voice](/docs/integration-twiliovoice-skills) |
