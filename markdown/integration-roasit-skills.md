@@ -43,10 +43,11 @@ Connect your agent to Roasit mobile attribution — creative, campaign and netwo
 
 ### Step 2: Find your Roasit app tokens (optional)
 
-Leave the apps list empty and the agent reports on every app the token can see. To limit it to specific apps, or to give an app the name you use in chat, add one row per app:
+Leave the apps list empty and the agent reports on every app the token can see. To limit it to specific apps, or to give an app the name you use in chat, add one row per app and platform:
 
 1. Open the app in Roasit.
-2. Copy the **App token** shown in the app's header — 12 lowercase hex characters such as `a1b2c3d4e5f6`, the same token the app's Roasit SDK starts with. One app token covers the app on both iOS and Android.
+2. Copy the **App token** shown in the app's header — 12 lowercase hex characters such as `a1b2c3d4e5f6`, the same token the app's Roasit SDK starts with.
+3. Pick the row's **Platform**, iOS or Android. One app token covers the app on both stores, so an app you run on both gets two rows with the same token; the agent filters each row's reports to its platform.
 
 ### Step 3: Save the credential to Wiro
 
@@ -59,8 +60,13 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
     "fields": [
       { "credentialkey": "roasit", "fieldname": "apitoken", "fieldvalue": "roapi_YOUR_ROASIT_TOKEN" },
       { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 0, "fieldname": "appname",  "fieldvalue": "My Game" },
+      { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 0, "fieldname": "platform", "fieldvalue": "ios" },
       { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 0, "fieldname": "apptoken", "fieldvalue": "a1b2c3d4e5f6" },
-      { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 0, "fieldname": "storeid",  "fieldvalue": "1234567890" }
+      { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 0, "fieldname": "storeid",  "fieldvalue": "1234567890" },
+      { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 1, "fieldname": "appname",  "fieldvalue": "My Game" },
+      { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 1, "fieldname": "platform", "fieldvalue": "android" },
+      { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 1, "fieldname": "apptoken", "fieldvalue": "a1b2c3d4e5f6" },
+      { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 1, "fieldname": "storeid",  "fieldvalue": "com.example.game" }
     ]
   }'
 ```
@@ -98,8 +104,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 |-------|------|----------|-------------|
 | `apitoken` | string (secret) | Yes | Roasit API token, `roapi_` followed by 43 characters. Encrypted at rest. |
 | `apps[].appname` | string | Yes (per row) | Friendly label the agent uses in chat and reports. |
+| `apps[].platform` | `ios` / `android` | Yes (per row) | The platform the row reports on. An app on both stores has two rows with the same app token. |
 | `apps[].apptoken` | string (12 hex characters) | Yes (per row) | The Roasit app token shown in the app's header. |
-| `apps[].storeid` | string | No | Apple ID or Android package name, to join Roasit numbers with your App Store / Google Play integrations. |
+| `apps[].storeid` | string | No | The row's Apple ID or Android package name, to join Roasit numbers with your App Store / Google Play integrations. |
 
 ## Credentials schema (as returned by `POST /UserAgent/Detail`)
 
@@ -110,7 +117,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
   "extra": true,
   "apitoken": "***encrypted***",
   "apps": [
-    { "appname": "My Game", "apptoken": "a1b2c3d4e5f6", "storeid": "1234567890" }
+    { "appname": "My Game", "platform": "ios", "apptoken": "a1b2c3d4e5f6", "storeid": "1234567890" },
+    { "appname": "My Game", "platform": "android", "apptoken": "a1b2c3d4e5f6", "storeid": "com.example.game" }
   ]
 }
 ```

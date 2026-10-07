@@ -27564,10 +27564,11 @@ Agent → POST /v1beta/properties/123456789:runReport
                     <div class="info-callout"><p>The token is read-only: it can read reports for the apps your Roasit account can see, and nothing else. Revoking it on the Account page cuts the agent off immediately.</p></div>
 
                     <h3>Step 2: Find your Roasit app tokens (optional)</h3>
-                    <p>Leave the apps list empty and the agent reports on every app the token can see. To limit it to specific apps, or to give an app the name you use in chat, add one row per app:</p>
+                    <p>Leave the apps list empty and the agent reports on every app the token can see. To limit it to specific apps, or to give an app the name you use in chat, add one row per app and platform:</p>
                     <ol>
                       <li>Open the app in Roasit.</li>
-                      <li>Copy the <strong>App token</strong> shown in the app's header — 12 lowercase hex characters such as <code>a1b2c3d4e5f6</code>, the same token the app's Roasit SDK starts with. One app token covers the app on both iOS and Android.</li>
+                      <li>Copy the <strong>App token</strong> shown in the app's header — 12 lowercase hex characters such as <code>a1b2c3d4e5f6</code>, the same token the app's Roasit SDK starts with.</li>
+                      <li>Pick the row's <strong>Platform</strong>, iOS or Android. One app token covers the app on both stores, so an app you run on both gets two rows with the same token; the agent filters each row's reports to its platform.</li>
                     </ol>
 
                     <h3>Step 3: Save the credential to Wiro</h3>
@@ -27579,8 +27580,13 @@ Agent → POST /v1beta/properties/123456789:runReport
     "fields": [
       { "credentialkey": "roasit", "fieldname": "apitoken", "fieldvalue": "roapi_YOUR_ROASIT_TOKEN" },
       { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 0, "fieldname": "appname",  "fieldvalue": "My Game" },
+      { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 0, "fieldname": "platform", "fieldvalue": "ios" },
       { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 0, "fieldname": "apptoken", "fieldvalue": "a1b2c3d4e5f6" },
-      { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 0, "fieldname": "storeid",  "fieldvalue": "1234567890" }
+      { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 0, "fieldname": "storeid",  "fieldvalue": "1234567890" },
+      { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 1, "fieldname": "appname",  "fieldvalue": "My Game" },
+      { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 1, "fieldname": "platform", "fieldvalue": "android" },
+      { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 1, "fieldname": "apptoken", "fieldvalue": "a1b2c3d4e5f6" },
+      { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 1, "fieldname": "storeid",  "fieldvalue": "com.example.game" }
     ]
   }'</code></pre>
                     <p>Or fill it in the panel: <strong><a href="https://wiro.ai/panel/agents" target="_blank" rel="noopener">My Agents</a></strong> → open agent → <strong>Credentials → Roasit</strong>.</p>
@@ -27614,8 +27620,9 @@ Agent → POST /v1beta/properties/123456789:runReport
                           <tbody>
                             <tr><td><code>apitoken</code></td><td>string (secret)</td><td>Yes</td><td>Roasit API token, <code>roapi_</code> followed by 43 characters. Encrypted at rest.</td></tr>
                             <tr><td><code>apps[].appname</code></td><td>string</td><td>Yes (per row)</td><td>Friendly label the agent uses in chat and reports.</td></tr>
+                            <tr><td><code>apps[].platform</code></td><td><code>ios</code> / <code>android</code></td><td>Yes (per row)</td><td>The platform the row reports on. An app on both stores has two rows with the same app token.</td></tr>
                             <tr><td><code>apps[].apptoken</code></td><td>string (12 hex characters)</td><td>Yes (per row)</td><td>The Roasit app token shown in the app's header.</td></tr>
-                            <tr><td><code>apps[].storeid</code></td><td>string</td><td>No</td><td>Apple ID or Android package name, to join Roasit numbers with your App Store / Google Play integrations.</td></tr>
+                            <tr><td><code>apps[].storeid</code></td><td>string</td><td>No</td><td>The row's Apple ID or Android package name, to join Roasit numbers with your App Store / Google Play integrations.</td></tr>
                           </tbody>
                         </table>
                       </div>
@@ -27630,7 +27637,8 @@ Agent → POST /v1beta/properties/123456789:runReport
   "extra": true,
   "apitoken": "***encrypted***",
   "apps": [
-    { "appname": "My Game", "apptoken": "a1b2c3d4e5f6", "storeid": "1234567890" }
+    { "appname": "My Game", "platform": "ios", "apptoken": "a1b2c3d4e5f6", "storeid": "1234567890" },
+    { "appname": "My Game", "platform": "android", "apptoken": "a1b2c3d4e5f6", "storeid": "com.example.game" }
   ]
 }</code></pre>
                     <p><code>optional</code> and <code>extra</code> are <code>true</code> on the ads-manager agents: Roasit is an optional attribution source, and its credential card shows up even before the skill is on.</p>
