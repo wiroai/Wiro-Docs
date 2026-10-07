@@ -27563,11 +27563,11 @@ Agent → POST /v1beta/properties/123456789:runReport
                     </ol>
                     <div class="info-callout"><p>The token is read-only: it can read reports for the apps your Roasit account can see, and nothing else. Revoking it on the Account page cuts the agent off immediately.</p></div>
 
-                    <h3>Step 2: Find your Roasit App IDs (optional)</h3>
+                    <h3>Step 2: Find your Roasit app tokens (optional)</h3>
                     <p>Leave the apps list empty and the agent reports on every app the token can see. To limit it to specific apps, or to give an app the name you use in chat, add one row per app:</p>
                     <ol>
                       <li>Open the app in Roasit.</li>
-                      <li>Copy the id from the address bar: <code>https://roasit.com/#/app/&lt;app-id&gt;/info</code> — a lowercase UUID such as <code>3f1c2b9e-7a4d-4c6b-9e2f-1a2b3c4d5e6f</code>.</li>
+                      <li>Copy the <strong>App token</strong> shown in the app's header — 12 lowercase hex characters such as <code>a1b2c3d4e5f6</code>, the same token the app's Roasit SDK starts with. One app token covers the app on both iOS and Android.</li>
                     </ol>
 
                     <h3>Step 3: Save the credential to Wiro</h3>
@@ -27579,8 +27579,7 @@ Agent → POST /v1beta/properties/123456789:runReport
     "fields": [
       { "credentialkey": "roasit", "fieldname": "apitoken", "fieldvalue": "roapi_YOUR_ROASIT_TOKEN" },
       { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 0, "fieldname": "appname",  "fieldvalue": "My Game" },
-      { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 0, "fieldname": "platform", "fieldvalue": "all" },
-      { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 0, "fieldname": "appid",    "fieldvalue": "3f1c2b9e-7a4d-4c6b-9e2f-1a2b3c4d5e6f" },
+      { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 0, "fieldname": "apptoken", "fieldvalue": "a1b2c3d4e5f6" },
       { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 0, "fieldname": "storeid",  "fieldvalue": "1234567890" }
     ]
   }'</code></pre>
@@ -27615,8 +27614,7 @@ Agent → POST /v1beta/properties/123456789:runReport
                           <tbody>
                             <tr><td><code>apitoken</code></td><td>string (secret)</td><td>Yes</td><td>Roasit API token, <code>roapi_</code> followed by 43 characters. Encrypted at rest.</td></tr>
                             <tr><td><code>apps[].appname</code></td><td>string</td><td>Yes (per row)</td><td>Friendly label the agent uses in chat and reports.</td></tr>
-                            <tr><td><code>apps[].platform</code></td><td><code>all</code> / <code>ios</code> / <code>android</code></td><td>Yes (per row)</td><td><code>all</code> reports on both stores; <code>ios</code> or <code>android</code> filters every report for that app to one platform.</td></tr>
-                            <tr><td><code>apps[].appid</code></td><td>string (UUID)</td><td>Yes (per row)</td><td>The Roasit app id from the dashboard URL.</td></tr>
+                            <tr><td><code>apps[].apptoken</code></td><td>string (12 hex characters)</td><td>Yes (per row)</td><td>The Roasit app token shown in the app's header.</td></tr>
                             <tr><td><code>apps[].storeid</code></td><td>string</td><td>No</td><td>Apple ID or Android package name, to join Roasit numbers with your App Store / Google Play integrations.</td></tr>
                           </tbody>
                         </table>
@@ -27632,7 +27630,7 @@ Agent → POST /v1beta/properties/123456789:runReport
   "extra": true,
   "apitoken": "***encrypted***",
   "apps": [
-    { "appname": "My Game", "platform": "all", "appid": "3f1c2b9e-7a4d-4c6b-9e2f-1a2b3c4d5e6f", "storeid": "1234567890" }
+    { "appname": "My Game", "apptoken": "a1b2c3d4e5f6", "storeid": "1234567890" }
   ]
 }</code></pre>
                     <p><code>optional</code> and <code>extra</code> are <code>true</code> on the ads-manager agents: Roasit is an optional attribution source, and its credential card shows up even before the skill is on.</p>
@@ -27676,7 +27674,7 @@ Agent → POST /v1beta/properties/123456789:runReport
                     <h2>Troubleshooting</h2>
                     <ul>
                       <li><strong>401:</strong> The token was revoked or mistyped — create a new one on Roasit's Account page and save it again.</li>
-                      <li><strong>404 for an app:</strong> The Roasit App ID is wrong, or the Roasit account behind the token cannot see that app.</li>
+                      <li><strong>404 for an app:</strong> The app token is wrong, or the Roasit account behind the token cannot see that app.</li>
                       <li><strong>Creative ROAS shows "-":</strong> That network's spend is pulled at campaign level in Roasit — raise Spend detail, or read the campaign-level row.</li>
                       <li><strong>Today's or yesterday's ROAS is missing:</strong> Roasit's nightly spend pull has not finalised the day yet; the report names the excluded days.</li>
                       <li><strong>Agent says "not connected" with the token filled:</strong> The agent restarts to pick up new credentials; give it a moment after saving, then retry.</li>

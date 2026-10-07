@@ -17965,12 +17965,12 @@ Connect your agent to Roasit mobile attribution — creative, campaign and netwo
 
 > The token is read-only: it can read reports for the apps your Roasit account can see, and nothing else. Revoking it on the Account page cuts the agent off immediately.
 
-### Step 2: Find your Roasit App IDs (optional)
+### Step 2: Find your Roasit app tokens (optional)
 
 Leave the apps list empty and the agent reports on every app the token can see. To limit it to specific apps, or to give an app the name you use in chat, add one row per app:
 
 1. Open the app in Roasit.
-2. Copy the id from the address bar: `https://roasit.com/#/app/<app-id>/info` — a lowercase UUID such as `3f1c2b9e-7a4d-4c6b-9e2f-1a2b3c4d5e6f`.
+2. Copy the **App token** shown in the app's header — 12 lowercase hex characters such as `a1b2c3d4e5f6`, the same token the app's Roasit SDK starts with. One app token covers the app on both iOS and Android.
 
 ### Step 3: Save the credential to Wiro
 
@@ -17983,8 +17983,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
     "fields": [
       { "credentialkey": "roasit", "fieldname": "apitoken", "fieldvalue": "roapi_YOUR_ROASIT_TOKEN" },
       { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 0, "fieldname": "appname",  "fieldvalue": "My Game" },
-      { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 0, "fieldname": "platform", "fieldvalue": "all" },
-      { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 0, "fieldname": "appid",    "fieldvalue": "3f1c2b9e-7a4d-4c6b-9e2f-1a2b3c4d5e6f" },
+      { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 0, "fieldname": "apptoken", "fieldvalue": "a1b2c3d4e5f6" },
       { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 0, "fieldname": "storeid",  "fieldvalue": "1234567890" }
     ]
   }'
@@ -18023,8 +18022,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 |-------|------|----------|-------------|
 | `apitoken` | string (secret) | Yes | Roasit API token, `roapi_` followed by 43 characters. Encrypted at rest. |
 | `apps[].appname` | string | Yes (per row) | Friendly label the agent uses in chat and reports. |
-| `apps[].platform` | `all` / `ios` / `android` | Yes (per row) | `all` reports on both stores; `ios` or `android` filters every report for that app to one platform. |
-| `apps[].appid` | string (UUID) | Yes (per row) | The Roasit app id from the dashboard URL. |
+| `apps[].apptoken` | string (12 hex characters) | Yes (per row) | The Roasit app token shown in the app's header. |
 | `apps[].storeid` | string | No | Apple ID or Android package name, to join Roasit numbers with your App Store / Google Play integrations. |
 
 ## Credentials schema (as returned by `POST /UserAgent/Detail`)
@@ -18036,7 +18034,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
   "extra": true,
   "apitoken": "***encrypted***",
   "apps": [
-    { "appname": "My Game", "platform": "all", "appid": "3f1c2b9e-7a4d-4c6b-9e2f-1a2b3c4d5e6f", "storeid": "1234567890" }
+    { "appname": "My Game", "apptoken": "a1b2c3d4e5f6", "storeid": "1234567890" }
   ]
 }
 ```
@@ -18071,7 +18069,7 @@ The daily task writes `pause_creative_low_roas`, `scale_creative_high_roas` and 
 ## Troubleshooting
 
 - **401:** The token was revoked or mistyped — create a new one on Roasit's Account page and save it again.
-- **404 for an app:** The Roasit App ID is wrong, or the Roasit account behind the token cannot see that app.
+- **404 for an app:** The app token is wrong, or the Roasit account behind the token cannot see that app.
 - **Creative ROAS shows "-":** That network's spend is pulled at campaign level in Roasit — raise Spend detail, or read the campaign-level row.
 - **Today's or yesterday's ROAS is missing:** Roasit's nightly spend pull has not finalised the day yet; the report names the excluded days.
 - **Agent says "not connected" with the token filled:** The agent restarts to pick up new credentials; give it a moment after saving, then retry.
