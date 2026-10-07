@@ -18051,7 +18051,7 @@ The agent reads Roasit's report API, one app per request, and never recomputes a
 | `roas_ad_all` / `roas_iap_all` | The ad-revenue / in-app-revenue part of it. |
 | `roas_N`, `ret_N`, `arpu_N` | Day-N ROAS, retention and ARPU (mature cohorts only). |
 | `installs`, `network_installs` | Installs Roasit attributed vs. installs the ad networks claim. |
-| `spend`, `cpi`, `impressions`, `clicks` | Paid media, in USD. |
+| `spend`, `cpi`, `impressions`, `clicks` | Paid media, in the report's currency (USD unless the app reports in another one). |
 | `rev_all`, `rev_ad`, `rev_iap` | Cohort revenue to date, total / ads / in-app. |
 
 Breakdowns: day, platform, country, network, campaign, ad group and ad. A "-" (null) value means the dashboard shows none yet — no spend, a cohort not old enough, or a day whose spend is not final — and is never treated as zero.
