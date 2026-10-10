@@ -47,7 +47,7 @@ Leave the apps list empty and the agent reports on every app the token can see. 
 
 1. Open the app in Roasit.
 2. Copy the **App token** shown in the app's header — 12 lowercase hex characters such as `a1b2c3d4e5f6`, the same token the app's Roasit SDK starts with.
-3. Pick the row's **Platform**, iOS or Android. One app token covers the app on both stores, so an app you run on both gets two rows with the same token; the agent filters each row's reports to its platform.
+3. Pick the row's **Platform**: iOS, Android, or Web for a web app measured by Roasit's browser SDK and Stripe sales. One app token covers every platform of the app, so an app you run on several gets one row per platform with the same token; the agent filters each row's reports to its platform.
 
 ### Step 3: Save the credential to Wiro
 
@@ -104,7 +104,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 |-------|------|----------|-------------|
 | `apitoken` | string (secret) | Yes | Roasit API token, `roapi_` followed by 43 characters. Encrypted at rest. |
 | `apps[].appname` | string | Yes (per row) | Friendly label the agent uses in chat and reports. |
-| `apps[].platform` | `ios` / `android` | Yes (per row) | The platform the row reports on. An app on both stores has two rows with the same app token. |
+| `apps[].platform` | `ios` / `android` / `web` | Yes (per row) | The platform the row reports on. An app on several platforms has one row per platform with the same app token. A `web` row has no SKAN or install reconciliation. |
 | `apps[].apptoken` | string (12 hex characters) | Yes (per row) | The Roasit app token shown in the app's header. |
 | `apps[].storeid` | string | No | The row's Apple ID or Android package name, to join Roasit numbers with your App Store / Google Play integrations. |
 

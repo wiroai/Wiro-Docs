@@ -27568,7 +27568,7 @@ Agent → POST /v1beta/properties/123456789:runReport
                     <ol>
                       <li>Open the app in Roasit.</li>
                       <li>Copy the <strong>App token</strong> shown in the app's header — 12 lowercase hex characters such as <code>a1b2c3d4e5f6</code>, the same token the app's Roasit SDK starts with.</li>
-                      <li>Pick the row's <strong>Platform</strong>, iOS or Android. One app token covers the app on both stores, so an app you run on both gets two rows with the same token; the agent filters each row's reports to its platform.</li>
+                      <li>Pick the row's <strong>Platform</strong>: iOS, Android, or Web for a web app measured by Roasit's browser SDK and Stripe sales. One app token covers every platform of the app, so an app you run on several gets one row per platform with the same token; the agent filters each row's reports to its platform.</li>
                     </ol>
 
                     <h3>Step 3: Save the credential to Wiro</h3>
@@ -27620,7 +27620,7 @@ Agent → POST /v1beta/properties/123456789:runReport
                           <tbody>
                             <tr><td><code>apitoken</code></td><td>string (secret)</td><td>Yes</td><td>Roasit API token, <code>roapi_</code> followed by 43 characters. Encrypted at rest.</td></tr>
                             <tr><td><code>apps[].appname</code></td><td>string</td><td>Yes (per row)</td><td>Friendly label the agent uses in chat and reports.</td></tr>
-                            <tr><td><code>apps[].platform</code></td><td><code>ios</code> / <code>android</code></td><td>Yes (per row)</td><td>The platform the row reports on. An app on both stores has two rows with the same app token.</td></tr>
+                            <tr><td><code>apps[].platform</code></td><td><code>ios</code> / <code>android</code> / <code>web</code></td><td>Yes (per row)</td><td>The platform the row reports on. An app on several platforms has one row per platform with the same app token. A <code>web</code> row has no SKAN or install reconciliation.</td></tr>
                             <tr><td><code>apps[].apptoken</code></td><td>string (12 hex characters)</td><td>Yes (per row)</td><td>The Roasit app token shown in the app's header.</td></tr>
                             <tr><td><code>apps[].storeid</code></td><td>string</td><td>No</td><td>The row's Apple ID or Android package name, to join Roasit numbers with your App Store / Google Play integrations.</td></tr>
                           </tbody>
