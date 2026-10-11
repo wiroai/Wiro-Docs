@@ -470,7 +470,7 @@ Each message added to that session afterwards arrives as an `agent_message_inser
     "content": "",
     "response": "Your product video is ready: https://cdn.wiro.ai/…/video.mp4",
     "status": "agent_end",
-    "metadata": { "type": "system" },
+    "metadata": { "type": "subagent" },
     "createdat": 1743350700,
     "startedat": 1743350700,
     "endedat": 1743350700
@@ -487,7 +487,7 @@ Each message added to that session afterwards arrives as an `agent_message_inser
 | `content` | string | Always `""`: no prompt of yours belongs to these messages. |
 | `response` | string | The message text. |
 | `status` | string | Always `"agent_end"`. |
-| `metadata` | object | `type` is `"system"`. Other keys may appear; ignore the ones you don't use. |
+| `metadata` | object | `type` is `"subagent"` for the result of work the agent handed to a sub-agent, `"system"` for the other messages. Other keys may appear; ignore the ones you don't use. |
 | `createdat` / `startedat` / `endedat` | number | Unix timestamps in seconds, all set to when the message was added. |
 
 - **What arrives.** A follower receives exactly the new messages its `Message/History` read would show. Turns you start with `Message/Send` keep streaming on their own `agenttoken`; following the session doesn't repeat them.

@@ -9686,7 +9686,7 @@ Each assistant row also carries the per-turn token-accounting columns, identical
 
 > **`model_change` marker rows.** Switching the chat model (via the [`model`](#post-useragentmessagesend) param) drops a synthetic marker row into history alongside the real turns. A marker row has `status: "agent_done"`, `model: null`, empty `content` / `response` / `debugoutput`, every token column `null`, and `metadata: { "type": "model_change", "fromModel": "…", "toModel": "…" }`. Detect it with `metadata.type === "model_change"` and render it as an inline separator (e.g. "Switched to GPT-5.4") rather than a chat bubble. Its `createdat` is the triggering turn's `createdat` minus one second, so it orders immediately before that turn (in the newest-first response it appears directly after the turn that triggered it).
 
-> **Messages added between turns.** Not every row answers a `Message/Send` of yours: the agent can also add a message to the session on its own, such as a scheduled report, files it sends after an answer, or the result of longer work it finished in the background. When it moves work to the background, the turn you sent ends with a short line saying the result will follow, and the result arrives later as a separate row. These rows arrive finished (`status: "agent_end"`) with an empty `content`, the text in `response` and `metadata.type: "system"`. They have no turn of their own: nothing streams on an `agenttoken` for them and no `callbackurl` is called. Read them with History, or follow the session with `sessiontoken` to receive each one as it is added; see [Following a session](/docs/agent-websocket#following-a-session).
+> **Messages added between turns.** Not every row answers a `Message/Send` of yours: the agent can also add a message to the session on its own, such as a scheduled report, files it sends after an answer, or the result of longer work it finished in the background. When it moves work to the background, the turn you sent ends with a short line saying the result will follow, and the result arrives later as a separate row. These rows arrive finished (`status: "agent_end"`) with an empty `content` and the text in `response`. Their `metadata.type` is `"subagent"` for the result of work the agent handed to a sub-agent (show it as the agent's reply) and `"system"` for the rest. They have no turn of their own: nothing streams on an `agenttoken` for them and no `callbackurl` is called. Read them with History, or follow the session with `sessiontoken` to receive each one as it is added; see [Following a session](/docs/agent-websocket#following-a-session).
 
 ### Pagination
 
@@ -10979,7 +10979,7 @@ Each message added to that session afterwards arrives as an `agent_message_inser
     "content": "",
     "response": "Your product video is ready: https://cdn.wiro.ai/…/video.mp4",
     "status": "agent_end",
-    "metadata": { "type": "system" },
+    "metadata": { "type": "subagent" },
     "createdat": 1743350700,
     "startedat": 1743350700,
     "endedat": 1743350700
@@ -10996,7 +10996,7 @@ Each message added to that session afterwards arrives as an `agent_message_inser
 | `content` | string | Always `""`: no prompt of yours belongs to these messages. |
 | `response` | string | The message text. |
 | `status` | string | Always `"agent_end"`. |
-| `metadata` | object | `type` is `"system"`. Other keys may appear; ignore the ones you don't use. |
+| `metadata` | object | `type` is `"subagent"` for the result of work the agent handed to a sub-agent, `"system"` for the other messages. Other keys may appear; ignore the ones you don't use. |
 | `createdat` / `startedat` / `endedat` | number | Unix timestamps in seconds, all set to when the message was added. |
 
 - **What arrives.** A follower receives exactly the new messages its `Message/History` read would show. Turns you start with `Message/Send` keep streaming on their own `agenttoken`; following the session doesn't repeat them.
