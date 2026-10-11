@@ -10,7 +10,7 @@ wss://socket.wiro.ai/v1
 
 Connect to this URL after calling the [Message / Send](/docs/agent-messaging) endpoint. Use the `agenttoken` from the send response to subscribe to the agent session. This is the same WebSocket server used for model tasks — you can subscribe to both task events (`task_info`) and agent events (`agent_info`) on the same connection.
 
-No API key or auth header is required on the WebSocket itself. Authorization is enforced via the `agenttoken`, which is issued by `POST /UserAgent/Message/Send` against your API key and is scoped to a single message run.
+No API key or auth header is required on the WebSocket itself. Authorization is enforced via the `agenttoken`, which is issued by `POST /UserAgent/Message/Send` against your API key and is scoped to a single message run. To follow a whole session instead, use the `sessiontoken` from `Message/History`; see [Following a session](#following-a-session).
 
 ## Connection Flow
 
@@ -82,7 +82,7 @@ Typical use cases:
 - Dashboards watching several users' agents in parallel.
 - Combining task streaming and agent streaming on the same connection — `task_info` and `agent_info` frames both map to the same connection's token list (tasks under `taskTokens`, agents under `agentTokens`).
 
-There is no `unsubscribe` frame. To stop listening to a token without reconnecting, ignore its events client-side; tokens are cleaned up automatically when the connection closes.
+There is no `unsubscribe` frame for `agent_info` tokens. To stop listening to a token without reconnecting, ignore its events client-side; tokens are cleaned up automatically when the connection closes.
 
 ## Event Types
 
@@ -92,7 +92,7 @@ Frames flow in two directions. `↓` = server → client, `↑` = client → ser
 |---|---|---|
 | ↓ | `connected` | Welcome frame pushed by the server right after the WebSocket upgrade. Fires exactly once per connection. |
 | ↑ | `agent_info` | Client-initiated subscribe frame. Carries the `agenttoken` issued by `Message/Send`. Can be sent multiple times on the same socket (one per token). |
-| ↓ | `error` | Server-side rejection of a malformed subscribe (missing `agenttoken`). Connection stays open; retry with a valid frame. |
+| ↓ | `error` | Server-side rejection of a malformed subscribe (missing `agenttoken`, or a malformed `sessiontoken`). Connection stays open; retry with a valid frame. |
 | ↓ | `agent_subscribed` | Subscribe acknowledged. Carries the current lifecycle `status`, accumulated `debugoutput`, `messageguid`, and persisted `timeline[]`. If the agent already finished before you subscribed, this frame is your reconnect snapshot. |
 | ↓ | `agent_start` | The bridge has opened an SSE stream to the agent container. The underlying model is now generating. Emits exactly once per message. |
 | ↓ | `agent_timeline_delta` | One ordered public timeline-block update. Carries `messageguid` and one `block`; merge by `blockid` and that block's `version`, then sort by `callindex`, `contentindex`, and `blockid`. |
@@ -102,6 +102,10 @@ Frames flow in two directions. `↓` = server → client, `↑` = client → ser
 | ↓ | `agent_cancel` | Terminal cancel event. Fires **only** when an already-active message is aborted mid-stream (via `Message/Cancel` or upstream abort). Cancels against a still-queued message do **not** broadcast this event — check `Message/Detail` for those. Emits at most once. |
 | ↓ | `agent_usage_report` | Post-terminal usage/billing frame. Fires once, ~250–500 ms after a successful `agent_end`, on the same `agenttoken`. Carries the final token counts, `model`, `tokencost`, and `remainingcredits` for the message identified by `messageguid`. Not emitted for replayed usage callbacks or for turns with no chat message (cron/hook turns). |
 | ↓ | `agent_wiroai_runtask` | Model-run discovery frame. Fires whenever the agent itself launches a Wiro model run during a turn (e.g. generating an image or video via `int-wiro-aimodels`). Broadcast on the **session-key** channel (not the per-turn `agenttoken`), carrying the new task's `socketaccesstoken` so you can subscribe to that run's `task_*` lifecycle and collect its outputs. See [Model runs the agent triggers](#model-runs-the-agent-triggers). |
+| ↑ | `agent_session_subscribe` | Follow a session with the `sessiontoken` from `Message/History`. See [Following a session](#following-a-session). |
+| ↓ | `agent_session_subscribed` | Session follow acknowledged. |
+| ↓ | `agent_message_inserted` | A message was added to a followed session between turns (a scheduled report, files sent after an answer, the result of background work). Carries the `sessiontoken` and the new row in `message`. |
+| ↑ | `agent_session_unsubscribe` | Stop following a session. No reply. |
 
 ## Message Format
 
@@ -436,13 +440,70 @@ A single socket can hold both subscriptions at once — the per-turn `agenttoken
 
 > **Only fires for agent-initiated runs.** `agent_wiroai_runtask` is emitted when the *agent* calls a model mid-turn. Model runs you launch yourself with `POST /Run` (your own `x-api-key`) do not produce this frame — you already hold their `socketaccesstoken` from the `/Run` response.
 
+### Following a session
+
+Some messages are added to a session between turns: a scheduled report, files the agent sends after its answer, or the result of longer work it finished in the background. They belong to no turn, so they never stream on an `agenttoken`. To receive them as they are added, follow the session with the `sessiontoken` that [`Message/History`](/docs/agent-messaging#post-useragentmessagehistory) returns for it:
+
+```json
+{
+  "type": "agent_session_subscribe",
+  "sessiontoken": "Lp4vQ8sWn2KxT7cRb1YhZ6mDg9FjA3uEo5iNk0wXyHt"
+}
+```
+
+The server acknowledges the follow:
+
+```json
+{ "type": "agent_session_subscribed", "result": true }
+```
+
+Each message added to that session afterwards arrives as an `agent_message_inserted` frame:
+
+```json
+{
+  "type": "agent_message_inserted",
+  "sessiontoken": "Lp4vQ8sWn2KxT7cRb1YhZ6mDg9FjA3uEo5iNk0wXyHt",
+  "message": {
+    "guid": "d4e5f6a7-b8c9-0123-def4-567890123456",
+    "uuid": "ada-uuid",
+    "sessionkey": "user-42",
+    "content": "",
+    "response": "Your product video is ready: https://cdn.wiro.ai/…/video.mp4",
+    "status": "agent_end",
+    "metadata": { "type": "system" },
+    "createdat": 1743350700,
+    "startedat": 1743350700,
+    "endedat": 1743350700
+  },
+  "result": true
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `guid` | string | The new message's GUID. Add each `guid` once; skip it if History already gave it to you. |
+| `uuid` | string | The row's `uuid`, as `Message/History` returns it. |
+| `sessionkey` | string | The session the message was added to. |
+| `content` | string | Always `""`: no prompt of yours belongs to these messages. |
+| `response` | string | The message text. |
+| `status` | string | Always `"agent_end"`. |
+| `metadata` | object | `type` is `"system"`. Other keys may appear; ignore the ones you don't use. |
+| `createdat` / `startedat` / `endedat` | number | Unix timestamps in seconds, all set to when the message was added. |
+
+- **What arrives.** A follower receives exactly the new messages its `Message/History` read would show. Turns you start with `Message/Send` keep streaming on their own `agenttoken`; following the session doesn't repeat them.
+- **Stop following** with `{ "type": "agent_session_unsubscribe", "sessiontoken": "…" }`. There is no reply.
+- **Limit.** One connection follows up to 16 sessions. Following another one drops the oldest follow.
+- **Errors.** A malformed `sessiontoken` gets `{ "type": "error", "message": "sessiontoken-invalid", "result": false }`, and the connection stays open. The acknowledgement doesn't check which session a token belongs to, so send the token exactly as History returned it.
+- **Reconnects.** Frames aren't replayed, and follows end with the connection. After reconnecting, send `agent_session_subscribe` again and read History once to catch anything added while you were away.
+- **Keep the token private.** Whoever holds it receives the session's new messages. Read it from History when you open the session instead of storing it.
+
 ## The `result` Field
 
 Every agent lifecycle event includes a `result` boolean:
 
 | Value | Events |
 |---|---|
-| `true` | `agent_subscribed`, `agent_start`, `agent_timeline_delta`, `agent_output`, `agent_end`, `agent_usage_report` |
+| `true` | `agent_subscribed`, `agent_start`, `agent_timeline_delta`, `agent_output`, `agent_end`, `agent_usage_report`, `agent_session_subscribed`, `agent_message_inserted` |
 | `false` | `error`, `agent_error`, `agent_cancel` |
 
 Use `result` to quickly determine whether the event represents a successful state. When `result` is `false`, inspect `message` for error details or cancellation context. The welcome `connected` frame has no `result` field — it's a one-shot ack and always implies success (you got the frame, so the upgrade worked).

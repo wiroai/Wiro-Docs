@@ -14706,7 +14706,8 @@ print(response.body);
       }
     ],
     &quot;count&quot;: 3,
-    &quot;hasmore&quot;: false
+    &quot;hasmore&quot;: false,
+    &quot;sessiontoken&quot;: &quot;Lp4vQ8sWn2KxT7cRb1YhZ6mDg9FjA3uEo5iNk0wXyHt&quot;
   }
 }
 </code></pre>
@@ -14739,6 +14740,11 @@ print(response.body);
 <td><code>hasmore</code></td>
 <td><code>boolean</code></td>
 <td><code>true</code> if there are older messages available. Pass the last message's <code>guid</code> as <code>before</code> to fetch the next page.</td>
+</tr>
+<tr>
+<td><code>sessiontoken</code></td>
+<td><code>string</code></td>
+<td>Token for following this session live on the <a href="/docs/agent-websocket#following-a-session">Agent WebSocket</a>: messages added to the session between turns reach you as they are written. Treat it as opaque and keep it private, like an <code>agenttoken</code>. It can be absent; then read History again to pick up new messages.</td>
 </tr>
 </tbody>
 </table>
@@ -14802,6 +14808,9 @@ print(response.body);
 </div>
 <blockquote>
 <p><strong><code>model_change</code> marker rows.</strong> Switching the chat model (via the <a href="#post-useragentmessagesend"><code>model</code></a> param) drops a synthetic marker row into history alongside the real turns. A marker row has <code>status: "agent_done"</code>, <code>model: null</code>, empty <code>content</code> / <code>response</code> / <code>debugoutput</code>, every token column <code>null</code>, and <code>metadata: { "type": "model_change", "fromModel": "…", "toModel": "…" }</code>. Detect it with <code>metadata.type === "model_change"</code> and render it as an inline separator (e.g. "Switched to GPT-5.4") rather than a chat bubble. Its <code>createdat</code> is the triggering turn's <code>createdat</code> minus one second, so it orders immediately before that turn (in the newest-first response it appears directly after the turn that triggered it).</p>
+</blockquote>
+<blockquote>
+<p><strong>Messages added between turns.</strong> Not every row answers a <code>Message/Send</code> of yours: the agent can also add a message to the session on its own, such as a scheduled report, files it sends after an answer, or the result of longer work it finished in the background. When it moves work to the background, the turn you sent ends with a short line saying the result will follow, and the result arrives later as a separate row. These rows arrive finished (<code>status: "agent_end"</code>) with an empty <code>content</code>, the text in <code>response</code> and <code>metadata.type: "system"</code>. They have no turn of their own: nothing streams on an <code>agenttoken</code> for them and no <code>callbackurl</code> is called. Read them with History, or follow the session with <code>sessiontoken</code> to receive each one as it is added; see <a href="/docs/agent-websocket#following-a-session">Following a session</a>.</p>
 </blockquote>
 <h3 id="pagination">Pagination</h3>
 <p>To paginate through a long conversation:</p>
@@ -15832,7 +15841,7 @@ func main() {
 <pre><code>wss://socket.wiro.ai/v1
 </code></pre>
 <p>Connect to this URL after calling the <a href="/docs/agent-messaging">Message / Send</a> endpoint. Use the <code>agenttoken</code> from the send response to subscribe to the agent session. This is the same WebSocket server used for model tasks — you can subscribe to both task events (<code>task_info</code>) and agent events (<code>agent_info</code>) on the same connection.</p>
-<p>No API key or auth header is required on the WebSocket itself. Authorization is enforced via the <code>agenttoken</code>, which is issued by <code>POST /UserAgent/Message/Send</code> against your API key and is scoped to a single message run.</p>
+<p>No API key or auth header is required on the WebSocket itself. Authorization is enforced via the <code>agenttoken</code>, which is issued by <code>POST /UserAgent/Message/Send</code> against your API key and is scoped to a single message run. To follow a whole session instead, use the <code>sessiontoken</code> from <code>Message/History</code>; see <a href="#following-a-session">Following a session</a>.</p>
 <h2 id="connection-flow">Connection Flow</h2>
 <ol>
 <li><strong>Connect</strong> — open a WebSocket connection to <code>wss://socket.wiro.ai/v1</code>.</li>
@@ -15885,7 +15894,7 @@ func main() {
 <li>Dashboards watching several users' agents in parallel.</li>
 <li>Combining task streaming and agent streaming on the same connection — <code>task_info</code> and <code>agent_info</code> frames both map to the same connection's token list (tasks under <code>taskTokens</code>, agents under <code>agentTokens</code>).</li>
 </ul>
-<p>There is no <code>unsubscribe</code> frame. To stop listening to a token without reconnecting, ignore its events client-side; tokens are cleaned up automatically when the connection closes.</p>
+<p>There is no <code>unsubscribe</code> frame for <code>agent_info</code> tokens. To stop listening to a token without reconnecting, ignore its events client-side; tokens are cleaned up automatically when the connection closes.</p>
 <h2 id="event-types">Event Types</h2>
 <p>Frames flow in two directions. <code>↓</code> = server → client, <code>↑</code> = client → server.</p>
 <div class="docs-param-table">
@@ -15912,7 +15921,7 @@ func main() {
 <tr>
 <td>↓</td>
 <td><code>error</code></td>
-<td>Server-side rejection of a malformed subscribe (missing <code>agenttoken</code>). Connection stays open; retry with a valid frame.</td>
+<td>Server-side rejection of a malformed subscribe (missing <code>agenttoken</code>, or a malformed <code>sessiontoken</code>). Connection stays open; retry with a valid frame.</td>
 </tr>
 <tr>
 <td>↓</td>
@@ -15958,6 +15967,26 @@ func main() {
 <td>↓</td>
 <td><code>agent_wiroai_runtask</code></td>
 <td>Model-run discovery frame. Fires whenever the agent itself launches a Wiro model run during a turn (e.g. generating an image or video via <code>int-wiro-aimodels</code>). Broadcast on the <strong>session-key</strong> channel (not the per-turn <code>agenttoken</code>), carrying the new task's <code>socketaccesstoken</code> so you can subscribe to that run's <code>task_*</code> lifecycle and collect its outputs. See <a href="#model-runs-the-agent-triggers">Model runs the agent triggers</a>.</td>
+</tr>
+<tr>
+<td>↑</td>
+<td><code>agent_session_subscribe</code></td>
+<td>Follow a session with the <code>sessiontoken</code> from <code>Message/History</code>. See <a href="#following-a-session">Following a session</a>.</td>
+</tr>
+<tr>
+<td>↓</td>
+<td><code>agent_session_subscribed</code></td>
+<td>Session follow acknowledged.</td>
+</tr>
+<tr>
+<td>↓</td>
+<td><code>agent_message_inserted</code></td>
+<td>A message was added to a followed session between turns (a scheduled report, files sent after an answer, the result of background work). Carries the <code>sessiontoken</code> and the new row in <code>message</code>.</td>
+</tr>
+<tr>
+<td>↑</td>
+<td><code>agent_session_unsubscribe</code></td>
+<td>Stop following a session. No reply.</td>
 </tr>
 </tbody>
 </table>
@@ -16388,6 +16417,98 @@ func main() {
 <blockquote>
 <p><strong>Only fires for agent-initiated runs.</strong> <code>agent_wiroai_runtask</code> is emitted when the <em>agent</em> calls a model mid-turn. Model runs you launch yourself with <code>POST /Run</code> (your own <code>x-api-key</code>) do not produce this frame — you already hold their <code>socketaccesstoken</code> from the <code>/Run</code> response.</p>
 </blockquote>
+<h3 id="following-a-session">Following a session</h3>
+<p>Some messages are added to a session between turns: a scheduled report, files the agent sends after its answer, or the result of longer work it finished in the background. They belong to no turn, so they never stream on an <code>agenttoken</code>. To receive them as they are added, follow the session with the <code>sessiontoken</code> that <a href="/docs/agent-messaging#post-useragentmessagehistory"><code>Message/History</code></a> returns for it:</p>
+<pre><code class="language-json">{
+  &quot;type&quot;: &quot;agent_session_subscribe&quot;,
+  &quot;sessiontoken&quot;: &quot;Lp4vQ8sWn2KxT7cRb1YhZ6mDg9FjA3uEo5iNk0wXyHt&quot;
+}
+</code></pre>
+<p>The server acknowledges the follow:</p>
+<pre><code class="language-json">{ &quot;type&quot;: &quot;agent_session_subscribed&quot;, &quot;result&quot;: true }
+</code></pre>
+<p>Each message added to that session afterwards arrives as an <code>agent_message_inserted</code> frame:</p>
+<pre><code class="language-json">{
+  &quot;type&quot;: &quot;agent_message_inserted&quot;,
+  &quot;sessiontoken&quot;: &quot;Lp4vQ8sWn2KxT7cRb1YhZ6mDg9FjA3uEo5iNk0wXyHt&quot;,
+  &quot;message&quot;: {
+    &quot;guid&quot;: &quot;d4e5f6a7-b8c9-0123-def4-567890123456&quot;,
+    &quot;uuid&quot;: &quot;ada-uuid&quot;,
+    &quot;sessionkey&quot;: &quot;user-42&quot;,
+    &quot;content&quot;: &quot;&quot;,
+    &quot;response&quot;: &quot;Your product video is ready: https://cdn.wiro.ai/…/video.mp4&quot;,
+    &quot;status&quot;: &quot;agent_end&quot;,
+    &quot;metadata&quot;: { &quot;type&quot;: &quot;system&quot; },
+    &quot;createdat&quot;: 1743350700,
+    &quot;startedat&quot;: 1743350700,
+    &quot;endedat&quot;: 1743350700
+  },
+  &quot;result&quot;: true
+}
+</code></pre>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>guid</code></td>
+<td>string</td>
+<td>The new message's GUID. Add each <code>guid</code> once; skip it if History already gave it to you.</td>
+</tr>
+<tr>
+<td><code>uuid</code></td>
+<td>string</td>
+<td>The row's <code>uuid</code>, as <code>Message/History</code> returns it.</td>
+</tr>
+<tr>
+<td><code>sessionkey</code></td>
+<td>string</td>
+<td>The session the message was added to.</td>
+</tr>
+<tr>
+<td><code>content</code></td>
+<td>string</td>
+<td>Always <code>""</code>: no prompt of yours belongs to these messages.</td>
+</tr>
+<tr>
+<td><code>response</code></td>
+<td>string</td>
+<td>The message text.</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td>string</td>
+<td>Always <code>"agent_end"</code>.</td>
+</tr>
+<tr>
+<td><code>metadata</code></td>
+<td>object</td>
+<td><code>type</code> is <code>"system"</code>. Other keys may appear; ignore the ones you don't use.</td>
+</tr>
+<tr>
+<td><code>createdat</code> / <code>startedat</code> / <code>endedat</code></td>
+<td>number</td>
+<td>Unix timestamps in seconds, all set to when the message was added.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<ul>
+<li><strong>What arrives.</strong> A follower receives exactly the new messages its <code>Message/History</code> read would show. Turns you start with <code>Message/Send</code> keep streaming on their own <code>agenttoken</code>; following the session doesn't repeat them.</li>
+<li><strong>Stop following</strong> with <code>{ "type": "agent_session_unsubscribe", "sessiontoken": "…" }</code>. There is no reply.</li>
+<li><strong>Limit.</strong> One connection follows up to 16 sessions. Following another one drops the oldest follow.</li>
+<li><strong>Errors.</strong> A malformed <code>sessiontoken</code> gets <code>{ "type": "error", "message": "sessiontoken-invalid", "result": false }</code>, and the connection stays open. The acknowledgement doesn't check which session a token belongs to, so send the token exactly as History returned it.</li>
+<li><strong>Reconnects.</strong> Frames aren't replayed, and follows end with the connection. After reconnecting, send <code>agent_session_subscribe</code> again and read History once to catch anything added while you were away.</li>
+<li><strong>Keep the token private.</strong> Whoever holds it receives the session's new messages. Read it from History when you open the session instead of storing it.</li>
+</ul>
 <h2 id="the-result-field">The <code>result</code> Field</h2>
 <p>Every agent lifecycle event includes a <code>result</code> boolean:</p>
 <div class="docs-param-table">
@@ -16402,7 +16523,7 @@ func main() {
 <tbody>
 <tr>
 <td><code>true</code></td>
-<td><code>agent_subscribed</code>, <code>agent_start</code>, <code>agent_timeline_delta</code>, <code>agent_output</code>, <code>agent_end</code>, <code>agent_usage_report</code></td>
+<td><code>agent_subscribed</code>, <code>agent_start</code>, <code>agent_timeline_delta</code>, <code>agent_output</code>, <code>agent_end</code>, <code>agent_usage_report</code>, <code>agent_session_subscribed</code>, <code>agent_message_inserted</code></td>
 </tr>
 <tr>
 <td><code>false</code></td>
@@ -17262,6 +17383,9 @@ function connect(agenttoken, onStreamingChunk, onFinal, onFailure) {
 <h2 id="how-it-works">How It Works</h2>
 <p>When you send a message to an agent via <code>POST /UserAgent/Message/Send</code>, include a <code>callbackurl</code> parameter. Once the agent finishes processing on the bridge, Wiro sends a POST request to your URL with the result. Callbacks fire on <code>agent_end</code> (success), <code>agent_error</code> (failure during processing), and <code>agent_cancel</code> <strong>only when the abort hits the bridge mid-flight</strong>. Messages cancelled while still queued (status <code>agent_queue</code>, before the bridge picks them up) are marked <code>agent_cancel</code> in the database but <strong>do not fire a webhook</strong> — there was no processing attempt to report on. See the "When the cancel webhook fires" note below for the full decision table.</p>
 <p>This lets you build fully asynchronous workflows: fire a message and let your backend handle the response whenever it arrives, without polling or maintaining a WebSocket connection.</p>
+<blockquote>
+<p><strong>Results that arrive later.</strong> When the agent moves longer work to the background, its turn ends with a short line saying the result will follow, and that line is what your <code>callbackurl</code> receives (<code>status: "agent_end"</code>). The result is added to the session later as a separate message and doesn't call the <code>callbackurl</code>. Read it with <a href="/docs/agent-messaging#post-useragentmessagehistory"><code>Message/History</code></a>, or follow the session on the <a href="/docs/agent-websocket#following-a-session">Agent WebSocket</a>.</p>
+</blockquote>
 <h2 id="setting-a-callback-url">Setting a Callback URL</h2>
 <p>Include <code>callbackurl</code> in your message request body. <code>POST /UserAgent/Message/Send</code>:</p>
 <pre><code class="language-json">{
