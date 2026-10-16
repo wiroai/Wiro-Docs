@@ -48,7 +48,7 @@ For server-side applications where you control the environment, you can use the 
 | Security | High — secret never sent over the wire | Moderate — key sent in every request |
 | Complexity | Requires HMAC computation | Single header |
 | Best for | Client-side apps, mobile, public repos | Server-side, internal tools |
-| Replay protection | Yes (via nonce) | No |
+| Leaked API key | Not enough — the secret is also needed | Enough to call the API |
 
 ## How to Choose
 
