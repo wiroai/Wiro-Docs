@@ -1757,7 +1757,9 @@ data: {
 (Wiro) bytedance/seed-v2-mini
 (Wiro) bytedance/seed-v2-pro
 (Wiro) claude/fable-5
+(Wiro) claude/fable-5-1
 (Wiro) claude/opus-5
+(Wiro) claude/opus-5-5
 (Wiro) claude/sonnet-5
 (Wiro) deepseek/v4-flash
 (Wiro) deepseek/v4-pro
@@ -1770,6 +1772,7 @@ data: {
 (Wiro) google/gemini-3-8-flash
 (Wiro) google/gemini-3-flash
 (Wiro) google/gemini-3-pro
+(Wiro) google/gemini-4-argon
 (Wiro) meta-llama/llama-3-2-3b-instruct
 (Wiro) mistralai/mistral-7b-instruct-v0-3
 (Wiro) mistralai/mistral-nemo-instruct-2407
@@ -1783,6 +1786,10 @@ data: {
 (Wiro) openai/gpt-5-6-terra
 (Wiro) openai/gpt-5-mini
 (Wiro) openai/gpt-5-nano
+(Wiro) openai/gpt-6-1-sol
+(Wiro) openai/gpt-6-astra
+(Wiro) openai/gpt-6-luna
+(Wiro) openai/gpt-6-sol
 (Wiro) qwen/qwen2-5-0-5b-instruct
 (Wiro) qwen/qwen2-5-1-5b-instruct
 (Wiro) qwen/qwen2-5-14b-instruct
@@ -1880,7 +1887,9 @@ cd /path/to/your/project &amp;&amp; claude --model "(Wiro) openai/gpt-5-nano"</c
 (Wiro) bytedance/seed-v2-mini                 256000
 (Wiro) bytedance/seed-v2-pro                  256000
 (Wiro) claude/fable-5                        1000000
+(Wiro) claude/fable-5-1                      1000000
 (Wiro) claude/opus-5                         1000000
+(Wiro) claude/opus-5-5                       1000000
 (Wiro) claude/sonnet-5                       1000000
 (Wiro) deepseek/v4-flash                     1048576
 (Wiro) deepseek/v4-pro                       1048576
@@ -1893,6 +1902,7 @@ cd /path/to/your/project &amp;&amp; claude --model "(Wiro) openai/gpt-5-nano"</c
 (Wiro) google/gemini-3-8-flash               1048576
 (Wiro) google/gemini-3-flash                 1048576
 (Wiro) google/gemini-3-pro                   1048576
+(Wiro) google/gemini-4-argon                 1048576
 (Wiro) meta-llama/llama-3-2-3b-instruct        51200
 (Wiro) mistralai/mistral-7b-instruct-v0-3      17408
 (Wiro) mistralai/mistral-nemo-instruct-2407    35840
@@ -1906,6 +1916,10 @@ cd /path/to/your/project &amp;&amp; claude --model "(Wiro) openai/gpt-5-nano"</c
 (Wiro) openai/gpt-5-6-terra                  1050000
 (Wiro) openai/gpt-5-mini                      400000
 (Wiro) openai/gpt-5-nano                      400000
+(Wiro) openai/gpt-6-1-sol                    1050000
+(Wiro) openai/gpt-6-astra                    1050000
+(Wiro) openai/gpt-6-luna                     1050000
+(Wiro) openai/gpt-6-sol                      1050000
 (Wiro) qwen/qwen2-5-0-5b-instruct              32768
 (Wiro) qwen/qwen2-5-1-5b-instruct              32768
 (Wiro) qwen/qwen2-5-14b-instruct               29696
@@ -2008,8 +2022,26 @@ cd /path/to/your/project &amp;&amp; claude --model "(Wiro) openai/gpt-5-nano"</c
         "maxOutputTokens": 128000
       },
       {
+        "id": "claude/fable-5-1",
+        "name": "(Wiro) Fable 5.1",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1000000,
+        "maxOutputTokens": 128000
+      },
+      {
         "id": "claude/opus-5",
         "name": "(Wiro) Opus 5",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1000000,
+        "maxOutputTokens": 128000
+      },
+      {
+        "id": "claude/opus-5-5",
+        "name": "(Wiro) Opus 5.5",
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
@@ -2118,6 +2150,15 @@ cd /path/to/your/project &amp;&amp; claude --model "(Wiro) openai/gpt-5-nano"</c
       {
         "id": "google/gemini-3-pro",
         "name": "(Wiro) Gemini 3 Pro",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1048576,
+        "maxOutputTokens": 65536
+      },
+      {
+        "id": "google/gemini-4-argon",
+        "name": "(Wiro) Gemini 4 Argon",
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
@@ -2240,6 +2281,42 @@ cd /path/to/your/project &amp;&amp; claude --model "(Wiro) openai/gpt-5-nano"</c
         "vision": true,
         "maxInputTokens": 400000,
         "maxOutputTokens": 65536
+      },
+      {
+        "id": "openai/gpt-6-1-sol",
+        "name": "(Wiro) GPT-6.1 Sol",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1050000,
+        "maxOutputTokens": 128000
+      },
+      {
+        "id": "openai/gpt-6-astra",
+        "name": "(Wiro) GPT-6 Astra",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1050000,
+        "maxOutputTokens": 128000
+      },
+      {
+        "id": "openai/gpt-6-luna",
+        "name": "(Wiro) GPT-6 Luna",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1050000,
+        "maxOutputTokens": 128000
+      },
+      {
+        "id": "openai/gpt-6-sol",
+        "name": "(Wiro) GPT-6 Sol",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1050000,
+        "maxOutputTokens": 128000
       },
       {
         "id": "qwen/qwen2-5-0-5b-instruct",
@@ -2465,7 +2542,7 @@ cd /path/to/your/project &amp;&amp; claude --model "(Wiro) openai/gpt-5-nano"</c
                           <li><code>name</code> &mdash; a free label, shown in the picker.</li>
                           <li><code>url</code> &mdash; the <strong>full endpoint</strong>, not the base URL. Every model repeats it.</li>
                           <li><code>toolCalling</code>, <code>vision</code>, <code>maxInputTokens</code>, <code>maxOutputTokens</code> &mdash; read them from <code>GET /v1/models/{owner}/{model}</code>: <code>capabilities.function_tools</code>, <code>capabilities.input_modalities</code>, <code>max_input_tokens</code>, <code>max_tokens</code>. Do not guess.</li>
-                          <li><strong><code>maxInputTokens</code> is not optional.</strong> VS Code sizes every conversation against it and answers <em>&ldquo;Could not compact conversation&rdquo;</em> on each turn when a model omits it, before any request reaches the gateway. Take the number from <code>max_input_tokens</code>; every catalog model reports one. For a Wiro-hosted model it is the input that deployment actually admits, measured on the running fleet &mdash; not the model family&rsquo;s advertised maximum, and not the window of the checkpoint either. Qwen2.5 7B reports 32,768, which is what its shipped configuration sets although its card says 131,072; Qwen3.8 27B reports 25,600 even though the checkpoint it runs was built for 262,144, because the GPU it is resident on has room for that much prompt and no more. Send more than the number says and the extra is trimmed off the oldest end of the conversation before the model sees it.</li>
+                          <li><strong><code>maxInputTokens</code> is not optional.</strong> VS Code sizes every conversation against it and answers <em>&ldquo;Could not compact conversation&rdquo;</em> on each turn when a model omits it, before any request reaches the gateway. Take the number from <code>max_input_tokens</code>; every catalog model reports one. For a Wiro-hosted model the number is the input that deployment actually admits, measured on the running fleet &mdash; not the model family&rsquo;s advertised maximum, and not the window of the checkpoint either. Qwen2.5 7B reports 32,768, which is what its shipped configuration sets although its card says 131,072; Qwen3.8 27B reports 25,600 even though the checkpoint it runs was built for 262,144, because that is roughly how much prompt fits beside the model on the GPUs that serve it. It is the lowest limit measured across them: most requests get somewhat more in and an occasional one slightly less, so leave some headroom. Send a Wiro-hosted model more than fits and the input is trimmed before the model sees it: the oldest history messages are dropped first, and if it still does not fit, the end of the latest user message is cut off. On a turn that returns tool results, nothing from the latest user message onward is cut; if dropping older history is not enough, the request is rejected with <code>context_length_exceeded</code>. Tool definitions are never trimmed, and neither is the system message, except on the two Mistral models: their chat format has no system role, so the system text travels with the oldest message and is dropped with it. Both count toward the limit. If even the question would be cut away entirely, the request is rejected with <code>context_length_exceeded</code> and nothing is charged. In a long prompt, put the question at the start, so a cut takes the material after it rather than the question itself.</li>
                         </ul>
                         <p>Save the file and reopen the model picker; the models appear under <strong>Wiro AI</strong>. Any other VS Code extension that takes a custom OpenAI base URL &mdash; Cline, Roo Code, Continue &mdash; works the same way: point it at <code>https://llm.wiro.ai/v1</code> with the same credential and a model ID from the catalog.</p>
                       </div>
@@ -2512,7 +2589,9 @@ cd /path/to/your/project &amp;&amp; claude --model "(Wiro) openai/gpt-5-nano"</c
 (Wiro) bytedance/seed-v2-mini                 256000       65536
 (Wiro) bytedance/seed-v2-pro                  256000       65536
 (Wiro) claude/fable-5                        1000000      128000
+(Wiro) claude/fable-5-1                      1000000      128000
 (Wiro) claude/opus-5                         1000000      128000
+(Wiro) claude/opus-5-5                       1000000      128000
 (Wiro) claude/sonnet-5                       1000000      128000
 (Wiro) deepseek/v4-flash                     1048576      384000
 (Wiro) deepseek/v4-pro                       1048576      384000
@@ -2525,6 +2604,7 @@ cd /path/to/your/project &amp;&amp; claude --model "(Wiro) openai/gpt-5-nano"</c
 (Wiro) google/gemini-3-8-flash               1048576       65536
 (Wiro) google/gemini-3-flash                 1048576       65536
 (Wiro) google/gemini-3-pro                   1048576       65536
+(Wiro) google/gemini-4-argon                 1048576       65536
 (Wiro) meta-llama/llama-3-2-3b-instruct        51200        2048
 (Wiro) mistralai/mistral-7b-instruct-v0-3      17408        2048
 (Wiro) mistralai/mistral-nemo-instruct-2407    35840        2048
@@ -2538,6 +2618,10 @@ cd /path/to/your/project &amp;&amp; claude --model "(Wiro) openai/gpt-5-nano"</c
 (Wiro) openai/gpt-5-6-terra                  1050000       65536
 (Wiro) openai/gpt-5-mini                      400000       65536
 (Wiro) openai/gpt-5-nano                      400000       65536
+(Wiro) openai/gpt-6-1-sol                    1050000      128000
+(Wiro) openai/gpt-6-astra                    1050000      128000
+(Wiro) openai/gpt-6-luna                     1050000      128000
+(Wiro) openai/gpt-6-sol                      1050000      128000
 (Wiro) qwen/qwen2-5-0-5b-instruct              32768        2048
 (Wiro) qwen/qwen2-5-1-5b-instruct              32768        2048
 (Wiro) qwen/qwen2-5-14b-instruct               29696        2048
@@ -2604,7 +2688,9 @@ cd /path/to/your/project &amp;&amp; claude --model "(Wiro) openai/gpt-5-nano"</c
           { &quot;id&quot;: &quot;(Wiro) bytedance/seed-v2-mini&quot;, &quot;name&quot;: &quot;(Wiro) Seed V2 Mini&quot; },
           { &quot;id&quot;: &quot;(Wiro) bytedance/seed-v2-pro&quot;, &quot;name&quot;: &quot;(Wiro) Seed V2 Pro&quot; },
           { &quot;id&quot;: &quot;(Wiro) claude/fable-5&quot;, &quot;name&quot;: &quot;(Wiro) Fable 5&quot; },
+          { &quot;id&quot;: &quot;(Wiro) claude/fable-5-1&quot;, &quot;name&quot;: &quot;(Wiro) Fable 5.1&quot; },
           { &quot;id&quot;: &quot;(Wiro) claude/opus-5&quot;, &quot;name&quot;: &quot;(Wiro) Opus 5&quot; },
+          { &quot;id&quot;: &quot;(Wiro) claude/opus-5-5&quot;, &quot;name&quot;: &quot;(Wiro) Opus 5.5&quot; },
           { &quot;id&quot;: &quot;(Wiro) claude/sonnet-5&quot;, &quot;name&quot;: &quot;(Wiro) Sonnet 5&quot; },
           { &quot;id&quot;: &quot;(Wiro) deepseek/v4-flash&quot;, &quot;name&quot;: &quot;(Wiro) DeepSeek V4 Flash&quot; },
           { &quot;id&quot;: &quot;(Wiro) deepseek/v4-pro&quot;, &quot;name&quot;: &quot;(Wiro) DeepSeek V4 Pro&quot; },
@@ -2617,6 +2703,7 @@ cd /path/to/your/project &amp;&amp; claude --model "(Wiro) openai/gpt-5-nano"</c
           { &quot;id&quot;: &quot;(Wiro) google/gemini-3-8-flash&quot;, &quot;name&quot;: &quot;(Wiro) Gemini 3.8 Flash&quot; },
           { &quot;id&quot;: &quot;(Wiro) google/gemini-3-flash&quot;, &quot;name&quot;: &quot;(Wiro) Gemini 3 Flash&quot; },
           { &quot;id&quot;: &quot;(Wiro) google/gemini-3-pro&quot;, &quot;name&quot;: &quot;(Wiro) Gemini 3 Pro&quot; },
+          { &quot;id&quot;: &quot;(Wiro) google/gemini-4-argon&quot;, &quot;name&quot;: &quot;(Wiro) Gemini 4 Argon&quot; },
           { &quot;id&quot;: &quot;(Wiro) meta-llama/llama-3-2-3b-instruct&quot;, &quot;name&quot;: &quot;(Wiro) Llama 3.2 3B Instruct&quot; },
           { &quot;id&quot;: &quot;(Wiro) mistralai/mistral-7b-instruct-v0-3&quot;, &quot;name&quot;: &quot;(Wiro) Mistral 7B Instruct v0.3&quot; },
           { &quot;id&quot;: &quot;(Wiro) mistralai/mistral-nemo-instruct-2407&quot;, &quot;name&quot;: &quot;(Wiro) Mistral Nemo Instruct&quot; },
@@ -2630,6 +2717,10 @@ cd /path/to/your/project &amp;&amp; claude --model "(Wiro) openai/gpt-5-nano"</c
           { &quot;id&quot;: &quot;(Wiro) openai/gpt-5-6-terra&quot;, &quot;name&quot;: &quot;(Wiro) GPT-5.6 Terra&quot; },
           { &quot;id&quot;: &quot;(Wiro) openai/gpt-5-mini&quot;, &quot;name&quot;: &quot;(Wiro) GPT-5 Mini&quot; },
           { &quot;id&quot;: &quot;(Wiro) openai/gpt-5-nano&quot;, &quot;name&quot;: &quot;(Wiro) GPT-5 Nano&quot; },
+          { &quot;id&quot;: &quot;(Wiro) openai/gpt-6-1-sol&quot;, &quot;name&quot;: &quot;(Wiro) GPT-6.1 Sol&quot; },
+          { &quot;id&quot;: &quot;(Wiro) openai/gpt-6-astra&quot;, &quot;name&quot;: &quot;(Wiro) GPT-6 Astra&quot; },
+          { &quot;id&quot;: &quot;(Wiro) openai/gpt-6-luna&quot;, &quot;name&quot;: &quot;(Wiro) GPT-6 Luna&quot; },
+          { &quot;id&quot;: &quot;(Wiro) openai/gpt-6-sol&quot;, &quot;name&quot;: &quot;(Wiro) GPT-6 Sol&quot; },
           { &quot;id&quot;: &quot;(Wiro) qwen/qwen2-5-0-5b-instruct&quot;, &quot;name&quot;: &quot;(Wiro) Qwen2.5 0.5B Instruct&quot; },
           { &quot;id&quot;: &quot;(Wiro) qwen/qwen2-5-1-5b-instruct&quot;, &quot;name&quot;: &quot;(Wiro) Qwen2.5 1.5B Instruct&quot; },
           { &quot;id&quot;: &quot;(Wiro) qwen/qwen2-5-14b-instruct&quot;, &quot;name&quot;: &quot;(Wiro) Qwen2.5 14B Instruct&quot; },
@@ -2697,7 +2788,9 @@ cd /path/to/your/project &amp;&amp; claude --model "(Wiro) openai/gpt-5-nano"</c
 (Wiro) bytedance/seed-v2-mini
 (Wiro) bytedance/seed-v2-pro
 (Wiro) claude/fable-5
+(Wiro) claude/fable-5-1
 (Wiro) claude/opus-5
+(Wiro) claude/opus-5-5
 (Wiro) claude/sonnet-5
 (Wiro) deepseek/v4-flash
 (Wiro) deepseek/v4-pro
@@ -2710,6 +2803,7 @@ cd /path/to/your/project &amp;&amp; claude --model "(Wiro) openai/gpt-5-nano"</c
 (Wiro) google/gemini-3-8-flash
 (Wiro) google/gemini-3-flash
 (Wiro) google/gemini-3-pro
+(Wiro) google/gemini-4-argon
 (Wiro) meta-llama/llama-3-2-3b-instruct
 (Wiro) mistralai/mistral-7b-instruct-v0-3
 (Wiro) mistralai/mistral-nemo-instruct-2407
@@ -2723,6 +2817,10 @@ cd /path/to/your/project &amp;&amp; claude --model "(Wiro) openai/gpt-5-nano"</c
 (Wiro) openai/gpt-5-6-terra
 (Wiro) openai/gpt-5-mini
 (Wiro) openai/gpt-5-nano
+(Wiro) openai/gpt-6-1-sol
+(Wiro) openai/gpt-6-astra
+(Wiro) openai/gpt-6-luna
+(Wiro) openai/gpt-6-sol
 (Wiro) qwen/qwen2-5-0-5b-instruct
 (Wiro) qwen/qwen2-5-1-5b-instruct
 (Wiro) qwen/qwen2-5-14b-instruct
@@ -2816,7 +2914,9 @@ const second = await client.chat.completions.create({
 (Wiro) bytedance/seed-v2-mini
 (Wiro) bytedance/seed-v2-pro
 (Wiro) claude/fable-5
+(Wiro) claude/fable-5-1
 (Wiro) claude/opus-5
+(Wiro) claude/opus-5-5
 (Wiro) claude/sonnet-5
 (Wiro) deepseek/v4-flash
 (Wiro) deepseek/v4-pro
@@ -2829,6 +2929,7 @@ const second = await client.chat.completions.create({
 (Wiro) google/gemini-3-8-flash
 (Wiro) google/gemini-3-flash
 (Wiro) google/gemini-3-pro
+(Wiro) google/gemini-4-argon
 (Wiro) meta-llama/llama-3-2-3b-instruct
 (Wiro) mistralai/mistral-7b-instruct-v0-3
 (Wiro) mistralai/mistral-nemo-instruct-2407
@@ -2842,6 +2943,10 @@ const second = await client.chat.completions.create({
 (Wiro) openai/gpt-5-6-terra
 (Wiro) openai/gpt-5-mini
 (Wiro) openai/gpt-5-nano
+(Wiro) openai/gpt-6-1-sol
+(Wiro) openai/gpt-6-astra
+(Wiro) openai/gpt-6-luna
+(Wiro) openai/gpt-6-sol
 (Wiro) qwen/qwen2-5-0-5b-instruct
 (Wiro) qwen/qwen2-5-1-5b-instruct
 (Wiro) qwen/qwen2-5-14b-instruct
