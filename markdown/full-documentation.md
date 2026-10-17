@@ -14311,6 +14311,7 @@ All three requests succeed independently. The agent restarts once — the server
 | Google Ads Manager | `ad-strategy` | Target audience, budget goals |
 | Meta Ads Manager | `ad-strategy` | Target audience, creative preferences |
 | TikTok Ads Manager | `ad-strategy`, `tiktok-ads-strategy` | Target audience, budget goals; TikTok tracking gates, kill thresholds, placement, Spark Ads and Smart+ rules |
+| Video Creator | `video-preferences`, `saved-logins` | Default format, length, voice, look, music, captions and ending card; test accounts for the screens behind a login |
 
 ### Scheduled Tasks
 
@@ -15318,6 +15319,7 @@ Most agents interact with external services — posting to social media, managin
 | Mobile app publisher | [Push Notification Manager](https://wiro.ai/agents/push-notification-manager) | Each app has its own Firebase service account |
 | Customer engagement tool | [Social Manager](https://wiro.ai/agents/social-manager) | Each brand manages their own social presence |
 | Phone-receptionist platform for SMBs | [Voice Receptionist](https://wiro.ai/agents/voice-receptionist) | Each business has its own Twilio number, HubSpot CRM, and Google Calendar |
+| Video marketing tool or agency | [Video Creator](https://wiro.ai/agents/video-creator) | Each client brings its own site, brand and test logins, and pays its model runs from its own Wiro project |
 
 ### Pattern 2: Session Per User
 
@@ -15501,6 +15503,7 @@ Wiro provides pre-built agent templates you can deploy immediately. Each agent s
 | **[App Event Manager](https://wiro.ai/agents/app-event-manager)** | Scan global holidays, suggest and create App Store + Google Play in-app events | App Store Connect (JWT), Google Play (service account), Calendarific (API key) |
 | **[Push Notification Manager](https://wiro.ai/agents/push-notification-manager)** | Craft locale- and timezone-aware push notifications, queue dispatch | Firebase (service account JSON per app), Calendarific (API key) |
 | **[Voice Receptionist](https://wiro.ai/agents/voice-receptionist)** | Answer phone calls 24/7 with a real-time AI receptionist — recognises callers from CRM, books from your calendar, drafts CRM notes + follow-up emails, streams a live transcript to chat | Twilio Voice (Account SID, Auth Token, phone number) for inbound phone; HubSpot (optional, caller recognition); Google Calendar (optional, slot lookup); Google Drive (optional); Brevo or HubSpot (any one, optional, follow-up email drafts); Telegram bot (optional, operator approvals) |
+| **[Video Creator](https://wiro.ai/agents/video-creator)** | Turn a website, web app, store listing, document or product photos into a share-ready video with real screens, voice-over, music and captions | Wiro project (the video's model runs are billed to its wallet); Telegram bot (optional) |
 
 > The list above matches the agent templates currently deployed in production. The exact set evolves over time as new templates ship — fetch `POST /Agent/List` for the live catalog. Each agent's full marketing page lives at `https://wiro.ai/agents/{slug}` (linked in the first column).
 

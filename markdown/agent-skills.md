@@ -888,6 +888,7 @@ All three requests succeed independently. The agent restarts once — the server
 | Google Ads Manager | `ad-strategy` | Target audience, budget goals |
 | Meta Ads Manager | `ad-strategy` | Target audience, creative preferences |
 | TikTok Ads Manager | `ad-strategy`, `tiktok-ads-strategy` | Target audience, budget goals; TikTok tracking gates, kill thresholds, placement, Spark Ads and Smart+ rules |
+| Video Creator | `video-preferences`, `saved-logins` | Default format, length, voice, look, music, captions and ending card; test accounts for the screens behind a login |
 
 ### Scheduled Tasks
 

@@ -21039,6 +21039,11 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <td><code>ad-strategy</code>, <code>tiktok-ads-strategy</code></td>
 <td>Target audience, budget goals; TikTok tracking gates, kill thresholds, placement, Spark Ads and Smart+ rules</td>
 </tr>
+<tr>
+<td>Video Creator</td>
+<td><code>video-preferences</code>, <code>saved-logins</code></td>
+<td>Default format, length, voice, look, music, captions and ending card; test accounts for the screens behind a login</td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -32263,6 +32268,11 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                               <td><a href="https://wiro.ai/agents/voice-receptionist" target="_blank" rel="noopener">Voice Receptionist</a></td>
                               <td>Each business has its own Twilio number, HubSpot CRM, and Google Calendar</td>
                             </tr>
+                            <tr>
+                              <td>Video marketing tool or agency</td>
+                              <td><a href="https://wiro.ai/agents/video-creator" target="_blank" rel="noopener">Video Creator</a></td>
+                              <td>Each client brings its own site, brand and test logins, and pays its model runs from its own Wiro project</td>
+                            </tr>
                           </tbody>
                         </table>
                       </div>
@@ -32531,6 +32541,11 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
                               <td><strong><a href="https://wiro.ai/agents/voice-receptionist" target="_blank" rel="noopener">Voice Receptionist</a></strong></td>
                               <td>Answer phone calls 24/7 with a real-time AI receptionist — recognises callers from CRM, books from your calendar, drafts CRM notes + follow-up emails, streams a live transcript to chat</td>
                               <td>Twilio Voice (Account SID, Auth Token, phone number) for inbound phone; HubSpot (optional, caller recognition); Google Calendar (optional, slot lookup); Google Drive (optional); Brevo or HubSpot (any one, optional, follow-up email drafts); Telegram bot (optional, operator approvals)</td>
+                            </tr>
+                            <tr>
+                              <td><strong><a href="https://wiro.ai/agents/video-creator" target="_blank" rel="noopener">Video Creator</a></strong></td>
+                              <td>Turn a website, web app, store listing, document or product photos into a share-ready video with real screens, voice-over, music and captions</td>
+                              <td>Wiro project (the video's model runs are billed to its wallet); Telegram bot (optional)</td>
                             </tr>
                           </tbody>
                         </table>

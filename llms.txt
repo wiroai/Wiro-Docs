@@ -35,7 +35,7 @@
 - [Agent Skills](https://wiro.ai/docs/agent-skills): Configure preferences and scheduled automation tasks; Skills/List also returns the public communication-channel catalog
 - [Agent Transactions](https://wiro.ai/docs/agent-transactions): Per-instance credit ledger (deductions, renewals, purchases, grants)
 - [Agent Logs](https://wiro.ai/docs/agent-logs): Per-instance activity feed (tool calls, cron runs, message exchanges)
-- [Agent Use Cases](https://wiro.ai/docs/agent-use-cases): Deployment patterns + pre-built agent catalog (Social Manager, Blog Content Editor, Google/Meta Ads Manager, Newsletter Manager, Lead Generation Manager, App Review Support, App Event Manager, Push Notification Manager, Voice Receptionist) + 7 live web showcases at wiro.ai/agents/usecase/*
+- [Agent Use Cases](https://wiro.ai/docs/agent-use-cases): Deployment patterns + pre-built agent catalog (Social Manager, Blog Content Editor, Google/Meta Ads Manager, Newsletter Manager, Lead Generation Manager, App Review Support, App Event Manager, Push Notification Manager, Voice Receptionist, Video Creator) + 7 live web showcases at wiro.ai/agents/usecase/*
 
 ## Integration Guides
 
