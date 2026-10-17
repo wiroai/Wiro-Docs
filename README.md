@@ -89,6 +89,7 @@
 | TikTok | `/docs/integration-tiktok-skills` | [integration-tiktok-skills.md](./markdown/integration-tiktok-skills.md) |
 | Google Ads | `/docs/integration-googleads-skills` | [integration-googleads-skills.md](./markdown/integration-googleads-skills.md) |
 | Roasit | `/docs/integration-roasit-skills` | [integration-roasit-skills.md](./markdown/integration-roasit-skills.md) |
+| Google Business Profile | `/docs/integration-googlebusiness-skills` | [integration-googlebusiness-skills.md](./markdown/integration-googlebusiness-skills.md) |
 | HubSpot | `/docs/integration-hubspot-skills` | [integration-hubspot-skills.md](./markdown/integration-hubspot-skills.md) |
 | Mailchimp | `/docs/integration-mailchimp-skills` | [integration-mailchimp-skills.md](./markdown/integration-mailchimp-skills.md) |
 | Google Drive | `/docs/integration-googledrive-skills` | [integration-googledrive-skills.md](./markdown/integration-googledrive-skills.md) |
@@ -182,6 +183,7 @@ Wiro-Docs/
     ├── integration-tiktok-skills.md
     ├── integration-googleads-skills.md
     ├── integration-roasit-skills.md
+    ├── integration-googlebusiness-skills.md
     ├── integration-hubspot-skills.md
     ├── integration-mailchimp-skills.md
     ├── integration-googledrive-skills.md

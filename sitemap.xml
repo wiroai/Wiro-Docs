@@ -140,6 +140,7 @@
   <url><loc>https://wiro.ai/docs/integration-ga4-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://wiro.ai/docs/integration-roasit-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://wiro.ai/docs/integration-merchantcenter-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://wiro.ai/docs/integration-googlebusiness-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://wiro.ai/docs/integration-hubspot-skills</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://wiro.ai/docs/integration-mailchimp-skills</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://wiro.ai/docs/integration-googledrive-skills</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
