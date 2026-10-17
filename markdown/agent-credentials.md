@@ -437,10 +437,11 @@ Returns `{ "result": false, "errors": [{ "code": 404, "message": "Credential not
 | YouTube | Own only (Wiro mode coming soon) | [YouTube Skills](/docs/integration-youtube-skills) (shares Google OAuth client with Google Ads) |
 | Google Analytics 4 | Wiro + Own | [Google Analytics 4 Skills](/docs/integration-ga4-skills) (shares Google OAuth client with Google Ads) |
 | Merchant Center | Wiro + Own | [Merchant Center Skills](/docs/integration-merchantcenter-skills) (shares Google OAuth client with Google Ads) |
+| Google Business Profile | Own only (your Google Cloud project, approved for Business Profile API access) | [Google Business Profile Skills](/docs/integration-googlebusiness-skills) |
 | HubSpot | Wiro + Own | [HubSpot Skills](/docs/integration-hubspot-skills) |
 | Mailchimp | Wiro + Own + API Key | [Mailchimp Skills](/docs/integration-mailchimp-skills) |
 
-> **Google OAuth is shared across 4 APIs.** Google Ads, YouTube, Google Analytics 4, and Merchant Center are all authorized through a single Wiro OAuth client in "wiro" mode — one Google Cloud project, one OAuth 2.0 Client ID, multiple API scopes. In "own" mode you may reuse one of your own OAuth clients the same way, or set up separate ones per product.
+> **Google OAuth is shared across 4 APIs.** Google Ads, YouTube, Google Analytics 4, and Merchant Center are all authorized through a single Wiro OAuth client in "wiro" mode — one Google Cloud project, one OAuth 2.0 Client ID, multiple API scopes. In "own" mode you may reuse one of your own OAuth clients the same way, or set up separate ones per product. Google Business Profile is not part of that shared client: it is own mode only, and the Google Cloud project behind your OAuth client must be approved for Business Profile API access.
 
 ### Service Account Integrations
 
@@ -750,7 +751,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
   }'
 ```
 
-For credentials whose `connection_modes` includes an enabled `"wiro"` mode, you can skip Step 1 and call Step 2 with `authmethod: "wiro"`. Omitting `authmethod` uses that credential's registry default. For Meta Ads, always send `"own"` or `"api_key"` while its default `"wiro"` mode is pending; Shopify and Reddit use `"own"`. TikTok Ads accepts only `"wiro"`.
+For credentials whose `connection_modes` includes an enabled `"wiro"` mode, you can skip Step 1 and call Step 2 with `authmethod: "wiro"`. Omitting `authmethod` uses that credential's registry default. For Meta Ads, always send `"own"` or `"api_key"` while its default `"wiro"` mode is pending; Shopify and Reddit use `"own"`. TikTok Ads accepts only `"wiro"`. Google Business Profile accepts only `"own"`, so always send it.
 
 ### Callback URL pattern (own mode)
 
@@ -760,7 +761,7 @@ Register this URL in your OAuth app settings on the provider's developer portal:
 https://api.wiro.ai/v1/UserAgentOAuth/{Provider}Callback
 ```
 
-Provider-specific paths: `XCallback`, `TikTokCallback`, `IGCallback`, `FBCallback`, `LICallback`, `GAdsCallback`, `MetaAdsCallback`, `MCCallback`, `YTCallback`, `GA4Callback`, `HubSpotCallback`, `MailchimpCallback`, `ShopifyCallback`, `RedditCallback`. TikTok Ads uses `TikTokAdsCallback`, but it is Wiro-managed only, so there is no app of your own to register it in.
+Provider-specific paths: `XCallback`, `TikTokCallback`, `IGCallback`, `FBCallback`, `LICallback`, `GAdsCallback`, `MetaAdsCallback`, `MCCallback`, `YTCallback`, `GA4Callback`, `GBPCallback`, `HubSpotCallback`, `MailchimpCallback`, `ShopifyCallback`, `RedditCallback`. TikTok Ads uses `TikTokAdsCallback`, but it is Wiro-managed only, so there is no app of your own to register it in.
 
 ### Callback success & error parameters
 
@@ -777,12 +778,13 @@ Provider-specific paths: `XCallback`, `TikTokCallback`, `IGCallback`, `FBCallbac
 | Merchant Center | `mc_connected=true&mc_accounts=[...]` | `mc_error=...` (+ `mc_error_detail=...`) |
 | YouTube | `yt_connected=true&yt_channels=[...]` | `yt_error=...` (+ `yt_error_detail=...`) |
 | GA4 | `ga4_connected=true&ga4_properties=[...]` | `ga4_error=...` (+ `ga4_error_detail=...`) |
+| Google Business Profile | `gbp_connected=true&gbp_accounts=[...]` | `gbp_error=...` (+ `gbp_error_detail=...`) |
 | HubSpot | `hubspot_connected=true&hubspot_portal=...&hubspot_name=...` | `hubspot_error=...` (+ `hubspot_error_detail=...`) |
 | Mailchimp | `mailchimp_connected=true&mailchimp_account=...` | `mailchimp_error=...` (+ `mailchimp_error_detail=...`) |
 | Shopify | `shopify_connected=true&shopify_shop=...&shopify_name=...` | `shopify_error=...` (+ `shopify_error_detail=...`) |
 | Reddit | `reddit_connected=true&reddit_username=...` | `reddit_error=...` (+ `reddit_error_detail=...`) |
 
-> **Conditional params:** `gads_accounts`, `mc_accounts`, `yt_channels`, `ga4_properties`, and `metaads_accounts` are omitted from the redirect when the provider returns zero items (for example, no accessible Google Ads customers, or a developer token is missing in Wiro mode). `fb_pages` is always present on success — Facebook returns `fb_error=no_pages` instead when the user has no administered Pages. `tiktokads_advertisers` is likewise always present on success — the callback returns `tiktokads_error=no_accounts` instead when no advertiser is available.
+> **Conditional params:** `gads_accounts`, `mc_accounts`, `yt_channels`, `ga4_properties`, and `metaads_accounts` are omitted from the redirect when the provider returns zero items (for example, no accessible Google Ads customers, or a developer token is missing in Wiro mode). `fb_pages` is always present on success — Facebook returns `fb_error=no_pages` instead when the user has no administered Pages. `tiktokads_advertisers` is likewise always present on success — the callback returns `tiktokads_error=no_accounts` instead when no advertiser is available. `gbp_accounts` is always present on success too — the callback returns `gbp_error=no_accounts` instead when no Business Profile account can be listed.
 
 Common error codes across providers:
 
@@ -896,7 +898,7 @@ Returns whether the credential is connected and lists every account/property/pag
 
 > **Multi-account picker fields are JSON arrays.** Picker fields like
 > `customerid` (Google Ads), `adaccountid` (Meta Ads), `advertiserid` (TikTok Ads), `merchantid` (Merchant
-> Center), `channelid` (YouTube), `propertyid` (GA4), `pageid` (Facebook
+> Center), `channelid` (YouTube), `propertyid` (GA4), `accountid` (Google Business Profile), `pageid` (Facebook
 > Pages), and direct Instagram's `accountId` are stored as JSON arrays when
 > `account_picker.multi_select === true`. Instagram Login OAuth also stores its
 > single authorized account as a one-entry array.
@@ -904,16 +906,18 @@ Returns whether the credential is connected and lists every account/property/pag
 ### POST /UserAgentOAuth/DiscoverPickerItems
 
 Discover child resources for a chained picker after the root
-`SetPickerAccounts` selection has been saved. The current chained flow is Meta
-Ads: selected ad accounts are the parents and eligible Facebook Pages are
-returned under each account. Wiro reads the active credential server-side;
+`SetPickerAccounts` selection has been saved. Two credentials have a chained
+flow: in Meta Ads, selected ad accounts are the parents and eligible Facebook
+Pages are returned under each account; in Google Business Profile, selected
+Business Profile accounts are the parents and their locations are returned
+under each account. Wiro reads the active credential server-side;
 clients never send or receive access tokens.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
-| `credentialkey` | string | Yes | Credential key with `account_picker.next` configured. Currently `"meta-ads"`. |
-| `pickerkey` | string | Yes | The chained picker key from the registry. Meta Ads uses `"pages"`. |
+| `credentialkey` | string | Yes | Credential key with `account_picker.next` configured. Currently `"meta-ads"` or `"google-business"`. |
+| `pickerkey` | string | Yes | The chained picker key from the registry. Meta Ads uses `"pages"`; Google Business Profile uses `"locations"`. |
 
 ##### Example — discover Meta Ads Pages
 
@@ -952,7 +956,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/DiscoverPickerItems" \
 Each group corresponds to one selected parent account. A group may carry
 `errorcode` and an empty `items` array when discovery failed safely for that
 parent. Successful candidates are cached for the registry-declared selection
-window (five minutes for Meta Ads). Call `SetPickerAccounts` with `pickerkey`
+window (five minutes for Meta Ads and Google Business Profile). Call `SetPickerAccounts` with `pickerkey`
 and one `selections[]` entry for every successful parent before that window
 expires.
 
@@ -964,7 +968,7 @@ accepts entries from the provider's public account list; clients never supply
 access tokens.
 
 The registry declares each provider's picker shape. Multi-select pickers
-(Google Ads, Meta Ads, TikTok Ads, Merchant Center, YouTube, GA4, Facebook Pages, and direct
+(Google Ads, Meta Ads, TikTok Ads, Merchant Center, YouTube, GA4, Google Business Profile, Facebook Pages, and direct
 Instagram) accept one or more entries.
 
 | Parameter | Type | Required | Description |
@@ -985,6 +989,7 @@ Instagram) accept one or more entries.
 | `google-merchant-center` | `merchantid`, `accountname` | |
 | `youtube` | `channelid`, `channeltitle` | |
 | `ga4` | `propertyid`, `propertydisplayname` | |
+| `google-business` | `accountid`, `accountname` | Numeric account ID; non-digits stripped server-side. Locations are chosen afterwards with the chained `"locations"` picker. |
 | `facebook-pages` | `pageid`, `fbpagename` | One or more Pages from the latest OAuth or System User discovery result. |
 | `instagram` | `accountId`, `igusername` | One or more accounts from direct System User discovery. Customer-owned Instagram OAuth does not use this picker and writes one authorized account directly. |
 
@@ -1045,6 +1050,10 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
 The response includes `pickerkey: "pages"` and the persisted, flat
 `pagemappings[]` list. Sending an empty `items` array skips Pages for that ad
 account; Meta Ads reporting and other non-Page operations remain available.
+
+Google Business Profile uses the same chained shape with `pickerkey: "locations"`,
+`{ locationid, locationtitle }` items, and a `locationmappings[]` list in the
+response — see [Google Business Profile → Connect through the API](/docs/integration-googlebusiness-skills#connect-through-the-api).
 
 ##### Common errors
 
@@ -1153,7 +1162,7 @@ If you're building a product on top of Wiro agents and need your customers to co
 4. **Direct branch** — when `accounts` is returned, render the public account
    list directly; there is no browser redirect.
 5. **Finalize** — for picker credentials (Meta Ads, TikTok Ads, Facebook Pages, direct
-   Instagram, Google Ads, Merchant Center, YouTube, GA4), call
+   Instagram, Google Ads, Merchant Center, YouTube, GA4, Google Business Profile), call
    `POST /UserAgentOAuth/SetPickerAccounts` with the selected public entries.
 6. **Verify** — call `POST /UserAgentOAuth/OAuthStatus`.
 

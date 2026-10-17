@@ -18588,6 +18588,11 @@ email tools, CRMs — through three credential methods:</p>
 <td><a href="/docs/integration-merchantcenter-skills">Merchant Center Skills</a> (shares Google OAuth client with Google Ads)</td>
 </tr>
 <tr>
+<td>Google Business Profile</td>
+<td>Own only (your Google Cloud project, approved for Business Profile API access)</td>
+<td><a href="/docs/integration-googlebusiness-skills">Google Business Profile Skills</a></td>
+</tr>
+<tr>
 <td>HubSpot</td>
 <td>Wiro + Own</td>
 <td><a href="/docs/integration-hubspot-skills">HubSpot Skills</a></td>
@@ -18602,7 +18607,7 @@ email tools, CRMs — through three credential methods:</p>
 </div>
 </div>
 <blockquote>
-<p><strong>Google OAuth is shared across 4 APIs.</strong> Google Ads, YouTube, Google Analytics 4, and Merchant Center are all authorized through a single Wiro OAuth client in "wiro" mode — one Google Cloud project, one OAuth 2.0 Client ID, multiple API scopes. In "own" mode you may reuse one of your own OAuth clients the same way, or set up separate ones per product.</p>
+<p><strong>Google OAuth is shared across 4 APIs.</strong> Google Ads, YouTube, Google Analytics 4, and Merchant Center are all authorized through a single Wiro OAuth client in "wiro" mode — one Google Cloud project, one OAuth 2.0 Client ID, multiple API scopes. In "own" mode you may reuse one of your own OAuth clients the same way, or set up separate ones per product. Google Business Profile is not part of that shared client: it is own mode only, and the Google Cloud project behind your OAuth client must be approved for Business Profile API access.</p>
 </blockquote>
 <h3 id="service-account-integrations">Service Account Integrations</h3>
 <div class="docs-param-table">
@@ -19039,12 +19044,12 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect&quot; \
     &quot;authmethod&quot;: &quot;own&quot;
   }'
 </code></pre>
-<p>For credentials whose <code>connection_modes</code> includes an enabled <code>"wiro"</code> mode, you can skip Step 1 and call Step 2 with <code>authmethod: "wiro"</code>. Omitting <code>authmethod</code> uses that credential's registry default. For Meta Ads, always send <code>"own"</code> or <code>"api_key"</code> while its default <code>"wiro"</code> mode is pending; Shopify and Reddit use <code>"own"</code>. TikTok Ads accepts only <code>"wiro"</code>.</p>
+<p>For credentials whose <code>connection_modes</code> includes an enabled <code>"wiro"</code> mode, you can skip Step 1 and call Step 2 with <code>authmethod: "wiro"</code>. Omitting <code>authmethod</code> uses that credential's registry default. For Meta Ads, always send <code>"own"</code> or <code>"api_key"</code> while its default <code>"wiro"</code> mode is pending; Shopify and Reddit use <code>"own"</code>. TikTok Ads accepts only <code>"wiro"</code>. Google Business Profile accepts only <code>"own"</code>, so always send it.</p>
 <h3 id="callback-url-pattern-own-mode">Callback URL pattern (own mode)</h3>
 <p>Register this URL in your OAuth app settings on the provider's developer portal:</p>
 <pre><code>https://api.wiro.ai/v1/UserAgentOAuth/{Provider}Callback
 </code></pre>
-<p>Provider-specific paths: <code>XCallback</code>, <code>TikTokCallback</code>, <code>IGCallback</code>, <code>FBCallback</code>, <code>LICallback</code>, <code>GAdsCallback</code>, <code>MetaAdsCallback</code>, <code>MCCallback</code>, <code>YTCallback</code>, <code>GA4Callback</code>, <code>HubSpotCallback</code>, <code>MailchimpCallback</code>, <code>ShopifyCallback</code>, <code>RedditCallback</code>. TikTok Ads uses <code>TikTokAdsCallback</code>, but it is Wiro-managed only, so there is no app of your own to register it in.</p>
+<p>Provider-specific paths: <code>XCallback</code>, <code>TikTokCallback</code>, <code>IGCallback</code>, <code>FBCallback</code>, <code>LICallback</code>, <code>GAdsCallback</code>, <code>MetaAdsCallback</code>, <code>MCCallback</code>, <code>YTCallback</code>, <code>GA4Callback</code>, <code>GBPCallback</code>, <code>HubSpotCallback</code>, <code>MailchimpCallback</code>, <code>ShopifyCallback</code>, <code>RedditCallback</code>. TikTok Ads uses <code>TikTokAdsCallback</code>, but it is Wiro-managed only, so there is no app of your own to register it in.</p>
 <h3 id="callback-success-error-parameters">Callback success &amp; error parameters</h3>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -19113,6 +19118,11 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect&quot; \
 <td><code>ga4_error=...</code> (+ <code>ga4_error_detail=...</code>)</td>
 </tr>
 <tr>
+<td>Google Business Profile</td>
+<td><code>gbp_connected=true&amp;gbp_accounts=[...]</code></td>
+<td><code>gbp_error=...</code> (+ <code>gbp_error_detail=...</code>)</td>
+</tr>
+<tr>
 <td>HubSpot</td>
 <td><code>hubspot_connected=true&amp;hubspot_portal=...&amp;hubspot_name=...</code></td>
 <td><code>hubspot_error=...</code> (+ <code>hubspot_error_detail=...</code>)</td>
@@ -19137,7 +19147,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect&quot; \
 </div>
 </div>
 <blockquote>
-<p><strong>Conditional params:</strong> <code>gads_accounts</code>, <code>mc_accounts</code>, <code>yt_channels</code>, <code>ga4_properties</code>, and <code>metaads_accounts</code> are omitted from the redirect when the provider returns zero items (for example, no accessible Google Ads customers, or a developer token is missing in Wiro mode). <code>fb_pages</code> is always present on success — Facebook returns <code>fb_error=no_pages</code> instead when the user has no administered Pages. <code>tiktokads_advertisers</code> is likewise always present on success — the callback returns <code>tiktokads_error=no_accounts</code> instead when no advertiser is available.</p>
+<p><strong>Conditional params:</strong> <code>gads_accounts</code>, <code>mc_accounts</code>, <code>yt_channels</code>, <code>ga4_properties</code>, and <code>metaads_accounts</code> are omitted from the redirect when the provider returns zero items (for example, no accessible Google Ads customers, or a developer token is missing in Wiro mode). <code>fb_pages</code> is always present on success — Facebook returns <code>fb_error=no_pages</code> instead when the user has no administered Pages. <code>tiktokads_advertisers</code> is likewise always present on success — the callback returns <code>tiktokads_error=no_accounts</code> instead when no advertiser is available. <code>gbp_accounts</code> is always present on success too — the callback returns <code>gbp_error=no_accounts</code> instead when no Business Profile account can be listed.</p>
 </blockquote>
 <p>Common error codes across providers:</p>
 <div class="docs-param-table">
@@ -19431,16 +19441,18 @@ without a browser redirect.</p>
 <blockquote>
 <p><strong>Multi-account picker fields are JSON arrays.</strong> Picker fields like
 <code>customerid</code> (Google Ads), <code>adaccountid</code> (Meta Ads), <code>advertiserid</code> (TikTok Ads), <code>merchantid</code> (Merchant
-Center), <code>channelid</code> (YouTube), <code>propertyid</code> (GA4), <code>pageid</code> (Facebook
+Center), <code>channelid</code> (YouTube), <code>propertyid</code> (GA4), <code>accountid</code> (Google Business Profile), <code>pageid</code> (Facebook
 Pages), and direct Instagram's <code>accountId</code> are stored as JSON arrays when
 <code>account_picker.multi_select === true</code>. Instagram Login OAuth also stores its
 single authorized account as a one-entry array.</p>
 </blockquote>
 <h3 id="post-useragentoauthdiscoverpickeritems">POST /UserAgentOAuth/DiscoverPickerItems</h3>
 <p>Discover child resources for a chained picker after the root
-<code>SetPickerAccounts</code> selection has been saved. The current chained flow is Meta
-Ads: selected ad accounts are the parents and eligible Facebook Pages are
-returned under each account. Wiro reads the active credential server-side;
+<code>SetPickerAccounts</code> selection has been saved. Two credentials have a chained
+flow: in Meta Ads, selected ad accounts are the parents and eligible Facebook
+Pages are returned under each account; in Google Business Profile, selected
+Business Profile accounts are the parents and their locations are returned
+under each account. Wiro reads the active credential server-side;
 clients never send or receive access tokens.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -19464,13 +19476,13 @@ clients never send or receive access tokens.</p>
 <td><code>credentialkey</code></td>
 <td>string</td>
 <td>Yes</td>
-<td>Credential key with <code>account_picker.next</code> configured. Currently <code>"meta-ads"</code>.</td>
+<td>Credential key with <code>account_picker.next</code> configured. Currently <code>"meta-ads"</code> or <code>"google-business"</code>.</td>
 </tr>
 <tr>
 <td><code>pickerkey</code></td>
 <td>string</td>
 <td>Yes</td>
-<td>The chained picker key from the registry. Meta Ads uses <code>"pages"</code>.</td>
+<td>The chained picker key from the registry. Meta Ads uses <code>"pages"</code>; Google Business Profile uses <code>"locations"</code>.</td>
 </tr>
 </tbody>
 </table>
@@ -19507,7 +19519,7 @@ clients never send or receive access tokens.</p>
 <p>Each group corresponds to one selected parent account. A group may carry
 <code>errorcode</code> and an empty <code>items</code> array when discovery failed safely for that
 parent. Successful candidates are cached for the registry-declared selection
-window (five minutes for Meta Ads). Call <code>SetPickerAccounts</code> with <code>pickerkey</code>
+window (five minutes for Meta Ads and Google Business Profile). Call <code>SetPickerAccounts</code> with <code>pickerkey</code>
 and one <code>selections[]</code> entry for every successful parent before that window
 expires.</p>
 <h3 id="post-useragentoauthsetpickeraccounts">POST /UserAgentOAuth/SetPickerAccounts</h3>
@@ -19516,7 +19528,7 @@ or a chained child-resource selection after <code>DiscoverPickerItems</code>. Th
 accepts entries from the provider's public account list; clients never supply
 access tokens.</p>
 <p>The registry declares each provider's picker shape. Multi-select pickers
-(Google Ads, Meta Ads, TikTok Ads, Merchant Center, YouTube, GA4, Facebook Pages, and direct
+(Google Ads, Meta Ads, TikTok Ads, Merchant Center, YouTube, GA4, Google Business Profile, Facebook Pages, and direct
 Instagram) accept one or more entries.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -19607,6 +19619,11 @@ Instagram) accept one or more entries.</p>
 <td></td>
 </tr>
 <tr>
+<td><code>google-business</code></td>
+<td><code>accountid</code>, <code>accountname</code></td>
+<td>Numeric account ID; non-digits stripped server-side. Locations are chosen afterwards with the chained <code>"locations"</code> picker.</td>
+</tr>
+<tr>
 <td><code>facebook-pages</code></td>
 <td><code>pageid</code>, <code>fbpagename</code></td>
 <td>One or more Pages from the latest OAuth or System User discovery result.</td>
@@ -19666,6 +19683,9 @@ Instagram) accept one or more entries.</p>
 <p>The response includes <code>pickerkey: "pages"</code> and the persisted, flat
 <code>pagemappings[]</code> list. Sending an empty <code>items</code> array skips Pages for that ad
 account; Meta Ads reporting and other non-Page operations remain available.</p>
+<p>Google Business Profile uses the same chained shape with <code>pickerkey: "locations"</code>,
+<code>{ locationid, locationtitle }</code> items, and a <code>locationmappings[]</code> list in the
+response — see <a href="/docs/integration-googlebusiness-skills#connect-through-the-api">Google Business Profile → Connect through the API</a>.</p>
 <h5 id="common-errors_1">Common errors</h5>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -19818,7 +19838,7 @@ customer-facing token-refresh endpoint or manual refresh action.</p>
 <li><strong>Direct branch</strong> — when <code>accounts</code> is returned, render the public account
    list directly; there is no browser redirect.</li>
 <li><strong>Finalize</strong> — for picker credentials (Meta Ads, TikTok Ads, Facebook Pages, direct
-   Instagram, Google Ads, Merchant Center, YouTube, GA4), call
+   Instagram, Google Ads, Merchant Center, YouTube, GA4, Google Business Profile), call
    <code>POST /UserAgentOAuth/SetPickerAccounts</code> with the selected public entries.</li>
 <li><strong>Verify</strong> — call <code>POST /UserAgentOAuth/OAuthStatus</code>.</li>
 </ol>
@@ -21310,6 +21330,11 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <td><code>int-ga4-analytics</code></td>
 <td><code>ga4</code> (OAuth)</td>
 <td><a href="/docs/integration-ga4-skills">GA4 Skills</a></td>
+</tr>
+<tr>
+<td><code>int-google-business-reviews</code></td>
+<td><code>google-business</code> (Own OAuth)</td>
+<td><a href="/docs/integration-googlebusiness-skills">Google Business Profile Skills</a></td>
 </tr>
 <tr>
 <td><code>int-hubspot-crm</code></td>
@@ -28238,6 +28263,669 @@ Agent → POST /v1beta/properties/123456789:runReport
                         </table>
                       </div>
                     </div>
+                  </section>
+                </article>
+              </div>
+
+              <!-- ==================== INTEGRATION: GOOGLE BUSINESS PROFILE ==================== -->
+              <div class="docs-page-section" data-page="integration-googlebusiness-skills" style="display: none">
+                <article class="docs-section">
+                  <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/integration-googlebusiness-skills.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/integration-googlebusiness-skills.md" download class="docs-section-md-btn">Download</a></div>
+                  <h1>Google Business Profile Integration</h1>
+                  <p class="section-subtitle">Connect your agent to Google Business Profile to read the Google reviews of the locations you choose, draft a reply to each new review, and post the replies you approve.</p>
+
+                  <section id="overview">
+                    <h2>Overview</h2>
+                    <p>The Google Business Profile integration powers the <code>int-google-business-reviews</code> skill (Google Business Reviews). The agent works through Google's Business Profile APIs with an OAuth client from your own Google Cloud project. It reads the reviews of the Business Profile locations you selected, drafts one reply per new review in the reviewer's language, sends the drafts to you, and posts a reply only after you approve it.</p>
+                    <p><strong>Skills that use this integration:</strong></p>
+                    <ul>
+                      <li><code>int-google-business-reviews</code> — Reads the Google reviews of the selected locations, drafts replies, posts approved replies, and follows Google's moderation of each posted reply.</li>
+                    </ul>
+                    <p><strong>Bundled task:</strong></p>
+                    <ul>
+                      <li><code>cs-cron-google-review-scanner</code> — every 2 hours (<code>0 */2 * * *</code>): scans the selected locations for new reviews and sends you the drafted replies. It runs only when Google Business Profile is connected.</li>
+                    </ul>
+                  </section>
+
+                  <section id="availability">
+                    <h2>Availability</h2>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Mode</th><th>Status</th><th>Notes</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td><code>"own"</code></td><td>Available — the only mode</td><td>An OAuth client from your own Google Cloud project. Google must approve that project for Business Profile API access before any call works.</td></tr>
+                            <tr><td><code>"wiro"</code></td><td>Not available</td><td>Wiro-managed one-click connect is not available for Google Business Profile.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <div class="info-callout"><p><strong>Google approves the project first.</strong> You request Business Profile API access for your Google Cloud project, and Google reviews requests within 14 days. Until the project is approved, every call to Google fails, and connecting typically ends with "No accounts available". See <a href="#google-cloud-setup">Google Cloud setup</a>.</p></div>
+                  </section>
+
+                  <section id="prerequisites">
+                    <h2>Prerequisites</h2>
+                    <ul>
+                      <li><strong>A verified Business Profile.</strong> Google asks for a profile that has been verified and active for 60+ days, with the business website listed, before it grants API access.</li>
+                      <li><strong>A Google account that is an owner or manager of the Business Profile.</strong> Request API access with its email, and connect with the Google account that manages the business.</li>
+                      <li><strong>A Google Cloud project approved for Business Profile API access</strong>, with an OAuth client of type Web application — see <a href="#google-cloud-setup">Google Cloud setup</a>.</li>
+                      <li><strong>An agent with <code>int-google-business-reviews</code> enabled</strong> — see <a href="#using-the-skill">Using the Skill</a>.</li>
+                      <li><strong>For API integrations only:</strong> a Wiro API key (<a href="/docs/authentication">Authentication</a>), a deployed agent (<a href="/docs/agent-overview">Agent Overview</a>) and its <code>useragentguid</code>, and an HTTPS return URL that your backend controls. <code>http://localhost</code> and <code>http://127.0.0.1</code> are accepted for local development only.</li>
+                    </ul>
+                  </section>
+
+                  <section id="google-cloud-setup">
+                    <h2>Google Cloud setup</h2>
+                    <p>Do these steps once, in this order, in the Google Cloud project whose OAuth client the agent will use.</p>
+
+                    <h3>Step 1: Create or pick a project</h3>
+                    <p>In the Google Cloud Console, create a project or pick an existing one. Copy its <strong>Project number</strong> from the project dashboard; you need it for the access request in Step 2.</p>
+
+                    <h3>Step 2: Request Business Profile API access</h3>
+                    <ol>
+                      <li>Open Google's <a href="https://support.google.com/business/contact/api_default" target="_blank" rel="noopener">Business Profile API contact form</a> and choose <strong>Application for Basic API Access</strong>.</li>
+                      <li>Apply for the project from Step 1, with an email that is an owner or manager of the Business Profile.</li>
+                      <li>Google asks for a profile that has been verified and active for 60+ days, with the business website listed, and reviews requests within 14 days. See Google's <a href="https://developers.google.com/my-business/content/prereqs" target="_blank" rel="noopener">prerequisites</a> and <a href="https://developers.google.com/my-business/content/faq" target="_blank" rel="noopener">FAQ</a>.</li>
+                    </ol>
+
+                    <h3>Step 3: Check the approval</h3>
+                    <p>Open <a href="https://console.cloud.google.com/iam-admin/quotas" target="_blank" rel="noopener">IAM &amp; Admin → Quotas</a> for the project and look at the requests-per-minute quota of the Business Profile APIs:</p>
+                    <ul>
+                      <li><strong>0 requests per minute</strong> — not approved yet. Every call to Google fails until this changes.</li>
+                      <li><strong>300 requests per minute</strong> — approved. Continue with Step 4.</li>
+                    </ul>
+
+                    <h3>Step 4: Enable the APIs</h3>
+                    <p>After approval, enable these three APIs in the project:</p>
+                    <ul>
+                      <li><a href="https://console.cloud.google.com/apis/library/mybusiness.googleapis.com" target="_blank" rel="noopener">Google My Business API</a> — listed in the API Library only after the project is approved.</li>
+                      <li><a href="https://console.cloud.google.com/apis/library/mybusinessaccountmanagement.googleapis.com" target="_blank" rel="noopener">My Business Account Management API</a></li>
+                      <li><a href="https://console.cloud.google.com/apis/library/mybusinessbusinessinformation.googleapis.com" target="_blank" rel="noopener">My Business Business Information API</a></li>
+                    </ul>
+
+                    <h3>Step 5: Set the audience</h3>
+                    <p>In <a href="https://console.cloud.google.com/auth/audience" target="_blank" rel="noopener">Google Auth Platform → Audience</a>:</p>
+                    <ul>
+                      <li>Choose <strong>External</strong>.</li>
+                      <li>Set the publishing status to <strong>In production</strong>. While the app is in <strong>Testing</strong>, Google expires the refresh token after 7 days (<a href="https://developers.google.com/identity/protocols/oauth2" target="_blank" rel="noopener">Google's OAuth 2.0 documentation</a>), and the agent loses access every week.</li>
+                    </ul>
+                    <p>When you connect, Google may warn that the app is unverified. It is your own app: continue as the app's owner.</p>
+
+                    <h3>Step 6: Add the scope</h3>
+                    <p>In <a href="https://console.cloud.google.com/auth/scopes" target="_blank" rel="noopener">Data Access</a>, add this scope:</p>
+                    <pre><code>https://www.googleapis.com/auth/business.manage</code></pre>
+
+                    <h3>Step 7: Create the OAuth client</h3>
+                    <p>In <a href="https://console.cloud.google.com/auth/clients" target="_blank" rel="noopener">Clients</a>, create an OAuth client of type <strong>Web application</strong> and add this <strong>Authorized redirect URI</strong>, exactly as written:</p>
+                    <pre><code>https://api.wiro.ai/v1/UserAgentOAuth/GBPCallback</code></pre>
+                    <p>Copy the <strong>Client ID</strong> and the <strong>Client Secret</strong>.</p>
+                  </section>
+
+                  <section id="connect-in-the-wiro-dashboard">
+                    <h2>Connect in the Wiro dashboard</h2>
+                    <ol>
+                      <li>Open your agent, go to <strong>Credentials</strong>, and find the <strong>Google Business Profile</strong> card.</li>
+                      <li>Paste the <strong>OAuth Client ID</strong> and <strong>OAuth Client Secret</strong> from Step 7.</li>
+                      <li>Click <strong>Connect Google Business Profile</strong> and sign in with the Google account that manages the business. If Google warns that the app is unverified, continue as the app's owner.</li>
+                      <li>Choose the Business Profile accounts the agent may use.</li>
+                      <li>Choose the locations. Up to 100 locations per account are listed.</li>
+                      <li>Wiro saves the selection and restarts the agent if it was running.</li>
+                    </ol>
+                    <p>To change the locations later, use <strong>Manage</strong> on the Google Business Profile card. The agent reads and answers reviews only for the locations you selected.</p>
+                  </section>
+
+                  <section id="what-the-agent-does">
+                    <h2>What the agent does</h2>
+                    <ul>
+                      <li><strong>Reads new reviews</strong> of the selected locations.</li>
+                      <li><strong>Drafts one reply per new review, in the reviewer's language.</strong> When Google shows a translated review, the agent answers the original text.</li>
+                      <li><strong>Follows your review preferences.</strong> Before drafting, it reads the <code>cs-review-preferences</code> custom skill: tone, length by rating, contact line, sign-off, and house rules.</li>
+                      <li>
+                        <strong>Sends the drafts to you</strong>, numbered, in chat and on Telegram if it is connected. Answer in chat:
+                        <ul>
+                          <li><code>ok 1</code> — approve draft 1</li>
+                          <li><code>ok all</code> — approve every draft</li>
+                          <li><code>skip 2</code> — skip draft 2</li>
+                          <li><code>edit 1: &lt;text&gt;</code> — replace draft 1 with your text</li>
+                        </ul>
+                      </li>
+                      <li><strong>Posts approved replies</strong> through the Google Business Profile API.</li>
+                      <li><strong>Follows Google's moderation.</strong> Google reviews every reply before it is public: a reply is <code>PENDING</code>, then <code>APPROVED</code>, or <code>REJECTED</code> with a policy violation. The agent tells you about rejected replies.</li>
+                      <li><strong>Edits or deletes a posted reply</strong> only when you ask.</li>
+                      <li><strong>Starts with recent reviews.</strong> The first scan of a location drafts replies only for unanswered reviews from the last 30 days, and reports how many older reviews have no reply.</li>
+                      <li><strong>Escalates instead of answering.</strong> Legal, health, safety and discrimination complaints go to you instead of getting a reply.</li>
+                      <li><strong>Never offers incentives</strong> for reviews, and never shares reviewer details beyond their public first name.</li>
+                      <li><strong>Keeps review content for at most 30 days</strong>, as Google's API policy requires.</li>
+                    </ul>
+                  </section>
+
+                  <section id="what-the-agent-cannot-do">
+                    <h2>What the agent cannot do</h2>
+                    <p>These are outside this integration:</p>
+                    <ul>
+                      <li><strong>Changing business details</strong> — name, hours, address, or photos.</li>
+                      <li><strong>Creating posts.</strong></li>
+                      <li><strong>Answering Q&amp;A.</strong></li>
+                      <li><strong>Reporting or removing a review.</strong> The business does that in Google Maps.</li>
+                      <li><strong>Replying for locations you did not select.</strong></li>
+                    </ul>
+                  </section>
+
+                  <section id="approvals">
+                    <h2>Approvals</h2>
+                    <ul>
+                      <li><strong>Every reply waits for your approval by default</strong>, one approval per reply. The rule lives in the <code>cs-approval-policy</code> custom skill.</li>
+                      <li><strong>Why:</strong> Google's Business Profile API <a href="https://developers.google.com/my-business/content/policies" target="_blank" rel="noopener">policies</a> say automated replies need the business's prior, specific and express consent. This is why replies wait for your approval by default.</li>
+                      <li><strong>Auto-approve rules.</strong> You can add an override to <code>cs-approval-policy</code>, for example "auto-approve replies to 5-star reviews". Matching replies are then posted without asking, at most 5 per scan unless <code>cs-review-preferences</code> sets another number.</li>
+                    </ul>
+                  </section>
+
+                  <section id="limits">
+                    <h2>Limits</h2>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Limit</th><th>Value</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td>Reply length</td><td>At most 4096 bytes. Letters such as ç, ğ, ş and é count as 2 bytes.</td></tr>
+                            <tr><td>Google API quota</td><td>300 requests per minute for the Google Cloud project after approval (0 before).</td></tr>
+                            <tr><td>Locations listed per account</td><td>Up to 100.</td></tr>
+                            <tr><td>Automatic replies</td><td>At most 5 per scan, unless <code>cs-review-preferences</code> sets another number.</td></tr>
+                            <tr><td>Review content kept</td><td>At most 30 days.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section id="scheduled-task">
+                    <h2>Scheduled task</h2>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Task</th><th>Skill key</th><th>Default schedule</th><th>What it does</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td>Review scanner</td><td><code>cs-cron-google-review-scanner</code></td><td><code>0 */2 * * *</code> (every 2 hours)</td><td>Reads new reviews of the selected locations, drafts replies, and sends them to you for approval; posts the replies an auto-approve rule allows. Runs only when Google Business Profile is connected.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <p>To change <strong>what</strong> the scanner does, edit the custom skills it reads rather than the task:</p>
+                    <ul>
+                      <li><code>cs-review-preferences</code> — tone, length by rating, contact line, sign-off, house rules, and the number of automatic replies per scan.</li>
+                      <li><code>cs-approval-policy</code> — which replies wait for your approval.</li>
+                    </ul>
+                  </section>
+
+                  <section id="connect-through-the-api">
+                    <h2>Connect through the API</h2>
+                    <p>Use this flow when you build your own settings screen on top of Wiro agents. Complete the <a href="#google-cloud-setup">Google Cloud setup</a> first. Every request is authenticated as described in <a href="/docs/authentication">Authentication</a>.</p>
+
+                    <h3>Step 1: Save your OAuth client</h3>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "google-business", "fieldname": "clientid", "fieldvalue": "YOUR_GOOGLE_OAUTH_CLIENT_ID" },
+      { "credentialkey": "google-business", "fieldname": "clientsecret", "fieldvalue": "YOUR_GOOGLE_OAUTH_CLIENT_SECRET" },
+      { "credentialkey": "google-business", "fieldname": "authmethod", "fieldvalue": "own" }
+    ]
+  }'</code></pre>
+                    <p>Response: <code>{ "result": true, "errors": [], "applied": 3 }</code>. <code>clientid</code> and <code>clientsecret</code> are not returned by <code>POST /UserAgent/Detail</code>, so check <code>result</code> and <code>errors[]</code> here.</p>
+
+                    <h3>Step 2: Start the connection</h3>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "google-business",
+    "redirecturl": "https://your-app.com/settings/integrations",
+    "authmethod": "own"
+  }'</code></pre>
+                    <p>Response:</p>
+                    <pre><code class="language-json">{
+  "result": true,
+  "errors": [],
+  "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth?client_id=...&amp;redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FUserAgentOAuth%2FGBPCallback&amp;response_type=code&amp;scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fbusiness.manage&amp;state=...&amp;access_type=offline&amp;prompt=consent"
+}</code></pre>
+                    <p>Redirect the user's browser to <code>authorizeUrl</code> with a full-page redirect rather than a popup. Wiro requests the <code>business.manage</code> scope with offline access, so Google issues a refresh token.</p>
+                    <p>Always send <code>authmethod: "own"</code>. Without it, or with <code>"wiro"</code>, <code>OAuthConnect</code> returns <code>Wiro-managed OAuth is not enabled for Google Business Profile</code>.</p>
+                    <div class="info-callout"><p><strong>State TTL:</strong> Wiro keeps the OAuth state for <strong>15 minutes</strong>. If the user takes longer on Google's consent screen, the connection fails with <code>gbp_error=session_expired</code>; call <code>OAuthConnect</code> again.</p></div>
+
+                    <h3>Step 3: Handle the return</h3>
+                    <p>After the user approves, Google sends them to Wiro's callback (<code>https://api.wiro.ai/v1/UserAgentOAuth/GBPCallback</code>). Wiro exchanges the code, lists the Business Profile accounts the Google user can access, stores the tokens server-side, and redirects the browser to your <code>redirecturl</code>.</p>
+                    <p><strong>Success URL</strong> looks like:</p>
+                    <pre><code>https://your-app.com/settings/integrations?gbp_connected=true&amp;gbp_accounts=%5B%7B%22id%22%3A%22112233445566778899001%22%2C%22name%22%3A%22Acme%20Bakery%22%7D%5D</code></pre>
+                    <ul>
+                      <li><code>gbp_accounts</code> is <code>encodeURIComponent(JSON.stringify([...]))</code>.</li>
+                      <li>Each element is <code>{ id, name }</code>: <code>id</code> is the numeric Business Profile account ID as a string, <code>name</code> is the account name.</li>
+                      <li>The list is never empty on success. When no Business Profile account can be listed, the callback returns <code>gbp_error=no_accounts</code> instead; right after setup this usually means Google has not approved the project yet or an API is disabled (see <a href="#troubleshooting">Troubleshooting</a>).</li>
+                      <li>On failure the URL carries <code>gbp_error=&lt;code&gt;</code>, and possibly <code>gbp_error_detail</code>.</li>
+                    </ul>
+                    <p>Parse in the browser:</p>
+                    <pre><code class="language-javascript">const params = new URLSearchParams(window.location.search);
+
+if (params.get("gbp_connected") === "true") {
+  const accounts = JSON.parse(params.get("gbp_accounts") || "[]");
+  presentAccountPicker(accounts);
+} else if (params.get("gbp_error")) {
+  handleError(params.get("gbp_error"));
+}</code></pre>
+
+                    <h3>Step 4: Save the account selection</h3>
+                    <p>This call is <strong>required</strong>, even when only one account is returned:</p>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "google-business",
+    "accounts": [
+      { "accountid": "112233445566778899001", "accountname": "Acme Bakery" }
+    ]
+  }'</code></pre>
+                    <p>Response:</p>
+                    <pre><code class="language-json">{
+  "result": true,
+  "errors": [],
+  "accounts": [
+    { "id": "112233445566778899001", "name": "Acme Bakery" }
+  ]
+}</code></pre>
+                    <p>Behavior:</p>
+                    <ul>
+                      <li>Send one or more <code>{ accountid, accountname }</code> entries picked from <code>gbp_accounts</code> (<code>id</code> becomes <code>accountid</code>, <code>name</code> becomes <code>accountname</code>). Non-digits in <code>accountid</code> are stripped server-side.</li>
+                      <li>Each call replaces the previous account selection. Locations already chosen for accounts that stay selected are kept; locations of removed accounts are dropped.</li>
+                      <li>If the agent was running, Wiro restarts it.</li>
+                    </ul>
+
+                    <h3>Step 5: Choose the locations</h3>
+                    <p>Discover the locations of the selected accounts:</p>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/DiscoverPickerItems" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "google-business",
+    "pickerkey": "locations"
+  }'</code></pre>
+                    <p>Response:</p>
+                    <pre><code class="language-json">{
+  "result": true,
+  "errors": [],
+  "pickerkey": "locations",
+  "groups": [
+    {
+      "parent": {
+        "accountid": "112233445566778899001",
+        "accountname": "Acme Bakery"
+      },
+      "items": [
+        { "locationid": "9876543210987654321", "locationtitle": "Acme Bakery Downtown" },
+        { "locationid": "1234567890123456789", "locationtitle": "Acme Bakery Riverside" }
+      ]
+    }
+  ]
+}</code></pre>
+                    <p>Up to 100 locations per account are listed. A group carries <code>errorcode</code> and an empty <code>items</code> array when Google did not return the locations of that account.</p>
+                    <p>Save the selection within five minutes. Copy <code>locationid</code> and <code>locationtitle</code> from the discovery response unchanged, and include every group returned without an <code>errorcode</code> exactly once; an empty <code>items</code> array selects no location for that account:</p>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "google-business",
+    "pickerkey": "locations",
+    "selections": [
+      {
+        "parentvalue": "112233445566778899001",
+        "items": [
+          { "locationid": "9876543210987654321", "locationtitle": "Acme Bakery Downtown" }
+        ]
+      }
+    ]
+  }'</code></pre>
+                    <p>Response:</p>
+                    <pre><code class="language-json">{
+  "result": true,
+  "errors": [],
+  "pickerkey": "locations",
+  "locationmappings": [
+    {
+      "accountid": "112233445566778899001",
+      "accountname": "Acme Bakery",
+      "locationid": "9876543210987654321",
+      "locationtitle": "Acme Bakery Downtown"
+    }
+  ]
+}</code></pre>
+                    <p>The dashboard runs this step automatically after the account selection. If the agent was running, Wiro restarts it.</p>
+
+                    <h3>Step 6: Verify the connection</h3>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "google-business"
+  }'</code></pre>
+                    <p>Response:</p>
+                    <pre><code class="language-json">{
+  "result": true,
+  "errors": [],
+  "connected": true,
+  "accounts": [
+    { "id": "112233445566778899001", "name": "Acme Bakery" }
+  ],
+  "connectedat": "2026-10-17T09:00:00.000Z",
+  "tokenexpiresat": "2026-10-17T10:00:00.000Z",
+  "pickersteps": {
+    "locations": {
+      "pickerkey": "locations",
+      "optional": false,
+      "configured": true,
+      "groups": [
+        {
+          "parent": {
+            "accountid": "112233445566778899001",
+            "accountname": "Acme Bakery"
+          },
+          "items": [
+            { "locationid": "9876543210987654321", "locationtitle": "Acme Bakery Downtown" }
+          ]
+        }
+      ]
+    }
+  },
+  "locationmappings": [
+    {
+      "accountid": "112233445566778899001",
+      "accountname": "Acme Bakery",
+      "locationid": "9876543210987654321",
+      "locationtitle": "Acme Bakery Downtown"
+    }
+  ]
+}</code></pre>
+                    <p>Field notes:</p>
+                    <ul>
+                      <li><code>connected</code> is <code>true</code> when the connection has a current access token and at least one account is selected. It does not look at locations: <code>pickersteps.locations.configured</code> is <code>true</code> once at least one location is selected.</li>
+                      <li><code>tokenexpiresat</code> is the expiry of the current access token (about one hour ahead). Wiro renews the access token while the agent is running.</li>
+                      <li><code>connectedat</code> is the time of the last successful Connect.</li>
+                    </ul>
+
+                    <h3>Step 7: Start the agent if it's not running</h3>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'</code></pre>
+                    <p>Check <code>POST /UserAgent/Detail</code> first: if <code>setuprequired</code> is still <code>true</code>, a credential the agent requires is incomplete, and Start will refuse. See <a href="/docs/agent-credentials#setup-required-state">Agent Credentials — Setup Required</a>.</p>
+                  </section>
+
+                  <section id="credential-fields">
+                    <h2>Credential fields</h2>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td><code>clientid</code></td><td>string</td><td>OAuth Client ID of your Google Cloud OAuth client (own mode). Not returned by <code>POST /UserAgent/Detail</code>.</td></tr>
+                            <tr><td><code>clientsecret</code></td><td>string (secret)</td><td>OAuth Client Secret (own mode). Encrypted at rest; not returned by <code>POST /UserAgent/Detail</code>.</td></tr>
+                            <tr><td><code>accountid</code></td><td>array of strings</td><td>Numeric IDs of the selected Business Profile accounts. Required. Filled by the connection flow (<code>SetPickerAccounts</code>).</td></tr>
+                            <tr><td><code>accountname</code></td><td>array of strings</td><td>Names of the selected accounts, in the same order. Filled by the connection flow.</td></tr>
+                            <tr><td><code>locationmappings</code></td><td>array of objects</td><td>The selected locations, one <code>{ accountid, accountname, locationid, locationtitle }</code> entry per location. Server-managed; written by the location step.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <p><code>POST /UserAgent/CredentialUpsert</code> rejects writes to <code>accountid</code>, <code>accountname</code> and <code>locationmappings</code> with <code>&lt;Field label&gt; is managed by the connection flow</code>. Access and refresh tokens are stored server-side and are never returned by any endpoint.</p>
+                  </section>
+
+                  <section id="api-reference">
+                    <h2>API Reference</h2>
+                    <p>All endpoints require Wiro authentication — see <a href="/docs/authentication">Authentication</a> for <code>x-api-key</code> + optional signature headers.</p>
+
+                    <h3>POST /UserAgentOAuth/OAuthConnect</h3>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td><code>useragentguid</code></td><td>string</td><td>Yes</td><td>Agent instance GUID.</td></tr>
+                            <tr><td><code>credentialkey</code></td><td>string</td><td>Yes</td><td><code>"google-business"</code>.</td></tr>
+                            <tr><td><code>redirecturl</code></td><td>string</td><td>Yes</td><td>HTTPS URL (or <code>http://localhost</code> / <code>http://127.0.0.1</code> for development) where the browser returns after Google.</td></tr>
+                            <tr><td><code>authmethod</code></td><td>string</td><td>Yes</td><td><code>"own"</code>, the only available mode.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <p>Response: <code>{ result, errors, authorizeUrl }</code>. If <code>result: false</code>, inspect <code>errors[0].message</code> — common messages: <code>Invalid redirect URL</code>, <code>User agent not found or unauthorized</code>, <code>Wiro-managed OAuth is not enabled for Google Business Profile</code> (no <code>authmethod</code>, or <code>"wiro"</code>), and <code>Google Business Profile credentials not configured</code> (the Client ID or Client Secret is not saved).</p>
+
+                    <h3>GET /UserAgentOAuth/GBPCallback</h3>
+                    <p>Server-side endpoint invoked by Google. You don't call it: you register it as the Authorized redirect URI of your OAuth client and handle the final redirect back to your <code>redirecturl</code>.</p>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Query param</th><th>Meaning</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td><code>gbp_connected=true</code></td><td>Authorization completed.</td></tr>
+                            <tr><td><code>gbp_accounts</code></td><td>URL-encoded JSON array of <code>{ id, name }</code> for the Business Profile accounts the Google user can access. Always at least one entry.</td></tr>
+                            <tr><td><code>gbp_error=&lt;code&gt;</code></td><td>The connection failed. See <a href="#troubleshooting">Troubleshooting</a>.</td></tr>
+                            <tr><td><code>gbp_error_detail</code></td><td>Optional detail that can accompany <code>gbp_error</code>.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <h3>POST /UserAgentOAuth/SetPickerAccounts</h3>
+                    <p>The same endpoint saves both picker steps.</p>
+                    <p>Account selection:</p>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td><code>useragentguid</code></td><td>string</td><td>Yes</td><td>Agent instance GUID.</td></tr>
+                            <tr><td><code>credentialkey</code></td><td>string</td><td>Yes</td><td><code>"google-business"</code>.</td></tr>
+                            <tr><td><code>accounts</code></td><td>array</td><td>Yes</td><td>One or more <code>{ accountid, accountname }</code> entries. <code>accountid</code> is the numeric account ID (non-digits stripped); <code>accountname</code> is the display name shown in dashboards and <code>OAuthStatus</code> responses.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <p>Response: <code>{ result, errors, accounts: [{id, name}, ...] }</code>. Replaces the previous account selection and restarts the agent if it was running.</p>
+                    <p>Location selection, after <code>DiscoverPickerItems</code>:</p>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td><code>useragentguid</code></td><td>string</td><td>Yes</td><td>Agent instance GUID.</td></tr>
+                            <tr><td><code>credentialkey</code></td><td>string</td><td>Yes</td><td><code>"google-business"</code>.</td></tr>
+                            <tr><td><code>pickerkey</code></td><td>string</td><td>Yes</td><td><code>"locations"</code>.</td></tr>
+                            <tr><td><code>selections</code></td><td>array</td><td>Yes</td><td>One <code>{ parentvalue, items }</code> entry for every group discovery returned without an <code>errorcode</code>. <code>parentvalue</code> is the account ID; each item carries <code>locationid</code> and <code>locationtitle</code>. Empty <code>items</code> selects no location for that account.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <p>Response: <code>{ result, errors, pickerkey: "locations", locationmappings: [{accountid, accountname, locationid, locationtitle}] }</code>.</p>
+
+                    <h3>POST /UserAgentOAuth/DiscoverPickerItems</h3>
+                    <p>Lists the locations of the selected Business Profile accounts, grouped by account. Call it after the account selection is saved.</p>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td><code>useragentguid</code></td><td>string</td><td>Yes</td><td>Agent instance GUID.</td></tr>
+                            <tr><td><code>credentialkey</code></td><td>string</td><td>Yes</td><td><code>"google-business"</code>.</td></tr>
+                            <tr><td><code>pickerkey</code></td><td>string</td><td>Yes</td><td><code>"locations"</code>.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <p>Response: <code>{ result, errors, pickerkey: "locations", groups: [{parent: {accountid, accountname}, items: [{locationid, locationtitle}], errorcode?}] }</code>. Up to 100 locations per account. The access token stays server-side. Wiro keeps the discovered candidates for five minutes; save the location selection before they expire.</p>
+
+                    <h3>POST /UserAgentOAuth/OAuthStatus</h3>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td><code>useragentguid</code></td><td>string</td><td>Yes</td><td>Agent instance GUID.</td></tr>
+                            <tr><td><code>credentialkey</code></td><td>string</td><td>Yes</td><td><code>"google-business"</code>.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <p>Response fields:</p>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td><code>connected</code></td><td>boolean</td><td><code>true</code> when the connection has a current access token and at least one selected account. Use <code>setuprequired</code> from <code>POST /UserAgent/Detail</code> for whole-agent readiness.</td></tr>
+                            <tr><td><code>accounts</code></td><td>array</td><td>One <code>{ id, name }</code> per selected account (<code>id</code> = <code>accountid</code>, <code>name</code> = <code>accountname</code>).</td></tr>
+                            <tr><td><code>locationmappings</code></td><td>array</td><td>The selected locations, one <code>{ accountid, accountname, locationid, locationtitle }</code> entry each.</td></tr>
+                            <tr><td><code>pickersteps.locations</code></td><td>object</td><td>Location selection grouped by account for UI rendering: <code>{ pickerkey, optional, configured, groups[] }</code>.</td></tr>
+                            <tr><td><code>connectedat</code></td><td>string</td><td>ISO timestamp of the last successful Connect.</td></tr>
+                            <tr><td><code>tokenexpiresat</code></td><td>string</td><td>ISO expiry of the current access token (about one hour ahead while the agent runs).</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <h3>POST /UserAgentOAuth/OAuthDisconnect</h3>
+                    <p>Body: <code>{ useragentguid, credentialkey: "google-business" }</code>. Clears the tokens and the account and location selections in Wiro. Your Client ID and Client Secret are kept, so you can connect again without re-entering them. Wiro does not ask Google to revoke the authorization.</p>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthDisconnect" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "google-business"
+  }'</code></pre>
+                    <p>Response: <code>{ "result": true, "errors": [] }</code>. Running agents restart automatically.</p>
+
+                    <h3>Token lifecycle</h3>
+                    <p>Wiro renews the access token with the stored refresh token while the agent is running. While the consent screen is in <strong>Testing</strong>, Google expires the refresh token after 7 days; set it to <strong>In production</strong> to avoid weekly disconnects. If Google revokes the access, or <code>OAuthStatus</code> keeps reporting <code>connected: false</code>, call <code>OAuthDisconnect</code> and run Steps 2–5 again. There is no customer-facing token-refresh endpoint.</p>
+                  </section>
+
+                  <section id="using-the-skill">
+                    <h2>Using the Skill</h2>
+                    <p>Google Review Manager has <code>int-google-business-reviews</code> on by default. On any other agent, enable it with <code>POST /UserAgent/SkillsApply</code> (see <a href="/docs/agent-skills#toggling-integration-skills">Agent Skills → Toggling Integration Skills</a>):</p>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "idempotencyKey": "550e8400-e29b-41d4-a716-446655440002",
+    "skills": {
+      "int-google-business-reviews": true
+    }
+  }'</code></pre>
+                    <p><strong>Pricing:</strong> like the App Store and Google Play review skills, <code>int-google-business-reviews</code> adds $1 and 100 credits per month to the agent's skill weights (<code>monthly_price_weight_usd: 1</code>, <code>monthly_credits_weight: 100</code>). Preview the result with <a href="/docs/agent-overview#post-useragentpricingpreview"><code>POST /UserAgent/PricingPreview</code></a> before you apply it. As with every agent turn, scans and replies are billed on the LLM tokens they use.</p>
+                    <p>Adjust the scanner's schedule with <code>enabled</code> and <code>interval</code> only — the task body (<code>value</code>) is owned by the bundled integration skill and silently dropped on writes:</p>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "skillkey": "cs-cron-google-review-scanner",
+    "enabled": true,
+    "interval": "0 */4 * * *"
+  }'</code></pre>
+                    <p>To change how replies read, edit <code>cs-review-preferences</code>; to change which replies wait for approval, edit <code>cs-approval-policy</code> — see <a href="/docs/agent-skills#updating-preference-skills">Agent Skills → Updating Preferences</a>.</p>
+                  </section>
+
+                  <section id="troubleshooting">
+                    <h2>Troubleshooting</h2>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Error code</th><th>Meaning</th><th>What to do</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td><code>no_accounts</code></td><td>Sign-in worked, but no Business Profile account could be listed for this Google user. Right after setup this usually means the project is not approved yet (quota 0) or an API is disabled.</td><td>Check Steps 3 and 4 of the Google Cloud setup, then connect again. Otherwise connect with the Google account that owns or manages the business.</td></tr>
+                            <tr><td><code>authorization_denied</code></td><td>The user cancelled on Google's consent screen, or Google returned an error instead of an authorization code.</td><td>Start again and approve the consent screen.</td></tr>
+                            <tr><td><code>session_expired</code></td><td>More than 15 minutes passed between <code>OAuthConnect</code> and the return from Google, or the state was already used.</td><td>Call <code>OAuthConnect</code> again.</td></tr>
+                            <tr><td><code>missing_params</code></td><td>The callback was opened without an OAuth <code>state</code>.</td><td>Don't open the callback URL directly. Start a new flow with <code>OAuthConnect</code>.</td></tr>
+                            <tr><td><code>token_exchange_failed</code></td><td>Google did not return an access token for the authorization code, usually because of a wrong Client Secret or a redirect URI mismatch.</td><td>Re-copy the Client Secret, check the redirect URI, and connect again.</td></tr>
+                            <tr><td><code>useragent_not_found</code></td><td>The agent was deleted, or is no longer owned by the account that started the flow, before Google returned.</td><td>Start again with <code>OAuthConnect</code> for an existing agent.</td></tr>
+                            <tr><td><code>internal_error</code></td><td>Unexpected server error during callback processing.</td><td>Retry once. If it persists, contact Wiro support with the timestamp and your <code>useragentguid</code>.</td></tr>
+                            <tr><td><code>Wiro-managed OAuth is not enabled for Google Business Profile</code></td><td>Returned in <code>OAuthConnect</code>'s <code>errors[]</code> when <code>authmethod</code> is missing or <code>"wiro"</code>.</td><td>Send <code>authmethod: "own"</code>.</td></tr>
+                            <tr><td><code>Google Business Profile credentials not configured</code></td><td>Returned in <code>OAuthConnect</code>'s <code>errors[]</code> when the Client ID or Client Secret is not saved.</td><td>Save both with <code>POST /UserAgent/CredentialUpsert</code> (Step 1), then retry.</td></tr>
+                            <tr><td><code>Picker candidates expired. Discover them again.</code></td><td>More than five minutes passed after location discovery, or the account selection changed.</td><td>Call <code>DiscoverPickerItems</code> again, then resubmit the location selection.</td></tr>
+                            <tr><td><code>selections must include every available parent exactly once</code></td><td>The location selection left out or repeated an account group.</td><td>Send one <code>selections[]</code> entry per group returned without <code>errorcode</code>; use <code>items: []</code> to select no location for an account.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <p>Because no valid state is left to read your <code>redirecturl</code> from, <code>missing_params</code> and <code>session_expired</code> send the browser to <code>https://wiro.ai</code> with the error parameter instead of to your app.</p>
+
+                    <h3>"No accounts available" right after connecting</h3>
+                    <p>The Google Cloud project is usually not approved yet (0 requests per minute in <a href="https://console.cloud.google.com/iam-admin/quotas" target="_blank" rel="noopener">IAM &amp; Admin → Quotas</a>), or one of the three APIs from Step 4 is disabled. Connect again once Google has approved the project and the APIs are enabled.</p>
+
+                    <h3><code>redirect_uri_mismatch</code> on Google's page</h3>
+                    <p>The Authorized redirect URI on your OAuth client does not exactly match <code>https://api.wiro.ai/v1/UserAgentOAuth/GBPCallback</code>. Fix it in <a href="https://console.cloud.google.com/auth/clients" target="_blank" rel="noopener">Clients</a>; Google can take from a few minutes to a few hours to apply the change (<a href="https://support.google.com/cloud/answer/15549257" target="_blank" rel="noopener">Google Cloud help</a>).</p>
+
+                    <h3>The connection drops every week</h3>
+                    <p>The consent screen is still in <strong>Testing</strong>, where Google expires the refresh token after 7 days. Set the publishing status to <strong>In production</strong> in <a href="https://console.cloud.google.com/auth/audience" target="_blank" rel="noopener">Audience</a>, then connect again.</p>
+
+                    <h3>The agent reports a Google access problem</h3>
+                    <p>The agent tells you in chat when Google says the project is not approved, an API is disabled, the account cannot manage a location, or the connection expired. Fix the cause in Google Cloud or in the Business Profile. For an expired connection, click <strong>Disconnect</strong> on the Google Business Profile card, then connect again.</p>
+
+                    <h3>Google rejected a reply</h3>
+                    <p>Google reviews every reply before it is public. When it marks a reply <code>REJECTED</code> for a policy violation, the agent tells you; ask it to edit or delete that reply.</p>
+
+                    <h3><code>connected: true</code>, but no reviews are answered</h3>
+                    <p><code>connected</code> covers the account selection only. Check that at least one location is selected: use <strong>Manage</strong> on the Google Business Profile card, or run the location step (Step 5) through the API.</p>
+                  </section>
+
+                  <section id="multi-tenant-architecture">
+                    <h2>Multi-Tenant Architecture</h2>
+                    <p>For SaaS products connecting many businesses through a single Wiro-powered backend:</p>
+                    <ol>
+                      <li><strong>One Wiro agent instance per business.</strong> Call <code>POST /UserAgent/Deploy</code> during onboarding, then run the connection flow for that business's <code>useragentguid</code>.</li>
+                      <li><strong>Tokens are isolated per agent instance.</strong> One business's Google authorization is never visible to another — they live under different <code>useragentguid</code> values.</li>
+                      <li><strong>The consent screen shows your app.</strong> The connection uses your own OAuth client, so Google shows the app name of your Google Cloud project.</li>
+                      <li><strong>The quota belongs to the Google Cloud project.</strong> Every connection made with the same OAuth client shares its 300 requests per minute.</li>
+                    </ol>
+                  </section>
+
+                  <section id="related">
+                    <h2>Related</h2>
+                    <ul>
+                      <li><a href="/docs/agent-credentials">Agent Credentials &amp; OAuth</a> — integration catalog hub and generic OAuth reference.</li>
+                      <li><a href="/docs/agent-overview">Agent Overview</a> — deploying, starting, and lifecycle.</li>
+                      <li><a href="/docs/agent-skills">Agent Skills</a> — configuring <code>int-google-business-reviews</code>, custom skills, and scheduled runs.</li>
+                      <li><a href="/docs/integration-telegram-skills">Telegram integration</a> — receive the drafts on Telegram as well as in chat.</li>
+                      <li><a href="/docs/integration-appstore-skills">App Store Connect integration</a> and <a href="/docs/integration-googleplay-skills">Google Play integration</a> — reviews of your apps.</li>
+                      <li><a href="https://developers.google.com/my-business/content/prereqs" target="_blank" rel="noopener">Business Profile APIs prerequisites</a></li>
+                    </ul>
                   </section>
                 </article>
               </div>
