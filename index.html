@@ -20,8 +20,10 @@
 
           localStorage.removeItem("wiro-sg-theme");
 
+          // No saved choice = follow the device ("system"); nothing is written here.
+          var themePreference = preference === "light" || preference === "dark" || preference === "system" ? preference : "system";
           var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-          var isDark = preference === "dark" || (preference === "system" && prefersDark);
+          var isDark = themePreference === "dark" || (themePreference === "system" && prefersDark);
           document.documentElement.classList.toggle("wiro-dark", Boolean(isDark));
         } catch (error) {}
       })();
