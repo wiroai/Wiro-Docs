@@ -10226,7 +10226,7 @@ pro.credits = starter.credits × tiermultiplier
 <tr>
 <td><code>creditsyncat</code></td>
 <td><code>number|null</code></td>
-<td>Unix seconds of the last agent → API usage sync (<code>null</code> before the first report).</td>
+<td>Unix seconds of the last monthly usage reset, which starts the current credit period (<code>null</code> until the first reset).</td>
 </tr>
 <tr>
 <td><code>tokenRates</code></td>
@@ -12346,8 +12346,8 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
     {
       &quot;ts&quot;: &quot;2026-05-03T13:30:00.000Z&quot;,
       &quot;kind&quot;: &quot;cron_finished&quot;,
-      &quot;title&quot;: &quot;Cron tick: cs-cron-content-scanner&quot;,
-      &quot;summary&quot;: { &quot;skill&quot;: &quot;cs-cron-content-scanner&quot;, &quot;interval&quot;: &quot;0 9 * * *&quot;, &quot;trigger&quot;: &quot;scheduled&quot;, &quot;queued&quot;: 3 },
+      &quot;title&quot;: &quot;Cron ran: Scheduled Skill (cs-cron-content-scanner)&quot;,
+      &quot;summary&quot;: { &quot;jobId&quot;: &quot;6b1d9e2f-3a4c-4e5b-8f7a-1c2d3e4f5a6b&quot;, &quot;status&quot;: &quot;ok&quot; },
       &quot;durationMs&quot;: 1860,
       &quot;ok&quot;: true,
       &quot;userUuid&quot;: &quot;system&quot;,
@@ -12383,12 +12383,12 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <tr>
 <td><code>events[].kind</code></td>
 <td>string</td>
-<td>Fine-grained event class. One of: <code>"tool_started"</code>, <code>"tool_completed"</code> (one pair per tool invocation), <code>"turn_started"</code>, <code>"turn_ended"</code> (LLM turn boundary), <code>"cron_started"</code>, <code>"cron_finished"</code> (scheduled-cron tick), <code>"session_start"</code>, <code>"session_end"</code> (chat-session boundary), <code>"user_message"</code> (user → agent), <code>"agent_reply"</code> (agent → user), <code>"token_usage"</code> (a billed turn's token deduct), <code>"token_usage_idempotent"</code> (a replayed usage callback — already billed, informational), <code>"balance_gate_blocked"</code> (a turn refused because the credit pool was empty).</td>
+<td>Fine-grained event class. One of: <code>"turn_started"</code>, <code>"turn_ended"</code> (an LLM turn boundary); <code>"tool_started"</code>, <code>"tool_completed"</code> (one pair per tool call); <code>"tool_blocked"</code> (a tool call the agent's safety rules refused); <code>"cron_finished"</code> (a scheduled task finished); <code>"user_message"</code> (a message received on a connected Telegram, Slack or Discord channel — web chat messages are not logged here); <code>"token_usage"</code> (a billed turn's token usage — chat / cron / voice post-call); <code>"token_usage_idempotent"</code> (a replayed usage report, already billed — informational); <code>"media_relay"</code> (files from a reply were delivered); <code>"background_reply"</code> (a result that finished in the background was delivered to the chat).</td>
 </tr>
 <tr>
 <td><code>events[].tool</code></td>
 <td>string | null</td>
-<td>Present on <code>tool_started</code> / <code>tool_completed</code>. One of: <code>"read"</code>, <code>"write"</code>, <code>"edit"</code>, <code>"exec"</code>, <code>"web_fetch"</code>, <code>"web_search"</code>, <code>"sessions_spawn"</code>, <code>"message"</code>.</td>
+<td>Present on <code>tool_started</code> / <code>tool_completed</code> / <code>tool_blocked</code>. The tool's name, e.g. <code>"exec"</code>, <code>"read"</code>, <code>"write"</code>, <code>"edit"</code>, <code>"web_fetch"</code>, <code>"browser"</code>, <code>"image"</code>, <code>"sessions_spawn"</code>, <code>"message"</code>.</td>
 </tr>
 <tr>
 <td><code>events[].title</code></td>
@@ -12398,17 +12398,17 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <tr>
 <td><code>events[].summary</code></td>
 <td>object | null</td>
-<td>Structured event-specific payload. Treat as opaque — render as JSON when expanding. Plugin pre-redacts <code>apikey</code>, <code>apppassword</code>, <code>clientsecret</code>, <code>bearer</code>, <code>token</code>, etc. before writing. Keys vary per <code>kind</code>/<code>tool</code>.</td>
+<td>Structured event-specific payload. Treat as opaque — render as JSON when expanding. Secret values (<code>apikey</code>, <code>apppassword</code>, <code>clientsecret</code>, <code>bearer</code>, <code>token</code>, …) are masked before the event is written. Keys vary per <code>kind</code>/<code>tool</code>.</td>
 </tr>
 <tr>
 <td><code>events[].durationMs</code></td>
 <td>number | null</td>
-<td>Wall-clock duration in milliseconds. Populated on <code>*_completed</code> / <code>*_finished</code> / <code>turn_ended</code> / <code>token_usage</code> events.</td>
+<td>Wall-clock duration in milliseconds. Populated on <code>tool_completed</code>, <code>turn_ended</code>, <code>cron_finished</code> and <code>token_usage</code> events.</td>
 </tr>
 <tr>
 <td><code>events[].ok</code></td>
 <td>boolean | null</td>
-<td><code>true</code> on success, <code>false</code> on failure. Populated on <code>*_completed</code> / <code>*_finished</code>. Pair with <code>error</code> for failures.</td>
+<td><code>true</code> on success, <code>false</code> on failure. Populated on <code>tool_completed</code>, <code>turn_ended</code> and <code>cron_finished</code> events, and always <code>false</code> on <code>tool_blocked</code>. Pair with <code>error</code> for failures.</td>
 </tr>
 <tr>
 <td><code>events[].error</code></td>
@@ -14316,7 +14316,7 @@ print(response.body);
 </tr>
 <tr>
 <td><code>modelChangeMarker</code></td>
-<td><code>object\|null</code></td>
+<td><code>object|null</code></td>
 <td>Present <strong>only</strong> when this turn's <code>model</code> selects a different chat model than the session was running — i.e. it rotates the model mid-session. Shape: <code>{ guid, type: "model_change", fromModel, toModel, createdat }</code>. The platform also writes a matching marker row into history (see <a href="#post-useragentmessagehistory">Message/History</a>). Absent on turns that keep the session's model.</td>
 </tr>
 </tbody>
@@ -14501,12 +14501,12 @@ print(response.body);
 </tr>
 <tr>
 <td><code>agenttoken</code></td>
-<td><code>string\|null</code></td>
+<td><code>string|null</code></td>
 <td>The same token issued by <code>Message/Send</code> for this message. Lets callers that arrived at the row through <code>Message/Detail</code> (or <code>Message/History</code>) subscribe to the <a href="/docs/agent-websocket">Agent WebSocket</a> and pick up an in-flight response — useful when a chat UI rehydrates after a reload and finds a message still in <code>agent_queue</code> / <code>agent_start</code> / <code>agent_output</code> status. Only <code>null</code> for very old rows that pre-date the column.</td>
 </tr>
 <tr>
 <td><code>user</code></td>
-<td><code>object\|null</code></td>
+<td><code>object|null</code></td>
 <td>Resolved sender info: <code>{ uuid, firstname, lastname, email, username, avatar, avatarinitials }</code>. Decorated server-side from the message's <code>uuid</code> so the chat bubble can render avatar / hover-tooltip without an extra <code>User/Detail</code> round-trip. <code>null</code> when the row was written by automation (sentinel <code>uuid</code> like <code>"system"</code>) or when the user record was deleted.</td>
 </tr>
 <tr>
@@ -14571,42 +14571,42 @@ print(response.body);
 </tr>
 <tr>
 <td><code>inputtokens</code></td>
-<td><code>number\|null</code></td>
+<td><code>number|null</code></td>
 <td>Uncached input (prompt) tokens billed at the model's input rate. Populated on the assistant turn once it completes; <code>null</code> on user-only, cron, legacy, and <code>model_change</code> marker rows.</td>
 </tr>
 <tr>
 <td><code>outputtokens</code></td>
-<td><code>number\|null</code></td>
+<td><code>number|null</code></td>
 <td>Billed output (completion) tokens the model generated this turn. <code>null</code> on the same non-assistant / marker / legacy rows.</td>
 </tr>
 <tr>
 <td><code>cachereadtokens</code></td>
-<td><code>number\|null</code></td>
+<td><code>number|null</code></td>
 <td>Tokens served from the model's prompt cache (billed at the cached-input rate). <code>0</code> when the model reported no cache hits; <code>null</code> on non-assistant rows.</td>
 </tr>
 <tr>
 <td><code>cachewritetokens</code></td>
-<td><code>number\|null</code></td>
+<td><code>number|null</code></td>
 <td>Tokens written to the prompt cache this turn. <code>0</code> when none; <code>null</code> on non-assistant rows.</td>
 </tr>
 <tr>
 <td><code>totaltokens</code></td>
-<td><code>number\|null</code></td>
+<td><code>number|null</code></td>
 <td>Exact component sum: <code>inputtokens + outputtokens + cachereadtokens + cachewritetokens</code>. <code>null</code> on non-assistant rows.</td>
 </tr>
 <tr>
 <td><code>model</code></td>
-<td><code>string\|null</code></td>
+<td><code>string|null</code></td>
 <td>Canonical slug of the chat model that actually ran the turn (e.g. <code>"openai/gpt-5.4"</code>), reflecting any per-turn <code>model</code> override from Send. <code>null</code> on non-assistant / marker / legacy rows.</td>
 </tr>
 <tr>
 <td><code>tokencost</code></td>
-<td><code>number\|null</code></td>
+<td><code>number|null</code></td>
 <td>Credits deducted for the turn, derived from the token counts and the model's <code>tokenRates</code> (see <a href="/docs/agent-overview">Agent Overview</a>). <code>null</code> on non-assistant rows.</td>
 </tr>
 <tr>
 <td><code>processedms</code></td>
-<td><code>number\|null</code></td>
+<td><code>number|null</code></td>
 <td>Wall-clock model processing time for the turn, in milliseconds. <code>null</code> on non-assistant rows.</td>
 </tr>
 </tbody>
@@ -14869,42 +14869,42 @@ print(response.body);
 <tbody>
 <tr>
 <td><code>inputtokens</code></td>
-<td><code>number\|null</code></td>
+<td><code>number|null</code></td>
 <td>Uncached input (prompt) tokens billed at the model's input rate. <code>null</code> on user-only, cron, legacy, and <code>model_change</code> marker rows.</td>
 </tr>
 <tr>
 <td><code>outputtokens</code></td>
-<td><code>number\|null</code></td>
+<td><code>number|null</code></td>
 <td>Billed output (completion) tokens the model generated. <code>null</code> on the same non-assistant / marker / legacy rows.</td>
 </tr>
 <tr>
 <td><code>cachereadtokens</code></td>
-<td><code>number\|null</code></td>
+<td><code>number|null</code></td>
 <td>Tokens served from the model's prompt cache. <code>0</code> when none; <code>null</code> on non-assistant rows.</td>
 </tr>
 <tr>
 <td><code>cachewritetokens</code></td>
-<td><code>number\|null</code></td>
+<td><code>number|null</code></td>
 <td>Tokens written to the prompt cache. <code>0</code> when none; <code>null</code> on non-assistant rows.</td>
 </tr>
 <tr>
 <td><code>totaltokens</code></td>
-<td><code>number\|null</code></td>
+<td><code>number|null</code></td>
 <td>Exact component sum: <code>inputtokens + outputtokens + cachereadtokens + cachewritetokens</code>. <code>null</code> on non-assistant rows.</td>
 </tr>
 <tr>
 <td><code>model</code></td>
-<td><code>string\|null</code></td>
+<td><code>string|null</code></td>
 <td>Canonical slug of the chat model that ran the turn. <code>null</code> on non-assistant / marker / legacy rows.</td>
 </tr>
 <tr>
 <td><code>tokencost</code></td>
-<td><code>number\|null</code></td>
+<td><code>number|null</code></td>
 <td>Credits deducted for the turn. <code>null</code> on non-assistant rows.</td>
 </tr>
 <tr>
 <td><code>processedms</code></td>
-<td><code>number\|null</code></td>
+<td><code>number|null</code></td>
 <td>Wall-clock model processing time in milliseconds. <code>null</code> on non-assistant rows.</td>
 </tr>
 </tbody>
@@ -20187,22 +20187,22 @@ customer-facing token-refresh endpoint or manual refresh action.</p>
 </tr>
 <tr>
 <td><code>brand_color</code></td>
-<td><code>string\|null</code></td>
+<td><code>string|null</code></td>
 <td>Brand background colour (hex) for chips and cards.</td>
 </tr>
 <tr>
 <td><code>brand_text_color</code></td>
-<td><code>string\|null</code></td>
+<td><code>string|null</code></td>
 <td>Foreground colour to render on top of <code>brand_color</code>.</td>
 </tr>
 <tr>
 <td><code>brand_logo_filter</code></td>
-<td><code>string\|null</code></td>
+<td><code>string|null</code></td>
 <td>CSS <code>filter</code> value applied to monochrome SVG icons (e.g. <code>"brightness(0) invert(1)"</code>) so the same source SVG renders correctly on light and dark brand colours.</td>
 </tr>
 <tr>
 <td><code>docs_url</code></td>
-<td><code>string\|null</code></td>
+<td><code>string|null</code></td>
 <td>Slug or path of the integration page on this docs site. Frontends prefix with <code>/docs/</code> when rendering.</td>
 </tr>
 <tr>
@@ -20212,7 +20212,7 @@ customer-facing token-refresh endpoint or manual refresh action.</p>
 </tr>
 <tr>
 <td><code>credential_key</code></td>
-<td><code>string\|null</code></td>
+<td><code>string|null</code></td>
 <td>The provider this skill needs (<code>"instagram"</code>, <code>"google-ads"</code>, <code>"wiro"</code>, <code>"calendarific"</code>, …). <code>null</code> for <code>util</code> skills and the rare skills backed by a platform-only credential like <code>sys-openai</code>. Use <a href="/docs/agent-credentials#post-credentialsdetail"><code>POST /Credentials/Detail</code></a> to inspect the schema.</td>
 </tr>
 <tr>
@@ -20247,7 +20247,7 @@ customer-facing token-refresh endpoint or manual refresh action.</p>
 </tr>
 <tr>
 <td><code>replacement</code></td>
-<td><code>string\|null</code></td>
+<td><code>string|null</code></td>
 <td>When <code>deprecated: true</code>, the registry-recommended successor skill name.</td>
 </tr>
 <tr>
@@ -22369,7 +22369,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
                             <tr><td><code>usedcredits</code></td><td><code>number</code></td><td>Consumed during the current period (reported by the runtime).</td></tr>
                             <tr><td><code>remainingcredits</code></td><td><code>number</code></td><td><code>max(0, monthlycredits + extracredits - usedcredits)</code>.</td></tr>
                             <tr><td><code>creditperiod</code></td><td><code>string</code></td><td><code>'YYYY-MM'</code> billing window. Rolls over on subscription renewal.</td></tr>
-                            <tr><td><code>creditsyncat</code></td><td><code>number|null</code></td><td>Last runtime → API usage sync in Unix seconds.</td></tr>
+                            <tr><td><code>creditsyncat</code></td><td><code>number|null</code></td><td>Unix seconds of the last monthly usage reset, the start of the current credit period; <code>byModel</code> counts turns from this moment on (<code>null</code> until the first reset).</td></tr>
                             <tr><td><code>byModel</code></td><td><code>array</code></td><td>Per-model token rollup for the <strong>current billing period</strong>, aggregating only <code>action: "tokens"</code> rows, sorted by <code>tokencost</code> descending. A <code>null</code> or empty <code>model</code> is bucketed as <code>"unknown"</code>. Each entry: <code>{ model, inputtokens, outputtokens, cachereadtokens, cachewritetokens, totaltokens, tokencost, turncount }</code>. Within a period that stays inside <code>monthlycredits</code>, the <code>tokencost</code> values add up to <code>usedcredits</code>; credits spent from extra packs are counted here but come off <code>extracredits</code> instead.</td></tr>
                           </tbody>
                         </table>
@@ -22488,7 +22488,7 @@ console.log('Now in period:', summary.creditperiod);</code></pre>
 
                   <section id="logs-overview">
                     <h2>Overview</h2>
-                    <p>Every Wiro agent container runs a small <strong>wiro-commands plugin</strong> that appends one structured <code>ActivityEvent</code> JSON line per tool call, turn boundary, session boundary, message exchange, and synthesized cron run. The plugin redacts secrets-by-field-name, high-entropy assignment values, internal tool-call IDs, and the API URL/credentials before writing — so what shows up in <code>Logs</code> is safe to show end users.</p>
+                    <p>Every Wiro agent appends one structured <code>ActivityEvent</code> JSON line per tool call, LLM turn boundary, scheduled task run and billed turn, plus each message that arrives on a connected Telegram, Slack or Discord channel. Secrets (matched by field name and by high-entropy value), internal tool-call IDs and API credentials are redacted before an event is written — so what shows up in <code>Logs</code> is safe to show end users.</p>
                     <p>A daily JSONL file is written for each calendar day; files older than 7 days are gzipped, files older than 180 days are deleted by the agent's daily maintenance cron.</p>
                     <p>The endpoints below are <strong>owner-or-team-admin</strong> scoped. Plain members of the agent's team receive <code>useragent-team-admin-required</code> (code <code>97</code>); outside callers receive <code>useragent-access-denied</code>.</p>
                     <div class="docs-param-table">
@@ -22506,7 +22506,7 @@ console.log('Now in period:', summary.creditperiod);</code></pre>
                         </table>
                       </div>
                     </div>
-                    <div class="info-callout"><strong>Activity feed vs <code>Message/History</code>.</strong> <code>Message/History</code> is a chat-bubble-level read of the conversation. <code>Logs</code> is a <strong>runtime</strong> view: every tool call, every scheduled trigger, every session boundary the agent touched. They serve different audiences (<code>Message/History</code> for end users, <code>Logs</code> for operators / power users).</div>
+                    <div class="info-callout"><strong>Activity feed vs <code>Message/History</code>.</strong> <code>Message/History</code> is a chat-bubble-level read of the conversation. <code>Logs</code> is a <strong>runtime</strong> view: every tool call, every turn and every scheduled task run. They serve different audiences (<code>Message/History</code> for end users, <code>Logs</code> for operators / power users).</div>
                   </section>
 
                   <section id="logs-event-shape">
@@ -22542,13 +22542,13 @@ console.log('Now in period:', summary.creditperiod);</code></pre>
                             <tr><th>Field</th><th>Type</th><th>Description</th></tr>
                           </thead>
                           <tbody>
-                            <tr><td><code>ts</code></td><td><code>string</code></td><td>ISO-8601 UTC datetime when the event was emitted inside the container (e.g. <code>"2026-05-03T14:00:10.234Z"</code>). Parse with <code>Date.parse(ts)</code> for arithmetic.</td></tr>
-                            <tr><td><code>kind</code></td><td><code>string</code></td><td>Fine-grained event class. One of: <code>"tool_started"</code>, <code>"tool_completed"</code> (one pair per tool invocation); <code>"turn_started"</code>, <code>"turn_ended"</code> (LLM turn boundary); <code>"cron_started"</code>, <code>"cron_finished"</code> (scheduled-cron tick); <code>"session_start"</code>, <code>"session_end"</code> (chat-session boundary); <code>"user_message"</code> (user → agent message); <code>"agent_reply"</code> (agent → user reply); <code>"token_usage"</code> (a billed turn's token usage — chat / cron / voice post-call); <code>"token_usage_idempotent"</code> (a replayed usage callback, already billed — informational); <code>"balance_gate_blocked"</code> (a turn refused because the credit pool was exhausted).</td></tr>
-                            <tr><td><code>tool</code></td><td><code>string?</code></td><td>Present on <code>tool_started</code> / <code>tool_completed</code>. Tool family — one of: <code>"read"</code>, <code>"write"</code>, <code>"edit"</code>, <code>"exec"</code>, <code>"web_fetch"</code>, <code>"web_search"</code>, <code>"sessions_spawn"</code>, <code>"message"</code>.</td></tr>
+                            <tr><td><code>ts</code></td><td><code>string</code></td><td>ISO-8601 UTC datetime when the event was recorded (e.g. <code>"2026-05-03T14:00:10.234Z"</code>). Parse with <code>Date.parse(ts)</code> for arithmetic.</td></tr>
+                            <tr><td><code>kind</code></td><td><code>string</code></td><td>Fine-grained event class. One of: <code>"turn_started"</code>, <code>"turn_ended"</code> (an LLM turn boundary); <code>"tool_started"</code>, <code>"tool_completed"</code> (one pair per tool call); <code>"tool_blocked"</code> (a tool call the agent's safety rules refused); <code>"cron_finished"</code> (a scheduled task finished); <code>"user_message"</code> (a message received on a connected Telegram, Slack or Discord channel — web chat messages are not logged here); <code>"token_usage"</code> (a billed turn's token usage — chat / cron / voice post-call); <code>"token_usage_idempotent"</code> (a replayed usage report, already billed — informational); <code>"media_relay"</code> (files from a reply were delivered); <code>"background_reply"</code> (a result that finished in the background was delivered to the chat).</td></tr>
+                            <tr><td><code>tool</code></td><td><code>string?</code></td><td>Present on <code>tool_started</code> / <code>tool_completed</code> / <code>tool_blocked</code>. The tool's name, e.g. <code>"exec"</code>, <code>"read"</code>, <code>"write"</code>, <code>"edit"</code>, <code>"web_fetch"</code>, <code>"browser"</code>, <code>"image"</code>, <code>"sessions_spawn"</code>, <code>"message"</code>.</td></tr>
                             <tr><td><code>title</code></td><td><code>string</code></td><td>Human-readable one-line description of what happened (e.g. <code>"Posted carousel: \"Brand voice teaser\""</code>, <code>"Fetched https://…"</code>, <code>"Token Usage"</code>). Always present.</td></tr>
-                            <tr><td><code>summary</code></td><td><code>object?</code></td><td>Structured event-specific payload. Opaque on the wire — render as JSON when expanding the row. Plugin pre-redacts <code>apikey</code>, <code>apppassword</code>, <code>clientsecret</code>, <code>bearer</code>, <code>token</code>, etc. before writing. Common keys: <code>url</code>, <code>status</code>, <code>bytes</code>, <code>query</code>, <code>resultCount</code>, <code>path</code>, <code>lines</code>, <code>interval</code>, <code>trigger</code>, <code>messageguid</code>, <code>wordCount</code>, <code>elapsedTime</code>.</td></tr>
-                            <tr><td><code>durationMs</code></td><td><code>number?</code></td><td>Wall-clock duration in milliseconds. Populated on <code>*_completed</code> / <code>*_finished</code> / <code>turn_ended</code> events.</td></tr>
-                            <tr><td><code>ok</code></td><td><code>boolean?</code></td><td><code>true</code> for a successful completion, <code>false</code> for a failure. Populated on <code>*_completed</code> / <code>*_finished</code> events. Pair with <code>error</code> for failure rows.</td></tr>
+                            <tr><td><code>summary</code></td><td><code>object?</code></td><td>Structured event-specific payload. Opaque on the wire — render as JSON when expanding the row. Secret values (<code>apikey</code>, <code>apppassword</code>, <code>clientsecret</code>, <code>bearer</code>, <code>token</code>, …) are masked before the event is written. Common keys: <code>file</code>, <code>method</code>, <code>host</code>, <code>path</code>, <code>preview</code>, <code>messageCount</code>, <code>jobId</code>, <code>status</code>, <code>reason</code>.</td></tr>
+                            <tr><td><code>durationMs</code></td><td><code>number?</code></td><td>Wall-clock duration in milliseconds. Populated on <code>tool_completed</code>, <code>turn_ended</code>, <code>cron_finished</code> and <code>token_usage</code> events.</td></tr>
+                            <tr><td><code>ok</code></td><td><code>boolean?</code></td><td><code>true</code> for a successful completion, <code>false</code> for a failure. Populated on <code>tool_completed</code>, <code>turn_ended</code> and <code>cron_finished</code> events, and always <code>false</code> on <code>tool_blocked</code>. Pair with <code>error</code> for failure rows.</td></tr>
                             <tr><td><code>error</code></td><td><code>string?</code></td><td>One-line failure message (when <code>ok: false</code>).</td></tr>
                             <tr><td><code>cost</code></td><td><code>object?</code></td><td>Legacy per-action credit charge, <code>{ credits, skill, action }</code>. Only events recorded before agents switched to per-turn token billing can carry it; current events never do. See the <code>token_usage</code> event for what a turn cost.</td></tr>
                             <tr><td><code>userUuid</code></td><td><code>string?</code></td><td>UUID of the actor who triggered the event. <code>"system"</code> for cron / internal events. May be missing on legacy rows from the 180-day retention window pre-attribution rollout — the server falls back to the useragent owner.</td></tr>
@@ -22557,7 +22557,7 @@ console.log('Now in period:', summary.creditperiod);</code></pre>
                         </table>
                       </div>
                     </div>
-                    <div class="info-callout"><strong>What is <code>summary</code> for?</strong> Tool calls include the input/output summary (URL, status, bytecount, search query); cron ticks include <code>{ interval, trigger }</code>; message events include <code>{ messageguid, wordCount, elapsedTime }</code>. Treat the object as opaque and render-on-expand — its shape is plugin-version-specific and is allowed to evolve without a docs revision.</div>
+                    <div class="info-callout"><strong>What is <code>summary</code> for?</strong> Tool events carry a short summary of the call — for example the file path for file tools, the program for <code>exec</code>, or the method, host and path for web requests. Turn events carry a short <code>preview</code> (plus <code>messageCount</code> on <code>turn_ended</code>); <code>cron_finished</code> carries <code>{ jobId, status }</code>; <code>user_message</code> carries <code>{ preview }</code>; <code>tool_blocked</code> carries the <code>reason</code>. Treat the object as opaque and render-on-expand — its shape depends on the tool and may change without a docs revision.</div>
 
                     <h3>Token-usage events</h3>
                     <p>A <code>token_usage</code> event records the token spend and credit deduction for one billed turn — a chat reply, a cron run, or a voice post-call. A <code>token_usage_idempotent</code> event carries the <strong>same shape</strong> for a replayed usage callback that was already billed (informational; it does not deduct again). On top of the base <code>ActivityEvent</code> fields, these events add:</p>
@@ -22675,8 +22675,8 @@ console.log('Now in period:', summary.creditperiod);</code></pre>
     {
       "ts": "2026-05-03T13:30:00.000Z",
       "kind": "cron_finished",
-      "title": "Cron tick: cs-cron-blog-scanner",
-      "summary": { "skill": "cs-cron-blog-scanner", "interval": "0 9 * * *", "trigger": "scheduled" },
+      "title": "Cron ran: Scheduled Skill (cs-cron-blog-scanner)",
+      "summary": { "jobId": "0f3c2a1b-7d4e-4c8f-9a6b-2e5d1c7f8a90", "status": "ok" },
       "durationMs": 4210,
       "ok": true,
       "userUuid": "system",
@@ -22684,12 +22684,11 @@ console.log('Now in period:', summary.creditperiod);</code></pre>
     },
     {
       "ts": "2026-05-03T13:14:42.118Z",
-      "kind": "agent_reply",
-      "title": "Agent replied (412 words, 8.1s)",
+      "kind": "turn_ended",
+      "title": "Agent turn completed",
       "summary": {
-        "messageguid": "5c41dabf-f2be-4aa8-a5a4-8c9e3d2f3f11",
-        "elapsedTime": "8.1s",
-        "wordCount": 412
+        "preview": "Here is this week's roundup draft…",
+        "messageCount": 6
       },
       "durationMs": 8104,
       "ok": true,
@@ -22756,10 +22755,10 @@ console.log('Now in period:', summary.creditperiod);</code></pre>
   "truncated": false,
   "events": [
     {
-      "ts": "2026-05-02T08:00:00.000Z",
-      "kind": "session_start",
-      "title": "Session started: user-42",
-      "summary": { "sessionkey": "user-42" },
+      "ts": "2026-05-02T08:00:20.142Z",
+      "kind": "turn_started",
+      "title": "Agent turn started",
+      "summary": { "preview": "Hi, can you draft a roundup post?" },
       "userUuid": "ada-uuid",
       "user": {
         "uuid": "ada-uuid",
@@ -22772,11 +22771,10 @@ console.log('Now in period:', summary.creditperiod);</code></pre>
       }
     },
     {
-      "ts": "2026-05-02T08:00:20.142Z",
+      "ts": "2026-05-02T08:00:19.870Z",
       "kind": "user_message",
-      "title": "User: \"Hi, can you draft a roundup post?\"",
-      "summary": { "messageguid": "5c41dabf-…", "wordCount": 8 },
-      "userUuid": "ada-uuid",
+      "title": "User: Hi, can you draft a roundup post?",
+      "summary": { "preview": "Hi, can you draft a roundup post?" },
       "user": {
         "uuid": "ada-uuid",
         "firstname": "Ada",
@@ -26345,9 +26343,9 @@ if (params.get("li_connected") === "true") {
                             <td>Use <code>POST /UserAgent/MyAgents</code>.</td>
                           </tr>
                           <tr>
-                            <td><code>invalid_config</code></td>
-                            <td>No <code>credentials.linkedin</code> block.</td>
-                            <td>Update with <code>clientid</code>, <code>clientsecret</code>, <code>organizationid</code>.</td>
+                            <td><code>LinkedIn credentials not configured</code></td>
+                            <td>Returned in <code>OAuthConnect</code>'s <code>errors[]</code> when <code>authmethod: "own"</code> but <code>clientid</code> / <code>clientsecret</code> are missing.</td>
+                            <td><code>UserAgent/CredentialUpsert</code> with <code>clientid</code> + <code>clientsecret</code>.</td>
                           </tr>
                           <tr>
                             <td><code>internal_error</code></td>
@@ -26707,8 +26705,8 @@ if (params.get("x_connected") === "true") {
                             <td>Use <code>POST /UserAgent/MyAgents</code>.</td>
                           </tr>
                           <tr>
-                            <td><code>invalid_config</code></td>
-                            <td>No <code>credentials.twitter</code> block.</td>
+                            <td><code>Twitter / X credentials not configured</code></td>
+                            <td>Returned in <code>OAuthConnect</code>'s <code>errors[]</code> when <code>authmethod: "own"</code> but <code>clientid</code> / <code>clientsecret</code> are missing.</td>
                             <td><code>UserAgent/CredentialUpsert</code> with <code>clientid</code> + <code>clientsecret</code>.</td>
                           </tr>
                           <tr>
@@ -29313,9 +29311,9 @@ if (params.get("gbp_connected") === "true") {
                             <td>Use <code>POST /UserAgent/MyAgents</code>.</td>
                           </tr>
                           <tr>
-                            <td><code>invalid_config</code></td>
-                            <td>No <code>credentials.hubspot</code> block.</td>
-                            <td>Update with <code>clientid</code> + <code>clientsecret</code>.</td>
+                            <td><code>HubSpot credentials not configured</code></td>
+                            <td>Returned in <code>OAuthConnect</code>'s <code>errors[]</code> when <code>authmethod: "own"</code> but <code>clientid</code> / <code>clientsecret</code> are missing.</td>
+                            <td><code>UserAgent/CredentialUpsert</code> with <code>clientid</code> + <code>clientsecret</code>.</td>
                           </tr>
                           <tr>
                             <td><code>internal_error</code></td>
@@ -29640,9 +29638,9 @@ if (params.get("gbp_connected") === "true") {
                             <td>Use <code>POST /UserAgent/MyAgents</code>.</td>
                           </tr>
                           <tr>
-                            <td><code>invalid_config</code></td>
-                            <td>No <code>credentials.mailchimp</code> block.</td>
-                            <td>Update with credentials.</td>
+                            <td><code>Mailchimp credentials not configured</code></td>
+                            <td>Returned in <code>OAuthConnect</code>'s <code>errors[]</code> when <code>authmethod: "own"</code> but <code>clientid</code> / <code>clientsecret</code> are missing.</td>
+                            <td>Update with <code>POST /UserAgent/CredentialUpsert</code>.</td>
                           </tr>
                           <tr>
                             <td><code>internal_error</code></td>

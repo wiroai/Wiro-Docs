@@ -242,7 +242,7 @@ To change **what** the scheduled task posts (topics, tone, hashtag rules), edit 
 | `session_expired` | 15-min state cache expired (includes PKCE verifier). | Call `OAuthConnect` again. |
 | `token_exchange_failed` | Wrong Client Secret, redirect URI mismatch, or lost PKCE verifier. | Re-copy Client Secret; verify URL; start over. |
 | `useragent_not_found` | Invalid guid. | Use `POST /UserAgent/MyAgents`. |
-| `X (Twitter) credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `clientid` / `clientsecret` are missing. | `UserAgent/CredentialUpsert` with `clientid` + `clientsecret`. |
+| `Twitter / X credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `clientid` / `clientsecret` are missing. | `UserAgent/CredentialUpsert` with `clientid` + `clientsecret`. |
 | `internal_error` | Server error. | Retry; contact support. |
 
 ### Posts fail with 429 Too Many Requests
