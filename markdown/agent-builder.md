@@ -437,7 +437,7 @@ When you toggle a skill on or off, the active subscription is automatically pror
 
 ## Limits & Notes
 
-- **Skill set must produce a `> $0` price.** Custom builds with no paid skills are rejected with `Subscription price must be greater than $0. Add at least one paid skill or set agent base price.` With at least one paid skill, Starter costs at least the `starterFloorUsd` floor: $4 and 400 credits a month.
+- **Every build costs at least the floor.** Starter costs at least the `starterFloorUsd` floor, $4 and 400 credits a month, and a build made only of free skills pays that floor too.
 - **Conflict / dependency violations are surfaced eagerly.** If you toggle on two mutually-exclusive skills, `SkillsApply` returns code `102` with a `conflicts[]` array; if a `depends_on` is missing, code `101` with `deps[]`. Resolve in the UI before committing.
 - **Custom builds receive the same auto-restart on configuration changes** as template deploys (status `3`/`4` → status `1`, then re-queued).
 - **Cover image:** custom builds can ship a `cover` URL in the Deploy body, or upload one later via [`POST /UserAgent/Cover`](/docs/agent-overview#post-useragentcover).

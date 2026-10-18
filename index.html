@@ -8786,7 +8786,7 @@ pro.credits = starter.credits × tiermultiplier
 </code></pre>
 <p>Every paid skill adds 100 monthly credits for each $1 it adds to the price, so a tier always carries 100 credits per dollar (1 credit = $0.01): the $9 Starter above comes with 900 credits a month, and its $90 Pro with 9,000.</p>
 <blockquote>
-<p><strong>Starter tier minimum: $4/month.</strong> Every agent with at least one paid skill pays at least $4/month on Starter. When the raw sum of enabled-skill weights would land below $4, the resolver bumps the Starter price up to $4 <strong>and</strong> scales the credit pool up by the same ratio — so the user gets a proportional credit increase, not a free upgrade. Agents with zero paid skills (rule-only, or all-<code>ZERO</code>-tier skills) stay at <code>$0</code> / <code>0</code> credits. Default Pro = Starter × <code>tiermultiplier</code> (default <code>10</code>), so an agent that lands on the $4 floor pays <strong>$40/month on Pro</strong> with the same credit pool × 10.</p>
+<p><strong>Starter tier minimum: $4/month.</strong> Every agent pays at least $4/month on Starter. When the raw sum of enabled-skill weights would land below $4, the resolver bumps the Starter price up to $4 <strong>and</strong> scales the credit pool up by the same ratio — so the user gets a proportional credit increase, not a free upgrade. An agent made only of free (<code>ZERO</code>-tier) skills pays the floor too: $4/month with 400 credits. Default Pro = Starter × <code>tiermultiplier</code> (default <code>10</code>), so an agent that lands on the $4 floor pays <strong>$40/month on Pro</strong> with the same credit pool × 10.</p>
 </blockquote>
 <h3 id="token-billing">Token Billing</h3>
 <p>The monthly tier buys a <strong>credit pool</strong>; each turn the agent runs (a chat reply, a scheduled cron tick, or a voice-prep turn) deducts credits from that pool, <strong>metered by the tokens its model consumes</strong>. There are no flat per-action costs — what a turn costs depends on the model and how many input / output / cached tokens it used.</p>
@@ -13511,10 +13511,6 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <tr>
 <td><code>Agent not found or inactive</code></td>
 <td>The catalog agent exists but is disabled</td>
-</tr>
-<tr>
-<td><code>Subscription price must be greater than $0. Add at least one paid skill or set agent base price.</code></td>
-<td>Custom build with a $0 skill set — toggle on at least one paid skill</td>
 </tr>
 <tr>
 <td><code>Agent is already running</code></td>
@@ -22066,7 +22062,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
 <p>When you toggle a skill on or off, the active subscription is automatically prorated (see Step 4 above). The new monthly amount becomes your charge at next renewal.</p>
 <h2 id="limits-notes">Limits &amp; Notes</h2>
 <ul>
-<li><strong>Skill set must produce a <code>&gt; $0</code> price.</strong> Custom builds with no paid skills are rejected with <code>Subscription price must be greater than $0. Add at least one paid skill or set agent base price.</code> With at least one paid skill, Starter costs at least the <code>starterFloorUsd</code> floor: $4 and 400 credits a month.</li>
+<li><strong>Every build costs at least the floor.</strong> Starter costs at least the <code>starterFloorUsd</code> floor, $4 and 400 credits a month, and a build made only of free skills pays that floor too.</li>
 <li><strong>Conflict / dependency violations are surfaced eagerly.</strong> If you toggle on two mutually-exclusive skills, <code>SkillsApply</code> returns code <code>102</code> with a <code>conflicts[]</code> array; if a <code>depends_on</code> is missing, code <code>101</code> with <code>deps[]</code>. Resolve in the UI before committing.</li>
 <li><strong>Custom builds receive the same auto-restart on configuration changes</strong> as template deploys (status <code>3</code>/<code>4</code> → status <code>1</code>, then re-queued).</li>
 <li><strong>Cover image:</strong> custom builds can ship a <code>cover</code> URL in the Deploy body, or upload one later via <a href="/docs/agent-overview#post-useragentcover"><code>POST /UserAgent/Cover</code></a>.</li>
