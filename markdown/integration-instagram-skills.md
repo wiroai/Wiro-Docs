@@ -21,11 +21,15 @@ Instagram Login issues an Instagram User access token and publishes through
 
 **Skills that use this integration:**
 
-- `int-instagram-post` — Publish feed carousels, reels, and stories
+- `int-instagram-post` — Publish feed carousels, Reels, and Stories; any agent can also post a finished video as a Reel
 
 **Agents that typically enable this integration:**
 
 - Social Manager
+- Video Creator — to post the videos it makes as Reels. Add `int-instagram-post` with
+  [`SkillsApply`](/docs/agent-skills#toggling-integration-skills); it adds $1 a month to the Starter
+  price. Video Creator then posts a Reel when the request asks for it or an `Instagram` line in its
+  `video-preferences` says to, and otherwise offers to.
 - Any custom agent that needs Instagram publishing
 
 ## Availability
@@ -436,6 +440,32 @@ To change **what** the scheduled task posts (topics, tone, hashtag rules,
 caption style), edit the paired preference skill `cs-content-tone` instead —
 see [Agent Skills → Updating Preference Skills](/docs/agent-skills#updating-preference-skills).
 
+Hashtags, calls to action and links come from your draft, `cs-content-tone`,
+or the agent's preferences. Without hashtag rules the agent adds 3–5 relevant
+hashtags; Instagram allows at most 5 per post. Instead of a drafted post, you
+can give the agent the caption and the images or videos in chat: the first one
+is the cover.
+
+### Posting a video as a Reel
+
+Any agent with `int-instagram-post` and a connected account can post one
+finished video as a Reel, for example a video made by Video Creator. Ask for it
+in chat, and name the account when several are connected.
+
+- **No drafts.** Instagram's API has no draft or private post, so a Reel is
+  public as soon as it is published. The agent posts when your request asks for
+  it, or after you approve; otherwise it waits.
+- **The video.** A vertical (9:16) MP4 of 3 seconds to 15 minutes, up to 300 MB
+  and at most 1920 px wide. A 16:9 video is too wide for a Reel, so Video Creator
+  makes a 9:16 version instead.
+- **The caption.** The hook first, then a few short lines and the call to
+  action. Instagram doesn't make links in a caption clickable, so the call to
+  action points to the link in your profile.
+- **The reply** carries the Reel's link. If publishing fails, the agent checks
+  the account's latest posts first, since the Reel may already be live.
+
+Instagram allows each account 50 posts through the API in 24 hours.
+
 ## Troubleshooting
 
 | Error code | Meaning | What to do |
@@ -465,6 +495,13 @@ Common causes:
 - Media that does not meet Meta's current format, duration, size, or codec
   requirements.
 - Instagram account switched back to Personal after connection — the token becomes invalid. Ask the user to switch back to Business and reconnect.
+
+### The agent says no Instagram account is connected
+
+The agent has `int-instagram-post`, but no Instagram account is connected to
+it. It asks you to connect one instead of posting, and scheduled posting runs
+do nothing. Connect an account (in System User mode, select it with
+`SetPickerAccounts` as in Step 4) and ask again.
 
 ## Multi-Tenant Architecture
 

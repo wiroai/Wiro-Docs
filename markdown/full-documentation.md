@@ -15500,7 +15500,7 @@ Wiro provides pre-built agent templates you can deploy immediately. Each agent s
 | **[App Event Manager](https://wiro.ai/agents/app-event-manager)** | Scan global holidays, suggest and create App Store + Google Play in-app events | App Store Connect (JWT), Google Play (service account), Calendarific (API key) |
 | **[Push Notification Manager](https://wiro.ai/agents/push-notification-manager)** | Craft locale- and timezone-aware push notifications, queue dispatch | Firebase (service account JSON per app), Calendarific (API key) |
 | **[Voice Receptionist](https://wiro.ai/agents/voice-receptionist)** | Answer phone calls 24/7 with a real-time AI receptionist — recognises callers from CRM, books from your calendar, drafts CRM notes + follow-up emails, streams a live transcript to chat | Twilio Voice (Account SID, Auth Token, phone number) for inbound phone; HubSpot (optional, caller recognition); Google Calendar (optional, slot lookup); Google Drive (optional); Brevo or HubSpot (any one, optional, follow-up email drafts); Telegram bot (optional, operator approvals) |
-| **[Video Creator](https://wiro.ai/agents/video-creator)** | Turn a website, web app, store listing, document or product photos into a share-ready video with real screens, voice-over, music and captions | Wiro project (the video's model runs are billed to its wallet); Telegram bot (optional) |
+| **[Video Creator](https://wiro.ai/agents/video-creator)** | Turn a website, web app, store listing, document or product photos into a share-ready video with real screens, voice-over, music and captions | Wiro project (the video's model runs are billed to its wallet); [YouTube](/docs/integration-youtube-skills) and [Instagram](/docs/integration-instagram-skills) (optional, to publish finished videos); Telegram bot (optional) |
 
 > The list above matches the agent templates currently deployed in production. The exact set evolves over time as new templates ship — fetch `POST /Agent/List` for the live catalog. Each agent's full marketing page lives at `https://wiro.ai/agents/{slug}` (linked in the first column).
 
@@ -17121,6 +17121,11 @@ To change **what** the scheduled task posts (topics, tone, content angle), edit
 the paired preference skill `cs-content-tone` instead — see
 [Agent Skills → Updating Preference Skills](/docs/agent-skills#updating-preference-skills).
 
+The agent posts an approved draft, or the text, link and media you give it in
+chat. Hashtags, calls to action and links come from the draft, `cs-content-tone`,
+or the agent's preferences; without hashtag rules the agent adds 1–3. Facebook
+makes links clickable, so a draft's page link goes into the post.
+
 ## Troubleshooting
 
 | Error code | Meaning | What to do |
@@ -17153,6 +17158,13 @@ Check `POST /UserAgent/Detail` and verify `credentials.facebook-pages.pageid` is
 ### "App not verified" banner on consent
 
 Expected in Development Mode. Users in App Roles can click Continue.
+
+### The agent says no Facebook Page is connected
+
+The agent has `int-facebookpage-post`, but no Page is connected to it. It asks
+you to connect one instead of posting, and scheduled posting runs do nothing.
+Connect a Page and select it with `SetPickerAccounts` (Step 4, or Step 9 for
+OAuth), then ask again.
 
 ## Multi-Tenant Architecture
 
@@ -17203,11 +17215,15 @@ Instagram Login issues an Instagram User access token and publishes through
 
 **Skills that use this integration:**
 
-- `int-instagram-post` — Publish feed carousels, reels, and stories
+- `int-instagram-post` — Publish feed carousels, Reels, and Stories; any agent can also post a finished video as a Reel
 
 **Agents that typically enable this integration:**
 
 - Social Manager
+- Video Creator — to post the videos it makes as Reels. Add `int-instagram-post` with
+  [`SkillsApply`](/docs/agent-skills#toggling-integration-skills); it adds $1 a month to the Starter
+  price. Video Creator then posts a Reel when the request asks for it or an `Instagram` line in its
+  `video-preferences` says to, and otherwise offers to.
 - Any custom agent that needs Instagram publishing
 
 ## Availability
@@ -17618,6 +17634,32 @@ To change **what** the scheduled task posts (topics, tone, hashtag rules,
 caption style), edit the paired preference skill `cs-content-tone` instead —
 see [Agent Skills → Updating Preference Skills](/docs/agent-skills#updating-preference-skills).
 
+Hashtags, calls to action and links come from your draft, `cs-content-tone`,
+or the agent's preferences. Without hashtag rules the agent adds 3–5 relevant
+hashtags; Instagram allows at most 5 per post. Instead of a drafted post, you
+can give the agent the caption and the images or videos in chat: the first one
+is the cover.
+
+### Posting a video as a Reel
+
+Any agent with `int-instagram-post` and a connected account can post one
+finished video as a Reel, for example a video made by Video Creator. Ask for it
+in chat, and name the account when several are connected.
+
+- **No drafts.** Instagram's API has no draft or private post, so a Reel is
+  public as soon as it is published. The agent posts when your request asks for
+  it, or after you approve; otherwise it waits.
+- **The video.** A vertical (9:16) MP4 of 3 seconds to 15 minutes, up to 300 MB
+  and at most 1920 px wide. A 16:9 video is too wide for a Reel, so Video Creator
+  makes a 9:16 version instead.
+- **The caption.** The hook first, then a few short lines and the call to
+  action. Instagram doesn't make links in a caption clickable, so the call to
+  action points to the link in your profile.
+- **The reply** carries the Reel's link. If publishing fails, the agent checks
+  the account's latest posts first, since the Reel may already be live.
+
+Instagram allows each account 50 posts through the API in 24 hours.
+
 ## Troubleshooting
 
 | Error code | Meaning | What to do |
@@ -17647,6 +17689,13 @@ Common causes:
 - Media that does not meet Meta's current format, duration, size, or codec
   requirements.
 - Instagram account switched back to Personal after connection — the token becomes invalid. Ask the user to switch back to Business and reconnect.
+
+### The agent says no Instagram account is connected
+
+The agent has `int-instagram-post`, but no Instagram account is connected to
+it. It asks you to connect one instead of posting, and scheduled posting runs
+do nothing. Connect an account (in System User mode, select it with
+`SetPickerAccounts` as in Step 4) and ask again.
 
 ## Multi-Tenant Architecture
 

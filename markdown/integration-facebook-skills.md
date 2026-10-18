@@ -464,6 +464,11 @@ To change **what** the scheduled task posts (topics, tone, content angle), edit
 the paired preference skill `cs-content-tone` instead — see
 [Agent Skills → Updating Preference Skills](/docs/agent-skills#updating-preference-skills).
 
+The agent posts an approved draft, or the text, link and media you give it in
+chat. Hashtags, calls to action and links come from the draft, `cs-content-tone`,
+or the agent's preferences; without hashtag rules the agent adds 1–3. Facebook
+makes links clickable, so a draft's page link goes into the post.
+
 ## Troubleshooting
 
 | Error code | Meaning | What to do |
@@ -496,6 +501,13 @@ Check `POST /UserAgent/Detail` and verify `credentials.facebook-pages.pageid` is
 ### "App not verified" banner on consent
 
 Expected in Development Mode. Users in App Roles can click Continue.
+
+### The agent says no Facebook Page is connected
+
+The agent has `int-facebookpage-post`, but no Page is connected to it. It asks
+you to connect one instead of posting, and scheduled posting runs do nothing.
+Connect a Page and select it with `SetPickerAccounts` (Step 4, or Step 9 for
+OAuth), then ask again.
 
 ## Multi-Tenant Architecture
 

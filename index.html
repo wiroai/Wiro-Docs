@@ -25231,6 +25231,7 @@ if (params.get("fb_connected") === "true") {
     "interval": "0 */4 * * *"
   }'</code></pre>
                     <p>To change <strong>what</strong> the scheduled task posts (topics, tone, content angle), edit the paired preference skill <code>cs-content-tone</code> instead — see <a href="/docs/agent-skills#updating-preference-skills" class="docs-link">Agent Skills → Updating Preference Skills</a>.</p>
+                    <p>The agent posts an approved draft, or the text, link and media you give it in chat. Hashtags, calls to action and links come from the draft, <code>cs-content-tone</code>, or the agent's preferences; without hashtag rules the agent adds 1–3. Facebook makes links clickable, so a draft's page link goes into the post.</p>
                   </section>
 
                   <section id="troubleshooting">
@@ -25310,6 +25311,9 @@ if (params.get("fb_connected") === "true") {
 
                     <h3>"App not verified" banner on consent</h3>
                     <p>Expected in Development Mode. Users in App Roles can click Continue.</p>
+
+                    <h3>The agent says no Facebook Page is connected</h3>
+                    <p>The agent has <code>int-facebookpage-post</code>, but no Page is connected to it. It asks you to connect one instead of posting, and scheduled posting runs do nothing. Connect a Page and select it with <code>SetPickerAccounts</code> (Step 4, or Step 9 for OAuth), then ask again.</p>
                   </section>
 
                   <section id="multi-tenant-architecture">
@@ -25351,11 +25355,12 @@ if (params.get("fb_connected") === "true") {
                     <p>The two token types use different official hosts: System User mode derives a Facebook Page access token and publishes through <code>graph.facebook.com/v26.0</code>; Instagram Login issues an Instagram User access token and publishes through <code>graph.instagram.com/v26.0</code>. Wiro selects the matching host automatically.</p>
                     <p><strong>Skills that use this integration:</strong></p>
                     <ul>
-                      <li><code>int-instagram-post</code> — Publish feed carousels, reels, and stories</li>
+                      <li><code>int-instagram-post</code> — Publish feed carousels, Reels, and Stories; any agent can also post a finished video as a Reel</li>
                     </ul>
                     <p><strong>Agents that typically enable this integration:</strong></p>
                     <ul>
                       <li>Social Manager</li>
+                      <li>Video Creator — to post the videos it makes as Reels. Add <code>int-instagram-post</code> with <a href="/docs/agent-skills#toggling-integration-skills"><code>SkillsApply</code></a>; it adds $1 a month to the Starter price. Video Creator then posts a Reel when the request asks for it or an <code>Instagram</code> line in its <code>video-preferences</code> says to, and otherwise offers to.</li>
                       <li>Any custom agent that needs Instagram publishing</li>
                     </ul>
                   </section>
@@ -25770,6 +25775,17 @@ if (params.get("ig_connected") === "true") {
     "interval": "0 */4 * * *"
   }'</code></pre>
                     <p>To change <strong>what</strong> the scheduled task posts (topics, tone, hashtag rules, caption style), edit the paired preference skill <code>cs-content-tone</code> instead — see <a href="/docs/agent-skills#updating-preference-skills" class="docs-link">Agent Skills → Updating Preference Skills</a>.</p>
+                    <p>Hashtags, calls to action and links come from your draft, <code>cs-content-tone</code>, or the agent's preferences. Without hashtag rules the agent adds 3–5 relevant hashtags; Instagram allows at most 5 per post. Instead of a drafted post, you can give the agent the caption and the images or videos in chat: the first one is the cover.</p>
+
+                    <h3>Posting a video as a Reel</h3>
+                    <p>Any agent with <code>int-instagram-post</code> and a connected account can post one finished video as a Reel, for example a video made by Video Creator. Ask for it in chat, and name the account when several are connected.</p>
+                    <ul>
+                      <li><strong>No drafts.</strong> Instagram's API has no draft or private post, so a Reel is public as soon as it is published. The agent posts when your request asks for it, or after you approve; otherwise it waits.</li>
+                      <li><strong>The video.</strong> A vertical (9:16) MP4 of 3 seconds to 15 minutes, up to 300 MB and at most 1920 px wide. A 16:9 video is too wide for a Reel, so Video Creator makes a 9:16 version instead.</li>
+                      <li><strong>The caption.</strong> The hook first, then a few short lines and the call to action. Instagram doesn't make links in a caption clickable, so the call to action points to the link in your profile.</li>
+                      <li><strong>The reply</strong> carries the Reel's link. If publishing fails, the agent checks the account's latest posts first, since the Reel may already be live.</li>
+                    </ul>
+                    <p>Instagram allows each account 50 posts through the API in 24 hours.</p>
                   </section>
 
                   <section id="troubleshooting">
@@ -25843,6 +25859,9 @@ if (params.get("ig_connected") === "true") {
                       <li>Media that does not meet Meta's current format, duration, size, or codec requirements.</li>
                       <li>Instagram account switched back to Personal after connection — the token becomes invalid. Ask the user to switch back to Business and reconnect.</li>
                     </ul>
+
+                    <h3>The agent says no Instagram account is connected</h3>
+                    <p>The agent has <code>int-instagram-post</code>, but no Instagram account is connected to it. It asks you to connect one instead of posting, and scheduled posting runs do nothing. Connect an account (in System User mode, select it with <code>SetPickerAccounts</code> as in Step 4) and ask again.</p>
                   </section>
 
                   <section id="multi-tenant-architecture">
@@ -32621,7 +32640,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
                             <tr>
                               <td><strong><a href="https://wiro.ai/agents/video-creator" target="_blank" rel="noopener">Video Creator</a></strong></td>
                               <td>Turn a website, web app, store listing, document or product photos into a share-ready video with real screens, voice-over, music and captions</td>
-                              <td>Wiro project (the video's model runs are billed to its wallet); Telegram bot (optional)</td>
+                              <td>Wiro project (the video's model runs are billed to its wallet); <a href="/docs/integration-youtube-skills">YouTube</a> and <a href="/docs/integration-instagram-skills">Instagram</a> (optional, to publish finished videos); Telegram bot (optional)</td>
                             </tr>
                           </tbody>
                         </table>
