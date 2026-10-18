@@ -143,6 +143,7 @@ The message result is always persisted in the database regardless of webhook del
 
 - Webhook calls do not include authentication headers — verify incoming requests by checking the `messageguid` against your own records
 - Always use **HTTPS** endpoints in production
+- Use a public address. Wiro doesn't call a `callbackurl` whose host is, or resolves to, a private, loopback or link-local address; that message gets no webhook, and its result stays readable with `Message/Detail`
 - Validate the payload structure before processing
 - Consider returning 200 immediately and processing the payload asynchronously to avoid timeouts
 

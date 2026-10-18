@@ -14246,7 +14246,7 @@ print(response.body);
 <td><code>callbackurl</code></td>
 <td>string</td>
 <td>No</td>
-<td>Webhook URL — the system will POST the final response to this URL when the agent finishes.</td>
+<td>Webhook URL — the system will POST the final response to this URL when the agent finishes. It must be a public <code>http(s)</code> address: a host that is, or resolves to, a private, loopback or link-local address gets no webhook.</td>
 </tr>
 <tr>
 <td><code>model</code></td>
@@ -17709,6 +17709,7 @@ function connect(agenttoken, onStreamingChunk, onFinal, onFailure) {
 <ul>
 <li>Webhook calls do not include authentication headers — verify incoming requests by checking the <code>messageguid</code> against your own records</li>
 <li>Always use <strong>HTTPS</strong> endpoints in production</li>
+<li>Use a public address. Wiro doesn't call a <code>callbackurl</code> whose host is, or resolves to, a private, loopback or link-local address; that message gets no webhook, and its result stays readable with <code>Message/Detail</code></li>
 <li>Validate the payload structure before processing</li>
 <li>Consider returning 200 immediately and processing the payload asynchronously to avoid timeouts</li>
 </ul>

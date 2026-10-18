@@ -9439,7 +9439,7 @@ Accepts either `application/json` (text-only) or `multipart/form-data` (text + f
 | `useragentguid` | string | Yes | The agent instance GUID (from Deploy or MyAgents). |
 | `message` | string | Conditional | The user message text. Required unless sending files via multipart. |
 | `sessionkey` | string | No | Session identifier for conversation continuity. Defaults to `"default"`. |
-| `callbackurl` | string | No | Webhook URL — the system will POST the final response to this URL when the agent finishes. |
+| `callbackurl` | string | No | Webhook URL — the system will POST the final response to this URL when the agent finishes. It must be a public `http(s)` address: a host that is, or resolves to, a private, loopback or link-local address gets no webhook. |
 | `model` | string | No | Canonical model slug to run **this turn** on (e.g. `"openai/gpt-5.6-sol"`), chosen from the agent's selectable set. Validated server-side — an unknown or non-selectable slug is rejected in `errors[]` and the turn is **not** sent. Omit to use the agent's configured chat model. |
 | `attachment` / `attachments[]` | file | No | Multipart only — one or more file attachments that the agent can process. |
 
@@ -12112,6 +12112,7 @@ The message result is always persisted in the database regardless of webhook del
 
 - Webhook calls do not include authentication headers — verify incoming requests by checking the `messageguid` against your own records
 - Always use **HTTPS** endpoints in production
+- Use a public address. Wiro doesn't call a `callbackurl` whose host is, or resolves to, a private, loopback or link-local address; that message gets no webhook, and its result stays readable with `Message/Detail`
 - Validate the payload structure before processing
 - Consider returning 200 immediately and processing the payload asynchronously to avoid timeouts
 

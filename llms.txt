@@ -979,7 +979,7 @@ One turn can be Thinking → Answer/Tool → Thinking → Answer. Merge each `ag
 
 ### Agent Webhooks
 
-Include `callbackurl` in Message/Send. Wiro POSTs when agent finishes:
+Include `callbackurl` in Message/Send (a public http(s) address; a host that is or resolves to a private, loopback or link-local address gets no webhook). Wiro POSTs when agent finishes:
 `{ messageguid, status, content, response, debugoutput, metadata: { raw, answer, speed, wordCount, ... }, endedat }`
 For error/cancel: `metadata` is `{}`. Retry: 3 attempts, 2s delay. Must return HTTP 200.
 Webhooks do not embed timeline blocks; fetch Message/Detail by `messageguid` for authoritative `timeline[]`.
