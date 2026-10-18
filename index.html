@@ -18909,6 +18909,7 @@ pending provider review.</p>
 </ul>
 </li>
 <li><strong>Reserved fieldnames are rejected.</strong> Any <code>fieldname</code> starting with <code>_</code> (e.g. <code>_isoptional</code>, <code>_isextra</code>) is a sentinel used by the template itself and cannot be set by API callers.</li>
+<li><strong>Whitespace around a value is trimmed.</strong> Text, password, email, URL and number values, and each entry of a list of strings, are saved without the spaces, tabs or line breaks around them and are validated after trimming, so a client ID pasted with a trailing newline is accepted. Spaces inside a value are kept (an app password with spaces keeps them), and multi-line text, selections, booleans, files and nested rows are saved as sent. The same applies to inline Deploy credentials.</li>
 <li>Standard integration credential groups must be declared by the agent template. Communication-channel credentials are the exception: every useragent may create the channel groups published in <code>POST /Skills/List</code> → <code>channels[]</code>, using <code>CredentialUpsert</code> or inline Deploy credentials.</li>
 <li><strong>Nested arrays</strong> (<code>firebase.accounts[].apps[]</code>, <code>google-drive.folders[]</code>, <code>apple-appstore.apps[]</code>, etc.) are supported via the optional <code>parentfield</code> (dotted path) and <code>ordinal</code> (array index) on each field row. An array <code>fieldvalue</code> (with no <code>parentfield</code>) replaces the whole stored list, so send the complete desired list. Per-row writes (a sub-field sent with <code>parentfield</code> and <code>ordinal</code>) change only that entry; indices you don't send are kept. To clear an optional top-level list (e.g. <code>google-drive.folders</code>, <code>apple-appstore.apps</code>), send <code>[]</code> as that field's <code>fieldvalue</code> with no <code>parentfield</code>. A nested list such as <code>firebase.accounts[].apps[]</code> is changed by re-sending the parent <code>accounts</code> list; <code>firebase.accounts</code> itself is required and can't be cleared.</li>
 <li>Use <code>POST /UserAgent/Detail</code> to inspect which fields each credential exposes, and the <code>_connected</code> / <code>optional</code> / <code>extra</code> flags that describe its readiness state.</li>
@@ -19158,7 +19159,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect&quot; \
 </tr>
 <tr>
 <td><code>session_expired</code></td>
-<td>15-minute OAuth state cache expired.</td>
+<td>More than 15 minutes passed between <code>OAuthConnect</code> and the callback. The browser returns to your <code>redirecturl</code> with this code; call <code>OAuthConnect</code> again. A callback that the browser repeats after a completed one (for example when the provider's Continue button is clicked twice) is not an error: it lands where the first one did.</td>
 </tr>
 <tr>
 <td><code>token_exchange_failed</code></td>
