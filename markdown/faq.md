@@ -40,7 +40,7 @@ LLM models return their response in both places: `outputs` contains a structured
 
 ## Can I send a URL instead of uploading a file?
 
-Yes. For `fileinput` and `multifileinput` parameters, use the `{id}Url` suffix (e.g., `inputImageUrl`). For `combinefileinput`, pass URLs directly in the original parameter. You can also pass a URL directly to any file parameter if the `{id}Url` field doesn't exist. See [Model Parameters](/docs/model-parameters).
+Yes. For `fileinput` and `multifileinput` parameters, use the `{id}Url` suffix (e.g., `inputImageUrl`). For `combinefileinput`, pass URLs directly in the original parameter. You can also pass a URL directly to any file parameter if the `{id}Url` field doesn't exist. The URL must be a public `http(s)` address. See [Model Parameters](/docs/model-parameters).
 
 ## What is pexit and how do I use it?
 
@@ -56,7 +56,7 @@ Yes. Install the [Wiro AI community node](/docs/n8n-wiro-integration) in your n8
 
 ## Can I use a webhook instead of polling?
 
-Yes. All models support an optional `callbackUrl` parameter. When provided, Wiro will POST the task result to your URL when the task completes. See [Webhook Callback](/docs/model-parameters) in Model Parameters.
+Yes. All models support an optional `callbackUrl` parameter. When provided, Wiro will POST the task result to your URL when the task completes. It must be a public `http(s)` address. See [Webhook Callback](/docs/model-parameters) in Model Parameters.
 
 ### What are Wiro Agents?
 

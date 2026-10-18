@@ -382,8 +382,10 @@ Parameters vary by model. Use the [/Tool/Detail](#models) endpoint to discover w
 
 | Parameter     | Type   | Required | Description                                                              |
 | ------------- | ------ | -------- | ------------------------------------------------------------------------ |
-| `callbackUrl` | string | No       | URL to receive a POST webhook when the task completes                    |
+| `callbackUrl` | string | No       | URL to receive a POST webhook when the task completes. It must be a public `http(s)` address: a host that is, or resolves to, a private, loopback or link-local address gets no webhook. The task still runs, and `Task/Detail` returns its result. |
 | `projectid`   | string | No       | Override the default project for billing (if you have multiple projects) |
+
+> **URL inputs must be public too.** When you send a file input as a URL, Wiro downloads the file itself, so the URL must be a public `http(s)` address, and so must every address it redirects to. A host that is, or resolves to, a private, loopback or link-local address isn't fetched, and the run gets no file for that input.
 
 ## Response
 
@@ -3239,7 +3241,7 @@ The content type depends on whether the model requires file inputs:
 | No file parameters  | `application/json`    | Text-only models (LLMs, image generation from prompt)       |
 | Has file parameters | `multipart/form-data` | Models that accept image, audio, video, or document uploads |
 
-> **Tip:** For `fileinput` and `multifileinput` parameters, use the `{id}Url` suffix to send URLs (e.g., `inputImageUrl`). For `combinefileinput`, pass URLs directly in the original parameter — no suffix needed. You can also pass a URL directly to any file parameter (e.g., `inputImage`) if the `{id}Url` field doesn't exist.
+> **Tip:** For `fileinput` and `multifileinput` parameters, use the `{id}Url` suffix to send URLs (e.g., `inputImageUrl`). For `combinefileinput`, pass URLs directly in the original parameter — no suffix needed. You can also pass a URL directly to any file parameter (e.g., `inputImage`) if the `{id}Url` field doesn't exist. Every URL must be a public `http(s)` address, and so must any address it redirects to: Wiro doesn't fetch a URL whose host is, or resolves to, a private, loopback or link-local address.
 
 ## File Upload Patterns
 
@@ -3401,6 +3403,8 @@ All models support an optional `callbackUrl` parameter. When provided, Wiro will
   "callbackUrl": "https://your-server.com/webhook/wiro"
 }
 ```
+
+The `callbackUrl` must be a public `http(s)` address. A host that is, or resolves to, a private, loopback or link-local address gets no webhook; the task still runs, and `Task/Detail` returns its result.
 
 ---
 
@@ -5470,9 +5474,9 @@ Common questions about using the Wiro API.
 
 **How do LLM responses work?** LLM models return their response in `outputs` (structured, with `contenttype: "raw"` containing `prompt`, `raw`, `thinking`, `answer`) and as merged text in `debugoutput`.
 
-**Can I send a URL instead of uploading a file?** Yes. Most models accept direct URLs in file parameters. For `combinefileinput`, pass an array of URLs directly. See Model Parameters.
+**Can I send a URL instead of uploading a file?** Yes. Most models accept direct URLs in file parameters. For `combinefileinput`, pass an array of URLs directly. The URL must be a public `http(s)` address. See Model Parameters.
 
-**Can I use a webhook instead of polling?** Yes. All models support an optional `callbackUrl` parameter.
+**Can I use a webhook instead of polling?** Yes. All models support an optional `callbackUrl` parameter. It must be a public `http(s)` address.
 
 ---
 

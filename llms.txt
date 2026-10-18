@@ -150,8 +150,9 @@ File parameter URL rules:
 - `fileinput`/`multifileinput`: use `{paramId}Url` suffix for URLs (e.g., `inputImageUrl`). Send empty `{paramId}` when using URL, empty `{paramId}Url` when uploading file.
 - `combinefileinput`: pass URLs directly in `{paramId}` — no suffix needed. Files and URLs share the same field.
 - Any file parameter also accepts a URL directly in `{paramId}` if `{paramId}Url` doesn't exist.
+- Input URLs must be public http(s) addresses, redirects included; a host that is or resolves to a private, loopback or link-local address isn't fetched.
 
-All models support optional `callbackUrl` for webhook notifications on completion.
+All models support optional `callbackUrl` for webhook notifications on completion (a public http(s) address; a host that is or resolves to a private, loopback or link-local address gets no webhook, and the task's result stays readable with Task/Detail).
 
 JSON example:
 ```json

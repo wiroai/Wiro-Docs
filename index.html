@@ -1335,7 +1335,7 @@
                               <td><code class="param-name">callbackUrl</code></td>
                               <td><span class="param-type">string</span></td>
                               <td><span class="param-required">No</span></td>
-                              <td class="param-desc">URL to receive a POST webhook when the task completes</td>
+                              <td class="param-desc">URL to receive a POST webhook when the task completes. It must be a public <code>http(s)</code> address: a host that is, or resolves to, a private, loopback or link-local address gets no webhook. The task still runs, and <code>Task/Detail</code> returns its result.</td>
                             </tr>
                             <tr>
                               <td><code class="param-name">projectid</code></td>
@@ -1346,6 +1346,9 @@
                           </tbody>
                         </table>
                       </div>
+                    </div>
+                    <div class="info-callout">
+                      <p><strong>URL inputs must be public too.</strong> When you send a file input as a URL, Wiro downloads the file itself, so the URL must be a public <code>http(s)</code> address, and so must every address it redirects to. A host that is, or resolves to, a private, loopback or link-local address isn't fetched, and the run gets no file for that input.</p>
                     </div>
                   </section>
 
@@ -3631,7 +3634,7 @@ claude</code></pre>
                       </table>
                     </div>
                     <div class="info-callout">
-                      <p><strong>Tip:</strong> For <code>fileinput</code> and <code>multifileinput</code> parameters, use the <code>{id}Url</code> suffix to send URLs (e.g., <code>inputImageUrl</code>). For <code>combinefileinput</code>, pass URLs directly in the original parameter — no suffix needed. You can also pass a URL directly to any file parameter (e.g., <code>inputImage</code>) if the <code>{id}Url</code> field doesn't exist.</p>
+                      <p><strong>Tip:</strong> For <code>fileinput</code> and <code>multifileinput</code> parameters, use the <code>{id}Url</code> suffix to send URLs (e.g., <code>inputImageUrl</code>). For <code>combinefileinput</code>, pass URLs directly in the original parameter — no suffix needed. You can also pass a URL directly to any file parameter (e.g., <code>inputImage</code>) if the <code>{id}Url</code> field doesn't exist. Every URL must be a public <code>http(s)</code> address, and so must any address it redirects to: Wiro doesn't fetch a URL whose host is, or resolves to, a private, loopback or link-local address.</p>
                     </div>
                   </section>
 
@@ -3760,6 +3763,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
   "prompt": "A sunset over mountains",
   "callbackUrl": "https://your-server.com/webhook/wiro"
 }</code></pre>
+                    <p>The <code>callbackUrl</code> must be a public <code>http(s)</code> address. A host that is, or resolves to, a private, loopback or link-local address gets no webhook; the task still runs, and <code>Task/Detail</code> returns its result.</p>
                   </section>
                 </article>
 
@@ -6989,7 +6993,7 @@ if (!data.result) {
                       <button class="faq-question">Can I send a URL instead of uploading a file?</button>
                       <div class="faq-answer">
                         <div class="faq-answer-inner">
-                          <p>Yes. For <code>fileinput</code> and <code>multifileinput</code> parameters, use the <code>{id}Url</code> suffix (e.g., <code>inputImageUrl</code>). For <code>combinefileinput</code>, pass URLs directly in the original parameter. You can also pass a URL directly to any file parameter if the <code>{id}Url</code> field doesn't exist. See <a href="/docs/model-parameters">Model Parameters</a>.</p>
+                          <p>Yes. For <code>fileinput</code> and <code>multifileinput</code> parameters, use the <code>{id}Url</code> suffix (e.g., <code>inputImageUrl</code>). For <code>combinefileinput</code>, pass URLs directly in the original parameter. You can also pass a URL directly to any file parameter if the <code>{id}Url</code> field doesn't exist. The URL must be a public <code>http(s)</code> address. See <a href="/docs/model-parameters">Model Parameters</a>.</p>
                         </div>
                       </div>
                     </div>
@@ -7025,7 +7029,7 @@ if (!data.result) {
                       <button class="faq-question">Can I use a webhook instead of polling?</button>
                       <div class="faq-answer">
                         <div class="faq-answer-inner">
-                          <p>Yes. All models support an optional <code>callbackUrl</code> parameter. When provided, Wiro will POST the task result to your URL when the task completes. See <a href="/docs/model-parameters">Webhook Callback</a> in Model Parameters.</p>
+                          <p>Yes. All models support an optional <code>callbackUrl</code> parameter. When provided, Wiro will POST the task result to your URL when the task completes. It must be a public <code>http(s)</code> address. See <a href="/docs/model-parameters">Webhook Callback</a> in Model Parameters.</p>
                         </div>
                       </div>
                     </div>
