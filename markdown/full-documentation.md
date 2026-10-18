@@ -14556,7 +14556,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 {
   "result": true,
   "errors": [],
-  "total": 128,
+  "total": 312,
   "summary": {
     "monthlycredits": 9000,
     "extracredits": 45000,
@@ -14565,7 +14565,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
     "creditperiod": "2026-05",
     "creditsyncat": 1714694410,
     "byModel": [
-      { "model": "openai/gpt-5.4", "inputtokens": 128400, "outputtokens": 32100, "cachereadtokens": 86000, "cachewritetokens": 0, "totaltokens": 246500, "tokencost": 240, "turncount": 38 },
+      { "model": "openai/gpt-5.4", "inputtokens": 1011250, "outputtokens": 241300, "cachereadtokens": 149800, "cachewritetokens": 0, "totaltokens": 1402350, "tokencost": 1443, "turncount": 288 },
       { "model": "unknown", "inputtokens": 4200, "outputtokens": 900, "cachereadtokens": 0, "cachewritetokens": 0, "totaltokens": 5100, "tokencost": 7, "turncount": 3 }
     ]
   },
@@ -14608,7 +14608,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "type": "purchase",
       "action": "small",
       "amount": 45000,
-      "balanceafter": 52560,
+      "balanceafter": 52555,
       "description": "Extra credits — small pack",
       "sessionkey": null,
       "messageguid": null,
@@ -14713,7 +14713,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 | `remainingcredits` | `number` | `max(0, monthlycredits + extracredits - usedcredits)`. |
 | `creditperiod` | `string` | `'YYYY-MM'` billing window. Rolls over on subscription renewal. |
 | `creditsyncat` | `number\|null` | Last runtime → API usage sync in Unix seconds. |
-| `byModel` | `array` | Per-model token rollup for the **current billing period**, aggregating only `action: "tokens"` rows, sorted by `tokencost` descending. A `null` or empty `model` is bucketed as `"unknown"`. Each entry: `{ model, inputtokens, outputtokens, cachereadtokens, cachewritetokens, totaltokens, tokencost, turncount }`. |
+| `byModel` | `array` | Per-model token rollup for the **current billing period**, aggregating only `action: "tokens"` rows, sorted by `tokencost` descending. A `null` or empty `model` is bucketed as `"unknown"`. Each entry: `{ model, inputtokens, outputtokens, cachereadtokens, cachewritetokens, totaltokens, tokencost, turncount }`. Within a period that stays inside `monthlycredits`, the `tokencost` values add up to `usedcredits`; credits spent from extra packs are counted here but come off `extracredits` instead. |
 
 **Transaction fields:**
 
