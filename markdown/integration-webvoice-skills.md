@@ -8,7 +8,7 @@ Toggle `util-web-channel` on a useragent and a single REST call (`POST /UserAgen
 
 **Skill that powers this channel:**
 
-- `util-web-channel` — browser voice channel. Bundled on the Voice Receptionist and Voice Sales Rep presets; toggle it on for custom builds via `POST /UserAgent/SkillsApply`.
+- `util-web-channel` — browser voice channel. Bundled on the Voice Receptionist and Voice Sales Rep presets; toggle it on for any other agent via `POST /UserAgent/SkillsApply`.
 
 **Agents that typically enable this channel:**
 
@@ -351,5 +351,5 @@ Every WebStart call is scoped by:
 - [Twilio Voice](/docs/integration-twiliovoice-skills) — pair the same agent with a real phone number for inbound PSTN calls. Both channels surface in the same [Call History](/docs/integration-twiliovoice-skills#call-history) feed.
 - [Realtime Voice Conversation](/docs/realtime-voice-conversation) — the underlying model-level realtime protocol (used by `wiro.ai/models/openai/gpt-realtime-mini`, etc.). Web Channel is the agent-aware wrapper around it.
 - [Agent Overview](/docs/agent-overview) — useragent statuses, token-based credit metering, and the rest of the agent surface.
-- [Agent Skills](/docs/agent-skills) — toggling `util-web-channel` on a custom build.
+- [Agent Skills](/docs/agent-skills) — toggling `util-web-channel` on any agent.
 - [Agent Use Cases — Voice Receptionist](/docs/agent-use-cases) — preset that ships Web + Twilio channels on by default.

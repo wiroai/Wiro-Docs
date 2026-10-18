@@ -7416,7 +7416,7 @@ Designed for both the Skill Editor modal (multiple toggles in one save) and one-
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | Your UserAgent instance guid (custom build only) |
+| `useragentguid` | string | Yes | Your UserAgent instance guid (template deploy or custom build) |
 | `skills` | object | Yes | Map of `{ "skillname": true \| false }` for every skill you want to set. Skills not in the map keep their current state. |
 | `tier` | string | No | `"starter"` or `"pro"` — change the tier in the same call. **Pro → Starter downgrade is rejected** (cancel + re-subscribe instead). |
 | `idempotencyKey` | string | Yes | Caller-generated unique key (UUID recommended). Replays of the same key return the cached response without re-running the saga. |
@@ -7490,7 +7490,6 @@ When every entry in your `skills` map already matches the persisted state and th
 
 | Code | Meaning |
 |------|---------|
-| `100` | `skillsapply-template-only` — caller tried to mutate skills on a template-deploy useragent. Skills are inherited from the marketplace template; deploy a custom build (`Deploy` with `custom: true`) to run a different skill set. |
 | `101` | `skillsapply-deps-violation` — a final enabled skill has unsatisfied `depends_on`. Body includes `deps[]`. |
 | `102` | `skillsapply-conflict` — two finally-enabled skills are mutually exclusive. Body includes `conflicts[]`. |
 | `103` | `skillsapply-insufficient-wallet` — wallet can't cover the prorated charge. Body includes `requiredUsd` / `availableUsd`. |
@@ -8021,7 +8020,7 @@ Starts a browser-embedded realtime voice session with the agent. Returns two opa
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | Useragent must be in `status: 4` and have `util-web-channel` enabled (Voice Receptionist / Voice Sales Rep presets enable it by default; toggle it on custom builds via `SkillsApply`). |
+| `useragentguid` | string | Yes | Useragent must be in `status: 4` and have `util-web-channel` enabled (Voice Receptionist / Voice Sales Rep presets enable it by default; toggle it on other agents via `SkillsApply`). |
 | `session_metadata.page_url` | string | No | Page URL the caller opened the mic from (≤ 2048 chars). Echoed back on Call History. |
 | `session_metadata.display_identifier` | string | No | Operator-supplied display name. 1–100 chars, Unicode letters / numbers / spaces / `@ . _ - ' +`; other characters silently dropped. |
 
@@ -8051,7 +8050,7 @@ Starts a browser-embedded realtime voice session with the agent. Returns two opa
 | `This agent belongs to a team. Switch to the team context to access it.` | Team agent called from a personal workspace or personal project key by a caller who is no longer a member of the agent's team. |
 | `This agent belongs to a different team.` | Team agent called from another team's workspace or project key by a caller who is no longer a member of the agent's team. |
 | `Agent is not running` | Useragent is not in `status: 4`. |
-| `util-web-channel not enabled` | Toggle the skill via `SkillsApply` (custom builds) or pick a preset that bundles it. |
+| `util-web-channel not enabled` | Toggle the skill via `SkillsApply` or pick a preset that bundles it. |
 | `web voice only available from Wiro-Web (Bearer auth) or via API key` | Bearer auth with an Origin outside the allow-list. |
 | `Rate limit: max N web voice sessions per hour` | Operator burned through the per-hour cap. |
 
@@ -8412,7 +8411,6 @@ Agent-specific errors you may encounter:
 | `Agent setup is not complete. Please fill in your credentials before starting.` | Status is `6` — call `CredentialUpsert` / `SkillsApply` / `CustomSkillUpsert` to provide required values |
 | `Subscription required — please subscribe to this agent before starting it.` | `Start` called on a row with no active subscription AND no spendable extras (`extracredits - usedcredits ≤ 0`). Most often hit after a subscription expires with empty extras — call `RenewSubscription` (`useprepaid: true`) to continue. |
 | `No credits available. Please renew your subscription or purchase extra credits.` | Monthly and extra credits are both exhausted |
-| `Cannot edit skills on a template agent — only custom-built agents support skill editing.` | `SkillsApply` called on a template-deploy useragent (returned with error code `100`). Skills are inherited from the template — to change them, deploy a custom build (`Deploy` with `custom: true`) instead. |
 | `Subscription already active for this useragent. Cancel or modify the existing subscription instead.` | `CreateSubscriptionCheckout` called when a sub already exists |
 | `Insufficient wallet balance for proration. Required: $X.XX, available: $Y.YY` | `SkillsApply` — wallet can't cover the prorated charge |
 | `targetTier must be 'starter' or 'pro'` | `UpgradeTier` with a `targetTier` outside the closed enum (typos, missing parameter name, etc.). Unlike `Deploy`'s silent coercion, `UpgradeTier` rejects invalid input explicitly. |
@@ -8951,7 +8949,7 @@ The two paths produce the **same useragent shape** at the end (same `customskill
 | Aspect | Template deploy | Custom build |
 |--------|-----------------|--------------|
 | Linked marketplace template | The template you deployed | None |
-| Pricing recipe | Computed from the template's default skill set | Computed from the skills **you** toggled on |
+| Pricing recipe | Computed from the template's skill set, plus any skill you change after deploy | Computed from the skills **you** toggled on |
 | `agent.tiers` on the response | Template's tier numbers | Live-resolved per-instance tier numbers |
 | `agent.cover` on the response | Template's cover image | The `cover` you sent at Deploy (or a placeholder) |
 | Cascade updates | When Wiro updates the template, your useragent reconciles | No template — the agent is fully owned by you |
@@ -9214,9 +9212,7 @@ Notes on the response:
 
 ## Step 4 — Refine Skills After Deploy
 
-Custom builds are the only path where end users can toggle skills on/off after deploy. Use [`POST /UserAgent/SkillsApply`](/docs/agent-overview#post-useragentskillsapply) — even when you only want to flip a single skill, send it as a one-entry `skills` map. The endpoint charges the wallet once, triggers exactly one container restart, and rolls back atomically on payment failure.
-
-> **Template-deploy useragents reject `SkillsApply` with error code `100` (`skillsapply-template-only`):** `Cannot edit skills on a template agent — only custom-built agents support skill editing.` Skills are inherited from the marketplace agent template and changing them would diverge the instance. To run a different skill set, deploy a custom build (`Deploy` with `custom: true`) instead.
+Toggle skills on/off after deploy with [`POST /UserAgent/SkillsApply`](/docs/agent-overview#post-useragentskillsapply) — even when you only want to flip a single skill, send it as a one-entry `skills` map. The endpoint charges the wallet once, triggers exactly one container restart, and rolls back atomically on payment failure. Template deploys accept the same call.
 
 ### Single-skill enable
 
@@ -14169,7 +14165,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
 
 `idempotencyKey` is required — use a UUID per "user clicks Save" event. The full response shape and error-code table live on [`SkillsApply`](/docs/agent-overview#post-useragentskillsapply).
 
-> **Custom builds only.** Template-deploy useragents reject `SkillsApply` with error code `100`: `Cannot edit skills on a template agent — only custom-built agents support skill editing.` Skills are inherited from the marketplace agent template and changing them would diverge the instance. To run a different skill set, deploy a custom build (`POST /UserAgent/Deploy` with `custom: true`) and configure its skills there.
+> **Template deploys too.** `SkillsApply` works on agents deployed from a marketplace template as well as on custom builds. On a template agent, a skill you change overrides the template for that skill only; later template updates still reach every skill you never changed.
 
 > **Bundled crons follow the integration toggle.** When you disable an integration skill (e.g. `int-instagram-post`), every bundled cron it owns (`_source: "skill-bundle"`) is hidden from the top-level `customskills` / `scheduledskills` lists until the integration is re-enabled — you don't need to touch them individually.
 
@@ -16265,7 +16261,7 @@ This integration covers **advertising only**. It does not post organic videos to
 ## Prerequisites
 
 - **A TikTok for Business account with access to at least one advertiser** (ad account) — for example through TikTok Ads Manager or membership in a Business Center. For the agent to make changes, not just report, that account needs a role on the advertiser that allows campaign management.
-- **An agent with `int-tiktok-ads` enabled** — TikTok Ads Manager has it on by default. On a Custom Build agent, enable it with `POST /UserAgent/SkillsApply` (see "Using the Skill" below). Skill changes are only available on Custom Build agents.
+- **An agent with `int-tiktok-ads` enabled** — TikTok Ads Manager has it on by default. On any other agent, enable it with `POST /UserAgent/SkillsApply` (see "Using the Skill" below).
 - **For API integrations only:** a Wiro API key ([Authentication](/docs/authentication)), a deployed agent ([Agent Overview](/docs/agent-overview)) and its `useragentguid`, and an HTTPS return URL that your backend controls. `http://localhost` and `http://127.0.0.1` are accepted for local development only.
 
 ## Connect in the Wiro dashboard
@@ -16583,7 +16579,7 @@ Wiro renews the 24-hour access token automatically while the agent is running. T
 
 ## Using the Skill
 
-TikTok Ads Manager has `int-tiktok-ads` on by default. On a Custom Build agent, enable it via `POST /UserAgent/SkillsApply` (see [Agent Skills → Toggling Integration Skills](/docs/agent-skills#toggling-integration-skills)); skill changes are only available on Custom Build agents. Adjust the cron of a bundled task such as the daily performance report with `enabled` and `interval` only — the task body (`value`) is owned by the bundled integration skill and silently dropped on writes:
+TikTok Ads Manager has `int-tiktok-ads` on by default. On any other agent, enable it via `POST /UserAgent/SkillsApply` (see [Agent Skills → Toggling Integration Skills](/docs/agent-skills#toggling-integration-skills)). Adjust the cron of a bundled task such as the daily performance report with `enabled` and `interval` only — the task body (`value`) is owned by the bundled integration skill and silently dropped on writes:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
@@ -18187,7 +18183,7 @@ Or fill it in the panel: **[My Agents](https://wiro.ai/panel/agents)** → open 
 
 ### Step 4: Make sure the skill is on
 
-Google Ads Manager, Meta Ads Manager and TikTok Ads Manager agents include `int-roasit-attribution` at no extra charge, so saving the credential is enough. On a Custom Build agent, turn it on:
+Google Ads Manager, Meta Ads Manager and TikTok Ads Manager agents include `int-roasit-attribution` at no extra charge, so saving the credential is enough. On any other agent, turn it on:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
@@ -18195,11 +18191,12 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skills": [ { "name": "int-roasit-attribution", "enabled": true } ]
+    "skills": { "int-roasit-attribution": true },
+    "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000"
   }'
 ```
 
-Or flip the toggle in the panel under **Skills**. Skill changes are only available on Custom Build agents (see [Agent Skills](/docs/agent-skills#toggling-integration-skills)).
+Or flip the toggle in the panel under **Skills** (see [Agent Skills](/docs/agent-skills#toggling-integration-skills)).
 
 ### Step 5: Start the agent
 
@@ -19089,8 +19086,8 @@ The following agent endpoints enforce context guards:
 - `UserAgent/UpgradeTier` — upgrade tier (Starter → Pro)
 - `UserAgent/CreateSubscriptionCheckout` — subscribe a not-yet-subscribed useragent
 - `UserAgent/PricingPreview` — pricing preview for an existing agent
-- `UserAgent/SkillsApply` — change skill set (single or batch) on a custom build (auto-prorates)
-- `UserAgent/SkillToggle` — toggle a single skill on a custom build
+- `UserAgent/SkillsApply` — change skill set (single or batch, auto-prorates)
+- `UserAgent/SkillToggle` — toggle a single skill
 - `UserAgent/Realtime/WebStart` — start a web voice session
 
 `Message/Delete`, `SkillsApply` and `SkillToggle` enforce the context guard for team agents only; a personal agent's owner can call them from any workspace. `Realtime/WebStart` also checks team agents only: the member who deployed the agent can call it from any workspace while they are still an active member of the agent's team, so a website voice backend keeps working on a personal project key. Outside the team's context, a caller who has left the team gets the context mismatch error.

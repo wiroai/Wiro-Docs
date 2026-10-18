@@ -65,7 +65,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skills": [ { "name": "int-serper-search", "enabled": true } ]
+    "skills": { "int-serper-search": true },
+    "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000"
   }'
 ```
 

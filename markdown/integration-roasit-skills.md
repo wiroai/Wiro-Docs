@@ -75,7 +75,7 @@ Or fill it in the panel: **[My Agents](https://wiro.ai/panel/agents)** → open 
 
 ### Step 4: Make sure the skill is on
 
-Google Ads Manager, Meta Ads Manager and TikTok Ads Manager agents include `int-roasit-attribution` at no extra charge, so saving the credential is enough. On a Custom Build agent, turn it on:
+Google Ads Manager, Meta Ads Manager and TikTok Ads Manager agents include `int-roasit-attribution` at no extra charge, so saving the credential is enough. On any other agent, turn it on:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
@@ -83,11 +83,12 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skills": [ { "name": "int-roasit-attribution", "enabled": true } ]
+    "skills": { "int-roasit-attribution": true },
+    "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000"
   }'
 ```
 
-Or flip the toggle in the panel under **Skills**. Skill changes are only available on Custom Build agents (see [Agent Skills](/docs/agent-skills#toggling-integration-skills)).
+Or flip the toggle in the panel under **Skills** (see [Agent Skills](/docs/agent-skills#toggling-integration-skills)).
 
 ### Step 5: Start the agent
 

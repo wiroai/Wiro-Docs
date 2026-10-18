@@ -80,8 +80,8 @@ The following agent endpoints enforce context guards:
 - `UserAgent/UpgradeTier` — upgrade tier (Starter → Pro)
 - `UserAgent/CreateSubscriptionCheckout` — subscribe a not-yet-subscribed useragent
 - `UserAgent/PricingPreview` — pricing preview for an existing agent
-- `UserAgent/SkillsApply` — change skill set (single or batch) on a custom build (auto-prorates)
-- `UserAgent/SkillToggle` — toggle a single skill on a custom build
+- `UserAgent/SkillsApply` — change skill set (single or batch, auto-prorates)
+- `UserAgent/SkillToggle` — toggle a single skill
 - `UserAgent/Realtime/WebStart` — start a web voice session
 
 `Message/Delete`, `SkillsApply` and `SkillToggle` enforce the context guard for team agents only; a personal agent's owner can call them from any workspace. `Realtime/WebStart` also checks team agents only: the member who deployed the agent can call it from any workspace while they are still an active member of the agent's team, so a website voice backend keeps working on a personal project key. Outside the team's context, a caller who has left the team gets the context mismatch error.

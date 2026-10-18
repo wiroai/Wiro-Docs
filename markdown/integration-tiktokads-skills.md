@@ -30,7 +30,7 @@ This integration covers **advertising only**. It does not post organic videos to
 ## Prerequisites
 
 - **A TikTok for Business account with access to at least one advertiser** (ad account) — for example through TikTok Ads Manager or membership in a Business Center. For the agent to make changes, not just report, that account needs a role on the advertiser that allows campaign management.
-- **An agent with `int-tiktok-ads` enabled** — TikTok Ads Manager has it on by default. On a Custom Build agent, enable it with `POST /UserAgent/SkillsApply` (see "Using the Skill" below). Skill changes are only available on Custom Build agents.
+- **An agent with `int-tiktok-ads` enabled** — TikTok Ads Manager has it on by default. On any other agent, enable it with `POST /UserAgent/SkillsApply` (see "Using the Skill" below).
 - **For API integrations only:** a Wiro API key ([Authentication](/docs/authentication)), a deployed agent ([Agent Overview](/docs/agent-overview)) and its `useragentguid`, and an HTTPS return URL that your backend controls. `http://localhost` and `http://127.0.0.1` are accepted for local development only.
 
 ## Connect in the Wiro dashboard
@@ -348,7 +348,7 @@ Wiro renews the 24-hour access token automatically while the agent is running. T
 
 ## Using the Skill
 
-TikTok Ads Manager has `int-tiktok-ads` on by default. On a Custom Build agent, enable it via `POST /UserAgent/SkillsApply` (see [Agent Skills → Toggling Integration Skills](/docs/agent-skills#toggling-integration-skills)); skill changes are only available on Custom Build agents. Adjust the cron of a bundled task such as the daily performance report with `enabled` and `interval` only — the task body (`value`) is owned by the bundled integration skill and silently dropped on writes:
+TikTok Ads Manager has `int-tiktok-ads` on by default. On any other agent, enable it via `POST /UserAgent/SkillsApply` (see [Agent Skills → Toggling Integration Skills](/docs/agent-skills#toggling-integration-skills)). Adjust the cron of a bundled task such as the daily performance report with `enabled` and `interval` only — the task body (`value`) is owned by the bundled integration skill and silently dropped on writes:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \

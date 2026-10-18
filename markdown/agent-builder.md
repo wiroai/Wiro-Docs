@@ -16,7 +16,7 @@ The two paths produce the **same useragent shape** at the end (same `customskill
 | Aspect | Template deploy | Custom build |
 |--------|-----------------|--------------|
 | Linked marketplace template | The template you deployed | None |
-| Pricing recipe | Computed from the template's default skill set | Computed from the skills **you** toggled on |
+| Pricing recipe | Computed from the template's skill set, plus any skill you change after deploy | Computed from the skills **you** toggled on |
 | `agent.tiers` on the response | Template's tier numbers | Live-resolved per-instance tier numbers |
 | `agent.cover` on the response | Template's cover image | The `cover` you sent at Deploy (or a placeholder) |
 | Cascade updates | When Wiro updates the template, your useragent reconciles | No template — the agent is fully owned by you |
@@ -279,9 +279,7 @@ Notes on the response:
 
 ## Step 4 — Refine Skills After Deploy
 
-Custom builds are the only path where end users can toggle skills on/off after deploy. Use [`POST /UserAgent/SkillsApply`](/docs/agent-overview#post-useragentskillsapply) — even when you only want to flip a single skill, send it as a one-entry `skills` map. The endpoint charges the wallet once, triggers exactly one container restart, and rolls back atomically on payment failure.
-
-> **Template-deploy useragents reject `SkillsApply` with error code `100` (`skillsapply-template-only`):** `Cannot edit skills on a template agent — only custom-built agents support skill editing.` Skills are inherited from the marketplace agent template and changing them would diverge the instance. To run a different skill set, deploy a custom build (`Deploy` with `custom: true`) instead.
+Toggle skills on/off after deploy with [`POST /UserAgent/SkillsApply`](/docs/agent-overview#post-useragentskillsapply) — even when you only want to flip a single skill, send it as a one-entry `skills` map. The endpoint charges the wallet once, triggers exactly one container restart, and rolls back atomically on payment failure. Template deploys accept the same call.
 
 ### Single-skill enable
 

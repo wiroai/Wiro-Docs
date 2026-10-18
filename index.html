@@ -11757,7 +11757,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <td><code>useragentguid</code></td>
 <td>string</td>
 <td>Yes</td>
-<td>Your UserAgent instance guid (custom build only)</td>
+<td>Your UserAgent instance guid (template deploy or custom build)</td>
 </tr>
 <tr>
 <td><code>skills</code></td>
@@ -11890,10 +11890,6 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </tr>
 </thead>
 <tbody>
-<tr>
-<td><code>100</code></td>
-<td><code>skillsapply-template-only</code> — caller tried to mutate skills on a template-deploy useragent. Skills are inherited from the marketplace template; deploy a custom build (<code>Deploy</code> with <code>custom: true</code>) to run a different skill set.</td>
-</tr>
 <tr>
 <td><code>101</code></td>
 <td><code>skillsapply-deps-violation</code> — a final enabled skill has unsatisfied <code>depends_on</code>. Body includes <code>deps[]</code>.</td>
@@ -12807,7 +12803,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <td><code>useragentguid</code></td>
 <td>string</td>
 <td>Yes</td>
-<td>Useragent must be in <code>status: 4</code> and have <code>util-web-channel</code> enabled (Voice Receptionist / Voice Sales Rep presets enable it by default; toggle it on custom builds via <code>SkillsApply</code>).</td>
+<td>Useragent must be in <code>status: 4</code> and have <code>util-web-channel</code> enabled (Voice Receptionist / Voice Sales Rep presets enable it by default; toggle it on other agents via <code>SkillsApply</code>).</td>
 </tr>
 <tr>
 <td><code>session_metadata.page_url</code></td>
@@ -12870,7 +12866,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </tr>
 <tr>
 <td><code>util-web-channel not enabled</code></td>
-<td>Toggle the skill via <code>SkillsApply</code> (custom builds) or pick a preset that bundles it.</td>
+<td>Toggle the skill via <code>SkillsApply</code> or pick a preset that bundles it.</td>
 </tr>
 <tr>
 <td><code>web voice only available from Wiro-Web (Bearer auth) or via API key</code></td>
@@ -13547,10 +13543,6 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <tr>
 <td><code>No credits available. Please renew your subscription or purchase extra credits.</code></td>
 <td>Monthly and extra credits are both exhausted</td>
-</tr>
-<tr>
-<td><code>Cannot edit skills on a template agent — only custom-built agents support skill editing.</code></td>
-<td><code>SkillsApply</code> called on a template-deploy useragent (returned with error code <code>100</code>). Skills are inherited from the template — to change them, deploy a custom build (<code>Deploy</code> with <code>custom: true</code>) instead.</td>
 </tr>
 <tr>
 <td><code>Subscription already active for this useragent. Cancel or modify the existing subscription instead.</code></td>
@@ -20871,7 +20863,7 @@ customer-facing token-refresh endpoint or manual refresh action.</p>
 </code></pre>
 <p><code>idempotencyKey</code> is required — use a UUID per "user clicks Save" event. The full response shape and error-code table live on <a href="/docs/agent-overview#post-useragentskillsapply"><code>SkillsApply</code></a>.</p>
 <blockquote>
-<p><strong>Custom builds only.</strong> Template-deploy useragents reject <code>SkillsApply</code> with error code <code>100</code>: <code>Cannot edit skills on a template agent — only custom-built agents support skill editing.</code> Skills are inherited from the marketplace agent template and changing them would diverge the instance. To run a different skill set, deploy a custom build (<code>POST /UserAgent/Deploy</code> with <code>custom: true</code>) and configure its skills there.</p>
+<p><strong>Template deploys too.</strong> <code>SkillsApply</code> works on agents deployed from a marketplace template as well as on custom builds. On a template agent, a skill you change overrides the template for that skill only; later template updates still reach every skill you never changed.</p>
 <p><strong>Bundled crons follow the integration toggle.</strong> When you disable an integration skill (e.g. <code>int-instagram-post</code>), every bundled cron it owns (<code>_source: "skill-bundle"</code>) is hidden from the top-level <code>customskills</code> / <code>scheduledskills</code> lists until the integration is re-enabled — you don't need to touch them individually.</p>
 </blockquote>
 <h2 id="live-pricing-preview">Live Pricing Preview</h2>
@@ -21620,7 +21612,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 </tr>
 <tr>
 <td>Pricing recipe</td>
-<td>Computed from the template's default skill set</td>
+<td>Computed from the template's skill set, plus any skill you change after deploy</td>
 <td>Computed from the skills <strong>you</strong> toggled on</td>
 </tr>
 <tr>
@@ -21865,10 +21857,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
 <li>Communication-channel credentials are validated independently from <code>skills</code>. Every channel group present in <code>credentials</code> must contain all of its <code>required_fields</code> or Deploy fails without leaving a partial agent behind.</li>
 </ul>
 <h2 id="step-4-refine-skills-after-deploy">Step 4 — Refine Skills After Deploy</h2>
-<p>Custom builds are the only path where end users can toggle skills on/off after deploy. Use <a href="/docs/agent-overview#post-useragentskillsapply"><code>POST /UserAgent/SkillsApply</code></a> — even when you only want to flip a single skill, send it as a one-entry <code>skills</code> map. The endpoint charges the wallet once, triggers exactly one container restart, and rolls back atomically on payment failure.</p>
-<blockquote>
-<p><strong>Template-deploy useragents reject <code>SkillsApply</code> with error code <code>100</code> (<code>skillsapply-template-only</code>):</strong> <code>Cannot edit skills on a template agent — only custom-built agents support skill editing.</code> Skills are inherited from the marketplace agent template and changing them would diverge the instance. To run a different skill set, deploy a custom build (<code>Deploy</code> with <code>custom: true</code>) instead.</p>
-</blockquote>
+<p>Toggle skills on/off after deploy with <a href="/docs/agent-overview#post-useragentskillsapply"><code>POST /UserAgent/SkillsApply</code></a> — even when you only want to flip a single skill, send it as a one-entry <code>skills</code> map. The endpoint charges the wallet once, triggers exactly one container restart, and rolls back atomically on payment failure. Template deploys accept the same call.</p>
 <h3 id="single-skill-enable">Single-skill enable</h3>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/SkillsApply&quot; \
   -H &quot;Content-Type: application/json&quot; \
@@ -23701,7 +23690,7 @@ agent model.</p>
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
 <li><strong>A TikTok for Business account with access to at least one advertiser</strong> (ad account) — for example through TikTok Ads Manager or membership in a Business Center. For the agent to make changes, not just report, that account needs a role on the advertiser that allows campaign management.</li>
-<li><strong>An agent with <code>int-tiktok-ads</code> enabled</strong> — TikTok Ads Manager has it on by default. On a Custom Build agent, enable it with <code>POST /UserAgent/SkillsApply</code> (see "Using the Skill" below). Skill changes are only available on Custom Build agents.</li>
+<li><strong>An agent with <code>int-tiktok-ads</code> enabled</strong> — TikTok Ads Manager has it on by default. On any other agent, enable it with <code>POST /UserAgent/SkillsApply</code> (see "Using the Skill" below).</li>
 <li><strong>For API integrations only:</strong> a Wiro API key (<a href="/docs/authentication">Authentication</a>), a deployed agent (<a href="/docs/agent-overview">Agent Overview</a>) and its <code>useragentguid</code>, and an HTTPS return URL that your backend controls. <code>http://localhost</code> and <code>http://127.0.0.1</code> are accepted for local development only.</li>
 </ul>
 <h2 id="connect-in-the-wiro-dashboard">Connect in the Wiro dashboard</h2>
@@ -24184,7 +24173,7 @@ if (params.get(&quot;tiktokads_connected&quot;) === &quot;true&quot;) {
 <h3 id="token-lifecycle">Token lifecycle</h3>
 <p>Wiro renews the 24-hour access token automatically while the agent is running. The authorization behind it lasts 30 days from <code>connectedat</code> and cannot be extended by refreshing. To renew it, run the flow again: <code>OAuthDisconnect</code>, then <code>OAuthConnect</code>, the callback, and <code>SetPickerAccounts</code>. There is no customer-facing token-refresh endpoint, and raw tokens are never exposed to the agent model or to API callers.</p>
 <h2 id="using-the-skill">Using the Skill</h2>
-<p>TikTok Ads Manager has <code>int-tiktok-ads</code> on by default. On a Custom Build agent, enable it via <code>POST /UserAgent/SkillsApply</code> (see <a href="/docs/agent-skills#toggling-integration-skills">Agent Skills → Toggling Integration Skills</a>); skill changes are only available on Custom Build agents. Adjust the cron of a bundled task such as the daily performance report with <code>enabled</code> and <code>interval</code> only — the task body (<code>value</code>) is owned by the bundled integration skill and silently dropped on writes:</p>
+<p>TikTok Ads Manager has <code>int-tiktok-ads</code> on by default. On any other agent, enable it via <code>POST /UserAgent/SkillsApply</code> (see <a href="/docs/agent-skills#toggling-integration-skills">Agent Skills → Toggling Integration Skills</a>). Adjust the cron of a bundled task such as the daily performance report with <code>enabled</code> and <code>interval</code> only — the task body (<code>value</code>) is owned by the bundled integration skill and silently dropped on writes:</p>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
   -H &quot;Content-Type: application/json&quot; \
   -H &quot;x-api-key: YOUR_API_KEY&quot; \
@@ -27826,15 +27815,16 @@ Agent → POST /v1beta/properties/123456789:runReport
                     <p>Or fill it in the panel: <strong><a href="https://wiro.ai/panel/agents" target="_blank" rel="noopener">My Agents</a></strong> → open agent → <strong>Credentials → Roasit</strong>.</p>
 
                     <h3>Step 4: Make sure the skill is on</h3>
-                    <p>Google Ads Manager, Meta Ads Manager and TikTok Ads Manager agents include <code>int-roasit-attribution</code> at no extra charge, so saving the credential is enough. On a Custom Build agent, turn it on:</p>
+                    <p>Google Ads Manager, Meta Ads Manager and TikTok Ads Manager agents include <code>int-roasit-attribution</code> at no extra charge, so saving the credential is enough. On any other agent, turn it on:</p>
                     <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skills": [ { "name": "int-roasit-attribution", "enabled": true } ]
+    "skills": { "int-roasit-attribution": true },
+    "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000"
   }'</code></pre>
-                    <p>Or flip the toggle in the panel under <strong>Skills</strong>. Skill changes are only available on Custom Build agents (see <a href="/docs/agent-skills#toggling-integration-skills">Agent Skills</a>).</p>
+                    <p>Or flip the toggle in the panel under <strong>Skills</strong> (see <a href="/docs/agent-skills#toggling-integration-skills">Agent Skills</a>).</p>
 
                     <h3>Step 5: Start the agent</h3>
                     <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
@@ -29283,7 +29273,8 @@ Agent → POST /v1beta/properties/123456789:runReport
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skills": [ { "name": "int-serper-search", "enabled": true } ]
+    "skills": { "int-serper-search": true },
+    "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000"
   }'</code></pre>
                     <p>Or flip the toggle in the panel under <strong>Skills</strong>.</p>
 
@@ -31581,7 +31572,7 @@ base64 -b 0 play-service-account.json &gt; play-sa.b64</code></pre>
                     <p>Toggle <code>util-web-channel</code> on a useragent and a single REST call (<code>POST /UserAgent/Realtime/WebStart</code>) returns everything the browser needs to open an authenticated WebSocket and stream microphone audio straight to the agent. The same agent can also pick up phone calls via <a href="/docs/integration-twiliovoice-skills">Twilio Voice</a> — the two channels share the same realtime runtime and end up in the same <a href="/docs/integration-twiliovoice-skills#call-history">Call History</a>.</p>
                     <p><strong>Skill that powers this channel:</strong></p>
                     <ul>
-                      <li><code>util-web-channel</code> — browser voice channel. Bundled on the Voice Receptionist and Voice Sales Rep presets; toggle it on for custom builds via <code>POST /UserAgent/SkillsApply</code>.</li>
+                      <li><code>util-web-channel</code> — browser voice channel. Bundled on the Voice Receptionist and Voice Sales Rep presets; toggle it on for any other agent via <code>POST /UserAgent/SkillsApply</code>.</li>
                     </ul>
                     <p><strong>Agents that typically enable this channel:</strong></p>
                     <ul>
@@ -32134,7 +32125,7 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                       <li><a href="/docs/integration-twiliovoice-skills" class="docs-link">Twilio Voice</a> — pair the same agent with a real phone number for inbound PSTN calls. Both channels surface in the same <a href="/docs/integration-twiliovoice-skills#call-history">Call History</a> feed.</li>
                       <li><a href="/docs/realtime-voice-conversation" class="docs-link">Realtime Voice Conversation</a> — the underlying model-level realtime protocol (used by <code>wiro.ai/models/openai/gpt-realtime-mini</code>, etc.). Web Channel is the agent-aware wrapper around it.</li>
                       <li><a href="/docs/agent-overview" class="docs-link">Agent Overview</a> — useragent statuses, token-based credit metering, and the rest of the agent surface.</li>
-                      <li><a href="/docs/agent-skills" class="docs-link">Agent Skills</a> — toggling <code>util-web-channel</code> on a custom build.</li>
+                      <li><a href="/docs/agent-skills" class="docs-link">Agent Skills</a> — toggling <code>util-web-channel</code> on any agent.</li>
                       <li><a href="/docs/agent-use-cases" class="docs-link">Agent Use Cases — Voice Receptionist</a> — preset that ships Web + Twilio channels on by default.</li>
                     </ul>
                   </section>
@@ -34216,8 +34207,8 @@ curl -X POST "https://api.wiro.ai/v1/Run/google/nano-banana" \
                       <li><code>UserAgent/UpgradeTier</code> — upgrade tier (Starter → Pro)</li>
                       <li><code>UserAgent/CreateSubscriptionCheckout</code> — subscribe a not-yet-subscribed useragent</li>
                       <li><code>UserAgent/PricingPreview</code> — pricing preview for an existing agent</li>
-                      <li><code>UserAgent/SkillsApply</code> — change skill set (single or batch) on a custom build (auto-prorates)</li>
-                      <li><code>UserAgent/SkillToggle</code> — toggle a single skill on a custom build</li>
+                      <li><code>UserAgent/SkillsApply</code> — change skill set (single or batch, auto-prorates)</li>
+                      <li><code>UserAgent/SkillToggle</code> — toggle a single skill</li>
                       <li><code>UserAgent/Realtime/WebStart</code> — start a web voice session</li>
                     </ul>
                     <p><code>Message/Delete</code>, <code>SkillsApply</code> and <code>SkillToggle</code> enforce the context guard for team agents only; a personal agent's owner can call them from any workspace. <code>Realtime/WebStart</code> also checks team agents only: the member who deployed the agent can call it from any workspace while they are still an active member of the agent's team, so a website voice backend keeps working on a personal project key. Outside the team's context, a caller who has left the team gets the context mismatch error.</p>
