@@ -9,7 +9,7 @@ The Brevo integration uses Brevo API v3 with an `api-key` header (not Bearer).
 **Skills that use this integration:**
 
 - `brevo-email` — Campaign, template, and contact management via Brevo API v3
-- `newsletter-compose` — uses Brevo as the ESP when enabled alongside
+- `newsletter-compose` — optional; uses Brevo as the ESP when enabled alongside. Newsletter Manager has it on; on other agents turn on `util-newsletter-compose` yourself. Brevo alone adds no newsletter tasks.
 
 **Other:** Custom agents can call the Brevo API via whatever skill invokes `BREVO_API_KEY`.
 

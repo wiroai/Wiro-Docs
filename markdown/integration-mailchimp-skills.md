@@ -9,7 +9,7 @@ The Mailchimp integration is unique in supporting three authentication options: 
 **Skills that use this integration:**
 
 - `mailchimp-email` — Audience and campaign management
-- `newsletter-compose` — uses Mailchimp as an ESP when enabled alongside
+- `newsletter-compose` — optional; uses Mailchimp as an ESP when enabled alongside. Newsletter Manager has it on; on other agents turn on `util-newsletter-compose` yourself. Mailchimp alone adds no newsletter tasks.
 
 **Agents that typically enable this integration:**
 

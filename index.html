@@ -28591,7 +28591,7 @@ Agent → POST /v1beta/properties/123456789:runReport
                     <p><strong>Skills that use this integration:</strong></p>
                     <ul>
                       <li><code>mailchimp-email</code> — Audience and campaign management</li>
-                      <li><code>newsletter-compose</code> — uses Mailchimp as an ESP when enabled alongside</li>
+                      <li><code>newsletter-compose</code> — optional; uses Mailchimp as an ESP when enabled alongside. Newsletter Manager has it on; on other agents turn on <code>util-newsletter-compose</code> yourself. Mailchimp alone adds no newsletter tasks.</li>
                     </ul>
                     <p><strong>Agents that typically enable this integration:</strong></p>
                     <ul>
@@ -31020,7 +31020,7 @@ base64 -b 0 play-service-account.json &gt; play-sa.b64</code></pre>
                     <p><strong>Skills that use this integration:</strong></p>
                     <ul>
                       <li><code>brevo-email</code> — Campaign, template, and contact management via Brevo API v3</li>
-                      <li><code>newsletter-compose</code> — uses Brevo as the ESP when enabled alongside</li>
+                      <li><code>newsletter-compose</code> — optional; uses Brevo as the ESP when enabled alongside. Newsletter Manager has it on; on other agents turn on <code>util-newsletter-compose</code> yourself. Brevo alone adds no newsletter tasks.</li>
                     </ul>
                     <p><strong>Other:</strong> Custom agents can call the Brevo API via whatever skill invokes <code>BREVO_API_KEY</code>.</p>
                     <p><strong>Agents that typically enable this integration:</strong></p>
@@ -31166,7 +31166,7 @@ base64 -b 0 play-service-account.json &gt; play-sa.b64</code></pre>
                     <p><strong>Skills that use this integration:</strong></p>
                     <ul>
                       <li><code>sendgrid-email</code> — Marketing and transactional email via SendGrid v3 API</li>
-                      <li><code>newsletter-compose</code> — uses SendGrid as the ESP when enabled alongside</li>
+                      <li><code>newsletter-compose</code> — optional; uses SendGrid as the ESP when enabled alongside. Newsletter Manager has it on; on other agents turn on <code>util-newsletter-compose</code> yourself. SendGrid alone adds no newsletter tasks.</li>
                     </ul>
                     <p><strong>Other:</strong> Custom agents can call the SendGrid API via whatever skill invokes <code>SENDGRID_API_KEY</code>.</p>
                     <p><strong>Agents that typically enable this integration:</strong></p>

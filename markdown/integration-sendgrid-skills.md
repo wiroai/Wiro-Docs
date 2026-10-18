@@ -9,7 +9,7 @@ The SendGrid integration uses standard Bearer authentication with a SendGrid API
 **Skills that use this integration:**
 
 - `sendgrid-email` — Marketing and transactional email via SendGrid v3 API
-- `newsletter-compose` — uses SendGrid as the ESP when enabled alongside
+- `newsletter-compose` — optional; uses SendGrid as the ESP when enabled alongside. Newsletter Manager has it on; on other agents turn on `util-newsletter-compose` yourself. SendGrid alone adds no newsletter tasks.
 
 **Other:** Custom agents can call the SendGrid API via whatever skill invokes `SENDGRID_API_KEY`.
 
