@@ -19,19 +19,15 @@ The TikTok integration uses TikTok's OAuth 2.0 with the Content Posting API.
 
 | Mode | Status | Notes |
 |------|--------|-------|
-| `"wiro"` | Available | One-click connect using Wiro's shared TikTok app. |
 | `"own"` | Available | Use your own TikTok for Developers app. |
+| `"wiro"` | Coming soon | Wiro's shared TikTok app is awaiting TikTok's review. Until then, `OAuthConnect` in Wiro mode, which is also what you get when you leave out `authmethod`, returns `Wiro-managed OAuth is not enabled for TikTok`. |
 
 ## Prerequisites
 
 - **A Wiro API key** — [Authentication](/docs/authentication).
 - **A deployed agent** — [Agent Overview](/docs/agent-overview).
-- **(Own mode) A TikTok for Developers account** — [developers.tiktok.com](https://developers.tiktok.com/).
+- **A TikTok for Developers account** — [developers.tiktok.com](https://developers.tiktok.com/).
 - **An HTTPS callback URL**.
-
-## Wiro Mode
-
-Call `OAuthConnect` without `authmethod`, redirect, parse `tiktok_connected=true&tiktok_username=<display_name>` (display name, not the `@handle`).
 
 ## Complete Integration Walkthrough — Own Mode
 
@@ -172,7 +168,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 | `useragentguid` | string | Yes | Agent instance GUID. |
 | `credentialkey` | string | Yes | `"tiktok"`. |
 | `redirecturl` | string | Yes | HTTPS URL. |
-| `authmethod` | string | No | `"wiro"` (default) or `"own"`. |
+| `authmethod` | string | No | `"own"`. Omitted, it means `"wiro"`, which is not available yet. |
 
 ### GET /UserAgentOAuth/TikTokCallback
 
@@ -198,6 +194,7 @@ Wiro maintains the TikTok connection automatically while the agent is running. I
 | `authorization_denied` | User cancelled, or scopes not enabled. | Verify scope configuration. |
 | `session_expired` | 15-min state cache expired. | Restart OAuth. |
 | `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy; verify URL. |
+| `Wiro-managed OAuth is not enabled for TikTok` | Returned in `OAuthConnect`'s `errors[]`: Wiro mode isn't available yet, and it is the default when `authmethod` is left out. | Save your app credentials (Step 6) and call `OAuthConnect` with `"authmethod": "own"`. |
 | `useragent_not_found` | Invalid guid. | Use `POST /UserAgent/MyAgents`. |
 | `TikTok credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `clientkey` / `clientsecret` are missing. | `UserAgent/CredentialUpsert` with `clientkey` + `clientsecret`. |
 | `internal_error` | Server error. | Retry. |

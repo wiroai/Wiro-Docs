@@ -21,48 +21,16 @@ The GA4 integration uses Google OAuth 2.0 with the GA4 Data API v1beta and the G
 
 | Mode | Status | Notes |
 |------|--------|-------|
-| `"wiro"` | Available | One-click connect using Wiro's Google Cloud project. |
-| `"own"` | Available | Own Google Cloud project + OAuth client. |
+| `"own"` | Available | Your own Google Cloud project and OAuth client. |
+| `"wiro"` | Coming soon | Wiro's shared Google Cloud project is awaiting Google's review. Until then, `OAuthConnect` in Wiro mode, which is also what you get when you leave out `authmethod`, returns `Wiro-managed OAuth is not enabled for Google Analytics 4`. |
 
 ## Prerequisites
 
 - **A Wiro API key** — [Authentication](/docs/authentication).
 - **A deployed agent** — [Agent Overview](/docs/agent-overview).
 - **A GA4 Property** the connecting user administers.
-- **(Own mode) A Google Cloud project** with GA4 Data API and GA4 Admin API enabled.
+- **A Google Cloud project** with GA4 Data API and GA4 Admin API enabled.
 - **An HTTPS callback URL**.
-
-## Wiro Mode
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "ga4",
-    "redirecturl": "https://your-app.com/settings/integrations"
-  }'
-```
-
-The response returns `{ result: true, authorizeUrl: "..." }`. Redirect the user to `authorizeUrl`.
-
-After consent, the user returns with `?ga4_connected=true&ga4_properties=<URL-encoded-JSON>`. The JSON array entries come straight from GA4's Admin API and carry `{ id, displayName, account, propertyType }` per property. Map them to the picker shape and call `SetPickerAccounts`:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "ga4",
-    "accounts": [
-      { "propertyid": "123456789", "propertydisplayname": "MyApp — Production" }
-    ]
-  }'
-```
-
-Pass multiple `{ propertyid, propertydisplayname }` entries to authorize the agent against several GA4 properties at once. Only `propertyid` and `propertydisplayname` are persisted by the picker — the GA4 `account` resource name (`accounts/12345`) is discoverable from the redirect-URL JSON if you need it for UI grouping but is not stored.
 
 ## Own Mode
 
@@ -87,7 +55,23 @@ Copy the **Client ID** and **Client Secret** to your agent credentials.
 
 ### Step 3: Connect
 
-Submit the Client ID, Client Secret via agent credential update (`POST /UserAgent/CredentialUpsert`), then trigger `OAuthConnect` in `own` mode:
+Save the Client ID and Client Secret with `POST /UserAgent/CredentialUpsert`:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "ga4", "fieldname": "clientid", "fieldvalue": "123-abc.apps.googleusercontent.com" },
+      { "credentialkey": "ga4", "fieldname": "clientsecret", "fieldvalue": "YOUR_CLIENT_SECRET" },
+      { "credentialkey": "ga4", "fieldname": "authmethod", "fieldvalue": "own" }
+    ]
+  }'
+```
+
+Then start `OAuthConnect` in `own` mode:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
@@ -101,9 +85,26 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
   }'
 ```
 
+The response returns `{ result: true, authorizeUrl: "..." }`. Redirect the user to `authorizeUrl`.
+
 ### Step 4: Property Picker
 
-After GA4 consent the user returns with `?ga4_properties=[...]`. Present the list, let the user choose, then call `SetPickerAccounts` as shown above.
+After consent, the user returns with `?ga4_connected=true&ga4_properties=<URL-encoded-JSON>`. The JSON array entries come straight from GA4's Admin API and carry `{ id, displayName, account, propertyType }` per property. Map them to the picker shape and call `SetPickerAccounts`:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "ga4",
+    "accounts": [
+      { "propertyid": "123456789", "propertydisplayname": "MyApp — Production" }
+    ]
+  }'
+```
+
+Pass multiple `{ propertyid, propertydisplayname }` entries to authorize the agent against several GA4 properties at once. Only `propertyid` and `propertydisplayname` are persisted by the picker — the GA4 `account` resource name (`accounts/12345`) is discoverable from the redirect-URL JSON if you need it for UI grouping but is not stored.
 
 ## Disconnect
 
@@ -173,6 +174,7 @@ Agent reads GA4 predefined + custom audiences via Admin API and can propose Cust
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
+| `Wiro-managed OAuth is not enabled for Google Analytics 4` in `OAuthConnect`'s `errors[]` | Wiro mode isn't available yet, and it is the default when `authmethod` is left out | Save your OAuth client (Step 3) and call `OAuthConnect` with `"authmethod": "own"` |
 | `invalid_grant` | Refresh token expired | Re-connect via `OAuthConnect` |
 | `PERMISSION_DENIED` | User not a property administrator | Ask user to add the GA account |
 | `403 Request had insufficient authentication` | Missing scopes | Re-consent with full scope set |

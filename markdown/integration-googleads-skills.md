@@ -20,33 +20,18 @@ The Google Ads integration uses Google OAuth 2.0 with the Google Ads API v23 RES
 
 | Mode | Status | Notes |
 |------|--------|-------|
-| `"wiro"` | Available | One-click connect using Wiro's Google Cloud project. |
-| `"own"` | Available | Own Google Cloud project, Developer Token, and MCC manager customer. |
+| `"own"` | Available | Your own Google Cloud project, Developer Token, and MCC manager customer. |
+| `"wiro"` | Coming soon | Wiro's shared Google Cloud project is awaiting Google's review. Until then, `OAuthConnect` in Wiro mode, which is also what you get when you leave out `authmethod`, returns `Wiro-managed OAuth is not enabled for Google Ads`. |
 
 ## Prerequisites
 
 - **A Wiro API key** — [Authentication](/docs/authentication).
 - **A deployed agent** — [Agent Overview](/docs/agent-overview).
 - **A Google Ads account (or MCC)** the connecting user administers.
-- **(Own mode) A Google Cloud project** with the Google Ads API enabled.
-- **(Own mode) A Google Ads Developer Token** — request from your MCC.
-- **(Own mode) Your Manager (MCC) Customer ID** (10 digits, no dashes) for server-to-server calls.
+- **A Google Cloud project** with the Google Ads API enabled.
+- **A Google Ads Developer Token** — request from your MCC.
+- **Your Manager (MCC) Customer ID** (10 digits, no dashes) for server-to-server calls.
 - **An HTTPS callback URL**.
-
-## Wiro Mode
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "google-ads",
-    "redirecturl": "https://your-app.com/settings/integrations"
-  }'
-```
-
-User returns with `?gads_connected=true&gads_accounts=[{...}]`. Present to user if multiple. Call `SetPickerAccounts`. Skip to [Step 8: Verify](#step-8-verify-and-start).
 
 ## Complete Integration Walkthrough — Own Mode
 
@@ -60,7 +45,7 @@ User returns with `?gads_connected=true&gads_accounts=[{...}]`. Present to user 
    - Add scope: `https://www.googleapis.com/auth/adwords`.
    - While in Testing status: add test users (the Google accounts that will connect).
 
-> **Using this OAuth client for other Google services?** The same Wiro OAuth client powers Google Ads, YouTube, Google Analytics 4, and Merchant Center — they all share the `https://www.googleapis.com/auth/content` / `adwords` / `youtube` / `analytics.readonly` scope family through Wiro's Cloud project. If you're setting up "own" mode and want any of those integrations, enable the matching Google Cloud APIs in the same project:
+> **Using this OAuth client for other Google services?** One OAuth client can serve Google Ads, YouTube, Google Analytics 4, and Merchant Center — they share the `https://www.googleapis.com/auth/content` / `adwords` / `youtube` / `analytics.readonly` scope family. If you want any of those integrations too, enable the matching Google Cloud APIs in the same project:
 >
 > - **Google Ads API** — for Google Ads
 > - **YouTube Data API v3** + **YouTube Analytics API v2** — for YouTube (used by the `youtube-manage` skill, also consumed by `googleads-manage` for Video / Demand Gen campaigns)
@@ -69,7 +54,7 @@ User returns with `?gads_connected=true&gads_accounts=[{...}]`. Present to user 
 >
 > You don't need a separate OAuth client per API — one client + all four APIs enabled + the corresponding scopes works.
 
-> **Merchant Center — "own" mode only extra step:** "wiro" mode is fully transparent, you don't need to do anything on your own merchant account. If you're using "own" mode with your own Google Cloud project, you must register that GCP project once against your own primary Merchant Center account before the API will answer for any merchant account you authorize:
+> **Merchant Center — one extra step:** you must register your Google Cloud project once against your own primary Merchant Center account before the API will answer for any merchant account you authorize:
 >
 > ```bash
 > curl -X POST \
@@ -250,7 +235,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 | `useragentguid` | string | Yes | Agent instance GUID. |
 | `credentialkey` | string | Yes | `"google-ads"`. |
 | `redirecturl` | string | Yes | HTTPS URL. |
-| `authmethod` | string | No | `"wiro"` (default) or `"own"`. |
+| `authmethod` | string | No | `"own"`. Omitted, it means `"wiro"`, which is not available yet. |
 
 ### GET /UserAgentOAuth/GAdsCallback
 
@@ -304,6 +289,7 @@ To change **what** the reporter includes (wasted-spend threshold, target ROAS, r
 | `authorization_denied` | User cancelled, or consent screen in Testing and the user isn't a test user. | Add test user or publish consent screen. |
 | `session_expired` | State cache expired. | Restart. |
 | `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy; verify URL. |
+| `Wiro-managed OAuth is not enabled for Google Ads` | Returned in `OAuthConnect`'s `errors[]`: Wiro mode isn't available yet, and it is the default when `authmethod` is left out. | Save your credentials (Step 4) and call `OAuthConnect` with `"authmethod": "own"`. |
 | `template_not_found` (wiro mode) | Wiro's template doesn't have `googleads` credentials. | Contact support or switch to own mode. |
 | `useragent_not_found` | Invalid guid. | Use `POST /UserAgent/MyAgents`. |
 | `Google Ads credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but the four required fields are missing. | `UserAgent/CredentialUpsert` with all four fields. |

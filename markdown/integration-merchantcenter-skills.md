@@ -18,47 +18,17 @@ The Merchant Center integration uses the [Merchant API v1](https://developers.go
 
 | Mode | Status | Notes |
 |------|--------|-------|
-| `"wiro"` | Available | One-click connect using Wiro's Google Cloud project (already registered against Wiro's developer GCP). |
-| `"own"` | Available | Requires a one-time developer registration of your GCP project against your primary Merchant Center. |
+| `"own"` | Available | Your own Google Cloud project and OAuth client, plus a one-time developer registration of that project against your primary Merchant Center. |
+| `"wiro"` | Coming soon | Wiro's shared Google Cloud project is awaiting Google's review. Until then, `OAuthConnect` in Wiro mode, which is also what you get when you leave out `authmethod`, returns `Wiro-managed OAuth is not enabled for Merchant Center`. |
 
 ## Prerequisites
 
 - **A Wiro API key** — [Authentication](/docs/authentication).
 - **A deployed agent** — [Agent Overview](/docs/agent-overview).
 - **A Merchant Center account** the connecting user administers.
-- **(Own mode) A Google Cloud project** with Merchant API enabled.
-- **(Own mode) Developer Registration** — a one-time step to link your GCP project to your primary MC account.
+- **A Google Cloud project** with Merchant API enabled.
+- **Developer Registration** — a one-time step to link your GCP project to your primary MC account.
 - **An HTTPS callback URL**.
-
-## Wiro Mode
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "google-merchant-center",
-    "redirecturl": "https://your-app.com/settings/integrations"
-  }'
-```
-
-After consent the user returns with `?mc_connected=true&mc_accounts=<URL-encoded-JSON>`. The JSON array entries come straight from the Merchant Center API and carry `{ id, name, websiteUrl }` per account. Map them to the picker's `{ merchantid, accountname }` shape and call `SetPickerAccounts`:
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "google-merchant-center",
-    "accounts": [
-      { "merchantid": "5769377374", "accountname": "Acme Store" }
-    ]
-  }'
-```
-
-Pass multiple `{ merchantid, accountname }` entries to authorize the agent against several merchant accounts at once.
 
 ## Own Mode
 
@@ -76,6 +46,8 @@ Pass multiple `{ merchantid, accountname }` entries to authorize the agent again
 **APIs & Services → Credentials → Create Credentials → OAuth client ID**:
 - Application type: **Web application**
 - **Authorized redirect URIs**: `https://api.wiro.ai/v1/UserAgentOAuth/MCCallback`
+
+Copy the client ID and the client secret.
 
 ### Step 3: Register Developer Registration (REQUIRED — one-time)
 
@@ -97,6 +69,24 @@ Once registered, your GCP project can call Merchant API on any merchant account 
 
 ### Step 4: Connect
 
+Save the OAuth client with `POST /UserAgent/CredentialUpsert`:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "google-merchant-center", "fieldname": "clientid", "fieldvalue": "123-abc.apps.googleusercontent.com" },
+      { "credentialkey": "google-merchant-center", "fieldname": "clientsecret", "fieldvalue": "YOUR_CLIENT_SECRET" },
+      { "credentialkey": "google-merchant-center", "fieldname": "authmethod", "fieldvalue": "own" }
+    ]
+  }'
+```
+
+Then start `OAuthConnect` in `own` mode:
+
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
   -H "Content-Type: application/json" \
@@ -109,7 +99,26 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
   }'
 ```
 
-After consent, present any returned accounts to the user and persist the selection with `SetPickerAccounts` exactly as shown in [Wiro Mode](#wiro-mode) above.
+The response returns `{ result: true, authorizeUrl: "..." }`. Redirect the user to `authorizeUrl`.
+
+### Step 5: Save the account selection
+
+After consent the user returns with `?mc_connected=true&mc_accounts=<URL-encoded-JSON>`. The JSON array entries come straight from the Merchant Center API and carry `{ id, name, websiteUrl }` per account. Map them to the picker's `{ merchantid, accountname }` shape and call `SetPickerAccounts`:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "google-merchant-center",
+    "accounts": [
+      { "merchantid": "5769377374", "accountname": "Acme Store" }
+    ]
+  }'
+```
+
+Pass multiple `{ merchantid, accountname }` entries to authorize the agent against several merchant accounts at once.
 
 ## Disconnect
 
@@ -160,6 +169,7 @@ Response:
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
+| `Wiro-managed OAuth is not enabled for Merchant Center` in `OAuthConnect`'s `errors[]` | Wiro mode isn't available yet, and it is the default when `authmethod` is left out | Save your OAuth client (Step 4) and call `OAuthConnect` with `"authmethod": "own"` |
 | `PERMISSION_DENIED` on any merchant call | GCP project not registered | Complete Step 3 once |
 | `invalid_grant` | Refresh token expired | Re-connect via `OAuthConnect` |
 | `No Merchant Center accounts available` | User has no MC access | User creates/gains access at `merchants.google.com` |

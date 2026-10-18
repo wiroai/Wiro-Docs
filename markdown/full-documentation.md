@@ -12661,16 +12661,16 @@ Returns `{ "result": false, "errors": [{ "code": 404, "message": "Credential not
 | Instagram | System User token (recommended) + Own Instagram OAuth (advanced); Wiro mode coming soon | [Instagram Skills](/docs/integration-instagram-skills) |
 | LinkedIn | Own only (Wiro mode coming soon) | [LinkedIn Skills](/docs/integration-linkedin-skills) |
 | Twitter / X | Wiro + Own | [Twitter Skills](/docs/integration-twitter-skills) |
-| TikTok | Wiro + Own | [TikTok Skills](/docs/integration-tiktok-skills) |
-| Google Ads | Wiro + Own | [Google Ads Skills](/docs/integration-googleads-skills) |
+| TikTok | Own only (Wiro mode coming soon) | [TikTok Skills](/docs/integration-tiktok-skills) |
+| Google Ads | Own only (Wiro mode coming soon) | [Google Ads Skills](/docs/integration-googleads-skills) |
 | YouTube | Own only (Wiro mode coming soon) | [YouTube Skills](/docs/integration-youtube-skills) (shares Google OAuth client with Google Ads) |
-| Google Analytics 4 | Wiro + Own | [Google Analytics 4 Skills](/docs/integration-ga4-skills) (shares Google OAuth client with Google Ads) |
-| Merchant Center | Wiro + Own | [Merchant Center Skills](/docs/integration-merchantcenter-skills) (shares Google OAuth client with Google Ads) |
+| Google Analytics 4 | Own only (Wiro mode coming soon) | [Google Analytics 4 Skills](/docs/integration-ga4-skills) (shares Google OAuth client with Google Ads) |
+| Merchant Center | Own only (Wiro mode coming soon) | [Merchant Center Skills](/docs/integration-merchantcenter-skills) (shares Google OAuth client with Google Ads) |
 | Google Business Profile | Own only (your Google Cloud project, approved for Business Profile API access) | [Google Business Profile Skills](/docs/integration-googlebusiness-skills) |
 | HubSpot | Wiro + Own | [HubSpot Skills](/docs/integration-hubspot-skills) |
 | Mailchimp | Wiro + Own + API Key | [Mailchimp Skills](/docs/integration-mailchimp-skills) |
 
-> **Google OAuth is shared across 4 APIs.** Google Ads, YouTube, Google Analytics 4, and Merchant Center are all authorized through a single Wiro OAuth client in "wiro" mode — one Google Cloud project, one OAuth 2.0 Client ID, multiple API scopes. In "own" mode you may reuse one of your own OAuth clients the same way, or set up separate ones per product. Google Business Profile is not part of that shared client: it is own mode only, and the Google Cloud project behind your OAuth client must be approved for Business Profile API access.
+> **Google OAuth is shared across 4 APIs.** Google Ads, YouTube, Google Analytics 4, and Merchant Center can all be authorized through one of your own OAuth clients — one Google Cloud project, one OAuth 2.0 Client ID, multiple API scopes — or you can set up separate ones per product. Wiro's shared client for "wiro" mode is coming soon. Google Business Profile is not part of that shared client: it is own mode only, and the Google Cloud project behind your OAuth client must be approved for Business Profile API access.
 
 ### Service Account Integrations
 
@@ -12980,7 +12980,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
   }'
 ```
 
-For credentials whose `connection_modes` includes an enabled `"wiro"` mode, you can skip Step 1 and call Step 2 with `authmethod: "wiro"`. Omitting `authmethod` uses that credential's registry default. For Meta Ads, always send `"own"` or `"api_key"` while its default `"wiro"` mode is pending; Shopify and Reddit use `"own"`. TikTok Ads accepts only `"wiro"`. Google Business Profile accepts only `"own"`, so always send it.
+For credentials whose `connection_modes` includes an enabled `"wiro"` mode, you can skip Step 1 and call Step 2 with `authmethod: "wiro"`. Omitting `authmethod` uses that credential's registry default. Wiro mode is still pending for Google Ads, Google Analytics 4, Merchant Center, YouTube, TikTok, LinkedIn, Facebook Page, Instagram and Meta Ads, and it is their default, so always send `"own"` (or `"api_key"` where offered) for them; Shopify and Reddit use `"own"`. TikTok Ads accepts only `"wiro"`. Google Business Profile accepts only `"own"`, so always send it.
 
 ### Callback URL pattern (own mode)
 

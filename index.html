@@ -18568,12 +18568,12 @@ email tools, CRMs — through three credential methods:</p>
 </tr>
 <tr>
 <td>TikTok</td>
-<td>Wiro + Own</td>
+<td>Own only (Wiro mode coming soon)</td>
 <td><a href="/docs/integration-tiktok-skills">TikTok Skills</a></td>
 </tr>
 <tr>
 <td>Google Ads</td>
-<td>Wiro + Own</td>
+<td>Own only (Wiro mode coming soon)</td>
 <td><a href="/docs/integration-googleads-skills">Google Ads Skills</a></td>
 </tr>
 <tr>
@@ -18583,12 +18583,12 @@ email tools, CRMs — through three credential methods:</p>
 </tr>
 <tr>
 <td>Google Analytics 4</td>
-<td>Wiro + Own</td>
+<td>Own only (Wiro mode coming soon)</td>
 <td><a href="/docs/integration-ga4-skills">Google Analytics 4 Skills</a> (shares Google OAuth client with Google Ads)</td>
 </tr>
 <tr>
 <td>Merchant Center</td>
-<td>Wiro + Own</td>
+<td>Own only (Wiro mode coming soon)</td>
 <td><a href="/docs/integration-merchantcenter-skills">Merchant Center Skills</a> (shares Google OAuth client with Google Ads)</td>
 </tr>
 <tr>
@@ -18611,7 +18611,7 @@ email tools, CRMs — through three credential methods:</p>
 </div>
 </div>
 <blockquote>
-<p><strong>Google OAuth is shared across 4 APIs.</strong> Google Ads, YouTube, Google Analytics 4, and Merchant Center are all authorized through a single Wiro OAuth client in "wiro" mode — one Google Cloud project, one OAuth 2.0 Client ID, multiple API scopes. In "own" mode you may reuse one of your own OAuth clients the same way, or set up separate ones per product. Google Business Profile is not part of that shared client: it is own mode only, and the Google Cloud project behind your OAuth client must be approved for Business Profile API access.</p>
+<p><strong>Google OAuth is shared across 4 APIs.</strong> Google Ads, YouTube, Google Analytics 4, and Merchant Center can all be authorized through one of your own OAuth clients — one Google Cloud project, one OAuth 2.0 Client ID, multiple API scopes — or you can set up separate ones per product. Wiro's shared client for "wiro" mode is coming soon. Google Business Profile is not part of that shared client: it is own mode only, and the Google Cloud project behind your OAuth client must be approved for Business Profile API access.</p>
 </blockquote>
 <h3 id="service-account-integrations">Service Account Integrations</h3>
 <div class="docs-param-table">
@@ -19048,7 +19048,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect&quot; \
     &quot;authmethod&quot;: &quot;own&quot;
   }'
 </code></pre>
-<p>For credentials whose <code>connection_modes</code> includes an enabled <code>"wiro"</code> mode, you can skip Step 1 and call Step 2 with <code>authmethod: "wiro"</code>. Omitting <code>authmethod</code> uses that credential's registry default. For Meta Ads, always send <code>"own"</code> or <code>"api_key"</code> while its default <code>"wiro"</code> mode is pending; Shopify and Reddit use <code>"own"</code>. TikTok Ads accepts only <code>"wiro"</code>. Google Business Profile accepts only <code>"own"</code>, so always send it.</p>
+<p>For credentials whose <code>connection_modes</code> includes an enabled <code>"wiro"</code> mode, you can skip Step 1 and call Step 2 with <code>authmethod: "wiro"</code>. Omitting <code>authmethod</code> uses that credential's registry default. Wiro mode is still pending for Google Ads, Google Analytics 4, Merchant Center, YouTube, TikTok, LinkedIn, Facebook Page, Instagram and Meta Ads, and it is their default, so always send <code>"own"</code> (or <code>"api_key"</code> where offered) for them; Shopify and Reddit use <code>"own"</code>. TikTok Ads accepts only <code>"wiro"</code>. Google Business Profile accepts only <code>"own"</code>, so always send it.</p>
 <h3 id="callback-url-pattern-own-mode">Callback URL pattern (own mode)</h3>
 <p>Register this URL in your OAuth app settings on the provider's developer portal:</p>
 <pre><code>https://api.wiro.ai/v1/UserAgentOAuth/{Provider}Callback
@@ -26722,14 +26722,14 @@ if (params.get("x_connected") === "true") {
                         </thead>
                         <tbody>
                           <tr>
-                            <td><code>"wiro"</code></td>
-                            <td>Available</td>
-                            <td>One-click connect using Wiro's shared TikTok app.</td>
-                          </tr>
-                          <tr>
                             <td><code>"own"</code></td>
                             <td>Available</td>
                             <td>Use your own TikTok for Developers app.</td>
+                          </tr>
+                          <tr>
+                            <td><code>"wiro"</code></td>
+                            <td>Coming soon</td>
+                            <td>Wiro's shared TikTok app is awaiting TikTok's review. Until then, <code>OAuthConnect</code> in Wiro mode, which is also what you get when you leave out <code>authmethod</code>, returns <code>Wiro-managed OAuth is not enabled for TikTok</code>.</td>
                           </tr>
                         </tbody>
                       </table>
@@ -26741,14 +26741,9 @@ if (params.get("x_connected") === "true") {
                     <ul>
                       <li><strong>A Wiro API key</strong> — <a href="/docs/authentication" class="docs-link">Authentication</a>.</li>
                       <li><strong>A deployed agent</strong> — <a href="/docs/agent-overview" class="docs-link">Agent Overview</a>.</li>
-                      <li><strong>(Own mode) A TikTok for Developers account</strong> — <a href="https://developers.tiktok.com/" class="docs-link" target="_blank">developers.tiktok.com</a>.</li>
+                      <li><strong>A TikTok for Developers account</strong> — <a href="https://developers.tiktok.com/" class="docs-link" target="_blank">developers.tiktok.com</a>.</li>
                       <li><strong>An HTTPS callback URL</strong>.</li>
                     </ul>
-                  </section>
-
-                  <section id="wiro-mode">
-                    <h2>Wiro Mode</h2>
-                    <p>Call <code>OAuthConnect</code> with <code>credentialkey: "tiktok"</code> and without <code>authmethod</code>, redirect, parse <code>tiktok_connected=true&amp;tiktok_username=&lt;display_name&gt;</code> (display name, not the <code>@handle</code>).</p>
                   </section>
 
                   <section id="complete-integration-walkthrough-own-mode">
@@ -26913,7 +26908,7 @@ if (params.get("x_connected") === "true") {
                             <td><code>authmethod</code></td>
                             <td>string</td>
                             <td>No</td>
-                            <td><code>"wiro"</code> (default) or <code>"own"</code>.</td>
+                            <td><code>"own"</code>. Omitted, it means <code>"wiro"</code>, which is not available yet.</td>
                           </tr>
                         </tbody>
                       </table>
@@ -26963,6 +26958,11 @@ if (params.get("x_connected") === "true") {
                             <td><code>token_exchange_failed</code></td>
                             <td>Wrong Client Secret or redirect URI mismatch.</td>
                             <td>Re-copy; verify URL.</td>
+                          </tr>
+                          <tr>
+                            <td><code>Wiro-managed OAuth is not enabled for TikTok</code></td>
+                            <td>Returned in <code>OAuthConnect</code>'s <code>errors[]</code>: Wiro mode isn't available yet, and it is the default when <code>authmethod</code> is left out.</td>
+                            <td>Save your app credentials (Step 6) and call <code>OAuthConnect</code> with <code>"authmethod": "own"</code>.</td>
                           </tr>
                           <tr>
                             <td><code>useragent_not_found</code></td>
@@ -27044,14 +27044,14 @@ if (params.get("x_connected") === "true") {
                         </thead>
                         <tbody>
                           <tr>
-                            <td><code>"wiro"</code></td>
-                            <td>Available</td>
-                            <td>One-click connect using Wiro's Google Cloud project.</td>
-                          </tr>
-                          <tr>
                             <td><code>"own"</code></td>
                             <td>Available</td>
-                            <td>Own Google Cloud project, Developer Token, and MCC manager customer.</td>
+                            <td>Your own Google Cloud project, Developer Token, and MCC manager customer.</td>
+                          </tr>
+                          <tr>
+                            <td><code>"wiro"</code></td>
+                            <td>Coming soon</td>
+                            <td>Wiro's shared Google Cloud project is awaiting Google's review. Until then, <code>OAuthConnect</code> in Wiro mode, which is also what you get when you leave out <code>authmethod</code>, returns <code>Wiro-managed OAuth is not enabled for Google Ads</code>.</td>
                           </tr>
                         </tbody>
                       </table>
@@ -27064,24 +27064,11 @@ if (params.get("x_connected") === "true") {
                       <li><strong>A Wiro API key</strong> — <a href="/docs/authentication" class="docs-link">Authentication</a>.</li>
                       <li><strong>A deployed agent</strong> — <a href="/docs/agent-overview" class="docs-link">Agent Overview</a>.</li>
                       <li><strong>A Google Ads account (or MCC)</strong> the connecting user administers.</li>
-                      <li><strong>(Own mode) A Google Cloud project</strong> with the Google Ads API enabled.</li>
-                      <li><strong>(Own mode) A Google Ads Developer Token</strong> — request from your MCC.</li>
-                      <li><strong>(Own mode) Your Manager (MCC) Customer ID</strong> (10 digits, no dashes) for server-to-server calls.</li>
+                      <li><strong>A Google Cloud project</strong> with the Google Ads API enabled.</li>
+                      <li><strong>A Google Ads Developer Token</strong> — request from your MCC.</li>
+                      <li><strong>Your Manager (MCC) Customer ID</strong> (10 digits, no dashes) for server-to-server calls.</li>
                       <li><strong>An HTTPS callback URL</strong>.</li>
                     </ul>
-                  </section>
-
-                  <section id="wiro-mode">
-                    <h2>Wiro Mode</h2>
-                    <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "google-ads",
-    "redirecturl": "https://your-app.com/settings/integrations"
-  }'</code></pre>
-                    <p>User returns with <code>?gads_connected=true&amp;gads_accounts=[{...}]</code>. Present to user if multiple. Call <code>SetPickerAccounts</code> with the picked customer accounts. Skip to <a href="#step-8-verify-and-start" class="docs-link">Step 8: Verify</a>.</p>
                   </section>
 
                   <section id="complete-integration-walkthrough-own-mode">
@@ -27103,7 +27090,7 @@ if (params.get("x_connected") === "true") {
                     </ol>
 
                     <div class="info-callout">
-                      <strong>Using this OAuth client for other Google services?</strong> The same Wiro OAuth client powers Google Ads, YouTube, Google Analytics 4, and Merchant Center — they all share the <code>https://www.googleapis.com/auth/content</code> / <code>adwords</code> / <code>youtube</code> / <code>analytics.readonly</code> scope family through Wiro's Cloud project. If you're setting up "own" mode and want any of those integrations, enable the matching Google Cloud APIs in the same project:
+                      <strong>Using this OAuth client for other Google services?</strong> One OAuth client can serve Google Ads, YouTube, Google Analytics 4, and Merchant Center — they share the <code>https://www.googleapis.com/auth/content</code> / <code>adwords</code> / <code>youtube</code> / <code>analytics.readonly</code> scope family. If you want any of those integrations too, enable the matching Google Cloud APIs in the same project:
                       <ul>
                         <li><strong>Google Ads API</strong> — for Google Ads</li>
                         <li><strong>YouTube Data API v3</strong> + <strong>YouTube Analytics API v2</strong> — for YouTube (used by the <code>youtube-manage</code> skill, also consumed by <code>googleads-manage</code> for Video / Demand Gen campaigns)</li>
@@ -27114,7 +27101,7 @@ if (params.get("x_connected") === "true") {
                     </div>
 
                     <div class="callout callout-info">
-                      <strong>Merchant Center — "own" mode only extra step:</strong> "wiro" mode is fully transparent, you don't need to do anything on your own merchant account. If you're using "own" mode with your own Google Cloud project, you must register that GCP project once against your own primary Merchant Center account before the API will answer for any merchant account you authorize:
+                      <strong>Merchant Center — one extra step:</strong> you must register your Google Cloud project once against your own primary Merchant Center account before the API will answer for any merchant account you authorize:
                       <pre><code>curl -X POST \
   "https://merchantapi.googleapis.com/accounts/v1/accounts/{YOUR_MC_ID}/developerRegistration:registerGcp" \
   -H "Authorization: Bearer {ACCESS_TOKEN}" \
@@ -27281,7 +27268,7 @@ if (params.get("gads_connected") === "true") {
                             <td><code>authmethod</code></td>
                             <td>string</td>
                             <td>No</td>
-                            <td><code>"wiro"</code> (default) or <code>"own"</code>.</td>
+                            <td><code>"own"</code>. Omitted, it means <code>"wiro"</code>, which is not available yet.</td>
                           </tr>
                         </tbody>
                       </table>
@@ -27383,6 +27370,11 @@ if (params.get("gads_connected") === "true") {
                             <td><code>token_exchange_failed</code></td>
                             <td>Wrong Client Secret or redirect URI mismatch.</td>
                             <td>Re-copy; verify URL.</td>
+                          </tr>
+                          <tr>
+                            <td><code>Wiro-managed OAuth is not enabled for Google Ads</code></td>
+                            <td>Returned in <code>OAuthConnect</code>'s <code>errors[]</code>: Wiro mode isn't available yet, and it is the default when <code>authmethod</code> is left out.</td>
+                            <td>Save your credentials (Step 4) and call <code>OAuthConnect</code> with <code>"authmethod": "own"</code>.</td>
                           </tr>
                           <tr>
                             <td><code>template_not_found</code> (wiro mode)</td>
@@ -27741,8 +27733,8 @@ Agent → POST /youtubeAnalytics/v2/reports
                             <tr><th>Mode</th><th>Status</th><th>Notes</th></tr>
                           </thead>
                           <tbody>
-                            <tr><td><code>"wiro"</code></td><td>Available</td><td>One-click connect using Wiro's Google Cloud project.</td></tr>
-                            <tr><td><code>"own"</code></td><td>Available</td><td>Own Google Cloud project + OAuth client.</td></tr>
+                            <tr><td><code>"own"</code></td><td>Available</td><td>Your own Google Cloud project and OAuth client.</td></tr>
+                            <tr><td><code>"wiro"</code></td><td>Coming soon</td><td>Wiro's shared Google Cloud project is awaiting Google's review. Until then, <code>OAuthConnect</code> in Wiro mode, which is also what you get when you leave out <code>authmethod</code>, returns <code>Wiro-managed OAuth is not enabled for Google Analytics 4</code>.</td></tr>
                           </tbody>
                         </table>
                       </div>
@@ -27755,33 +27747,9 @@ Agent → POST /youtubeAnalytics/v2/reports
                       <li><strong>A Wiro API key</strong> — <a href="/docs/authentication">Authentication</a>.</li>
                       <li><strong>A deployed agent</strong> — <a href="/docs/agent-overview">Agent Overview</a>.</li>
                       <li><strong>A GA4 Property</strong> the connecting user administers.</li>
-                      <li><strong>(Own mode) A Google Cloud project</strong> with GA4 Data API and GA4 Admin API enabled.</li>
+                      <li><strong>A Google Cloud project</strong> with GA4 Data API and GA4 Admin API enabled.</li>
                       <li><strong>An HTTPS callback URL</strong>.</li>
                     </ul>
-                  </section>
-
-                  <section id="wiro-mode">
-                    <h2>Wiro Mode</h2>
-                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "ga4",
-    "redirecturl": "https://your-app.com/settings/integrations"
-  }'</code></pre>
-                    <p>The response returns <code>{ result: true, authorizeUrl: "..." }</code>. Redirect the user to <code>authorizeUrl</code>.</p>
-                    <p>After consent, the user returns with <code>?ga4_connected=true&amp;ga4_properties=[{propertyid,propertydisplayname,accountname}]</code>. If the user has multiple GA4 properties, present them in a picker and call <code>SetPickerAccounts</code>:</p>
-                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "ga4",
-    "accounts": [
-      { "propertyid": "123456789", "propertydisplayname": "MyApp — Production" }
-    ]
-  }'</code></pre>
                   </section>
 
                   <section id="own-mode">
@@ -27814,7 +27782,19 @@ Agent → POST /youtubeAnalytics/v2/reports
                     <p>Copy the <strong>Client ID</strong> and <strong>Client Secret</strong> to your agent credentials.</p>
 
                     <h3>Step 3: Connect</h3>
-                    <p>Submit the Client ID, Client Secret via agent credential update (<code>POST /UserAgent/CredentialUpsert</code>), then trigger <code>OAuthConnect</code> in <code>own</code> mode:</p>
+                    <p>Save the Client ID and Client Secret with <code>POST /UserAgent/CredentialUpsert</code>:</p>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "ga4", "fieldname": "clientid", "fieldvalue": "123-abc.apps.googleusercontent.com" },
+      { "credentialkey": "ga4", "fieldname": "clientsecret", "fieldvalue": "YOUR_CLIENT_SECRET" },
+      { "credentialkey": "ga4", "fieldname": "authmethod", "fieldvalue": "own" }
+    ]
+  }'</code></pre>
+                    <p>Then start <code>OAuthConnect</code> in <code>own</code> mode:</p>
                     <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
@@ -27824,9 +27804,21 @@ Agent → POST /youtubeAnalytics/v2/reports
     "redirecturl": "https://your-app.com/settings/integrations",
     "authmethod": "own"
   }'</code></pre>
+                    <p>The response returns <code>{ result: true, authorizeUrl: "..." }</code>. Redirect the user to <code>authorizeUrl</code>.</p>
 
                     <h3>Step 4: Property Picker</h3>
-                    <p>After GA4 consent the user returns with <code>?ga4_properties=[...]</code>. Present the list, let the user choose, then call <code>SetPickerAccounts</code> as shown above.</p>
+                    <p>After consent, the user returns with <code>?ga4_connected=true&amp;ga4_properties=&lt;URL-encoded-JSON&gt;</code>. The JSON array entries come straight from GA4's Admin API and carry <code>{ id, displayName, account, propertyType }</code> per property. Map them to the picker shape and call <code>SetPickerAccounts</code>:</p>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "ga4",
+    "accounts": [
+      { "propertyid": "123456789", "propertydisplayname": "MyApp — Production" }
+    ]
+  }'</code></pre>
+                    <p>Pass multiple <code>{ propertyid, propertydisplayname }</code> entries to authorize the agent against several GA4 properties at once. Only <code>propertyid</code> and <code>propertydisplayname</code> are persisted by the picker — the GA4 <code>account</code> resource name (<code>accounts/12345</code>) is discoverable from the redirect-URL JSON if you need it for UI grouping but is not stored.</p>
                   </section>
 
                   <section id="disconnect">
@@ -27879,6 +27871,7 @@ Agent → POST /v1beta/properties/123456789:runReport
                             <tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr>
                           </thead>
                           <tbody>
+                            <tr><td><code>Wiro-managed OAuth is not enabled for Google Analytics 4</code> in <code>OAuthConnect</code>'s <code>errors[]</code></td><td>Wiro mode isn't available yet, and it is the default when <code>authmethod</code> is left out</td><td>Save your OAuth client (Step 3) and call <code>OAuthConnect</code> with <code>"authmethod": "own"</code></td></tr>
                             <tr><td><code>invalid_grant</code></td><td>Refresh token expired</td><td>Re-connect via <code>OAuthConnect</code></td></tr>
                             <tr><td><code>PERMISSION_DENIED</code></td><td>User not a property administrator</td><td>Ask user to add the GA account</td></tr>
                             <tr><td><code>403 Request had insufficient authentication</code></td><td>Missing scopes</td><td>Re-consent with full scope set</td></tr>
@@ -28128,8 +28121,8 @@ Agent → POST /v1beta/properties/123456789:runReport
                             <tr><th>Mode</th><th>Status</th><th>Notes</th></tr>
                           </thead>
                           <tbody>
-                            <tr><td><code>"wiro"</code></td><td>Available</td><td>One-click connect using Wiro's Google Cloud project (already registered against Wiro's developer GCP).</td></tr>
-                            <tr><td><code>"own"</code></td><td>Available</td><td>Requires a one-time developer registration of your GCP project against your primary Merchant Center.</td></tr>
+                            <tr><td><code>"own"</code></td><td>Available</td><td>Your own Google Cloud project and OAuth client, plus a one-time developer registration of that project against your primary Merchant Center.</td></tr>
+                            <tr><td><code>"wiro"</code></td><td>Coming soon</td><td>Wiro's shared Google Cloud project is awaiting Google's review. Until then, <code>OAuthConnect</code> in Wiro mode, which is also what you get when you leave out <code>authmethod</code>, returns <code>Wiro-managed OAuth is not enabled for Merchant Center</code>.</td></tr>
                           </tbody>
                         </table>
                       </div>
@@ -28142,33 +28135,10 @@ Agent → POST /v1beta/properties/123456789:runReport
                       <li><strong>A Wiro API key</strong> — <a href="/docs/authentication">Authentication</a>.</li>
                       <li><strong>A deployed agent</strong> — <a href="/docs/agent-overview">Agent Overview</a>.</li>
                       <li><strong>A Merchant Center account</strong> the connecting user administers.</li>
-                      <li><strong>(Own mode) A Google Cloud project</strong> with Merchant API enabled.</li>
-                      <li><strong>(Own mode) Developer Registration</strong> — a one-time step to link your GCP project to your primary MC account.</li>
+                      <li><strong>A Google Cloud project</strong> with Merchant API enabled.</li>
+                      <li><strong>Developer Registration</strong> — a one-time step to link your GCP project to your primary MC account.</li>
                       <li><strong>An HTTPS callback URL</strong>.</li>
                     </ul>
-                  </section>
-
-                  <section id="wiro-mode">
-                    <h2>Wiro Mode</h2>
-                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "google-merchant-center",
-    "redirecturl": "https://your-app.com/settings/integrations"
-  }'</code></pre>
-                    <p>After consent the user returns with <code>?mc_connected=true&amp;mc_accounts=[{merchantid,accountname}]</code>. Present the picker and call <code>SetPickerAccounts</code>:</p>
-                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "google-merchant-center",
-    "accounts": [
-      { "merchantid": "5769377374", "accountname": "Acme Store" }
-    ]
-  }'</code></pre>
                   </section>
 
                   <section id="own-mode">
@@ -28193,6 +28163,7 @@ Agent → POST /v1beta/properties/123456789:runReport
                       <li>Application type: <strong>Web application</strong></li>
                       <li><strong>Authorized redirect URIs</strong>: <code>https://api.wiro.ai/v1/UserAgentOAuth/MCCallback</code></li>
                     </ul>
+                    <p>Copy the client ID and the client secret.</p>
 
                     <h3>Step 3: Register Developer Registration (REQUIRED — one-time)</h3>
                     <p>Merchant API requires that your GCP project be registered against your <strong>primary</strong> Merchant Center account before it will answer for any merchant account you authorize:</p>
@@ -28209,6 +28180,19 @@ Agent → POST /v1beta/properties/123456789:runReport
                     <p>Once registered, your GCP project can call Merchant API on any merchant account that a user authorizes through OAuth.</p>
 
                     <h3>Step 4: Connect</h3>
+                    <p>Save the OAuth client with <code>POST /UserAgent/CredentialUpsert</code>:</p>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "google-merchant-center", "fieldname": "clientid", "fieldvalue": "123-abc.apps.googleusercontent.com" },
+      { "credentialkey": "google-merchant-center", "fieldname": "clientsecret", "fieldvalue": "YOUR_CLIENT_SECRET" },
+      { "credentialkey": "google-merchant-center", "fieldname": "authmethod", "fieldvalue": "own" }
+    ]
+  }'</code></pre>
+                    <p>Then start <code>OAuthConnect</code> in <code>own</code> mode:</p>
                     <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
@@ -28218,6 +28202,21 @@ Agent → POST /v1beta/properties/123456789:runReport
     "redirecturl": "https://your-app.com/settings/integrations",
     "authmethod": "own"
   }'</code></pre>
+                    <p>The response returns <code>{ result: true, authorizeUrl: "..." }</code>. Redirect the user to <code>authorizeUrl</code>.</p>
+
+                    <h3>Step 5: Save the account selection</h3>
+                    <p>After consent the user returns with <code>?mc_connected=true&amp;mc_accounts=&lt;URL-encoded-JSON&gt;</code>. The JSON array entries come straight from the Merchant Center API and carry <code>{ id, name, websiteUrl }</code> per account. Map them to the picker's <code>{ merchantid, accountname }</code> shape and call <code>SetPickerAccounts</code>:</p>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "google-merchant-center",
+    "accounts": [
+      { "merchantid": "5769377374", "accountname": "Acme Store" }
+    ]
+  }'</code></pre>
+                    <p>Pass multiple <code>{ merchantid, accountname }</code> entries to authorize the agent against several merchant accounts at once.</p>
                   </section>
 
                   <section id="disconnect">
@@ -28259,6 +28258,7 @@ Agent → POST /v1beta/properties/123456789:runReport
                             <tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr>
                           </thead>
                           <tbody>
+                            <tr><td><code>Wiro-managed OAuth is not enabled for Merchant Center</code> in <code>OAuthConnect</code>'s <code>errors[]</code></td><td>Wiro mode isn't available yet, and it is the default when <code>authmethod</code> is left out</td><td>Save your OAuth client (Step 4) and call <code>OAuthConnect</code> with <code>"authmethod": "own"</code></td></tr>
                             <tr><td><code>PERMISSION_DENIED</code> on any merchant call</td><td>GCP project not registered</td><td>Complete Step 3 once</td></tr>
                             <tr><td><code>invalid_grant</code></td><td>Refresh token expired</td><td>Re-connect via <code>OAuthConnect</code></td></tr>
                             <tr><td><code>No Merchant Center accounts available</code></td><td>User has no MC access</td><td>User creates/gains access at <code>merchants.google.com</code></td></tr>
