@@ -64,7 +64,7 @@ Community Management API approval is a manual review that can take days. While p
 
 ### Step 4: Note the required OAuth 2.0 scopes
 
-Wiro requests these exact scopes (sourced from the LinkedIn entry in the credential registry — `data/agent-skills-registry/credentials/linkedin.json` under `oauth_provider.oauth_flow.scopes`):
+Wiro requests these exact scopes:
 
 ```
 openid profile w_organization_social r_organization_social

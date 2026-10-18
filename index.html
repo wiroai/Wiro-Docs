@@ -11229,7 +11229,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <td><code>enabled</code></td>
 <td>boolean</td>
 <td>No</td>
-<td>Turn the skill on or off. <strong>Writable for both strategies (<code>cs-*</code>) and crons (<code>cs-cron-*</code>)</strong> — a disabled strategy is suppressed end-to-end (the IDE still shows it but the runtime drops it from <code>&lt;available_skills&gt;</code> and the per-skill <code>SKILL.md</code> write is skipped). Defaults to <code>true</code> on insert.</td>
+<td>Turn the skill on or off. <strong>Writable for both strategies (<code>cs-*</code>) and crons (<code>cs-cron-*</code>)</strong> — a disabled strategy is suppressed end-to-end (the IDE still shows it, but the agent never loads it). Defaults to <code>true</code> on insert.</td>
 </tr>
 <tr>
 <td><code>description</code></td>
@@ -13475,7 +13475,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <tr>
 <td><strong>Extra credit packs</strong></td>
 <td><code>agent.extracreditpacks[]</code></td>
-<td>Per-useragent — derived as 5x / 10x / 20x of <code>monthlycredits</code>. Pro tier only (Starter has empty array).</td>
+<td>Per-useragent — derived as 5x / 10x / 20x of <code>monthlycredits</code>. Listed on both tiers; buying a pack needs the Pro tier.</td>
 </tr>
 </tbody>
 </table>
@@ -20596,7 +20596,7 @@ customer-facing token-refresh endpoint or manual refresh action.</p>
 <tr>
 <td><code>enabled</code></td>
 <td>boolean</td>
-<td>Whether the skill is active. <strong>Writable for both strategies (<code>cs-*</code>) and crons (<code>cs-cron-*</code>)</strong> — a disabled strategy is suppressed end-to-end (kept in the merged <code>customskills[]</code> so the IDE sees it, but skipped during <code>start.sh</code>'s <code>SKILL.md</code> write and dropped from the agent's <code>&lt;available_skills&gt;</code> block).</td>
+<td>Whether the skill is active. <strong>Writable for both strategies (<code>cs-*</code>) and crons (<code>cs-cron-*</code>)</strong> — a disabled strategy is suppressed end-to-end (kept in the merged <code>customskills[]</code> so the IDE sees it, but the agent never loads it).</td>
 </tr>
 <tr>
 <td><code>interval</code></td>
@@ -22994,7 +22994,7 @@ not require or store an App ID/App Secret for this direct mode.</p>
 <p>This is the single most common place where own-mode setups fail. The redirect URI must be exact — HTTPS, no trailing slash, same capitalization.</p>
 </blockquote>
 <h3 id="step-4-note-the-required-permissions">Step 4: Note the required permissions</h3>
-<p>Wiro requests these exact scopes during OAuth (sourced from <code>data/agent-skills-registry/credentials/meta-ads.json</code> under <code>oauth_provider.oauth_flow.scopes</code>):</p>
+<p>Wiro requests these exact scopes during OAuth:</p>
 <pre><code>ads_management,ads_read,business_management,pages_show_list,pages_read_engagement,pages_manage_ads
 </code></pre>
 <div class="docs-param-table">
@@ -26055,7 +26055,7 @@ if (params.get("ig_connected") === "true") {
                     </ol>
 
                     <h3>Step 4: Note the required OAuth 2.0 scopes</h3>
-                    <p>Wiro requests these exact scopes (verified against <code>api-useragent-oauth.js</code> L1484):</p>
+                    <p>Wiro requests these exact scopes:</p>
                     <pre><code>openid profile w_organization_social r_organization_social</code></pre>
                     <div class="docs-comparison-table">
                       <table>
@@ -26427,7 +26427,7 @@ if (params.get("li_connected") === "true") {
                     </ol>
 
                     <h3>Step 3: Note the required scopes</h3>
-                    <p>Wiro requests these exact scopes (verified against <code>api-useragent-oauth.js</code> L159):</p>
+                    <p>Wiro requests these exact scopes:</p>
                     <pre><code>tweet.read tweet.write users.read offline.access</code></pre>
                     <div class="docs-comparison-table">
                       <table>
@@ -26773,7 +26773,7 @@ if (params.get("x_connected") === "true") {
                     </ol>
 
                     <h3>Step 4: Note the required scopes</h3>
-                    <p>Wiro requests these exact scopes (verified against <code>api-useragent-oauth.js</code> L483-L484):</p>
+                    <p>Wiro requests these exact scopes:</p>
                     <pre><code>user.info.basic,video.publish</code></pre>
                     <div class="docs-comparison-table">
                       <table>
@@ -29017,7 +29017,7 @@ if (params.get("gbp_connected") === "true") {
                         <pre><code>https://api.wiro.ai/v1/UserAgentOAuth/HubSpotCallback</code></pre>
                       </li>
                       <li>
-                        <strong>Scopes</strong> — Wiro requests a fixed scope string plus optional_scopes (verified against <code>api-useragent-oauth.js</code> L2551-L2556). Enable <strong>all</strong> of the following in your HubSpot app's Auth tab:
+                        <strong>Scopes</strong> — Wiro requests a fixed scope string plus optional_scopes. Enable <strong>all</strong> of the following in your HubSpot app's Auth tab:
                         <p>
                           <strong>Required <code>scope</code> (mandatory — OAuth fails if any is missing):</strong>
                         </p>
@@ -29492,7 +29492,7 @@ if (params.get("gbp_connected") === "true") {
                     <div class="info-callout">
                       <p>
                         <strong>API key-only mode caveat:</strong> <code>connected</code> is computed from <code>authmethod in {wiro, own}</code> <strong>and</strong> a non-empty <code>accesstoken</code>. If you set up Mailchimp via direct API key (no OAuth), <code>authmethod</code> and <code>accesstoken</code> stay empty and <code>OAuthStatus.connected</code> returns <code>false</code> — even though the agent runtime is fully functional (the <code>mailchimp-email</code> skill reads
-                        <code>$MAILCHIMP_API_KEY</code> directly via <code>start.sh</code>). Don't use <code>OAuthStatus.connected</code> as the source of truth for API key setups; instead, check that <code>credentials.mailchimp.apikey</code> is non-empty in <code>POST /UserAgent/Detail</code>.
+                        the API key directly). Don't use <code>OAuthStatus.connected</code> as the source of truth for API key setups; instead, check that <code>credentials.mailchimp.apikey</code> is non-empty in <code>POST /UserAgent/Detail</code>.
                       </p>
                     </div>
 
@@ -30286,7 +30286,7 @@ if (params.get("gbp_connected") === "true") {
     ]
   }'</code></pre>
                     <p>
-                      Only <code>account</code> and <code>apppassword</code> are editable. <code>credentials.gmail.interval</code> (when present in some templates) is NOT used by <code>start.sh</code> and NOT wired to the runtime. The actual polling cadence comes from the scheduled skill <code>cron-gmail-checker</code> under <code>customskills[]</code> (a cron wrapper that invokes the built-in <code>gmail-check</code> platform skill). To change how often the inbox is polled, update
+                      Only <code>account</code> and <code>apppassword</code> are editable. <code>credentials.gmail.interval</code> (when present in some templates) is not used by the agent runtime. The actual polling cadence comes from the scheduled skill <code>cron-gmail-checker</code> under <code>customskills[]</code> (a cron wrapper that invokes the built-in <code>gmail-check</code> platform skill). To change how often the inbox is polled, update
                       the <code>cron-gmail-checker</code> skill's <code>interval</code> via <code>POST /UserAgent/CustomSkillUpsert</code> — see <a href="/docs/agent-skills#managing-scheduled-tasks" class="docs-link">Agent Skills</a>.
                     </p>
                     <div class="info-callout">

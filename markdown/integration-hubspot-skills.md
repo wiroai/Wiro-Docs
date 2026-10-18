@@ -52,7 +52,7 @@ Call `OAuthConnect` without `authmethod`, redirect, parse `hubspot_connected=tru
    https://api.wiro.ai/v1/UserAgentOAuth/HubSpotCallback
    ```
 
-3. **Scopes** — Wiro requests a fixed scope string plus optional_scopes (sourced from `data/agent-skills-registry/credentials/hubspot.json` under `oauth_provider.oauth_flow.scopes`). Enable **all** of the following in your HubSpot app's Auth tab:
+3. **Scopes** — Wiro requests a fixed scope string plus optional_scopes. Enable **all** of the following in your HubSpot app's Auth tab:
 
    **Required `scope` (mandatory — OAuth fails if any is missing):**
 

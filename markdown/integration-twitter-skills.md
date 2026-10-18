@@ -71,7 +71,7 @@ User consents on the Wiro-branded consent screen. On return parse `x_connected=t
 
 ### Step 3: Note the required scopes
 
-Wiro requests these exact scopes (sourced from `data/agent-skills-registry/credentials/twitter.json` under `oauth_provider.oauth_flow.scopes`):
+Wiro requests these exact scopes:
 
 ```
 tweet.read tweet.write users.read offline.access

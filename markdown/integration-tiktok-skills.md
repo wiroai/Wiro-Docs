@@ -55,7 +55,7 @@ The TikTok integration uses TikTok's OAuth 2.0 with the Content Posting API.
 
 ### Step 4: Note the required scopes
 
-Wiro requests these exact scopes (sourced from `data/agent-skills-registry/credentials/tiktok.json` under `oauth_provider.oauth_flow.scopes`):
+Wiro requests these exact scopes:
 
 ```
 user.info.basic,video.publish

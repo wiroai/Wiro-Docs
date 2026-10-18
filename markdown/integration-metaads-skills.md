@@ -136,7 +136,7 @@ Meta Ads OAuth uses Facebook Login under the hood.
 
 ### Step 4: Note the required permissions
 
-Wiro requests these exact scopes during OAuth (sourced from `data/agent-skills-registry/credentials/meta-ads.json` under `oauth_provider.oauth_flow.scopes`):
+Wiro requests these exact scopes during OAuth:
 
 ```
 ads_management,ads_read,business_management,pages_show_list,pages_read_engagement,pages_manage_ads

@@ -57,7 +57,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   }'
 ```
 
-Only `account` and `apppassword` are writable by API callers. `credentials.gmail.interval` (when present in some templates) is NOT used by `start.sh` and NOT wired to the runtime. The actual polling cadence comes from the scheduled skill `cron-gmail-checker` under `customskills[]` (a cron wrapper that invokes the built-in `gmail-check` platform skill). To change how often the inbox is polled, upsert `cron-gmail-checker` via `POST /UserAgent/CustomSkillUpsert` — see [Agent Skills](/docs/agent-skills#managing-scheduled-tasks).
+Only `account` and `apppassword` are writable by API callers. `credentials.gmail.interval` (when present in some templates) is not used by the agent runtime. The actual polling cadence comes from the scheduled skill `cron-gmail-checker` under `customskills[]` (a cron wrapper that invokes the built-in `gmail-check` platform skill). To change how often the inbox is polled, upsert `cron-gmail-checker` via `POST /UserAgent/CustomSkillUpsert` — see [Agent Skills](/docs/agent-skills#managing-scheduled-tasks).
 
 > **Naming:** the **platform skill** (the IMAP-speaking module loaded from `skills/gmail-check/SKILL.md`) is `gmail-check`. The **cron wrapper** (an entry in `customskills[]` that schedules inbox polling and references `gmail-check` internally) is `cron-gmail-checker` (prefixed with `cron-` to mark it as a scheduled task). When `skills.gmail-check` is disabled on the template, the cron wrapper early-returns with `HEARTBEAT_OK`.
 
