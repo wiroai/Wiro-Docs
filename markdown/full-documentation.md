@@ -14930,7 +14930,6 @@ Every event is a JSON object with this base shape:
   },
   "durationMs": 1840,
   "ok": true,
-  "cost": { "credits": 5, "skill": "int-wiro-aimodels", "action": "create" },
   "userUuid": "ada-uuid",
   "user": {
     "uuid": "ada-uuid",
@@ -14949,12 +14948,12 @@ Every event is a JSON object with this base shape:
 | `ts` | `string` | ISO-8601 UTC datetime when the event was emitted inside the container (e.g. `"2026-05-03T14:00:10.234Z"`). Parse with `Date.parse(ts)` for arithmetic. |
 | `kind` | `string` | Fine-grained event class. One of: `"tool_started"`, `"tool_completed"` (one pair per tool invocation); `"turn_started"`, `"turn_ended"` (an LLM turn boundary); `"cron_started"`, `"cron_finished"` (a scheduled-cron tick); `"session_start"`, `"session_end"` (a chat-session boundary); `"user_message"` (user → agent message); `"agent_reply"` (agent → user reply); `"token_usage"` (a billed turn's token usage — chat / cron / voice post-call); `"token_usage_idempotent"` (a replayed usage callback, already billed — informational); `"balance_gate_blocked"` (a turn refused because the credit pool was exhausted). |
 | `tool` | `string?` | Present on `tool_started` / `tool_completed`. Tool family — one of: `"read"`, `"write"`, `"edit"`, `"exec"`, `"web_fetch"`, `"web_search"`, `"sessions_spawn"`, `"message"`. |
-| `title` | `string` | Human-readable one-line description of what happened (e.g. `"Posted carousel: \"Brand voice teaser\""`, `"Fetched https://…"`, `"Charged 5 credits · int-wiro-aimodels (create)"`). Always present. |
+| `title` | `string` | Human-readable one-line description of what happened (e.g. `"Posted carousel: \"Brand voice teaser\""`, `"Fetched https://…"`, `"Token Usage"`). Always present. |
 | `summary` | `object?` | Structured event-specific payload. Opaque on the wire — render as JSON when expanding the row. Plugin pre-redacts `apikey`, `apppassword`, `clientsecret`, `bearer`, `token`, etc. before writing. Common keys: `url`, `status`, `bytes`, `query`, `resultCount`, `path`, `lines`, `interval`, `trigger`, `messageguid`, `wordCount`, `elapsedTime`. |
 | `durationMs` | `number?` | Wall-clock duration in milliseconds. Populated on `*_completed` / `*_finished` / `turn_ended` events. |
 | `ok` | `boolean?` | `true` for a successful completion, `false` for a failure. Populated on `*_completed` / `*_finished` events. Pair with `error` for failure rows. |
 | `error` | `string?` | One-line failure message (when `ok: false`). |
-| `cost` | `object?` | Credit deduction attached to the event (`exec` tool calls that drove a per-action charge): `{ credits, skill, action }`. Absent on no-charge events. |
+| `cost` | `object?` | Legacy per-action credit charge, `{ credits, skill, action }`. Only events recorded before agents switched to per-turn token billing can carry it; current events never do. See the `token_usage` event for what a turn cost. |
 | `userUuid` | `string?` | UUID of the actor who triggered the event. `"system"` for cron / internal events. May be missing on legacy rows from the 180-day retention window pre-attribution rollout — the server falls back to the useragent owner. |
 | `user` | `object\|null` | Resolved actor: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. `null` when `userUuid` is `"system"` (automation / cron) or when the user record was deleted. |
 
@@ -14977,7 +14976,7 @@ A `token_usage` event records the token spend and credit deduction for one bille
 {
   "ts": "2026-05-03T14:02:55.310Z",
   "kind": "token_usage",
-  "title": "Token usage: 6670 tokens · 5 credits",
+  "title": "Token Usage",
   "model": "openai/gpt-5.4",
   "tokens": { "input": 3450, "output": 820, "cacheRead": 2400, "cacheWrite": 0, "total": 6670 },
   "tokencost": 5,
@@ -14990,6 +14989,8 @@ A `token_usage` event records the token spend and credit deduction for one bille
 ```
 
 > **Nested vs flat token fields.** The activity-log `token_usage` event nests its counts in **camelCase** under `tokens.{input, output, cacheRead, cacheWrite, total}`. `input` is uncached input and `total` is the exact sum of all four components. This is distinct from the **flat, lowercase** columns on message rows (`inputtokens`, `outputtokens`, `cachereadtokens`, …). Same underlying data, different shape.
+
+> **Credits vs. wallet.** An agent's own credits are spent once per LLM turn: each `token_usage` event is one billed turn, and its `tokencost` is in credits (100 credits = $1). A Wiro model the agent runs, for example through `int-wiro-aimodels`, is billed separately: Wiro charges it to the project wallet behind the agent's Wiro API key at the model's usual price, passed through unchanged. That run shows up as an ordinary `tool_completed` event with no credit figure; its cost is the task's `totalcost` (see [Billing & Cost](/docs/tasks#task-billing)).
 
 ## **POST** /UserAgent/Logs
 
@@ -15022,14 +15023,32 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Logs" \
   "totalLines": 1428,
   "events": [
     {
-      "ts": "2026-05-03T14:00:12.481Z",
+      "ts": "2026-05-03T14:02:55.310Z",
+      "kind": "token_usage",
+      "title": "Token Usage",
+      "model": "openai/gpt-5.4",
+      "tokens": { "input": 3450, "output": 820, "cacheRead": 2400, "cacheWrite": 0, "total": 6670 },
+      "tokencost": 5,
+      "durationMs": 4200,
+      "calls": 2,
+      "remainingcredits": 9995,
+      "userUuid": "system",
+      "user": null
+    },
+    {
+      "ts": "2026-05-03T14:02:54.902Z",
       "kind": "tool_completed",
       "tool": "exec",
-      "title": "Charged 60 credits · int-wordpress-post (create)",
-      "summary": { "skill": "int-wordpress-post", "action": "create", "balanceafter": 4940 },
-      "durationMs": 92,
+      "title": "POST api.wiro.ai/v1/Run/google/nano-banana",
+      "summary": {
+        "method": "POST",
+        "host": "api.wiro.ai",
+        "path": "/v1/Run/google/nano-banana",
+        "headers": ["Content-Type: application/json", "x-api-key: ***"],
+        "body": { "prompt": "A paper boat on a calm lake at sunrise" }
+      },
+      "durationMs": 640,
       "ok": true,
-      "cost": { "credits": 60, "skill": "int-wordpress-post", "action": "create" },
       "userUuid": "system",
       "user": null
     },
@@ -15086,7 +15105,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Logs" \
 
 > **About the `user` field.** Every event is decorated with the resolved actor: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. It is `null` when:
 >
-> - The event was triggered by **automation** — `userUuid: "system"` for cron ticks, scheduled-skill runs, automated deductions, agent-initiated tool calls, and similar non-interactive writes (the three system / cron rows above).
+> - The event was triggered by **automation** — `userUuid: "system"` for cron ticks, scheduled-skill runs, the token usage of scheduled turns, agent-initiated tool calls, and similar non-interactive writes (the system rows above).
 > - The actor's user record was deleted or the lookup misses for any reason.
 >
 
