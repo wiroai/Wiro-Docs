@@ -18573,7 +18573,7 @@ email tools, CRMs — through three credential methods:</p>
 </tr>
 <tr>
 <td>YouTube</td>
-<td>Wiro + Own</td>
+<td>Own only (Wiro mode coming soon)</td>
 <td><a href="/docs/integration-youtube-skills">YouTube Skills</a> (shares Google OAuth client with Google Ads)</td>
 </tr>
 <tr>
@@ -19331,6 +19331,10 @@ without a browser redirect.</p>
 <tr>
 <td><code>&lt;Provider&gt; credentials not configured</code></td>
 <td><code>authmethod: "own"</code> but <code>clientid</code>/<code>clientsecret</code> not saved yet.</td>
+</tr>
+<tr>
+<td><code>Wiro-managed OAuth is not enabled for &lt;Provider&gt;</code></td>
+<td><code>authmethod</code> is <code>"wiro"</code>, or left out where Wiro mode is the default, but that credential's Wiro mode is still pending (<code>wiro_connect_pending: true</code>). Use another mode from its <code>connection_modes</code>, such as <code>"own"</code>.</td>
 </tr>
 <tr>
 <td>Direct credential validation message</td>
@@ -27352,23 +27356,23 @@ if (params.get("gads_connected") === "true") {
                 <article class="docs-section">
                   <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/integration-youtube-skills.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/integration-youtube-skills.md" download class="docs-section-md-btn">Download</a></div>
                   <h1>YouTube Integration</h1>
-                  <p class="section-subtitle">Connect your agent to YouTube Data API v3 and YouTube Analytics API v2 for channel videos listing, video asset selection for Google Ads Video/Demand Gen campaigns, and performance analytics.</p>
+                  <p class="section-subtitle">Connect your agent to a YouTube channel to upload and publish videos and Shorts, edit their details and playlists, list the channel's videos, report performance, and pick video assets for Google Ads Video/Demand Gen campaigns.</p>
 
                   <section id="overview">
                     <h2>Overview</h2>
                     <p>The YouTube integration uses Google OAuth 2.0 with:</p>
                     <ul>
-                      <li><strong>YouTube Data API v3</strong> — channel info, video listings, upload metadata</li>
+                      <li><strong>YouTube Data API v3</strong> — channel info, video listings, uploads, video details, playlists, and thumbnails</li>
                       <li><strong>YouTube Analytics API v2</strong> — view counts, watch time, subscriber metrics</li>
                     </ul>
                     <p><strong>Skills that use this integration:</strong></p>
                     <ul>
-                      <li><code>int-youtube-manage</code> — Channel videos listing, video asset selection for Google Ads Video/Demand Gen campaigns, performance analytics</li>
+                      <li><code>int-youtube-manage</code> — Uploads and publishes videos and Shorts (title, description, tags, visibility or a scheduled release, playlist, thumbnail), lists channel videos, edits video details and playlists, reports performance, and picks video assets for Google Ads Video/Demand Gen campaigns</li>
                     </ul>
                     <p><strong>Agents that typically enable this integration:</strong></p>
                     <ul>
+                      <li>Video Creator — to publish the videos it makes to your channel. Add <code>int-youtube-manage</code> with <a href="/docs/agent-skills#toggling-integration-skills"><code>SkillsApply</code></a>; it adds $1 a month to the Starter price. Video Creator then publishes a finished video when the request asks for it or a <code>YouTube</code> line in its <code>video-preferences</code> says to, and otherwise offers to.</li>
                       <li>Google Ads Manager — for creating Video and Demand Gen campaigns that reference existing YouTube videos</li>
-                      <li>Social Manager — for publishing to YouTube Shorts (roadmap)</li>
                     </ul>
                   </section>
 
@@ -27381,8 +27385,8 @@ if (params.get("gads_connected") === "true") {
                             <tr><th>Mode</th><th>Status</th><th>Notes</th></tr>
                           </thead>
                           <tbody>
-                            <tr><td><code>"wiro"</code></td><td>Available</td><td>One-click connect using Wiro's Google Cloud project.</td></tr>
-                            <tr><td><code>"own"</code></td><td>Available</td><td>Own Google Cloud project + OAuth client.</td></tr>
+                            <tr><td><code>"own"</code></td><td>Available</td><td>Your own Google Cloud project and OAuth client.</td></tr>
+                            <tr><td><code>"wiro"</code></td><td>Coming soon</td><td>Wiro's shared Google Cloud project is awaiting Google's review. Until then, <code>OAuthConnect</code> in Wiro mode, which is also what you get when you leave out <code>authmethod</code>, returns <code>Wiro-managed OAuth is not enabled for YouTube</code>.</td></tr>
                           </tbody>
                         </table>
                       </div>
@@ -27394,39 +27398,16 @@ if (params.get("gads_connected") === "true") {
                     <ul>
                       <li><strong>A Wiro API key</strong> — <a href="/docs/authentication">Authentication</a>.</li>
                       <li><strong>A deployed agent</strong> — <a href="/docs/agent-overview">Agent Overview</a>.</li>
-                      <li><strong>A YouTube channel</strong> the connecting user owns.</li>
-                      <li><strong>(Own mode) A Google Cloud project</strong> with YouTube Data API v3 and YouTube Analytics API enabled.</li>
+                      <li><strong>A YouTube channel</strong> the connecting Google account owns or manages.</li>
+                      <li><strong>A Google Cloud project</strong> with YouTube Data API v3 and YouTube Analytics API enabled.</li>
                       <li><strong>An HTTPS callback URL</strong>.</li>
                     </ul>
                   </section>
 
-                  <section id="wiro-mode">
-                    <h2>Wiro Mode</h2>
-                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "youtube",
-    "redirecturl": "https://your-app.com/settings/integrations"
-  }'</code></pre>
-                    <p>After consent the user returns with <code>?yt_connected=true&amp;yt_channels=[{channelid,channeltitle}]</code>. Present the channel picker and call <code>SetPickerAccounts</code>:</p>
-                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "youtube",
-    "accounts": [
-      { "channelid": "UC...", "channeltitle": "My Channel" }
-    ]
-  }'</code></pre>
-                  </section>
+                  <section id="connect">
+                    <h2>Connect</h2>
 
-                  <section id="own-mode">
-                    <h2>Own Mode</h2>
-
-                    <h3>Step 1: Create GCP project + enable YouTube APIs</h3>
+                    <h3>Step 1: Create a Google Cloud project and enable the YouTube APIs</h3>
                     <ol>
                       <li><a href="https://console.cloud.google.com/" target="_blank" rel="noopener">console.cloud.google.com</a> → create a project.</li>
                       <li><strong>APIs &amp; Services → Library</strong> — enable:
@@ -27440,18 +27421,33 @@ if (params.get("gads_connected") === "true") {
                           <li><strong>External</strong> user type for multi-tenant use</li>
                           <li>App name, support email</li>
                           <li>Add scopes: <code>youtube</code>, <code>youtube.readonly</code>, <code>yt-analytics.readonly</code></li>
+                          <li>Publish the app (<strong>In production</strong>). While it is in <strong>Testing</strong>, Google expires its refresh tokens after 7 days and the agent loses the channel.</li>
                         </ul>
                       </li>
                     </ol>
 
-                    <h3>Step 2: Create OAuth Client</h3>
+                    <h3>Step 2: Create the OAuth client</h3>
                     <p><strong>APIs &amp; Services → Credentials → Create Credentials → OAuth client ID</strong>:</p>
                     <ul>
                       <li>Application type: <strong>Web application</strong></li>
                       <li><strong>Authorized redirect URIs</strong>: <code>https://api.wiro.ai/v1/UserAgentOAuth/YTCallback</code></li>
                     </ul>
+                    <p>Copy the client ID and the client secret. If you missed the secret, open the client and use <strong>Reset secret</strong>.</p>
 
-                    <h3>Step 3: Connect</h3>
+                    <h3>Step 3: Save the OAuth client to Wiro</h3>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "youtube", "fieldname": "clientid", "fieldvalue": "123-abc.apps.googleusercontent.com" },
+      { "credentialkey": "youtube", "fieldname": "clientsecret", "fieldvalue": "YOUR_CLIENT_SECRET" },
+      { "credentialkey": "youtube", "fieldname": "authmethod", "fieldvalue": "own" }
+    ]
+  }'</code></pre>
+
+                    <h3>Step 4: Start the connection</h3>
                     <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
@@ -27461,6 +27457,21 @@ if (params.get("gads_connected") === "true") {
     "redirecturl": "https://your-app.com/settings/integrations",
     "authmethod": "own"
   }'</code></pre>
+                    <p>Send the user to the returned <code>authorizeUrl</code>.</p>
+
+                    <h3>Step 5: Save the channel selection</h3>
+                    <p>After consent the user returns with <code>?yt_connected=true&amp;yt_channels=&lt;URL-encoded-JSON&gt;</code>. The JSON array entries come straight from the YouTube Data API and carry <code>{ id, title, customUrl, subscriberCount }</code> per channel. When the Google account has a single channel, Wiro selects it for you. Otherwise map the user's choice to the picker's <code>{ channelid, channeltitle }</code> shape and call <code>SetPickerAccounts</code>:</p>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "youtube",
+    "accounts": [
+      { "channelid": "UC...", "channeltitle": "My Channel" }
+    ]
+  }'</code></pre>
+                    <p>Pass multiple <code>{ channelid, channeltitle }</code> entries to authorize the agent against several channels at once.</p>
                   </section>
 
                   <section id="disconnect">
@@ -27483,11 +27494,82 @@ if (params.get("gads_connected") === "true") {
     "useragentguid": "your-useragent-guid",
     "credentialkey": "youtube"
   }'</code></pre>
-                    <p>Returns <code>{ result: true, connected: true, accounts: [{ id: channelid, name: channeltitle }], connectedat, tokenexpiresat }</code>.</p>
+                    <p>Response:</p>
+                    <pre><code class="language-json">{
+  "result": true,
+  "connected": true,
+  "accounts": [
+    { "id": "UC...", "name": "My Channel" }
+  ],
+  "connectedat": "2026-04-17T12:00:00.000Z",
+  "tokenexpiresat": "2026-04-17T13:00:00.000Z",
+  "errors": []
+}</code></pre>
+                    <p><code>accounts[]</code> carries one entry per selected channel (<code>id</code> = <code>channelid</code>, <code>name</code> = <code>channeltitle</code>).</p>
+                  </section>
+
+                  <section id="api-reference">
+                    <h2>API Reference</h2>
+
+                    <h3>POST /UserAgentOAuth/OAuthConnect</h3>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td><code>useragentguid</code></td><td>string</td><td>Yes</td><td>Agent instance GUID.</td></tr>
+                            <tr><td><code>credentialkey</code></td><td>string</td><td>Yes</td><td><code>"youtube"</code>.</td></tr>
+                            <tr><td><code>redirecturl</code></td><td>string</td><td>Yes</td><td>HTTPS URL.</td></tr>
+                            <tr><td><code>authmethod</code></td><td>string</td><td>No</td><td><code>"own"</code>. Omitted, it means <code>"wiro"</code>, which is not available yet.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <h3>GET /UserAgentOAuth/YTCallback</h3>
+                    <p>Query params: <code>yt_connected=true&amp;yt_channels=&lt;JSON&gt;</code> (URL-encoded JSON array of <code>{ id, title, customUrl, subscriberCount }</code> straight from the YouTube Data API) or <code>yt_error=&lt;code&gt;</code>. The callback path is per-provider — YouTube's stays <code>YTCallback</code>. When you hand the array off to <code>SetPickerAccounts</code>, map each entry to <code>{ channelid: id, channeltitle: title }</code> — the picker uses those names for storage.</p>
+
+                    <h3>POST /UserAgentOAuth/SetPickerAccounts</h3>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td><code>useragentguid</code></td><td>string</td><td>Yes</td><td>Agent instance GUID.</td></tr>
+                            <tr><td><code>credentialkey</code></td><td>string</td><td>Yes</td><td><code>"youtube"</code>.</td></tr>
+                            <tr><td><code>accounts</code></td><td>array</td><td>Yes</td><td>One or more <code>{ channelid, channeltitle }</code> entries.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <p>Response: <code>{ result, accounts: [{id, name}, ...], errors }</code>. Triggers agent restart if running.</p>
+
+                    <h3>POST /UserAgentOAuth/OAuthStatus</h3>
+                    <p>Body: <code>{ useragentguid, credentialkey: "youtube" }</code>. Response: <code>connected</code>, <code>accounts: [{id, name}, ...]</code> (one entry per selected channel — <code>id</code> = <code>channelid</code>, <code>name</code> = <code>channeltitle</code>), <code>connectedat</code>, <code>tokenexpiresat</code>.</p>
+
+                    <h3>POST /UserAgentOAuth/OAuthDisconnect</h3>
+                    <p>Body: <code>{ useragentguid, credentialkey: "youtube" }</code>. Clears YouTube credentials (no remote revoke).</p>
                   </section>
 
                   <section id="agent-usage">
                     <h2>What the agent does with this integration</h2>
+
+                    <h3>Uploading and publishing videos</h3>
+                    <p>Ask the agent to put a video on YouTube, for example one it made with Video Creator. It uploads the video to the selected channel and replies with the link.</p>
+                    <ul>
+                      <li><strong>Regular videos and Shorts.</strong> One upload covers both: YouTube files a vertical (9:16) or square video of up to 3 minutes as a Short and anything else as a regular video. A Short needs no <code>#Shorts</code> tag.</li>
+                      <li><strong>Details.</strong> Title (up to 100 characters), description (up to 5,000), tags, category, language, the made-for-kids setting, and visibility: public, unlisted, private, or a scheduled release time. A video that shows realistic AI-generated people or scenes is marked as altered or synthetic content, and YouTube labels it.</li>
+                      <li><strong>Playlist and thumbnail.</strong> The agent can add the video to a playlist and set a frame of it as the thumbnail. YouTube accepts custom thumbnails for regular videos on verified channels.</li>
+                      <li><strong>Approval.</strong> Uploads go through the agent's approval policy (the <code>approval-policy</code> custom skill). A request that already says to upload or publish is the approval; otherwise the agent shows the title, description, tags, playlist and visibility first and uploads after you approve.</li>
+                      <li><strong>Drafts.</strong> Ask for a private or unlisted upload, and ask the agent to publish it later: it makes the video public, or schedules it, and keeps the synthetic-content label.</li>
+                      <li><strong>No duplicates.</strong> When an upload fails, the agent looks for the video among the channel's uploads before it tries once more.</li>
+                    </ul>
+                    <p>The reply gives the video's link, its visibility or scheduled time, and its playlist.</p>
+                    <div class="info-callout"><p><strong>Videos from an unaudited Google Cloud project stay private.</strong> YouTube restricts videos uploaded through a Google Cloud project created after 28 July 2020 that has not passed the YouTube API audit to private viewing, whatever visibility was asked for. The agent reads the video back after the upload; if YouTube has locked it, the agent tells you once and does not upload it again. Request the audit for the project behind your OAuth client with <a href="https://support.google.com/youtube/contact/yt_api_form" target="_blank" rel="noopener">YouTube's API audit form</a>. Until it passes, download the video from the chat and upload it in YouTube Studio.</p></div>
 
                     <h3>Channel video listing</h3>
                     <p>Agent lists channel uploads:</p>
@@ -27511,7 +27593,7 @@ Agent → POST /youtubeAnalytics/v2/reports
                   <section id="skill-reference">
                     <h2>Skill reference</h2>
                     <ul>
-                      <li><a href="/docs/agent-skills">agent-skills</a> — custom skill schema and the <code>int-youtube-manage</code> key</li>
+                      <li><a href="/docs/agent-skills">agent-skills.md</a> — custom skill schema and the <code>int-youtube-manage</code> key</li>
                     </ul>
                   </section>
 
@@ -27524,10 +27606,13 @@ Agent → POST /youtubeAnalytics/v2/reports
                             <tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr>
                           </thead>
                           <tbody>
+                            <tr><td><code>Wiro-managed OAuth is not enabled for YouTube</code> in <code>OAuthConnect</code>'s <code>errors[]</code></td><td>Wiro mode isn't available yet, and it is the default when <code>authmethod</code> is left out</td><td>Save your OAuth client (Step 3) and call <code>OAuthConnect</code> with <code>"authmethod": "own"</code></td></tr>
+                            <tr><td><code>YouTube credentials not configured</code></td><td><code>authmethod: "own"</code> without a saved <code>clientid</code> and <code>clientsecret</code></td><td>Save them (Step 3), then retry</td></tr>
                             <tr><td>Empty channel list</td><td>User has no YouTube channel</td><td>User creates a channel</td></tr>
                             <tr><td><code>quotaExceeded</code></td><td>Daily quota hit</td><td>Wait 24h or request higher quota from Google</td></tr>
                             <tr><td><code>channelNotFound</code></td><td>Channel deleted or moved</td><td>User re-selects via <code>SetPickerAccounts</code></td></tr>
-                            <tr><td><code>invalid_grant</code></td><td>Refresh token expired</td><td>Re-connect via <code>OAuthConnect</code></td></tr>
+                            <tr><td><code>invalid_grant</code></td><td>Refresh token expired or revoked; a consent screen still in Testing expires it after 7 days</td><td>Publish the consent screen, then re-connect via <code>OAuthConnect</code></td></tr>
+                            <tr><td>A video uploaded as public or unlisted stays private</td><td>The Google Cloud project hasn't passed the YouTube API audit</td><td>Request the audit; until then upload the video in YouTube Studio</td></tr>
                           </tbody>
                         </table>
                       </div>

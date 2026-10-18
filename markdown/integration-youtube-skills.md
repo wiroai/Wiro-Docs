@@ -1,38 +1,76 @@
 # YouTube Integration
 
-Connect your agent to YouTube Data API v3 and YouTube Analytics API v2 for channel videos listing, video asset selection for Google Ads Video/Demand Gen campaigns, and performance analytics.
+Connect your agent to a YouTube channel to upload and publish videos and Shorts, edit their details and playlists, list the channel's videos, report performance, and pick video assets for Google Ads Video/Demand Gen campaigns.
 
 ## Overview
 
 The YouTube integration uses Google OAuth 2.0 with:
-- **YouTube Data API v3** — channel info, video listings, upload metadata
+- **YouTube Data API v3** — channel info, video listings, uploads, video details, playlists, and thumbnails
 - **YouTube Analytics API v2** — view counts, watch time, subscriber metrics
 
 **Skills that use this integration:**
 
-- `int-youtube-manage` — Channel videos listing, video asset selection for Google Ads Video/Demand Gen campaigns, performance analytics
+- `int-youtube-manage` — Uploads and publishes videos and Shorts (title, description, tags, visibility or a scheduled release, playlist, thumbnail), lists channel videos, edits video details and playlists, reports performance, and picks video assets for Google Ads Video/Demand Gen campaigns
 
 **Agents that typically enable this integration:**
 
+- Video Creator — to publish the videos it makes to your channel. Add `int-youtube-manage` with [`SkillsApply`](/docs/agent-skills#toggling-integration-skills); it adds $1 a month to the Starter price. Video Creator then publishes a finished video when the request asks for it or a `YouTube` line in its `video-preferences` says to, and otherwise offers to.
 - Google Ads Manager — for creating Video and Demand Gen campaigns that reference existing YouTube videos
-- Social Manager — for publishing to YouTube Shorts (roadmap)
 
 ## Availability
 
 | Mode | Status | Notes |
 |------|--------|-------|
-| `"wiro"` | Available | One-click connect using Wiro's Google Cloud project. |
-| `"own"` | Available | Own Google Cloud project + OAuth client. |
+| `"own"` | Available | Your own Google Cloud project and OAuth client. |
+| `"wiro"` | Coming soon | Wiro's shared Google Cloud project is awaiting Google's review. Until then, `OAuthConnect` in Wiro mode, which is also what you get when you leave out `authmethod`, returns `Wiro-managed OAuth is not enabled for YouTube`. |
 
 ## Prerequisites
 
 - **A Wiro API key** — [Authentication](/docs/authentication).
 - **A deployed agent** — [Agent Overview](/docs/agent-overview).
-- **A YouTube channel** the connecting user owns.
-- **(Own mode) A Google Cloud project** with YouTube Data API v3 and YouTube Analytics API enabled.
+- **A YouTube channel** the connecting Google account owns or manages.
+- **A Google Cloud project** with YouTube Data API v3 and YouTube Analytics API enabled.
 - **An HTTPS callback URL**.
 
-## Wiro Mode
+## Connect
+
+### Step 1: Create a Google Cloud project and enable the YouTube APIs
+
+1. [console.cloud.google.com](https://console.cloud.google.com/) → create a project.
+2. **APIs & Services → Library** — enable:
+   - [YouTube Data API v3](https://console.cloud.google.com/apis/library/youtube.googleapis.com)
+   - [YouTube Analytics API v2](https://console.cloud.google.com/apis/library/youtubeanalytics.googleapis.com)
+3. **OAuth consent screen**:
+   - **External** user type for multi-tenant use
+   - App name, support email
+   - Add scopes: `youtube`, `youtube.readonly`, `yt-analytics.readonly`
+   - Publish the app (**In production**). While it is in **Testing**, Google expires its refresh tokens after 7 days and the agent loses the channel.
+
+### Step 2: Create the OAuth client
+
+**APIs & Services → Credentials → Create Credentials → OAuth client ID**:
+- Application type: **Web application**
+- **Authorized redirect URIs**: `https://api.wiro.ai/v1/UserAgentOAuth/YTCallback`
+
+Copy the client ID and the client secret. If you missed the secret, open the client and use **Reset secret**.
+
+### Step 3: Save the OAuth client to Wiro
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "youtube", "fieldname": "clientid", "fieldvalue": "123-abc.apps.googleusercontent.com" },
+      { "credentialkey": "youtube", "fieldname": "clientsecret", "fieldvalue": "YOUR_CLIENT_SECRET" },
+      { "credentialkey": "youtube", "fieldname": "authmethod", "fieldvalue": "own" }
+    ]
+  }'
+```
+
+### Step 4: Start the connection
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
@@ -41,11 +79,16 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
   -d '{
     "useragentguid": "your-useragent-guid",
     "credentialkey": "youtube",
-    "redirecturl": "https://your-app.com/settings/integrations"
+    "redirecturl": "https://your-app.com/settings/integrations",
+    "authmethod": "own"
   }'
 ```
 
-After consent the user returns with `?yt_connected=true&yt_channels=<URL-encoded-JSON>`. The JSON array entries come straight from the YouTube Data API and carry `{ id, title, customUrl, subscriberCount }` per channel. Map them to the picker's `{ channelid, channeltitle }` shape and call `SetPickerAccounts`:
+Send the user to the returned `authorizeUrl`.
+
+### Step 5: Save the channel selection
+
+After consent the user returns with `?yt_connected=true&yt_channels=<URL-encoded-JSON>`. The JSON array entries come straight from the YouTube Data API and carry `{ id, title, customUrl, subscriberCount }` per channel. When the Google account has a single channel, Wiro selects it for you. Otherwise map the user's choice to the picker's `{ channelid, channeltitle }` shape and call `SetPickerAccounts`:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
@@ -61,41 +104,6 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
 ```
 
 Pass multiple `{ channelid, channeltitle }` entries to authorize the agent against several channels at once.
-
-## Own Mode
-
-### Step 1: Create GCP project + enable YouTube APIs
-
-1. [console.cloud.google.com](https://console.cloud.google.com/) → create a project.
-2. **APIs & Services → Library** — enable:
-   - [YouTube Data API v3](https://console.cloud.google.com/apis/library/youtube.googleapis.com)
-   - [YouTube Analytics API v2](https://console.cloud.google.com/apis/library/youtubeanalytics.googleapis.com)
-3. **OAuth consent screen**:
-   - **External** user type for multi-tenant use
-   - App name, support email
-   - Add scopes: `youtube`, `youtube.readonly`, `yt-analytics.readonly`
-
-### Step 2: Create OAuth Client
-
-**APIs & Services → Credentials → Create Credentials → OAuth client ID**:
-- Application type: **Web application**
-- **Authorized redirect URIs**: `https://api.wiro.ai/v1/UserAgentOAuth/YTCallback`
-
-### Step 3: Connect
-
-```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -d '{
-    "useragentguid": "your-useragent-guid",
-    "credentialkey": "youtube",
-    "redirecturl": "https://your-app.com/settings/integrations",
-    "authmethod": "own"
-  }'
-```
-
-After consent, present any returned channels to the user and persist the selection with `SetPickerAccounts` exactly as shown in [Wiro Mode](#wiro-mode) above.
 
 ## Disconnect
 
@@ -147,7 +155,7 @@ Response:
 | `useragentguid` | string | Yes | Agent instance GUID. |
 | `credentialkey` | string | Yes | `"youtube"`. |
 | `redirecturl` | string | Yes | HTTPS URL. |
-| `authmethod` | string | No | `"wiro"` (default) or `"own"`. |
+| `authmethod` | string | No | `"own"`. Omitted, it means `"wiro"`, which is not available yet. |
 
 ### GET /UserAgentOAuth/YTCallback
 
@@ -172,6 +180,21 @@ Body: `{ useragentguid, credentialkey: "youtube" }`. Response: `connected`, `acc
 Body: `{ useragentguid, credentialkey: "youtube" }`. Clears YouTube credentials (no remote revoke).
 
 ## What the agent does with this integration
+
+### Uploading and publishing videos
+
+Ask the agent to put a video on YouTube, for example one it made with Video Creator. It uploads the video to the selected channel and replies with the link.
+
+- **Regular videos and Shorts.** One upload covers both: YouTube files a vertical (9:16) or square video of up to 3 minutes as a Short and anything else as a regular video. A Short needs no `#Shorts` tag.
+- **Details.** Title (up to 100 characters), description (up to 5,000), tags, category, language, the made-for-kids setting, and visibility: public, unlisted, private, or a scheduled release time. A video that shows realistic AI-generated people or scenes is marked as altered or synthetic content, and YouTube labels it.
+- **Playlist and thumbnail.** The agent can add the video to a playlist and set a frame of it as the thumbnail. YouTube accepts custom thumbnails for regular videos on verified channels.
+- **Approval.** Uploads go through the agent's approval policy (the `approval-policy` custom skill). A request that already says to upload or publish is the approval; otherwise the agent shows the title, description, tags, playlist and visibility first and uploads after you approve.
+- **Drafts.** Ask for a private or unlisted upload, and ask the agent to publish it later: it makes the video public, or schedules it, and keeps the synthetic-content label.
+- **No duplicates.** When an upload fails, the agent looks for the video among the channel's uploads before it tries once more.
+
+The reply gives the video's link, its visibility or scheduled time, and its playlist.
+
+> **Videos from an unaudited Google Cloud project stay private.** YouTube restricts videos uploaded through a Google Cloud project created after 28 July 2020 that has not passed the YouTube API audit to private viewing, whatever visibility was asked for. The agent reads the video back after the upload; if YouTube has locked it, the agent tells you once and does not upload it again. Request the audit for the project behind your OAuth client with [YouTube's API audit form](https://support.google.com/youtube/contact/yt_api_form). Until it passes, download the video from the chat and upload it in YouTube Studio.
 
 ### Channel video listing
 
@@ -211,7 +234,10 @@ Agent → POST /youtubeAnalytics/v2/reports
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
+| `Wiro-managed OAuth is not enabled for YouTube` in `OAuthConnect`'s `errors[]` | Wiro mode isn't available yet, and it is the default when `authmethod` is left out | Save your OAuth client (Step 3) and call `OAuthConnect` with `"authmethod": "own"` |
+| `YouTube credentials not configured` | `authmethod: "own"` without a saved `clientid` and `clientsecret` | Save them (Step 3), then retry |
 | Empty channel list | User has no YouTube channel | User creates a channel |
 | `quotaExceeded` | Daily quota hit | Wait 24h or request higher quota from Google |
 | `channelNotFound` | Channel deleted or moved | User re-selects via `SetPickerAccounts` |
-| `invalid_grant` | Refresh token expired | Re-connect via `OAuthConnect` |
+| `invalid_grant` | Refresh token expired or revoked; a consent screen still in Testing expires it after 7 days | Publish the consent screen, then re-connect via `OAuthConnect` |
+| A video uploaded as public or unlisted stays private | The Google Cloud project hasn't passed the YouTube API audit | Request the audit; until then upload the video in YouTube Studio |

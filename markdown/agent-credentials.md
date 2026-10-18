@@ -434,7 +434,7 @@ Returns `{ "result": false, "errors": [{ "code": 404, "message": "Credential not
 | Twitter / X | Wiro + Own | [Twitter Skills](/docs/integration-twitter-skills) |
 | TikTok | Wiro + Own | [TikTok Skills](/docs/integration-tiktok-skills) |
 | Google Ads | Wiro + Own | [Google Ads Skills](/docs/integration-googleads-skills) |
-| YouTube | Wiro + Own | [YouTube Skills](/docs/integration-youtube-skills) (shares Google OAuth client with Google Ads) |
+| YouTube | Own only (Wiro mode coming soon) | [YouTube Skills](/docs/integration-youtube-skills) (shares Google OAuth client with Google Ads) |
 | Google Analytics 4 | Wiro + Own | [Google Analytics 4 Skills](/docs/integration-ga4-skills) (shares Google OAuth client with Google Ads) |
 | Merchant Center | Wiro + Own | [Merchant Center Skills](/docs/integration-merchantcenter-skills) (shares Google OAuth client with Google Ads) |
 | HubSpot | Wiro + Own | [HubSpot Skills](/docs/integration-hubspot-skills) |
@@ -857,6 +857,7 @@ Direct probes return `{ "result": true, "accounts": [{ "id": "...", "name": "...
 | `Credential is not configured for the generic OAuth dispatcher: <key>` | Registry entry is partial — missing `oauth_flow` config. |
 | `Invalid redirect URL` | `redirecturl` is not HTTPS (and not localhost). |
 | `<Provider> credentials not configured` | `authmethod: "own"` but `clientid`/`clientsecret` not saved yet. |
+| `Wiro-managed OAuth is not enabled for <Provider>` | `authmethod` is `"wiro"`, or left out where Wiro mode is the default, but that credential's Wiro mode is still pending (`wiro_connect_pending: true`). Use another mode from its `connection_modes`, such as `"own"`. |
 | Direct credential validation message | The saved direct credential fields failed the registry-declared exchange/probe, or no required account was assigned. |
 | `User agent not found or unauthorized` | `useragentguid` doesn't exist or doesn't belong to the caller. |
 

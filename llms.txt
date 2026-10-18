@@ -50,6 +50,7 @@ OAuth integrations:
 - [Twitter / X](https://wiro.ai/docs/integration-twitter-skills): OAuth 2.0 PKCE, one-click Wiro mode available
 - [TikTok](https://wiro.ai/docs/integration-tiktok-skills): Content Posting API
 - [Google Ads](https://wiro.ai/docs/integration-googleads-skills): Developer Token + MCC + customer ID selection
+- [YouTube](https://wiro.ai/docs/integration-youtube-skills): own Google Cloud OAuth client (Wiro mode coming soon); `int-youtube-manage` uploads and publishes videos and Shorts (title, description, tags, visibility or a scheduled release, playlist, thumbnail; a private or unlisted upload can be published later), lists channel videos, edits video details and playlists, and reports analytics. Uploads follow the agent's approval policy; YouTube keeps uploads from a Google Cloud project that has not passed its API audit private
 - [HubSpot](https://wiro.ai/docs/integration-hubspot-skills): CRM object management
 - [Mailchimp](https://wiro.ai/docs/integration-mailchimp-skills): OAuth or direct API key
 - [Google Drive](https://wiro.ai/docs/integration-googledrive-skills): Per-user service account, folders shared with SA email. `POST /UserAgentOAuth/GoogleDriveListFolders` accepts optional `parentid` for subfolder discovery (omit → root listing via `sharedWithMe`; provide → children of that folder via `'<parentid>' in parents`; SA permission cascade applies).
