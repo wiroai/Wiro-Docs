@@ -48,10 +48,10 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
   "errors": [],
   "total": 128,
   "summary": {
-    "monthlycredits": 2250,
-    "extracredits": 2000,
+    "monthlycredits": 9000,
+    "extracredits": 45000,
     "usedcredits": 1450,
-    "remainingcredits": 2800,
+    "remainingcredits": 52550,
     "creditperiod": "2026-05",
     "creditsyncat": 1714694410,
     "byModel": [
@@ -65,7 +65,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "type": "deduct",
       "action": "tokens",
       "amount": -5,
-      "balanceafter": 10551,
+      "balanceafter": 52550,
       "description": "Input Tokens: 3450 / Output Tokens: 820 / Model: openai/gpt-5.4",
       "sessionkey": "default",
       "agentsessionkey": "default",
@@ -97,8 +97,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "guid": "a40b5473-aedb-47d7-966b-7b038eed30dc",
       "type": "purchase",
       "action": "small",
-      "amount": 5000,
-      "balanceafter": 10560,
+      "amount": 45000,
+      "balanceafter": 52560,
       "description": "Extra credits — small pack",
       "sessionkey": null,
       "messageguid": null,
@@ -112,7 +112,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "model": null,
       "provider": "prepaid",
       "providerref": null,
-      "metadata": { "pack": "small", "priceUsd": 45 },
+      "metadata": { "pack": "small", "priceUsd": 450 },
       "uuid": "ada-uuid",
       "user": {
         "uuid": "ada-uuid",
@@ -129,8 +129,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "guid": "312e2a5f-1002-4c9a-af7d-70571e8b1739",
       "type": "renewal",
       "action": "monthly",
-      "amount": 10000,
-      "balanceafter": 5560,
+      "amount": 9000,
+      "balanceafter": 9000,
       "description": "Subscription renewal",
       "sessionkey": null,
       "messageguid": null,
@@ -153,7 +153,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "guid": "98a14c2e-ee0f-4a2d-b73b-d33fe8e57cf2",
       "type": "grant",
       "action": "skill-toggle",
-      "amount": 500,
+      "amount": 1000,
       "balanceafter": 5050,
       "description": "Skill enabled: int-instagram-post",
       "sessionkey": null,
@@ -171,9 +171,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "metadata": {
         "skill": "int-instagram-post",
         "enabled": true,
-        "previousPriceUsd": 90,
-        "newPriceUsd": 140,
-        "proratedCharge": 33.33
+        "previousPriceUsd": 80,
+        "newPriceUsd": 90,
+        "proratedCharge": 6.67
       },
       "uuid": "ada-uuid",
       "user": {
@@ -185,7 +185,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
         "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
         "avatarinitials": "AL"
       },
-      "createdat": 1714604000
+      "createdat": 1712880000
     }
   ]
 }

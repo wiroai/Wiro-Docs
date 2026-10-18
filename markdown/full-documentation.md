@@ -5568,10 +5568,12 @@ pro.credits = starter.credits × tiermultiplier
 
 ```json
 "tiers": {
-  "starter": { "priceUsd": 9, "credits": 225 },
-  "pro":     { "priceUsd": 90, "credits": 2250 }
+  "starter": { "priceUsd": 9, "credits": 900 },
+  "pro":     { "priceUsd": 90, "credits": 9000 }
 }
 ```
+
+Every paid skill adds 100 monthly credits for each $1 it adds to the price, so a tier always carries 100 credits per dollar (1 credit = $0.01): the $9 Starter above comes with 900 credits a month, and its $90 Pro with 9,000.
 
 > **Starter tier minimum: $4/month.** Every agent with at least one paid skill pays at least $4/month on Starter. When the raw sum of enabled-skill weights would land below $4, the resolver bumps the Starter price up to $4 **and** scales the credit pool up by the same ratio — so the user gets a proportional credit increase, not a free upgrade. Agents with zero paid skills (rule-only, or all-`ZERO`-tier skills) stay at `$0` / `0` credits. Default Pro = Starter × `tiermultiplier` (default `10`), so an agent that lands on the $4 floor pays **$40/month on Pro** with the same credit pool × 10.
 
@@ -5681,8 +5683,8 @@ Lists available agents in the catalog. This is a **public endpoint** — no auth
       "samples": ["https://cdn.wiro.ai/uploads/agents/instagram-manager-sample-1.webp"],
       "tiermultiplier": 10,
       "tiers": {
-        "starter": { "priceUsd": 9, "credits": 225 },
-        "pro":     { "priceUsd": 90, "credits": 2250 }
+        "starter": { "priceUsd": 9, "credits": 900 },
+        "pro":     { "priceUsd": 90, "credits": 9000 }
       },
       "status": 1,
       "createdat": "1711929600",
@@ -5724,8 +5726,8 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
       "samples": ["https://cdn.wiro.ai/uploads/agents/instagram-manager-sample-1.webp"],
       "tiermultiplier": 10,
       "tiers": {
-        "starter": { "priceUsd": 9, "credits": 225 },
-        "pro":     { "priceUsd": 90, "credits": 2250 }
+        "starter": { "priceUsd": 9, "credits": 900 },
+        "pro":     { "priceUsd": 90, "credits": 9000 }
       },
       "tokenRates": {
         "default_model": "openai/gpt-5.6-sol",
@@ -6003,11 +6005,11 @@ Both paths hit the same endpoint, but a few server-side behaviours diverge:
       "skills": ["int-instagram-post", "int-wiro-aimodels"],
       "customskills": [],
       "scheduledskills": [],
-      "monthlycredits": 225,
+      "monthlycredits": 900,
       "monthlypriceusd": 9,
       "extracredits": 0,
       "usedcredits": 0,
-      "remainingcredits": 225,
+      "remainingcredits": 900,
       "creditperiod": "2026-05",
       "creditsyncat": null,
       "tokenRates": {
@@ -6037,13 +6039,13 @@ Both paths hit the same endpoint, but a few server-side behaviours diverge:
         "categories": ["social-media", "marketing"],
         "tiermultiplier": 10,
         "tiers": {
-          "starter": { "priceUsd": 9, "credits": 225 },
-          "pro":     { "priceUsd": 90, "credits": 2250 }
+          "starter": { "priceUsd": 9, "credits": 900 },
+          "pro":     { "priceUsd": 90, "credits": 9000 }
         },
         "extracreditpacks": [
-          { "packkey": "small",  "credits": 1125, "priceusd": 45,  "enabled": true },
-          { "packkey": "medium", "credits": 2250, "priceusd": 90,  "enabled": true },
-          { "packkey": "large",  "credits": 4500, "priceusd": 180, "enabled": true }
+          { "packkey": "small",  "credits": 4500, "priceusd": 45,  "enabled": true },
+          { "packkey": "medium", "credits": 9000, "priceusd": 90,  "enabled": true },
+          { "packkey": "large",  "credits": 18000, "priceusd": 180, "enabled": true }
         ]
       },
       "createdat": 1714608000,
@@ -6128,8 +6130,8 @@ Lists all agent instances deployed under your account.
       "tier": "pro",
       "tiermultiplier": 10,
       "monthlypriceusd": 90,
-      "monthlycredits": 2250,
-      "extracredits": 2000,
+      "monthlycredits": 9000,
+      "extracredits": 45000,
       "usedcredits": 1450,
       "creditperiod": "2026-05",
       "creditsyncat": 1714694410,
@@ -6157,8 +6159,8 @@ Lists all agent instances deployed under your account.
         "categories": ["social-media", "marketing"],
         "tiermultiplier": 10,
         "tiers": {
-          "starter": { "priceUsd": 9, "credits": 225 },
-          "pro":     { "priceUsd": 90, "credits": 2250 }
+          "starter": { "priceUsd": 9, "credits": 900 },
+          "pro":     { "priceUsd": 90, "credits": 9000 }
         }
       },
       "enabledSkills": ["int-instagram-post", "int-twitterx-post", "int-wiro-aimodels"],
@@ -6522,11 +6524,11 @@ Retrieves full details for a single deployed agent instance, including subscript
           "description": "Internal: lets the agent call Wiro's own image / video / LLM generation API. Other skills invoke it; users do not."
         }
       },
-      "monthlycredits": 2250,
+      "monthlycredits": 9000,
       "monthlypriceusd": 90,
-      "extracredits": 2000,
+      "extracredits": 45000,
       "usedcredits": 1450,
-      "remainingcredits": 2800,
+      "remainingcredits": 52550,
       "creditperiod": "2026-05",
       "creditsyncat": 1714694410,
       "tokenRates": {
@@ -6566,13 +6568,13 @@ Retrieves full details for a single deployed agent instance, including subscript
         "categories": ["social-media", "marketing"],
         "tiermultiplier": 10,
         "tiers": {
-          "starter": { "priceUsd": 9,  "credits": 225 },
-          "pro":     { "priceUsd": 90, "credits": 2250 }
+          "starter": { "priceUsd": 9,  "credits": 900 },
+          "pro":     { "priceUsd": 90, "credits": 9000 }
         },
         "extracreditpacks": [
-          { "packkey": "small",  "credits": 11250, "priceusd": 450, "enabled": true },
-          { "packkey": "medium", "credits": 22500, "priceusd": 900, "enabled": true },
-          { "packkey": "large",  "credits": 45000, "priceusd": 1800, "enabled": true }
+          { "packkey": "small",  "credits": 45000, "priceusd": 450, "enabled": true },
+          { "packkey": "medium", "credits": 90000, "priceusd": 900, "enabled": true },
+          { "packkey": "large",  "credits": 180000, "priceusd": 1800, "enabled": true }
         ]
       },
       "extracreditsexpiry": 1730419200,
@@ -6730,7 +6732,7 @@ Updates an agent instance's **scalar fields only** (title, description, categori
       "tier": "starter",
       "tiermultiplier": 10,
       "monthlypriceusd": 9,
-      "monthlycredits": 225,
+      "monthlycredits": 900,
       "extracredits": 0,
       "usedcredits": 80,
       "creditperiod": "2026-05",
@@ -6751,8 +6753,8 @@ Updates an agent instance's **scalar fields only** (title, description, categori
         "categories": ["social-media", "marketing"],
         "tiermultiplier": 10,
         "tiers": {
-          "starter": { "priceUsd": 9,  "credits": 225 },
-          "pro":     { "priceUsd": 90, "credits": 2250 }
+          "starter": { "priceUsd": 9,  "credits": 900 },
+          "pro":     { "priceUsd": 90, "credits": 9000 }
         },
         "extracreditpacks": []
       },
@@ -6918,7 +6920,7 @@ If you already have a hosted URL, use `POST /UserAgent/Update` with `cover: "<ur
       "tier": "starter",
       "tiermultiplier": 10,
       "monthlypriceusd": 9,
-      "monthlycredits": 225,
+      "monthlycredits": 900,
       "extracredits": 0,
       "usedcredits": 80,
       "creditperiod": "2026-05",
@@ -7456,9 +7458,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
     "previousPriceUsd": 4,
     "newPriceUsd": 40,
     "deltaUsd": 36,
-    "previousMonthlyCredits": 100,
-    "newMonthlyCredits": 1000,
-    "deltaCredits": 900,
+    "previousMonthlyCredits": 400,
+    "newMonthlyCredits": 4000,
+    "deltaCredits": 3600,
     "enabledSkills": ["int-instagram-post", "int-twitterx-post", "int-wiro-aimodels"]
   }
 }
@@ -7545,18 +7547,18 @@ Two body shapes:
   "tier": "pro",
   "tiermultiplier": 10,
   "totalPriceUsd": 40,
-  "totalMonthlyCredits": 1000,
+  "totalMonthlyCredits": 4000,
   "starterFloorUsd": 4,
   "skillBreakdown": [
-    { "skill": "int-instagram-post", "priceUsd": 1, "credits": 25, "billing_model": "tokens" },
-    { "skill": "int-wiro-aimodels",  "priceUsd": 1, "credits": 25, "billing_model": "tokens" }
+    { "skill": "int-instagram-post", "priceUsd": 1, "credits": 100, "billing_model": "tokens" },
+    { "skill": "int-wiro-aimodels",  "priceUsd": 1, "credits": 100, "billing_model": "tokens" }
   ],
   "enabledSkills": ["int-instagram-post", "int-wiro-aimodels"],
   "directSkills":  ["int-instagram-post"],
   "agentBase": { "priceUsd": 0, "credits": 0 },
   "tiers": {
-    "starter": { "priceUsd": 4,  "credits": 100 },
-    "pro":     { "priceUsd": 40, "credits": 1000 }
+    "starter": { "priceUsd": 4,  "credits": 400 },
+    "pro":     { "priceUsd": 40, "credits": 4000 }
   },
   "tokenRates": {
     "default_model": "openai/gpt-5.6-sol",
@@ -7572,7 +7574,7 @@ Two body shapes:
 
 `enabledSkills` is the full closure (including transitive `depends_on`); `directSkills` is just what the user explicitly toggled. `agentBase` is always `{ priceUsd: 0, credits: 0 }` — pricing is fully skill-driven, and the field is kept on the response so callers don't have to null-check. `skillBreakdown[].billing_model` is always `"tokens"`; `tokenRates` carries the per-model rates used to meter each turn (see [Token Billing](#pricing-model--tiers-skills--token-billing)).
 
-> **$4 starter floor.** When the raw weight sum lands below $4 (e.g. a single `LIGHT` skill at $1/25), the resolver bumps `tiers.starter.priceUsd` up to $4 **and** scales `tiers.starter.credits` up by the same ratio (25 → 100); the applied floor is echoed as `starterFloorUsd`. Pro derives from the post-floor starter via × `tiermultiplier` (default `10`), so a $1-weight agent becomes Starter `$4/100` and Pro `$40/1000`. See [Pricing Model — Tiers, Skills & Token Billing](#pricing-model--tiers-skills--token-billing) for the full rules.
+> **$4 starter floor.** When the raw weight sum lands below $4 (e.g. a single `LIGHT` skill at $1/100), the resolver bumps `tiers.starter.priceUsd` up to $4 **and** scales `tiers.starter.credits` up by the same ratio (100 → 400); the applied floor is echoed as `starterFloorUsd`. Pro derives from the post-floor starter via × `tiermultiplier` (default `10`), so a $1-weight agent becomes Starter `$4/400` and Pro `$40/4000`. See [Pricing Model — Tiers, Skills & Token Billing](#pricing-model--tiers-skills--token-billing) for the full rules.
 
 #### **POST** /UserAgent/CreateSubscriptionCheckout
 
@@ -7592,7 +7594,7 @@ Subscribes a useragent that doesn't yet have an active subscription. Wallet is d
   "errors": [],
   "subscriptionId": 8421,
   "monthlypriceusd": 90,
-  "monthlycredits": 2250
+  "monthlycredits": 9000
 }
 ```
 
@@ -7724,7 +7726,7 @@ Calls are rate-limited via a 30-second server-side cache keyed on `(useragentgui
       "tokencost": 5,
       "durationMs": 4200,
       "calls": 2,
-      "remainingcredits": 2245,
+      "remainingcredits": 8995,
       "ok": true,
       "userUuid": "ada-uuid",
       "user": {
@@ -7925,8 +7927,8 @@ No request body fields are required — the workspace of your API key's project 
       "tier": "pro",
       "tiermultiplier": 10,
       "monthlypriceusd": 90,
-      "monthlycredits": 2250,
-      "extracredits": 2000,
+      "monthlycredits": 9000,
+      "extracredits": 45000,
       "usedcredits": 1450,
       "creditperiod": "2026-05",
       "creditsyncat": 1714694410,
@@ -7954,8 +7956,8 @@ No request body fields are required — the workspace of your API key's project 
         "categories": ["social-media", "marketing"],
         "tiermultiplier": 10,
         "tiers": {
-          "starter": { "priceUsd": 9,  "credits": 225 },
-          "pro":     { "priceUsd": 90, "credits": 2250 }
+          "starter": { "priceUsd": 9,  "credits": 900 },
+          "pro":     { "priceUsd": 90, "credits": 9000 }
         }
       },
       "enabledSkills": ["int-instagram-post", "int-twitterx-post", "int-wiro-aimodels"],
@@ -8149,9 +8151,9 @@ The catalog appears at `agent.extracreditpacks` on `UserAgent/Detail`:
 
 ```json
 "extracreditpacks": [
-  { "packkey": "small",  "credits": 11250, "priceusd": 450,  "enabled": true },
-  { "packkey": "medium", "credits": 22500, "priceusd": 900,  "enabled": true },
-  { "packkey": "large",  "credits": 45000, "priceusd": 1800, "enabled": true }
+  { "packkey": "small",  "credits": 45000, "priceusd": 450,  "enabled": true },
+  { "packkey": "medium", "credits": 90000, "priceusd": 900,  "enabled": true },
+  { "packkey": "large",  "credits": 180000, "priceusd": 1800, "enabled": true }
 ]
 ```
 
@@ -8261,7 +8263,7 @@ API-deployed agents always upgrade through the prepaid path. The endpoint debits
   "tier": "pro",
   "previousTier": "starter",
   "newPriceUsd": 90,
-  "newMonthlyCredits": 2250,
+  "newMonthlyCredits": 9000,
   "proratedCharge": 45.90,
   "errors": []
 }
@@ -8310,7 +8312,7 @@ Called after the subscription has expired (daily cron flipped it to `status: "ex
   "action": "renewed",
   "plan": "agent",
   "amount": 9,
-  "monthlycredits": 225,
+  "monthlycredits": 900,
   "errors": []
 }
 ```
@@ -9051,12 +9053,12 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
   "tier": "pro",
   "tiermultiplier": 10,
   "totalPriceUsd": 60,
-  "totalMonthlyCredits": 1500,
+  "totalMonthlyCredits": 6000,
   "starterFloorUsd": 4,
   "skillBreakdown": [
-    { "skill": "int-gmail-check",     "priceUsd": 1, "credits": 25,  "billing_model": "tokens" },
-    { "skill": "int-wordpress-post",  "priceUsd": 4, "credits": 100, "billing_model": "tokens" },
-    { "skill": "int-wiro-aimodels",   "priceUsd": 1, "credits": 25,  "billing_model": "tokens" }
+    { "skill": "int-gmail-check",     "priceUsd": 1, "credits": 100, "billing_model": "tokens" },
+    { "skill": "int-wordpress-post",  "priceUsd": 4, "credits": 400, "billing_model": "tokens" },
+    { "skill": "int-wiro-aimodels",   "priceUsd": 1, "credits": 100, "billing_model": "tokens" }
   ],
   "enabledSkills": ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels"],
   "directSkills":  ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels"],
@@ -9073,8 +9075,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
     }
   },
   "tiers": {
-    "starter": { "priceUsd": 6,  "credits": 150 },
-    "pro":     { "priceUsd": 60, "credits": 1500 }
+    "starter": { "priceUsd": 6,  "credits": 600 },
+    "pro":     { "priceUsd": 60, "credits": 6000 }
   }
 }
 ```
@@ -9144,9 +9146,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
       "tiermultiplier": 10,
       "status": 2,
       "setuprequired": false,
-      "monthlycredits": 1500,
+      "monthlycredits": 6000,
       "monthlypriceusd": 60,
-      "remainingcredits": 1500,
+      "remainingcredits": 6000,
       "creditperiod": "2026-05",
       "tokenRates": {
         "default_model": "openai/gpt-5.6-sol",
@@ -9189,13 +9191,13 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
         "title": "Inbox Watcher",
         "tiermultiplier": 10,
         "tiers": {
-          "starter": { "priceUsd": 6,  "credits": 150 },
-          "pro":     { "priceUsd": 60, "credits": 1500 }
+          "starter": { "priceUsd": 6,  "credits": 600 },
+          "pro":     { "priceUsd": 60, "credits": 6000 }
         },
         "extracreditpacks": [
-          { "packkey": "small",  "credits": 7500,  "priceusd": 300,  "enabled": true },
-          { "packkey": "medium", "credits": 15000, "priceusd": 600,  "enabled": true },
-          { "packkey": "large",  "credits": 30000, "priceusd": 1200, "enabled": true }
+          { "packkey": "small",  "credits": 30000,  "priceusd": 300,  "enabled": true },
+          { "packkey": "medium", "credits": 60000,  "priceusd": 600,  "enabled": true },
+          { "packkey": "large",  "credits": 120000, "priceusd": 1200, "enabled": true }
         ]
       }
     }
@@ -9244,9 +9246,9 @@ The response includes the new pricing snapshot and the prorated wallet debit:
     "previousPriceUsd": 60,
     "newPriceUsd": 70,
     "deltaUsd": 10,
-    "previousMonthlyCredits": 1500,
-    "newMonthlyCredits": 1750,
-    "deltaCredits": 250,
+    "previousMonthlyCredits": 6000,
+    "newMonthlyCredits": 7000,
+    "deltaCredits": 1000,
     "enabledSkills": ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels", "int-instagram-post"]
   }
 }
@@ -9371,7 +9373,7 @@ When you toggle a skill on or off, the active subscription is automatically pror
 
 ## Limits & Notes
 
-- **Skill set must produce a `> $0` price.** Custom builds with no paid skills are rejected with `Subscription price must be greater than $0. Add at least one paid skill or set agent base price.` The `agentBase` floor (`$9 / 1000 credits`) is the implicit minimum unless every enabled skill is free / utility.
+- **Skill set must produce a `> $0` price.** Custom builds with no paid skills are rejected with `Subscription price must be greater than $0. Add at least one paid skill or set agent base price.` With at least one paid skill, Starter costs at least the `starterFloorUsd` floor: $4 and 400 credits a month.
 - **Conflict / dependency violations are surfaced eagerly.** If you toggle on two mutually-exclusive skills, `SkillsApply` returns code `102` with a `conflicts[]` array; if a `depends_on` is missing, code `101` with `deps[]`. Resolve in the UI before committing.
 - **Custom builds receive the same auto-restart on configuration changes** as template deploys (status `3`/`4` → status `1`, then re-queued).
 - **Cover image:** custom builds can ship a `cover` URL in the Deploy body, or upload one later via [`POST /UserAgent/Cover`](/docs/agent-overview#post-useragentcover).
@@ -13510,7 +13512,7 @@ Lists all skills in the registry.
       "replacement": null,
       "pricing": {
         "monthly_price_weight_usd": 1,
-        "monthly_credits_weight": 25,
+        "monthly_credits_weight": 100,
         "billing_model": "tokens"
       }
     }
@@ -13575,10 +13577,10 @@ complete. Channels are not skills and do not affect pricing.
 | Sub-field | Type | Description |
 |-----------|------|-------------|
 | `monthly_price_weight_usd` | `number` | Weight (USD) the skill contributes to the agent's Starter monthly price. The resolver sums weights across the agent's enabled-skill closure (incl. transitive `depends_on`); Pro multiplies the total by `tiermultiplier`. The platform applies a **$4/month minimum floor** on top of this sum (with credits scaled proportionally) — see Pricing in the [Agent Overview](/docs/agent-overview#pricing-model--tiers-skills--token-billing). |
-| `monthly_credits_weight` | `number` | Weight (credits) the skill contributes to the Starter monthly credit allocation. Same closure + multiplier semantics as price. When the $4 starter floor is applied to `monthly_price_weight_usd`, this weight is scaled up by the same ratio so the user gets a proportional credit boost rather than a free upgrade. |
+| `monthly_credits_weight` | `number` | Weight (credits) the skill contributes to the Starter monthly credit allocation: 100 credits per $1 of `monthly_price_weight_usd`. Same closure + multiplier semantics as price. When the $4 starter floor is applied to `monthly_price_weight_usd`, this weight is scaled up by the same ratio so the user gets a proportional credit boost rather than a free upgrade. |
 | `billing_model` | `string` | Always `"tokens"`. Per-turn conversation cost is token-metered at the agent's per-model `tokenRates` (credits per 1M input / output / cached-input tokens) — see [token billing in the Agent Overview](/docs/agent-overview#pricing-model--tiers-skills--token-billing). Voice skills stream realtime audio through the operator's own Wiro AI Models balance via `int-wiro-aimodels` (your own Wiro API key); only the post-call text turn is a normal token deduct. |
 
-> **4 weight buckets in the skill registry.** Every skill's `monthly_price_weight_usd` / `monthly_credits_weight` pair but one lands in one of four buckets: `ZERO` (`$0` / `0` — utility skills), `LIGHT` (`$1` / `25` credits per month), `HEAVY` (`$2` / `50` credits per month), or `PREMIUM` (`$4` / `100` credits per month). The exception is `util-video-creator`, the Video Creator's playbook: it carries that agent's price, `$29` a month on Starter, to any agent that turns it on. The `(priceUsd, credits)` grid is a documentation convenience — it is **not** a named API constant; each pair emerges from the skill's own `monthly_price_weight_usd` / `monthly_credits_weight`. There are **no per-skill Pro overrides** — Pro is always derived as `Starter × tiermultiplier` (default `10`). The agent's Starter price = `Σ(enabled-skill weights)`, bumped to `$4` if the raw sum lands below the floor (with credits scaled proportionally to keep the per-credit ratio stable); Pro = `Starter × tiermultiplier`.
+> **4 weight buckets in the skill registry.** Every skill's `monthly_price_weight_usd` / `monthly_credits_weight` pair but one lands in one of four buckets: `ZERO` (`$0` / `0` — utility skills), `LIGHT` (`$1` / `100` credits per month), `HEAVY` (`$2` / `200` credits per month), or `PREMIUM` (`$4` / `400` credits per month). The exception is `util-video-creator`, the Video Creator's playbook: it carries that agent's price, `$29` and `2900` credits a month on Starter, to any agent that turns it on. Every paid skill grants exactly 100 monthly credits per $1 of price weight, so `monthly_credits_weight` is always `100 × monthly_price_weight_usd`. The `(priceUsd, credits)` grid is a documentation convenience — it is **not** a named API constant; each pair emerges from the skill's own `monthly_price_weight_usd` / `monthly_credits_weight`. There are **no per-skill Pro overrides** — Pro is always derived as `Starter × tiermultiplier` (default `10`). The agent's Starter price = `Σ(enabled-skill weights)`, bumped to `$4` if the raw sum lands below the floor (with credits scaled proportionally to keep the per-credit ratio stable); Pro = `Starter × tiermultiplier`.
 
 > **Optional filter `wiro_connect_pending`.** When you query with
 > `wiro_connect_pending: true` you get every skill whose connecting
@@ -13625,7 +13627,7 @@ Returns a single skill by name.
     "replacement": null,
     "pricing": {
       "monthly_price_weight_usd": 1,
-      "monthly_credits_weight": 25,
+      "monthly_credits_weight": 100,
       "billing_model": "tokens"
     }
   }
@@ -14553,10 +14555,10 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
   "errors": [],
   "total": 128,
   "summary": {
-    "monthlycredits": 2250,
-    "extracredits": 2000,
+    "monthlycredits": 9000,
+    "extracredits": 45000,
     "usedcredits": 1450,
-    "remainingcredits": 2800,
+    "remainingcredits": 52550,
     "creditperiod": "2026-05",
     "creditsyncat": 1714694410,
     "byModel": [
@@ -14570,7 +14572,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "type": "deduct",
       "action": "tokens",
       "amount": -5,
-      "balanceafter": 10551,
+      "balanceafter": 52550,
       "description": "Input Tokens: 3450 / Output Tokens: 820 / Model: openai/gpt-5.4",
       "sessionkey": "default",
       "agentsessionkey": "default",
@@ -14602,8 +14604,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "guid": "a40b5473-aedb-47d7-966b-7b038eed30dc",
       "type": "purchase",
       "action": "small",
-      "amount": 5000,
-      "balanceafter": 10560,
+      "amount": 45000,
+      "balanceafter": 52560,
       "description": "Extra credits — small pack",
       "sessionkey": null,
       "messageguid": null,
@@ -14617,7 +14619,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "model": null,
       "provider": "prepaid",
       "providerref": null,
-      "metadata": { "pack": "small", "priceUsd": 45 },
+      "metadata": { "pack": "small", "priceUsd": 450 },
       "uuid": "ada-uuid",
       "user": {
         "uuid": "ada-uuid",
@@ -14634,8 +14636,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "guid": "312e2a5f-1002-4c9a-af7d-70571e8b1739",
       "type": "renewal",
       "action": "monthly",
-      "amount": 10000,
-      "balanceafter": 5560,
+      "amount": 9000,
+      "balanceafter": 9000,
       "description": "Subscription renewal",
       "sessionkey": null,
       "messageguid": null,
@@ -14658,7 +14660,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "guid": "98a14c2e-ee0f-4a2d-b73b-d33fe8e57cf2",
       "type": "grant",
       "action": "skill-toggle",
-      "amount": 500,
+      "amount": 1000,
       "balanceafter": 5050,
       "description": "Skill enabled: int-instagram-post",
       "sessionkey": null,
@@ -14676,9 +14678,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "metadata": {
         "skill": "int-instagram-post",
         "enabled": true,
-        "previousPriceUsd": 90,
-        "newPriceUsd": 140,
-        "proratedCharge": 33.33
+        "previousPriceUsd": 80,
+        "newPriceUsd": 90,
+        "proratedCharge": 6.67
       },
       "uuid": "ada-uuid",
       "user": {
@@ -14690,7 +14692,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
         "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
         "avatarinitials": "AL"
       },
-      "createdat": 1714604000
+      "createdat": 1712880000
     }
   ]
 }

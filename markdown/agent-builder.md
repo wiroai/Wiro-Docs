@@ -117,12 +117,12 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
   "tier": "pro",
   "tiermultiplier": 10,
   "totalPriceUsd": 60,
-  "totalMonthlyCredits": 1500,
+  "totalMonthlyCredits": 6000,
   "starterFloorUsd": 4,
   "skillBreakdown": [
-    { "skill": "int-gmail-check",     "priceUsd": 1, "credits": 25,  "billing_model": "tokens" },
-    { "skill": "int-wordpress-post",  "priceUsd": 4, "credits": 100, "billing_model": "tokens" },
-    { "skill": "int-wiro-aimodels",   "priceUsd": 1, "credits": 25,  "billing_model": "tokens" }
+    { "skill": "int-gmail-check",     "priceUsd": 1, "credits": 100, "billing_model": "tokens" },
+    { "skill": "int-wordpress-post",  "priceUsd": 4, "credits": 400, "billing_model": "tokens" },
+    { "skill": "int-wiro-aimodels",   "priceUsd": 1, "credits": 100, "billing_model": "tokens" }
   ],
   "enabledSkills": ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels"],
   "directSkills":  ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels"],
@@ -139,8 +139,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
     }
   },
   "tiers": {
-    "starter": { "priceUsd": 6,  "credits": 150 },
-    "pro":     { "priceUsd": 60, "credits": 1500 }
+    "starter": { "priceUsd": 6,  "credits": 600 },
+    "pro":     { "priceUsd": 60, "credits": 6000 }
   }
 }
 ```
@@ -210,9 +210,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
       "tiermultiplier": 10,
       "status": 2,
       "setuprequired": false,
-      "monthlycredits": 1500,
+      "monthlycredits": 6000,
       "monthlypriceusd": 60,
-      "remainingcredits": 1500,
+      "remainingcredits": 6000,
       "creditperiod": "2026-05",
       "tokenRates": {
         "default_model": "openai/gpt-5.6-sol",
@@ -255,13 +255,13 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
         "title": "Inbox Watcher",
         "tiermultiplier": 10,
         "tiers": {
-          "starter": { "priceUsd": 6,  "credits": 150 },
-          "pro":     { "priceUsd": 60, "credits": 1500 }
+          "starter": { "priceUsd": 6,  "credits": 600 },
+          "pro":     { "priceUsd": 60, "credits": 6000 }
         },
         "extracreditpacks": [
-          { "packkey": "small",  "credits": 7500,  "priceusd": 300,  "enabled": true },
-          { "packkey": "medium", "credits": 15000, "priceusd": 600,  "enabled": true },
-          { "packkey": "large",  "credits": 30000, "priceusd": 1200, "enabled": true }
+          { "packkey": "small",  "credits": 30000,  "priceusd": 300,  "enabled": true },
+          { "packkey": "medium", "credits": 60000,  "priceusd": 600,  "enabled": true },
+          { "packkey": "large",  "credits": 120000, "priceusd": 1200, "enabled": true }
         ]
       }
     }
@@ -310,9 +310,9 @@ The response includes the new pricing snapshot and the prorated wallet debit:
     "previousPriceUsd": 60,
     "newPriceUsd": 70,
     "deltaUsd": 10,
-    "previousMonthlyCredits": 1500,
-    "newMonthlyCredits": 1750,
-    "deltaCredits": 250,
+    "previousMonthlyCredits": 6000,
+    "newMonthlyCredits": 7000,
+    "deltaCredits": 1000,
     "enabledSkills": ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels", "int-instagram-post"]
   }
 }
@@ -437,7 +437,7 @@ When you toggle a skill on or off, the active subscription is automatically pror
 
 ## Limits & Notes
 
-- **Skill set must produce a `> $0` price.** Custom builds with no paid skills are rejected with `Subscription price must be greater than $0. Add at least one paid skill or set agent base price.` The `agentBase` floor (`$9 / 1000 credits`) is the implicit minimum unless every enabled skill is free / utility.
+- **Skill set must produce a `> $0` price.** Custom builds with no paid skills are rejected with `Subscription price must be greater than $0. Add at least one paid skill or set agent base price.` With at least one paid skill, Starter costs at least the `starterFloorUsd` floor: $4 and 400 credits a month.
 - **Conflict / dependency violations are surfaced eagerly.** If you toggle on two mutually-exclusive skills, `SkillsApply` returns code `102` with a `conflicts[]` array; if a `depends_on` is missing, code `101` with `deps[]`. Resolve in the UI before committing.
 - **Custom builds receive the same auto-restart on configuration changes** as template deploys (status `3`/`4` → status `1`, then re-queued).
 - **Cover image:** custom builds can ship a `cover` URL in the Deploy body, or upload one later via [`POST /UserAgent/Cover`](/docs/agent-overview#post-useragentcover).
