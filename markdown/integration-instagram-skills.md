@@ -169,7 +169,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
 ```
 
 Call this within 15 minutes of `OAuthConnect`. Wiro matches the selection
-against its server-side discovery result and stores the derived Page-scoped
+against its server-side discovery result and stores each derived Page-scoped
 runtime token. The dashboard auto-selects a sole result; API clients must still
 call this endpoint explicitly. If several linked professional accounts are
 returned, the dashboard opens a checkbox picker and saves every selected
@@ -249,9 +249,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -d '{
     "useragentguid": "your-useragent-guid",
     "fields": [
-      { "credentialkey": "instagram", "fieldname": "authmethod", "fieldvalue": "own" },
       { "credentialkey": "instagram", "fieldname": "appid", "fieldvalue": "YOUR_META_APP_ID" },
-      { "credentialkey": "instagram", "fieldname": "appsecret", "fieldvalue": "YOUR_META_APP_SECRET" }
+      { "credentialkey": "instagram", "fieldname": "appsecret", "fieldvalue": "YOUR_META_APP_SECRET" },
+      { "credentialkey": "instagram", "fieldname": "authmethod", "fieldvalue": "own" }
     ]
   }'
 ```
@@ -422,7 +422,7 @@ Once Instagram professional accounts are connected, the agent uses
 must identify one account when multiple are connected; the agent never guesses
 or publishes to all accounts from an ambiguous instruction. To adjust
 the Social Manager's bundled `cs-cron-content-scanner` schedule, call
-`UserAgent/CustomSkillUpsert` with `enabled` and `interval` only:
+`POST /UserAgent/CustomSkillUpsert` with `enabled` and `interval` only:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \

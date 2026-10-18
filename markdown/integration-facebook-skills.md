@@ -212,9 +212,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -d '{
     "useragentguid": "your-useragent-guid",
     "fields": [
-      { "credentialkey": "facebook-pages", "fieldname": "authmethod", "fieldvalue": "own" },
       { "credentialkey": "facebook-pages", "fieldname": "appid", "fieldvalue": "YOUR_META_APP_ID" },
-      { "credentialkey": "facebook-pages", "fieldname": "appsecret", "fieldvalue": "YOUR_META_APP_SECRET" }
+      { "credentialkey": "facebook-pages", "fieldname": "appsecret", "fieldvalue": "YOUR_META_APP_SECRET" },
+      { "credentialkey": "facebook-pages", "fieldname": "authmethod", "fieldvalue": "own" }
     ]
   }'
 ```
@@ -280,6 +280,7 @@ if (params.get("fb_connected") === "true") {
     // has no Pages. But handle defensively.
     showError("No Facebook Pages to manage.");
   } else if (pages.length === 1) {
+    // One-page case: still required to confirm via SetPickerAccounts
     await setPickerAccounts([pages[0]]);
   } else {
     presentPagePicker(pages);
@@ -413,7 +414,7 @@ Response: `{ result, accounts: [{id, name}, ...], errors }`. Triggers auto-resta
 
 ### POST /UserAgentOAuth/OAuthStatus
 
-Body: `{ useragentguid, credentialkey: "facebook-pages" }`. Response: `connected` (only `true` when both `accesstoken` and `pageid` are set), `accounts: [{id, name}, ...]` (every selected Page), `connectedat`, and an empty `tokenexpiresat`.
+Body: `{ useragentguid, credentialkey: "facebook-pages" }`. Response: `connected` (only `true` after the active mode is validated and at least one Page is selected), `accounts: [{id, name}, ...]` (every selected Page), `connectedat`, and an empty `tokenexpiresat`.
 
 ### POST /UserAgentOAuth/OAuthDisconnect
 
@@ -446,7 +447,7 @@ then select the Pages again.
 Once the Facebook Page is connected, the agent uses
 `int-facebookpage-post` to publish text, photo, and video posts. To adjust the
 Social Manager's bundled `cs-cron-content-scanner` schedule, call
-`UserAgent/CustomSkillUpsert` with `enabled` and `interval` only:
+`POST /UserAgent/CustomSkillUpsert` with `enabled` and `interval` only:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
@@ -479,7 +480,7 @@ makes links clickable, so a draft's page link goes into the post.
 | `token_exchange_failed` | Wrong App Secret or redirect URI mismatch. | Re-copy App Secret; verify redirect URI exactly. |
 | `no_pages` | User has no administered Facebook Pages. | Ask the user to create/administer a Page first, retry. |
 | `useragent_not_found` | Invalid or unauthorized `useragentguid`. | Use `POST /UserAgent/MyAgents`. |
-| `Facebook Pages credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `appid` / `appsecret` are missing. | Call `POST /UserAgent/CredentialUpsert` with `facebook-pages.appid` and `facebook-pages.appsecret`, then retry. |
+| `Facebook credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `appid` / `appsecret` are missing. | Call `POST /UserAgent/CredentialUpsert` with `facebook-pages.appid` and `facebook-pages.appsecret`, then retry. |
 | `Meta could not validate this System User token` | Direct mode received an invalid token, missing permission, or inaccessible asset. | Generate a current System User token with the documented permissions and Page assignments, save it, and retry. |
 | Valid token but no assigned Facebook Page | The System User has no Page with the `CREATE_CONTENT` task. | Assign the Page in Business Settings and reconnect. |
 | `internal_error` | Unexpected server error (includes cache write failures). | Retry once. If persistent, contact support. |

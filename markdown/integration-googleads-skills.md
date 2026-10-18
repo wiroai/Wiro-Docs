@@ -279,7 +279,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   }'
 ```
 
-To change **what** the reporter includes (wasted-spend threshold, target ROAS, reporting preferences), edit the paired preference skill `ad-strategy` instead — see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preference-skills).
+To change **what** the reporter includes (wasted-spend threshold, target ROAS, reporting preferences), edit the paired preference skill `ad-strategy` instead — see [Agent Skills → Updating Preference Skills](/docs/agent-skills#updating-preference-skills).
 
 ## Troubleshooting
 
@@ -290,9 +290,9 @@ To change **what** the reporter includes (wasted-spend threshold, target ROAS, r
 | `session_expired` | State cache expired. | Restart. |
 | `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy; verify URL. |
 | `Wiro-managed OAuth is not enabled for Google Ads` | Returned in `OAuthConnect`'s `errors[]`: Wiro mode isn't available yet, and it is the default when `authmethod` is left out. | Save your credentials (Step 4) and call `OAuthConnect` with `"authmethod": "own"`. |
-| `template_not_found` (wiro mode) | Wiro's template doesn't have `googleads` credentials. | Contact support or switch to own mode. |
+| `template_not_found` (wiro mode) | Wiro's template doesn't have `google-ads` credentials. | Contact support or switch to own mode. |
 | `useragent_not_found` | Invalid guid. | Use `POST /UserAgent/MyAgents`. |
-| `Google Ads credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but the four required fields are missing. | `UserAgent/CredentialUpsert` with all four fields. |
+| `Google Ads credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `clientid` / `clientsecret` are missing. | `UserAgent/CredentialUpsert` with `clientid` + `clientsecret` (Step 4). |
 | `internal_error` | Server error. | Retry; contact support. |
 
 ### `USER_PERMISSION_DENIED` on API calls

@@ -9144,7 +9144,7 @@ pro.credits = starter.credits × tiermultiplier
 <tr>
 <td><code>_connected</code></td>
 <td>boolean</td>
-<td><strong>Connection readiness indicator.</strong> <code>true</code> when Wiro has a validated OAuth or hybrid direct connection and every required picker field is populated. Plain API-key and service-account providers that do not write <code>connectedat</code> can remain <code>false</code>; use <code>setuprequired</code> to determine overall setup readiness.</td>
+<td><strong>Connection readiness indicator.</strong> <code>true</code> when Wiro has a validated OAuth or hybrid direct connection and every required picker field (<code>customerid</code>, <code>merchantid</code>, <code>channelid</code>, ad-account, page ID, Instagram account ID, etc.) is populated. Plain API-key and service-account providers that do not write <code>connectedat</code> can remain <code>false</code>; use <code>setuprequired</code> to determine overall setup readiness.</td>
 </tr>
 <tr>
 <td><code>optional</code></td>
@@ -9188,13 +9188,13 @@ pro.credits = starter.credits × tiermultiplier
 </thead>
 <tbody>
 <tr><td><code>communicationChannels</code></td><td>array</td><td>Full external-channel catalog for this instance. Each row includes <code>id</code>, <code>title</code>, <code>credentialkey</code>, <code>required_fields</code>, <code>capabilities</code>, <code>schema</code>, <code>enabled</code>, <code>configured</code>, and <code>missingfields</code>. Use <code>schema.fields</code> to render the setup form.</td></tr>
-<tr><td><code>enabledChannels</code></td><td>string[]</td><td>External channel IDs whose registry-declared activation credentials are complete: <code>telegram</code>, <code>slack</code>, and <code>discord</code>. Web chat is always available and is not included.</td></tr>
+<tr><td><code>enabledChannels</code></td><td>string[]</td><td>External channel IDs whose registry-declared activation credentials are complete. Current values are <code>telegram</code>, <code>slack</code>, and <code>discord</code>. Web chat is always available and is not included.</td></tr>
 <tr><td><code>teamsessionmode</code></td><td>string</td><td>The unified Chat Mode. <code>"private"</code> isolates team members' Wiro web-chat histories and agent memory plus approved external-channel DM operators; <code>"collaborative"</code> shares those histories and runtime contexts. Web and external-channel message lists remain separate transports. Room and thread conversations remain room-scoped.</td></tr>
 </tbody>
 </table>
 </div>
 </div>
-<p>The catalog is registry-driven, so all templates and existing useragents can discover new channels without template-specific rows. Availability does not mean activation: an external channel turns on automatically only when all of its <code>required_fields</code>, including immutable operator IDs, are complete. Existing agents use the normal <code>CredentialUpsert</code> flow; there is no separate channel switch.</p>
+<p>The catalog is registry-driven, so all agent templates and existing useragents can discover new channels without adding template-specific rows. Availability does not mean activation: an external channel turns on automatically only when all of its <code>required_fields</code>, including immutable operator IDs, are complete. Existing agents use the normal <code>CredentialUpsert</code> flow; there is no separate channel switch.</p>
 <h3 id="deploy-manage">Deploy &amp; Manage</h3>
 <p>All endpoints below require authentication.</p>
 <h4 id="post-useragentdeploy"><strong>POST</strong> /UserAgent/Deploy</h4>
@@ -9203,7 +9203,7 @@ pro.credits = starter.credits × tiermultiplier
 <p><strong>API agent deployment is prepaid-only.</strong> Pass <code>useprepaid: true</code> + <code>tier</code> — the subscription cost is deducted from your prepaid wallet immediately and the instance is created server-side in one call. There is no API path that accepts a credit card directly; subscriptions from a card can only be created through the Wiro dashboard at <a href="https://wiro.ai/panel/agents">wiro.ai/panel/agents</a>. Top up your wallet on <a href="https://wiro.ai/panel/billing">wiro.ai/panel/billing</a> before calling Deploy.</p>
 </blockquote>
 <p>Prepaid deploy (<code>useprepaid: true</code> + <code>tier</code>) charges your wallet for the chosen tier price immediately and inserts a 30-day subscription row (<code>plan: "agent"</code>, <code>provider: "prepaid"</code>). <strong>Every fresh Deploy lands at <code>status: 6</code> first</strong> — the row is then auto-queued to <code>status: 2</code> (Queued) once the prepaid subscription is provisioned. No manual <code>UserAgent/Start</code> is needed for prepaid deploys; the daemon picks the row up from the queue.</p>
-<p>If you pass <code>credentials</code>, <code>skills</code>, or <code>customskills</code> at the top level of the Deploy body they are applied server-side in the same call. Chat Mode is not a Builder/Deploy input: team deploys start collaborative and personal deploys start private, then owners can change the value with <code>UpdateSettings</code>. Complete channel credential groups activate automatically. Arrays such as <code>allowedusers</code>, Telegram <code>groups</code>, Slack <code>channels</code>, and Discord <code>guilds</code> are validated against the public registry schema. See <a href="/docs/agent-credentials#communication-channels">Agent Credentials → Communication Channels</a>.</p>
+<p>If you pass <code>credentials</code>, <code>skills</code>, or <code>customskills</code> at the top level of the Deploy body they are applied server-side in the same call. Chat Mode is not a Builder/Deploy input: team deploys start collaborative and personal deploys start private, then owners can change the value with <code>UpdateSettings</code>. Complete channel credential groups activate automatically. Arrays such as <code>allowedusers</code>, Telegram <code>groups</code>, Slack <code>channels</code>, and Discord <code>guilds</code> are validated against the public registry schema. See <a href="/docs/agent-credentials#communication-channels">Agent Credentials → Communication Channels</a> for the channel contract.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -9268,7 +9268,7 @@ pro.credits = starter.credits × tiermultiplier
 <td><code>skills</code></td>
 <td>object</td>
 <td>No</td>
-<td>Inline skill toggles <code>{ "skillname": true \| false }</code>. For custom builds this seeds the initial skill set; for template deploys it overlays the template defaults.</td>
+<td>Inline skill toggles <code>{ "skillname": true | false }</code>. For custom builds this seeds the initial skill set; for template deploys it overlays the template defaults.</td>
 </tr>
 <tr>
 <td><code>customskills</code></td>
@@ -10129,12 +10129,12 @@ pro.credits = starter.credits × tiermultiplier
 </tr>
 <tr>
 <td><code>agentguid</code></td>
-<td><code>string\|null</code></td>
+<td><code>string|null</code></td>
 <td>Catalog template GUID this instance was deployed from. <code>null</code> for custom builds (always check <code>agent.custom === true</code> to detect those).</td>
 </tr>
 <tr>
 <td><code>teamguid</code></td>
-<td><code>string\|null</code></td>
+<td><code>string|null</code></td>
 <td>Team GUID when the agent is team-scoped. <code>null</code> for personal agents.</td>
 </tr>
 <tr>
@@ -10144,12 +10144,12 @@ pro.credits = starter.credits × tiermultiplier
 </tr>
 <tr>
 <td><code>description</code></td>
-<td><code>string\|null</code></td>
+<td><code>string|null</code></td>
 <td>Long-form description shown on the agent card.</td>
 </tr>
 <tr>
 <td><code>cover</code></td>
-<td><code>string\|null</code></td>
+<td><code>string|null</code></td>
 <td>Per-instance cover URL. Falls back to <code>agent.cover</code> for template deploys; <code>null</code> for custom builds without an uploaded cover.</td>
 </tr>
 <tr>
@@ -10205,7 +10205,7 @@ pro.credits = starter.credits × tiermultiplier
 </tr>
 <tr>
 <td><code>extracreditsexpiry</code></td>
-<td><code>number\|null</code></td>
+<td><code>number|null</code></td>
 <td>Unix timestamp when the earliest extra credit pack expires. <code>null</code> when no extras are active.</td>
 </tr>
 <tr>
@@ -10225,12 +10225,12 @@ pro.credits = starter.credits × tiermultiplier
 </tr>
 <tr>
 <td><code>creditsyncat</code></td>
-<td><code>number\|null</code></td>
+<td><code>number|null</code></td>
 <td>Unix seconds of the last agent → API usage sync (<code>null</code> before the first report).</td>
 </tr>
 <tr>
 <td><code>tokenRates</code></td>
-<td><code>object\|null</code></td>
+<td><code>object|null</code></td>
 <td>Per-model token-billing rates (credits per 1,000,000 tokens). Shape: <code>{ default_model, fallback_rate, models: { "&lt;slug&gt;": { input_per_1m, output_per_1m, cached_input_per_1m?, cache_write_per_1m?, selectable?, label?, tier? } } }</code>. Each turn's cost is metered from these rates (1 credit = $0.01) — see <a href="#pricing-model--tiers-skills--token-billing">Token Billing</a>. <code>null</code> only on registry-read failure.</td>
 </tr>
 <tr>
@@ -10240,7 +10240,7 @@ pro.credits = starter.credits × tiermultiplier
 </tr>
 <tr>
 <td><code>enabledCommands</code></td>
-<td><code>array&lt;string&gt;\|null</code></td>
+<td><code>array&lt;string&gt;|null</code></td>
 <td>The in-chat slash-command allowlist (camelCase read). <code>null</code> = the operator never customized it, so <strong>all</strong> slash commands are available. An array (including <code>[]</code>) is an explicit allowlist of command keys (no leading slash); <code>[]</code> hides the slash-command menu. Write it via <a href="#post-useragentupdatesettings"><code>POST /UserAgent/UpdateSettings</code></a> with the lowercase <code>enabledcommands</code> key. Also present on <code>MyAgents</code> / <code>PinnedAgents</code> rows.</td>
 </tr>
 </tbody>
@@ -10271,7 +10271,7 @@ pro.credits = starter.credits × tiermultiplier
 </tr>
 <tr>
 <td><code>createdat</code> / <code>updatedat</code> / <code>queuedat</code> / <code>startedat</code> / <code>runningat</code> / <code>stoppingat</code> / <code>stopdat</code> / <code>errordat</code></td>
-<td><code>number\|null</code></td>
+<td><code>number|null</code></td>
 <td>Unix seconds for each lifecycle transition. <code>null</code> until the corresponding state is reached.</td>
 </tr>
 </tbody>
@@ -10322,7 +10322,7 @@ pro.credits = starter.credits × tiermultiplier
 </tr>
 <tr>
 <td><code>timezone</code></td>
-<td><code>string\|null</code></td>
+<td><code>string|null</code></td>
 <td>Operator-selected IANA timezone (e.g. <code>"Europe/Istanbul"</code>, <code>"America/New_York"</code>). <code>null</code> means <strong>system default (UTC)</strong> — the agent container runs <code>TZ=UTC</code> and <code>current_time</code> in voice prep stays in UTC ISO form. When set, propagates through <code>settings.json.useragentTimezone</code> → container <code>TZ</code> env → cron <code>schedule.tz</code> → caller-facing voice prep / business-hours rendering. Write with <a href="#post-useragentupdatesettings"><code>POST /UserAgent/UpdateSettings</code></a>.</td>
 </tr>
 </tbody>
@@ -10343,7 +10343,7 @@ pro.credits = starter.credits × tiermultiplier
 <tbody>
 <tr>
 <td><code>subscription</code></td>
-<td><code>object\|null</code></td>
+<td><code>object|null</code></td>
 <td>Active subscription info (see "Subscription object" below), or <code>null</code> when the agent has no active subscription. For API-deployed instances this is always <code>provider: "prepaid"</code>, <code>plan: "agent"</code>.</td>
 </tr>
 <tr>
@@ -10386,7 +10386,7 @@ pro.credits = starter.credits × tiermultiplier
 <tr>
 <td><code>_editable</code></td>
 <td><code>object</code></td>
-<td>Per-field edit map: <code>{ fieldname: true\|false }</code>. <code>false</code> means the field is read-only (managed by OAuth, platform-managed, or computed). The frontend uses this to disable inputs.</td>
+<td>Per-field edit map: <code>{ fieldname: true|false }</code>. <code>false</code> means the field is read-only (managed by OAuth, platform-managed, or computed). The frontend uses this to disable inputs.</td>
 </tr>
 <tr>
 <td><code>_schema</code></td>
@@ -10400,17 +10400,17 @@ pro.credits = starter.credits × tiermultiplier
 </tr>
 <tr>
 <td><code>connectedat</code></td>
-<td><code>string\|null</code></td>
+<td><code>string|null</code></td>
 <td>OAuth and hybrid providers: ISO timestamp of the last successful connection.</td>
 </tr>
 <tr>
 <td><code>tokenexpiresat</code></td>
-<td><code>string\|null</code></td>
+<td><code>string|null</code></td>
 <td>ISO timestamp when the current token expires, or an empty value when the provider reports no fixed expiry.</td>
 </tr>
 <tr>
 <td><code>&lt;fieldname&gt;</code></td>
-<td><code>string\|number\|boolean\|array</code></td>
+<td><code>string|number|boolean|array</code></td>
 <td>The actual field value as the user (or OAuth callback) saved it. Field types match <code>_schema.fields[].type</code>. Sensitive values (<code>oauth_session</code> access/refresh tokens, <code>clientsecret</code>, <code>password</code>-typed fields) are NEVER returned in this surface — they stay server-side.</td>
 </tr>
 </tbody>
@@ -10451,12 +10451,12 @@ pro.credits = starter.credits × tiermultiplier
 </tr>
 <tr>
 <td><code>currentperiodend</code></td>
-<td><code>number\|null</code></td>
+<td><code>number|null</code></td>
 <td>Unix seconds when the current billing period ends.</td>
 </tr>
 <tr>
 <td><code>renewaldate</code></td>
-<td><code>string\|null</code></td>
+<td><code>string|null</code></td>
 <td>ISO-8601 string of the same period-end timestamp (convenience for display).</td>
 </tr>
 <tr>
@@ -10466,7 +10466,7 @@ pro.credits = starter.credits × tiermultiplier
 </tr>
 <tr>
 <td><code>pendingdowngrade</code></td>
-<td><code>string\|null</code></td>
+<td><code>string|null</code></td>
 <td><code>"cancel"</code> after <code>CancelSubscription</code>; <code>null</code> for normal active subs.</td>
 </tr>
 <tr>
@@ -11641,10 +11641,12 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </code></pre>
 <p><code>action</code> is <code>"reverted"</code>, <code>"reset-to-preset"</code>, <code>"deleted"</code> (preset removed upstream), or <code>"no-op"</code> (already matches target).</p>
 <h4 id="post-useragentcredentialfieldhistory"><strong>POST</strong> /UserAgent/CredentialFieldHistory</h4>
-<p>Returns the per-field write history for one credential group on a useragent. Sensitive values are redacted at read time as a belt-and-suspenders guard:
-- <code>oauth_session</code> fields (access / refresh tokens) <strong>never</strong> appear in history at all — they're stripped before persisting.
-- <code>clientsecret</code> and similar <code>oauth_app</code> secret fields are stored as <code>[REDACTED]</code> in history rows (the live value stays server-side — <code>UserAgent/Detail</code> doesn't return it either).
-- The platform-managed <code>sys-openai</code> credential short-circuits to an empty <code>entries[]</code> (no user-facing history to show).</p>
+<p>Returns the per-field write history for one credential group on a useragent. Sensitive values are redacted at read time as a belt-and-suspenders guard:</p>
+<ul>
+<li><code>oauth_session</code> fields (access / refresh tokens) <strong>never</strong> appear in history at all — they're stripped before persisting.</li>
+<li><code>clientsecret</code> and similar <code>oauth_app</code> secret fields are stored as <code>[REDACTED]</code> in history rows (the live value stays server-side — <code>UserAgent/Detail</code> doesn't return it either).</li>
+<li>The platform-managed <code>sys-openai</code> credential short-circuits to an empty <code>entries[]</code> (no user-facing history to show).</li>
+</ul>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -11771,7 +11773,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <td><code>skills</code></td>
 <td>object</td>
 <td>Yes</td>
-<td>Map of <code>{ "skillname": true \| false }</code> for every skill you want to set. Skills not in the map keep their current state.</td>
+<td>Map of <code>{ "skillname": true | false }</code> for every skill you want to set. Skills not in the map keep their current state.</td>
 </tr>
 <tr>
 <td><code>tier</code></td>
@@ -11865,7 +11867,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </tr>
 <tr>
 <td><code>restartedAt</code></td>
-<td><code>number\|null</code></td>
+<td><code>number|null</code></td>
 <td>Unix seconds when the restart trigger fired. <code>null</code> when <code>restartTriggered</code> is <code>false</code>.</td>
 </tr>
 <tr>
@@ -12138,11 +12140,13 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <blockquote>
 <p><code>useragents</code> is always returned (empty array on Start) because Start returns the standard agent response shape — just <code>result</code> and <code>errors</code> carry the outcome here.</p>
 </blockquote>
-<p>Start will fail (returns <code>{ "result": false, "errors": [...] }</code>) if:
-- The agent is already running or queued
-- The agent is currently stopping
-- Setup is incomplete (status <code>6</code>)
-- No credits remain (<code>monthlycredits + extracredits - usedcredits &lt;= 0</code>)</p>
+<p>Start will fail (returns <code>{ "result": false, "errors": [...] }</code>) if:</p>
+<ul>
+<li>The agent is already running or queued</li>
+<li>The agent is currently stopping</li>
+<li>Setup is incomplete (status <code>6</code>)</li>
+<li>No credits remain (<code>monthlycredits + extracredits - usedcredits &lt;= 0</code>)</li>
+</ul>
 <h4 id="post-useragentstop"><strong>POST</strong> /UserAgent/Stop</h4>
 <p>Stops a running agent instance. If the agent is Queued (status <code>2</code>), it is immediately set to Stopped. If it is Starting or Running (status <code>3</code>/<code>4</code>), it moves to Stopping (status <code>1</code>) and the container is shut down gracefully.</p>
 <div class="docs-param-table">
@@ -17903,8 +17907,28 @@ email tools, CRMs — through three credential methods:</p>
 <p>Read responses from <code>POST /UserAgent/Detail</code> / <code>POST /UserAgent/MyAgents</code> expose the composed <code>credentials</code> tree (each provider with its <code>_connected</code> / <code>optional</code> / <code>extra</code> / <code>_editable</code> / <code>_schema</code> flags), the <code>customskills[]</code> array, the <code>scheduledskills[]</code> array (cron skills), the <code>skills[]</code> array of enabled skill names, the <code>tokenRates</code> + <code>agentModel</code> objects, and the flat credit fields (<code>monthlycredits</code>, <code>extracredits</code>, <code>usedcredits</code>, <code>remainingcredits</code>, <code>creditperiod</code>, <code>creditsyncat</code>) as <strong>top-level fields</strong> on the useragent object. See <a href="/docs/agent-overview">Agent Overview</a> for the full endpoint catalog.</p>
 </blockquote>
 <h2 id="communication-channels">Communication Channels</h2>
-<p>Every Wiro agent is reachable through web chat and the Agent Messaging API without additional setup. Telegram, Slack, and Discord are optional external channels available to every marketplace template and custom agent. They remain disabled until every registry-declared activation credential is complete; there is no separate enable switch on an existing agent.</p>
-<p>Channels are not skills and do not affect pricing. Discover them from <code>POST /Skills/List</code> → <code>channels[]</code>. Each row provides the stable <code>id</code>, <code>credential_key</code>, activation <code>required_fields</code>, UI-facing <code>capabilities</code>, and the full <code>credential.credential_schema</code>.</p>
+<p>Every Wiro agent is reachable through web chat and the Agent Messaging API without additional configuration. Telegram, Slack, and Discord are optional external channels. They are available to every marketplace template and custom agent, but remain disabled until every registry-declared activation credential is complete. There is no separate enable switch on an existing agent.</p>
+<p>Channels are not skills and do not affect pricing. Discover them from the top-level <code>channels[]</code> array returned by public <code>POST /Skills/List</code>:</p>
+<pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{}'
+</code></pre>
+<p>Each row contains:</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead><tr><th>Field</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>id</code></td><td>Channel identifier (<code>telegram</code>, <code>slack</code>, or <code>discord</code>).</td></tr>
+<tr><td><code>credential_key</code></td><td>Key used inside the <code>credentials</code> object.</td></tr>
+<tr><td><code>required_fields</code></td><td>Fields that must all be populated for automatic activation.</td></tr>
+<tr><td><code>capabilities</code></td><td>Public UI hints for direct messages, rooms, threads, role allowlists, and command menus.</td></tr>
+<tr><td><code>credential</code></td><td>Full form descriptor, including <code>credential_schema</code>, labels, validation patterns, and setup help.</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Use <code>POST /UserAgent/CredentialUpsert</code> for an existing useragent. Send all activation fields in one <code>fields[]</code> request when connecting a channel:</p>
 <pre><code class="language-json">{
   &quot;useragentguid&quot;: &quot;your-useragent-guid&quot;,
   &quot;fields&quot;: [
@@ -17931,21 +17955,21 @@ email tools, CRMs — through three credential methods:</p>
   ]
 }
 </code></pre>
-<p>Use this body with <code>POST /UserAgent/CredentialUpsert</code> for an existing useragent. For a new one, place the complete channel group in <code>credentials</code>. Deploy accepts neither an <code>enabledchannels</code> toggle nor a chat-mode field; configure Chat Mode afterward with <code>teamsessionmode</code> in <code>POST /UserAgent/UpdateSettings</code>.</p>
+<p>For a new useragent, include the complete channel group in <code>credentials</code>. The channel activates from those credentials; Deploy accepts neither an <code>enabledchannels</code> toggle nor a chat-mode field. Configure Chat Mode after deployment with <code>teamsessionmode</code> in <code>POST /UserAgent/UpdateSettings</code>.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
 <thead><tr><th>Channel</th><th>Required fields</th><th>Optional scoped access</th></tr></thead>
 <tbody>
-<tr><td>Telegram</td><td><code>bottoken</code>, <code>allowedusers[]</code></td><td><code>groups[]</code> with negative <code>chatid</code> and room-specific users.</td></tr>
-<tr><td>Slack</td><td><code>bottoken</code>, <code>apptoken</code>, <code>workspaceid</code>, <code>allowedusers[]</code></td><td><code>channels[]</code> with immutable channel/user IDs. Enable Socket Mode and grant <code>connections:write</code>.</td></tr>
-<tr><td>Discord</td><td><code>bottoken</code>, <code>allowedusers[]</code></td><td><code>applicationid</code>; <code>guilds[]</code> with server, channel, user, and optional role IDs.</td></tr>
+<tr><td>Telegram</td><td><code>bottoken</code>, <code>allowedusers[]</code></td><td><code>groups[]</code> rows with negative <code>chatid</code> and room-specific <code>allowedusers[]</code>.</td></tr>
+<tr><td>Slack</td><td><code>bottoken</code>, <code>apptoken</code>, <code>workspaceid</code>, <code>allowedusers[]</code></td><td><code>channels[]</code> rows with immutable <code>channelid</code> and room-specific <code>allowedusers[]</code>. Enable Socket Mode and grant the app token <code>connections:write</code>.</td></tr>
+<tr><td>Discord</td><td><code>bottoken</code>, <code>allowedusers[]</code></td><td><code>applicationid</code>; <code>guilds[]</code> rows with <code>guildid</code>, <code>channelids[]</code>, and optional <code>allowedusers[]</code> / <code>allowedroles[]</code>.</td></tr>
 </tbody>
 </table>
 </div>
 </div>
-<p><code>teamsessionmode: "private"</code> isolates each approved direct-message operator and each team member's Wiro web-chat history and native agent memory. <code>"collaborative"</code> shares those runtime contexts. Team deployments and transfers default collaborative; personal deployments and team detachments default private. Web and external-channel message lists remain separate transports, and room/thread sessions remain room-scoped.</p>
-<blockquote><p>Use immutable platform IDs only. Display names, usernames, email addresses, and free-form room names are not authorization identifiers. Unlisted users and rooms are rejected, and room messages must mention the bot. Clear any activation <code>required_field</code> with <code>CredentialUpsert</code> to disable a channel; completing the fields reactivates it.</p></blockquote>
+<p><code>teamsessionmode: "private"</code> isolates each approved direct-message operator and each team member's Wiro web-chat history and native agent memory. <code>"collaborative"</code> shares those runtime contexts. Team deployments and transfers default to collaborative; personal deployments and team detachments default to private. Web and external-channel message lists remain separate transports, and room/thread sessions remain scoped to their room.</p>
+<blockquote><p>Send immutable platform IDs only. Display names, usernames, email addresses, and free-form room names are not authorization identifiers. Unlisted users and rooms are rejected, and room messages must mention the bot. To disable a channel, clear at least one of its <code>required_fields</code> with <code>CredentialUpsert</code>. Completing the required fields again reactivates it automatically.</p></blockquote>
 <h2 id="credential-registry-endpoints">Credential Registry Endpoints</h2>
 <p>These endpoints are <strong>public — no authentication required</strong>. They return data straight from the credential registry — useful when you want to render a "Connect this provider" form without a deployed useragent (e.g. inside an onboarding wizard).</p>
 <h3 id="post-credentialslist"><strong>POST</strong> /Credentials/List</h3>
@@ -18113,12 +18137,12 @@ email tools, CRMs — through three credential methods:</p>
 </tr>
 <tr>
 <td><code>brand_color</code> / <code>brand_text_color</code> / <code>brand_logo_filter</code></td>
-<td><code>string\|null</code></td>
+<td><code>string|null</code></td>
 <td>Brand colours and CSS filter for icon rendering — same shape as on skill registry entries.</td>
 </tr>
 <tr>
 <td><code>docs_url</code></td>
-<td><code>string\|null</code></td>
+<td><code>string|null</code></td>
 <td>Slug of the integration page on this docs site. Frontends prefix with <code>/docs/</code>.</td>
 </tr>
 <tr>
@@ -18133,7 +18157,7 @@ email tools, CRMs — through three credential methods:</p>
 </tr>
 <tr>
 <td><code>default_connection_mode</code></td>
-<td><code>string\|null</code></td>
+<td><code>string|null</code></td>
 <td>Registry-recommended mode selected for a new, disconnected credential. Facebook Pages, Instagram, and Meta Ads default to <code>"api_key"</code> System User mode.</td>
 </tr>
 <tr>
@@ -18153,7 +18177,7 @@ email tools, CRMs — through three credential methods:</p>
 </tr>
 <tr>
 <td><code>oauth_provider</code></td>
-<td><code>object\|null</code></td>
+<td><code>object|null</code></td>
 <td>OAuth wiring (endpoints, button styling, picker config) when <code>credential_mode</code> includes OAuth. <code>null</code> for non-OAuth credentials. See below.</td>
 </tr>
 <tr>
@@ -18185,7 +18209,7 @@ email tools, CRMs — through three credential methods:</p>
 <tr>
 <td><code>type</code></td>
 <td><code>string</code></td>
-<td>Input type: <code>"text"</code>, <code>"password"</code>, <code>"select"</code>, <code>"boolean"</code>, <code>"string-array"</code>, <code>"object-array"</code>, <code>"fileinput"</code>, <code>"fileinput-base64"</code>, or <code>"custom"</code>.</td>
+<td>Input type: <code>"text"</code>, <code>"password"</code>, <code>"select"</code>, <code>"boolean"</code>, <code>"string-array"</code>, <code>"object-array"</code>, <code>"fileinput"</code> (public asset, written via <code>CredentialFileUpload</code> multipart), <code>"fileinput-base64"</code> (secret sent inline via <code>CredentialUpsert</code>), or <code>"custom"</code>.</td>
 </tr>
 <tr>
 <td><code>label</code></td>
@@ -18315,17 +18339,17 @@ email tools, CRMs — through three credential methods:</p>
 </tr>
 <tr>
 <td><code>account_picker</code></td>
-<td><code>object\|null</code></td>
+<td><code>object|null</code></td>
 <td>When non-null, the connection flow includes an account / page / channel picker after OAuth or direct discovery. Key fields: <code>set_endpoint</code> (always <code>/UserAgentOAuth/SetPickerAccounts</code>), <code>multi_select</code> (<code>true</code> when 1+ entries can be picked, <code>false</code> for exactly one), <code>item_value_field</code> / <code>item_label_field</code> (which entry keys identify and label each account in the response), <code>item_fields_to_save</code> (the fields each entry in the <code>accounts</code> body must carry), and optional <code>next</code> for a chained picker. <code>next.discover_endpoint</code> is <code>/UserAgentOAuth/DiscoverPickerItems</code>; its <code>key</code>, parent/item fields, <code>set_endpoint</code>, and <code>persist_field</code> define the grouped child-selection request and stored result. Meta Ads currently uses this for ad account → Facebook Pages.</td>
 </tr>
 <tr>
 <td><code>direct_probe</code></td>
-<td><code>object\|null</code></td>
+<td><code>object|null</code></td>
 <td>Registry contract for a non-redirect mode: identifies the mode and write-only token field, validates it server-side, discovers selectable accounts, and declares which public account fields may be returned.</td>
 </tr>
 <tr>
 <td><code>extra_step</code></td>
-<td><code>object\|null</code></td>
+<td><code>object|null</code></td>
 <td>Reserved for providers with a third onboarding step beyond OAuth + picker (currently null for every provider).</td>
 </tr>
 </tbody>
@@ -18928,12 +18952,12 @@ pending provider review.</p>
 <p>If you call <code>POST /UserAgent/Deploy</code> with <code>useprepaid: true</code>, you may pass <code>credentials</code>, <code>customskills</code> (or the equivalent key <code>customskills</code>), and <code>skills</code> at the <strong>top level of the Deploy body</strong>. The server saves them on the new agent in the same call (one-shot deploy + initial setup).</p>
 <p><strong>Deploy body <code>credentials</code> rules:</strong></p>
 <ul>
-<li>Values are validated against the public registry schema.</li>
-<li>Registry-declared <code>string-array</code> and <code>object-array</code> fields are native JSON arrays, including channel allowlists.</li>
+<li>Values are validated against each credential's public registry schema.</li>
+<li>Registry-declared <code>string-array</code> and <code>object-array</code> fields are accepted as native JSON arrays. This includes channel allowlists (<code>allowedusers</code>, Telegram <code>groups</code>, Slack <code>channels</code>, Discord <code>guilds</code>).</li>
 <li>Fieldnames starting with <code>_</code> are reserved and ignored.</li>
 <li>Each field's <code>fieldstatus</code> is assigned by the server, exactly as for <code>CredentialUpsert</code>.</li>
 <li>Deploy never saves a <code>platform</code> or <code>oauth_session</code> field sent in <code>credentials</code>, such as a <code>sys-openai</code> field, one of Reddit's approval flags or <code>accesstoken</code>. This applies whether <code>credentials</code> is sent as an object or as a JSON string. In a communication-channel group (Telegram, Slack, Discord), such a field fails Deploy before the agent is created. In any other group, the field is dropped and Deploy continues.</li>
-<li>If <code>credentials</code> includes a communication-channel group, every activation <code>required_field</code> must be present. Invalid channel setup fails Deploy instead of creating a partial channel.</li>
+<li>If <code>credentials</code> includes a communication-channel group, all of that channel's <code>required_fields</code> must be present. A missing or invalid activation credential fails Deploy instead of creating a partially configured channel.</li>
 </ul>
 <p><strong>Deploy body <code>customskills</code> semantics:</strong></p>
 <ul>
@@ -24840,7 +24864,7 @@ if (params.get(&quot;tiktokads_connected&quot;) === &quot;true&quot;) {
 
                   <section id="overview">
                     <h2>Overview</h2>
-                    <p>The Facebook Page integration uses Meta Graph API v26 with a separate Page-scoped access token for every selected Page. Recommended direct mode accepts a Meta Business Manager System User token, validates it only on Wiro's server, discovers its assigned Pages, and derives the selected Page tokens. Neither the System User token nor the Page tokens are returned to the browser. Customer-owned OAuth remains available as an advanced path.</p>
+                    <p>The Facebook Page integration uses Meta Graph API v26 with a separate Page-scoped access token for every selected Page. The recommended direct mode accepts a Meta Business Manager System User token, validates it only on Wiro's server, discovers its assigned Pages, and derives the selected Page tokens. Neither the System User token nor the Page tokens are returned to the browser. Customer-owned OAuth remains available as an advanced path.</p>
                     <p><strong>Skills that use this integration:</strong></p>
                     <ul>
                       <li><code>int-facebookpage-post</code> — Publish text, photo, and video posts to a Facebook Page</li>
@@ -24906,10 +24930,19 @@ if (params.get(&quot;tiktokads_connected&quot;) === &quot;true&quot;) {
                       <li>Create or select a System User.</li>
                       <li>Assign every Facebook Page the agent may publish to with the <code>CREATE_CONTENT</code> task. Also assign <code>MODERATE</code> when the agent should add comments.</li>
                       <li>Select <strong>Generate new token</strong> and choose the Business app used for the integration.</li>
-                      <li>At <strong>Set expiration</strong>, choose <strong>Never</strong> when Meta offers it. Some businesses must use an expiring token; reconnect Wiro with a newly generated token before it expires.</li>
-                      <li>Grant <code>business_management</code>, <code>pages_show_list</code>, <code>pages_read_engagement</code>, <code>pages_manage_posts</code>, <code>pages_manage_engagement</code> when comments are needed, and <code>publish_video</code> when video publishing is needed.</li>
+                      <li>At <strong>Set expiration</strong>, choose <strong>Never</strong> when Meta offers it. Some businesses are required to use an expiring token; reconnect Wiro with a newly generated token before that token expires.</li>
+                      <li>Grant:
+                        <ul>
+                          <li><code>business_management</code></li>
+                          <li><code>pages_show_list</code></li>
+                          <li><code>pages_read_engagement</code></li>
+                          <li><code>pages_manage_posts</code></li>
+                          <li><code>pages_manage_engagement</code> when comments are needed</li>
+                          <li><code>publish_video</code> when Page video publishing is needed</li>
+                        </ul>
+                      </li>
                     </ol>
-                    <p>If a permission is absent from the token dialog, add the corresponding app use case using Meta's <a href="https://developers.facebook.com/documentation/development/create-an-app/use-cases-permission-mapping" class="docs-link" target="_blank" rel="noopener">use-case permission mapping</a>. The Business app must not require <code>appsecret_proof</code> on every server request because direct mode does not collect the App Secret.</p>
+                    <p>If a permission is absent from the token dialog, add the corresponding app use case using Meta's <a href="https://developers.facebook.com/documentation/development/create-an-app/use-cases-permission-mapping" class="docs-link" target="_blank" rel="noopener">use-case permission mapping</a>. The Business app must not require <code>appsecret_proof</code> on every server request, because direct mode intentionally does not collect the App Secret.</p>
 
                     <h3>Step 2: Save the token</h3>
                     <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
@@ -25074,7 +25107,7 @@ if (params.get(&quot;tiktokads_connected&quot;) === &quot;true&quot;) {
 
                     <h3>Step 8: Handle the callback and list returned Pages</h3>
                     <p>After consent, Wiro exchanges the code for a user access token, fetches every admin-managed Page <strong>with its page-specific access token</strong>, caches the full list server-side, and redirects the user to your <code>redirecturl</code>.</p>
-                    <p><strong>Crucial:</strong> Wiro does <strong>not</strong> auto-select a Page. The connection is incomplete until the client calls <code>SetPickerAccounts</code> with chosen <code>pageid</code> entries. <code>POST /UserAgentOAuth/OAuthStatus</code> with <code>credentialkey: "facebook-pages"</code> returns <code>connected: false</code> during this window.</p>
+                    <p><strong>Crucial:</strong> Wiro does <strong>not</strong> auto-select a Page. The connection is incomplete until the client calls <code>SetPickerAccounts</code> with a chosen page. <code>POST /UserAgentOAuth/OAuthStatus</code> returns <code>connected: false</code> during this window.</p>
                     <p><strong>Success URL:</strong></p>
                     <pre><code>https://your-app.com/settings/integrations?fb_connected=true&amp;fb_pages=%5B%7B%22id%22%3A%22123%22%2C%22name%22%3A%22Page%20A%22%7D%2C%7B%22id%22%3A%22456%22%2C%22name%22%3A%22Page%20B%22%7D%5D</code></pre>
                     <p>Query parameters:</p>
@@ -25114,7 +25147,7 @@ if (params.get("fb_connected") === "true") {
     showError("No Facebook Pages to manage.");
   } else if (pages.length === 1) {
     // One-page case: still required to confirm via SetPickerAccounts
-    await setPage(pages[0]);
+    await setPickerAccounts([pages[0]]);
   } else {
     presentPagePicker(pages);
   }
@@ -25137,14 +25170,14 @@ if (params.get("fb_connected") === "true") {
                     <p>Response:</p>
                     <pre><code>{
   "result": true,
-  "errors": [],
   "accounts": [
     { "id": "456", "name": "Page B" }
-  ]
+  ],
+  "errors": []
 }</code></pre>
                     <p>Wiro validates every requested Page against the server-side discovery result, stores its long-lived Page access token without returning it to the client, and restarts a running agent so the new selection takes effect.</p>
                     <p>If the 15-minute window lapses before you call <code>SetPickerAccounts</code>, you'll get <code>No pending Facebook connection. Please reconnect via OAuthConnect.</code> Repeat Step 3 for System User mode or Step 7 for OAuth.</p>
-                    <p><code>fbpagename</code> is optional; if omitted, Wiro uses the name from the cached page list. The Facebook Pages picker accepts one or more entries — pass multiple <code>{ pageid, fbpagename }</code> objects to authorize the agent against several Pages at once.</p>
+                    <p><code>fbpagename</code> is optional; if omitted, Wiro uses the name from the cached page list. The Facebook Pages picker accepts one or more entries — pass multiple <code>{ pageid, fbpagename }</code> objects to authorize the agent against several pages at once.</p>
 
                     <h3>Step 10: Verify the connection</h3>
                     <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
@@ -25167,7 +25200,7 @@ if (params.get("fb_connected") === "true") {
 }</code></pre>
                     <ul>
                       <li><code>connected: true</code> requires a validated active mode and at least one saved Page, meaning <code>SetPickerAccounts</code> completed successfully.</li>
-                      <li><code>accounts[].name</code> = the saved <code>fbpagename</code>.</li>
+                      <li><code>accounts[]</code> carries one entry per selected page (<code>id</code> = <code>pageid</code>, <code>name</code> = <code>fbpagename</code>).</li>
                       <li>Long-lived Facebook Page tokens have no fixed expiration date. They can still be invalidated when the user changes access, removes permissions, deauthorizes the app, or changes security-sensitive account settings.</li>
                     </ul>
 
@@ -25216,7 +25249,7 @@ if (params.get("fb_connected") === "true") {
                             <td><code>authmethod</code></td>
                             <td>string</td>
                             <td>No</td>
-                            <td><code>"api_key"</code> for recommended System User mode, <code>"own"</code> for customer-owned OAuth, or <code>"wiro"</code> when Wiro-managed OAuth becomes available. Send the value explicitly.</td>
+                            <td><code>"api_key"</code> for the recommended System User path, <code>"own"</code> for customer-owned OAuth, or <code>"wiro"</code> when Wiro-managed OAuth becomes available. Send the value explicitly.</td>
                           </tr>
                         </tbody>
                       </table>
@@ -25224,7 +25257,7 @@ if (params.get("fb_connected") === "true") {
                     <p>OAuth response: <code>{ result, authorizeUrl, errors }</code>. Direct response: <code>{ result, accounts: [{id, name}], errors }</code> with no <code>authorizeUrl</code>.</p>
 
                     <h3>GET /UserAgentOAuth/FBCallback</h3>
-                    <p>Server-side. Query params appended to your <code>redirecturl</code>. The callback path is per-provider — Facebook Pages's stays <code>FBCallback</code>:</p>
+                    <p>Server-side. Query params appended to your <code>redirecturl</code>:</p>
                     <div class="docs-comparison-table">
                       <table>
                         <thead>
@@ -25249,6 +25282,7 @@ if (params.get("fb_connected") === "true") {
                         </tbody>
                       </table>
                     </div>
+                    <p>The callback path is per-provider — Facebook's stays <code>FBCallback</code>.</p>
 
                     <h3>POST /UserAgentOAuth/SetPickerAccounts</h3>
                     <div class="docs-comparison-table">
@@ -25278,18 +25312,18 @@ if (params.get("fb_connected") === "true") {
                             <td><code>accounts</code></td>
                             <td>array</td>
                             <td>Yes</td>
-                            <td>One or more <code>{ pageid, fbpagename? }</code> entries from the latest server-side OAuth or System User discovery result. Do not supply an access token.</td>
+                            <td>One or more <code>{ pageid, fbpagename? }</code> entries. The per-page access token is resolved from the latest server-side OAuth or System User discovery result — don't supply it.</td>
                           </tr>
                         </tbody>
                       </table>
                     </div>
-                    <p>Response: <code>{ result, errors, accounts: [{ id, name }] }</code>. Triggers auto-restart if running.</p>
+                    <p>Response: <code>{ result, accounts: [{id, name}, ...], errors }</code>. Triggers auto-restart if running.</p>
                     <div class="info-callout">
                       <p>Call within <strong>15 minutes</strong> of the OAuth callback or direct <code>OAuthConnect</code> discovery. After that, restart the selected connection flow.</p>
                     </div>
 
                     <h3>POST /UserAgentOAuth/OAuthStatus</h3>
-                    <p>Body: <code>{ useragentguid, credentialkey: "facebook-pages" }</code>. Response: <code>connected</code> (only <code>true</code> after the active mode is validated and at least one Page is selected), <code>accounts: [{id, name}]</code>, <code>connectedat</code>, and an empty <code>tokenexpiresat</code>.</p>
+                    <p>Body: <code>{ useragentguid, credentialkey: "facebook-pages" }</code>. Response: <code>connected</code> (only <code>true</code> after the active mode is validated and at least one Page is selected), <code>accounts: [{id, name}, ...]</code> (every selected Page), <code>connectedat</code>, and an empty <code>tokenexpiresat</code>.</p>
 
                     <h3>POST /UserAgentOAuth/OAuthDisconnect</h3>
                     <p>Body: <code>{ useragentguid, credentialkey: "facebook-pages" }</code>. Clears the active token and Page selection without remote revocation. Direct mode also clears <code>systemusertoken</code>; customer-owned OAuth App ID and App Secret are preserved for reconnection.</p>
@@ -25307,7 +25341,7 @@ if (params.get("fb_connected") === "true") {
 
                   <section id="using-the-skill">
                     <h2>Using the Skill</h2>
-                    <p>Once the Facebook Page is connected, the agent uses <code>int-facebookpage-post</code> to publish text, photo, and video posts. To adjust the Social Manager's bundled <code>cs-cron-content-scanner</code> schedule, call <code>POST /UserAgent/CustomSkillUpsert</code> with <code>enabled</code> and <code>interval</code> only.</p>
+                    <p>Once the Facebook Page is connected, the agent uses <code>int-facebookpage-post</code> to publish text, photo, and video posts. To adjust the Social Manager's bundled <code>cs-cron-content-scanner</code> schedule, call <code>POST /UserAgent/CustomSkillUpsert</code> with <code>enabled</code> and <code>interval</code> only:</p>
                     <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
@@ -25364,9 +25398,9 @@ if (params.get("fb_connected") === "true") {
                             <td>Use <code>POST /UserAgent/MyAgents</code>.</td>
                           </tr>
                           <tr>
-                            <td><code>Facebook Pages credentials not configured</code></td>
-                            <td>Customer-owned OAuth was selected without saved <code>appid</code> / <code>appsecret</code>.</td>
-                            <td>Save the <code>facebook-pages</code> app fields, then retry.</td>
+                            <td><code>Facebook credentials not configured</code></td>
+                            <td>Returned in <code>OAuthConnect</code>'s <code>errors[]</code> when <code>authmethod: "own"</code> but <code>appid</code> / <code>appsecret</code> are missing.</td>
+                            <td>Call <code>POST /UserAgent/CredentialUpsert</code> with <code>facebook-pages.appid</code> and <code>facebook-pages.appsecret</code>, then retry.</td>
                           </tr>
                           <tr>
                             <td><code>Meta could not validate this System User token</code></td>
@@ -25410,7 +25444,7 @@ if (params.get("fb_connected") === "true") {
                       <li><strong>Recommended direct mode:</strong> each customer supplies a System User token from their own Business Portfolio. No browser consent screen or shared Wiro Meta app is involved.</li>
                       <li><strong>Advanced OAuth mode:</strong> each customer-owned Meta app controls its own App Roles, review status, and consent branding.</li>
                       <li><strong>Every Page token is isolated</strong> per useragent. Customer A's token is never returned to or shared with Customer B.</li>
-                      <li><strong>Asset tasks must remain current.</strong> Losing <code>CREATE_CONTENT</code> or <code>MODERATE</code> invalidates the corresponding publish or comment capability. Monitor <code>OAuthStatus</code> and require reconnection when it becomes disconnected.</li>
+                      <li><strong>Asset tasks must remain current.</strong> Losing <code>CREATE_CONTENT</code> or <code>MODERATE</code> access invalidates the corresponding publish or comment capability. Monitor <code>OAuthStatus</code> and require reconnection when it becomes disconnected.</li>
                     </ol>
                   </section>
 
@@ -25438,7 +25472,7 @@ if (params.get("fb_connected") === "true") {
 
                   <section id="overview">
                     <h2>Overview</h2>
-                    <p>The Instagram integration supports two official Meta paths. Recommended direct mode uses a Business Manager System User and the Facebook Pages linked to Instagram Business or Creator accounts; it supports selecting one or more discovered professional accounts. Advanced mode uses Instagram API with Instagram Login directly, authorizes one account per OAuth connection, and does not require a Facebook Page. Both paths keep tokens server-side and publish through Graph API v26.</p>
+                    <p>The Instagram integration supports two official Meta paths. Recommended direct mode uses a Business Manager System User and the Facebook Pages linked to Instagram Business or Creator accounts. It supports selecting one or more discovered professional accounts. Advanced mode uses Instagram API with Instagram Login directly, authorizes one account per OAuth connection, and does not require a Facebook Page. Both paths keep tokens server-side and publish through Graph API v26.</p>
                     <p>The two token types use different official hosts: System User mode derives a Facebook Page access token and publishes through <code>graph.facebook.com/v26.0</code>; Instagram Login issues an Instagram User access token and publishes through <code>graph.instagram.com/v26.0</code>. Wiro selects the matching host automatically.</p>
                     <p><strong>Skills that use this integration:</strong></p>
                     <ul>
@@ -25491,7 +25525,7 @@ if (params.get("fb_connected") === "true") {
                       <li><strong>A deployed agent</strong> — <a href="/docs/agent-overview" class="docs-link">Agent Overview</a>; keep the <code>useragents[0].guid</code>.</li>
                       <li><strong>A Meta Business account</strong> — <a href="https://business.facebook.com/" class="docs-link" target="_blank">business.facebook.com</a>.</li>
                       <li><strong>One or more Instagram Business or Creator accounts</strong> — personal accounts cannot use content publishing.</li>
-                      <li><strong>Recommended direct mode:</strong> a System User, the Business app used to generate its token, and a Facebook Page linked to each Instagram professional account the agent may use.</li>
+                      <li><strong>Recommended direct mode:</strong> a System User, the Business app used to generate its token, and a Facebook Page linked to each Instagram professional account you want the agent to use.</li>
                       <li><strong>Advanced OAuth mode:</strong> a Meta Developer account, an app configured for Instagram Login, and an HTTPS callback URL. A Facebook Page is not required for this mode.</li>
                     </ul>
 
@@ -25517,8 +25551,18 @@ if (params.get("fb_connected") === "true") {
                       <li>Assign every linked Facebook Page the agent may use with <code>CREATE_CONTENT</code>.</li>
                       <li>Assign each Instagram account's <strong>Content</strong> task.</li>
                       <li>Select <strong>Generate new token</strong> and choose the Business app used for this integration.</li>
-                      <li>At <strong>Set expiration</strong>, choose <strong>Never</strong> when Meta offers it. If Meta requires an expiring token, regenerate and reconnect before expiry.</li>
-                      <li>Grant <code>business_management</code>, <code>instagram_basic</code>, <code>instagram_content_publish</code>, <code>pages_show_list</code>, <code>pages_read_engagement</code>, <code>ads_read</code>, and <code>ads_management</code>.</li>
+                      <li>At <strong>Set expiration</strong>, choose <strong>Never</strong> when Meta offers it. If Meta requires an expiring token for the business, regenerate and reconnect before expiry.</li>
+                      <li>Grant:
+                        <ul>
+                          <li><code>business_management</code></li>
+                          <li><code>instagram_basic</code></li>
+                          <li><code>instagram_content_publish</code></li>
+                          <li><code>pages_show_list</code></li>
+                          <li><code>pages_read_engagement</code></li>
+                          <li><code>ads_read</code></li>
+                          <li><code>ads_management</code></li>
+                        </ul>
+                      </li>
                     </ol>
                     <p>Meta's Page-linked publishing contract requires both ads permissions when the Page role is granted through Business Manager.</p>
                     <p>If a permission does not appear, add the matching app use case through Meta's <a href="https://developers.facebook.com/documentation/development/create-an-app/use-cases-permission-mapping" class="docs-link" target="_blank" rel="noopener">use-case permission mapping</a>. The Business app must not require <code>appsecret_proof</code> on every request because direct mode does not collect its App Secret.</p>
@@ -25720,9 +25764,7 @@ if (params.get("ig_connected") === "true") {
                       <li>Each <code>accounts[].name</code> is its Instagram username without <code>@</code>.</li>
                       <li>Recommended System User mode can return multiple entries. Advanced Instagram Login OAuth returns one entry because one account is authorized per consent.</li>
                       <li><code>tokenexpiresat</code> is empty for direct System User mode and approximately 60 days for customer-owned Instagram OAuth.</li>
-                      <li>
-                        Instagram does not expose a separate refresh token for this connection.
-                      </li>
+                      <li><strong>No <code>refreshtokenexpiresat</code></strong> — Instagram does not expose a separate refresh token for this connection.</li>
                     </ul>
 
                     <h3>Step 11: Start the agent if it's not running</h3>
@@ -25777,7 +25819,7 @@ if (params.get("ig_connected") === "true") {
                     <p>OAuth response: <code>{ result, authorizeUrl, errors }</code>. Direct response: <code>{ result, accounts: [{id, name}], errors }</code> with no <code>authorizeUrl</code>.</p>
 
                     <h3>GET /UserAgentOAuth/IGCallback</h3>
-                    <p>Server-side. Query params appended to your <code>redirecturl</code>. The callback path is per-provider — Instagram's stays <code>IGCallback</code>:</p>
+                    <p>Server-side. Query params appended to your <code>redirecturl</code>:</p>
                     <div class="docs-comparison-table">
                       <table>
                         <thead>
@@ -25802,6 +25844,7 @@ if (params.get("ig_connected") === "true") {
                         </tbody>
                       </table>
                     </div>
+                    <p>The callback path is per-provider — Instagram's stays <code>IGCallback</code>.</p>
 
                     <h3>POST /UserAgentOAuth/SetPickerAccounts</h3>
                     <p>Used only by direct System User mode after <code>OAuthConnect</code> discovery.</p>
@@ -25914,8 +25957,8 @@ if (params.get("ig_connected") === "true") {
                           </tr>
                           <tr>
                             <td><code>Instagram credentials not configured</code></td>
-                            <td>Customer-owned OAuth was selected without saved <code>appid</code> / <code>appsecret</code>.</td>
-                            <td>Save the Instagram app fields, then retry.</td>
+                            <td>Returned in <code>OAuthConnect</code>'s <code>errors[]</code> when <code>authmethod: "own"</code> but <code>appid</code> / <code>appsecret</code> are missing.</td>
+                            <td><code>POST /UserAgent/CredentialUpsert</code> with <code>instagram.appid</code> and <code>instagram.appsecret</code>.</td>
                           </tr>
                           <tr>
                             <td><code>Meta could not validate this System User token</code></td>
@@ -26879,7 +26922,7 @@ if (params.get("x_connected") === "true") {
                     <ul>
                       <li>Access token: ~1 day (86400s).</li>
                       <li>Refresh token: ~1 year (31536000s).</li>
-                      <li><code>accounts[0].name</code> = TikTok <strong>display name</strong> (the creator's public display name as set in their profile), NOT the <code>@handle</code>. The handle/URL username is not exposed by TikTok's OAuth <code>user/info/</code> endpoint, so Wiro stores <code>display_name</code> and returns it under <code>accounts[]</code>.</li>
+                      <li><code>accounts[0].id</code> and <code>accounts[0].name</code> = TikTok <strong>display name</strong> (the creator's public display name as set in their profile), NOT the <code>@handle</code>. The handle/URL username is not exposed by TikTok's OAuth <code>user/info/</code> endpoint, so Wiro stores <code>display_name</code> and returns it as both the account identifier and its name.</li>
                     </ul>
 
                     <h3>Step 10: Start the agent</h3>
@@ -26988,9 +27031,9 @@ if (params.get("x_connected") === "true") {
                             <td>Use <code>POST /UserAgent/MyAgents</code>.</td>
                           </tr>
                           <tr>
-                            <td><code>invalid_config</code></td>
-                            <td>No <code>credentials.tiktok</code> block.</td>
-                            <td>Update with <code>clientkey</code> + <code>clientsecret</code>.</td>
+                            <td><code>TikTok credentials not configured</code></td>
+                            <td>Returned in <code>OAuthConnect</code>'s <code>errors[]</code> when <code>authmethod: "own"</code> but <code>clientkey</code> / <code>clientsecret</code> are missing.</td>
+                            <td><code>UserAgent/CredentialUpsert</code> with <code>clientkey</code> + <code>clientsecret</code>.</td>
                           </tr>
                           <tr>
                             <td><code>internal_error</code></td>
@@ -27206,17 +27249,21 @@ if (params.get("gads_connected") === "true") {
     "useragentguid": "your-useragent-guid",
     "credentialkey": "google-ads",
     "accounts": [
-      { "customerid": "1234567890", "customerdescriptivename": "My Client" }
+      { "customerid": "1234567890", "customerdescriptivename": "Acme Corp — Production" }
     ]
   }'</code></pre>
-                    <p>Either 10-digit or <code>123-456-7890</code> format works — non-digits are stripped automatically. <code>SetPickerAccounts</code> for Google Ads supports multi-select — pass multiple <code>{ customerid, customerdescriptivename }</code> entries to manage several customers.</p>
+                    <ul>
+                      <li><code>customerid</code>: either 10-digit or <code>123-456-7890</code> format works — non-digits are stripped automatically.</li>
+                      <li><code>customerdescriptivename</code> (optional): human-readable account label. Shown in the dashboard next to the customer ID so users can tell accounts apart when they manage many MCC sub-accounts. Typically the <code>customer.descriptive_name</code> you received in the <code>gads_accounts</code> array from the OAuth callback.</li>
+                      <li>Pass multiple <code>{ customerid, customerdescriptivename }</code> entries to authorize the agent against several customers at once.</li>
+                    </ul>
                     <p>Response:</p>
                     <pre><code>{
   "result": true,
-  "errors": [],
   "accounts": [
-    { "id": "1234567890", "name": "My Client" }
-  ]
+    { "id": "1234567890", "name": "Acme Corp — Production" }
+  ],
+  "errors": []
 }</code></pre>
                     <p>Triggers agent restart if running.</p>
 
@@ -27233,13 +27280,14 @@ if (params.get("gads_connected") === "true") {
   "result": true,
   "connected": true,
   "accounts": [
-    { "id": "1234567890", "name": "My Client" }
+    { "id": "1234567890", "name": "Acme Corp — Production" }
   ],
   "connectedat": "2026-04-17T12:00:00.000Z",
   "tokenexpiresat": "2026-04-17T13:00:00.000Z",
   "errors": []
 }</code></pre>
                     <ul>
+                      <li><code>accounts[]</code> carries one entry per selected customer (<code>id</code> = <code>customerid</code>, <code>name</code> = <code>customerdescriptivename</code>).</li>
                       <li>Access token lifetime: <strong>1 hour</strong> (short). Wiro maintains it automatically while the agent is running.</li>
                       <li>Google's refresh tokens don't expire in typical use (unless revoked).</li>
                     </ul>
@@ -27323,16 +27371,16 @@ if (params.get("gads_connected") === "true") {
                             <td><code>accounts</code></td>
                             <td>array</td>
                             <td>Yes</td>
-                            <td>One or more <code>{ customerid, customerdescriptivename }</code> entries picked from <code>gads_accounts</code>. 10-digit IDs; non-digits stripped.</td>
+                            <td>One or more <code>{ customerid, customerdescriptivename }</code> entries. <code>customerid</code> is 10 digits (dashes/letters stripped server-side); <code>customerdescriptivename</code> is the human-readable label, typically the <code>customer.descriptive_name</code> from the OAuth callback's <code>gads_accounts</code> array.</td>
                           </tr>
                         </tbody>
                       </table>
                     </div>
-                    <p>Response: <code>{ result, errors, accounts: [{ id, name }] }</code>.</p>
+                    <p>Response: <code>{ result, accounts: [{id, name}, ...], errors }</code>. Triggers agent restart if running.</p>
 
                     <h3>POST /UserAgentOAuth/OAuthStatus</h3>
                     <p>
-                      Body: <code>{ useragentguid, credentialkey: "google-ads" }</code>. Response: <code>connected</code>, <code>accounts: [{id, name}]</code> (each entry's <code>id</code> is the customer id, <code>name</code> is the descriptive name), <code>connectedat</code>, <code>tokenexpiresat</code> (~1h).
+                      Body: <code>{ useragentguid, credentialkey: "google-ads" }</code>. Response: <code>connected</code>, <code>accounts: [{id, name}, ...]</code> (one entry per selected customer — <code>id</code> = <code>customerid</code>, <code>name</code> = <code>customerdescriptivename</code>), <code>connectedat</code>, <code>tokenexpiresat</code> (~1h).
                     </p>
 
                     <h3>POST /UserAgentOAuth/OAuthDisconnect</h3>
@@ -27344,7 +27392,7 @@ if (params.get("gads_connected") === "true") {
 
                   <section id="using-the-skill">
                     <h2>Using the Skill</h2>
-                    <p>Once Google Ads is connected and <code>customerid</code> is persisted, the agent's scheduled tasks use the <code>googleads-manage</code> platform skill to pull metrics and manage campaigns. Adjust the cron of the built-in <code>cron-performance-reporter</code> task (Google Ads Manager) by calling <code>POST /UserAgent/CustomSkillUpsert</code> with <code>enabled</code> and <code>interval</code> only — cron skill bodies are template-controlled and <code>value</code> is silently ignored for bundled crons:</p>
+                    <p>Once Google Ads is connected and <code>customerid</code> is persisted, the agent's scheduled tasks use the <code>googleads-manage</code> platform skill to pull metrics and manage campaigns. Adjust the cron of the built-in <code>cron-performance-reporter</code> task (Google Ads Manager) with <code>enabled</code> and <code>interval</code> only — the task body (<code>value</code>) is owned by the bundled integration skill and silently dropped on writes:</p>
                     <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
@@ -27405,9 +27453,9 @@ if (params.get("gads_connected") === "true") {
                             <td>Use <code>POST /UserAgent/MyAgents</code>.</td>
                           </tr>
                           <tr>
-                            <td><code>invalid_config</code></td>
-                            <td>No <code>credentials.googleads</code> block.</td>
-                            <td>Update with all four fields.</td>
+                            <td><code>Google Ads credentials not configured</code></td>
+                            <td>Returned in <code>OAuthConnect</code>'s <code>errors[]</code> when <code>authmethod: "own"</code> but <code>clientid</code> / <code>clientsecret</code> are missing.</td>
+                            <td><code>UserAgent/CredentialUpsert</code> with <code>clientid</code> + <code>clientsecret</code> (Step 4).</td>
                           </tr>
                           <tr>
                             <td><code>internal_error</code></td>
@@ -27860,7 +27908,18 @@ Agent → POST /youtubeAnalytics/v2/reports
     "useragentguid": "your-useragent-guid",
     "credentialkey": "ga4"
   }'</code></pre>
-                    <p>Returns <code>{ result: true, connected: true, accounts: [{ id: propertyid, name: propertydisplayname }], connectedat, tokenexpiresat }</code>.</p>
+                    <p>Response:</p>
+                    <pre><code class="language-json">{
+  "result": true,
+  "connected": true,
+  "accounts": [
+    { "id": "123456789", "name": "MyApp — Production" }
+  ],
+  "connectedat": "2026-04-17T12:00:00.000Z",
+  "tokenexpiresat": "2026-04-17T13:00:00.000Z",
+  "errors": []
+}</code></pre>
+                    <p><code>accounts[]</code> carries one entry per selected property (<code>id</code> = <code>propertyid</code>, <code>name</code> = <code>propertydisplayname</code>).</p>
                   </section>
 
                   <section id="agent-usage">
@@ -27894,6 +27953,7 @@ Agent → POST /v1beta/properties/123456789:runReport
                             <tr><td><code>PERMISSION_DENIED</code></td><td>User not a property administrator</td><td>Ask user to add the GA account</td></tr>
                             <tr><td><code>403 Request had insufficient authentication</code></td><td>Missing scopes</td><td>Re-consent with full scope set</td></tr>
                             <tr><td>Empty property picker</td><td>User has no GA4 property access</td><td>Instruct user to create/gain access</td></tr>
+                            <tr><td><code>OAuthStatus</code> returns <code>connected: false</code> right after consent</td><td>No GA4 property has been saved yet; the connection is complete only once <code>SetPickerAccounts</code> stores at least one</td><td>Call <code>SetPickerAccounts</code> with a property from <code>ga4_properties</code> (Step 4)</td></tr>
                           </tbody>
                         </table>
                       </div>
@@ -27903,7 +27963,7 @@ Agent → POST /v1beta/properties/123456789:runReport
                   <section id="skill-reference">
                     <h2>Skill reference</h2>
                     <ul>
-                      <li><a href="/docs/agent-skills">agent-skills</a> — custom skill schema and the <code>int-ga4-analytics</code> key</li>
+                      <li><a href="/docs/agent-skills">agent-skills.md</a> — custom skill schema and the <code>int-ga4-analytics</code> key</li>
                     </ul>
                   </section>
                 </article>
@@ -28257,13 +28317,24 @@ Agent → POST /v1beta/properties/123456789:runReport
     "useragentguid": "your-useragent-guid",
     "credentialkey": "google-merchant-center"
   }'</code></pre>
-                    <p>Returns <code>{ result: true, connected: true, accounts: [{ id: merchantid, name: accountname }], connectedat, tokenexpiresat }</code>.</p>
+                    <p>Response:</p>
+                    <pre><code class="language-json">{
+  "result": true,
+  "connected": true,
+  "accounts": [
+    { "id": "5769377374", "name": "Acme Store" }
+  ],
+  "connectedat": "2026-04-17T12:00:00.000Z",
+  "tokenexpiresat": "2026-04-17T13:00:00.000Z",
+  "errors": []
+}</code></pre>
+                    <p><code>accounts[]</code> carries one entry per selected merchant (<code>id</code> = <code>merchantid</code>, <code>name</code> = <code>accountname</code>).</p>
                   </section>
 
                   <section id="skill-reference">
                     <h2>Skill reference</h2>
                     <ul>
-                      <li><a href="/docs/agent-skills">agent-skills</a> — custom skill schema and the <code>int-merchant-center</code> key</li>
+                      <li><a href="/docs/agent-skills">agent-skills.md</a> — custom skill schema and the <code>int-merchant-center</code> key</li>
                     </ul>
                   </section>
 

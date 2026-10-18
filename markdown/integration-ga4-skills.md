@@ -179,10 +179,7 @@ Agent reads GA4 predefined + custom audiences via Admin API and can propose Cust
 | `PERMISSION_DENIED` | User not a property administrator | Ask user to add the GA account |
 | `403 Request had insufficient authentication` | Missing scopes | Re-consent with full scope set |
 | Empty property picker | User has no GA4 property access | Instruct user to create/gain access |
-
-## Troubleshooting OAuth Callback
-
-The disconnect endpoint returns an error if no property was selected (the connection is not considered complete). Re-run Connect to choose a property.
+| `OAuthStatus` returns `connected: false` right after consent | No GA4 property has been saved yet; the connection is complete only once `SetPickerAccounts` stores at least one | Call `SetPickerAccounts` with a property from `ga4_properties` (Step 4) |
 
 ## Skill reference
 

@@ -461,6 +461,7 @@ Returns `{ "result": false, "errors": [{ "code": 404, "message": "Credential not
 
 | Integration | Setup Guide |
 |-------------|-------------|
+| Serper Web Search | [Serper Web Search Skills](/docs/integration-serper-search-skills) |
 | Gmail | [Gmail Skills](/docs/integration-gmail-skills) |
 | Telegram | [Telegram Skills](/docs/integration-telegram-skills) |
 | Firebase | [Firebase Skills](/docs/integration-firebase-skills) |

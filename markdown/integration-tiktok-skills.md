@@ -81,9 +81,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -d '{
     "useragentguid": "your-useragent-guid",
     "fields": [
-      { "credentialkey": "tiktok", "fieldname": "authmethod", "fieldvalue": "own" },
       { "credentialkey": "tiktok", "fieldname": "clientkey", "fieldvalue": "YOUR_TIKTOK_CLIENT_KEY" },
-      { "credentialkey": "tiktok", "fieldname": "clientsecret", "fieldvalue": "YOUR_TIKTOK_CLIENT_SECRET" }
+      { "credentialkey": "tiktok", "fieldname": "clientsecret", "fieldvalue": "YOUR_TIKTOK_CLIENT_SECRET" },
+      { "credentialkey": "tiktok", "fieldname": "authmethod", "fieldvalue": "own" }
     ]
   }'
 ```
@@ -148,7 +148,7 @@ Response:
 
 - Access token: ~1 day (86400s).
 - Refresh token: ~1 year (31536000s).
-- `accounts[0].id` = TikTok **display name** (the creator's public display name as set in their profile), NOT the `@handle`. The handle/URL username is not exposed by TikTok's OAuth `user/info/` endpoint, so Wiro stores `display_name` and returns it as the account identifier.
+- `accounts[0].id` and `accounts[0].name` = TikTok **display name** (the creator's public display name as set in their profile), NOT the `@handle`. The handle/URL username is not exposed by TikTok's OAuth `user/info/` endpoint, so Wiro stores `display_name` and returns it as both the account identifier and its name.
 
 ### Step 10: Start the agent
 
