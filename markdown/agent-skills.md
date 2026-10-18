@@ -42,7 +42,7 @@ Lists all skills in the registry.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `category` | string | No | Filter by `"int"` (integration with a third-party service) or `"util"` (utility / rule-only — no credential, no external API). |
+| `category` | string | No | Filter by `"int"` (integration with a third-party service) or `"util"` (utility — no credential to connect: rule sets, playbooks, and keyless tools such as weather and diagrams). |
 | `capability` | string | No | Filter by capability key (see [`POST /Skills/Capabilities`](#post-skillscapabilities) for the closed-set vocabulary). |
 | `user_invocable` | boolean | No | When `true`, only return skills end users can call directly through chat (filters out plumbing skills wired by the runtime). |
 | `requires_credentials` | boolean | No | Filter by whether the skill requires a credential. |
@@ -108,23 +108,23 @@ Lists all skills in the registry.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `name` | `string` | Canonical skill key, **including the registry prefix** (`int-*` for integration skills, `util-*` for utility / rule-only skills). Use this exact value in `SkillsApply` and `Deploy.body.skills`. |
-| `category` | `string` | `"int"` (third-party integration) or `"util"` (utility / rule-only — no credential, no external API). |
+| `name` | `string` | Canonical skill key, **including the registry prefix** (`int-*` for integration skills, `util-*` for utility skills). Use this exact value in `SkillsApply` and `Deploy.body.skills`. |
+| `category` | `string` | `"int"` (third-party integration) or `"util"` (utility — no credential to connect: rule sets, playbooks, and keyless tools such as weather and diagrams). |
 | `version` | `string` | Semver for the registry entry. Bumped when the skill's tool surface or pricing weights change. |
 | `title` | `string` | Display name shown on chips / filters / cards. |
 | `description` | `string` | One-line summary used on marketing surfaces. |
-| `icon` | `string` | Path or URL to the brand icon (relative paths are absolutized to `https://wiro.ai/...` on the wire). |
+| `icon` | `string` | Path or URL to the brand icon (relative paths are absolutized to `https://wiro.ai/...` on the wire). Utility skills carry a LineIcons class name instead, such as `lni lni-cloud-sun`. |
 | `brand_color` | `string\|null` | Brand background colour (hex) for chips and cards. |
 | `brand_text_color` | `string\|null` | Foreground colour to render on top of `brand_color`. |
 | `brand_logo_filter` | `string\|null` | CSS `filter` value applied to monochrome SVG icons (e.g. `"brightness(0) invert(1)"`) so the same source SVG renders correctly on light and dark brand colours. |
 | `docs_url` | `string\|null` | Slug or path of the integration page on this docs site. Frontends prefix with `/docs/` when rendering. |
 | `requires_credentials` | `boolean` | `true` when the skill needs a credential the operator must supply (effectively `true` whenever `credential_key` resolves to a non-platform-only credential — currently every credential except `sys-openai`). |
-| `credential_key` | `string\|null` | The provider this skill needs (`"instagram"`, `"google-ads"`, `"wiro"`, `"calendarific"`, …). `null` for `util` skills (rule-only) and the rare skills backed by a platform-only credential like `sys-openai`. Use [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail) to inspect the schema. |
+| `credential_key` | `string\|null` | The provider this skill needs (`"instagram"`, `"google-ads"`, `"wiro"`, `"calendarific"`, …). `null` for `util` skills and the rare skills backed by a platform-only credential like `sys-openai`. Use [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail) to inspect the schema. |
 | `additional_credential_keys` | `array<string>` | **Optional — only present when the skill writes secondary credentials.** App-store / Google-Play review skills include `["var-support-email"]` for the support-email variable bag; most skills omit this field entirely. |
 | `capabilities` | `array<string>` | High-level snake_case capability tags from the closed vocabulary returned by [`POST /Skills/Capabilities`](#post-skillscapabilities). Drives the "Find skills that can: ___" picker. |
 | `depends_on` | `array<string>` | Other skill names that must be enabled. Wiro auto-enables transitive deps when you toggle the parent skill on. |
 | `conflicts_with` | `array<string>` | Mutually-exclusive skill names. `SkillsApply` rejects toggle batches that would enable two conflicting skills. |
-| `user_invocable` | `boolean` | `true` when end users can call the skill via chat. Most user-facing skills (including `int-wiro-aimodels` and `int-calendarific`) are `true`; `false` is reserved for plumbing skills wired by the runtime (currently none in the public catalog). |
+| `user_invocable` | `boolean` | `true` when end users can call the skill via chat. Most user-facing skills (including `int-wiro-aimodels` and `int-calendarific`) are `true`; `false` marks supporting parts that come with another skill, such as `util-video-shots` and `util-video-docs`, which come with `util-video-creator`. |
 | `deprecated` | `boolean` | `true` for skills slated for removal — `replacement` (if any) names the migration target. |
 | `replacement` | `string\|null` | When `deprecated: true`, the registry-recommended successor skill name. |
 | `pricing` | `object` | Per-skill pricing recipe (see below). |
@@ -146,7 +146,7 @@ complete. Channels are not skills and do not affect pricing.
 | `monthly_credits_weight` | `number` | Weight (credits) the skill contributes to the Starter monthly credit allocation. Same closure + multiplier semantics as price. When the $4 starter floor is applied to `monthly_price_weight_usd`, this weight is scaled up by the same ratio so the user gets a proportional credit boost rather than a free upgrade. |
 | `billing_model` | `string` | Always `"tokens"`. Per-turn conversation cost is token-metered at the agent's per-model `tokenRates` (credits per 1M input / output / cached-input tokens) — see [token billing in the Agent Overview](/docs/agent-overview#pricing-model--tiers-skills--token-billing). Voice skills stream realtime audio through the operator's own Wiro AI Models balance via `int-wiro-aimodels` (your own Wiro API key); only the post-call text turn is a normal token deduct. |
 
-> **4 weight buckets in the skill registry.** Every skill's `monthly_price_weight_usd` / `monthly_credits_weight` pair lands in one of four buckets: `ZERO` (`$0` / `0` — utility / rule-only skills), `LIGHT` (`$1` / `25` credits per month), `HEAVY` (`$2` / `50` credits per month), or `PREMIUM` (`$4` / `100` credits per month). The `(priceUsd, credits)` grid is a documentation convenience — it is **not** a named API constant; each pair emerges from the skill's own `monthly_price_weight_usd` / `monthly_credits_weight`. There are **no per-skill Pro overrides** — Pro is always derived as `Starter × tiermultiplier` (default `10`). The agent's Starter price = `Σ(enabled-skill weights)`, bumped to `$4` if the raw sum lands below the floor (with credits scaled proportionally to keep the per-credit ratio stable); Pro = `Starter × tiermultiplier`.
+> **4 weight buckets in the skill registry.** Every skill's `monthly_price_weight_usd` / `monthly_credits_weight` pair but one lands in one of four buckets: `ZERO` (`$0` / `0` — utility skills), `LIGHT` (`$1` / `25` credits per month), `HEAVY` (`$2` / `50` credits per month), or `PREMIUM` (`$4` / `100` credits per month). The exception is `util-video-creator`, the Video Creator's playbook: it carries that agent's price, `$29` a month on Starter, to any agent that turns it on. The `(priceUsd, credits)` grid is a documentation convenience — it is **not** a named API constant; each pair emerges from the skill's own `monthly_price_weight_usd` / `monthly_credits_weight`. There are **no per-skill Pro overrides** — Pro is always derived as `Starter × tiermultiplier` (default `10`). The agent's Starter price = `Σ(enabled-skill weights)`, bumped to `$4` if the raw sum lands below the floor (with credits scaled proportionally to keep the per-credit ratio stable); Pro = `Starter × tiermultiplier`.
 
 > **Optional filter `wiro_connect_pending`.** When you query with
 > `wiro_connect_pending: true` you get every skill whose connecting
@@ -342,6 +342,7 @@ Returns the closed-set vocabulary of high-level capability tags. Use this to bui
     { "name": "creative_generation",      "description": "Generate ad creatives" },
     { "name": "image_generation",         "description": "Generate images" },
     { "name": "video_generation",         "description": "Generate videos" },
+    { "name": "motion_graphics",          "description": "Compose and render motion graphics (HTML/CSS/GSAP animations, sound effects, transitions) to video" },
     { "name": "audio_generation",         "description": "Generate audio / voice clips (TTS, music, SFX)" },
     { "name": "realtime_conversation",    "description": "Bidirectional realtime audio/text conversation (Wiro realtime, OpenAI realtime)" },
     { "name": "vision",                   "description": "Vision LLM analysis of images (caption, describe, OCR, visual QA)" },
@@ -360,6 +361,7 @@ Returns the closed-set vocabulary of high-level capability tags. Use this to bui
     { "name": "multi_platform_detection", "description": "Auto-detect available platforms" },
     { "name": "holiday_discovery",        "description": "Discover global holidays (Calendarific)" },
     { "name": "product_feed_management",  "description": "Manage product feeds (Merchant Center)" },
+    { "name": "commerce_management",      "description": "Manage storefront catalogs, inventory, orders, customers, discounts, and fulfillment workflows" },
     { "name": "review_monitoring",        "description": "Monitor store reviews (App Store, Google Play)" },
     { "name": "app_metadata",             "description": "Fetch app store metadata (description, pricing, features)" },
     { "name": "event_management",         "description": "Manage app events (App Store in-app events)" },
@@ -372,7 +374,10 @@ Returns the closed-set vocabulary of high-level capability tags. Use this to bui
     { "name": "browser_voice",            "description": "Accept inbound voice calls from website browser (Web Audio API)" },
     { "name": "appointment_management",   "description": "Manage calendar appointments (find slots, create events)" },
     { "name": "calendar_lookup",          "description": "Read calendar/availability data (Google Calendar)" },
-    { "name": "realtime_session_prep",    "description": "Pre-call orchestration: bridge ↔ agent handshake before realtime audio starts (read operator's cs-* custom skills, run realtime model, callback to bridge)" }
+    { "name": "realtime_session_prep",    "description": "Pre-call orchestration: bridge ↔ agent handshake before realtime audio starts (read operator's cs-* custom skills, run realtime model, callback to bridge)" },
+    { "name": "web_search",               "description": "Search the public web (Google Programmable Search / Custom Search JSON API)" },
+    { "name": "weather_lookup",           "description": "Current weather and forecasts for any place (MET Norway, OpenStreetMap geocoding)" },
+    { "name": "diagram_rendering",        "description": "Render diagrams (Mermaid flowcharts, sequence, state and ER diagrams, mind maps, timelines; agent-drawn SVG) to PNG with an SVG copy" }
   ]
 }
 ```
@@ -977,6 +982,18 @@ Skills that depend on third-party credentials. Follow the linked integration pag
 | `int-calendarific` | `calendarific` (API key) | [Calendarific in your agent](/docs/agent-credentials#calendarific-in-your-agent) |
 
 Agents can optionally forward operator notifications to a Telegram bot via the `telegram` credential — see [Telegram Skills](/docs/integration-telegram-skills). This is never required; every agent remains fully usable over web chat and the [Messaging API](/docs/agent-messaging) without a bot configured.
+
+### Utility Skills
+
+`util-*` skills need no credential. Most are rule sets that come with an integration skill as one of its `depends_on`. These three can be added to any agent with [`SkillsApply`](#toggling-integration-skills):
+
+| Skill | What it adds | Starter price weight |
+|-------|--------------|----------------------|
+| `util-weather` | Current weather and a 9-day forecast for any place: temperature, rain, wind and UV from MET Norway's open forecast data, with the place found on OpenStreetMap. | $0 |
+| `util-diagram` | Flowcharts, architecture and sequence diagrams, state machines, data models, mind maps, timelines, Gantt plans and concept drawings as PNG images with an editable SVG copy, checked for overlapping or cut-off text. | $0 |
+| `util-video-creator` | The Video Creator's playbook: finished videos with voice-over, music and captions from a website or web app (behind a login too), an app-store listing, a document, an article or product photos; 16:9 or 9:16, up to 3 minutes. It brings `util-video-shots`, `util-video-docs`, `util-motion-effects` and `int-wiro-aimodels` with it, so the agent needs your Wiro project key, which pays the video's model runs (see [Using Wiro AI Models from Your Agent](#using-wiro-ai-models-from-your-agent)). `util-motion-effects` and `util-video-creator` always come together, whichever one you turn on. | $29, plus $1 for `int-wiro-aimodels` when the agent doesn't have it yet |
+
+`POST /Skills/List` with `{ "category": "util" }` returns every utility skill.
 
 > **Restart behavior:** Calls to `CustomSkillUpsert`, `CustomSkillRename`, `CustomSkillDelete`, `CustomSkillRevert`, and `SkillsApply` on a running agent (status 3 or 4) each trigger an automatic restart so the new skill configuration is picked up. Same as credential updates. Description-only edits to `CustomSkillUpsert` skip the restart.
 

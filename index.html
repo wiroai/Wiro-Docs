@@ -20004,7 +20004,7 @@ customer-facing token-refresh endpoint or manual refresh action.</p>
 <td><code>category</code></td>
 <td>string</td>
 <td>No</td>
-<td>Filter by <code>"int"</code> (integration with a third-party service) or <code>"util"</code> (utility / rule-only — no credential, no external API).</td>
+<td>Filter by <code>"int"</code> (integration with a third-party service) or <code>"util"</code> (utility — no credential to connect: rule sets, playbooks, and keyless tools such as weather and diagrams).</td>
 </tr>
 <tr>
 <td><code>capability</code></td>
@@ -20108,12 +20108,12 @@ customer-facing token-refresh endpoint or manual refresh action.</p>
 <tr>
 <td><code>name</code></td>
 <td><code>string</code></td>
-<td>Canonical skill key, <strong>including the registry prefix</strong> (<code>int-*</code> for integration skills, <code>util-*</code> for utility / rule-only skills). Use this exact value in <code>SkillsApply</code> and <code>Deploy.body.skills</code>.</td>
+<td>Canonical skill key, <strong>including the registry prefix</strong> (<code>int-*</code> for integration skills, <code>util-*</code> for utility skills). Use this exact value in <code>SkillsApply</code> and <code>Deploy.body.skills</code>.</td>
 </tr>
 <tr>
 <td><code>category</code></td>
 <td><code>string</code></td>
-<td><code>"int"</code> (third-party integration) or <code>"util"</code> (utility / rule-only — no credential, no external API).</td>
+<td><code>"int"</code> (third-party integration) or <code>"util"</code> (utility — no credential to connect: rule sets, playbooks, and keyless tools such as weather and diagrams).</td>
 </tr>
 <tr>
 <td><code>version</code></td>
@@ -20133,7 +20133,7 @@ customer-facing token-refresh endpoint or manual refresh action.</p>
 <tr>
 <td><code>icon</code></td>
 <td><code>string</code></td>
-<td>Path or URL to the brand icon (relative paths are absolutized to <code>https://wiro.ai/...</code> on the wire).</td>
+<td>Path or URL to the brand icon (relative paths are absolutized to <code>https://wiro.ai/...</code> on the wire). Utility skills carry a LineIcons class name instead, such as <code>lni lni-cloud-sun</code>.</td>
 </tr>
 <tr>
 <td><code>brand_color</code></td>
@@ -20163,7 +20163,7 @@ customer-facing token-refresh endpoint or manual refresh action.</p>
 <tr>
 <td><code>credential_key</code></td>
 <td><code>string\|null</code></td>
-<td>The provider this skill needs (<code>"instagram"</code>, <code>"google-ads"</code>, <code>"wiro"</code>, <code>"calendarific"</code>, …). <code>null</code> for <code>util</code> skills (rule-only) and the rare skills backed by a platform-only credential like <code>sys-openai</code>. Use <a href="/docs/agent-credentials#post-credentialsdetail"><code>POST /Credentials/Detail</code></a> to inspect the schema.</td>
+<td>The provider this skill needs (<code>"instagram"</code>, <code>"google-ads"</code>, <code>"wiro"</code>, <code>"calendarific"</code>, …). <code>null</code> for <code>util</code> skills and the rare skills backed by a platform-only credential like <code>sys-openai</code>. Use <a href="/docs/agent-credentials#post-credentialsdetail"><code>POST /Credentials/Detail</code></a> to inspect the schema.</td>
 </tr>
 <tr>
 <td><code>additional_credential_keys</code></td>
@@ -20188,7 +20188,7 @@ customer-facing token-refresh endpoint or manual refresh action.</p>
 <tr>
 <td><code>user_invocable</code></td>
 <td><code>boolean</code></td>
-<td><code>true</code> when end users can call the skill via chat. Most user-facing skills (including <code>int-wiro-aimodels</code> and <code>int-calendarific</code>) are <code>true</code>; <code>false</code> is reserved for plumbing skills wired by the runtime (currently none in the public catalog).</td>
+<td><code>true</code> when end users can call the skill via chat. Most user-facing skills (including <code>int-wiro-aimodels</code> and <code>int-calendarific</code>) are <code>true</code>; <code>false</code> marks supporting parts that come with another skill, such as <code>util-video-shots</code> and <code>util-video-docs</code>, which come with <code>util-video-creator</code>.</td>
 </tr>
 <tr>
 <td><code>deprecated</code></td>
@@ -20242,7 +20242,7 @@ customer-facing token-refresh endpoint or manual refresh action.</p>
 </div>
 </div>
 <blockquote>
-<p><strong>4 weight buckets in the skill registry.</strong> Every skill's <code>monthly_price_weight_usd</code> / <code>monthly_credits_weight</code> pair lands in one of four buckets: <code>ZERO</code> (<code>$0</code> / <code>0</code> — utility / rule-only skills), <code>LIGHT</code> (<code>$1</code> / <code>25</code> credits per month), <code>HEAVY</code> (<code>$2</code> / <code>50</code> credits per month), or <code>PREMIUM</code> (<code>$4</code> / <code>100</code> credits per month). The <code>(priceUsd, credits)</code> grid is a documentation convenience — it is <strong>not</strong> a named API constant; each pair emerges from the skill's own <code>monthly_price_weight_usd</code> / <code>monthly_credits_weight</code>. There are <strong>no per-skill Pro overrides</strong> — Pro is always derived as <code>Starter × tiermultiplier</code> (default <code>10</code>). The agent's Starter price = <code>Σ(enabled-skill weights)</code>, bumped to <code>$4</code> if the raw sum lands below the floor (with credits scaled proportionally to keep the per-credit ratio stable); Pro = <code>Starter × tiermultiplier</code>.</p>
+<p><strong>4 weight buckets in the skill registry.</strong> Every skill's <code>monthly_price_weight_usd</code> / <code>monthly_credits_weight</code> pair but one lands in one of four buckets: <code>ZERO</code> (<code>$0</code> / <code>0</code> — utility skills), <code>LIGHT</code> (<code>$1</code> / <code>25</code> credits per month), <code>HEAVY</code> (<code>$2</code> / <code>50</code> credits per month), or <code>PREMIUM</code> (<code>$4</code> / <code>100</code> credits per month). The exception is <code>util-video-creator</code>, the Video Creator's playbook: it carries that agent's price, <code>$29</code> a month on Starter, to any agent that turns it on. The <code>(priceUsd, credits)</code> grid is a documentation convenience — it is <strong>not</strong> a named API constant; each pair emerges from the skill's own <code>monthly_price_weight_usd</code> / <code>monthly_credits_weight</code>. There are <strong>no per-skill Pro overrides</strong> — Pro is always derived as <code>Starter × tiermultiplier</code> (default <code>10</code>). The agent's Starter price = <code>Σ(enabled-skill weights)</code>, bumped to <code>$4</code> if the raw sum lands below the floor (with credits scaled proportionally to keep the per-credit ratio stable); Pro = <code>Starter × tiermultiplier</code>.</p>
 <p><strong>Optional filter <code>wiro_connect_pending</code>.</strong> When you query with <code>wiro_connect_pending: true</code> you get every skill whose connecting integration's Wiro-shared OAuth client is awaiting App Review — currently <code>int-instagram-post</code>, <code>int-facebookpage-post</code>, <code>int-linkedin-post</code>, <code>int-tiktok-post</code>, <code>int-metaads-manage</code>, the Google OAuth skills listed above, and paired <code>util-*</code> helpers. Facebook Pages, Instagram, and Meta Ads already expose customer-owned System User and/or OAuth alternatives. The flag itself lives on the credential entry under <a href="/docs/agent-credentials#post-credentialsdetail"><code>POST /Credentials/Detail</code></a>.</p>
 </blockquote>
 <h3 id="post-skillsdetail"><strong>POST</strong> /Skills/Detail</h3>
@@ -20449,6 +20449,7 @@ customer-facing token-refresh endpoint or manual refresh action.</p>
     { &quot;name&quot;: &quot;creative_generation&quot;,      &quot;description&quot;: &quot;Generate ad creatives&quot; },
     { &quot;name&quot;: &quot;image_generation&quot;,         &quot;description&quot;: &quot;Generate images&quot; },
     { &quot;name&quot;: &quot;video_generation&quot;,         &quot;description&quot;: &quot;Generate videos&quot; },
+    { &quot;name&quot;: &quot;motion_graphics&quot;,          &quot;description&quot;: &quot;Compose and render motion graphics (HTML/CSS/GSAP animations, sound effects, transitions) to video&quot; },
     { &quot;name&quot;: &quot;audio_generation&quot;,         &quot;description&quot;: &quot;Generate audio / voice clips (TTS, music, SFX)&quot; },
     { &quot;name&quot;: &quot;realtime_conversation&quot;,    &quot;description&quot;: &quot;Bidirectional realtime audio/text conversation (Wiro realtime, OpenAI realtime)&quot; },
     { &quot;name&quot;: &quot;vision&quot;,                   &quot;description&quot;: &quot;Vision LLM analysis of images (caption, describe, OCR, visual QA)&quot; },
@@ -20467,6 +20468,7 @@ customer-facing token-refresh endpoint or manual refresh action.</p>
     { &quot;name&quot;: &quot;multi_platform_detection&quot;, &quot;description&quot;: &quot;Auto-detect available platforms&quot; },
     { &quot;name&quot;: &quot;holiday_discovery&quot;,        &quot;description&quot;: &quot;Discover global holidays (Calendarific)&quot; },
     { &quot;name&quot;: &quot;product_feed_management&quot;,  &quot;description&quot;: &quot;Manage product feeds (Merchant Center)&quot; },
+    { &quot;name&quot;: &quot;commerce_management&quot;,      &quot;description&quot;: &quot;Manage storefront catalogs, inventory, orders, customers, discounts, and fulfillment workflows&quot; },
     { &quot;name&quot;: &quot;review_monitoring&quot;,        &quot;description&quot;: &quot;Monitor store reviews (App Store, Google Play)&quot; },
     { &quot;name&quot;: &quot;app_metadata&quot;,             &quot;description&quot;: &quot;Fetch app store metadata (description, pricing, features)&quot; },
     { &quot;name&quot;: &quot;event_management&quot;,         &quot;description&quot;: &quot;Manage app events (App Store in-app events)&quot; },
@@ -20479,7 +20481,10 @@ customer-facing token-refresh endpoint or manual refresh action.</p>
     { &quot;name&quot;: &quot;browser_voice&quot;,            &quot;description&quot;: &quot;Accept inbound voice calls from website browser (Web Audio API)&quot; },
     { &quot;name&quot;: &quot;appointment_management&quot;,   &quot;description&quot;: &quot;Manage calendar appointments (find slots, create events)&quot; },
     { &quot;name&quot;: &quot;calendar_lookup&quot;,          &quot;description&quot;: &quot;Read calendar/availability data (Google Calendar)&quot; },
-    { &quot;name&quot;: &quot;realtime_session_prep&quot;,    &quot;description&quot;: &quot;Pre-call orchestration: bridge ↔ agent handshake before realtime audio starts (read operator's cs-* custom skills, run realtime model, callback to bridge)&quot; }
+    { &quot;name&quot;: &quot;realtime_session_prep&quot;,    &quot;description&quot;: &quot;Pre-call orchestration: bridge ↔ agent handshake before realtime audio starts (read operator's cs-* custom skills, run realtime model, callback to bridge)&quot; },
+    { &quot;name&quot;: &quot;web_search&quot;,               &quot;description&quot;: &quot;Search the public web (Google Programmable Search / Custom Search JSON API)&quot; },
+    { &quot;name&quot;: &quot;weather_lookup&quot;,           &quot;description&quot;: &quot;Current weather and forecasts for any place (MET Norway, OpenStreetMap geocoding)&quot; },
+    { &quot;name&quot;: &quot;diagram_rendering&quot;,        &quot;description&quot;: &quot;Render diagrams (Mermaid flowcharts, sequence, state and ER diagrams, mind maps, timelines; agent-drawn SVG) to PNG with an SVG copy&quot; }
   ]
 }
 </code></pre>
@@ -21399,6 +21404,39 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 </div>
 </div>
 <p>Agents can optionally forward operator notifications to a Telegram bot via the <code>telegram</code> credential — see <a href="/docs/integration-telegram-skills">Telegram Skills</a>. This is never required; every agent remains fully usable over web chat and the <a href="/docs/agent-messaging">Messaging API</a> without a bot configured.</p>
+<h3 id="utility-skills">Utility Skills</h3>
+<p><code>util-*</code> skills need no credential. Most are rule sets that come with an integration skill as one of its <code>depends_on</code>. These three can be added to any agent with <a href="#toggling-integration-skills"><code>SkillsApply</code></a>:</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Skill</th>
+<th>What it adds</th>
+<th>Starter price weight</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>util-weather</code></td>
+<td>Current weather and a 9-day forecast for any place: temperature, rain, wind and UV from MET Norway's open forecast data, with the place found on OpenStreetMap.</td>
+<td>$0</td>
+</tr>
+<tr>
+<td><code>util-diagram</code></td>
+<td>Flowcharts, architecture and sequence diagrams, state machines, data models, mind maps, timelines, Gantt plans and concept drawings as PNG images with an editable SVG copy, checked for overlapping or cut-off text.</td>
+<td>$0</td>
+</tr>
+<tr>
+<td><code>util-video-creator</code></td>
+<td>The Video Creator's playbook: finished videos with voice-over, music and captions from a website or web app (behind a login too), an app-store listing, a document, an article or product photos; 16:9 or 9:16, up to 3 minutes. It brings <code>util-video-shots</code>, <code>util-video-docs</code>, <code>util-motion-effects</code> and <code>int-wiro-aimodels</code> with it, so the agent needs your Wiro project key, which pays the video's model runs (see <a href="#using-wiro-ai-models-from-your-agent">Using Wiro AI Models from Your Agent</a>). <code>util-motion-effects</code> and <code>util-video-creator</code> always come together, whichever one you turn on.</td>
+<td>$29, plus $1 for <code>int-wiro-aimodels</code> when the agent doesn't have it yet</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p><code>POST /Skills/List</code> with <code>{ "category": "util" }</code> returns every utility skill.</p>
 <blockquote>
 <p><strong>Restart behavior:</strong> Calls to <code>CustomSkillUpsert</code>, <code>CustomSkillRename</code>, <code>CustomSkillDelete</code>, <code>CustomSkillRevert</code>, and <code>SkillsApply</code> on a running agent (status 3 or 4) each trigger an automatic restart so the new skill configuration is picked up. Same as credential updates. Description-only edits to <code>CustomSkillUpsert</code> skip the restart.</p>
 </blockquote>
@@ -21652,7 +21690,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
 <p>Pick the skill names you want to enable. Each skill descriptor tells you:</p>
 <ul>
 <li><code>name</code> — the canonical skill key you'll send in <code>skills</code> / <code>skillOverrides</code></li>
-<li><code>category</code> — <code>int</code> (integration with a third-party service) or <code>util</code> (utility / rule-only, no credential)</li>
+<li><code>category</code> — <code>int</code> (integration with a third-party service) or <code>util</code> (utility, no credential to connect)</li>
 <li><code>credential_key</code> — which credential the skill needs (<code>null</code> for <code>util</code> or platform-managed skills)</li>
 <li><code>requires_credentials</code> — boolean, whether the user must supply a credential before the skill can run</li>
 <li><code>depends_on</code> — array of skill names that must also be enabled (Wiro auto-enables transitive deps)</li>

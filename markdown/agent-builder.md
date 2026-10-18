@@ -39,7 +39,7 @@ curl -X POST "https://api.wiro.ai/v1/Skills/List" \
 Pick the skill names you want to enable. Each skill descriptor tells you:
 
 - `name` — the canonical skill key you'll send in `skills` / `skillOverrides`
-- `category` — `int` (integration with a third-party service) or `util` (utility / rule-only, no credential)
+- `category` — `int` (integration with a third-party service) or `util` (utility, no credential to connect)
 - `credential_key` — which credential the skill needs (`null` for `util` or platform-managed skills)
 - `requires_credentials` — boolean, whether the user must supply a credential before the skill can run
 - `depends_on` — array of skill names that must also be enabled (Wiro auto-enables transitive deps)
