@@ -8,8 +8,8 @@ The Google Play integration uses a Google Cloud service account with API access 
 
 **Skills that use this integration:**
 
-- `googleplay-reviews` — Monitor and reply to Google Play reviews
-- `googleplay-metadata` — Read/update app listings and metadata
+- `int-googleplay-reviews` — Monitor and reply to Google Play reviews
+- `int-googleplay-metadata` — Read/update app listings and metadata
 
 **Agents that typically enable this integration:**
 

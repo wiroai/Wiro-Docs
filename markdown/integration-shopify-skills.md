@@ -4,7 +4,7 @@ Connect a Wiro agent to Shopify's official GraphQL Admin API 2026-07 to manage p
 
 ## Overview
 
-The Shopify integration powers the `shopify-manage` skill. It uses only the official GraphQL Admin API pinned to `2026-07`; the REST Admin API, `latest`, `unstable`, and release-candidate schemas are outside the contract.
+The Shopify integration powers the `int-shopify-manage` skill. It uses only the official GraphQL Admin API pinned to `2026-07`; the REST Admin API, `latest`, `unstable`, and release-candidate schemas are outside the contract.
 
 **Available connection modes:**
 
@@ -17,7 +17,7 @@ Wiro does not provide a shared Shopify OAuth app. Both modes use customer-owned 
 
 ## Prerequisites
 
-- A deployed Wiro agent with the `shopify-manage` skill enabled.
+- A deployed Wiro agent with the `int-shopify-manage` skill enabled.
 - A Shopify store and permission to install or create apps.
 - The canonical store hostname, for example `example-store.myshopify.com`. Custom storefront domains are not accepted for Admin API authentication.
 

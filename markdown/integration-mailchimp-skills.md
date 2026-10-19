@@ -8,8 +8,8 @@ The Mailchimp integration is unique in supporting three authentication options: 
 
 **Skills that use this integration:**
 
-- `mailchimp-email` — Audience and campaign management
-- `newsletter-compose` — optional; uses Mailchimp as an ESP when enabled alongside. Newsletter Manager has it on; on other agents turn on `util-newsletter-compose` yourself. Mailchimp alone adds no newsletter tasks.
+- `int-mailchimp-email` — Audience and campaign management
+- `util-newsletter-compose` — optional; uses Mailchimp as an ESP when enabled alongside. Newsletter Manager has it on; on other agents turn on `util-newsletter-compose` yourself. Mailchimp alone adds no newsletter tasks.
 
 **Agents that typically enable this integration:**
 
@@ -180,7 +180,7 @@ Query params: `mailchimp_connected=true&mailchimp_account=<name>` or `mailchimp_
 
 Body: `{ useragentguid, credentialkey: "mailchimp" }`. Response: `connected`, `accounts: [{id, name}]` (1-element with the Mailchimp account name), `connectedat`. **No `tokenexpiresat`** — Mailchimp OAuth tokens don't expire.
 
-> **API key-only mode caveat:** `OAuthStatus.connected` is computed from `authmethod in {wiro, own}` **and** a non-empty `accesstoken`. If you set up Mailchimp via direct API key (no OAuth), `authmethod` is `"api_key"` and `accesstoken` is empty, so `OAuthStatus.connected` returns `false` — even though the agent runtime is fully functional (the `mailchimp-email` skill reads the API key directly). Don't use `OAuthStatus.connected` as the source of truth for API key setups; check that `credentials.mailchimp.apikey` is non-empty in `POST /UserAgent/Detail` instead.
+> **API key-only mode caveat:** `OAuthStatus.connected` is computed from `authmethod in {wiro, own}` **and** a non-empty `accesstoken`. If you set up Mailchimp via direct API key (no OAuth), `authmethod` is `"api_key"` and `accesstoken` is empty, so `OAuthStatus.connected` returns `false` — even though the agent runtime is fully functional (the `int-mailchimp-email` skill reads the API key directly). Don't use `OAuthStatus.connected` as the source of truth for API key setups; check that `credentials.mailchimp.apikey` is non-empty in `POST /UserAgent/Detail` instead.
 
 ### POST /UserAgentOAuth/OAuthDisconnect
 
@@ -192,7 +192,7 @@ Mailchimp OAuth tokens do not expire. Reconnect only if the user revokes the aut
 
 ## Using the Skill
 
-Once Mailchimp is connected (OAuth or API key), the agent's scheduled tasks use the `mailchimp-email` platform skill for audience and campaign operations. Adjust the cron of the built-in `cron-subscriber-scanner` task (Newsletter Manager) with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for bundled crons:
+Once Mailchimp is connected (OAuth or API key), the agent's scheduled tasks use the `int-mailchimp-email` platform skill for audience and campaign operations. Adjust the cron of the built-in `cron-newsletter-subscriber-scanner` task (Newsletter Manager) with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for bundled crons:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
@@ -200,7 +200,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skillkey": "cron-subscriber-scanner",
+    "skillkey": "cron-newsletter-subscriber-scanner",
     "enabled": true,
     "interval": "0 10 * * *"
   }'

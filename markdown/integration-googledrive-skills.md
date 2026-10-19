@@ -8,7 +8,7 @@ The Google Drive integration uses a Google Cloud service account with folder acc
 
 **Skills that use this integration:**
 
-- `google-drive` — Read files, write outputs, manage folders in selected Drive folders
+- `int-google-drive` — Read files, write outputs, manage folders in selected Drive folders
 
 **Agents that typically enable this integration:**
 
@@ -166,15 +166,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ## Runtime Behavior
 
-Env vars exported when the `google-drive` skill is enabled:
+When the `int-google-drive` skill is enabled, the agent works only in the folders saved under `folders[]`, each with its `id` and `name`; it can address a folder by either. With no folder saved, it has no Drive folder to work in.
 
-- `GDRIVE_FOLDERS` — a JSON array string of `[{"id": "...", "name": "..."}]`, e.g. `[{"id":"1MMZGo...","name":"Creatives"}]`. Empty array `[]` means no folder is configured. Inside the agent, parse with `jq` (e.g. `echo $GDRIVE_FOLDERS | jq -r '.[].id'` for IDs, or `jq -r '.[] | select(.name=="Creatives") | .id'` to resolve a folder ID by name).
-
-Secret file:
-
-- `/run/secrets/gdrive-sa.json` — decoded service account (file, not env)
-
-Auth: OAuth access token minted from the service account on-demand via the `gdrive-token` bin script → `Authorization: Bearer`. Token expires every hour; the script is called fresh before each API session.
+Auth: the agent mints a short-lived OAuth access token from the service account you saved and sends it as `Authorization: Bearer`. Tokens expire after an hour, so a fresh one is minted before each API session.
 
 Base URLs:
 
@@ -186,7 +180,7 @@ All list/get/upload calls pass `supportsAllDrives=true` + `includeItemsFromAllDr
 
 ## Files created by the agent
 
-When the agent creates a file inside a user-shared folder, the file is owned by the service account, not the user. The user can see the file via folder permission inheritance, but may see it as "view only". To give the user write access on files the agent creates (role `writer` in the Drive API — shown as **Editor** in My Drive or **Content manager** in a Shared Drive), the skill grants permissions programmatically via `POST /drive/v3/files/{fileId}/permissions`. See the `google-drive` skill for details.
+When the agent creates a file inside a user-shared folder, the file is owned by the service account, not the user. The user can see the file via folder permission inheritance, but may see it as "view only". To give the user write access on files the agent creates (role `writer` in the Drive API — shown as **Editor** in My Drive or **Content manager** in a Shared Drive), the skill grants permissions programmatically via `POST /drive/v3/files/{fileId}/permissions`. See the `int-google-drive` skill for details.
 
 ## Troubleshooting
 

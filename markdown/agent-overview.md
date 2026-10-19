@@ -947,7 +947,7 @@ Retrieves full details for a single deployed agent instance, including subscript
       ],
       "scheduledskills": [
         {
-          "key": "cs-cron-content-scanner",
+          "key": "cs-cron-social-content-scanner",
           "description": "Polls the content sources every 4 hours and queues fresh ideas for the post generator.",
           "value": "Scan the configured RSS / sitemap sources, dedupe against last 14 days, and queue up to 3 fresh items into the post pipeline.",
           "enabled": true,
@@ -1579,7 +1579,7 @@ The endpoint auto-normalises the skillkey to its canonical form. Bare slugs beco
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Your UserAgent instance guid |
-| `skillkey` | string | Yes | The skill key. Strategies use bare names (e.g. `"content-tone"` → stored as `cs-content-tone`). Crons use a `cron-` prefix (e.g. `"cron-content-scanner"` → stored as `cs-cron-content-scanner`). |
+| `skillkey` | string | Yes | The skill key. Strategies use bare names (e.g. `"content-tone"` → stored as `cs-content-tone`). Crons use a `cron-` prefix (e.g. `"cron-social-content-scanner"` → stored as `cs-cron-social-content-scanner`). |
 | `value` | string | No | Strategy body / cron prompt text. Editable for preset strategies and user-created entries; bundled crons silently drop `value` writes. |
 | `interval` | string | No | Cron expression (e.g. `"0 */4 * * *"`). Only persisted on `cs-cron-*` rows. |
 | `enabled` | boolean | No | Turn the skill on or off. **Writable for both strategies (`cs-*`) and crons (`cs-cron-*`)** — a disabled strategy is suppressed end-to-end (the IDE still shows it, but the agent never loads it). Defaults to `true` on insert. |
@@ -2265,7 +2265,7 @@ Calls are rate-limited via a 30-second server-side cache keyed on `(useragentgui
     {
       "ts": "2026-05-03T13:30:00.000Z",
       "kind": "cron_finished",
-      "title": "Cron ran: Scheduled Skill (cs-cron-content-scanner)",
+      "title": "Cron ran: Scheduled Skill (cs-cron-social-content-scanner)",
       "summary": { "jobId": "6b1d9e2f-3a4c-4e5b-8f7a-1c2d3e4f5a6b", "status": "ok" },
       "durationMs": 1860,
       "ok": true,

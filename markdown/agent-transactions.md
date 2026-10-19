@@ -276,7 +276,7 @@ console.log('Now in period:', summary.creditperiod);
 
 ### Reconcile a Pro tier upgrade
 
-When the user upgrades Starter → Pro mid-period, `UpgradeTier` writes one `grant` row with `action: "upgrade"` and `metadata: { tier, proratedCharge, ... }`. Use this to render an upgrade history in your UI.
+When the user upgrades Starter → Pro mid-period, `UpgradeTier` writes one `grant` row with `action: "tier-change"`, the monthly-credit difference as `amount`, a description like `"Tier starter → pro"` and `metadata: { fromTier, toTier, previousPriceUsd, newPriceUsd, proratedCharge }`. Use it to render an upgrade history in your UI.
 
 ## Errors
 

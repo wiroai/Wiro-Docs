@@ -4,7 +4,7 @@ Connect a Wiro agent directly to a WooCommerce store with a REST API consumer ke
 
 ## Overview
 
-The `woocommerce-manage` skill uses WooCommerce's official, current recommended WP REST API namespace, `wc/v3`, to work with products, variations, taxonomy, inventory, orders, refunds, coupons, customers, reports, and supported store settings.
+The `int-woocommerce-manage` skill uses WooCommerce's official, current recommended WP REST API namespace, `wc/v3`, to work with products, variations, taxonomy, inventory, orders, refunds, coupons, customers, reports, and supported store settings.
 
 | Mode | Status | Notes |
 |------|--------|-------|
@@ -12,7 +12,7 @@ The `woocommerce-manage` skill uses WooCommerce's official, current recommended 
 
 ## Prerequisites
 
-- A deployed Wiro agent with the `woocommerce-manage` skill enabled.
+- A deployed Wiro agent with the `int-woocommerce-manage` skill enabled.
 - A public HTTPS WooCommerce store with REST API routing enabled.
 - A WordPress user with the minimum permissions needed for the requested operations.
 

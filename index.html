@@ -9959,7 +9959,7 @@ pro.credits = starter.credits × tiermultiplier
       ],
       &quot;scheduledskills&quot;: [
         {
-          &quot;key&quot;: &quot;cs-cron-content-scanner&quot;,
+          &quot;key&quot;: &quot;cs-cron-social-content-scanner&quot;,
           &quot;description&quot;: &quot;Polls the content sources every 4 hours and queues fresh ideas for the post generator.&quot;,
           &quot;value&quot;: &quot;Scan the configured RSS / sitemap sources, dedupe against last 14 days, and queue up to 3 fresh items into the post pipeline.&quot;,
           &quot;enabled&quot;: true,
@@ -11211,7 +11211,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <td><code>skillkey</code></td>
 <td>string</td>
 <td>Yes</td>
-<td>The skill key. Strategies use bare names (e.g. <code>"content-tone"</code> → stored as <code>cs-content-tone</code>). Crons use a <code>cron-</code> prefix (e.g. <code>"cron-content-scanner"</code> → stored as <code>cs-cron-content-scanner</code>).</td>
+<td>The skill key. Strategies use bare names (e.g. <code>"content-tone"</code> → stored as <code>cs-content-tone</code>). Crons use a <code>cron-</code> prefix (e.g. <code>"cron-social-content-scanner"</code> → stored as <code>cs-cron-social-content-scanner</code>).</td>
 </tr>
 <tr>
 <td><code>value</code></td>
@@ -12346,7 +12346,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
     {
       &quot;ts&quot;: &quot;2026-05-03T13:30:00.000Z&quot;,
       &quot;kind&quot;: &quot;cron_finished&quot;,
-      &quot;title&quot;: &quot;Cron ran: Scheduled Skill (cs-cron-content-scanner)&quot;,
+      &quot;title&quot;: &quot;Cron ran: Scheduled Skill (cs-cron-social-content-scanner)&quot;,
       &quot;summary&quot;: { &quot;jobId&quot;: &quot;6b1d9e2f-3a4c-4e5b-8f7a-1c2d3e4f5a6b&quot;, &quot;status&quot;: &quot;ok&quot; },
       &quot;durationMs&quot;: 1860,
       &quot;ok&quot;: true,
@@ -20560,7 +20560,7 @@ customer-facing token-refresh endpoint or manual refresh action.</p>
   ],
   &quot;scheduledskills&quot;: [
     {
-      &quot;key&quot;: &quot;cs-cron-content-scanner&quot;,
+      &quot;key&quot;: &quot;cs-cron-social-content-scanner&quot;,
       &quot;description&quot;: &quot;Polls the content sources every 4 hours and queues fresh ideas for the post generator.&quot;,
       &quot;value&quot;: &quot;Scan the configured RSS / sitemap sources, dedupe against last 14 days, and queue up to 3 fresh items into the post pipeline.&quot;,
       &quot;enabled&quot;: true,
@@ -20680,7 +20680,7 @@ customer-facing token-refresh endpoint or manual refresh action.</p>
 <h2 id="managing-scheduled-tasks">Managing Scheduled Tasks</h2>
 <p>Scheduled tasks are cron skills — bundled ones (<code>_source: "skill-bundle"</code>) ship with integration skills and run automatically when the integration is enabled. User-created crons (<code>_source: "user-created"</code>) are added at any time.</p>
 <blockquote>
-<p><strong>For bundled crons, only <code>enabled</code> and <code>interval</code> are writable.</strong> The task body (<code>value</code>) is owned by the integration skill and re-materialised on every container restart. To change <strong>what</strong> a bundled scheduled task does, edit the paired preference skill (e.g. <code>content-tone</code> is read by <code>cron-content-scanner</code> at runtime). For user-created crons, all three (<code>value</code>, <code>interval</code>, <code>enabled</code>) are writable.</p>
+<p><strong>For bundled crons, only <code>enabled</code> and <code>interval</code> are writable.</strong> The task body (<code>value</code>) is owned by the integration skill and re-materialised on every container restart. To change <strong>what</strong> a bundled scheduled task does, edit the paired preference skill (e.g. <code>content-tone</code> is read by <code>cron-social-content-scanner</code> at runtime). For user-created crons, all three (<code>value</code>, <code>interval</code>, <code>enabled</code>) are writable.</p>
 </blockquote>
 <h3 id="example-change-a-bundled-crons-frequency">Example: Change a bundled cron's frequency</h3>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
@@ -20699,7 +20699,7 @@ customer-facing token-refresh endpoint or manual refresh action.</p>
   -H &quot;x-api-key: YOUR_API_KEY&quot; \
   -d '{
     &quot;useragentguid&quot;: &quot;your-useragent-guid&quot;,
-    &quot;skillkey&quot;: &quot;cron-content-scanner&quot;,
+    &quot;skillkey&quot;: &quot;cron-social-content-scanner&quot;,
     &quot;enabled&quot;: false
   }'
 </code></pre>
@@ -21117,159 +21117,249 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <tbody>
 <tr>
 <td>Social Manager</td>
-<td><code>cron-content-scanner</code></td>
+<td><code>cron-social-content-scanner</code></td>
 <td><code>0 */4 * * *</code></td>
-<td>Content discovery + draft generation (reads <code>content-tone</code>)</td>
+<td>Content discovery and draft posts with rotating strategies (reads <code>content-tone</code>; disabled by default)</td>
 </tr>
 <tr>
 <td>Social Manager</td>
-<td><code>cron-gmail-checker</code></td>
-<td><code>*/30 * * * *</code></td>
-<td>Inbox monitoring for incoming requests (disabled by default)</td>
-</tr>
-<tr>
-<td>Social Manager</td>
-<td><code>cron-drive-scanner</code></td>
+<td><code>cron-social-drive-scanner</code></td>
 <td><code>0 10 * * *</code></td>
-<td>Google Drive asset scanning (disabled by default)</td>
+<td>Scans Google Drive for new post assets and prepares posts (disabled by default)</td>
 </tr>
 <tr>
 <td>Blog Content Editor</td>
 <td><code>cron-blog-scanner</code></td>
 <td><code>0 9 * * *</code></td>
-<td>Topic discovery + article drafting (reads <code>content-strategy</code>)</td>
+<td>Topic discovery and article drafting (reads <code>content-strategy</code>)</td>
 </tr>
 <tr>
 <td>Blog Content Editor</td>
-<td><code>cron-gmail-checker</code></td>
+<td><code>cron-blog-gmail-checker</code></td>
 <td><code>*/30 * * * *</code></td>
-<td>Inbox monitoring for topic requests</td>
+<td>Checks the inbox for topic requests and writing instructions (disabled by default)</td>
 </tr>
 <tr>
 <td>App Review Support</td>
 <td><code>cron-review-scanner</code></td>
 <td><code>0 */2 * * *</code></td>
-<td>Store scanning for new reviews (reads <code>review-preferences</code>)</td>
+<td>Scans App Store and Google Play for new reviews and prepares replies (reads <code>review-preferences</code>; disabled by default)</td>
 </tr>
 <tr>
 <td>App Event Manager</td>
 <td><code>cron-app-event-scanner</code></td>
 <td><code>0 9 * * 1</code></td>
-<td>Holiday scanning + event suggestions (reads <code>event-preferences</code>)</td>
+<td>Scans global holidays and suggests App Store in-app events (reads <code>event-preferences</code>; disabled by default)</td>
 </tr>
 <tr>
 <td>Push Notification Manager</td>
 <td><code>cron-push-scanner</code></td>
 <td><code>0 9 * * *</code></td>
-<td>Notification content preparation (reads <code>push-preferences</code>)</td>
+<td>Scans holidays and prepares push notification suggestions (reads <code>push-preferences</code>)</td>
 </tr>
 <tr>
 <td>Push Notification Manager</td>
 <td><code>cron-push-dispatcher</code></td>
 <td><code>0 * * * *</code></td>
-<td>Dispatching queued notifications</td>
+<td>Sends queued push notifications on schedule</td>
 </tr>
 <tr>
 <td>Newsletter Manager</td>
 <td><code>cron-newsletter-sender</code></td>
 <td><code>0 9 * * 1</code></td>
-<td>Newsletter drafting and sending (reads <code>newsletter-strategy</code>)</td>
+<td>Newsletter drafting and sending (reads <code>newsletter-strategy</code>; disabled by default)</td>
 </tr>
 <tr>
 <td>Newsletter Manager</td>
-<td><code>cron-subscriber-scanner</code></td>
+<td><code>cron-newsletter-subscriber-scanner</code></td>
 <td><code>0 10 * * *</code></td>
-<td>Subscriber list health checks</td>
+<td>Daily subscriber list health check and bounce monitoring (disabled by default)</td>
 </tr>
 <tr>
 <td>Lead Generation Manager</td>
-<td><code>cron-prospect-scanner</code></td>
+<td><code>cron-lead-prospect-scanner</code></td>
 <td><code>0 10 * * 1</code></td>
-<td>Prospect discovery and scoring (reads <code>lead-strategy</code>)</td>
+<td>Weekly prospect search, enrichment and scoring (reads <code>lead-strategy</code>; disabled by default)</td>
 </tr>
 <tr>
 <td>Lead Generation Manager</td>
-<td><code>cron-outreach-reporter</code></td>
+<td><code>cron-lead-outreach-reporter</code></td>
 <td><code>0 9 * * *</code></td>
-<td>Outreach performance reporting</td>
+<td>Daily outreach performance report (disabled by default)</td>
 </tr>
 <tr>
 <td>Lead Generation Manager</td>
-<td><code>cron-reply-handler</code></td>
+<td><code>cron-lead-reply-handler</code></td>
 <td><code>0 */4 * * *</code></td>
-<td>Reply analysis</td>
+<td>Checks new replies, analyzes sentiment and proposes responses (disabled by default)</td>
 </tr>
 <tr>
 <td>Google Ads Manager</td>
-<td><code>cron-performance-reporter</code></td>
+<td><code>cron-googleads-performance-reporter</code></td>
 <td><code>0 9 * * *</code></td>
-<td>Performance reporting (reads <code>ad-strategy</code>)</td>
+<td>Daily performance report with recommendations (reads <code>ad-strategy</code>)</td>
 </tr>
 <tr>
 <td>Google Ads Manager</td>
-<td><code>cron-competitor-scanner</code></td>
+<td><code>cron-googleads-recommendations-fetcher</code></td>
+<td><code>0 8 * * *</code></td>
+<td>Daily Google Ads recommendations: safe items become low-risk suggestions, risky ones wait for your approval</td>
+</tr>
+<tr>
+<td>Google Ads Manager</td>
+<td><code>cron-googleads-competitor-scanner</code></td>
 <td><code>0 10 * * 1</code></td>
-<td>Competitor analysis</td>
+<td>Weekly competitor analysis, keyword opportunities and account health audit</td>
 </tr>
 <tr>
 <td>Google Ads Manager</td>
-<td><code>cron-holiday-ad-planner</code></td>
+<td><code>cron-googleads-holiday-planner</code></td>
 <td><code>0 10 * * 3</code></td>
-<td>Holiday campaign planning</td>
+<td>Upcoming holidays and seasonal campaign suggestions</td>
 </tr>
 <tr>
 <td>Google Ads Manager</td>
-<td><code>cron-drive-scanner</code></td>
+<td><code>cron-googleads-audience-refresher</code></td>
+<td><code>0 7 * * *</code></td>
+<td>Daily Customer Match refresh from a connected CRM (HubSpot, Apollo, Lemlist) or a Google Drive CSV (disabled by default)</td>
+</tr>
+<tr>
+<td>Google Ads Manager</td>
+<td><code>cron-googleads-drive-scanner</code></td>
 <td><code>0 10 * * *</code></td>
-<td>Google Drive creative asset scanning (disabled by default)</td>
+<td>Scans Google Drive for new creative folders and proposes campaigns (disabled by default)</td>
+</tr>
+<tr>
+<td>Google Ads Manager</td>
+<td><code>cron-merchant-center-scanner</code></td>
+<td><code>30 8 * * *</code></td>
+<td>Daily Merchant Center product feed health check (runs only when Merchant Center is connected; disabled by default)</td>
+</tr>
+<tr>
+<td>Google Ads Manager</td>
+<td><code>cron-ga4-attribution-auditor</code></td>
+<td><code>0 11 * * 1</code></td>
+<td>Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected; disabled by default)</td>
+</tr>
+<tr>
+<td>Google Ads Manager</td>
+<td><code>cron-adjust-creative-roas-reporter</code></td>
+<td><code>0 10 * * *</code></td>
+<td>Daily Adjust creative-level ROAS report with scale/pause recommendations (disabled by default)</td>
+</tr>
+<tr>
+<td>Google Ads Manager</td>
+<td><code>cron-roasit-creative-roas-reporter</code></td>
+<td><code>30 10 * * *</code></td>
+<td>Daily Roasit creative-level ROAS report with scale/pause recommendations (disabled by default)</td>
+</tr>
+<tr>
+<td>Google Ads Manager</td>
+<td><code>cron-ads-recommendation-cleanup</code></td>
+<td><code>0 0 * * *</code></td>
+<td>Nightly cleanup of expired recommendations</td>
 </tr>
 <tr>
 <td>Meta Ads Manager</td>
-<td><code>cron-performance-reporter</code></td>
+<td><code>cron-metaads-performance-reporter</code></td>
 <td><code>0 9 * * *</code></td>
-<td>Performance reporting (reads <code>ad-strategy</code>)</td>
+<td>Daily performance report with creative health, audience analysis and recommendations (reads <code>ad-strategy</code>)</td>
 </tr>
 <tr>
 <td>Meta Ads Manager</td>
-<td><code>cron-audience-scanner</code></td>
+<td><code>cron-metaads-audience-scanner</code></td>
 <td><code>0 10 * * 1</code></td>
-<td>Audience analysis</td>
+<td>Weekly audience, creative health and account health audit</td>
 </tr>
 <tr>
 <td>Meta Ads Manager</td>
-<td><code>cron-holiday-ad-planner</code></td>
+<td><code>cron-metaads-holiday-planner</code></td>
 <td><code>0 10 * * 3</code></td>
-<td>Holiday campaign planning</td>
+<td>Upcoming holidays and seasonal campaign suggestions</td>
 </tr>
 <tr>
 <td>Meta Ads Manager</td>
-<td><code>cron-drive-scanner</code></td>
+<td><code>cron-metaads-drive-scanner</code></td>
 <td><code>0 10 * * *</code></td>
-<td>Google Drive creative asset scanning (disabled by default)</td>
+<td>Scans Google Drive for new creative folders and proposes campaigns</td>
+</tr>
+<tr>
+<td>Meta Ads Manager</td>
+<td><code>cron-ga4-attribution-auditor</code></td>
+<td><code>0 11 * * 1</code></td>
+<td>Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected; disabled by default)</td>
+</tr>
+<tr>
+<td>Meta Ads Manager</td>
+<td><code>cron-adjust-creative-roas-reporter</code></td>
+<td><code>0 10 * * *</code></td>
+<td>Daily Adjust creative-level ROAS report with scale/pause recommendations (disabled by default)</td>
+</tr>
+<tr>
+<td>Meta Ads Manager</td>
+<td><code>cron-roasit-creative-roas-reporter</code></td>
+<td><code>30 10 * * *</code></td>
+<td>Daily Roasit creative-level ROAS report with scale/pause recommendations (disabled by default)</td>
+</tr>
+<tr>
+<td>Meta Ads Manager</td>
+<td><code>cron-ads-recommendation-cleanup</code></td>
+<td><code>0 0 * * *</code></td>
+<td>Nightly cleanup of expired recommendations</td>
 </tr>
 <tr>
 <td>TikTok Ads Manager</td>
 <td><code>cron-tiktokads-performance-reporter</code></td>
 <td><code>0 9 * * *</code></td>
-<td>Performance reporting per advertiser, plus the 30-day reconnect reminder (reads <code>ad-strategy</code> and <code>tiktok-ads-strategy</code>)</td>
+<td>Performance reporting per advertiser, plus the 30-day reconnect reminder (reads <code>ad-strategy</code>)</td>
 </tr>
 <tr>
 <td>TikTok Ads Manager</td>
 <td><code>cron-tiktokads-audience-scanner</code></td>
 <td><code>0 10 * * 1</code></td>
-<td>Audience and account health analysis</td>
+<td>Weekly audience, creative health and account health audit</td>
 </tr>
 <tr>
 <td>TikTok Ads Manager</td>
 <td><code>cron-tiktokads-holiday-planner</code></td>
 <td><code>0 10 * * 3</code></td>
-<td>Holiday campaign planning</td>
+<td>Upcoming holidays and seasonal campaign suggestions</td>
 </tr>
 <tr>
 <td>TikTok Ads Manager</td>
 <td><code>cron-tiktokads-drive-scanner</code></td>
 <td><code>0 10 * * *</code></td>
-<td>Google Drive creative asset scanning (runs daily; does nothing until Google Drive is connected)</td>
+<td>Scans Google Drive for new creative folders and proposes TikTok Ads campaigns (does nothing until Google Drive is connected)</td>
+</tr>
+<tr>
+<td>TikTok Ads Manager</td>
+<td><code>cron-ga4-attribution-auditor</code></td>
+<td><code>0 11 * * 1</code></td>
+<td>Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected; disabled by default)</td>
+</tr>
+<tr>
+<td>TikTok Ads Manager</td>
+<td><code>cron-adjust-creative-roas-reporter</code></td>
+<td><code>0 10 * * *</code></td>
+<td>Daily Adjust creative-level ROAS report with scale/pause recommendations (disabled by default)</td>
+</tr>
+<tr>
+<td>TikTok Ads Manager</td>
+<td><code>cron-roasit-creative-roas-reporter</code></td>
+<td><code>30 10 * * *</code></td>
+<td>Daily Roasit creative-level ROAS report with scale/pause recommendations (disabled by default)</td>
+</tr>
+<tr>
+<td>TikTok Ads Manager</td>
+<td><code>cron-ads-recommendation-cleanup</code></td>
+<td><code>0 0 * * *</code></td>
+<td>Nightly cleanup of expired recommendations</td>
+</tr>
+<tr>
+<td>Google Review Manager</td>
+<td><code>cron-google-review-scanner</code></td>
+<td><code>0 */2 * * *</code></td>
+<td>Scans Google Business Profile locations for new reviews and prepares replies</td>
 </tr>
 </tbody>
 </table>
@@ -21279,12 +21369,10 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <p>Each scheduled cron skill reads its paired preference skill at runtime. The mechanism:</p>
 <ol>
 <li><code>POST /UserAgent/CustomSkillUpsert</code> writes your preference <code>value</code> for key <code>content-tone</code> (stored as <code>cs-content-tone</code>).</li>
-<li>When the container starts, each <code>customskills</code> / <code>scheduledskills</code> row is materialized as a local skill at <code>skills/&lt;key&gt;/SKILL.md</code> inside the agent workspace. The <code>cs-</code> prefix on <code>key</code> IS the runtime path — a preference skill with key <code>cs-content-tone</code> becomes <code>skills/cs-content-tone/</code>, and a cron skill with key <code>cs-cron-content-scanner</code> becomes <code>skills/cs-cron-content-scanner/</code>.</li>
-<li>The scheduled cron skill's <code>value</code> (shipped in the integration skill, not user-editable) references its paired preference via the <code>cs-&lt;preference-key&gt;</code> path, for example:
-   ```</li>
-<li>Read the cs-content-tone skill first — follow ALL its rules.</li>
-<li>...
-   ```</li>
+<li>When the agent starts, each <code>customskills</code> / <code>scheduledskills</code> row becomes a skill named by its key — a preference skill with key <code>cs-content-tone</code> becomes the skill <code>cs-content-tone</code>, and a cron skill with key <code>cs-cron-social-content-scanner</code> becomes <code>cs-cron-social-content-scanner</code>.</li>
+<li>The scheduled cron skill's <code>value</code> (shipped in the integration skill, not user-editable) references its paired preference by its skill name, <code>cs-&lt;preference-key&gt;</code>, for example:
+<pre><code>0. Read the cs-content-tone skill first — follow ALL its rules.
+1. ...</code></pre></li>
 <li>At each cron tick, the agent LLM reads <code>cs-content-tone</code>, applies your instructions, then executes the scan/report/dispatch workflow.</li>
 </ol>
 <blockquote>
@@ -22445,6 +22533,9 @@ const lastRenewal = renewals[0];   // newest-first ordering
 console.log('Last renewal:', new Date(lastRenewal.createdat * 1000).toISOString());
 console.log('Granted:', lastRenewal.amount, 'credits');
 console.log('Now in period:', summary.creditperiod);</code></pre>
+
+                    <h3>Reconcile a Pro tier upgrade</h3>
+                    <p>When the user upgrades Starter → Pro mid-period, <code>UpgradeTier</code> writes one <code>grant</code> row with <code>action: "tier-change"</code>, the monthly-credit difference as <code>amount</code>, a description like <code>"Tier starter → pro"</code> and <code>metadata: { fromTier, toTier, previousPriceUsd, newPriceUsd, proratedCharge }</code>. Use it to render an upgrade history in your UI.</p>
                   </section>
 
                   <section id="tx-errors">
@@ -22465,6 +22556,78 @@ console.log('Now in period:', summary.creditperiod);</code></pre>
                         </table>
                       </div>
                     </div>
+                  </section>
+
+                  <section id="tx-code-examples">
+                    <h2>Code Examples</h2>
+                    <h3>curl</h3>
+                    <pre><code class="language-bash"># Latest 50 transactions for a useragent
+curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "limit": 50 }'
+
+# Page 2 (next 50)
+curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "limit": 50, "start": 50 }'</code></pre>
+                    <h3>Python</h3>
+                    <pre><code class="language-python">import requests
+
+headers = {"x-api-key": "YOUR_API_KEY", "Content-Type": "application/json"}
+
+resp = requests.post(
+    "https://api.wiro.ai/v1/UserAgent/TransactionList",
+    headers=headers,
+    json={"useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "limit": 100}
+).json()
+
+print(f"Balance — remaining: {resp['summary']['remainingcredits']}/{resp['summary']['monthlycredits']}")
+print(f"Total ledger rows: {resp['total']}")
+
+for tx in resp["transactions"][:10]:
+    sign = "+" if tx["amount"] &gt; 0 else ""
+    print(f"  [{tx['type']:&gt;9}] {sign}{tx['amount']:&gt;6}  {tx['description']}")</code></pre>
+                    <h3>Node.js</h3>
+                    <pre><code class="language-javascript">const axios = require('axios');
+
+const headers = { 'x-api-key': 'YOUR_API_KEY', 'Content-Type': 'application/json' };
+
+const { data } = await axios.post(
+  'https://api.wiro.ai/v1/UserAgent/TransactionList',
+  { useragentguid: 'f8e7d6c5-b4a3-2190-fedc-ba0987654321', limit: 100 },
+  { headers }
+);
+
+console.log(`Balance: ${data.summary.remainingcredits}/${data.summary.monthlycredits}`);
+console.log(`Period: ${data.summary.creditperiod}`);
+
+data.transactions.slice(0, 10).forEach(tx =&gt; {
+  const sign = tx.amount &gt; 0 ? '+' : '';
+  console.log(`  [${tx.type.padStart(9)}] ${sign}${tx.amount}  ${tx.description}`);
+});</code></pre>
+                    <h3>PHP</h3>
+                    <pre><code class="language-php">&lt;?php
+$ch = curl_init("https://api.wiro.ai/v1/UserAgent/TransactionList");
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Content-Type: application/json",
+    "x-api-key: YOUR_API_KEY"
+]);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+    "useragentguid" =&gt; "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+    "limit" =&gt; 100
+]));
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+$resp = json_decode(curl_exec($ch), true);
+curl_close($ch);
+
+echo "Balance: {$resp['summary']['remainingcredits']}/{$resp['summary']['monthlycredits']}\n";
+foreach (array_slice($resp['transactions'], 0, 10) as $tx) {
+    $sign = $tx['amount'] &gt; 0 ? '+' : '';
+    echo "[{$tx['type']}] {$sign}{$tx['amount']} {$tx['description']}\n";
+}</code></pre>
                   </section>
 
                   <section id="tx-next">
@@ -22706,12 +22869,12 @@ console.log('Now in period:', summary.creditperiod);</code></pre>
   ]
 }</code></pre>
                     <div class="info-callout">
-                      <strong>About the <code>user</code> field.</strong> Every event is decorated with the resolved actor: <code>{ uuid, firstname, lastname, email, username, avatar, avatarinitials }</code>. It is <code>null</code> when:
+                      <strong>About the <code>user</code> field.</strong> Every event is decorated with the resolved actor: <code>{ uuid, firstname, lastname, email, username, avatar, avatarinitials }</code>.
                       <ul>
-                        <li>The event was triggered by <strong>automation</strong> — <code>userUuid: "system"</code> for cron ticks, scheduled-skill runs, the token usage of scheduled turns, agent-initiated tool calls, and similar non-interactive writes (the system rows above).</li>
-                        <li>The actor's user record was deleted or the lookup misses for any reason.</li>
+                        <li>An event with a user's <code>userUuid</code> carries that user's profile, or <code>null</code> when the user record was deleted.</li>
+                        <li>An event triggered by <strong>automation</strong> has <code>userUuid: "system"</code> and <code>user: null</code> — cron runs, the token usage of scheduled turns, and similar non-interactive writes (the system rows above).</li>
+                        <li>An event without a <code>userUuid</code> (an incoming channel message, or a row older than user attribution) carries the agent owner's profile, so the row never shows an empty placeholder.</li>
                       </ul>
-                      When the actor cannot be resolved (deleted account, automation), the server falls back to the useragent owner's UUID so the row never renders an empty placeholder.
                     </div>
                   </section>
 
@@ -22836,7 +22999,7 @@ console.log('Now in period:', summary.creditperiod);</code></pre>
     if (fresh.length === 0) return;
 
     onEvents(fresh);
-    lastTs = Date.parse(fresh[fresh.length - 1].ts);
+    lastTs = Date.parse(fresh[0].ts);
   }, 30_000);
 }</code></pre>
 
@@ -22853,6 +23016,52 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/LogsFile" \
   -H "Content-Type: application/json" \
   -d '{ "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "date": "2026-05-02" }' \
   &gt; logs-2026-05-02.json</code></pre>
+
+                    <h3>Filtering server-side by <code>kind</code></h3>
+                    <p>The endpoints don't support server-side filtering — apply filters client-side:</p>
+                    <pre><code class="language-python">import requests
+
+resp = requests.post(
+    "https://api.wiro.ai/v1/UserAgent/LogsFile",
+    headers={"x-api-key": "YOUR_API_KEY", "Content-Type": "application/json"},
+    json={"useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "date": "2026-05-02"}
+).json()
+
+cron_runs = [e for e in resp["events"] if e["kind"] == "cron_finished"]
+print(f"{len(cron_runs)} cron runs on 2026-05-02")
+for e in cron_runs:
+    summary = e.get("summary") or {}
+    print(f"  {e['title']} status={summary.get('status')}")</code></pre>
+
+                    <h3>GDPR-style "scrub a day"</h3>
+                    <p><code>LogsDelete</code> lets the user wipe a specific day's events without waiting for the 180-day rotation:</p>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/LogsDelete" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "date": "2026-05-02" }'</code></pre>
+                  </section>
+
+                  <section id="logs-errors">
+                    <h2>Errors</h2>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Error</th><th>When</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td><code>useragentguid is required</code></td><td>Missing required parameter</td></tr>
+                            <tr><td><code>date is required</code></td><td><code>LogsFile</code> / <code>LogsDelete</code> without <code>date</code></td></tr>
+                            <tr><td><code>useragent-access-denied</code></td><td>Caller is neither the owner nor on the agent's team</td></tr>
+                            <tr><td><code>useragent-team-admin-required</code></td><td>Caller is a member of the agent's team but not a team admin (code <code>97</code>)</td></tr>
+                            <tr><td><code>Agent is not assigned to a worker. It may not be running.</code></td><td>The agent isn't running on a host yet (never started, or being moved) — start it and retry</td></tr>
+                            <tr><td><code>Worker not found</code></td><td>The agent's host is not available right now — retry later</td></tr>
+                            <tr><td><code>Failed to fetch activity from worker</code></td><td>The agent's host did not answer (offline, network blip) — retry</td></tr>
+                            <tr><td><code>Failed to fetch activity dates from worker</code> / <code>Failed to delete activity file from worker</code> / <code>Failed to fetch activity file from worker</code></td><td>Same as above for the matching endpoint</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   </section>
 
                   <section id="logs-retention">
@@ -22892,11 +23101,11 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/LogsFile" \
 <h1 id="meta-ads-integration">Meta Ads Integration</h1>
 <p class="section-subtitle">Connect your agent to Meta's advertising platform to manage campaigns, ad sets, creatives, and performance insights across Facebook and Instagram ads.</p>
 <h2 id="overview">Overview</h2>
-<p>The Meta Ads integration powers the <code>metaads-manage</code> skill — creating and managing campaigns, pulling insights, managing creatives, and analyzing ad account data through direct Meta Graph / Marketing API v26 calls.</p>
+<p>The Meta Ads integration powers the <code>int-metaads-manage</code> skill — creating and managing campaigns, pulling insights, managing creatives, and analyzing ad account data through direct Meta Graph / Marketing API v26 calls.</p>
 <p><strong>Skills that use this integration:</strong></p>
 <ul>
-<li><code>metaads-manage</code> — Campaign / ad set / creative CRUD, insights reporting, direct Graph API v26 operations</li>
-<li><code>ads-manager-common</code> — Shared ads helpers (works alongside <code>metaads-manage</code> and <code>googleads-manage</code>)</li>
+<li><code>int-metaads-manage</code> — Campaign / ad set / creative CRUD, insights reporting, direct Graph API v26 operations</li>
+<li><code>util-ads-manager-common</code> — Shared ads helpers (works alongside <code>int-metaads-manage</code> and <code>int-googleads-manage</code>)</li>
 </ul>
 <p><strong>Agents that typically enable this integration:</strong></p>
 <ul>
@@ -23628,13 +23837,13 @@ before the token expires. User OAuth connections must be reconnected after Meta
 expires or invalidates them. Raw tokens and App Secrets are never exposed to the
 agent model.</p>
 <h2 id="using-the-skill">Using the Skill</h2>
-<p>Enable <code>int-metaads-manage</code> on the agent via <code>POST /UserAgent/SkillsApply</code> (see <a href="/docs/agent-skills#toggling-integration-skills">Agent Skills → Toggling Integration Skills</a>). Adjust the cron of the built-in <code>cs-cron-performance-reporter</code> task (Meta Ads Manager) with <code>enabled</code> and <code>interval</code> only — the task body (<code>value</code>) is owned by the bundled integration skill and silently dropped on writes:</p>
+<p>Enable <code>int-metaads-manage</code> on the agent via <code>POST /UserAgent/SkillsApply</code> (see <a href="/docs/agent-skills#toggling-integration-skills">Agent Skills → Toggling Integration Skills</a>). Adjust the cron of the built-in <code>cs-cron-metaads-performance-reporter</code> task (Meta Ads Manager) with <code>enabled</code> and <code>interval</code> only — the task body (<code>value</code>) is owned by the bundled integration skill and silently dropped on writes:</p>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
   -H &quot;Content-Type: application/json&quot; \
   -H &quot;x-api-key: YOUR_API_KEY&quot; \
   -d '{
     &quot;useragentguid&quot;: &quot;your-useragent-guid&quot;,
-    &quot;skillkey&quot;: &quot;cron-performance-reporter&quot;,
+    &quot;skillkey&quot;: &quot;cron-metaads-performance-reporter&quot;,
     &quot;enabled&quot;: true,
     &quot;interval&quot;: &quot;0 9 * * *&quot;
   }'
@@ -23745,7 +23954,7 @@ agent model.</p>
 <ul>
 <li><a href="/docs/agent-credentials">Agent Credentials &amp; OAuth</a> — integration catalog hub and generic OAuth reference.</li>
 <li><a href="/docs/agent-overview">Agent Overview</a> — deploying, starting, and lifecycle.</li>
-<li><a href="/docs/agent-skills">Agent Skills</a> — configuring <code>metaads-manage</code> and scheduled runs.</li>
+<li><a href="/docs/agent-skills">Agent Skills</a> — configuring <code>int-metaads-manage</code> and scheduled runs.</li>
 <li><a href="/docs/integration-googleads-skills">Google Ads integration</a> — for cross-platform paid campaigns.</li>
 <li><a href="/docs/integration-tiktokads-skills">TikTok Ads integration</a> — for cross-platform paid campaigns.</li>
 </ul>
@@ -24408,7 +24617,7 @@ if (params.get(&quot;tiktokads_connected&quot;) === &quot;true&quot;) {
 <h1>Shopify Integration</h1>
 <p class="section-subtitle">Connect a Wiro agent to Shopify's official GraphQL Admin API 2026-07 to manage products, variants, inventory, orders, customers, discounts, collections, and fulfillments.</p>
 <h2 id="overview">Overview</h2>
-<p>The Shopify integration powers the <code>shopify-manage</code> skill. It uses only the official GraphQL Admin API pinned to <code>2026-07</code>; the REST Admin API, <code>latest</code>, <code>unstable</code>, and release-candidate schemas are outside the contract.</p>
+<p>The Shopify integration powers the <code>int-shopify-manage</code> skill. It uses only the official GraphQL Admin API pinned to <code>2026-07</code>; the REST Admin API, <code>latest</code>, <code>unstable</code>, and release-candidate schemas are outside the contract.</p>
 <p><strong>Available connection modes:</strong></p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -24438,7 +24647,7 @@ if (params.get(&quot;tiktokads_connected&quot;) === &quot;true&quot;) {
 <p>Wiro does not provide a shared Shopify OAuth app. Both modes use customer-owned credentials.</p>
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
-<li>A deployed Wiro agent with the <code>shopify-manage</code> skill enabled.</li>
+<li>A deployed Wiro agent with the <code>int-shopify-manage</code> skill enabled.</li>
 <li>A Shopify store and permission to install or create apps.</li>
 <li>The canonical store hostname, for example <code>example-store.myshopify.com</code>. Custom storefront domains are not accepted for Admin API authentication.</li>
 </ul>
@@ -24564,7 +24773,7 @@ if (params.get(&quot;tiktokads_connected&quot;) === &quot;true&quot;) {
 <h1>WooCommerce Integration</h1>
 <p class="section-subtitle">Connect a Wiro agent directly to a WooCommerce store with a REST API consumer key and secret.</p>
 <h2 id="overview">Overview</h2>
-<p>The <code>woocommerce-manage</code> skill uses WooCommerce's official, current recommended WP REST API namespace, <code>wc/v3</code>, to work with products, variations, taxonomy, inventory, orders, refunds, coupons, customers, reports, and supported store settings.</p>
+<p>The <code>int-woocommerce-manage</code> skill uses WooCommerce's official, current recommended WP REST API namespace, <code>wc/v3</code>, to work with products, variations, taxonomy, inventory, orders, refunds, coupons, customers, reports, and supported store settings.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -24587,7 +24796,7 @@ if (params.get(&quot;tiktokads_connected&quot;) === &quot;true&quot;) {
 </div>
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
-<li>A deployed Wiro agent with the <code>woocommerce-manage</code> skill enabled.</li>
+<li>A deployed Wiro agent with the <code>int-woocommerce-manage</code> skill enabled.</li>
 <li>A public HTTPS WooCommerce store with REST API routing enabled.</li>
 <li>A WordPress user with the minimum permissions needed for the requested operations.</li>
 </ul>
@@ -24706,7 +24915,7 @@ if (params.get(&quot;tiktokads_connected&quot;) === &quot;true&quot;) {
 <h1>Reddit Integration</h1>
 <p class="section-subtitle">Technical contract for connecting a Wiro agent to Reddit with a customer-owned Reddit web app. The endpoints remain documented, but the feature is not available until Reddit approves Wiro's commercial use and a written commercial contract is in force.</p>
 <h2 id="overview">Overview</h2>
-<p>The <code>reddit-post</code> skill supports:</p>
+<p>The <code>int-reddit-post</code> skill supports:</p>
 <ul>
 <li>connected-user identity;</li>
 <li>subscribed and contributor subreddits;</li>
@@ -24761,7 +24970,7 @@ if (params.get(&quot;tiktokads_connected&quot;) === &quot;true&quot;) {
 <p>Wiro's <code>apiaccessapproved: true</code> field is only an operator attestation. It grants no rights, does not replace Reddit review or the commercial contract, and does not make the currently unavailable feature usable.</p>
 <h2 id="prerequisites">Prerequisites</h2>
 <ul>
-<li>A deployed Wiro agent with the <code>reddit-post</code> skill enabled.</li>
+<li>A deployed Wiro agent with the <code>int-reddit-post</code> skill enabled.</li>
 <li>A dedicated Reddit app account.</li>
 <li>A customer-owned Reddit app created as type <strong>web app</strong>.</li>
 <li>A registered Reddit developer profile and App profile label that accurately describes the app and its commercial purpose.</li>
@@ -25339,13 +25548,13 @@ if (params.get("fb_connected") === "true") {
 
                   <section id="using-the-skill">
                     <h2>Using the Skill</h2>
-                    <p>Once the Facebook Page is connected, the agent uses <code>int-facebookpage-post</code> to publish text, photo, and video posts. To adjust the Social Manager's bundled <code>cs-cron-content-scanner</code> schedule, call <code>POST /UserAgent/CustomSkillUpsert</code> with <code>enabled</code> and <code>interval</code> only:</p>
+                    <p>Once the Facebook Page is connected, the agent uses <code>int-facebookpage-post</code> to publish text, photo, and video posts. To adjust the Social Manager's bundled <code>cs-cron-social-content-scanner</code> schedule, call <code>POST /UserAgent/CustomSkillUpsert</code> with <code>enabled</code> and <code>interval</code> only:</p>
                     <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skillkey": "cs-cron-content-scanner",
+    "skillkey": "cs-cron-social-content-scanner",
     "enabled": true,
     "interval": "0 */4 * * *"
   }'</code></pre>
@@ -25892,13 +26101,13 @@ if (params.get("ig_connected") === "true") {
 
                   <section id="using-the-skill">
                     <h2>Using the Skill</h2>
-                    <p>Once Instagram professional accounts are connected, the agent uses <code>int-instagram-post</code> to publish feed carousels, reels, and stories. A request must identify one account when multiple are connected; the agent never guesses or publishes to all accounts from an ambiguous instruction. To adjust the Social Manager's bundled <code>cs-cron-content-scanner</code> schedule, call <code>POST /UserAgent/CustomSkillUpsert</code> with <code>enabled</code> and <code>interval</code> only:</p>
+                    <p>Once Instagram professional accounts are connected, the agent uses <code>int-instagram-post</code> to publish feed carousels, reels, and stories. A request must identify one account when multiple are connected; the agent never guesses or publishes to all accounts from an ambiguous instruction. To adjust the Social Manager's bundled <code>cs-cron-social-content-scanner</code> schedule, call <code>POST /UserAgent/CustomSkillUpsert</code> with <code>enabled</code> and <code>interval</code> only:</p>
                     <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skillkey": "cs-cron-content-scanner",
+    "skillkey": "cs-cron-social-content-scanner",
     "enabled": true,
     "interval": "0 */4 * * *"
   }'</code></pre>
@@ -26030,7 +26239,7 @@ if (params.get("ig_connected") === "true") {
                     <p>The LinkedIn integration uses the LinkedIn Marketing Developer Platform via OAuth 2.0. Agents publish posts on behalf of a Company Page using the connecting member's admin rights.</p>
                     <p><strong>Skills that use this integration:</strong></p>
                     <ul>
-                      <li><code>linkedin-post</code> — Publish text, image, and video posts to a Company Page</li>
+                      <li><code>int-linkedin-post</code> — Publish text, image, and video posts to a Company Page</li>
                     </ul>
                     <p><strong>Agents that typically enable this integration:</strong></p>
                     <ul>
@@ -26291,14 +26500,14 @@ if (params.get("li_connected") === "true") {
                   <section id="using-the-skill">
                     <h2>Using the Skill</h2>
                     <p>
-                      Once the LinkedIn Company Page is connected (organization ID persisted), the agent's scheduled tasks use the <code>linkedin-post</code> platform skill to publish text, image, and video posts to the Company Page. To adjust the cron of the built-in <code>cron-content-scanner</code> task (Social Manager), call <code>POST /UserAgent/CustomSkillUpsert</code> with <code>enabled</code> and <code>interval</code> only — cron skill bodies are template-controlled and <code>value</code> is silently ignored for bundled crons.
+                      Once the LinkedIn Company Page is connected (organization ID persisted), the agent's scheduled tasks use the <code>int-linkedin-post</code> platform skill to publish text, image, and video posts to the Company Page. To adjust the cron of the built-in <code>cron-social-content-scanner</code> task (Social Manager), call <code>POST /UserAgent/CustomSkillUpsert</code> with <code>enabled</code> and <code>interval</code> only — cron skill bodies are template-controlled and <code>value</code> is silently ignored for bundled crons.
                     </p>
                     <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skillkey": "cron-content-scanner",
+    "skillkey": "cron-social-content-scanner",
     "enabled": true,
     "interval": "0 */4 * * *"
   }'</code></pre>
@@ -26401,7 +26610,7 @@ if (params.get("li_connected") === "true") {
                     <p>The Twitter / X integration uses X API v2 with OAuth 2.0 Authorization Code Flow + PKCE.</p>
                     <p><strong>Skills that use this integration:</strong></p>
                     <ul>
-                      <li><code>twitterx-post</code> — Publish posts, threads, and replies; read mentions</li>
+                      <li><code>int-twitterx-post</code> — Publish posts, threads, and replies; read mentions</li>
                     </ul>
                     <p><strong>Agents that typically enable this integration:</strong></p>
                     <ul>
@@ -26654,13 +26863,13 @@ if (params.get("x_connected") === "true") {
 
                   <section id="using-the-skill">
                     <h2>Using the Skill</h2>
-                    <p>Once the X account is connected, the agent's existing scheduled tasks use the <code>twitterx-post</code> platform skill to publish. To adjust the cron of the built-in <code>cron-content-scanner</code> task (Social Manager), call <code>POST /UserAgent/CustomSkillUpsert</code> with <code>enabled</code> and <code>interval</code> only — cron skill bodies are template-controlled and <code>value</code> is silently ignored for bundled crons:</p>
+                    <p>Once the X account is connected, the agent's existing scheduled tasks use the <code>int-twitterx-post</code> platform skill to publish. To adjust the cron of the built-in <code>cron-social-content-scanner</code> task (Social Manager), call <code>POST /UserAgent/CustomSkillUpsert</code> with <code>enabled</code> and <code>interval</code> only — cron skill bodies are template-controlled and <code>value</code> is silently ignored for bundled crons:</p>
                     <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skillkey": "cron-content-scanner",
+    "skillkey": "cron-social-content-scanner",
     "enabled": true,
     "interval": "0 */4 * * *"
   }'</code></pre>
@@ -26759,7 +26968,7 @@ if (params.get("x_connected") === "true") {
                     <p>The TikTok integration uses TikTok's OAuth 2.0 with the Content Posting API.</p>
                     <p><strong>Skills that use this integration:</strong></p>
                     <ul>
-                      <li><code>tiktok-post</code> — Publish videos and carousel posts</li>
+                      <li><code>int-tiktok-post</code> — Publish videos and carousel posts</li>
                     </ul>
                     <p><strong>Agents that typically enable this integration:</strong></p>
                     <ul>
@@ -27080,8 +27289,8 @@ if (params.get("x_connected") === "true") {
                     <p>The Google Ads integration uses Google OAuth 2.0 with the Google Ads API v23 REST endpoints.</p>
                     <p><strong>Skills that use this integration:</strong></p>
                     <ul>
-                      <li><code>googleads-manage</code> — Campaign / ad group / keyword management, insights</li>
-                      <li><code>ads-manager-common</code> — Shared ads helpers</li>
+                      <li><code>int-googleads-manage</code> — Campaign / ad group / keyword management, insights</li>
+                      <li><code>util-ads-manager-common</code> — Shared ads helpers</li>
                     </ul>
                     <p><strong>Agents that typically enable this integration:</strong></p>
                     <ul>
@@ -27152,7 +27361,7 @@ if (params.get("x_connected") === "true") {
                       <strong>Using this OAuth client for other Google services?</strong> One OAuth client can serve Google Ads, YouTube, Google Analytics 4, and Merchant Center — they share the <code>https://www.googleapis.com/auth/content</code> / <code>adwords</code> / <code>youtube</code> / <code>analytics.readonly</code> scope family. If you want any of those integrations too, enable the matching Google Cloud APIs in the same project:
                       <ul>
                         <li><strong>Google Ads API</strong> — for Google Ads</li>
-                        <li><strong>YouTube Data API v3</strong> + <strong>YouTube Analytics API v2</strong> — for YouTube (used by the <code>youtube-manage</code> skill, also consumed by <code>googleads-manage</code> for Video / Demand Gen campaigns)</li>
+                        <li><strong>YouTube Data API v3</strong> + <strong>YouTube Analytics API v2</strong> — for YouTube (used by the <code>int-youtube-manage</code> skill, also consumed by <code>int-googleads-manage</code> for Video / Demand Gen campaigns)</li>
                         <li><strong>Google Analytics Data API</strong> + <strong>Google Analytics Admin API</strong> — for Google Analytics 4</li>
                         <li><strong>Merchant API</strong> — for Merchant Center</li>
                       </ul>
@@ -27390,13 +27599,13 @@ if (params.get("gads_connected") === "true") {
 
                   <section id="using-the-skill">
                     <h2>Using the Skill</h2>
-                    <p>Once Google Ads is connected and <code>customerid</code> is persisted, the agent's scheduled tasks use the <code>googleads-manage</code> platform skill to pull metrics and manage campaigns. Adjust the cron of the built-in <code>cron-performance-reporter</code> task (Google Ads Manager) with <code>enabled</code> and <code>interval</code> only — the task body (<code>value</code>) is owned by the bundled integration skill and silently dropped on writes:</p>
+                    <p>Once Google Ads is connected and <code>customerid</code> is persisted, the agent's scheduled tasks use the <code>int-googleads-manage</code> platform skill to pull metrics and manage campaigns. Adjust the cron of the built-in <code>cron-googleads-performance-reporter</code> task (Google Ads Manager) with <code>enabled</code> and <code>interval</code> only — the task body (<code>value</code>) is owned by the bundled integration skill and silently dropped on writes:</p>
                     <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skillkey": "cron-performance-reporter",
+    "skillkey": "cron-googleads-performance-reporter",
     "enabled": true,
     "interval": "0 9 * * *"
   }'</code></pre>
@@ -29033,8 +29242,8 @@ if (params.get("gbp_connected") === "true") {
                     <p>The HubSpot integration uses HubSpot's OAuth 2.0.</p>
                     <p><strong>Skills that use this integration:</strong></p>
                     <ul>
-                      <li><code>hubspot-crm</code> — Contact/deal CRUD, note and task creation, sequence enrollment</li>
-                      <li><code>newsletter-compose</code> — optional; uses HubSpot as an ESP when enabled alongside</li>
+                      <li><code>int-hubspot-crm</code> — Contact/deal CRUD, note and task creation, sequence enrollment</li>
+                      <li><code>util-newsletter-compose</code> — optional; uses HubSpot as an ESP when enabled alongside</li>
                     </ul>
                     <p><strong>Agents that typically enable this integration:</strong></p>
                     <ul>
@@ -29370,8 +29579,8 @@ if (params.get("gbp_connected") === "true") {
                     <p>The Mailchimp integration is unique in supporting three authentication options: Wiro's shared OAuth app, your own OAuth app, or a direct API key bypassing OAuth entirely.</p>
                     <p><strong>Skills that use this integration:</strong></p>
                     <ul>
-                      <li><code>mailchimp-email</code> — Audience and campaign management</li>
-                      <li><code>newsletter-compose</code> — optional; uses Mailchimp as an ESP when enabled alongside. Newsletter Manager has it on; on other agents turn on <code>util-newsletter-compose</code> yourself. Mailchimp alone adds no newsletter tasks.</li>
+                      <li><code>int-mailchimp-email</code> — Audience and campaign management</li>
+                      <li><code>util-newsletter-compose</code> — optional; uses Mailchimp as an ESP when enabled alongside. Newsletter Manager has it on; on other agents turn on <code>util-newsletter-compose</code> yourself. Mailchimp alone adds no newsletter tasks.</li>
                     </ul>
                     <p><strong>Agents that typically enable this integration:</strong></p>
                     <ul>
@@ -29578,7 +29787,7 @@ if (params.get("gbp_connected") === "true") {
                     </p>
                     <div class="info-callout">
                       <p>
-                        <strong>API key-only mode caveat:</strong> <code>connected</code> is computed from <code>authmethod in {wiro, own}</code> <strong>and</strong> a non-empty <code>accesstoken</code>. If you set up Mailchimp via direct API key (no OAuth), <code>authmethod</code> and <code>accesstoken</code> stay empty and <code>OAuthStatus.connected</code> returns <code>false</code> — even though the agent runtime is fully functional (the <code>mailchimp-email</code> skill reads
+                        <strong>API key-only mode caveat:</strong> <code>connected</code> is computed from <code>authmethod in {wiro, own}</code> <strong>and</strong> a non-empty <code>accesstoken</code>. If you set up Mailchimp via direct API key (no OAuth), <code>authmethod</code> and <code>accesstoken</code> stay empty and <code>OAuthStatus.connected</code> returns <code>false</code> — even though the agent runtime is fully functional (the <code>int-mailchimp-email</code> skill reads
                         the API key directly). Don't use <code>OAuthStatus.connected</code> as the source of truth for API key setups; instead, check that <code>credentials.mailchimp.apikey</code> is non-empty in <code>POST /UserAgent/Detail</code>.
                       </p>
                     </div>
@@ -29592,13 +29801,13 @@ if (params.get("gbp_connected") === "true") {
 
                   <section id="using-the-skill">
                     <h2>Using the Skill</h2>
-                    <p>Once Mailchimp is connected (OAuth or API key), the agent's scheduled tasks use the <code>mailchimp-email</code> platform skill for audience and campaign operations. Adjust the cron of the built-in <code>cron-subscriber-scanner</code> task (Newsletter Manager) by calling <code>POST /UserAgent/CustomSkillUpsert</code> with <code>enabled</code> and <code>interval</code> only — cron skill bodies are template-controlled and <code>value</code> is silently ignored for bundled crons:</p>
+                    <p>Once Mailchimp is connected (OAuth or API key), the agent's scheduled tasks use the <code>int-mailchimp-email</code> platform skill for audience and campaign operations. Adjust the cron of the built-in <code>cron-newsletter-subscriber-scanner</code> task (Newsletter Manager) by calling <code>POST /UserAgent/CustomSkillUpsert</code> with <code>enabled</code> and <code>interval</code> only — cron skill bodies are template-controlled and <code>value</code> is silently ignored for bundled crons:</p>
                     <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skillkey": "cron-subscriber-scanner",
+    "skillkey": "cron-newsletter-subscriber-scanner",
     "enabled": true,
     "interval": "0 10 * * *"
   }'</code></pre>
@@ -29692,7 +29901,7 @@ if (params.get("gbp_connected") === "true") {
                     <p>The Google Drive integration uses a Google Cloud service account with folder access delegated from your Drive. You create the service account in your own Google Cloud project, share your Drive folders with the service account email, and the agent accesses only those shared folders.</p>
                     <p><strong>Skills that use this integration:</strong></p>
                     <ul>
-                      <li><code>google-drive</code> — Read files, write outputs, manage folders in selected Drive folders</li>
+                      <li><code>int-google-drive</code> — Read files, write outputs, manage folders in selected Drive folders</li>
                     </ul>
                     <p><strong>Agents that typically enable this integration:</strong></p>
                     <ul>
@@ -29870,17 +30079,8 @@ if (params.get("gbp_connected") === "true") {
 
                   <section id="runtime-behavior">
                     <h2>Runtime Behavior</h2>
-                    <p>Env vars exported when the <code>google-drive</code> skill is enabled:</p>
-                    <ul>
-                      <li><code>GDRIVE_FOLDERS</code> — a JSON array string of <code>[{"id": "...", "name": "..."}]</code>, e.g. <code>[{"id":"1MMZGo...","name":"Creatives"}]</code>. Empty array <code>[]</code> means no folder is configured. Inside the agent, parse with <code>jq</code> (e.g. <code>echo $GDRIVE_FOLDERS | jq -r '.[].id'</code> for IDs, or <code>jq -r '.[] | select(.name=="Creatives") | .id'</code> to resolve a folder ID by name).</li>
-                    </ul>
-                    <p>Secret file:</p>
-                    <ul>
-                      <li><code>/run/secrets/gdrive-sa.json</code> — decoded service account (file, not env)</li>
-                    </ul>
-                    <p>
-                      Auth: OAuth access token minted from the service account on-demand via the <code>gdrive-token</code> bin script → <code>Authorization: Bearer</code>. Token expires every hour; the script is called fresh before each API session.
-                    </p>
+                    <p>When the <code>int-google-drive</code> skill is enabled, the agent works only in the folders saved under <code>folders[]</code>, each with its <code>id</code> and <code>name</code>; it can address a folder by either. With no folder saved, it has no Drive folder to work in.</p>
+                    <p>Auth: the agent mints a short-lived OAuth access token from the service account you saved and sends it as <code>Authorization: Bearer</code>. Tokens expire after an hour, so a fresh one is minted before each API session.</p>
                     <p>Base URLs:</p>
                     <ul>
                       <li>Drive API: <code>https://www.googleapis.com/drive/v3/...</code></li>
@@ -29892,7 +30092,7 @@ if (params.get("gbp_connected") === "true") {
 
                   <section id="files-created-by-agent">
                     <h2>Files created by the agent</h2>
-                    <p>When the agent creates a file inside a user-shared folder, the file is owned by the service account, not the user. The user can see the file via folder permission inheritance, but may see it as "view only". To give the user write access on files the agent creates (role <code>writer</code> in the Drive API — shown as <strong>Editor</strong> in My Drive or <strong>Content manager</strong> in a Shared Drive), the skill grants permissions programmatically via <code>POST /drive/v3/files/{fileId}/permissions</code>. See the <code>google-drive</code> skill for details.</p>
+                    <p>When the agent creates a file inside a user-shared folder, the file is owned by the service account, not the user. The user can see the file via folder permission inheritance, but may see it as "view only". To give the user write access on files the agent creates (role <code>writer</code> in the Drive API — shown as <strong>Editor</strong> in My Drive or <strong>Content manager</strong> in a Shared Drive), the skill grants permissions programmatically via <code>POST /drive/v3/files/{fileId}/permissions</code>. See the <code>int-google-drive</code> skill for details.</p>
                   </section>
 
                   <section id="troubleshooting">
@@ -30306,7 +30506,7 @@ if (params.get("gbp_connected") === "true") {
                     <p>The Gmail integration uses IMAP with Basic authentication backed by a Google App Password. Agents can monitor the inbox, parse incoming messages, and trigger actions.</p>
                     <p><strong>Skills that use this integration:</strong></p>
                     <ul>
-                      <li><code>gmail-check</code> — Poll Gmail inbox on a schedule, parse messages, route to actions</li>
+                      <li><code>int-gmail-check</code> — Poll Gmail inbox on a schedule, parse messages, route to actions</li>
                     </ul>
                     <p><strong>Agents that typically enable this integration:</strong></p>
                     <ul>
@@ -30373,13 +30573,11 @@ if (params.get("gbp_connected") === "true") {
     ]
   }'</code></pre>
                     <p>
-                      Only <code>account</code> and <code>apppassword</code> are editable. <code>credentials.gmail.interval</code> (when present in some templates) is not used by the agent runtime. The actual polling cadence comes from the scheduled skill <code>cron-gmail-checker</code> under <code>customskills[]</code> (a cron wrapper that invokes the built-in <code>gmail-check</code> platform skill). To change how often the inbox is polled, update
-                      the <code>cron-gmail-checker</code> skill's <code>interval</code> via <code>POST /UserAgent/CustomSkillUpsert</code> — see <a href="/docs/agent-skills#managing-scheduled-tasks" class="docs-link">Agent Skills</a>.
+                      Only <code>account</code> and <code>apppassword</code> are editable. <code>credentials.gmail.interval</code> (when present in some templates) is not used by the agent runtime. How often the inbox is read comes from the scheduled task that uses Gmail, <code>cs-cron-blog-gmail-checker</code> on the blog presets. To change it, update that task's <code>interval</code> via <code>POST /UserAgent/CustomSkillUpsert</code> — see <a href="/docs/agent-skills#managing-scheduled-tasks" class="docs-link">Agent Skills</a>.
                     </p>
                     <div class="info-callout">
                       <p>
-                        <strong>Naming:</strong> the <strong>platform skill</strong> (the IMAP-speaking module loaded from <code>skills/gmail-check/SKILL.md</code>) is <code>gmail-check</code>. The <strong>cron wrapper</strong> (an entry in <code>customskills[]</code> that schedules inbox polling and references <code>gmail-check</code> internally) is <code>cron-gmail-checker</code> (prefixed with <code>cron-</code> to mark it as a scheduled task). When <code>skills.gmail-check</code> is
-                        disabled on the template, the cron wrapper early-returns with <code>HEARTBEAT_OK</code>.
+                        <strong>Naming:</strong> the skill is <code>int-gmail-check</code>. The scheduled task that reads the inbox on the blog presets is <code>cs-cron-blog-gmail-checker</code> (<code>cs-cron-</code> marks a scheduled task). If <code>int-gmail-check</code> is off or Gmail is not connected, the task does nothing on its runs.
                       </p>
                     </div>
                     <h3>Step 4: Start the agent</h3>
@@ -30438,19 +30636,13 @@ if (params.get("gbp_connected") === "true") {
 
                   <section id="runtime-behavior">
                     <h2>Runtime Behavior</h2>
-                    <p>The <code>gmail-check</code> skill uses IMAP:</p>
+                    <p>The <code>int-gmail-check</code> skill reads the inbox over IMAP:</p>
                     <ul>
                       <li>Host: <code>imaps://imap.gmail.com:993/INBOX</code></li>
-                      <li>Auth: <code>--user "$GMAIL_ACCOUNT:$GMAIL_APP_PASSWORD"</code> (Basic-style)</li>
-                      <li>Polls on the configured <code>interval</code>, processes new messages per agent rules</li>
+                      <li>Auth: the Gmail address and app password you saved (<code>account</code> / <code>apppassword</code>)</li>
+                      <li>Runs on the schedule of the agent's Gmail scheduled task and processes new messages per the agent's rules</li>
                     </ul>
-                    <p>
-                      Env vars inside the agent container (exported <strong>only when <code>gmail-check</code> skill is enabled</strong> and <code>account</code> is set):
-                    </p>
-                    <ul>
-                      <li><code>GMAIL_ACCOUNT</code> ← <code>credentials.gmail.account</code></li>
-                      <li><code>GMAIL_APP_PASSWORD</code> ← <code>credentials.gmail.apppassword</code></li>
-                    </ul>
+                    <p>The skill is active only when it is enabled and <code>account</code> is set.</p>
                   </section>
 
                   <section id="troubleshooting">
@@ -30688,7 +30880,7 @@ if (params.get("gbp_connected") === "true") {
                     <p>The Firebase integration uses FCM HTTP v1 with an Admin SDK service account. A single agent can manage notifications for multiple Firebase projects.</p>
                     <p><strong>Skills that use this integration:</strong></p>
                     <ul>
-                      <li><code>firebase-push</code> — Send push notifications by topic, device token, or condition</li>
+                      <li><code>int-firebase-push</code> — Send push notifications by topic, device token, or condition</li>
                     </ul>
                     <p><strong>Agents that typically enable this integration:</strong></p>
                     <ul>
@@ -30865,21 +31057,8 @@ base64 -b 0 firebase-service-account.json > firebase-sa.b64</code></pre>
 
                   <section id="runtime-behavior">
                     <h2>Runtime Behavior</h2>
-                    <p>
-                      Env vars (exported <strong>only when <code>firebase-push</code> skill is enabled</strong> and <code>accounts</code> is non-empty) per account index <code>idx</code>:
-                    </p>
-                    <ul>
-                      <li><code>FIREBASE_APP_COUNT</code> — total accounts</li>
-                      <li><code>FIREBASE_{idx}_PROJECT_ID</code> — from decoded service account JSON</li>
-                      <li><code>FIREBASE_{idx}_APP_NAME</code></li>
-                      <li><code>FIREBASE_{idx}_TOPICS</code> — JSON map of <code>{ topickey: topicdesc }</code></li>
-                      <li><code>FIREBASE_{idx}_APPS</code> — JSON array of <code>{ platform, id }</code></li>
-                    </ul>
-                    <p>Secret files:</p>
-                    <ul>
-                      <li><code>/run/secrets/firebase-sa-{idx}.json</code> — decoded service account (not exposed as env)</li>
-                    </ul>
-                    <p>Auth: FCM HTTP v1 <code>Authorization: Bearer &lt;token&gt;</code> — tokens minted from the service account.</p>
+                    <p>The <code>int-firebase-push</code> skill is active only when it is enabled and <code>accounts</code> is non-empty. For each saved account it uses the project ID from that account's service account, plus the app name, topics (<code>{ topickey: topicdesc }</code>) and apps (<code>{ platform, id }</code>) you saved.</p>
+                    <p>Auth: FCM HTTP v1 <code>Authorization: Bearer &lt;token&gt;</code> — tokens minted from the account's service account.</p>
                     <p>Base URL: <code>https://fcm.googleapis.com/v1/projects/&lt;PROJECT_ID&gt;/messages:send</code></p>
                   </section>
 
@@ -30888,7 +31067,7 @@ base64 -b 0 firebase-service-account.json > firebase-sa.b64</code></pre>
                     <ul>
                       <li><strong>"invalid JWT signature":</strong> Service account JSON corrupt or truncated. Re-export from Firebase Console and re-encode.</li>
                       <li><strong>No devices receive notifications:</strong> Verify topics are subscribed on the client side and the topic name matches exactly. Check <code>FIREBASE_{idx}_TOPICS</code> logs.</li>
-                      <li><strong>Rate limits:</strong> FCM supports up to <strong>600,000 messages/minute per project</strong> for HTTP v1 API (see the <code>firebase-push</code> skill for topic/condition specifics). Higher volumes require a support request to Google Cloud.</li>
+                      <li><strong>Rate limits:</strong> FCM supports up to <strong>600,000 messages/minute per project</strong> for HTTP v1 API (see the <code>int-firebase-push</code> skill for topic/condition specifics). Higher volumes require a support request to Google Cloud.</li>
                     </ul>
                   </section>
 
@@ -30916,7 +31095,7 @@ base64 -b 0 firebase-service-account.json > firebase-sa.b64</code></pre>
                     <p>The WordPress integration uses the WordPress REST API with Basic Authentication backed by a WordPress Application Password.</p>
                     <p><strong>Skills that use this integration:</strong></p>
                     <ul>
-                      <li><code>wordpress-post</code> — Publish blog posts, pages, categories, tags; upload media</li>
+                      <li><code>int-wordpress-post</code> — Publish blog posts, pages, categories, tags; upload media</li>
                     </ul>
                     <p><strong>Agents that typically enable this integration:</strong></p>
                     <ul>
@@ -31040,16 +31219,9 @@ base64 -b 0 firebase-service-account.json > firebase-sa.b64</code></pre>
 
                   <section id="runtime-behavior">
                     <h2>Runtime Behavior</h2>
-                    <p>
-                      Env vars inside the agent container (exported <strong>only when <code>wordpress-post</code> skill is enabled</strong> and <code>url</code> is set):
-                    </p>
-                    <ul>
-                      <li><code>WORDPRESS_URL</code> ← <code>credentials.wordpress.url</code></li>
-                      <li><code>WORDPRESS_USER</code> ← <code>credentials.wordpress.user</code></li>
-                      <li><code>WORDPRESS_APP_PASSWORD</code> ← <code>credentials.wordpress.apppassword</code></li>
-                    </ul>
-                    <p>Auth: <code>--user "$WORDPRESS_USER:$WORDPRESS_APP_PASSWORD"</code> (Basic via Application Password).</p>
-                    <p>Base URL: <code>$WORDPRESS_URL/wp-json/wp/v2/...</code></p>
+                    <p>The <code>int-wordpress-post</code> skill is active only when it is enabled and <code>url</code> is set.</p>
+                    <p>Auth: Basic auth with your WordPress <code>user</code> and its Application Password (<code>apppassword</code>).<br />
+Base URL: <code>&lt;your site url&gt;/wp-json/wp/v2/...</code></p>
                   </section>
 
                   <section id="troubleshooting">
@@ -31088,9 +31260,9 @@ base64 -b 0 firebase-service-account.json > firebase-sa.b64</code></pre>
                     <p>The App Store Connect integration uses ES256-signed JWT authentication with App Store Connect API keys.</p>
                     <p><strong>Skills that use this integration:</strong></p>
                     <ul>
-                      <li><code>appstore-reviews</code> — Monitor and reply to App Store reviews</li>
-                      <li><code>appstore-metadata</code> — Read/update app metadata, localizations, screenshots</li>
-                      <li><code>appstore-events</code> — Create and manage in-app events</li>
+                      <li><code>int-appstore-reviews</code> — Monitor and reply to App Store reviews</li>
+                      <li><code>int-appstore-metadata</code> — Read/update app metadata, localizations, screenshots</li>
+                      <li><code>int-appstore-events</code> — Create and manage in-app events</li>
                     </ul>
                     <p><strong>Agents that typically enable this integration:</strong></p>
                     <ul>
@@ -31278,8 +31450,8 @@ base64 -b 0 AuthKey_ABC1234DEF.p8 > appstore-key.b64</code></pre>
                     <p>The Google Play integration uses a Google Cloud service account with API access delegated from a Play Console project.</p>
                     <p><strong>Skills that use this integration:</strong></p>
                     <ul>
-                      <li><code>googleplay-reviews</code> — Monitor and reply to Google Play reviews</li>
-                      <li><code>googleplay-metadata</code> — Read/update app listings and metadata</li>
+                      <li><code>int-googleplay-reviews</code> — Monitor and reply to Google Play reviews</li>
+                      <li><code>int-googleplay-metadata</code> — Read/update app listings and metadata</li>
                     </ul>
                     <p><strong>Agents that typically enable this integration:</strong></p>
                     <ul>
@@ -31455,7 +31627,7 @@ base64 -b 0 play-service-account.json &gt; play-sa.b64</code></pre>
                     <p>The Apollo integration uses Apollo's <code>x-api-key</code> header authentication.</p>
                     <p><strong>Skills that use this integration:</strong></p>
                     <ul>
-                      <li><code>apollo-sales</code> — Lead search, enrichment, sequence enrollment, reply handling</li>
+                      <li><code>int-apollo-sales</code> — Lead search, enrichment, sequence enrollment, reply handling</li>
                     </ul>
                     <p><strong>Agents that typically enable this integration:</strong></p>
                     <ul>
@@ -31562,62 +31734,23 @@ base64 -b 0 play-service-account.json &gt; play-sa.b64</code></pre>
 
                   <section id="runtime-behavior">
                     <h2>Runtime Behavior</h2>
-                    <p>
-                      Env vars (exported <strong>only when <code>apollo-sales</code> skill is enabled</strong> and <code>apikey</code> is set):
-                    </p>
-                    <ul>
-                      <li><code>APOLLO_API_KEY</code> ← <code>credentials.apollo.apikey</code></li>
-                      <li><code>APOLLO_MASTER_KEY</code> ← <code>credentials.apollo.masterapikey</code> (only if set)</li>
-                    </ul>
-                    <p><strong>Endpoint-based key selection</strong> — the <code>apollo-sales</code> skill picks the header per endpoint:</p>
+                    <p>The <code>int-apollo-sales</code> skill is active only when it is enabled and <code>apikey</code> is set; <code>masterapikey</code> is optional.</p>
+                    <p><strong>Endpoint-based key selection</strong> — the <code>int-apollo-sales</code> skill picks the key per endpoint and sends it in the <code>x-api-key</code> header:</p>
                     <div class="docs-comparison-table">
                       <table>
-                        <thead>
-                          <tr>
-                            <th>Endpoint group</th>
-                            <th>Header</th>
-                            <th>Env var</th>
-                          </tr>
-                        </thead>
+                        <thead><tr><th>Endpoint group</th><th>Key used</th><th>Requirement</th></tr></thead>
                         <tbody>
-                          <tr>
-                            <td>People Search (<code>POST /mixed_people/api_search</code>)</td>
-                            <td><code>x-api-key: $APOLLO_MASTER_KEY</code></td>
-                            <td>
-                              <strong>Requires <code>masterapikey</code></strong>
-                            </td>
-                          </tr>
-                          <tr>
-                            <td>Sequence management (create sequence, add contacts, start/pause)</td>
-                            <td><code>x-api-key: $APOLLO_MASTER_KEY</code></td>
-                            <td>
-                              <strong>Requires <code>masterapikey</code></strong>
-                            </td>
-                          </tr>
-                          <tr>
-                            <td>People enrichment (<code>POST /people/match</code>)</td>
-                            <td><code>x-api-key: $APOLLO_API_KEY</code></td>
-                            <td><code>apikey</code> sufficient</td>
-                          </tr>
-                          <tr>
-                            <td>Organization lookup</td>
-                            <td><code>x-api-key: $APOLLO_API_KEY</code></td>
-                            <td><code>apikey</code> sufficient</td>
-                          </tr>
-                          <tr>
-                            <td>Email verification</td>
-                            <td><code>x-api-key: $APOLLO_API_KEY</code></td>
-                            <td><code>apikey</code> sufficient</td>
-                          </tr>
+                          <tr><td>People Search (<code>POST /mixed_people/api_search</code>)</td><td><code>masterapikey</code></td><td><strong>Requires <code>masterapikey</code></strong></td></tr>
+                          <tr><td>Sequence management (create sequence, add contacts, start/pause)</td><td><code>masterapikey</code></td><td><strong>Requires <code>masterapikey</code></strong></td></tr>
+                          <tr><td>People enrichment (<code>POST /people/match</code>)</td><td><code>apikey</code></td><td><code>apikey</code> sufficient</td></tr>
+                          <tr><td>Organization lookup</td><td><code>apikey</code></td><td><code>apikey</code> sufficient</td></tr>
+                          <tr><td>Email verification</td><td><code>apikey</code></td><td><code>apikey</code> sufficient</td></tr>
                         </tbody>
                       </table>
                     </div>
                     <p>Base URL: <code>https://api.apollo.io/api/v1</code>.</p>
                     <p>Rate limits: Apollo enforces strict per-key limits; 429 responses require 60s backoff.</p>
-                    <p>
-                      <strong>If <code>masterapikey</code> is missing:</strong> People search and sequence endpoints return <strong>401 Unauthorized</strong> with <code>"error": "Invalid Api Key"</code>. This is expected — even though <code>apikey</code> works for other endpoints, Apollo's master-only endpoints reject the regular key. Add <code>masterapikey</code> via <code>POST /UserAgent/CredentialUpsert</code> and the same agent can immediately use master-only endpoints (no restart needed if the cron
-                      picks up env changes on next run).
-                    </p>
+                    <p><strong>If <code>masterapikey</code> is missing:<strong> People search and sequence endpoints return </strong>401 Unauthorized</strong> with <code>"error": "Invalid Api Key"</code>. This is expected — even though <code>apikey</code> works for other endpoints, Apollo's master-only endpoints reject the regular key. Add <code>masterapikey</code> via <code>POST /UserAgent/CredentialUpsert</code>; saving restarts a running agent, and it can use the master-only endpoints from then on.</p>
                   </section>
 
                   <section id="troubleshooting">
@@ -31656,7 +31789,7 @@ base64 -b 0 play-service-account.json &gt; play-sa.b64</code></pre>
                     <p>The Lemlist integration uses HTTP Basic Authentication with an empty username and the API key as the password.</p>
                     <p><strong>Skills that use this integration:</strong></p>
                     <ul>
-                      <li><code>lemlist-outreach</code> — Campaign creation, lead uploads, pause/resume</li>
+                      <li><code>int-lemlist-outreach</code> — Campaign creation, lead uploads, pause/resume</li>
                     </ul>
                     <p><strong>Agents that typically enable this integration:</strong></p>
                     <ul>
@@ -31753,16 +31886,9 @@ base64 -b 0 play-service-account.json &gt; play-sa.b64</code></pre>
 
                   <section id="runtime-behavior">
                     <h2>Runtime Behavior</h2>
-                    <p>
-                      Env vars (exported <strong>only when <code>lemlist-outreach</code> skill is enabled</strong> and <code>apikey</code> is set):
-                    </p>
-                    <ul>
-                      <li><code>LEMLIST_API_KEY</code> ← <code>credentials.lemlist.apikey</code></li>
-                    </ul>
-                    <p>
-                      Auth: <strong>Basic auth with empty username</strong> — <code>--user ":$LEMLIST_API_KEY"</code>. (Lemlist treats the API key as the password, with no username.)<br />
-                      Base URL: <code>https://api.lemlist.com/api</code>.
-                    </p>
+                    <p>The <code>int-lemlist-outreach</code> skill is active only when it is enabled and <code>apikey</code> is set.</p>
+                    <p>Auth: <strong>Basic auth with an empty username</strong> and the API key as the password, as Lemlist documents.<br />
+Base URL: <code>https://api.lemlist.com/api</code>.</p>
                     <p>Rate limits: ~20 requests per 2 seconds; 429 requires backoff.</p>
                   </section>
 
@@ -31799,10 +31925,10 @@ base64 -b 0 play-service-account.json &gt; play-sa.b64</code></pre>
                     <p>The Brevo integration uses Brevo API v3 with an <code>api-key</code> header (not Bearer).</p>
                     <p><strong>Skills that use this integration:</strong></p>
                     <ul>
-                      <li><code>brevo-email</code> — Campaign, template, and contact management via Brevo API v3</li>
-                      <li><code>newsletter-compose</code> — optional; uses Brevo as the ESP when enabled alongside. Newsletter Manager has it on; on other agents turn on <code>util-newsletter-compose</code> yourself. Brevo alone adds no newsletter tasks.</li>
+                      <li><code>int-brevo-email</code> — Campaign, template, and contact management via Brevo API v3</li>
+                      <li><code>util-newsletter-compose</code> — optional; uses Brevo as the ESP when enabled alongside. Newsletter Manager has it on; on other agents turn on <code>util-newsletter-compose</code> yourself. Brevo alone adds no newsletter tasks.</li>
                     </ul>
-                    <p><strong>Other:</strong> Custom agents can call the Brevo API via whatever skill invokes <code>BREVO_API_KEY</code>.</p>
+                    <p><strong>Other:</strong> Custom agents can use Brevo from their own skills once the integration is connected.</p>
                     <p><strong>Agents that typically enable this integration:</strong></p>
                     <ul>
                       <li>Newsletter Manager</li>
@@ -31899,16 +32025,9 @@ base64 -b 0 play-service-account.json &gt; play-sa.b64</code></pre>
 
                   <section id="runtime-behavior">
                     <h2>Runtime Behavior</h2>
-                    <p>
-                      Env vars (exported <strong>only when <code>brevo-email</code> skill is enabled</strong> and <code>apikey</code> is set):
-                    </p>
-                    <ul>
-                      <li><code>BREVO_API_KEY</code> ← <code>credentials.brevo.apikey</code></li>
-                    </ul>
-                    <p>
-                      Auth: <strong>Header <code>api-key: $BREVO_API_KEY</code></strong> — not Bearer. This is Brevo's documented auth pattern.<br />
-                      Base URL: <code>https://api.brevo.com/v3/</code>.
-                    </p>
+                    <p>The <code>int-brevo-email</code> skill is active only when it is enabled and <code>apikey</code> is set.</p>
+                    <p>Auth: <strong>Header <code>api-key: &lt;your API key&gt;</code></strong> — not Bearer. This is Brevo's documented auth pattern.<br />
+Base URL: <code>https://api.brevo.com/v3/</code>.</p>
                     <p>Rate limits: ~10 req/s on free plan; higher on paid tiers.</p>
                   </section>
 
@@ -31945,10 +32064,10 @@ base64 -b 0 play-service-account.json &gt; play-sa.b64</code></pre>
                     <p>The SendGrid integration uses standard Bearer authentication with a SendGrid API key.</p>
                     <p><strong>Skills that use this integration:</strong></p>
                     <ul>
-                      <li><code>sendgrid-email</code> — Marketing and transactional email via SendGrid v3 API</li>
-                      <li><code>newsletter-compose</code> — optional; uses SendGrid as the ESP when enabled alongside. Newsletter Manager has it on; on other agents turn on <code>util-newsletter-compose</code> yourself. SendGrid alone adds no newsletter tasks.</li>
+                      <li><code>int-sendgrid-email</code> — Marketing and transactional email via SendGrid v3 API</li>
+                      <li><code>util-newsletter-compose</code> — optional; uses SendGrid as the ESP when enabled alongside. Newsletter Manager has it on; on other agents turn on <code>util-newsletter-compose</code> yourself. SendGrid alone adds no newsletter tasks.</li>
                     </ul>
-                    <p><strong>Other:</strong> Custom agents can call the SendGrid API via whatever skill invokes <code>SENDGRID_API_KEY</code>.</p>
+                    <p><strong>Other:</strong> Custom agents can use SendGrid from their own skills once the integration is connected.</p>
                     <p><strong>Agents that typically enable this integration:</strong></p>
                     <ul>
                       <li>Newsletter Manager</li>
@@ -32052,16 +32171,9 @@ base64 -b 0 play-service-account.json &gt; play-sa.b64</code></pre>
 
                   <section id="runtime-behavior">
                     <h2>Runtime Behavior</h2>
-                    <p>
-                      Env vars (exported <strong>only when <code>sendgrid-email</code> skill is enabled</strong> and <code>apikey</code> is set):
-                    </p>
-                    <ul>
-                      <li><code>SENDGRID_API_KEY</code> ← <code>credentials.sendgrid.apikey</code></li>
-                    </ul>
-                    <p>
-                      Auth: <code>Authorization: Bearer $SENDGRID_API_KEY</code>.<br />
-                      Base URL: <code>https://api.sendgrid.com/v3</code>.
-                    </p>
+                    <p>The <code>int-sendgrid-email</code> skill is active only when it is enabled and <code>apikey</code> is set.</p>
+                    <p>Auth: <code>Authorization: Bearer &lt;your API key&gt;</code>.<br />
+Base URL: <code>https://api.sendgrid.com/v3</code>.</p>
                     <p>Rate limits: 600 req/min on most endpoints; higher on marketing endpoints.</p>
                   </section>
 

@@ -6449,7 +6449,7 @@ Retrieves full details for a single deployed agent instance, including subscript
       ],
       "scheduledskills": [
         {
-          "key": "cs-cron-content-scanner",
+          "key": "cs-cron-social-content-scanner",
           "description": "Polls the content sources every 4 hours and queues fresh ideas for the post generator.",
           "value": "Scan the configured RSS / sitemap sources, dedupe against last 14 days, and queue up to 3 fresh items into the post pipeline.",
           "enabled": true,
@@ -7081,7 +7081,7 @@ The endpoint auto-normalises the skillkey to its canonical form. Bare slugs beco
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Your UserAgent instance guid |
-| `skillkey` | string | Yes | The skill key. Strategies use bare names (e.g. `"content-tone"` → stored as `cs-content-tone`). Crons use a `cron-` prefix (e.g. `"cron-content-scanner"` → stored as `cs-cron-content-scanner`). |
+| `skillkey` | string | Yes | The skill key. Strategies use bare names (e.g. `"content-tone"` → stored as `cs-content-tone`). Crons use a `cron-` prefix (e.g. `"cron-social-content-scanner"` → stored as `cs-cron-social-content-scanner`). |
 | `value` | string | No | Strategy body / cron prompt text. Editable for preset strategies and user-created entries; bundled crons silently drop `value` writes. |
 | `interval` | string | No | Cron expression (e.g. `"0 */4 * * *"`). Only persisted on `cs-cron-*` rows. |
 | `enabled` | boolean | No | Turn the skill on or off. **Writable for both strategies (`cs-*`) and crons (`cs-cron-*`)** — a disabled strategy is suppressed end-to-end (the IDE still shows it, but the agent never loads it). Defaults to `true` on insert. |
@@ -7767,7 +7767,7 @@ Calls are rate-limited via a 30-second server-side cache keyed on `(useragentgui
     {
       "ts": "2026-05-03T13:30:00.000Z",
       "kind": "cron_finished",
-      "title": "Cron ran: Scheduled Skill (cs-cron-content-scanner)",
+      "title": "Cron ran: Scheduled Skill (cs-cron-social-content-scanner)",
       "summary": { "jobId": "6b1d9e2f-3a4c-4e5b-8f7a-1c2d3e4f5a6b", "status": "ok" },
       "durationMs": 1860,
       "ok": true,
@@ -13850,7 +13850,7 @@ Once you've deployed a useragent, its current custom skills live under `customsk
   ],
   "scheduledskills": [
     {
-      "key": "cs-cron-content-scanner",
+      "key": "cs-cron-social-content-scanner",
       "description": "Polls the content sources every 4 hours and queues fresh ideas for the post generator.",
       "value": "Scan the configured RSS / sitemap sources, dedupe against last 14 days, and queue up to 3 fresh items into the post pipeline.",
       "enabled": true,
@@ -13938,7 +13938,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
 
 Scheduled tasks are cron skills — bundled ones (`_source: "skill-bundle"`) ship with integration skills and run automatically when the integration is enabled. User-created crons (`_source: "user-created"`) are added at any time.
 
-> **For bundled crons, only `enabled` and `interval` are writable.** The task body (`value`) is owned by the integration skill and re-materialised on every container restart. To change **what** a bundled scheduled task does, edit the paired preference skill (e.g. `content-tone` is read by `cron-content-scanner` at runtime). For user-created crons, all three (`value`, `interval`, `enabled`) are writable.
+> **For bundled crons, only `enabled` and `interval` are writable.** The task body (`value`) is owned by the integration skill and re-materialised on every container restart. To change **what** a bundled scheduled task does, edit the paired preference skill (e.g. `content-tone` is read by `cron-social-content-scanner` at runtime). For user-created crons, all three (`value`, `interval`, `enabled`) are writable.
 
 ### Example: Change a bundled cron's frequency
 
@@ -13962,7 +13962,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skillkey": "cron-content-scanner",
+    "skillkey": "cron-social-content-scanner",
     "enabled": false
   }'
 ```
@@ -14339,40 +14339,55 @@ All three requests succeed independently. The agent restarts once — the server
 
 | Agent | Skill Key | Cron | What It Does |
 |-------|-----------|------|--------------|
-| Social Manager | `cron-content-scanner` | `0 */4 * * *` | Content discovery + draft generation (reads `content-tone`) |
-| Social Manager | `cron-gmail-checker` | `*/30 * * * *` | Inbox monitoring for incoming requests (disabled by default) |
-| Social Manager | `cron-drive-scanner` | `0 10 * * *` | Google Drive asset scanning (disabled by default) |
-| Blog Content Editor | `cron-blog-scanner` | `0 9 * * *` | Topic discovery + article drafting (reads `content-strategy`) |
-| Blog Content Editor | `cron-gmail-checker` | `*/30 * * * *` | Inbox monitoring for topic requests |
-| App Review Support | `cron-review-scanner` | `0 */2 * * *` | Store scanning for new reviews (reads `review-preferences`) |
-| App Event Manager | `cron-app-event-scanner` | `0 9 * * 1` | Holiday scanning + event suggestions (reads `event-preferences`) |
-| Push Notification Manager | `cron-push-scanner` | `0 9 * * *` | Notification content preparation (reads `push-preferences`) |
-| Push Notification Manager | `cron-push-dispatcher` | `0 * * * *` | Dispatching queued notifications |
-| Newsletter Manager | `cron-newsletter-sender` | `0 9 * * 1` | Newsletter drafting and sending (reads `newsletter-strategy`) |
-| Newsletter Manager | `cron-subscriber-scanner` | `0 10 * * *` | Subscriber list health checks |
-| Lead Generation Manager | `cron-prospect-scanner` | `0 10 * * 1` | Prospect discovery and scoring (reads `lead-strategy`) |
-| Lead Generation Manager | `cron-outreach-reporter` | `0 9 * * *` | Outreach performance reporting |
-| Lead Generation Manager | `cron-reply-handler` | `0 */4 * * *` | Reply analysis |
-| Google Ads Manager | `cron-performance-reporter` | `0 9 * * *` | Performance reporting (reads `ad-strategy`) |
-| Google Ads Manager | `cron-competitor-scanner` | `0 10 * * 1` | Competitor analysis |
-| Google Ads Manager | `cron-holiday-ad-planner` | `0 10 * * 3` | Holiday campaign planning |
-| Google Ads Manager | `cron-drive-scanner` | `0 10 * * *` | Google Drive creative asset scanning (disabled by default) |
-| Meta Ads Manager | `cron-performance-reporter` | `0 9 * * *` | Performance reporting (reads `ad-strategy`) |
-| Meta Ads Manager | `cron-audience-scanner` | `0 10 * * 1` | Audience analysis |
-| Meta Ads Manager | `cron-holiday-ad-planner` | `0 10 * * 3` | Holiday campaign planning |
-| Meta Ads Manager | `cron-drive-scanner` | `0 10 * * *` | Google Drive creative asset scanning (disabled by default) |
-| TikTok Ads Manager | `cron-tiktokads-performance-reporter` | `0 9 * * *` | Performance reporting per advertiser, plus the 30-day reconnect reminder (reads `ad-strategy` and `tiktok-ads-strategy`) |
-| TikTok Ads Manager | `cron-tiktokads-audience-scanner` | `0 10 * * 1` | Audience and account health analysis |
-| TikTok Ads Manager | `cron-tiktokads-holiday-planner` | `0 10 * * 3` | Holiday campaign planning |
-| TikTok Ads Manager | `cron-tiktokads-drive-scanner` | `0 10 * * *` | Google Drive creative asset scanning (runs daily; does nothing until Google Drive is connected) |
+| Social Manager | `cron-social-content-scanner` | `0 */4 * * *` | Content discovery and draft posts with rotating strategies (reads `content-tone`; disabled by default) |
+| Social Manager | `cron-social-drive-scanner` | `0 10 * * *` | Scans Google Drive for new post assets and prepares posts (disabled by default) |
+| Blog Content Editor | `cron-blog-scanner` | `0 9 * * *` | Topic discovery and article drafting (reads `content-strategy`) |
+| Blog Content Editor | `cron-blog-gmail-checker` | `*/30 * * * *` | Checks the inbox for topic requests and writing instructions (disabled by default) |
+| App Review Support | `cron-review-scanner` | `0 */2 * * *` | Scans App Store and Google Play for new reviews and prepares replies (reads `review-preferences`; disabled by default) |
+| App Event Manager | `cron-app-event-scanner` | `0 9 * * 1` | Scans global holidays and suggests App Store in-app events (reads `event-preferences`; disabled by default) |
+| Push Notification Manager | `cron-push-scanner` | `0 9 * * *` | Scans holidays and prepares push notification suggestions (reads `push-preferences`) |
+| Push Notification Manager | `cron-push-dispatcher` | `0 * * * *` | Sends queued push notifications on schedule |
+| Newsletter Manager | `cron-newsletter-sender` | `0 9 * * 1` | Newsletter drafting and sending (reads `newsletter-strategy`; disabled by default) |
+| Newsletter Manager | `cron-newsletter-subscriber-scanner` | `0 10 * * *` | Daily subscriber list health check and bounce monitoring (disabled by default) |
+| Lead Generation Manager | `cron-lead-prospect-scanner` | `0 10 * * 1` | Weekly prospect search, enrichment and scoring (reads `lead-strategy`; disabled by default) |
+| Lead Generation Manager | `cron-lead-outreach-reporter` | `0 9 * * *` | Daily outreach performance report (disabled by default) |
+| Lead Generation Manager | `cron-lead-reply-handler` | `0 */4 * * *` | Checks new replies, analyzes sentiment and proposes responses (disabled by default) |
+| Google Ads Manager | `cron-googleads-performance-reporter` | `0 9 * * *` | Daily performance report with recommendations (reads `ad-strategy`) |
+| Google Ads Manager | `cron-googleads-recommendations-fetcher` | `0 8 * * *` | Daily Google Ads recommendations: safe items become low-risk suggestions, risky ones wait for your approval |
+| Google Ads Manager | `cron-googleads-competitor-scanner` | `0 10 * * 1` | Weekly competitor analysis, keyword opportunities and account health audit |
+| Google Ads Manager | `cron-googleads-holiday-planner` | `0 10 * * 3` | Upcoming holidays and seasonal campaign suggestions |
+| Google Ads Manager | `cron-googleads-audience-refresher` | `0 7 * * *` | Daily Customer Match refresh from a connected CRM (HubSpot, Apollo, Lemlist) or a Google Drive CSV (disabled by default) |
+| Google Ads Manager | `cron-googleads-drive-scanner` | `0 10 * * *` | Scans Google Drive for new creative folders and proposes campaigns (disabled by default) |
+| Google Ads Manager | `cron-merchant-center-scanner` | `30 8 * * *` | Daily Merchant Center product feed health check (runs only when Merchant Center is connected; disabled by default) |
+| Google Ads Manager | `cron-ga4-attribution-auditor` | `0 11 * * 1` | Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected; disabled by default) |
+| Google Ads Manager | `cron-adjust-creative-roas-reporter` | `0 10 * * *` | Daily Adjust creative-level ROAS report with scale/pause recommendations (disabled by default) |
+| Google Ads Manager | `cron-roasit-creative-roas-reporter` | `30 10 * * *` | Daily Roasit creative-level ROAS report with scale/pause recommendations (disabled by default) |
+| Google Ads Manager | `cron-ads-recommendation-cleanup` | `0 0 * * *` | Nightly cleanup of expired recommendations |
+| Meta Ads Manager | `cron-metaads-performance-reporter` | `0 9 * * *` | Daily performance report with creative health, audience analysis and recommendations (reads `ad-strategy`) |
+| Meta Ads Manager | `cron-metaads-audience-scanner` | `0 10 * * 1` | Weekly audience, creative health and account health audit |
+| Meta Ads Manager | `cron-metaads-holiday-planner` | `0 10 * * 3` | Upcoming holidays and seasonal campaign suggestions |
+| Meta Ads Manager | `cron-metaads-drive-scanner` | `0 10 * * *` | Scans Google Drive for new creative folders and proposes campaigns |
+| Meta Ads Manager | `cron-ga4-attribution-auditor` | `0 11 * * 1` | Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected; disabled by default) |
+| Meta Ads Manager | `cron-adjust-creative-roas-reporter` | `0 10 * * *` | Daily Adjust creative-level ROAS report with scale/pause recommendations (disabled by default) |
+| Meta Ads Manager | `cron-roasit-creative-roas-reporter` | `30 10 * * *` | Daily Roasit creative-level ROAS report with scale/pause recommendations (disabled by default) |
+| Meta Ads Manager | `cron-ads-recommendation-cleanup` | `0 0 * * *` | Nightly cleanup of expired recommendations |
+| TikTok Ads Manager | `cron-tiktokads-performance-reporter` | `0 9 * * *` | Performance reporting per advertiser, plus the 30-day reconnect reminder (reads `ad-strategy`) |
+| TikTok Ads Manager | `cron-tiktokads-audience-scanner` | `0 10 * * 1` | Weekly audience, creative health and account health audit |
+| TikTok Ads Manager | `cron-tiktokads-holiday-planner` | `0 10 * * 3` | Upcoming holidays and seasonal campaign suggestions |
+| TikTok Ads Manager | `cron-tiktokads-drive-scanner` | `0 10 * * *` | Scans Google Drive for new creative folders and proposes TikTok Ads campaigns (does nothing until Google Drive is connected) |
+| TikTok Ads Manager | `cron-ga4-attribution-auditor` | `0 11 * * 1` | Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected; disabled by default) |
+| TikTok Ads Manager | `cron-adjust-creative-roas-reporter` | `0 10 * * *` | Daily Adjust creative-level ROAS report with scale/pause recommendations (disabled by default) |
+| TikTok Ads Manager | `cron-roasit-creative-roas-reporter` | `30 10 * * *` | Daily Roasit creative-level ROAS report with scale/pause recommendations (disabled by default) |
+| TikTok Ads Manager | `cron-ads-recommendation-cleanup` | `0 0 * * *` | Nightly cleanup of expired recommendations |
+| Google Review Manager | `cron-google-review-scanner` | `0 */2 * * *` | Scans Google Business Profile locations for new reviews and prepares replies |
 
 ### How Preference and Scheduled Skills Work Together
 
 Each scheduled cron skill reads its paired preference skill at runtime. The mechanism:
 
 1. `POST /UserAgent/CustomSkillUpsert` writes your preference `value` for key `content-tone` (stored as `cs-content-tone`).
-2. When the container starts, each `customskills` / `scheduledskills` row is materialized as a local skill at `skills/<key>/SKILL.md` inside the agent workspace. The `cs-` prefix on `key` IS the runtime path — a preference skill with key `cs-content-tone` becomes `skills/cs-content-tone/`, and a cron skill with key `cs-cron-content-scanner` becomes `skills/cs-cron-content-scanner/`.
-3. The scheduled cron skill's `value` (shipped in the integration skill, not user-editable) references its paired preference via the `cs-<preference-key>` path, for example:
+2. When the agent starts, each `customskills` / `scheduledskills` row becomes a skill named by its key — a preference skill with key `cs-content-tone` becomes the skill `cs-content-tone`, and a cron skill with key `cs-cron-social-content-scanner` becomes `cs-cron-social-content-scanner`.
+3. The scheduled cron skill's `value` (shipped in the integration skill, not user-editable) references its paired preference by its skill name, `cs-<preference-key>`, for example:
    ```
    0. Read the cs-content-tone skill first — follow ALL its rules.
    1. ...
@@ -14787,7 +14802,7 @@ console.log('Now in period:', summary.creditperiod);
 
 ### Reconcile a Pro tier upgrade
 
-When the user upgrades Starter → Pro mid-period, `UpgradeTier` writes one `grant` row with `action: "upgrade"` and `metadata: { tier, proratedCharge, ... }`. Use this to render an upgrade history in your UI.
+When the user upgrades Starter → Pro mid-period, `UpgradeTier` writes one `grant` row with `action: "tier-change"`, the monthly-credit difference as `amount`, a description like `"Tier starter → pro"` and `metadata: { fromTier, toTier, previousPriceUsd, newPriceUsd, proratedCharge }`. Use it to render an upgrade history in your UI.
 
 ## Errors
 
@@ -15103,11 +15118,11 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Logs" \
 }
 ```
 
-> **About the `user` field.** Every event is decorated with the resolved actor: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. It is `null` when:
+> **About the `user` field.** Every event is decorated with the resolved actor: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`.
 >
-> - The event was triggered by **automation** — `userUuid: "system"` for cron ticks, scheduled-skill runs, the token usage of scheduled turns, agent-initiated tool calls, and similar non-interactive writes (the system rows above).
-> - The actor's user record was deleted or the lookup misses for any reason.
->
+> - An event with a user's `userUuid` carries that user's profile, or `null` when the user record was deleted.
+> - An event triggered by **automation** has `userUuid: "system"` and `user: null` — cron runs, the token usage of scheduled turns, and similar non-interactive writes (the system rows above).
+> - An event without a `userUuid` (an incoming channel message, or a row older than user attribution) carries the agent owner's profile, so the row never shows an empty placeholder.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -15300,9 +15315,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/LogsDelete" \
 | `date is required` | `LogsFile` / `LogsDelete` without `date` |
 | `useragent-access-denied` | Caller is neither the owner nor on the agent's team |
 | `useragent-team-admin-required` | Caller is a member of the agent's team but not a team admin (code `97`) |
-| `Agent is not assigned to a worker. It may not be running.` | The useragent isn't assigned to a worker (it's never been started, or has been re-allocated) |
-| `Worker not found` | The agent's worker is no longer available — internal inconsistency |
-| `Failed to fetch activity from worker` | The worker side rejected the request (worker offline, network blip) — retry |
+| `Agent is not assigned to a worker. It may not be running.` | The agent isn't running on a host yet (never started, or being moved) — start it and retry |
+| `Worker not found` | The agent's host is not available right now — retry later |
+| `Failed to fetch activity from worker` | The agent's host did not answer (offline, network blip) — retry |
 | `Failed to fetch activity dates from worker` / `Failed to delete activity file from worker` / `Failed to fetch activity file from worker` | Same as above for the matching endpoint |
 
 ## Retention & Rotation
@@ -15632,12 +15647,12 @@ Connect your agent to Meta's advertising platform to manage campaigns, ad sets, 
 
 ## Overview
 
-The Meta Ads integration powers the `metaads-manage` skill — creating and managing campaigns, pulling insights, managing creatives, and analyzing ad account data through direct Meta Graph / Marketing API v26 calls.
+The Meta Ads integration powers the `int-metaads-manage` skill — creating and managing campaigns, pulling insights, managing creatives, and analyzing ad account data through direct Meta Graph / Marketing API v26 calls.
 
 **Skills that use this integration:**
 
-- `metaads-manage` — Campaign / ad set / creative CRUD, insights reporting, direct Graph API v26 operations
-- `ads-manager-common` — Shared ads helpers (works alongside `metaads-manage` and `googleads-manage`)
+- `int-metaads-manage` — Campaign / ad set / creative CRUD, insights reporting, direct Graph API v26 operations
+- `util-ads-manager-common` — Shared ads helpers (works alongside `int-metaads-manage` and `int-googleads-manage`)
 
 **Agents that typically enable this integration:**
 
@@ -16213,7 +16228,7 @@ agent model.
 
 ## Using the Skill
 
-Enable `int-metaads-manage` on the agent via `POST /UserAgent/SkillsApply` (see [Agent Skills → Toggling Integration Skills](/docs/agent-skills#toggling-integration-skills)). Adjust the cron of the built-in `cs-cron-performance-reporter` task (Meta Ads Manager) with `enabled` and `interval` only — the task body (`value`) is owned by the bundled integration skill and silently dropped on writes:
+Enable `int-metaads-manage` on the agent via `POST /UserAgent/SkillsApply` (see [Agent Skills → Toggling Integration Skills](/docs/agent-skills#toggling-integration-skills)). Adjust the cron of the built-in `cs-cron-metaads-performance-reporter` task (Meta Ads Manager) with `enabled` and `interval` only — the task body (`value`) is owned by the bundled integration skill and silently dropped on writes:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
@@ -16221,7 +16236,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skillkey": "cron-performance-reporter",
+    "skillkey": "cron-metaads-performance-reporter",
     "enabled": true,
     "interval": "0 9 * * *"
   }'
@@ -16277,7 +16292,7 @@ For SaaS products connecting many customers' Meta Ads accounts through a single 
 
 - [Agent Credentials & OAuth](/docs/agent-credentials) — integration catalog hub and generic OAuth reference.
 - [Agent Overview](/docs/agent-overview) — deploying, starting, and lifecycle.
-- [Agent Skills](/docs/agent-skills) — configuring `metaads-manage` and scheduled runs.
+- [Agent Skills](/docs/agent-skills) — configuring `int-metaads-manage` and scheduled runs.
 - [Google Ads integration](/docs/integration-googleads-skills) — for cross-platform paid campaigns.
 - [TikTok Ads integration](/docs/integration-tiktokads-skills) — for cross-platform paid campaigns.
 
@@ -17156,7 +17171,7 @@ then select the Pages again.
 
 Once the Facebook Page is connected, the agent uses
 `int-facebookpage-post` to publish text, photo, and video posts. To adjust the
-Social Manager's bundled `cs-cron-content-scanner` schedule, call
+Social Manager's bundled `cs-cron-social-content-scanner` schedule, call
 `POST /UserAgent/CustomSkillUpsert` with `enabled` and `interval` only:
 
 ```bash
@@ -17165,7 +17180,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skillkey": "cs-cron-content-scanner",
+    "skillkey": "cs-cron-social-content-scanner",
     "enabled": true,
     "interval": "0 */4 * * *"
   }'
@@ -17669,7 +17684,7 @@ Once Instagram professional accounts are connected, the agent uses
 `int-instagram-post` to publish feed carousels, reels, and stories. A request
 must identify one account when multiple are connected; the agent never guesses
 or publishes to all accounts from an ambiguous instruction. To adjust
-the Social Manager's bundled `cs-cron-content-scanner` schedule, call
+the Social Manager's bundled `cs-cron-social-content-scanner` schedule, call
 `POST /UserAgent/CustomSkillUpsert` with `enabled` and `interval` only:
 
 ```bash
@@ -17678,7 +17693,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skillkey": "cs-cron-content-scanner",
+    "skillkey": "cs-cron-social-content-scanner",
     "enabled": true,
     "interval": "0 */4 * * *"
   }'
@@ -17781,7 +17796,7 @@ Connect a Wiro agent to Shopify's official GraphQL Admin API 2026-07 to manage p
 
 ## Overview
 
-The Shopify integration powers the `shopify-manage` skill. It uses only the official GraphQL Admin API pinned to `2026-07`; the REST Admin API, `latest`, `unstable`, and release-candidate schemas are outside the contract.
+The Shopify integration powers the `int-shopify-manage` skill. It uses only the official GraphQL Admin API pinned to `2026-07`; the REST Admin API, `latest`, `unstable`, and release-candidate schemas are outside the contract.
 
 **Available connection modes:**
 
@@ -17794,7 +17809,7 @@ Wiro does not provide a shared Shopify OAuth app. Both modes use customer-owned 
 
 ## Prerequisites
 
-- A deployed Wiro agent with the `shopify-manage` skill enabled.
+- A deployed Wiro agent with the `int-shopify-manage` skill enabled.
 - A Shopify store and permission to install or create apps.
 - The canonical store hostname, for example `example-store.myshopify.com`. Custom storefront domains are not accepted for Admin API authentication.
 
@@ -17947,7 +17962,7 @@ Connect a Wiro agent directly to a WooCommerce store with a REST API consumer ke
 
 ## Overview
 
-The `woocommerce-manage` skill uses WooCommerce's official, current recommended WP REST API namespace, `wc/v3`, to work with products, variations, taxonomy, inventory, orders, refunds, coupons, customers, reports, and supported store settings.
+The `int-woocommerce-manage` skill uses WooCommerce's official, current recommended WP REST API namespace, `wc/v3`, to work with products, variations, taxonomy, inventory, orders, refunds, coupons, customers, reports, and supported store settings.
 
 | Mode | Status | Notes |
 |------|--------|-------|
@@ -17955,7 +17970,7 @@ The `woocommerce-manage` skill uses WooCommerce's official, current recommended 
 
 ## Prerequisites
 
-- A deployed Wiro agent with the `woocommerce-manage` skill enabled.
+- A deployed Wiro agent with the `int-woocommerce-manage` skill enabled.
 - A public HTTPS WooCommerce store with REST API routing enabled.
 - A WordPress user with the minimum permissions needed for the requested operations.
 
@@ -18061,7 +18076,7 @@ Technical contract for connecting a Wiro agent to Reddit with a customer-owned R
 
 ## Overview
 
-The `reddit-post` skill supports:
+The `int-reddit-post` skill supports:
 
 - connected-user identity;
 - subscribed and contributor subreddits;
@@ -18094,7 +18109,7 @@ Wiro's `apiaccessapproved: true` field is only an operator attestation. It grant
 
 ## Prerequisites
 
-- A deployed Wiro agent with the `reddit-post` skill enabled.
+- A deployed Wiro agent with the `int-reddit-post` skill enabled.
 - A dedicated Reddit app account.
 - A customer-owned Reddit app created as type **web app**.
 - A registered Reddit developer profile and App profile label that accurately describes the app and its commercial purpose.

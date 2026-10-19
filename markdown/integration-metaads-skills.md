@@ -4,12 +4,12 @@ Connect your agent to Meta's advertising platform to manage campaigns, ad sets, 
 
 ## Overview
 
-The Meta Ads integration powers the `metaads-manage` skill — creating and managing campaigns, pulling insights, managing creatives, and analyzing ad account data through direct Meta Graph / Marketing API v26 calls.
+The Meta Ads integration powers the `int-metaads-manage` skill — creating and managing campaigns, pulling insights, managing creatives, and analyzing ad account data through direct Meta Graph / Marketing API v26 calls.
 
 **Skills that use this integration:**
 
-- `metaads-manage` — Campaign / ad set / creative CRUD, insights reporting, direct Graph API v26 operations
-- `ads-manager-common` — Shared ads helpers (works alongside `metaads-manage` and `googleads-manage`)
+- `int-metaads-manage` — Campaign / ad set / creative CRUD, insights reporting, direct Graph API v26 operations
+- `util-ads-manager-common` — Shared ads helpers (works alongside `int-metaads-manage` and `int-googleads-manage`)
 
 **Agents that typically enable this integration:**
 
@@ -585,7 +585,7 @@ agent model.
 
 ## Using the Skill
 
-Enable `int-metaads-manage` on the agent via `POST /UserAgent/SkillsApply` (see [Agent Skills → Toggling Integration Skills](/docs/agent-skills#toggling-integration-skills)). Adjust the cron of the built-in `cs-cron-performance-reporter` task (Meta Ads Manager) with `enabled` and `interval` only — the task body (`value`) is owned by the bundled integration skill and silently dropped on writes:
+Enable `int-metaads-manage` on the agent via `POST /UserAgent/SkillsApply` (see [Agent Skills → Toggling Integration Skills](/docs/agent-skills#toggling-integration-skills)). Adjust the cron of the built-in `cs-cron-metaads-performance-reporter` task (Meta Ads Manager) with `enabled` and `interval` only — the task body (`value`) is owned by the bundled integration skill and silently dropped on writes:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
@@ -593,7 +593,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skillkey": "cron-performance-reporter",
+    "skillkey": "cron-metaads-performance-reporter",
     "enabled": true,
     "interval": "0 9 * * *"
   }'
@@ -649,6 +649,6 @@ For SaaS products connecting many customers' Meta Ads accounts through a single 
 
 - [Agent Credentials & OAuth](/docs/agent-credentials) — integration catalog hub and generic OAuth reference.
 - [Agent Overview](/docs/agent-overview) — deploying, starting, and lifecycle.
-- [Agent Skills](/docs/agent-skills) — configuring `metaads-manage` and scheduled runs.
+- [Agent Skills](/docs/agent-skills) — configuring `int-metaads-manage` and scheduled runs.
 - [Google Ads integration](/docs/integration-googleads-skills) — for cross-platform paid campaigns.
 - [TikTok Ads integration](/docs/integration-tiktokads-skills) — for cross-platform paid campaigns.

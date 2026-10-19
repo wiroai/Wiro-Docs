@@ -446,7 +446,7 @@ then select the Pages again.
 
 Once the Facebook Page is connected, the agent uses
 `int-facebookpage-post` to publish text, photo, and video posts. To adjust the
-Social Manager's bundled `cs-cron-content-scanner` schedule, call
+Social Manager's bundled `cs-cron-social-content-scanner` schedule, call
 `POST /UserAgent/CustomSkillUpsert` with `enabled` and `interval` only:
 
 ```bash
@@ -455,7 +455,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skillkey": "cs-cron-content-scanner",
+    "skillkey": "cs-cron-social-content-scanner",
     "enabled": true,
     "interval": "0 */4 * * *"
   }'

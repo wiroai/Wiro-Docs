@@ -8,8 +8,8 @@ The Google Ads integration uses Google OAuth 2.0 with the Google Ads API v23 RES
 
 **Skills that use this integration:**
 
-- `googleads-manage` — Campaign / ad group / keyword management, insights
-- `ads-manager-common` — Shared ads helpers
+- `int-googleads-manage` — Campaign / ad group / keyword management, insights
+- `util-ads-manager-common` — Shared ads helpers
 
 **Agents that typically enable this integration:**
 
@@ -48,7 +48,7 @@ The Google Ads integration uses Google OAuth 2.0 with the Google Ads API v23 RES
 > **Using this OAuth client for other Google services?** One OAuth client can serve Google Ads, YouTube, Google Analytics 4, and Merchant Center — they share the `https://www.googleapis.com/auth/content` / `adwords` / `youtube` / `analytics.readonly` scope family. If you want any of those integrations too, enable the matching Google Cloud APIs in the same project:
 >
 > - **Google Ads API** — for Google Ads
-> - **YouTube Data API v3** + **YouTube Analytics API v2** — for YouTube (used by the `youtube-manage` skill, also consumed by `googleads-manage` for Video / Demand Gen campaigns)
+> - **YouTube Data API v3** + **YouTube Analytics API v2** — for YouTube (used by the `int-youtube-manage` skill, also consumed by `int-googleads-manage` for Video / Demand Gen campaigns)
 > - **Google Analytics Data API** + **Google Analytics Admin API** — for Google Analytics 4
 > - **Merchant API** — for Merchant Center
 >
@@ -265,7 +265,7 @@ Wiro maintains the Google Ads connection automatically while the agent is runnin
 
 ## Using the Skill
 
-Once Google Ads is connected and `customerid` is persisted, the agent's scheduled tasks use the `googleads-manage` platform skill to pull metrics and manage campaigns. Adjust the cron of the built-in `cron-performance-reporter` task (Google Ads Manager) with `enabled` and `interval` only — the task body (`value`) is owned by the bundled integration skill and silently dropped on writes:
+Once Google Ads is connected and `customerid` is persisted, the agent's scheduled tasks use the `int-googleads-manage` platform skill to pull metrics and manage campaigns. Adjust the cron of the built-in `cron-googleads-performance-reporter` task (Google Ads Manager) with `enabled` and `interval` only — the task body (`value`) is owned by the bundled integration skill and silently dropped on writes:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
@@ -273,7 +273,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skillkey": "cron-performance-reporter",
+    "skillkey": "cron-googleads-performance-reporter",
     "enabled": true,
     "interval": "0 9 * * *"
   }'

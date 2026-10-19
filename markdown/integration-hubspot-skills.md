@@ -8,8 +8,8 @@ The HubSpot integration uses HubSpot's OAuth 2.0.
 
 **Skills that use this integration:**
 
-- `hubspot-crm` — Contact/deal CRUD, note and task creation, sequence enrollment
-- `newsletter-compose` — optional; uses HubSpot as an ESP when enabled alongside
+- `int-hubspot-crm` — Contact/deal CRUD, note and task creation, sequence enrollment
+- `util-newsletter-compose` — optional; uses HubSpot as an ESP when enabled alongside
 
 **Agents that typically enable this integration:**
 

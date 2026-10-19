@@ -8,7 +8,7 @@ The TikTok integration uses TikTok's OAuth 2.0 with the Content Posting API.
 
 **Skills that use this integration:**
 
-- `tiktok-post` — Publish videos and carousel posts
+- `int-tiktok-post` — Publish videos and carousel posts
 
 **Agents that typically enable this integration:**
 

@@ -8,7 +8,7 @@ The Lemlist integration uses HTTP Basic Authentication with an empty username an
 
 **Skills that use this integration:**
 
-- `lemlist-outreach` — Campaign creation, lead uploads, pause/resume
+- `int-lemlist-outreach` — Campaign creation, lead uploads, pause/resume
 
 **Agents that typically enable this integration:**
 
@@ -75,11 +75,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ## Runtime Behavior
 
-Env vars (exported **only when `lemlist-outreach` skill is enabled** and `apikey` is set):
+The `int-lemlist-outreach` skill is active only when it is enabled and `apikey` is set.
 
-- `LEMLIST_API_KEY` ← `credentials.lemlist.apikey`
-
-Auth: **Basic auth with empty username** — `--user ":$LEMLIST_API_KEY"`. (Lemlist treats the API key as the password, with no username.)
+Auth: **Basic auth with an empty username** and the API key as the password, as Lemlist documents.
 Base URL: `https://api.lemlist.com/api`.
 
 Rate limits: ~20 requests per 2 seconds; 429 requires backoff.

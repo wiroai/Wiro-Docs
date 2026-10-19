@@ -208,11 +208,11 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Logs" \
 }
 ```
 
-> **About the `user` field.** Every event is decorated with the resolved actor: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. It is `null` when:
+> **About the `user` field.** Every event is decorated with the resolved actor: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`.
 >
-> - The event was triggered by **automation** — `userUuid: "system"` for cron ticks, scheduled-skill runs, the token usage of scheduled turns, agent-initiated tool calls, and similar non-interactive writes (the system rows above).
-> - The actor's user record was deleted or the lookup misses for any reason.
->
+> - An event with a user's `userUuid` carries that user's profile, or `null` when the user record was deleted.
+> - An event triggered by **automation** has `userUuid: "system"` and `user: null` — cron runs, the token usage of scheduled turns, and similar non-interactive writes (the system rows above).
+> - An event without a `userUuid` (an incoming channel message, or a row older than user attribution) carries the agent owner's profile, so the row never shows an empty placeholder.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -405,9 +405,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/LogsDelete" \
 | `date is required` | `LogsFile` / `LogsDelete` without `date` |
 | `useragent-access-denied` | Caller is neither the owner nor on the agent's team |
 | `useragent-team-admin-required` | Caller is a member of the agent's team but not a team admin (code `97`) |
-| `Agent is not assigned to a worker. It may not be running.` | The useragent isn't assigned to a worker (it's never been started, or has been re-allocated) |
-| `Worker not found` | The agent's worker is no longer available — internal inconsistency |
-| `Failed to fetch activity from worker` | The worker side rejected the request (worker offline, network blip) — retry |
+| `Agent is not assigned to a worker. It may not be running.` | The agent isn't running on a host yet (never started, or being moved) — start it and retry |
+| `Worker not found` | The agent's host is not available right now — retry later |
+| `Failed to fetch activity from worker` | The agent's host did not answer (offline, network blip) — retry |
 | `Failed to fetch activity dates from worker` / `Failed to delete activity file from worker` / `Failed to fetch activity file from worker` | Same as above for the matching endpoint |
 
 ## Retention & Rotation

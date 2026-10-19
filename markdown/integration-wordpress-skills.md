@@ -8,7 +8,7 @@ The WordPress integration uses the WordPress REST API with Basic Authentication 
 
 **Skills that use this integration:**
 
-- `wordpress-post` — Publish blog posts, pages, categories, tags; upload media
+- `int-wordpress-post` — Publish blog posts, pages, categories, tags; upload media
 
 **Agents that typically enable this integration:**
 
@@ -93,14 +93,10 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ## Runtime Behavior
 
-Env vars inside the agent container (exported **only when `wordpress-post` skill is enabled** and `url` is set):
+The `int-wordpress-post` skill is active only when it is enabled and `url` is set.
 
-- `WORDPRESS_URL` ← `credentials.wordpress.url`
-- `WORDPRESS_USER` ← `credentials.wordpress.user`
-- `WORDPRESS_APP_PASSWORD` ← `credentials.wordpress.apppassword`
-
-Auth: `--user "$WORDPRESS_USER:$WORDPRESS_APP_PASSWORD"` (Basic via Application Password).
-Base URL: `$WORDPRESS_URL/wp-json/wp/v2/...`
+Auth: Basic auth with your WordPress `user` and its Application Password (`apppassword`).
+Base URL: `<your site url>/wp-json/wp/v2/...`
 
 ## Troubleshooting
 

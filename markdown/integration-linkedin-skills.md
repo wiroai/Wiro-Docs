@@ -8,7 +8,7 @@ The LinkedIn integration uses the LinkedIn Marketing Developer Platform via OAut
 
 **Skills that use this integration:**
 
-- `linkedin-post` — Publish text, image, and video posts to a Company Page
+- `int-linkedin-post` — Publish text, image, and video posts to a Company Page
 
 **Agents that typically enable this integration:**
 
@@ -221,7 +221,7 @@ Wiro maintains the LinkedIn connection automatically while the agent is running.
 
 ## Using the Skill
 
-Once the LinkedIn Company Page is connected (organization ID persisted), the agent's scheduled tasks use the `linkedin-post` platform skill to publish text, image, and video posts to the Company Page. To adjust the cron of the built-in `cron-content-scanner` task (Social Manager), call `UserAgent/CustomSkillUpsert` with `enabled` and `interval` only — the task body (`value`) is owned by the bundled integration skill and silently dropped on writes:
+Once the LinkedIn Company Page is connected (organization ID persisted), the agent's scheduled tasks use the `int-linkedin-post` platform skill to publish text, image, and video posts to the Company Page. To adjust the cron of the built-in `cron-social-content-scanner` task (Social Manager), call `UserAgent/CustomSkillUpsert` with `enabled` and `interval` only — the task body (`value`) is owned by the bundled integration skill and silently dropped on writes:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
@@ -229,7 +229,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skillkey": "cron-content-scanner",
+    "skillkey": "cron-social-content-scanner",
     "enabled": true,
     "interval": "0 */4 * * *"
   }'

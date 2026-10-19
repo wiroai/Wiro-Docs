@@ -8,9 +8,9 @@ The App Store Connect integration uses ES256-signed JWT authentication with App 
 
 **Skills that use this integration:**
 
-- `appstore-reviews` — Monitor and reply to App Store reviews
-- `appstore-metadata` — Read/update app metadata, localizations, screenshots
-- `appstore-events` — Create and manage in-app events
+- `int-appstore-reviews` — Monitor and reply to App Store reviews
+- `int-appstore-metadata` — Read/update app metadata, localizations, screenshots
+- `int-appstore-events` — Create and manage in-app events
 
 **Agents that typically enable this integration:**
 

@@ -8,7 +8,7 @@ The Firebase integration uses FCM HTTP v1 with an Admin SDK service account. A s
 
 **Skills that use this integration:**
 
-- `firebase-push` — Send push notifications by topic, device token, or condition
+- `int-firebase-push` — Send push notifications by topic, device token, or condition
 
 **Agents that typically enable this integration:**
 
@@ -120,19 +120,9 @@ Wiro's merge logic uses positional indexes — sending `accounts` ordinal `2` wh
 
 ## Runtime Behavior
 
-Env vars (exported **only when `firebase-push` skill is enabled** and `accounts` is non-empty) per account index `idx`:
+The `int-firebase-push` skill is active only when it is enabled and `accounts` is non-empty. For each saved account it uses the project ID from that account's service account, plus the app name, topics (`{ topickey: topicdesc }`) and apps (`{ platform, id }`) you saved.
 
-- `FIREBASE_APP_COUNT` — total accounts
-- `FIREBASE_{idx}_PROJECT_ID` — from decoded service account JSON
-- `FIREBASE_{idx}_APP_NAME`
-- `FIREBASE_{idx}_TOPICS` — JSON map of `{ topickey: topicdesc }`
-- `FIREBASE_{idx}_APPS` — JSON array of `{ platform, id }`
-
-Secret files:
-
-- `/run/secrets/firebase-sa-{idx}.json` — decoded service account (not exposed as env)
-
-Auth: FCM HTTP v1 `Authorization: Bearer <token>` — tokens minted from the service account.
+Auth: FCM HTTP v1 `Authorization: Bearer <token>` — tokens minted from the account's service account.
 
 Base URL: `https://fcm.googleapis.com/v1/projects/<PROJECT_ID>/messages:send`
 
@@ -140,7 +130,7 @@ Base URL: `https://fcm.googleapis.com/v1/projects/<PROJECT_ID>/messages:send`
 
 - **"invalid JWT signature":** Service account JSON corrupt or truncated. Re-export from Firebase Console and re-encode.
 - **No devices receive notifications:** Verify topics are subscribed on the client side and the topic name matches exactly. Check `FIREBASE_{idx}_TOPICS` logs.
-- **Rate limits:** FCM supports up to **600,000 messages/minute per project** for HTTP v1 API (see the `firebase-push` skill for topic/condition specifics). Higher volumes require a support request to Google Cloud.
+- **Rate limits:** FCM supports up to **600,000 messages/minute per project** for HTTP v1 API (see the `int-firebase-push` skill for topic/condition specifics). Higher volumes require a support request to Google Cloud.
 
 ## Related
 

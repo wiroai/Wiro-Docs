@@ -4,7 +4,7 @@ Technical contract for connecting a Wiro agent to Reddit with a customer-owned R
 
 ## Overview
 
-The `reddit-post` skill supports:
+The `int-reddit-post` skill supports:
 
 - connected-user identity;
 - subscribed and contributor subreddits;
@@ -37,7 +37,7 @@ Wiro's `apiaccessapproved: true` field is only an operator attestation. It grant
 
 ## Prerequisites
 
-- A deployed Wiro agent with the `reddit-post` skill enabled.
+- A deployed Wiro agent with the `int-reddit-post` skill enabled.
 - A dedicated Reddit app account.
 - A customer-owned Reddit app created as type **web app**.
 - A registered Reddit developer profile and App profile label that accurately describes the app and its commercial purpose.
