@@ -87,7 +87,7 @@ Uploads a file using `multipart/form-data`. You can optionally assign it to a fo
 
 ## Using Files in Runs
 
-Once uploaded, reference a file by its URL in your model run parameters. For example, an image upscaler model might accept an `inputImageUrl` parameter — pass the URL returned from the upload response.
+Once uploaded, reference a file by its URL or ID in your model run parameters. For example, an image upscaler model might accept an `inputImageUrl` parameter — pass the URL returned from the upload response.
 
 You don't always need to upload files first. Most models accept direct URLs in their file parameters — you can pass any publicly accessible URL. See [Model Parameters](/docs/model-parameters) for details on `fileinput`, `multifileinput`, and `combinefileinput` patterns.
 

@@ -27,6 +27,23 @@ The flow is:
 | Transcripts | `TRANSCRIPT_USER:` / `TRANSCRIPT_AI:` via `task_output` | None |
 | Use case | Interactive voice chat | Narration, voiceover, assistants |
 
+## Run Parameters
+
+Each realtime TTS model has its own set of parameters. Use [POST /Tool/Detail](/docs/models) to discover the exact parameters for a specific model. See [Model Parameters](/docs/model-parameters) for parameter types.
+
+Browse available realtime TTS models on the [models page](https://wiro.ai/models) (filter by **Realtime TTS** category). Common parameters typically include the input text and an optional reference audio clip for voice cloning. Example run for MOSS-TTS-Realtime:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/Run/openmoss/moss-tts-realtime" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "text": "Hello, this is a realtime text-to-speech demo."
+  }'
+```
+
+> **Important:** Parameters vary per model. Always check the model's detail page or use `/Tool/Detail` to get the exact parameter list before integrating. The run response returns a `socketaccesstoken` used to subscribe to the WebSocket.
+
 ## Connection & Registration
 
 After running the task, connect to the WebSocket and register with `task_info`:

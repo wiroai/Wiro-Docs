@@ -79,6 +79,16 @@ Add to your MCP settings:
 }
 ```
 
+### Other Clients
+
+Any MCP client that supports the **stdio** transport can connect. The command is:
+
+```bash
+npx -y @wiro-ai/wiro-mcp@1.3.1
+```
+
+Set `WIRO_API_KEY` and `WIRO_API_SECRET` as environment variables in your client's MCP configuration.
+
 ## Authentication
 
 The self-hosted MCP server supports both Wiro [authentication types](/docs/authentication) via environment variables.

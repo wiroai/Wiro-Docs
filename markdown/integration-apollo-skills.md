@@ -74,9 +74,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ```json
 "apollo": {
-  "optional": true,
   "_connected": false,
-  "optional": false,
+  "optional": true,
   "extra": false,
   "apikey": "",
   "masterapikey": ""

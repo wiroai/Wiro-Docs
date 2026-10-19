@@ -21,7 +21,7 @@ Available LLM models include:
 
 ## Session & Chat History
 
-Wiro maintains conversation history per session. By sending a `session_id` and `user_id` parameters:
+Wiro maintains conversation history per session. Send the same `session_id` together with `user_id` on every message of a conversation — some chat models keep history only when both are present — and the model builds on the earlier messages:
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|

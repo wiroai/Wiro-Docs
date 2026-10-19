@@ -593,7 +593,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skillkey": "cron-metaads-performance-reporter",
+    "skillkey": "cs-cron-metaads-performance-reporter",
     "enabled": true,
     "interval": "0 9 * * *"
   }'

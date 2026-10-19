@@ -12,7 +12,7 @@ Connect your agent to Roasit mobile attribution — creative, campaign and netwo
 
 **Bundled task:**
 
-- `cron-roasit-creative-roas-reporter` — daily at 10:30 UTC: the last 7 days' creative ROAS per app, pause / scale recommendations for creatives that pass the significance gate, and an attribution audit (network-claimed vs Roasit-attributed installs, network claims vs store installs). Off until the Roasit credential is filled.
+- `cs-cron-roasit-creative-roas-reporter` — daily at 10:30 UTC: the last 7 days' creative ROAS per app, pause / scale recommendations for creatives that pass the significance gate, and an attribution audit (network-claimed vs Roasit-attributed installs, network claims vs store installs). Off until the Roasit credential is filled.
 
 **Agents that typically enable this integration:**
 

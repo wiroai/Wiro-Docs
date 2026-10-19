@@ -103,7 +103,7 @@ These events signal task state changes. The `message` field is `null`:
   "result": true
 }
 
-// Simple string output
+// Simple string output (when no progress format is detected)
 {
   "type": "task_output",
   "id": "534574",
@@ -251,7 +251,7 @@ to retrieve the persisted task.
 These events are exclusive to realtime models ([voice conversation](/docs/realtime-voice-conversation), [text-to-speech](/docs/realtime-text-to-speech), and [speech-to-text](/docs/realtime-speech-to-text)):
 
 ```json
-// Session is ready — start sending audio/text
+// Session is ready — start sending audio (voice conversation, speech-to-text)
 {
   "type": "task_stream_ready",
   "id": "534574",
@@ -282,7 +282,7 @@ contract described above and can omit `total_tokens` or detail objects.
 
 ## Binary Frames
 
-For **realtime models** (voice conversation, text-to-speech, and speech-to-text), the WebSocket may send binary frames containing raw audio data. Check if the received message is a `Blob` (browser) or `Buffer` (Node.js) before parsing as JSON.
+For **realtime models** that return audio (voice conversation and text-to-speech), the WebSocket may send binary frames containing raw audio data. Check if the received message is a `Blob` (browser) or `Buffer` (Node.js) before parsing as JSON.
 
 ## Ending a Session
 
@@ -308,7 +308,6 @@ const ws = new WebSocket('wss://socket.wiro.ai/v1');
 
 ws.onopen = () => {
   console.log('Connected to Wiro WebSocket');
-  // Register with your task token
   ws.send(JSON.stringify({
     type: 'task_info',
     tasktoken: taskToken
@@ -316,9 +315,8 @@ ws.onopen = () => {
 };
 
 ws.onmessage = (event) => {
-  // Handle binary frames (realtime voice models)
   if (event.data instanceof Blob) {
-    console.log('Received binary frame:', event.data.size, 'bytes');
+    console.log('Binary frame:', event.data.size, 'bytes');
     return;
   }
 
@@ -335,14 +333,8 @@ ws.onmessage = (event) => {
     case 'task_output':
       console.log('Partial output:', msg.message);
       break;
-    case 'task_output_full':
-      console.log('Full output:', msg.message);
-      break;
-    case 'task_error':
-      console.error('Error:', msg.message);
-      break;
-    case 'task_end':
-      console.log('Task completed!');
+    case 'task_postprocess_end':
+      console.log('Done! Outputs:', msg.message);
       ws.close();
       break;
   }
@@ -353,7 +345,7 @@ ws.onerror = (err) => {
 };
 
 ws.onclose = () => {
-  console.log('WebSocket disconnected');
+  console.log('Disconnected');
 };
 ```
 
@@ -368,7 +360,6 @@ async def listen_task(socket_token):
     uri = "wss://socket.wiro.ai/v1"
 
     async with websockets.connect(uri) as ws:
-        # Register with task token
         await ws.send(json.dumps({
             "type": "task_info",
             "tasktoken": socket_token
@@ -385,12 +376,8 @@ async def listen_task(socket_token):
 
             if msg["type"] == "task_output":
                 print("Partial output:", msg.get("message"))
-            elif msg["type"] == "task_output_full":
-                print("Full output:", msg.get("message"))
-            elif msg["type"] == "task_error":
-                print("Error:", msg.get("message"))
-            elif msg["type"] == "task_end":
-                print("Task completed!")
+            elif msg["type"] == "task_postprocess_end":
+                print("Done! Outputs:", msg.get("message"))
                 break
 
 asyncio.run(listen_task("your-socket-access-token"))
@@ -421,11 +408,11 @@ ws.on('message', (data, isBinary) => {
   const msg = JSON.parse(data.toString());
   console.log('Event:', msg.type);
 
-  if (msg.type === 'task_output_full') {
-    console.log('Full output:', msg.message);
+  if (msg.type === 'task_output') {
+    console.log('Output:', msg.message);
   }
-  if (msg.type === 'task_end') {
-    console.log('Done!');
+  if (msg.type === 'task_postprocess_end') {
+    console.log('Done! Outputs:', msg.message);
     ws.close();
   }
 });
@@ -452,12 +439,14 @@ while (true) {
     $msg = json_decode($client->receive(), true);
     echo "Event: " . $msg["type"] . PHP_EOL;
 
-    if ($msg["type"] === "task_output_full") {
+    if ($msg["type"] === "task_output") {
         echo "Output: " . json_encode($msg["message"])
             . PHP_EOL;
     }
-    if ($msg["type"] === "task_end") {
-        echo "Done!" . PHP_EOL;
+    if ($msg["type"] === "task_postprocess_end") {
+        echo "Done! Outputs: "
+            . json_encode($msg["message"])
+            . PHP_EOL;
         break;
     }
 }
@@ -502,7 +491,7 @@ while (ws.State == WebSocketState.Open) {
         .GetProperty("type").GetString();
     Console.WriteLine("Event: " + type);
 
-    if (type == "task_end") {
+    if (type == "task_postprocess_end") {
         Console.WriteLine("Done!");
         break;
     }
@@ -540,7 +529,7 @@ func main() {
         json.Unmarshal(message, &msg)
         fmt.Println("Event:", msg["type"])
 
-        if msg["type"] == "task_end" {
+        if msg["type"] == "task_postprocess_end" {
             fmt.Println("Done!")
             break
         }
@@ -577,7 +566,8 @@ func receive() {
                         using: .utf8)!)
                     as! [String: Any]
                 print("Event:", msg["type"] ?? "")
-                if msg["type"] as? String == "task_end" {
+                if msg["type"] as? String
+                    == "task_postprocess_end" {
                     print("Done!")
                     return
                 }
@@ -614,7 +604,8 @@ val client = object : WebSocketClient(
     override fun onMessage(message: String) {
         val msg = JSONObject(message)
         println("Event: " + msg.getString("type"))
-        if (msg.getString("type") == "task_end") {
+        if (msg.getString("type")
+            == "task_postprocess_end") {
             println("Done!")
             close()
         }
@@ -647,11 +638,12 @@ channel.sink.add(jsonEncode({
 channel.stream.listen((message) {
   final msg = jsonDecode(message);
   print('Event: ' + msg['type'].toString());
-  if (msg['type'] == 'task_output_full') {
+  if (msg['type'] == 'task_output') {
     print('Output: ' + jsonEncode(msg['message']));
   }
-  if (msg['type'] == 'task_end') {
-    print('Done!');
+  if (msg['type'] == 'task_postprocess_end') {
+    print('Done! Outputs: '
+        + jsonEncode(msg['message']));
     channel.sink.close();
   }
 });

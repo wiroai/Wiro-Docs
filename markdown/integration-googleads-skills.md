@@ -265,7 +265,7 @@ Wiro maintains the Google Ads connection automatically while the agent is runnin
 
 ## Using the Skill
 
-Once Google Ads is connected and `customerid` is persisted, the agent's scheduled tasks use the `int-googleads-manage` platform skill to pull metrics and manage campaigns. Adjust the cron of the built-in `cron-googleads-performance-reporter` task (Google Ads Manager) with `enabled` and `interval` only — the task body (`value`) is owned by the bundled integration skill and silently dropped on writes:
+Once Google Ads is connected and `customerid` is persisted, the agent's scheduled tasks use the `int-googleads-manage` platform skill to pull metrics and manage campaigns. Adjust the cron of the built-in `cs-cron-googleads-performance-reporter` task (Google Ads Manager) with `enabled` and `interval` only — the task body (`value`) is owned by the bundled integration skill and silently dropped on writes:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
@@ -273,7 +273,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skillkey": "cron-googleads-performance-reporter",
+    "skillkey": "cs-cron-googleads-performance-reporter",
     "enabled": true,
     "interval": "0 9 * * *"
   }'

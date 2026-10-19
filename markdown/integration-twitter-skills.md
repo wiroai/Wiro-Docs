@@ -217,7 +217,7 @@ Wiro maintains the X connection automatically while the agent is running. If the
 
 ## Using the Skill
 
-Once the X account is connected, the agent's existing scheduled tasks use the `int-twitterx-post` platform skill to publish. To adjust the cron of the built-in `cron-social-content-scanner` task (Social Manager), send a `CustomSkillUpsert` with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for bundled crons:
+Once the X account is connected, the agent's existing scheduled tasks use the `int-twitterx-post` platform skill to publish. To adjust the cron of the built-in `cs-cron-social-content-scanner` task (Social Manager), send a `CustomSkillUpsert` with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for bundled crons:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
@@ -225,7 +225,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skillkey": "cron-social-content-scanner",
+    "skillkey": "cs-cron-social-content-scanner",
     "enabled": true,
     "interval": "0 */4 * * *"
   }'

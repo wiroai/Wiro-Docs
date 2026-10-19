@@ -10,6 +10,7 @@ The Google Play integration uses a Google Cloud service account with API access 
 
 - `int-googleplay-reviews` — Monitor and reply to Google Play reviews
 - `int-googleplay-metadata` — Read/update app listings and metadata
+- `int-googleplay-events` — Prepare assets and copy for Google Play promotional content (LiveOps events); reads only the app list
 
 **Agents that typically enable this integration:**
 
@@ -66,7 +67,7 @@ base64 -b 0 play-service-account.json > play-sa.b64
 
 ### Step 5: Save to Wiro
 
-All Google Play agents share the **same credential shape**: service account JSON + `apps[]` array. Each app entry carries `appname` + `packagename`.
+The credential depends on which agent you're configuring. Review and metadata agents use `google-play`: the service account JSON plus a positional `apps[]` array. Each app entry carries `appname` + `packagename`. The promotional-content skill and the ads-manager agents need no service account: they read the app list from the separate `google-play-apps` credential, which holds only the `apps[]` array — send the same `apps` rows with `"credentialkey": "google-play-apps"`.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
@@ -86,11 +87,26 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
 
 For multiple apps, append more `apps`-prefixed ordinal rows. Positional merge applies — sending no `apps` rows leaves the existing list untouched; to clear the list, send `{ "credentialkey": "google-play", "fieldname": "apps", "fieldvalue": [] }`.
 
+Reply skills can also use a global support email. It is optional: without it, reply drafts leave out the contact line. Set it once via the dedicated `var-support-email` credential (shared across `int-appstore-reviews` and `int-googleplay-reviews`):
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "var-support-email", "fieldname": "value", "fieldvalue": "support@yourcompany.com" }
+    ]
+  }'
+```
+
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `serviceaccountjson` | string | Yes | Base64-encoded service account JSON. Stored encrypted-at-rest in the DB (`type: fileinput-base64`). |
 | `apps[].appname` | string | Yes | Human-readable label the agent uses when reporting back ("scanned reviews on My Android App"). |
 | `apps[].packagename` | string | Yes | Android package name (e.g. `com.example.app`). |
+| `var-support-email.value` | string | No | Global support email — surfaced when reviewers are pointed to direct contact. Lives on the dedicated `var-support-email` credential, not on `google-play`. |
 
 ### Step 6: Start the agent
 

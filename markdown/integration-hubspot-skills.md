@@ -34,7 +34,7 @@ The HubSpot integration uses HubSpot's OAuth 2.0.
 
 ## Wiro Mode
 
-Call `OAuthConnect` without `authmethod`, redirect, parse `hubspot_connected=true&hubspot_portal=<id>&hubspot_name=<name>`.
+Call `OAuthConnect` with `credentialkey: "hubspot"` and without `authmethod`, redirect, parse `hubspot_connected=true&hubspot_portal=<id>&hubspot_name=<name>`.
 
 ## Complete Integration Walkthrough — Own Mode
 

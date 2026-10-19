@@ -129,7 +129,7 @@ Base URL: `https://fcm.googleapis.com/v1/projects/<PROJECT_ID>/messages:send`
 ## Troubleshooting
 
 - **"invalid JWT signature":** Service account JSON corrupt or truncated. Re-export from Firebase Console and re-encode.
-- **No devices receive notifications:** Verify topics are subscribed on the client side and the topic name matches exactly. Check `FIREBASE_{idx}_TOPICS` logs.
+- **No devices receive notifications:** Verify topics are subscribed on the client side and the topic name matches exactly. Check that the topic is listed in that account's `topics`.
 - **Rate limits:** FCM supports up to **600,000 messages/minute per project** for HTTP v1 API (see the `int-firebase-push` skill for topic/condition specifics). Higher volumes require a support request to Google Cloud.
 
 ## Related

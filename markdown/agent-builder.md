@@ -183,7 +183,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
     },
     "customskills": [
       {
-        "key": "cron-summarize-inbox",
+        "key": "cs-cron-summarize-inbox",
         "value": "Every 4 hours, scan all unread Gmail messages from the past 4 hours, summarize each in 1 sentence, and post the digest to Telegram.",
         "interval": "0 */4 * * *",
         "enabled": true,
@@ -273,7 +273,7 @@ Notes on the response:
 
 - `agentguid: null` — confirms this is a custom build with no marketplace template.
 - `agent.custom: true` — the synthesized template placeholder. Same shape as a template's `agent` block but no `slug` / `cover` / `categories` (custom builds aren't in the marketplace).
-- `scheduledskills` already contains the cron from the Deploy body, with the canonical `cs-cron-` prefix added by the server.
+- `scheduledskills` already contains the cron from the Deploy body. Deploy stores `customskills` keys exactly as sent, so give each entry its full key: `cs-<slug>` for a strategy, `cs-cron-<slug>` for a scheduled task.
 - `status: 2` — Deploy auto-queued the instance because `useprepaid: true` provisioned a subscription in the same call. The daemon picks the row up from the queue; you do **not** need to call `POST /UserAgent/Start` after a prepaid deploy.
 - Communication-channel credentials are validated independently from `skills`. Every channel group present in `credentials` must contain all of its `required_fields` or Deploy fails without leaving a partial agent behind.
 
@@ -361,7 +361,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   },
   "customskills": [
     {
-      "key": "cron-email-digest",
+      "key": "cs-cron-email-digest",
       "value": "Twice a day, summarize unread Gmail messages in one Telegram message.",
       "interval": "0 9,17 * * *",
       "enabled": true,
@@ -387,12 +387,12 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   },
   "customskills": [
     {
-      "key": "content-strategy",
+      "key": "cs-content-strategy",
       "value": "## Writing Style\nShort, punchy, technical. Always include code examples.\n\n## Sources\nWired, ArsTechnica, Hacker News.\n\n## Cadence\nOne 600-word article every Monday.",
       "_user_created": false
     },
     {
-      "key": "cron-weekly-blog",
+      "key": "cs-cron-weekly-blog",
       "value": "Every Monday morning, scan the websites listed under your var-website credential, draft one 600-word article, and publish to WordPress as a draft.",
       "interval": "0 9 * * 1",
       "enabled": true,
@@ -422,7 +422,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
 }
 ```
 
-OAuth providers are connected later via `POST /UserAgentOAuth/{Provider}Connect` — see [Agent Credentials](/docs/agent-credentials).
+OAuth providers are connected later via `POST /UserAgentOAuth/OAuthConnect` with the provider's `credentialkey` — see [Agent Credentials](/docs/agent-credentials).
 
 ## Subscription & Billing for Custom Builds
 

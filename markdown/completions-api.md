@@ -88,7 +88,7 @@ The same endpoints also accept `x-api-key` containing either `YOUR_API_KEY` or
 
 If `Authorization` and `x-api-key` are sent together, both must identify the
 same complete project credential. A mismatched key or secret, or a malformed
-Bearer credential returns `401`; Wiro does not silently choose one credential
+credential in either header returns `401`; Wiro does not silently choose one credential
 or fall back to another project.
 
 Never expose a project key or secret in browser or mobile application code.

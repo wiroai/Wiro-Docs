@@ -23,7 +23,7 @@ Toggle `util-web-channel` on a useragent and a single REST call (`POST /UserAgen
 | Web (this page) | Browser mic on **your** site | "Open mic" button on a product / support / sales page. No phone number, no per-minute Twilio bill. |
 | [Twilio](/docs/integration-twiliovoice-skills) | Inbound PSTN phone call | A real phone number ringing. Twilio bills per inbound minute. |
 
-> No third-party billing on this channel. The live call audio is billed through the [`int-wiro-aimodels`](/docs/agent-credentials) skill against your own Wiro AI Models balance (you bring your own Wiro API key) — it is **not** charged to the agent's platform credit pool. Only the post-call text turn is billed as a normal token deduct (`action: "tokens"`) on [`POST /UserAgent/TransactionList`](/docs/agent-transactions#post-useragenttransactionlist).
+> No third-party billing on this channel. The live call audio is billed through the [`int-wiro-aimodels`](/docs/agent-credentials) skill against your own Wiro AI Models balance (you bring your own Wiro API key) — it is **not** charged to the agent's platform credit pool. The voice-prep turn and the post-call text turn are billed as normal token deducts (`action: "tokens"`) on [`POST /UserAgent/TransactionList`](/docs/agent-transactions#post-useragenttransactionlist).
 
 ## Availability
 
@@ -285,7 +285,7 @@ Must arrive within 10 seconds of the WebSocket `open` event. Late or malformed �
 | Field | Format |
 |-------|--------|
 | Audio | PCM int16, 24 kHz, mono. |
-| Frame | `<correlationId>|<binary-pcm>` — UTF-8 text prefix (the `correlationId` returned by `WebStart`) + `|` (0x7C) separator + raw PCM bytes. Same shape as the [Realtime Voice Conversation](/docs/realtime-voice-conversation#audio-format) channel. **Both directions** use this prefix — when you receive a binary frame from the server you must locate the first `0x7C` byte and slice everything after it as `Int16Array`. |
+| Frame | `<correlationId>\|<binary-pcm>` — UTF-8 text prefix (the `correlationId` returned by `WebStart`) + `\|` (0x7C) separator + raw PCM bytes. Same shape as the [Realtime Voice Conversation](/docs/realtime-voice-conversation#audio-format) channel. **Both directions** use this prefix — when you receive a binary frame from the server you must locate the first `0x7C` byte and slice everything after it as `Int16Array`. |
 
 The bridge transcodes server-side if a downstream model needs a different sample rate, so you always send 24 kHz from the browser.
 
@@ -307,7 +307,7 @@ The bridge transcodes server-side if a downstream model needs a different sample
 | `{ "type": "transcript", "role": "user"\|"ai", "text": "…", "ts": <epoch-ms> }` | Live transcript pair, same content that goes into the operator panel chat. **Note the field name is `text` (not `content`) and the agent role is `"ai"` (not `"agent"`).** `ts` is server time in ms since epoch. |
 | `{ "type": "clear" }` | Barge-in confirmation — the bridge has discarded the agent utterance still in flight. Drop every `AudioBufferSourceNode` you've already scheduled and stop appending new audio until you see `resume`. |
 | `{ "type": "resume" }` | A new agent utterance is starting after a `clear`. Resume normal binary-frame playback. |
-| Binary frame | Agent audio chunk — `<correlationId>|<int16-pcm-24khz-mono>`. Strip the prefix and feed the PCM tail to Web Audio. |
+| Binary frame | Agent audio chunk — `<correlationId>\|<int16-pcm-24khz-mono>`. Strip the prefix and feed the PCM tail to Web Audio. |
 | `{ "type": "session_end", "reason": "...", "message"?: "...", "error"?: "..." }` | Terminal frame, immediately followed by a clean `ws.close(1000, …)`. **All errors and graceful ends arrive here** — there is no separate `error` frame. Common `reason` values: `wiro_completed`, `wiro_cancelled`, `wiro_disconnect`, `wiro_error`, `start_error`, `max_duration`, `concurrent_limit`, `browser_disconnect`, `rejected`. `message` is populated for `reason: "rejected"` (operator-facing reject reason). `error` is populated for `reason: "start_error"` (raw exception message from the realtime model bring-up). |
 
 ### Session lifetime

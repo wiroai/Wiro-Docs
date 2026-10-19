@@ -188,7 +188,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
 
 Realtime voice models accept configuration parameters (voice, system instructions, audio format, etc.) as JSON. Parameters vary per model — use `/Tool/Detail` to discover them. The actual audio interaction happens over [WebSocket](/docs/realtime-voice-conversation) after the task starts:
 
-Available realtime models:
+Available realtime models include:
 - [openai/gpt-realtime-mini](https://wiro.ai/models/openai/gpt-realtime-mini)
 - [openai/gpt-realtime](https://wiro.ai/models/openai/gpt-realtime)
 - [elevenlabs/realtime-conversational-ai](https://wiro.ai/models/elevenlabs/realtime-conversational-ai)
@@ -209,8 +209,8 @@ Available realtime models:
 
 Realtime TTS models stream synthesized audio back over [WebSocket](/docs/realtime-text-to-speech) as binary frames. Text is required. Reference audio is optional for voice cloning.
 
-Available realtime TTS models:
-- [wiro/moss-tts](https://wiro.ai/models/wiro/moss-tts)
+Available realtime TTS models include:
+- [openmoss/moss-tts-realtime](https://wiro.ai/models/openmoss/moss-tts-realtime)
 
 ```json
 {
@@ -229,8 +229,8 @@ Available realtime TTS models:
 
 Realtime STT models transcribe audio streamed from the microphone over [WebSocket](/docs/realtime-speech-to-text). No text input needed — audio is streamed from the microphone. The `transcriptionDelay` controls the speed vs accuracy trade-off.
 
-Available realtime STT models:
-- [wiro/voxtral-mini-realtime](https://wiro.ai/models/wiro/voxtral-mini-realtime)
+Available realtime STT models include:
+- [mistralai/voxtral-mini-4b-realtime-2602](https://wiro.ai/models/mistralai/voxtral-mini-4b-realtime-2602)
 
 ```json
 {

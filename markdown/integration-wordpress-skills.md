@@ -81,7 +81,6 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ```json
 "wordpress": {
-  "optional": false,
   "_connected": false,
   "optional": false,
   "extra": false,

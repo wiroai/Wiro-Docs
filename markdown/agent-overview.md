@@ -110,7 +110,7 @@ Cache-read and cache-write categories are charged only when the selected model r
 
 When the credit pool is exhausted, [`POST /UserAgent/Message/Send`](/docs/agent-messaging#post-useragentmessagesend) and [`POST /UserAgent/Start`](#post-useragentstart) refuse with an `Agent has no remaining credits…` error plus an `agentbalance` snapshot; renew the subscription or buy an extra credit pack to continue.
 
-> **Voice realtime audio is billed separately.** Live voice-call audio (for `util-voice-receptionist` agents) is **not** charged to the platform credit pool — it flows through the operator's own Wiro AI Models balance via the `int-wiro-aimodels` skill (you bring your own Wiro API key). Only the post-call text turn is billed as a normal token deduct.
+> **Voice realtime audio is billed separately.** Live voice-call audio (for `util-voice-receptionist` agents) is **not** charged to the platform credit pool — it flows through the operator's own Wiro AI Models balance via the `int-wiro-aimodels` skill (you bring your own Wiro API key). The voice-prep turn before the call and the post-call text turn are billed as normal token deducts.
 
 ### Live Pricing Preview
 
@@ -1273,7 +1273,7 @@ Updates an agent instance's **scalar fields only** (title, description, categori
 }
 ```
 
-> **`Update` returns the full composed useragent shape** — same composition path as `UserAgent/Detail` (`getUserAgentDetailForUI`), so `credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `tokenRates`, `agentModel`, and the `agent` template summary (with `tiers` + `extracreditpacks`) are all included. The fields `Update` cannot safely populate without an extra round-trip (`subscription`, `remainingcredits`, `extracreditsexpiry`) stay omitted — call `UserAgent/Detail` next if you need them. Otherwise the response is suitable for an in-place panel re-render without a follow-up call.
+> **`Update` returns the full composed useragent shape** — same composition path as `UserAgent/Detail`, so `credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `tokenRates`, `agentModel`, and the `agent` template summary (with `tiers` + `extracreditpacks`) are all included. The fields `Update` cannot safely populate without an extra round-trip (`subscription`, `remainingcredits`, `extracreditsexpiry`) stay omitted — call `UserAgent/Detail` next if you need them. Otherwise the response is suitable for an in-place panel re-render without a follow-up call.
 
 > **Restart on running agents.** When the call lands on a status `3`/`4` agent, the response shows the lifecycle transition mid-flight: `status: 1` (Stopping) with a fresh `stoppingat` timestamp, `runningat` cleared, and `queuedat` set to the same instant — Wiro auto-queues the agent so it picks the new settings up after the next stop cycle.
 
@@ -1579,7 +1579,7 @@ The endpoint auto-normalises the skillkey to its canonical form. Bare slugs beco
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Your UserAgent instance guid |
-| `skillkey` | string | Yes | The skill key. Strategies use bare names (e.g. `"content-tone"` → stored as `cs-content-tone`). Crons use a `cron-` prefix (e.g. `"cron-social-content-scanner"` → stored as `cs-cron-social-content-scanner`). |
+| `skillkey` | string | Yes | The skill key. Strategies use bare names (e.g. `"content-tone"` → stored as `cs-content-tone`). For a scheduled task, send its full key (e.g. `"cs-cron-social-content-scanner"`), or a bare slug together with `interval` (`"weekly-report"` → `cs-cron-weekly-report`). Don't send a `cron-…` key with an `interval`: it becomes `cs-cron-cron-…`, a new task. |
 | `value` | string | No | Strategy body / cron prompt text. Editable for preset strategies and user-created entries; bundled crons silently drop `value` writes. |
 | `interval` | string | No | Cron expression (e.g. `"0 */4 * * *"`). Only persisted on `cs-cron-*` rows. |
 | `enabled` | boolean | No | Turn the skill on or off. **Writable for both strategies (`cs-*`) and crons (`cs-cron-*`)** — a disabled strategy is suppressed end-to-end (the IDE still shows it, but the agent never loads it). Defaults to `true` on insert. |
@@ -2308,7 +2308,7 @@ Calls are rate-limited via a 30-second server-side cache keyed on `(useragentgui
 | `useragentguid is required` | Missing `useragentguid` in the body |
 | `Agent is not assigned to a worker. It may not be running.` | The useragent has never been deployed to a worker yet |
 | `Worker not found` | The agent's worker is no longer available (extremely rare) |
-| `Failed to fetch activity from worker` | Worker host unreachable / internal error during the tail |
+| `Agent is temporarily unavailable. Please try again shortly.` | The agent's host did not answer (offline, network blip) — retry |
 
 #### **POST** /UserAgent/LogsList
 

@@ -46,7 +46,7 @@ These errors are returned when API key or bearer token authentication fails. All
 | Bearer token missing | `99` | "Authorization bearer token is not founded in headers." |
 | Bearer token invalid | `99` | "Authorization bearer token is invalid." |
 | Bearer token expired | `99` | "Authorization bearer token expired." |
-| Endpoint not found | `0` | "Error parsing url." (HTTP 404) |
+| Endpoint not found | `0` | "Parsing url error." (HTTP 404) |
 
 ### Signature Auth Errors
 
@@ -106,15 +106,19 @@ These errors are returned by the `POST /Run/{owner}/{model}` endpoint.
 
 ## Task Errors
 
-These errors are returned by `POST /Task/Detail`, `POST /Task/Cancel`, and `POST /Task/Kill`.
+These errors are returned by `POST /Task/Detail`, `POST /Task/Cancel`, `POST /Task/Kill`, and `POST /Task/InputOutputDelete`.
 
 | Error | Code | Message | Endpoint |
 |-------|------|---------|----------|
-| Task not found | `1` | "There is no task yet." | Detail, Cancel, Kill |
-| Missing identifier | `0` | "taskid or socketaccesstoken is required" | Detail |
+| Task not found | `0` | "task-not-founded" | Detail |
+| Task not found | `1` | "There is no task yet." | Cancel |
+| Task not found | `0` | "There is no task yet." | Kill, InputOutputDelete |
+| Missing identifier | `0` | "Request parameter [taskid or tasktoken] required" | Detail |
+| Missing identifier | `0` | "taskid or socketaccesstoken is required" | Kill |
 | Not cancellable | `1` | "Task is not in a cancellable state." | Cancel |
 | Kill failed | `1` | "Task could not be killed: {reason}" | Kill |
-| Permission denied | `0` | "You don't have any permission for this action." | Detail, Cancel, Kill |
+| Task not completed | `0` | "Task must be completed or cancelled before deleting files" | InputOutputDelete |
+| Permission denied | `0` | "You don't have any permission for this action." | Detail, Cancel |
 
 ## Error Handling Best Practices
 

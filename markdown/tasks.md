@@ -18,7 +18,7 @@ Every model run creates a task that progresses through a defined set of stages:
 | `task_preprocess_end` | Preprocessing completed. All inputs are ready for GPU assignment. |
 | `task_assign` | The task has been assigned to a specific GPU. The model is being loaded into memory. This may take a few seconds depending on the model size. |
 | `task_start` | The model command has started executing. Inference is now running on the GPU. |
-| `task_output` | The model is producing output. This event is emitted **multiple times** — each time the model writes to stdout, a new `task_output` message is sent via WebSocket. For LLM models, each token/chunk arrives as a separate `task_output` event, enabling real-time streaming. |
+| `task_output` | The model is producing output. This event is emitted **multiple times** — each time the model writes to stdout, a new `task_output` message is sent via WebSocket. For LLM models, each `task_output` event carries the latest cumulative snapshot of the output, so render the newest one instead of appending. |
 | `task_error` | As a live WebSocket event, this means the model wrote to stderr and is an **interim log**, not necessarily a failure. As the persisted `status` returned by Task/Detail, it marks a pre-execution failure awaiting recovery or requeue; it does not close the task. |
 | `task_output_full` | Signals that process stdout collection ended. Raw accumulated stdout is not exposed on the public socket. |
 | `task_error_full` | Signals that process stderr collection ended. Raw accumulated stderr is not exposed on the public socket. |
@@ -290,7 +290,7 @@ After deletion:
 
 | Error | When |
 |-------|------|
-| `task-not-exist` | Invalid tasktoken or unauthorized |
+| `There is no task yet.` | Invalid tasktoken or unauthorized |
 | `Task must be completed or cancelled before deleting files` | Task is still running |
 
 ## Code Examples
@@ -354,14 +354,15 @@ while True:
         json={"tasktoken": task_token}
     )
     task = resp.json()["tasklist"][0]
-    status = task["status"]
-    print(f"Status: {status}")
+    print(f"Status: {task['status']}")
 
-    if status == "task_postprocess_end":
-        print("Outputs:", task["outputs"])
-        print("Success:", task["pexit"] == "0")
+    if task["status"] == "task_postprocess_end":
+        if task["pexit"] == "0":
+            print("Outputs:", task["outputs"])
+        else:
+            print("Failed: pexit", task["pexit"])
         break
-    elif status == "task_cancel":
+    elif task["status"] == "task_cancel":
         print("Task cancelled")
         break
 
@@ -404,15 +405,17 @@ async function pollTask() {
       { headers }
     );
     const task = resp.data.tasklist[0];
-    const { status, outputs, pexit } = task;
-    console.log('Status:', status);
+    console.log('Status:', task.status);
 
-    if (status === 'task_postprocess_end') {
-      console.log('Outputs:', outputs);
-      console.log('Success:', pexit === '0');
+    if (task.status === 'task_postprocess_end') {
+      if (task.pexit === '0') {
+        console.log('Outputs:', task.outputs);
+      } else {
+        console.log('Failed: pexit', task.pexit);
+      }
       break;
     }
-    if (status === 'task_cancel') {
+    if (task.status === 'task_cancel') {
       console.log('Task cancelled');
       break;
     }

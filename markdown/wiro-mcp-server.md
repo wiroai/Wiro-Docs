@@ -232,7 +232,9 @@ Authentication is via the `Authorization` header:
 Authorization: Bearer YOUR_API_KEY:YOUR_API_SECRET
 ```
 
-Any MCP client that supports Streamable HTTP **and a custom `Authorization` header** can connect. Refer to your client's documentation for the exact configuration format. Clients that require OAuth-only MCP authentication are not currently supported by this endpoint.
+Or for API Key Only auth: `Bearer YOUR_API_KEY`
+
+Credentials are sent as plain text — no base64 encoding needed. Any MCP client that supports Streamable HTTP **and a custom `Authorization` header** can connect. Refer to your client's documentation for the exact configuration format. Clients that require OAuth-only MCP authentication are not currently supported by this endpoint.
 
 ## Authentication
 
@@ -254,7 +256,7 @@ Simpler. Only requires the API key:
 Authorization: Bearer YOUR_API_KEY
 ```
 
-Your credentials are sent per-request in the Authorization header and are never stored. The server is fully stateless.
+No base64 encoding needed. Your credentials are sent per-request in the Authorization header and are never stored. The server is fully stateless.
 
 ## Available Tools
 

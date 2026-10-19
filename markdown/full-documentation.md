@@ -65,6 +65,7 @@ Wiro is an AI model marketplace and API platform that lets you run **AI models**
 - **Pay-per-use pricing** — only pay for what you consume, no upfront commitments
 - **Real-time WebSocket updates** — stream task progress and outputs live
 - **9 SDK languages** — curl, Python, Node.js, PHP, C#, Swift, Dart, Kotlin, Go
+- **AI Agents** — deploy and manage autonomous AI agents that connect to third-party services, maintain conversation memory, and automate workflows via API
 
 ## Base URL
 
@@ -86,6 +87,7 @@ wss://socket.wiro.ai/v1
 2. **Create a project** in the [Dashboard](https://wiro.ai/panel/project/new) to get your API key
 3. **Pick a model** from the [marketplace](https://wiro.ai/models)
 4. **Make your first API call** — see [Code Examples](#code-examples) for full end-to-end samples
+5. **Deploy an AI Agent** — browse the [agent catalog](https://wiro.ai/agents), deploy an instance, and interact via the [Agent API](/docs/agent-overview)
 
 ## Response Format
 
@@ -807,7 +809,7 @@ The same endpoints also accept `x-api-key` containing either `YOUR_API_KEY` or
 
 If `Authorization` and `x-api-key` are sent together, both must identify the
 same complete project credential. A mismatched key or secret, or a malformed
-Bearer credential returns `401`; Wiro does not silently choose one credential
+credential in either header returns `401`; Wiro does not silently choose one credential
 or fall back to another project.
 
 Never expose a project key or secret in browser or mobile application code.
@@ -3375,7 +3377,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
 
 Realtime voice models accept configuration parameters (voice, system instructions, audio format, etc.) as JSON. Parameters vary per model — use `/Tool/Detail` to discover them. The actual audio interaction happens over [WebSocket](/docs/realtime-voice-conversation) after the task starts:
 
-Available realtime models:
+Available realtime models include:
 
 - [openai/gpt-realtime-mini](https://wiro.ai/models/openai/gpt-realtime-mini)
 - [openai/gpt-realtime](https://wiro.ai/models/openai/gpt-realtime)
@@ -3390,6 +3392,41 @@ Available realtime models:
   "output_audio_format": "audio/pcm",
   "input_audio_rate": "24000",
   "output_audio_rate": "24000"
+}
+```
+
+### Realtime Text to Speech
+
+Realtime TTS models stream synthesized audio back over [WebSocket](/docs/realtime-text-to-speech) as binary frames. Text is required. Reference audio is optional for voice cloning.
+
+Available realtime TTS models include:
+
+- [openmoss/moss-tts-realtime](https://wiro.ai/models/openmoss/moss-tts-realtime)
+
+```json
+{
+  "text": "Hello, this is a test of real-time text to speech.",
+  "inputAudio": "",
+  "temperature": 0.8,
+  "topP": 0.6,
+  "topK": 30,
+  "repetitionPenalty": 1.1,
+  "repetitionWindow": 50,
+  "maxLength": 3000
+}
+```
+
+### Realtime Speech to Text
+
+Realtime STT models transcribe audio streamed from the microphone over [WebSocket](/docs/realtime-speech-to-text). No text input needed — audio is streamed from the microphone. The `transcriptionDelay` controls the speed vs accuracy trade-off.
+
+Available realtime STT models include:
+
+- [mistralai/voxtral-mini-4b-realtime-2602](https://wiro.ai/models/mistralai/voxtral-mini-4b-realtime-2602)
+
+```json
+{
+  "transcriptionDelay": "balanced"
 }
 ```
 
@@ -3428,7 +3465,7 @@ Every model run creates a task that progresses through a defined set of stages:
 | `task_preprocess_end` | Preprocessing completed. All inputs are ready for GPU assignment. |
 | `task_assign` | The task has been assigned to a specific GPU. The model is being loaded into memory. This may take a few seconds depending on the model size. |
 | `task_start` | The model command has started executing. Inference is now running on the GPU. |
-| `task_output` | The model is producing output. This event is emitted **multiple times** — each time the model writes to stdout, a new `task_output` message is sent via WebSocket. For LLM models, each token/chunk arrives as a separate `task_output` event, enabling real-time streaming. |
+| `task_output` | The model is producing output. This event is emitted **multiple times** — each time the model writes to stdout, a new `task_output` message is sent via WebSocket. For LLM models, each `task_output` event carries the latest cumulative snapshot of the output, so render the newest one instead of appending. |
 | `task_error` | As a live WebSocket event, this means the model wrote to stderr and is an **interim log**, not necessarily a failure. As persisted `status` in Task/Detail, it marks a pre-execution failure awaiting recovery or requeue; it does not close the task. |
 | `task_output_full` | Signals that process stdout collection ended. Raw accumulated stdout is not exposed on the public socket. |
 | `task_error_full` | Signals that process stderr collection ended. Raw accumulated stderr is not exposed on the public socket. |
@@ -3437,9 +3474,9 @@ Every model run creates a task that progresses through a defined set of stages:
 | `task_postprocess_end` | Post-processing completed. On the public WebSocket, check `success` and `exitCode` (`0` = success); `message` contains sanitized outputs. Task/Detail continues to use `pexit` as its primary success indicator. **This is the event you should listen for** to get final results. |
 | `task_cancel` | The task was cancelled (if queued) or killed (if running) by the user. |
 
-### Realtime Conversation Only
+### Realtime Sessions
 
-The following statuses are exclusive to realtime conversation models (e.g. voice AI). They are not emitted for standard model runs.
+The following statuses are exclusive to realtime models (voice conversation, text-to-speech, and speech-to-text). They are not emitted for standard model runs.
 
 | Status              | Description                                                                         |
 | ------------------- | ----------------------------------------------------------------------------------- |
@@ -3680,7 +3717,7 @@ After deletion:
 
 | Error | When |
 |-------|------|
-| `task-not-exist` | Invalid tasktoken or unauthorized |
+| `There is no task yet.` | Invalid tasktoken or unauthorized |
 | `Task must be completed or cancelled before deleting files` | Task is still running |
 
 ---
@@ -4068,11 +4105,11 @@ payload. That payload is separate from normalized structured finite-LLM
 
 ## Binary Frames
 
-For **realtime voice models**, the WebSocket may send binary frames containing raw audio data. Check if the received message is a `Blob` (browser) or `Buffer` (Node.js) before parsing as JSON.
+For **realtime models** that return audio (voice conversation and text-to-speech), the WebSocket may send binary frames containing raw audio data. Check if the received message is a `Blob` (browser) or `Buffer` (Node.js) before parsing as JSON.
 
 ## Ending a Session
 
-For realtime/streaming models that maintain a persistent session, send a `task_session_end` message to gracefully terminate:
+For realtime models that maintain a persistent session, send a `task_session_end` message to gracefully terminate:
 
 ```json
 {
@@ -4101,6 +4138,33 @@ The flow is:
 4. **Stream** microphone audio as binary frames
 5. **Receive** AI audio as binary frames and play them
 6. **End** the session with `task_session_end`
+
+## Run Parameters
+
+Each realtime model has its own set of parameters. Use [POST /Tool/Detail](#models) to discover the exact parameters for a specific model. See [Model Parameters](#model-parameters) for details on parameter types.
+
+Available realtime conversation models include:
+- [openai/gpt-realtime-mini](https://wiro.ai/models/openai/gpt-realtime-mini) — GPT Mini Realtime Voice Assistant
+- [openai/gpt-realtime](https://wiro.ai/models/openai/gpt-realtime) — GPT Realtime Voice Assistant
+- [elevenlabs/realtime-conversational-ai](https://wiro.ai/models/elevenlabs/realtime-conversational-ai) — ElevenLabs Conversational AI
+
+Common parameters across realtime models typically include voice selection, system instructions, and audio format settings. Example run for an OpenAI realtime model:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/Run/openai/gpt-realtime-mini" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "voice": "marin",
+    "system_instructions": "You are a friendly assistant.",
+    "input_audio_format": "audio/pcm",
+    "output_audio_format": "audio/pcm",
+    "input_audio_rate": "24000",
+    "output_audio_rate": "24000"
+  }'
+```
+
+> **Important:** Parameters vary per model. Always check the model's detail page or use `/Tool/Detail` to get the exact parameter list before integrating.
 
 ## Connection & Registration
 
@@ -4266,6 +4330,23 @@ The flow is:
 | Transcripts  | `TRANSCRIPT_USER:` / `TRANSCRIPT_AI:` via `task_output` | None                              |
 | Use case     | Interactive voice chat                                  | Narration, voiceover, assistants  |
 
+## Run Parameters
+
+Each realtime TTS model has its own set of parameters. Use [POST /Tool/Detail](#models) to discover the exact parameters for a specific model. See [Model Parameters](#model-parameters) for parameter types.
+
+Browse available realtime TTS models on the [models page](https://wiro.ai/models) (filter by **Realtime TTS** category). Common parameters typically include the input text and an optional reference audio clip for voice cloning. Example run for MOSS-TTS-Realtime:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/Run/openmoss/moss-tts-realtime" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "text": "Hello, this is a realtime text-to-speech demo."
+  }'
+```
+
+> **Important:** Parameters vary per model. Always check the model's detail page or use `/Tool/Detail` to get the exact parameter list before integrating. The run response returns a `socketaccesstoken` used to subscribe to the WebSocket.
+
 ## Realtime Events
 
 During a realtime TTS session, you'll receive these WebSocket events:
@@ -4348,6 +4429,34 @@ The flow is:
 6. **End** the session with `task_session_end`
 
 > **Key difference from Voice Conversation:** No binary audio is sent back from the server. All server → client messages are JSON text events.
+
+## How It Differs from Realtime Voice Conversation
+
+| | Realtime Voice Conversation | Realtime Speech to Text |
+|---|---|---|
+| Input | Microphone audio (streamed) | Microphone audio (streamed) |
+| Output | AI audio + transcripts | Transcript text only |
+| Direction | Bidirectional (client ↔ server) | Client → server audio, server → client text |
+| Binary frames from server | Yes (AI audio) | No (all server messages are JSON) |
+| Transcripts | `TRANSCRIPT_USER:` and `TRANSCRIPT_AI:` | `TRANSCRIPT_USER:` only |
+| Use case | Interactive voice chat | Live dictation, captioning, meeting transcription |
+
+## Run Parameters
+
+Each realtime STT model has its own set of parameters. Use [POST /Tool/Detail](#models) to discover the exact parameters for a specific model. See [Model Parameters](#model-parameters) for parameter types.
+
+Browse available realtime STT models on the [models page](https://wiro.ai/models) (filter by **Realtime STT** category). Common parameters typically include a transcription delay setting that trades speed for accuracy; some models also take a language. Example run for Voxtral Mini 4B Realtime:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/Run/mistralai/voxtral-mini-4b-realtime-2602" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "transcriptionDelay": "balanced"
+  }'
+```
+
+> **Important:** Parameters vary per model. Always check the model's detail page or use `/Tool/Detail` to get the exact parameter list before integrating. The run response returns a `socketaccesstoken` used to subscribe to the WebSocket.
 
 ## Realtime Events
 
@@ -4522,11 +4631,13 @@ Uploads a file using `multipart/form-data`. You can optionally assign it to a fo
 
 ## Using Files in Runs
 
-Once uploaded, reference a file by its URL or ID in your model run parameters. For example, an image upscaler model might accept a `imageUrl` parameter — pass the URL returned from the upload response.
+Once uploaded, reference a file by its URL or ID in your model run parameters. For example, an image upscaler model might accept an `inputImageUrl` parameter — pass the URL returned from the upload response.
+
+You don't always need to upload files first. Most models accept direct URLs in their file parameters — you can pass any publicly accessible URL. See [Model Parameters](/docs/model-parameters) for details on `fileinput`, `multifileinput`, and `combinefileinput` patterns.
 
 ```json
 {
-  "imageUrl": "https://files.wiro.ai/...",
+  "inputImageUrl": "https://cdn1.wiro.ai/...",
   "scale": 4
 }
 ```
@@ -4687,10 +4798,13 @@ All API responses return HTTP `200`. Auth errors return HTTP `401`.
 
 | Code | Message | Endpoint |
 |------|---------|----------|
-| `1` | Task not found | Detail, Cancel, Kill |
+| `0` | Task not found | Detail, Kill, InputOutputDelete |
+| `1` | Task not found | Cancel |
 | `1` | Not cancellable | Cancel |
 | `1` | Kill failed | Kill |
-| `0` | Missing identifier | Detail |
+| `0` | Task not completed | InputOutputDelete |
+| `0` | Missing identifier | Detail, Kill |
+| `0` | Permission denied | Detail, Cancel |
 
 ---
 
@@ -5612,7 +5726,7 @@ Cache-read and cache-write categories are charged only when the selected model r
 
 When the credit pool is exhausted, [`POST /UserAgent/Message/Send`](/docs/agent-messaging#post-useragentmessagesend) and [`POST /UserAgent/Start`](#post-useragentstart) refuse with an `Agent has no remaining credits…` error plus an `agentbalance` snapshot; renew the subscription or buy an extra credit pack to continue.
 
-> **Voice realtime audio is billed separately.** Live voice-call audio (for `util-voice-receptionist` agents) is **not** charged to the platform credit pool — it flows through the operator's own Wiro AI Models balance via the `int-wiro-aimodels` skill (you bring your own Wiro API key). Only the post-call text turn is billed as a normal token deduct.
+> **Voice realtime audio is billed separately.** Live voice-call audio (for `util-voice-receptionist` agents) is **not** charged to the platform credit pool — it flows through the operator's own Wiro AI Models balance via the `int-wiro-aimodels` skill (you bring your own Wiro API key). The voice-prep turn before the call and the post-call text turn are billed as normal token deducts.
 
 ### Live Pricing Preview
 
@@ -6775,7 +6889,7 @@ Updates an agent instance's **scalar fields only** (title, description, categori
 }
 ```
 
-> **`Update` returns the full composed useragent shape** — same composition path as `UserAgent/Detail` (`getUserAgentDetailForUI`), so `credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `tokenRates`, `agentModel`, and the `agent` template summary (with `tiers` + `extracreditpacks`) are all included. The fields `Update` cannot safely populate without an extra round-trip (`subscription`, `remainingcredits`, `extracreditsexpiry`) stay omitted — call `UserAgent/Detail` next if you need them. Otherwise the response is suitable for an in-place panel re-render without a follow-up call.
+> **`Update` returns the full composed useragent shape** — same composition path as `UserAgent/Detail`, so `credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `tokenRates`, `agentModel`, and the `agent` template summary (with `tiers` + `extracreditpacks`) are all included. The fields `Update` cannot safely populate without an extra round-trip (`subscription`, `remainingcredits`, `extracreditsexpiry`) stay omitted — call `UserAgent/Detail` next if you need them. Otherwise the response is suitable for an in-place panel re-render without a follow-up call.
 
 > **Restart on running agents.** When the call lands on a status `3`/`4` agent, the response shows the lifecycle transition mid-flight: `status: 1` (Stopping) with a fresh `stoppingat` timestamp, `runningat` cleared, and `queuedat` set to the same instant — Wiro auto-queues the agent so it picks the new settings up after the next stop cycle.
 
@@ -7081,7 +7195,7 @@ The endpoint auto-normalises the skillkey to its canonical form. Bare slugs beco
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Your UserAgent instance guid |
-| `skillkey` | string | Yes | The skill key. Strategies use bare names (e.g. `"content-tone"` → stored as `cs-content-tone`). Crons use a `cron-` prefix (e.g. `"cron-social-content-scanner"` → stored as `cs-cron-social-content-scanner`). |
+| `skillkey` | string | Yes | The skill key. Strategies use bare names (e.g. `"content-tone"` → stored as `cs-content-tone`). For a scheduled task, send its full key (e.g. `"cs-cron-social-content-scanner"`), or a bare slug together with `interval` (`"weekly-report"` → `cs-cron-weekly-report`). Don't send a `cron-…` key with an `interval`: it becomes `cs-cron-cron-…`, a new task. |
 | `value` | string | No | Strategy body / cron prompt text. Editable for preset strategies and user-created entries; bundled crons silently drop `value` writes. |
 | `interval` | string | No | Cron expression (e.g. `"0 */4 * * *"`). Only persisted on `cs-cron-*` rows. |
 | `enabled` | boolean | No | Turn the skill on or off. **Writable for both strategies (`cs-*`) and crons (`cs-cron-*`)** — a disabled strategy is suppressed end-to-end (the IDE still shows it, but the agent never loads it). Defaults to `true` on insert. |
@@ -7810,7 +7924,7 @@ Calls are rate-limited via a 30-second server-side cache keyed on `(useragentgui
 | `useragentguid is required` | Missing `useragentguid` in the body |
 | `Agent is not assigned to a worker. It may not be running.` | The useragent has never been deployed to a worker yet |
 | `Worker not found` | The agent's worker is no longer available (extremely rare) |
-| `Failed to fetch activity from worker` | Worker host unreachable / internal error during the tail |
+| `Agent is temporarily unavailable. Please try again shortly.` | The agent's host did not answer (offline, network blip) — retry |
 
 #### **POST** /UserAgent/LogsList
 
@@ -9122,7 +9236,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
     },
     "customskills": [
       {
-        "key": "cron-summarize-inbox",
+        "key": "cs-cron-summarize-inbox",
         "value": "Every 4 hours, scan all unread Gmail messages from the past 4 hours, summarize each in 1 sentence, and post the digest to Telegram.",
         "interval": "0 */4 * * *",
         "enabled": true,
@@ -9212,7 +9326,7 @@ Notes on the response:
 
 - `agentguid: null` — confirms this is a custom build with no marketplace template.
 - `agent.custom: true` — the synthesized template placeholder. Same shape as a template's `agent` block but no `slug` / `cover` / `categories` (custom builds aren't in the marketplace).
-- `scheduledskills` already contains the cron from the Deploy body, with the canonical `cs-cron-` prefix added by the server.
+- `scheduledskills` already contains the cron from the Deploy body. Deploy stores `customskills` keys exactly as sent, so give each entry its full key: `cs-<slug>` for a strategy, `cs-cron-<slug>` for a scheduled task.
 - `status: 2` — Deploy auto-queued the instance because `useprepaid: true` provisioned a subscription in the same call. The daemon picks the row up from the queue; you do **not** need to call `POST /UserAgent/Start` after a prepaid deploy.
 - Communication-channel credentials are validated independently from `skills`. Every channel group present in `credentials` must contain all of its `required_fields` or Deploy fails without leaving a partial agent behind.
 
@@ -9300,7 +9414,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   },
   "customskills": [
     {
-      "key": "cron-email-digest",
+      "key": "cs-cron-email-digest",
       "value": "Twice a day, summarize unread Gmail messages in one Telegram message.",
       "interval": "0 9,17 * * *",
       "enabled": true,
@@ -9326,12 +9440,12 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   },
   "customskills": [
     {
-      "key": "content-strategy",
+      "key": "cs-content-strategy",
       "value": "## Writing Style\nShort, punchy, technical. Always include code examples.\n\n## Sources\nWired, ArsTechnica, Hacker News.\n\n## Cadence\nOne 600-word article every Monday.",
       "_user_created": false
     },
     {
-      "key": "cron-weekly-blog",
+      "key": "cs-cron-weekly-blog",
       "value": "Every Monday morning, scan the websites listed under your var-website credential, draft one 600-word article, and publish to WordPress as a draft.",
       "interval": "0 9 * * 1",
       "enabled": true,
@@ -9361,7 +9475,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
 }
 ```
 
-OAuth providers are connected later via `POST /UserAgentOAuth/{Provider}Connect` — see [Agent Credentials](/docs/agent-credentials).
+OAuth providers are connected later via `POST /UserAgentOAuth/OAuthConnect` with the provider's `credentialkey` — see [Agent Credentials](/docs/agent-credentials).
 
 ## Subscription & Billing for Custom Builds
 
@@ -9780,7 +9894,7 @@ Retrieves conversation history for a specific agent and session. Messages are re
 }
 ```
 
-> Each message row carries `uuid` (sender) and a server-decorated `user` object with the full sender shape — same as `Message/Detail`. `user` is `null` for system-inserted rows (e.g. `Message/SystemInsert` writes when `uuid` is `"system"`) or when the underlying account has been deleted.
+> Each message row carries `uuid` (sender) and a server-decorated `user` object with the full sender shape — same as `Message/Detail`. `user` is `null` for rows with a sentinel `uuid` such as `"system"` (older automation rows) or when the underlying account has been deleted; `Message/SystemInsert` rows carry the agent owner's `uuid`.
 
 > **Resuming an in-flight stream.** Every row carries the original `agenttoken` from `Message/Send`. If a returned message's `status` is non-terminal (`agent_queue`, `agent_start`, or `agent_output`), the agent is still processing it server-side. Hand the `agenttoken` to the [Agent WebSocket](/docs/agent-websocket) (`agent_info` frame) and you'll receive the persisted `agent_subscribed.timeline` snapshot, subsequent `agent_timeline_delta` block updates, remaining provisional `agent_output` snapshots, and the eventual `agent_end` event — no need to re-send the message.
 
@@ -13582,7 +13696,7 @@ complete. Channels are not skills and do not affect pricing.
 |-----------|------|-------------|
 | `monthly_price_weight_usd` | `number` | Weight (USD) the skill contributes to the agent's Starter monthly price. The resolver sums weights across the agent's enabled-skill closure (incl. transitive `depends_on`); Pro multiplies the total by `tiermultiplier`. The platform applies a **$4/month minimum floor** on top of this sum (with credits scaled proportionally) — see Pricing in the [Agent Overview](/docs/agent-overview#pricing-model--tiers-skills--token-billing). |
 | `monthly_credits_weight` | `number` | Weight (credits) the skill contributes to the Starter monthly credit allocation: 100 credits per $1 of `monthly_price_weight_usd`. Same closure + multiplier semantics as price. When the $4 starter floor is applied to `monthly_price_weight_usd`, this weight is scaled up by the same ratio so the user gets a proportional credit boost rather than a free upgrade. |
-| `billing_model` | `string` | Always `"tokens"`. Per-turn conversation cost is token-metered at the agent's per-model `tokenRates` (credits per 1M input / output / cached-input tokens) — see [token billing in the Agent Overview](/docs/agent-overview#pricing-model--tiers-skills--token-billing). Voice skills stream realtime audio through the operator's own Wiro AI Models balance via `int-wiro-aimodels` (your own Wiro API key); only the post-call text turn is a normal token deduct. |
+| `billing_model` | `string` | Always `"tokens"`. Per-turn conversation cost is token-metered at the agent's per-model `tokenRates` (credits per 1M input / output / cached-input tokens) — see [token billing in the Agent Overview](/docs/agent-overview#pricing-model--tiers-skills--token-billing). Voice skills stream realtime audio through the operator's own Wiro AI Models balance via `int-wiro-aimodels` (your own Wiro API key); the voice-prep and post-call text turns are normal token deducts. |
 
 > **4 weight buckets in the skill registry.** Every skill's `monthly_price_weight_usd` / `monthly_credits_weight` pair but one lands in one of four buckets: `ZERO` (`$0` / `0` — utility skills), `LIGHT` (`$1` / `100` credits per month), `HEAVY` (`$2` / `200` credits per month), or `PREMIUM` (`$4` / `400` credits per month). The exception is `util-video-creator`, the Video Creator's playbook: it carries that agent's price, `$29` and `2900` credits a month on Starter, to any agent that turns it on. Every paid skill grants exactly 100 monthly credits per $1 of price weight, so `monthly_credits_weight` is always `100 × monthly_price_weight_usd`. The `(priceUsd, credits)` grid is a documentation convenience — it is **not** a named API constant; each pair emerges from the skill's own `monthly_price_weight_usd` / `monthly_credits_weight`. There are **no per-skill Pro overrides** — Pro is always derived as `Starter × tiermultiplier` (default `10`). The agent's Starter price = `Σ(enabled-skill weights)`, bumped to `$4` if the raw sum lands below the floor (with credits scaled proportionally to keep the per-credit ratio stable); Pro = `Starter × tiermultiplier`.
 
@@ -13938,7 +14052,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
 
 Scheduled tasks are cron skills — bundled ones (`_source: "skill-bundle"`) ship with integration skills and run automatically when the integration is enabled. User-created crons (`_source: "user-created"`) are added at any time.
 
-> **For bundled crons, only `enabled` and `interval` are writable.** The task body (`value`) is owned by the integration skill and re-materialised on every container restart. To change **what** a bundled scheduled task does, edit the paired preference skill (e.g. `content-tone` is read by `cron-social-content-scanner` at runtime). For user-created crons, all three (`value`, `interval`, `enabled`) are writable.
+> **For bundled crons, only `enabled` and `interval` are writable.** The task body (`value`) is owned by the integration skill and re-materialised on every container restart. To change **what** a bundled scheduled task does, edit the paired preference skill (e.g. `content-tone` is read by `cs-cron-social-content-scanner` at runtime). For user-created crons, all three (`value`, `interval`, `enabled`) are writable.
 
 ### Example: Change a bundled cron's frequency
 
@@ -13948,7 +14062,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skillkey": "cron-review-scanner",
+    "skillkey": "cs-cron-review-scanner",
     "enabled": true,
     "interval": "0 */4 * * *"
   }'
@@ -13962,7 +14076,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skillkey": "cron-social-content-scanner",
+    "skillkey": "cs-cron-social-content-scanner",
     "enabled": false
   }'
 ```
@@ -14294,7 +14408,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-push-agent-guid",
-    "skillkey": "cron-push-scanner",
+    "skillkey": "cs-cron-push-scanner",
     "enabled": true,
     "interval": "0 9 * * 1"
   }'
@@ -14304,7 +14418,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-push-agent-guid",
-    "skillkey": "cron-push-dispatcher",
+    "skillkey": "cs-cron-push-dispatcher",
     "interval": "0 */2 * * *"
   }'
 ```
@@ -14339,47 +14453,47 @@ All three requests succeed independently. The agent restarts once — the server
 
 | Agent | Skill Key | Cron | What It Does |
 |-------|-----------|------|--------------|
-| Social Manager | `cron-social-content-scanner` | `0 */4 * * *` | Content discovery and draft posts with rotating strategies (reads `content-tone`; disabled by default) |
-| Social Manager | `cron-social-drive-scanner` | `0 10 * * *` | Scans Google Drive for new post assets and prepares posts (disabled by default) |
-| Blog Content Editor | `cron-blog-scanner` | `0 9 * * *` | Topic discovery and article drafting (reads `content-strategy`) |
-| Blog Content Editor | `cron-blog-gmail-checker` | `*/30 * * * *` | Checks the inbox for topic requests and writing instructions (disabled by default) |
-| App Review Support | `cron-review-scanner` | `0 */2 * * *` | Scans App Store and Google Play for new reviews and prepares replies (reads `review-preferences`; disabled by default) |
-| App Event Manager | `cron-app-event-scanner` | `0 9 * * 1` | Scans global holidays and suggests App Store in-app events (reads `event-preferences`; disabled by default) |
-| Push Notification Manager | `cron-push-scanner` | `0 9 * * *` | Scans holidays and prepares push notification suggestions (reads `push-preferences`) |
-| Push Notification Manager | `cron-push-dispatcher` | `0 * * * *` | Sends queued push notifications on schedule |
-| Newsletter Manager | `cron-newsletter-sender` | `0 9 * * 1` | Newsletter drafting and sending (reads `newsletter-strategy`; disabled by default) |
-| Newsletter Manager | `cron-newsletter-subscriber-scanner` | `0 10 * * *` | Daily subscriber list health check and bounce monitoring (disabled by default) |
-| Lead Generation Manager | `cron-lead-prospect-scanner` | `0 10 * * 1` | Weekly prospect search, enrichment and scoring (reads `lead-strategy`; disabled by default) |
-| Lead Generation Manager | `cron-lead-outreach-reporter` | `0 9 * * *` | Daily outreach performance report (disabled by default) |
-| Lead Generation Manager | `cron-lead-reply-handler` | `0 */4 * * *` | Checks new replies, analyzes sentiment and proposes responses (disabled by default) |
-| Google Ads Manager | `cron-googleads-performance-reporter` | `0 9 * * *` | Daily performance report with recommendations (reads `ad-strategy`) |
-| Google Ads Manager | `cron-googleads-recommendations-fetcher` | `0 8 * * *` | Daily Google Ads recommendations: safe items become low-risk suggestions, risky ones wait for your approval |
-| Google Ads Manager | `cron-googleads-competitor-scanner` | `0 10 * * 1` | Weekly competitor analysis, keyword opportunities and account health audit |
-| Google Ads Manager | `cron-googleads-holiday-planner` | `0 10 * * 3` | Upcoming holidays and seasonal campaign suggestions |
-| Google Ads Manager | `cron-googleads-audience-refresher` | `0 7 * * *` | Daily Customer Match refresh from a connected CRM (HubSpot, Apollo, Lemlist) or a Google Drive CSV (disabled by default) |
-| Google Ads Manager | `cron-googleads-drive-scanner` | `0 10 * * *` | Scans Google Drive for new creative folders and proposes campaigns (disabled by default) |
-| Google Ads Manager | `cron-merchant-center-scanner` | `30 8 * * *` | Daily Merchant Center product feed health check (runs only when Merchant Center is connected; disabled by default) |
-| Google Ads Manager | `cron-ga4-attribution-auditor` | `0 11 * * 1` | Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected; disabled by default) |
-| Google Ads Manager | `cron-adjust-creative-roas-reporter` | `0 10 * * *` | Daily Adjust creative-level ROAS report with scale/pause recommendations (disabled by default) |
-| Google Ads Manager | `cron-roasit-creative-roas-reporter` | `30 10 * * *` | Daily Roasit creative-level ROAS report with scale/pause recommendations (disabled by default) |
-| Google Ads Manager | `cron-ads-recommendation-cleanup` | `0 0 * * *` | Nightly cleanup of expired recommendations |
-| Meta Ads Manager | `cron-metaads-performance-reporter` | `0 9 * * *` | Daily performance report with creative health, audience analysis and recommendations (reads `ad-strategy`) |
-| Meta Ads Manager | `cron-metaads-audience-scanner` | `0 10 * * 1` | Weekly audience, creative health and account health audit |
-| Meta Ads Manager | `cron-metaads-holiday-planner` | `0 10 * * 3` | Upcoming holidays and seasonal campaign suggestions |
-| Meta Ads Manager | `cron-metaads-drive-scanner` | `0 10 * * *` | Scans Google Drive for new creative folders and proposes campaigns |
-| Meta Ads Manager | `cron-ga4-attribution-auditor` | `0 11 * * 1` | Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected; disabled by default) |
-| Meta Ads Manager | `cron-adjust-creative-roas-reporter` | `0 10 * * *` | Daily Adjust creative-level ROAS report with scale/pause recommendations (disabled by default) |
-| Meta Ads Manager | `cron-roasit-creative-roas-reporter` | `30 10 * * *` | Daily Roasit creative-level ROAS report with scale/pause recommendations (disabled by default) |
-| Meta Ads Manager | `cron-ads-recommendation-cleanup` | `0 0 * * *` | Nightly cleanup of expired recommendations |
-| TikTok Ads Manager | `cron-tiktokads-performance-reporter` | `0 9 * * *` | Performance reporting per advertiser, plus the 30-day reconnect reminder (reads `ad-strategy`) |
-| TikTok Ads Manager | `cron-tiktokads-audience-scanner` | `0 10 * * 1` | Weekly audience, creative health and account health audit |
-| TikTok Ads Manager | `cron-tiktokads-holiday-planner` | `0 10 * * 3` | Upcoming holidays and seasonal campaign suggestions |
-| TikTok Ads Manager | `cron-tiktokads-drive-scanner` | `0 10 * * *` | Scans Google Drive for new creative folders and proposes TikTok Ads campaigns (does nothing until Google Drive is connected) |
-| TikTok Ads Manager | `cron-ga4-attribution-auditor` | `0 11 * * 1` | Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected; disabled by default) |
-| TikTok Ads Manager | `cron-adjust-creative-roas-reporter` | `0 10 * * *` | Daily Adjust creative-level ROAS report with scale/pause recommendations (disabled by default) |
-| TikTok Ads Manager | `cron-roasit-creative-roas-reporter` | `30 10 * * *` | Daily Roasit creative-level ROAS report with scale/pause recommendations (disabled by default) |
-| TikTok Ads Manager | `cron-ads-recommendation-cleanup` | `0 0 * * *` | Nightly cleanup of expired recommendations |
-| Google Review Manager | `cron-google-review-scanner` | `0 */2 * * *` | Scans Google Business Profile locations for new reviews and prepares replies |
+| Social Manager | `cs-cron-social-content-scanner` | `0 */4 * * *` | Content discovery and draft posts with rotating strategies (reads `content-tone`; disabled by default) |
+| Social Manager | `cs-cron-social-drive-scanner` | `0 10 * * *` | Scans Google Drive for new post assets and prepares posts (disabled by default) |
+| Blog Content Editor | `cs-cron-blog-scanner` | `0 9 * * *` | Topic discovery and article drafting (reads `content-strategy`) |
+| Blog Content Editor | `cs-cron-blog-gmail-checker` | `*/30 * * * *` | Checks the inbox for topic requests and writing instructions (disabled by default) |
+| App Review Support | `cs-cron-review-scanner` | `0 */2 * * *` | Scans App Store and Google Play for new reviews and prepares replies (reads `review-preferences`; disabled by default) |
+| App Event Manager | `cs-cron-app-event-scanner` | `0 9 * * 1` | Scans global holidays and suggests App Store in-app events (reads `event-preferences`; disabled by default) |
+| Push Notification Manager | `cs-cron-push-scanner` | `0 9 * * *` | Scans holidays and prepares push notification suggestions (reads `push-preferences`) |
+| Push Notification Manager | `cs-cron-push-dispatcher` | `0 * * * *` | Sends queued push notifications on schedule |
+| Newsletter Manager | `cs-cron-newsletter-sender` | `0 9 * * 1` | Newsletter drafting and sending (reads `newsletter-strategy`; disabled by default) |
+| Newsletter Manager | `cs-cron-newsletter-subscriber-scanner` | `0 10 * * *` | Daily subscriber list health check and bounce monitoring (disabled by default) |
+| Lead Generation Manager | `cs-cron-lead-prospect-scanner` | `0 10 * * 1` | Weekly prospect search, enrichment and scoring (reads `lead-strategy`; disabled by default) |
+| Lead Generation Manager | `cs-cron-lead-outreach-reporter` | `0 9 * * *` | Daily outreach performance report (disabled by default) |
+| Lead Generation Manager | `cs-cron-lead-reply-handler` | `0 */4 * * *` | Checks new replies, analyzes sentiment and proposes responses (disabled by default) |
+| Google Ads Manager | `cs-cron-googleads-performance-reporter` | `0 9 * * *` | Daily performance report with recommendations (reads `ad-strategy`) |
+| Google Ads Manager | `cs-cron-googleads-recommendations-fetcher` | `0 8 * * *` | Daily Google Ads recommendations: safe items become low-risk suggestions, risky ones wait for your approval |
+| Google Ads Manager | `cs-cron-googleads-competitor-scanner` | `0 10 * * 1` | Weekly competitor analysis, keyword opportunities and account health audit |
+| Google Ads Manager | `cs-cron-googleads-holiday-planner` | `0 10 * * 3` | Upcoming holidays and seasonal campaign suggestions |
+| Google Ads Manager | `cs-cron-googleads-audience-refresher` | `0 7 * * *` | Daily Customer Match refresh from a connected CRM (HubSpot, Apollo, Lemlist) or a Google Drive CSV (disabled by default) |
+| Google Ads Manager | `cs-cron-googleads-drive-scanner` | `0 10 * * *` | Scans Google Drive for new creative folders and proposes campaigns (disabled by default) |
+| Google Ads Manager | `cs-cron-merchant-center-scanner` | `30 8 * * *` | Daily Merchant Center product feed health check (runs only when Merchant Center is connected; disabled by default) |
+| Google Ads Manager | `cs-cron-ga4-attribution-auditor` | `0 11 * * 1` | Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected; disabled by default) |
+| Google Ads Manager | `cs-cron-adjust-creative-roas-reporter` | `0 10 * * *` | Daily Adjust creative-level ROAS report with scale/pause recommendations (disabled by default) |
+| Google Ads Manager | `cs-cron-roasit-creative-roas-reporter` | `30 10 * * *` | Daily Roasit creative-level ROAS report with scale/pause recommendations (disabled by default) |
+| Google Ads Manager | `cs-cron-ads-recommendation-cleanup` | `0 0 * * *` | Nightly cleanup of expired recommendations |
+| Meta Ads Manager | `cs-cron-metaads-performance-reporter` | `0 9 * * *` | Daily performance report with creative health, audience analysis and recommendations (reads `ad-strategy`) |
+| Meta Ads Manager | `cs-cron-metaads-audience-scanner` | `0 10 * * 1` | Weekly audience, creative health and account health audit |
+| Meta Ads Manager | `cs-cron-metaads-holiday-planner` | `0 10 * * 3` | Upcoming holidays and seasonal campaign suggestions |
+| Meta Ads Manager | `cs-cron-metaads-drive-scanner` | `0 10 * * *` | Scans Google Drive for new creative folders and proposes campaigns |
+| Meta Ads Manager | `cs-cron-ga4-attribution-auditor` | `0 11 * * 1` | Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected; disabled by default) |
+| Meta Ads Manager | `cs-cron-adjust-creative-roas-reporter` | `0 10 * * *` | Daily Adjust creative-level ROAS report with scale/pause recommendations (disabled by default) |
+| Meta Ads Manager | `cs-cron-roasit-creative-roas-reporter` | `30 10 * * *` | Daily Roasit creative-level ROAS report with scale/pause recommendations (disabled by default) |
+| Meta Ads Manager | `cs-cron-ads-recommendation-cleanup` | `0 0 * * *` | Nightly cleanup of expired recommendations |
+| TikTok Ads Manager | `cs-cron-tiktokads-performance-reporter` | `0 9 * * *` | Performance reporting per advertiser, plus the 30-day reconnect reminder (reads `ad-strategy`) |
+| TikTok Ads Manager | `cs-cron-tiktokads-audience-scanner` | `0 10 * * 1` | Weekly audience, creative health and account health audit |
+| TikTok Ads Manager | `cs-cron-tiktokads-holiday-planner` | `0 10 * * 3` | Upcoming holidays and seasonal campaign suggestions |
+| TikTok Ads Manager | `cs-cron-tiktokads-drive-scanner` | `0 10 * * *` | Scans Google Drive for new creative folders and proposes TikTok Ads campaigns (does nothing until Google Drive is connected) |
+| TikTok Ads Manager | `cs-cron-ga4-attribution-auditor` | `0 11 * * 1` | Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected; disabled by default) |
+| TikTok Ads Manager | `cs-cron-adjust-creative-roas-reporter` | `0 10 * * *` | Daily Adjust creative-level ROAS report with scale/pause recommendations (disabled by default) |
+| TikTok Ads Manager | `cs-cron-roasit-creative-roas-reporter` | `30 10 * * *` | Daily Roasit creative-level ROAS report with scale/pause recommendations (disabled by default) |
+| TikTok Ads Manager | `cs-cron-ads-recommendation-cleanup` | `0 0 * * *` | Nightly cleanup of expired recommendations |
+| Google Review Manager | `cs-cron-google-review-scanner` | `0 */2 * * *` | Scans Google Business Profile locations for new reviews and prepares replies |
 
 ### How Preference and Scheduled Skills Work Together
 
@@ -14591,7 +14705,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "type": "deduct",
       "action": "tokens",
       "amount": -5,
-      "balanceafter": 52550,
+      "balanceafter": null,
       "description": "Input Tokens: 3450 / Output Tokens: 820 / Model: openai/gpt-5.4",
       "sessionkey": "default",
       "agentsessionkey": "default",
@@ -14671,8 +14785,16 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "provider": "prepaid",
       "providerref": null,
       "metadata": { "period": "2026-05", "priceUsd": 90 },
-      "uuid": "system",
-      "user": null,
+      "uuid": "ada-uuid",
+      "user": {
+        "uuid": "ada-uuid",
+        "firstname": "Ada",
+        "lastname": "Lovelace",
+        "email": "ada@example.com",
+        "username": "ada",
+        "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
+        "avatarinitials": "AL"
+      },
       "createdat": 1714608000
     },
     {
@@ -14717,7 +14839,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 }
 ```
 
-> The `user` object is the resolved actor that triggered the ledger entry — `uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`. It is `null` when `uuid` is a sentinel like `"system"` (cron renewals, subscription expiry sweeps, automated platform writes) or when the user record has been deleted. The renewal row above was written by the daily renewal cron, so `uuid: "system"` and `user: null`.
+> The `user` object is the resolved actor that triggered the ledger entry — `uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`. Every row is recorded for an account `uuid` — renewals, expiry sweeps and other automated rows carry the agent owner's — so `user` is `null` only when that user record has been deleted.
 
 **Summary fields** (snapshot of the useragent row):
 
@@ -14729,6 +14851,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 | `remainingcredits` | `number` | `max(0, monthlycredits + extracredits - usedcredits)`. |
 | `creditperiod` | `string` | `'YYYY-MM'` billing window. Rolls over on subscription renewal. |
 | `creditsyncat` | `number\|null` | Unix seconds of the last monthly usage reset, the start of the current credit period; `byModel` counts turns from this moment on (`null` until the first reset). |
+| `extrapacks` | `array` | The agent's extra-credit packs: `{ id, credits, remainingcredits, status, provider, purchasedat, expiresat }`. Active packs are used oldest first. |
 | `byModel` | `array` | Per-model token rollup for the **current billing period**, aggregating only `action: "tokens"` rows, sorted by `tokencost` descending. A `null` or empty `model` is bucketed as `"unknown"`. Each entry: `{ model, inputtokens, outputtokens, cachereadtokens, cachewritetokens, totaltokens, tokencost, turncount }`. Within a period that stays inside `monthlycredits`, the `tokencost` values add up to `usedcredits`; credits spent from extra packs are counted here but come off `extracredits` instead. |
 
 **Transaction fields:**
@@ -14737,9 +14860,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 |-------|------|-------------|
 | `guid` | `string` | Stable id of the ledger row. Daemon retries reuse this guid for idempotency. |
 | `type` | `string` | One of `"deduct"`, `"renewal"`, `"purchase"`, `"grant"`, `"expired"`, `"refund"`. There is no `"cancel"` type — a user-initiated subscription cancel only flips auto-renew off; credits are not forfeited until `currentperiodend` is reached, at which point the cron writes the ledger row as `type: "expired"`, `action: "subscription"`. |
-| `action` | `string\|null` | Fine-grained detail. Values depend on `type`: `"tokens"` (deduct — the per-turn LLM token charge the runtime writes for every chat, cron, and voice post-call turn); `"monthly"` (renewal); `"small"`, `"medium"`, `"large"` (purchase); `"skill-toggle"`, `"upgrade"` (grant); `"skill-toggle"` (expired, mid-period skill disable); `"subscription"` (expired, end-of-period cancel rollover; refund). Legacy deduct rows may also carry `"message"`, `"create"`, `"modify"`, or `"regenerate"`. |
+| `action` | `string\|null` | Fine-grained detail. Values depend on `type`: `"tokens"` (deduct — the per-turn LLM token charge the runtime writes for every chat, cron, and voice post-call turn); `"monthly"` (renewal); `"small"`, `"medium"`, `"large"` (purchase); `"skill-toggle"`, `"skills-apply"`, `"upgrade"`, `"tier-change"` (grant); `"skill-toggle"` (expired, mid-period skill disable); `"subscription"` (expired, end-of-period cancel rollover; refund). Legacy deduct rows may also carry `"message"`, `"create"`, `"modify"`, or `"regenerate"`. |
 | `amount` | `number` | Signed credit delta — negative for deductions, positive for grants. |
-| `balanceafter` | `number\|null` | Remaining credit balance snapshot written at the time of the event. May be `null` for very old rows or for events written before the snapshot field was added. |
+| `balanceafter` | `number\|null` | Remaining credit balance snapshot written at the time of the event. `null` on per-turn `deduct` rows. |
 | `description` | `string\|null` | Human-readable label. |
 | `sessionkey` | `string\|null` | Session the deduct belongs to (deduct rows only). |
 | `agentsessionkey` | `string\|null` | Alias of `sessionkey` (same value), present on every row for a unified per-session attribution key across `TaskList` / `TransactionList` / wallet responses. |
@@ -14755,8 +14878,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 | `provider` | `string\|null` | `"agent"` (runtime deduct) or `"prepaid"` (wallet-backed change). API-deployed agents always run on the prepaid path. |
 | `providerref` | `string\|null` | Provider-side reference id. Always populated for `prepaid` rows (wallet transaction id); `null` for `agent` runtime deducts. |
 | `metadata` | `object\|null` | Arbitrary JSON context attached at write time (skill, tier, period, prorated charge, …). |
-| `uuid` | `string\|null` | UUID of the user who triggered the event (the chat operator for `deduct` rows; the wallet owner for `purchase` / `grant`). `"system"` for cron-driven events. |
-| `user` | `object\|null` | Resolved actor: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. `null` when `uuid` is `"system"` (automation / cron renewals) or when the user record was deleted. |
+| `uuid` | `string\|null` | UUID of the account the row is recorded for: the user who acted, or the agent's owner for renewals and other automated rows. Never a `"system"` placeholder. |
+| `user` | `object\|null` | Resolved actor: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. `null` when the user record was deleted. |
 | `createdat` | `number` | Unix seconds. |
 
 > **Pagination.** The endpoint returns `total` so you can render a precise paginator. Default page size is 50, max is 500. Use `start` to skip rows.
@@ -14802,7 +14925,7 @@ console.log('Now in period:', summary.creditperiod);
 
 ### Reconcile a Pro tier upgrade
 
-When the user upgrades Starter → Pro mid-period, `UpgradeTier` writes one `grant` row with `action: "tier-change"`, the monthly-credit difference as `amount`, a description like `"Tier starter → pro"` and `metadata: { fromTier, toTier, previousPriceUsd, newPriceUsd, proratedCharge }`. Use it to render an upgrade history in your UI.
+When the user upgrades Starter → Pro mid-period, the ledger gets one `grant` row for the added monthly credits. For a wallet-billed (prepaid) agent, `UpgradeTier` writes `action: "tier-change"` with the monthly-credit difference as `amount`, a description like `"Tier starter → pro"` and `metadata: { fromTier, toTier, previousPriceUsd, newPriceUsd, proratedCharge }`; a card-billed upgrade writes `action: "upgrade"`. Use these rows to render an upgrade history in your UI.
 
 ## Errors
 
@@ -15015,10 +15138,10 @@ Live tail of the agent's activity feed. Returns the last N events for the reques
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Your UserAgent instance guid. |
-| `date` | string | No | `YYYY-MM-DD` to read a specific day's file. Default: today (UTC). Pass `"today"` explicitly for clarity. |
+| `date` | string | No | `YYYY-MM-DD` to read a specific day's file. Default: today (UTC). |
 | `lines` | number | No | Max events to return (max 5000). Default: `200`. |
 
-**Caching:** the endpoint is cached server-side for 30 seconds per `(useragentguid, date, lines)` triple to absorb polling bursts. Plan for ≥30 s between repeated polls of the same key — older or differently-keyed reads bypass the cache.
+**Caching:** the endpoint is cached server-side for 30 seconds per `(useragentguid, date, lines)` triple to absorb polling bursts. Plan for ≥30 s between repeated polls of the same key.
 
 ##### Request
 
@@ -15209,7 +15332,7 @@ Reads the **full** JSONL file for a specific date and returns every event in it.
 
 Events are returned **newest first** (descending by `ts`), same as the live tail — `events[0]` is the most recent; do not re-reverse. The `user` field follows the same resolution rules as the live tail above — see the `Logs` section's "About the `user` field" callout.
 
-> **`truncated`** is `true` when the file was capped at the worker's max-line ceiling (~50000 events per file). When `true`, paginate by date — older events for the same day are not retrievable through this endpoint. (Use the live tail with smaller `lines` values for partial reads.)
+> **`truncated`** is `true` when the day's file is larger than 10 MiB. Only its newest 10 MiB of events are returned; older events of that day are not retrievable through this endpoint.
 
 ## **POST** /UserAgent/LogsDelete
 
@@ -15317,8 +15440,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/LogsDelete" \
 | `useragent-team-admin-required` | Caller is a member of the agent's team but not a team admin (code `97`) |
 | `Agent is not assigned to a worker. It may not be running.` | The agent isn't running on a host yet (never started, or being moved) — start it and retry |
 | `Worker not found` | The agent's host is not available right now — retry later |
-| `Failed to fetch activity from worker` | The agent's host did not answer (offline, network blip) — retry |
-| `Failed to fetch activity dates from worker` / `Failed to delete activity file from worker` / `Failed to fetch activity file from worker` | Same as above for the matching endpoint |
+| `Agent is temporarily unavailable. Please try again shortly.` | The agent's host did not answer (offline, network blip) — retry |
 
 ## Retention & Rotation
 
@@ -15326,7 +15448,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/LogsDelete" \
 |--------|--------------|
 | Day 0 — 6 | File is plain JSONL (`YYYY-MM-DD.jsonl`). Live tail + LogsFile read it directly. |
 | Day 7 — 180 | File is gzipped (`YYYY-MM-DD.jsonl.gz`). Reads are transparently decompressed; size in `LogsList` reports the on-disk compressed bytes. |
-| Day 181+ | File is deleted by the agent's daily maintenance cron. `LogsList` no longer surfaces the date and `LogsFile` returns `Failed to fetch activity file from worker`. |
+| Day 181+ | File is deleted by the agent's daily maintenance cron. `LogsList` no longer surfaces the date. |
 
 > **Persistence is per-agent.** If Wiro re-allocates the agent's runtime (rare; happens during platform maintenance), the activity history starts fresh from that point. For long-term audit trails, schedule a daily `LogsFile` download to your own storage.
 
@@ -16236,7 +16358,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skillkey": "cron-metaads-performance-reporter",
+    "skillkey": "cs-cron-metaads-performance-reporter",
     "enabled": true,
     "interval": "0 9 * * *"
   }'
@@ -16402,12 +16524,12 @@ TikTok Ads Manager ships with these scheduled tasks. Times use the agent's time 
 
 | Task | Skill key | Default schedule | What it does |
 |------|-----------|------------------|--------------|
-| Daily performance report | `cron-tiktokads-performance-reporter` | `0 9 * * *` (daily 09:00) | Account, campaign, placement, device, country, and ad-level performance for the last 7 days, anomaly checks, and recommendations. Carries the 30-day reconnect reminder and the expiry notice. |
-| Weekly audience & account health scan | `cron-tiktokads-audience-scanner` | `0 10 * * 1` (Mondays 10:00) | Age, gender, and placement breakdowns, creative health, custom audience status, rejected or stuck ads, audience fatigue, and new targeting ideas. |
-| Drive creative scanner | `cron-tiktokads-drive-scanner` | `0 10 * * *` (daily 10:00) | Looks for new creative folders in Google Drive and proposes TikTok campaigns for them. Runs daily; does nothing until Google Drive is connected and has creative folders. |
-| Holiday campaign planner | `cron-tiktokads-holiday-planner` | `0 10 * * 3` (Wednesdays 10:00) | Scans upcoming holidays from the holiday calendar (Calendarific) and suggests seasonal campaigns. Does nothing until Calendarific is connected. |
+| Daily performance report | `cs-cron-tiktokads-performance-reporter` | `0 9 * * *` (daily 09:00) | Account, campaign, placement, device, country, and ad-level performance for the last 7 days, anomaly checks, and recommendations. Carries the 30-day reconnect reminder and the expiry notice. |
+| Weekly audience & account health scan | `cs-cron-tiktokads-audience-scanner` | `0 10 * * 1` (Mondays 10:00) | Age, gender, and placement breakdowns, creative health, custom audience status, rejected or stuck ads, audience fatigue, and new targeting ideas. |
+| Drive creative scanner | `cs-cron-tiktokads-drive-scanner` | `0 10 * * *` (daily 10:00) | Looks for new creative folders in Google Drive and proposes TikTok campaigns for them. Runs daily; does nothing until Google Drive is connected and has creative folders. |
+| Holiday campaign planner | `cs-cron-tiktokads-holiday-planner` | `0 10 * * 3` (Wednesdays 10:00) | Scans upcoming holidays from the holiday calendar (Calendarific) and suggests seasonal campaigns. Does nothing until Calendarific is connected. |
 
-Shared ads tasks also cover TikTok Ads: the nightly `cron-ads-recommendation-cleanup` expires stale recommendations, and the optional Adjust creative ROAS report (`cron-adjust-creative-roas-reporter`) cross-checks TikTok spend when Adjust is connected.
+Shared ads tasks also cover TikTok Ads: the nightly `cs-cron-ads-recommendation-cleanup` expires stale recommendations, and the optional Adjust creative ROAS report (`cs-cron-adjust-creative-roas-reporter`) cross-checks TikTok spend when Adjust is connected.
 
 To change **what** the tasks look for, edit these custom skills (stored as `cs-<key>`) rather than the tasks:
 
@@ -16656,7 +16778,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skillkey": "cron-tiktokads-performance-reporter",
+    "skillkey": "cs-cron-tiktokads-performance-reporter",
     "enabled": true,
     "interval": "0 9 * * *"
   }'
@@ -18239,7 +18361,7 @@ Connect your agent to Roasit mobile attribution — creative, campaign and netwo
 
 **Bundled task:**
 
-- `cron-roasit-creative-roas-reporter` — daily at 10:30 UTC: the last 7 days' creative ROAS per app, pause / scale recommendations for creatives that pass the significance gate, and an attribution audit (network-claimed vs Roasit-attributed installs, network claims vs store installs). Off until the Roasit credential is filled.
+- `cs-cron-roasit-creative-roas-reporter` — daily at 10:30 UTC: the last 7 days' creative ROAS per app, pause / scale recommendations for creatives that pass the significance gate, and an attribution audit (network-claimed vs Roasit-attributed installs, network claims vs store installs). Off until the Roasit credential is filled.
 
 **Agents that typically enable this integration:**
 

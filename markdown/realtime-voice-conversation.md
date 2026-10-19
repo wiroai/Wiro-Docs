@@ -15,6 +15,33 @@ The flow is:
 5. **Receive** AI audio as binary frames and play them
 6. **End** the session with `task_session_end`
 
+## Run Parameters
+
+Each realtime model has its own set of parameters. Use [POST /Tool/Detail](/docs/models) to discover the exact parameters for a specific model. See [Model Parameters](/docs/model-parameters) for details on parameter types.
+
+Available realtime conversation models include:
+- [openai/gpt-realtime-mini](https://wiro.ai/models/openai/gpt-realtime-mini) — GPT Mini Realtime Voice Assistant
+- [openai/gpt-realtime](https://wiro.ai/models/openai/gpt-realtime) — GPT Realtime Voice Assistant
+- [elevenlabs/realtime-conversational-ai](https://wiro.ai/models/elevenlabs/realtime-conversational-ai) — ElevenLabs Conversational AI
+
+Common parameters across realtime models typically include voice selection, system instructions, and audio format settings. Example run for an OpenAI realtime model:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/Run/openai/gpt-realtime-mini" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "voice": "marin",
+    "system_instructions": "You are a friendly assistant.",
+    "input_audio_format": "audio/pcm",
+    "output_audio_format": "audio/pcm",
+    "input_audio_rate": "24000",
+    "output_audio_rate": "24000"
+  }'
+```
+
+> **Important:** Parameters vary per model. Always check the model's detail page or use `/Tool/Detail` to get the exact parameter list before integrating.
+
 ## Connection & Registration
 
 After running the task, connect to the WebSocket and register with `task_info` :

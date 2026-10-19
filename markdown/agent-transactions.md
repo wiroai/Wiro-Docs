@@ -65,7 +65,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "type": "deduct",
       "action": "tokens",
       "amount": -5,
-      "balanceafter": 52550,
+      "balanceafter": null,
       "description": "Input Tokens: 3450 / Output Tokens: 820 / Model: openai/gpt-5.4",
       "sessionkey": "default",
       "agentsessionkey": "default",
@@ -145,8 +145,16 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "provider": "prepaid",
       "providerref": null,
       "metadata": { "period": "2026-05", "priceUsd": 90 },
-      "uuid": "system",
-      "user": null,
+      "uuid": "ada-uuid",
+      "user": {
+        "uuid": "ada-uuid",
+        "firstname": "Ada",
+        "lastname": "Lovelace",
+        "email": "ada@example.com",
+        "username": "ada",
+        "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
+        "avatarinitials": "AL"
+      },
       "createdat": 1714608000
     },
     {
@@ -191,7 +199,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 }
 ```
 
-> The `user` object is the resolved actor that triggered the ledger entry — `uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`. It is `null` when `uuid` is a sentinel like `"system"` (cron renewals, subscription expiry sweeps, automated platform writes) or when the user record has been deleted. The renewal row above was written by the daily renewal cron, so `uuid: "system"` and `user: null`.
+> The `user` object is the resolved actor that triggered the ledger entry — `uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`. Every row is recorded for an account `uuid` — renewals, expiry sweeps and other automated rows carry the agent owner's — so `user` is `null` only when that user record has been deleted.
 
 **Summary fields** (snapshot of the useragent row):
 
@@ -203,6 +211,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 | `remainingcredits` | `number` | `max(0, monthlycredits + extracredits - usedcredits)`. |
 | `creditperiod` | `string` | `'YYYY-MM'` billing window. Rolls over on subscription renewal. |
 | `creditsyncat` | `number\|null` | Unix seconds of the last monthly usage reset, the start of the current credit period; `byModel` counts turns from this moment on (`null` until the first reset). |
+| `extrapacks` | `array` | The agent's extra-credit packs: `{ id, credits, remainingcredits, status, provider, purchasedat, expiresat }`. Active packs are used oldest first. |
 | `byModel` | `array` | Per-model token rollup for the **current billing period**, aggregating only `action: "tokens"` rows, sorted by `tokencost` descending. A `null` or empty `model` is bucketed as `"unknown"`. Each entry: `{ model, inputtokens, outputtokens, cachereadtokens, cachewritetokens, totaltokens, tokencost, turncount }`. Within a period that stays inside `monthlycredits`, the `tokencost` values add up to `usedcredits`; credits spent from extra packs are counted here but come off `extracredits` instead. |
 
 **Transaction fields:**
@@ -211,9 +220,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 |-------|------|-------------|
 | `guid` | `string` | Stable id of the ledger row. Daemon retries reuse this guid for idempotency. |
 | `type` | `string` | One of `"deduct"`, `"renewal"`, `"purchase"`, `"grant"`, `"expired"`, `"refund"`. There is no `"cancel"` type — a user-initiated subscription cancel only flips auto-renew off; credits are not forfeited until `currentperiodend` is reached, at which point the cron writes the ledger row as `type: "expired"`, `action: "subscription"`. |
-| `action` | `string\|null` | Fine-grained detail. Values depend on `type`: `"tokens"` (deduct — the per-turn LLM token charge the runtime writes for every chat, cron, and voice post-call turn); `"monthly"` (renewal); `"small"`, `"medium"`, `"large"` (purchase); `"skill-toggle"`, `"upgrade"` (grant); `"skill-toggle"` (expired, mid-period skill disable); `"subscription"` (expired, end-of-period cancel rollover; refund). Legacy deduct rows may also carry `"message"`, `"create"`, `"modify"`, or `"regenerate"`. |
+| `action` | `string\|null` | Fine-grained detail. Values depend on `type`: `"tokens"` (deduct — the per-turn LLM token charge the runtime writes for every chat, cron, and voice post-call turn); `"monthly"` (renewal); `"small"`, `"medium"`, `"large"` (purchase); `"skill-toggle"`, `"skills-apply"`, `"upgrade"`, `"tier-change"` (grant); `"skill-toggle"` (expired, mid-period skill disable); `"subscription"` (expired, end-of-period cancel rollover; refund). Legacy deduct rows may also carry `"message"`, `"create"`, `"modify"`, or `"regenerate"`. |
 | `amount` | `number` | Signed credit delta — negative for deductions, positive for grants. |
-| `balanceafter` | `number\|null` | Remaining credit balance snapshot written at the time of the event. May be `null` for very old rows or for events written before the snapshot field was added. |
+| `balanceafter` | `number\|null` | Remaining credit balance snapshot written at the time of the event. `null` on per-turn `deduct` rows. |
 | `description` | `string\|null` | Human-readable label. |
 | `sessionkey` | `string\|null` | Session the deduct belongs to (deduct rows only). |
 | `agentsessionkey` | `string\|null` | Alias of `sessionkey` (same value), present on every row for a unified per-session attribution key across `TaskList` / `TransactionList` / wallet responses. |
@@ -229,8 +238,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 | `provider` | `string\|null` | `"agent"` (runtime deduct) or `"prepaid"` (wallet-backed change). API-deployed agents always run on the prepaid path. |
 | `providerref` | `string\|null` | Provider-side reference id. Always populated for `prepaid` rows (wallet transaction id); `null` for `agent` runtime deducts. |
 | `metadata` | `object\|null` | Arbitrary JSON context attached at write time (skill, tier, period, prorated charge, …). |
-| `uuid` | `string\|null` | UUID of the user who triggered the event (the chat operator for `deduct` rows; the wallet owner for `purchase` / `grant`). `"system"` for cron-driven events. |
-| `user` | `object\|null` | Resolved actor: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. `null` when `uuid` is `"system"` (automation / cron renewals) or when the user record was deleted. |
+| `uuid` | `string\|null` | UUID of the account the row is recorded for: the user who acted, or the agent's owner for renewals and other automated rows. Never a `"system"` placeholder. |
+| `user` | `object\|null` | Resolved actor: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. `null` when the user record was deleted. |
 | `createdat` | `number` | Unix seconds. |
 
 > **Pagination.** The endpoint returns `total` so you can render a precise paginator. Default page size is 50, max is 500. Use `start` to skip rows.
@@ -276,7 +285,7 @@ console.log('Now in period:', summary.creditperiod);
 
 ### Reconcile a Pro tier upgrade
 
-When the user upgrades Starter → Pro mid-period, `UpgradeTier` writes one `grant` row with `action: "tier-change"`, the monthly-credit difference as `amount`, a description like `"Tier starter → pro"` and `metadata: { fromTier, toTier, previousPriceUsd, newPriceUsd, proratedCharge }`. Use it to render an upgrade history in your UI.
+When the user upgrades Starter → Pro mid-period, the ledger gets one `grant` row for the added monthly credits. For a wallet-billed (prepaid) agent, `UpgradeTier` writes `action: "tier-change"` with the monthly-credit difference as `amount`, a description like `"Tier starter → pro"` and `metadata: { fromTier, toTier, previousPriceUsd, newPriceUsd, proratedCharge }`; a card-billed upgrade writes `action: "upgrade"`. Use these rows to render an upgrade history in your UI.
 
 ## Errors
 

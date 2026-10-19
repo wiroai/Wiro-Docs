@@ -144,7 +144,7 @@ complete. Channels are not skills and do not affect pricing.
 |-----------|------|-------------|
 | `monthly_price_weight_usd` | `number` | Weight (USD) the skill contributes to the agent's Starter monthly price. The resolver sums weights across the agent's enabled-skill closure (incl. transitive `depends_on`); Pro multiplies the total by `tiermultiplier`. The platform applies a **$4/month minimum floor** on top of this sum (with credits scaled proportionally) — see Pricing in the [Agent Overview](/docs/agent-overview#pricing-model--tiers-skills--token-billing). |
 | `monthly_credits_weight` | `number` | Weight (credits) the skill contributes to the Starter monthly credit allocation: 100 credits per $1 of `monthly_price_weight_usd`. Same closure + multiplier semantics as price. When the $4 starter floor is applied to `monthly_price_weight_usd`, this weight is scaled up by the same ratio so the user gets a proportional credit boost rather than a free upgrade. |
-| `billing_model` | `string` | Always `"tokens"`. Per-turn conversation cost is token-metered at the agent's per-model `tokenRates` (credits per 1M input / output / cached-input tokens) — see [token billing in the Agent Overview](/docs/agent-overview#pricing-model--tiers-skills--token-billing). Voice skills stream realtime audio through the operator's own Wiro AI Models balance via `int-wiro-aimodels` (your own Wiro API key); only the post-call text turn is a normal token deduct. |
+| `billing_model` | `string` | Always `"tokens"`. Per-turn conversation cost is token-metered at the agent's per-model `tokenRates` (credits per 1M input / output / cached-input tokens) — see [token billing in the Agent Overview](/docs/agent-overview#pricing-model--tiers-skills--token-billing). Voice skills stream realtime audio through the operator's own Wiro AI Models balance via `int-wiro-aimodels` (your own Wiro API key); the voice-prep and post-call text turns are normal token deducts. |
 
 > **4 weight buckets in the skill registry.** Every skill's `monthly_price_weight_usd` / `monthly_credits_weight` pair but one lands in one of four buckets: `ZERO` (`$0` / `0` — utility skills), `LIGHT` (`$1` / `100` credits per month), `HEAVY` (`$2` / `200` credits per month), or `PREMIUM` (`$4` / `400` credits per month). The exception is `util-video-creator`, the Video Creator's playbook: it carries that agent's price, `$29` and `2900` credits a month on Starter, to any agent that turns it on. Every paid skill grants exactly 100 monthly credits per $1 of price weight, so `monthly_credits_weight` is always `100 × monthly_price_weight_usd`. The `(priceUsd, credits)` grid is a documentation convenience — it is **not** a named API constant; each pair emerges from the skill's own `monthly_price_weight_usd` / `monthly_credits_weight`. There are **no per-skill Pro overrides** — Pro is always derived as `Starter × tiermultiplier` (default `10`). The agent's Starter price = `Σ(enabled-skill weights)`, bumped to `$4` if the raw sum lands below the floor (with credits scaled proportionally to keep the per-credit ratio stable); Pro = `Starter × tiermultiplier`.
 
@@ -500,7 +500,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
 
 Scheduled tasks are cron skills — bundled ones (`_source: "skill-bundle"`) ship with integration skills and run automatically when the integration is enabled. User-created crons (`_source: "user-created"`) are added at any time.
 
-> **For bundled crons, only `enabled` and `interval` are writable.** The task body (`value`) is owned by the integration skill and re-materialised on every container restart. To change **what** a bundled scheduled task does, edit the paired preference skill (e.g. `content-tone` is read by `cron-social-content-scanner` at runtime). For user-created crons, all three (`value`, `interval`, `enabled`) are writable.
+> **For bundled crons, only `enabled` and `interval` are writable.** The task body (`value`) is owned by the integration skill and re-materialised on every container restart. To change **what** a bundled scheduled task does, edit the paired preference skill (e.g. `content-tone` is read by `cs-cron-social-content-scanner` at runtime). For user-created crons, all three (`value`, `interval`, `enabled`) are writable.
 
 ### Example: Change a bundled cron's frequency
 
@@ -510,7 +510,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skillkey": "cron-review-scanner",
+    "skillkey": "cs-cron-review-scanner",
     "enabled": true,
     "interval": "0 */4 * * *"
   }'
@@ -524,7 +524,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skillkey": "cron-social-content-scanner",
+    "skillkey": "cs-cron-social-content-scanner",
     "enabled": false
   }'
 ```
@@ -856,7 +856,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-push-agent-guid",
-    "skillkey": "cron-push-scanner",
+    "skillkey": "cs-cron-push-scanner",
     "enabled": true,
     "interval": "0 9 * * 1"
   }'
@@ -866,7 +866,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-push-agent-guid",
-    "skillkey": "cron-push-dispatcher",
+    "skillkey": "cs-cron-push-dispatcher",
     "interval": "0 */2 * * *"
   }'
 ```
@@ -901,47 +901,47 @@ All three requests succeed independently. The agent restarts once — the server
 
 | Agent | Skill Key | Cron | What It Does |
 |-------|-----------|------|--------------|
-| Social Manager | `cron-social-content-scanner` | `0 */4 * * *` | Content discovery and draft posts with rotating strategies (reads `content-tone`; disabled by default) |
-| Social Manager | `cron-social-drive-scanner` | `0 10 * * *` | Scans Google Drive for new post assets and prepares posts (disabled by default) |
-| Blog Content Editor | `cron-blog-scanner` | `0 9 * * *` | Topic discovery and article drafting (reads `content-strategy`) |
-| Blog Content Editor | `cron-blog-gmail-checker` | `*/30 * * * *` | Checks the inbox for topic requests and writing instructions (disabled by default) |
-| App Review Support | `cron-review-scanner` | `0 */2 * * *` | Scans App Store and Google Play for new reviews and prepares replies (reads `review-preferences`; disabled by default) |
-| App Event Manager | `cron-app-event-scanner` | `0 9 * * 1` | Scans global holidays and suggests App Store in-app events (reads `event-preferences`; disabled by default) |
-| Push Notification Manager | `cron-push-scanner` | `0 9 * * *` | Scans holidays and prepares push notification suggestions (reads `push-preferences`) |
-| Push Notification Manager | `cron-push-dispatcher` | `0 * * * *` | Sends queued push notifications on schedule |
-| Newsletter Manager | `cron-newsletter-sender` | `0 9 * * 1` | Newsletter drafting and sending (reads `newsletter-strategy`; disabled by default) |
-| Newsletter Manager | `cron-newsletter-subscriber-scanner` | `0 10 * * *` | Daily subscriber list health check and bounce monitoring (disabled by default) |
-| Lead Generation Manager | `cron-lead-prospect-scanner` | `0 10 * * 1` | Weekly prospect search, enrichment and scoring (reads `lead-strategy`; disabled by default) |
-| Lead Generation Manager | `cron-lead-outreach-reporter` | `0 9 * * *` | Daily outreach performance report (disabled by default) |
-| Lead Generation Manager | `cron-lead-reply-handler` | `0 */4 * * *` | Checks new replies, analyzes sentiment and proposes responses (disabled by default) |
-| Google Ads Manager | `cron-googleads-performance-reporter` | `0 9 * * *` | Daily performance report with recommendations (reads `ad-strategy`) |
-| Google Ads Manager | `cron-googleads-recommendations-fetcher` | `0 8 * * *` | Daily Google Ads recommendations: safe items become low-risk suggestions, risky ones wait for your approval |
-| Google Ads Manager | `cron-googleads-competitor-scanner` | `0 10 * * 1` | Weekly competitor analysis, keyword opportunities and account health audit |
-| Google Ads Manager | `cron-googleads-holiday-planner` | `0 10 * * 3` | Upcoming holidays and seasonal campaign suggestions |
-| Google Ads Manager | `cron-googleads-audience-refresher` | `0 7 * * *` | Daily Customer Match refresh from a connected CRM (HubSpot, Apollo, Lemlist) or a Google Drive CSV (disabled by default) |
-| Google Ads Manager | `cron-googleads-drive-scanner` | `0 10 * * *` | Scans Google Drive for new creative folders and proposes campaigns (disabled by default) |
-| Google Ads Manager | `cron-merchant-center-scanner` | `30 8 * * *` | Daily Merchant Center product feed health check (runs only when Merchant Center is connected; disabled by default) |
-| Google Ads Manager | `cron-ga4-attribution-auditor` | `0 11 * * 1` | Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected; disabled by default) |
-| Google Ads Manager | `cron-adjust-creative-roas-reporter` | `0 10 * * *` | Daily Adjust creative-level ROAS report with scale/pause recommendations (disabled by default) |
-| Google Ads Manager | `cron-roasit-creative-roas-reporter` | `30 10 * * *` | Daily Roasit creative-level ROAS report with scale/pause recommendations (disabled by default) |
-| Google Ads Manager | `cron-ads-recommendation-cleanup` | `0 0 * * *` | Nightly cleanup of expired recommendations |
-| Meta Ads Manager | `cron-metaads-performance-reporter` | `0 9 * * *` | Daily performance report with creative health, audience analysis and recommendations (reads `ad-strategy`) |
-| Meta Ads Manager | `cron-metaads-audience-scanner` | `0 10 * * 1` | Weekly audience, creative health and account health audit |
-| Meta Ads Manager | `cron-metaads-holiday-planner` | `0 10 * * 3` | Upcoming holidays and seasonal campaign suggestions |
-| Meta Ads Manager | `cron-metaads-drive-scanner` | `0 10 * * *` | Scans Google Drive for new creative folders and proposes campaigns |
-| Meta Ads Manager | `cron-ga4-attribution-auditor` | `0 11 * * 1` | Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected; disabled by default) |
-| Meta Ads Manager | `cron-adjust-creative-roas-reporter` | `0 10 * * *` | Daily Adjust creative-level ROAS report with scale/pause recommendations (disabled by default) |
-| Meta Ads Manager | `cron-roasit-creative-roas-reporter` | `30 10 * * *` | Daily Roasit creative-level ROAS report with scale/pause recommendations (disabled by default) |
-| Meta Ads Manager | `cron-ads-recommendation-cleanup` | `0 0 * * *` | Nightly cleanup of expired recommendations |
-| TikTok Ads Manager | `cron-tiktokads-performance-reporter` | `0 9 * * *` | Performance reporting per advertiser, plus the 30-day reconnect reminder (reads `ad-strategy`) |
-| TikTok Ads Manager | `cron-tiktokads-audience-scanner` | `0 10 * * 1` | Weekly audience, creative health and account health audit |
-| TikTok Ads Manager | `cron-tiktokads-holiday-planner` | `0 10 * * 3` | Upcoming holidays and seasonal campaign suggestions |
-| TikTok Ads Manager | `cron-tiktokads-drive-scanner` | `0 10 * * *` | Scans Google Drive for new creative folders and proposes TikTok Ads campaigns (does nothing until Google Drive is connected) |
-| TikTok Ads Manager | `cron-ga4-attribution-auditor` | `0 11 * * 1` | Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected; disabled by default) |
-| TikTok Ads Manager | `cron-adjust-creative-roas-reporter` | `0 10 * * *` | Daily Adjust creative-level ROAS report with scale/pause recommendations (disabled by default) |
-| TikTok Ads Manager | `cron-roasit-creative-roas-reporter` | `30 10 * * *` | Daily Roasit creative-level ROAS report with scale/pause recommendations (disabled by default) |
-| TikTok Ads Manager | `cron-ads-recommendation-cleanup` | `0 0 * * *` | Nightly cleanup of expired recommendations |
-| Google Review Manager | `cron-google-review-scanner` | `0 */2 * * *` | Scans Google Business Profile locations for new reviews and prepares replies |
+| Social Manager | `cs-cron-social-content-scanner` | `0 */4 * * *` | Content discovery and draft posts with rotating strategies (reads `content-tone`; disabled by default) |
+| Social Manager | `cs-cron-social-drive-scanner` | `0 10 * * *` | Scans Google Drive for new post assets and prepares posts (disabled by default) |
+| Blog Content Editor | `cs-cron-blog-scanner` | `0 9 * * *` | Topic discovery and article drafting (reads `content-strategy`) |
+| Blog Content Editor | `cs-cron-blog-gmail-checker` | `*/30 * * * *` | Checks the inbox for topic requests and writing instructions (disabled by default) |
+| App Review Support | `cs-cron-review-scanner` | `0 */2 * * *` | Scans App Store and Google Play for new reviews and prepares replies (reads `review-preferences`; disabled by default) |
+| App Event Manager | `cs-cron-app-event-scanner` | `0 9 * * 1` | Scans global holidays and suggests App Store in-app events (reads `event-preferences`; disabled by default) |
+| Push Notification Manager | `cs-cron-push-scanner` | `0 9 * * *` | Scans holidays and prepares push notification suggestions (reads `push-preferences`) |
+| Push Notification Manager | `cs-cron-push-dispatcher` | `0 * * * *` | Sends queued push notifications on schedule |
+| Newsletter Manager | `cs-cron-newsletter-sender` | `0 9 * * 1` | Newsletter drafting and sending (reads `newsletter-strategy`; disabled by default) |
+| Newsletter Manager | `cs-cron-newsletter-subscriber-scanner` | `0 10 * * *` | Daily subscriber list health check and bounce monitoring (disabled by default) |
+| Lead Generation Manager | `cs-cron-lead-prospect-scanner` | `0 10 * * 1` | Weekly prospect search, enrichment and scoring (reads `lead-strategy`; disabled by default) |
+| Lead Generation Manager | `cs-cron-lead-outreach-reporter` | `0 9 * * *` | Daily outreach performance report (disabled by default) |
+| Lead Generation Manager | `cs-cron-lead-reply-handler` | `0 */4 * * *` | Checks new replies, analyzes sentiment and proposes responses (disabled by default) |
+| Google Ads Manager | `cs-cron-googleads-performance-reporter` | `0 9 * * *` | Daily performance report with recommendations (reads `ad-strategy`) |
+| Google Ads Manager | `cs-cron-googleads-recommendations-fetcher` | `0 8 * * *` | Daily Google Ads recommendations: safe items become low-risk suggestions, risky ones wait for your approval |
+| Google Ads Manager | `cs-cron-googleads-competitor-scanner` | `0 10 * * 1` | Weekly competitor analysis, keyword opportunities and account health audit |
+| Google Ads Manager | `cs-cron-googleads-holiday-planner` | `0 10 * * 3` | Upcoming holidays and seasonal campaign suggestions |
+| Google Ads Manager | `cs-cron-googleads-audience-refresher` | `0 7 * * *` | Daily Customer Match refresh from a connected CRM (HubSpot, Apollo, Lemlist) or a Google Drive CSV (disabled by default) |
+| Google Ads Manager | `cs-cron-googleads-drive-scanner` | `0 10 * * *` | Scans Google Drive for new creative folders and proposes campaigns (disabled by default) |
+| Google Ads Manager | `cs-cron-merchant-center-scanner` | `30 8 * * *` | Daily Merchant Center product feed health check (runs only when Merchant Center is connected; disabled by default) |
+| Google Ads Manager | `cs-cron-ga4-attribution-auditor` | `0 11 * * 1` | Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected; disabled by default) |
+| Google Ads Manager | `cs-cron-adjust-creative-roas-reporter` | `0 10 * * *` | Daily Adjust creative-level ROAS report with scale/pause recommendations (disabled by default) |
+| Google Ads Manager | `cs-cron-roasit-creative-roas-reporter` | `30 10 * * *` | Daily Roasit creative-level ROAS report with scale/pause recommendations (disabled by default) |
+| Google Ads Manager | `cs-cron-ads-recommendation-cleanup` | `0 0 * * *` | Nightly cleanup of expired recommendations |
+| Meta Ads Manager | `cs-cron-metaads-performance-reporter` | `0 9 * * *` | Daily performance report with creative health, audience analysis and recommendations (reads `ad-strategy`) |
+| Meta Ads Manager | `cs-cron-metaads-audience-scanner` | `0 10 * * 1` | Weekly audience, creative health and account health audit |
+| Meta Ads Manager | `cs-cron-metaads-holiday-planner` | `0 10 * * 3` | Upcoming holidays and seasonal campaign suggestions |
+| Meta Ads Manager | `cs-cron-metaads-drive-scanner` | `0 10 * * *` | Scans Google Drive for new creative folders and proposes campaigns |
+| Meta Ads Manager | `cs-cron-ga4-attribution-auditor` | `0 11 * * 1` | Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected; disabled by default) |
+| Meta Ads Manager | `cs-cron-adjust-creative-roas-reporter` | `0 10 * * *` | Daily Adjust creative-level ROAS report with scale/pause recommendations (disabled by default) |
+| Meta Ads Manager | `cs-cron-roasit-creative-roas-reporter` | `30 10 * * *` | Daily Roasit creative-level ROAS report with scale/pause recommendations (disabled by default) |
+| Meta Ads Manager | `cs-cron-ads-recommendation-cleanup` | `0 0 * * *` | Nightly cleanup of expired recommendations |
+| TikTok Ads Manager | `cs-cron-tiktokads-performance-reporter` | `0 9 * * *` | Performance reporting per advertiser, plus the 30-day reconnect reminder (reads `ad-strategy`) |
+| TikTok Ads Manager | `cs-cron-tiktokads-audience-scanner` | `0 10 * * 1` | Weekly audience, creative health and account health audit |
+| TikTok Ads Manager | `cs-cron-tiktokads-holiday-planner` | `0 10 * * 3` | Upcoming holidays and seasonal campaign suggestions |
+| TikTok Ads Manager | `cs-cron-tiktokads-drive-scanner` | `0 10 * * *` | Scans Google Drive for new creative folders and proposes TikTok Ads campaigns (does nothing until Google Drive is connected) |
+| TikTok Ads Manager | `cs-cron-ga4-attribution-auditor` | `0 11 * * 1` | Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected; disabled by default) |
+| TikTok Ads Manager | `cs-cron-adjust-creative-roas-reporter` | `0 10 * * *` | Daily Adjust creative-level ROAS report with scale/pause recommendations (disabled by default) |
+| TikTok Ads Manager | `cs-cron-roasit-creative-roas-reporter` | `30 10 * * *` | Daily Roasit creative-level ROAS report with scale/pause recommendations (disabled by default) |
+| TikTok Ads Manager | `cs-cron-ads-recommendation-cleanup` | `0 0 * * *` | Nightly cleanup of expired recommendations |
+| Google Review Manager | `cs-cron-google-review-scanner` | `0 */2 * * *` | Scans Google Business Profile locations for new reviews and prepares replies |
 
 ### How Preference and Scheduled Skills Work Together
 

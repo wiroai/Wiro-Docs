@@ -17,6 +17,34 @@ The flow is:
 
 > **Key difference from Voice Conversation:** No binary audio is sent back from the server. All server → client messages are JSON text events.
 
+## How It Differs from Realtime Voice Conversation
+
+| | Realtime Voice Conversation | Realtime Speech to Text |
+|---|---|---|
+| Input | Microphone audio (streamed) | Microphone audio (streamed) |
+| Output | AI audio + transcripts | Transcript text only |
+| Direction | Bidirectional (client ↔ server) | Client → server audio, server → client text |
+| Binary frames from server | Yes (AI audio) | No (all server messages are JSON) |
+| Transcripts | `TRANSCRIPT_USER:` and `TRANSCRIPT_AI:` | `TRANSCRIPT_USER:` only |
+| Use case | Interactive voice chat | Live dictation, captioning, meeting transcription |
+
+## Run Parameters
+
+Each realtime STT model has its own set of parameters. Use [POST /Tool/Detail](/docs/models) to discover the exact parameters for a specific model. See [Model Parameters](/docs/model-parameters) for parameter types.
+
+Browse available realtime STT models on the [models page](https://wiro.ai/models) (filter by **Realtime STT** category). Common parameters typically include a transcription delay setting that trades speed for accuracy; some models also take a language. Example run for Voxtral Mini 4B Realtime:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/Run/mistralai/voxtral-mini-4b-realtime-2602" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "transcriptionDelay": "balanced"
+  }'
+```
+
+> **Important:** Parameters vary per model. Always check the model's detail page or use `/Tool/Detail` to get the exact parameter list before integrating. The run response returns a `socketaccesstoken` used to subscribe to the WebSocket.
+
 ## Connection & Registration
 
 After running the task, connect to the WebSocket and register with `task_info`:

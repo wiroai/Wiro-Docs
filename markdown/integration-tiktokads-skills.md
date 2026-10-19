@@ -102,12 +102,12 @@ TikTok Ads Manager ships with these scheduled tasks. Times use the agent's time 
 
 | Task | Skill key | Default schedule | What it does |
 |------|-----------|------------------|--------------|
-| Daily performance report | `cron-tiktokads-performance-reporter` | `0 9 * * *` (daily 09:00) | Account, campaign, placement, device, country, and ad-level performance for the last 7 days, anomaly checks, and recommendations. Carries the 30-day reconnect reminder and the expiry notice. |
-| Weekly audience & account health scan | `cron-tiktokads-audience-scanner` | `0 10 * * 1` (Mondays 10:00) | Age, gender, and placement breakdowns, creative health, custom audience status, rejected or stuck ads, audience fatigue, and new targeting ideas. |
-| Drive creative scanner | `cron-tiktokads-drive-scanner` | `0 10 * * *` (daily 10:00) | Looks for new creative folders in Google Drive and proposes TikTok campaigns for them. Runs daily; does nothing until Google Drive is connected and has creative folders. |
-| Holiday campaign planner | `cron-tiktokads-holiday-planner` | `0 10 * * 3` (Wednesdays 10:00) | Scans upcoming holidays from the holiday calendar (Calendarific) and suggests seasonal campaigns. Does nothing until Calendarific is connected. |
+| Daily performance report | `cs-cron-tiktokads-performance-reporter` | `0 9 * * *` (daily 09:00) | Account, campaign, placement, device, country, and ad-level performance for the last 7 days, anomaly checks, and recommendations. Carries the 30-day reconnect reminder and the expiry notice. |
+| Weekly audience & account health scan | `cs-cron-tiktokads-audience-scanner` | `0 10 * * 1` (Mondays 10:00) | Age, gender, and placement breakdowns, creative health, custom audience status, rejected or stuck ads, audience fatigue, and new targeting ideas. |
+| Drive creative scanner | `cs-cron-tiktokads-drive-scanner` | `0 10 * * *` (daily 10:00) | Looks for new creative folders in Google Drive and proposes TikTok campaigns for them. Runs daily; does nothing until Google Drive is connected and has creative folders. |
+| Holiday campaign planner | `cs-cron-tiktokads-holiday-planner` | `0 10 * * 3` (Wednesdays 10:00) | Scans upcoming holidays from the holiday calendar (Calendarific) and suggests seasonal campaigns. Does nothing until Calendarific is connected. |
 
-Shared ads tasks also cover TikTok Ads: the nightly `cron-ads-recommendation-cleanup` expires stale recommendations, and the optional Adjust creative ROAS report (`cron-adjust-creative-roas-reporter`) cross-checks TikTok spend when Adjust is connected.
+Shared ads tasks also cover TikTok Ads: the nightly `cs-cron-ads-recommendation-cleanup` expires stale recommendations, and the optional Adjust creative ROAS report (`cs-cron-adjust-creative-roas-reporter`) cross-checks TikTok spend when Adjust is connected.
 
 To change **what** the tasks look for, edit these custom skills (stored as `cs-<key>`) rather than the tasks:
 
@@ -356,7 +356,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skillkey": "cron-tiktokads-performance-reporter",
+    "skillkey": "cs-cron-tiktokads-performance-reporter",
     "enabled": true,
     "interval": "0 9 * * *"
   }'

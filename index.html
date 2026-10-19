@@ -499,6 +499,7 @@
                       <li><strong>Pay-per-use pricing</strong> — only pay for what you consume, no upfront commitments</li>
                       <li><strong>Real-time WebSocket updates</strong> — stream task progress and outputs live</li>
                       <li><strong>9 SDK languages</strong> — curl, Python, Node.js, PHP, C#, Swift, Dart, Kotlin, Go</li>
+                      <li><strong>AI Agents</strong> — deploy and manage autonomous AI agents that connect to third-party services, maintain conversation memory, and automate workflows via API</li>
                     </ul>
                   </section>
 
@@ -524,6 +525,9 @@
                       </li>
                       <li>
                         <strong>Make your first API call</strong> <span>See <a href="/docs/code-examples" class="docs-link">Code Examples</a> for full end-to-end samples</span>
+                      </li>
+                      <li>
+                        <strong>Deploy an AI Agent</strong> <span>Browse the <a href="https://wiro.ai/agents" class="docs-link">agent catalog</a>, deploy an instance, and interact via the <a href="/docs/agent-overview" class="docs-link">Agent API</a></span>
                       </li>
                     </ol>
                   </section>
@@ -761,6 +765,19 @@
                       <li>Running a <strong>server-side</strong> backend with controlled access? <strong>API Key Only</strong> is simpler.</li>
                       <li>Unsure? Default to <strong>Signature-Based</strong> — it's always the safer option.</li>
                     </ul>
+                  </section>
+
+                  <section id="auth-agent-endpoints">
+                    <h2>Using Auth with Agent Endpoints</h2>
+                    <p>The same authentication headers work for every <code>UserAgent/*</code> and <code>UserAgentOAuth/*</code> endpoint. Example:</p>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: ${YOUR_API_KEY}" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "message": "What are the latest campaign insights?"
+  }'</code></pre>
+                    <p>Signature-based projects add <code>x-nonce</code> and <code>x-signature</code> exactly as shown in the Run example — the signing algorithm is identical. See <a href="/docs/agent-overview" class="docs-link">Agent Overview</a> for the full agent API reference.</p>
                   </section>
                 </article>
 
@@ -3740,11 +3757,17 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
   -F "outputType=json" \
   -F "language=en"</code></pre>
                     <div class="info-callout">
-                      <p><strong>Note:</strong> LLM responses are delivered as structured content in the <code>outputs</code> array (with <code>contenttype: "raw"</code>) and as merged plain text in <code>debugoutput</code>. See <a href="/docs/tasks" class="docs-link">Tasks</a> for details.</p>
+                      <p><strong>Note:</strong> LLM responses are available as structured content in <code>outputs</code> (with <code>contenttype: "raw"</code> containing <code>prompt</code>, <code>raw</code>, <code>thinking</code>, and <code>answer</code> fields) and as merged plain text in <code>debugoutput</code>. See <a href="/docs/tasks" class="docs-link">Tasks</a> for details.</p>
                     </div>
 
                     <h3>Realtime Voice Conversation</h3>
                     <p>Realtime voice models accept configuration parameters (voice, system instructions, audio format, etc.) as JSON. Parameters vary per model — use <code>/Tool/Detail</code> to discover them. The actual audio interaction happens over <a href="/docs/realtime-voice-conversation" class="docs-link">Realtime Voice WebSocket</a> after the task starts:</p>
+                    <p>Available realtime models include:</p>
+                    <ul>
+                      <li><a href="https://wiro.ai/models/openai/gpt-realtime-mini" class="docs-link" target="_blank">openai/gpt-realtime-mini</a></li>
+                      <li><a href="https://wiro.ai/models/openai/gpt-realtime" class="docs-link" target="_blank">openai/gpt-realtime</a></li>
+                      <li><a href="https://wiro.ai/models/elevenlabs/realtime-conversational-ai" class="docs-link" target="_blank">elevenlabs/realtime-conversational-ai</a></li>
+                    </ul>
                     <pre><code>// Example: OpenAI GPT Realtime
 {
   "voice": "marin",
@@ -3753,6 +3776,33 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
   "output_audio_format": "audio/pcm",
   "input_audio_rate": "24000",
   "output_audio_rate": "24000"
+}</code></pre>
+
+                    <h3>Realtime Text to Speech</h3>
+                    <p>Realtime TTS models stream synthesized audio back over <a href="/docs/realtime-text-to-speech" class="docs-link">WebSocket</a> as binary frames. Text is required. Reference audio is optional for voice cloning.</p>
+                    <p>Available realtime TTS models include:</p>
+                    <ul>
+                      <li><a href="https://wiro.ai/models/openmoss/moss-tts-realtime" class="docs-link" target="_blank">openmoss/moss-tts-realtime</a></li>
+                    </ul>
+                    <pre><code>{
+  "text": "Hello, this is a test of real-time text to speech.",
+  "inputAudio": "",
+  "temperature": 0.8,
+  "topP": 0.6,
+  "topK": 30,
+  "repetitionPenalty": 1.1,
+  "repetitionWindow": 50,
+  "maxLength": 3000
+}</code></pre>
+
+                    <h3>Realtime Speech to Text</h3>
+                    <p>Realtime STT models transcribe audio streamed from the microphone over <a href="/docs/realtime-speech-to-text" class="docs-link">WebSocket</a>. No text input needed — audio is streamed from the microphone. The <code>transcriptionDelay</code> controls the speed vs accuracy trade-off.</p>
+                    <p>Available realtime STT models include:</p>
+                    <ul>
+                      <li><a href="https://wiro.ai/models/mistralai/voxtral-mini-4b-realtime-2602" class="docs-link" target="_blank">mistralai/voxtral-mini-4b-realtime-2602</a></li>
+                    </ul>
+                    <pre><code>{
+  "transcriptionDelay": "balanced"
 }</code></pre>
                   </section>
 
@@ -3880,7 +3930,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                           </tr>
                           <tr>
                             <td><code>task_output</code></td>
-                            <td>The model is producing output. This event is emitted <strong>multiple times</strong> — each time the model writes to stdout, a new <code>task_output</code> message is sent via WebSocket. For LLM models, each token/chunk arrives as a separate <code>task_output</code> event, enabling real-time streaming.</td>
+                            <td>The model is producing output. This event is emitted <strong>multiple times</strong> — each time the model writes to stdout, a new <code>task_output</code> message is sent via WebSocket. For LLM models, each <code>task_output</code> event carries the latest cumulative snapshot of the output, so render the newest one instead of appending.</td>
                           </tr>
                           <tr>
                             <td><code>task_error</code></td>
@@ -3914,8 +3964,8 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                       </table>
                     </div>
 
-                    <h3>Realtime Conversation Only</h3>
-                    <p>The following statuses are exclusive to realtime conversation models (e.g. voice AI). They are not emitted for standard model runs.</p>
+                    <h3>Realtime Sessions</h3>
+                    <p>The following statuses are exclusive to realtime models (voice conversation, text-to-speech, and speech-to-text). They are not emitted for standard model runs.</p>
                     <div class="status-table-wrapper">
                       <table class="status-table">
                         <thead>
@@ -4367,7 +4417,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                           </thead>
                           <tbody>
                             <tr>
-                              <td><code>task-not-exist</code></td>
+                              <td><code>There is no task yet.</code></td>
                               <td>Invalid tasktoken or unauthorized</td>
                             </tr>
                             <tr>
@@ -4436,7 +4486,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                     {
                       "label": "Response",
                       "language": "json",
-                      "code": "{\n  \"result\": true,\n  \"errors\": [],\n  \"total\": \"1\",\n  \"tasklist\": [{\n    \"id\": \"534574\",\n    \"socketaccesstoken\": \"eDcCm5yyUfIvMFspTwww49OUfgXkQt\",\n    \"parameters\": { \"prompt\": \"Hello, world!\" },\n    \"status\": \"task_postprocess_end\",\n    \"starttime\": \"1734513809\",\n    \"endtime\": \"1734513813\",\n    \"elapsedseconds\": \"6.0000\",\n    \"totalcost\": \"0.003510000000\",\n    \"outputs\": [{\n      \"name\": \"0.png\",\n      \"contenttype\": \"image/png\",\n      \"size\": \"202472\",\n      \"url\": \"https://cdn1.wiro.ai/.../0.png\"\n    }]\n  }]\n}"
+                      "code": "{\n  \"result\": true,\n  \"errors\": [],\n  \"total\": \"1\",\n  \"tasklist\": [{\n    \"id\": \"534574\",\n    \"socketaccesstoken\": \"eDcCm5yyUfIvMFspTwww49OUfgXkQt\",\n    \"parameters\": { \"prompt\": \"Hello, world!\" },\n    \"status\": \"task_postprocess_end\",\n    \"pexit\": \"0\",\n    \"debugoutput\": \"\",\n    \"starttime\": \"1734513809\",\n    \"endtime\": \"1734513813\",\n    \"elapsedseconds\": \"6.0000\",\n    \"totalcost\": \"0.003510000000\",\n    \"modeldescription\": \"FLUX.2 [dev] is a 32 billion parameter rectified flow transformer...\",\n    \"modelslugowner\": \"wiro\",\n    \"modelslugproject\": \"flux-2-dev\",\n    \"outputs\": [{\n      \"name\": \"0.png\",\n      \"contenttype\": \"image/png\",\n      \"size\": \"202472\",\n      \"url\": \"https://cdn1.wiro.ai/.../0.png\"\n    }]\n  }]\n}"
                     }
                   ]
                 </script>
@@ -4469,7 +4519,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
 
                   <section id="llm-session">
                     <h2>Session &amp; Chat History</h2>
-                    <p>Wiro maintains conversation history per session. By sending a <code>session_id</code>, the model remembers previous messages and can build on the context of the conversation. Combined with <code>user_id</code>, this enables fully stateful chat experiences:</p>
+                    <p>Wiro maintains conversation history per session. Send the same <code>session_id</code> together with <code>user_id</code> on every message of a conversation — some chat models keep history only when both are present — and the model builds on the earlier messages:</p>
                     <div class="docs-param-table">
                       <div class="docs-param-table-wrapper">
                         <table>
@@ -4492,7 +4542,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                               <td><code class="param-name">user_id</code></td>
                               <td><span class="param-type">string</span></td>
                               <td><span class="param-required">No</span></td>
-                              <td class="param-desc">UUID identifying the user. Allows the model to distinguish between different users sharing the same session or to personalize responses.</td>
+                              <td class="param-desc">UUID identifying the user.</td>
                             </tr>
                             <tr>
                               <td><code class="param-name">prompt</code></td>
@@ -4579,6 +4629,11 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                           </tr>
                         </thead>
                         <tbody>
+                          <tr>
+                            <td><code>message.type</code></td>
+                            <td><code>string</code></td>
+                            <td>Progress payload type; currently <code>"progressGenerate"</code>.</td>
+                          </tr>
                           <tr>
                             <td><code>message.segments</code></td>
                             <td><code>array</code></td>
@@ -4964,15 +5019,15 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
 }</code></pre>
 
                     <h3>Realtime Events</h3>
-                    <p>These events are exclusive to <a href="/docs/realtime-voice-conversation" class="docs-link">realtime voice models</a>:</p>
-                    <pre><code>// Session is ready — start sending audio
+                    <p>These events are exclusive to realtime models (<a href="/docs/realtime-voice-conversation" class="docs-link">voice conversation</a>, <a href="/docs/realtime-text-to-speech" class="docs-link">text-to-speech</a>, and <a href="/docs/realtime-speech-to-text" class="docs-link">speech-to-text</a>):</p>
+                    <pre><code>// Session is ready — start sending audio (voice conversation, speech-to-text)
 {
   "type": "task_stream_ready",
   "id": "534574",
   "result": true
 }
 
-// AI finished speaking for this turn
+// The model finished producing output for this turn
 {
   "type": "task_stream_end",
   "id": "534574",
@@ -4993,17 +5048,23 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
 
                   <section id="ws-binary">
                     <h2>Binary Frames</h2>
-                    <p>For <strong>realtime voice models</strong>, the WebSocket may send binary frames containing raw audio data. Check if the received message is a <code>Blob</code> (browser) or <code>Buffer</code> (Node.js) before parsing as JSON.</p>
+                    <p>For <strong>realtime models</strong> that return audio (voice conversation and text-to-speech), the WebSocket may send binary frames containing raw audio data. Check if the received message is a <code>Blob</code> (browser) or <code>Buffer</code> (Node.js) before parsing as JSON.</p>
                   </section>
 
                   <section id="ws-end-session">
                     <h2>Ending a Session</h2>
-                    <p>For realtime/streaming models that maintain a persistent session, send a <code>task_session_end</code> message to gracefully terminate:</p>
+                    <p>For realtime models that maintain a persistent session, send a <code>task_session_end</code> message to gracefully terminate:</p>
                     <pre><code>{
   "type": "task_session_end",
   "tasktoken": "your-socket-access-token"
 }</code></pre>
                     <p>After sending this, wait for the <code>task_postprocess_end</code> event before closing the connection. This is the final event that contains the complete results.</p>
+                  </section>
+
+                  <section id="ws-agent-events">
+                    <h2>Agent WebSocket Events</h2>
+                    <p>The same WebSocket connection also supports <strong>AI Agent</strong> real-time streaming. Instead of <code>task_info</code>, register with <code>agent_info</code> and an <code>agenttoken</code> to receive agent response events.</p>
+                    <p>For full documentation on agent events (<code>agent_subscribed</code>, <code>agent_output</code>, <code>agent_end</code>, and more), see <a href="/docs/agent-websocket" class="docs-link">Agent WebSocket</a>.</p>
                   </section>
                 </article>
 
@@ -5314,7 +5375,7 @@ ws.onopen = function() {
                     {
                       "label": "JavaScript",
                       "language": "javascript",
-                      "code": "// Realtime Voice Session — Connect and Handle Events\n\nvar socketToken = 'YOUR_SOCKET_ACCESS_TOKEN';\nvar ws = new WebSocket('wss://socket.wiro.ai/v1');\n\nws.onopen = function() {\n  ws.send(JSON.stringify({ type: 'task_info', tasktoken: socketToken }));\n};\n\nws.onmessage = function(event) {\n  if (event.data instanceof Blob) {\n    handleAudioResponse(event.data);\n    return;\n  }\n\n  var msg = JSON.parse(event.data);\n\n  if (msg.type === 'task_stream_ready') {\n    console.log('Session ready — start microphone');\n    startMicrophone(ws, socketToken);\n  }\n\n  if (msg.type === 'task_stream_end') {\n    console.log('AI finished speaking');\n  }\n\n  if (msg.type === 'task_cost') {\n    console.log('Turn cost:', msg.turnCost,\n      'Total:', msg.cumulativeCost);\n  }\n\n  if (msg.type === 'task_output' &&\n      typeof msg.message === 'string') {\n    if (msg.message.startsWith('TRANSCRIPT_USER:')) {\n      console.log('You:', msg.message.substring(16));\n    }\n    if (msg.message.startsWith('TRANSCRIPT_AI:')) {\n      console.log('AI:', msg.message.substring(14));\n    }\n  }\n\n  if (msg.type === 'task_end') {\n    console.log('Session ended');\n    stopMicrophone();\n    ws.close();\n  }\n};\n\nfunction interruptAI() {\n  ws.send(JSON.stringify({\n    type: 'task_session_interrupt',\n    tasktoken: socketToken\n  }));\n}\n\nfunction endSession() {\n  ws.send(JSON.stringify({\n    type: 'task_session_end',\n    tasktoken: socketToken\n  }));\n}"
+                      "code": "// Realtime Voice Session — Connect and Handle Events\n\nvar socketToken = 'YOUR_SOCKET_ACCESS_TOKEN';\nvar ws = new WebSocket('wss://socket.wiro.ai/v1');\n\nws.onopen = function() {\n  ws.send(JSON.stringify({ type: 'task_info', tasktoken: socketToken }));\n};\n\nws.onmessage = function(event) {\n  if (event.data instanceof Blob) {\n    handleAudioResponse(event.data);\n    return;\n  }\n\n  var msg = JSON.parse(event.data);\n\n  if (msg.type === 'task_stream_ready') {\n    console.log('Session ready — start microphone');\n    startMicrophone(ws, socketToken);\n  }\n\n  if (msg.type === 'task_stream_end') {\n    console.log('AI finished speaking — listening');\n  }\n\n  if (msg.type === 'task_cost') {\n    console.log('Turn cost:', msg.turnCost,\n      'Total:', msg.cumulativeCost);\n  }\n\n  if (msg.type === 'task_output' &&\n      typeof msg.message === 'string') {\n    if (msg.message.startsWith('TRANSCRIPT_USER:')) {\n      console.log('You:', msg.message.substring(16));\n    }\n    if (msg.message.startsWith('TRANSCRIPT_AI:')) {\n      console.log('AI:', msg.message.substring(14));\n    }\n  }\n\n  if (msg.type === 'task_end') {\n    console.log('Model process exited — waiting for post-processing');\n  }\n\n  if (msg.type === 'task_postprocess_end') {\n    console.log('Session ended');\n    stopMicrophone();\n    ws.close();\n  }\n};\n\nfunction interruptAI() {\n  ws.send(JSON.stringify({\n    type: 'task_session_interrupt',\n    tasktoken: socketToken\n  }));\n}\n\nfunction endSession() {\n  ws.send(JSON.stringify({\n    type: 'task_session_end',\n    tasktoken: socketToken\n  }));\n}"
                     },
                     {
                       "label": "Mic Capture",
@@ -5329,17 +5390,17 @@ ws.onopen = function() {
                     {
                       "label": "Python",
                       "language": "python",
-                      "code": "import asyncio\nimport json\nimport struct\nimport websockets\nimport pyaudio\n\nSOCKET_TOKEN = 'YOUR_SOCKET_ACCESS_TOKEN'\nSAMPLE_RATE = 24000\nCHUNK = 4800  # 200ms\n\nasync def realtime_session():\n    uri = 'wss://socket.wiro.ai/v1'\n    async with websockets.connect(uri) as ws:\n        # Register\n        await ws.send(json.dumps({\n            'type': 'task_info',\n            'tasktoken': SOCKET_TOKEN\n        }))\n\n        # Audio setup\n        pa = pyaudio.PyAudio()\n        mic = pa.open(format=pyaudio.paInt16,\n            channels=1, rate=SAMPLE_RATE,\n            input=True, frames_per_buffer=CHUNK)\n        speaker = pa.open(format=pyaudio.paInt16,\n            channels=1, rate=SAMPLE_RATE,\n            output=True)\n\n        is_listening = False\n\n        async def send_audio():\n            while True:\n                if is_listening:\n                    data = mic.read(CHUNK,\n                        exception_on_overflow=False)\n                    token = SOCKET_TOKEN.encode() + b'|'\n                    await ws.send(token + data)\n                await asyncio.sleep(0.01)\n\n        async def receive():\n            nonlocal is_listening\n            async for msg in ws:\n                if isinstance(msg, bytes):\n                    pipe = msg.index(0x7C)\n                    speaker.write(msg[pipe+1:])\n                    continue\n                data = json.loads(msg)\n                t = data['type']\n                if t == 'task_stream_ready':\n                    print('Session ready')\n                    is_listening = True\n                elif t == 'task_stream_end':\n                    is_listening = False\n                elif t == 'task_cost':\n                    is_listening = True\n                    print(f'Cost: {data[\"cumulativeCost\"]}')\n                elif t == 'task_output':\n                    m = data.get('message', '')\n                    if m.startswith('TRANSCRIPT_USER:'):\n                        print(f'You: {m[16:]}')\n                    elif m.startswith('TRANSCRIPT_AI:'):\n                        print(f'AI: {m[14:]}')\n                elif t in ('task_end',\n                    'task_postprocess_end'):\n                    print('Session ended')\n                    break\n\n        await asyncio.gather(\n            send_audio(), receive())\n\nasyncio.run(realtime_session())"
+                      "code": "import asyncio\nimport json\nimport websockets\nimport pyaudio\n\nSOCKET_TOKEN = 'YOUR_SOCKET_ACCESS_TOKEN'\nSAMPLE_RATE = 24000\nCHUNK = 4800  # 200ms\n\nasync def realtime_session():\n    uri = 'wss://socket.wiro.ai/v1'\n    async with websockets.connect(uri) as ws:\n        # Register\n        await ws.send(json.dumps({\n            'type': 'task_info',\n            'tasktoken': SOCKET_TOKEN\n        }))\n\n        # Audio setup\n        pa = pyaudio.PyAudio()\n        mic = pa.open(format=pyaudio.paInt16,\n            channels=1, rate=SAMPLE_RATE,\n            input=True, frames_per_buffer=CHUNK)\n        speaker = pa.open(format=pyaudio.paInt16,\n            channels=1, rate=SAMPLE_RATE,\n            output=True)\n\n        is_listening = False\n        done = asyncio.Event()\n\n        async def send_audio():\n            while not done.is_set():\n                if is_listening:\n                    data = mic.read(CHUNK,\n                        exception_on_overflow=False)\n                    token = SOCKET_TOKEN.encode() + b'|'\n                    await ws.send(token + data)\n                await asyncio.sleep(0.01)\n\n        async def receive():\n            nonlocal is_listening\n            async for msg in ws:\n                if isinstance(msg, bytes):\n                    pipe = msg.find(0x7C)\n                    if pipe == -1:\n                        continue\n                    speaker.write(msg[pipe+1:])\n                    continue\n                data = json.loads(msg)\n                t = data['type']\n                if t == 'task_stream_ready':\n                    print('Session ready')\n                    is_listening = True\n                elif t == 'task_stream_end':\n                    print('AI finished speaking')\n                    is_listening = True\n                elif t == 'task_cost':\n                    print(f'Cost: {data[\"cumulativeCost\"]}')\n                elif t == 'task_output':\n                    m = data.get('message', '')\n                    if m.startswith('TRANSCRIPT_USER:'):\n                        print(f'You: {m[16:]}')\n                    elif m.startswith('TRANSCRIPT_AI:'):\n                        print(f'AI: {m[14:]}')\n                elif t == 'task_postprocess_end':\n                    print('Session ended')\n                    done.set()\n                    break\n\n        sender = asyncio.create_task(send_audio())\n        try:\n            await receive()\n        finally:\n            sender.cancel()\n            try:\n                await sender\n            except asyncio.CancelledError:\n                pass\n\nasyncio.run(realtime_session())"
                     },
                     {
                       "label": "Node.js",
                       "language": "javascript",
-                      "code": "const WebSocket = require('ws');\nconst { spawn } = require('child_process');\n\nconst SOCKET_TOKEN = 'YOUR_SOCKET_ACCESS_TOKEN';\nconst ws = new WebSocket('wss://socket.wiro.ai/v1');\n\nws.on('open', () => {\n  ws.send(JSON.stringify({\n    type: 'task_info',\n    tasktoken: SOCKET_TOKEN\n  }));\n});\n\nws.on('message', (data, isBinary) => {\n  if (isBinary) {\n    const buf = Buffer.from(data);\n    const pipe = buf.indexOf(0x7C);\n    if (pipe > 0) {\n      const audio = buf.slice(pipe + 1);\n      // Play via speaker or save to file\n      console.log('Audio chunk:', audio.length, 'bytes');\n    }\n    return;\n  }\n\n  const msg = JSON.parse(data.toString());\n\n  if (msg.type === 'task_stream_ready') {\n    console.log('Session ready — start sending audio');\n    // Start mic capture and send as binary\n  }\n\n  if (msg.type === 'task_cost') {\n    console.log('Cost:', msg.cumulativeCost);\n  }\n\n  if (msg.type === 'task_output' &&\n      typeof msg.message === 'string') {\n    if (msg.message.startsWith('TRANSCRIPT_USER:'))\n      console.log('You:', msg.message.substring(16));\n    if (msg.message.startsWith('TRANSCRIPT_AI:'))\n      console.log('AI:', msg.message.substring(14));\n  }\n\n  if (msg.type === 'task_end') {\n    console.log('Done');\n    ws.close();\n  }\n});\n\n// End session\nfunction endSession() {\n  ws.send(JSON.stringify({\n    type: 'task_session_end',\n    tasktoken: SOCKET_TOKEN\n  }));\n}"
+                      "code": "const WebSocket = require('ws');\n\nconst SOCKET_TOKEN = 'YOUR_SOCKET_ACCESS_TOKEN';\nconst ws = new WebSocket('wss://socket.wiro.ai/v1');\n\nws.on('open', () => {\n  ws.send(JSON.stringify({\n    type: 'task_info',\n    tasktoken: SOCKET_TOKEN\n  }));\n});\n\nws.on('message', (data, isBinary) => {\n  if (isBinary) {\n    const buf = Buffer.from(data);\n    const pipe = buf.indexOf(0x7C);\n    if (pipe !== -1) {\n      const audio = buf.slice(pipe + 1);\n      // Play via speaker or save to file\n      console.log('Audio chunk:', audio.length, 'bytes');\n    }\n    return;\n  }\n\n  const msg = JSON.parse(data.toString());\n\n  if (msg.type === 'task_stream_ready') {\n    console.log('Session ready — start sending audio');\n    // Start mic capture and send as binary\n  }\n\n  if (msg.type === 'task_cost') {\n    console.log('Cost:', msg.cumulativeCost);\n  }\n\n  if (msg.type === 'task_output' &&\n      typeof msg.message === 'string') {\n    if (msg.message.startsWith('TRANSCRIPT_USER:'))\n      console.log('You:', msg.message.substring(16));\n    if (msg.message.startsWith('TRANSCRIPT_AI:'))\n      console.log('AI:', msg.message.substring(14));\n  }\n\n  if (msg.type === 'task_end') {\n    console.log('Model process exited — waiting for post-processing');\n  }\n\n  if (msg.type === 'task_postprocess_end') {\n    console.log('Done');\n    ws.close();\n  }\n});\n\n// End session\nfunction endSession() {\n  ws.send(JSON.stringify({\n    type: 'task_session_end',\n    tasktoken: SOCKET_TOKEN\n  }));\n}"
                     },
                     {
                       "label": "Format",
                       "language": "json",
-                      "code": "{\n  \"audio_format\": {\n    \"codec\": \"PCM\",\n    \"bit_depth\": \"16-bit Int16\",\n    \"sample_rate\": 24000,\n    \"channels\": 1,\n    \"byte_order\": \"little-endian\"\n  },\n  \"binary_frame\": \"tasktoken|pcm_audio_data\",\n  \"recommended_chunk\": {\n    \"samples\": 4800,\n    \"duration_ms\": 200,\n    \"bytes\": 9600\n  },\n  \"events\": {\n    \"task_stream_ready\": \"Start sending audio\",\n    \"task_stream_end\": \"AI finished speaking\",\n    \"task_cost\": \"Cost per turn + cumulative\",\n    \"task_output\": \"TRANSCRIPT_USER: / TRANSCRIPT_AI:\",\n    \"task_session_interrupt\": \"Send to interrupt AI speech\",\n    \"task_session_end\": \"Send to end session\",\n    \"task_end\": \"Server ended session\"\n  }\n}"
+                      "code": "{\n  \"audio_format\": {\n    \"codec\": \"PCM\",\n    \"bit_depth\": \"16-bit Int16\",\n    \"sample_rate\": 24000,\n    \"channels\": 1,\n    \"byte_order\": \"little-endian\"\n  },\n  \"binary_frame\": \"tasktoken|pcm_audio_data\",\n  \"recommended_chunk\": {\n    \"samples\": 4800,\n    \"duration_ms\": 200,\n    \"bytes\": 9600\n  },\n  \"events\": {\n    \"task_stream_ready\": \"Start sending audio\",\n    \"task_stream_end\": \"AI finished speaking\",\n    \"task_cost\": \"Cost per turn + cumulative\",\n    \"task_output\": \"TRANSCRIPT_USER: / TRANSCRIPT_AI:\",\n    \"task_session_interrupt\": \"Send to interrupt AI speech\",\n    \"task_session_end\": \"Send to end session\",\n    \"task_end\": \"Server ended session\",\n    \"task_postprocess_end\": \"Post-processing complete — safe to close\"\n  }\n}"
                     }
                   ]
                 </script>
@@ -5419,15 +5480,12 @@ ws.onopen = function() {
                   <section id="realtime-tts-run-params">
                     <h2>Run Parameters</h2>
                     <p>Each realtime TTS model has its own set of parameters. Use <a href="/docs/models" class="docs-link">POST /Tool/Detail</a> to discover the exact parameters for a specific model. See <a href="/docs/model-parameters" class="docs-link">Model Parameters</a> for parameter types.</p>
-                    <p>Browse available realtime TTS models on the <a href="https://wiro.ai/models" class="docs-link" target="_blank">models page</a> (filter by <strong>Realtime TTS</strong> category). Common parameters typically include the input text, voice selection, and output audio format. Example run:</p>
-                    <pre><code>curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
+                    <p>Browse available realtime TTS models on the <a href="https://wiro.ai/models" class="docs-link" target="_blank">models page</a> (filter by <strong>Realtime TTS</strong> category). Common parameters typically include the input text and an optional reference audio clip for voice cloning. Example run for MOSS-TTS-Realtime:</p>
+                    <pre><code>curl -X POST "https://api.wiro.ai/v1/Run/openmoss/moss-tts-realtime" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "text": "Hello, this is a realtime text-to-speech demo.",
-    "voice": "alloy",
-    "output_audio_format": "audio/pcm",
-    "output_audio_rate": "24000"
+    "text": "Hello, this is a realtime text-to-speech demo."
   }'</code></pre>
                     <div class="info-callout">
                       <p><strong>Important:</strong> Parameters vary per model. Always check the model's detail page or use <code>/Tool/Detail</code> to get the exact parameter list before integrating. The run response returns a <code>socketaccesstoken</code> used to subscribe to the WebSocket.</p>
@@ -5697,14 +5755,12 @@ task_postprocess_end  ← safe to close WebSocket</code></pre>
                   <section id="realtime-stt-run-params">
                     <h2>Run Parameters</h2>
                     <p>Each realtime STT model has its own set of parameters. Use <a href="/docs/models" class="docs-link">POST /Tool/Detail</a> to discover the exact parameters for a specific model. See <a href="/docs/model-parameters" class="docs-link">Model Parameters</a> for parameter types.</p>
-                    <p>Browse available realtime STT models on the <a href="https://wiro.ai/models" class="docs-link" target="_blank">models page</a> (filter by <strong>Realtime STT</strong> category). Common parameters typically include language hints and audio format settings. Example run:</p>
-                    <pre><code>curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
+                    <p>Browse available realtime STT models on the <a href="https://wiro.ai/models" class="docs-link" target="_blank">models page</a> (filter by <strong>Realtime STT</strong> category). Common parameters typically include a transcription delay setting that trades speed for accuracy; some models also take a language. Example run for Voxtral Mini 4B Realtime:</p>
+                    <pre><code>curl -X POST "https://api.wiro.ai/v1/Run/mistralai/voxtral-mini-4b-realtime-2602" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
-    "language": "en",
-    "input_audio_format": "audio/pcm",
-    "input_audio_rate": "24000"
+    "transcriptionDelay": "balanced"
   }'</code></pre>
                     <div class="info-callout">
                       <p><strong>Important:</strong> Parameters vary per model. Always check the model's detail page or use <code>/Tool/Detail</code> to get the exact parameter list before integrating. The run response returns a <code>socketaccesstoken</code> used to subscribe to the WebSocket.</p>
@@ -5947,7 +6003,18 @@ if (msg.type === 'task_output' &amp;&amp;
                       <li><strong>Dashboard requests:</strong> use the signed-in user's Bearer token.</li>
                     </ul>
                     <p>The returned <code>GET /File/:accessKey/:fileName</code> URL intentionally remains public so browsers, AI model workers, and external clients can display the file without account credentials. Possession of the generated access key grants read access only; it does not grant file-management permission.</p>
-                    <div class="info-callout"><p><strong>Code examples:</strong> The examples on this page show API Key Only authentication. Signature-authenticated projects must include the nonce and signature headers.</p></div>
+                    <div class="info-callout"><p><strong>Code examples:</strong> The examples on this page show API Key Only authentication. Signature-authenticated projects must include the nonce and signature headers, as in this example:</p></div>
+                    <pre><code class="language-bash">NONCE="$(date +%s)"
+SIGNATURE="$(printf '%s' "${YOUR_API_SECRET}${NONCE}" \
+  | openssl dgst -sha256 -hmac "${YOUR_API_KEY}" \
+  | awk '{print $NF}')"
+
+curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: ${YOUR_API_KEY}" \
+  -H "x-nonce: ${NONCE}" \
+  -H "x-signature: ${SIGNATURE}" \
+  -d '{"name":"training-data"}'</code></pre>
                   </section>
 
                   <section id="folder-create">
@@ -6064,11 +6131,12 @@ if (msg.type === 'task_output' &amp;&amp;
                   <section id="files-usage">
                     <h2>Using Files in Runs</h2>
                     <p>
-                      Once uploaded, reference a file by its URL or ID in your model run parameters. For example, an image upscaler model might accept a
-                      <code>imageUrl</code> parameter — pass the URL returned from the upload response.
+                      Once uploaded, reference a file by its URL or ID in your model run parameters. For example, an image upscaler model might accept an
+                      <code>inputImageUrl</code> parameter — pass the URL returned from the upload response.
                     </p>
+                    <p>You don't always need to upload files first. Most models accept direct URLs in their file parameters — you can pass any publicly accessible URL. See <a href="/docs/model-parameters">Model Parameters</a> for details on <code>fileinput</code>, <code>multifileinput</code>, and <code>combinefileinput</code> patterns.</p>
                     <pre><code>{
-  "imageUrl": "https://files.wiro.ai/...",
+  "inputImageUrl": "https://cdn1.wiro.ai/...",
   "scale": 4
 }</code></pre>
                   </section>
@@ -6394,11 +6462,26 @@ if (msg.type === 'task_output' &amp;&amp;
 
                   <section id="pricing-monitoring">
                     <h2>Monitoring Your Spending</h2>
+                    <h3>Via the API</h3>
+                    <p>Check the <code>totalcost</code> field in <a href="/docs/tasks">Task/Detail</a> responses to see the cost of individual runs:</p>
+                    <pre><code class="language-json">{
+  "tasklist": [{
+    "status": "task_postprocess_end",
+    "pexit": "0",
+    "totalcost": "0.003510000000",
+    "elapsedseconds": "6.0000"
+  }]
+}</code></pre>
+
+                    <h3>Via MCP</h3>
+                    <p>The <a href="/docs/wiro-mcp-server">MCP server</a> provides two ways to check costs:</p>
                     <ul>
-                      <li>Check the <code>totalcost</code> field in <a href="/docs/tasks">Task/Detail</a> responses to see the cost of individual runs.</li>
-                      <li>View your overall balance, usage history, and billing details in the <a href="https://wiro.ai/panel/billing" target="_blank">Dashboard</a>.</li>
-                      <li>When using MCP, the <code>get_task</code> tool returns the cost of completed runs.</li>
+                      <li><strong><code>get_task</code></strong> — returns full task details including <code>totalcost</code></li>
+                      <li><strong><code>get_task_price</code></strong> — dedicated tool that returns just the cost, billing status, and duration. Clearly indicates whether the task was billed or not.</li>
                     </ul>
+
+                    <h3>Dashboard</h3>
+                    <p>View your overall balance, usage history, and billing details in the <a href="https://wiro.ai/panel/billing" target="_blank">Dashboard</a>.</p>
                   </section>
                 </article>
               </div>
@@ -6528,7 +6611,7 @@ if (msg.type === 'task_output' &amp;&amp;
                         <strong>Use <a href="/docs/websocket">WebSocket</a> for monitoring</strong> — instead of polling <code>/Task/Detail</code> repeatedly, connect via WebSocket to get real-time updates without extra API calls.
                       </li>
                       <li>
-                        <strong>Use bounded MCP waits</strong> — <code>run_model</code> waits up to 45 seconds by default and returns a recoverable token when the task is still active. Continue with <code>wait_for_task</code>; do not call <code>run_model</code> again for the same request. Use <code>wait=false</code> only when you need the token immediately.
+                        <strong>Use bounded MCP waits</strong> — <code>run_model</code> waits up to 45 seconds by default and returns a recoverable token when the task is still active. Continue with <code>wait_for_task</code>; do not call <code>run_model</code> again for the same request. Use <code>wait=false</code> only when you need the token immediately, and <code>get_task</code> for a one-time status check.
                       </li>
                       <li><strong>Implement exponential backoff</strong> — if polling task status, start at 3 seconds and increase the interval for longer tasks.</li>
                     </ul>
@@ -6654,10 +6737,20 @@ if (msg.type === 'task_output' &amp;&amp;
                         <tr>
                           <td>Endpoint not found</td>
                           <td><code>0</code></td>
-                          <td>Error parsing url. (HTTP 404)</td>
+                          <td>Parsing url error. (HTTP 404)</td>
                         </tr>
                       </tbody>
                     </table>
+
+                    <h3>Signature Auth Errors</h3>
+                    <p>If your project uses signature-based authentication, ensure all three headers are present and the signature is computed correctly:</p>
+                    <pre><code>x-api-key: YOUR_API_KEY
+x-signature: HMAC-SHA256(key=API_KEY, message=API_SECRET + NONCE)
+x-nonce: Unix timestamp or random integer</code></pre>
+                    <p>See <a href="/docs/authentication">Authentication</a> for details.</p>
+
+                    <h3>IP Whitelist Errors</h3>
+                    <p>If your project has an IP whitelist configured, requests from unlisted IPs will be rejected. Use <code>*</code> in the whitelist to allow all IPs.</p>
                   </section>
 
                   <section id="error-run">
@@ -6684,7 +6777,7 @@ if (msg.type === 'task_output' &amp;&amp;
                         <tr>
                           <td>Concurrent task limit</td>
                           <td><code>96</code></td>
-                          <td>You have reached your concurrent task limit. With your current balance of ${balance}, you can run up to {maxConcurrent} tasks at the same time.</td>
+                          <td>You have reached your concurrent task limit. With your current balance of ${balance}, you can run up to {maxConcurrent} tasks at the same time. Add funds to increase your limit.</td>
                           <td>Wait for a task to finish, or <a href="https://wiro.ai/panel/billing" target="_blank">add funds</a>. See <a href="/docs/concurrency-limits">Concurrency Limits</a></td>
                         </tr>
                         <tr>
@@ -6757,7 +6850,7 @@ if (msg.type === 'task_output' &amp;&amp;
                         <tr>
                           <td>Account suspended</td>
                           <td><code>0</code></td>
-                          <td>Your account has been suspended. Please contact support.</td>
+                          <td>Your account has been suspended. Please contact support if you believe this is a mistake.</td>
                         </tr>
                         <tr>
                           <td>Permission denied</td>
@@ -6768,6 +6861,34 @@ if (msg.type === 'task_output' &amp;&amp;
                           <td>Model blocked by your team</td>
                           <td><code>0</code></td>
                           <td>This model is not available for your team</td>
+                        </tr>
+                      </tbody>
+                    </table>
+
+                    <h3>Training Model Errors</h3>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Error</th>
+                          <th>Code</th>
+                          <th>Message</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>Invalid model name</td>
+                          <td><code>0</code></td>
+                          <td>Your model name should be contain (A-Z) (0-9) (-) (_) (.)</td>
+                        </tr>
+                        <tr>
+                          <td>Reserved name</td>
+                          <td><code>0</code></td>
+                          <td>This name is not allowed</td>
+                        </tr>
+                        <tr>
+                          <td>Name taken</td>
+                          <td><code>0</code></td>
+                          <td>This model name is already in use</td>
                         </tr>
                       </tbody>
                     </table>
@@ -6788,15 +6909,33 @@ if (msg.type === 'task_output' &amp;&amp;
                       <tbody>
                         <tr>
                           <td>Task not found</td>
+                          <td><code>0</code></td>
+                          <td>task-not-founded</td>
+                          <td>Detail</td>
+                        </tr>
+                        <tr>
+                          <td>Task not found</td>
                           <td><code>1</code></td>
                           <td>There is no task yet.</td>
-                          <td>Detail, Cancel, Kill, InputOutputDelete</td>
+                          <td>Cancel</td>
+                        </tr>
+                        <tr>
+                          <td>Task not found</td>
+                          <td><code>0</code></td>
+                          <td>There is no task yet.</td>
+                          <td>Kill, InputOutputDelete</td>
+                        </tr>
+                        <tr>
+                          <td>Missing identifier</td>
+                          <td><code>0</code></td>
+                          <td>Request parameter [taskid or tasktoken] required</td>
+                          <td>Detail</td>
                         </tr>
                         <tr>
                           <td>Missing identifier</td>
                           <td><code>0</code></td>
                           <td>taskid or socketaccesstoken is required</td>
-                          <td>Detail</td>
+                          <td>Kill</td>
                         </tr>
                         <tr>
                           <td>Not cancellable</td>
@@ -6812,7 +6951,7 @@ if (msg.type === 'task_output' &amp;&amp;
                         </tr>
                         <tr>
                           <td>Task not completed</td>
-                          <td><code>1</code></td>
+                          <td><code>0</code></td>
                           <td>Task must be completed or cancelled before deleting files</td>
                           <td>InputOutputDelete</td>
                         </tr>
@@ -6820,7 +6959,7 @@ if (msg.type === 'task_output' &amp;&amp;
                           <td>Permission denied</td>
                           <td><code>0</code></td>
                           <td>You don't have any permission for this action.</td>
-                          <td>All</td>
+                          <td>Detail, Cancel</td>
                         </tr>
                       </tbody>
                     </table>
@@ -6984,7 +7123,7 @@ if (!data.result) {
                       <button class="faq-question">How do LLM responses work?</button>
                       <div class="faq-answer">
                         <div class="faq-answer-inner">
-                          <p>LLM models return their response in two places: as merged text in <code>debugoutput</code>, and as a structured entry in the <code>outputs</code> array with <code>contenttype: "raw"</code> containing separate <code>thinking</code> and <code>answer</code> arrays. For streaming, each token arrives as a separate <code>task_output</code> WebSocket event. See <a href="/docs/llm-chat-streaming">LLM &amp; Chat Streaming</a> for details.</p>
+                          <p>LLM models return their response in two places: as merged text in <code>debugoutput</code>, and as a structured entry in the <code>outputs</code> array with <code>contenttype: "raw"</code> containing <code>prompt</code>, <code>raw</code>, and separate <code>thinking</code> and <code>answer</code> arrays. For streaming, each <code>task_output</code> WebSocket event carries the latest cumulative snapshot of the output. See <a href="/docs/llm-chat-streaming">LLM &amp; Chat Streaming</a> for details.</p>
                         </div>
                       </div>
                     </div>
@@ -7030,6 +7169,42 @@ if (!data.result) {
                       <div class="faq-answer">
                         <div class="faq-answer-inner">
                           <p>Yes. All models support an optional <code>callbackUrl</code> parameter. When provided, Wiro will POST the task result to your URL when the task completes. It must be a public <code>http(s)</code> address. See <a href="/docs/model-parameters">Webhook Callback</a> in Model Parameters.</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="faq-item">
+                      <button class="faq-question">What are Wiro Agents?</button>
+                      <div class="faq-answer">
+                        <div class="faq-answer-inner">
+                          <p>Wiro Agents are autonomous AI assistants that you deploy and manage via the API. Unlike single model runs, agents can connect to third-party services (Twitter, Google Ads, HubSpot, etc.), maintain conversation memory across sessions, and run scheduled tasks automatically. See the <a href="/docs/agent-overview">Agent Overview</a> for details.</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="faq-item">
+                      <button class="faq-question">How do I deploy an agent?</button>
+                      <div class="faq-answer">
+                        <div class="faq-answer-inner">
+                          <p>Browse the <a href="https://wiro.ai/agents" target="_blank">agent catalog</a>, subscribe to a plan, and deploy via <code>POST /UserAgent/Deploy</code>. After deployment, configure credentials and start the agent. See <a href="/docs/agent-overview">Agent Overview</a> for the full lifecycle.</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="faq-item">
+                      <button class="faq-question">Can I build my own product with Wiro Agents?</button>
+                      <div class="faq-answer">
+                        <div class="faq-answer-inner">
+                          <p>Yes. Use the Agent Messaging API to send messages programmatically, receive streaming responses via WebSocket, and get async notifications via webhooks. You can build white-label chat interfaces, webhook-driven pipelines, and multi-agent workflows. See <a href="/docs/agent-use-cases">Agent Use Cases</a>.</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="faq-item">
+                      <button class="faq-question">How do I connect third-party services to an agent?</button>
+                      <div class="faq-answer">
+                        <div class="faq-answer-inner">
+                          <p>Agents connect to services like Twitter, Instagram, Google Ads, and HubSpot via OAuth or API keys. Use <code>POST /UserAgentOAuth/OAuthConnect</code> with the provider's <code>credentialkey</code> to initiate OAuth flows, or set API keys via <code>/UserAgent/CredentialUpsert</code>. See <a href="/docs/agent-credentials">Agent Credentials &amp; OAuth</a>.</p>
                         </div>
                       </div>
                     </div>
@@ -7279,7 +7454,7 @@ if (!data.result) {
 
                       <div class="mcp-setup-panel" id="mcp-setup-openclaw">
                         <h3>OpenClaw</h3>
-                        <p>Set <code>WIRO_MCP_AUTH</code> in the environment that starts OpenClaw. Use <code>YOUR_API_KEY:YOUR_API_SECRET</code> for signature auth or only <code>YOUR_API_KEY</code> for API Key Only auth.</p>
+                        <p>Set <code>WIRO_MCP_AUTH</code> in the environment that starts OpenClaw. Use <code>YOUR_API_KEY:YOUR_API_SECRET</code> for signature auth or only <code>YOUR_API_KEY</code> for API Key Only auth. Then add this server under <code>mcp.servers</code> in your OpenClaw config:</p>
                         <pre><code class="language-json">{
   "mcp": {
     "servers": {
@@ -7297,6 +7472,7 @@ if (!data.result) {
                         <p>Verify the saved definition, connection, and 13 advertised tools:</p>
                         <pre><code class="language-bash">openclaw mcp doctor wiro --probe</code></pre>
                         <p>On older OpenClaw releases without that command, use <code>openclaw mcp show wiro</code>, restart OpenClaw, and run <code>/tools verbose</code>.</p>
+                        <p>Wiro's default bounded wait is 45 seconds; if your client has a configurable tool-call timeout, keep it above that value.</p>
                       </div>
 
                       <div class="mcp-setup-panel" id="mcp-setup-hermes">
@@ -7468,7 +7644,7 @@ if (!data.result) {
     "reason": "Continue this exact task. Do not call run_model again."
   }
 }</code></pre>
-                    <p>Task states are <code>submitted</code>, <code>running</code>, <code>completed</code>, <code>failed</code>, or <code>cancelled</code>. A two- or three-minute video can use several bounded <code>wait_for_task</code> calls without creating another billable generation.</p>
+                    <p>Task states are <code>submitted</code>, <code>running</code>, <code>completed</code>, <code>failed</code>, or <code>cancelled</code>. The LLM should execute <code>nextAction</code> when present. A two- or three-minute video can therefore use several bounded <code>wait_for_task</code> calls without creating another billable generation.</p>
                   </section>
 
                   <section id="mcp-examples">
@@ -7482,6 +7658,9 @@ if (!data.result) {
                     <h3>Find models</h3>
                     <div class="info-callout"><p>"What models are available for text-to-video?"</p></div>
                     <p>The assistant will call <code>search_models</code> with categories filter.</p>
+                    <h3>Check task status</h3>
+                    <div class="info-callout"><p>"Check the status of my last task"</p></div>
+                    <p>The assistant will call <code>get_task</code> with the task token from the previous run.</p>
                     <h3>Resume a previous production</h3>
                     <div class="info-callout"><p>"Show my latest productions and open the newest result"</p></div>
                     <p>The assistant will call <code>list_tasks</code>, select the matching task, and call <code>get_task</code>. History is scoped from the authenticated project; the LLM never sends a user UUID.</p>
@@ -7619,7 +7798,7 @@ if (!data.result) {
                         <tr>
                           <td><code>timeout_seconds</code></td>
                           <td>number (optional)</td>
-                          <td>Max seconds to wait (default 45, max 600). Values above 45 should only be used when the MCP client timeout is configured accordingly.</td>
+                          <td>Max seconds to wait (default 45, max 600). Only applies when <code>wait=true</code>. Values above 45 should only be used when the MCP client timeout is configured accordingly.</td>
                         </tr>
                       </tbody>
                     </table>
@@ -7658,7 +7837,7 @@ if (!data.result) {
                     <p>If the task completes, this tool returns the final text and file outputs. If it is still active, call <code>wait_for_task</code> again with the same identifier. This does not create or bill another model run.</p>
 
                     <h3>get_task</h3>
-                    <p>Check task status and get results. It performs one immediate check by default, or a short bounded wait when <code>wait_seconds</code> is set.</p>
+                    <p>Check task status and get results. It performs one immediate check by default, or a short bounded wait when <code>wait_seconds</code> is set. Calls <code>POST /Task/Detail</code> on the Wiro API.</p>
                     <table>
                       <thead>
                         <tr>
@@ -7848,9 +8027,11 @@ if (!data.result) {
                     <h3>What models can I use?</h3>
                     <p>All models in the <a href="https://wiro.ai/models" target="_blank">Wiro catalog</a>.</p>
                     <h3>Is my API key stored?</h3>
-                    <p>No. The server is fully stateless. Credentials are sent per-request and never stored.</p>
+                    <p>No. The server is fully stateless. Credentials are sent per-request and never stored or logged.</p>
                     <h3>Does it cost extra?</h3>
                     <p>No. The MCP server is free. You pay for model runs at standard pricing.</p>
+                    <h3>What about rate limits?</h3>
+                    <p>The hosted MCP endpoint applies a 60-request-per-minute guard per Authorization value, in addition to Wiro API project limits. Long generations do not require rapid polling: follow the returned bounded <code>wait_for_task</code> action.</p>
                     <h3>Can I self-host?</h3>
                     <p>Yes. See <a href="/docs/mcp-self-hosted">Self-Hosted MCP</a> for instructions.</p>
                   </section>
@@ -8159,6 +8340,28 @@ import { createMcpServer } from '@wiro-ai/wiro-mcp/server';
 
 const client = new WiroClient('your-api-key', 'your-api-secret');
 const server = createMcpServer(client);</code></pre>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Export</th>
+                          <th>Description</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td><code>createMcpServer(client)</code></td>
+                          <td>Creates an McpServer with all 13 tools registered</td>
+                        </tr>
+                        <tr>
+                          <td><code>WiroClient</code></td>
+                          <td>API client supporting both auth types (signature + apikey-only)</td>
+                        </tr>
+                        <tr>
+                          <td><code>registerTools(server, client)</code></td>
+                          <td>Register tools on an existing McpServer</td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </section>
 
                   <section id="self-hosted-server">
@@ -8810,7 +9013,7 @@ pro.credits = starter.credits × tiermultiplier
 <p>Cache-read and cache-write categories are charged only when the selected model rate defines them. <code>inputtokens</code> contains only uncached input; <code>totaltokens</code> is always the exact sum of input, output, cache-read, and cache-write tokens. For models with <code>long_context_threshold_tokens</code>, Wiro selects the long-context rate <strong>per LLM call</strong> using <code>input + cacheRead + cacheWrite</code>; it never infers a surcharge from a turn-level aggregate that lost call boundaries. You don't send anything — the agent runtime reports exact call-level usage after each turn, Wiro deducts the credits once, and records a ledger row with <code>action: "tokens"</code> (see <a href="/docs/agent-transactions#post-useragenttransactionlist"><code>POST /UserAgent/TransactionList</code></a>). Per-turn token counts and cost also ride on each assistant message (<code>inputtokens</code> / <code>outputtokens</code> / <code>cachereadtokens</code> / <code>cachewritetokens</code> / <code>totaltokens</code> / <code>tokencost</code> / <code>model</code> — see <a href="/docs/agent-messaging">Agent Messaging</a>).</p>
 <p>When the credit pool is exhausted, <a href="/docs/agent-messaging#post-useragentmessagesend"><code>POST /UserAgent/Message/Send</code></a> and <a href="#post-useragentstart"><code>POST /UserAgent/Start</code></a> refuse with an <code>Agent has no remaining credits…</code> error plus an <code>agentbalance</code> snapshot; renew the subscription or buy an extra credit pack to continue.</p>
 <blockquote>
-<p><strong>Voice realtime audio is billed separately.</strong> Live voice-call audio (for <code>util-voice-receptionist</code> agents) is <strong>not</strong> charged to the platform credit pool — it flows through the operator's own Wiro AI Models balance via the <code>int-wiro-aimodels</code> skill (you bring your own Wiro API key). Only the post-call text turn is billed as a normal token deduct.</p>
+<p><strong>Voice realtime audio is billed separately.</strong> Live voice-call audio (for <code>util-voice-receptionist</code> agents) is <strong>not</strong> charged to the platform credit pool — it flows through the operator's own Wiro AI Models balance via the <code>int-wiro-aimodels</code> skill (you bring your own Wiro API key). The voice-prep turn before the call and the post-call text turn are billed as normal token deducts.</p>
 </blockquote>
 <h3 id="live-pricing-preview">Live Pricing Preview</h3>
 <p>Before you commit a skill change or build a custom agent, fetch a live preview with <a href="#post-useragentpricingpreview"><code>POST /UserAgent/PricingPreview</code></a>. The preview returns the post-toggle <code>tiers</code>, <code>tokenRates</code>, <code>starterFloorUsd</code>, and <code>enabledSkills</code> (with transitive <code>depends_on</code> resolved) without writing any state.</p>
@@ -10648,7 +10851,7 @@ pro.credits = starter.credits × tiermultiplier
 }
 </code></pre>
 <blockquote>
-<p><strong><code>Update</code> returns the full composed useragent shape</strong> — same composition path as <code>UserAgent/Detail</code> (<code>getUserAgentDetailForUI</code>), so <code>credentials</code>, <code>customskills</code>, <code>scheduledskills</code>, <code>skills</code>, <code>skillsmeta</code>, <code>tokenRates</code>, <code>agentModel</code>, and the <code>agent</code> template summary (with <code>tiers</code> + <code>extracreditpacks</code>) are all included. The fields <code>Update</code> cannot safely populate without an extra round-trip (<code>subscription</code>, <code>remainingcredits</code>, <code>extracreditsexpiry</code>) stay omitted — call <code>UserAgent/Detail</code> next if you need them. Otherwise the response is suitable for an in-place panel re-render without a follow-up call.</p>
+<p><strong><code>Update</code> returns the full composed useragent shape</strong> — same composition path as <code>UserAgent/Detail</code>, so <code>credentials</code>, <code>customskills</code>, <code>scheduledskills</code>, <code>skills</code>, <code>skillsmeta</code>, <code>tokenRates</code>, <code>agentModel</code>, and the <code>agent</code> template summary (with <code>tiers</code> + <code>extracreditpacks</code>) are all included. The fields <code>Update</code> cannot safely populate without an extra round-trip (<code>subscription</code>, <code>remainingcredits</code>, <code>extracreditsexpiry</code>) stay omitted — call <code>UserAgent/Detail</code> next if you need them. Otherwise the response is suitable for an in-place panel re-render without a follow-up call.</p>
 <p><strong>Restart on running agents.</strong> When the call lands on a status <code>3</code>/<code>4</code> agent, the response shows the lifecycle transition mid-flight: <code>status: 1</code> (Stopping) with a fresh <code>stoppingat</code> timestamp, <code>runningat</code> cleared, and <code>queuedat</code> set to the same instant — Wiro auto-queues the agent so it picks the new settings up after the next stop cycle.</p>
 </blockquote>
 <h4 id="post-useragentupdatesettings"><strong>POST</strong> /UserAgent/UpdateSettings</h4>
@@ -11211,7 +11414,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <td><code>skillkey</code></td>
 <td>string</td>
 <td>Yes</td>
-<td>The skill key. Strategies use bare names (e.g. <code>"content-tone"</code> → stored as <code>cs-content-tone</code>). Crons use a <code>cron-</code> prefix (e.g. <code>"cron-social-content-scanner"</code> → stored as <code>cs-cron-social-content-scanner</code>).</td>
+<td>The skill key. Strategies use bare names (e.g. <code>"content-tone"</code> → stored as <code>cs-content-tone</code>). For a scheduled task, send its full key (e.g. <code>"cs-cron-social-content-scanner"</code>), or a bare slug together with <code>interval</code> (<code>"weekly-report"</code> → <code>cs-cron-weekly-report</code>). Don't send a <code>cron-…</code> key with an <code>interval</code>: it becomes <code>cs-cron-cron-…</code>, a new task.</td>
 </tr>
 <tr>
 <td><code>value</code></td>
@@ -12488,8 +12691,8 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <td>The agent's worker is no longer available (extremely rare)</td>
 </tr>
 <tr>
-<td><code>Failed to fetch activity from worker</code></td>
-<td>Worker host unreachable / internal error during the tail</td>
+<td><code>Agent is temporarily unavailable. Please try again shortly.</code></td>
+<td>The agent's host did not answer (offline, network blip) — retry</td>
 </tr>
 </tbody>
 </table>
@@ -14817,7 +15020,7 @@ print(response.body);
 }
 </code></pre>
 <blockquote>
-<p>Each message row carries <code>uuid</code> (sender) and a server-decorated <code>user</code> object with the full sender shape — same as <code>Message/Detail</code>. <code>user</code> is <code>null</code> for system-inserted rows (e.g. <code>Message/SystemInsert</code> writes when <code>uuid</code> is <code>"system"</code>) or when the underlying account has been deleted.</p>
+<p>Each message row carries <code>uuid</code> (sender) and a server-decorated <code>user</code> object with the full sender shape — same as <code>Message/Detail</code>. <code>user</code> is <code>null</code> for rows with a sentinel <code>uuid</code> such as <code>"system"</code> (older automation rows) or when the underlying account has been deleted; <code>Message/SystemInsert</code> rows carry the agent owner's <code>uuid</code>.</p>
 <p><strong>Resuming an in-flight stream.</strong> Every row carries the original <code>agenttoken</code> from <code>Message/Send</code>. If a returned message's <code>status</code> is non-terminal (<code>agent_queue</code>, <code>agent_start</code>, or <code>agent_output</code>), the agent is still processing it server-side. Hand the <code>agenttoken</code> to the <a href="/docs/agent-websocket">Agent WebSocket</a> (<code>agent_info</code> frame) and you'll receive the persisted <code>agent_subscribed.timeline</code> snapshot, subsequent <code>agent_timeline_delta</code> block updates, remaining provisional <code>agent_output</code> snapshots, and the eventual <code>agent_end</code> event — no need to re-send the message.</p>
 </blockquote>
 <div class="docs-param-table">
@@ -17309,9 +17512,12 @@ ws.onmessage = (event) =&gt; {
 <li><strong>Wait for welcome</strong> — receive <code>{ "type": "connected", "version": "1.0" }</code> (optional but clean).</li>
 <li><strong>Re-subscribe</strong> — send <code>{ "type": "agent_info", "agenttoken": "..." }</code> with the same token.</li>
 <li><strong>Handle <code>agent_subscribed</code></strong> — the server reports the <strong>current</strong> status and persisted <code>timeline[]</code>. Three cases:
-   - <code>status</code> is <code>agent_queue</code> / <code>agent_start</code> / <code>agent_output</code> → stream is still live; accumulated provisional answer text is in <code>debugoutput</code>. Seed your block map from <code>timeline</code>, then merge future deltas.
-   - <code>status</code> is <code>agent_end</code> → the agent already finished. <code>debugoutput</code> holds the full final response. Fetch <code>POST /UserAgent/Message/Detail</code> for the canonical record (including complete <code>timeline</code>, <code>metadata</code>, attachments, and timestamps), then close the socket.
-   - <code>status</code> is <code>agent_error</code> / <code>agent_cancel</code> → the agent already failed / was cancelled. <code>debugoutput</code> may contain partial output. No further events. Fetch <code>POST /UserAgent/Message/Detail</code> for the persisted error details.</li>
+<ul>
+<li><code>status</code> is <code>agent_queue</code> / <code>agent_start</code> / <code>agent_output</code> → stream is still live; accumulated provisional answer text is in <code>debugoutput</code>. Seed your block map from <code>timeline</code>, then merge future deltas.</li>
+<li><code>status</code> is <code>agent_end</code> → the agent already finished. <code>debugoutput</code> holds the full final response. Fetch <code>POST /UserAgent/Message/Detail</code> for the canonical record (including complete <code>timeline</code>, <code>metadata</code>, attachments, and timestamps), then close the socket.</li>
+<li><code>status</code> is <code>agent_error</code> / <code>agent_cancel</code> → the agent already failed / was cancelled. <code>debugoutput</code> may contain partial output. No further events. Fetch <code>POST /UserAgent/Message/Detail</code> for the persisted error details.</li>
+</ul>
+</li>
 </ol>
 <p>On reconnect you do <strong>not</strong> receive replays of past <code>agent_output</code> or <code>agent_timeline_delta</code> frames. Use <code>debugoutput</code> and <code>timeline</code> on <code>agent_subscribed</code> as the snapshot of what you missed.</p>
 <h3 id="example-retry-strategy">Example retry strategy</h3>
@@ -20285,7 +20491,7 @@ customer-facing token-refresh endpoint or manual refresh action.</p>
 <tr>
 <td><code>billing_model</code></td>
 <td><code>string</code></td>
-<td>Always <code>"tokens"</code>. Per-turn conversation cost is token-metered at the agent's per-model <code>tokenRates</code> (credits per 1M input / output / cached-input tokens) — see <a href="/docs/agent-overview#pricing-model--tiers-skills--token-billing">token billing in the Agent Overview</a>. Voice skills stream realtime audio through the operator's own Wiro AI Models balance via <code>int-wiro-aimodels</code> (your own Wiro API key); only the post-call text turn is a normal token deduct.</td>
+<td>Always <code>"tokens"</code>. Per-turn conversation cost is token-metered at the agent's per-model <code>tokenRates</code> (credits per 1M input / output / cached-input tokens) — see <a href="/docs/agent-overview#pricing-model--tiers-skills--token-billing">token billing in the Agent Overview</a>. Voice skills stream realtime audio through the operator's own Wiro AI Models balance via <code>int-wiro-aimodels</code> (your own Wiro API key); the voice-prep and post-call text turns are normal token deducts.</td>
 </tr>
 </tbody>
 </table>
@@ -20680,7 +20886,7 @@ customer-facing token-refresh endpoint or manual refresh action.</p>
 <h2 id="managing-scheduled-tasks">Managing Scheduled Tasks</h2>
 <p>Scheduled tasks are cron skills — bundled ones (<code>_source: "skill-bundle"</code>) ship with integration skills and run automatically when the integration is enabled. User-created crons (<code>_source: "user-created"</code>) are added at any time.</p>
 <blockquote>
-<p><strong>For bundled crons, only <code>enabled</code> and <code>interval</code> are writable.</strong> The task body (<code>value</code>) is owned by the integration skill and re-materialised on every container restart. To change <strong>what</strong> a bundled scheduled task does, edit the paired preference skill (e.g. <code>content-tone</code> is read by <code>cron-social-content-scanner</code> at runtime). For user-created crons, all three (<code>value</code>, <code>interval</code>, <code>enabled</code>) are writable.</p>
+<p><strong>For bundled crons, only <code>enabled</code> and <code>interval</code> are writable.</strong> The task body (<code>value</code>) is owned by the integration skill and re-materialised on every container restart. To change <strong>what</strong> a bundled scheduled task does, edit the paired preference skill (e.g. <code>content-tone</code> is read by <code>cs-cron-social-content-scanner</code> at runtime). For user-created crons, all three (<code>value</code>, <code>interval</code>, <code>enabled</code>) are writable.</p>
 </blockquote>
 <h3 id="example-change-a-bundled-crons-frequency">Example: Change a bundled cron's frequency</h3>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
@@ -20688,7 +20894,7 @@ customer-facing token-refresh endpoint or manual refresh action.</p>
   -H &quot;x-api-key: YOUR_API_KEY&quot; \
   -d '{
     &quot;useragentguid&quot;: &quot;your-useragent-guid&quot;,
-    &quot;skillkey&quot;: &quot;cron-review-scanner&quot;,
+    &quot;skillkey&quot;: &quot;cs-cron-review-scanner&quot;,
     &quot;enabled&quot;: true,
     &quot;interval&quot;: &quot;0 */4 * * *&quot;
   }'
@@ -20699,7 +20905,7 @@ customer-facing token-refresh endpoint or manual refresh action.</p>
   -H &quot;x-api-key: YOUR_API_KEY&quot; \
   -d '{
     &quot;useragentguid&quot;: &quot;your-useragent-guid&quot;,
-    &quot;skillkey&quot;: &quot;cron-social-content-scanner&quot;,
+    &quot;skillkey&quot;: &quot;cs-cron-social-content-scanner&quot;,
     &quot;enabled&quot;: false
   }'
 </code></pre>
@@ -21008,7 +21214,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
   -H &quot;Content-Type: application/json&quot; -H &quot;x-api-key: YOUR_API_KEY&quot; \
   -d '{
     &quot;useragentguid&quot;: &quot;your-push-agent-guid&quot;,
-    &quot;skillkey&quot;: &quot;cron-push-scanner&quot;,
+    &quot;skillkey&quot;: &quot;cs-cron-push-scanner&quot;,
     &quot;enabled&quot;: true,
     &quot;interval&quot;: &quot;0 9 * * 1&quot;
   }'
@@ -21018,7 +21224,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
   -H &quot;Content-Type: application/json&quot; -H &quot;x-api-key: YOUR_API_KEY&quot; \
   -d '{
     &quot;useragentguid&quot;: &quot;your-push-agent-guid&quot;,
-    &quot;skillkey&quot;: &quot;cron-push-dispatcher&quot;,
+    &quot;skillkey&quot;: &quot;cs-cron-push-dispatcher&quot;,
     &quot;interval&quot;: &quot;0 */2 * * *&quot;
   }'
 </code></pre>
@@ -21117,247 +21323,247 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <tbody>
 <tr>
 <td>Social Manager</td>
-<td><code>cron-social-content-scanner</code></td>
+<td><code>cs-cron-social-content-scanner</code></td>
 <td><code>0 */4 * * *</code></td>
 <td>Content discovery and draft posts with rotating strategies (reads <code>content-tone</code>; disabled by default)</td>
 </tr>
 <tr>
 <td>Social Manager</td>
-<td><code>cron-social-drive-scanner</code></td>
+<td><code>cs-cron-social-drive-scanner</code></td>
 <td><code>0 10 * * *</code></td>
 <td>Scans Google Drive for new post assets and prepares posts (disabled by default)</td>
 </tr>
 <tr>
 <td>Blog Content Editor</td>
-<td><code>cron-blog-scanner</code></td>
+<td><code>cs-cron-blog-scanner</code></td>
 <td><code>0 9 * * *</code></td>
 <td>Topic discovery and article drafting (reads <code>content-strategy</code>)</td>
 </tr>
 <tr>
 <td>Blog Content Editor</td>
-<td><code>cron-blog-gmail-checker</code></td>
+<td><code>cs-cron-blog-gmail-checker</code></td>
 <td><code>*/30 * * * *</code></td>
 <td>Checks the inbox for topic requests and writing instructions (disabled by default)</td>
 </tr>
 <tr>
 <td>App Review Support</td>
-<td><code>cron-review-scanner</code></td>
+<td><code>cs-cron-review-scanner</code></td>
 <td><code>0 */2 * * *</code></td>
 <td>Scans App Store and Google Play for new reviews and prepares replies (reads <code>review-preferences</code>; disabled by default)</td>
 </tr>
 <tr>
 <td>App Event Manager</td>
-<td><code>cron-app-event-scanner</code></td>
+<td><code>cs-cron-app-event-scanner</code></td>
 <td><code>0 9 * * 1</code></td>
 <td>Scans global holidays and suggests App Store in-app events (reads <code>event-preferences</code>; disabled by default)</td>
 </tr>
 <tr>
 <td>Push Notification Manager</td>
-<td><code>cron-push-scanner</code></td>
+<td><code>cs-cron-push-scanner</code></td>
 <td><code>0 9 * * *</code></td>
 <td>Scans holidays and prepares push notification suggestions (reads <code>push-preferences</code>)</td>
 </tr>
 <tr>
 <td>Push Notification Manager</td>
-<td><code>cron-push-dispatcher</code></td>
+<td><code>cs-cron-push-dispatcher</code></td>
 <td><code>0 * * * *</code></td>
 <td>Sends queued push notifications on schedule</td>
 </tr>
 <tr>
 <td>Newsletter Manager</td>
-<td><code>cron-newsletter-sender</code></td>
+<td><code>cs-cron-newsletter-sender</code></td>
 <td><code>0 9 * * 1</code></td>
 <td>Newsletter drafting and sending (reads <code>newsletter-strategy</code>; disabled by default)</td>
 </tr>
 <tr>
 <td>Newsletter Manager</td>
-<td><code>cron-newsletter-subscriber-scanner</code></td>
+<td><code>cs-cron-newsletter-subscriber-scanner</code></td>
 <td><code>0 10 * * *</code></td>
 <td>Daily subscriber list health check and bounce monitoring (disabled by default)</td>
 </tr>
 <tr>
 <td>Lead Generation Manager</td>
-<td><code>cron-lead-prospect-scanner</code></td>
+<td><code>cs-cron-lead-prospect-scanner</code></td>
 <td><code>0 10 * * 1</code></td>
 <td>Weekly prospect search, enrichment and scoring (reads <code>lead-strategy</code>; disabled by default)</td>
 </tr>
 <tr>
 <td>Lead Generation Manager</td>
-<td><code>cron-lead-outreach-reporter</code></td>
+<td><code>cs-cron-lead-outreach-reporter</code></td>
 <td><code>0 9 * * *</code></td>
 <td>Daily outreach performance report (disabled by default)</td>
 </tr>
 <tr>
 <td>Lead Generation Manager</td>
-<td><code>cron-lead-reply-handler</code></td>
+<td><code>cs-cron-lead-reply-handler</code></td>
 <td><code>0 */4 * * *</code></td>
 <td>Checks new replies, analyzes sentiment and proposes responses (disabled by default)</td>
 </tr>
 <tr>
 <td>Google Ads Manager</td>
-<td><code>cron-googleads-performance-reporter</code></td>
+<td><code>cs-cron-googleads-performance-reporter</code></td>
 <td><code>0 9 * * *</code></td>
 <td>Daily performance report with recommendations (reads <code>ad-strategy</code>)</td>
 </tr>
 <tr>
 <td>Google Ads Manager</td>
-<td><code>cron-googleads-recommendations-fetcher</code></td>
+<td><code>cs-cron-googleads-recommendations-fetcher</code></td>
 <td><code>0 8 * * *</code></td>
 <td>Daily Google Ads recommendations: safe items become low-risk suggestions, risky ones wait for your approval</td>
 </tr>
 <tr>
 <td>Google Ads Manager</td>
-<td><code>cron-googleads-competitor-scanner</code></td>
+<td><code>cs-cron-googleads-competitor-scanner</code></td>
 <td><code>0 10 * * 1</code></td>
 <td>Weekly competitor analysis, keyword opportunities and account health audit</td>
 </tr>
 <tr>
 <td>Google Ads Manager</td>
-<td><code>cron-googleads-holiday-planner</code></td>
+<td><code>cs-cron-googleads-holiday-planner</code></td>
 <td><code>0 10 * * 3</code></td>
 <td>Upcoming holidays and seasonal campaign suggestions</td>
 </tr>
 <tr>
 <td>Google Ads Manager</td>
-<td><code>cron-googleads-audience-refresher</code></td>
+<td><code>cs-cron-googleads-audience-refresher</code></td>
 <td><code>0 7 * * *</code></td>
 <td>Daily Customer Match refresh from a connected CRM (HubSpot, Apollo, Lemlist) or a Google Drive CSV (disabled by default)</td>
 </tr>
 <tr>
 <td>Google Ads Manager</td>
-<td><code>cron-googleads-drive-scanner</code></td>
+<td><code>cs-cron-googleads-drive-scanner</code></td>
 <td><code>0 10 * * *</code></td>
 <td>Scans Google Drive for new creative folders and proposes campaigns (disabled by default)</td>
 </tr>
 <tr>
 <td>Google Ads Manager</td>
-<td><code>cron-merchant-center-scanner</code></td>
+<td><code>cs-cron-merchant-center-scanner</code></td>
 <td><code>30 8 * * *</code></td>
 <td>Daily Merchant Center product feed health check (runs only when Merchant Center is connected; disabled by default)</td>
 </tr>
 <tr>
 <td>Google Ads Manager</td>
-<td><code>cron-ga4-attribution-auditor</code></td>
+<td><code>cs-cron-ga4-attribution-auditor</code></td>
 <td><code>0 11 * * 1</code></td>
 <td>Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected; disabled by default)</td>
 </tr>
 <tr>
 <td>Google Ads Manager</td>
-<td><code>cron-adjust-creative-roas-reporter</code></td>
+<td><code>cs-cron-adjust-creative-roas-reporter</code></td>
 <td><code>0 10 * * *</code></td>
 <td>Daily Adjust creative-level ROAS report with scale/pause recommendations (disabled by default)</td>
 </tr>
 <tr>
 <td>Google Ads Manager</td>
-<td><code>cron-roasit-creative-roas-reporter</code></td>
+<td><code>cs-cron-roasit-creative-roas-reporter</code></td>
 <td><code>30 10 * * *</code></td>
 <td>Daily Roasit creative-level ROAS report with scale/pause recommendations (disabled by default)</td>
 </tr>
 <tr>
 <td>Google Ads Manager</td>
-<td><code>cron-ads-recommendation-cleanup</code></td>
+<td><code>cs-cron-ads-recommendation-cleanup</code></td>
 <td><code>0 0 * * *</code></td>
 <td>Nightly cleanup of expired recommendations</td>
 </tr>
 <tr>
 <td>Meta Ads Manager</td>
-<td><code>cron-metaads-performance-reporter</code></td>
+<td><code>cs-cron-metaads-performance-reporter</code></td>
 <td><code>0 9 * * *</code></td>
 <td>Daily performance report with creative health, audience analysis and recommendations (reads <code>ad-strategy</code>)</td>
 </tr>
 <tr>
 <td>Meta Ads Manager</td>
-<td><code>cron-metaads-audience-scanner</code></td>
+<td><code>cs-cron-metaads-audience-scanner</code></td>
 <td><code>0 10 * * 1</code></td>
 <td>Weekly audience, creative health and account health audit</td>
 </tr>
 <tr>
 <td>Meta Ads Manager</td>
-<td><code>cron-metaads-holiday-planner</code></td>
+<td><code>cs-cron-metaads-holiday-planner</code></td>
 <td><code>0 10 * * 3</code></td>
 <td>Upcoming holidays and seasonal campaign suggestions</td>
 </tr>
 <tr>
 <td>Meta Ads Manager</td>
-<td><code>cron-metaads-drive-scanner</code></td>
+<td><code>cs-cron-metaads-drive-scanner</code></td>
 <td><code>0 10 * * *</code></td>
 <td>Scans Google Drive for new creative folders and proposes campaigns</td>
 </tr>
 <tr>
 <td>Meta Ads Manager</td>
-<td><code>cron-ga4-attribution-auditor</code></td>
+<td><code>cs-cron-ga4-attribution-auditor</code></td>
 <td><code>0 11 * * 1</code></td>
 <td>Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected; disabled by default)</td>
 </tr>
 <tr>
 <td>Meta Ads Manager</td>
-<td><code>cron-adjust-creative-roas-reporter</code></td>
+<td><code>cs-cron-adjust-creative-roas-reporter</code></td>
 <td><code>0 10 * * *</code></td>
 <td>Daily Adjust creative-level ROAS report with scale/pause recommendations (disabled by default)</td>
 </tr>
 <tr>
 <td>Meta Ads Manager</td>
-<td><code>cron-roasit-creative-roas-reporter</code></td>
+<td><code>cs-cron-roasit-creative-roas-reporter</code></td>
 <td><code>30 10 * * *</code></td>
 <td>Daily Roasit creative-level ROAS report with scale/pause recommendations (disabled by default)</td>
 </tr>
 <tr>
 <td>Meta Ads Manager</td>
-<td><code>cron-ads-recommendation-cleanup</code></td>
+<td><code>cs-cron-ads-recommendation-cleanup</code></td>
 <td><code>0 0 * * *</code></td>
 <td>Nightly cleanup of expired recommendations</td>
 </tr>
 <tr>
 <td>TikTok Ads Manager</td>
-<td><code>cron-tiktokads-performance-reporter</code></td>
+<td><code>cs-cron-tiktokads-performance-reporter</code></td>
 <td><code>0 9 * * *</code></td>
 <td>Performance reporting per advertiser, plus the 30-day reconnect reminder (reads <code>ad-strategy</code>)</td>
 </tr>
 <tr>
 <td>TikTok Ads Manager</td>
-<td><code>cron-tiktokads-audience-scanner</code></td>
+<td><code>cs-cron-tiktokads-audience-scanner</code></td>
 <td><code>0 10 * * 1</code></td>
 <td>Weekly audience, creative health and account health audit</td>
 </tr>
 <tr>
 <td>TikTok Ads Manager</td>
-<td><code>cron-tiktokads-holiday-planner</code></td>
+<td><code>cs-cron-tiktokads-holiday-planner</code></td>
 <td><code>0 10 * * 3</code></td>
 <td>Upcoming holidays and seasonal campaign suggestions</td>
 </tr>
 <tr>
 <td>TikTok Ads Manager</td>
-<td><code>cron-tiktokads-drive-scanner</code></td>
+<td><code>cs-cron-tiktokads-drive-scanner</code></td>
 <td><code>0 10 * * *</code></td>
 <td>Scans Google Drive for new creative folders and proposes TikTok Ads campaigns (does nothing until Google Drive is connected)</td>
 </tr>
 <tr>
 <td>TikTok Ads Manager</td>
-<td><code>cron-ga4-attribution-auditor</code></td>
+<td><code>cs-cron-ga4-attribution-auditor</code></td>
 <td><code>0 11 * * 1</code></td>
 <td>Weekly conversion tracking and attribution health audit (cross-checks Google Ads with GA4 when connected; disabled by default)</td>
 </tr>
 <tr>
 <td>TikTok Ads Manager</td>
-<td><code>cron-adjust-creative-roas-reporter</code></td>
+<td><code>cs-cron-adjust-creative-roas-reporter</code></td>
 <td><code>0 10 * * *</code></td>
 <td>Daily Adjust creative-level ROAS report with scale/pause recommendations (disabled by default)</td>
 </tr>
 <tr>
 <td>TikTok Ads Manager</td>
-<td><code>cron-roasit-creative-roas-reporter</code></td>
+<td><code>cs-cron-roasit-creative-roas-reporter</code></td>
 <td><code>30 10 * * *</code></td>
 <td>Daily Roasit creative-level ROAS report with scale/pause recommendations (disabled by default)</td>
 </tr>
 <tr>
 <td>TikTok Ads Manager</td>
-<td><code>cron-ads-recommendation-cleanup</code></td>
+<td><code>cs-cron-ads-recommendation-cleanup</code></td>
 <td><code>0 0 * * *</code></td>
 <td>Nightly cleanup of expired recommendations</td>
 </tr>
 <tr>
 <td>Google Review Manager</td>
-<td><code>cron-google-review-scanner</code></td>
+<td><code>cs-cron-google-review-scanner</code></td>
 <td><code>0 */2 * * *</code></td>
 <td>Scans Google Business Profile locations for new reviews and prepares replies</td>
 </tr>
@@ -21868,7 +22074,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
   ]
 }
 </code></pre>
-<p>The current external channel IDs are <code>telegram</code>, <code>slack</code>, and <code>discord</code>. Render forms from <code>credential.credential_schema</code> and require each row's <code>required_fields</code> before connecting it. A channel activates automatically when every required value is complete.</p>
+<p>The current external channel IDs are <code>telegram</code>, <code>slack</code>, and <code>discord</code>. <code>channels[]</code> is returned in full even when the request filters <code>skills[]</code>. Render forms from <code>credential.credential_schema</code> and require each row's <code>required_fields</code> before connecting it. A channel activates automatically when every required value is complete.</p>
 <p>Web chat and the Messaging API are always available. External channels have no separate enablement parameter: pass a complete channel group in Deploy's <code>credentials</code> object, or add it later with <code>POST /UserAgent/CredentialUpsert</code>. The channel activates automatically when all <code>required_fields</code> are complete. Channels do not add skills or change agent pricing.</p>
 <h2 id="step-2-live-pricing-preview">Step 2 — Live Pricing Preview</h2>
 <p>Before you commit, fetch the live tier price for the proposed skill set with <a href="/docs/agent-overview#post-useragentpricingpreview"><code>POST /UserAgent/PricingPreview</code></a> — the <strong>draft</strong> mode runs without touching any DB state.</p>
@@ -21951,7 +22157,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
     },
     &quot;customskills&quot;: [
       {
-        &quot;key&quot;: &quot;cron-summarize-inbox&quot;,
+        &quot;key&quot;: &quot;cs-cron-summarize-inbox&quot;,
         &quot;value&quot;: &quot;Every 4 hours, scan all unread Gmail messages from the past 4 hours, summarize each in 1 sentence, and post the digest to Telegram.&quot;,
         &quot;interval&quot;: &quot;0 */4 * * *&quot;,
         &quot;enabled&quot;: true,
@@ -22037,7 +22243,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
 <ul>
 <li><code>agentguid: null</code> — confirms this is a custom build with no marketplace template.</li>
 <li><code>agent.custom: true</code> — the synthesized template placeholder. Same shape as a template's <code>agent</code> block but no <code>slug</code> / <code>cover</code> / <code>categories</code> (custom builds aren't in the marketplace).</li>
-<li><code>scheduledskills</code> already contains the cron from the Deploy body, with the canonical <code>cs-cron-</code> prefix added by the server.</li>
+<li><code>scheduledskills</code> already contains the cron from the Deploy body. Deploy stores <code>customskills</code> keys exactly as sent, so give each entry its full key: <code>cs-&lt;slug&gt;</code> for a strategy, <code>cs-cron-&lt;slug&gt;</code> for a scheduled task.</li>
 <li><code>status: 2</code> — Deploy auto-queued the instance because <code>useprepaid: true</code> provisioned a subscription in the same call. The daemon picks the row up from the queue; you do <strong>not</strong> need to call <code>POST /UserAgent/Start</code> after a prepaid deploy.</li>
 <li>Communication-channel credentials are validated independently from <code>skills</code>. Every channel group present in <code>credentials</code> must contain all of its <code>required_fields</code> or Deploy fails without leaving a partial agent behind.</li>
 </ul>
@@ -22108,7 +22314,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
   },
   &quot;customskills&quot;: [
     {
-      &quot;key&quot;: &quot;cron-email-digest&quot;,
+      &quot;key&quot;: &quot;cs-cron-email-digest&quot;,
       &quot;value&quot;: &quot;Twice a day, summarize unread Gmail messages in one Telegram message.&quot;,
       &quot;interval&quot;: &quot;0 9,17 * * *&quot;,
       &quot;enabled&quot;: true,
@@ -22131,12 +22337,12 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
   },
   &quot;customskills&quot;: [
     {
-      &quot;key&quot;: &quot;content-strategy&quot;,
+      &quot;key&quot;: &quot;cs-content-strategy&quot;,
       &quot;value&quot;: &quot;## Writing Style\nShort, punchy, technical. Always include code examples.\n\n## Sources\nWired, ArsTechnica, Hacker News.\n\n## Cadence\nOne 600-word article every Monday.&quot;,
       &quot;_user_created&quot;: false
     },
     {
-      &quot;key&quot;: &quot;cron-weekly-blog&quot;,
+      &quot;key&quot;: &quot;cs-cron-weekly-blog&quot;,
       &quot;value&quot;: &quot;Every Monday morning, scan the websites listed under your var-website credential, draft one 600-word article, and publish to WordPress as a draft.&quot;,
       &quot;interval&quot;: &quot;0 9 * * 1&quot;,
       &quot;enabled&quot;: true,
@@ -22162,7 +22368,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
   &quot;credentials&quot;: {}
 }
 </code></pre>
-<p>OAuth providers are connected later via <code>POST /UserAgentOAuth/{Provider}Connect</code> — see <a href="/docs/agent-credentials">Agent Credentials</a>.</p>
+<p>OAuth providers are connected later via <code>POST /UserAgentOAuth/OAuthConnect</code> with the provider's <code>credentialkey</code> — see <a href="/docs/agent-credentials">Agent Credentials</a>.</p>
 <h2 id="subscription-billing-for-custom-builds">Subscription &amp; Billing for Custom Builds</h2>
 <p>Subscriptions for custom builds work exactly like template deploys:</p>
 <ul>
@@ -22200,7 +22406,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
 
                   <section id="tx-overview">
                     <h2>Overview</h2>
-                    <p>Wiro keeps a complete, append-only <strong>agent transaction ledger</strong> for every UserAgent instance. Whenever credits move — the agent runtime burns them on a message, a subscription renews, a Pro user buys an extra-credit pack, the user disables a paid skill mid-period and gets a refund — a row is inserted into the ledger and surfaced through <code>POST /UserAgent/TransactionList</code>.</p>
+                    <p>Wiro keeps a complete, append-only <strong>agent transaction ledger</strong> for every UserAgent instance. Whenever credits move — the agent runtime burns them on a chat turn, a subscription renews, a Pro user buys an extra-credit pack, the user disables a paid skill mid-period and gets a refund — a row is inserted into the ledger and surfaced through <code>POST /UserAgent/TransactionList</code>.</p>
                     <p>The ledger is the single source of truth for "where did my credits go?" and powers the <strong>Transactions</strong> view in your dashboard.</p>
                     <div class="docs-param-table">
                       <div class="docs-param-table-wrapper">
@@ -22230,7 +22436,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
                             </tr>
                             <tr>
                               <td><code>grant</code></td>
-                              <td>Skill toggle / extra credits</td>
+                              <td>Skill toggle / tier upgrade</td>
                               <td>When a skill is enabled mid-period and the credit pool grows, or when a tier upgrade lifts the monthly allocation. Positive <code>amount</code>.</td>
                             </tr>
                             <tr>
@@ -22318,7 +22524,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
       "type": "deduct",
       "action": "tokens",
       "amount": -5,
-      "balanceafter": 52550,
+      "balanceafter": null,
       "description": "Input Tokens: 3450 / Output Tokens: 820 / Model: openai/gpt-5.4",
       "sessionkey": "default",
       "agentsessionkey": "default",
@@ -22398,8 +22604,16 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
       "provider": "prepaid",
       "providerref": null,
       "metadata": { "period": "2026-05", "priceUsd": 90 },
-      "uuid": "system",
-      "user": null,
+      "uuid": "ada-uuid",
+      "user": {
+        "uuid": "ada-uuid",
+        "firstname": "Ada",
+        "lastname": "Lovelace",
+        "email": "ada@example.com",
+        "username": "ada",
+        "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
+        "avatarinitials": "AL"
+      },
       "createdat": 1714608000
     },
     {
@@ -22442,7 +22656,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
     }
   ]
 }</code></pre>
-                    <div class="info-callout"><p>The <code>user</code> object is the resolved actor that triggered the ledger entry — <code>uuid</code>, <code>firstname</code>, <code>lastname</code>, <code>email</code>, <code>username</code>, <code>avatar</code>, <code>avatarinitials</code>. It is <code>null</code> when <code>uuid</code> is a sentinel like <code>"system"</code> (cron renewals, subscription expiry sweeps, automated platform writes) or when the user record has been deleted. The renewal row above was written by the daily renewal cron, so <code>uuid: "system"</code> and <code>user: null</code>.</p></div>
+                    <div class="info-callout"><p>The <code>user</code> object is the resolved actor that triggered the ledger entry — <code>uuid</code>, <code>firstname</code>, <code>lastname</code>, <code>email</code>, <code>username</code>, <code>avatar</code>, <code>avatarinitials</code>. Every row is recorded for an account <code>uuid</code> — renewals, expiry sweeps and other automated rows carry the agent owner's — so <code>user</code> is <code>null</code> only when that user record has been deleted.</p></div>
 
                     <h3>Summary fields</h3>
                     <div class="docs-param-table">
@@ -22458,6 +22672,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
                             <tr><td><code>remainingcredits</code></td><td><code>number</code></td><td><code>max(0, monthlycredits + extracredits - usedcredits)</code>.</td></tr>
                             <tr><td><code>creditperiod</code></td><td><code>string</code></td><td><code>'YYYY-MM'</code> billing window. Rolls over on subscription renewal.</td></tr>
                             <tr><td><code>creditsyncat</code></td><td><code>number|null</code></td><td>Unix seconds of the last monthly usage reset, the start of the current credit period; <code>byModel</code> counts turns from this moment on (<code>null</code> until the first reset).</td></tr>
+                            <tr><td><code>extrapacks</code></td><td><code>array</code></td><td>The agent's extra-credit packs: <code>{ id, credits, remainingcredits, status, provider, purchasedat, expiresat }</code>. Active packs are used oldest first.</td></tr>
                             <tr><td><code>byModel</code></td><td><code>array</code></td><td>Per-model token rollup for the <strong>current billing period</strong>, aggregating only <code>action: "tokens"</code> rows, sorted by <code>tokencost</code> descending. A <code>null</code> or empty <code>model</code> is bucketed as <code>"unknown"</code>. Each entry: <code>{ model, inputtokens, outputtokens, cachereadtokens, cachewritetokens, totaltokens, tokencost, turncount }</code>. Within a period that stays inside <code>monthlycredits</code>, the <code>tokencost</code> values add up to <code>usedcredits</code>; credits spent from extra packs are counted here but come off <code>extracredits</code> instead.</td></tr>
                           </tbody>
                         </table>
@@ -22474,9 +22689,9 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
                           <tbody>
                             <tr><td><code>guid</code></td><td><code>string</code></td><td>Stable id of the ledger row. Daemon retries reuse this guid for idempotency.</td></tr>
                             <tr><td><code>type</code></td><td><code>string</code></td><td>One of <code>"deduct"</code>, <code>"renewal"</code>, <code>"purchase"</code>, <code>"grant"</code>, <code>"expired"</code>, <code>"refund"</code>. There is no <code>"cancel"</code> type — a user-initiated subscription cancel only flips auto-renew off; credits are not forfeited until <code>currentperiodend</code> is reached, at which point the cron writes the ledger row as <code>type: "expired"</code>, <code>action: "subscription"</code>.</td></tr>
-                            <tr><td><code>action</code></td><td><code>string|null</code></td><td>Fine-grained detail. Values depend on <code>type</code>: <code>"tokens"</code> (deduct — the per-turn LLM token charge the runtime writes for every chat, cron, and voice post-call turn); <code>"monthly"</code> (renewal); <code>"small"</code>, <code>"medium"</code>, <code>"large"</code> (purchase); <code>"skill-toggle"</code>, <code>"upgrade"</code> (grant); <code>"skill-toggle"</code> (expired, mid-period skill disable); <code>"subscription"</code> (expired, end-of-period cancel rollover; refund). Legacy deduct rows may also carry <code>"message"</code>, <code>"create"</code>, <code>"modify"</code>, or <code>"regenerate"</code>.</td></tr>
+                            <tr><td><code>action</code></td><td><code>string|null</code></td><td>Fine-grained detail. Values depend on <code>type</code>: <code>"tokens"</code> (deduct — the per-turn LLM token charge the runtime writes for every chat, cron, and voice post-call turn); <code>"monthly"</code> (renewal); <code>"small"</code>, <code>"medium"</code>, <code>"large"</code> (purchase); <code>"skill-toggle"</code>, <code>"skills-apply"</code>, <code>"upgrade"</code>, <code>"tier-change"</code> (grant); <code>"skill-toggle"</code> (expired, mid-period skill disable); <code>"subscription"</code> (expired, end-of-period cancel rollover; refund). Legacy deduct rows may also carry <code>"message"</code>, <code>"create"</code>, <code>"modify"</code>, or <code>"regenerate"</code>.</td></tr>
                             <tr><td><code>amount</code></td><td><code>number</code></td><td>Signed credit delta — negative for deductions, positive for grants.</td></tr>
-                            <tr><td><code>balanceafter</code></td><td><code>number|null</code></td><td>Remaining credit balance snapshot written at the time of the event.</td></tr>
+                            <tr><td><code>balanceafter</code></td><td><code>number|null</code></td><td>Remaining credit balance snapshot written at the time of the event. <code>null</code> on per-turn <code>deduct</code> rows.</td></tr>
                             <tr><td><code>description</code></td><td><code>string|null</code></td><td>Human-readable label.</td></tr>
                             <tr><td><code>sessionkey</code></td><td><code>string|null</code></td><td>Session the deduct belongs to (deduct rows only).</td></tr>
                             <tr><td><code>agentsessionkey</code></td><td><code>string|null</code></td><td>Alias of <code>sessionkey</code> (same value), present on every row for a unified per-session attribution key across <code>TaskList</code> / <code>TransactionList</code> / wallet responses.</td></tr>
@@ -22492,8 +22707,8 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
                             <tr><td><code>provider</code></td><td><code>string|null</code></td><td><code>"agent"</code> (runtime deduct) or <code>"prepaid"</code> (wallet-backed change). API-deployed agents always run on the prepaid path.</td></tr>
                             <tr><td><code>providerref</code></td><td><code>string|null</code></td><td>Provider-side reference id. Always populated for <code>prepaid</code> rows (wallet transaction id); <code>null</code> for <code>agent</code> runtime deducts.</td></tr>
                             <tr><td><code>metadata</code></td><td><code>object|null</code></td><td>Arbitrary JSON context (skill, tier, period, prorated charge, …).</td></tr>
-                            <tr><td><code>uuid</code></td><td><code>string|null</code></td><td>UUID of the user who triggered the event. <code>"system"</code> for cron-driven events.</td></tr>
-                            <tr><td><code>user</code></td><td><code>object|null</code></td><td>Resolved actor: <code>{ uuid, firstname, lastname, email, username, avatar, avatarinitials }</code>. <code>null</code> when <code>uuid</code> is <code>"system"</code> (automation / cron renewals) or when the user record was deleted.</td></tr>
+                            <tr><td><code>uuid</code></td><td><code>string|null</code></td><td>UUID of the account the row is recorded for: the user who acted, or the agent\'s owner for renewals and other automated rows. Never a <code>"system"</code> placeholder.</td></tr>
+                            <tr><td><code>user</code></td><td><code>object|null</code></td><td>Resolved actor: <code>{ uuid, firstname, lastname, email, username, avatar, avatarinitials }</code>. <code>null</code> when the user record was deleted.</td></tr>
                             <tr><td><code>createdat</code></td><td><code>number</code></td><td>Unix seconds.</td></tr>
                           </tbody>
                         </table>
@@ -22535,7 +22750,7 @@ console.log('Granted:', lastRenewal.amount, 'credits');
 console.log('Now in period:', summary.creditperiod);</code></pre>
 
                     <h3>Reconcile a Pro tier upgrade</h3>
-                    <p>When the user upgrades Starter → Pro mid-period, <code>UpgradeTier</code> writes one <code>grant</code> row with <code>action: "tier-change"</code>, the monthly-credit difference as <code>amount</code>, a description like <code>"Tier starter → pro"</code> and <code>metadata: { fromTier, toTier, previousPriceUsd, newPriceUsd, proratedCharge }</code>. Use it to render an upgrade history in your UI.</p>
+                    <p>When the user upgrades Starter → Pro mid-period, the ledger gets one <code>grant</code> row for the added monthly credits. For a wallet-billed (prepaid) agent, <code>UpgradeTier</code> writes <code>action: "tier-change"</code> with the monthly-credit difference as <code>amount</code>, a description like <code>"Tier starter → pro"</code> and <code>metadata: { fromTier, toTier, previousPriceUsd, newPriceUsd, proratedCharge }</code>; a card-billed upgrade writes <code>action: "upgrade"</code>. Use these rows to render an upgrade history in your UI.</p>
                   </section>
 
                   <section id="tx-errors">
@@ -22876,11 +23091,37 @@ foreach (array_slice($resp['transactions'], 0, 10) as $tx) {
                         <li>An event without a <code>userUuid</code> (an incoming channel message, or a row older than user attribution) carries the agent owner's profile, so the row never shows an empty placeholder.</li>
                       </ul>
                     </div>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td><code>date</code></td><td><code>string|null</code></td><td>The actual date the events were read from (<code>YYYY-MM-DD</code>).</td></tr>
+                            <tr><td><code>totalLines</code></td><td><code>number</code></td><td>Total lines in the file (regardless of <code>lines</code> cap).</td></tr>
+                            <tr><td><code>events</code></td><td><code>array&lt;ActivityEvent&gt;</code></td><td>Newest first (descending by <code>ts</code>) — <code>events[0]</code> is the most recent event; do not re-reverse.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   </section>
 
                   <section id="logs-list">
                     <h2><span class="endpoint-badge post">POST</span> /UserAgent/LogsList</h2>
                     <p>Returns the list of dates for which an activity file exists for this agent. Useful for rendering a date-picker.</p>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td><code>useragentguid</code></td><td>string</td><td>Yes</td><td>Your UserAgent instance guid.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                     <h3>Response</h3>
                     <pre><code class="language-json">{
   "result": true,
@@ -22950,8 +23191,8 @@ foreach (array_slice($resp['transactions'], 0, 10) as $tx) {
     }
   ]
 }</code></pre>
-                    <p>The <code>user</code> field follows the same resolution rules as the live tail above — see the <code>Logs</code> section's "About the <code>user</code> field" callout.</p>
-                    <div class="info-callout"><code>truncated</code> is <code>true</code> when the file was capped at the worker's max-line ceiling (~50000 events per file). When <code>true</code>, paginate by date — older events for the same day are not retrievable through this endpoint.</div>
+                    <p>Events are returned <strong>newest first</strong> (descending by <code>ts</code>), same as the live tail — <code>events[0]</code> is the most recent; do not re-reverse. The <code>user</code> field follows the same resolution rules as the live tail above — see the <code>Logs</code> section's "About the <code>user</code> field" callout.</p>
+                    <div class="info-callout"><code>truncated</code> is <code>true</code> when the day's file is larger than 10 MiB. Only its newest 10 MiB of events are returned; older events of that day are not retrievable through this endpoint.</div>
                   </section>
 
                   <section id="logs-delete">
@@ -23056,8 +23297,7 @@ for e in cron_runs:
                             <tr><td><code>useragent-team-admin-required</code></td><td>Caller is a member of the agent's team but not a team admin (code <code>97</code>)</td></tr>
                             <tr><td><code>Agent is not assigned to a worker. It may not be running.</code></td><td>The agent isn't running on a host yet (never started, or being moved) — start it and retry</td></tr>
                             <tr><td><code>Worker not found</code></td><td>The agent's host is not available right now — retry later</td></tr>
-                            <tr><td><code>Failed to fetch activity from worker</code></td><td>The agent's host did not answer (offline, network blip) — retry</td></tr>
-                            <tr><td><code>Failed to fetch activity dates from worker</code> / <code>Failed to delete activity file from worker</code> / <code>Failed to fetch activity file from worker</code></td><td>Same as above for the matching endpoint</td></tr>
+                            <tr><td><code>Agent is temporarily unavailable. Please try again shortly.</code></td><td>The agent's host did not answer (offline, network blip) — retry</td></tr>
                           </tbody>
                         </table>
                       </div>
@@ -23843,7 +24083,7 @@ agent model.</p>
   -H &quot;x-api-key: YOUR_API_KEY&quot; \
   -d '{
     &quot;useragentguid&quot;: &quot;your-useragent-guid&quot;,
-    &quot;skillkey&quot;: &quot;cron-metaads-performance-reporter&quot;,
+    &quot;skillkey&quot;: &quot;cs-cron-metaads-performance-reporter&quot;,
     &quot;enabled&quot;: true,
     &quot;interval&quot;: &quot;0 9 * * *&quot;
   }'
@@ -24130,25 +24370,25 @@ agent model.</p>
 <tbody>
 <tr>
 <td>Daily performance report</td>
-<td><code>cron-tiktokads-performance-reporter</code></td>
+<td><code>cs-cron-tiktokads-performance-reporter</code></td>
 <td><code>0 9 * * *</code> (daily 09:00)</td>
 <td>Account, campaign, placement, device, country, and ad-level performance for the last 7 days, anomaly checks, and recommendations. Carries the 30-day reconnect reminder and the expiry notice.</td>
 </tr>
 <tr>
 <td>Weekly audience &amp; account health scan</td>
-<td><code>cron-tiktokads-audience-scanner</code></td>
+<td><code>cs-cron-tiktokads-audience-scanner</code></td>
 <td><code>0 10 * * 1</code> (Mondays 10:00)</td>
 <td>Age, gender, and placement breakdowns, creative health, custom audience status, rejected or stuck ads, audience fatigue, and new targeting ideas.</td>
 </tr>
 <tr>
 <td>Drive creative scanner</td>
-<td><code>cron-tiktokads-drive-scanner</code></td>
+<td><code>cs-cron-tiktokads-drive-scanner</code></td>
 <td><code>0 10 * * *</code> (daily 10:00)</td>
 <td>Looks for new creative folders in Google Drive and proposes TikTok campaigns for them. Runs daily; does nothing until Google Drive is connected and has creative folders.</td>
 </tr>
 <tr>
 <td>Holiday campaign planner</td>
-<td><code>cron-tiktokads-holiday-planner</code></td>
+<td><code>cs-cron-tiktokads-holiday-planner</code></td>
 <td><code>0 10 * * 3</code> (Wednesdays 10:00)</td>
 <td>Scans upcoming holidays from the holiday calendar (Calendarific) and suggests seasonal campaigns. Does nothing until Calendarific is connected.</td>
 </tr>
@@ -24156,7 +24396,7 @@ agent model.</p>
 </table>
 </div>
 </div>
-<p>Shared ads tasks also cover TikTok Ads: the nightly <code>cron-ads-recommendation-cleanup</code> expires stale recommendations, and the optional Adjust creative ROAS report (<code>cron-adjust-creative-roas-reporter</code>) cross-checks TikTok spend when Adjust is connected.</p>
+<p>Shared ads tasks also cover TikTok Ads: the nightly <code>cs-cron-ads-recommendation-cleanup</code> expires stale recommendations, and the optional Adjust creative ROAS report (<code>cs-cron-adjust-creative-roas-reporter</code>) cross-checks TikTok spend when Adjust is connected.</p>
 <p>To change <strong>what</strong> the tasks look for, edit these custom skills (stored as <code>cs-&lt;key&gt;</code>) rather than the tasks:</p>
 <ul>
 <li><code>tiktok-ads-strategy</code> — TikTok-specific knobs: tracking quality gates, kill thresholds, placement strategy, Spark Ads and Smart+ rules.</li>
@@ -24501,7 +24741,7 @@ if (params.get(&quot;tiktokads_connected&quot;) === &quot;true&quot;) {
   -H &quot;x-api-key: YOUR_API_KEY&quot; \
   -d '{
     &quot;useragentguid&quot;: &quot;your-useragent-guid&quot;,
-    &quot;skillkey&quot;: &quot;cron-tiktokads-performance-reporter&quot;,
+    &quot;skillkey&quot;: &quot;cs-cron-tiktokads-performance-reporter&quot;,
     &quot;enabled&quot;: true,
     &quot;interval&quot;: &quot;0 9 * * *&quot;
   }'
@@ -26428,7 +26668,7 @@ if (params.get("li_connected") === "true") {
   "errors": []
 }</code></pre>
                     <ul>
-                      <li><code>accounts[0].name</code> is the connected LinkedIn member's display name.</li>
+                      <li><code>accounts[0].id</code> and <code>accounts[0].name</code> both carry the connected LinkedIn member's display name (a human), <strong>not</strong> the Company Page name — the page is identified by <code>organizationid</code> you set in Step 6.</li>
                       <li>Access tokens last ~60 days; LinkedIn typically issues a longer-lived refresh token. Wiro maintains the connection automatically while the agent is running.</li>
                     </ul>
 
@@ -26500,14 +26740,14 @@ if (params.get("li_connected") === "true") {
                   <section id="using-the-skill">
                     <h2>Using the Skill</h2>
                     <p>
-                      Once the LinkedIn Company Page is connected (organization ID persisted), the agent's scheduled tasks use the <code>int-linkedin-post</code> platform skill to publish text, image, and video posts to the Company Page. To adjust the cron of the built-in <code>cron-social-content-scanner</code> task (Social Manager), call <code>POST /UserAgent/CustomSkillUpsert</code> with <code>enabled</code> and <code>interval</code> only — cron skill bodies are template-controlled and <code>value</code> is silently ignored for bundled crons.
+                      Once the LinkedIn Company Page is connected (organization ID persisted), the agent's scheduled tasks use the <code>int-linkedin-post</code> platform skill to publish text, image, and video posts to the Company Page. To adjust the cron of the built-in <code>cs-cron-social-content-scanner</code> task (Social Manager), call <code>POST /UserAgent/CustomSkillUpsert</code> with <code>enabled</code> and <code>interval</code> only — cron skill bodies are template-controlled and <code>value</code> is silently ignored for bundled crons.
                     </p>
                     <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skillkey": "cron-social-content-scanner",
+    "skillkey": "cs-cron-social-content-scanner",
     "enabled": true,
     "interval": "0 */4 * * *"
   }'</code></pre>
@@ -26863,13 +27103,13 @@ if (params.get("x_connected") === "true") {
 
                   <section id="using-the-skill">
                     <h2>Using the Skill</h2>
-                    <p>Once the X account is connected, the agent's existing scheduled tasks use the <code>int-twitterx-post</code> platform skill to publish. To adjust the cron of the built-in <code>cron-social-content-scanner</code> task (Social Manager), call <code>POST /UserAgent/CustomSkillUpsert</code> with <code>enabled</code> and <code>interval</code> only — cron skill bodies are template-controlled and <code>value</code> is silently ignored for bundled crons:</p>
+                    <p>Once the X account is connected, the agent's existing scheduled tasks use the <code>int-twitterx-post</code> platform skill to publish. To adjust the cron of the built-in <code>cs-cron-social-content-scanner</code> task (Social Manager), call <code>POST /UserAgent/CustomSkillUpsert</code> with <code>enabled</code> and <code>interval</code> only — cron skill bodies are template-controlled and <code>value</code> is silently ignored for bundled crons:</p>
                     <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skillkey": "cron-social-content-scanner",
+    "skillkey": "cs-cron-social-content-scanner",
     "enabled": true,
     "interval": "0 */4 * * *"
   }'</code></pre>
@@ -27599,13 +27839,13 @@ if (params.get("gads_connected") === "true") {
 
                   <section id="using-the-skill">
                     <h2>Using the Skill</h2>
-                    <p>Once Google Ads is connected and <code>customerid</code> is persisted, the agent's scheduled tasks use the <code>int-googleads-manage</code> platform skill to pull metrics and manage campaigns. Adjust the cron of the built-in <code>cron-googleads-performance-reporter</code> task (Google Ads Manager) with <code>enabled</code> and <code>interval</code> only — the task body (<code>value</code>) is owned by the bundled integration skill and silently dropped on writes:</p>
+                    <p>Once Google Ads is connected and <code>customerid</code> is persisted, the agent's scheduled tasks use the <code>int-googleads-manage</code> platform skill to pull metrics and manage campaigns. Adjust the cron of the built-in <code>cs-cron-googleads-performance-reporter</code> task (Google Ads Manager) with <code>enabled</code> and <code>interval</code> only — the task body (<code>value</code>) is owned by the bundled integration skill and silently dropped on writes:</p>
                     <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skillkey": "cron-googleads-performance-reporter",
+    "skillkey": "cs-cron-googleads-performance-reporter",
     "enabled": true,
     "interval": "0 9 * * *"
   }'</code></pre>
@@ -28192,7 +28432,7 @@ Agent → POST /v1beta/properties/123456789:runReport
                     </ul>
                     <p><strong>Bundled task:</strong></p>
                     <ul>
-                      <li><code>cron-roasit-creative-roas-reporter</code> — daily at 10:30 UTC: the last 7 days' creative ROAS per app, pause / scale recommendations for creatives that pass the significance gate, and an attribution audit (network-claimed vs Roasit-attributed installs, network claims vs store installs). Off until the Roasit credential is filled.</li>
+                      <li><code>cs-cron-roasit-creative-roas-reporter</code> — daily at 10:30 UTC: the last 7 days' creative ROAS per app, pause / scale recommendations for creatives that pass the significance gate, and an attribution audit (network-claimed vs Roasit-attributed installs, network claims vs store installs). Off until the Roasit credential is filled.</li>
                     </ul>
                     <p><strong>Agents that typically enable this integration:</strong></p>
                     <ul>
@@ -29396,7 +29636,7 @@ if (params.get("gbp_connected") === "true") {
   "result": true,
   "connected": true,
   "accounts": [
-    { "id": "12345678", "name": "12345678" }
+    { "id": "Acme Corp HubSpot", "name": "Acme Corp HubSpot" }
   ],
   "connectedat": "2026-04-17T12:00:00.000Z",
   "tokenexpiresat": "2026-04-17T12:30:00.000Z",
@@ -29405,7 +29645,7 @@ if (params.get("gbp_connected") === "true") {
                     <div class="info-callout">
                       <p><strong>HubSpot tokens expire in 30 minutes.</strong> Wiro maintains the connection automatically while the agent is running. If authorization is revoked, reconnect HubSpot through the OAuth flow.</p>
                     </div>
-                    <p>Note: <code>accounts[0].id</code> is the <strong>portalid as a string</strong> — this is backend behavior. <code>hubspot_name</code> is only set on the callback URL, not re-surfaced by <code>OAuthStatus</code>.</p>
+                    <p>Note: For HubSpot, the unified <code>OAuthStatus</code> mirrors the saved <code>portalname</code> into both <code>accounts[0].id</code> and <code>accounts[0].name</code> (HubSpot has no separate picker — there's exactly one portal per OAuth grant). The numeric <code>portalid</code> is captured by <code>HubSpotCallback</code> as <code>hubspot_portal=&lt;id&gt;</code> on the redirect URL but is not re-surfaced by <code>OAuthStatus</code>.</p>
                     <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
@@ -29459,7 +29699,7 @@ if (params.get("gbp_connected") === "true") {
                     <p>Query params: <code>hubspot_connected=true&amp;hubspot_portal=&lt;id&gt;&amp;hubspot_name=&lt;name&gt;</code> or <code>hubspot_error=&lt;code&gt;</code>. The callback path is per-provider — HubSpot's stays <code>HubSpotCallback</code>.</p>
 
                     <h3>POST /UserAgentOAuth/OAuthStatus</h3>
-                    <p>Body: <code>{ useragentguid, credentialkey: "hubspot" }</code>. Response: <code>connected</code>, <code>accounts: [{id, name}]</code> (1-element with the connected portal id), <code>connectedat</code>, <code>tokenexpiresat</code> (~30 min).</p>
+                    <p>Body: <code>{ useragentguid, credentialkey: "hubspot" }</code>. Response: <code>connected</code>, <code>accounts: [{id, name}]</code> (1-element with the saved <code>portalname</code> mirrored into both <code>id</code> and <code>name</code>), <code>connectedat</code>, <code>tokenexpiresat</code> (~30 min).</p>
 
                     <h3>POST /UserAgentOAuth/OAuthDisconnect</h3>
                     <p>Body: <code>{ useragentguid, credentialkey: "hubspot" }</code>. Clears HubSpot credentials (no remote revoke).</p>
@@ -29725,7 +29965,8 @@ if (params.get("gbp_connected") === "true") {
   -d '{
     "useragentguid": "your-useragent-guid",
     "fields": [
-      { "credentialkey": "mailchimp", "fieldname": "apikey", "fieldvalue": "abcdef1234567890-us14" }
+      { "credentialkey": "mailchimp", "fieldname": "authmethod", "fieldvalue": "api_key" },
+      { "credentialkey": "mailchimp", "fieldname": "apikey",     "fieldvalue": "abcdef1234567890-us14" }
     ]
   }'</code></pre>
                     <p>No further OAuth step. The agent uses the API key directly.</p>
@@ -29787,7 +30028,7 @@ if (params.get("gbp_connected") === "true") {
                     </p>
                     <div class="info-callout">
                       <p>
-                        <strong>API key-only mode caveat:</strong> <code>connected</code> is computed from <code>authmethod in {wiro, own}</code> <strong>and</strong> a non-empty <code>accesstoken</code>. If you set up Mailchimp via direct API key (no OAuth), <code>authmethod</code> and <code>accesstoken</code> stay empty and <code>OAuthStatus.connected</code> returns <code>false</code> — even though the agent runtime is fully functional (the <code>int-mailchimp-email</code> skill reads
+                        <strong>API key-only mode caveat:</strong> <code>connected</code> is computed from <code>authmethod in {wiro, own}</code> <strong>and</strong> a non-empty <code>accesstoken</code>. If you set up Mailchimp via direct API key (no OAuth), <code>authmethod</code> is <code>"api_key"</code> and <code>accesstoken</code> is empty, so <code>OAuthStatus.connected</code> returns <code>false</code> — even though the agent runtime is fully functional (the <code>int-mailchimp-email</code> skill reads
                         the API key directly). Don't use <code>OAuthStatus.connected</code> as the source of truth for API key setups; instead, check that <code>credentials.mailchimp.apikey</code> is non-empty in <code>POST /UserAgent/Detail</code>.
                       </p>
                     </div>
@@ -29801,13 +30042,13 @@ if (params.get("gbp_connected") === "true") {
 
                   <section id="using-the-skill">
                     <h2>Using the Skill</h2>
-                    <p>Once Mailchimp is connected (OAuth or API key), the agent's scheduled tasks use the <code>int-mailchimp-email</code> platform skill for audience and campaign operations. Adjust the cron of the built-in <code>cron-newsletter-subscriber-scanner</code> task (Newsletter Manager) by calling <code>POST /UserAgent/CustomSkillUpsert</code> with <code>enabled</code> and <code>interval</code> only — cron skill bodies are template-controlled and <code>value</code> is silently ignored for bundled crons:</p>
+                    <p>Once Mailchimp is connected (OAuth or API key), the agent's scheduled tasks use the <code>int-mailchimp-email</code> platform skill for audience and campaign operations. Adjust the cron of the built-in <code>cs-cron-newsletter-subscriber-scanner</code> task (Newsletter Manager) by calling <code>POST /UserAgent/CustomSkillUpsert</code> with <code>enabled</code> and <code>interval</code> only — cron skill bodies are template-controlled and <code>value</code> is silently ignored for bundled crons:</p>
                     <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skillkey": "cron-newsletter-subscriber-scanner",
+    "skillkey": "cs-cron-newsletter-subscriber-scanner",
     "enabled": true,
     "interval": "0 10 * * *"
   }'</code></pre>
@@ -29988,11 +30229,11 @@ if (params.get("gbp_connected") === "true") {
   -d '{
     "useragentguid": "your-useragent-guid",
     "fields": [
-      { "credentialkey": "googledrive", "fieldname": "serviceaccountjson", "fieldvalue": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii..." },
-      { "credentialkey": "googledrive", "parentfield": "folders", "ordinal": 0, "fieldname": "id",   "fieldvalue": "1BxiMVs0XRA5nFMdKvBd" },
-      { "credentialkey": "googledrive", "parentfield": "folders", "ordinal": 0, "fieldname": "name", "fieldvalue": "Creatives" },
-      { "credentialkey": "googledrive", "parentfield": "folders", "ordinal": 1, "fieldname": "id",   "fieldvalue": "2CyiNWt1YSB6oGNeL" },
-      { "credentialkey": "googledrive", "parentfield": "folders", "ordinal": 1, "fieldname": "name", "fieldvalue": "Ad Assets" }
+      { "credentialkey": "google-drive", "fieldname": "serviceaccountjson", "fieldvalue": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii..." },
+      { "credentialkey": "google-drive", "parentfield": "folders", "ordinal": 0, "fieldname": "id",   "fieldvalue": "1BxiMVs0XRA5nFMdKvBd" },
+      { "credentialkey": "google-drive", "parentfield": "folders", "ordinal": 0, "fieldname": "name", "fieldvalue": "Creatives" },
+      { "credentialkey": "google-drive", "parentfield": "folders", "ordinal": 1, "fieldname": "id",   "fieldvalue": "2CyiNWt1YSB6oGNeL" },
+      { "credentialkey": "google-drive", "parentfield": "folders", "ordinal": 1, "fieldname": "name", "fieldvalue": "Ad Assets" }
     ]
   }'</code></pre>
                     <div class="docs-comparison-table">
@@ -30050,6 +30291,12 @@ if (params.get("gbp_connected") === "true") {
                             <td>No</td>
                             <td>Base64-encoded SA JSON. Useful for previewing before saving. If omitted, the endpoint uses whatever JSON was already saved to the agent via Step 5.</td>
                           </tr>
+                          <tr>
+                            <td><code>parentid</code></td>
+                            <td>string</td>
+                            <td>No</td>
+                            <td>Parent folder ID for subfolder listing. Omit (or pass empty) to list folders shared at the root level with the service account (Drive's <code>sharedWithMe</code> filter). When provided, returns folders whose parent is the given id — Drive's permission cascade lets the service account see children of any root it has access to, even if those children aren't shared individually.</td>
+                          </tr>
                         </tbody>
                       </table>
                     </div>
@@ -30057,12 +30304,23 @@ if (params.get("gbp_connected") === "true") {
                     <pre><code class="language-json">{
   "result": true,
   "serviceAccountEmail": "wiro-drive-agent@your-project.iam.gserviceaccount.com",
+  "parentId": "",
   "folders": [
     { "id": "1BxiMVs0XRA5nFMdKvBd", "name": "Creatives", "modifiedTime": "2026-04-10T12:34:00Z", "ownerName": "design@yourcompany.com" },
     { "id": "2CyiNWt1YSB6oGNeL",  "name": "Ad Assets", "modifiedTime": "2026-04-12T09:12:00Z", "ownerName": "design@yourcompany.com" }
   ]
 }</code></pre>
-                    <p>Only folders explicitly shared with the SA email (as Editor or Content manager — see Step 3) are returned. Take the <code>id</code> values from the folders you want the agent to scan and pass them as the <code>folders</code> array in your final <code>UserAgent/CredentialUpsert</code> call (using <code>parentfield: "folders"</code> + <code>ordinal</code> per entry).</p>
+                    <p><code>parentId</code> echoes back whatever you passed in (<code>""</code> for a root listing) so the caller can verify it landed on the level it expected — useful when the user navigates two levels deep quickly and you need to discard out-of-order responses. Only folders explicitly shared with the SA email (as Editor or Content manager — see Step 3) are returned at the root. Take the <code>id</code> values from the folders you want the agent to scan and pass them as the <code>folders</code> array in your final <code>UserAgent/CredentialUpsert</code> call (using <code>parentfield: "folders"</code> + <code>ordinal</code> per entry).</p>
+                    <h4>Listing subfolders</h4>
+                    <p>Use <code>parentid</code> to walk down the folder tree — first call without <code>parentid</code> to enumerate the roots the service account can see, then call again with <code>parentid: "&lt;root-id&gt;"</code> to list its children, and so on. The Wiro Dashboard's folder picker uses this exact pattern.</p>
+                    <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GoogleDriveListFolders" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "parentid": "1BxiMVs0XRA5nFMdKvBd"
+  }'</code></pre>
+                    <p>The response shape is identical — <code>folders[]</code> now contains the immediate children of <code>1BxiMVs0XRA5nFMdKvBd</code>, and <code>parentId</code> echoes back <code>"1BxiMVs0XRA5nFMdKvBd"</code> so you can keep the picker UI in sync if the user clicks between levels quickly.</p>
                     <div class="info-callout">
                       <p><strong>Two equivalent ways to run Steps 5–5b</strong></p>
                       <ul>
@@ -30768,7 +31026,8 @@ if (params.get("gbp_connected") === "true") {
       }
     ]
   }'</code></pre>
-                    <p>Send <code>allowedusers</code> and <code>groups</code> as native JSON arrays. <code>groups</code> is optional. For a new agent, place the complete Telegram group in <code>credentials</code>. Deploy does not accept a chat-mode field; change Chat Mode afterward with <code>POST /UserAgent/UpdateSettings</code>.</p>
+                    <p>Send <code>allowedusers</code> and <code>groups</code> as native JSON arrays. <code>groups</code> is optional; omit it when the bot should be usable only in direct messages.</p>
+                    <p>If you are deploying a new agent, place the complete <code>telegram</code> group in <code>credentials</code>. Do not send an <code>enabledchannels</code> switch or chat-mode field to <code>POST /UserAgent/Deploy</code>; change Chat Mode after deployment with <code>POST /UserAgent/UpdateSettings</code>.</p>
 
                     <h3>Step 4: Verify the applied state</h3>
                     <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgent/Detail" \
@@ -31011,48 +31270,29 @@ base64 -b 0 firebase-service-account.json > firebase-sa.b64</code></pre>
                     </div>
 
                     <h3>Multi-project setups</h3>
-                    <p>Add more entries to <code>accounts[]</code> to manage multiple Firebase projects from one agent:</p>
-                    <pre><code>{
-  "credentials": {
-    "firebase": {
-      "accounts": [
-        {
-          "appname": "Consumer App",
-          "serviceaccountjson": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii...",
-          "apps": [
-            {
-              "platform": "ios",
-              "id": "6479306352"
-            }
-          ],
-          "topics": [
-            {
-              "topickey": "locale_en",
-              "topicdesc": "English users"
-            }
-          ]
-        },
-        {
-          "appname": "Business App",
-          "serviceaccountjson": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii...",
-          "apps": [
-            {
-              "platform": "android",
-              "id": "com.example.business"
-            }
-          ],
-          "topics": [
-            {
-              "topickey": "tier_paid",
-              "topicdesc": "Paid subscribers"
-            }
-          ]
-        }
-      ]
-    }
-  }
-}</code></pre>
-                    <p>Wiro's merge logic uses positional indexes — sending <code>accounts[2]</code> while the template has 1 account creates a new account entry cloned from the template shape, populated with your editable fields.</p>
+                    <p>Add more entries to <code>accounts[]</code> to manage multiple Firebase projects from one agent. Each new account is just a higher <code>ordinal</code> in the same <code>accounts</code> parent, with its nested <code>apps</code> and <code>topics</code> addressed via <code>accounts.{N}.apps</code> / <code>accounts.{N}.topics</code>:</p>
+                    <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "firebase", "parentfield": "accounts", "ordinal": 0, "fieldname": "appname", "fieldvalue": "Consumer App" },
+      { "credentialkey": "firebase", "parentfield": "accounts", "ordinal": 0, "fieldname": "serviceaccountjson", "fieldvalue": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii..." },
+      { "credentialkey": "firebase", "parentfield": "accounts.0.apps", "ordinal": 0, "fieldname": "platform", "fieldvalue": "ios" },
+      { "credentialkey": "firebase", "parentfield": "accounts.0.apps", "ordinal": 0, "fieldname": "id", "fieldvalue": "6479306352" },
+      { "credentialkey": "firebase", "parentfield": "accounts.0.topics", "ordinal": 0, "fieldname": "topickey", "fieldvalue": "locale_en" },
+      { "credentialkey": "firebase", "parentfield": "accounts.0.topics", "ordinal": 0, "fieldname": "topicdesc", "fieldvalue": "English users" },
+
+      { "credentialkey": "firebase", "parentfield": "accounts", "ordinal": 1, "fieldname": "appname", "fieldvalue": "Business App" },
+      { "credentialkey": "firebase", "parentfield": "accounts", "ordinal": 1, "fieldname": "serviceaccountjson", "fieldvalue": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii..." },
+      { "credentialkey": "firebase", "parentfield": "accounts.1.apps", "ordinal": 0, "fieldname": "platform", "fieldvalue": "android" },
+      { "credentialkey": "firebase", "parentfield": "accounts.1.apps", "ordinal": 0, "fieldname": "id", "fieldvalue": "com.example.business" },
+      { "credentialkey": "firebase", "parentfield": "accounts.1.topics", "ordinal": 0, "fieldname": "topickey", "fieldvalue": "tier_paid" },
+      { "credentialkey": "firebase", "parentfield": "accounts.1.topics", "ordinal": 0, "fieldname": "topicdesc", "fieldvalue": "Paid subscribers" }
+    ]
+  }'</code></pre>
+                    <p>Wiro's merge logic uses positional indexes — sending <code>accounts</code> ordinal <code>2</code> while the agent has 1 account creates a new account entry at index 2 populated with the field rows you supply.</p>
                   </section>
 
                   <section id="runtime-behavior">
@@ -31066,7 +31306,7 @@ base64 -b 0 firebase-service-account.json > firebase-sa.b64</code></pre>
                     <h2>Troubleshooting</h2>
                     <ul>
                       <li><strong>"invalid JWT signature":</strong> Service account JSON corrupt or truncated. Re-export from Firebase Console and re-encode.</li>
-                      <li><strong>No devices receive notifications:</strong> Verify topics are subscribed on the client side and the topic name matches exactly. Check <code>FIREBASE_{idx}_TOPICS</code> logs.</li>
+                      <li><strong>No devices receive notifications:</strong> Verify topics are subscribed on the client side and the topic name matches exactly. Check that the topic is listed in that account's <code>topics</code>.</li>
                       <li><strong>Rate limits:</strong> FCM supports up to <strong>600,000 messages/minute per project</strong> for HTTP v1 API (see the <code>int-firebase-push</code> skill for topic/condition specifics). Higher volumes require a support request to Google Cloud.</li>
                     </ul>
                   </section>
@@ -31330,7 +31570,7 @@ base64 -w 0 AuthKey_ABC1234DEF.p8 > appstore-key.b64
 base64 -b 0 AuthKey_ABC1234DEF.p8 > appstore-key.b64</code></pre>
 
                     <h3>Step 3: Save to Wiro</h3>
-                    <p>All App Store Connect agents share the <strong>same credential shape</strong>: API key (<code>keyid</code>, <code>issuerid</code>, <code>privatekey</code>) plus a positional <code>apps[]</code> array. Each app entry carries <code>appname</code> + <code>appid</code>. Review/events/metadata agents need the API key to call App Store Connect; ads-manager agents only consume <code>apps[]</code> for attribution context. The agent skin decides which subset is used at runtime.</p>
+                    <p>The credential depends on which agent you're configuring. Review, events and metadata agents use <code>apple-appstore</code>: the API key (<code>keyid</code>, <code>issuerid</code>, <code>privatekey</code>) plus a positional <code>apps[]</code> array. Each app entry carries <code>appname</code> + <code>appid</code>. Ads-manager agents need no API key: they read the app list for attribution context from the separate <code>apple-appstore-apps</code> credential, which holds only the <code>apps[]</code> array — send the same <code>apps</code> rows with <code>"credentialkey": "apple-appstore-apps"</code>.</p>
                     <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
@@ -31346,7 +31586,8 @@ base64 -b 0 AuthKey_ABC1234DEF.p8 > appstore-key.b64</code></pre>
       { "credentialkey": "apple-appstore", "parentfield": "apps", "ordinal": 1, "fieldname": "appid",   "fieldvalue": "1234567890" }
     ]
   }'</code></pre>
-                    <p>Reply skills also need a global support email — set it once via the dedicated <code>var-support-email</code> credential (shared across <code>int-appstore-reviews</code> and <code>int-googleplay-reviews</code>):</p>
+                    <p>For multiple App Store IDs, append more <code>apps</code>-prefixed ordinal rows. Positional merge applies — sending no <code>apps</code> rows leaves the existing list untouched; to clear the list, send <code>{ "credentialkey": "apple-appstore", "fieldname": "apps", "fieldvalue": [] }</code>.</p>
+                    <p>Reply skills can also use a global support email. It is optional: without it, reply drafts leave out the contact line. Set it once via the dedicated <code>var-support-email</code> credential (shared across <code>int-appstore-reviews</code> and <code>int-googleplay-reviews</code>):</p>
                     <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
@@ -31362,6 +31603,7 @@ base64 -b 0 AuthKey_ABC1234DEF.p8 > appstore-key.b64</code></pre>
                           <tr>
                             <th>Field</th>
                             <th>Type</th>
+                            <th>Required</th>
                             <th>Description</th>
                           </tr>
                         </thead>
@@ -31369,31 +31611,37 @@ base64 -b 0 AuthKey_ABC1234DEF.p8 > appstore-key.b64</code></pre>
                           <tr>
                             <td><code>keyid</code></td>
                             <td>string</td>
+                            <td>Yes (review/events/metadata)</td>
                             <td>10-character App Store Connect Key ID.</td>
                           </tr>
                           <tr>
                             <td><code>issuerid</code></td>
                             <td>string</td>
+                            <td>Yes (review/events/metadata)</td>
                             <td>UUID issuer ID.</td>
                           </tr>
                           <tr>
                             <td><code>privatekey</code></td>
                             <td>string</td>
-                            <td>Base64-encoded <code>.p8</code> private key.</td>
+                            <td>Yes (review/events/metadata)</td>
+                            <td>Base64-encoded <code>.p8</code> private key. Stored encrypted-at-rest in the DB (<code>type: fileinput-base64</code>).</td>
                           </tr>
                           <tr>
                             <td><code>apps[].appname</code></td>
                             <td>string</td>
+                            <td>Yes</td>
                             <td>Friendly label the agent uses when reporting back ("scanned reviews on My iOS App").</td>
                           </tr>
                           <tr>
                             <td><code>apps[].appid</code></td>
                             <td>string</td>
+                            <td>Yes</td>
                             <td>Numeric App Store ID.</td>
                           </tr>
                           <tr>
                             <td><code>var-support-email.value</code></td>
                             <td>string</td>
+                            <td>No</td>
                             <td>Global support email — surfaced when reviewers are pointed to direct contact. Lives on the dedicated <code>var-support-email</code> credential, not on <code>apple-appstore</code>.</td>
                           </tr>
                         </tbody>
@@ -31452,6 +31700,7 @@ base64 -b 0 AuthKey_ABC1234DEF.p8 > appstore-key.b64</code></pre>
                     <ul>
                       <li><code>int-googleplay-reviews</code> — Monitor and reply to Google Play reviews</li>
                       <li><code>int-googleplay-metadata</code> — Read/update app listings and metadata</li>
+                    <li><code>int-googleplay-events</code> — Prepare assets and copy for Google Play promotional content (LiveOps events); reads only the app list</li>
                     </ul>
                     <p><strong>Agents that typically enable this integration:</strong></p>
                     <ul>
@@ -31523,7 +31772,7 @@ base64 -w 0 play-service-account.json &gt; play-sa.b64
 # macOS
 base64 -b 0 play-service-account.json &gt; play-sa.b64</code></pre>
                     <h3>Step 5: Save to Wiro</h3>
-                    <p>All Google Play agents share the <strong>same credential shape</strong>: service account JSON plus a positional <code>apps[]</code> array. Each app entry carries <code>appname</code> + <code>packagename</code>.</p>
+                    <p>The credential depends on which agent you're configuring. Review and metadata agents use <code>google-play</code>: the service account JSON plus a positional <code>apps[]</code> array. Each app entry carries <code>appname</code> + <code>packagename</code>. The promotional-content skill and the ads-manager agents need no service account: they read the app list from the separate <code>google-play-apps</code> credential, which holds only the <code>apps[]</code> array — send the same <code>apps</code> rows with <code>"credentialkey": "google-play-apps"</code>.</p>
                     <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
@@ -31537,7 +31786,8 @@ base64 -b 0 play-service-account.json &gt; play-sa.b64</code></pre>
       { "credentialkey": "google-play", "parentfield": "apps", "ordinal": 1, "fieldname": "packagename", "fieldvalue": "com.example.other" }
     ]
   }'</code></pre>
-                    <p>Reply skills also need a global support email — set it once via the dedicated <code>var-support-email</code> credential (shared across <code>int-appstore-reviews</code> and <code>int-googleplay-reviews</code>):</p>
+                    <p>For multiple apps, append more <code>apps</code>-prefixed ordinal rows. Positional merge applies — sending no <code>apps</code> rows leaves the existing list untouched; to clear the list, send <code>{ "credentialkey": "google-play", "fieldname": "apps", "fieldvalue": [] }</code>.</p>
+                    <p>Reply skills can also use a global support email. It is optional: without it, reply drafts leave out the contact line. Set it once via the dedicated <code>var-support-email</code> credential (shared across <code>int-appstore-reviews</code> and <code>int-googleplay-reviews</code>):</p>
                     <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
@@ -31553,6 +31803,7 @@ base64 -b 0 play-service-account.json &gt; play-sa.b64</code></pre>
                           <tr>
                             <th>Field</th>
                             <th>Type</th>
+                            <th>Required</th>
                             <th>Description</th>
                           </tr>
                         </thead>
@@ -31560,21 +31811,25 @@ base64 -b 0 play-service-account.json &gt; play-sa.b64</code></pre>
                           <tr>
                             <td><code>serviceaccountjson</code></td>
                             <td>string</td>
-                            <td>Base64-encoded JSON.</td>
+                            <td>Yes</td>
+                            <td>Base64-encoded service account JSON. Stored encrypted-at-rest in the DB (<code>type: fileinput-base64</code>).</td>
                           </tr>
                           <tr>
                             <td><code>apps[].appname</code></td>
                             <td>string</td>
+                            <td>Yes</td>
                             <td>Friendly label the agent uses when reporting back ("scanned reviews on My Android App").</td>
                           </tr>
                           <tr>
                             <td><code>apps[].packagename</code></td>
                             <td>string</td>
+                            <td>Yes</td>
                             <td>Android package name (e.g. <code>com.example.app</code>).</td>
                           </tr>
                           <tr>
                             <td><code>var-support-email.value</code></td>
                             <td>string</td>
+                            <td>No</td>
                             <td>Global support email — surfaced when reviewers are pointed to direct contact. Lives on the dedicated <code>var-support-email</code> credential, not on <code>google-play</code>.</td>
                           </tr>
                         </tbody>
@@ -32532,7 +32787,7 @@ Base URL: <code>https://api.sendgrid.com/v3</code>.</p>
                             <tr>
                               <td><code>endReason</code></td>
                               <td>string | null</td>
-                              <td>Set on completed (<code>realtime_session</code>) rows only. One of: <code>wiro_completed</code>, <code>wiro_cancelled</code>, <code>wiro_disconnect</code>, <code>wiro_error</code>, <code>max_duration</code>, <code>browser_disconnect</code> (Web only), <code>twilio_disconnect</code> (Twilio only). Rejected rows leave <code>endReason: null</code> and instead carry <code>metadata.reason</code> (<code>concurrent_limit</code>, <code>agent_prep_timeout</code>, <code>realtime_ws_open_failed</code>, <code>realtime_stream_timeout</code>) — fetch via <code>Message/Detail</code>.</td>
+                              <td>Set on completed (<code>realtime_session</code>) rows only. One of: <code>wiro_completed</code> (graceful end), <code>wiro_cancelled</code>, <code>wiro_disconnect</code>, <code>wiro_error</code>, <code>max_duration</code> (the call reached its maximum length — <code>maxcallseconds</code> on Twilio), <code>browser_disconnect</code> (Web only), <code>twilio_disconnect</code> (Twilio only). Rejected rows leave <code>endReason: null</code> and instead carry <code>metadata.reason</code> (<code>concurrent_limit</code>, <code>agent_prep_timeout</code>, <code>realtime_ws_open_failed</code>, <code>realtime_stream_timeout</code>) — fetch via <code>Message/Detail</code>.</td>
                             </tr>
                             <tr>
                               <td><code>durationSeconds</code></td>
@@ -32553,6 +32808,7 @@ Base URL: <code>https://api.sendgrid.com/v3</code>.</p>
                         </table>
                       </div>
                     </div>
+                    <div class="info-callout"><p><strong>Live call audio is billed through the <a href="/docs/agent-credentials" class="docs-link"><code>int-wiro-aimodels</code></a> skill against your own Wiro AI Models balance</strong> — you bring your own Wiro API key, and the voice cost flows through your Wiro project wallet. It is <strong>not</strong> charged to the agent's platform credit pool and writes <strong>no</strong> <code>POST /UserAgent/TransactionList</code> row. The agent's text turns around the call — the prep turn that briefs the voice model before the voice session starts, and the post-call turn where the agent summarizes and acts on the call — are billed as normal token deducts (<code>type: "deduct"</code>, <code>action: "tokens"</code>) and show up in TransactionList. Audit call-audio cost from your Wiro AI Models usage (the <code>wiro</code> project wallet); TransactionList accounts only for those text turns.</p></div>
                   </section>
 
                   <section id="pairing-with-other-skills">
@@ -32637,7 +32893,7 @@ Base URL: <code>https://api.sendgrid.com/v3</code>.</p>
                         </table>
                       </div>
                     </div>
-                    <div class="info-callout"><p>No third-party billing on this channel. The live call audio is billed through the <a href="/docs/agent-credentials"><code>int-wiro-aimodels</code></a> skill against your own Wiro AI Models balance (you bring your own Wiro API key) — it is <strong>not</strong> charged to the agent's platform credit pool. Only the post-call text turn is billed as a normal token deduct (<code>action: "tokens"</code>) on <a href="/docs/agent-transactions#post-useragenttransactionlist"><code>POST /UserAgent/TransactionList</code></a>.</p></div>
+                    <div class="info-callout"><p>No third-party billing on this channel. The live call audio is billed through the <a href="/docs/agent-credentials"><code>int-wiro-aimodels</code></a> skill against your own Wiro AI Models balance (you bring your own Wiro API key) — it is <strong>not</strong> charged to the agent's platform credit pool. The voice-prep turn and the post-call text turn are billed as normal token deducts (<code>action: "tokens"</code>) on <a href="/docs/agent-transactions#post-useragenttransactionlist"><code>POST /UserAgent/TransactionList</code></a>.</p></div>
                   </section>
 
                   <section id="availability">
@@ -33054,7 +33310,7 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                     <h3>Session lifetime</h3>
                     <ul>
                       <li>The <code>sessionToken</code> handle is valid for <strong>300 seconds</strong> from issue (until <code>expiresAt</code>) and works once, so the browser must send <code>session_start</code> before then. To connect again, call <code>WebStart</code> for fresh handles — there's no in-band refresh.</li>
-                      <li>The <code>WebStart</code>-armed 5-minute pre-WS cleanup guard is cancelled the moment the bridge accepts your <code>session_start</code> frame, so once the call is live you only ever pay for active audio.</li>
+                      <li>The <code>WebStart</code>-armed 5-minute pre-WS cleanup guard is cancelled the moment the bridge accepts your <code>session_start</code> frame, so a live call is never torn down by it. Live call audio is billed through <code>int-wiro-aimodels</code> against your own Wiro AI Models balance — the pre-WS prep window carries no audio charge.</li>
                     </ul>
                   </section>
 
@@ -33483,6 +33739,15 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
                       <li>Chain the result into your next workflow step</li>
                     </ol>
                     <p>See <a href="/docs/agent-webhooks">Agent Webhooks</a> for payload format and retry policy.</p>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "deployed-useragent-guid",
+    "message": "Generate a weekly performance report",
+    "sessionkey": "pipeline-run-789",
+    "callbackurl": "https://your-server.com/webhooks/report-ready"
+  }'</code></pre>
 
                     <h3>Scheduled Automation</h3>
                     <p>Combine agents with cron jobs for recurring tasks.</p>
@@ -33531,7 +33796,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
                             <tr>
                               <td><strong><a href="https://wiro.ai/agents/google-ads-manager" target="_blank" rel="noopener">Google Ads Manager</a></strong></td>
                               <td>Create and optimize Google Ads campaigns, daily performance reports</td>
-                              <td>Google Ads (OAuth), Calendarific (API key), Google Drive (optional)</td>
+                              <td>Google Ads (OAuth), Calendarific (API key), Google Drive (optional, Service Account)</td>
                             </tr>
                             <tr>
                               <td><strong><a href="https://wiro.ai/agents/meta-ads-manager" target="_blank" rel="noopener">Meta Ads Manager</a></strong></td>
@@ -33640,7 +33905,7 @@ message = requests.post(
     }
 )
 print(message.json())</code></pre>
-                    <p>Browse available agents and their capabilities at <a href="/docs/models">Agent/List</a> or in the <a href="https://wiro.ai/agents" target="_blank">Wiro dashboard</a>.</p>
+                    <p>Browse available agents and their capabilities via <a href="/docs/agent-overview#post-agentlist" class="docs-link"><code>POST /Agent/List</code></a> or in the <a href="https://wiro.ai/agents" target="_blank">Wiro dashboard</a>.</p>
                   </section>
                 </article>
               </div>

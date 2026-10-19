@@ -105,10 +105,10 @@ Live tail of the agent's activity feed. Returns the last N events for the reques
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Your UserAgent instance guid. |
-| `date` | string | No | `YYYY-MM-DD` to read a specific day's file. Default: today (UTC). Pass `"today"` explicitly for clarity. |
+| `date` | string | No | `YYYY-MM-DD` to read a specific day's file. Default: today (UTC). |
 | `lines` | number | No | Max events to return (max 5000). Default: `200`. |
 
-**Caching:** the endpoint is cached server-side for 30 seconds per `(useragentguid, date, lines)` triple to absorb polling bursts. Plan for ≥30 s between repeated polls of the same key — older or differently-keyed reads bypass the cache.
+**Caching:** the endpoint is cached server-side for 30 seconds per `(useragentguid, date, lines)` triple to absorb polling bursts. Plan for ≥30 s between repeated polls of the same key.
 
 ##### Request
 
@@ -299,7 +299,7 @@ Reads the **full** JSONL file for a specific date and returns every event in it.
 
 Events are returned **newest first** (descending by `ts`), same as the live tail — `events[0]` is the most recent; do not re-reverse. The `user` field follows the same resolution rules as the live tail above — see the `Logs` section's "About the `user` field" callout.
 
-> **`truncated`** is `true` when the file was capped at the worker's max-line ceiling (~50000 events per file). When `true`, paginate by date — older events for the same day are not retrievable through this endpoint. (Use the live tail with smaller `lines` values for partial reads.)
+> **`truncated`** is `true` when the day's file is larger than 10 MiB. Only its newest 10 MiB of events are returned; older events of that day are not retrievable through this endpoint.
 
 ## **POST** /UserAgent/LogsDelete
 
@@ -407,8 +407,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/LogsDelete" \
 | `useragent-team-admin-required` | Caller is a member of the agent's team but not a team admin (code `97`) |
 | `Agent is not assigned to a worker. It may not be running.` | The agent isn't running on a host yet (never started, or being moved) — start it and retry |
 | `Worker not found` | The agent's host is not available right now — retry later |
-| `Failed to fetch activity from worker` | The agent's host did not answer (offline, network blip) — retry |
-| `Failed to fetch activity dates from worker` / `Failed to delete activity file from worker` / `Failed to fetch activity file from worker` | Same as above for the matching endpoint |
+| `Agent is temporarily unavailable. Please try again shortly.` | The agent's host did not answer (offline, network blip) — retry |
 
 ## Retention & Rotation
 
@@ -416,7 +415,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/LogsDelete" \
 |--------|--------------|
 | Day 0 — 6 | File is plain JSONL (`YYYY-MM-DD.jsonl`). Live tail + LogsFile read it directly. |
 | Day 7 — 180 | File is gzipped (`YYYY-MM-DD.jsonl.gz`). Reads are transparently decompressed; size in `LogsList` reports the on-disk compressed bytes. |
-| Day 181+ | File is deleted by the agent's daily maintenance cron. `LogsList` no longer surfaces the date and `LogsFile` returns `Failed to fetch activity file from worker`. |
+| Day 181+ | File is deleted by the agent's daily maintenance cron. `LogsList` no longer surfaces the date. |
 
 > **Persistence is per-agent.** If Wiro re-allocates the agent's runtime (rare; happens during platform maintenance), the activity history starts fresh from that point. For long-term audit trails, schedule a daily `LogsFile` download to your own storage.
 

@@ -153,6 +153,8 @@ if (task.pexit === '0') {
 
 ### Upload a File and Use It
 
+> **Tip:** Most models accept direct URLs in file parameters — you can pass `inputImage: 'https://example.com/photo.jpg'` directly without uploading. Use `uploadFile()` when you need to reuse files across multiple runs.
+
 ```javascript
 // Upload an image
 const upload = await client.uploadFile('https://example.com/photo.jpg');

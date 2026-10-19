@@ -56,9 +56,7 @@ base64 -b 0 AuthKey_ABC1234DEF.p8 > appstore-key.b64
 
 ### Step 3: Save to Wiro
 
-The credential schema depends on which agent you're configuring. There are two valid shapes.
-
-All App Store Connect agents share the **same credential shape**: API key + `apps[]` array. Each app entry carries `appname` + `appid`. Review/events/metadata agents need the API key to call App Store Connect; ads-manager agents only consume `apps[]` for attribution context. The agent skin decides which subset is used at runtime.
+The credential depends on which agent you're configuring. Review, events and metadata agents use `apple-appstore`: the API key (`keyid`, `issuerid`, `privatekey`) plus a positional `apps[]` array. Each app entry carries `appname` + `appid`. Ads-manager agents need no API key: they read the app list for attribution context from the separate `apple-appstore-apps` credential, which holds only the `apps[]` array — send the same `apps` rows with `"credentialkey": "apple-appstore-apps"`.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
@@ -80,6 +78,20 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
 
 For multiple App Store IDs, append more `apps`-prefixed ordinal rows. Positional merge applies — sending no `apps` rows leaves the existing list untouched; to clear the list, send `{ "credentialkey": "apple-appstore", "fieldname": "apps", "fieldvalue": [] }`.
 
+Reply skills can also use a global support email. It is optional: without it, reply drafts leave out the contact line. Set it once via the dedicated `var-support-email` credential (shared across `int-appstore-reviews` and `int-googleplay-reviews`):
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "var-support-email", "fieldname": "value", "fieldvalue": "support@yourcompany.com" }
+    ]
+  }'
+```
+
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `keyid` | string | Yes (review/events/metadata) | 10-character App Store Connect Key ID. |
@@ -87,6 +99,7 @@ For multiple App Store IDs, append more `apps`-prefixed ordinal rows. Positional
 | `privatekey` | string | Yes (review/events/metadata) | Base64-encoded `.p8` private key. Stored encrypted-at-rest in the DB (`type: fileinput-base64`). |
 | `apps[].appname` | string | Yes | Human-readable label the agent uses when reporting back ("scanned reviews on My iOS App"). |
 | `apps[].appid` | string | Yes | Numeric App Store ID. |
+| `var-support-email.value` | string | No | Global support email — surfaced when reviewers are pointed to direct contact. Lives on the dedicated `var-support-email` credential, not on `apple-appstore`. |
 
 ### Step 4: Start the agent
 
