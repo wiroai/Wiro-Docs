@@ -515,6 +515,17 @@ Errors:
   streamed Responses request answers 200 and ends with `response.failed`
   (code `permission_denied`).
 - Gateway-origin and upstream execution failures use HTTP 500, never 502.
+  `completion_timeout` is 504: a completion still running after 40 minutes
+  (streamed requests too) is stopped and not billed. `provider_overloaded` is
+  503 (529 on Anthropic routes); `provider_unavailable`,
+  `authentication_service_unavailable` and `gateway_shutting_down` (the gateway
+  restarted mid-run; the run is stopped, not billed, send again) are 503. The
+  503 and 529 errors can be retried.
+- A non-streamed request still running after 60 seconds gets its HTTP 200
+  headers early and a newline every 15 seconds; the JSON body follows and
+  parses as usual. Any failure after that arrives as the error object in that
+  200 body, which SDKs neither raise nor retry: check for `error` and decide
+  retries from `error.code`.
 - `/v1` responses include `ratelimit-limit`, `ratelimit-remaining`,
   `ratelimit-reset`, `request-id`, and `x-request-id`; rate-limit responses
   also include `retry-after`.
