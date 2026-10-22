@@ -3162,7 +3162,7 @@ Common codes include `invalid_model`, `model_not_found`,
 and `invalid_file_response`.
 
 `completion_timeout` means the model was still running when the gateway's
-10-minute limit ran out; the limit applies to streamed requests too. The run is
+40-minute limit ran out; the limit applies to streamed requests too. The run is
 stopped and is not billed. A non-streamed request gets HTTP `504`, a streamed one
 ends with the error event above, and Anthropic routes report type
 `timeout_error`. When an answer can take longer, ask for a shorter one with a
