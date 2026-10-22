@@ -2442,11 +2442,21 @@ and `invalid_file_response`.
 
 `completion_timeout` means the model was still running when the gateway's
 40-minute limit ran out; the limit applies to streamed requests too. The run is
-stopped and is not billed. A non-streamed request gets HTTP `504`, a streamed one
-ends with the error event above, and Anthropic routes report type
-`timeout_error`. When an answer can take longer, ask for a shorter one with a
-lower `max_tokens`, `max_completion_tokens` or `max_output_tokens`, or split the
-work across requests.
+stopped and is not billed. A streamed request ends with the error event above,
+and Anthropic routes report type `timeout_error`. When an answer can take
+longer, ask for a shorter one with a lower `max_tokens`, `max_completion_tokens`
+or `max_output_tokens`, or split the work across requests.
+
+A non-streamed request that is still running after 60 seconds gets its HTTP
+`200` headers early, then a newline every 15 seconds, so proxies do not close
+the quiet connection. The JSON body follows the newlines and parses as usual. A
+failure after that point, `completion_timeout` included, arrives as the error
+object in that `200` body, so check for `error` before reading the result.
+Streaming reports failures as events instead.
+
+`gateway_shutting_down` (HTTP `503`) means the gateway restarted while the
+model was running. The run is stopped and is not billed; send the same request
+again.
 
 `unsupported_capability` means the model does not declare something the request
 asked for. A structured-output mode missing from
@@ -2460,7 +2470,9 @@ created and nothing is billed. Anthropic routes report the same refusal in the
 Anthropic error shape, which carries only `type` and `message`.
 
 Gateway-origin and upstream execution failures use HTTP `500` with their
-specific error code; the public protocol does not return HTTP `502`.
+specific error code; the public protocol does not return HTTP `502`. The
+exceptions are `completion_timeout` (`504`, or `200` once a non-streamed
+response has started) and `gateway_shutting_down` (`503`).
 Responses under `/v1` include `ratelimit-limit`, `ratelimit-remaining`,
 `ratelimit-reset`, `request-id`, and `x-request-id`. A rate-limit response also
 includes `retry-after`.
