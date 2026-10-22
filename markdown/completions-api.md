@@ -2440,6 +2440,14 @@ Common codes include `invalid_model`, `model_not_found`,
 `file_catalog_too_large`, `file_content_unavailable`, `file_api_unavailable`,
 and `invalid_file_response`.
 
+`completion_timeout` means the model was still running when the gateway's
+10-minute limit ran out; the limit applies to streamed requests too. The run is
+stopped and is not billed. A non-streamed request gets HTTP `504`, a streamed one
+ends with the error event above, and Anthropic routes report type
+`timeout_error`. When an answer can take longer, ask for a shorter one with a
+lower `max_tokens`, `max_completion_tokens` or `max_output_tokens`, or split the
+work across requests.
+
 `unsupported_capability` means the model does not declare something the request
 asked for. A structured-output mode missing from
 `capabilities.structured_output_modes` carries `param: "response_format"` and
