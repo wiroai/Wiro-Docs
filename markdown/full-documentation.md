@@ -5624,6 +5624,8 @@ Common questions about using the Wiro API.
 
 **Can I use a webhook instead of polling?** Yes. All models support an optional `callbackUrl` parameter. It must be a public `http(s)` address.
 
+**What happens when I delete my account?** Your account is closed right away and its API keys stop working. 30 days later we permanently delete its data, including your files, tasks, projects and API keys (if something still needs it, such as an active subscription, once that is resolved). Until then, write to [support@wiro.ai](mailto:support@wiro.ai) if you want it restored. We keep records the law requires, such as payment and invoice records. See [Data Deletion](https://wiro.ai/agreement/data-deletion) for details.
+
 ---
 
 # n8n Wiro Integration
