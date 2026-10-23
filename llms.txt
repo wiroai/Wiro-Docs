@@ -526,6 +526,11 @@ Errors:
   parses as usual. Any failure after that arrives as the error object in that
   200 body, which SDKs neither raise nor retry: check for `error` and decide
   retries from `error.code`.
+- Anthropic-route error bodies (streamed or not) carry no code; key on
+  `error.type`: `overloaded_error` = `provider_overloaded`, `timeout_error` =
+  `completion_timeout`; `gateway_shutting_down`, `provider_unavailable` and
+  `authentication_service_unavailable` read `api_error` like other server
+  failures.
 - `/v1` responses include `ratelimit-limit`, `ratelimit-remaining`,
   `ratelimit-reset`, `request-id`, and `x-request-id`; rate-limit responses
   also include `retry-after`.

@@ -2456,6 +2456,12 @@ neither raise nor retry it. Check the body for `error` before reading the
 result, and decide retries from `error.code`. Streaming reports failures as
 events instead.
 
+Anthropic-route error bodies, streamed or not, carry no code; key on
+`error.type` there. `overloaded_error` is `provider_overloaded` and
+`timeout_error` is `completion_timeout`, while `gateway_shutting_down`,
+`provider_unavailable` and `authentication_service_unavailable` read
+`api_error`, like other server failures.
+
 `gateway_shutting_down` (HTTP `503`, or in the `200` body of a non-streamed
 response that has started) means the gateway restarted while the model was
 running. The run is stopped and is not billed; send the same request again.
