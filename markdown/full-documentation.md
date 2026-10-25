@@ -203,7 +203,7 @@ A project is a container that holds your **API keys**, **billing settings**, and
 
 ## API Credentials
 
-After creating a project, your API key (and secret, if signature-based) are displayed **once**. Copy and store them securely — you won't be able to view the secret again.
+After creating a project, copy your API key (and secret, if signature-based) and store them securely. You can see them again later on the [Projects page](https://wiro.ai/panel/project) after you confirm it's you with your password or a code we email you. Anyone who can open the project there can see its API key again. Only the owner of a personal project can see its secret again; for a team project, a team admin or the organization owner can.
 
 > **Important:** Treat your API secret like a password. Never commit it to version control or expose it in client-side code without signature-based authentication.
 
@@ -5612,7 +5612,7 @@ if (task.pexit === '0') {
 
 Common questions about using the Wiro API.
 
-**How do I get an API key?** Sign up at wiro.ai, then create a project at wiro.ai/panel/project. Your API key (and secret, if signature-based) are displayed once — copy and store them securely.
+**How do I get an API key?** Sign up at wiro.ai, then create a project at wiro.ai/panel/project. Copy your API key (and secret, if signature-based) and store them securely. You can see them again on the Projects page after you confirm it's you.
 
 **Which authentication method should I use?** Signature-Based is recommended for client-side apps. API Key Only is simpler for server-side.
 

@@ -4,7 +4,7 @@ Common questions about using the Wiro API. If you can't find the answer here, [c
 
 ## How do I get an API key?
 
-Sign up at [wiro.ai](https://wiro.ai), then create a project at [wiro.ai/panel/project](https://wiro.ai/panel/project/new). Your API key (and secret, if signature-based) are displayed once — copy and store them securely.
+Sign up at [wiro.ai](https://wiro.ai), then create a project at [wiro.ai/panel/project](https://wiro.ai/panel/project/new). Copy your API key (and secret, if signature-based) and store them securely. You can see them again on the Projects page after you confirm it's you.
 
 ## Which authentication method should I use?
 
