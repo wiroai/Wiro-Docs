@@ -152,7 +152,7 @@ File parameter URL rules:
 - Any file parameter also accepts a URL directly in `{paramId}` if `{paramId}Url` doesn't exist.
 - Input URLs must be public http(s) addresses, redirects included; a host that is or resolves to a private, loopback or link-local address isn't fetched.
 
-All models support optional `callbackUrl` for webhook notifications on completion (a public http(s) address; a host that is or resolves to a private, loopback or link-local address gets no webhook, and the task's result stays readable with Task/Detail).
+All models support optional `callbackUrl` for webhook notifications on completion (a public http(s) address; a host that is or resolves to a private, loopback or link-local address gets no webhook, and the task's result stays readable with Task/Detail). Wiro POSTs the task as JSON once it has finished, successful or not (check `pexit`); any 2xx answer counts as delivered, anything else, or an endpoint that cannot be reached, is tried again 2 seconds later, up to 3 tries; redirects are not followed; the request carries no authorization header. When a webhook does not arrive, poll Task/Detail with the task ID.
 
 JSON example:
 ```json
@@ -849,8 +849,9 @@ Pricing page: https://wiro.ai/product/pricing
 ## Concurrency Limits
 
 Limits apply when balance is $250 or below. Concurrent tasks = max(1, floor(balance * 0.10)).
-Examples: $50 = 5 concurrent, $150 = 15 concurrent, $251+ = unlimited.
+Examples: $50 = 5 concurrent, $150 = 15 concurrent, above $250 = unlimited.
 Error code 96 returned when limit reached. Error code 97 for insufficient balance.
+Handling 96: wait and retry with growing waits, or queue on your side within the limit; through the LLM gateway it arrives as HTTP 429 with retry-after (a streamed Responses request ends with response.failed, code rate_limit_exceeded).
 
 ## MCP Server
 

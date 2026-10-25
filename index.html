@@ -1352,7 +1352,7 @@
                               <td><code class="param-name">callbackUrl</code></td>
                               <td><span class="param-type">string</span></td>
                               <td><span class="param-required">No</span></td>
-                              <td class="param-desc">URL to receive a POST webhook when the task completes. It must be a public <code>http(s)</code> address: a host that is, or resolves to, a private, loopback or link-local address gets no webhook. The task still runs, and <code>Task/Detail</code> returns its result.</td>
+                              <td class="param-desc">URL to receive a POST webhook when the task completes. It must be a public <code>http(s)</code> address: a host that is, or resolves to, a private, loopback or link-local address gets no webhook. The task still runs, and <code>Task/Detail</code> returns its result. Any 2xx answer counts as delivered; see <a href="/docs/model-parameters#callback-url" class="docs-link">Webhook Callback</a> for retries and redirects.</td>
                             </tr>
                             <tr>
                               <td><code class="param-name">projectid</code></td>
@@ -3509,7 +3509,7 @@ claude</code></pre>
                     <p>Anthropic-route error bodies, streamed or not, carry no code; key on <code>error.type</code> there. <code>overloaded_error</code> is <code>provider_overloaded</code> and <code>timeout_error</code> is <code>completion_timeout</code>, while <code>gateway_shutting_down</code>, <code>provider_unavailable</code> and <code>authentication_service_unavailable</code> read <code>api_error</code>, like other server failures.</p>
                     <p><code>gateway_shutting_down</code> (HTTP <code>503</code>, or in the <code>200</code> body of a non-streamed response that has started) means the gateway restarted while the model was running. The run is stopped and is not billed; send the same request again.</p>
                     <p><code>unsupported_capability</code> means the model does not declare something the request asked for. A structured-output mode missing from <code>capabilities.structured_output_modes</code> carries <code>param: "response_format"</code> and the message <code>Model '&lt;id&gt;' does not support json_object structured output</code>; <code>"strict": true</code> on a model without <code>capabilities.strict_json_schema</code> uses the same code with <code>does not support strict JSON Schema output</code>; tool controls on a model that declares neither <code>function_tools</code> nor <code>custom_tools</code> carry <code>param: "tool_choice"</code>. The request is refused during validation, so no task is created and nothing is billed. Anthropic routes report the same refusal in the Anthropic error shape, which carries only <code>type</code> and <code>message</code>.</p>
-                    <p>Gateway-origin and upstream execution failures use HTTP <code>500</code> with their specific error code; the public protocol does not return HTTP <code>502</code>. Other statuses carry their code the same way: <code>completion_timeout</code> is <code>504</code>; <code>provider_overloaded</code> is <code>503</code> (<code>529</code> on Anthropic routes); and <code>provider_unavailable</code>, <code>authentication_service_unavailable</code> and <code>gateway_shutting_down</code> are <code>503</code>. The <code>503</code> and <code>529</code> errors can be retried. Once a non-streamed response has started, every failure arrives in its <code>200</code> body instead. Responses under <code>/v1</code> include <code>ratelimit-limit</code>, <code>ratelimit-remaining</code>, <code>ratelimit-reset</code>, <code>request-id</code>, and <code>x-request-id</code>. A rate-limit response also includes <code>retry-after</code>.</p>
+                    <p>Gateway-origin and upstream execution failures use HTTP <code>500</code> with their specific error code; the public protocol does not return HTTP <code>502</code>. Other statuses carry their code the same way: <code>completion_timeout</code> is <code>504</code>; <code>provider_overloaded</code> is <code>503</code> (<code>529</code> on Anthropic routes); and <code>provider_unavailable</code>, <code>authentication_service_unavailable</code> and <code>gateway_shutting_down</code> are <code>503</code>. The <code>503</code> and <code>529</code> errors can be retried. Once a non-streamed response has started, every failure arrives in its <code>200</code> body instead. Responses under <code>/v1</code> include <code>ratelimit-limit</code>, <code>ratelimit-remaining</code>, <code>ratelimit-reset</code>, <code>request-id</code>, and <code>x-request-id</code>. A rate-limit response also includes <code>retry-after</code>. A run refused at your Wiro concurrency limit (error code <code>96</code>) also arrives as HTTP <code>429</code>, with error type <code>rate_limit_error</code>, Wiro's message and <code>retry-after</code>; a streamed Responses request ends with <code>response.failed</code> carrying code <code>rate_limit_exceeded</code> instead, like other errors that happen when the run is submitted. See <a href="/docs/concurrency-limits#concurrency-handling-code-96">Concurrency Limits</a>.</p>
                     <p>Protocol execution POST bodies must be JSON and are limited to 16 MiB. Files uploads are multipart and use the separate 50 MiB file limit. Unsupported fields that could change execution fail instead of being silently accepted. A model task can also fail after HTTP validation; preserve the protocol error and status rather than treating every <code>2xx</code> task creation as a successful model answer.</p>
                   </section>
                 </article>
@@ -3812,12 +3812,19 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
 
                   <section id="callback-url">
                     <h2>Webhook Callback</h2>
-                    <p>All models support an optional <code>callbackUrl</code> parameter. When provided, Wiro will POST the task result to your URL when the task completes — no polling required:</p>
+                    <p>All models support an optional <code>callbackUrl</code> parameter. When provided, Wiro will POST the task result to your URL when the task completes, so you do not need to poll:</p>
                     <pre><code>{
   "prompt": "A sunset over mountains",
   "callbackUrl": "https://your-server.com/webhook/wiro"
 }</code></pre>
-                    <p>The <code>callbackUrl</code> must be a public <code>http(s)</code> address. A host that is, or resolves to, a private, loopback or link-local address gets no webhook; the task still runs, and <code>Task/Detail</code> returns its result.</p>
+                    <p>Wiro sends a <code>POST</code> request with a JSON body (<code>Content-Type: application/json</code>) once the task has finished, whether it succeeded or failed: check <code>pexit</code> in the body. The body is the task, including its parameters and outputs.</p>
+                    <ul>
+                      <li><strong>Any 2xx answer counts as delivered.</strong> Answer with a 2xx as soon as the request arrives, and do slower work after that.</li>
+                      <li><strong>Up to 3 tries.</strong> When your endpoint answers with anything other than a 2xx, or cannot be reached, Wiro tries again 2 seconds later, up to 3 tries in all.</li>
+                      <li><strong>Redirects are not followed.</strong> A 3xx answer counts as not delivered, so pass the final address.</li>
+                      <li><strong>No authorization header.</strong> To check that a webhook comes from your own run, match its task ID with your records.</li>
+                    </ul>
+                    <p>The <code>callbackUrl</code> must be a public <code>http(s)</code> address. A host that is, or resolves to, a private, loopback or link-local address gets no webhook; the task still runs. When a webhook does not arrive, poll <a href="/docs/tasks#task-detail" class="docs-link"><code>Task/Detail</code></a> with the task ID to get the result.</p>
                   </section>
                 </article>
 
@@ -6507,9 +6514,10 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                     <h2>How It Works</h2>
                     <p>Your concurrency limit is determined by your current account balance:</p>
                     <ul>
-                      <li>When your balance is <strong>$250 or below</strong>, you can run concurrent tasks equal to <strong>10% of your current USD balance</strong> (minimum 1).</li>
+                      <li>When your balance is <strong>$250 or below</strong>, your limit is <strong>one unfinished task for each full $10</strong> of balance, never less than 1. So $20 allows 2, $55 allows 5 and $250 allows 25.</li>
                       <li>When your balance is <strong>above $250</strong>, there is <strong>no concurrency limit</strong>.</li>
                     </ul>
+                    <p>The balance is the credit that can pay for the model you run. Coupon credit that only works on other models is left out, so for those runs the limit can be lower than your wallet total would give.</p>
                     <p>For a team project's API key (or the team workspace in the dashboard), the limit uses the <strong>team wallet's</strong> balance, and every unfinished team task counts toward it, whichever member started it. Personal tasks count only against your personal balance. See <a href="/docs/organizations-billing">Team Billing &amp; Spending</a>.</p>
 
                     <h3>Examples</h3>
@@ -6542,23 +6550,23 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                           <td>25 concurrent tasks</td>
                         </tr>
                         <tr>
-                          <td>$251+</td>
+                          <td>Above $250</td>
                           <td><strong>Unlimited</strong> (no limit applied)</td>
                         </tr>
                       </tbody>
                     </table>
 
-                    <p>The formula: <code>max(1, floor(balance_usd * 0.10))</code>. Once your balance exceeds $250, all limits are removed.</p>
+                    <p>The formula: <code>max(1, floor(balance_usd * 0.10))</code> while the balance is $250 or less. Above $250 there is no concurrency limit.</p>
                   </section>
 
                   <section id="concurrency-what-counts">
                     <h2>What Counts as Active</h2>
-                    <p>Only tasks that are actively being processed count toward your concurrency limit. A task is considered active from <code>task_queue</code> until it reaches a terminal status:</p>
+                    <p>Every unfinished task counts toward your concurrency limit, from <code>task_queue</code> until it reaches one of these statuses:</p>
                     <ul>
-                      <li><code>task_postprocess_end</code> — task completed (success or failure)</li>
-                      <li><code>task_cancel</code> — task was cancelled or killed</li>
+                      <li><code>task_postprocess_end</code>: task completed (success or failure)</li>
+                      <li><code>task_cancel</code>: task was cancelled or killed</li>
                     </ul>
-                    <p>Once a task reaches either of these statuses, it no longer counts toward your limit.</p>
+                    <p>Until then the task counts, including while it waits in the queue and while it is in <code>task_error</code>, which does not close a task. Once it reaches either of these statuses, it no longer counts toward your limit.</p>
                   </section>
 
                   <section id="concurrency-api-response">
@@ -6588,39 +6596,99 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                         <tr>
                           <td><code>96</code></td>
                           <td>Concurrent task limit reached</td>
-                          <td>Wait for a running task to finish, or <a href="https://wiro.ai/panel/billing" target="_blank">add funds</a></td>
+                          <td>Wait for a running task to finish, or <a href="https://wiro.ai/panel/wallet/deposit/credit-card" target="_blank">add funds</a></td>
                         </tr>
                         <tr>
                           <td><code>97</code></td>
                           <td>Insufficient balance</td>
-                          <td><a href="https://wiro.ai/panel/billing" target="_blank">Add funds</a> to your account</td>
+                          <td><a href="https://wiro.ai/panel/wallet/deposit/credit-card" target="_blank">Add funds</a> to your account</td>
                         </tr>
                       </tbody>
                     </table>
                   </section>
 
+                  <section id="concurrency-handling-code-96">
+                    <h2>Handling Code 96</h2>
+                    <p>A refused request returns HTTP <code>200</code> with <code>"result": false</code> and an error with code <code>96</code>. No task is created and nothing is charged. Handle it in one of these ways:</p>
+                    <ul>
+                      <li><strong>Wait and retry:</strong> send the same request again after a growing wait, for example 2, 4, then 8 seconds, up to a minute. The code examples on this page do this: they look for the number <code>96</code> in <code>errors[].code</code>, retry only that code, treat <code>"result": true</code> as success and stop after 8 attempts.</li>
+                      <li><strong>Queue on your side:</strong> keep at most as many unfinished tasks as your limit allows, and send the next request when a task reaches <code>task_postprocess_end</code> or <code>task_cancel</code> (<a href="/docs/tasks">Task/Detail</a> or the <a href="/docs/websocket">WebSocket</a>). Tasks started on the website, by agents and by workflows, and in a team by other members, use the same slots.</li>
+                      <li><strong>Direct LLM Gateway:</strong> through the <a href="/docs/completions-api">Direct LLM Gateway</a> the refusal arrives as HTTP <code>429</code> with error type <code>rate_limit_error</code> and a <code>retry-after</code> header; wait that many seconds before you retry. A streamed Responses request has already answered <code>200</code>, so it ends with <code>response.failed</code> carrying code <code>rate_limit_exceeded</code> and has no such header; use a growing wait there.</li>
+                      <li><strong>Wiro MCP server:</strong> through the <a href="/docs/wiro-mcp-server">Wiro MCP server</a>, <code>run_model</code> returns the same message as its tool error.</li>
+                    </ul>
+                  </section>
+
                   <section id="concurrency-increasing">
                     <h2>Increasing Your Limit</h2>
-                    <p>To increase your concurrency limit, simply <a href="https://wiro.ai/panel/billing" target="_blank">add credits to your account</a>. Your limit is recalculated automatically based on your current balance at the time of each run request.</p>
-                    <p>For enterprise needs or custom concurrency arrangements, <a href="mailto:support@wiro.ai">contact support</a>.</p>
+                    <p>To increase your concurrency limit, <a href="https://wiro.ai/panel/wallet/deposit/credit-card" target="_blank">add credits to your account</a>. Your limit is recalculated automatically based on your current balance at the time of each run request.</p>
                   </section>
 
                   <section id="concurrency-best-practices">
                     <h2>Best Practices</h2>
                     <ul>
                       <li>
-                        <strong>Check error code <code>96</code></strong> — if you get this error, wait for a running task to complete before submitting new ones.
+                        <strong>Check error code <code>96</code>:</strong> if you get this error, wait for a running task to complete before submitting new ones. See <a href="/docs/concurrency-limits#concurrency-handling-code-96">Handling Code 96</a>.
                       </li>
                       <li>
-                        <strong>Use <a href="/docs/websocket">WebSocket</a> for monitoring</strong> — instead of polling <code>/Task/Detail</code> repeatedly, connect via WebSocket to get real-time updates without extra API calls.
+                        <strong>Use <a href="/docs/websocket">WebSocket</a> for monitoring:</strong> instead of polling <code>/Task/Detail</code> repeatedly, connect via WebSocket to get real-time updates without extra API calls.
                       </li>
                       <li>
-                        <strong>Use bounded MCP waits</strong> — <code>run_model</code> waits up to 45 seconds by default and returns a recoverable token when the task is still active. Continue with <code>wait_for_task</code>; do not call <code>run_model</code> again for the same request. Use <code>wait=false</code> only when you need the token immediately, and <code>get_task</code> for a one-time status check.
+                        <strong>Use bounded MCP waits:</strong> <code>run_model</code> waits up to 45 seconds by default and returns a recoverable token when the task is still active. Continue with <code>wait_for_task</code>; do not call <code>run_model</code> again for the same request. Use <code>wait=false</code> only when you need the token immediately, and <code>get_task</code> for a one-time status check.
                       </li>
-                      <li><strong>Implement exponential backoff</strong> — if polling task status, start at 3 seconds and increase the interval for longer tasks.</li>
+                      <li><strong>Implement exponential backoff:</strong> if polling task status, start at 3 seconds and increase the interval for longer tasks.</li>
                     </ul>
                   </section>
                 </article>
+
+                <script type="application/json" class="code-examples-data">
+                  [
+                    {
+                      "label": "curl",
+                      "language": "bash",
+                      "code": "#!/bin/bash\n# Run a model and, on code 96, send the same request again after a growing wait\n\nAPI_KEY=\"YOUR_API_KEY\"\nRUN_URL=\"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\"\nMAX_ATTEMPTS=8\nDELAY=2\n\nfor ATTEMPT in $(seq 1 $MAX_ATTEMPTS); do\n  RESPONSE=$(curl -s -X POST \"$RUN_URL\" \\\n    -H \"Content-Type: application/json\" \\\n    -H \"x-api-key: $API_KEY\" \\\n    -d '{\"prompt\": \"A futuristic city at sunset\"}')\n\n  STATE=$(echo \"$RESPONSE\" | python3 -c \"import sys, json; r = json.load(sys.stdin); print('ok' if r.get('result') is True else 'limit' if any(e.get('code') == 96 for e in r.get('errors') or []) else 'other')\")\n\n  if [ \"$STATE\" = \"ok\" ]; then\n    echo \"$RESPONSE\"\n    break\n  fi\n  if [ \"$STATE\" != \"limit\" ] || [ \"$ATTEMPT\" -eq \"$MAX_ATTEMPTS\" ]; then\n    echo \"Run not started: $RESPONSE\" >&2\n    break\n  fi\n\n  # Code 96 created no task and charged nothing, so the same request can be sent again\n  sleep \"$DELAY\"\n  DELAY=$(( DELAY * 2 > 60 ? 60 : DELAY * 2 ))\ndone"
+                    },
+                    {
+                      "label": "Python",
+                      "language": "python",
+                      "code": "import time\nimport requests\n\nAPI_KEY = \"YOUR_API_KEY\"\nRUN_URL = \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\"\nMAX_ATTEMPTS = 8\n\n\ndef run_with_retry(params):\n    delay = 2\n    for attempt in range(1, MAX_ATTEMPTS + 1):\n        response = requests.post(\n            RUN_URL,\n            headers={\"x-api-key\": API_KEY, \"Content-Type\": \"application/json\"},\n            json=params,\n        )\n        data = response.json()\n        if data.get(\"result\") is True:\n            return data  # taskid and socketaccesstoken\n\n        codes = [error.get(\"code\") for error in data.get(\"errors\") or []]\n        if 96 not in codes or attempt == MAX_ATTEMPTS:\n            raise RuntimeError(f\"Run not started: {data.get('errors')}\")\n\n        # Code 96 created no task and charged nothing, so the same request can be sent again\n        time.sleep(delay)\n        delay = min(delay * 2, 60)\n\n\nrun = run_with_retry({\"prompt\": \"A futuristic city at sunset\"})\nprint(\"Task ID:\", run[\"taskid\"])"
+                    },
+                    {
+                      "label": "Node.js",
+                      "language": "javascript",
+                      "code": "const axios = require('axios');\n\nconst API_KEY = 'YOUR_API_KEY';\nconst RUN_URL = 'https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}';\nconst MAX_ATTEMPTS = 8;\n\nconst sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));\n\nasync function runWithRetry(params) {\n  let delay = 2;\n  for (let attempt = 1; ; attempt++) {\n    const { data } = await axios.post(RUN_URL, params, {\n      headers: { 'x-api-key': API_KEY, 'Content-Type': 'application/json' }\n    });\n    if (data.result === true) return data; // taskid and socketaccesstoken\n\n    const limited = (data.errors || []).some((error) => error.code === 96);\n    if (!limited || attempt === MAX_ATTEMPTS) {\n      throw new Error(`Run not started: ${JSON.stringify(data.errors)}`);\n    }\n\n    // Code 96 created no task and charged nothing, so the same request can be sent again\n    await sleep(delay * 1000);\n    delay = Math.min(delay * 2, 60);\n  }\n}\n\nrunWithRetry({ prompt: 'A futuristic city at sunset' })\n  .then((run) => console.log('Task ID:', run.taskid))\n  .catch((error) => console.error(error.message));"
+                    },
+                    {
+                      "label": "PHP",
+                      "language": "php",
+                      "code": "<?php\n$apiKey = 'YOUR_API_KEY';\n$runUrl = 'https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}';\n$maxAttempts = 8;\n\nfunction runWithRetry(string $runUrl, string $apiKey, array $params, int $maxAttempts): array {\n    $delay = 2;\n    for ($attempt = 1; ; $attempt++) {\n        $ch = curl_init($runUrl);\n        curl_setopt_array($ch, [\n            CURLOPT_POST => true,\n            CURLOPT_RETURNTRANSFER => true,\n            CURLOPT_HTTPHEADER => [\n                'Content-Type: application/json',\n                'x-api-key: ' . $apiKey,\n            ],\n            CURLOPT_POSTFIELDS => json_encode($params),\n        ]);\n        $data = json_decode(curl_exec($ch), true);\n        curl_close($ch);\n\n        if (($data['result'] ?? false) === true) {\n            return $data; // taskid and socketaccesstoken\n        }\n\n        $codes = array_column($data['errors'] ?? [], 'code');\n        if (!in_array(96, $codes, true) || $attempt === $maxAttempts) {\n            throw new RuntimeException('Run not started: ' . json_encode($data['errors'] ?? null));\n        }\n\n        // Code 96 created no task and charged nothing, so the same request can be sent again\n        sleep($delay);\n        $delay = min($delay * 2, 60);\n    }\n}\n\n$run = runWithRetry($runUrl, $apiKey, ['prompt' => 'A futuristic city at sunset'], $maxAttempts);\necho \"Task ID: {$run['taskid']}\\n\";"
+                    },
+                    {
+                      "label": "C#",
+                      "language": "csharp",
+                      "code": "using System.Linq;\nusing System.Net.Http.Json;\nusing System.Text.Json;\n\nvar apiKey = \"YOUR_API_KEY\";\nvar runUrl = \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\";\nconst int maxAttempts = 8;\n\nusing var http = new HttpClient();\nhttp.DefaultRequestHeaders.Add(\"x-api-key\", apiKey);\n\nasync Task<JsonElement> RunWithRetry(object parameters)\n{\n    var delay = 2;\n    for (var attempt = 1; ; attempt++)\n    {\n        var response = await http.PostAsJsonAsync(runUrl, parameters);\n        var data = await response.Content.ReadFromJsonAsync<JsonElement>();\n        if (data.TryGetProperty(\"result\", out var result) && result.ValueKind == JsonValueKind.True)\n            return data; // taskid and socketaccesstoken\n\n        var limited = data.TryGetProperty(\"errors\", out var errors)\n            && errors.ValueKind == JsonValueKind.Array\n            && errors.EnumerateArray().Any(error =>\n                error.TryGetProperty(\"code\", out var code)\n                && code.ValueKind == JsonValueKind.Number\n                && code.GetInt32() == 96);\n        if (!limited || attempt == maxAttempts)\n            throw new Exception($\"Run not started: {data}\");\n\n        // Code 96 created no task and charged nothing, so the same request can be sent again\n        await Task.Delay(TimeSpan.FromSeconds(delay));\n        delay = Math.Min(delay * 2, 60);\n    }\n}\n\nvar run = await RunWithRetry(new { prompt = \"A futuristic city at sunset\" });\nConsole.WriteLine($\"Task ID: {run.GetProperty(\"taskid\")}\");"
+                    },
+                    {
+                      "label": "Go",
+                      "language": "go",
+                      "code": "package main\n\nimport (\n\t\"bytes\"\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"net/http\"\n\t\"time\"\n)\n\nconst (\n\tapiKey      = \"YOUR_API_KEY\"\n\trunURL      = \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\"\n\tmaxAttempts = 8\n)\n\ntype wiroError struct {\n\tCode    int    `json:\"code\"`\n\tMessage string `json:\"message\"`\n}\n\ntype runResponse struct {\n\tResult            bool        `json:\"result\"`\n\tErrors            []wiroError `json:\"errors\"`\n\tTaskID            json.Number `json:\"taskid\"`\n\tSocketAccessToken string      `json:\"socketaccesstoken\"`\n}\n\nfunc runOnce(params map[string]interface{}) (*runResponse, error) {\n\tbody, _ := json.Marshal(params)\n\treq, _ := http.NewRequest(\"POST\", runURL, bytes.NewBuffer(body))\n\treq.Header.Set(\"Content-Type\", \"application/json\")\n\treq.Header.Set(\"x-api-key\", apiKey)\n\n\tresp, err := http.DefaultClient.Do(req)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\tdefer resp.Body.Close()\n\n\tvar data runResponse\n\tif err := json.NewDecoder(resp.Body).Decode(&data); err != nil {\n\t\treturn nil, err\n\t}\n\treturn &data, nil\n}\n\nfunc hasCode(errs []wiroError, code int) bool {\n\tfor _, e := range errs {\n\t\tif e.Code == code {\n\t\t\treturn true\n\t\t}\n\t}\n\treturn false\n}\n\nfunc runWithRetry(params map[string]interface{}) (*runResponse, error) {\n\tdelay := 2 * time.Second\n\tfor attempt := 1; ; attempt++ {\n\t\tdata, err := runOnce(params)\n\t\tif err != nil {\n\t\t\treturn nil, err\n\t\t}\n\t\tif data.Result {\n\t\t\treturn data, nil // taskid and socketaccesstoken\n\t\t}\n\t\tif !hasCode(data.Errors, 96) || attempt == maxAttempts {\n\t\t\treturn nil, fmt.Errorf(\"run not started: %+v\", data.Errors)\n\t\t}\n\n\t\t// Code 96 created no task and charged nothing, so the same request can be sent again\n\t\ttime.Sleep(delay)\n\t\tdelay *= 2\n\t\tif delay > 60*time.Second {\n\t\t\tdelay = 60 * time.Second\n\t\t}\n\t}\n}\n\nfunc main() {\n\trun, err := runWithRetry(map[string]interface{}{\n\t\t\"prompt\": \"A futuristic city at sunset\",\n\t})\n\tif err != nil {\n\t\tfmt.Println(err)\n\t\treturn\n\t}\n\tfmt.Printf(\"Task ID: %s\\n\", run.TaskID)\n}"
+                    },
+                    {
+                      "label": "Swift",
+                      "language": "swift",
+                      "code": "import Foundation\n\nlet apiKey = \"YOUR_API_KEY\"\nlet runUrl = URL(string: \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\")!\nlet maxAttempts = 8\n\nstruct RunNotStarted: Error {\n    let errors: String\n}\n\nfunc runOnce(_ params: [String: Any]) async throws -> [String: Any] {\n    var request = URLRequest(url: runUrl)\n    request.httpMethod = \"POST\"\n    request.addValue(\"application/json\", forHTTPHeaderField: \"Content-Type\")\n    request.addValue(apiKey, forHTTPHeaderField: \"x-api-key\")\n    request.httpBody = try JSONSerialization.data(withJSONObject: params)\n\n    let (data, _) = try await URLSession.shared.data(for: request)\n    return try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]\n}\n\nfunc runWithRetry(_ params: [String: Any]) async throws -> [String: Any] {\n    var delay: UInt64 = 2\n    var attempt = 1\n    while true {\n        let data = try await runOnce(params)\n        if data[\"result\"] as? Bool == true {\n            return data // taskid and socketaccesstoken\n        }\n\n        let errors = data[\"errors\"] as? [[String: Any]] ?? []\n        let limited = errors.contains { ($0[\"code\"] as? Int) == 96 }\n        if !limited || attempt == maxAttempts {\n            throw RunNotStarted(errors: String(describing: errors))\n        }\n\n        // Code 96 created no task and charged nothing, so the same request can be sent again\n        try await Task.sleep(nanoseconds: delay * 1_000_000_000)\n        delay = min(delay * 2, 60)\n        attempt += 1\n    }\n}\n\nlet run = try await runWithRetry([\"prompt\": \"A futuristic city at sunset\"])\nprint(\"Task ID: \\(run[\"taskid\"] ?? \"\")\")"
+                    },
+                    {
+                      "label": "Kotlin",
+                      "language": "kotlin",
+                      "code": "import java.net.URI\nimport java.net.http.HttpClient\nimport java.net.http.HttpRequest\nimport java.net.http.HttpResponse\nimport com.google.gson.Gson\nimport com.google.gson.JsonObject\n\nval apiKey = \"YOUR_API_KEY\"\nval runUrl = \"https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}\"\nval maxAttempts = 8\nval client = HttpClient.newHttpClient()\nval gson = Gson()\n\nfun runOnce(params: Map<String, Any?>): JsonObject {\n    val request = HttpRequest.newBuilder()\n        .uri(URI.create(runUrl))\n        .header(\"Content-Type\", \"application/json\")\n        .header(\"x-api-key\", apiKey)\n        .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(params)))\n        .build()\n    val response = client.send(request, HttpResponse.BodyHandlers.ofString())\n    return gson.fromJson(response.body(), JsonObject::class.java)\n}\n\nfun runWithRetry(params: Map<String, Any?>): JsonObject {\n    var delaySeconds = 2L\n    var attempt = 1\n    while (true) {\n        val data = runOnce(params)\n        if (data.get(\"result\")?.asBoolean == true) return data // taskid and socketaccesstoken\n\n        val errors = data.getAsJsonArray(\"errors\")\n        val limited = errors?.any { it.asJsonObject.get(\"code\")?.asInt == 96 } == true\n        if (!limited || attempt == maxAttempts) {\n            throw IllegalStateException(\"Run not started: $errors\")\n        }\n\n        // Code 96 created no task and charged nothing, so the same request can be sent again\n        Thread.sleep(delaySeconds * 1000)\n        delaySeconds = minOf(delaySeconds * 2, 60L)\n        attempt++\n    }\n}\n\nfun main() {\n    val run = runWithRetry(mapOf(\"prompt\" to \"A futuristic city at sunset\"))\n    println(\"Task ID: ${run.get(\"taskid\").asString}\")\n}"
+                    },
+                    {
+                      "label": "Dart",
+                      "language": "dart",
+                      "code": "import 'dart:convert';\nimport 'package:http/http.dart' as http;\n\nconst apiKey = 'YOUR_API_KEY';\nconst runUrl = 'https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}';\nconst maxAttempts = 8;\n\nFuture<Map<String, dynamic>> runWithRetry(Map<String, dynamic> params) async {\n  var delay = 2;\n  for (var attempt = 1; ; attempt++) {\n    final response = await http.post(\n      Uri.parse(runUrl),\n      headers: {\n        'Content-Type': 'application/json',\n        'x-api-key': apiKey,\n      },\n      body: jsonEncode(params),\n    );\n    final data = jsonDecode(response.body) as Map<String, dynamic>;\n    if (data['result'] == true) return data; // taskid and socketaccesstoken\n\n    final errors = (data['errors'] as List?) ?? [];\n    final limited = errors.any((error) => error['code'] == 96);\n    if (!limited || attempt == maxAttempts) {\n      throw Exception('Run not started: ${data['errors']}');\n    }\n\n    // Code 96 created no task and charged nothing, so the same request can be sent again\n    await Future.delayed(Duration(seconds: delay));\n    delay = delay * 2 > 60 ? 60 : delay * 2;\n  }\n}\n\nFuture<void> main() async {\n  final run = await runWithRetry({'prompt': 'A futuristic city at sunset'});\n  print('Task ID: ${run['taskid']}');\n}"
+                    }
+                  ]
+                </script>
               </div>
 
               <div class="docs-page-section" data-page="error-reference" style="display: none">

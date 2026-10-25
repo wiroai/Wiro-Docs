@@ -384,7 +384,7 @@ Parameters vary by model. Use the [/Tool/Detail](#models) endpoint to discover w
 
 | Parameter     | Type   | Required | Description                                                              |
 | ------------- | ------ | -------- | ------------------------------------------------------------------------ |
-| `callbackUrl` | string | No       | URL to receive a POST webhook when the task completes. It must be a public `http(s)` address: a host that is, or resolves to, a private, loopback or link-local address gets no webhook. The task still runs, and `Task/Detail` returns its result. |
+| `callbackUrl` | string | No       | URL to receive a POST webhook when the task completes. It must be a public `http(s)` address: a host that is, or resolves to, a private, loopback or link-local address gets no webhook. The task still runs, and `Task/Detail` returns its result. Any 2xx answer counts as delivered; see [Webhook Callback](/docs/model-parameters#callback-url) for retries and redirects. |
 | `projectid`   | string | No       | Override the default project for billing (if you have multiple projects) |
 
 > **URL inputs must be public too.** When you send a file input as a URL, Wiro downloads the file itself, so the URL must be a public `http(s)` address, and so must every address it redirects to. A host that is, or resolves to, a private, loopback or link-local address isn't fetched, and the run gets no file for that input.
@@ -3208,7 +3208,12 @@ Once a non-streamed response has started, every failure arrives in its `200`
 body instead.
 Responses under `/v1` include `ratelimit-limit`, `ratelimit-remaining`,
 `ratelimit-reset`, `request-id`, and `x-request-id`. A rate-limit response also
-includes `retry-after`.
+includes `retry-after`. A run refused at your Wiro concurrency limit (error code
+`96`) also arrives as HTTP `429`, with error type `rate_limit_error`, Wiro's
+message and `retry-after`; a streamed Responses request ends with
+`response.failed` carrying code `rate_limit_exceeded` instead, like other errors
+that happen when the run is submitted. See
+[Concurrency Limits](/docs/concurrency-limits#concurrency-handling-code-96).
 
 Protocol execution POST bodies must be JSON and are limited to 16 MiB. Files
 uploads are multipart and use the separate 50 MiB file limit. Unsupported
@@ -3464,7 +3469,7 @@ Available realtime STT models include:
 
 ## Webhook Callback
 
-All models support an optional `callbackUrl` parameter. When provided, Wiro will POST the task result to your URL when the task completes — no polling required:
+All models support an optional `callbackUrl` parameter. When provided, Wiro will POST the task result to your URL when the task completes, so you do not need to poll:
 
 ```json
 {
@@ -3473,7 +3478,14 @@ All models support an optional `callbackUrl` parameter. When provided, Wiro will
 }
 ```
 
-The `callbackUrl` must be a public `http(s)` address. A host that is, or resolves to, a private, loopback or link-local address gets no webhook; the task still runs, and `Task/Detail` returns its result.
+Wiro sends a `POST` request with a JSON body (`Content-Type: application/json`) once the task has finished, whether it succeeded or failed: check `pexit` in the body. The body is the task, including its parameters and outputs.
+
+- **Any 2xx answer counts as delivered.** Answer with a 2xx as soon as the request arrives, and do slower work after that.
+- **Up to 3 tries.** When your endpoint answers with anything other than a 2xx, or cannot be reached, Wiro tries again 2 seconds later, up to 3 tries in all.
+- **Redirects are not followed.** A 3xx answer counts as not delivered, so pass the final address.
+- **No authorization header.** To check that a webhook comes from your own run, match its task ID with your records.
+
+The `callbackUrl` must be a public `http(s)` address. A host that is, or resolves to, a private, loopback or link-local address gets no webhook; the task still runs. When a webhook does not arrive, poll [`Task/Detail`](/docs/tasks#task-detail) with the task ID to get the result.
 
 ---
 
@@ -4718,8 +4730,10 @@ Concurrency limits control how many tasks your account can process at the same t
 
 Your concurrency limit is determined by your current account balance:
 
-- When your balance is **$250 or below**, you can run concurrent tasks equal to **10% of your current USD balance** (minimum 1).
+- When your balance is **$250 or below**, your limit is **one unfinished task for each full $10** of balance, never less than 1. So $20 allows 2, $55 allows 5 and $250 allows 25.
 - When your balance is **above $250**, there is **no concurrency limit**.
+
+The balance is the credit that can pay for the model you run. Coupon credit that only works on other models is left out, so for those runs the limit can be lower than your wallet total would give.
 
 For a team project's API key (or the team workspace in the dashboard), the limit uses the **team wallet's** balance, and every unfinished team task counts toward it, whichever member started it. Personal tasks count only against your personal balance. See [Team Billing & Spending](/docs/organizations-billing).
 
@@ -4732,18 +4746,18 @@ For a team project's API key (or the team workspace in the dashboard), the limit
 | $100 | 10 concurrent tasks |
 | $150 | 15 concurrent tasks |
 | $250 | 25 concurrent tasks |
-| $251+ | **Unlimited** (no limit applied) |
+| Above $250 | **Unlimited** (no limit applied) |
 
-The formula: `max(1, floor(balance_usd * 0.10))`. Once your balance exceeds $250, all limits are removed.
+The formula: `max(1, floor(balance_usd * 0.10))` while the balance is $250 or less. Above $250 there is no concurrency limit.
 
 ## What Counts as Active
 
-Only tasks that are actively being processed count toward your concurrency limit. A task is considered active from `task_queue` until it reaches a terminal status:
+Every unfinished task counts toward your concurrency limit, from `task_queue` until it reaches one of these statuses:
 
-- `task_postprocess_end` — task completed (success or failure)
-- `task_cancel` — task was cancelled or killed
+- `task_postprocess_end`: task completed (success or failure)
+- `task_cancel`: task was cancelled or killed
 
-Once a task reaches either of these statuses, it no longer counts toward your limit.
+Until then the task counts, including while it waits in the queue and while it is in `task_error`, which does not close a task. Once it reaches either of these statuses, it no longer counts toward your limit.
 
 ## API Response
 
@@ -4767,25 +4781,32 @@ The error message includes your current balance and the calculated limit, so you
 
 | Code | Meaning | Action |
 |------|---------|--------|
-| `96` | Concurrent task limit reached | Wait for a running task to finish, or [add funds](https://wiro.ai/panel/billing) |
-| `97` | Insufficient balance | [Add funds](https://wiro.ai/panel/billing) to your account |
+| `96` | Concurrent task limit reached | Wait for a running task to finish, or [add funds](https://wiro.ai/panel/wallet/deposit/credit-card) |
+| `97` | Insufficient balance | [Add funds](https://wiro.ai/panel/wallet/deposit/credit-card) to your account |
+
+## Handling Code 96
+
+A refused request returns HTTP `200` with `"result": false` and an error with code `96`. No task is created and nothing is charged. Handle it in one of these ways:
+
+- **Wait and retry:** send the same request again after a growing wait, for example 2, 4, then 8 seconds, up to a minute. The code examples on the [Concurrency Limits](/docs/concurrency-limits) page do this: they look for the number `96` in `errors[].code`, retry only that code, treat `"result": true` as success and stop after 8 attempts.
+- **Queue on your side:** keep at most as many unfinished tasks as your limit allows, and send the next request when a task reaches `task_postprocess_end` or `task_cancel` ([Task/Detail](/docs/tasks) or the [WebSocket](/docs/websocket)). Tasks started on the website, by agents and by workflows, and in a team by other members, use the same slots.
+- **Direct LLM Gateway:** through the [Direct LLM Gateway](/docs/completions-api) the refusal arrives as HTTP `429` with error type `rate_limit_error` and a `retry-after` header; wait that many seconds before you retry. A streamed Responses request has already answered `200`, so it ends with `response.failed` carrying code `rate_limit_exceeded` and has no such header; use a growing wait there.
+- **Wiro MCP server:** through the [Wiro MCP server](/docs/wiro-mcp-server), `run_model` returns the same message as its tool error.
 
 ## Increasing Your Limit
 
-To increase your concurrency limit, simply [add credits to your account](https://wiro.ai/panel/billing). Your limit is recalculated automatically based on your current balance at the time of each run request.
-
-For enterprise needs or custom concurrency arrangements, [contact support](mailto:support@wiro.ai).
+To increase your concurrency limit, [add credits to your account](https://wiro.ai/panel/wallet/deposit/credit-card). Your limit is recalculated automatically based on your current balance at the time of each run request.
 
 ## Best Practices
 
-- **Check error code `96`** — if you get this error, wait for a running task to complete before submitting new ones.
-- **Use [WebSocket](/docs/websocket) for monitoring** — instead of polling `/Task/Detail` repeatedly, connect via WebSocket to get real-time updates without extra API calls.
-- **Use bounded MCP waits** — `run_model` waits up to 45 seconds by default and
+- **Check error code `96`:** if you get this error, wait for a running task to complete before submitting new ones. See [Handling Code 96](/docs/concurrency-limits#concurrency-handling-code-96).
+- **Use [WebSocket](/docs/websocket) for monitoring:** instead of polling `/Task/Detail` repeatedly, connect via WebSocket to get real-time updates without extra API calls.
+- **Use bounded MCP waits:** `run_model` waits up to 45 seconds by default and
   returns a recoverable token when the task is still active. Continue with
   `wait_for_task`; do not call `run_model` again for the same request. Use
   `wait=false` only when you need the token immediately, and `get_task` for a
   one-time status check.
-- **Implement exponential backoff** — if polling task status, start at 3 seconds and increase the interval for longer tasks.
+- **Implement exponential backoff:** if polling task status, start at 3 seconds and increase the interval for longer tasks.
 
 ---
 

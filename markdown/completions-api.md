@@ -2487,7 +2487,12 @@ Once a non-streamed response has started, every failure arrives in its `200`
 body instead.
 Responses under `/v1` include `ratelimit-limit`, `ratelimit-remaining`,
 `ratelimit-reset`, `request-id`, and `x-request-id`. A rate-limit response also
-includes `retry-after`.
+includes `retry-after`. A run refused at your Wiro concurrency limit (error code
+`96`) also arrives as HTTP `429`, with error type `rate_limit_error`, Wiro's
+message and `retry-after`; a streamed Responses request ends with
+`response.failed` carrying code `rate_limit_exceeded` instead, like other errors
+that happen when the run is submitted. See
+[Concurrency Limits](/docs/concurrency-limits#concurrency-handling-code-96).
 
 Protocol execution POST bodies must be JSON and are limited to 16 MiB. Files
 uploads are multipart and use the separate 50 MiB file limit. Unsupported

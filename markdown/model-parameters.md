@@ -240,7 +240,7 @@ Available realtime STT models include:
 
 ## Webhook Callback
 
-All models support an optional `callbackUrl` parameter. When provided, Wiro will POST the task result to your URL when the task completes — no polling required:
+All models support an optional `callbackUrl` parameter. When provided, Wiro will POST the task result to your URL when the task completes, so you do not need to poll:
 
 ```json
 {
@@ -249,4 +249,11 @@ All models support an optional `callbackUrl` parameter. When provided, Wiro will
 }
 ```
 
-The `callbackUrl` must be a public `http(s)` address. A host that is, or resolves to, a private, loopback or link-local address gets no webhook; the task still runs, and `Task/Detail` returns its result.
+Wiro sends a `POST` request with a JSON body (`Content-Type: application/json`) once the task has finished, whether it succeeded or failed: check `pexit` in the body. The body is the task, including its parameters and outputs.
+
+- **Any 2xx answer counts as delivered.** Answer with a 2xx as soon as the request arrives, and do slower work after that.
+- **Up to 3 tries.** When your endpoint answers with anything other than a 2xx, or cannot be reached, Wiro tries again 2 seconds later, up to 3 tries in all.
+- **Redirects are not followed.** A 3xx answer counts as not delivered, so pass the final address.
+- **No authorization header.** To check that a webhook comes from your own run, match its task ID with your records.
+
+The `callbackUrl` must be a public `http(s)` address. A host that is, or resolves to, a private, loopback or link-local address gets no webhook; the task still runs. When a webhook does not arrive, poll [`Task/Detail`](/docs/tasks#task-detail) with the task ID to get the result.

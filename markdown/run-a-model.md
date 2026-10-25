@@ -28,7 +28,7 @@ Parameters vary by model. Use the [/Tool/Detail](/docs/models) endpoint to disco
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `callbackUrl` | string | No | URL to receive a POST webhook when the task completes. It must be a public `http(s)` address: a host that is, or resolves to, a private, loopback or link-local address gets no webhook. The task still runs, and `Task/Detail` returns its result. |
+| `callbackUrl` | string | No | URL to receive a POST webhook when the task completes. It must be a public `http(s)` address: a host that is, or resolves to, a private, loopback or link-local address gets no webhook. The task still runs, and `Task/Detail` returns its result. Any 2xx answer counts as delivered; see [Webhook Callback](/docs/model-parameters#callback-url) for retries and redirects. |
 | `projectid` | string | No | Override the default project for billing (if you have multiple projects) |
 
 > **URL inputs must be public too.** When you send a file input as a URL, Wiro downloads the file itself, so the URL must be a public `http(s)` address, and so must every address it redirects to. A host that is, or resolves to, a private, loopback or link-local address isn't fetched, and the run gets no file for that input.
