@@ -1,13 +1,14 @@
 # Projects
 
-Organize your API access, billing, and usage with projects.
+Organize your API access and usage with projects.
 
 ## What is a Project?
 
-A project is a container that holds your **API keys**, **billing settings**, and **usage tracking**. Each project gets its own API key and secret, letting you separate environments (development, staging, production) or different applications.
+A project is a container that holds your **API keys**, **authentication settings**, and **usage tracking**. Each project gets its own API key and secret, letting you separate environments (development, staging, production) or different applications.
 
 - Each project has its own API key and (optionally) API secret
-- Usage and billing are tracked per project
+- Usage and spending are tracked per project
+- A project has no wallet of its own. Its runs are paid from your personal wallet, or from the team wallet for a team project
 - You can create multiple projects under one account
 
 ## Creating a Project
@@ -25,7 +26,7 @@ A project is a container that holds your **API keys**, **billing settings**, and
 
 After creating a project, copy your API key (and secret, if signature-based) and store them securely. You can see them again later on the [Projects page](https://wiro.ai/panel/project) after you confirm it's you with your password or a code we email you. Anyone who can open the project there can see its API key again. Only the owner of a personal project can see its secret again; for a team project, a team admin or the organization owner can.
 
-> **Important:** Treat your API secret like a password. Never commit it to version control or expose it in client-side code without signature-based authentication.
+> **Important:** Treat your API secret like a password. Never commit it to version control or put it in browser or mobile app code. Keep it on your own server.
 
 ## Managing Projects
 
@@ -36,7 +37,7 @@ From the [Projects page](https://wiro.ai/panel/project) in your Dashboard, you c
 - **View usage** — see API calls, costs, and task history
 - **Delete project** — permanently removes the project and revokes all keys
 
-Regenerating keys immediately invalidates the old ones. Update your application with the new credentials before the old ones stop working.
+A project's API key never changes. To replace it, create a new project, move your application to the new key, then delete the old project, which revokes its key at once. Changing a project's IP whitelist gives the project a new API secret.
 
 ## Code Examples
 

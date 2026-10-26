@@ -1017,7 +1017,7 @@ Agents can optionally forward operator notifications to a Telegram bot via the `
 
 `int-wiro-aimodels` lets an agent call Wiro's own AI models (image / video / audio / LLM generation, cover image creation, model discovery) from inside the agent container. When it's enabled on an agent:
 
-- `credentials.wiro.apikey` is **operator-supplied** — pick or create a Wiro project at [wiro.ai/panel/projects](https://wiro.ai/panel/projects), copy its API key, and write it via `POST /UserAgent/CredentialUpsert`. Each generated asset is billed to that project's wallet.
+- `credentials.wiro.apikey` is **operator-supplied** — pick or create a Wiro project at [wiro.ai/panel/projects](https://wiro.ai/panel/projects), copy its API key, and write it via `POST /UserAgent/CredentialUpsert`. Each generated asset is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).
 - The agent container gets `WIRO_API_KEY` as an env var only when both `int-wiro-aimodels` is enabled **and** a `wiro.apikey` value has been written.
 - `int-wiro-aimodels` is marked `user_invocable: true` in the registry — end-user messages can trigger it directly, and other skills / scheduled tasks invoke it internally when they need to generate content.
 

@@ -10,7 +10,7 @@ Wiro supports two authentication methods. You choose the method when [creating a
 
 ## Signature-Based Authentication
 
-Uses HMAC-SHA256 to sign every request. The API secret never leaves your environment, making this method ideal for **client-side applications** where the key might be exposed.
+Uses HMAC-SHA256 to sign every request. The API secret is never sent with your requests, but it is needed to make the signature, so sign requests on your own server. Never put the API secret in browser or mobile app code.
 
 ### How it works
 
@@ -47,12 +47,12 @@ For server-side applications where you control the environment, you can use the 
 |---------|----------------|--------------|
 | Security | High — secret never sent over the wire | Moderate — key sent in every request |
 | Complexity | Requires HMAC computation | Single header |
-| Best for | Client-side apps, mobile, public repos | Server-side, internal tools |
+| Best for | Server-side apps, production backends | Server-side, internal tools |
 | Leaked API key | Not enough — the secret is also needed | Enough to call the API |
 
 ## How to Choose
 
-- Building a **client-side** or **mobile** app? Use **Signature-Based**.
+- Building a **browser** or **mobile** app? Have the app call your own backend, and call Wiro from there. Never put your API key or secret in the app.
 - Running a **server-side** backend with controlled access? **API Key Only** is simpler.
 - Unsure? Default to **Signature-Based** — it's always the safer option.
 

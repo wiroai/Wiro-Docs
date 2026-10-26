@@ -8,7 +8,7 @@ Sign up at [wiro.ai](https://wiro.ai), then create a project at [wiro.ai/panel/p
 
 ## Which authentication method should I use?
 
-**Signature-Based** is recommended — it uses HMAC-SHA256 so your API secret never leaves your environment. **API Key Only** is simpler and fine for server-side applications where you control the environment. See [Authentication](/docs/authentication) for details.
+**Signature-Based** is recommended — it uses HMAC-SHA256 so your API secret never leaves your environment. **API Key Only** is simpler and fine for server-side applications where you control the environment. Use either method only from your own server, never in browser or mobile app code. See [Authentication](/docs/authentication) for details.
 
 ## Is there a rate limit?
 

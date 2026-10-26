@@ -639,7 +639,7 @@
 
                   <section id="auth-signature" class="auth-content">
                     <h2>Signature-Based Authentication</h2>
-                    <p>Uses HMAC-SHA256 to sign every request. The API secret never leaves your environment, making this method ideal for <strong>client-side applications</strong> where the key might be exposed.</p>
+                    <p>Uses HMAC-SHA256 to sign every request. The API secret is never sent with your requests, but it is needed to make the signature, so sign requests on your own server. Never put the API secret in browser or mobile app code.</p>
 
                     <h3>How it works</h3>
                     <ol class="docs-steps">
@@ -745,7 +745,7 @@
                           </tr>
                           <tr>
                             <td>Best for</td>
-                            <td>Client-side apps, mobile, public repos</td>
+                            <td>Server-side apps, production backends</td>
                             <td>Server-side, internal tools</td>
                           </tr>
                           <tr>
@@ -761,7 +761,7 @@
                   <section id="choosing-method">
                     <h2>How to Choose</h2>
                     <ul>
-                      <li>Building a <strong>client-side</strong> or <strong>mobile</strong> app? Use <strong>Signature-Based</strong>.</li>
+                      <li>Building a <strong>browser</strong> or <strong>mobile</strong> app? Have the app call your own backend, and call Wiro from there. Never put your API key or secret in the app.</li>
                       <li>Running a <strong>server-side</strong> backend with controlled access? <strong>API Key Only</strong> is simpler.</li>
                       <li>Unsure? Default to <strong>Signature-Based</strong> — it's always the safer option.</li>
                     </ul>
@@ -896,14 +896,15 @@
                 <article class="docs-section">
                   <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="markdown/projects.md" target="_blank" class="docs-section-md-btn">View</a> <a href="markdown/projects.md" download class="docs-section-md-btn">Download</a></div>
                   <h1>Projects</h1>
-                  <p class="section-subtitle">Organize your API access, billing, and usage with projects.</p>
+                  <p class="section-subtitle">Organize your API access and usage with projects.</p>
 
                   <section id="what-is-project">
                     <h2>What is a Project?</h2>
-                    <p>A project is a container that holds your <strong>API keys</strong>, <strong>billing settings</strong>, and <strong>usage tracking</strong>. Each project gets its own API key and secret, letting you separate environments (development, staging, production) or different applications.</p>
+                    <p>A project is a container that holds your <strong>API keys</strong>, <strong>authentication settings</strong>, and <strong>usage tracking</strong>. Each project gets its own API key and secret, letting you separate environments (development, staging, production) or different applications.</p>
                     <ul>
                       <li>Each project has its own API key and (optionally) API secret</li>
-                      <li>Usage and billing are tracked per project</li>
+                      <li>Usage and spending are tracked per project</li>
+                      <li>A project has no wallet of its own. Its runs are paid from your personal wallet, or from the team wallet for a team project</li>
                       <li>You can create multiple projects under one account</li>
                     </ul>
                   </section>
@@ -931,7 +932,7 @@
                     <h2>API Credentials</h2>
                     <p>After creating a project, copy your API key (and secret, if signature-based) and store them securely. You can see them again later on the <a href="https://wiro.ai/panel/project" class="docs-link">Projects page</a> after you confirm it's you with your password or a code we email you. Anyone who can open the project there can see its API key again. Only the owner of a personal project can see its secret again; for a team project, a team admin or the organization owner can.</p>
                     <div class="info-callout">
-                      <p><strong>Important:</strong> Treat your API secret like a password. Never commit it to version control or expose it in client-side code without signature-based authentication.</p>
+                      <p><strong>Important:</strong> Treat your API secret like a password. Never commit it to version control or put it in browser or mobile app code. Keep it on your own server.</p>
                     </div>
                   </section>
 
@@ -944,7 +945,7 @@
                       <li><strong>View usage</strong> — see API calls, costs, and task history</li>
                       <li><strong>Delete project</strong> — permanently removes the project and revokes all keys</li>
                     </ul>
-                    <p>Regenerating keys immediately invalidates the old ones. Update your application with the new credentials before the old ones stop working.</p>
+                    <p>A project's API key never changes. To replace it, create a new project, move your application to the new key, then delete the old project, which revokes its key at once. Changing a project's IP whitelist gives the project a new API secret.</p>
                   </section>
                 </article>
 
@@ -7132,7 +7133,7 @@ if (!data.result) {
                       <button class="faq-question">Which authentication method should I use?</button>
                       <div class="faq-answer">
                         <div class="faq-answer-inner">
-                          <p><strong>Signature-Based</strong> is recommended — it uses HMAC-SHA256 so your API secret never leaves your environment. <strong>API Key Only</strong> is simpler and fine for server-side applications where you control the environment. See <a href="/docs/authentication">Authentication</a> for details.</p>
+                          <p><strong>Signature-Based</strong> is recommended — it uses HMAC-SHA256 so your API secret never leaves your environment. <strong>API Key Only</strong> is simpler and fine for server-side applications where you control the environment. Use either method only from your own server, never in browser or mobile app code. See <a href="/docs/authentication">Authentication</a> for details.</p>
                         </div>
                       </div>
                     </div>
@@ -19052,7 +19053,7 @@ pending provider review.</p>
 <h2 id="wiro-ai-models-calendarific-user-provided">Wiro AI Models &amp; Calendarific (User-Provided)</h2>
 <p>Two integrations are <strong>user-input credentials</strong> that ship in agent templates but require you (or your end users) to supply the key before the skill runs. They appear in <code>POST /UserAgent/Detail</code> <code>credentials[]</code> and accept writes via <code>POST /UserAgent/CredentialUpsert</code> like any other API-key integration.</p>
 <h3 id="wiro-ai-models-wiro-credential">Wiro AI Models — <code>wiro</code> credential</h3>
-<p>The <code>int-wiro-aimodels</code> skill lets an agent call Wiro's own AI models (image / video / audio / LLM generation, cover image creation, model discovery) using <strong>your own Wiro project API key</strong>. Each generated asset is billed to that project's wallet.</p>
+<p>The <code>int-wiro-aimodels</code> skill lets an agent call Wiro's own AI models (image / video / audio / LLM generation, cover image creation, model discovery) using <strong>your own Wiro project API key</strong>. Each generated asset is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).</p>
 <ul>
 <li><strong>Credential key:</strong> <code>wiro</code></li>
 <li><strong>Field:</strong> <code>apikey</code> (single field — type <code>custom:wiro-project-picker</code> in the registry; the dashboard renders it as a project picker, the API expects the project's raw API key string).</li>
@@ -21873,7 +21874,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <h2 id="using-wiro-ai-models-from-your-agent">Using Wiro AI Models from Your Agent</h2>
 <p><code>int-wiro-aimodels</code> lets an agent call Wiro's own AI models (image / video / audio / LLM generation, cover image creation, model discovery) from inside the agent container. When it's enabled on an agent:</p>
 <ul>
-<li><code>credentials.wiro.apikey</code> is <strong>operator-supplied</strong> — pick or create a Wiro project at <a href="https://wiro.ai/panel/projects">wiro.ai/panel/projects</a>, copy its API key, and write it via <code>POST /UserAgent/CredentialUpsert</code>. Each generated asset is billed to that project's wallet.</li>
+<li><code>credentials.wiro.apikey</code> is <strong>operator-supplied</strong> — pick or create a Wiro project at <a href="https://wiro.ai/panel/projects">wiro.ai/panel/projects</a>, copy its API key, and write it via <code>POST /UserAgent/CredentialUpsert</code>. Each generated asset is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).</li>
 <li>The agent container gets <code>WIRO_API_KEY</code> as an env var only when both <code>int-wiro-aimodels</code> is enabled <strong>and</strong> a <code>wiro.apikey</code> value has been written.</li>
 <li><code>int-wiro-aimodels</code> is marked <code>user_invocable: true</code> in the registry — end-user messages can trigger it directly, and other skills / scheduled tasks invoke it internally when they need to generate content.</li>
 </ul>
@@ -23051,7 +23052,7 @@ foreach (array_slice($resp['transactions'], 0, 10) as $tx) {
   "user": null
 }</code></pre>
                     <div class="info-callout"><strong>Nested vs flat token fields.</strong> The activity-log <code>token_usage</code> event nests its counts in <strong>camelCase</strong> under <code>tokens.{input, output, cacheRead, cacheWrite, total}</code>. <code>input</code> is uncached input and <code>total</code> is the exact sum of all four components. This is distinct from the <strong>flat, lowercase</strong> columns on message rows (<code>inputtokens</code>, <code>outputtokens</code>, <code>cachereadtokens</code>, …). Same underlying data, different shape.</div>
-                    <div class="info-callout"><strong>Credits vs. wallet.</strong> An agent's own credits are spent once per LLM turn: each <code>token_usage</code> event is one billed turn, and its <code>tokencost</code> is in credits (100 credits = $1). A Wiro model the agent runs, for example through <code>int-wiro-aimodels</code>, is billed separately: Wiro charges it to the project wallet behind the agent's Wiro API key at the model's usual price, passed through unchanged. That run shows up as an ordinary <code>tool_completed</code> event with no credit figure; its cost is the task's <code>totalcost</code> (see <a href="/docs/tasks#task-billing">Billing &amp; Cost</a>).</div>
+                    <div class="info-callout"><strong>Credits vs. wallet.</strong> An agent's own credits are spent once per LLM turn: each <code>token_usage</code> event is one billed turn, and its <code>tokencost</code> is in credits (100 credits = $1). A Wiro model the agent runs, for example through <code>int-wiro-aimodels</code>, is billed separately: Wiro charges it to the wallet of the workspace that owns the agent's Wiro API key at the model's usual price, passed through unchanged. That run shows up as an ordinary <code>tool_completed</code> event with no credit figure; its cost is the task's <code>totalcost</code> (see <a href="/docs/tasks#task-billing">Billing &amp; Cost</a>).</div>
                   </section>
 
                   <section id="logs-tail">
@@ -32889,7 +32890,7 @@ Base URL: <code>https://api.sendgrid.com/v3</code>.</p>
                         </table>
                       </div>
                     </div>
-                    <div class="info-callout"><p><strong>Live call audio is billed through the <a href="/docs/agent-credentials" class="docs-link"><code>int-wiro-aimodels</code></a> skill against your own Wiro AI Models balance</strong> — you bring your own Wiro API key, and the voice cost flows through your Wiro project wallet. It is <strong>not</strong> charged to the agent's platform credit pool and writes <strong>no</strong> <code>POST /UserAgent/TransactionList</code> row. The agent's text turns around the call — the prep turn that briefs the voice model before the voice session starts, and the post-call turn where the agent summarizes and acts on the call — are billed as normal token deducts (<code>type: "deduct"</code>, <code>action: "tokens"</code>) and show up in TransactionList. Audit call-audio cost from your Wiro AI Models usage (the <code>wiro</code> project wallet); TransactionList accounts only for those text turns.</p></div>
+                    <div class="info-callout"><p><strong>Live call audio is billed through the <a href="/docs/agent-credentials" class="docs-link"><code>int-wiro-aimodels</code></a> skill against your own Wiro AI Models balance</strong> — you bring your own Wiro API key, and the voice cost is charged to the wallet of the workspace that owns that key. It is <strong>not</strong> charged to the agent's platform credit pool and writes <strong>no</strong> <code>POST /UserAgent/TransactionList</code> row. The agent's text turns around the call — the prep turn that briefs the voice model before the voice session starts, and the post-call turn where the agent summarizes and acts on the call — are billed as normal token deducts (<code>type: "deduct"</code>, <code>action: "tokens"</code>) and show up in TransactionList. Audit call-audio cost from your Wiro AI Models usage (the workspace wallet behind your <code>wiro</code> key); TransactionList accounts only for those text turns.</p></div>
                   </section>
 
                   <section id="pairing-with-other-skills">
@@ -33794,7 +33795,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
                     <p>A richer variant of white-label chat: the agent doesn't just reply with text — it <strong>generates images, video, or audio</strong> through Wiro AI models and streams them into a live activity feed beside the conversation. This is the pattern behind Wiro's own Studio. It layers the realtime socket on top of the <strong>Session-Per-User</strong> model.</p>
                     <p><strong>Shape:</strong></p>
                     <ul>
-                      <li>One deployed agent that has the <code>int-wiro-aimodels</code> skill enabled, with its <code>wiro</code> credential set to your Wiro project key (see <a href="/docs/agent-credentials">Agent Credentials</a>). Media the agent generates is billed to that project's wallet.</li>
+                      <li>One deployed agent that has the <code>int-wiro-aimodels</code> skill enabled, with its <code>wiro</code> credential set to your Wiro project key (see <a href="/docs/agent-credentials">Agent Credentials</a>). Media the agent generates is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).</li>
                       <li>One <code>sessionkey</code> per end user (Pattern 2 above) — the same agent instance serves everyone; each user's chat and media history is isolated by session.</li>
                       <li>A single WebSocket connection carries three things at once: the streaming chat reply, the per-turn token-usage report, and discovery of any model runs the agent launches.</li>
                     </ul>

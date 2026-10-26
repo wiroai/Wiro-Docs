@@ -130,7 +130,7 @@ Wiro supports two authentication methods. You choose the method when [creating a
 
 ## Signature-Based Authentication
 
-Uses HMAC-SHA256 to sign every request. The API secret never leaves your environment, making this method ideal for **client-side applications** where the key might be exposed.
+Uses HMAC-SHA256 to sign every request. The API secret is never sent with your requests, but it is needed to make the signature, so sign requests on your own server. Never put the API secret in browser or mobile app code.
 
 ### How it works
 
@@ -167,12 +167,12 @@ For server-side applications where you control the environment, you can use the 
 | ----------------- | -------------------------------------- | ------------------------------------ |
 | Security          | High — secret never sent over the wire | Moderate — key sent in every request |
 | Complexity        | Requires HMAC computation              | Single header                        |
-| Best for          | Client-side apps, mobile, public repos | Server-side, internal tools          |
+| Best for          | Server-side apps, production backends  | Server-side, internal tools          |
 | Leaked API key    | Not enough — the secret is also needed | Enough to call the API               |
 
 ## How to Choose
 
-- Building a **client-side** or **mobile** app? Use **Signature-Based**.
+- Building a **browser** or **mobile** app? Have the app call your own backend, and call Wiro from there. Never put your API key or secret in the app.
 - Running a **server-side** backend with controlled access? **API Key Only** is simpler.
 - Unsure? Default to **Signature-Based** — it's always the safer option.
 
@@ -180,14 +180,15 @@ For server-side applications where you control the environment, you can use the 
 
 # Projects
 
-Organize your API access, billing, and usage with projects.
+Organize your API access and usage with projects.
 
 ## What is a Project?
 
-A project is a container that holds your **API keys**, **billing settings**, and **usage tracking**. Each project gets its own API key and secret, letting you separate environments (development, staging, production) or different applications.
+A project is a container that holds your **API keys**, **authentication settings**, and **usage tracking**. Each project gets its own API key and secret, letting you separate environments (development, staging, production) or different applications.
 
 - Each project has its own API key and (optionally) API secret
-- Usage and billing are tracked per project
+- Usage and spending are tracked per project
+- A project has no wallet of its own. Its runs are paid from your personal wallet, or from the team wallet for a team project
 - You can create multiple projects under one account
 
 ## Creating a Project
@@ -205,7 +206,7 @@ A project is a container that holds your **API keys**, **billing settings**, and
 
 After creating a project, copy your API key (and secret, if signature-based) and store them securely. You can see them again later on the [Projects page](https://wiro.ai/panel/project) after you confirm it's you with your password or a code we email you. Anyone who can open the project there can see its API key again. Only the owner of a personal project can see its secret again; for a team project, a team admin or the organization owner can.
 
-> **Important:** Treat your API secret like a password. Never commit it to version control or expose it in client-side code without signature-based authentication.
+> **Important:** Treat your API secret like a password. Never commit it to version control or put it in browser or mobile app code. Keep it on your own server.
 
 ## Managing Projects
 
@@ -216,7 +217,7 @@ From the [Projects page](https://wiro.ai/panel/project) in your Dashboard, you c
 - **View usage** — see API calls, costs, and task history
 - **Delete project** — permanently removes the project and revokes all keys
 
-Regenerating keys immediately invalidates the old ones. Update your application with the new credentials before the old ones stop working.
+A project's API key never changes. To replace it, create a new project, move your application to the new key, then delete the old project, which revokes its key at once. Changing a project's IP whitelist gives the project a new API secret.
 
 ---
 
@@ -5635,7 +5636,7 @@ Common questions about using the Wiro API.
 
 **How do I get an API key?** Sign up at wiro.ai, then create a project at wiro.ai/panel/project. Copy your API key (and secret, if signature-based) and store them securely. You can see them again on the Projects page after you confirm it's you.
 
-**Which authentication method should I use?** Signature-Based is recommended for client-side apps. API Key Only is simpler for server-side.
+**Which authentication method should I use?** Signature-Based is recommended. API Key Only is simpler. Use either method only from your own server, never in browser or mobile app code.
 
 **Do I pay for failed tasks?** No. Only successfully completed tasks (pexit "0") are billed.
 
@@ -12888,7 +12889,7 @@ Two integrations are **user-input credentials** that ship in agent templates but
 
 ### Wiro AI Models — `wiro` credential
 
-The `int-wiro-aimodels` skill lets an agent call Wiro's own AI models (image / video / audio / LLM generation, cover image creation, model discovery) using **your own Wiro project API key**. Each generated asset is billed to that project's wallet.
+The `int-wiro-aimodels` skill lets an agent call Wiro's own AI models (image / video / audio / LLM generation, cover image creation, model discovery) using **your own Wiro project API key**. Each generated asset is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).
 
 - **Credential key:** `wiro`
 - **Field:** `apikey` (single field — type `custom:wiro-project-picker` in the registry; the dashboard renders it as a project picker, the API expects the project's raw API key string).
@@ -14624,7 +14625,7 @@ Agents can optionally forward operator notifications to a Telegram bot via the `
 
 `int-wiro-aimodels` lets an agent call Wiro's own AI models (image / video / audio / LLM generation, cover image creation, model discovery) from inside the agent container. When it's enabled on an agent:
 
-- `credentials.wiro.apikey` is **operator-supplied** — pick or create a Wiro project at [wiro.ai/panel/projects](https://wiro.ai/panel/projects), copy its API key, and write it via `POST /UserAgent/CredentialUpsert`. Each generated asset is billed to that project's wallet.
+- `credentials.wiro.apikey` is **operator-supplied** — pick or create a Wiro project at [wiro.ai/panel/projects](https://wiro.ai/panel/projects), copy its API key, and write it via `POST /UserAgent/CredentialUpsert`. Each generated asset is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).
 - The agent container gets `WIRO_API_KEY` as an env var only when both `int-wiro-aimodels` is enabled **and** a `wiro.apikey` value has been written.
 - `int-wiro-aimodels` is marked `user_invocable: true` in the registry — end-user messages can trigger it directly, and other skills / scheduled tasks invoke it internally when they need to generate content.
 
@@ -15184,7 +15185,7 @@ A `token_usage` event records the token spend and credit deduction for one bille
 
 > **Nested vs flat token fields.** The activity-log `token_usage` event nests its counts in **camelCase** under `tokens.{input, output, cacheRead, cacheWrite, total}`. `input` is uncached input and `total` is the exact sum of all four components. This is distinct from the **flat, lowercase** columns on message rows (`inputtokens`, `outputtokens`, `cachereadtokens`, …). Same underlying data, different shape.
 
-> **Credits vs. wallet.** An agent's own credits are spent once per LLM turn: each `token_usage` event is one billed turn, and its `tokencost` is in credits (100 credits = $1). A Wiro model the agent runs, for example through `int-wiro-aimodels`, is billed separately: Wiro charges it to the project wallet behind the agent's Wiro API key at the model's usual price, passed through unchanged. That run shows up as an ordinary `tool_completed` event with no credit figure; its cost is the task's `totalcost` (see [Billing & Cost](/docs/tasks#task-billing)).
+> **Credits vs. wallet.** An agent's own credits are spent once per LLM turn: each `token_usage` event is one billed turn, and its `tokencost` is in credits (100 credits = $1). A Wiro model the agent runs, for example through `int-wiro-aimodels`, is billed separately: Wiro charges it to the wallet of the workspace that owns the agent's Wiro API key at the model's usual price, passed through unchanged. That run shows up as an ordinary `tool_completed` event with no credit figure; its cost is the task's `totalcost` (see [Billing & Cost](/docs/tasks#task-billing)).
 
 ## **POST** /UserAgent/Logs
 
@@ -15683,7 +15684,7 @@ A richer variant of white-label chat: the agent doesn't just reply with text —
 
 **Shape:**
 
-- One deployed agent that has the `int-wiro-aimodels` skill enabled, with its `wiro` credential set to your Wiro project key (see [Agent Credentials](/docs/agent-credentials#wiro-ai-models--wiro-credential)). Media the agent generates is billed to that project's wallet.
+- One deployed agent that has the `int-wiro-aimodels` skill enabled, with its `wiro` credential set to your Wiro project key (see [Agent Credentials](/docs/agent-credentials#wiro-ai-models--wiro-credential)). Media the agent generates is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).
 - One `sessionkey` per end user (Pattern 2 above) — the same agent instance serves everyone; each user's chat and media history is isolated by session.
 - A single WebSocket connection carries three things at once: the streaming chat reply, the per-turn token-usage report, and discovery of any model runs the agent launches.
 
