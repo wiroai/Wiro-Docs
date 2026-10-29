@@ -12,7 +12,7 @@ Add to your AI assistant's MCP config:
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.3.1"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.3.3"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -23,7 +23,7 @@ Add to your AI assistant's MCP config:
 ```
 
 That's it. Your assistant now has access to all Wiro AI models. The `args`
-entry pins the current published version (`@wiro-ai/wiro-mcp@1.3.1`) so `npx`
+entry pins the current published version (`@wiro-ai/wiro-mcp@1.3.3`) so `npx`
 does not reuse an older cached build.
 
 ## Setup
@@ -35,7 +35,7 @@ Open MCP settings (`Cmd+Shift+P` → "Open MCP settings") and add the config abo
 ### Claude Code
 
 ```bash
-claude mcp add wiro -- npx -y @wiro-ai/wiro-mcp@1.3.1
+claude mcp add wiro -- npx -y @wiro-ai/wiro-mcp@1.3.3
 ```
 
 Then set `WIRO_API_KEY` and `WIRO_API_SECRET` environment variables.
@@ -50,7 +50,7 @@ Add to `claude_desktop_config.json`:
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.3.1"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.3.3"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -69,7 +69,7 @@ Add to your MCP settings:
   "mcpServers": {
     "wiro": {
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.3.1"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.3.3"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -84,7 +84,7 @@ Add to your MCP settings:
 Any MCP client that supports the **stdio** transport can connect. The command is:
 
 ```bash
-npx -y @wiro-ai/wiro-mcp@1.3.1
+npx -y @wiro-ai/wiro-mcp@1.3.3
 ```
 
 Set `WIRO_API_KEY` and `WIRO_API_SECRET` as environment variables in your client's MCP configuration.
@@ -109,6 +109,16 @@ Provide only the API key. Omit `WIRO_API_SECRET`:
 ```
 WIRO_API_KEY=your-api-key
 ```
+
+### Authentication errors
+
+If the project uses signature-based auth and `WIRO_API_SECRET` is not set, tool calls fail with:
+
+```
+Wiro API error 401: This project uses signature-based auth. Set WIRO_API_SECRET to the project's API secret in your MCP server config.
+```
+
+Add `WIRO_API_SECRET` to the `env` block of your MCP config and restart the client. The other messages are the same as on the hosted server: see [Authentication errors](/docs/wiro-mcp-server#authentication-errors).
 
 ## Available Tools
 

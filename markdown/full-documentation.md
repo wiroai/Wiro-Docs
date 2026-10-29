@@ -5519,7 +5519,7 @@ Or install Node.js 20 or later and add this local stdio entry to
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.3.1"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.3.3"],
       "env": {
         "WIRO_API_KEY": "YOUR_API_KEY",
         "WIRO_API_SECRET": "YOUR_API_SECRET"
@@ -5530,7 +5530,7 @@ Or install Node.js 20 or later and add this local stdio entry to
 ```
 
 For API Key Only authentication, remove `WIRO_API_SECRET` completely. Fully quit
-and reopen Claude Desktop after saving. Pin `@wiro-ai/wiro-mcp@1.3.1` in `args`
+and reopen Claude Desktop after saving. Pin `@wiro-ai/wiro-mcp@1.3.3` in `args`
 so `npx` does not reuse an older cached build. This runs the local package
 and provides the same 13 Wiro tools.
 
@@ -5716,7 +5716,7 @@ Run the Wiro MCP server locally on your own machine using npx.
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.3.1"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.3.3"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -5728,7 +5728,7 @@ Run the Wiro MCP server locally on your own machine using npx.
 
 The self-hosted server exposes the same 13 tools as the hosted server,
 including bounded `run_model`, `wait_for_task`, and optional short waits through
-`get_task.wait_seconds`. Pin `@wiro-ai/wiro-mcp@1.3.1` in the npx `args` so
+`get_task.wait_seconds`. Pin `@wiro-ai/wiro-mcp@1.3.3` in the npx `args` so
 clients do not reuse an older cached package.
 
 ## Environment Variables
@@ -5738,6 +5738,16 @@ clients do not reuse an older cached package.
 | `WIRO_API_KEY` | Yes | Your Wiro project API key |
 | `WIRO_API_SECRET` | No | API secret (for signature auth) |
 | `WIRO_API_BASE_URL` | No | Override API URL (default: `https://api.wiro.ai/v1`) |
+
+## Authentication errors
+
+If the project uses signature-based auth and `WIRO_API_SECRET` is not set, tool calls fail with:
+
+```
+Wiro API error 401: This project uses signature-based auth. Set WIRO_API_SECRET to the project's API secret in your MCP server config.
+```
+
+Add `WIRO_API_SECRET` to the `env` block of your MCP config and restart the client. The other messages are the same as on the hosted server: see [Authentication errors](/docs/wiro-mcp-server#authentication-errors).
 
 ## GitHub & npm
 
