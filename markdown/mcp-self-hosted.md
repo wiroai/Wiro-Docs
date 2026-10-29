@@ -12,7 +12,7 @@ Add to your AI assistant's MCP config:
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.3.3"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.3.4"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -23,7 +23,7 @@ Add to your AI assistant's MCP config:
 ```
 
 That's it. Your assistant now has access to all Wiro AI models. The `args`
-entry pins the current published version (`@wiro-ai/wiro-mcp@1.3.3`) so `npx`
+entry pins the current published version (`@wiro-ai/wiro-mcp@1.3.4`) so `npx`
 does not reuse an older cached build.
 
 ## Setup
@@ -35,7 +35,7 @@ Open MCP settings (`Cmd+Shift+P` → "Open MCP settings") and add the config abo
 ### Claude Code
 
 ```bash
-claude mcp add wiro -- npx -y @wiro-ai/wiro-mcp@1.3.3
+claude mcp add wiro -- npx -y @wiro-ai/wiro-mcp@1.3.4
 ```
 
 Then set `WIRO_API_KEY` and `WIRO_API_SECRET` environment variables.
@@ -50,7 +50,7 @@ Add to `claude_desktop_config.json`:
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.3.3"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.3.4"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -69,7 +69,7 @@ Add to your MCP settings:
   "mcpServers": {
     "wiro": {
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.3.3"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.3.4"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -89,7 +89,7 @@ Add to `~/.kiro/settings/mcp.json` (every workspace) or
   "mcpServers": {
     "wiro": {
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.3.3"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.3.4"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -103,7 +103,7 @@ Add to `~/.kiro/settings/mcp.json` (every workspace) or
 
 In the goose CLI, run `goose configure`, pick
 **Add Extension > Command-line Extension**, enter
-`npx -y @wiro-ai/wiro-mcp@1.3.3` as the command and add `WIRO_API_KEY` and
+`npx -y @wiro-ai/wiro-mcp@1.3.4` as the command and add `WIRO_API_KEY` and
 `WIRO_API_SECRET` as environment variables. goose Desktop takes the same command
 and variables under **Extensions > Add custom extension**. Or add Wiro to
 `~/.config/goose/config.yaml`:
@@ -114,7 +114,7 @@ extensions:
     name: Wiro AI
     type: stdio
     cmd: npx
-    args: ["-y", "@wiro-ai/wiro-mcp@1.3.3"]
+    args: ["-y", "@wiro-ai/wiro-mcp@1.3.4"]
     envs:
       WIRO_API_KEY: your-api-key
       WIRO_API_SECRET: your-api-secret
@@ -127,7 +127,7 @@ extensions:
 Any MCP client that supports the **stdio** transport can connect. The command is:
 
 ```bash
-npx -y @wiro-ai/wiro-mcp@1.3.3
+npx -y @wiro-ai/wiro-mcp@1.3.4
 ```
 
 Set `WIRO_API_KEY` and `WIRO_API_SECRET` as environment variables in your client's MCP configuration.
