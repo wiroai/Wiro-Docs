@@ -5379,21 +5379,79 @@ func main() {
 
 Connect AI coding assistants to Wiro's AI models via the Model Context Protocol.
 
+## Connect with a browser sign-in
+
+**Easiest way.** No API key to copy. Add `https://mcp.wiro.ai/v1` as a remote
+MCP server in your app, then sign in with your Wiro account when the app asks.
+Works with ChatGPT, Claude, Claude Code, Cursor, VS Code, Gemini CLI, Codex and
+Devin.
+
+1. **Add the server.** Add a remote MCP server with the URL `https://mcp.wiro.ai/v1`, without an `Authorization` header.
+2. **Sign in to Wiro.** The app opens wiro.ai. Sign in, or create an account.
+3. **Pick a project and how long.** Runs are paid from the project's workspace wallet. The app stays connected for 90 days unless you pick another length, from 7 days to unlimited.
+4. **Click Allow.** The browser goes back to the app.
+
+One-click install: [Add to Cursor](https://cursor.com/install-mcp?name=wiro&config=eyJ1cmwiOiJodHRwczovL21jcC53aXJvLmFpL3YxIn0=),
+[Install in VS Code](https://vscode.dev/redirect/mcp/install?name=wiro&config=%7B%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Fmcp.wiro.ai%2Fv1%22%7D),
+[Add to Kiro](https://kiro.dev/launch/mcp/add/?name=wiro&config=%7B%22url%22%3A%22https%3A%2F%2Fmcp.wiro.ai%2Fv1%22%7D),
+[Add to goose](https://goose-docs.ai/extension/?url=https%3A%2F%2Fmcp.wiro.ai%2Fv1&type=streamable_http&id=wiro&name=Wiro%20AI&description=Run%20image%2C%20video%2C%20audio%20and%20LLM%20models%20on%20Wiro%20AI).
+
+Claude, ChatGPT and Devin have no one-click link yet. Open the app's connector
+settings and paste the URL above:
+[Claude connectors](https://claude.ai/customize/connectors),
+[ChatGPT plugins](https://chatgpt.com/plugins),
+[Devin MCP settings](https://app.devin.ai/customize?tab=mcps).
+
 ## What is MCP?
 
 [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) is an open standard that lets AI assistants use external tools directly. With the Wiro MCP server, your AI assistant can search models, run inference, track tasks, and upload files, all without leaving your editor.
 
-The hosted MCP server is available at `mcp.wiro.ai/v1` and works with clients
-that support Streamable HTTP plus custom request headers, including Cursor,
-Claude Code, Windsurf, OpenClaw, and Hermes. Claude Desktop uses Wiro's official
-local `npx` package because its remote Custom Connectors require OAuth 2.0 and
-cannot currently send Wiro's static `Authorization` header.
+The hosted MCP server is available at `mcp.wiro.ai/v1`. Most apps connect with
+the browser sign-in above. Clients that send custom request headers, including
+Cursor, Claude Code, Windsurf, OpenClaw, and Hermes, can use your API key
+instead. Claude Desktop can add the hosted URL as a custom connector, or run
+Wiro's official local `npx` package.
+
+## Browser sign-in details
+
+ChatGPT, Claude (claude.ai, Claude Desktop and Claude Code), Cursor, VS Code,
+Gemini CLI, Codex, Zed, Devin, Cline and MCP Inspector connect this way, and so
+does any app on your computer that follows the MCP authorization spec. An app
+that signs in through its own website needs its callback on Wiro's list; write
+to support@wiro.ai to add one.
+
+Team members can connect the projects they created; team admins and the
+organization owner any project of the team. A project with an IP whitelist only
+accepts calls from the addresses on it; ChatGPT and Claude call from their own
+servers.
+
+You pick how long an app stays connected on the sign-in page: 7 days, 30 days,
+90 days (the default), 180 days, 1 year, or unlimited. Connected apps are
+listed under [Projects, Connected apps](https://wiro.ai/panel/project?view=apps)
+with their project, last use and end date; pick a new length there (it counts
+from that day), or **Disconnect** to end an app's access within a minute. An
+unlimited connection lasts until you disconnect it, and any connection ends when
+its project is removed or when you leave the team or lose the role that allowed
+it. Access tokens last one hour and renew on their own.
+
+For client developers: protected resource metadata at
+`https://mcp.wiro.ai/.well-known/oauth-protected-resource/v1`, authorization
+server metadata at `https://mcp.wiro.ai/.well-known/oauth-authorization-server`,
+authorization code with PKCE (`S256`), Client ID Metadata Documents or dynamic
+client registration at `https://mcp.wiro.ai/register`, resource
+`https://mcp.wiro.ai/v1`, scope `mcp`, `iss` on authorization responses.
+Sign-in returns only to known apps' callbacks and to loopback addresses (any
+port); write to support@wiro.ai to add a callback.
 
 ## Setup
 
 ### Cursor
 
-Open MCP settings (`Cmd+Shift+P` → "Open MCP settings") and add:
+Sign in with your browser: click [Add to Cursor](https://cursor.com/install-mcp?name=wiro&config=eyJ1cmwiOiJodHRwczovL21jcC53aXJvLmFpL3YxIn0=), or add
+`{"mcpServers": {"wiro": {"url": "https://mcp.wiro.ai/v1"}}}` to `mcp.json`; Cursor
+asks you to sign in to Wiro the first time it connects.
+
+Or use your API key: open MCP settings (`Cmd+Shift+P` → "Open MCP settings") and add:
 
 ```json
 {
@@ -5410,7 +5468,16 @@ Open MCP settings (`Cmd+Shift+P` → "Open MCP settings") and add:
 
 ### Claude Code
 
-#### Install as a plugin
+#### Sign in with your browser
+
+```bash
+claude mcp add --transport http wiro https://mcp.wiro.ai/v1
+```
+
+Then run `/mcp` inside Claude Code, pick **wiro** and sign in to Wiro in your
+browser.
+
+#### Or install as a plugin
 
 Run these two commands inside Claude Code:
 
@@ -5425,7 +5492,7 @@ your system's secure credential store. Enter the project's API key, or
 signature-based auth. The plugin comes from the
 [wiroai/Wiro-Plugin](https://github.com/wiroai/Wiro-Plugin) repository.
 
-#### Or add the server by hand
+#### Or add the server with your API key
 
 ```bash
 claude mcp add --transport http wiro \
@@ -5438,7 +5505,12 @@ For API Key Only authentication, use `Bearer YOUR_API_KEY`. Verify with
 
 ### Claude Desktop
 
-Install Node.js 20 or later, then add this local stdio entry to
+The quickest way is a custom connector: open
+[Connectors](https://claude.ai/customize/connectors) in Claude, click **Add
+custom connector**, enter the URL `https://mcp.wiro.ai/v1` and sign in with
+your Wiro account when Claude asks. The same connector works on claude.ai.
+
+Or install Node.js 20 or later and add this local stdio entry to
 `claude_desktop_config.json`:
 
 ```json
@@ -5460,9 +5532,7 @@ Install Node.js 20 or later, then add this local stdio entry to
 For API Key Only authentication, remove `WIRO_API_SECRET` completely. Fully quit
 and reopen Claude Desktop after saving. Pin `@wiro-ai/wiro-mcp@1.3.1` in `args`
 so `npx` does not reuse an older cached build. This runs the local package
-and provides the same 13 Wiro tools. Do not add `https://mcp.wiro.ai/v1` through
-Claude's Settings → Connectors yet; direct URL connections require OAuth, which
-the hosted Wiro endpoint does not currently provide.
+and provides the same 13 Wiro tools.
 
 Claude Desktop may enforce a fixed client-side tool timeout. Wiro returns from
 each generation wait within 45 seconds; when `nextAction.tool` is
@@ -5471,9 +5541,26 @@ existing task completes. Never submit `run_model` again for the same request.
 Adding a `timeout` field to `claude_desktop_config.json` is not a reliable
 workaround because Claude Desktop versions may ignore it.
 
+### ChatGPT
+
+In ChatGPT, open [Plugins](https://chatgpt.com/plugins), click **+**, choose
+**Add custom MCP server**, enter `https://mcp.wiro.ai/v1` and create the
+plugin. ChatGPT opens wiro.ai, where you sign in and pick a project. ChatGPT calls Wiro from its
+own servers, so pick a project that is open to all IP addresses.
+
+### VS Code
+
+Click [Install in VS Code](https://vscode.dev/redirect/mcp/install?name=wiro&config=%7B%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Fmcp.wiro.ai%2Fv1%22%7D), or add
+`{"servers": {"wiro": {"type": "http", "url": "https://mcp.wiro.ai/v1"}}}` to `mcp.json`.
+VS Code asks you to sign in to Wiro when it starts the server.
+
 ### Gemini CLI
 
-Install Wiro as a Gemini CLI extension from the
+Sign in with your browser: run
+`gemini mcp add --transport http wiro https://mcp.wiro.ai/v1`, then
+`/mcp auth wiro` inside Gemini CLI.
+
+Or install Wiro as a Gemini CLI extension from the
 [wiroai/Wiro-Plugin](https://github.com/wiroai/Wiro-Plugin) repository. Run this
 in your terminal:
 
@@ -5499,7 +5586,10 @@ In the Devin web app, go to
 **Customize > Plugins > Add plugin > From repository** and enter
 `wiroai/Wiro-Plugin`. Then connect the Wiro server with your API key: the
 project's API key, or `API_KEY:API_SECRET` (both values joined with a colon) if
-the project uses signature-based auth.
+the project uses signature-based auth. In the Devin web app you can also add
+`https://mcp.wiro.ai/v1` as a custom MCP server under
+[Customize, MCPs](https://app.devin.ai/customize?tab=mcps) and sign in to Wiro
+in your browser instead.
 
 ### OpenClaw
 
@@ -5576,7 +5666,10 @@ Messages you may see while connecting:
 
 A request without an `Authorization` header never reaches a tool. The MCP
 endpoint answers HTTP `401` with `Missing or invalid Authorization header` in
-the body. See [Error Reference](/docs/error-reference) for every Wiro API error.
+the body and a `WWW-Authenticate` header that points apps to the sign-in; an
+expired or disconnected sign-in gets the same answer with
+`error="invalid_token"`. See [Error Reference](/docs/error-reference) for every
+Wiro API error.
 
 ## Available Tools
 
