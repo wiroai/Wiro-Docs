@@ -1210,12 +1210,13 @@ function scrollToLocationHash() {
   requestAnimationFrame(() => scrollToAnchor(id, 'auto'));
 }
 
-/** Each section's View/Download buttons use markdown/{slug}.md — slug comes from data-page. */
+/** Each section's View/Download buttons use markdown/{slug}.md under the docs base — slug comes from data-page.
+ * Root-relative, so the link is right before the base tag exists (crawlers read the raw HTML: /docs + markdown/x.md was /markdown/x.md, a 404). */
 function initMarkdownSectionLinks() {
   document.querySelectorAll('.docs-page-section[data-page]').forEach((section) => {
     const slug = section.getAttribute('data-page');
     if (!slug) return;
-    const path = `markdown/${slug}.md`;
+    const path = new URL(`markdown/${slug}.md`, document.baseURI).pathname;
     section.querySelectorAll('.docs-section-md-row .docs-section-md-btn').forEach((a) => {
       a.setAttribute('href', path);
     });
