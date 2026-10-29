@@ -364,15 +364,33 @@ function buildSearchIndex(pages) {
 // Pages
 // ---------------------------------------------------------------------------
 
+// Cloudflare's email obfuscation turns anything shaped like an address into a
+// "[email protected]" link that only its own script decodes again, so anyone
+// reading the HTML itself (view-source, crawlers, LLM tools) got broken code:
+// `npx -y @wiro-ai/wiro-mcp@1.3.3`, curl's `-F "inputImage=@photo.jpg"`, the
+// example addresses in JSON. Cloudflare skips whatever sits between email_off
+// comments, so each <pre> and inline <code> holding an @ gets a pair, and
+// addresses in prose stay obfuscated. Comments and raw-text elements are left
+// as they are: a marker inside one would end the comment early or show up as
+// text.
+const CODE_WITH_ADDRESSES = /<!--[\s\S]*?-->|<(script|style|textarea|template)(?=[\s>])[\s\S]*?<\/\1\s*>|<(pre|code)(?=[\s>])[\s\S]*?<\/\2\s*>/gi;
+
+function keepCodeAddresses(html) {
+  return html.replace(CODE_WITH_ADDRESSES, (match, rawText, code) =>
+    code && match.includes('@') ? `<!--email_off-->${match}<!--/email_off-->` : match);
+}
+
 let docsCache = null;
 function getDocs() {
   const filePath = path.join(ROOT, 'index.html');
   const mtime = fs.statSync(filePath).mtimeMs;
   if (docsCache === null || docsCache.mtime !== mtime) {
-    const raw = fs.readFileSync(filePath);
-    const docs = splitDocs(raw.toString('utf8'));
+    const raw = fs.readFileSync(filePath, 'utf8');
+    const docs = splitDocs(raw);
     if (docs.pages.size === 0) console.warn('index.html: no docs sections found, serving the whole file for every page');
-    docsCache = { ...docs, raw, mtime };
+    // The search index was built from the markup as written.
+    for (const [slug, markup] of docs.pages) docs.pages.set(slug, keepCodeAddresses(markup));
+    docsCache = { ...docs, raw: keepCodeAddresses(raw), mtime };
   }
   return docsCache;
 }
@@ -500,8 +518,9 @@ http.createServer((req, res) => {
     return;
   }
 
-  // The file itself, byte for byte: every section inline, for LLMs and
-  // view-source readers. Also the fallback if the split ever finds nothing.
+  // The file itself, every section inline, for LLMs and view-source readers:
+  // byte for byte apart from the email_off comments. Also the fallback if the
+  // split ever finds nothing.
   if (relPath === 'index.html' || docs.pages.size === 0) {
     sendHtml(res, 200, docs.raw, docs);
     return;
