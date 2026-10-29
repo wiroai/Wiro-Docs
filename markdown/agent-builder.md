@@ -1,6 +1,6 @@
 # Agent Builder
 
-Build a custom agent from scratch — no marketplace template required. Pick your own skill set, preview the live tier price, and deploy in one call.
+Build a custom agent from scratch: no marketplace template required. Pick your own skill set, preview the live tier price, and deploy in one call.
 
 ## Overview
 
@@ -9,7 +9,7 @@ Wiro's agent runtime supports two deploy paths:
 | Path | When to use | Endpoint |
 |------|-------------|----------|
 | **Template deploy** | The marketplace already has an agent that does what you need (Instagram Manager, Push Notifications, App Review Support, …). You inherit the template's default skill set + configuration. | `POST /UserAgent/Deploy` with `agentguid` |
-| **Custom build** | You want a unique skill combination — for example a custom support bot that watches Gmail, publishes a daily digest to WordPress, and uses Wiro's image generator. No marketplace template fits. | `POST /UserAgent/Deploy` with `custom: true` |
+| **Custom build** | You want a unique skill combination: for example a custom support bot that watches Gmail, publishes a daily digest to WordPress, and uses Wiro's image generator. No marketplace template fits. | `POST /UserAgent/Deploy` with `custom: true` |
 
 The two paths produce the **same useragent shape** at the end (same `customskills`, `scheduledskills`, `credentials`, `subscription`, `tokenRates`, etc.). The only differences are:
 
@@ -19,15 +19,15 @@ The two paths produce the **same useragent shape** at the end (same `customskill
 | Pricing recipe | Computed from the template's skill set, plus any skill you change after deploy | Computed from the skills **you** toggled on |
 | `agent.tiers` on the response | Template's tier numbers | Live-resolved per-instance tier numbers |
 | `agent.cover` on the response | Template's cover image | The `cover` you sent at Deploy (or a placeholder) |
-| Cascade updates | When Wiro updates the template, your useragent reconciles | No template — the agent is fully owned by you |
+| Cascade updates | When Wiro updates the template, your useragent reconciles | No template: the agent is fully owned by you |
 
 > **Custom builds don't share a marketplace listing.** They are private to your account; nothing about a custom agent appears on `/Agent/List` or `/Agent/Detail`. Discovery happens through your own product surface.
 
-## Step 1 — Browse Available Skills
+## Step 1: Browse Available Skills
 
-Custom builds start from the **skill registry** — the catalogue of every skill the platform supports. Browse it with [`POST /Skills/List`](/docs/agent-skills#post-skillslist) and inspect details with [`POST /Skills/Detail`](/docs/agent-skills#post-skillsdetail).
+Custom builds start from the **skill registry**, the catalogue of every skill the platform supports. Browse it with [`POST /Skills/List`](/docs/agent-skills#post-skillslist) and inspect details with [`POST /Skills/Detail`](/docs/agent-skills#post-skillsdetail).
 
-Both endpoints are **public — no authentication required.**
+Both endpoints are **public, so no authentication is required.**
 
 ```bash
 # Browse all integration skills
@@ -38,17 +38,17 @@ curl -X POST "https://api.wiro.ai/v1/Skills/List" \
 
 Pick the skill names you want to enable. Each skill descriptor tells you:
 
-- `name` — the canonical skill key you'll send in `skills` / `skillOverrides`
-- `category` — `int` (integration with a third-party service) or `util` (utility, no credential to connect)
-- `credential_key` — which credential the skill needs (`null` for `util` or platform-managed skills)
-- `requires_credentials` — boolean, whether the user must supply a credential before the skill can run
-- `depends_on` — array of skill names that must also be enabled (Wiro auto-enables transitive deps)
-- `conflicts_with` — array of skill names that cannot coexist with this one
-- `pricing` — the per-skill pricing recipe (`monthly_price_weight_usd`, `monthly_credits_weight`, `billing_model: "tokens"`)
+- `name`: the canonical skill key you'll send in `skills` / `skillOverrides`
+- `category`: `int` (integration with a third-party service) or `util` (utility, no credential to connect)
+- `credential_key`: which credential the skill needs (`null` for `util` or platform-managed skills)
+- `requires_credentials`: boolean, whether the user must supply a credential before the skill can run
+- `depends_on`: array of skill names that must also be enabled (Wiro auto-enables transitive deps)
+- `conflicts_with`: array of skill names that cannot coexist with this one
+- `pricing`: the per-skill pricing recipe (`monthly_price_weight_usd`, `monthly_credits_weight`, `billing_model: "tokens"`)
 
 > **Use [`POST /Skills/Capabilities`](/docs/agent-skills#post-skillscapabilities)** to discover the closed-set capability vocabulary (the high-level tasks skills can perform). Useful when you want to find every skill that can "post-content" or "send-email".
 
-## Step 1b — Discover Communication Channels
+## Step 1b: Discover Communication Channels
 
 The same `POST /Skills/List` response also includes a top-level `channels[]`
 catalog. Channel discovery is registry-driven and does not depend on which
@@ -93,9 +93,9 @@ separate enablement parameter: pass a complete channel group in Deploy's
 all `required_fields` are complete. Channels do not add skills or change agent
 pricing.
 
-## Step 2 — Live Pricing Preview
+## Step 2: Live Pricing Preview
 
-Before you commit, fetch the live tier price for the proposed skill set with [`POST /UserAgent/PricingPreview`](/docs/agent-overview#post-useragentpricingpreview) — the **draft** mode runs without touching any DB state.
+Before you commit, fetch the live tier price for the proposed skill set with [`POST /UserAgent/PricingPreview`](/docs/agent-overview#post-useragentpricingpreview). The **draft** mode runs without touching any DB state.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
@@ -149,13 +149,13 @@ Read the response:
 
 - `tiers.starter.priceUsd` and `tiers.pro.priceUsd` → what your wallet will be charged for each tier.
 - `tiers.starter.credits` and `tiers.pro.credits` → monthly credit allocation.
-- `tokenRates` → per-model token rates (credits per 1M input / output / cached-input tokens). Each conversation turn is metered against these — see [token billing](/docs/agent-overview#pricing-model--tiers-skills--token-billing).
+- `tokenRates` → per-model token rates (credits per 1M input / output / cached-input tokens). Each conversation turn is metered against these (see [token billing](/docs/agent-overview#pricing-model--tiers-skills--token-billing)).
 - `skillBreakdown[]` → per-skill contribution to the total. Use this to see which skill is the most expensive.
 - `enabledSkills` → final closure (includes any transitively-enabled `depends_on`).
 
-> **`agentBase`** is always `{ priceUsd: 0, credits: 0 }` — pricing is fully skill-driven and the field is kept on the response so callers don't have to null-check. The agent's Starter price = Σ(skill weights), bumped to the **`starterFloorUsd`** floor (**$4/month** by default) if the raw sum lands below it (credits scale up by the same ratio). Pro = Starter × `tiermultiplier` (default `10`). Per-turn conversation cost is metered separately against the agent's `tokenRates` — see [token billing](/docs/agent-overview#pricing-model--tiers-skills--token-billing).
+> **`agentBase`** is always `{ priceUsd: 0, credits: 0 }`: pricing is fully skill-driven and the field is kept on the response so callers don't have to null-check. The agent's Starter price = Σ(skill weights), bumped to the **`starterFloorUsd`** floor (**$4/month** by default) if the raw sum lands below it (credits scale up by the same ratio). Pro = Starter × `tiermultiplier` (default `10`). Per-turn conversation cost is metered separately against the agent's `tokenRates` (see [token billing](/docs/agent-overview#pricing-model--tiers-skills--token-billing)).
 
-## Step 3 — Deploy the Custom Agent
+## Step 3: Deploy the Custom Agent
 
 Send the same skill set you previewed to `POST /UserAgent/Deploy` with `custom: true` and `useprepaid: true`. The selected `tier` is debited immediately.
 
@@ -271,15 +271,15 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
 
 Notes on the response:
 
-- `agentguid: null` — confirms this is a custom build with no marketplace template.
-- `agent.custom: true` — the synthesized template placeholder. Same shape as a template's `agent` block but no `slug` / `cover` / `categories` (custom builds aren't in the marketplace).
+- `agentguid: null` confirms this is a custom build with no marketplace template.
+- `agent.custom: true` is the synthesized template placeholder. Same shape as a template's `agent` block but no `slug` / `cover` / `categories` (custom builds aren't in the marketplace).
 - `scheduledskills` already contains the cron from the Deploy body. Deploy stores `customskills` keys exactly as sent, so give each entry its full key: `cs-<slug>` for a strategy, `cs-cron-<slug>` for a scheduled task.
-- `status: 2` — Deploy auto-queued the instance because `useprepaid: true` provisioned a subscription in the same call. The daemon picks the row up from the queue; you do **not** need to call `POST /UserAgent/Start` after a prepaid deploy.
+- `status: 2` means Deploy auto-queued the instance because `useprepaid: true` provisioned a subscription in the same call. The daemon picks the row up from the queue; you do **not** need to call `POST /UserAgent/Start` after a prepaid deploy.
 - Communication-channel credentials are validated independently from `skills`. Every channel group present in `credentials` must contain all of its `required_fields` or Deploy fails without leaving a partial agent behind.
 
-## Step 4 — Refine Skills After Deploy
+## Step 4: Refine Skills After Deploy
 
-Toggle skills on/off after deploy with [`POST /UserAgent/SkillsApply`](/docs/agent-overview#post-useragentskillsapply) — even when you only want to flip a single skill, send it as a one-entry `skills` map. The endpoint charges the wallet once, triggers exactly one container restart, and rolls back atomically on payment failure. Template deploys accept the same call.
+Toggle skills on/off after deploy with [`POST /UserAgent/SkillsApply`](/docs/agent-overview#post-useragentskillsapply). Even when you only want to flip a single skill, send it as a one-entry `skills` map. The endpoint charges the wallet once, triggers exactly one container restart, and rolls back atomically on payment failure. Template deploys accept the same call.
 
 ### Single-skill enable
 
@@ -342,7 +342,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   }'
 ```
 
-`idempotencyKey` is required — use a UUID per "user clicks Save" event. A retry of the same key returns the cached response without re-running the saga.
+`idempotencyKey` is required: use a UUID per "user clicks Save" event. A retry of the same key returns the cached response without re-running the saga.
 
 ## Common Recipes
 
@@ -422,7 +422,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
 }
 ```
 
-OAuth providers are connected later via `POST /UserAgentOAuth/OAuthConnect` with the provider's `credentialkey` — see [Agent Credentials](/docs/agent-credentials).
+OAuth providers are connected later via `POST /UserAgentOAuth/OAuthConnect` with the provider's `credentialkey` (see [Agent Credentials](/docs/agent-credentials)).
 
 ## Subscription & Billing for Custom Builds
 
@@ -445,7 +445,7 @@ When you toggle a skill on or off, the active subscription is automatically pror
 
 ## What's Next
 
-- [Agent Skills](/docs/agent-skills) — Discover the skill registry, browse credentials per skill, and configure preferences + scheduled tasks
-- [Agent Credentials](/docs/agent-credentials) — Connect OAuth providers and set API-key credentials
-- [Agent Messaging](/docs/agent-messaging) — Chat with your custom agent
-- [Agent Transactions](/docs/agent-transactions) — Audit credit deductions, renewals, and grants
+- [Agent Skills](/docs/agent-skills): Discover the skill registry, browse credentials per skill, and configure preferences + scheduled tasks
+- [Agent Credentials](/docs/agent-credentials): Connect OAuth providers and set API-key credentials
+- [Agent Messaging](/docs/agent-messaging): Chat with your custom agent
+- [Agent Transactions](/docs/agent-transactions): Audit credit deductions, renewals, and grants

@@ -1,10 +1,10 @@
 # Agent Logs
 
-Per-instance activity feed — tool calls, scheduled cron runs, message exchanges, and turn boundaries — for any deployed agent.
+Per-instance activity feed (tool calls, scheduled cron runs, message exchanges, and turn boundaries) for any deployed agent.
 
 ## Overview
 
-Every Wiro agent appends one structured `ActivityEvent` JSON line per tool call, LLM turn boundary, scheduled task run and billed turn, plus each message that arrives on a connected Telegram, Slack or Discord channel. Secrets (matched by field name and by high-entropy value), internal tool-call IDs and API credentials are redacted before an event is written — so what shows up in `Logs` is safe to show end users.
+Every Wiro agent appends one structured `ActivityEvent` JSON line per tool call, LLM turn boundary, scheduled task run and billed turn, plus each message that arrives on a connected Telegram, Slack or Discord channel. Secrets (matched by field name and by high-entropy value), internal tool-call IDs and API credentials are redacted before an event is written, so what shows up in `Logs` is safe to show end users.
 
 A daily JSONL file is written for each calendar day; files older than 7 days are gzipped, files older than 180 days are deleted by the agent's daily maintenance cron.
 
@@ -52,22 +52,22 @@ Every event is a JSON object with this base shape:
 | Field | Type | Description |
 |-------|------|-------------|
 | `ts` | `string` | ISO-8601 UTC datetime when the event was recorded (e.g. `"2026-05-03T14:00:10.234Z"`). Parse with `Date.parse(ts)` for arithmetic. |
-| `kind` | `string` | Fine-grained event class. One of: `"turn_started"`, `"turn_ended"` (an LLM turn boundary); `"tool_started"`, `"tool_completed"` (one pair per tool call); `"tool_blocked"` (a tool call the agent's safety rules refused); `"cron_finished"` (a scheduled task finished); `"user_message"` (a message received on a connected Telegram, Slack or Discord channel — web chat messages are not logged here); `"token_usage"` (a billed turn's token usage — chat / cron / voice post-call); `"token_usage_idempotent"` (a replayed usage report, already billed — informational); `"media_relay"` (files from a reply were delivered); `"background_reply"` (a result that finished in the background was delivered to the chat). |
+| `kind` | `string` | Fine-grained event class. One of: `"turn_started"`, `"turn_ended"` (an LLM turn boundary); `"tool_started"`, `"tool_completed"` (one pair per tool call); `"tool_blocked"` (a tool call the agent's safety rules refused); `"cron_finished"` (a scheduled task finished); `"user_message"` (a message received on a connected Telegram, Slack or Discord channel, not web chat); `"token_usage"` (a billed turn's token usage: chat / cron / voice post-call); `"token_usage_idempotent"` (a replayed usage report, already billed, informational only); `"media_relay"` (files from a reply were delivered); `"background_reply"` (a result that finished in the background was delivered to the chat). |
 | `tool` | `string?` | Present on `tool_started` / `tool_completed` / `tool_blocked`. The tool's name, e.g. `"exec"`, `"read"`, `"write"`, `"edit"`, `"web_fetch"`, `"browser"`, `"image"`, `"sessions_spawn"`, `"message"`. |
 | `title` | `string` | Human-readable one-line description of what happened (e.g. `"Posted carousel: \"Brand voice teaser\""`, `"Fetched https://…"`, `"Token Usage"`). Always present. |
-| `summary` | `object?` | Structured event-specific payload. Opaque on the wire — render as JSON when expanding the row. Secret values (`apikey`, `apppassword`, `clientsecret`, `bearer`, `token`, …) are masked before the event is written. Common keys: `file`, `method`, `host`, `path`, `preview`, `messageCount`, `jobId`, `status`, `reason`. |
+| `summary` | `object?` | Structured event-specific payload. Opaque on the wire, so render it as JSON when expanding the row. Secret values (`apikey`, `apppassword`, `clientsecret`, `bearer`, `token`, …) are masked before the event is written. Common keys: `file`, `method`, `host`, `path`, `preview`, `messageCount`, `jobId`, `status`, `reason`. |
 | `durationMs` | `number?` | Wall-clock duration in milliseconds. Populated on `tool_completed`, `turn_ended`, `cron_finished` and `token_usage` events. |
 | `ok` | `boolean?` | `true` for a successful completion, `false` for a failure. Populated on `tool_completed`, `turn_ended` and `cron_finished` events, and always `false` on `tool_blocked`. Pair with `error` for failure rows. |
 | `error` | `string?` | One-line failure message (when `ok: false`). |
 | `cost` | `object?` | Legacy per-action credit charge, `{ credits, skill, action }`. Only events recorded before agents switched to per-turn token billing can carry it; current events never do. See the `token_usage` event for what a turn cost. |
-| `userUuid` | `string?` | UUID of the actor who triggered the event. `"system"` for cron / internal events. May be missing on legacy rows from the 180-day retention window pre-attribution rollout — the server falls back to the useragent owner. |
+| `userUuid` | `string?` | UUID of the actor who triggered the event. `"system"` for cron / internal events. May be missing on legacy rows from the 180-day retention window pre-attribution rollout, in which case the server falls back to the useragent owner. |
 | `user` | `object\|null` | Resolved actor: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. `null` when `userUuid` is `"system"` (automation / cron) or when the user record was deleted. |
 
-> **What is `summary` for?** Tool events carry a short summary of the call — for example the file path for file tools, the program for `exec`, or the method, host and path for web requests. Turn events carry a short `preview` (plus `messageCount` on `turn_ended`); `cron_finished` carries `{ jobId, status }`; `user_message` carries `{ preview }`; `tool_blocked` carries the `reason`. Treat the object as opaque and render-on-expand — its shape depends on the tool and may change without a docs revision.
+> **What is `summary` for?** Tool events carry a short summary of the call: for example the file path for file tools, the program for `exec`, or the method, host and path for web requests. Turn events carry a short `preview` (plus `messageCount` on `turn_ended`); `cron_finished` carries `{ jobId, status }`; `user_message` carries `{ preview }`; `tool_blocked` carries the `reason`. Treat the object as opaque and render-on-expand, since its shape depends on the tool and may change without a docs revision.
 
 ### Token-usage events
 
-A `token_usage` event records the token spend and credit deduction for one billed turn — a chat reply, a cron run, or a voice post-call. A `token_usage_idempotent` event carries the **same shape** for a replayed usage callback that was already billed (informational; it does not deduct again). On top of the base `ActivityEvent` fields, these events add:
+A `token_usage` event records the token spend and credit deduction for one billed turn: a chat reply, a cron run, or a voice post-call. A `token_usage_idempotent` event carries the **same shape** for a replayed usage callback that was already billed (informational; it does not deduct again). On top of the base `ActivityEvent` fields, these events add:
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -211,14 +211,14 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Logs" \
 > **About the `user` field.** Every event is decorated with the resolved actor: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`.
 >
 > - An event with a user's `userUuid` carries that user's profile, or `null` when the user record was deleted.
-> - An event triggered by **automation** has `userUuid: "system"` and `user: null` — cron runs, the token usage of scheduled turns, and similar non-interactive writes (the system rows above).
+> - An event triggered by **automation** has `userUuid: "system"` and `user: null`. That covers cron runs, the token usage of scheduled turns, and similar non-interactive writes (the system rows above).
 > - An event without a `userUuid` (an incoming channel message, or a row older than user attribution) carries the agent owner's profile, so the row never shows an empty placeholder.
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `date` | `string\|null` | The actual date the events were read from (`YYYY-MM-DD`). |
 | `totalLines` | `number` | Total lines in the file (regardless of `lines` cap). |
-| `events` | `array<ActivityEvent>` | Newest first (descending by `ts`) — `events[0]` is the most recent event; do not re-reverse. |
+| `events` | `array<ActivityEvent>` | Newest first (descending by `ts`): `events[0]` is the most recent event; do not re-reverse. |
 
 ## **POST** /UserAgent/LogsList
 
@@ -297,13 +297,13 @@ Reads the **full** JSONL file for a specific date and returns every event in it.
 }
 ```
 
-Events are returned **newest first** (descending by `ts`), same as the live tail — `events[0]` is the most recent; do not re-reverse. The `user` field follows the same resolution rules as the live tail above — see the `Logs` section's "About the `user` field" callout.
+Events are returned **newest first** (descending by `ts`), same as the live tail, so `events[0]` is the most recent; do not re-reverse. The `user` field follows the same resolution rules as the live tail above (see the `Logs` section's "About the `user` field" callout).
 
 > **`truncated`** is `true` when the day's file is larger than 10 MiB. Only its newest 10 MiB of events are returned; older events of that day are not retrievable through this endpoint.
 
 ## **POST** /UserAgent/LogsDelete
 
-Deletes one date's activity file and its gzipped sibling (if present). Idempotent — deleting an already-gone date is a success no-op.
+Deletes one date's activity file and its gzipped sibling (if present). Idempotent: deleting an already-gone date is a success no-op.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -327,7 +327,7 @@ Deletes one date's activity file and its gzipped sibling (if present). Idempoten
 
 ### Live polling for an in-app activity feed
 
-Polling `Logs` every 30 seconds is the recommended cadence — the server-side cache TTL is calibrated for exactly this interval, so faster polling won't return fresher data:
+Polling `Logs` every 30 seconds is the recommended cadence. The server-side cache TTL is calibrated for exactly this interval, so faster polling won't return fresher data:
 
 ```javascript
 async function pollActivity(useragentguid, onEvents) {
@@ -368,7 +368,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/LogsFile" \
 
 ### Filtering server-side by `kind`
 
-The endpoints don't support server-side filtering — apply filters client-side:
+The endpoints don't support server-side filtering, so apply filters client-side:
 
 ```python
 import requests
@@ -405,22 +405,22 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/LogsDelete" \
 | `date is required` | `LogsFile` / `LogsDelete` without `date` |
 | `useragent-access-denied` | Caller is neither the owner nor on the agent's team |
 | `useragent-team-admin-required` | Caller is a member of the agent's team but not a team admin (code `97`) |
-| `Agent is not assigned to a worker. It may not be running.` | The agent isn't running on a host yet (never started, or being moved) — start it and retry |
-| `Worker not found` | The agent's host is not available right now — retry later |
-| `Agent is temporarily unavailable. Please try again shortly.` | The agent's host did not answer (offline, network blip) — retry |
+| `Agent is not assigned to a worker. It may not be running.` | The agent isn't running on a host yet (never started, or being moved). Start it and retry |
+| `Worker not found` | The agent's host is not available right now. Retry later |
+| `Agent is temporarily unavailable. Please try again shortly.` | The agent's host did not answer (offline, network blip). Retry |
 
 ## Retention & Rotation
 
 | Period | What happens |
 |--------|--------------|
-| Day 0 — 6 | File is plain JSONL (`YYYY-MM-DD.jsonl`). Live tail + LogsFile read it directly. |
-| Day 7 — 180 | File is gzipped (`YYYY-MM-DD.jsonl.gz`). Reads are transparently decompressed; size in `LogsList` reports the on-disk compressed bytes. |
+| Day 0-6 | File is plain JSONL (`YYYY-MM-DD.jsonl`). Live tail + LogsFile read it directly. |
+| Day 7-180 | File is gzipped (`YYYY-MM-DD.jsonl.gz`). Reads are transparently decompressed; size in `LogsList` reports the on-disk compressed bytes. |
 | Day 181+ | File is deleted by the agent's daily maintenance cron. `LogsList` no longer surfaces the date. |
 
 > **Persistence is per-agent.** If Wiro re-allocates the agent's runtime (rare; happens during platform maintenance), the activity history starts fresh from that point. For long-term audit trails, schedule a daily `LogsFile` download to your own storage.
 
 ## What's Next
 
-- [Agent Transactions](/docs/agent-transactions) — Credit ledger for the same useragent — the audit trail of every credit movement
-- [Agent Messaging](/docs/agent-messaging) — User-facing message exchanges (with full prompts and responses)
-- [Agent Overview](/docs/agent-overview) — Full agent endpoint catalog
+- [Agent Transactions](/docs/agent-transactions): Credit ledger for the same useragent, the audit trail of every credit movement
+- [Agent Messaging](/docs/agent-messaging): User-facing message exchanges (with full prompts and responses)
+- [Agent Overview](/docs/agent-overview): Full agent endpoint catalog

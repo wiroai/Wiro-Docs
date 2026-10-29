@@ -1,10 +1,10 @@
 # Agent Transactions
 
-Per-instance credit ledger — every credit deduction, renewal, purchase, refund, grant, and cancel for a useragent in a single immutable feed.
+Per-instance credit ledger: every credit deduction, renewal, purchase, refund, grant, and cancel for a useragent in a single immutable feed.
 
 ## Overview
 
-Wiro keeps a complete, append-only **agent transaction ledger** for every UserAgent instance. Whenever credits move — the agent runtime burns them on a chat turn, a subscription renews, a Pro user buys an extra-credit pack, the user disables a paid skill mid-period and gets a refund — a row is inserted into the ledger and surfaced through `POST /UserAgent/TransactionList`.
+Wiro keeps a complete, append-only **agent transaction ledger** for every UserAgent instance. Whenever credits move (the agent runtime burns them on a chat turn, a subscription renews, a Pro user buys an extra-credit pack, the user disables a paid skill mid-period and gets a refund), a row is inserted into the ledger and surfaced through `POST /UserAgent/TransactionList`.
 
 The ledger is the single source of truth for "where did my credits go?" and powers the **Transactions** view in your dashboard.
 
@@ -199,7 +199,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 }
 ```
 
-> The `user` object is the resolved actor that triggered the ledger entry — `uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`. Every row is recorded for an account `uuid` — renewals, expiry sweeps and other automated rows carry the agent owner's — so `user` is `null` only when that user record has been deleted.
+> The `user` object is the resolved actor that triggered the ledger entry: `uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`. Every row is recorded for an account `uuid` (renewals, expiry sweeps and other automated rows carry the agent owner's), so `user` is `null` only when that user record has been deleted.
 
 **Summary fields** (snapshot of the useragent row):
 
@@ -219,9 +219,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 | Field | Type | Description |
 |-------|------|-------------|
 | `guid` | `string` | Stable id of the ledger row. Daemon retries reuse this guid for idempotency. |
-| `type` | `string` | One of `"deduct"`, `"renewal"`, `"purchase"`, `"grant"`, `"expired"`, `"refund"`. There is no `"cancel"` type — a user-initiated subscription cancel only flips auto-renew off; credits are not forfeited until `currentperiodend` is reached, at which point the cron writes the ledger row as `type: "expired"`, `action: "subscription"`. |
-| `action` | `string\|null` | Fine-grained detail. Values depend on `type`: `"tokens"` (deduct — the per-turn LLM token charge the runtime writes for every chat, cron, and voice post-call turn); `"monthly"` (renewal); `"small"`, `"medium"`, `"large"` (purchase); `"skill-toggle"`, `"skills-apply"`, `"upgrade"`, `"tier-change"` (grant); `"skill-toggle"` (expired, mid-period skill disable); `"subscription"` (expired, end-of-period cancel rollover; refund). Legacy deduct rows may also carry `"message"`, `"create"`, `"modify"`, or `"regenerate"`. |
-| `amount` | `number` | Signed credit delta — negative for deductions, positive for grants. |
+| `type` | `string` | One of `"deduct"`, `"renewal"`, `"purchase"`, `"grant"`, `"expired"`, `"refund"`. There is no `"cancel"` type: a user-initiated subscription cancel only flips auto-renew off; credits are not forfeited until `currentperiodend` is reached, at which point the cron writes the ledger row as `type: "expired"`, `action: "subscription"`. |
+| `action` | `string\|null` | Fine-grained detail. Values depend on `type`: `"tokens"` (deduct: the per-turn LLM token charge the runtime writes for every chat, cron, and voice post-call turn); `"monthly"` (renewal); `"small"`, `"medium"`, `"large"` (purchase); `"skill-toggle"`, `"skills-apply"`, `"upgrade"`, `"tier-change"` (grant); `"skill-toggle"` (expired, mid-period skill disable); `"subscription"` (expired, end-of-period cancel rollover; refund). Legacy deduct rows may also carry `"message"`, `"create"`, `"modify"`, or `"regenerate"`. |
+| `amount` | `number` | Signed credit delta: negative for deductions, positive for grants. |
 | `balanceafter` | `number\|null` | Remaining credit balance snapshot written at the time of the event. `null` on per-turn `deduct` rows. |
 | `description` | `string\|null` | Human-readable label. |
 | `sessionkey` | `string\|null` | Session the deduct belongs to (deduct rows only). |
@@ -244,7 +244,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 
 > **Pagination.** The endpoint returns `total` so you can render a precise paginator. Default page size is 50, max is 500. Use `start` to skip rows.
 
-## Reading the Ledger — Patterns
+## Reading the Ledger: Patterns
 
 ### Daily / weekly reports
 
@@ -295,7 +295,7 @@ When the user upgrades Starter → Pro mid-period, the ledger gets one `grant` r
 | `useragent-access-denied` | Caller is neither the owner nor on the agent's team |
 | `useragent-team-admin-required` | Caller is a member of the agent's team but not a team admin (code `97`) |
 | `Invalid credentials` | API key is missing or doesn't resolve to a valid Wiro user |
-| `transactions-list-failed` | `TransactionList` server-side error (DB) — surfaced loudly so it's distinguishable from "empty ledger" |
+| `transactions-list-failed` | `TransactionList` server-side error (DB): surfaced loudly so it's distinguishable from "empty ledger" |
 
 ## Code Examples
 
@@ -385,6 +385,6 @@ foreach (array_slice($resp['transactions'], 0, 10) as $tx) {
 
 ## What's Next
 
-- [Agent Logs](/docs/agent-logs) — Activity feed (tool calls, cron runs, message exchanges) for the same useragent
-- [Agent Overview](/docs/agent-overview) — Full agent endpoint catalog, including subscription / billing operations
-- [Agent Builder](/docs/agent-builder) — Build a custom agent and watch the ledger fill up as it runs
+- [Agent Logs](/docs/agent-logs): Activity feed (tool calls, cron runs, message exchanges) for the same useragent
+- [Agent Overview](/docs/agent-overview): Full agent endpoint catalog, including subscription / billing operations
+- [Agent Builder](/docs/agent-builder): Build a custom agent and watch the ledger fill up as it runs

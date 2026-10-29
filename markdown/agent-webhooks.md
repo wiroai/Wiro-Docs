@@ -4,7 +4,7 @@ Receive agent response notifications via HTTP callbacks.
 
 ## How It Works
 
-When you send a message to an agent via `POST /UserAgent/Message/Send`, include a `callbackurl` parameter. Once the agent finishes processing on the bridge, Wiro sends a POST request to your URL with the result. Callbacks fire on `agent_end` (success), `agent_error` (failure during processing), and `agent_cancel` **only when the abort hits the bridge mid-flight**. Messages cancelled while still queued (status `agent_queue`, before the bridge picks them up) are marked `agent_cancel` in the database but **do not fire a webhook** — there was no processing attempt to report on. See the "When the cancel webhook fires" note below for the full decision table.
+When you send a message to an agent via `POST /UserAgent/Message/Send`, include a `callbackurl` parameter. Once the agent finishes processing on the bridge, Wiro sends a POST request to your URL with the result. Callbacks fire on `agent_end` (success), `agent_error` (failure during processing), and `agent_cancel` **only when the abort hits the bridge mid-flight**. Messages cancelled while still queued (status `agent_queue`, before the bridge picks them up) are marked `agent_cancel` in the database but **do not fire a webhook**, because there was no processing attempt to report on. See the "When the cancel webhook fires" note below for the full decision table.
 
 This lets you build fully asynchronous workflows: fire a message and let your backend handle the response whenever it arrives, without polling or maintaining a WebSocket connection.
 
@@ -81,9 +81,9 @@ When the agent finishes, Wiro sends a **POST** request to your `callbackurl` wit
 }
 ```
 
-> The `response` and `debugoutput` fields contain the raw abort reason from the runtime — typically `"AbortError"` or a short technical string. Do not rely on a specific fixed user-facing message; use `status === "agent_cancel"` as the signal.
+> The `response` and `debugoutput` fields contain the raw abort reason from the runtime, typically `"AbortError"` or a short technical string. Do not rely on a specific fixed user-facing message; use `status === "agent_cancel"` as the signal.
 
-> **When the cancel webhook fires:** `agent_cancel` is delivered **only when the agent bridge catches an `AbortError`** during active processing — i.e. the message had already started on the agent side and was aborted mid-flight (via `POST /UserAgent/Message/Cancel` or an upstream timeout). For messages cancelled **before** they reach the bridge (still queued, or an instant `Message/Cancel` that beats dispatching), the message is marked `agent_cancel` in the database and returned as such in `POST /UserAgent/Message/Detail`, but **no webhook is fired** — there was no processing attempt to report on. Use `POST /UserAgent/Message/Detail` (checking `status === "agent_cancel"`) as the canonical source of truth for cancellation; WebSocket subscribers receive the `agent_cancel` event only on active-processing aborts (same condition as the webhook). Treat the webhook as a best-effort "processing was interrupted" signal.
+> **When the cancel webhook fires:** `agent_cancel` is delivered **only when the agent bridge catches an `AbortError`** during active processing, i.e. the message had already started on the agent side and was aborted mid-flight (via `POST /UserAgent/Message/Cancel` or an upstream timeout). For messages cancelled **before** they reach the bridge (still queued, or an instant `Message/Cancel` that beats dispatching), the message is marked `agent_cancel` in the database and returned as such in `POST /UserAgent/Message/Detail`, but **no webhook is fired**, because there was no processing attempt to report on. Use `POST /UserAgent/Message/Detail` (checking `status === "agent_cancel"`) as the canonical source of truth for cancellation; WebSocket subscribers receive the `agent_cancel` event only on active-processing aborts (same condition as the webhook). Treat the webhook as a best-effort "processing was interrupted" signal.
 
 ### Field Reference
 
@@ -93,7 +93,7 @@ When the agent finishes, Wiro sends a **POST** request to your `callbackurl` wit
 | `status` | string | Final status: `agent_end`, `agent_error`, or `agent_cancel`. |
 | `content` | string | The original user message you sent. |
 | `response` | string | The agent's full response text on success. For errors, contains the error message. For cancellation, contains the abort reason. |
-| `debugoutput` | string | Same as `response` — the full accumulated output text. Included for consistency with the polling API. |
+| `debugoutput` | string | Same as `response`: the full accumulated output text. Included for consistency with the polling API. |
 | `metadata` | object | Structured answer data, performance metrics, and raw text. Timeline blocks are not embedded in webhooks. Empty object (`{}`) for error and cancel statuses. |
 | `endedat` | number | Unix timestamp (UTC seconds) when processing finished. |
 
@@ -106,9 +106,9 @@ On successful completion (`agent_end`), the `metadata` object contains the struc
 | `type` | string | Always `"progressGenerate"`. |
 | `task` | string | Always `"Generate"`. |
 | `raw` | string | The complete response text. |
-| `answer` | array | Array of response segments — the content to show the user. |
+| `answer` | array | Array of response segments: the content to show the user. |
 | `speed` | string | Final generation speed (e.g. `"14.2"`). |
-| `speedType` | string | Speed unit — `"words/s"`. |
+| `speedType` | string | Speed unit: `"words/s"`. |
 | `elapsedTime` | string | Total generation time (e.g. `"8.1s"`). |
 | `tokenCount` | number | Number of answer chunks received by the bridge. Use the message's billing columns for authoritative model tokens. |
 | `wordCount` | number | Total words in the response. |
@@ -141,7 +141,7 @@ The message result is always persisted in the database regardless of webhook del
 
 ## Security Considerations
 
-- Webhook calls do not include authentication headers — verify incoming requests by checking the `messageguid` against your own records
+- Webhook calls do not include authentication headers: verify incoming requests by checking the `messageguid` against your own records
 - Always use **HTTPS** endpoints in production
 - Use a public address. Wiro doesn't call a `callbackurl` whose host is, or resolves to, a private, loopback or link-local address; that message gets no webhook, and its result stays readable with `Message/Detail`
 - Validate the payload structure before processing
@@ -149,7 +149,7 @@ The message result is always persisted in the database regardless of webhook del
 
 ## Code Examples
 
-### Webhook Receiver — Node.js (Express)
+### Webhook Receiver: Node.js (Express)
 
 ```javascript
 const express = require('express');
@@ -174,7 +174,7 @@ app.post('/webhooks/agent-response', (req, res) => {
 app.listen(3000);
 ```
 
-### Webhook Receiver — Python (Flask)
+### Webhook Receiver: Python (Flask)
 
 ```python
 from flask import Flask, request, jsonify
@@ -202,7 +202,7 @@ if __name__ == '__main__':
     app.run(port=3000)
 ```
 
-### Webhook Receiver — PHP
+### Webhook Receiver: PHP
 
 ```php
 <?php
@@ -225,7 +225,7 @@ http_response_code(200);
 echo json_encode(['ok' => true]);
 ```
 
-### Sending a Message with Callback — curl
+### Sending a Message with Callback: curl
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \

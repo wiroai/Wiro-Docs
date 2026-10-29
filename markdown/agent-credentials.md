@@ -4,12 +4,12 @@ Configure third-party service connections for your agent instances. Browse the p
 
 ## Overview
 
-Wiro agents connect to external services — social platforms, ad networks,
-email tools, CRMs — through three credential methods:
+Wiro agents connect to external services (social platforms, ad networks,
+email tools, CRMs) through three credential methods:
 
-1. **API Key credentials** — set directly via `POST /UserAgent/CredentialUpsert` (bulk field upsert per provider).
-2. **OAuth credentials** — redirect-based authorization via `POST /UserAgentOAuth/OAuthConnect`, where Wiro handles token exchange server-side.
-3. **Hybrid direct credentials** — save a machine credential, call
+1. **API Key credentials**: set directly via `POST /UserAgent/CredentialUpsert` (bulk field upsert per provider).
+2. **OAuth credentials**: redirect-based authorization via `POST /UserAgentOAuth/OAuthConnect`, where Wiro handles token exchange server-side.
+3. **Hybrid direct credentials**: save a machine credential, call
    `OAuthConnect` for server-side validation/discovery, then finalize any
    account picker without exposing provider tokens to the browser.
 
@@ -113,7 +113,7 @@ Completing the required fields again reactivates it automatically.
 
 ## Credential Registry Endpoints
 
-These endpoints are **public — no authentication required**. They return data straight from the credential registry — useful when you want to render a "Connect this provider" form without a deployed useragent (e.g. inside an onboarding wizard).
+These endpoints are **public, so no authentication is required**. They return data straight from the credential registry, which is useful when you want to render a "Connect this provider" form without a deployed useragent (e.g. inside an onboarding wizard).
 
 ### **POST** /Credentials/List
 
@@ -122,7 +122,7 @@ Lists all credentials in the registry.
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `credential_mode` | string | No | Filter by mode: `"oauth"`, `"sa"` (service account), `"api_key"`, `"multi_api_key"`, `"hybrid"` (OAuth plus a direct/API-key mode), `"imap_credentials"`, `"jwt_sa"`, `"rule_only"`. |
-| `wiro_connect_pending` | boolean | No | Filter by the "Wiro mode coming soon" flag — credentials whose Wiro-shared OAuth client is still awaiting provider review (currently `facebook-pages`, `instagram`, `google-ads`, `google-merchant-center`, `youtube`, `ga4`, `linkedin`, `tiktok`, and `meta-ads`). Facebook Pages, Instagram, and Meta Ads remain usable through their ready customer-owned System User and/or OAuth alternatives. |
+| `wiro_connect_pending` | boolean | No | Filter by the "Wiro mode coming soon" flag: credentials whose Wiro-shared OAuth client is still awaiting provider review (currently `facebook-pages`, `instagram`, `google-ads`, `google-merchant-center`, `youtube`, `ga4`, `linkedin`, `tiktok`, and `meta-ads`). Facebook Pages, Instagram, and Meta Ads remain usable through their ready customer-owned System User and/or OAuth alternatives. |
 
 ##### Response
 
@@ -239,16 +239,16 @@ Lists all credentials in the registry.
 | `key` | `string` | Canonical credential key. Use this in `CredentialUpsert.fields[].credentialkey`. |
 | `title` | `string` | Display label shown on credential cards. |
 | `icon` | `string` | Path or URL to the brand icon (relative paths absolutized server-side). |
-| `brand_color` / `brand_text_color` / `brand_logo_filter` | `string\|null` | Brand colours and CSS filter for icon rendering — same shape as on skill registry entries. |
+| `brand_color` / `brand_text_color` / `brand_logo_filter` | `string\|null` | Brand colours and CSS filter for icon rendering, the same shape as on skill registry entries. |
 | `docs_url` | `string\|null` | Slug of the integration page on this docs site. Frontends prefix with `/docs/`. |
 | `credential_mode` | `string` | One of `"oauth"`, `"sa"` (service account), `"api_key"`, `"multi_api_key"`, `"hybrid"` (OAuth plus a direct/API-key mode), `"imap_credentials"`, `"jwt_sa"`, `"rule_only"`. |
-| `connection_modes` | `array<string>` | The auth modes the credential supports — for example `["wiro", "own"]` for OAuth, `["api_key"]` for API-key credentials, `["sa"]` for service accounts, or `["api_key", "own", "wiro"]` for the Meta hybrids. Drives the auth-method picker in the panel. |
+| `connection_modes` | `array<string>` | The auth modes the credential supports: for example `["wiro", "own"]` for OAuth, `["api_key"]` for API-key credentials, `["sa"]` for service accounts, or `["api_key", "own", "wiro"]` for the Meta hybrids. Drives the auth-method picker in the panel. |
 | `default_connection_mode` | `string\|null` | Registry-recommended mode selected for a new, disconnected credential. Facebook Pages, Instagram, and Meta Ads default to `"api_key"` System User mode. |
 | `mode_badges` | `object` | Optional labels shown beside auth modes, such as `{ "api_key": "Recommended", "own": "Advanced" }`. |
 | `wiro_connect_pending` | `boolean` | When `true`, Wiro's shared OAuth client is awaiting provider review. Currently set on 9 credentials: `facebook-pages`, `instagram`, `google-ads`, `google-merchant-center`, `youtube`, `ga4`, `linkedin`, `tiktok`, and `meta-ads`. Ready alternative modes remain usable; Facebook Pages, Instagram, and Meta Ads expose customer-owned System User and/or OAuth paths. The flag does not strip or hide schema fields. |
-| `credential_schema` | `array<field>` | Per-field schema describing the credential form. Each entry is a `field` object — see below. |
+| `credential_schema` | `array<field>` | Per-field schema describing the credential form. Each entry is a `field` object (see below). |
 | `oauth_provider` | `object\|null` | OAuth wiring (endpoints, button styling, picker config) when `credential_mode` includes OAuth. `null` for non-OAuth credentials. See below. |
-| `used_by_skills` | `array<string>` | Skill names that consume this credential — useful for "which skills will this connection enable?" hints. |
+| `used_by_skills` | `array<string>` | Skill names that consume this credential, useful for "which skills will this connection enable?" hints. |
 
 **`credential_schema[]` field object:**
 
@@ -261,10 +261,10 @@ Lists all credentials in the registry.
 | `placeholder` | `string?` | Placeholder text for the input. |
 | `pattern` | `string?` | Regex the value must satisfy. |
 | `maxlength` / `minlength` | `number?` | Length constraints. |
-| `options` | `array?` | For `type: "select"` — `[{ label, value }]` choices. |
+| `options` | `array?` | For `type: "select"`, `[{ label, value }]` choices. |
 | `default` | `string?` | Default value applied when the user hasn't set anything yet. |
 | `help` | `string?` | HTML help text rendered under the input. |
-| `show_toggle` | `boolean?` | For `type: "password"` — render a "show / hide" toggle. |
+| `show_toggle` | `boolean?` | For `type: "password"`, render a "show / hide" toggle. |
 | `oauth_managed` | `boolean?` | `true` for OAuth app keys (`clientid` / `clientsecret`, `appid` / `appsecret`, …). You supply them in the modes listed in `only_in_modes` (`own`; Shopify also `api_key`); they are stored as `oauth_app` and left out of Detail responses. |
 | `auto_filled_by_oauth` | `boolean?` | `true` when the provider connection flow writes the value (e.g. `igusername` from OAuth or direct discovery). |
 | `server_managed` | `boolean?` | `true` when a picker endpoint writes the value (e.g. Meta Ads `pagemappings`). `CredentialUpsert` rejects writes to it, as it does for `auto_filled_by_oauth` fields. |
@@ -272,14 +272,14 @@ Lists all credentials in the registry.
 | `only_in_modes` | `array<string>?` | When set (e.g. `["own"]`), the field only appears in the listed `authmethod` mode. |
 | `runtime_excluded` | `boolean?` | `true` when a setup secret is used only by Wiro's server and must never enter the agent runtime. Meta System User tokens use this flag. |
 | `platform_managed` | `boolean?` | `true` when Wiro fills the value server-side (you can't supply it). Every `sys-openai` field is `platform_managed`, which hides the whole credential from `UserAgent/Detail`. Reddit's three approval flags are `platform_managed` too. `CredentialUpsert` rejects writes to these fields with `<Field label> is managed by Wiro`, and Deploy drops them. |
-| `item_schema` / `item_type` | `object?` | For array-of-object fields — describes the per-entry shape (e.g. `apple-appstore.apps[].{appname, appid}`). |
+| `item_schema` / `item_type` | `object?` | For array-of-object fields: describes the per-entry shape (e.g. `apple-appstore.apps[].{appname, appid}`). |
 
 **`oauth_provider` object** (present when `credential_mode` includes OAuth):
 
 | Sub-field | Type | Description |
 |-----------|------|-------------|
 | `auth_method_value` | `string` | The provider's default OAuth `authmethod` value. It is `"wiro"` only for credentials that offer a Wiro-managed app; customer-owned-only providers use `"own"`. |
-| `connect_endpoint` / `disconnect_endpoint` / `status_endpoint` | `string` | The OAuth endpoints under `/UserAgentOAuth/...` that drive the connect / disconnect / status flow for this provider. Today every OAuth credential resolves to the unified `/UserAgentOAuth/OAuthConnect`, `/UserAgentOAuth/OAuthDisconnect`, `/UserAgentOAuth/OAuthStatus` endpoints — the field is kept on the schema for forward-compat with future per-provider overrides. |
+| `connect_endpoint` / `disconnect_endpoint` / `status_endpoint` | `string` | The OAuth endpoints under `/UserAgentOAuth/...` that drive the connect / disconnect / status flow for this provider. Today every OAuth credential resolves to the unified `/UserAgentOAuth/OAuthConnect`, `/UserAgentOAuth/OAuthDisconnect`, `/UserAgentOAuth/OAuthStatus` endpoints. The field is kept on the schema for forward-compat with future per-provider overrides. |
 | `connect_button_label` / `connect_button_icon` / `connect_button_brand_color` / `connect_button_text_color` / `connect_button_logo_filter` | `string` | Branding for the "Connect with X" button. |
 | `username_field` | `string` | The credential field that holds the connected account name (e.g. `"igusername"`, `"channelname"`). |
 | `return_query_param` / `return_error_param` / `return_error_detail_param` | `string` | URL params Wiro appends to the `redirectURL` when the OAuth flow completes (success / error / detail). |
@@ -287,15 +287,15 @@ Lists all credentials in the registry.
 | `direct_probe` | `object\|null` | Registry contract for a non-redirect mode: identifies the mode and write-only token field, validates it server-side, discovers selectable accounts, and declares which public account fields may be returned. |
 | `extra_step` | `object\|null` | Reserved for providers with a third onboarding step beyond OAuth + picker (currently null for every provider). |
 
-**`fieldstatus` values** — note: this is **not** part of the registry schema; it's the classification the server stamps onto each stored credential field when it's written. It controls who can see the value:
+**`fieldstatus` values**. Note: this is **not** part of the registry schema; it's the classification the server stamps onto each stored credential field when it's written. It controls who can see the value:
 
 | Value | Who writes it | Visible to API caller? |
 |-------|---------------|------------------------|
 | `user` | API callers + UI users | Yes |
-| `oauth_app` | API callers + UI users (own mode; Shopify also `api_key`) | **Partly** — stripped from Detail responses. In history, secret fields such as `clientsecret` / `appsecret` are redacted to `[REDACTED]`; `clientid` / `appid` are not redacted |
-| `oauth_session` | OAuth callback (server-only) | **No** — always stripped from responses |
+| `oauth_app` | API callers + UI users (own mode; Shopify also `api_key`) | **Partly**: stripped from Detail responses. In history, secret fields such as `clientsecret` / `appsecret` are redacted to `[REDACTED]`; `clientid` / `appid` are not redacted |
+| `oauth_session` | OAuth callback (server-only) | **No**: always stripped from responses |
 | `oauth_picker` | OAuth callback / `Set*` picker endpoints | Yes |
-| `platform` | Wiro internal | **No** — always stripped from responses |
+| `platform` | Wiro internal | **No**: always stripped from responses |
 | `computed` | Server-derived | Yes |
 | `control` | API callers, UI users and the connection flow (the `authmethod` switch) | Yes |
 
@@ -309,7 +309,7 @@ Returns a single credential entry by key.
 
 ##### Response
 
-Returns the **same full credential entry** as a row from `Credentials/List` — every field listed in the table above is present. Example for `key: "instagram"`:
+Returns the **same full credential entry** as a row from `Credentials/List`: every field listed in the table above is present. Example for `key: "instagram"`:
 
 ```json
 {
@@ -441,7 +441,7 @@ Returns `{ "result": false, "errors": [{ "code": 404, "message": "Credential not
 | HubSpot | Wiro + Own | [HubSpot Skills](/docs/integration-hubspot-skills) |
 | Mailchimp | Wiro + Own + API Key | [Mailchimp Skills](/docs/integration-mailchimp-skills) |
 
-> **Google OAuth is shared across 4 APIs.** Google Ads, YouTube, Google Analytics 4, and Merchant Center can all be authorized through one of your own OAuth clients — one Google Cloud project, one OAuth 2.0 Client ID, multiple API scopes — or you can set up separate ones per product. Wiro's shared client for "wiro" mode is coming soon. Google Business Profile is not part of that shared client: it is own mode only, and the Google Cloud project behind your OAuth client must be approved for Business Profile API access.
+> **Google OAuth is shared across 4 APIs.** Google Ads, YouTube, Google Analytics 4, and Merchant Center can all be authorized through one of your own OAuth clients (one Google Cloud project, one OAuth 2.0 Client ID, multiple API scopes), or you can set up separate ones per product. Wiro's shared client for "wiro" mode is coming soon. Google Business Profile is not part of that shared client: it is own mode only, and the Google Cloud project behind your OAuth client must be approved for Business Profile API access.
 
 ### Service Account Integrations
 
@@ -485,13 +485,13 @@ Returns `{ "result": false, "errors": [{ "code": 404, "message": "Credential not
 
 Two integrations are **user-input credentials** that ship in agent templates but require you (or your end users) to supply the key before the skill runs. They appear in `POST /UserAgent/Detail` `credentials[]` and accept writes via `POST /UserAgent/CredentialUpsert` like any other API-key integration.
 
-### Wiro AI Models — `wiro` credential
+### Wiro AI Models: `wiro` credential
 
 The `int-wiro-aimodels` skill lets an agent call Wiro's own AI models (image / video / audio / LLM generation, cover image creation, model discovery) using **your own Wiro project API key**. Each generated asset is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).
 
 - **Credential key:** `wiro`
-- **Field:** `apikey` (single field — type `custom:wiro-project-picker` in the registry; the dashboard renders it as a project picker, the API expects the project's raw API key string).
-- **No secret to supply.** Only the `apikey` is needed. Request signing for the agent's internal Wiro calls is handled automatically — Wiro derives the project's signing secret server-side from the key you pick, so there is no `apisecret` (or similar) field to paste.
+- **Field:** `apikey` (single field, type `custom:wiro-project-picker` in the registry; the dashboard renders it as a project picker, the API expects the project's raw API key string).
+- **No secret to supply.** Only the `apikey` is needed. Request signing for the agent's internal Wiro calls is handled automatically: Wiro derives the project's signing secret server-side from the key you pick, so there is no `apisecret` (or similar) field to paste.
 - **Setup:** create / pick a Wiro project at [wiro.ai/panel/projects](https://wiro.ai/panel/projects), copy its API key, then upsert it:
 
 ```bash
@@ -506,16 +506,16 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   }'
 ```
 
-> **Don't confuse `credentials.wiro.apikey` with your operator-level Wiro API key.** `credentials.wiro.apikey` is the per-agent project key the agent container uses to call Wiro models internally (gets exported as `WIRO_API_KEY` env var inside the container). The `x-api-key` header you send to Wiro endpoints from your own backend is your operator key — entirely separate (see [Authentication](/docs/authentication)).
+> **Don't confuse `credentials.wiro.apikey` with your operator-level Wiro API key.** `credentials.wiro.apikey` is the per-agent project key the agent container uses to call Wiro models internally (gets exported as `WIRO_API_KEY` env var inside the container). The `x-api-key` header you send to Wiro endpoints from your own backend is your operator key, which is entirely separate (see [Authentication](/docs/authentication)).
 
-Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, TikTok Ads, Google Ads) ship with `int-wiro-aimodels: true` enabled — but the agent stays in `status: 6` (Setup Required) until the operator supplies a `wiro` project key.
+Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, TikTok Ads, Google Ads) ship with `int-wiro-aimodels: true` enabled, but the agent stays in `status: 6` (Setup Required) until the operator supplies a `wiro` project key.
 
 ### Calendarific in your agent
 
 The `int-calendarific` skill discovers global holidays and observances across 230+ countries via the [Calendarific](https://calendarific.com/) API. The free tier (1,000 calls/month) covers most agent use cases.
 
 - **Credential key:** `calendarific`
-- **Field:** `apikey` (`type: "password"` — encrypted at rest)
+- **Field:** `apikey` (`type: "password"`, encrypted at rest)
 - **Setup:**
 
 ```bash
@@ -534,15 +534,15 @@ Templates that scan global holidays (App Event Manager, Push Notification Manage
 
 ## Platform-Managed Credentials
 
-One credential is fully **managed by Wiro** — you don't provide it and you can't see it in API responses:
+One credential is fully **managed by Wiro**. You don't provide it and you can't see it in API responses:
 
-- **OpenAI** (`sys-openai`) — Wiro provides the OpenAI API key for every agent. The same model line-up (default + fallback + cron) is shared across all Wiro agents and rotated by the Wiro team. Operators cannot edit these values.
+- **OpenAI** (`sys-openai`): Wiro provides the OpenAI API key for every agent. The same model line-up (default + fallback + cron) is shared across all Wiro agents and rotated by the Wiro team. Operators cannot edit these values.
 
 The `sys-openai` credential is stored with every field flagged `platform_managed: true` in the registry. `POST /UserAgent/Detail` omits the entire credential entry from the `credentials` response. `CredentialUpsert` rejects writes to its fields with `<Field label> is managed by Wiro`, and Deploy drops them from `credentials`.
 
-## Auditing Credential Changes — `CredentialFieldHistory`
+## Auditing Credential Changes: `CredentialFieldHistory`
 
-Every credential field write is appended to a versioned history. Use `POST /UserAgent/CredentialFieldHistory` to read it — same idea as `CustomSkillHistory` for skills.
+Every credential field write is appended to a versioned history. Use `POST /UserAgent/CredentialFieldHistory` to read it, the same idea as `CustomSkillHistory` for skills.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialFieldHistory" \
@@ -615,8 +615,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialFieldHistory" \
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Your UserAgent instance guid |
 | `credentialkey` | string | Yes | Provider key (e.g. `"instagram"`, `"wordpress"`) |
-| `startdate` | number | No | UTC epoch seconds — return entries on/after this time |
-| `enddate` | number | No | UTC epoch seconds — return entries on/before this time |
+| `startdate` | number | No | UTC epoch seconds: return entries on/after this time |
+| `enddate` | number | No | UTC epoch seconds: return entries on/before this time |
 
 > **Sensitive values are redacted in history.** `oauth_session` rows (access/refresh tokens) **never** appear in history at all (they're stripped before persisting). `clientsecret` is stored as `[REDACTED]` in history rows; the live secret stays server-side. `POST /UserAgent/Detail` returns the current live values of the fields you can see; `CredentialFieldHistory` only shows the audit trail.
 
@@ -626,7 +626,7 @@ Use `POST /UserAgent/CredentialUpsert` with a flat `fields[]` array. Each field 
 
 ### Bulk upsert pattern
 
-`/UserAgent/CredentialUpsert` takes an array of field rows in one request. Only the fields you send are written; other credential groups and other fields inside the same group are untouched. The Wiro Dashboard follows this pattern exactly — each credential card sends a single `CredentialUpsert` call with its group's fields.
+`/UserAgent/CredentialUpsert` takes an array of field rows in one request. Only the fields you send are written; other credential groups and other fields inside the same group are untouched. The Wiro Dashboard follows this pattern exactly: each credential card sends a single `CredentialUpsert` call with its group's fields.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
@@ -656,7 +656,7 @@ Response: `{ "result": true, "applied": 2, "errors": [] }`. `applied` is the cou
 - **Nested arrays** (`firebase.accounts[].apps[]`, `google-drive.folders[]`, `apple-appstore.apps[]`, etc.) are supported via the optional `parentfield` (dotted path) and `ordinal` (array index) on each field row. An array `fieldvalue` (with no `parentfield`) replaces the whole stored list, so send the complete desired list. Per-row writes (a sub-field sent with `parentfield` and `ordinal`) change only that entry; indices you don't send are kept. To clear an optional top-level list (e.g. `google-drive.folders`, `apple-appstore.apps`), send `[]` as that field's `fieldvalue` with no `parentfield`. A nested list such as `firebase.accounts[].apps[]` is changed by re-sending the parent `accounts` list; `firebase.accounts` itself is required and can't be cleared.
 - Use `POST /UserAgent/Detail` to inspect which fields each credential exposes, and the `_connected` / `optional` / `extra` flags that describe its readiness state.
 
-### Prepaid deploy — inline setup supported (with limitations)
+### Prepaid deploy: inline setup supported (with limitations)
 
 If you call `POST /UserAgent/Deploy` with `useprepaid: true`, you may pass `credentials`, `customskills` (or the equivalent key `customskills`), and `skills` at the **top level of the Deploy body**. The server saves them on the new agent in the same call (one-shot deploy + initial setup).
 
@@ -678,7 +678,7 @@ If you skip these keys in Deploy entirely, the instance is created empty and you
 
 ## OAuth Authorization Flow
 
-For services that require user authorization, Wiro implements a full OAuth redirect flow. The entire process is **fully white-label** — your end users interact only with your app and the provider's consent screen. They never see or visit wiro.ai.
+For services that require user authorization, Wiro implements a full OAuth redirect flow. The entire process is **fully white-label**: your end users interact only with your app and the provider's consent screen. They never see or visit wiro.ai.
 
 > The `redirecturl` you pass to Connect is **your own URL**. After authorization, users are redirected back to your app with status query parameters. HTTPS is required; `http://localhost` and `http://127.0.0.1` are allowed for development only.
 
@@ -703,12 +703,12 @@ Your App (Frontend)           Your Backend              Wiro API              Pr
        |        ?{provider}_connected=true&...                                     |
 ```
 
-### Auth Methods — `"wiro"` vs `"own"`
+### Auth Methods: `"wiro"` vs `"own"`
 
 |  | `"wiro"` | `"own"` |
 |--|---------|---------|
 | **OAuth app credentials** | Wiro's pre-configured app | Your own app on the provider's developer portal |
-| **Setup required** | None — just call Connect | Create app on provider, save credentials via Update, register Wiro's callback URL |
+| **Setup required** | None: just call Connect | Create app on provider, save credentials via Update, register Wiro's callback URL |
 | **Consent screen branding** | Shows "Wiro" as the app name | Shows **your app name** |
 | **Redirect after auth** | To your `redirecturl` | To your `redirecturl` |
 | **User sees wiro.ai?** | No | No |
@@ -785,7 +785,7 @@ Provider-specific paths: `XCallback`, `TikTokCallback`, `IGCallback`, `FBCallbac
 | Shopify | `shopify_connected=true&shopify_shop=...&shopify_name=...` | `shopify_error=...` (+ `shopify_error_detail=...`) |
 | Reddit | `reddit_connected=true&reddit_username=...` | `reddit_error=...` (+ `reddit_error_detail=...`) |
 
-> **Conditional params:** `gads_accounts`, `mc_accounts`, `yt_channels`, `ga4_properties`, and `metaads_accounts` are omitted from the redirect when the provider returns zero items (for example, no accessible Google Ads customers, or a developer token is missing in Wiro mode). `fb_pages` is always present on success — Facebook returns `fb_error=no_pages` instead when the user has no administered Pages. `tiktokads_advertisers` is likewise always present on success — the callback returns `tiktokads_error=no_accounts` instead when no advertiser is available. `gbp_accounts` is always present on success too — the callback returns `gbp_error=no_accounts` instead when no Business Profile account can be listed.
+> **Conditional params:** `gads_accounts`, `mc_accounts`, `yt_channels`, `ga4_properties`, and `metaads_accounts` are omitted from the redirect when the provider returns zero items (for example, no accessible Google Ads customers, or a developer token is missing in Wiro mode). `fb_pages` is always present on success, and Facebook returns `fb_error=no_pages` instead when the user has no administered Pages. `tiktokads_advertisers` is likewise always present on success, and the callback returns `tiktokads_error=no_accounts` instead when no advertiser is available. `gbp_accounts` is always present on success too, and the callback returns `gbp_error=no_accounts` instead when no Business Profile account can be listed.
 
 Common error codes across providers:
 
@@ -820,7 +820,7 @@ All OAuth integrations share five unified endpoints. The provider is selected vi
 | `POST /UserAgentOAuth/DiscoverPickerItems` | Discover grouped child resources for a registry-declared chained picker after its parent accounts are selected. |
 | `POST /UserAgentOAuth/SetPickerAccounts` | Save the user's account selection after OAuth or direct discovery. |
 
-> Each provider's own callback URL — `XCallback`, `IGCallback`, `GAdsCallback`, etc. — is still per-provider because external OAuth platforms redirect to fixed URLs. Only the five endpoints above are unified.
+> Each provider's own callback URL (`XCallback`, `IGCallback`, `GAdsCallback`, etc.) is still per-provider because external OAuth platforms redirect to fixed URLs. Only the five endpoints above are unified.
 
 > Discover the full list via [`POST /Credentials/List`](#post-credentialslist). Any entry with a non-null `oauth_provider` can use these endpoints; hybrid credentials may offer OAuth and a direct probe. The `oauth_provider` block declares exact endpoint paths, supported direct mode, and picker contract.
 
@@ -858,7 +858,7 @@ Direct probes return `{ "result": true, "accounts": [{ "id": "...", "name": "...
 | Error message | Cause |
 |---------------|-------|
 | `Unknown OAuth credential: <key>` | `credentialkey` not in registry, or not OAuth-enabled. |
-| `Credential is not configured for the generic OAuth dispatcher: <key>` | Registry entry is partial — missing `oauth_flow` config. |
+| `Credential is not configured for the generic OAuth dispatcher: <key>` | Registry entry is partial: missing `oauth_flow` config. |
 | `Invalid redirect URL` | `redirecturl` is not HTTPS (and not localhost). |
 | `<Provider> credentials not configured` | `authmethod: "own"` but `clientid`/`clientsecret` not saved yet. |
 | `Wiro-managed OAuth is not enabled for <Provider>` | `authmethod` is `"wiro"`, or left out where Wiro mode is the default, but that credential's Wiro mode is still pending (`wiro_connect_pending: true`). Use another mode from its `connection_modes`, such as `"own"`. |
@@ -867,7 +867,7 @@ Direct probes return `{ "result": true, "accounts": [{ "id": "...", "name": "...
 
 ### POST /UserAgentOAuth/OAuthStatus
 
-Returns whether the credential is connected and lists every account/property/page selected via the picker. Use this to render an "Already connected — N accounts selected" UI.
+Returns whether the credential is connected and lists every account/property/page selected via the picker. Use this to render an "Already connected: N accounts selected" UI.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -893,7 +893,7 @@ Returns whether the credential is connected and lists every account/property/pag
 | Field | Type | Description |
 |-------|------|-------------|
 | `connected` | `boolean` | `true` when the active mode has a validated secret and every required picker field is populated. |
-| `accounts` | `array<{id, name}>` | The accounts/pages/properties the user selected. Empty `[]` when nothing is selected (or the credential has no picker step — e.g. Twitter/X, TikTok, HubSpot — which expose a 1-element array carrying the connected user's identifier). |
+| `accounts` | `array<{id, name}>` | The accounts/pages/properties the user selected. Empty `[]` when nothing is selected (or the credential has no picker step, e.g. Twitter/X, TikTok, HubSpot, which expose a 1-element array carrying the connected user's identifier). |
 | `connectedat` | `string` | ISO timestamp of the last successful Connect. Automatic token refreshes do not change it. |
 | `tokenexpiresat` | `string` | ISO timestamp when the current access token expires. Empty for providers without a fixed expiry (e.g. Mailchimp). |
 
@@ -920,7 +920,7 @@ clients never send or receive access tokens.
 | `credentialkey` | string | Yes | Credential key with `account_picker.next` configured. Currently `"meta-ads"` or `"google-business"`. |
 | `pickerkey` | string | Yes | The chained picker key from the registry. Meta Ads uses `"pages"`; Google Business Profile uses `"locations"`. |
 
-##### Example — discover Meta Ads Pages
+##### Example: discover Meta Ads Pages
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/DiscoverPickerItems" \
@@ -994,7 +994,7 @@ Instagram) accept one or more entries.
 | `facebook-pages` | `pageid`, `fbpagename` | One or more Pages from the latest OAuth or System User discovery result. |
 | `instagram` | `accountId`, `igusername` | One or more accounts from direct System User discovery. Customer-owned Instagram OAuth does not use this picker and writes one authorized account directly. |
 
-##### Example — Google Ads multi-select
+##### Example: Google Ads multi-select
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
@@ -1025,7 +1025,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
 
 The agent restarts automatically if it was running.
 
-##### Example — save Meta Ads Page mappings
+##### Example: save Meta Ads Page mappings
 
 Call this after `DiscoverPickerItems` and include every successful parent once:
 
@@ -1054,7 +1054,7 @@ account; Meta Ads reporting and other non-Page operations remain available.
 
 Google Business Profile uses the same chained shape with `pickerkey: "locations"`,
 `{ locationid, locationtitle }` items, and a `locationmappings[]` list in the
-response — see [Google Business Profile → Connect through the API](/docs/integration-googlebusiness-skills#connect-through-the-api).
+response (see [Google Business Profile → Connect through the API](/docs/integration-googlebusiness-skills#connect-through-the-api)).
 
 ##### Common errors
 
@@ -1063,8 +1063,8 @@ response — see [Google Business Profile → Connect through the API](/docs/int
 | `accounts must be a non-empty array` | `accounts` missing or empty. |
 | `Single-select picker requires exactly one account; got <N>` | Single-select credential received multiple entries. |
 | `<Provider> account not connected` | Standard picker (e.g. Google Ads) called before the OAuth callback wrote tokens. |
-| `No pending <Provider> connection. Please reconnect via OAuthConnect.` | Deferred-token picker (Facebook Pages or direct Instagram) — the 15-minute discovery window expired or is missing. |
-| `Selected <field> not found in pending list: <value>` | Deferred-token picker — the selected ID is not in the latest server-side discovery result. |
+| `No pending <Provider> connection. Please reconnect via OAuthConnect.` | Deferred-token picker (Facebook Pages or direct Instagram): the 15-minute discovery window expired or is missing. |
+| `Selected <field> not found in pending list: <value>` | Deferred-token picker: the selected ID is not in the latest server-side discovery result. |
 | `Credential does not support account picker: <key>` | `credentialkey` doesn't have an `account_picker` (e.g. Twitter / TikTok / HubSpot). |
 | `Picker candidates expired. Discover them again.` | Chained picker candidates expired or the parent connection changed. Call `DiscoverPickerItems` again. |
 | `selections must include every available parent exactly once` | Chained picker request omitted or duplicated a successfully discovered parent. |
@@ -1075,7 +1075,7 @@ Clears the active connection's tokens, picker selections, and auto-filled
 values. Customer-owned OAuth app credentials (`clientid`, `clientsecret`,
 `appid`, `appsecret`) are preserved for reconnection. An alternative API-key
 field is preserved while disconnecting OAuth, but disconnecting that direct
-mode itself clears its secret — including Meta `systemusertoken`. The agent
+mode itself clears its secret, including Meta `systemusertoken`. The agent
 restarts automatically if it was running.
 
 For providers that publish a token-revocation endpoint (currently Twitter/X and TikTok), Wiro also calls the provider's revoke endpoint as a non-critical best-effort step. Other providers only clear local credentials; the token remains valid on the provider side until it expires.
@@ -1113,9 +1113,9 @@ If you're comparing against the Wiro Dashboard, here's what happens under the ho
   default to System User Token. The Dashboard saves `authmethod: "api_key"` and
   `systemusertoken`, calls `OAuthConnect`, then completes the registry picker
   without exposing provider tokens to browser state.
-- **Full-page redirect, not popup**: `window.location.href = authorizeUrl` — no popup windows (avoids third-party cookie issues).
+- **Full-page redirect, not popup**: `window.location.href = authorizeUrl`, with no popup windows (avoids third-party cookie issues).
 - **No manual token refresh button**: Wiro maintains supported connections automatically; reconnect when the Dashboard reports that authorization is required.
-- **LLM Markdown feature**: The Dashboard includes an "LLM Markdown" tab that generates a ready-to-paste prompt for AI assistants summarizing every credential field the agent needs. Useful for API users building their own configuration UIs — see the per-integration help texts for equivalent guidance.
+- **LLM Markdown feature**: The Dashboard includes an "LLM Markdown" tab that generates a ready-to-paste prompt for AI assistants summarizing every credential field the agent needs. Useful for API users building their own configuration UIs. See the per-integration help texts for equivalent guidance.
 - **Registry-backed validation**: Wiro validates declared types, patterns, lengths, URLs, enum values, and provider response contracts before persisting or connecting credentials. The provider remains authoritative for permissions and asset access.
 - **Platform-managed credentials are hidden**: Groups whose fields are all flagged `platform_managed: true` (currently only `sys-openai`) are omitted from `POST /UserAgent/Detail` responses entirely. They're pre-configured by Wiro and can't be set by customers.
 
@@ -1123,28 +1123,28 @@ If you're comparing against the Wiro Dashboard, here's what happens under the ho
 
 If an agent has required credentials not yet filled in, it's in **Setup Required** state (`status: 6`). It can't be started until credentials are complete.
 
-**Every fresh deploy lands at `status: 6` first.** API deploys must always pass `useprepaid: true` — the server provisions the prepaid subscription inline and auto-queues the row to `status: 2` (Queued). No manual `Start` call is needed unless you also need to fill credentials first; if so, Start will reject with the Setup-Required guard until the required credentials are in place.
+**Every fresh deploy lands at `status: 6` first.** API deploys must always pass `useprepaid: true`. The server provisions the prepaid subscription inline and auto-queues the row to `status: 2` (Queued). No manual `Start` call is needed unless you also need to fill credentials first; if so, Start will reject with the Setup-Required guard until the required credentials are in place.
 
 `setuprequired` flag in `UserAgent/Detail` / `UserAgent/MyAgents` is `true` when any non-optional credential is still incomplete. The server treats a credential as complete when either:
 
-- **OAuth and hybrid connection credentials** — `_connected: true` (the active
+- **OAuth and hybrid connection credentials**: `_connected: true` (the active
   mode has a validated runtime token **and** every required picker field is
   populated), or
-- **API-key credentials** — at least one field with `fieldstatus: "user"` has a non-empty value (any one user-writable field filled in makes the credential count as "entered"; there is no deeper per-field validation).
+- **API-key credentials**: at least one field with `fieldstatus: "user"` has a non-empty value (any one user-writable field filled in makes the credential count as "entered"; there is no deeper per-field validation).
 
 The two branches are checked together: `setuprequired` stays `true` until every required credential passes one of them.
 
 ## Security
 
 - **Tokens are stored server-side** and are never returned by the customer-facing credential endpoints.
-- **`oauth_session` fields are always stripped** from Status, Detail, `MyAgents`, and `CredentialUpsert` responses — `accesstoken`, `refreshtoken`, `tokenexpiresat`, `pageAccessToken` and any similar rows never leave the server.
+- **`oauth_session` fields are always stripped** from Status, Detail, `MyAgents`, and `CredentialUpsert` responses: `accesstoken`, `refreshtoken`, `tokenexpiresat`, `pageAccessToken` and any similar rows never leave the server.
 - **`platform` fields are always stripped** from responses. In practice this affects every `sys-openai` field and Reddit's three approval flags; the `sys-openai` key never leaves the server. `credentials.wiro.apikey` and `credentials.calendarific.apikey` are user-supplied and appear normally in the response.
 - **`oauth_app` fields (`clientid` / `clientsecret`, `appid` / `appsecret`) are stripped from Detail responses**, even after an OAuth "own mode" setup writes them. The append-only credential history redacts `clientsecret` to `[REDACTED]` and always redacts `oauth_session` rows.
 - **`fieldstatus` is server-assigned.** A `fieldstatus` sent to `CredentialUpsert` is ignored; the server assigns the status itself.
   - Fields that the connection flow fills in, OAuth tokens included, are rejected with `<Field label> is managed by the connection flow` in `errors[]`. A token field has no schema label, so it is named `<credentialkey>.<fieldname>`.
   - Wiro-managed (`platform`) fields are rejected with `<Field label> is managed by Wiro`.
   - A request that fails validation saves nothing, and Deploy never saves either kind of field from its `credentials` body.
-- The `redirecturl` receives only connection status parameters — no tokens, no secrets.
+- The `redirecturl` receives only connection status parameters: no tokens, no secrets.
 - OAuth state parameters use a 15-minute TTL cache to prevent replay attacks.
 - Redirect URLs must be HTTPS (or localhost/127.0.0.1 for development).
 - Facebook Page and direct Instagram discovery results remain server-side for
@@ -1156,16 +1156,16 @@ The two branches are checked together: `setuprequired` stays `true` until every 
 If you're building a product on top of Wiro agents and need your customers to connect their own accounts:
 
 1. **Deploy** an agent instance per customer via `POST /UserAgent/Deploy`.
-2. **Connect** — save the chosen mode's fields, then call
+2. **Connect**: save the chosen mode's fields, then call
    `POST /UserAgentOAuth/OAuthConnect`.
-3. **OAuth branch** — when `authorizeUrl` is returned, redirect the customer's
+3. **OAuth branch**: when `authorizeUrl` is returned, redirect the customer's
    browser, let the provider authorize, and handle the callback parameters.
-4. **Direct branch** — when `accounts` is returned, render the public account
+4. **Direct branch**: when `accounts` is returned, render the public account
    list directly; there is no browser redirect.
-5. **Finalize** — for picker credentials (Meta Ads, TikTok Ads, Facebook Pages, direct
+5. **Finalize**: for picker credentials (Meta Ads, TikTok Ads, Facebook Pages, direct
    Instagram, Google Ads, Merchant Center, YouTube, GA4, Google Business Profile), call
    `POST /UserAgentOAuth/SetPickerAccounts` with the selected public entries.
-6. **Verify** — call `POST /UserAgentOAuth/OAuthStatus`.
+6. **Verify**: call `POST /UserAgentOAuth/OAuthStatus`.
 
 Each integration page includes a **Multi-Tenant Architecture** section covering per-provider rate limits, token isolation, and white-label consent screen configuration.
 
