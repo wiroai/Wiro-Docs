@@ -7438,7 +7438,7 @@ if (!data.result) {
                   <section id="mcp-what-is">
                     <h2>What is MCP?</h2>
                     <p><a href="https://modelcontextprotocol.io/" target="_blank">Model Context Protocol</a> (MCP) is an open standard that lets AI assistants use external tools directly. With the Wiro MCP server, your AI assistant can search models, run inference, track tasks, and upload files, all without leaving your editor.</p>
-                    <p>The hosted MCP server is available at <code>mcp.wiro.ai/v1</code>. Most apps connect with the browser sign-in above. Clients that send custom request headers, including Cursor, Claude Code, Windsurf, OpenClaw, and Hermes, can use your API key instead. An API key sent in a header is never stored on the hosted server.</p>
+                    <p>The hosted MCP server is available at <code>mcp.wiro.ai/v1</code>. Most apps connect with the browser sign-in above. Clients that send custom request headers, including Cursor, Claude Code, Windsurf, Kiro, goose, OpenClaw, and Hermes, can use your API key instead. An API key sent in a header is never stored on the hosted server.</p>
                     <p>You need a Wiro account. With a browser sign-in you pick a project while connecting. For the API key method, <a href="https://wiro.ai/panel/project/new" target="_blank">create a project here</a>.</p>
 
                     <h3>Links</h3>
@@ -8451,6 +8451,16 @@ if (!data.result) {
                         <strong>Windsurf</strong>
                         <span>MCP settings config</span>
                       </a>
+                      <a href="/docs/mcp-self-hosted#sh-setup-kiro" class="mcp-client-card" data-toggle-target="sh-setup-kiro">
+                        <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-kiro"></use></svg>
+                        <strong>Kiro</strong>
+                        <span>JSON config setup</span>
+                      </a>
+                      <a href="/docs/mcp-self-hosted#sh-setup-goose" class="mcp-client-card" data-toggle-target="sh-setup-goose">
+                        <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-goose"></use></svg>
+                        <strong>goose</strong>
+                        <span>Command-line extension</span>
+                      </a>
                       <a href="/docs/mcp-self-hosted#sh-setup-other" class="mcp-client-card" data-toggle-target="sh-setup-other">
                         <i class="lni lni-plug-1"></i>
                         <strong>Other Clients</strong>
@@ -8514,6 +8524,37 @@ export WIRO_API_SECRET="your-api-secret"</code></pre>
     }
   }
 }</code></pre>
+                      </div>
+                      <div class="mcp-setup-panel" id="sh-setup-kiro">
+                        <h3>Kiro</h3>
+                        <p>Add to <code>~/.kiro/settings/mcp.json</code> (every workspace) or <code>.kiro/settings/mcp.json</code> (this workspace):</p>
+                        <pre><code class="language-json">{
+  "mcpServers": {
+    "wiro": {
+      "command": "npx",
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.3.3"],
+      "env": {
+        "WIRO_API_KEY": "your-api-key",
+        "WIRO_API_SECRET": "your-api-secret"
+      }
+    }
+  }
+}</code></pre>
+                      </div>
+                      <div class="mcp-setup-panel" id="sh-setup-goose">
+                        <h3>goose</h3>
+                        <p>In the goose CLI, run <code>goose configure</code>, pick <strong>Add Extension &gt; Command-line Extension</strong>, enter <code>npx -y @wiro-ai/wiro-mcp@1.3.3</code> as the command and add <code>WIRO_API_KEY</code> and <code>WIRO_API_SECRET</code> as environment variables. goose Desktop takes the same command and variables under <strong>Extensions &gt; Add custom extension</strong>. Or add Wiro to <code>~/.config/goose/config.yaml</code>:</p>
+                        <pre><code class="language-yaml">extensions:
+  wiro:
+    name: Wiro AI
+    type: stdio
+    cmd: npx
+    args: ["-y", "@wiro-ai/wiro-mcp@1.3.3"]
+    envs:
+      WIRO_API_KEY: your-api-key
+      WIRO_API_SECRET: your-api-secret
+    enabled: true
+    timeout: 300</code></pre>
                       </div>
                       <div class="mcp-setup-panel" id="sh-setup-other">
                         <h3>Other Clients</h3>

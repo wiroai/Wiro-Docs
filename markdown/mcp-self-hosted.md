@@ -79,6 +79,49 @@ Add to your MCP settings:
 }
 ```
 
+### Kiro
+
+Add to `~/.kiro/settings/mcp.json` (every workspace) or
+`.kiro/settings/mcp.json` (this workspace):
+
+```json
+{
+  "mcpServers": {
+    "wiro": {
+      "command": "npx",
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.3.3"],
+      "env": {
+        "WIRO_API_KEY": "your-api-key",
+        "WIRO_API_SECRET": "your-api-secret"
+      }
+    }
+  }
+}
+```
+
+### goose
+
+In the goose CLI, run `goose configure`, pick
+**Add Extension > Command-line Extension**, enter
+`npx -y @wiro-ai/wiro-mcp@1.3.3` as the command and add `WIRO_API_KEY` and
+`WIRO_API_SECRET` as environment variables. goose Desktop takes the same command
+and variables under **Extensions > Add custom extension**. Or add Wiro to
+`~/.config/goose/config.yaml`:
+
+```yaml
+extensions:
+  wiro:
+    name: Wiro AI
+    type: stdio
+    cmd: npx
+    args: ["-y", "@wiro-ai/wiro-mcp@1.3.3"]
+    envs:
+      WIRO_API_KEY: your-api-key
+      WIRO_API_SECRET: your-api-secret
+    enabled: true
+    timeout: 300
+```
+
 ### Other Clients
 
 Any MCP client that supports the **stdio** transport can connect. The command is:

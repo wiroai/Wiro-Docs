@@ -36,9 +36,9 @@ settings and paste the URL above:
 
 The hosted MCP server is available at `https://mcp.wiro.ai/v1`. Most apps
 connect with the browser sign-in above. Clients that send custom request
-headers, including Cursor, Claude Code, Windsurf, OpenClaw, and Hermes, can use
-your API key instead. An API key sent in a header is never stored on the hosted
-server.
+headers, including Cursor, Claude Code, Windsurf, Kiro, goose, OpenClaw, and
+Hermes, can use your API key instead. An API key sent in a header is never
+stored on the hosted server.
 
 You need a Wiro account. With a browser sign-in you pick a project while connecting. For the API key method, [create a project here](https://wiro.ai/panel/project/new).
 

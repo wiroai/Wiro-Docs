@@ -5408,9 +5408,9 @@ settings and paste the URL above:
 
 The hosted MCP server is available at `mcp.wiro.ai/v1`. Most apps connect with
 the browser sign-in above. Clients that send custom request headers, including
-Cursor, Claude Code, Windsurf, OpenClaw, and Hermes, can use your API key
-instead. Claude Desktop can add the hosted URL as a custom connector, or run
-Wiro's official local `npx` package.
+Cursor, Claude Code, Windsurf, Kiro, goose, OpenClaw, and Hermes, can use your
+API key instead. Claude Desktop can add the hosted URL as a custom connector, or
+run Wiro's official local `npx` package.
 
 ## Browser sign-in details
 
