@@ -18179,22 +18179,22 @@ echo json_encode(['ok' =&gt; true]);
                 <script type="application/json" class="code-examples-data">
                   [
                     {
-                      "label": "Webhook Receiver — Node.js (Express)",
+                      "label": "Webhook Receiver: Node.js (Express)",
                       "language": "javascript",
                       "code": "const express = require('express');\nconst app = express();\napp.use(express.json());\n\napp.post('/webhooks/agent-response', (req, res) => {\n  const { messageguid, status, content, response, endedat } = req.body;\n\n  if (status === 'agent_end') {\n    console.log(`Agent completed: ${messageguid}`);\n    console.log(`Response: ${response}`);\n  } else if (status === 'agent_error') {\n    console.error(`Agent error for ${messageguid}: ${response}`);\n  } else if (status === 'agent_cancel') {\n    console.log(`Agent cancelled: ${messageguid}`);\n  }\n\n  res.sendStatus(200);\n});\n\napp.listen(3000);"
                     },
                     {
-                      "label": "Webhook Receiver — Python (Flask)",
+                      "label": "Webhook Receiver: Python (Flask)",
                       "language": "python",
                       "code": "from flask import Flask, request, jsonify\n\napp = Flask(__name__)\n\n@app.route('/webhooks/agent-response', methods=['POST'])\ndef agent_webhook():\n    data = request.json\n    messageguid = data.get('messageguid')\n    status = data.get('status')\n    response_text = data.get('response')\n\n    if status == 'agent_end':\n        print(f\"Agent completed: {messageguid}\")\n        print(f\"Response: {response_text}\")\n    elif status == 'agent_error':\n        print(f\"Agent error for {messageguid}: {response_text}\")\n    elif status == 'agent_cancel':\n        print(f\"Agent cancelled: {messageguid}\")\n\n    return jsonify({\"ok\": True}), 200\n\nif __name__ == '__main__':\n    app.run(port=3000)"
                     },
                     {
-                      "label": "Webhook Receiver — PHP",
+                      "label": "Webhook Receiver: PHP",
                       "language": "php",
                       "code": "<?php\n$payload = json_decode(file_get_contents('php://input'), true);\n\n$messageguid = $payload['messageguid'] ?? '';\n$status = $payload['status'] ?? '';\n$response = $payload['response'] ?? '';\n\nif ($status === 'agent_end') {\n    error_log(\"Agent completed: $messageguid\");\n    error_log(\"Response: $response\");\n} elseif ($status === 'agent_error') {\n    error_log(\"Agent error for $messageguid: $response\");\n} elseif ($status === 'agent_cancel') {\n    error_log(\"Agent cancelled: $messageguid\");\n}\n\nhttp_response_code(200);\necho json_encode(['ok' => true]);"
                     },
                     {
-                      "label": "Sending a Message with Callback — curl",
+                      "label": "Sending a Message with Callback: curl",
                       "language": "bash",
                       "code": "curl -X POST \"https://api.wiro.ai/v1/UserAgent/Message/Send\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"useragentguid\": \"your-useragent-guid\",\n    \"message\": \"Summarize today'\\''s news\",\n    \"sessionkey\": \"user-123\",\n    \"callbackurl\": \"https://your-server.com/webhooks/agent-response\"\n  }'"
                     },

@@ -1,6 +1,6 @@
 # Wiro API Documentation
 
-Complete API documentation for the Wiro AI platform — run AI models through a unified API.
+Complete API documentation for the Wiro AI platform: run AI models through a unified API.
 
 ## Table of Contents
 
