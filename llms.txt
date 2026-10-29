@@ -866,6 +866,7 @@ Claude Desktop: remote Custom Connectors require OAuth 2.0, so do not add the ho
 OpenClaw: configure `mcp.servers.wiro` with `transport: "streamable-http"`, `connectionTimeoutMs: 10000`, and an environment-backed Authorization header; verify with `openclaw mcp doctor wiro --probe`, or on older releases use `openclaw mcp show wiro`, restart, and run `/tools verbose`.
 Hermes: configure `mcp_servers.wiro` in `~/.hermes/config.yaml`, keep `WIRO_MCP_AUTH` in `~/.hermes/.env`, then run `/reload-mcp` and `/tools`.
 The hosted endpoint requires a client that supports Streamable HTTP plus custom headers. OAuth-only clients are not currently supported.
+Errors: a failed tool call is a normal tool result with `isError: true` and text `Wiro API error <status>: <message>`. Sending only the API key for a signature-auth project gives `This project uses signature-based auth. Enter API_KEY:API_SECRET (the key and secret joined with a colon) as the API key.` The other connection errors (`Project authorization is not founded.`, `Project authorization is not valid.`, `Requested ip {ip} is not allowed.`) are explained at https://wiro.ai/docs/wiro-mcp-server; a request without an `Authorization` header gets HTTP 401 from the endpoint itself.
 
 ### Self-Hosted (npx)
 ```json

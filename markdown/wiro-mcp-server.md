@@ -305,6 +305,36 @@ Authorization: Bearer YOUR_API_KEY
 
 No base64 encoding needed. Your credentials are sent per-request in the Authorization header and are never stored. The server is fully stateless.
 
+### Authentication errors
+
+A failed tool call comes back as a normal tool result with `isError: true`. Its
+text starts with `Wiro API error` and the HTTP status, then a message that says
+what to fix. For example, when a project uses signature-based auth and only its
+API key was sent:
+
+```json
+{
+  "isError": true,
+  "content": [{
+    "type": "text",
+    "text": "## Error\n\nWiro API error 401: This project uses signature-based auth. Enter API_KEY:API_SECRET (the key and secret joined with a colon) as the API key."
+  }]
+}
+```
+
+Messages you may see while connecting:
+
+| Message | What to do |
+|---------|------------|
+| `This project uses signature-based auth. Enter API_KEY:API_SECRET (the key and secret joined with a colon) as the API key.` | Only the API key was sent, but the project uses signature-based auth. Enter `API_KEY:API_SECRET` in the plugin's key field, or send `Authorization: Bearer YOUR_API_KEY:YOUR_API_SECRET`. |
+| `Project authorization is not founded.` | No project has this API key. Copy the key again from your project page. |
+| `Project authorization is not valid.` | The API secret does not match the API key. Check that both come from the same project. |
+| `Requested ip {ip} is not allowed.` | The project has an IP whitelist, and the address in the message is not on it. Check the whitelist in your project settings. |
+
+A request without an `Authorization` header never reaches a tool. The MCP
+endpoint answers HTTP `401` with `Missing or invalid Authorization header` in
+the body. See [Error Reference](/docs/error-reference) for every Wiro API error.
+
 ## Available Tools
 
 The MCP server exposes 13 tools organized in four categories. Your AI assistant picks the right tool automatically based on what you ask.
