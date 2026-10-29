@@ -1,54 +1,61 @@
 <div align="center">
 
-<img src="https://wiro.ai/images/logos/logo/logo.png" alt="Wiro" width="180" />
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://wiro.ai/images/logos/logo/logo-white.png">
+  <img src="https://wiro.ai/images/logos/logo/logo-black.png" alt="Wiro AI" width="180">
+</picture>
 
 # Wiro API Documentation
 
-**Open-source, static documentation for the [Wiro AI](https://wiro.ai) platform** — run **AI models** through one unified API.
+Source of the Wiro AI API docs at wiro.ai/docs: a static HTML site with per-page Markdown and llms.txt covering model runs, tasks, WebSocket, LLM streaming, realtime voice and the Agent API.
 
-[![Static site](https://img.shields.io/badge/docs-static-00c38c?style=for-the-badge&logo=html5&logoColor=white)](https://github.com/wiroai/Wiro-Docs)
-[![API](https://img.shields.io/badge/API-v1-333?style=for-the-badge&logo=openapiinitiative&logoColor=white)](https://api.wiro.ai/v1)
-[![LLM friendly](https://img.shields.io/badge/LLM-view--source%20OK-6f42c1?style=for-the-badge)](./llms.txt)
+[![License: MIT](https://img.shields.io/badge/license-MIT-111111?style=for-the-badge&color=111111)](./LICENSE) [![llms.txt included](https://img.shields.io/badge/llms.txt-included-111111?style=for-the-badge&color=111111)](./llms.txt) [![No build step](https://img.shields.io/badge/build%20step-none-111111?style=for-the-badge&color=111111)](#run-locally)
 
-[Live docs](https://wiro.ai/docs) · [Dashboard](https://wiro.ai/panel) · [Explore](https://wiro.ai/explore) · [Models](https://wiro.ai/models) · [LLMs.txt](./llms.txt)
+[Website](https://wiro.ai) · [Models](https://wiro.ai/models) · [Docs](https://wiro.ai/docs) · [Dashboard](https://wiro.ai/panel)
 
 </div>
 
+This repository is the source of [wiro.ai/docs](https://wiro.ai/docs), the reference for the Wiro AI API: authentication, running models, tasks, WebSocket and LLM streaming, realtime voice, files, the LLM gateway, the Agent API, organizations, and the MCP and n8n integrations. Every page lives inline in `index.html`, so the full text can be read without JavaScript, and each page also has a Markdown copy in `markdown/`, next to a full bundle and an `llms.txt` summary for LLMs and crawlers. `serve.js`, a small Node.js server with no dependencies, serves each page at its own `/docs/<slug>` path with its own meta tags.
+
 ---
 
-## ✨ Why this repo?
+## Why this repo?
 
 | Goal | What you get |
 |------|----------------|
 | 📖 **Human readers** | Pixel-aligned docs UI: navigation, dark mode, code panel with **Shiki** highlighting |
-| 🤖 **LLMs** | All sections live in **`index.html`** — no JS required to read the text; **`llms.txt`** + **Markdown** exports |
+| 🤖 **LLMs** | All sections live in **`index.html`**, readable without JS; **`llms.txt`** + **Markdown** exports |
 | 🔌 **Integrators** | Same content as the product docs: **Run**, **Tasks**, **WebSocket**, **LLM streaming**, **Realtime voice**, **Files** |
 
 ---
 
-## 🧠 Features
+## Features
 
-- 🏠 **Single-page static site** — `index.html` + `css/` + `js/` (no build step)
+- 🏠 **One HTML source, no build step**: every page lives in `index.html`, with `css/` and `js/` for the UI
 - 🌙 **Dark / light theme** with persistent toggle
 - 📱 **Responsive** sidebar + mobile drawer
-- 🔍 **Full-text search** with `⌘K` shortcut, recent searches (localStorage), and keyboard navigation
-- 📑 **Table of contents** — auto-generated "On this page" panel with scroll spy
+- 🔍 **Full-text search** with `⌘K` / `Ctrl+K` shortcut, recent searches (localStorage), and keyboard navigation
+- 📑 **Table of contents**: auto-generated "On this page" panel with scroll spy
 - 💻 **Code examples** panel in **9 languages** (curl, Python, Node.js, PHP, C#, Go, Swift, Kotlin, Dart)
 - 🧩 **Model browser** (list/search via API when deployed; CORS may limit localhost)
 - 📄 **Markdown per section** (`markdown/{slug}.md`) + full bundle: **`markdown/full-documentation.md`**
-- 📋 **`llms.txt`** — machine-readable summary for crawlers and tools
-- 🔎 **SEO optimized** — per-page meta tags (OG, Twitter Card), JSON-LD structured data, SSR meta injection via `serve.js`
+- 📋 **`llms.txt`**: machine-readable summary for crawlers and tools
+- 🔎 **Per-page SEO**: `serve.js` gives every page its own title, description, Open Graph and Twitter Card tags, canonical URL and JSON-LD; unknown paths get a `noindex` 404 page
 - 🗺️ **Sitemap & robots.txt** for search engine crawlers
 
 ---
 
-## 🗺️ Documentation map
+## Documentation map
 
-| Section | Hash route | Markdown |
-|---------|------------|----------|
+One row per page, in sidebar order. Each path is live under `https://wiro.ai`.
+
+| Section | Path | Markdown |
+|---------|------|----------|
+| **Getting Started** | | |
 | Introduction | `/docs/introduction` | [introduction.md](./markdown/introduction.md) |
 | Authentication | `/docs/authentication` | [authentication.md](./markdown/authentication.md) |
 | Projects | `/docs/projects` | [projects.md](./markdown/projects.md) |
+| **Model API Reference** | | |
 | Models | `/docs/models` | [models.md](./markdown/models.md) |
 | Run a Model | `/docs/run-a-model` | [run-a-model.md](./markdown/run-a-model.md) |
 | Direct LLM Gateway | `/docs/completions-api` | [completions-api.md](./markdown/completions-api.md) |
@@ -57,26 +64,25 @@
 | LLM & Chat Streaming | `/docs/llm-chat-streaming` | [llm-chat-streaming.md](./markdown/llm-chat-streaming.md) |
 | WebSocket | `/docs/websocket` | [websocket.md](./markdown/websocket.md) |
 | Realtime Voice Conversation | `/docs/realtime-voice-conversation` | [realtime-voice-conversation.md](./markdown/realtime-voice-conversation.md) |
+| Realtime Text to Speech | `/docs/realtime-text-to-speech` | [realtime-text-to-speech.md](./markdown/realtime-text-to-speech.md) |
+| Realtime Speech to Text | `/docs/realtime-speech-to-text` | [realtime-speech-to-text.md](./markdown/realtime-speech-to-text.md) |
 | Files | `/docs/files` | [files.md](./markdown/files.md) |
+| Pricing | `/docs/pricing` | [pricing.md](./markdown/pricing.md) |
 | Concurrency Limits | `/docs/concurrency-limits` | [concurrency-limits.md](./markdown/concurrency-limits.md) |
 | Error Reference | `/docs/error-reference` | [error-reference.md](./markdown/error-reference.md) |
-| Code Examples | `/docs/code-examples` | [code-examples.md](./markdown/code-examples.md) |
-| Pricing | `/docs/pricing` | [pricing.md](./markdown/pricing.md) |
 | FAQ | `/docs/faq` | [faq.md](./markdown/faq.md) |
-| **Integrations** | | |
-| Wiro MCP Server | `/docs/wiro-mcp-server` | [wiro-mcp-server.md](./markdown/wiro-mcp-server.md) |
-| Self-Hosted MCP | `/docs/mcp-self-hosted` | [mcp-self-hosted.md](./markdown/mcp-self-hosted.md) |
-| Node.js Library | `/docs/nodejs-library` | [nodejs-library.md](./markdown/nodejs-library.md) |
-| n8n Wiro Integration | `/docs/n8n-wiro-integration` | [n8n-wiro-integration.md](./markdown/n8n-wiro-integration.md) |
-| **AI Agents** | | |
+| **Agent API Reference** | | |
 | Agent Overview | `/docs/agent-overview` | [agent-overview.md](./markdown/agent-overview.md) |
+| Agent Builder | `/docs/agent-builder` | [agent-builder.md](./markdown/agent-builder.md) |
 | Agent Messaging | `/docs/agent-messaging` | [agent-messaging.md](./markdown/agent-messaging.md) |
 | Agent WebSocket | `/docs/agent-websocket` | [agent-websocket.md](./markdown/agent-websocket.md) |
 | Agent Webhooks | `/docs/agent-webhooks` | [agent-webhooks.md](./markdown/agent-webhooks.md) |
 | Agent Credentials & OAuth | `/docs/agent-credentials` | [agent-credentials.md](./markdown/agent-credentials.md) |
 | Agent Skills | `/docs/agent-skills` | [agent-skills.md](./markdown/agent-skills.md) |
+| Agent Transactions | `/docs/agent-transactions` | [agent-transactions.md](./markdown/agent-transactions.md) |
+| Agent Logs | `/docs/agent-logs` | [agent-logs.md](./markdown/agent-logs.md) |
 | Agent Use Cases | `/docs/agent-use-cases` | [agent-use-cases.md](./markdown/agent-use-cases.md) |
-| **Integrations** | | |
+| **Skills Integration** | | |
 | Meta Ads | `/docs/integration-metaads-skills` | [integration-metaads-skills.md](./markdown/integration-metaads-skills.md) |
 | TikTok Ads | `/docs/integration-tiktokads-skills` | [integration-tiktokads-skills.md](./markdown/integration-tiktokads-skills.md) |
 | Shopify | `/docs/integration-shopify-skills` | [integration-shopify-skills.md](./markdown/integration-shopify-skills.md) |
@@ -88,11 +94,16 @@
 | Twitter / X | `/docs/integration-twitter-skills` | [integration-twitter-skills.md](./markdown/integration-twitter-skills.md) |
 | TikTok | `/docs/integration-tiktok-skills` | [integration-tiktok-skills.md](./markdown/integration-tiktok-skills.md) |
 | Google Ads | `/docs/integration-googleads-skills` | [integration-googleads-skills.md](./markdown/integration-googleads-skills.md) |
+| YouTube | `/docs/integration-youtube-skills` | [integration-youtube-skills.md](./markdown/integration-youtube-skills.md) |
+| Google Analytics 4 | `/docs/integration-ga4-skills` | [integration-ga4-skills.md](./markdown/integration-ga4-skills.md) |
 | Roasit | `/docs/integration-roasit-skills` | [integration-roasit-skills.md](./markdown/integration-roasit-skills.md) |
+| Merchant Center | `/docs/integration-merchantcenter-skills` | [integration-merchantcenter-skills.md](./markdown/integration-merchantcenter-skills.md) |
 | Google Business Profile | `/docs/integration-googlebusiness-skills` | [integration-googlebusiness-skills.md](./markdown/integration-googlebusiness-skills.md) |
 | HubSpot | `/docs/integration-hubspot-skills` | [integration-hubspot-skills.md](./markdown/integration-hubspot-skills.md) |
 | Mailchimp | `/docs/integration-mailchimp-skills` | [integration-mailchimp-skills.md](./markdown/integration-mailchimp-skills.md) |
 | Google Drive | `/docs/integration-googledrive-skills` | [integration-googledrive-skills.md](./markdown/integration-googledrive-skills.md) |
+| Google Calendar | `/docs/integration-google-calendar-skills` | [integration-google-calendar-skills.md](./markdown/integration-google-calendar-skills.md) |
+| Serper Web Search | `/docs/integration-serper-search-skills` | [integration-serper-search-skills.md](./markdown/integration-serper-search-skills.md) |
 | Gmail | `/docs/integration-gmail-skills` | [integration-gmail-skills.md](./markdown/integration-gmail-skills.md) |
 | Telegram | `/docs/integration-telegram-skills` | [integration-telegram-skills.md](./markdown/integration-telegram-skills.md) |
 | Firebase | `/docs/integration-firebase-skills` | [integration-firebase-skills.md](./markdown/integration-firebase-skills.md) |
@@ -103,112 +114,69 @@
 | Lemlist | `/docs/integration-lemlist-skills` | [integration-lemlist-skills.md](./markdown/integration-lemlist-skills.md) |
 | Brevo | `/docs/integration-brevo-skills` | [integration-brevo-skills.md](./markdown/integration-brevo-skills.md) |
 | SendGrid | `/docs/integration-sendgrid-skills` | [integration-sendgrid-skills.md](./markdown/integration-sendgrid-skills.md) |
+| Twilio Voice | `/docs/integration-twiliovoice-skills` | [integration-twiliovoice-skills.md](./markdown/integration-twiliovoice-skills.md) |
+| Web Voice | `/docs/integration-webvoice-skills` | [integration-webvoice-skills.md](./markdown/integration-webvoice-skills.md) |
+| **Organizations & Teams** | | |
+| Overview | `/docs/organizations-overview` | [organizations-overview.md](./markdown/organizations-overview.md) |
+| Managing Teams | `/docs/organizations-managing-teams` | [organizations-managing-teams.md](./markdown/organizations-managing-teams.md) |
+| Team Billing & Spending | `/docs/organizations-billing` | [organizations-billing.md](./markdown/organizations-billing.md) |
+| Team API Access | `/docs/organizations-api-access` | [organizations-api-access.md](./markdown/organizations-api-access.md) |
+| **Integrations** | | |
+| Wiro MCP Server | `/docs/wiro-mcp-server` | [wiro-mcp-server.md](./markdown/wiro-mcp-server.md) |
+| Self-Hosted MCP | `/docs/mcp-self-hosted` | [mcp-self-hosted.md](./markdown/mcp-self-hosted.md) |
+| Node.js Library | `/docs/nodejs-library` | [nodejs-library.md](./markdown/nodejs-library.md) |
+| n8n Wiro Integration | `/docs/n8n-wiro-integration` | [n8n-wiro-integration.md](./markdown/n8n-wiro-integration.md) |
+| **Code Examples** | | |
+| Code Examples | `/docs/code-examples` | [code-examples.md](./markdown/code-examples.md) |
 
 > **Full export:** [full-documentation.md](./markdown/full-documentation.md)
 
 ---
 
-## 🚀 Run locally
+## Run locally
 
-Uses path-based routing (`/docs/files`, `/docs/tasks`). The included Node server handles SPA fallback and SSR meta injection for SEO:
+`serve.js` only uses Node.js built-in modules, so there is nothing to install:
 
 ```bash
 node serve.js
 ```
 
-Before running locally, set the base path to empty in `index.html`:
-```html
-<html lang="en" data-base-path="">
-```
+Open **http://localhost:8000/docs/** (set `PORT` to use another port). Each page is served at its own path, for example `/docs/files` or `/docs/tasks`, with its own meta tags. Unknown paths return a 404 page, and `/docs/index.html` returns the full file with every section inline.
 
-Open **http://localhost:8000/docs/** (or the printed URL).
+Keep `data-base-path="/docs"` on the `<html>` tag of `index.html`: it matches the path `serve.js` serves under.
 
 ---
 
-## 📁 Project structure
+## Project structure
 
 ```
 Wiro-Docs/
 ├── README.md
 ├── LICENSE
 ├── .gitignore
-├── index.html                  # All doc sections inline (LLM-friendly)
-├── serve.js                    # Node server with SSR meta injection for SEO
+├── index.html                  # Every doc page inline (readable without JS)
+├── serve.js                    # Node server: one document per page, per-page meta, search index
 ├── llms.txt                    # Machine-readable API summary
 ├── sitemap.xml                 # Sitemap with priorities and change frequencies
 ├── robots.txt                  # Crawler directives with sitemap reference
+├── assets/                     # SVG logos for MCP clients and integrations
 ├── css/
-│   └── docs.css                # Layout, theme (light/dark), typography, components
+│   ├── docs.css                # Layout, theme (light/dark), typography, components
+│   ├── wiro-foundation.css     # Design-system tokens and component styles
+│   ├── mcp-clients.css         # MCP client logos as CSS masks
+│   ├── lineicons-free.css      # Lineicons icon font
+│   └── cursor-custom-llm.png   # Screenshot used on the Direct LLM Gateway page
 ├── js/
 │   ├── app.js                  # Navigation, search, TOC, code panel, Shiki
 │   └── helpers.js              # Model browser (Tool/List) + shared helpers
-└── markdown/                   # Must stay in sync with index.html (see Contributing)
-    ├── full-documentation.md
-    ├── introduction.md
-    ├── authentication.md
-    ├── projects.md
-    ├── models.md
-    ├── run-a-model.md
-    ├── model-parameters.md
-    ├── tasks.md
-    ├── llm-chat-streaming.md
-    ├── websocket.md
-    ├── realtime-voice-conversation.md
-    ├── files.md
-    ├── pricing.md
-    ├── concurrency-limits.md
-    ├── error-reference.md
-    ├── faq.md
-    ├── code-examples.md
-    ├── wiro-mcp-server.md
-    ├── mcp-self-hosted.md
-    ├── nodejs-library.md
-    ├── n8n-wiro-integration.md
-    ├── agent-overview.md
-    ├── agent-messaging.md
-    ├── agent-websocket.md
-    ├── agent-webhooks.md
-    ├── agent-credentials.md
-    ├── agent-skills.md
-    ├── agent-use-cases.md
-    ├── integration-metaads-skills.md
-    ├── integration-tiktokads-skills.md
-    ├── integration-shopify-skills.md
-    ├── integration-woocommerce-skills.md
-    ├── integration-reddit-skills.md
-    ├── integration-facebook-skills.md
-    ├── integration-instagram-skills.md
-    ├── integration-linkedin-skills.md
-    ├── integration-twitter-skills.md
-    ├── integration-tiktok-skills.md
-    ├── integration-googleads-skills.md
-    ├── integration-roasit-skills.md
-    ├── integration-googlebusiness-skills.md
-    ├── integration-hubspot-skills.md
-    ├── integration-mailchimp-skills.md
-    ├── integration-googledrive-skills.md
-    ├── integration-gmail-skills.md
-    ├── integration-telegram-skills.md
-    ├── integration-firebase-skills.md
-    ├── integration-wordpress-skills.md
-    ├── integration-appstore-skills.md
-    ├── integration-googleplay-skills.md
-    ├── integration-apollo-skills.md
-    ├── integration-lemlist-skills.md
-    ├── integration-brevo-skills.md
-    └── integration-sendgrid-skills.md
+├── licenses/
+│   └── lineicons-MIT.md        # Lineicons license
+└── markdown/                   # One {slug}.md per page + full-documentation.md, kept in sync with index.html (see Contributing)
 ```
 
 ---
 
-## 🔗 Links
-
-- 🌐 [wiro.ai](https://wiro.ai) · [Explore](https://wiro.ai/explore) · [Models](https://wiro.ai/models) · [Dashboard](https://wiro.ai/panel) · [Create project](https://wiro.ai/panel/project/new)
-- 📚 [Product documentation](https://wiro.ai/docs) (same content as this site)
-
----
-
-## 🤝 Contributing
+## Contributing
 
 We follow **conventional, changelog-friendly** commits:
 
@@ -223,16 +191,26 @@ When you change **`index.html`** API content, update the matching **`markdown/{s
 
 ---
 
-## 📜 License
+## More from Wiro AI
 
-MIT — see [LICENSE](./LICENSE) for details.
+| Repository | What it is |
+| --- | --- |
+| [Wiro-MCP](https://github.com/wiroai/Wiro-MCP) | Official MCP server for Wiro AI (`@wiro-ai/wiro-mcp`) |
+| [Wiro-Plugin](https://github.com/wiroai/Wiro-Plugin) | Wiro AI plugin for Cursor, Claude Code, Gemini CLI and Devin |
+| [Swift-QuickStart](https://github.com/wiroai/Swift-QuickStart) | WiroKit, the Wiro AI SDK for iOS |
+| [Kotlin-QuickStart](https://github.com/wiroai/Kotlin-QuickStart) | WiroKit, the Wiro AI SDK for Android |
+| [Dart-QuickStart](https://github.com/wiroai/Dart-QuickStart) | Wiro AI SDK for Dart and Flutter |
+| [ReactNative-QuickStart](https://github.com/wiroai/ReactNative-QuickStart) | WiroKit, the Wiro AI SDK for React Native |
+| [Swift-Realtime](https://github.com/wiroai/Swift-Realtime) | Realtime voice AI example for iOS |
+| [Kotlin-Realtime](https://github.com/wiroai/Kotlin-Realtime) | Realtime voice AI example for Android |
+| [Dart-Realtime](https://github.com/wiroai/Dart-Realtime) | Realtime voice AI example for Flutter |
+| [ReactNative-Realtime](https://github.com/wiroai/ReactNative-Realtime) | Realtime voice AI example for React Native |
+| [n8n-nodes-wiroai](https://github.com/wiroai/n8n-nodes-wiroai) | Wiro AI nodes for n8n |
+
+[Website](https://wiro.ai) · [Models](https://wiro.ai/models) · [Docs](https://wiro.ai/docs) · [X](https://x.com/wiroai)
 
 ---
 
-<div align="center">
+## License
 
-**Built with ❤️ by the Wiro team**
-
-🌐 [wiro.ai](https://wiro.ai) · [GitHub @wiroai](https://github.com/wiroai)
-
-</div>
+MIT, see [LICENSE](./LICENSE).
