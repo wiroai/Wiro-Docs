@@ -11,8 +11,8 @@ your app, then sign in with your Wiro account when the app asks:
 https://mcp.wiro.ai/v1
 ```
 
-Works with ChatGPT, Claude, Claude Code, Cursor, VS Code, Gemini CLI, Codex and
-Devin.
+Works with ChatGPT, Claude, Claude Code, Cursor, VS Code, Gemini CLI, Codex,
+Devin, Kiro and goose.
 
 1. **Add the server.** In your app, add a remote MCP server with the URL above. Leave the `Authorization` header out.
 2. **Sign in to Wiro.** The app opens wiro.ai in your browser. Sign in, or create an account.
@@ -53,7 +53,7 @@ You need a Wiro account. With a browser sign-in you pick a project while connect
 ## Browser sign-in details
 
 ChatGPT, Claude (claude.ai, Claude Desktop and Claude Code), Cursor, VS Code,
-Gemini CLI, Codex, Zed, Devin, Cline and MCP Inspector connect this way, and so
+Gemini CLI, Codex, Zed, Devin, Kiro, goose, Cline and MCP Inspector connect this way, and so
 does any app on your computer that follows the
 [MCP authorization spec](https://modelcontextprotocol.io/specification/latest/basic/authorization).
 An app that signs in through its own website needs its callback address on
@@ -337,6 +337,79 @@ In the Devin web app you can also open
 [Customize, MCPs](https://app.devin.ai/customize?tab=mcps), add a custom MCP
 server with the URL `https://mcp.wiro.ai/v1` and sign in to Wiro in your
 browser instead of entering a key.
+
+### Kiro
+
+#### Sign in with your browser
+
+Click
+[Add to Kiro](https://kiro.dev/launch/mcp/add/?name=wiro&config=%7B%22url%22%3A%22https%3A%2F%2Fmcp.wiro.ai%2Fv1%22%7D),
+or add the server with only its URL to `~/.kiro/settings/mcp.json` (every
+workspace) or `.kiro/settings/mcp.json` (this workspace):
+
+```json
+{
+  "mcpServers": {
+    "wiro": {
+      "url": "https://mcp.wiro.ai/v1"
+    }
+  }
+}
+```
+
+Kiro opens Wiro's sign-in page in your browser the first time it connects.
+
+#### Or use your API key
+
+Send the key in an `Authorization` header instead:
+
+```json
+{
+  "mcpServers": {
+    "wiro": {
+      "url": "https://mcp.wiro.ai/v1",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_KEY"
+      }
+    }
+  }
+}
+```
+
+Use `YOUR_API_KEY:YOUR_API_SECRET` (both values joined with a colon) if the
+project uses signature-based auth.
+
+### goose
+
+#### Sign in with your browser
+
+Click
+[Add to goose](https://goose-docs.ai/extension/?url=https%3A%2F%2Fmcp.wiro.ai%2Fv1&type=streamable_http&id=wiro&name=Wiro%20AI&description=Run%20image%2C%20video%2C%20audio%20and%20LLM%20models%20on%20Wiro%20AI).
+To add it by hand in goose Desktop, open
+**Extensions > Add custom extension**, choose the **Streamable HTTP** type and
+enter `https://mcp.wiro.ai/v1`. In the goose CLI, run `goose configure`, pick
+**Add Extension > Remote Extension (Streamable HTTP)** and enter the same URL.
+
+goose opens Wiro's sign-in page in your browser the first time it connects.
+
+#### Or use your API key
+
+Add Wiro to `~/.config/goose/config.yaml` with an `Authorization` header:
+
+```yaml
+extensions:
+  wiro:
+    name: Wiro AI
+    type: streamable_http
+    uri: https://mcp.wiro.ai/v1
+    headers:
+      Authorization: Bearer YOUR_API_KEY
+    enabled: true
+    timeout: 300
+```
+
+Use `YOUR_API_KEY:YOUR_API_SECRET` (both values joined with a colon) if the
+project uses signature-based auth.
 
 ### Windsurf
 

@@ -7412,6 +7412,8 @@ if (!data.result) {
                       <li><svg width="18" height="18" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-gemini"></use></svg>Gemini CLI</li>
                       <li><svg width="18" height="18" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-openai"></use></svg>Codex</li>
                       <li><svg width="18" height="18" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-devin"></use></svg>Devin</li>
+                      <li><svg width="18" height="18" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-kiro"></use></svg>Kiro</li>
+                      <li><svg width="18" height="18" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-goose"></use></svg>goose</li>
                     </ul>
                     <ol class="docs-steps">
                       <li><strong>Add the server</strong><span>In your app, add a remote MCP server with the URL above. Leave the <code>Authorization</code> header out.</span></li>
@@ -7451,7 +7453,7 @@ if (!data.result) {
 
                   <section id="mcp-oauth-details">
                     <h2>Browser sign-in details</h2>
-                    <p>ChatGPT, Claude (claude.ai, Claude Desktop and Claude Code), Cursor, VS Code, Gemini CLI, Codex, Zed, Devin, Cline and MCP Inspector connect this way, and so does any app on your computer that follows the <a href="https://modelcontextprotocol.io/specification/latest/basic/authorization" target="_blank" rel="noopener">MCP authorization spec</a>. An app that signs in through its own website needs its callback address on Wiro's list: write to <a href="mailto:support@wiro.ai">support@wiro.ai</a> to add one.</p>
+                    <p>ChatGPT, Claude (claude.ai, Claude Desktop and Claude Code), Cursor, VS Code, Gemini CLI, Codex, Zed, Devin, Kiro, goose, Cline and MCP Inspector connect this way, and so does any app on your computer that follows the <a href="https://modelcontextprotocol.io/specification/latest/basic/authorization" target="_blank" rel="noopener">MCP authorization spec</a>. An app that signs in through its own website needs its callback address on Wiro's list: write to <a href="mailto:support@wiro.ai">support@wiro.ai</a> to add one.</p>
                     <h3>Projects and billing</h3>
                     <ul>
                       <li>Each connection uses one project. A personal project bills your personal wallet, a team project the team's wallet.</li>
@@ -7540,6 +7542,16 @@ if (!data.result) {
                         <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-devin"></use></svg>
                         <strong>Devin</strong>
                         <span>Plugin install</span>
+                      </a>
+                      <a href="/docs/wiro-mcp-server#mcp-setup-kiro" class="mcp-client-card" data-toggle-target="mcp-setup-kiro">
+                        <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-kiro"></use></svg>
+                        <strong>Kiro</strong>
+                        <span>One-click install</span>
+                      </a>
+                      <a href="/docs/wiro-mcp-server#mcp-setup-goose" class="mcp-client-card" data-toggle-target="mcp-setup-goose">
+                        <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-goose"></use></svg>
+                        <strong>goose</strong>
+                        <span>One-click install</span>
                       </a>
                       <a href="/docs/wiro-mcp-server#mcp-setup-windsurf" class="mcp-client-card" data-toggle-target="mcp-setup-windsurf">
                         <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-windsurf"></use></svg>
@@ -7698,6 +7710,52 @@ if (!data.result) {
                         <pre><code class="language-bash">devin plugins install wiroai/Wiro-Plugin</code></pre>
                         <p>In the Devin web app, go to <strong>Customize &gt; Plugins &gt; Add plugin &gt; From repository</strong> and enter <code>wiroai/Wiro-Plugin</code>. Then connect the Wiro server with your API key: the project's API key, or <code>API_KEY:API_SECRET</code> (both values joined with a colon) if the project uses signature-based auth.</p>
                         <p>In the Devin web app you can also open <a href="https://app.devin.ai/customize?tab=mcps" target="_blank" rel="noopener">Customize, MCPs</a>, add a custom MCP server with the URL <code>https://mcp.wiro.ai/v1</code> and sign in to Wiro in your browser instead of entering a key.</p>
+                      </div>
+
+                      <div class="mcp-setup-panel" id="mcp-setup-kiro">
+                        <h3>Kiro</h3>
+                        <h4>Sign in with your browser</h4>
+                        <p>Click <a href="https://kiro.dev/launch/mcp/add/?name=wiro&amp;config=%7B%22url%22%3A%22https%3A%2F%2Fmcp.wiro.ai%2Fv1%22%7D" target="_blank" rel="noopener">Add to Kiro</a>, or add the server with only its URL to <code>~/.kiro/settings/mcp.json</code> (every workspace) or <code>.kiro/settings/mcp.json</code> (this workspace):</p>
+                        <pre><code class="language-json">{
+  "mcpServers": {
+    "wiro": {
+      "url": "https://mcp.wiro.ai/v1"
+    }
+  }
+}</code></pre>
+                        <p>Kiro opens Wiro's sign-in page in your browser the first time it connects.</p>
+                        <h4>Or use your API key</h4>
+                        <p>Send the key in an <code>Authorization</code> header instead:</p>
+                        <pre><code class="language-json">{
+  "mcpServers": {
+    "wiro": {
+      "url": "https://mcp.wiro.ai/v1",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_KEY"
+      }
+    }
+  }
+}</code></pre>
+                        <p>Use <code>YOUR_API_KEY:YOUR_API_SECRET</code> (both values joined with a colon) if the project uses signature-based auth.</p>
+                      </div>
+
+                      <div class="mcp-setup-panel" id="mcp-setup-goose">
+                        <h3>goose</h3>
+                        <h4>Sign in with your browser</h4>
+                        <p>Click <a href="https://goose-docs.ai/extension/?url=https%3A%2F%2Fmcp.wiro.ai%2Fv1&amp;type=streamable_http&amp;id=wiro&amp;name=Wiro%20AI&amp;description=Run%20image%2C%20video%2C%20audio%20and%20LLM%20models%20on%20Wiro%20AI" target="_blank" rel="noopener">Add to goose</a>. To add it by hand in goose Desktop, open <strong>Extensions &gt; Add custom extension</strong>, choose the <strong>Streamable HTTP</strong> type and enter <code>https://mcp.wiro.ai/v1</code>. In the goose CLI, run <code>goose configure</code>, pick <strong>Add Extension &gt; Remote Extension (Streamable HTTP)</strong> and enter the same URL.</p>
+                        <p>goose opens Wiro's sign-in page in your browser the first time it connects.</p>
+                        <h4>Or use your API key</h4>
+                        <p>Add Wiro to <code>~/.config/goose/config.yaml</code> with an <code>Authorization</code> header:</p>
+                        <pre><code class="language-yaml">extensions:
+  wiro:
+    name: Wiro AI
+    type: streamable_http
+    uri: https://mcp.wiro.ai/v1
+    headers:
+      Authorization: Bearer YOUR_API_KEY
+    enabled: true
+    timeout: 300</code></pre>
+                        <p>Use <code>YOUR_API_KEY:YOUR_API_SECRET</code> (both values joined with a colon) if the project uses signature-based auth.</p>
                       </div>
 
                       <div class="mcp-setup-panel" id="mcp-setup-windsurf">
