@@ -6,15 +6,15 @@ Complete end-to-end examples in all 9 supported languages.
 
 Each example below demonstrates the full Wiro workflow: authenticate, run a model, poll for task completion, and retrieve the result. Choose your preferred language from the tabs.
 
-- **curl** — Shell scripting with bash
-- **Python** — Using the `requests` library
-- **Node.js** — Using `axios`
-- **PHP** — Using cURL functions
-- **C#** — Using `HttpClient` (.NET 6+)
-- **Swift** — Using async/await `URLSession`
-- **Dart** — Using the `http` package
-- **Kotlin** — Using `java.net.http`
-- **Go** — Using the standard library `net/http`
+- **curl**: Shell scripting with bash
+- **Python**: Using the `requests` library
+- **Node.js**: Using `axios`
+- **PHP**: Using cURL functions
+- **C#**: Using `HttpClient` (.NET 6+)
+- **Swift**: Using async/await `URLSession`
+- **Dart**: Using the `http` package
+- **Kotlin**: Using `java.net.http`
+- **Go**: Using the standard library `net/http`
 
 ## Full Examples
 

@@ -18,8 +18,8 @@ A project is a container that holds your **API keys**, **authentication settings
 3. Click [New Project](https://wiro.ai/panel/project/new)
 4. Enter a project name
 5. Select your [authentication method](/docs/authentication):
-   - **Signature-Based** — generates both an API key and API secret
-   - **API Key Only** — generates only an API key
+   - **Signature-Based**: generates both an API key and API secret
+   - **API Key Only**: generates only an API key
 6. Click **Create**
 
 ## API Credentials
@@ -32,10 +32,10 @@ After creating a project, copy your API key (and secret, if signature-based) and
 
 From the [Projects page](https://wiro.ai/panel/project) in your Dashboard, you can:
 
-- **Update name** — rename your project at any time
-- **Change authentication method** — switch between Signature-Based and API Key Only; your API key and secret stay the same
-- **View usage** — see API calls, costs, and task history
-- **Delete project** — permanently removes the project and revokes all keys
+- **Update name**: rename your project at any time
+- **Change authentication method**: switch between Signature-Based and API Key Only; your API key and secret stay the same
+- **View usage**: see API calls, costs, and task history
+- **Delete project**: permanently removes the project and revokes all keys
 
 A project's API key never changes. To replace it, create a new project, move your application to the new key, then delete the old project, which revokes its key at once. Changing a project's IP whitelist gives the project a new API secret.
 

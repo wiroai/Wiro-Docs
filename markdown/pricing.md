@@ -4,7 +4,7 @@ Understand how billing works for AI model runs on Wiro.
 
 ## Overview
 
-When you run an AI model through Wiro, you are billed based on the type of work performed. Each model has its own pricing, visible on the model's page in the [marketplace](https://wiro.ai/models) and on the [pricing page](https://wiro.ai/product/pricing). You pay only for successful runs — server errors are never billed.
+When you run an AI model through Wiro, you are billed based on the type of work performed. Each model has its own pricing, visible on the model's page in the [marketplace](https://wiro.ai/models) and on the [pricing page](https://wiro.ai/product/pricing). You pay only for successful runs. Server errors are never billed.
 
 Wiro uses a prepaid credit model. You [add credits](https://wiro.ai/panel/billing) to your account and they are drawn down as you use models. Credits also determine your [concurrency limit](/docs/concurrency-limits).
 
@@ -17,7 +17,7 @@ Every model on Wiro uses one of the following billing methods. The method is set
 | Billing Method | Code | How it works |
 |---|---|---|
 | **Per Request** | `cpr` | Fixed cost per run, regardless of output. Most common for image generation, image editing, and simple models. |
-| **Per Second** | `cps` | Cost per second of processing time. Used for models where runtime varies significantly. When no dynamic pricing is set, this is the default billing method — cost = elapsed seconds × cps rate. |
+| **Per Second** | `cps` | Cost per second of processing time. Used for models where runtime varies significantly. When no dynamic pricing is set, this is the default billing method: cost = elapsed seconds × cps rate. |
 | **Per Output** | `cpo` | Cost per output item generated. If the run produces multiple files, you pay per file. If no output is produced, the base price is charged once. |
 | **Per Token** | `cpt` | Cost per token used. Total tokens (input + output) are extracted from the model's usage metadata. Used for LLM models. |
 
@@ -34,12 +34,12 @@ Every model on Wiro uses one of the following billing methods. The method is set
 
 | Billing Method | Code | How it works |
 |---|---|---|
-| **Per Realtime Turn** | `cp-realtimeturn` | Used for realtime voice conversation models. Billing happens per turn during the session — each conversation turn has a cost that is deducted in real time. |
+| **Per Realtime Turn** | `cp-realtimeturn` | Used for realtime voice conversation models. Billing happens per turn during the session: each conversation turn has a cost that is deducted in real time. |
 | **Model-Reported** | `cp-readoutput` | The model itself reports the cost in its output. The system extracts the price from the model's stdout or stderr JSON output. |
 
 ## Dynamic Pricing
 
-Many models have **dynamic pricing** — the cost varies based on the input parameters you choose. For example, a video generation model might charge different rates depending on the resolution and duration you select.
+Many models have **dynamic pricing**: the cost varies based on the input parameters you choose. For example, a video generation model might charge different rates depending on the resolution and duration you select.
 
 The pricing is returned in the `dynamicprice` field of the [Tool/List](/docs/models) and [Tool/Detail](/docs/models) API responses as a JSON array:
 
@@ -67,8 +67,8 @@ Each entry in the `dynamicprice` array represents a pricing tier:
 | `inputs` | object | The input parameter combination this price applies to. Empty `{}` means the price applies to all configurations. |
 | `price` | number | The cost in USD for this configuration. |
 | `priceMethod` | string | The billing method code (see tables above). |
-| `priceExtra` | number (optional) | Extra cost per additional tier. Currently used by `cp-pixel` — each additional 1MP tier costs this amount. |
-| `priceInput` | number (optional) | Per-input cost. Currently used by `cp-pixel` — each input image incurs this additional cost per 1MP tier. |
+| `priceExtra` | number (optional) | Extra cost per additional tier. Currently used by `cp-pixel`: each additional 1MP tier costs this amount. |
+| `priceInput` | number (optional) | Per-input cost. Currently used by `cp-pixel`: each input image incurs this additional cost per 1MP tier. |
 
 When `inputs` contains specific parameter values (e.g. `"resolution": "720p"`), that price only applies when you run the model with those exact parameters. When `inputs` is empty (`{}`), it's a flat rate that applies regardless of input parameters.
 
@@ -105,7 +105,7 @@ When a model does not have `dynamicprice` set, billing falls back to **per-secon
 totalcost = elapsed_seconds × cps
 ```
 
-Where `cps` (cost per second) is either the model's own rate or the queue group's default rate. The API also returns an `approximatelycost` field — an estimate based on the model's average run time:
+Where `cps` (cost per second) is either the model's own rate or the queue group's default rate. The API also returns an `approximatelycost` field, an estimate based on the model's average run time:
 
 ```
 approximatelycost = average_elapsed_seconds × cps
@@ -129,19 +129,19 @@ Browse and compare model prices interactively on the [pricing page](https://wiro
 
 ## What You Pay For
 
-You are billed only for **successfully completed** model runs — when the task reaches `task_postprocess_end` status with `pexit` of `"0"`. The actual cost is recorded in the task's `totalcost` field, which you can retrieve via [Task/Detail](/docs/tasks).
+You are billed only for **successfully completed** model runs, where the task reaches `task_postprocess_end` status with `pexit` of `"0"`. The actual cost is recorded in the task's `totalcost` field, which you can retrieve via [Task/Detail](/docs/tasks).
 
 **Important:** `task_postprocess_end` does **not** always mean success. Both successful and failed runs reach this status. You must check `pexit` to determine the outcome:
 
-- `pexit: "0"` — success, you are billed, `totalcost` reflects the charge
-- `pexit: "1"` (or any non-zero) — failure, **you are not charged**, `totalcost` is `"0"`
+- `pexit: "0"` means success. You are billed and `totalcost` reflects the charge
+- `pexit: "1"` (or any non-zero) means failure. **You are not charged** and `totalcost` is `"0"`
 
 ## What You Are Not Charged For
 
-- **Failed tasks** — if `pexit` is non-zero, no charge is incurred regardless of how long the model ran.
-- **Server errors** — if a run fails due to a server-side error, no charge is incurred.
-- **Queue time** — time spent waiting in the queue before processing starts is free.
-- **Cancelled tasks** — tasks cancelled before processing completes are not billed.
+- **Failed tasks**: if `pexit` is non-zero, no charge is incurred regardless of how long the model ran.
+- **Server errors**: if a run fails due to a server-side error, no charge is incurred.
+- **Queue time**: time spent waiting in the queue before processing starts is free.
+- **Cancelled tasks**: tasks cancelled before processing completes are not billed.
 
 ## Monitoring Your Spending
 
@@ -164,8 +164,8 @@ Check the `totalcost` field in [Task/Detail](/docs/tasks) responses to see the c
 
 The [MCP server](/docs/wiro-mcp-server) provides two ways to check costs:
 
-- **`get_task`** — returns full task details including `totalcost`
-- **`get_task_price`** — dedicated tool that returns just the cost, billing status, and duration. Clearly indicates whether the task was billed or not.
+- **`get_task`**: returns full task details including `totalcost`
+- **`get_task_price`**: dedicated tool that returns just the cost, billing status, and duration. Clearly indicates whether the task was billed or not.
 
 ### Dashboard
 

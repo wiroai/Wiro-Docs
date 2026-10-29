@@ -6,11 +6,11 @@ Everything you need to get started with the Wiro AI platform.
 
 Wiro is an AI model marketplace and API platform that lets you run **AI models** through a single, unified API. Instead of managing infrastructure for each model provider, you make one API call to Wiro and we handle the rest.
 
-- **Unified API** — one interface for all models (image generation, LLMs, audio, video, and more)
-- **Pay-per-use pricing** — only pay for what you consume, no upfront commitments
-- **Real-time WebSocket updates** — stream task progress and outputs live
-- **9 SDK languages** — curl, Python, Node.js, PHP, C#, Swift, Dart, Kotlin, Go
-- **AI Agents** — deploy and manage autonomous AI agents that connect to third-party services, maintain conversation memory, and automate workflows via API
+- **Unified API**: one interface for all models (image generation, LLMs, audio, video, and more)
+- **Pay-per-use pricing**: only pay for what you consume, no upfront commitments
+- **Real-time WebSocket updates**: stream task progress and outputs live
+- **9 SDK languages**: curl, Python, Node.js, PHP, C#, Swift, Dart, Kotlin, Go
+- **AI Agents**: deploy and manage autonomous AI agents that connect to third-party services, maintain conversation memory, and automate workflows via API
 
 ## Base URL
 
@@ -31,8 +31,8 @@ wss://socket.wiro.ai/v1
 1. **Sign up** at [wiro.ai](https://wiro.ai/auth/signup)
 2. **Create a project** in the [Dashboard](https://wiro.ai/panel/project/new) to get your API key
 3. **Pick a model** from the [marketplace](https://wiro.ai/models)
-4. **Make your first API call** — see [Code Examples](/docs/code-examples) for full end-to-end samples
-5. **Deploy an AI Agent** — browse the [agent catalog](https://wiro.ai/agents), deploy an instance, and interact via the [Agent API](/docs/agent-overview)
+4. **Make your first API call**: see [Code Examples](/docs/code-examples) for full end-to-end samples
+5. **Deploy an AI Agent**: browse the [agent catalog](https://wiro.ai/agents), deploy an instance, and interact via the [Agent API](/docs/agent-overview)
 
 ## Response Format
 
@@ -54,12 +54,12 @@ API requests are rate-limited per project. If you exceed the limit, the API retu
 
 Common HTTP status codes:
 
-- `200` — Success
-- `400` — Bad request (check parameters)
-- `401` — Unauthorized (invalid or missing API key)
-- `403` — Forbidden (signature mismatch or insufficient permissions)
-- `429` — Rate limit exceeded
-- `500` — Internal server error
+- `200`: Success
+- `400`: Bad request (check parameters)
+- `401`: Unauthorized (invalid or missing API key)
+- `403`: Forbidden (signature mismatch or insufficient permissions)
+- `429`: Rate limit exceeded
+- `500`: Internal server error
 
 ## Code Examples
 

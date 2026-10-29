@@ -1,19 +1,19 @@
 # n8n Wiro Integration
 
-Use all Wiro AI models directly in your n8n workflows — video, image, audio, LLM, 3D, and more.
+Use all Wiro AI models directly in your n8n workflows: video, image, audio, LLM, 3D, and more.
 
 ## Overview
 
 [n8n](https://n8n.io) is a powerful workflow automation platform. The **Wiro AI community node** gives you access to all Wiro AI models as individual nodes you can drag and drop into any workflow.
 
-Each model is a **separate node** — so you get dedicated parameters, descriptions, and output handling for every model without any configuration hassle.
+Each model is a **separate node**, so you get dedicated parameters, descriptions, and output handling for every model without any configuration hassle.
 
 ### Links
 
 - [npm: @wiro-ai/n8n-nodes-wiroai](https://www.npmjs.com/package/@wiro-ai/n8n-nodes-wiroai)
 - [GitHub: wiroai/n8n-nodes-wiroai](https://github.com/wiroai/n8n-nodes-wiroai)
 - [n8n Community Nodes Installation Guide](https://docs.n8n.io/integrations/community-nodes/installation/)
-- [Wiro Model Catalog](https://wiro.ai/models) — browse all available models
+- [Wiro Model Catalog](https://wiro.ai/models): browse all available models
 
 ## Available Model Categories
 
@@ -55,8 +55,8 @@ The node supports both [Wiro authentication methods](/docs/authentication):
 
 1. Go to **Credentials → Add new → Wiro API** in n8n
 2. Select your auth method:
-   - **Signature-Based** — enter API key + API secret (recommended)
-   - **API Key Only** — enter API key only
+   - **Signature-Based**: enter API key + API secret (recommended)
+   - **API Key Only**: enter API key only
 3. Click **Save**
 
 Get your credentials at [wiro.ai/panel/project](https://wiro.ai/panel/project/new).
@@ -90,13 +90,13 @@ The node returns the task result with output URLs:
 1. Add the **Wiro - Whisper Large 3** node
 2. Connect an audio file from a previous node or provide a URL
 3. Select language and output format
-4. Run — get the transcribed text
+4. Run: get the transcribed text
 
 ### Example: LLM Chat with GPT-5
 
 1. Add the **Wiro - GPT-5** node
 2. Set your prompt and system instructions
-3. Run — get the AI response
+3. Run: get the AI response
 
 ## Compatibility
 

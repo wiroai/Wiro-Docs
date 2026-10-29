@@ -4,7 +4,7 @@ Connect AI coding assistants to Wiro's AI models via the Model Context Protocol.
 
 ## What is MCP?
 
-[Model Context Protocol](https://modelcontextprotocol.io/) (MCP) is an open standard that lets AI assistants use external tools directly. With the Wiro MCP server, your AI assistant can search models, run inference, track tasks, and upload files — all without leaving your editor. Every request uses your own API key — nothing is stored on the server.
+[Model Context Protocol](https://modelcontextprotocol.io/) (MCP) is an open standard that lets AI assistants use external tools directly. With the Wiro MCP server, your AI assistant can search models, run inference, track tasks, and upload files, all without leaving your editor. Every request uses your own API key. Nothing is stored on the server.
 
 The hosted MCP server is available at `https://mcp.wiro.ai/v1`. It works with
 MCP clients that support **Streamable HTTP plus custom request headers**,
@@ -16,19 +16,19 @@ You need a Wiro API key to use the MCP server. If you don't have one yet, [creat
 
 ### Links
 
-- [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) — open standard specification
-- [GitHub: wiroai/Wiro-MCP](https://github.com/wiroai/Wiro-MCP) — source code & self-hosting instructions
-- [npm: @wiro-ai/wiro-mcp](https://www.npmjs.com/package/@wiro-ai/wiro-mcp) — npm package
-- [Wiro Model Catalog](https://wiro.ai/models) — browse all available models
-- [Create API Key](https://wiro.ai/panel/project/new) — get started in seconds
+- [Model Context Protocol (MCP)](https://modelcontextprotocol.io/): open standard specification
+- [GitHub: wiroai/Wiro-MCP](https://github.com/wiroai/Wiro-MCP) (source code & self-hosting instructions)
+- [npm: @wiro-ai/wiro-mcp](https://www.npmjs.com/package/@wiro-ai/wiro-mcp) (npm package)
+- [Wiro Model Catalog](https://wiro.ai/models): browse all available models
+- [Create API Key](https://wiro.ai/panel/project/new): get started in seconds
 
 ## Setup
 
 ### Cursor
 
-1. **Open MCP Settings** — Use `Cmd+Shift+P` (`Ctrl+Shift+P` on Windows) and search for **"Open MCP settings"**.
+1. **Open MCP Settings**: Use `Cmd+Shift+P` (`Ctrl+Shift+P` on Windows) and search for **"Open MCP settings"**.
 
-2. **Add the Wiro server** — Add the following to your `mcp.json` file:
+2. **Add the Wiro server** to your `mcp.json` file:
 
 **Signature Auth** (if your project uses signature-based authentication):
 
@@ -60,7 +60,7 @@ You need a Wiro API key to use the MCP server. If you don't have one yet, [creat
 }
 ```
 
-3. **Restart Cursor** — Save the file and restart Cursor to activate the connection.
+3. **Restart Cursor**: Save the file and restart Cursor to activate the connection.
 
 ### Claude Code
 
@@ -135,14 +135,14 @@ local package guide.
 
 #### Claude connection and timeout troubleshooting
 
-- **"Not valid MCP server configurations"** — ensure the entry contains
+- **"Not valid MCP server configurations"**: ensure the entry contains
   `"type": "stdio"`, `command`, `args`, and `env` exactly as shown above.
-- **The Wiro tools do not appear** — confirm `node --version` reports 20 or
+- **The Wiro tools do not appear**: confirm `node --version` reports 20 or
   later, then fully quit and reopen Claude Desktop.
-- **Tools appear but every call fails immediately** — pin
+- **Tools appear but every call fails immediately**: pin
   `@wiro-ai/wiro-mcp@1.3.1` as shown above so `npx` does not reuse an older
   cached package, then fully quit and reopen Claude Desktop.
-- **A generation reaches Claude's tool timeout** — Wiro waits for at most 45
+- **A generation reaches Claude's tool timeout**: Wiro waits for at most 45
   seconds per call. If the task is still running, the response contains
   `nextAction.tool: "wait_for_task"`. Claude should execute that exact action
   until completion and must not call `run_model` again.
@@ -281,7 +281,7 @@ Authorization: Bearer YOUR_API_KEY:YOUR_API_SECRET
 
 Or for API Key Only auth: `Bearer YOUR_API_KEY`
 
-Credentials are sent as plain text — no base64 encoding needed. Any MCP client that supports Streamable HTTP **and a custom `Authorization` header** can connect. Refer to your client's documentation for the exact configuration format. Clients that require OAuth-only MCP authentication are not currently supported by this endpoint.
+Credentials are sent as plain text. No base64 encoding is needed. Any MCP client that supports Streamable HTTP **and a custom `Authorization` header** can connect. Refer to your client's documentation for the exact configuration format. Clients that require OAuth-only MCP authentication are not currently supported by this endpoint.
 
 ## Authentication
 
@@ -348,7 +348,7 @@ The MCP server exposes 13 tools organized in four categories. Your AI assistant 
 | `search_models` | Search Wiro's model catalog by keyword, category, or owner |
 | `get_model_schema` | Get the full parameter schema and pricing for any model |
 | `recommend_model` | Describe what you want to build and get model recommendations ranked by relevance |
-| `explore` | Browse curated AI models organized by category — featured, recently added, popular |
+| `explore` | Browse curated AI models organized by category: featured, recently added, popular |
 
 ### Execution
 
@@ -363,7 +363,7 @@ The MCP server exposes 13 tools organized in four categories. Your AI assistant 
 | `wait_for_task` | Continue waiting for an existing task without creating or billing a duplicate run |
 | `get_task` | Check task status immediately or wait up to 45 seconds with `wait_seconds` |
 | `list_tasks` | List the authenticated project's recent generations across conversations, then continue with `get_task` |
-| `get_task_price` | Get the cost of a completed task — shows whether it was billed and the total charge |
+| `get_task_price` | Get the cost of a completed task, showing whether it was billed and the total charge |
 | `cancel_task` | Cancel a task that is still in the queue (before worker assignment) |
 | `kill_task` | Kill a task that is currently running (after worker assignment) |
 
@@ -371,7 +371,7 @@ The MCP server exposes 13 tools organized in four categories. Your AI assistant 
 
 | Tool | What it does |
 |------|-------------|
-| `upload_file` | Upload a file from a URL to Wiro. Most models accept direct URLs without uploading first — use this for reuse across runs. |
+| `upload_file` | Upload a file from a URL to Wiro. Most models accept direct URLs without uploading first. Use this for reuse across runs. |
 | `search_docs` | Search the Wiro documentation for guides, API references, and examples |
 
 ## MCP Request and Response Contract
@@ -473,7 +473,7 @@ The MCP server is stateless and hosted on Wiro infrastructure. Each request is f
 
 Your credentials are sent per-request in the `Authorization` header and are never stored. The server has no sessions and no state.
 
-All tools are dynamic — they fetch model data from the Wiro API at runtime. When a new model is added to Wiro, it's instantly available through MCP.
+All tools are dynamic: they fetch model data from the Wiro API at runtime. When a new model is added to Wiro, it's instantly available through MCP.
 
 ## Tool Reference
 
@@ -510,7 +510,7 @@ Describe what you want to create and get model recommendations ranked by relevan
 |-----------|------|-------------|
 | `task` | string | What you want to do, e.g. `"generate a photorealistic portrait"`, `"upscale an image to 4K"`, `"transcribe audio to text"` |
 
-Returns a list of recommended models with slugs, descriptions, categories, and pricing — sorted by relevance to your task.
+Returns a list of recommended models with slugs, descriptions, categories, and pricing, sorted by relevance to your task.
 
 ### explore
 
@@ -536,7 +536,7 @@ result containing `taskid`, `tasktoken`, and the last observed status. The
 generation continues. Call `wait_for_task` with that identifier; do not call
 `run_model` again, because that would create a second billable task.
 
-When `wait=false`, returns `taskid` and `tasktoken` immediately — use
+When `wait=false`, returns `taskid` and `tasktoken` immediately. Use
 `wait_for_task` to wait or `get_task` for a one-time status check.
 
 ### wait_for_task
@@ -569,7 +569,7 @@ on the Wiro API.
 
 Returns the task's current `status`, `pexit` (process exit code), `outputs` (file URLs), `debugoutput` (LLM responses), `elapsedseconds`, and `totalcost`.
 
-**Determining success:** Check `pexit` — `"0"` means success, any other value means failure. For LLM models, the response is available as structured content in `outputs` (with `contenttype: "raw"`) and as merged plain text in `debugoutput`. See [Tasks](/docs/tasks) for the full task lifecycle.
+**Determining success:** Check `pexit`, where `"0"` means success and any other value means failure. For LLM models, the response is available as structured content in `outputs` (with `contenttype: "raw"`) and as merged plain text in `debugoutput`. See [Tasks](/docs/tasks) for the full task lifecycle.
 
 `task_error` needs context: a live WebSocket event with that name is an interim
 stderr log, while `status: "task_error"` returned by Task/Detail marks a
@@ -597,7 +597,7 @@ Get the cost of a completed task. Calls `POST /Task/Detail` on the Wiro API and 
 | `tasktoken` | string (optional) | The task token returned from `run_model` |
 | `taskid` | string (optional) | The task ID (alternative to tasktoken) |
 
-Returns the task's billing status, total cost, and duration. Only successful tasks (`pexit: "0"`) are billed — failed tasks show `$0` with a clear explanation. Useful for checking costs after a run completes.
+Returns the task's billing status, total cost, and duration. Only successful tasks (`pexit: "0"`) are billed. Failed tasks show `$0` with a clear explanation. Useful for checking costs after a run completes.
 
 ### cancel_task
 
@@ -608,7 +608,7 @@ Cancel a task that is still queued (before worker assignment). Calls `POST /Task
 | `tasktoken` | string (optional) | The task token returned from `run_model` |
 | `taskid` | string (optional) | The task ID (alternative to `tasktoken`) |
 
-Tasks that have already been assigned to a worker cannot be cancelled — use `kill_task` instead.
+Tasks that have already been assigned to a worker cannot be cancelled. Use `kill_task` instead.
 
 ### kill_task
 
@@ -625,7 +625,7 @@ The worker will stop processing and the task will move to `task_cancel` status.
 
 Upload a file from a URL to Wiro for use as model input. Downloads the file and uploads it to Wiro's file system via `POST /File/Upload`.
 
-> **Tip:** Most models accept direct URLs in file parameters (e.g. `inputImage`, `inputImageUrl`) — you don't need to upload first. Use `upload_file` when you need to reuse the same file across multiple runs or when the model specifically requires a Wiro-hosted file. See [Model Parameters](/docs/model-parameters) for details.
+> **Tip:** Most models accept direct URLs in file parameters (e.g. `inputImage`, `inputImageUrl`), so you don't need to upload first. Use `upload_file` when you need to reuse the same file across multiple runs or when the model specifically requires a Wiro-hosted file. See [Model Parameters](/docs/model-parameters) for details.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
@@ -648,7 +648,7 @@ Returns relevant documentation sections matching your query.
 
 ### What models can I use?
 
-All models in the [Wiro catalog](https://wiro.ai/models) — image generation, video, audio, LLMs, 3D, and more. Use `search_models` to discover what's available.
+All models in the [Wiro catalog](https://wiro.ai/models): image generation, video, audio, LLMs, 3D, and more. Use `search_models` to discover what's available.
 
 ### Is my API key stored?
 

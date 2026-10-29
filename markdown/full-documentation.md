@@ -61,11 +61,11 @@ Everything you need to get started with the Wiro AI platform.
 
 Wiro is an AI model marketplace and API platform that lets you run **AI models** through a single, unified API. Instead of managing infrastructure for each model provider, you make one API call to Wiro and we handle the rest.
 
-- **Unified API** — one interface for all models (image generation, LLMs, audio, video, and more)
-- **Pay-per-use pricing** — only pay for what you consume, no upfront commitments
-- **Real-time WebSocket updates** — stream task progress and outputs live
-- **9 SDK languages** — curl, Python, Node.js, PHP, C#, Swift, Dart, Kotlin, Go
-- **AI Agents** — deploy and manage autonomous AI agents that connect to third-party services, maintain conversation memory, and automate workflows via API
+- **Unified API**: one interface for all models (image generation, LLMs, audio, video, and more)
+- **Pay-per-use pricing**: only pay for what you consume, no upfront commitments
+- **Real-time WebSocket updates**: stream task progress and outputs live
+- **9 SDK languages**: curl, Python, Node.js, PHP, C#, Swift, Dart, Kotlin, Go
+- **AI Agents**: deploy and manage autonomous AI agents that connect to third-party services, maintain conversation memory, and automate workflows via API
 
 ## Base URL
 
@@ -86,8 +86,8 @@ wss://socket.wiro.ai/v1
 1. **Sign up** at [wiro.ai](https://wiro.ai/auth/signup)
 2. **Create a project** in the [Dashboard](https://wiro.ai/panel/project/new) to get your API key
 3. **Pick a model** from the [marketplace](https://wiro.ai/models)
-4. **Make your first API call** — see [Code Examples](#code-examples) for full end-to-end samples
-5. **Deploy an AI Agent** — browse the [agent catalog](https://wiro.ai/agents), deploy an instance, and interact via the [Agent API](/docs/agent-overview)
+4. **Make your first API call**: see [Code Examples](#code-examples) for full end-to-end samples
+5. **Deploy an AI Agent**: browse the [agent catalog](https://wiro.ai/agents), deploy an instance, and interact via the [Agent API](/docs/agent-overview)
 
 ## Response Format
 
@@ -109,12 +109,12 @@ API requests are rate-limited per project. If you exceed the limit, the API retu
 
 Common HTTP status codes:
 
-- `200` — Success
-- `400` — Bad request (check parameters)
-- `401` — Unauthorized (invalid or missing API key)
-- `403` — Forbidden (signature mismatch or insufficient permissions)
-- `429` — Rate limit exceeded
-- `500` — Internal server error
+- `200`: Success
+- `400`: Bad request (check parameters)
+- `401`: Unauthorized (invalid or missing API key)
+- `403`: Forbidden (signature mismatch or insufficient permissions)
+- `429`: Rate limit exceeded
+- `500`: Internal server error
 
 ---
 
@@ -153,7 +153,7 @@ SIGNATURE = HMAC-SHA256(key=API_KEY, message=API_SECRET + NONCE)
 
 ## API Key Only Authentication
 
-For server-side applications where you control the environment, you can use the simpler API-key-only method. Just include the `x-api-key` header — no signature required.
+For server-side applications where you control the environment, you can use the simpler API-key-only method. Just include the `x-api-key` header. No signature is required.
 
 #### Required Headers
 
@@ -165,16 +165,16 @@ For server-side applications where you control the environment, you can use the 
 
 | Feature           | Signature-Based                        | API Key Only                         |
 | ----------------- | -------------------------------------- | ------------------------------------ |
-| Security          | High — secret never sent over the wire | Moderate — key sent in every request |
+| Security          | High: the secret is never sent over the wire | Moderate: the key is sent with every request |
 | Complexity        | Requires HMAC computation              | Single header                        |
 | Best for          | Server-side apps, production backends  | Server-side, internal tools          |
-| Leaked API key    | Not enough — the secret is also needed | Enough to call the API               |
+| Leaked API key    | Not enough: the secret is also needed | Enough to call the API               |
 
 ## How to Choose
 
 - Building a **browser** or **mobile** app? Have the app call your own backend, and call Wiro from there. Never put your API key or secret in the app.
 - Running a **server-side** backend with controlled access? **API Key Only** is simpler.
-- Unsure? Default to **Signature-Based** — it's always the safer option.
+- Unsure? Default to **Signature-Based**, which is always the safer option.
 
 ---
 
@@ -198,8 +198,8 @@ A project is a container that holds your **API keys**, **authentication settings
 3. Click [New Project](https://wiro.ai/panel/project/new)
 4. Enter a project name
 5. Select your [authentication method](#authentication):
-   - **Signature-Based** — generates both an API key and API secret
-   - **API Key Only** — generates only an API key
+   - **Signature-Based**: generates both an API key and API secret
+   - **API Key Only**: generates only an API key
 6. Click **Create**
 
 ## API Credentials
@@ -212,10 +212,10 @@ After creating a project, copy your API key (and secret, if signature-based) and
 
 From the [Projects page](https://wiro.ai/panel/project) in your Dashboard, you can:
 
-- **Update name** — rename your project at any time
-- **Change authentication method** — switch between Signature-Based and API Key Only; your API key and secret stay the same
-- **View usage** — see API calls, costs, and task history
-- **Delete project** — permanently removes the project and revokes all keys
+- **Update name**: rename your project at any time
+- **Change authentication method**: switch between Signature-Based and API Key Only; your API key and secret stay the same
+- **View usage**: see API calls, costs, and task history
+- **Delete project**: permanently removes the project and revokes all keys
 
 A project's API key never changes. To replace it, create a new project, move your application to the new key, then delete the old project, which revokes its key at once. Changing a project's IP whitelist gives the project a new API secret.
 
@@ -360,7 +360,7 @@ Execute any AI model with a single API call and get real-time updates.
 
 ## **POST** /Run/{owner-slug}/{model-slug}
 
-Starts an AI model run. The endpoint accepts model-specific parameters and returns a **task ID** you can use to track progress via [polling](#tasks), [WebSocket](#websocket), or **webhook** by providing a `callbackUrl` parameter — Wiro will POST the result to your URL when the task completes.
+Starts an AI model run. The endpoint accepts model-specific parameters and returns a **task ID** you can use to track progress via [polling](#tasks), [WebSocket](#websocket), or **webhook** by providing a `callbackUrl` parameter, and Wiro will POST the result to your URL when the task completes.
 
 If you want one HTTP request to wait for the finished task, use
 [POST /Run/{owner}/{model}/sync](#run-sync) on this same API host. For OpenAI,
@@ -371,7 +371,7 @@ or Anthropic LLM protocols, see the
 
 ### JSON (application/json)
 
-Use JSON for text-based inputs — prompts, configuration, numeric parameters. This is the default and most common format.
+Use JSON for text-based inputs: prompts, configuration, numeric parameters. This is the default and most common format.
 
 ### Multipart (multipart/form-data)
 
@@ -410,7 +410,7 @@ seven optional ordinary model parameters on both asynchronous Run and `/sync`:
 `messages`, `tools`, `tool_choice`, `parallel_tool_calls`, `response_format`,
 `previousTaskToken`, and `toolOutputs`. `response_format` is present only on
 models that declare it, and it uses the flat shape `{"type":"json_object"}` or
-`{"type":"json_schema","name":"person","schema":{...}}` — not Chat's nested
+`{"type":"json_schema","name":"person","schema":{...}}`, not Chat's nested
 `json_schema` wrapper. A mode the model does not declare is rejected at
 `$.response_format.type` before the task is created. Tool Detail marks them
 `advanced: true` only to place them in the Advanced section of catalog-driven
@@ -710,10 +710,10 @@ OpenAI Chat/Responses, Anthropic Messages, and Cursor clients belong on
 
 The typical workflow after calling the Run endpoint:
 
-1. **Run** — call `POST /Run/{owner-slug}/{model-slug}` and receive a task ID
-2. **Track** — connect via WebSocket or poll `POST /Task/Detail`
-3. **Receive** — get outputs as the model produces them (streaming or final)
-4. **Complete** — task reaches `task_postprocess_end`; verify `pexit: "0"` and
+1. **Run**: call `POST /Run/{owner-slug}/{model-slug}` and receive a task ID
+2. **Track**: connect via WebSocket or poll `POST /Task/Detail`
+3. **Receive**: get outputs as the model produces them (streaming or final)
+4. **Complete**: task reaches `task_postprocess_end`; verify `pexit: "0"` and
    read its outputs
 
 For real-time streaming, use the WebSocket connection with the `socketaccesstoken` returned in the run response. For simpler integrations, poll the Task Detail endpoint every few seconds.
@@ -824,7 +824,7 @@ Generic `/sync` waits stay on `api.wiro.ai` and use normal Run headers.
 
 `session_id` is the only public session field. It is optional on Chat
 Completions and Anthropic Messages, and must contain
-1–128 letters, digits, `.`, `_`, `:`, or `-`. Reuse the same value for related
+1 to 128 letters, digits, `.`, `_`, `:`, or `-`. Reuse the same value for related
 turns. Wiro maps it to a project-scoped internal session; it does not replace
 the protocol's normal client-history requirements. Responses uses
 `previous_response_id` instead, and `/v1/messages/count_tokens` does not accept
@@ -840,9 +840,9 @@ API Key Only projects send `YOUR_API_KEY`; Signature projects send
 Every client below needs the exact lowercase `owner/model` ID. Two places give
 it to you:
 
-- [The catalog, filtered to gateway models](https://wiro.ai/models?categories=llm-tool-call)
-  — browse them, open one, and copy the ID from its page.
-- `GET /v1/models` — the same set as JSON. `GET /v1/models/{owner}/{model}`
+- [The catalog, filtered to gateway models](https://wiro.ai/models?categories=llm-tool-call):
+  browse them, open one, and copy the ID from its page.
+- `GET /v1/models`: the same set as JSON. `GET /v1/models/{owner}/{model}`
   then reports that model's routes, modalities, tool support and token limits.
 
 ### Cursor
@@ -850,12 +850,12 @@ it to you:
 Cursor reaches the gateway through its OpenAI base URL override, which it
 appends `/chat/completions` to. Point it at the normal `/v1` base.
 
-1. **Open the model settings** — Command Palette (`Cmd+Shift+P`, `Ctrl+Shift+P`
+1. **Open the model settings**: Command Palette (`Cmd+Shift+P`, `Ctrl+Shift+P`
    on Windows) → `Cursor Settings: Models`.
-2. **View All Models** — the settings pane lists only the models Cursor ships
+2. **View All Models**: the settings pane lists only the models Cursor ships
    with. `View All Models`, at the bottom, opens the full list where custom ones
    live.
-3. **+ Add Custom Model** — type the exact lowercase `owner/model` ID — the same
+3. **+ Add Custom Model**: type the exact lowercase `owner/model` ID. These are the same
    IDs VS Code takes, listed below. Repeat for each model you want. Cursor shows
    whatever you type in its picker, so a parenthesised label is read and
    discarded at either end: `(Wiro) claude/sonnet-5` and
@@ -864,21 +864,21 @@ appends `/chat/completions` to. Point it at the normal `/v1` base.
 
    ![Cursor's custom model list showing four Wiro models, each labelled (Wiro
    AI), with the Add Custom Model button below them.](css/cursor-custom-llm.png)
-4. **OpenAI API Key** — put the project credential in the `OpenAI API Key` field;
+4. **OpenAI API Key**: put the project credential in the `OpenAI API Key` field;
    that is the field Cursor uses for the overridden endpoint.
    `YOUR_API_KEY:YOUR_API_SECRET` for a Signature project, `YOUR_API_KEY` alone
    for API Key Only.
-5. **Turn the key on** — flip the switch beside the field. It reads
+5. **Turn the key on**: flip the switch beside the field. It reads
    `Secret saved` once Cursor has stored the credential.
-6. **Override OpenAI Base URL** — turn that switch on too. It sits directly
+6. **Override OpenAI Base URL**: turn that switch on too. It sits directly
    under the key.
-7. **Enter the base URL** — `https://llm.wiro.ai/v1`. Cursor appends
+7. **Enter the base URL**: `https://llm.wiro.ai/v1`. Cursor appends
    `/chat/completions` itself, so do not add it.
-8. **Disable the built-in models** — while the override is on, Cursor sends its
+8. **Disable the built-in models**: while the override is on, Cursor sends its
    own model names to your endpoint too, and those do not exist in the Wiro
    catalog. Leave only the models you added enabled, or every request fails with
    an unknown model.
-9. **Verify** — press `Verify`. A failure here is normally the base URL carrying
+9. **Verify**: press `Verify`. A failure here is normally the base URL carrying
    `/chat/completions`, or a built-in model still switched on.
 
 Every model the gateway serves today, labelled and ready to paste one at a time;
@@ -962,16 +962,16 @@ the **terminal** Claude Code: the desktop app manages its own provider and
 cannot be pointed at a gateway, so its model picker keeps listing Anthropic's
 models whatever you configure.
 
-1. **Install the CLI** — in a terminal:
+1. **Install the CLI** in a terminal:
 
    ```bash
    npm i -g @anthropic-ai/claude-code
    ```
 
-2. **Write the settings file** — two places take it, and the file is the same in
+2. **Write the settings file**: two places take it, and the file is the same in
    both. Pick by how widely you want the gateway used.
 
-   **Every folder on this machine** — `~/.claude/settings.json`:
+   **Every folder on this machine** (`~/.claude/settings.json`):
 
    ```json
    {
@@ -985,10 +985,10 @@ models whatever you configure.
    }
    ```
 
-   **One project only** — `<project>/.claude/settings.json`, in the folder you
+   **One project only**: `<project>/.claude/settings.json`, in the folder you
    will open Claude Code in. Your other projects keep whatever they were using.
    If that folder is a git repository, put it in `.claude/settings.local.json`
-   instead, which is not committed — the credential should not reach the shared
+   instead, which is not committed. The credential should not reach the shared
    file:
 
    ```json
@@ -1002,7 +1002,7 @@ models whatever you configure.
      }
    }
    ```
-   `ANTHROPIC_BASE_URL` carries no `/v1` here — Anthropic clients append the
+   `ANTHROPIC_BASE_URL` carries no `/v1` here: Anthropic clients append the
    path themselves. `ANTHROPIC_API_KEY` takes `YOUR_API_KEY:YOUR_API_SECRET`
    for a Signature project, or `YOUR_API_KEY` alone for API Key Only.
    `ANTHROPIC_MODEL` is the model the session opens with, and is any ID from
@@ -1013,7 +1013,7 @@ models whatever you configure.
    containing `claude` or `anthropic`, so the picker gains the `claude/` models
    alone; open any other model with `ANTHROPIC_MODEL` or `--model`.
    `CLAUDE_CODE_MAX_CONTEXT_TOKENS` must match the
-   context window of the model you set — Claude Code does not recognise these
+   context window of the model you set. Claude Code does not recognise these
    names, so it otherwise assumes 200k and discards history long before it
    needs to.
 
@@ -1023,21 +1023,21 @@ models whatever you configure.
    cd /path/to/your/project && claude
    ```
 
-4. **Answer the first-run prompts** — a new install asks three things in a row:
+4. **Answer the first-run prompts**. A new install asks three things in a row:
    a colour theme, its security notes (`Press Enter to continue`), and whether
    to apply `Claude Code's terminal setup`. Answer them once.
-5. **Allow the project's MCP servers, if it has any** — a folder that declares
+5. **Allow the project's MCP servers, if it has any**: a folder that declares
    MCP servers gets `New MCP server found in this project` before the session
    opens. Nothing here concerns the gateway; choose whatever you would normally
    choose.
-6. **Answer the key prompt** — `Do you want to use this API key?` → `No`. It
+6. **Answer the key prompt**: `Do you want to use this API key?` → `No`. It
    asks about a key exported in your shell, not the one you just put in the
    settings file.
-7. **Check the header, then start** — it names the model you configured:
+7. **Check the header, then start**. It names the model you configured:
    `(Wiro) openai/gpt-5-6-sol · API Usage Billing`. Your Claude subscription
    is not used while a gateway credential is set.
 
-8. **Switching models** — open on another model for one session:
+8. **Switching models**. Open on another model for one session:
 
    ```bash
    cd /path/to/your/project && claude --model "(Wiro) xai/grok-4-1-fast"
@@ -1046,7 +1046,7 @@ models whatever you configure.
    ```
 
    Or change `ANTHROPIC_MODEL` in the settings file, which every session in that
-   scope then opens on. Move `CLAUDE_CODE_MAX_CONTEXT_TOKENS` with it — Grok 4.1
+   scope then opens on. Move `CLAUDE_CODE_MAX_CONTEXT_TOKENS` with it, since Grok 4.1
    Fast holds 2M where GPT 5.6 Sol holds 1.05M:
 
    ```json
@@ -1143,23 +1143,23 @@ before them and applies to every folder.
 
 ### VS Code
 
-VS Code Chat reaches the gateway through its own built-in custom endpoint — no
+VS Code Chat reaches the gateway through its own built-in custom endpoint, no
 extension required.
 
-1. **Open the model manager** — Command Palette (`Cmd+Shift+P`, `Ctrl+Shift+P`
+1. **Open the model manager**: Command Palette (`Cmd+Shift+P`, `Ctrl+Shift+P`
    on Windows) → `Chat: Manage Language Models`.
-2. **Add a provider** — `+ Add Models` opens a provider list (Anthropic,
+2. **Add a provider**: `+ Add Models` opens a provider list (Anthropic,
    Azure, Google, OpenAI, OpenRouter, xAI, Ollama). Pick `Custom Endpoint`,
    last, below the separator.
-3. **Group Name** — arrives pre-filled with "Custom Endpoint"; replace it with
-   `Wiro AI`. It is a label — it titles the next two prompts and groups the
+3. **Group Name**: arrives pre-filled with "Custom Endpoint"; replace it with
+   `Wiro AI`. It is a label: it titles the next two prompts and groups the
    models in the picker.
-4. **API Key** — `YOUR_API_KEY:YOUR_API_SECRET` for a Signature project,
+4. **API Key**: `YOUR_API_KEY:YOUR_API_SECRET` for a Signature project,
    `YOUR_API_KEY` alone for API Key Only. VS Code keeps it in its secret store;
    the file holds only a `${input:…}` reference.
-5. **API Type** — choose `Chat Completions`. Responses and Messages change the
+5. **API Type**: choose `Chat Completions`. Responses and Messages change the
    request shape VS Code sends.
-6. **Describe the models** — VS Code opens `chatLanguageModels.json` with one
+6. **Describe the models**: VS Code opens `chatLanguageModels.json` with one
    empty model. Leave `name`, `vendor`, `apiKey` and `apiType` as generated and
    fill the `models` array. Below is every model the gateway serves today, ready
    to paste; the same set is in
@@ -1737,10 +1737,10 @@ extension required.
 ]
 ```
 
-- `id` — the lowercase `owner/model` from `GET /v1/models`.
-- `name` — a free label, shown in the picker.
-- `url` — the **full endpoint**, not the base URL. Every model repeats it.
-- `toolCalling`, `vision`, `maxInputTokens`, `maxOutputTokens` — read them from
+- `id`: the lowercase `owner/model` from `GET /v1/models`.
+- `name`: a free label, shown in the picker.
+- `url`: the **full endpoint**, not the base URL. Every model repeats it.
+- `toolCalling`, `vision`, `maxInputTokens`, `maxOutputTokens`: read them from
   `GET /v1/models/{owner}/{model}`: `capabilities.function_tools`,
   `capabilities.input_modalities`, `max_input_tokens`, `max_tokens`. Do not
   guess.
@@ -1771,48 +1771,48 @@ extension required.
   takes the material after it rather than the question itself.
 
 Save the file and reopen the model picker; the models appear under **Wiro AI**.
-Any other VS Code extension that takes a custom OpenAI base URL — Cline, Roo
-Code, Continue — works the same way: point it at `https://llm.wiro.ai/v1` with
+Any other VS Code extension that takes a custom OpenAI base URL (Cline, Roo
+Code, Continue) works the same way: point it at `https://llm.wiro.ai/v1` with
 the same credential and a model ID from the catalog.
 
 ### Windsurf
 
 Windsurf now ships as **Devin Desktop**; the application is `Devin.app` and its
 docs redirect to `docs.devin.ai`. Cascade, its own agent, has no setting for an
-external provider — there is no base URL to override and no custom model to
+external provider: there is no base URL to override and no custom model to
 register, so it cannot be pointed at this gateway. What does work is running a
 different agent inside the same editor. The steps below use
 [Cline](https://open-vsx.org/extension/saoudrizwan/claude-dev), which is free
 and Apache-2.0; Roo Code and Continue configure the same way.
 
-1. **Open the extension marketplace** — Command Palette (`Cmd+Shift+P`,
+1. **Open the extension marketplace**: Command Palette (`Cmd+Shift+P`,
    `Ctrl+Shift+P` on Windows) → `Extensions: Install Extensions`. The menu bar
    gets you to the same place: `Devin → Preferences → Extensions`.
-2. **Install Cline** — search `cline` and install the one published by
+2. **Install Cline**: search `cline` and install the one published by
    `saoudrizwan`. Devin resolves extensions through the Open VSX mirror, so
    this is the same build VS Code carries.
-3. **Open the panel** — Command Palette (`Cmd+Shift+P`, `Ctrl+Shift+P` on
+3. **Open the panel**: Command Palette (`Cmd+Shift+P`, `Ctrl+Shift+P` on
    Windows) → `Cline: Focus on View`.
-4. **Bring my own API key** — Cline asks how you will use it. Pick the fourth
+4. **Bring my own API key**: Cline asks how you will use it. Pick the fourth
    option, `Bring my own API key`, then `Continue`. The other three are Cline's
    own billing; `Login to Cline` is not needed.
-5. **API Provider** — choose `OpenAI Compatible`, not `OpenAI`; that one goes to
+5. **API Provider**: choose `OpenAI Compatible`, not `OpenAI`; that one goes to
    the official OpenAI API.
-6. **Base URL** — `https://llm.wiro.ai/v1`. Cline appends the route itself.
-7. **OpenAI Compatible API Key** — `YOUR_API_KEY:YOUR_API_SECRET` for a
+6. **Base URL**: `https://llm.wiro.ai/v1`. Cline appends the route itself.
+7. **OpenAI Compatible API Key**: `YOUR_API_KEY:YOUR_API_SECRET` for a
    Signature project, `YOUR_API_KEY` alone for API Key Only. Cline keeps it
    locally.
-8. **Model ID** — one ID from the list below; Cline holds a single model per
+8. **Model ID**: one ID from the list below; Cline holds a single model per
    configuration rather than a list. The `(Wiro)` prefix is optional and the
    gateway strips it; it earns its place here by showing up in the status bar,
    as `openai-compat: (Wiro) openai/gpt-5-6-sol`.
-9. **Open `MODEL CONFIGURATION` and set the context window** — this one matters.
+9. **Open `MODEL CONFIGURATION` and set the context window**: this one matters.
    Cline does not know a custom model, so it assumes `128K` and starts dropping
    history long before it needs to. Put the real number from the list below into
-   `Context Window size`, and tick `Computer Use` so tool calling is enabled —
-   without it the agent cannot run tools. `Max Output Tokens` and the price
+   `Context Window size`, and tick `Computer Use` so tool calling is enabled.
+   Without it the agent cannot run tools. `Max Output Tokens` and the price
    fields are in the same section.
-10. **Continue, and send a message** — the status bar names the model you
+10. **Continue, and send a message**: the status bar names the model you
     configured. `Plan` and `Act` can each hold a different model, and saved API
     configuration profiles let you keep one per model and switch between them.
 
@@ -1902,22 +1902,22 @@ Everything below lives in one file:
 Set `OPENCLAW_CONFIG_PATH` to put it elsewhere, or run
 `openclaw --profile <name>` to keep a separate one under `~/.openclaw-<name>`.
 
-1. **Install** — `npm i -g openclaw`.
-2. **Name the provider** — the key under `providers`, `wiro` below, becomes the
+1. **Install**: `npm i -g openclaw`.
+2. **Name the provider**: the key under `providers`, `wiro` below, becomes the
    prefix you select a model with, as `wiro/<id>`. Pick any name; the rest of
    this page assumes `wiro`.
-3. **Match `api` to the model transport** — read it from
+3. **Match `api` to the model transport**: read it from
    `GET /v1/models/{owner}/{model}`. `openai-completions` and
    `openai-responses` take the `/v1` base; `anthropic-messages` takes the
    origin, `https://llm.wiro.ai`, with no `/v1`. One provider block per
    transport if you mix them.
-4. **Fill `apiKey`** — `YOUR_API_KEY:YOUR_API_SECRET` for a Signature project,
+4. **Fill `apiKey`**: `YOUR_API_KEY:YOUR_API_SECRET` for a Signature project,
    `YOUR_API_KEY` alone for API Key Only.
-5. **List the models** — each entry takes an `id` and a display `name`. The
+5. **List the models**: each entry takes an `id` and a display `name`. The
    `id` is what reaches the gateway, so the `(Wiro)` label is optional there
    and stripped on arrival; the `name` is only ever shown to you. Both carry it
    below so the CLI and the picker read the same.
-6. **Run a turn** —
+6. **Run a turn**:
    `openclaw agent --local --model "wiro/(Wiro) xai/grok-4-1-fast" -m "your prompt"`.
    `--local` runs the embedded agent against these credentials; without it the
    turn goes through an OpenClaw gateway instead.
@@ -2019,22 +2019,22 @@ Set `HERMES_HOME` to put it elsewhere; the project's own Docker image already
 points it at `/opt/data`. The file the repository ships as
 `cli-config.yaml.example` is read under the name `config.yaml`.
 
-1. **Install** — `curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash`
+1. **Install**: `curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash`
    on macOS, Linux and WSL2; `iex (irm https://hermes-agent.nousresearch.com/install.ps1)`
    in PowerShell. The repository also carries a `Dockerfile` and a
    `docker-compose.yml`.
-2. **Choose the custom provider** — `provider: "custom"` is Hermes' name for any
+2. **Choose the custom provider**: `provider: "custom"` is Hermes' name for any
    OpenAI-compatible endpoint; `ollama`, `vllm` and `llamacpp` are aliases of
    it. With it, `base_url` is what decides where the request goes.
-3. **Fill `api_key`** — `YOUR_API_KEY:YOUR_API_SECRET` for a Signature project,
+3. **Fill `api_key`**: `YOUR_API_KEY:YOUR_API_SECRET` for a Signature project,
    `YOUR_API_KEY` alone for API Key Only.
-4. **Name the model** — `model.default` takes one ID from the list below.
+4. **Name the model**: `model.default` takes one ID from the list below.
    Hermes holds a single default rather than a list, so the `(Wiro)` label is
    there for your own benefit; the gateway strips it either way.
-5. **Run a turn** — `hermes -z "your prompt"` for one shot, `hermes chat` for a
+5. **Run a turn**: `hermes -z "your prompt"` for one shot, `hermes chat` for a
    session. Add `--yolo` when you want the agent to use its tools without
    stopping for approval.
-6. **Switch models** — `hermes -m "(Wiro) xai/grok-4-1-fast" -z "your prompt"`
+6. **Switch models**: `hermes -m "(Wiro) xai/grok-4-1-fast" -z "your prompt"`
    overrides the default for one run; `hermes model` changes it for good.
 
 ```yaml
@@ -2118,21 +2118,21 @@ across as many turns as the task needs.
 
 ### OpenAI SDK
 
-The official `openai` package talks to the gateway unchanged — only
+The official `openai` package talks to the gateway unchanged. Only
 `baseURL` moves. Everything below was run against every model the gateway
 serves.
 
-1. **Install** — `npm i openai`. The Python package works the same way with
+1. **Install**: `npm i openai`. The Python package works the same way with
    `base_url`.
-2. **Point the client at the gateway** — `baseURL` is
+2. **Point the client at the gateway**: `baseURL` is
    `https://llm.wiro.ai/v1`. `apiKey` takes `YOUR_API_KEY:YOUR_API_SECRET`
    for a Signature project, `YOUR_API_KEY` alone for API Key Only.
-3. **Name a model** — any ID from the list below. The `(Wiro)` label is
+3. **Name a model**: any ID from the list below. The `(Wiro)` label is
    optional and stripped on arrival, so `openai/gpt-5-6-sol` works just as
    well.
-4. **Give reasoning models room** — `max_completion_tokens` covers reasoning as
+4. **Give reasoning models room**: `max_completion_tokens` covers reasoning as
    well as the answer. Too small a budget returns `finish_reason: "length"`
-   with empty content — not an error, just a spent budget. 512 is a safe floor,
+   with empty content. That is not an error, just a spent budget. 512 is a safe floor,
    more for long answers.
 
 ```javascript
@@ -2156,8 +2156,8 @@ console.log(completion.choices[0].message.content);
 `client.responses.create()` reaches the Responses route. Streaming works on
 both.
 
-Tool calling runs the whole loop — the call, the result, and further turns
-after it:
+Tool calling runs the whole loop (the call, the result, and further turns
+after it):
 
 ```javascript
 const tools = [{
@@ -3281,13 +3281,13 @@ The content type depends on whether the model requires file inputs:
 | No file parameters  | `application/json`    | Text-only models (LLMs, image generation from prompt)       |
 | Has file parameters | `multipart/form-data` | Models that accept image, audio, video, or document uploads |
 
-> **Tip:** For `fileinput` and `multifileinput` parameters, use the `{id}Url` suffix to send URLs (e.g., `inputImageUrl`). For `combinefileinput`, pass URLs directly in the original parameter — no suffix needed. You can also pass a URL directly to any file parameter (e.g., `inputImage`) if the `{id}Url` field doesn't exist. Every URL must be a public `http(s)` address, and so must any address it redirects to: Wiro doesn't fetch a URL whose host is, or resolves to, a private, loopback or link-local address.
+> **Tip:** For `fileinput` and `multifileinput` parameters, use the `{id}Url` suffix to send URLs (e.g., `inputImageUrl`). For `combinefileinput`, pass URLs directly in the original parameter. No suffix is needed. You can also pass a URL directly to any file parameter (e.g., `inputImage`) if the `{id}Url` field doesn't exist. Every URL must be a public `http(s)` address, and so must any address it redirects to: Wiro doesn't fetch a URL whose host is, or resolves to, a private, loopback or link-local address.
 
 ## File Upload Patterns
 
 ### Single File (fileinput)
 
-For parameters like `inputImage`, send either a file or a URL. When using multipart, always include both the `{id}` and `{id}Url` fields — leave one empty:
+For parameters like `inputImage`, send either a file or a URL. When using multipart, always include both the `{id}` and `{id}Url` fields and leave one empty:
 
 ```bash
 # Option 1: Upload file — send file in {id}, empty {id}Url
@@ -3337,7 +3337,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
 
 ### Combined (combinefileinput)
 
-For parameters like `inputImageClothes`, files and URLs go directly in the same `{id}` field — no `{id}Url` suffix:
+For parameters like `inputImageClothes`, files and URLs go directly in the same `{id}` field, with no `{id}Url` suffix:
 
 ```bash
 # Option 1: Upload files — each as a separate {id} entry
@@ -3363,7 +3363,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
 
 ### Image Generation (text-to-image)
 
-Models like Stable Diffusion, Flux — JSON body, no file uploads:
+Models like Stable Diffusion, Flux (JSON body, no file uploads):
 
 ```json
 {
@@ -3376,7 +3376,7 @@ Models like Stable Diffusion, Flux — JSON body, no file uploads:
 
 ### Image-to-Image (upscaler, style transfer)
 
-Models that take an input image — multipart with file upload:
+Models that take an input image (multipart with file upload):
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
@@ -3387,7 +3387,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
 
 ### Virtual Try-On
 
-Multiple image inputs — multipart with multiple files:
+Multiple image inputs (multipart with multiple files):
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
@@ -3413,7 +3413,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
 
 ### Realtime Voice Conversation
 
-Realtime voice models accept configuration parameters (voice, system instructions, audio format, etc.) as JSON. Parameters vary per model — use `/Tool/Detail` to discover them. The actual audio interaction happens over [WebSocket](/docs/realtime-voice-conversation) after the task starts:
+Realtime voice models accept configuration parameters (voice, system instructions, audio format, etc.) as JSON. Parameters vary per model. Use `/Tool/Detail` to discover them. The actual audio interaction happens over [WebSocket](/docs/realtime-voice-conversation) after the task starts:
 
 Available realtime models include:
 
@@ -3456,7 +3456,7 @@ Available realtime TTS models include:
 
 ### Realtime Speech to Text
 
-Realtime STT models transcribe audio streamed from the microphone over [WebSocket](/docs/realtime-speech-to-text). No text input needed — audio is streamed from the microphone. The `transcriptionDelay` controls the speed vs accuracy trade-off.
+Realtime STT models transcribe audio streamed from the microphone over [WebSocket](/docs/realtime-speech-to-text). No text input is needed: audio is streamed from the microphone. The `transcriptionDelay` controls the speed vs accuracy trade-off.
 
 Available realtime STT models include:
 
@@ -3510,12 +3510,12 @@ Every model run creates a task that progresses through a defined set of stages:
 | `task_preprocess_end` | Preprocessing completed. All inputs are ready for GPU assignment. |
 | `task_assign` | The task has been assigned to a specific GPU. The model is being loaded into memory. This may take a few seconds depending on the model size. |
 | `task_start` | The model command has started executing. Inference is now running on the GPU. |
-| `task_output` | The model is producing output. This event is emitted **multiple times** — each time the model writes to stdout, a new `task_output` message is sent via WebSocket. For LLM models, each `task_output` event carries the latest cumulative snapshot of the output, so render the newest one instead of appending. |
+| `task_output` | The model is producing output. This event is emitted **multiple times**: each time the model writes to stdout, a new `task_output` message is sent via WebSocket. For LLM models, each `task_output` event carries the latest cumulative snapshot of the output, so render the newest one instead of appending. |
 | `task_error` | As a live WebSocket event, this means the model wrote to stderr and is an **interim log**, not necessarily a failure. As persisted `status` in Task/Detail, it marks a pre-execution failure awaiting recovery or requeue; it does not close the task. |
 | `task_output_full` | Signals that process stdout collection ended. Raw accumulated stdout is not exposed on the public socket. |
 | `task_error_full` | Signals that process stderr collection ended. Raw accumulated stderr is not exposed on the public socket. |
-| `task_end` | The model process has exited. Emitted once. This fires **before** post-processing — do not use this event to determine success. Wait for `task_postprocess_end` instead. |
-| `task_postprocess_start` | Post-processing has started. The system is preparing the output files — encoding, uploading to CDN, and generating access URLs. |
+| `task_end` | The model process has exited. Emitted once. This fires **before** post-processing, so do not use this event to determine success. Wait for `task_postprocess_end` instead. |
+| `task_postprocess_start` | Post-processing has started. The system is preparing the output files: encoding, uploading to CDN, and generating access URLs. |
 | `task_postprocess_end` | Post-processing completed. On the public WebSocket, check `success` and `exitCode` (`0` = success); `message` contains sanitized outputs. Task/Detail continues to use `pexit` as its primary success indicator. **This is the event you should listen for** to get final results. |
 | `task_cancel` | The task was cancelled (if queued) or killed (if running) by the user. |
 
@@ -3525,9 +3525,9 @@ The following statuses are exclusive to realtime models (voice conversation, tex
 
 | Status              | Description                                                                         |
 | ------------------- | ----------------------------------------------------------------------------------- |
-| `task_stream_ready` | Realtime model is ready to receive audio/text input — you can start sending data    |
-| `task_stream_end`   | Realtime session has ended — the model finished speaking or the session was closed  |
-| `task_cost`         | Real-time cost update emitted during execution — shows the running cost of the task |
+| `task_stream_ready` | Realtime model is ready to receive audio/text input, so you can start sending data    |
+| `task_stream_end`   | Realtime session has ended: the model finished speaking or the session was closed  |
+| `task_cost`         | Real-time cost update emitted during execution: shows the running cost of the task |
 
 ## Determining Success or Failure
 
@@ -3537,8 +3537,8 @@ result. A setup failure may temporarily set persisted `status: "task_error"`
 with a `debugerror`, but clients must keep waiting until
 `task_postprocess_end` or `task_cancel`:
 
-- `pexit` — the process exit code. `"0"` means success, any other value means the model encountered an error. This is the most reliable indicator.
-- `outputs` — the output files array. For non-LLM models, a successful run populates this with CDN URLs. If it's empty or missing, the task likely failed.
+- `pexit`: the process exit code. `"0"` means success, any other value means the model encountered an error. This is the most reliable indicator.
+- `outputs`: the output files array. For non-LLM models, a successful run populates this with CDN URLs. If it's empty or missing, the task likely failed.
 
 > **Note:** For **LLM models**, `outputs` contains a structured entry with
 > `contenttype: "raw"` and ordered `content.segments`. The merged plain text is
@@ -3755,7 +3755,7 @@ After deletion:
 - Output files are removed from S3 and CDN cache
 - Input files uploaded by the user are removed from S3 and local storage
 - The task's `outputfolderid` is set to `"0"` (Task Detail will return empty outputs)
-- Task record and parameters are preserved — only the files are deleted
+- Task record and parameters are preserved. Only the files are deleted
 - Calling the endpoint again on the same task returns `result: true` immediately (idempotent)
 
 ### Errors
@@ -3776,7 +3776,7 @@ Stream LLM responses in real time with ordered output segments, session history,
 LLM (Large Language Model) requests on Wiro work differently from standard model runs:
 
 - Responses are available as structured content in `outputs` (with `contenttype: "raw"`) and as merged plain text in `debugoutput`
-- Streaming `task_output` messages contain ordered text/tool-call `segments` —
+- Streaming `task_output` messages contain ordered text/tool-call `segments`,
   not plain strings
 - Multi-turn conversations are supported via `session_id` and `user_id` parameters
 - `pexit` is the primary success indicator
@@ -3823,10 +3823,10 @@ value may contain up to 256 UTF-8 bytes; a UUID is allowed but not required.
 
 LLM output is an ordered timeline with up to four segment types:
 
-- **Thinking** — reasoning text exposed by the selected model
-- **Answer** — the final response to the user
-- **Function call** — JSON arguments for an application-defined function
-- **Custom tool call** — grammar-constrained or free-form tool input
+- **Thinking**: reasoning text exposed by the selected model
+- **Answer**: the final response to the user
+- **Function call**: JSON arguments for an application-defined function
+- **Custom tool call**: grammar-constrained or free-form tool input
 
 A model may alternate between thinking and answering multiple times during one
 response. The `segments` array preserves the exact order, including consecutive
@@ -3907,7 +3907,7 @@ or `incomplete` calls and must not trigger execution.
 3. **Receive** `task_output` messages containing cumulative ordered `segments`
 4. **Replace** your stored snapshot and render `answer` items; optionally show
    `thinking` items and collect tool calls
-5. **Complete** — on `task_postprocess_end`, check `exitCode` on WebSocket or
+5. **Complete**: on `task_postprocess_end`, check `exitCode` on WebSocket or
    `pexit` in Task Detail, then inspect `finishreason`
 
 ## Polling Alternative
@@ -3977,10 +3977,10 @@ Connect to this URL after calling the Run endpoint. Use the `socketaccesstoken` 
 
 ## Connection Flow
 
-1. **Connect** — open a WebSocket connection to `wss://socket.wiro.ai/v1`
-2. **Register** — send a `task_info` message with your `tasktoken`
-3. **Receive** — listen for messages as the task progresses through its lifecycle
-4. **Close** — disconnect after the `task_postprocess_end` event (this is the final event with results)
+1. **Connect**: open a WebSocket connection to `wss://socket.wiro.ai/v1`
+2. **Register**: send a `task_info` message with your `tasktoken`
+3. **Receive**: listen for messages as the task progresses through its lifecycle
+4. **Close**: disconnect after the `task_postprocess_end` event (this is the final event with results)
 
 Registration message format:
 
@@ -4026,7 +4026,7 @@ Every WebSocket message is a JSON object with this base structure:
 }
 ```
 
-The `type` field indicates the status. The `message` field varies by type — it's `null` for lifecycle events, a string or object for output events, and an array for the final result.
+The `type` field indicates the status. The `message` field varies by type: it's `null` for lifecycle events, a string or object for output events, and an array for the final result.
 
 Use the top-level `id` to correlate server events with the submitted task.
 
@@ -4036,7 +4036,7 @@ Lifecycle events (`task_accept`, `task_preprocess_start`, `task_preprocess_end`,
 
 ### Output Events
 
-**Standard models** — `message` is a progress object or plain string:
+**Standard models**: `message` is a progress object or plain string:
 
 ```json
 {
@@ -4057,7 +4057,7 @@ Lifecycle events (`task_accept`, `task_preprocess_start`, `task_preprocess_end`,
 }
 ```
 
-**LLM models** — `message.segments` is the cumulative ordered output snapshot.
+**LLM models**: `message.segments` is the cumulative ordered output snapshot.
 Replace it on every event. The final active item's `text` grows as chunks arrive,
 so render it before completion; a new item appears when the output phase changes
 (see LLM & Chat Streaming).
@@ -4136,7 +4136,7 @@ to retrieve the persisted task.
 
 ### Final Result
 
-`task_postprocess_end` — `message` contains sanitized outputs. Check `success`
+`task_postprocess_end`: `message` contains sanitized outputs. Check `success`
 and `exitCode`; use authenticated Task/Detail when the full persisted task is
 needed. For LLM tasks, each final raw output repeats `segments`,
 `finishreason`, and optional `usage` under `message[].content`.
@@ -4179,7 +4179,7 @@ The flow is:
 
 1. **Run** the realtime model via [POST /Run](#run-a-model) to get a `socketaccesstoken`
 2. **Connect** to the WebSocket and send `task_info` with your token
-3. **Wait** for `task_stream_ready` — the model is ready to receive audio
+3. **Wait** for `task_stream_ready`: the model is ready to receive audio
 4. **Stream** microphone audio as binary frames
 5. **Receive** AI audio as binary frames and play them
 6. **End** the session with `task_session_end`
@@ -4189,9 +4189,9 @@ The flow is:
 Each realtime model has its own set of parameters. Use [POST /Tool/Detail](#models) to discover the exact parameters for a specific model. See [Model Parameters](#model-parameters) for details on parameter types.
 
 Available realtime conversation models include:
-- [openai/gpt-realtime-mini](https://wiro.ai/models/openai/gpt-realtime-mini) — GPT Mini Realtime Voice Assistant
-- [openai/gpt-realtime](https://wiro.ai/models/openai/gpt-realtime) — GPT Realtime Voice Assistant
-- [elevenlabs/realtime-conversational-ai](https://wiro.ai/models/elevenlabs/realtime-conversational-ai) — ElevenLabs Conversational AI
+- [openai/gpt-realtime-mini](https://wiro.ai/models/openai/gpt-realtime-mini): GPT Mini Realtime Voice Assistant
+- [openai/gpt-realtime](https://wiro.ai/models/openai/gpt-realtime): GPT Realtime Voice Assistant
+- [elevenlabs/realtime-conversational-ai](https://wiro.ai/models/elevenlabs/realtime-conversational-ai): ElevenLabs Conversational AI
 
 Common parameters across realtime models typically include voice selection, system instructions, and audio format settings. Example run for an OpenAI realtime model:
 
@@ -4236,14 +4236,14 @@ During a realtime session, you'll receive these WebSocket events:
 
 | Event                    | Direction       | Description                                                              |
 | ------------------------ | --------------- | ------------------------------------------------------------------------ |
-| `task_stream_ready`      | server → client | Session is ready — start sending microphone audio                        |
-| `task_stream_end`        | server → client | AI finished speaking for this turn — you can speak again                 |
-| `task_cost`              | server → client | Cost update per turn — includes `turnCost`, `cumulativeCost`, and `usage` (raw cost breakdown from the model provider) |
+| `task_stream_ready`      | server → client | Session is ready: start sending microphone audio                        |
+| `task_stream_end`        | server → client | AI finished speaking for this turn: you can speak again                 |
+| `task_cost`              | server → client | Cost update per turn: includes `turnCost`, `cumulativeCost`, and `usage` (raw cost breakdown from the model provider) |
 | `task_output`            | server → client | Transcript messages prefixed with `TRANSCRIPT_USER:` or `TRANSCRIPT_AI:` |
-| `task_end`               | server → client | The model process has exited. Post-processing follows — wait for `task_postprocess_end` to close the connection. |
-| `task_postprocess_end`   | server → client | Post-processing complete — safe to close the WebSocket connection        |
+| `task_end`               | server → client | The model process has exited. Post-processing follows. Wait for `task_postprocess_end` to close the connection. |
+| `task_postprocess_end`   | server → client | Post-processing complete: safe to close the WebSocket connection        |
 | `task_session_end`       | client → server | Gracefully end the session                                               |
-| `task_session_interrupt` | client → server | Interrupt AI speech — stops playback and lets the user speak             |
+| `task_session_interrupt` | client → server | Interrupt AI speech: stops playback and lets the user speak             |
 
 ## Audio Format
 
@@ -4292,8 +4292,8 @@ AI responses arrive as binary WebSocket frames in the same PCM Int16 24 kHz form
 
 Both user and AI speech are transcribed automatically. Transcripts arrive as `task_output` messages with a string prefix:
 
-- `TRANSCRIPT_USER:` — what the user said
-- `TRANSCRIPT_AI:` — what the AI said
+- `TRANSCRIPT_USER:` for what the user said
+- `TRANSCRIPT_AI:` for what the AI said
 
 ```json
 {
@@ -4321,11 +4321,11 @@ While the AI is speaking, you can interrupt it to take over the conversation. Se
 When the server receives this:
 - The AI immediately stops generating audio
 - A final `task_stream_end` is sent for the interrupted turn
-- The session continues — the user can speak and the AI will respond to the next input
+- The session continues: the user can speak and the AI will respond to the next input
 
 On the client side, stop audio playback immediately when the user triggers an interrupt. This gives instant feedback (AI voice cuts off) while the server processes the signal.
 
-> **Tip:** Some models support natural interruption — if the user starts speaking while the AI is talking, the model may stop on its own. Models whose provider does its own barge-in (the OpenAI realtime family and ElevenLabs) may handle interruption natively, while the explicit `task_session_interrupt` signal stops the current reply on Wiro-hosted realtime models.
+> **Tip:** Some models support natural interruption: if the user starts speaking while the AI is talking, the model may stop on its own. Models whose provider does its own barge-in (the OpenAI realtime family and ElevenLabs) may handle interruption natively, while the explicit `task_session_interrupt` signal stops the current reply on Wiro-hosted realtime models.
 
 ## Ending a Session
 
@@ -4352,7 +4352,7 @@ Build streaming text-to-speech apps with realtime AI models.
 
 ## Overview
 
-Realtime text-to-speech models convert text into streaming audio. Unlike standard TTS that processes a full prompt and returns an audio file, realtime TTS streams AI-generated speech as a continuous PCM audio stream over a WebSocket connection — in real time. The text prompt is submitted via [POST /Run](#run-a-model), not over the WebSocket. The WebSocket carries only task events (`task_info`, `task_stream_ready`, etc.), binary audio frames, and control messages (`task_session_end`).
+Realtime text-to-speech models convert text into streaming audio. Unlike standard TTS that processes a full prompt and returns an audio file, realtime TTS streams AI-generated speech as a continuous PCM audio stream over a WebSocket connection, in real time. The text prompt is submitted via [POST /Run](#run-a-model), not over the WebSocket. The WebSocket carries only task events (`task_info`, `task_stream_ready`, etc.), binary audio frames, and control messages (`task_session_end`).
 
 No microphone is required. The flow is one-directional: text goes in, audio comes out.
 
@@ -4360,7 +4360,7 @@ The flow is:
 
 1. **Run** the realtime TTS model via [POST /Run](#run-a-model) with your text prompt in the parameters
 2. **Connect** to the WebSocket and send `task_info` with your `socketaccesstoken`
-3. **Wait** for `task_stream_ready` — the model has loaded and is generating audio
+3. **Wait** for `task_stream_ready`: the model has loaded and is generating audio
 4. **Receive** AI audio as binary frames and play them
 5. **End** the session with `task_session_end` or wait for the stream to finish naturally
 
@@ -4398,10 +4398,10 @@ During a realtime TTS session, you'll receive these WebSocket events:
 
 | Event                  | Description                                                                                      |
 | ---------------------- | ------------------------------------------------------------------------------------------------ |
-| `task_stream_ready`    | Session is ready — the model is generating audio and will begin sending chunks                   |
+| `task_stream_ready`    | Session is ready: the model is generating audio and will begin sending chunks                   |
 | `task_stream_end`      | The model finished generating audio for the current segment                                      |
-| `task_cost`            | Cost update — includes `turnCost`, `cumulativeCost`, and `usage` (raw cost breakdown)            |
-| `task_end`             | The model process has exited. Post-processing follows — wait for `task_postprocess_end` to close |
+| `task_cost`            | Cost update: includes `turnCost`, `cumulativeCost`, and `usage` (raw cost breakdown)            |
+| `task_end`             | The model process has exited. Post-processing follows. Wait for `task_postprocess_end` to close |
 | `task_postprocess_end` | Post-processing is complete. Safe to close the WebSocket connection                              |
 
 > **No `task_output` events.** Unlike voice conversation, TTS sessions do not produce transcript events. The input text is already known (you provided it), and the AI output is audio, not text.
@@ -4462,13 +4462,13 @@ Transcribe live microphone audio into text in real time using streaming ASR mode
 
 ## Overview
 
-Realtime speech-to-text models convert streaming audio into text transcripts as the user speaks. Unlike [Realtime Voice Conversation](#realtime-voice) which produces two-way audio, this mode is **audio in → text out** only. There is no AI audio playback — the server returns transcript strings over the WebSocket.
+Realtime speech-to-text models convert streaming audio into text transcripts as the user speaks. Unlike [Realtime Voice Conversation](#realtime-voice) which produces two-way audio, this mode is **audio in → text out** only. There is no AI audio playback. The server returns transcript strings over the WebSocket.
 
 The flow is:
 
 1. **Run** the realtime STT model via [POST /Run](#run-a-model) to get a `socketaccesstoken`
 2. **Connect** to the WebSocket and send `task_info` with your token
-3. **Wait** for `task_stream_ready` — the model is ready to receive audio
+3. **Wait** for `task_stream_ready`: the model is ready to receive audio
 4. **Stream** microphone audio as binary frames (client → server)
 5. **Receive** transcript text as `task_output` messages with `TRANSCRIPT_USER:` prefix
 6. **End** the session with `task_session_end`
@@ -4509,12 +4509,12 @@ During a realtime speech-to-text session, you'll receive these WebSocket events:
 
 | Event                  | Direction       | Description                                                                         |
 | ---------------------- | --------------- | ----------------------------------------------------------------------------------- |
-| `task_stream_ready`    | server → client | Session is ready — start sending microphone audio                                   |
+| `task_stream_ready`    | server → client | Session is ready: start sending microphone audio                                   |
 | `task_output`          | server → client | Transcript text prefixed with `TRANSCRIPT_USER:`                                    |
-| `task_stream_end`      | server → client | Transcription stream has ended — no more transcripts will arrive                    |
-| `task_cost`            | server → client | Cost update — includes `turnCost`, `cumulativeCost`, and `usage` breakdown          |
+| `task_stream_end`      | server → client | Transcription stream has ended: no more transcripts will arrive                    |
+| `task_cost`            | server → client | Cost update: includes `turnCost`, `cumulativeCost`, and `usage` breakdown          |
 | `task_end`             | server → client | The model process has exited. Post-processing follows                               |
-| `task_postprocess_end` | server → client | Post-processing complete — safe to close the WebSocket now                          |
+| `task_postprocess_end` | server → client | Post-processing complete: safe to close the WebSocket now                          |
 
 > Unlike voice conversation, there are no binary audio frames from the server. Every server message is a JSON text event.
 
@@ -4531,7 +4531,7 @@ Audio flows in one direction only: **client → server**.
 | Byte order  | Little-endian                        |
 | Chunk size  | 4,800 samples (200 ms) = 9,600 bytes |
 
-> The server internally resamples to the model's native rate (e.g. 16 kHz for Voxtral). Always send at 24 kHz — the server handles conversion.
+> The server internally resamples to the model's native rate (e.g. 16 kHz for Voxtral). Always send at 24 kHz. The server handles conversion.
 
 ### Binary Frame Format
 
@@ -4541,7 +4541,7 @@ Every binary WebSocket frame sent from the client is structured as:
 [tasktoken]|[PCM audio data]
 ```
 
-The pipe character `|` (0x7C) separates the token from the raw audio bytes. There are no binary frames from the server — all responses are JSON text.
+The pipe character `|` (0x7C) separates the token from the raw audio bytes. There are no binary frames from the server. All responses are JSON text.
 
 ## Transcripts
 
@@ -4561,7 +4561,7 @@ Transcripts arrive as `task_output` messages with the `TRANSCRIPT_USER:` prefix.
 
 ### Progressive Results
 
-Transcripts arrive progressively as words and phrases are recognized — not just at segment boundaries. The model streams `TRANSCRIPT_USER:` messages word-by-word as speech is detected, so the client can display live, incremental results. To build a full transcript, concatenate all received messages:
+Transcripts arrive progressively as words and phrases are recognized, not just at segment boundaries. The model streams `TRANSCRIPT_USER:` messages word-by-word as speech is detected, so the client can display live, incremental results. To build a full transcript, concatenate all received messages:
 
 ```javascript
 var fullTranscript = [];
@@ -4605,9 +4605,9 @@ Manage folders and upload files for use with AI models.
 
 The Files API lets you organize and upload data that can be referenced in model runs. Common use cases include:
 
-- **Training data** — upload datasets for fine-tuning models
-- **File inputs** — provide images, audio, or documents as model inputs
-- **Batch processing** — store files for repeated use across multiple runs
+- **Training data**: upload datasets for fine-tuning models
+- **File inputs**: provide images, audio, or documents as model inputs
+- **Batch processing**: store files for repeated use across multiple runs
 
 ## Authentication and Public File URLs
 
@@ -4676,9 +4676,9 @@ Uploads a file using `multipart/form-data`. You can optionally assign it to a fo
 
 ## Using Files in Runs
 
-Once uploaded, reference a file by its URL or ID in your model run parameters. For example, an image upscaler model might accept an `inputImageUrl` parameter — pass the URL returned from the upload response.
+Once uploaded, reference a file by its URL or ID in your model run parameters. For example, an image upscaler model might accept an `inputImageUrl` parameter. Pass the URL returned from the upload response.
 
-You don't always need to upload files first. Most models accept direct URLs in their file parameters — you can pass any publicly accessible URL. See [Model Parameters](/docs/model-parameters) for details on `fileinput`, `multifileinput`, and `combinefileinput` patterns.
+You don't always need to upload files first. Most models accept direct URLs in their file parameters, so you can pass any publicly accessible URL. See [Model Parameters](/docs/model-parameters) for details on `fileinput`, `multifileinput`, and `combinefileinput` patterns.
 
 ```json
 {
@@ -4703,7 +4703,7 @@ Fallback: when no `dynamicprice`, cost = elapsed_seconds × `cps`. `approximatel
 
 ## Dynamic Pricing
 
-Many models have dynamic pricing — cost varies based on input parameters (e.g. resolution, duration). Returned in the `dynamicprice` field of Tool/List and Tool/Detail:
+Many models have dynamic pricing: cost varies based on input parameters (e.g. resolution, duration). Returned in the `dynamicprice` field of Tool/List and Tool/Detail:
 
 ```json
 [{"inputs": {"resolution": "720p", "duration": "5"}, "price": 0.13, "priceMethod": "cpr"}]
@@ -4870,15 +4870,15 @@ Complete end-to-end examples in all 9 supported languages.
 
 Each example below demonstrates the full Wiro workflow: authenticate, run a model, poll for task completion, and retrieve the result. Choose your preferred language.
 
-- **curl** — Shell scripting with bash
-- **Python** — Using the `requests` library
-- **Node.js** — Using `axios`
-- **PHP** — Using cURL functions
-- **C#** — Using `HttpClient` (.NET 6+)
-- **Swift** — Using async/await `URLSession`
-- **Dart** — Using the `http` package
-- **Kotlin** — Using `java.net.http`
-- **Go** — Using the standard library `net/http`
+- **curl**: Shell scripting with bash
+- **Python**: Using the `requests` library
+- **Node.js**: Using `axios`
+- **PHP**: Using cURL functions
+- **C#**: Using `HttpClient` (.NET 6+)
+- **Swift**: Using async/await `URLSession`
+- **Dart**: Using the `http` package
+- **Kotlin**: Using `java.net.http`
+- **Go**: Using the standard library `net/http`
 
 ## Full Examples
 
@@ -5381,7 +5381,7 @@ Connect AI coding assistants to Wiro's AI models via the Model Context Protocol.
 
 ## What is MCP?
 
-[Model Context Protocol](https://modelcontextprotocol.io/) (MCP) is an open standard that lets AI assistants use external tools directly. With the Wiro MCP server, your AI assistant can search models, run inference, track tasks, and upload files — all without leaving your editor.
+[Model Context Protocol](https://modelcontextprotocol.io/) (MCP) is an open standard that lets AI assistants use external tools directly. With the Wiro MCP server, your AI assistant can search models, run inference, track tasks, and upload files, all without leaving your editor.
 
 The hosted MCP server is available at `mcp.wiro.ai/v1` and works with clients
 that support Streamable HTTP plus custom request headers, including Cursor,
@@ -5659,7 +5659,7 @@ Use Wiro AI models directly in your Node.js or TypeScript projects with a simple
 
 ## Overview
 
-The [`@wiro-ai/wiro-mcp`](https://www.npmjs.com/package/@wiro-ai/wiro-mcp) package exports a `WiroClient` class that you can use as a standalone API client — no MCP setup required. It handles authentication, model discovery, execution, task polling, and file uploads.
+The [`@wiro-ai/wiro-mcp`](https://www.npmjs.com/package/@wiro-ai/wiro-mcp) package exports a `WiroClient` class that you can use as a standalone API client, with no MCP setup required. It handles authentication, model discovery, execution, task polling, and file uploads.
 
 ## Installation
 
@@ -5729,7 +5729,7 @@ Common questions about using the Wiro API.
 
 # n8n Wiro Integration
 
-Use all Wiro AI models directly in your n8n workflows — video, image, audio, LLM, 3D, and more.
+Use all Wiro AI models directly in your n8n workflows: video, image, audio, LLM, 3D, and more.
 
 The **Wiro AI community node** (`@wiro-ai/n8n-nodes-wiroai`) gives you access to all Wiro AI models as individual nodes you can drag and drop into any workflow.
 

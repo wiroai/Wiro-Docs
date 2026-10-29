@@ -102,7 +102,7 @@ Generic `/sync` waits stay on `api.wiro.ai` and use normal Run headers.
 
 `session_id` is the only public session field. It is optional on Chat
 Completions and Anthropic Messages, and must contain
-1–128 letters, digits, `.`, `_`, `:`, or `-`. Reuse the same value for related
+1 to 128 letters, digits, `.`, `_`, `:`, or `-`. Reuse the same value for related
 turns. Wiro maps it to a project-scoped internal session; it does not replace
 the protocol's normal client-history requirements. Responses uses
 `previous_response_id` instead, and `/v1/messages/count_tokens` does not accept
@@ -118,9 +118,9 @@ API Key Only projects send `YOUR_API_KEY`; Signature projects send
 Every client below needs the exact lowercase `owner/model` ID. Two places give
 it to you:
 
-- [The catalog, filtered to gateway models](https://wiro.ai/models?categories=llm-tool-call)
-  — browse them, open one, and copy the ID from its page.
-- `GET /v1/models` — the same set as JSON. `GET /v1/models/{owner}/{model}`
+- [The catalog, filtered to gateway models](https://wiro.ai/models?categories=llm-tool-call):
+  browse them, open one, and copy the ID from its page.
+- `GET /v1/models`: the same set as JSON. `GET /v1/models/{owner}/{model}`
   then reports that model's routes, modalities, tool support and token limits.
 
 ### Cursor
@@ -128,12 +128,12 @@ it to you:
 Cursor reaches the gateway through its OpenAI base URL override, which it
 appends `/chat/completions` to. Point it at the normal `/v1` base.
 
-1. **Open the model settings** — Command Palette (`Cmd+Shift+P`, `Ctrl+Shift+P`
+1. **Open the model settings**: Command Palette (`Cmd+Shift+P`, `Ctrl+Shift+P`
    on Windows) → `Cursor Settings: Models`.
-2. **View All Models** — the settings pane lists only the models Cursor ships
+2. **View All Models**: the settings pane lists only the models Cursor ships
    with. `View All Models`, at the bottom, opens the full list where custom ones
    live.
-3. **+ Add Custom Model** — type the exact lowercase `owner/model` ID — the same
+3. **+ Add Custom Model**: type the exact lowercase `owner/model` ID. These are the same
    IDs VS Code takes, listed below. Repeat for each model you want. Cursor shows
    whatever you type in its picker, so a parenthesised label is read and
    discarded at either end: `(Wiro) claude/sonnet-5` and
@@ -142,21 +142,21 @@ appends `/chat/completions` to. Point it at the normal `/v1` base.
 
    ![Cursor's custom model list showing four Wiro models, each labelled (Wiro
    AI), with the Add Custom Model button below them.](css/cursor-custom-llm.png)
-4. **OpenAI API Key** — put the project credential in the `OpenAI API Key` field;
+4. **OpenAI API Key**: put the project credential in the `OpenAI API Key` field;
    that is the field Cursor uses for the overridden endpoint.
    `YOUR_API_KEY:YOUR_API_SECRET` for a Signature project, `YOUR_API_KEY` alone
    for API Key Only.
-5. **Turn the key on** — flip the switch beside the field. It reads
+5. **Turn the key on**: flip the switch beside the field. It reads
    `Secret saved` once Cursor has stored the credential.
-6. **Override OpenAI Base URL** — turn that switch on too. It sits directly
+6. **Override OpenAI Base URL**: turn that switch on too. It sits directly
    under the key.
-7. **Enter the base URL** — `https://llm.wiro.ai/v1`. Cursor appends
+7. **Enter the base URL**: `https://llm.wiro.ai/v1`. Cursor appends
    `/chat/completions` itself, so do not add it.
-8. **Disable the built-in models** — while the override is on, Cursor sends its
+8. **Disable the built-in models**: while the override is on, Cursor sends its
    own model names to your endpoint too, and those do not exist in the Wiro
    catalog. Leave only the models you added enabled, or every request fails with
    an unknown model.
-9. **Verify** — press `Verify`. A failure here is normally the base URL carrying
+9. **Verify**: press `Verify`. A failure here is normally the base URL carrying
    `/chat/completions`, or a built-in model still switched on.
 
 Every model the gateway serves today, labelled and ready to paste one at a time;
@@ -240,16 +240,16 @@ the **terminal** Claude Code: the desktop app manages its own provider and
 cannot be pointed at a gateway, so its model picker keeps listing Anthropic's
 models whatever you configure.
 
-1. **Install the CLI** — in a terminal:
+1. **Install the CLI** in a terminal:
 
    ```bash
    npm i -g @anthropic-ai/claude-code
    ```
 
-2. **Write the settings file** — two places take it, and the file is the same in
+2. **Write the settings file**: two places take it, and the file is the same in
    both. Pick by how widely you want the gateway used.
 
-   **Every folder on this machine** — `~/.claude/settings.json`:
+   **Every folder on this machine** (`~/.claude/settings.json`):
 
    ```json
    {
@@ -263,10 +263,10 @@ models whatever you configure.
    }
    ```
 
-   **One project only** — `<project>/.claude/settings.json`, in the folder you
+   **One project only**: `<project>/.claude/settings.json`, in the folder you
    will open Claude Code in. Your other projects keep whatever they were using.
    If that folder is a git repository, put it in `.claude/settings.local.json`
-   instead, which is not committed — the credential should not reach the shared
+   instead, which is not committed. The credential should not reach the shared
    file:
 
    ```json
@@ -280,7 +280,7 @@ models whatever you configure.
      }
    }
    ```
-   `ANTHROPIC_BASE_URL` carries no `/v1` here — Anthropic clients append the
+   `ANTHROPIC_BASE_URL` carries no `/v1` here: Anthropic clients append the
    path themselves. `ANTHROPIC_API_KEY` takes `YOUR_API_KEY:YOUR_API_SECRET`
    for a Signature project, or `YOUR_API_KEY` alone for API Key Only.
    `ANTHROPIC_MODEL` is the model the session opens with, and is any ID from
@@ -291,7 +291,7 @@ models whatever you configure.
    containing `claude` or `anthropic`, so the picker gains the `claude/` models
    alone; open any other model with `ANTHROPIC_MODEL` or `--model`.
    `CLAUDE_CODE_MAX_CONTEXT_TOKENS` must match the
-   context window of the model you set — Claude Code does not recognise these
+   context window of the model you set. Claude Code does not recognise these
    names, so it otherwise assumes 200k and discards history long before it
    needs to.
 
@@ -301,21 +301,21 @@ models whatever you configure.
    cd /path/to/your/project && claude
    ```
 
-4. **Answer the first-run prompts** — a new install asks three things in a row:
+4. **Answer the first-run prompts**. A new install asks three things in a row:
    a colour theme, its security notes (`Press Enter to continue`), and whether
    to apply `Claude Code's terminal setup`. Answer them once.
-5. **Allow the project's MCP servers, if it has any** — a folder that declares
+5. **Allow the project's MCP servers, if it has any**: a folder that declares
    MCP servers gets `New MCP server found in this project` before the session
    opens. Nothing here concerns the gateway; choose whatever you would normally
    choose.
-6. **Answer the key prompt** — `Do you want to use this API key?` → `No`. It
+6. **Answer the key prompt**: `Do you want to use this API key?` → `No`. It
    asks about a key exported in your shell, not the one you just put in the
    settings file.
-7. **Check the header, then start** — it names the model you configured:
+7. **Check the header, then start**. It names the model you configured:
    `(Wiro) openai/gpt-5-6-sol · API Usage Billing`. Your Claude subscription
    is not used while a gateway credential is set.
 
-8. **Switching models** — open on another model for one session:
+8. **Switching models**. Open on another model for one session:
 
    ```bash
    cd /path/to/your/project && claude --model "(Wiro) xai/grok-4-1-fast"
@@ -324,7 +324,7 @@ models whatever you configure.
    ```
 
    Or change `ANTHROPIC_MODEL` in the settings file, which every session in that
-   scope then opens on. Move `CLAUDE_CODE_MAX_CONTEXT_TOKENS` with it — Grok 4.1
+   scope then opens on. Move `CLAUDE_CODE_MAX_CONTEXT_TOKENS` with it, since Grok 4.1
    Fast holds 2M where GPT 5.6 Sol holds 1.05M:
 
    ```json
@@ -421,23 +421,23 @@ before them and applies to every folder.
 
 ### VS Code
 
-VS Code Chat reaches the gateway through its own built-in custom endpoint — no
+VS Code Chat reaches the gateway through its own built-in custom endpoint, no
 extension required.
 
-1. **Open the model manager** — Command Palette (`Cmd+Shift+P`, `Ctrl+Shift+P`
+1. **Open the model manager**: Command Palette (`Cmd+Shift+P`, `Ctrl+Shift+P`
    on Windows) → `Chat: Manage Language Models`.
-2. **Add a provider** — `+ Add Models` opens a provider list (Anthropic,
+2. **Add a provider**: `+ Add Models` opens a provider list (Anthropic,
    Azure, Google, OpenAI, OpenRouter, xAI, Ollama). Pick `Custom Endpoint`,
    last, below the separator.
-3. **Group Name** — arrives pre-filled with "Custom Endpoint"; replace it with
-   `Wiro AI`. It is a label — it titles the next two prompts and groups the
+3. **Group Name**: arrives pre-filled with "Custom Endpoint"; replace it with
+   `Wiro AI`. It is a label: it titles the next two prompts and groups the
    models in the picker.
-4. **API Key** — `YOUR_API_KEY:YOUR_API_SECRET` for a Signature project,
+4. **API Key**: `YOUR_API_KEY:YOUR_API_SECRET` for a Signature project,
    `YOUR_API_KEY` alone for API Key Only. VS Code keeps it in its secret store;
    the file holds only a `${input:…}` reference.
-5. **API Type** — choose `Chat Completions`. Responses and Messages change the
+5. **API Type**: choose `Chat Completions`. Responses and Messages change the
    request shape VS Code sends.
-6. **Describe the models** — VS Code opens `chatLanguageModels.json` with one
+6. **Describe the models**: VS Code opens `chatLanguageModels.json` with one
    empty model. Leave `name`, `vendor`, `apiKey` and `apiType` as generated and
    fill the `models` array. Below is every model the gateway serves today, ready
    to paste; the same set is in
@@ -1015,10 +1015,10 @@ extension required.
 ]
 ```
 
-- `id` — the lowercase `owner/model` from `GET /v1/models`.
-- `name` — a free label, shown in the picker.
-- `url` — the **full endpoint**, not the base URL. Every model repeats it.
-- `toolCalling`, `vision`, `maxInputTokens`, `maxOutputTokens` — read them from
+- `id`: the lowercase `owner/model` from `GET /v1/models`.
+- `name`: a free label, shown in the picker.
+- `url`: the **full endpoint**, not the base URL. Every model repeats it.
+- `toolCalling`, `vision`, `maxInputTokens`, `maxOutputTokens`: read them from
   `GET /v1/models/{owner}/{model}`: `capabilities.function_tools`,
   `capabilities.input_modalities`, `max_input_tokens`, `max_tokens`. Do not
   guess.
@@ -1049,48 +1049,48 @@ extension required.
   takes the material after it rather than the question itself.
 
 Save the file and reopen the model picker; the models appear under **Wiro AI**.
-Any other VS Code extension that takes a custom OpenAI base URL — Cline, Roo
-Code, Continue — works the same way: point it at `https://llm.wiro.ai/v1` with
+Any other VS Code extension that takes a custom OpenAI base URL (Cline, Roo
+Code, Continue) works the same way: point it at `https://llm.wiro.ai/v1` with
 the same credential and a model ID from the catalog.
 
 ### Windsurf
 
 Windsurf now ships as **Devin Desktop**; the application is `Devin.app` and its
 docs redirect to `docs.devin.ai`. Cascade, its own agent, has no setting for an
-external provider — there is no base URL to override and no custom model to
+external provider: there is no base URL to override and no custom model to
 register, so it cannot be pointed at this gateway. What does work is running a
 different agent inside the same editor. The steps below use
 [Cline](https://open-vsx.org/extension/saoudrizwan/claude-dev), which is free
 and Apache-2.0; Roo Code and Continue configure the same way.
 
-1. **Open the extension marketplace** — Command Palette (`Cmd+Shift+P`,
+1. **Open the extension marketplace**: Command Palette (`Cmd+Shift+P`,
    `Ctrl+Shift+P` on Windows) → `Extensions: Install Extensions`. The menu bar
    gets you to the same place: `Devin → Preferences → Extensions`.
-2. **Install Cline** — search `cline` and install the one published by
+2. **Install Cline**: search `cline` and install the one published by
    `saoudrizwan`. Devin resolves extensions through the Open VSX mirror, so
    this is the same build VS Code carries.
-3. **Open the panel** — Command Palette (`Cmd+Shift+P`, `Ctrl+Shift+P` on
+3. **Open the panel**: Command Palette (`Cmd+Shift+P`, `Ctrl+Shift+P` on
    Windows) → `Cline: Focus on View`.
-4. **Bring my own API key** — Cline asks how you will use it. Pick the fourth
+4. **Bring my own API key**: Cline asks how you will use it. Pick the fourth
    option, `Bring my own API key`, then `Continue`. The other three are Cline's
    own billing; `Login to Cline` is not needed.
-5. **API Provider** — choose `OpenAI Compatible`, not `OpenAI`; that one goes to
+5. **API Provider**: choose `OpenAI Compatible`, not `OpenAI`; that one goes to
    the official OpenAI API.
-6. **Base URL** — `https://llm.wiro.ai/v1`. Cline appends the route itself.
-7. **OpenAI Compatible API Key** — `YOUR_API_KEY:YOUR_API_SECRET` for a
+6. **Base URL**: `https://llm.wiro.ai/v1`. Cline appends the route itself.
+7. **OpenAI Compatible API Key**: `YOUR_API_KEY:YOUR_API_SECRET` for a
    Signature project, `YOUR_API_KEY` alone for API Key Only. Cline keeps it
    locally.
-8. **Model ID** — one ID from the list below; Cline holds a single model per
+8. **Model ID**: one ID from the list below; Cline holds a single model per
    configuration rather than a list. The `(Wiro)` prefix is optional and the
    gateway strips it; it earns its place here by showing up in the status bar,
    as `openai-compat: (Wiro) openai/gpt-5-6-sol`.
-9. **Open `MODEL CONFIGURATION` and set the context window** — this one matters.
+9. **Open `MODEL CONFIGURATION` and set the context window**: this one matters.
    Cline does not know a custom model, so it assumes `128K` and starts dropping
    history long before it needs to. Put the real number from the list below into
-   `Context Window size`, and tick `Computer Use` so tool calling is enabled —
-   without it the agent cannot run tools. `Max Output Tokens` and the price
+   `Context Window size`, and tick `Computer Use` so tool calling is enabled.
+   Without it the agent cannot run tools. `Max Output Tokens` and the price
    fields are in the same section.
-10. **Continue, and send a message** — the status bar names the model you
+10. **Continue, and send a message**: the status bar names the model you
     configured. `Plan` and `Act` can each hold a different model, and saved API
     configuration profiles let you keep one per model and switch between them.
 
@@ -1180,22 +1180,22 @@ Everything below lives in one file:
 Set `OPENCLAW_CONFIG_PATH` to put it elsewhere, or run
 `openclaw --profile <name>` to keep a separate one under `~/.openclaw-<name>`.
 
-1. **Install** — `npm i -g openclaw`.
-2. **Name the provider** — the key under `providers`, `wiro` below, becomes the
+1. **Install**: `npm i -g openclaw`.
+2. **Name the provider**: the key under `providers`, `wiro` below, becomes the
    prefix you select a model with, as `wiro/<id>`. Pick any name; the rest of
    this page assumes `wiro`.
-3. **Match `api` to the model transport** — read it from
+3. **Match `api` to the model transport**: read it from
    `GET /v1/models/{owner}/{model}`. `openai-completions` and
    `openai-responses` take the `/v1` base; `anthropic-messages` takes the
    origin, `https://llm.wiro.ai`, with no `/v1`. One provider block per
    transport if you mix them.
-4. **Fill `apiKey`** — `YOUR_API_KEY:YOUR_API_SECRET` for a Signature project,
+4. **Fill `apiKey`**: `YOUR_API_KEY:YOUR_API_SECRET` for a Signature project,
    `YOUR_API_KEY` alone for API Key Only.
-5. **List the models** — each entry takes an `id` and a display `name`. The
+5. **List the models**: each entry takes an `id` and a display `name`. The
    `id` is what reaches the gateway, so the `(Wiro)` label is optional there
    and stripped on arrival; the `name` is only ever shown to you. Both carry it
    below so the CLI and the picker read the same.
-6. **Run a turn** —
+6. **Run a turn**:
    `openclaw agent --local --model "wiro/(Wiro) xai/grok-4-1-fast" -m "your prompt"`.
    `--local` runs the embedded agent against these credentials; without it the
    turn goes through an OpenClaw gateway instead.
@@ -1297,22 +1297,22 @@ Set `HERMES_HOME` to put it elsewhere; the project's own Docker image already
 points it at `/opt/data`. The file the repository ships as
 `cli-config.yaml.example` is read under the name `config.yaml`.
 
-1. **Install** — `curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash`
+1. **Install**: `curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash`
    on macOS, Linux and WSL2; `iex (irm https://hermes-agent.nousresearch.com/install.ps1)`
    in PowerShell. The repository also carries a `Dockerfile` and a
    `docker-compose.yml`.
-2. **Choose the custom provider** — `provider: "custom"` is Hermes' name for any
+2. **Choose the custom provider**: `provider: "custom"` is Hermes' name for any
    OpenAI-compatible endpoint; `ollama`, `vllm` and `llamacpp` are aliases of
    it. With it, `base_url` is what decides where the request goes.
-3. **Fill `api_key`** — `YOUR_API_KEY:YOUR_API_SECRET` for a Signature project,
+3. **Fill `api_key`**: `YOUR_API_KEY:YOUR_API_SECRET` for a Signature project,
    `YOUR_API_KEY` alone for API Key Only.
-4. **Name the model** — `model.default` takes one ID from the list below.
+4. **Name the model**: `model.default` takes one ID from the list below.
    Hermes holds a single default rather than a list, so the `(Wiro)` label is
    there for your own benefit; the gateway strips it either way.
-5. **Run a turn** — `hermes -z "your prompt"` for one shot, `hermes chat` for a
+5. **Run a turn**: `hermes -z "your prompt"` for one shot, `hermes chat` for a
    session. Add `--yolo` when you want the agent to use its tools without
    stopping for approval.
-6. **Switch models** — `hermes -m "(Wiro) xai/grok-4-1-fast" -z "your prompt"`
+6. **Switch models**: `hermes -m "(Wiro) xai/grok-4-1-fast" -z "your prompt"`
    overrides the default for one run; `hermes model` changes it for good.
 
 ```yaml
@@ -1396,21 +1396,21 @@ across as many turns as the task needs.
 
 ### OpenAI SDK
 
-The official `openai` package talks to the gateway unchanged — only
+The official `openai` package talks to the gateway unchanged. Only
 `baseURL` moves. Everything below was run against every model the gateway
 serves.
 
-1. **Install** — `npm i openai`. The Python package works the same way with
+1. **Install**: `npm i openai`. The Python package works the same way with
    `base_url`.
-2. **Point the client at the gateway** — `baseURL` is
+2. **Point the client at the gateway**: `baseURL` is
    `https://llm.wiro.ai/v1`. `apiKey` takes `YOUR_API_KEY:YOUR_API_SECRET`
    for a Signature project, `YOUR_API_KEY` alone for API Key Only.
-3. **Name a model** — any ID from the list below. The `(Wiro)` label is
+3. **Name a model**: any ID from the list below. The `(Wiro)` label is
    optional and stripped on arrival, so `openai/gpt-5-6-sol` works just as
    well.
-4. **Give reasoning models room** — `max_completion_tokens` covers reasoning as
+4. **Give reasoning models room**: `max_completion_tokens` covers reasoning as
    well as the answer. Too small a budget returns `finish_reason: "length"`
-   with empty content — not an error, just a spent budget. 512 is a safe floor,
+   with empty content. That is not an error, just a spent budget. 512 is a safe floor,
    more for long answers.
 
 ```javascript
@@ -1434,8 +1434,8 @@ console.log(completion.choices[0].message.content);
 `client.responses.create()` reaches the Responses route. Streaming works on
 both.
 
-Tool calling runs the whole loop — the call, the result, and further turns
-after it:
+Tool calling runs the whole loop (the call, the result, and further turns
+after it):
 
 ```javascript
 const tools = [{

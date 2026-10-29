@@ -54,13 +54,13 @@ The content type depends on whether the model requires file inputs:
 | No file parameters | `application/json` | Text-only models (LLMs, image generation from prompt) |
 | Has file parameters | `multipart/form-data` | Models that accept image, audio, video, or document uploads |
 
-> **Tip:** For `fileinput` and `multifileinput` parameters, use the `{id}Url` suffix to send URLs (e.g., `inputImageUrl`). For `combinefileinput`, pass URLs directly in the original parameter — no suffix needed. You can also pass a URL directly to any file parameter (e.g., `inputImage`) if the `{id}Url` field doesn't exist. Every URL must be a public `http(s)` address, and so must any address it redirects to: Wiro doesn't fetch a URL whose host is, or resolves to, a private, loopback or link-local address.
+> **Tip:** For `fileinput` and `multifileinput` parameters, use the `{id}Url` suffix to send URLs (e.g., `inputImageUrl`). For `combinefileinput`, pass URLs directly in the original parameter. No suffix is needed. You can also pass a URL directly to any file parameter (e.g., `inputImage`) if the `{id}Url` field doesn't exist. Every URL must be a public `http(s)` address, and so must any address it redirects to: Wiro doesn't fetch a URL whose host is, or resolves to, a private, loopback or link-local address.
 
 ## File Upload Patterns
 
 ### Single File (fileinput)
 
-For parameters like `inputImage`, send either a file or a URL. When using multipart, always include both the `{id}` and `{id}Url` fields — leave one empty:
+For parameters like `inputImage`, send either a file or a URL. When using multipart, always include both the `{id}` and `{id}Url` fields and leave one empty:
 
 ```bash
 # Option 1: Upload file — send file in {id}, empty {id}Url
@@ -110,7 +110,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
 
 ### Combined (combinefileinput)
 
-For parameters like `inputImageClothes`, files and URLs go directly in the same `{id}` field — no `{id}Url` suffix:
+For parameters like `inputImageClothes`, files and URLs go directly in the same `{id}` field, with no `{id}Url` suffix:
 
 ```bash
 # Option 1: Upload files — each as a separate {id} entry
@@ -136,7 +136,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
 
 ### Image Generation (text-to-image)
 
-Models like Stable Diffusion, Flux — JSON body, no file uploads:
+Models like Stable Diffusion, Flux (JSON body, no file uploads):
 
 ```json
 {
@@ -149,7 +149,7 @@ Models like Stable Diffusion, Flux — JSON body, no file uploads:
 
 ### Image-to-Image (upscaler, style transfer)
 
-Models that take an input image — multipart with file upload:
+Models that take an input image (multipart with file upload):
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
@@ -160,7 +160,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
 
 ### Virtual Try-On
 
-Multiple image inputs — multipart with multiple files:
+Multiple image inputs (multipart with multiple files):
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
@@ -186,7 +186,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
 
 ### Realtime Voice Conversation
 
-Realtime voice models accept configuration parameters (voice, system instructions, audio format, etc.) as JSON. Parameters vary per model — use `/Tool/Detail` to discover them. The actual audio interaction happens over [WebSocket](/docs/realtime-voice-conversation) after the task starts:
+Realtime voice models accept configuration parameters (voice, system instructions, audio format, etc.) as JSON. Parameters vary per model. Use `/Tool/Detail` to discover them. The actual audio interaction happens over [WebSocket](/docs/realtime-voice-conversation) after the task starts:
 
 Available realtime models include:
 - [openai/gpt-realtime-mini](https://wiro.ai/models/openai/gpt-realtime-mini)
@@ -227,7 +227,7 @@ Available realtime TTS models include:
 
 ### Realtime Speech to Text
 
-Realtime STT models transcribe audio streamed from the microphone over [WebSocket](/docs/realtime-speech-to-text). No text input needed — audio is streamed from the microphone. The `transcriptionDelay` controls the speed vs accuracy trade-off.
+Realtime STT models transcribe audio streamed from the microphone over [WebSocket](/docs/realtime-speech-to-text). No text input is needed: audio is streamed from the microphone. The `transcriptionDelay` controls the speed vs accuracy trade-off.
 
 Available realtime STT models include:
 - [mistralai/voxtral-mini-4b-realtime-2602](https://wiro.ai/models/mistralai/voxtral-mini-4b-realtime-2602)

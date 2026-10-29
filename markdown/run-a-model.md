@@ -4,7 +4,7 @@ Execute any AI model with a single API call and get real-time updates.
 
 ## **POST** /Run/{owner-slug}/{model-slug}
 
-Starts an AI model run. The endpoint accepts model-specific parameters and returns a **task ID** you can use to track progress via [polling](/docs/tasks), [WebSocket](/docs/websocket), or **webhook** by providing a `callbackUrl` parameter — Wiro will POST the result to your URL when the task completes.
+Starts an AI model run. The endpoint accepts model-specific parameters and returns a **task ID** you can use to track progress via [polling](/docs/tasks), [WebSocket](/docs/websocket), or **webhook** by providing a `callbackUrl` parameter, and Wiro will POST the result to your URL when the task completes.
 
 If you want one HTTP request to wait for the finished task, use
 [POST /Run/{owner}/{model}/sync](#run-sync) on this same API host. For OpenAI or Anthropic LLM protocols, see the
@@ -14,7 +14,7 @@ If you want one HTTP request to wait for the finished task, use
 
 ### JSON (application/json)
 
-Use JSON for text-based inputs — prompts, configuration, numeric parameters. This is the default and most common format.
+Use JSON for text-based inputs: prompts, configuration, numeric parameters. This is the default and most common format.
 
 ### Multipart (multipart/form-data)
 
@@ -53,7 +53,7 @@ seven optional ordinary model parameters on both asynchronous Run and `/sync`:
 `messages`, `tools`, `tool_choice`, `parallel_tool_calls`, `response_format`,
 `previousTaskToken`, and `toolOutputs`. `response_format` is present only on
 models that declare it, and it uses the flat shape `{"type":"json_object"}` or
-`{"type":"json_schema","name":"person","schema":{...}}` — not Chat's nested
+`{"type":"json_schema","name":"person","schema":{...}}`, not Chat's nested
 `json_schema` wrapper. A mode the model does not declare is rejected at
 `$.response_format.type` before the task is created. Tool Detail marks them
 `advanced: true` only to place them in the Advanced section of catalog-driven
@@ -353,10 +353,10 @@ OpenAI Chat/Responses, Anthropic Messages, and Cursor clients belong on
 
 The typical workflow after calling the Run endpoint:
 
-1. **Run** — call `POST /Run/{owner-slug}/{model-slug}` and receive a task ID
-2. **Track** — connect via WebSocket or poll `POST /Task/Detail`
-3. **Receive** — get outputs as the model produces them (streaming or final)
-4. **Complete** — task reaches `task_postprocess_end`; verify `pexit: "0"` and
+1. **Run**: call `POST /Run/{owner-slug}/{model-slug}` and receive a task ID
+2. **Track**: connect via WebSocket or poll `POST /Task/Detail`
+3. **Receive**: get outputs as the model produces them (streaming or final)
+4. **Complete**: task reaches `task_postprocess_end`; verify `pexit: "0"` and
    read its outputs
 
 For real-time streaming, use the WebSocket connection with the `socketaccesstoken` returned in the run response. For simpler integrations, poll the Task Detail endpoint every few seconds.

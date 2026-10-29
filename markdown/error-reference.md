@@ -18,7 +18,7 @@ When an API request fails, the response includes `result: false` and an `errors`
 }
 ```
 
-All API responses return HTTP `200` — use the `result` field and error `code` to determine success or failure.
+All API responses return HTTP `200`. Use the `result` field and error `code` to determine success or failure.
 
 ## Error Codes
 
@@ -72,7 +72,7 @@ These errors are returned by the `POST /Run/{owner}/{model}` endpoint.
 
 | Error | Code | Message | Action |
 |-------|------|---------|--------|
-| Insufficient balance | `97` | "Insufficient balance" | [Add funds](https://wiro.ai/panel/billing) — minimum $0.50 required (or $10 for training models) |
+| Insufficient balance | `97` | "Insufficient balance" | [Add funds](https://wiro.ai/panel/billing): minimum $0.50 required (or $10 for training models) |
 | Concurrent task limit | `96` | "You have reached your concurrent task limit. With your current balance of ${balance}, you can run up to {maxConcurrent} tasks at the same time. Add funds to increase your limit." | Wait for a task to finish, or [add funds](https://wiro.ai/panel/billing). See [Concurrency Limits](/docs/concurrency-limits) |
 | Sign in required | `98` | "sign in to run this model" | Model requires a registered account |
 
@@ -159,7 +159,7 @@ if (!data.result) {
 |------|-----------|----------|
 | `0` (validation) | No | Fix the request parameters |
 | `0` (server) | Yes | Retry with exponential backoff |
-| `1` | No | Resource not found — check model slug or task token |
+| `1` | No | Resource not found: check model slug or task token |
 | `96` | Yes | Wait for a running task to complete, then retry |
 | `97` | No | Add funds, then retry |
 | `98` | No | Sign in or use authenticated credentials |

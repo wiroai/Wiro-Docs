@@ -121,7 +121,7 @@ The self-hosted server provides the same 13 typed tools as the [hosted MCP serve
 | Tool | API Endpoint | What it does |
 |------|-------------|-------------|
 | `search_models` | `POST /Tool/List` | Search and browse AI models by keyword, category, or owner. Returns model slugs, titles, descriptions, categories, and pricing. |
-| `get_model_schema` | `POST /Tool/Detail` | Get full parameter schema and pricing for any model — parameter names, types, options, defaults, and required fields. |
+| `get_model_schema` | `POST /Tool/Detail` | Get full parameter schema and pricing for any model: parameter names, types, options, defaults, and required fields. |
 | `recommend_model` | `POST /Tool/List` | Describe what you want to build and get model recommendations ranked by relevance. |
 | `explore` | `POST /Tool/Explore` | Browse curated AI models organized by category. No parameters needed. |
 

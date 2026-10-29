@@ -12,10 +12,10 @@ Connect to this URL after calling the Run endpoint. Use the `socketaccesstoken` 
 
 ## Connection Flow
 
-1. **Connect** — open a WebSocket connection to `wss://socket.wiro.ai/v1`
-2. **Register** — send a `task_info` message with your `tasktoken`
-3. **Receive** — listen for messages as the task progresses through its lifecycle
-4. **Close** — disconnect after the `task_postprocess_end` event (this is the final event with results)
+1. **Connect**: open a WebSocket connection to `wss://socket.wiro.ai/v1`
+2. **Register**: send a `task_info` message with your `tasktoken`
+3. **Receive**: listen for messages as the task progresses through its lifecycle
+4. **Close**: disconnect after the `task_postprocess_end` event (this is the final event with results)
 
 Registration message format:
 
@@ -61,7 +61,7 @@ Every WebSocket message is a JSON object with this base structure:
 }
 ```
 
-The `type` field indicates the status. The `message` field varies by type — it's `null` for lifecycle events, a string or object for output events, and an array for the final result.
+The `type` field indicates the status. The `message` field varies by type: it's `null` for lifecycle events, a string or object for output events, and an array for the final result.
 
 Use the top-level `id` to correlate server events with the submitted task.
 
@@ -82,7 +82,7 @@ These events signal task state changes. The `message` field is `null`:
 
 ### Output Events
 
-**Standard models** — `message` is a progress object or plain string:
+**Standard models**: `message` is a progress object or plain string:
 
 ```json
 // Progress output (image generation, video, etc.)
@@ -112,7 +112,7 @@ These events signal task state changes. The `message` field is `null`:
 }
 ```
 
-**LLM models** — `message.segments` is the cumulative ordered output snapshot.
+**LLM models**: `message.segments` is the cumulative ordered output snapshot.
 Replace it on every event. The final active item's `text` grows as chunks arrive,
 so render it before completion; a new item appears when the output phase changes.
 See [LLM & Chat Streaming](/docs/llm-chat-streaming) for full details:

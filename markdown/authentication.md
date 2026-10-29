@@ -33,7 +33,7 @@ SIGNATURE = HMAC-SHA256(key=API_KEY, message=API_SECRET + NONCE)
 
 ## API Key Only Authentication
 
-For server-side applications where you control the environment, you can use the simpler API-key-only method. Just include the `x-api-key` header — no signature required.
+For server-side applications where you control the environment, you can use the simpler API-key-only method. Just include the `x-api-key` header. No signature is required.
 
 #### Required Headers
 
@@ -45,16 +45,16 @@ For server-side applications where you control the environment, you can use the 
 
 | Feature | Signature-Based | API Key Only |
 |---------|----------------|--------------|
-| Security | High — secret never sent over the wire | Moderate — key sent in every request |
+| Security | High: the secret is never sent over the wire | Moderate: the key is sent with every request |
 | Complexity | Requires HMAC computation | Single header |
 | Best for | Server-side apps, production backends | Server-side, internal tools |
-| Leaked API key | Not enough — the secret is also needed | Enough to call the API |
+| Leaked API key | Not enough: the secret is also needed | Enough to call the API |
 
 ## How to Choose
 
 - Building a **browser** or **mobile** app? Have the app call your own backend, and call Wiro from there. Never put your API key or secret in the app.
 - Running a **server-side** backend with controlled access? **API Key Only** is simpler.
-- Unsure? Default to **Signature-Based** — it's always the safer option.
+- Unsure? Default to **Signature-Based**, which is always the safer option.
 
 ## Code Examples
 
@@ -527,4 +527,4 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
   }'
 ```
 
-Signature-based projects add `x-nonce` and `x-signature` exactly as shown in the Run example — the signing algorithm is identical. See [Agent Overview](/docs/agent-overview) for the full agent API reference.
+Signature-based projects add `x-nonce` and `x-signature` exactly as shown in the Run example. The signing algorithm is identical. See [Agent Overview](/docs/agent-overview) for the full agent API reference.

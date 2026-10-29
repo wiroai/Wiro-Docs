@@ -10,7 +10,7 @@ The flow is:
 
 1. **Run** the realtime model via [POST /Run](/docs/run-a-model) to get a `socketaccesstoken`
 2. **Connect** to the WebSocket and send `task_info` with your token
-3. **Wait** for `task_stream_ready` — the model is ready to receive audio
+3. **Wait** for `task_stream_ready`: the model is ready to receive audio
 4. **Stream** microphone audio as binary frames
 5. **Receive** AI audio as binary frames and play them
 6. **End** the session with `task_session_end`
@@ -20,9 +20,9 @@ The flow is:
 Each realtime model has its own set of parameters. Use [POST /Tool/Detail](/docs/models) to discover the exact parameters for a specific model. See [Model Parameters](/docs/model-parameters) for details on parameter types.
 
 Available realtime conversation models include:
-- [openai/gpt-realtime-mini](https://wiro.ai/models/openai/gpt-realtime-mini) — GPT Mini Realtime Voice Assistant
-- [openai/gpt-realtime](https://wiro.ai/models/openai/gpt-realtime) — GPT Realtime Voice Assistant
-- [elevenlabs/realtime-conversational-ai](https://wiro.ai/models/elevenlabs/realtime-conversational-ai) — ElevenLabs Conversational AI
+- [openai/gpt-realtime-mini](https://wiro.ai/models/openai/gpt-realtime-mini): GPT Mini Realtime Voice Assistant
+- [openai/gpt-realtime](https://wiro.ai/models/openai/gpt-realtime): GPT Realtime Voice Assistant
+- [elevenlabs/realtime-conversational-ai](https://wiro.ai/models/elevenlabs/realtime-conversational-ai): ElevenLabs Conversational AI
 
 Common parameters across realtime models typically include voice selection, system instructions, and audio format settings. Example run for an OpenAI realtime model:
 
@@ -65,14 +65,14 @@ During a realtime session, you'll receive these WebSocket events:
 
 | Event | Direction | Description |
 |-------|-----------|-------------|
-| `task_stream_ready` | server → client | Session is ready — start sending microphone audio |
-| `task_stream_end` | server → client | AI finished speaking for this turn — you can speak again |
-| `task_cost` | server → client | Cost update per turn — includes `turnCost`, `cumulativeCost`, and `usage` (raw cost breakdown from the model provider) |
+| `task_stream_ready` | server → client | Session is ready: start sending microphone audio |
+| `task_stream_end` | server → client | AI finished speaking for this turn: you can speak again |
+| `task_cost` | server → client | Cost update per turn: includes `turnCost`, `cumulativeCost`, and `usage` (raw cost breakdown from the model provider) |
 | `task_output` | server → client | Transcript messages prefixed with `TRANSCRIPT_USER:` or `TRANSCRIPT_AI:` |
-| `task_end` | server → client | The model process has exited. Post-processing follows — wait for `task_postprocess_end` to close the connection. |
-| `task_postprocess_end` | server → client | Post-processing complete — safe to close the WebSocket connection |
+| `task_end` | server → client | The model process has exited. Post-processing follows. Wait for `task_postprocess_end` to close the connection. |
+| `task_postprocess_end` | server → client | Post-processing complete: safe to close the WebSocket connection |
 | `task_session_end` | client → server | Gracefully end the session |
-| `task_session_interrupt` | client → server | Interrupt AI speech — stops playback and lets the user speak |
+| `task_session_interrupt` | client → server | Interrupt AI speech: stops playback and lets the user speak |
 
 ## Audio Format
 
@@ -121,8 +121,8 @@ AI responses arrive as binary WebSocket frames in the same PCM Int16 24 kHz form
 
 Both user and AI speech are transcribed automatically. Transcripts arrive as `task_output` messages with a string prefix:
 
-- `TRANSCRIPT_USER:` — what the user said
-- `TRANSCRIPT_AI:` — what the AI said
+- `TRANSCRIPT_USER:` for what the user said
+- `TRANSCRIPT_AI:` for what the AI said
 
 ```json
 // Example task_output message
@@ -151,11 +151,11 @@ While the AI is speaking, you can interrupt it to take over the conversation. Se
 When the server receives this:
 - The AI immediately stops generating audio
 - A final `task_stream_end` is sent for the interrupted turn
-- The session continues — the user can speak and the AI will respond to the next input
+- The session continues: the user can speak and the AI will respond to the next input
 
 On the client side, stop audio playback immediately when the user triggers an interrupt. This gives instant feedback (AI voice cuts off) while the server processes the signal.
 
-> **Tip:** Some models support natural interruption — if the user starts speaking while the AI is talking, the model may stop on its own. Models whose provider does its own barge-in (the OpenAI realtime family and ElevenLabs) may handle interruption natively, while the explicit `task_session_interrupt` signal stops the current reply on Wiro-hosted realtime models.
+> **Tip:** Some models support natural interruption: if the user starts speaking while the AI is talking, the model may stop on its own. Models whose provider does its own barge-in (the OpenAI realtime family and ElevenLabs) may handle interruption natively, while the explicit `task_session_interrupt` signal stops the current reply on Wiro-hosted realtime models.
 
 ## Ending a Session
 

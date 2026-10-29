@@ -4,7 +4,7 @@ Use Wiro AI models directly in your Node.js or TypeScript projects with a simple
 
 ## Overview
 
-The [`@wiro-ai/wiro-mcp`](https://www.npmjs.com/package/@wiro-ai/wiro-mcp) package exports a `WiroClient` class that you can use as a standalone API client — no MCP setup required. It handles authentication (both signature-based and API key only), model discovery, execution, task polling, and file uploads.
+The [`@wiro-ai/wiro-mcp`](https://www.npmjs.com/package/@wiro-ai/wiro-mcp) package exports a `WiroClient` class that you can use as a standalone API client, with no MCP setup required. It handles authentication (both signature-based and API key only), model discovery, execution, task polling, and file uploads.
 
 ### Links
 
@@ -153,7 +153,7 @@ if (task.pexit === '0') {
 
 ### Upload a File and Use It
 
-> **Tip:** Most models accept direct URLs in file parameters — you can pass `inputImage: 'https://example.com/photo.jpg'` directly without uploading. Use `uploadFile()` when you need to reuse files across multiple runs.
+> **Tip:** Most models accept direct URLs in file parameters, so you can pass `inputImage: 'https://example.com/photo.jpg'` directly without uploading. Use `uploadFile()` when you need to reuse files across multiple runs.
 
 ```javascript
 // Upload an image
@@ -221,14 +221,14 @@ import {
 
 | Type | Description |
 |------|-------------|
-| `RunModelResult` | Response from `runModel()` — `taskid`, `socketaccesstoken`. |
-| `TaskDetailResponse` | Response from `getTask()` / `waitForTask()` — contains `tasklist` array. |
-| `Task` | Individual task object — `status`, `pexit`, `outputs`, `debugoutput`, etc. |
-| `TaskOutput` | Output entry — file (`name`, `url`) or LLM (`contenttype: "raw"`, `content`). |
-| `ToolListResponse` | Response from `searchModels()` — contains `tool` array. |
-| `ToolDetailResponse` | Response from `getModelSchema()` — contains model with parameters. |
-| `SearchModelsParams` | Search parameters — `search`, `categories`, `slugowner`, `limit`, etc. |
-| `TaskReference` | Existing task identifier — `tasktoken` or `taskid`. |
-| `WaitForTaskOptions` | Polling options — `signal`, `onPoll`, `pollIntervalMs`, and retry limit. |
+| `RunModelResult` | Response from `runModel()`: `taskid`, `socketaccesstoken`. |
+| `TaskDetailResponse` | Response from `getTask()` / `waitForTask()`: contains `tasklist` array. |
+| `Task` | Individual task object: `status`, `pexit`, `outputs`, `debugoutput`, etc. |
+| `TaskOutput` | Output entry: file (`name`, `url`) or LLM (`contenttype: "raw"`, `content`). |
+| `ToolListResponse` | Response from `searchModels()`: contains `tool` array. |
+| `ToolDetailResponse` | Response from `getModelSchema()`: contains model with parameters. |
+| `SearchModelsParams` | Search parameters: `search`, `categories`, `slugowner`, `limit`, etc. |
+| `TaskReference` | Existing task identifier: `tasktoken` or `taskid`. |
+| `WaitForTaskOptions` | Polling options: `signal`, `onPoll`, `pollIntervalMs`, and retry limit. |
 | `TaskWaitTimeoutError` | Bounded wait expired; carries the last Task/Detail response. |
 | `TaskPollingError` | Repeated or permanent status lookup failure; also carries the last response. |

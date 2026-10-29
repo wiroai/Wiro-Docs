@@ -8,7 +8,7 @@ Sign up at [wiro.ai](https://wiro.ai), then create a project at [wiro.ai/panel/p
 
 ## Which authentication method should I use?
 
-**Signature-Based** is recommended — it uses HMAC-SHA256 so your API secret never leaves your environment. **API Key Only** is simpler and fine for server-side applications where you control the environment. Use either method only from your own server, never in browser or mobile app code. See [Authentication](/docs/authentication) for details.
+**Signature-Based** is recommended. It uses HMAC-SHA256 so your API secret never leaves your environment. **API Key Only** is simpler and fine for server-side applications where you control the environment. Use either method only from your own server, never in browser or mobile app code. See [Authentication](/docs/authentication) for details.
 
 ## Is there a rate limit?
 
@@ -20,7 +20,7 @@ No. If a task fails (non-zero `pexit`), you are not charged. Only successfully c
 
 ## How do I check the cost before running a model?
 
-Use the [POST /Tool/Detail](/docs/models) endpoint — the response includes the model's pricing information. If you're using the [MCP server](/docs/wiro-mcp-server), the `search_models` and `get_model_schema` tools also return pricing.
+Use the [POST /Tool/Detail](/docs/models) endpoint. The response includes the model's pricing information. If you're using the [MCP server](/docs/wiro-mcp-server), the `search_models` and `get_model_schema` tools also return pricing.
 
 ## How long are generated files stored?
 
@@ -48,7 +48,7 @@ Yes. For `fileinput` and `multifileinput` parameters, use the `{id}Url` suffix (
 
 ## What is pexit and how do I use it?
 
-`pexit` is the process exit code — `"0"` means success, any other value means failure. It's the most reliable way to determine if a task succeeded. Always check `pexit` in the `task_postprocess_end` event or Task Detail response. See [Tasks](/docs/tasks).
+`pexit` is the process exit code: `"0"` means success, any other value means failure. It's the most reliable way to determine if a task succeeded. Always check `pexit` in the `task_postprocess_end` event or Task Detail response. See [Tasks](/docs/tasks).
 
 ## Does the MCP server cost extra?
 

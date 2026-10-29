@@ -4,7 +4,7 @@ Build streaming text-to-speech apps with realtime AI models.
 
 ## Overview
 
-Realtime text-to-speech models convert text into streaming audio. Unlike standard TTS that processes a full prompt and returns an audio file, realtime TTS streams AI-generated speech as a continuous PCM audio stream over a WebSocket connection — in real time. The text prompt is submitted via [POST /Run](/docs/run-a-model), not over the WebSocket. The WebSocket carries only task events (`task_info`, `task_stream_ready`, etc.), binary audio frames, and control messages (`task_session_end`).
+Realtime text-to-speech models convert text into streaming audio. Unlike standard TTS that processes a full prompt and returns an audio file, realtime TTS streams AI-generated speech as a continuous PCM audio stream over a WebSocket connection, in real time. The text prompt is submitted via [POST /Run](/docs/run-a-model), not over the WebSocket. The WebSocket carries only task events (`task_info`, `task_stream_ready`, etc.), binary audio frames, and control messages (`task_session_end`).
 
 No microphone is required. The flow is one-directional: text goes in, audio comes out.
 
@@ -12,7 +12,7 @@ The flow is:
 
 1. **Run** the realtime TTS model via [POST /Run](/docs/run-a-model) with your text prompt in the parameters
 2. **Connect** to the WebSocket and send `task_info` with your `socketaccesstoken`
-3. **Wait** for `task_stream_ready` — the model has loaded and is generating audio
+3. **Wait** for `task_stream_ready`: the model has loaded and is generating audio
 4. **Receive** AI audio as binary frames and play them
 5. **End** the session with `task_session_end` or wait for the stream to finish naturally
 
@@ -67,10 +67,10 @@ During a realtime TTS session, you'll receive these WebSocket events:
 
 | Event | Description |
 |-------|-------------|
-| `task_stream_ready` | Session is ready — the model is generating audio and will begin sending chunks |
+| `task_stream_ready` | Session is ready: the model is generating audio and will begin sending chunks |
 | `task_stream_end` | The model finished generating audio for the current segment |
-| `task_cost` | Cost update — includes `turnCost`, `cumulativeCost`, and `usage` (raw cost breakdown from the model provider) |
-| `task_end` | The model process has exited. Post-processing follows — wait for `task_postprocess_end` to close the connection. |
+| `task_cost` | Cost update: includes `turnCost`, `cumulativeCost`, and `usage` (raw cost breakdown from the model provider) |
+| `task_end` | The model process has exited. Post-processing follows. Wait for `task_postprocess_end` to close the connection. |
 | `task_postprocess_end` | Post-processing is complete. Safe to close the WebSocket connection. |
 
 > **No `task_output` events.** Unlike voice conversation, TTS sessions do not produce transcript events. The input text is already known (you provided it), and the AI output is audio, not text.

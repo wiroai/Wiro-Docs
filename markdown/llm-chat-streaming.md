@@ -7,7 +7,7 @@ Stream LLM responses in real time with ordered output segments, session history,
 LLM (Large Language Model) requests on Wiro work differently from standard model runs:
 
 - Responses are available as structured content in `outputs` (with `contenttype: "raw"`) and as merged plain text in `debugoutput`
-- Streaming `task_output` messages contain ordered text/tool-call `segments` —
+- Streaming `task_output` messages contain ordered text/tool-call `segments`,
   not plain strings
 - Multi-turn conversations are supported via `session_id` and `user_id` parameters
 - `pexit` is the primary success indicator
@@ -21,7 +21,7 @@ Available LLM models include:
 
 ## Session & Chat History
 
-Wiro maintains conversation history per session. Send the same `session_id` together with `user_id` on every message of a conversation — some chat models keep history only when both are present — and the model builds on the earlier messages:
+Wiro maintains conversation history per session. Send the same `session_id` together with `user_id` on every message of a conversation (some chat models keep history only when both are present), and the model builds on the earlier messages:
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -53,10 +53,10 @@ value may contain up to 256 UTF-8 bytes; a UUID is allowed but not required.
 
 LLM output is an ordered timeline with up to four segment types:
 
-- **Thinking** — reasoning text exposed by the selected model
-- **Answer** — the final response to the user
-- **Function call** — JSON arguments for an application-defined function
-- **Custom tool call** — grammar-constrained or free-form tool input
+- **Thinking**: reasoning text exposed by the selected model
+- **Answer**: the final response to the user
+- **Function call**: JSON arguments for an application-defined function
+- **Custom tool call**: grammar-constrained or free-form tool input
 
 A model may alternate between thinking and answering multiple times during one
 response. The `segments` array preserves the exact order, including consecutive
@@ -137,7 +137,7 @@ or `incomplete` calls and must not trigger execution.
 3. **Receive** `task_output` messages containing cumulative ordered `segments`
 4. **Replace** your stored snapshot and render `answer` items; optionally show
    `thinking` items and collect tool calls
-5. **Complete** — on `task_postprocess_end`, check `exitCode` on WebSocket or
+5. **Complete**: on `task_postprocess_end`, check `exitCode` on WebSocket or
    `pexit` in Task Detail, then inspect `finishreason`
 
 ## Polling Alternative
