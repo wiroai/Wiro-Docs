@@ -4,7 +4,7 @@ Create organizations, invite members, and manage roles and permissions.
 
 ## **POST** /Organization/Create
 
-Creates a new organization. The caller automatically becomes the organization **owner** — only the owner can create teams, delete the organization, or restore it after deletion. A team named `Default Team` is created with it automatically: the caller is added as its admin, and it gets its own wallet (starting at $0.00), no spend limit, and access to all models. Use `/Team/Create` only for additional teams.
+Creates a new organization. The caller automatically becomes the organization **owner**, and only the owner can create teams, delete the organization, or restore it after deletion. A team named `Default Team` is created with it automatically: the caller is added as its admin, and it gets its own wallet (starting at $0.00), no spend limit, and access to all models. Use `/Team/Create` only for additional teams.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -285,7 +285,7 @@ Returns all organizations you belong to, including active and deleted ones. Each
 
 ## **POST** /Team/TransferAgent
 
-Transfers an agent instance between workspaces — personal to team, team to personal, or team to team. On the team side you must be an admin of that team or the organization owner. On the personal side you must be the user who originally deployed the agent: only the deployer can move an agent from their personal workspace into a team, and only the deployer can move it from a team to their personal workspace.
+Transfers an agent instance between workspaces: personal to team, team to personal, or team to team. On the team side you must be an admin of that team or the organization owner. On the personal side you must be the user who originally deployed the agent: only the deployer can move an agent from their personal workspace into a team, and only the deployer can move it from a team to their personal workspace.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -320,6 +320,6 @@ Credit can be transferred between your personal wallet and team wallets. Transfe
 
 ## What's Next
 
-- [Organizations & Teams Overview](/docs/organizations-overview) — Concepts and workspace hierarchy
-- [Team Billing & Spending](/docs/organizations-billing) — Wallets, spend limits, and model access controls
-- [Team API Access](/docs/organizations-api-access) — How context works in API requests
+- [Organizations & Teams Overview](/docs/organizations-overview): Concepts and workspace hierarchy
+- [Team Billing & Spending](/docs/organizations-billing): Wallets, spend limits, and model access controls
+- [Team API Access](/docs/organizations-api-access): How context works in API requests

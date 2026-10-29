@@ -34081,9 +34081,9 @@ print(message.json())</code></pre>
                     <h2>Overview</h2>
                     <p>Wiro supports three workspace contexts for organizing your resources:</p>
                     <ul>
-                      <li><strong>Personal</strong> — your default workspace. Projects, agents, and wallet are tied to your individual account.</li>
-                      <li><strong>Organization</strong> — a parent entity that groups one or more teams. The organization owner controls the lifecycle of teams and their members.</li>
-                      <li><strong>Team</strong> — a workspace under an organization with its own wallet, projects, agents, and member permissions. Team members share access to resources deployed within the team.</li>
+                      <li><strong>Personal</strong>: your default workspace. Projects, agents, and wallet are tied to your individual account.</li>
+                      <li><strong>Organization</strong>: a parent entity that groups one or more teams. The organization owner controls the lifecycle of teams and their members.</li>
+                      <li><strong>Team</strong>: a workspace under an organization with its own wallet, projects, agents, and member permissions. Team members share access to resources deployed within the team.</li>
                     </ul>
 
                     <pre><code>Personal Account
@@ -34104,7 +34104,7 @@ Organization (created by you)
 │   └── Members
 └── ...</code></pre>
 
-                    <p>Every user always has a personal workspace. Organizations and teams are optional — you can use Wiro entirely in personal mode without ever creating an organization.</p>
+                    <p>Every user always has a personal workspace. Organizations and teams are optional: you can use Wiro entirely in personal mode without ever creating an organization.</p>
                   </section>
 
                   <section id="key-concepts">
@@ -34140,7 +34140,7 @@ Organization (created by you)
                         </table>
                       </div>
                     </div>
-                    <p>Switching context changes which projects, agents, and wallet you interact with. Resources in one context are isolated from the other — personal agents cannot see team projects, and team agents cannot access personal resources.</p>
+                    <p>Switching context changes which projects, agents, and wallet you interact with. Resources in one context are isolated from the other: personal agents cannot see team projects, and team agents cannot access personal resources.</p>
 
                     <h3>Resource Isolation</h3>
                     <p>Each workspace is fully isolated:</p>
@@ -34154,9 +34154,9 @@ Organization (created by you)
                     <h3>Transferring Resources</h3>
                     <p>Projects and agents can be transferred between workspaces:</p>
                     <ul>
-                      <li><strong>Personal → Team</strong> — move a project or agent from your personal workspace into a team you have admin access to</li>
-                      <li><strong>Team → Personal</strong> — move a project you created, or an agent you deployed, from a team you have admin access to back to your personal workspace. Only the original creator or deployer can do this.</li>
-                      <li><strong>Team → Team</strong> — move a project or agent between teams you have admin access to in the same or different organizations</li>
+                      <li><strong>Personal → Team</strong>: move a project or agent from your personal workspace into a team you have admin access to</li>
+                      <li><strong>Team → Personal</strong>: move a project you created, or an agent you deployed, from a team you have admin access to back to your personal workspace. Only the original creator or deployer can do this.</li>
+                      <li><strong>Team → Team</strong>: move a project or agent between teams you have admin access to in the same or different organizations</li>
                     </ul>
                     <p>When a resource is transferred, its billing context changes immediately. Future tasks on a transferred project will be billed to the new workspace's wallet. Transfer operations are available in the dashboard and via the API.</p>
                     <div class="info-callout">
@@ -34166,7 +34166,7 @@ Organization (created by you)
 
                   <section id="organizations-vs-teams">
                     <h2>Organizations vs Teams</h2>
-                    <p>An <strong>organization</strong> is a management container — it does not hold resources directly. All resources (projects, agents, wallets) live inside <strong>teams</strong>.</p>
+                    <p>An <strong>organization</strong> is a management container: it does not hold resources directly. All resources (projects, agents, wallets) live inside <strong>teams</strong>.</p>
                     <div class="docs-param-table">
                       <div class="docs-param-table-wrapper">
                         <table>
@@ -34254,12 +34254,12 @@ Organization (created by you)
                   <section id="getting-started">
                     <h2>Getting Started</h2>
                     <ol>
-                      <li><strong>Create an organization</strong> — go to your <a href="https://wiro.ai/panel/organization" target="_blank">Dashboard</a> and click "Create Organization". A team named "Default Team" is created automatically, with you as its admin.</li>
-                      <li><strong>Add more teams (optional)</strong> — as the organization owner, click "Create Team" on the organization card to add another team, for example one per project</li>
-                      <li><strong>Invite members</strong> — send email invitations to your teammates</li>
-                      <li><strong>Fund the team wallet</strong> — switch to the team workspace and add credit. Admins and the owner can also move credit from their personal wallet with <strong>Transfer Credit</strong> and redeem coupons into the team wallet</li>
-                      <li><strong>Create projects</strong> — with the team workspace selected, create API projects. Their API keys run models on the team wallet</li>
-                      <li><strong>Deploy agents</strong> — team admins can deploy agent instances within the team for shared access</li>
+                      <li><strong>Create an organization</strong>: go to your <a href="https://wiro.ai/panel/organization" target="_blank">Dashboard</a> and click "Create Organization". A team named "Default Team" is created automatically, with you as its admin.</li>
+                      <li><strong>Add more teams (optional)</strong>: as the organization owner, click "Create Team" on the organization card to add another team, for example one per project</li>
+                      <li><strong>Invite members</strong>: send email invitations to your teammates</li>
+                      <li><strong>Fund the team wallet</strong>: switch to the team workspace and add credit. Admins and the owner can also move credit from their personal wallet with <strong>Transfer Credit</strong> and redeem coupons into the team wallet</li>
+                      <li><strong>Create projects</strong>: with the team workspace selected, create API projects. Their API keys run models on the team wallet</li>
+                      <li><strong>Deploy agents</strong>: team admins can deploy agent instances within the team for shared access</li>
                     </ol>
                     <p>For step-by-step instructions, see <a href="/docs/organizations-managing-teams">Managing Teams</a>.</p>
                   </section>
@@ -34267,9 +34267,9 @@ Organization (created by you)
                   <section id="whats-next">
                     <h2>What's Next</h2>
                     <ul>
-                      <li><a href="/docs/organizations-managing-teams">Managing Teams</a> — Create organizations, invite members, manage roles and permissions</li>
-                      <li><a href="/docs/organizations-billing">Team Billing &amp; Spending</a> — Wallets, spend limits, model access controls, and budget alerts</li>
-                      <li><a href="/docs/organizations-api-access">Team API Access</a> — How workspace context works with API keys and context guards</li>
+                      <li><a href="/docs/organizations-managing-teams">Managing Teams</a>: Create organizations, invite members, manage roles and permissions</li>
+                      <li><a href="/docs/organizations-billing">Team Billing &amp; Spending</a>: Wallets, spend limits, model access controls, and budget alerts</li>
+                      <li><a href="/docs/organizations-api-access">Team API Access</a>: How workspace context works with API keys and context guards</li>
                     </ul>
                   </section>
                 </article>
@@ -34288,7 +34288,7 @@ Organization (created by you)
                       <span class="endpoint-badge post">POST</span>
                       /Organization/Create
                     </h2>
-                    <p>Creates a new organization. The caller automatically becomes the organization <strong>owner</strong> — only the owner can create teams, delete the organization, or restore it after deletion. A team named <code>Default Team</code> is created with it automatically: the caller is added as its admin, and it gets its own wallet (starting at $0.00), no spend limit, and access to all models. Use <code>/Team/Create</code> only for additional teams.</p>
+                    <p>Creates a new organization. The caller automatically becomes the organization <strong>owner</strong>, and only the owner can create teams, delete the organization, or restore it after deletion. A team named <code>Default Team</code> is created with it automatically: the caller is added as its admin, and it gets its own wallet (starting at $0.00), no spend limit, and access to all models. Use <code>/Team/Create</code> only for additional teams.</p>
 
                     <div class="docs-param-table">
                       <div class="docs-param-table-wrapper">
@@ -34925,7 +34925,7 @@ Organization (created by you)
                       <span class="endpoint-badge post">POST</span>
                       /Team/TransferAgent
                     </h2>
-                    <p>Transfers an agent instance between workspaces — personal to team, team to personal, or team to team. On the team side you must be an admin of that team or the organization owner. On the personal side you must be the user who originally deployed the agent: only the deployer can move an agent from their personal workspace into a team, and only the deployer can move it from a team to their personal workspace.</p>
+                    <p>Transfers an agent instance between workspaces: personal to team, team to personal, or team to team. On the team side you must be an admin of that team or the organization owner. On the personal side you must be the user who originally deployed the agent: only the deployer can move an agent from their personal workspace into a team, and only the deployer can move it from a team to their personal workspace.</p>
 
                     <div class="docs-param-table">
                       <div class="docs-param-table-wrapper">
@@ -35021,9 +35021,9 @@ Organization (created by you)
                   <section id="whats-next-managing">
                     <h2>What's Next</h2>
                     <ul>
-                      <li><a href="/docs/organizations-overview">Organizations &amp; Teams Overview</a> — Concepts and workspace hierarchy</li>
-                      <li><a href="/docs/organizations-billing">Team Billing &amp; Spending</a> — Wallets, spend limits, and model access controls</li>
-                      <li><a href="/docs/organizations-api-access">Team API Access</a> — How context works in API requests</li>
+                      <li><a href="/docs/organizations-overview">Organizations &amp; Teams Overview</a>: Concepts and workspace hierarchy</li>
+                      <li><a href="/docs/organizations-billing">Team Billing &amp; Spending</a>: Wallets, spend limits, and model access controls</li>
+                      <li><a href="/docs/organizations-api-access">Team API Access</a>: How context works in API requests</li>
                     </ul>
                   </section>
                 </article>
@@ -35039,15 +35039,15 @@ Organization (created by you)
 
                   <section id="team-wallets">
                     <h2>Team Wallets</h2>
-                    <p>Each team has its own wallet, independent of members' personal wallets. When a task runs in a team context, the cost is deducted from the team wallet — never from the individual member's personal wallet.</p>
+                    <p>Each team has its own wallet, independent of members' personal wallets. When a task runs in a team context, the cost is deducted from the team wallet, never from the individual member's personal wallet.</p>
 
                     <h3>Funding a Team Wallet</h3>
                     <p>Team wallets are funded the same way as personal wallets, plus credit transfers:</p>
                     <ul>
-                      <li><strong>Deposits</strong> — add credit via the dashboard or API while in the team context</li>
-                      <li><strong>Coupons</strong> — team admins and the owner can redeem coupon codes while in the team context (see Coupons below)</li>
-                      <li><strong>Auto-pay</strong> — configure automatic deposits when the balance drops below a threshold. In a team workspace, only team admins and the organization owner can set up, change or turn off auto-pay for the team wallet. Other members can view the settings; if they try to change them, they get <code>Only team admins can perform this action</code></li>
-                      <li><strong>Transfer Credit</strong> — organization owners and team admins can move balance from their personal wallet or from another team they administer (see <code>/Team/TransferCredit</code> below)</li>
+                      <li><strong>Deposits</strong>: add credit via the dashboard or API while in the team context</li>
+                      <li><strong>Coupons</strong>: team admins and the owner can redeem coupon codes while in the team context (see Coupons below)</li>
+                      <li><strong>Auto-pay</strong>: configure automatic deposits when the balance drops below a threshold. In a team workspace, only team admins and the organization owner can set up, change or turn off auto-pay for the team wallet. Other members can view the settings; if they try to change them, they get <code>Only team admins can perform this action</code></li>
+                      <li><strong>Transfer Credit</strong>: organization owners and team admins can move balance from their personal wallet or from another team they administer (see <code>/Team/TransferCredit</code> below)</li>
                     </ul>
                     <p>To fund a team wallet, switch to the team workspace in the dashboard and open <strong>Credit Balance</strong>, then <strong>Add to Credit Balance</strong>, <strong>Automatic Payment</strong>, <strong>Coupons</strong> or <strong>Transfer Credit</strong>. All deposit and coupon operations target the active workspace.</p>
 
@@ -35203,14 +35203,14 @@ Organization (created by you)
                     <p>Model IDs are the numeric IDs from the model catalog. You can get them from the <a href="/docs/models">Models</a> endpoint or the dashboard.</p>
 
                     <h3>Examples</h3>
-                    <p><strong>Allowlist — only permit specific models:</strong></p>
+                    <p><strong>Allowlist (only permit specific models):</strong></p>
                     <pre><code class="language-json">{
   "teamguid": "your-team-guid",
   "modelaccess": "allowlist",
   "allowedmodelids": [598, 412, 305]
 }</code></pre>
                     <p>Team members can only run models 598, 412, and 305. All other models are blocked.</p>
-                    <p><strong>Blocklist — block specific expensive models:</strong></p>
+                    <p><strong>Blocklist (block specific expensive models):</strong></p>
                     <pre><code class="language-json">{
   "teamguid": "your-team-guid",
   "modelaccess": "blocklist",
@@ -35228,8 +35228,8 @@ Organization (created by you)
                     <ul>
                       <li><code>/Run</code> calls made with a team project's API key</li>
                       <li>Runs started from the dashboard while the team workspace is selected</li>
-                      <li>Workflow runs in the team context — the whole run is rejected before it starts if any model in it is restricted</li>
-                      <li>LLM gateway requests made with a team project's API key — the request fails with HTTP <code>403</code> <code>permission_error</code> and the message <code>This model is not available for your team</code>; a streamed Responses request ends with <code>response.failed</code> instead (see <a href="/docs/completions-api#gateway-errors">Direct LLM Gateway errors</a> for each protocol's error format)</li>
+                      <li>Workflow runs in the team context: the whole run is rejected before it starts if any model in it is restricted</li>
+                      <li>LLM gateway requests made with a team project's API key: the request fails with HTTP <code>403</code> <code>permission_error</code> and the message <code>This model is not available for your team</code>; a streamed Responses request ends with <code>response.failed</code> instead (see <a href="/docs/completions-api#gateway-errors">Direct LLM Gateway errors</a> for each protocol's error format)</li>
                     </ul>
                     <p>The check compares the requested model's ID against the team's access policy.</p>
                     <p>Access controls do <strong>not</strong> affect:</p>
@@ -35360,7 +35360,7 @@ Organization (created by you)
                       </div>
                     </div>
                     <p><code>spending</code> lists only current members, so it can add up to less than <code>teamtotal</code>. The team-level spend limit is not part of this response.</p>
-                    <p>For project-level breakdown, call <code>/Project/UsageSummary</code> in team context. For time-series task execution data, call <code>/Task/Stat</code> in team context — both automatically filter by the active workspace.</p>
+                    <p>For project-level breakdown, call <code>/Project/UsageSummary</code> in team context. For time-series task execution data, call <code>/Task/Stat</code> in team context. Both automatically filter by the active workspace.</p>
                   </section>
 
                   <section id="credit-transfer">
@@ -35425,9 +35425,9 @@ Organization (created by you)
 }</code></pre>
                     <p>The <code>transferred</code> object shows how the amount was split across pools:</p>
                     <ul>
-                      <li><code>gifted</code> — from coupon and checklist credits</li>
-                      <li><code>store</code> — from marketplace store revenue</li>
-                      <li><code>amount</code> — from regular deposits</li>
+                      <li><code>gifted</code>: from coupon and checklist credits</li>
+                      <li><code>store</code>: from marketplace store revenue</li>
+                      <li><code>amount</code>: from regular deposits</li>
                     </ul>
                     <p>Permissions:</p>
                     <ul>
@@ -35437,7 +35437,7 @@ Organization (created by you)
                     </ul>
 
                     <h3>How It Works</h3>
-                    <p>Transfers preserve the original deposit structure — expiry dates, coupon tracking, and store revenue are all maintained. Every source deposit or coupon that the transfer draws from becomes its own deposit on the target wallet, with the same type and its original expiry time.</p>
+                    <p>Transfers preserve the original deposit structure: expiry dates, coupon tracking, and store revenue are all maintained. Every source deposit or coupon that the transfer draws from becomes its own deposit on the target wallet, with the same type and its original expiry time.</p>
 
                     <p><strong>Consumption order (matches task billing):</strong></p>
                     <ol>
@@ -35447,7 +35447,7 @@ Organization (created by you)
                       <li>Regular amount (deposits)</li>
                     </ol>
 
-                    <p><strong>Expiry is preserved:</strong> When you transfer $600 from a wallet containing a $500 coupon (30-day expiry) and a $500 deposit (365-day expiry), the target receives two separate deposits — $500 coupon and $100 deposit — each with its original expiry date.</p>
+                    <p><strong>Expiry is preserved:</strong> When you transfer $600 from a wallet containing a $500 coupon (30-day expiry) and a $500 deposit (365-day expiry), the target receives two separate deposits, a $500 coupon and a $100 deposit, each with its original expiry date.</p>
 
                     <h3>Transaction History</h3>
                     <p>Both wallets receive audit transactions:</p>
@@ -35455,7 +35455,7 @@ Organization (created by you)
                       <li>Source: <code>TRANSFER OUT</code> with a description like "Transfer to Engineering (Acme Corp) - $100.00 (Coupons: $50.00 / Store: $0.00 / Deposits: $50.00)."</li>
                       <li>Target: <code>TRANSFER IN</code> with a description like "Transfer from personal - $100.00 (Coupons: $50.00 / Store: $0.00 / Deposits: $50.00)."</li>
                     </ul>
-                    <p>These audit transactions do not affect balance calculations or expiry — they are for display only. The actual balance changes come from updated deposit amounts (source) and new deposit records (target).</p>
+                    <p>These audit transactions do not affect balance calculations or expiry. They are for display only. The actual balance changes come from updated deposit amounts (source) and new deposit records (target).</p>
 
                     <h3>Important Behaviors</h3>
                     <ul>
@@ -35505,10 +35505,10 @@ Organization (created by you)
                   <section id="whats-next-billing">
                     <h2>What's Next</h2>
                     <ul>
-                      <li><a href="/docs/organizations-overview">Organizations &amp; Teams Overview</a> — Concepts and workspace hierarchy</li>
-                      <li><a href="/docs/organizations-managing-teams">Managing Teams</a> — Create organizations, invite members, manage roles</li>
-                      <li><a href="/docs/organizations-api-access">Team API Access</a> — How context works in API requests</li>
-                      <li><a href="/docs/pricing">Pricing</a> — General pricing information</li>
+                      <li><a href="/docs/organizations-overview">Organizations &amp; Teams Overview</a>: Concepts and workspace hierarchy</li>
+                      <li><a href="/docs/organizations-managing-teams">Managing Teams</a>: Create organizations, invite members, manage roles</li>
+                      <li><a href="/docs/organizations-api-access">Team API Access</a>: How context works in API requests</li>
+                      <li><a href="/docs/pricing">Pricing</a>: General pricing information</li>
                     </ul>
                   </section>
                 </article>
@@ -35524,7 +35524,7 @@ Organization (created by you)
 
                   <section id="context-resolution">
                     <h2>Context Resolution</h2>
-                    <p>Every authenticated API request resolves to a workspace context — either <strong>personal</strong> or a specific <strong>team</strong>. When you authenticate with a project API key (<code>x-api-key</code>), the context is determined <strong>automatically</strong> by the project's assignment:</p>
+                    <p>Every authenticated API request resolves to a workspace context: either <strong>personal</strong> or a specific <strong>team</strong>. When you authenticate with a project API key (<code>x-api-key</code>), the context is determined <strong>automatically</strong> by the project's assignment:</p>
                     <ul>
                       <li>If the project belongs to a team → team context is activated</li>
                       <li>If the project is personal → personal context is activated</li>
@@ -35541,7 +35541,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/google/nano-banana" \
   -H "x-api-key: YOUR_PERSONAL_API_KEY" \
   -d '{"prompt": "Hello"}'</code></pre>
                     <p>These examples use API-key-only authentication. For projects that use signature authentication, also send <code>x-nonce</code> and <code>x-signature</code> (see <a href="/docs/authentication">Authentication</a>).</p>
-                    <p>Create a project inside a team to get a team API key, or use a personal project for personal context. The same <code>x-api-key</code> header works for both — no extra configuration needed.</p>
+                    <p>Create a project inside a team to get a team API key, or use a personal project for personal context. The same <code>x-api-key</code> header works for both, with no extra configuration needed.</p>
                     <p>A team project's API key does not depend on its creator's team membership. If the member who created the project is removed from the team, the project stays in the team and its key keeps working and charging the team wallet. Delete the project to revoke the key. While the project's creator is a team member, runs made with the key count toward that user's member spend limit; after they are removed, only the team spend limit applies.</p>
                   </section>
 
@@ -35654,21 +35654,21 @@ curl -X POST "https://api.wiro.ai/v1/Run/google/nano-banana" \
                     <h3>Protected Endpoints</h3>
                     <p>The following agent endpoints enforce context guards:</p>
                     <ul>
-                      <li><code>UserAgent/Message/Send</code> — send a message to an agent</li>
-                      <li><code>UserAgent/Message/History</code> — view conversation history</li>
-                      <li><code>UserAgent/Message/Sessions</code> — list conversation sessions</li>
-                      <li><code>UserAgent/Message/DeleteSession</code> — delete a conversation</li>
-                      <li><code>UserAgent/Message/RenameSession</code> — rename a conversation</li>
-                      <li><code>UserAgent/Message/Delete</code> — hide your own messages</li>
-                      <li><code>UserAgent/CreateExtraCreditCheckout</code> — purchase extra credits</li>
-                      <li><code>UserAgent/CancelSubscription</code> — cancel subscription</li>
-                      <li><code>UserAgent/RenewSubscription</code> — renew subscription</li>
-                      <li><code>UserAgent/UpgradeTier</code> — upgrade tier (Starter → Pro)</li>
-                      <li><code>UserAgent/CreateSubscriptionCheckout</code> — subscribe a not-yet-subscribed useragent</li>
-                      <li><code>UserAgent/PricingPreview</code> — pricing preview for an existing agent</li>
-                      <li><code>UserAgent/SkillsApply</code> — change skill set (single or batch, auto-prorates)</li>
-                      <li><code>UserAgent/SkillToggle</code> — toggle a single skill</li>
-                      <li><code>UserAgent/Realtime/WebStart</code> — start a web voice session</li>
+                      <li><code>UserAgent/Message/Send</code>: send a message to an agent</li>
+                      <li><code>UserAgent/Message/History</code>: view conversation history</li>
+                      <li><code>UserAgent/Message/Sessions</code>: list conversation sessions</li>
+                      <li><code>UserAgent/Message/DeleteSession</code>: delete a conversation</li>
+                      <li><code>UserAgent/Message/RenameSession</code>: rename a conversation</li>
+                      <li><code>UserAgent/Message/Delete</code>: hide your own messages</li>
+                      <li><code>UserAgent/CreateExtraCreditCheckout</code>: purchase extra credits</li>
+                      <li><code>UserAgent/CancelSubscription</code>: cancel subscription</li>
+                      <li><code>UserAgent/RenewSubscription</code>: renew subscription</li>
+                      <li><code>UserAgent/UpgradeTier</code>: upgrade tier (Starter → Pro)</li>
+                      <li><code>UserAgent/CreateSubscriptionCheckout</code>: subscribe a not-yet-subscribed useragent</li>
+                      <li><code>UserAgent/PricingPreview</code>: pricing preview for an existing agent</li>
+                      <li><code>UserAgent/SkillsApply</code>: change skill set (single or batch, auto-prorates)</li>
+                      <li><code>UserAgent/SkillToggle</code>: toggle a single skill</li>
+                      <li><code>UserAgent/Realtime/WebStart</code>: start a web voice session</li>
                     </ul>
                     <p><code>Message/Delete</code>, <code>SkillsApply</code> and <code>SkillToggle</code> enforce the context guard for team agents only; a personal agent's owner can call them from any workspace. <code>Realtime/WebStart</code> also checks team agents only: the member who deployed the agent can call it from any workspace while they are still an active member of the agent's team, so a website voice backend keeps working on a personal project key. Outside the team's context, a caller who has left the team gets the context mismatch error.</p>
                     <p><code>UserAgent/Deploy</code> creates the agent in your current workspace. With a team project API key the agent is deployed into that team, and the user who created the project must be a team admin. Otherwise the call fails with code <code>97</code>: "Only a team admin can perform this action on a team-owned agent."</p>
@@ -35725,7 +35725,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/google/nano-banana" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_TEAM_PROJECT_API_KEY" \
   -d '{"limit": 10}'</code></pre>
-                    <p>This returns only agents with <code>teamguid</code> matching the project's team — personal agents are not included.</p>
+                    <p>This returns only agents with <code>teamguid</code> matching the project's team. Personal agents are not included.</p>
 
                     <h3>Sending a Message to a Team Agent</h3>
                     <p>The API key must belong to the same team as the agent:</p>
@@ -35759,20 +35759,20 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
                   <section id="best-practices">
                     <h2>Best Practices</h2>
                     <ul>
-                      <li><strong>Separate projects by environment</strong> — create distinct team projects for development, staging, and production. The team context is resolved automatically from the API key.</li>
-                      <li><strong>Check agent context before messaging</strong> — if you build a multi-tenant application, ensure the project and agent belong to the same workspace</li>
-                      <li><strong>Transfer resources carefully</strong> — agents can only access projects in the same workspace. Plan your resource layout before transferring</li>
+                      <li><strong>Separate projects by environment</strong>: create distinct team projects for development, staging, and production. The team context is resolved automatically from the API key.</li>
+                      <li><strong>Check agent context before messaging</strong>: if you build a multi-tenant application, ensure the project and agent belong to the same workspace</li>
+                      <li><strong>Transfer resources carefully</strong>: agents can only access projects in the same workspace. Plan your resource layout before transferring</li>
                     </ul>
                   </section>
 
                   <section id="whats-next-api">
                     <h2>What's Next</h2>
                     <ul>
-                      <li><a href="/docs/organizations-overview">Organizations &amp; Teams Overview</a> — Concepts and workspace hierarchy</li>
-                      <li><a href="/docs/organizations-managing-teams">Managing Teams</a> — Create organizations, invite members, manage roles</li>
-                      <li><a href="/docs/organizations-billing">Team Billing &amp; Spending</a> — Wallets, spend limits, and model access controls</li>
-                      <li><a href="/docs/authentication">Authentication</a> — API key setup and authentication methods</li>
-                      <li><a href="/docs/projects">Projects</a> — Project management and API credentials</li>
+                      <li><a href="/docs/organizations-overview">Organizations &amp; Teams Overview</a>: Concepts and workspace hierarchy</li>
+                      <li><a href="/docs/organizations-managing-teams">Managing Teams</a>: Create organizations, invite members, manage roles</li>
+                      <li><a href="/docs/organizations-billing">Team Billing &amp; Spending</a>: Wallets, spend limits, and model access controls</li>
+                      <li><a href="/docs/authentication">Authentication</a>: API key setup and authentication methods</li>
+                      <li><a href="/docs/projects">Projects</a>: Project management and API credentials</li>
                     </ul>
                   </section>
                 </article>

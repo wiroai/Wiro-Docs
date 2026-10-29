@@ -6,9 +6,9 @@ Collaborate with your team under a shared workspace with unified billing, access
 
 Wiro supports three workspace contexts for organizing your resources:
 
-- **Personal** — your default workspace. Projects, agents, and wallet are tied to your individual account.
-- **Organization** — a parent entity that groups one or more teams. The organization owner controls the lifecycle of teams and their members.
-- **Team** — a workspace under an organization with its own wallet, projects, agents, and member permissions. Team members share access to resources deployed within the team.
+- **Personal**: your default workspace. Projects, agents, and wallet are tied to your individual account.
+- **Organization**: a parent entity that groups one or more teams. The organization owner controls the lifecycle of teams and their members.
+- **Team**: a workspace under an organization with its own wallet, projects, agents, and member permissions. Team members share access to resources deployed within the team.
 
 ```
 Personal Account
@@ -30,7 +30,7 @@ Organization (created by you)
 └── ...
 ```
 
-Every user always has a personal workspace. Organizations and teams are optional — you can use Wiro entirely in personal mode without ever creating an organization.
+Every user always has a personal workspace. Organizations and teams are optional: you can use Wiro entirely in personal mode without ever creating an organization.
 
 ## Key Concepts
 
@@ -43,7 +43,7 @@ When you make an API request or use the dashboard, you operate in one of two con
 | **Personal** | Your personal projects, agents, tasks | Your personal wallet | Default. In the dashboard, choose Personal with **Switch Workspace** (or **Switch to Personal** on the Organizations page); in the API, use a personal project API key |
 | **Team** | Team projects, team agents, team tasks | Team wallet | In the dashboard, choose the team with **Switch Workspace** (or **Switch** on the Organizations page); in the API, use a team project API key |
 
-Switching context changes which projects, agents, and wallet you interact with. Resources in one context are isolated from the other — personal agents cannot see team projects, and team agents cannot access personal resources.
+Switching context changes which projects, agents, and wallet you interact with. Resources in one context are isolated from the other: personal agents cannot see team projects, and team agents cannot access personal resources.
 
 ### Resource Isolation
 
@@ -58,9 +58,9 @@ Each workspace is fully isolated:
 
 Projects and agents can be transferred between workspaces:
 
-- **Personal → Team** — move a project or agent from your personal workspace into a team you have admin access to
-- **Team → Personal** — move a project you created, or an agent you deployed, from a team you have admin access to back to your personal workspace. Only the original creator or deployer can do this.
-- **Team → Team** — move a project or agent between teams you have admin access to in the same or different organizations
+- **Personal → Team**: move a project or agent from your personal workspace into a team you have admin access to
+- **Team → Personal**: move a project you created, or an agent you deployed, from a team you have admin access to back to your personal workspace. Only the original creator or deployer can do this.
+- **Team → Team**: move a project or agent between teams you have admin access to in the same or different organizations
 
 When a resource is transferred, its billing context changes immediately. Future tasks on a transferred project will be billed to the new workspace's wallet. Transfer operations are available in the dashboard and via the API.
 
@@ -68,7 +68,7 @@ When a resource is transferred, its billing context changes immediately. Future 
 
 ## Organizations vs Teams
 
-An **organization** is a management container — it does not hold resources directly. All resources (projects, agents, wallets) live inside **teams**.
+An **organization** is a management container: it does not hold resources directly. All resources (projects, agents, wallets) live inside **teams**.
 
 | Feature | Organization | Team |
 |---------|-------------|------|
@@ -95,17 +95,17 @@ The organization creator is automatically the owner. When the owner creates a te
 
 ## Getting Started
 
-1. **Create an organization** — go to your [Dashboard](https://wiro.ai/panel/organization) and click "Create Organization". A team named "Default Team" is created automatically, with you as its admin.
-2. **Add more teams (optional)** — as the organization owner, click "Create Team" on the organization card to add another team, for example one per project
-3. **Invite members** — send email invitations to your teammates
-4. **Fund the team wallet** — switch to the team workspace and add credit. Admins and the owner can also move credit from their personal wallet with **Transfer Credit** and redeem coupons into the team wallet
-5. **Create projects** — with the team workspace selected, create API projects. Their API keys run models on the team wallet
-6. **Deploy agents** — team admins can deploy agent instances within the team for shared access
+1. **Create an organization**: go to your [Dashboard](https://wiro.ai/panel/organization) and click "Create Organization". A team named "Default Team" is created automatically, with you as its admin.
+2. **Add more teams (optional)**: as the organization owner, click "Create Team" on the organization card to add another team, for example one per project
+3. **Invite members**: send email invitations to your teammates
+4. **Fund the team wallet**: switch to the team workspace and add credit. Admins and the owner can also move credit from their personal wallet with **Transfer Credit** and redeem coupons into the team wallet
+5. **Create projects**: with the team workspace selected, create API projects. Their API keys run models on the team wallet
+6. **Deploy agents**: team admins can deploy agent instances within the team for shared access
 
 For step-by-step instructions, see [Managing Teams](/docs/organizations-managing-teams).
 
 ## What's Next
 
-- [Managing Teams](/docs/organizations-managing-teams) — Create organizations, invite members, manage roles and permissions
-- [Team Billing & Spending](/docs/organizations-billing) — Wallets, spend limits, model access controls, and budget alerts
-- [Team API Access](/docs/organizations-api-access) — How workspace context works with API keys and context guards
+- [Managing Teams](/docs/organizations-managing-teams): Create organizations, invite members, manage roles and permissions
+- [Team Billing & Spending](/docs/organizations-billing): Wallets, spend limits, model access controls, and budget alerts
+- [Team API Access](/docs/organizations-api-access): How workspace context works with API keys and context guards

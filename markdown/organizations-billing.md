@@ -4,16 +4,16 @@ Manage team wallets, set spend limits, control model access, and track usage acr
 
 ## Team Wallets
 
-Each team has its own wallet, independent of members' personal wallets. When a task runs in a team context, the cost is deducted from the team wallet — never from the individual member's personal wallet.
+Each team has its own wallet, independent of members' personal wallets. When a task runs in a team context, the cost is deducted from the team wallet, never from the individual member's personal wallet.
 
 ### Funding a Team Wallet
 
 Team wallets are funded the same way as personal wallets, plus credit transfers:
 
-- **Deposits** — add credit via the dashboard or API while in the team context
-- **Coupons** — team admins and the owner can redeem coupon codes while in the team context (see Coupons below)
-- **Auto-pay** — configure automatic deposits when the balance drops below a threshold. In a team workspace, only team admins and the organization owner can set up, change or turn off auto-pay for the team wallet. Other members can view the settings; if they try to change them, they get `Only team admins can perform this action`
-- **Transfer Credit** — organization owners and team admins can move balance from their personal wallet or from another team they administer (see `/Team/TransferCredit` below)
+- **Deposits**: add credit via the dashboard or API while in the team context
+- **Coupons**: team admins and the owner can redeem coupon codes while in the team context (see Coupons below)
+- **Auto-pay**: configure automatic deposits when the balance drops below a threshold. In a team workspace, only team admins and the organization owner can set up, change or turn off auto-pay for the team wallet. Other members can view the settings; if they try to change them, they get `Only team admins can perform this action`
+- **Transfer Credit**: organization owners and team admins can move balance from their personal wallet or from another team they administer (see `/Team/TransferCredit` below)
 
 To fund a team wallet, switch to the team workspace in the dashboard and open **Credit Balance**, then **Add to Credit Balance**, **Automatic Payment**, **Coupons** or **Transfer Credit**. All deposit and coupon operations target the active workspace.
 
@@ -73,7 +73,7 @@ Model IDs are the numeric IDs from the model catalog. You can get them from the 
 
 ### Examples
 
-**Allowlist — only permit specific models:**
+**Allowlist (only permit specific models):**
 
 ```json
 {
@@ -85,7 +85,7 @@ Model IDs are the numeric IDs from the model catalog. You can get them from the 
 
 Team members can only run models 598, 412, and 305. All other models are blocked.
 
-**Blocklist — block specific expensive models:**
+**Blocklist (block specific expensive models):**
 
 ```json
 {
@@ -112,8 +112,8 @@ Model access is checked whenever a model runs in a team context, before the task
 
 - `/Run` calls made with a team project's API key
 - Runs started from the dashboard while the team workspace is selected
-- Workflow runs in the team context — the whole run is rejected before it starts if any model in it is restricted
-- LLM gateway requests made with a team project's API key — the request fails with HTTP `403` `permission_error` and the message `This model is not available for your team`; a streamed Responses request ends with `response.failed` instead (see [Direct LLM Gateway errors](/docs/completions-api#gateway-errors) for each protocol's error format)
+- Workflow runs in the team context: the whole run is rejected before it starts if any model in it is restricted
+- LLM gateway requests made with a team project's API key: the request fails with HTTP `403` `permission_error` and the message `This model is not available for your team`; a streamed Responses request ends with `response.failed` instead (see [Direct LLM Gateway errors](/docs/completions-api#gateway-errors) for each protocol's error format)
 
 The check compares the requested model's ID against the team's access policy.
 
@@ -189,7 +189,7 @@ Returns the team's all-time spending totals and a per-member breakdown. Any acti
 
 `spending` lists only current members, so it can add up to less than `teamtotal`. The team-level spend limit is not part of this response.
 
-For project-level breakdown, call `/Project/UsageSummary` in team context. For time-series task execution data, call `/Task/Stat` in team context — both automatically filter by the active workspace.
+For project-level breakdown, call `/Project/UsageSummary` in team context. For time-series task execution data, call `/Task/Stat` in team context. Both automatically filter by the active workspace.
 
 ## **POST** /Team/TransferCredit
 
@@ -225,9 +225,9 @@ Transfers credit between your personal wallet and team wallets. Useful for movin
 ```
 
 The `transferred` object shows how the amount was split across pools:
-- `gifted` — from coupon and checklist credits
-- `store` — from marketplace store revenue
-- `amount` — from regular deposits
+- `gifted`: from coupon and checklist credits
+- `store`: from marketplace store revenue
+- `amount`: from regular deposits
 
 Permissions:
 - Personal to team: you must be admin/owner of the target team
@@ -236,7 +236,7 @@ Permissions:
 
 ### How It Works
 
-Transfers preserve the original deposit structure — expiry dates, coupon tracking, and store revenue are all maintained. Every source deposit or coupon that the transfer draws from becomes its own deposit on the target wallet, with the same type and its original expiry time.
+Transfers preserve the original deposit structure: expiry dates, coupon tracking, and store revenue are all maintained. Every source deposit or coupon that the transfer draws from becomes its own deposit on the target wallet, with the same type and its original expiry time.
 
 **Consumption order (matches task billing):**
 
@@ -245,7 +245,7 @@ Transfers preserve the original deposit structure — expiry dates, coupon track
 3. Store revenue
 4. Regular amount (deposits)
 
-**Expiry is preserved:** When you transfer $600 from a wallet containing a $500 coupon (30-day expiry) and a $500 deposit (365-day expiry), the target receives two separate deposits — $500 coupon and $100 deposit — each with its original expiry date.
+**Expiry is preserved:** When you transfer $600 from a wallet containing a $500 coupon (30-day expiry) and a $500 deposit (365-day expiry), the target receives two separate deposits, a $500 coupon and a $100 deposit, each with its original expiry date.
 
 ### Transaction History
 
@@ -253,7 +253,7 @@ Both wallets receive audit transactions:
 - Source: `TRANSFER OUT` with a description like "Transfer to Engineering (Acme Corp) - $100.00 (Coupons: $50.00 / Store: $0.00 / Deposits: $50.00)."
 - Target: `TRANSFER IN` with a description like "Transfer from personal - $100.00 (Coupons: $50.00 / Store: $0.00 / Deposits: $50.00)."
 
-These audit transactions do not affect balance calculations or expiry — they are for display only. The actual balance changes come from updated deposit amounts (source) and new deposit records (target).
+These audit transactions do not affect balance calculations or expiry. They are for display only. The actual balance changes come from updated deposit amounts (source) and new deposit records (target).
 
 ### Important Behaviors
 
@@ -276,7 +276,7 @@ A person can redeem a code once, whether personally or for a team, and each team
 
 ## What's Next
 
-- [Organizations & Teams Overview](/docs/organizations-overview) — Concepts and workspace hierarchy
-- [Managing Teams](/docs/organizations-managing-teams) — Create organizations, invite members, manage roles
-- [Team API Access](/docs/organizations-api-access) — How context works in API requests
-- [Pricing](/docs/pricing) — General pricing information
+- [Organizations & Teams Overview](/docs/organizations-overview): Concepts and workspace hierarchy
+- [Managing Teams](/docs/organizations-managing-teams): Create organizations, invite members, manage roles
+- [Team API Access](/docs/organizations-api-access): How context works in API requests
+- [Pricing](/docs/pricing): General pricing information

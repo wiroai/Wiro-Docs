@@ -4,7 +4,7 @@ How workspace context is resolved in API requests, and how access controls prote
 
 ## Context Resolution
 
-Every authenticated API request resolves to a workspace context — either **personal** or a specific **team**. When you authenticate with a project API key (`x-api-key`), the context is determined **automatically** by the project's assignment:
+Every authenticated API request resolves to a workspace context: either **personal** or a specific **team**. When you authenticate with a project API key (`x-api-key`), the context is determined **automatically** by the project's assignment:
 
 - If the project belongs to a team → team context is activated
 - If the project is personal → personal context is activated
@@ -29,7 +29,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/google/nano-banana" \
 
 These examples use API-key-only authentication. For projects that use signature authentication, also send `x-nonce` and `x-signature` (see [Authentication](/docs/authentication)).
 
-Create a project inside a team to get a team API key, or use a personal project for personal context. The same `x-api-key` header works for both — no extra configuration needed.
+Create a project inside a team to get a team API key, or use a personal project for personal context. The same `x-api-key` header works for both, with no extra configuration needed.
 
 A team project's API key does not depend on its creator's team membership. If the member who created the project is removed from the team, the project stays in the team and its key keeps working and charging the team wallet. Delete the project to revoke the key. While the project's creator is a team member, runs made with the key count toward that user's member spend limit; after they are removed, only the team spend limit applies.
 
@@ -68,21 +68,21 @@ A matching context is required, but it is not always enough. Any active team mem
 
 The following agent endpoints enforce context guards:
 
-- `UserAgent/Message/Send` — send a message to an agent
-- `UserAgent/Message/History` — view conversation history
-- `UserAgent/Message/Sessions` — list conversation sessions
-- `UserAgent/Message/DeleteSession` — delete a conversation
-- `UserAgent/Message/RenameSession` — rename a conversation
-- `UserAgent/Message/Delete` — hide your own messages
-- `UserAgent/CreateExtraCreditCheckout` — purchase extra credits
-- `UserAgent/CancelSubscription` — cancel subscription
-- `UserAgent/RenewSubscription` — renew subscription
-- `UserAgent/UpgradeTier` — upgrade tier (Starter → Pro)
-- `UserAgent/CreateSubscriptionCheckout` — subscribe a not-yet-subscribed useragent
-- `UserAgent/PricingPreview` — pricing preview for an existing agent
-- `UserAgent/SkillsApply` — change skill set (single or batch, auto-prorates)
-- `UserAgent/SkillToggle` — toggle a single skill
-- `UserAgent/Realtime/WebStart` — start a web voice session
+- `UserAgent/Message/Send`: send a message to an agent
+- `UserAgent/Message/History`: view conversation history
+- `UserAgent/Message/Sessions`: list conversation sessions
+- `UserAgent/Message/DeleteSession`: delete a conversation
+- `UserAgent/Message/RenameSession`: rename a conversation
+- `UserAgent/Message/Delete`: hide your own messages
+- `UserAgent/CreateExtraCreditCheckout`: purchase extra credits
+- `UserAgent/CancelSubscription`: cancel subscription
+- `UserAgent/RenewSubscription`: renew subscription
+- `UserAgent/UpgradeTier`: upgrade tier (Starter → Pro)
+- `UserAgent/CreateSubscriptionCheckout`: subscribe a not-yet-subscribed useragent
+- `UserAgent/PricingPreview`: pricing preview for an existing agent
+- `UserAgent/SkillsApply`: change skill set (single or batch, auto-prorates)
+- `UserAgent/SkillToggle`: toggle a single skill
+- `UserAgent/Realtime/WebStart`: start a web voice session
 
 `Message/Delete`, `SkillsApply` and `SkillToggle` enforce the context guard for team agents only; a personal agent's owner can call them from any workspace. `Realtime/WebStart` also checks team agents only: the member who deployed the agent can call it from any workspace while they are still an active member of the agent's team, so a website voice backend keeps working on a personal project key. Outside the team's context, a caller who has left the team gets the context mismatch error.
 
@@ -160,7 +160,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/MyAgents" \
   -d '{"limit": 10}'
 ```
 
-This returns only agents with `teamguid` matching the project's team — personal agents are not included.
+This returns only agents with `teamguid` matching the project's team. Personal agents are not included.
 
 ### Sending a Message to a Team Agent
 
@@ -201,14 +201,14 @@ For personal context, the flow is the same but `teamguid` is `null` and billing 
 
 ## Best Practices
 
-- **Separate projects by environment** — create distinct team projects for development, staging, and production. The team context is resolved automatically from the API key.
-- **Check agent context before messaging** — if you build a multi-tenant application, ensure the project and agent belong to the same workspace
-- **Transfer resources carefully** — agents can only access projects in the same workspace. Plan your resource layout before transferring
+- **Separate projects by environment**: create distinct team projects for development, staging, and production. The team context is resolved automatically from the API key.
+- **Check agent context before messaging**: if you build a multi-tenant application, ensure the project and agent belong to the same workspace
+- **Transfer resources carefully**: agents can only access projects in the same workspace. Plan your resource layout before transferring
 
 ## What's Next
 
-- [Organizations & Teams Overview](/docs/organizations-overview) — Concepts and workspace hierarchy
-- [Managing Teams](/docs/organizations-managing-teams) — Create organizations, invite members, manage roles
-- [Team Billing & Spending](/docs/organizations-billing) — Wallets, spend limits, and model access controls
-- [Authentication](/docs/authentication) — API key setup and authentication methods
-- [Projects](/docs/projects) — Project management and API credentials
+- [Organizations & Teams Overview](/docs/organizations-overview): Concepts and workspace hierarchy
+- [Managing Teams](/docs/organizations-managing-teams): Create organizations, invite members, manage roles
+- [Team Billing & Spending](/docs/organizations-billing): Wallets, spend limits, and model access controls
+- [Authentication](/docs/authentication): API key setup and authentication methods
+- [Projects](/docs/projects): Project management and API credentials
