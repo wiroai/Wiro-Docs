@@ -8,7 +8,7 @@ Connect your agent to Roasit mobile attribution: creative, campaign and network 
 
 **Skills that use this integration:**
 
-- `int-roasit-attribution`: Read-only reports from the Roasit API: creative / campaign / network ROAS (`roas_all`, ad-only and in-app-only ROAS, day-N ROAS), installs, spend, CPI, cohort revenue, retention, iOS SKAdNetwork reports, install reconciliation against the stores, and data freshness. Rows carry the ad networks' own campaign / ad ids, so the agent can map a creative back to Google Ads, Meta Ads or TikTok Ads.
+- `int-roasit-attribution`: Read-only reports from the Roasit API, covering creative / campaign / network ROAS (`roas_all`, ad-only and in-app-only ROAS, day-N ROAS), installs, spend, CPI, cohort revenue, retention, iOS SKAdNetwork reports, install reconciliation against the stores, and data freshness. Rows carry the ad networks' own campaign / ad ids, so the agent can map a creative back to Google Ads, Meta Ads or TikTok Ads.
 
 **Bundled task:**
 

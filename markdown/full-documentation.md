@@ -1740,7 +1740,7 @@ extension required.
 - `id`: the lowercase `owner/model` from `GET /v1/models`.
 - `name`: a free label, shown in the picker.
 - `url`: the **full endpoint**, not the base URL. Every model repeats it.
-- `toolCalling`, `vision`, `maxInputTokens`, `maxOutputTokens`: read them from
+- `toolCalling`, `vision`, `maxInputTokens`, `maxOutputTokens` come from
   `GET /v1/models/{owner}/{model}`: `capabilities.function_tools`,
   `capabilities.input_modalities`, `max_input_tokens`, `max_tokens`. Do not
   guess.
@@ -9174,7 +9174,7 @@ print(response.body);
 
 - [Agent Builder](/docs/agent-builder): Build custom agents from scratch (`custom: true`) with live pricing previews and skill picker
 - [Agent Skills](/docs/agent-skills): Configure preferences, scheduled tasks, and skill toggles. Includes the registry browser endpoints (`Skills/List`, `Skills/Detail`, `Skills/Capabilities`)
-- [Agent Credentials](/docs/agent-credentials): Integration catalog hub: 20+ dedicated per-provider setup guides (Meta Ads, Facebook, Instagram, LinkedIn, Twitter, and more) plus the registry endpoints (`Credentials/List`, `Credentials/Detail`)
+- [Agent Credentials](/docs/agent-credentials): Integration catalog hub with 20+ dedicated per-provider setup guides (Meta Ads, Facebook, Instagram, LinkedIn, Twitter, and more) plus the registry endpoints (`Credentials/List`, `Credentials/Detail`)
 - [Agent Messaging](/docs/agent-messaging): Send messages and receive responses from running agents
 - [Agent WebSocket](/docs/agent-websocket): Real-time response streaming
 - [Agent Webhooks](/docs/agent-webhooks): Receive agent responses via HTTP callbacks
@@ -16666,7 +16666,7 @@ Shared ads tasks also cover TikTok Ads: the nightly `cs-cron-ads-recommendation-
 
 To change **what** the tasks look for, edit these custom skills (stored as `cs-<key>`) rather than the tasks:
 
-- `tiktok-ads-strategy`: TikTok-specific knobs: tracking quality gates, kill thresholds, placement strategy, Spark Ads and Smart+ rules.
+- `tiktok-ads-strategy`: TikTok-specific knobs for tracking quality gates, kill thresholds, placement strategy, Spark Ads and Smart+ rules.
 - `ad-strategy`: cross-platform KPI thresholds, shared with Meta Ads and Google Ads.
 - `approval-policy`: which changes wait for approval.
 
@@ -18490,7 +18490,7 @@ Connect your agent to Roasit mobile attribution: creative, campaign and network 
 
 **Skills that use this integration:**
 
-- `int-roasit-attribution`: Read-only reports from the Roasit API: creative / campaign / network ROAS (`roas_all`, ad-only and in-app-only ROAS, day-N ROAS), installs, spend, CPI, cohort revenue, retention, iOS SKAdNetwork reports, install reconciliation against the stores, and data freshness. Rows carry the ad networks' own campaign / ad ids, so the agent can map a creative back to Google Ads, Meta Ads or TikTok Ads.
+- `int-roasit-attribution`: Read-only reports from the Roasit API, covering creative / campaign / network ROAS (`roas_all`, ad-only and in-app-only ROAS, day-N ROAS), installs, spend, CPI, cohort revenue, retention, iOS SKAdNetwork reports, install reconciliation against the stores, and data freshness. Rows carry the ad networks' own campaign / ad ids, so the agent can map a creative back to Google Ads, Meta Ads or TikTok Ads.
 
 **Bundled task:**
 

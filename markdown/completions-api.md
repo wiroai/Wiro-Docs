@@ -1018,7 +1018,7 @@ extension required.
 - `id`: the lowercase `owner/model` from `GET /v1/models`.
 - `name`: a free label, shown in the picker.
 - `url`: the **full endpoint**, not the base URL. Every model repeats it.
-- `toolCalling`, `vision`, `maxInputTokens`, `maxOutputTokens`: read them from
+- `toolCalling`, `vision`, `maxInputTokens`, `maxOutputTokens` come from
   `GET /v1/models/{owner}/{model}`: `capabilities.function_tools`,
   `capabilities.input_modalities`, `max_input_tokens`, `max_tokens`. Do not
   guess.

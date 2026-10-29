@@ -111,7 +111,7 @@ Shared ads tasks also cover TikTok Ads: the nightly `cs-cron-ads-recommendation-
 
 To change **what** the tasks look for, edit these custom skills (stored as `cs-<key>`) rather than the tasks:
 
-- `tiktok-ads-strategy`: TikTok-specific knobs: tracking quality gates, kill thresholds, placement strategy, Spark Ads and Smart+ rules.
+- `tiktok-ads-strategy`: TikTok-specific knobs for tracking quality gates, kill thresholds, placement strategy, Spark Ads and Smart+ rules.
 - `ad-strategy`: cross-platform KPI thresholds, shared with Meta Ads and Google Ads.
 - `approval-policy`: which changes wait for approval.
 
