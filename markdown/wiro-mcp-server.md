@@ -64,6 +64,23 @@ You need a Wiro API key to use the MCP server. If you don't have one yet, [creat
 
 ### Claude Code
 
+#### Install as a plugin
+
+Run these two commands inside Claude Code:
+
+```
+/plugin marketplace add wiroai/Wiro-Plugin
+/plugin install wiro-ai@wiro
+```
+
+Claude Code asks for your API key when the plugin is enabled and keeps it in
+your system's secure credential store. Enter the project's API key, or
+`API_KEY:API_SECRET` (both values joined with a colon) if the project uses
+signature-based auth. The plugin comes from the
+[wiroai/Wiro-Plugin](https://github.com/wiroai/Wiro-Plugin) repository.
+
+#### Or add the server by hand
+
 Run this command in your terminal:
 
 ```bash
@@ -132,6 +149,36 @@ local package guide.
 - Do not add a `timeout` field to `claude_desktop_config.json`; Claude Desktop
   versions with a fixed client-side tool timeout may ignore it. Wiro's bounded
   wait flow is designed to remain below that boundary.
+
+### Gemini CLI
+
+Install Wiro as a Gemini CLI extension from the
+[wiroai/Wiro-Plugin](https://github.com/wiroai/Wiro-Plugin) repository. Run this
+in your terminal:
+
+```bash
+gemini extensions install https://github.com/wiroai/Wiro-Plugin
+```
+
+Gemini CLI asks for your API key during install. Enter the project's API key,
+or `API_KEY:API_SECRET` (both values joined with a colon) if the project uses
+signature-based auth. To change it later, run `gemini extensions config wiro-ai`.
+
+### Devin
+
+Install Wiro as a Devin plugin from the
+[wiroai/Wiro-Plugin](https://github.com/wiroai/Wiro-Plugin) repository. With
+the Devin CLI, run:
+
+```bash
+devin plugins install wiroai/Wiro-Plugin
+```
+
+In the Devin web app, go to
+**Customize > Plugins > Add plugin > From repository** and enter
+`wiroai/Wiro-Plugin`. Then connect the Wiro server with your API key: the
+project's API key, or `API_KEY:API_SECRET` (both values joined with a colon) if
+the project uses signature-based auth.
 
 ### Windsurf
 

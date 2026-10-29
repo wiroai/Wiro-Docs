@@ -5410,6 +5410,23 @@ Open MCP settings (`Cmd+Shift+P` → "Open MCP settings") and add:
 
 ### Claude Code
 
+#### Install as a plugin
+
+Run these two commands inside Claude Code:
+
+```
+/plugin marketplace add wiroai/Wiro-Plugin
+/plugin install wiro-ai@wiro
+```
+
+Claude Code asks for your API key when the plugin is enabled and keeps it in
+your system's secure credential store. Enter the project's API key, or
+`API_KEY:API_SECRET` (both values joined with a colon) if the project uses
+signature-based auth. The plugin comes from the
+[wiroai/Wiro-Plugin](https://github.com/wiroai/Wiro-Plugin) repository.
+
+#### Or add the server by hand
+
 ```bash
 claude mcp add --transport http wiro \
   https://mcp.wiro.ai/v1 \
@@ -5453,6 +5470,36 @@ each generation wait within 45 seconds; when `nextAction.tool` is
 existing task completes. Never submit `run_model` again for the same request.
 Adding a `timeout` field to `claude_desktop_config.json` is not a reliable
 workaround because Claude Desktop versions may ignore it.
+
+### Gemini CLI
+
+Install Wiro as a Gemini CLI extension from the
+[wiroai/Wiro-Plugin](https://github.com/wiroai/Wiro-Plugin) repository. Run this
+in your terminal:
+
+```bash
+gemini extensions install https://github.com/wiroai/Wiro-Plugin
+```
+
+Gemini CLI asks for your API key during install. Enter the project's API key,
+or `API_KEY:API_SECRET` (both values joined with a colon) if the project uses
+signature-based auth. To change it later, run `gemini extensions config wiro-ai`.
+
+### Devin
+
+Install Wiro as a Devin plugin from the
+[wiroai/Wiro-Plugin](https://github.com/wiroai/Wiro-Plugin) repository. With
+the Devin CLI, run:
+
+```bash
+devin plugins install wiroai/Wiro-Plugin
+```
+
+In the Devin web app, go to
+**Customize > Plugins > Add plugin > From repository** and enter
+`wiroai/Wiro-Plugin`. Then connect the Wiro server with your API key: the
+project's API key, or `API_KEY:API_SECRET` (both values joined with a colon) if
+the project uses signature-based auth.
 
 ### OpenClaw
 
