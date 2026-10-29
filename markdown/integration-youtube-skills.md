@@ -5,17 +5,17 @@ Connect your agent to a YouTube channel to upload and publish videos and Shorts,
 ## Overview
 
 The YouTube integration uses Google OAuth 2.0 with:
-- **YouTube Data API v3** — channel info, video listings, uploads, video details, playlists, and thumbnails
-- **YouTube Analytics API v2** — view counts, watch time, subscriber metrics
+- **YouTube Data API v3**: channel info, video listings, uploads, video details, playlists, and thumbnails
+- **YouTube Analytics API v2**: view counts, watch time, subscriber metrics
 
 **Skills that use this integration:**
 
-- `int-youtube-manage` — Uploads and publishes videos and Shorts (title, description, tags, visibility or a scheduled release, playlist, thumbnail), lists channel videos, edits video details and playlists, reports performance, and picks video assets for Google Ads Video/Demand Gen campaigns
+- `int-youtube-manage`: Uploads and publishes videos and Shorts (title, description, tags, visibility or a scheduled release, playlist, thumbnail), lists channel videos, edits video details and playlists, reports performance, and picks video assets for Google Ads Video/Demand Gen campaigns
 
 **Agents that typically enable this integration:**
 
-- Video Creator — to publish the videos it makes to your channel. Add `int-youtube-manage` with [`SkillsApply`](/docs/agent-skills#toggling-integration-skills); it adds $1 a month to the Starter price. Video Creator then publishes a finished video when the request asks for it or a `YouTube` line in its `video-preferences` says to, and otherwise offers to.
-- Google Ads Manager — for creating Video and Demand Gen campaigns that reference existing YouTube videos
+- Video Creator: to publish the videos it makes to your channel. Add `int-youtube-manage` with [`SkillsApply`](/docs/agent-skills#toggling-integration-skills); it adds $1 a month to the Starter price. Video Creator then publishes a finished video when the request asks for it or a `YouTube` line in its `video-preferences` says to, and otherwise offers to.
+- Google Ads Manager: for creating Video and Demand Gen campaigns that reference existing YouTube videos
 
 ## Availability
 
@@ -26,8 +26,8 @@ The YouTube integration uses Google OAuth 2.0 with:
 
 ## Prerequisites
 
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
 - **A YouTube channel** the connecting Google account owns or manages.
 - **A Google Cloud project** with YouTube Data API v3 and YouTube Analytics API enabled.
 - **An HTTPS callback URL**.
@@ -37,7 +37,7 @@ The YouTube integration uses Google OAuth 2.0 with:
 ### Step 1: Create a Google Cloud project and enable the YouTube APIs
 
 1. [console.cloud.google.com](https://console.cloud.google.com/) → create a project.
-2. **APIs & Services → Library** — enable:
+2. **APIs & Services → Library** → enable:
    - [YouTube Data API v3](https://console.cloud.google.com/apis/library/youtube.googleapis.com)
    - [YouTube Analytics API v2](https://console.cloud.google.com/apis/library/youtubeanalytics.googleapis.com)
 3. **OAuth consent screen**:
@@ -159,7 +159,7 @@ Response:
 
 ### GET /UserAgentOAuth/YTCallback
 
-Query params: `yt_connected=true&yt_channels=<JSON>` (URL-encoded JSON array of `{ id, title, customUrl, subscriberCount }` straight from the YouTube Data API) or `yt_error=<code>`. The callback path is per-provider — YouTube's stays `YTCallback`. When you hand the array off to `SetPickerAccounts`, map each entry to `{ channelid: id, channeltitle: title }` — the picker uses those names for storage.
+Query params: `yt_connected=true&yt_channels=<JSON>` (URL-encoded JSON array of `{ id, title, customUrl, subscriberCount }` straight from the YouTube Data API) or `yt_error=<code>`. The callback path is per-provider: YouTube's stays `YTCallback`. When you hand the array off to `SetPickerAccounts`, map each entry to `{ channelid: id, channeltitle: title }`, since the picker uses those names for storage.
 
 ### POST /UserAgentOAuth/SetPickerAccounts
 
@@ -173,7 +173,7 @@ Response: `{ result, accounts: [{id, name}, ...], errors }`. Triggers agent rest
 
 ### POST /UserAgentOAuth/OAuthStatus
 
-Body: `{ useragentguid, credentialkey: "youtube" }`. Response: `connected`, `accounts: [{id, name}, ...]` (one entry per selected channel — `id` = `channelid`, `name` = `channeltitle`), `connectedat`, `tokenexpiresat`.
+Body: `{ useragentguid, credentialkey: "youtube" }`. Response: `connected`, `accounts: [{id, name}, ...]` (one entry per selected channel: `id` = `channelid`, `name` = `channeltitle`), `connectedat`, `tokenexpiresat`.
 
 ### POST /UserAgentOAuth/OAuthDisconnect
 
@@ -228,7 +228,7 @@ Agent → POST /youtubeAnalytics/v2/reports
 
 ## Skill reference
 
-- [agent-skills.md](/docs/agent-skills) — custom skill schema and the `int-youtube-manage` key
+- [agent-skills.md](/docs/agent-skills): custom skill schema and the `int-youtube-manage` key
 
 ## Troubleshooting
 

@@ -8,7 +8,7 @@ The Lemlist integration uses HTTP Basic Authentication with an empty username an
 
 **Skills that use this integration:**
 
-- `int-lemlist-outreach` — Campaign creation, lead uploads, pause/resume
+- `int-lemlist-outreach`: Campaign creation, lead uploads, pause/resume
 
 **Agents that typically enable this integration:**
 
@@ -22,8 +22,8 @@ The Lemlist integration uses HTTP Basic Authentication with an empty username an
 
 ## Prerequisites
 
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
 - **A Lemlist account** on Gold tier or higher for full API access.
 
 ## Setup
@@ -86,7 +86,7 @@ Rate limits: ~20 requests per 2 seconds; 429 requires backoff.
 
 - **401 Unauthorized:** API key revoked in Lemlist settings. Regenerate.
 - **403 on campaign operations:** Plan tier lacks API write access. Upgrade.
-- **Email address not found:** Lead must exist in at least one campaign before some endpoints work — upload leads first.
+- **Email address not found:** Lead must exist in at least one campaign before some endpoints work, so upload leads first.
 
 ## Related
 

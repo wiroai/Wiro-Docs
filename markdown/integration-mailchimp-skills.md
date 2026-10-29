@@ -8,8 +8,8 @@ The Mailchimp integration is unique in supporting three authentication options: 
 
 **Skills that use this integration:**
 
-- `int-mailchimp-email` — Audience and campaign management
-- `util-newsletter-compose` — optional; uses Mailchimp as an ESP when enabled alongside. Newsletter Manager has it on; on other agents turn on `util-newsletter-compose` yourself. Mailchimp alone adds no newsletter tasks.
+- `int-mailchimp-email`: Audience and campaign management
+- `util-newsletter-compose`: optional; uses Mailchimp as an ESP when enabled alongside. Newsletter Manager has it on; on other agents turn on `util-newsletter-compose` yourself. Mailchimp alone adds no newsletter tasks.
 
 **Agents that typically enable this integration:**
 
@@ -21,14 +21,14 @@ The Mailchimp integration is unique in supporting three authentication options: 
 |------|--------|-------|
 | `"wiro"` | Available | OAuth with Wiro's shared Mailchimp app. |
 | `"own"` | Available | OAuth with your own Mailchimp registered app. |
-| API key | Available | Paste a server-scoped Mailchimp API key directly — no OAuth. |
+| API key | Available | Paste a server-scoped Mailchimp API key directly, with no OAuth. |
 
 ## Prerequisites
 
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
 - **A Mailchimp account**.
-- **(Own OAuth mode) A registered Mailchimp app** — [admin.mailchimp.com/account/oauth2_client](https://admin.mailchimp.com/account/oauth2_client/).
+- **(Own OAuth mode) A registered Mailchimp app** ([admin.mailchimp.com/account/oauth2_client](https://admin.mailchimp.com/account/oauth2_client/)).
 - **(API-key mode) A server-scoped Mailchimp API key**.
 
 ## Option A: OAuth (Wiro or Own Mode)
@@ -46,7 +46,7 @@ The Mailchimp integration is unique in supporting three authentication options: 
 
 5. Save; copy **Client ID** and **Client Secret**.
 
-> **No OAuth scopes to configure.** Mailchimp's OAuth 2.0 doesn't use scopes — connected apps get full account access. Wiro's `authorizeUrl` omits any scope parameter.
+> **No OAuth scopes to configure.** Mailchimp's OAuth 2.0 doesn't use scopes: connected apps get full account access. Wiro's `authorizeUrl` omits any scope parameter.
 
 ### Own Step 2: Save credentials
 
@@ -88,7 +88,7 @@ Response:
 }
 ```
 
-No `scope` parameter — Mailchimp OAuth doesn't use scopes.
+No `scope` parameter: Mailchimp OAuth doesn't use scopes.
 
 ### OAuth Step 4: Handle the callback
 
@@ -175,17 +175,17 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ### GET /UserAgentOAuth/MailchimpCallback
 
-Query params: `mailchimp_connected=true&mailchimp_account=<name>` or `mailchimp_error=<code>`. The callback path is per-provider — Mailchimp's stays `MailchimpCallback`.
+Query params: `mailchimp_connected=true&mailchimp_account=<name>` or `mailchimp_error=<code>`. The callback path is per-provider: Mailchimp's stays `MailchimpCallback`.
 
 ### POST /UserAgentOAuth/OAuthStatus
 
-Body: `{ useragentguid, credentialkey: "mailchimp" }`. Response: `connected`, `accounts: [{id, name}]` (1-element with the Mailchimp account name), `connectedat`. **`tokenexpiresat` is empty** — Mailchimp tokens don't expire.
+Body: `{ useragentguid, credentialkey: "mailchimp" }`. Response: `connected`, `accounts: [{id, name}]` (1-element with the Mailchimp account name), `connectedat`. **`tokenexpiresat` is empty** because Mailchimp tokens don't expire.
 
-> **API key-only mode caveat:** `OAuthStatus.connected` is computed from `authmethod in {wiro, own}` **and** a non-empty `accesstoken`. If you set up Mailchimp via direct API key (no OAuth), `authmethod` is `"api_key"` and `accesstoken` is empty, so `OAuthStatus.connected` returns `false` — even though the agent runtime is fully functional (the `int-mailchimp-email` skill reads the API key directly). Don't use `OAuthStatus.connected` as the source of truth for API key setups; check that `credentials.mailchimp.apikey` is non-empty in `POST /UserAgent/Detail` instead.
+> **API key-only mode caveat:** `OAuthStatus.connected` is computed from `authmethod in {wiro, own}` **and** a non-empty `accesstoken`. If you set up Mailchimp via direct API key (no OAuth), `authmethod` is `"api_key"` and `accesstoken` is empty, so `OAuthStatus.connected` returns `false`, even though the agent runtime is fully functional (the `int-mailchimp-email` skill reads the API key directly). Don't use `OAuthStatus.connected` as the source of truth for API key setups; check that `credentials.mailchimp.apikey` is non-empty in `POST /UserAgent/Detail` instead.
 
 ### POST /UserAgentOAuth/OAuthDisconnect
 
-Body: `{ useragentguid, credentialkey: "mailchimp" }`. Clears credentials (no remote revoke — Mailchimp doesn't expose a revoke endpoint for OAuth tokens).
+Body: `{ useragentguid, credentialkey: "mailchimp" }`. Clears credentials (no remote revoke, since Mailchimp doesn't expose a revoke endpoint for OAuth tokens).
 
 ### Token lifecycle
 
@@ -193,7 +193,7 @@ Mailchimp OAuth tokens do not expire. Reconnect only if the user revokes the aut
 
 ## Using the Skill
 
-Once Mailchimp is connected (OAuth or API key), the agent's scheduled tasks use the `int-mailchimp-email` platform skill for audience and campaign operations. Adjust the cron of the built-in `cs-cron-newsletter-subscriber-scanner` task (Newsletter Manager) with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for bundled crons:
+Once Mailchimp is connected (OAuth or API key), the agent's scheduled tasks use the `int-mailchimp-email` platform skill for audience and campaign operations. Adjust the cron of the built-in `cs-cron-newsletter-subscriber-scanner` task (Newsletter Manager) with `enabled` and `interval` only. Cron skill bodies are template-controlled and `value` is silently ignored for bundled crons:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
@@ -207,7 +207,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   }'
 ```
 
-To change **what** the scanner checks (target lists, bounce thresholds, tone, audience segments), edit the paired preference skill `newsletter-strategy` instead — see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preference-skills).
+To change **what** the scanner checks (target lists, bounce thresholds, tone, audience segments), edit the paired preference skill `newsletter-strategy` instead (see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preference-skills)).
 
 ## Troubleshooting
 

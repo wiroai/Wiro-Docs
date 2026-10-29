@@ -8,7 +8,7 @@ The WordPress integration uses the WordPress REST API with Basic Authentication 
 
 **Skills that use this integration:**
 
-- `int-wordpress-post` — Publish blog posts, pages, categories, tags; upload media
+- `int-wordpress-post`: Publish blog posts, pages, categories, tags; upload media
 
 **Agents that typically enable this integration:**
 
@@ -22,8 +22,8 @@ The WordPress integration uses the WordPress REST API with Basic Authentication 
 
 ## Prerequisites
 
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
 - **A WordPress site** (self-hosted or WordPress.com Business/Commerce) running **WordPress 5.6+**.
 - **An admin or editor-level user** on that site.
 
@@ -34,7 +34,7 @@ The WordPress integration uses the WordPress REST API with Basic Authentication 
 Enabled by default in WP 5.6+. If your host or security plugin disabled them:
 
 - In `wp-config.php`, confirm `WP_ENVIRONMENT_TYPE` isn't restricting them.
-- Security plugins like Wordfence or iThemes Security sometimes disable Application Passwords — check their settings.
+- Security plugins like Wordfence or iThemes Security sometimes disable Application Passwords, so check their settings.
 
 ### Step 2: Create an Application Password
 

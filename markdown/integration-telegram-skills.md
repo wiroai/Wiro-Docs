@@ -6,16 +6,16 @@ Connect your agent to a Telegram bot as an optional extra messaging channel.
 
 Telegram is **optional** on every Wiro agent. By default your agents already support two built-in messaging channels out of the box:
 
-- **Web chat** — chat with the agent directly from the [wiro.ai dashboard](https://wiro.ai/panel/agents) with no extra setup.
-- **Messaging API** — your own application sends and receives messages programmatically via [Agent Messaging](/docs/agent-messaging), with real-time streaming over [Agent WebSocket](/docs/agent-websocket) or HTTP callbacks via [Agent Webhooks](/docs/agent-webhooks).
+- **Web chat**: chat with the agent directly from the [wiro.ai dashboard](https://wiro.ai/panel/agents) with no extra setup.
+- **Messaging API**: your own application sends and receives messages programmatically via [Agent Messaging](/docs/agent-messaging), with real-time streaming over [Agent WebSocket](/docs/agent-websocket) or HTTP callbacks via [Agent Webhooks](/docs/agent-webhooks).
 
-Adding a Telegram bot gives you a third, complementary channel — useful when you want to:
+Adding a Telegram bot gives you a third, complementary channel, useful when you want to:
 
 - Push **operator notifications** (campaign alerts, new leads, error reports) to a private chat or team group on your phone.
 - Give **off-dashboard access** to team members who don't log into wiro.ai but still want to message the agent.
 - Pipe **scheduled status reports** from cron skills into a shared Telegram channel.
 
-You can skip this integration entirely — agents keep working through web chat
+You can skip this integration entirely: agents keep working through web chat
 and the API regardless. Telegram activates automatically only after both
 `bottoken` and `allowedusers` are configured.
 
@@ -27,8 +27,8 @@ and the API regardless. Telegram activates automatically only after both
 
 ## Prerequisites
 
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
 - **A Telegram account**.
 
 ## Setup
@@ -46,7 +46,7 @@ Each allowed user must message the bot first.
 
 1. User sends any message to the bot.
 2. Open `https://api.telegram.org/bot<BOT_TOKEN>/getUpdates` in a browser.
-3. Find the `message.from.id` value in the response — that's the Telegram user ID (numeric).
+3. Find the `message.from.id` value in the response: that's the Telegram user ID (numeric).
 
 Alternative: each user can DM [@userinfobot](https://t.me/userinfobot) in Telegram to get their own ID.
 

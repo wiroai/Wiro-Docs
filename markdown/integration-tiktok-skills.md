@@ -8,7 +8,7 @@ The TikTok integration uses TikTok's OAuth 2.0 with the Content Posting API.
 
 **Skills that use this integration:**
 
-- `int-tiktok-post` — Publish videos and carousel posts
+- `int-tiktok-post`: Publish videos and carousel posts
 
 **Agents that typically enable this integration:**
 
@@ -24,12 +24,12 @@ The TikTok integration uses TikTok's OAuth 2.0 with the Content Posting API.
 
 ## Prerequisites
 
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
-- **A TikTok for Developers account** — [developers.tiktok.com](https://developers.tiktok.com/).
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
+- **A TikTok for Developers account** ([developers.tiktok.com](https://developers.tiktok.com/)).
 - **An HTTPS callback URL**.
 
-## Complete Integration Walkthrough — Own Mode
+## Complete Integration Walkthrough: Own Mode
 
 ### Step 1: Create a TikTok for Developers App
 
@@ -70,7 +70,7 @@ Other scopes like `video.upload`, `video.list` are **not** used by Wiro.
 
 ### Step 5: Copy Client Key and Client Secret
 
-**App details** → copy **Client Key** and **Client Secret**. Note: TikTok calls the first one "key" (not "ID") — the field name in Wiro is `clientkey`.
+**App details** → copy **Client Key** and **Client Secret**. Note: TikTok calls the first one "key" (not "ID"), and the field name in Wiro is `clientkey`.
 
 ### Step 6: Save credentials
 
@@ -172,7 +172,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ### GET /UserAgentOAuth/TikTokCallback
 
-Query params: `tiktok_connected=true&tiktok_username=<display_name>` or `tiktok_error=<code>`. `tiktok_username` is TikTok's display name (from the OAuth `user/info/` endpoint's `display_name` field), not the `@handle`. The callback path is per-provider — TikTok's stays `TikTokCallback`.
+Query params: `tiktok_connected=true&tiktok_username=<display_name>` or `tiktok_error=<code>`. `tiktok_username` is TikTok's display name (from the OAuth `user/info/` endpoint's `display_name` field), not the `@handle`. The callback path is per-provider: TikTok's stays `TikTokCallback`.
 
 ### POST /UserAgentOAuth/OAuthStatus
 
@@ -207,12 +207,12 @@ Until your TikTok app is audited, publishing may be limited to private posts or 
 
 1. **One TikTok app per product** in own mode.
 2. **One Wiro agent instance per customer.**
-3. TikTok per-app limits apply — plan around aggregate volume.
+3. TikTok per-app limits apply: plan around aggregate volume.
 
 ## Related
 
 - [Agent Credentials & OAuth](/docs/agent-credentials)
 - [Agent Overview](/docs/agent-overview)
 - [Agent Skills](/docs/agent-skills)
-- [TikTok Ads integration](/docs/integration-tiktokads-skills) — separate product for paid advertising; this page covers organic posting only.
+- [TikTok Ads integration](/docs/integration-tiktokads-skills): separate product for paid advertising; this page covers organic posting only.
 - [TikTok for Developers](https://developers.tiktok.com/)

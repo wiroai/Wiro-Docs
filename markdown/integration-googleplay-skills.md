@@ -8,9 +8,9 @@ The Google Play integration uses a Google Cloud service account with API access 
 
 **Skills that use this integration:**
 
-- `int-googleplay-reviews` — Monitor and reply to Google Play reviews
-- `int-googleplay-metadata` — Read/update app listings and metadata
-- `int-googleplay-events` — Prepare assets and copy for Google Play promotional content (LiveOps events); reads only the app list
+- `int-googleplay-reviews`: Monitor and reply to Google Play reviews
+- `int-googleplay-metadata`: Read/update app listings and metadata
+- `int-googleplay-events`: Prepare assets and copy for Google Play promotional content (LiveOps events); reads only the app list
 
 **Agents that typically enable this integration:**
 
@@ -26,8 +26,8 @@ The Google Play integration uses a Google Cloud service account with API access 
 
 ## Prerequisites
 
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
 - **A Google Play Console** account with **Admin** access.
 - **A Google Cloud project** to host the service account.
 
@@ -44,7 +44,7 @@ The Google Play integration uses a Google Cloud service account with API access 
 3. Grant role: `Service Account Token Creator`.
 4. Skip user permissions → **Done**.
 5. Open the service account → **Keys → Add key → Create new key → JSON**. Download.
-6. Note the service account email from the account details page — format: `wiro-play-agent@YOUR-PROJECT.iam.gserviceaccount.com`.
+6. Note the service account email from the account details page (format: `wiro-play-agent@YOUR-PROJECT.iam.gserviceaccount.com`).
 
 > **Tip:** In **[My Agents](https://wiro.ai/panel/agents)** → open your agent → **Credentials**, upload the JSON and your service account email will appear with a **Copy** button.
 
@@ -53,7 +53,7 @@ The Google Play integration uses a Google Cloud service account with API access 
 1. [Google Play Console](https://play.google.com/console) → **Users and permissions → Invite new users**.
 2. Email: the service account email (`...@....iam.gserviceaccount.com`).
 3. Grant at least: **View app information**, **Reply to reviews**, and any others needed by your agent.
-4. Send invite — Play Console auto-accepts for service accounts.
+4. Send invite: Play Console auto-accepts for service accounts.
 
 ### Step 4: Base64-encode the JSON
 
@@ -67,7 +67,7 @@ base64 -b 0 play-service-account.json > play-sa.b64
 
 ### Step 5: Save to Wiro
 
-The credential depends on which agent you're configuring. Review and metadata agents use `google-play`: the service account JSON plus a positional `apps[]` array. Each app entry carries `appname` + `packagename`. The promotional-content skill and the ads-manager agents need no service account: they read the app list from the separate `google-play-apps` credential, which holds only the `apps[]` array — send the same `apps` rows with `"credentialkey": "google-play-apps"`.
+The credential depends on which agent you're configuring. Review and metadata agents use `google-play`: the service account JSON plus a positional `apps[]` array. Each app entry carries `appname` + `packagename`. The promotional-content skill and the ads-manager agents need no service account: they read the app list from the separate `google-play-apps` credential, which holds only the `apps[]` array. Send the same `apps` rows with `"credentialkey": "google-play-apps"`.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
@@ -85,7 +85,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   }'
 ```
 
-For multiple apps, append more `apps`-prefixed ordinal rows. Positional merge applies — sending no `apps` rows leaves the existing list untouched; to clear the list, send `{ "credentialkey": "google-play", "fieldname": "apps", "fieldvalue": [] }`.
+For multiple apps, append more `apps`-prefixed ordinal rows. Positional merge applies: sending no `apps` rows leaves the existing list untouched; to clear the list, send `{ "credentialkey": "google-play", "fieldname": "apps", "fieldvalue": [] }`.
 
 Reply skills can also use a global support email. It is optional: without it, reply drafts leave out the contact line. Set it once via the dedicated `var-support-email` credential (shared across `int-appstore-reviews` and `int-googleplay-reviews`):
 
@@ -106,7 +106,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
 | `serviceaccountjson` | string | Yes | Base64-encoded service account JSON. Stored encrypted-at-rest in the DB (`type: fileinput-base64`). |
 | `apps[].appname` | string | Yes | Human-readable label the agent uses when reporting back ("scanned reviews on My Android App"). |
 | `apps[].packagename` | string | Yes | Android package name (e.g. `com.example.app`). |
-| `var-support-email.value` | string | No | Global support email — surfaced when reviewers are pointed to direct contact. Lives on the dedicated `var-support-email` credential, not on `google-play`. |
+| `var-support-email.value` | string | No | Global support email: surfaced when reviewers are pointed to direct contact. Lives on the dedicated `var-support-email` credential, not on `google-play`. |
 
 ### Step 6: Start the agent
 
@@ -125,7 +125,7 @@ Wiro mints an OAuth access token from the service account JSON on demand and cal
 
 - **403 "The caller does not have permission":** Service account is in Google Cloud but hasn't been invited in Play Console, or lacks the required permission. Return to **Play Console → Users and permissions** and adjust.
 - **"Invalid JWT token":** Service account JSON corrupt or truncated. Re-encode.
-- **Review reply fails silently:** Some reviews are >1 year old and can't be replied to via API — Google enforces this at the platform level.
+- **Review reply fails silently:** Some reviews are >1 year old and can't be replied to via API. Google enforces this at the platform level.
 
 ## Related
 

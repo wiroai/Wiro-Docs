@@ -1,16 +1,16 @@
 # Google Calendar Integration
 
-Connect your agent to Google Calendar for reading availability and drafting events — used primarily by appointment-booking and voice-receptionist agents.
+Connect your agent to Google Calendar for reading availability and drafting events. It is used primarily by appointment-booking and voice-receptionist agents.
 
 ## Overview
 
 The Google Calendar integration uses a Google Cloud service account with calendar access delegated by the operator. You create the service account in your own Google Cloud project, share the calendar(s) you want the agent to manage with the service account email, and the agent reads/writes events on those shared calendars only.
 
-This is the **same auth pattern as [Google Drive](/docs/integration-googledrive-skills) and [Google Play](/docs/integration-googleplay-skills)** — service account JSON, no OAuth.
+This is the **same auth pattern as [Google Drive](/docs/integration-googledrive-skills) and [Google Play](/docs/integration-googleplay-skills)**: service account JSON, no OAuth.
 
 **Skills that use this integration:**
 
-- `int-google-calendar` — Read calendar availability, find open time slots, draft / create / modify events via Google Calendar API v3.
+- `int-google-calendar`: Read calendar availability, find open time slots, draft / create / modify events via Google Calendar API v3.
 
 **Agents that typically enable this integration:**
 
@@ -26,8 +26,8 @@ This is the **same auth pattern as [Google Drive](/docs/integration-googledrive-
 
 ## Prerequisites
 
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
 - **A Google account** with the calendar(s) you want the agent to manage.
 - **A Google Cloud project** to host the service account.
 
@@ -43,7 +43,7 @@ This is the **same auth pattern as [Google Drive](/docs/integration-googledrive-
 2. Name it (e.g. `wiro-calendar-agent`) → **Create and continue**.
 3. Skip role grants → **Done**.
 4. Open the service account → **Keys → Add key → Create new key → JSON**. Download the JSON file.
-5. Note the service account email — format: `wiro-calendar-agent@YOUR-PROJECT.iam.gserviceaccount.com`.
+5. Note the service account email (format: `wiro-calendar-agent@YOUR-PROJECT.iam.gserviceaccount.com`).
 
 > **Tip:** In **[My Agents](https://wiro.ai/panel/agents)** → open your agent → **Credentials**, you can upload the JSON via the file picker; the service account email is detected and surfaced with a **Copy** button.
 
@@ -56,8 +56,8 @@ This is the **same auth pattern as [Google Drive](/docs/integration-googledrive-
 5. Set permissions to **Make changes to events** (read + write) → **Send**.
 
 > **Which calendar?**
-> - **Personal** — share your primary calendar (`primary`) for solo operators.
-> - **Business / shared** — create a dedicated calendar (e.g. `Bookings`) so appointments stay separate from personal events. Copy its **Calendar ID** from **Settings → Integrate calendar → Calendar ID** (looks like `abcd1234@group.calendar.google.com`).
+> - **Personal**: share your primary calendar (`primary`) for solo operators.
+> - **Business / shared**: create a dedicated calendar (e.g. `Bookings`) so appointments stay separate from personal events. Copy its **Calendar ID** from **Settings → Integrate calendar → Calendar ID** (looks like `abcd1234@group.calendar.google.com`).
 
 ### Step 4: Save credentials to Wiro
 
@@ -132,6 +132,6 @@ When paired with [Twilio Voice](/docs/integration-twiliovoice-skills) on a [Voic
 
 - [Agent Credentials & OAuth](/docs/agent-credentials)
 - [Agent Skills](/docs/agent-skills)
-- [Twilio Voice](/docs/integration-twiliovoice-skills) — pair for inbound voice booking
-- [Brevo Skills](/docs/integration-brevo-skills) / [SendGrid Skills](/docs/integration-sendgrid-skills) — confirmation email drafts
-- [HubSpot Skills](/docs/integration-hubspot-skills) — log appointment as CRM activity
+- [Twilio Voice](/docs/integration-twiliovoice-skills): pair for inbound voice booking
+- [Brevo Skills](/docs/integration-brevo-skills) / [SendGrid Skills](/docs/integration-sendgrid-skills): confirmation email drafts
+- [HubSpot Skills](/docs/integration-hubspot-skills): log appointment as CRM activity

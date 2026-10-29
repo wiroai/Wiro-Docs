@@ -8,7 +8,7 @@ The Google Drive integration uses a Google Cloud service account with folder acc
 
 **Skills that use this integration:**
 
-- `int-google-drive` — Read files, write outputs, manage folders in selected Drive folders
+- `int-google-drive`: Read files, write outputs, manage folders in selected Drive folders
 
 **Agents that typically enable this integration:**
 
@@ -25,8 +25,8 @@ The Google Drive integration uses a Google Cloud service account with folder acc
 
 ## Prerequisites
 
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
 - **A Google account** with a Drive you want the agent to access.
 - **A Google Cloud project** to host the service account.
 
@@ -47,7 +47,7 @@ If your agent will also read/write Google Docs or Sheets, enable those APIs as w
 2. Name (e.g. "wiro-drive-agent").
 3. Skip role grant → **Done**.
 4. Open the service account → **Keys → Add key → Create new key → JSON**. Download.
-5. Note the service account email from the account details page — format: `wiro-drive-agent@YOUR-PROJECT.iam.gserviceaccount.com`.
+5. Note the service account email from the account details page (format: `wiro-drive-agent@YOUR-PROJECT.iam.gserviceaccount.com`).
 
 > **Tip:** In **[My Agents](https://wiro.ai/panel/agents)** → open your agent → **Credentials**, upload the JSON and your service account email will appear with a **Copy** button.
 
@@ -61,7 +61,7 @@ For each folder you want the agent to access:
 4. Set role to **Editor** (if the folder lives in your **My Drive**) or **Content manager** (if the folder lives in a **Shared Drive**).
 5. Click **Send**.
 
-Copy each folder's **ID** from its Drive URL — the part after `/folders/`. Example: from `https://drive.google.com/drive/folders/1BxiMVs0XRA5nFMdKvBd` the ID is `1BxiMVs0XRA5nFMdKvBd`.
+Copy each folder's **ID** from its Drive URL: the part after `/folders/`. Example: from `https://drive.google.com/drive/folders/1BxiMVs0XRA5nFMdKvBd` the ID is `1BxiMVs0XRA5nFMdKvBd`.
 
 **Google Workspace users:** If you use a Shared Drive (Team Drive), add the service account as a **member** of the shared drive instead of sharing individual folders. All folders within the shared drive become accessible.
 
@@ -96,7 +96,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
 | Field | Type | Description |
 |-------|------|-------------|
 | `serviceaccountjson` | string | Base64-encoded service account JSON key. |
-| `folders` | array | Array of `{ "id": string, "name": string }` objects the agent should scan. `name` is the human-readable label — the agent uses it when reporting back to the operator ("scanned the Creatives folder..."); `id` is the Drive folder ID used in API calls. Pass an empty array to clear. |
+| `folders` | array | Array of `{ "id": string, "name": string }` objects the agent should scan. `name` is the human-readable label, which the agent uses when reporting back to the operator ("scanned the Creatives folder..."); `id` is the Drive folder ID used in API calls. Pass an empty array to clear. |
 
 ### Step 5b (optional): Discover folders via API
 
@@ -116,7 +116,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GoogleDriveListFolders" \
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
 | `serviceaccountjson` | string | No | Base64-encoded SA JSON. Useful for previewing before saving. If omitted, the endpoint uses whatever JSON was already saved to the agent via Step 5. |
-| `parentid` | string | No | Parent folder ID for subfolder listing. Omit (or pass empty) to list folders shared at the root level with the service account (Drive's `sharedWithMe` filter). When provided, returns folders whose parent is the given id — Drive's permission cascade lets the service account see children of any root it has access to, even if those children aren't shared individually. |
+| `parentid` | string | No | Parent folder ID for subfolder listing. Omit (or pass empty) to list folders shared at the root level with the service account (Drive's `sharedWithMe` filter). When provided, returns folders whose parent is the given id. Drive's permission cascade lets the service account see children of any root it has access to, even if those children aren't shared individually. |
 
 Response:
 
@@ -132,11 +132,11 @@ Response:
 }
 ```
 
-`parentId` echoes back whatever you passed in (`""` for a root listing) so the caller can verify it landed on the level it expected — useful when the user navigates two levels deep quickly and you need to discard out-of-order responses. Only folders explicitly shared with the SA email (as Editor or Content manager — see Step 3) are returned at the root. Take the `id` values from the folders you want the agent to scan and pass them as `folders`-prefixed field rows in your final `UserAgent/CredentialUpsert` call.
+`parentId` echoes back whatever you passed in (`""` for a root listing) so the caller can verify it landed on the level it expected. This is useful when the user navigates two levels deep quickly and you need to discard out-of-order responses. Only folders explicitly shared with the SA email (as Editor or Content manager, see Step 3) are returned at the root. Take the `id` values from the folders you want the agent to scan and pass them as `folders`-prefixed field rows in your final `UserAgent/CredentialUpsert` call.
 
 #### Listing subfolders
 
-Use `parentid` to walk down the folder tree — first call without `parentid` to enumerate the roots the service account can see, then call again with `parentid: "<root-id>"` to list its children, and so on. The Wiro Dashboard's folder picker uses this exact pattern.
+Use `parentid` to walk down the folder tree: first call without `parentid` to enumerate the roots the service account can see, then call again with `parentid: "<root-id>"` to list its children, and so on. The Wiro Dashboard's folder picker uses this exact pattern.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GoogleDriveListFolders" \
@@ -148,12 +148,12 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GoogleDriveListFolders" \
   }'
 ```
 
-The response shape is identical — `folders[]` now contains the immediate children of `1BxiMVs0XRA5nFMdKvBd`, and `parentId` echoes back `"1BxiMVs0XRA5nFMdKvBd"` so you can keep the picker UI in sync if the user clicks between levels quickly.
+The response shape is identical: `folders[]` now contains the immediate children of `1BxiMVs0XRA5nFMdKvBd`, and `parentId` echoes back `"1BxiMVs0XRA5nFMdKvBd"` so you can keep the picker UI in sync if the user clicks between levels quickly.
 
-> **Two equivalent ways to run Steps 5–5b**
+> **Two equivalent ways to run Steps 5 and 5b**
 >
-> - **Upfront** — you already know the folder IDs from Step 3. Call `UserAgent/CredentialUpsert` once with both the `serviceaccountjson` field row and every `folders` ordinal row.
-> - **Discovery (matches the Dashboard flow)** — call `UserAgent/CredentialUpsert` first with just the `serviceaccountjson` field row, then call `UserAgentOAuth/GoogleDriveListFolders` to enumerate what the SA can see, then call `UserAgent/CredentialUpsert` again with the picked `folders` ordinal rows. The Dashboard uses this pattern — JSON upload renders the service account email, the user shares folders with it in Drive, and the folder picker lists the results.
+> - **Upfront**: you already know the folder IDs from Step 3. Call `UserAgent/CredentialUpsert` once with both the `serviceaccountjson` field row and every `folders` ordinal row.
+> - **Discovery (matches the Dashboard flow)**: call `UserAgent/CredentialUpsert` first with just the `serviceaccountjson` field row, then call `UserAgentOAuth/GoogleDriveListFolders` to enumerate what the SA can see, then call `UserAgent/CredentialUpsert` again with the picked `folders` ordinal rows. The Dashboard uses this pattern: JSON upload renders the service account email, the user shares folders with it in Drive, and the folder picker lists the results.
 
 ### Step 6: Start the agent
 
@@ -180,15 +180,15 @@ All list/get/upload calls pass `supportsAllDrives=true` + `includeItemsFromAllDr
 
 ## Files created by the agent
 
-When the agent creates a file inside a user-shared folder, the file is owned by the service account, not the user. The user can see the file via folder permission inheritance, but may see it as "view only". To give the user write access on files the agent creates (role `writer` in the Drive API — shown as **Editor** in My Drive or **Content manager** in a Shared Drive), the skill grants permissions programmatically via `POST /drive/v3/files/{fileId}/permissions`. See the `int-google-drive` skill for details.
+When the agent creates a file inside a user-shared folder, the file is owned by the service account, not the user. The user can see the file via folder permission inheritance, but may see it as "view only". To give the user write access on files the agent creates (role `writer` in the Drive API, shown as **Editor** in My Drive or **Content manager** in a Shared Drive), the skill grants permissions programmatically via `POST /drive/v3/files/{fileId}/permissions`. See the `int-google-drive` skill for details.
 
 ## Troubleshooting
 
 - **403 "The user does not have sufficient permissions for file":** The folder hasn't been shared with the service account, or the service account was given a read-only role (Viewer / Commenter) instead of a write role. Go back to Google Drive → Share the folder with the SA email as **Editor** (My Drive) or **Content manager** (Shared Drive).
 - **403 on specific file inside a shared folder:** The file was added by someone else and hasn't inherited folder permissions yet. Force inheritance by resharing the folder, or share the specific file directly.
-- **"Invalid JWT token":** Service account JSON corrupt or truncated. Re-encode (watch for line breaks — use `base64 -w 0` on Linux, `base64 -b 0` on macOS).
+- **"Invalid JWT token":** Service account JSON corrupt or truncated. Re-encode (watch for line breaks: use `base64 -w 0` on Linux, `base64 -b 0` on macOS).
 - **Agent can't find new files:** The agent only sees files inside folders listed in `folders`. Add new folder IDs to the list and restart.
-- **User sees files as "view only":** Files created by the SA inside user folders are SA-owned. The skill should grant the user write access (role `writer` — **Editor** in My Drive, **Content manager** in Shared Drive); if this step is skipped, the user sees view-only. Manual fix: right-click the file → Share → grant yourself write access.
+- **User sees files as "view only":** Files created by the SA inside user folders are SA-owned. The skill should grant the user write access (role `writer`: **Editor** in My Drive, **Content manager** in Shared Drive); if this step is skipped, the user sees view-only. Manual fix: right-click the file → Share → grant yourself write access.
 
 ## Related
 

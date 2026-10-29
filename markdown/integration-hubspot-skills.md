@@ -8,8 +8,8 @@ The HubSpot integration uses HubSpot's OAuth 2.0.
 
 **Skills that use this integration:**
 
-- `int-hubspot-crm` — Contact/deal CRUD, note and task creation, sequence enrollment
-- `util-newsletter-compose` — optional; uses HubSpot as an ESP when enabled alongside
+- `int-hubspot-crm`: Contact/deal CRUD, note and task creation, sequence enrollment
+- `util-newsletter-compose`: optional; uses HubSpot as an ESP when enabled alongside
 
 **Agents that typically enable this integration:**
 
@@ -26,17 +26,17 @@ The HubSpot integration uses HubSpot's OAuth 2.0.
 
 ## Prerequisites
 
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
 - **A HubSpot account** the connecting user is an admin of.
-- **(Own mode) A HubSpot developer account** — [developers.hubspot.com](https://developers.hubspot.com/).
+- **(Own mode) A HubSpot developer account** ([developers.hubspot.com](https://developers.hubspot.com/)).
 - **An HTTPS callback URL**.
 
 ## Wiro Mode
 
 Call `OAuthConnect` with `credentialkey: "hubspot"` and without `authmethod`, redirect, parse `hubspot_connected=true&hubspot_portal=<id>&hubspot_name=<name>`.
 
-## Complete Integration Walkthrough — Own Mode
+## Complete Integration Walkthrough: Own Mode
 
 ### Step 1: Create a HubSpot App
 
@@ -52,9 +52,9 @@ Call `OAuthConnect` with `credentialkey: "hubspot"` and without `authmethod`, re
    https://api.wiro.ai/v1/UserAgentOAuth/HubSpotCallback
    ```
 
-3. **Scopes** — Wiro requests a fixed scope string plus optional_scopes. Enable **all** of the following in your HubSpot app's Auth tab:
+3. **Scopes**: Wiro requests a fixed scope string plus optional_scopes. Enable **all** of the following in your HubSpot app's Auth tab:
 
-   **Required `scope` (mandatory — OAuth fails if any is missing):**
+   **Required `scope` (mandatory: OAuth fails if any is missing):**
 
    - `crm.objects.contacts.read`
    - `crm.objects.contacts.write`
@@ -62,7 +62,7 @@ Call `OAuthConnect` with `credentialkey: "hubspot"` and without `authmethod`, re
    - `crm.lists.write`
    - `oauth`
 
-   **`optional_scope` (granted on consent if enabled, otherwise skipped — Wiro doesn't fail if missing):**
+   **`optional_scope` (granted on consent if enabled, otherwise skipped, and Wiro doesn't fail if missing):**
 
    - `crm.objects.companies.read`
    - `crm.objects.companies.write`
@@ -76,7 +76,7 @@ Call `OAuthConnect` with `credentialkey: "hubspot"` and without `authmethod`, re
 
 4. Save.
 
-> Wiro's authorize URL is built with this exact scope list — you cannot customize it per integration. Enabling additional scopes in your HubSpot app beyond this set has no effect (Wiro won't request them). If a required scope is missing from your app's configuration, the consent screen will error.
+> Wiro's authorize URL is built with this exact scope list, so you cannot customize it per integration. Enabling additional scopes in your HubSpot app beyond this set has no effect (Wiro won't request them). If a required scope is missing from your app's configuration, the consent screen will error.
 
 ### Step 3: Copy Client ID and Client Secret
 
@@ -161,7 +161,7 @@ Response:
 
 > **HubSpot tokens expire in 30 minutes.** Wiro maintains the connection automatically while the agent is running. If authorization is revoked, reconnect HubSpot through the OAuth flow.
 
-Note: For HubSpot, the unified `OAuthStatus` mirrors the saved `portalname` into both `accounts[0].id` and `accounts[0].name` (HubSpot has no separate picker — there's exactly one portal per OAuth grant). The numeric `portalid` is captured by `HubSpotCallback` as `hubspot_portal=<id>` on the redirect URL but is not re-surfaced by `OAuthStatus`.
+Note: For HubSpot, the unified `OAuthStatus` mirrors the saved `portalname` into both `accounts[0].id` and `accounts[0].name` (HubSpot has no separate picker: there's exactly one portal per OAuth grant). The numeric `portalid` is captured by `HubSpotCallback` as `hubspot_portal=<id>` on the redirect URL but is not re-surfaced by `OAuthStatus`.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
@@ -183,7 +183,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ### GET /UserAgentOAuth/HubSpotCallback
 
-Query params: `hubspot_connected=true&hubspot_portal=<id>&hubspot_name=<name>` or `hubspot_error=<code>`. The callback path is per-provider — HubSpot's stays `HubSpotCallback`.
+Query params: `hubspot_connected=true&hubspot_portal=<id>&hubspot_name=<name>` or `hubspot_error=<code>`. The callback path is per-provider: HubSpot's stays `HubSpotCallback`.
 
 ### POST /UserAgentOAuth/OAuthStatus
 
@@ -238,10 +238,10 @@ HubSpot's 30-minute token lifetime makes continuous authorization important. If 
 
 ## Multi-Tenant Architecture
 
-1. **One HubSpot developer app** per product — submit to the HubSpot App Marketplace for listed visibility, or stay private.
+1. **One HubSpot developer app** per product: submit to the HubSpot App Marketplace for listed visibility, or stay private.
 2. **One Wiro agent instance per customer.**
 3. **Portal IDs are unique per customer's HubSpot account.**
-4. **Per-app rate limits apply** — see HubSpot's [API usage guidelines](https://developers.hubspot.com/docs/api/usage-details).
+4. **Per-app rate limits apply**: see HubSpot's [API usage guidelines](https://developers.hubspot.com/docs/api/usage-details).
 
 ## Related
 

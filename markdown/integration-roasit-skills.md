@@ -1,22 +1,22 @@
 # Roasit Integration
 
-Connect your agent to Roasit mobile attribution — creative, campaign and network ROAS, cohort revenue and retention, iOS SKAdNetwork reports and install reconciliation, read with one read-only API token.
+Connect your agent to Roasit mobile attribution: creative, campaign and network ROAS, cohort revenue and retention, iOS SKAdNetwork reports and install reconciliation, read with one read-only API token.
 
 ## Overview
 
-[Roasit](https://roasit.com) is a mobile measurement partner (MMP): it attributes app installs to ad networks, pulls ad spend from Meta, Google Ads, TikTok and AppLovin, and joins in-app and ad revenue into install cohorts. This integration lets an agent read those numbers — the same figures the Roasit dashboard's Reports screen shows — and act on them through the ad-platform skills.
+[Roasit](https://roasit.com) is a mobile measurement partner (MMP): it attributes app installs to ad networks, pulls ad spend from Meta, Google Ads, TikTok and AppLovin, and joins in-app and ad revenue into install cohorts. This integration lets an agent read those numbers (the same figures the Roasit dashboard's Reports screen shows) and act on them through the ad-platform skills.
 
 **Skills that use this integration:**
 
-- `int-roasit-attribution` — Read-only reports from the Roasit API: creative / campaign / network ROAS (`roas_all`, ad-only and in-app-only ROAS, day-N ROAS), installs, spend, CPI, cohort revenue, retention, iOS SKAdNetwork reports, install reconciliation against the stores, and data freshness. Rows carry the ad networks' own campaign / ad ids, so the agent can map a creative back to Google Ads, Meta Ads or TikTok Ads.
+- `int-roasit-attribution`: Read-only reports from the Roasit API: creative / campaign / network ROAS (`roas_all`, ad-only and in-app-only ROAS, day-N ROAS), installs, spend, CPI, cohort revenue, retention, iOS SKAdNetwork reports, install reconciliation against the stores, and data freshness. Rows carry the ad networks' own campaign / ad ids, so the agent can map a creative back to Google Ads, Meta Ads or TikTok Ads.
 
 **Bundled task:**
 
-- `cs-cron-roasit-creative-roas-reporter` — daily at 10:30 UTC: the last 7 days' creative ROAS per app, pause / scale recommendations for creatives that pass the significance gate, and an attribution audit (network-claimed vs Roasit-attributed installs, network claims vs store installs). Off until the Roasit credential is filled.
+- `cs-cron-roasit-creative-roas-reporter` runs daily at 10:30 UTC and reports the last 7 days' creative ROAS per app, pause / scale recommendations for creatives that pass the significance gate, and an attribution audit (network-claimed vs Roasit-attributed installs, network claims vs store installs). Off until the Roasit credential is filled.
 
 **Agents that typically enable this integration:**
 
-- [Google Ads Manager](https://wiro.ai/agents/google-ads-manager), [Meta Ads Manager](https://wiro.ai/agents/meta-ads-manager) and [TikTok Ads Manager](https://wiro.ai/agents/tiktok-ads-manager) — MMP-verified ROAS next to the platform's own numbers.
+- [Google Ads Manager](https://wiro.ai/agents/google-ads-manager), [Meta Ads Manager](https://wiro.ai/agents/meta-ads-manager) and [TikTok Ads Manager](https://wiro.ai/agents/tiktok-ads-manager): MMP-verified ROAS next to the platform's own numbers.
 - Custom app-marketing agents that report on app growth.
 
 ## Availability
@@ -27,8 +27,8 @@ Connect your agent to Roasit mobile attribution — creative, campaign and netwo
 
 ## Prerequisites
 
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
 - **A Roasit account** with at least one app, and its Roasit SDK sending installs.
 
 ## Setup
@@ -46,7 +46,7 @@ Connect your agent to Roasit mobile attribution — creative, campaign and netwo
 Leave the apps list empty and the agent reports on every app the token can see. To limit it to specific apps, or to give an app the name you use in chat, add one row per app and platform:
 
 1. Open the app in Roasit.
-2. Copy the **App token** shown in the app's header — 12 lowercase hex characters such as `a1b2c3d4e5f6`, the same token the app's Roasit SDK starts with.
+2. Copy the **App token** shown in the app's header: 12 lowercase hex characters such as `a1b2c3d4e5f6`, the same token the app's Roasit SDK starts with.
 3. Pick the row's **Platform**: iOS, Android, or Web for a web app measured by Roasit's browser SDK and Stripe sales. One app token covers every platform of the app, so an app you run on several gets one row per platform with the same token; the agent filters each row's reports to its platform.
 
 ### Step 3: Save the credential to Wiro
@@ -128,7 +128,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ## What the agent reports
 
-The agent reads Roasit's report API, one app per request, and never recomputes a metric itself — every number equals the Roasit dashboard's for the same app, dates, grouping, filters and IAP setting.
+The agent reads Roasit's report API, one app per request, and never recomputes a metric itself, so every number equals the Roasit dashboard's for the same app, dates, grouping, filters and IAP setting.
 
 | Metric | Meaning |
 |--------|---------|
@@ -139,7 +139,7 @@ The agent reads Roasit's report API, one app per request, and never recomputes a
 | `spend`, `cpi`, `impressions`, `clicks` | Paid media, in the report's currency (USD unless the app reports in another one). |
 | `rev_all`, `rev_ad`, `rev_iap` | Cohort revenue to date, total / ads / in-app. |
 
-Breakdowns: day, platform, country, network, campaign, ad group and ad. A "-" (null) value means the dashboard shows none yet — no spend, a cohort not old enough, or a day whose spend is not final — and is never treated as zero.
+Breakdowns: day, platform, country, network, campaign, ad group and ad. A "-" (null) value means the dashboard shows none yet (no spend, a cohort not old enough, or a day whose spend is not final) and is never treated as zero.
 
 Creative-level ROAS needs Roasit to pull spend at ad level for that network (**Spend detail** in the Roasit app settings); networks pulled at campaign level are reported at campaign level.
 
@@ -149,13 +149,13 @@ The integration adds nothing to the agent's monthly price or credit pool. Like e
 
 ## Recommendations & approval
 
-The daily task writes `pause_creative_low_roas`, `scale_creative_high_roas` and `attribution_audit` items to the agent's recommendation ledger; nothing changes on an ad platform until you approve an item (`apply 1,3`, `apply all safe`, `skip 2`). Thresholds — minimum spend and installs, the ROAS metric, floor and ceiling, drift and overcount limits — live in the editable `roasit-strategy` custom skill and fall back to `ad-strategy`.
+The daily task writes `pause_creative_low_roas`, `scale_creative_high_roas` and `attribution_audit` items to the agent's recommendation ledger; nothing changes on an ad platform until you approve an item (`apply 1,3`, `apply all safe`, `skip 2`). Thresholds (minimum spend and installs, the ROAS metric, floor and ceiling, drift and overcount limits) live in the editable `roasit-strategy` custom skill and fall back to `ad-strategy`.
 
 ## Troubleshooting
 
-- **401:** The token was revoked or mistyped — create a new one on Roasit's Account page and save it again.
+- **401:** The token was revoked or mistyped. Create a new one on Roasit's Account page and save it again.
 - **404 for an app:** The app token is wrong, or the Roasit account behind the token cannot see that app.
-- **Creative ROAS shows "-":** That network's spend is pulled at campaign level in Roasit — raise Spend detail, or read the campaign-level row.
+- **Creative ROAS shows "-":** That network's spend is pulled at campaign level in Roasit, so raise Spend detail or read the campaign-level row.
 - **Today's or yesterday's ROAS is missing:** Roasit's nightly spend pull has not finalised the day yet; the report names the excluded days.
 - **Agent says "not connected" with the token filled:** The agent restarts to pick up new credentials; give it a moment after saving, then retry.
 

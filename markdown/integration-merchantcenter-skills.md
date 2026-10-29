@@ -8,11 +8,11 @@ The Merchant Center integration uses the [Merchant API v1](https://developers.go
 
 **Skills that use this integration:**
 
-- `int-merchant-center` — Product feed management, status issue scanning, shipping/tax, orders
+- `int-merchant-center`: Product feed management, status issue scanning, shipping/tax, orders
 
 **Agents that typically enable this integration:**
 
-- Google Ads Manager — for Shopping and PMax campaigns that depend on the product feed
+- Google Ads Manager: for Shopping and PMax campaigns that depend on the product feed
 
 ## Availability
 
@@ -23,11 +23,11 @@ The Merchant Center integration uses the [Merchant API v1](https://developers.go
 
 ## Prerequisites
 
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
 - **A Merchant Center account** the connecting user administers.
 - **A Google Cloud project** with Merchant API enabled.
-- **Developer Registration** — a one-time step to link your GCP project to your primary MC account.
+- **Developer Registration**: a one-time step to link your GCP project to your primary MC account.
 - **An HTTPS callback URL**.
 
 ## Own Mode
@@ -49,7 +49,7 @@ The Merchant Center integration uses the [Merchant API v1](https://developers.go
 
 Copy the client ID and the client secret.
 
-### Step 3: Register Developer Registration (REQUIRED — one-time)
+### Step 3: Register Developer Registration (REQUIRED, one-time)
 
 Merchant API requires that your GCP project be registered against your **primary** Merchant Center account before it will answer for any merchant account you authorize:
 
@@ -62,8 +62,8 @@ curl -X POST \
 ```
 
 Where:
-- `YOUR_PRIMARY_MC_ID` — your own Merchant Center ID (you, the developer)
-- `ACCESS_TOKEN` — a fresh access token for your primary MC account
+- `YOUR_PRIMARY_MC_ID`: your own Merchant Center ID (you, the developer)
+- `ACCESS_TOKEN`: a fresh access token for your primary MC account
 
 Once registered, your GCP project can call Merchant API on any merchant account that a user authorizes through OAuth.
 
@@ -163,7 +163,7 @@ Response:
 
 ## Skill reference
 
-- [agent-skills.md](/docs/agent-skills) — custom skill schema and the `int-merchant-center` key
+- [agent-skills.md](/docs/agent-skills): custom skill schema and the `int-merchant-center` key
 
 ## Troubleshooting
 

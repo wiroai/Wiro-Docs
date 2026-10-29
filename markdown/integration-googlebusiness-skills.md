@@ -8,17 +8,17 @@ The Google Business Profile integration powers the `int-google-business-reviews`
 
 **Skills that use this integration:**
 
-- `int-google-business-reviews` — Reads the Google reviews of the selected locations, drafts replies, posts approved replies, and follows Google's moderation of each posted reply.
+- `int-google-business-reviews`: Reads the Google reviews of the selected locations, drafts replies, posts approved replies, and follows Google's moderation of each posted reply.
 
 **Bundled task:**
 
-- `cs-cron-google-review-scanner` — every 2 hours (`0 */2 * * *`): scans the selected locations for new reviews and sends you the drafted replies. It runs only when Google Business Profile is connected.
+- `cs-cron-google-review-scanner` runs every 2 hours (`0 */2 * * *`), scans the selected locations for new reviews and sends you the drafted replies. It runs only when Google Business Profile is connected.
 
 ## Availability
 
 | Mode | Status | Notes |
 |------|--------|-------|
-| `"own"` | Available — the only mode | An OAuth client from your own Google Cloud project. Google must approve that project for Business Profile API access before any call works. |
+| `"own"` | Available (the only mode) | An OAuth client from your own Google Cloud project. Google must approve that project for Business Profile API access before any call works. |
 | `"wiro"` | Not available | Wiro-managed one-click connect is not available for Google Business Profile. |
 
 > **Google approves the project first.** You request Business Profile API access for your Google Cloud project, and Google reviews requests within 14 days. Until the project is approved, every call to Google fails, and connecting typically ends with "No accounts available". See [Google Cloud setup](#google-cloud-setup).
@@ -27,8 +27,8 @@ The Google Business Profile integration powers the `int-google-business-reviews`
 
 - **A verified Business Profile.** Google asks for a profile that has been verified and active for 60+ days, with the business website listed, before it grants API access.
 - **A Google account that is an owner or manager of the Business Profile.** Request API access with its email, and connect with the Google account that manages the business.
-- **A Google Cloud project approved for Business Profile API access**, with an OAuth client of type Web application — see [Google Cloud setup](#google-cloud-setup).
-- **An agent with `int-google-business-reviews` enabled** — see [Using the Skill](#using-the-skill).
+- **A Google Cloud project approved for Business Profile API access**, with an OAuth client of type Web application (see [Google Cloud setup](#google-cloud-setup)).
+- **An agent with `int-google-business-reviews` enabled**: see [Using the Skill](#using-the-skill).
 - **For API integrations only:** a Wiro API key ([Authentication](/docs/authentication)), a deployed agent ([Agent Overview](/docs/agent-overview)) and its `useragentguid`, and an HTTPS return URL that your backend controls. `http://localhost` and `http://127.0.0.1` are accepted for local development only.
 
 ## Google Cloud setup
@@ -49,14 +49,14 @@ In the Google Cloud Console, create a project or pick an existing one. Copy its 
 
 Open [IAM & Admin → Quotas](https://console.cloud.google.com/iam-admin/quotas) for the project and look at the requests-per-minute quota of the Business Profile APIs:
 
-- **0 requests per minute** — not approved yet. Every call to Google fails until this changes.
-- **300 requests per minute** — approved. Continue with Step 4.
+- **0 requests per minute**: not approved yet. Every call to Google fails until this changes.
+- **300 requests per minute**: approved. Continue with Step 4.
 
 ### Step 4: Enable the APIs
 
 After approval, enable these three APIs in the project:
 
-- [Google My Business API](https://console.cloud.google.com/apis/library/mybusiness.googleapis.com) — listed in the API Library only after the project is approved.
+- [Google My Business API](https://console.cloud.google.com/apis/library/mybusiness.googleapis.com): listed in the API Library only after the project is approved.
 - [My Business Account Management API](https://console.cloud.google.com/apis/library/mybusinessaccountmanagement.googleapis.com)
 - [My Business Business Information API](https://console.cloud.google.com/apis/library/mybusinessbusinessinformation.googleapis.com)
 
@@ -104,10 +104,10 @@ To change the locations later, use **Manage** on the Google Business Profile car
 - **Drafts one reply per new review, in the reviewer's language.** When Google shows a translated review, the agent answers the original text.
 - **Follows your review preferences.** Before drafting, it reads the `cs-review-preferences` custom skill: tone, length by rating, contact line, sign-off, and house rules.
 - **Sends the drafts to you**, numbered, in chat and on Telegram if it is connected. Answer in chat:
-  - `ok 1` — approve draft 1
-  - `ok all` — approve every draft
-  - `skip 2` — skip draft 2
-  - `edit 1: <text>` — replace draft 1 with your text
+  - `ok 1`: approve draft 1
+  - `ok all`: approve every draft
+  - `skip 2`: skip draft 2
+  - `edit 1: <text>` (replace draft 1 with your text)
 - **Posts approved replies** through the Google Business Profile API.
 - **Follows Google's moderation.** Google reviews every reply before it is public: a reply is `PENDING`, then `APPROVED`, or `REJECTED` with a policy violation. The agent tells you about rejected replies.
 - **Edits or deletes a posted reply** only when you ask.
@@ -120,7 +120,7 @@ To change the locations later, use **Manage** on the Google Business Profile car
 
 These are outside this integration:
 
-- **Changing business details** — name, hours, address, or photos.
+- **Changing business details**: name, hours, address, or photos.
 - **Creating posts.**
 - **Answering Q&A.**
 - **Reporting or removing a review.** The business does that in Google Maps.
@@ -150,8 +150,8 @@ These are outside this integration:
 
 To change **what** the scanner does, edit the custom skills it reads rather than the task:
 
-- `cs-review-preferences` — tone, length by rating, contact line, sign-off, house rules, and the number of automatic replies per scan.
-- `cs-approval-policy` — which replies wait for your approval.
+- `cs-review-preferences`: tone, length by rating, contact line, sign-off, house rules, and the number of automatic replies per scan.
+- `cs-approval-policy`: which replies wait for your approval.
 
 ## Connect through the API
 
@@ -416,7 +416,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
   -d '{ "guid": "your-useragent-guid" }'
 ```
 
-Check `POST /UserAgent/Detail` first: if `setuprequired` is still `true`, a credential the agent requires is incomplete, and Start will refuse. See [Agent Credentials — Setup Required](/docs/agent-credentials#setup-required-state).
+Check `POST /UserAgent/Detail` first: if `setuprequired` is still `true`, a credential the agent requires is incomplete, and Start will refuse. See [Agent Credentials: Setup Required](/docs/agent-credentials#setup-required-state).
 
 ## Credential fields
 
@@ -432,7 +432,7 @@ Check `POST /UserAgent/Detail` first: if `setuprequired` is still `true`, a cred
 
 ## API Reference
 
-All endpoints require Wiro authentication — see [Authentication](/docs/authentication) for `x-api-key` + optional signature headers.
+All endpoints require Wiro authentication: see [Authentication](/docs/authentication) for `x-api-key` + optional signature headers.
 
 ### POST /UserAgentOAuth/OAuthConnect
 
@@ -443,7 +443,7 @@ All endpoints require Wiro authentication — see [Authentication](/docs/authent
 | `redirecturl` | string | Yes | HTTPS URL (or `http://localhost` / `http://127.0.0.1` for development) where the browser returns after Google. |
 | `authmethod` | string | Yes | `"own"`, the only available mode. |
 
-Response: `{ result, errors, authorizeUrl }`. If `result: false`, inspect `errors[0].message` — common messages: `Invalid redirect URL`, `User agent not found or unauthorized`, `Wiro-managed OAuth is not enabled for Google Business Profile` (no `authmethod`, or `"wiro"`), and `Google Business Profile credentials not configured` (the Client ID or Client Secret is not saved).
+Response: `{ result, errors, authorizeUrl }`. If `result: false`, inspect `errors[0].message`. Common messages: `Invalid redirect URL`, `User agent not found or unauthorized`, `Wiro-managed OAuth is not enabled for Google Business Profile` (no `authmethod`, or `"wiro"`), and `Google Business Profile credentials not configured` (the Client ID or Client Secret is not saved).
 
 ### GET /UserAgentOAuth/GBPCallback
 
@@ -529,7 +529,7 @@ Response: `{ "result": true, "errors": [] }`. Running agents restart automatical
 
 ### Token lifecycle
 
-Wiro renews the access token with the stored refresh token while the agent is running. While the consent screen is in **Testing**, Google expires the refresh token after 7 days; set it to **In production** to avoid weekly disconnects. If Google revokes the access, or `OAuthStatus` keeps reporting `connected: false`, call `OAuthDisconnect` and run Steps 2–5 again. There is no customer-facing token-refresh endpoint.
+Wiro renews the access token with the stored refresh token while the agent is running. While the consent screen is in **Testing**, Google expires the refresh token after 7 days; set it to **In production** to avoid weekly disconnects. If Google revokes the access, or `OAuthStatus` keeps reporting `connected: false`, call `OAuthDisconnect` and run Steps 2 to 5 again. There is no customer-facing token-refresh endpoint.
 
 ## Using the Skill
 
@@ -550,7 +550,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
 
 **Pricing:** like the App Store and Google Play review skills, `int-google-business-reviews` adds $1 and 100 credits per month to the agent's skill weights (`monthly_price_weight_usd: 1`, `monthly_credits_weight: 100`). Preview the result with [`POST /UserAgent/PricingPreview`](/docs/agent-overview#post-useragentpricingpreview) before you apply it. As with every agent turn, scans and replies are billed on the LLM tokens they use.
 
-Adjust the scanner's schedule with `enabled` and `interval` only — the task body (`value`) is owned by the bundled integration skill and silently dropped on writes:
+Adjust the scanner's schedule with `enabled` and `interval` only. The task body (`value`) is owned by the bundled integration skill and silently dropped on writes:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
@@ -564,7 +564,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   }'
 ```
 
-To change how replies read, edit `cs-review-preferences`; to change which replies wait for approval, edit `cs-approval-policy` — see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preference-skills).
+To change how replies read, edit `cs-review-preferences`; to change which replies wait for approval, edit `cs-approval-policy` (see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preference-skills)).
 
 ## Troubleshooting
 
@@ -613,15 +613,15 @@ Google reviews every reply before it is public. When it marks a reply `REJECTED`
 For SaaS products connecting many businesses through a single Wiro-powered backend:
 
 1. **One Wiro agent instance per business.** Call `POST /UserAgent/Deploy` during onboarding, then run the connection flow for that business's `useragentguid`.
-2. **Tokens are isolated per agent instance.** One business's Google authorization is never visible to another — they live under different `useragentguid` values.
+2. **Tokens are isolated per agent instance.** One business's Google authorization is never visible to another, because they live under different `useragentguid` values.
 3. **The consent screen shows your app.** The connection uses your own OAuth client, so Google shows the app name of your Google Cloud project.
 4. **The quota belongs to the Google Cloud project.** Every connection made with the same OAuth client shares its 300 requests per minute.
 
 ## Related
 
-- [Agent Credentials & OAuth](/docs/agent-credentials) — integration catalog hub and generic OAuth reference.
-- [Agent Overview](/docs/agent-overview) — deploying, starting, and lifecycle.
-- [Agent Skills](/docs/agent-skills) — configuring `int-google-business-reviews`, custom skills, and scheduled runs.
-- [Telegram integration](/docs/integration-telegram-skills) — receive the drafts on Telegram as well as in chat.
-- [App Store Connect integration](/docs/integration-appstore-skills) and [Google Play integration](/docs/integration-googleplay-skills) — reviews of your apps.
+- [Agent Credentials & OAuth](/docs/agent-credentials): integration catalog hub and generic OAuth reference.
+- [Agent Overview](/docs/agent-overview): deploying, starting, and lifecycle.
+- [Agent Skills](/docs/agent-skills): configuring `int-google-business-reviews`, custom skills, and scheduled runs.
+- [Telegram integration](/docs/integration-telegram-skills): receive the drafts on Telegram as well as in chat.
+- [App Store Connect integration](/docs/integration-appstore-skills) and [Google Play integration](/docs/integration-googleplay-skills): reviews of your apps.
 - [Business Profile APIs prerequisites](https://developers.google.com/my-business/content/prereqs)

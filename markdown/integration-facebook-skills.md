@@ -14,7 +14,7 @@ Customer-owned OAuth remains available as an advanced path.
 
 **Skills that use this integration:**
 
-- `int-facebookpage-post` — Publish text, photo, and video posts to a Facebook Page
+- `int-facebookpage-post`: Publish text, photo, and video posts to a Facebook Page
 
 **Agents that typically enable this integration:**
 
@@ -31,9 +31,9 @@ Customer-owned OAuth remains available as an advanced path.
 
 ## Prerequisites
 
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview); keep the `useragents[0].guid`.
-- **A Meta Business account** — [business.facebook.com](https://business.facebook.com/).
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)); keep the `useragents[0].guid`.
+- **A Meta Business account** ([business.facebook.com](https://business.facebook.com/)).
 - **At least one Facebook Page assigned to the connecting principal** with the
   `CREATE_CONTENT` task. Add `MODERATE` when the agent should add comments.
 - **Recommended direct mode:** a System User and the Business app used to
@@ -201,7 +201,7 @@ These work without App Review in Development Mode for any Facebook user in App R
 
 ### Step 5: Add other Facebook accounts as Testers (only if needed)
 
-Connecting your own Facebook account? You're the app Admin — skip. Connecting a customer's account? Add them under **App Roles → Roles → Add People → Testers**. They accept at [facebook.com/settings → Business Integrations](https://www.facebook.com/settings?tab=business_tools).
+Connecting your own Facebook account? You're the app Admin, so skip this. Connecting a customer's account? Add them under **App Roles → Roles → Add People → Testers**. They accept at [facebook.com/settings → Business Integrations](https://www.facebook.com/settings?tab=business_tools).
 
 ### Step 6: Save your Meta App credentials to Wiro
 
@@ -219,7 +219,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   }'
 ```
 
-Wiro merges this into only the `facebook-pages` group — other credentials are untouched.
+Wiro merges this into only the `facebook-pages` group, and other credentials are untouched.
 
 ### Step 7: Initiate OAuth
 
@@ -264,7 +264,7 @@ Query parameters:
 | Param | Meaning |
 |-------|---------|
 | `fb_connected=true` | OAuth completed; credentials are cached server-side awaiting page selection. |
-| `fb_pages` | URL-encoded JSON array `[{ id, name }, ...]` of every admin-managed Page. The per-page access tokens stay server-side — the client only receives ID and name. |
+| `fb_pages` | URL-encoded JSON array `[{ id, name }, ...]` of every admin-managed Page. The per-page access tokens stay server-side. The client only receives ID and name. |
 | `fb_error=<code>` | Failure. See [Troubleshooting](#troubleshooting). |
 
 Parse:
@@ -328,7 +328,7 @@ If the 15-minute window lapses before you call `SetPickerAccounts`, you'll get
 `No pending Facebook connection. Please reconnect via OAuthConnect.` Repeat
 Step 3 for System User mode or Step 7 for OAuth.
 
-`fbpagename` is optional; if omitted, Wiro uses the name from the cached page list. The Facebook Pages picker accepts one or more entries — pass multiple `{ pageid, fbpagename }` objects to authorize the agent against several pages at once.
+`fbpagename` is optional; if omitted, Wiro uses the name from the cached page list. The Facebook Pages picker accepts one or more entries: pass multiple `{ pageid, fbpagename }` objects to authorize the agent against several pages at once.
 
 ### Step 10: Verify the connection
 
@@ -397,7 +397,7 @@ Server-side. Query params appended to your `redirecturl`:
 | `fb_pages` | URL-encoded JSON `[{id, name}, ...]` of admin-managed Pages. |
 | `fb_error=<code>` | Failure. |
 
-The callback path is per-provider — Facebook's stays `FBCallback`.
+The callback path is per-provider: Facebook's stays `FBCallback`.
 
 ### POST /UserAgentOAuth/SetPickerAccounts
 
@@ -405,7 +405,7 @@ The callback path is per-provider — Facebook's stays `FBCallback`.
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
 | `credentialkey` | string | Yes | `"facebook-pages"`. |
-| `accounts` | array | Yes | One or more `{ pageid, fbpagename? }` entries. The per-page access token is resolved from the latest server-side OAuth or System User discovery result — don't supply it. |
+| `accounts` | array | Yes | One or more `{ pageid, fbpagename? }` entries. The per-page access token is resolved from the latest server-side OAuth or System User discovery result, so don't supply it. |
 
 Response: `{ result, accounts: [{id, name}, ...], errors }`. Triggers auto-restart if running.
 
@@ -462,12 +462,12 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
 ```
 
 To change **what** the scheduled task posts (topics, tone, content angle), edit
-the paired preference skill `cs-content-tone` instead — see
-[Agent Skills → Updating Preference Skills](/docs/agent-skills#updating-preference-skills).
+the paired preference skill `cs-content-tone` instead (see
+[Agent Skills → Updating Preference Skills](/docs/agent-skills#updating-preference-skills)).
 
 The agent posts an approved draft, or the text, link and media you give it in
 chat. Hashtags, calls to action and links come from the draft, `cs-content-tone`,
-or the agent's preferences; without hashtag rules the agent adds 1–3. Facebook
+or the agent's preferences; without hashtag rules the agent adds 1 to 3. Facebook
 makes links clickable, so a draft's page link goes into the post.
 
 ## Troubleshooting
@@ -529,7 +529,7 @@ OAuth), then ask again.
 - [Agent Credentials & OAuth](/docs/agent-credentials)
 - [Agent Overview](/docs/agent-overview)
 - [Agent Skills](/docs/agent-skills)
-- [Meta Ads integration](/docs/integration-metaads-skills) — separate product; used for paid media, not organic posting.
+- [Meta Ads integration](/docs/integration-metaads-skills): separate product; used for paid media, not organic posting.
 - [Instagram integration](/docs/integration-instagram-skills)
-- [Meta for Developers — Pages API](https://developers.facebook.com/docs/pages-api)
-- [Meta for Developers — System User API calls](https://developers.facebook.com/docs/marketing-api/system-users/guides/api-calls/)
+- [Meta for Developers: Pages API](https://developers.facebook.com/docs/pages-api)
+- [Meta for Developers: System User API calls](https://developers.facebook.com/docs/marketing-api/system-users/guides/api-calls/)

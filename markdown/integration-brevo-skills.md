@@ -8,8 +8,8 @@ The Brevo integration uses Brevo API v3 with an `api-key` header (not Bearer).
 
 **Skills that use this integration:**
 
-- `int-brevo-email` — Campaign, template, and contact management via Brevo API v3
-- `util-newsletter-compose` — optional; uses Brevo as the ESP when enabled alongside. Newsletter Manager has it on; on other agents turn on `util-newsletter-compose` yourself. Brevo alone adds no newsletter tasks.
+- `int-brevo-email`: Campaign, template, and contact management via Brevo API v3
+- `util-newsletter-compose`: optional; uses Brevo as the ESP when enabled alongside. Newsletter Manager has it on; on other agents turn on `util-newsletter-compose` yourself. Brevo alone adds no newsletter tasks.
 
 **Other:** Custom agents can use Brevo from their own skills once the integration is connected.
 
@@ -25,8 +25,8 @@ The Brevo integration uses Brevo API v3 with an `api-key` header (not Bearer).
 
 ## Prerequisites
 
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
 - **A Brevo account** (free tier works for low volume).
 
 ## Setup
@@ -81,7 +81,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 The `int-brevo-email` skill is active only when it is enabled and `apikey` is set.
 
-Auth: **Header `api-key: <your API key>`** — not Bearer. This is Brevo's documented auth pattern.
+Auth: **Header `api-key: <your API key>`**, not Bearer. This is Brevo's documented auth pattern.
 Base URL: `https://api.brevo.com/v3/`.
 
 Rate limits: ~10 req/s on free plan; higher on paid tiers.

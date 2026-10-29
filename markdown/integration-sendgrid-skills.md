@@ -8,8 +8,8 @@ The SendGrid integration uses standard Bearer authentication with a SendGrid API
 
 **Skills that use this integration:**
 
-- `int-sendgrid-email` — Marketing and transactional email via SendGrid v3 API
-- `util-newsletter-compose` — optional; uses SendGrid as the ESP when enabled alongside. Newsletter Manager has it on; on other agents turn on `util-newsletter-compose` yourself. SendGrid alone adds no newsletter tasks.
+- `int-sendgrid-email`: Marketing and transactional email via SendGrid v3 API
+- `util-newsletter-compose`: optional; uses SendGrid as the ESP when enabled alongside. Newsletter Manager has it on; on other agents turn on `util-newsletter-compose` yourself. SendGrid alone adds no newsletter tasks.
 
 **Other:** Custom agents can use SendGrid from their own skills once the integration is connected.
 
@@ -25,8 +25,8 @@ The SendGrid integration uses standard Bearer authentication with a SendGrid API
 
 ## Prerequisites
 
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
 - **A SendGrid account**.
 
 ## Setup
@@ -38,7 +38,7 @@ The SendGrid integration uses standard Bearer authentication with a SendGrid API
 3. Permissions:
    - **Full Access** for maximum capability, or
    - **Restricted Access** + enable at least **Mail Send** (and **Marketing Campaigns** if used).
-4. **Create & View**, copy the key once (starts with `SG.`) — **cannot be retrieved later**.
+4. **Create & View**, copy the key once (starts with `SG.`). It **cannot be retrieved later**.
 
 ### Step 2: Save to Wiro
 

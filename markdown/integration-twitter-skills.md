@@ -8,7 +8,7 @@ The Twitter / X integration uses X API v2 with OAuth 2.0 Authorization Code Flow
 
 **Skills that use this integration:**
 
-- `int-twitterx-post` — Publish posts, threads, and replies; read mentions
+- `int-twitterx-post`: Publish posts, threads, and replies; read mentions
 
 **Agents that typically enable this integration:**
 
@@ -24,9 +24,9 @@ The Twitter / X integration uses X API v2 with OAuth 2.0 Authorization Code Flow
 
 ## Prerequisites
 
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
-- **(Own mode) An X Developer account** — [developer.x.com](https://developer.x.com/).
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
+- **(Own mode) An X Developer account** ([developer.x.com](https://developer.x.com/)).
 - **An HTTPS callback URL** for your backend.
 
 ## Wiro Mode (Simplest)
@@ -46,14 +46,14 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
 
 User consents on the Wiro-branded consent screen. On return parse `x_connected=true&x_username=<handle>`. Jump to [Step 8: Verify](#step-8-verify) below.
 
-## Complete Integration Walkthrough — Own Mode
+## Complete Integration Walkthrough: Own Mode
 
 ### Step 1: Create an X Developer App
 
 1. [developer.x.com/portal](https://developer.x.com/portal/dashboard) → sign in.
 2. Apply for a developer account if needed (free tier works for testing).
 3. Create a **Project** → create an **App** inside it.
-4. Name your app — this shows on the consent screen.
+4. Name your app: this shows on the consent screen.
 
 ### Step 2: Enable OAuth 2.0 with PKCE
 
@@ -86,7 +86,7 @@ tweet.read tweet.write users.read offline.access
 
 ### Step 4: Copy Client ID and Client Secret
 
-After enabling OAuth 2.0, X shows **Client ID** and **Client Secret** — **save the secret immediately**. You cannot retrieve it later, only regenerate.
+After enabling OAuth 2.0, X shows **Client ID** and **Client Secret**. Save** the secret immediately**. You cannot retrieve it later, only regenerate.
 
 ### Step 5: Save credentials to Wiro
 
@@ -177,7 +177,7 @@ Response:
 
 - Access token lifetime: **~2 hours** (short!). Wiro auto-refreshes.
 - Refresh token lifetime: **~180 days** from connection (hardcoded by Wiro, since X doesn't report one).
-- `accounts[0].id` = `@`-less X handle (Twitter has no picker — single-account flow).
+- `accounts[0].id` = `@`-less X handle (Twitter has no picker: it is a single-account flow).
 
 ### Step 9: Start the agent
 
@@ -201,7 +201,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ### GET /UserAgentOAuth/XCallback
 
-Query params: `x_connected=true&x_username=<handle>` or `x_error=<code>`. The callback path is per-provider — Twitter's stays `XCallback`.
+Query params: `x_connected=true&x_username=<handle>` or `x_error=<code>`. The callback path is per-provider: Twitter's stays `XCallback`.
 
 ### POST /UserAgentOAuth/OAuthStatus
 
@@ -217,7 +217,7 @@ Wiro maintains the X connection automatically while the agent is running. If the
 
 ## Using the Skill
 
-Once the X account is connected, the agent's existing scheduled tasks use the `int-twitterx-post` platform skill to publish. To adjust the cron of the built-in `cs-cron-social-content-scanner` task (Social Manager), send a `CustomSkillUpsert` with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for bundled crons:
+Once the X account is connected, the agent's existing scheduled tasks use the `int-twitterx-post` platform skill to publish. To adjust the cron of the built-in `cs-cron-social-content-scanner` task (Social Manager), send a `CustomSkillUpsert` with `enabled` and `interval` only. Cron skill bodies are template-controlled and `value` is silently ignored for bundled crons:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
@@ -231,7 +231,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   }'
 ```
 
-To change **what** the scheduled task posts (topics, tone, hashtag rules), edit the paired preference skill `content-tone` instead — see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preference-skills).
+To change **what** the scheduled task posts (topics, tone, hashtag rules), edit the paired preference skill `content-tone` instead (see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preference-skills)).
 
 ## Troubleshooting
 
@@ -247,7 +247,7 @@ To change **what** the scheduled task posts (topics, tone, hashtag rules), edit 
 
 ### Posts fail with 429 Too Many Requests
 
-Free-tier X Developer apps have strict per-app rate limits. For production, move to Basic ($100/mo) or higher. Limits are per app, not per user — high-volume multi-tenant partners need a higher tier.
+Free-tier X Developer apps have strict per-app rate limits. For production, move to Basic ($100/mo) or higher. Limits are per app, not per user, so high-volume multi-tenant partners need a higher tier.
 
 ### Token expires every 2 hours
 

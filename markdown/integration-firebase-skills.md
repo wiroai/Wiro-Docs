@@ -8,7 +8,7 @@ The Firebase integration uses FCM HTTP v1 with an Admin SDK service account. A s
 
 **Skills that use this integration:**
 
-- `int-firebase-push` — Send push notifications by topic, device token, or condition
+- `int-firebase-push`: Send push notifications by topic, device token, or condition
 
 **Agents that typically enable this integration:**
 
@@ -22,8 +22,8 @@ The Firebase integration uses FCM HTTP v1 with an Admin SDK service account. A s
 
 ## Prerequisites
 
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
 - **A Firebase project** with your iOS and/or Android apps registered and FCM enabled.
 
 ## Setup
@@ -116,13 +116,13 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   }'
 ```
 
-Wiro's merge logic uses positional indexes — sending `accounts` ordinal `2` while the agent has 1 account creates a new account entry at index 2 populated with the field rows you supply.
+Wiro's merge logic uses positional indexes: sending `accounts` ordinal `2` while the agent has 1 account creates a new account entry at index 2 populated with the field rows you supply.
 
 ## Runtime Behavior
 
 The `int-firebase-push` skill is active only when it is enabled and `accounts` is non-empty. For each saved account it uses the project ID from that account's service account, plus the app name, topics (`{ topickey: topicdesc }`) and apps (`{ platform, id }`) you saved.
 
-Auth: FCM HTTP v1 `Authorization: Bearer <token>` — tokens minted from the account's service account.
+Auth: FCM HTTP v1 `Authorization: Bearer <token>`, with tokens minted from the account's service account.
 
 Base URL: `https://fcm.googleapis.com/v1/projects/<PROJECT_ID>/messages:send`
 

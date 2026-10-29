@@ -8265,7 +8265,7 @@ Endpoints for browser-based realtime voice sessions plus the unified call histor
 | Operation | Endpoint |
 |-----------|----------|
 | Start a browser realtime voice session | `POST /UserAgent/Realtime/WebStart`: see [Web Voice](/docs/integration-webvoice-skills) |
-| Cancel a pending realtime session | `POST /UserAgent/Realtime/Cancel`: see [Web Voice, Step 3](/docs/integration-webvoice-skills#step-3-optional-cancel-a-stale-session--post-useragentrealtimecancel) |
+| Cancel a pending realtime session | `POST /UserAgent/Realtime/Cancel`: see [Web Voice, Step 3](/docs/integration-webvoice-skills#step-3-optional-cancel-a-stale-session-with-post-useragentrealtimecancel) |
 | List recent realtime call sessions | `POST /UserAgent/TwilioCallHistory/List`: see [Twilio Voice, Call History](/docs/integration-twiliovoice-skills#call-history) (returns Twilio **and** Web channel sessions despite the Twilio-named path). |
 
 #### **POST** /UserAgent/Realtime/WebStart
@@ -15902,12 +15902,12 @@ Connect your agent to Meta's advertising platform to manage campaigns, ad sets, 
 
 ## Overview
 
-The Meta Ads integration powers the `int-metaads-manage` skill — creating and managing campaigns, pulling insights, managing creatives, and analyzing ad account data through direct Meta Graph / Marketing API v26 calls.
+The Meta Ads integration powers the `int-metaads-manage` skill: creating and managing campaigns, pulling insights, managing creatives, and analyzing ad account data through direct Meta Graph / Marketing API v26 calls.
 
 **Skills that use this integration:**
 
-- `int-metaads-manage` — Campaign / ad set / creative CRUD, insights reporting, direct Graph API v26 operations
-- `util-ads-manager-common` — Shared ads helpers (works alongside `int-metaads-manage` and `int-googleads-manage`)
+- `int-metaads-manage`: Campaign / ad set / creative CRUD, insights reporting, direct Graph API v26 operations
+- `util-ads-manager-common`: Shared ads helpers (works alongside `int-metaads-manage` and `int-googleads-manage`)
 
 **Agents that typically enable this integration:**
 
@@ -15920,7 +15920,7 @@ The Meta Ads integration powers the `int-metaads-manage` skill — creating and 
 |------|--------|-------|
 | Wiro-owned approved-app OAuth | Pending provider approval | The registry carries this mode, but the dashboard keeps it unavailable while Wiro's Meta app is awaiting the required App Review, Advanced Access, and rollout checks. |
 | `"own"` | Available now | You create your own Meta Developer App and connect it to Wiro. No App Review required when Development Mode + App Roles is used. |
-| `"api_key"` | Available now — recommended | Paste a Business Manager System User token. No browser OAuth redirect and no App ID or App Secret is submitted to Wiro. Choose **Never** for token expiration when Meta offers it. |
+| `"api_key"` | Available now (recommended) | Paste a Business Manager System User token. No browser OAuth redirect and no App ID or App Secret is submitted to Wiro. Choose **Never** for token expiration when Meta offers it. |
 
 > **There is no app-less Meta “machine key.”** A System User token is the closest machine-to-machine option: it removes the browser OAuth flow and recurring human sign-in, but Meta generates it for a System User through a Business Portfolio and a Meta Business app. The app, System User, ad accounts, Pages, and permissions remain customer-owned.
 
@@ -15940,10 +15940,10 @@ Meta does not document a separate MCP “machine key”; MCP authentication stil
 
 ## Prerequisites
 
-- **A Wiro API key** — see [Authentication](/docs/authentication) for how to issue keys and sign requests.
-- **A deployed agent** — see [Agent Overview](/docs/agent-overview) and call `POST /UserAgent/Deploy` first. You need the returned `useragents[0].guid` for every step below.
-- **A Meta Business account** — [business.facebook.com](https://business.facebook.com/).
-- **For the currently enabled customer-owned paths, a Meta Developer account and Business app** — [developers.facebook.com](https://developers.facebook.com/). The future Wiro-owned OAuth path will not require each customer to create an app.
+- **A Wiro API key**: see [Authentication](/docs/authentication) for how to issue keys and sign requests.
+- **A deployed agent**: see [Agent Overview](/docs/agent-overview) and call `POST /UserAgent/Deploy` first. You need the returned `useragents[0].guid` for every step below.
+- **A Meta Business account** ([business.facebook.com](https://business.facebook.com/)).
+- **For the currently enabled customer-owned paths, a Meta Developer account and Business app** ([developers.facebook.com](https://developers.facebook.com/)). The future Wiro-owned OAuth path will not require each customer to create an app.
 - **For OAuth mode:** an HTTPS return URL that your backend controls. Meta's callback is the fixed Wiro URL shown below; `redirecturl` is where Wiro sends the browser after processing that callback. `http://localhost` and `http://127.0.0.1` are accepted for local development only.
 
 ## Recommended: System User token (no browser OAuth)
@@ -16003,17 +16003,17 @@ Every curl example and response shape below matches Wiro's production behavior v
 
 1. Go to [developers.facebook.com/apps](https://developers.facebook.com/apps) and click **Create app**.
 2. Choose **"Other"** as the use case, then **"Business"** as the app type.
-3. Set an **App display name** (this is what your end users see on the consent screen — use your company or product name, not "Wiro").
+3. Set an **App display name** (this is what your end users see on the consent screen, so use your company or product name, not "Wiro").
 4. Enter an **App contact email**.
 5. Select the **Meta Business Account** that owns the ad accounts you plan to manage, then click **Create app**.
 
-You're now on the app dashboard. The app is in **Development Mode** by default — leave it there. Development Mode is exactly what lets you skip App Review.
+You're now on the app dashboard. The app is in **Development Mode** by default. Leave it there. Development Mode is exactly what lets you skip App Review.
 
 ### Step 2: Add the Marketing API product
 
 1. From the app dashboard, click **Add product**.
 2. Find **"Marketing API"** and click **Set up**.
-3. No further configuration is required inside Marketing API itself — adding the product unlocks the `ads_*` permissions.
+3. No further configuration is required inside Marketing API itself: adding the product unlocks the `ads_*` permissions.
 
 ### Step 3: Add "Facebook Login for Business" and register the redirect URI
 
@@ -16030,7 +16030,7 @@ Meta Ads OAuth uses Facebook Login under the hood.
 
 5. **Save changes** at the bottom.
 
-> This is the single most common place where own-mode setups fail. The redirect URI must be exact — HTTPS, no trailing slash, same capitalization.
+> This is the single most common place where own-mode setups fail. The redirect URI must be exact: HTTPS, no trailing slash, same capitalization.
 
 ### Step 4: Note the required permissions
 
@@ -16064,7 +16064,7 @@ Users not listed in App Roles will be blocked at the consent screen in Developme
 
 ### Step 7: Save your Meta App credentials to Wiro
 
-Push the `appid` and `appsecret` into the agent's `meta-ads` credential group. Wiro merges credential updates per group — fields you don't send are preserved, and credentials from other groups are untouched.
+Push the `appid` and `appsecret` into the agent's `meta-ads` credential group. Wiro merges credential updates per group: fields you don't send are preserved, and credentials from other groups are untouched.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
@@ -16120,7 +16120,7 @@ Response:
 }
 ```
 
-Redirect the user's browser to `authorizeUrl`. Full-page redirect is recommended over a popup — some browsers block third-party cookies in popups, breaking the OAuth session.
+Redirect the user's browser to `authorizeUrl`. Full-page redirect is recommended over a popup, because some browsers block third-party cookies in popups, breaking the OAuth session.
 
 > **State TTL:** Wiro caches the OAuth state for **15 minutes**. If the user takes longer to complete consent, the callback returns `metaads_error=session_expired` and you must call `OAuthConnect` again.
 
@@ -16193,7 +16193,7 @@ Response:
 Behavior:
 
 - Pass the ad account ID **without** the `act_` prefix. If you include it, Wiro strips it automatically.
-- `adaccountname` is optional but recommended — it surfaces in `OAuthStatus` responses and dashboards.
+- `adaccountname` is optional but recommended: it surfaces in `OAuthStatus` responses and dashboards.
 - Pass multiple `{ adaccountid, adaccountname }` entries to authorize the agent against several ad accounts at once.
 - If the agent was running (status `3` or `4`), Wiro marks it `status: 1` and restarts it after the stop cycle, so the daemon picks up the new ad account. No manual Start needed.
 
@@ -16340,7 +16340,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
   -d '{ "guid": "your-useragent-guid" }'
 ```
 
-Check `POST /UserAgent/Detail` first: if `setuprequired` is still `true`, some other credential the agent requires is missing — Start will refuse. See [Agent Credentials — Setup Required](/docs/agent-credentials#setup-required-state).
+Check `POST /UserAgent/Detail` first: if `setuprequired` is still `true`, some other credential the agent requires is missing, and Start will refuse. See [Agent Credentials: Setup Required](/docs/agent-credentials#setup-required-state).
 
 Agents already running when you connected Meta Ads restart automatically.
 
@@ -16362,14 +16362,14 @@ The connected person or System User must still have the required Page task and
 the Page must be usable with the resolved ad account.
 
 If you need organic posting (writing posts directly to a Facebook Page rather
-than running ads), that's a separate integration — see the
-[Facebook Page integration](/docs/integration-facebook-skills). The
+than running ads), that's a separate integration (see the
+[Facebook Page integration](/docs/integration-facebook-skills)). The
 `int-facebookpage-post` skill uses the `facebook-pages` credential group, not
 `meta-ads`.
 
 ## API Reference
 
-All endpoints require Wiro authentication — see [Authentication](/docs/authentication) for `x-api-key` + optional signature headers.
+All endpoints require Wiro authentication: see [Authentication](/docs/authentication) for `x-api-key` + optional signature headers.
 
 ### POST /UserAgentOAuth/OAuthConnect
 
@@ -16380,11 +16380,11 @@ All endpoints require Wiro authentication — see [Authentication](/docs/authent
 | `redirecturl` | string | OAuth only | HTTPS URL (or `http://localhost` / `http://127.0.0.1` for dev) where users return after consent. Direct System User token validation does not use this field. |
 | `authmethod` | string | No | `"api_key"` for the recommended System User token mode (registry default) or `"own"` for advanced customer-owned app OAuth. |
 
-OAuth response: `{ result, authorizeUrl, errors }`. Direct System User token response: `{ result, accounts: [{id, name}], errors }` with no `authorizeUrl`. If `result: false`, inspect `errors[0].message` — common messages: `Missing useragentguid`, `Missing credentialkey`, `Missing redirecturl` (OAuth only), `Invalid redirect URL`, `User agent not found or unauthorized`, and `Meta Ads credentials not configured` (own mode without prior Update).
+OAuth response: `{ result, authorizeUrl, errors }`. Direct System User token response: `{ result, accounts: [{id, name}], errors }` with no `authorizeUrl`. If `result: false`, inspect `errors[0].message`. Common messages: `Missing useragentguid`, `Missing credentialkey`, `Missing redirecturl` (OAuth only), `Invalid redirect URL`, `User agent not found or unauthorized`, and `Meta Ads credentials not configured` (own mode without prior Update).
 
 ### GET /UserAgentOAuth/MetaAdsCallback
 
-Server-side endpoint invoked by Meta. You don't call it — you only handle the final redirect back to your `redirecturl`. The callback path is per-provider — Meta Ads's stays `MetaAdsCallback`.
+Server-side endpoint invoked by Meta. You don't call it. You only handle the final redirect back to your `redirecturl`. The callback path is per-provider: Meta Ads's stays `MetaAdsCallback`.
 
 | Query param | Meaning |
 |-------------|---------|
@@ -16483,7 +16483,7 @@ agent model.
 
 ## Using the Skill
 
-Enable `int-metaads-manage` on the agent via `POST /UserAgent/SkillsApply` (see [Agent Skills → Toggling Integration Skills](/docs/agent-skills#toggling-integration-skills)). Adjust the cron of the built-in `cs-cron-metaads-performance-reporter` task (Meta Ads Manager) with `enabled` and `interval` only — the task body (`value`) is owned by the bundled integration skill and silently dropped on writes:
+Enable `int-metaads-manage` on the agent via `POST /UserAgent/SkillsApply` (see [Agent Skills → Toggling Integration Skills](/docs/agent-skills#toggling-integration-skills)). Adjust the cron of the built-in `cs-cron-metaads-performance-reporter` task (Meta Ads Manager) with `enabled` and `interval` only. The task body (`value`) is owned by the bundled integration skill and silently dropped on writes:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
@@ -16497,7 +16497,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   }'
 ```
 
-To change **what** the reporter includes (thresholds, reporting preferences, holiday markets), edit the paired preference skill `ad-strategy` instead — see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preference-skills).
+To change **what** the reporter includes (thresholds, reporting preferences, holiday markets), edit the paired preference skill `ad-strategy` instead (see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preference-skills)).
 
 ## Troubleshooting
 
@@ -16519,7 +16519,7 @@ To change **what** the reporter includes (thresholds, reporting preferences, hol
 
 ### "App not verified" warning on consent
 
-Facebook shows a yellow banner in Development Mode. This is expected and **not a blocker** — users listed under App Roles can click Continue and finish authorization. Users outside App Roles are hard-blocked.
+Facebook shows a yellow banner in Development Mode. This is expected and **not a blocker**: users listed under App Roles can click Continue and finish authorization. Users outside App Roles are hard-blocked.
 
 ### `connected: false` after completing OAuth
 
@@ -16529,8 +16529,8 @@ Facebook shows a yellow banner in Development Mode. This is expected and **not a
 
 User OAuth and System User tokens do not have the same lifecycle:
 
-- **User OAuth (`wiro` / `own`)** — reconnect through the browser after expiry or invalidation.
-- **System User (`api_key`)** — choose **Never** expiration when Meta permits it. If Meta requires an expiring token, generate a replacement and reconnect before expiry. Wiro does not renew or exchange it.
+- **User OAuth (`wiro` / `own`)**: reconnect through the browser after expiry or invalidation.
+- **System User (`api_key`)**: choose **Never** expiration when Meta permits it. If Meta requires an expiring token, generate a replacement and reconnect before expiry. Wiro does not renew or exchange it.
 
 ## Multi-Tenant Architecture
 
@@ -16538,18 +16538,18 @@ For SaaS products connecting many customers' Meta Ads accounts through a single 
 
 1. **Recommended today:** use one System User token per customer-owned Business Portfolio when that operating model fits. Customer-owned OAuth remains available for interactive user authorization; Wiro-owned OAuth stays disabled until Advanced Access and rollout approval.
 2. **One Wiro agent instance per customer.** Call `POST /UserAgent/Deploy` during onboarding, then complete the recommended direct steps or the advanced OAuth flow for that customer's `useragentguid`.
-3. **Tokens are isolated per agent instance.** Customer A's Meta token is never visible to Customer B — they live under different `useragentguid` values.
+3. **Tokens are isolated per agent instance.** Customer A's Meta token is never visible to Customer B, because they live under different `useragentguid` values.
 4. **Consent branding follows the selected path.** Customer-owned OAuth shows the customer's app; the future simple path shows Wiro's reviewed app.
 5. **Customer-owned Development Mode:** add each connecting user to that app's Roles. Multi-tenant use outside app roles requires the appropriate App Review/Advanced Access; do not treat Development Mode as production approval.
 6. **Rate limits are per app, not per customer.** The Marketing API tier (Development → Standard → Advanced) governs aggregate call volume. See Meta's [Rate Limiting](https://developers.facebook.com/docs/graph-api/overview/rate-limiting) docs.
 
 ## Related
 
-- [Agent Credentials & OAuth](/docs/agent-credentials) — integration catalog hub and generic OAuth reference.
-- [Agent Overview](/docs/agent-overview) — deploying, starting, and lifecycle.
-- [Agent Skills](/docs/agent-skills) — configuring `int-metaads-manage` and scheduled runs.
-- [Google Ads integration](/docs/integration-googleads-skills) — for cross-platform paid campaigns.
-- [TikTok Ads integration](/docs/integration-tiktokads-skills) — for cross-platform paid campaigns.
+- [Agent Credentials & OAuth](/docs/agent-credentials): integration catalog hub and generic OAuth reference.
+- [Agent Overview](/docs/agent-overview): deploying, starting, and lifecycle.
+- [Agent Skills](/docs/agent-skills): configuring `int-metaads-manage` and scheduled runs.
+- [Google Ads integration](/docs/integration-googleads-skills): for cross-platform paid campaigns.
+- [TikTok Ads integration](/docs/integration-tiktokads-skills): for cross-platform paid campaigns.
 
 ---
 
@@ -16561,12 +16561,12 @@ Connect your agent to TikTok's advertising platform to report on and manage camp
 
 The TikTok Ads integration powers the `int-tiktok-ads` skill (TikTok Ads Manager). The agent works through TikTok's official **TikTok for Business MCP server** (Model Context Protocol), which exposes TikTok API for Business v1.3 capabilities as tools: reporting, campaign / ad group / ad management, Upgraded Smart+, audiences, creatives, Spark Ads, and TikTok's own diagnosis tools.
 
-This integration covers **advertising only**. It does not post organic videos to a TikTok profile — that is the separate [TikTok integration](/docs/integration-tiktok-skills), which uses its own `tiktok` credential.
+This integration covers **advertising only**. It does not post organic videos to a TikTok profile. That is the separate [TikTok integration](/docs/integration-tiktok-skills), which uses its own `tiktok` credential.
 
 **Skills that use this integration:**
 
-- `int-tiktok-ads` — Reporting, campaign / ad group / ad management, Upgraded Smart+ and GMV Max, audiences, creatives, Spark Ads, and diagnosis
-- `util-ads-manager-common` and `util-ads-playbook` — Shared ads helpers (approval flow, recommendations queue, daily report template, kill / scale / test playbook), also used by the Meta Ads and Google Ads skills
+- `int-tiktok-ads`: Reporting, campaign / ad group / ad management, Upgraded Smart+ and GMV Max, audiences, creatives, Spark Ads, and diagnosis
+- `util-ads-manager-common` and `util-ads-playbook`: Shared ads helpers (approval flow, recommendations queue, daily report template, kill / scale / test playbook), also used by the Meta Ads and Google Ads skills
 
 **Agents that typically enable this integration:**
 
@@ -16577,15 +16577,15 @@ This integration covers **advertising only**. It does not post organic videos to
 
 | Mode | Status | Notes |
 |------|--------|-------|
-| `"wiro"` | Available — the only mode | One-click connect through Wiro's TikTok for Business app. You don't create a developer app, request an API key, or go through app review. |
+| `"wiro"` | Available (the only mode) | One-click connect through Wiro's TikTok for Business app. You don't create a developer app, request an API key, or go through app review. |
 | Customer-owned app or pasted token | Not offered | TikTok Ads has no `"own"` or `"api_key"` mode. `OAuthConnect` rejects any other `authmethod` with `Unsupported connection mode for TikTok Ads`. |
 
-> **Authorization lasts 30 days.** TikTok ends every TikTok for Business authorization 30 days after it is granted, and refreshing the access token does not extend it. Reconnect with the same TikTok for Business account to renew it — see "The 30-day authorization" below.
+> **Authorization lasts 30 days.** TikTok ends every TikTok for Business authorization 30 days after it is granted, and refreshing the access token does not extend it. Reconnect with the same TikTok for Business account to renew it (see "The 30-day authorization" below).
 
 ## Prerequisites
 
-- **A TikTok for Business account with access to at least one advertiser** (ad account) — for example through TikTok Ads Manager or membership in a Business Center. For the agent to make changes, not just report, that account needs a role on the advertiser that allows campaign management.
-- **An agent with `int-tiktok-ads` enabled** — TikTok Ads Manager has it on by default. On any other agent, enable it with `POST /UserAgent/SkillsApply` (see "Using the Skill" below).
+- **A TikTok for Business account with access to at least one advertiser** (ad account), for example through TikTok Ads Manager or membership in a Business Center. For the agent to make changes, not just report, that account needs a role on the advertiser that allows campaign management.
+- **An agent with `int-tiktok-ads` enabled**: TikTok Ads Manager has it on by default. On any other agent, enable it with `POST /UserAgent/SkillsApply` (see "Using the Skill" below).
 - **For API integrations only:** a Wiro API key ([Authentication](/docs/authentication)), a deployed agent ([Agent Overview](/docs/agent-overview)) and its `useragentguid`, and an HTTPS return URL that your backend controls. `http://localhost` and `http://127.0.0.1` are accepted for local development only.
 
 ## Connect in the Wiro dashboard
@@ -16642,7 +16642,7 @@ These operations are not available through this integration, by design. When you
 
 ## Safety and approvals
 
-- **Every change goes through the agent's approval policy** (the `approval-policy` custom skill). By default the agent describes the change (object, IDs, old and new value, reason) and waits for your approval. Reads — reports, lookups, previews — never need approval.
+- **Every change goes through the agent's approval policy** (the `approval-policy` custom skill). By default the agent describes the change (object, IDs, old and new value, reason) and waits for your approval. Reads (reports, lookups, previews) never need approval.
 - **New objects start paused.** Campaigns, ad groups, ads, Upgraded Smart+ campaigns, and campaign copies are always created paused. Turning one on is a separate change that needs its own approval.
 - **Deletes happen only when you ask.** Campaigns, ad groups, ads, audiences, creative assets, blocked words, ad comments, and search negative keywords can be deleted on request, after approval. Deleting cannot be undone. The agent never deletes on its own; when it recommends stopping something, it pauses it.
 - **Rejected changes are not retried.** If TikTok rejects a change, the agent reports TikTok's message and request ID and stops.
@@ -16666,9 +16666,9 @@ Shared ads tasks also cover TikTok Ads: the nightly `cs-cron-ads-recommendation-
 
 To change **what** the tasks look for, edit these custom skills (stored as `cs-<key>`) rather than the tasks:
 
-- `tiktok-ads-strategy` — TikTok-specific knobs: tracking quality gates, kill thresholds, placement strategy, Spark Ads and Smart+ rules.
-- `ad-strategy` — cross-platform KPI thresholds, shared with Meta Ads and Google Ads.
-- `approval-policy` — which changes wait for approval.
+- `tiktok-ads-strategy`: TikTok-specific knobs: tracking quality gates, kill thresholds, placement strategy, Spark Ads and Smart+ rules.
+- `ad-strategy`: cross-platform KPI thresholds, shared with Meta Ads and Google Ads.
+- `approval-policy`: which changes wait for approval.
 
 ## Multiple advertisers
 
@@ -16817,7 +16817,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
   -d '{ "guid": "your-useragent-guid" }'
 ```
 
-Check `POST /UserAgent/Detail` first: if `setuprequired` is still `true`, TikTok Ads or some other credential the agent requires is incomplete, and Start will refuse. See [Agent Credentials — Setup Required](/docs/agent-credentials#setup-required-state).
+Check `POST /UserAgent/Detail` first: if `setuprequired` is still `true`, TikTok Ads or some other credential the agent requires is incomplete, and Start will refuse. See [Agent Credentials: Setup Required](/docs/agent-credentials#setup-required-state).
 
 Agents already running when you connected TikTok Ads restart automatically.
 
@@ -16832,7 +16832,7 @@ Both fields are returned by `POST /UserAgent/Detail` and are managed by the conn
 
 ## API Reference
 
-All endpoints require Wiro authentication — see [Authentication](/docs/authentication) for `x-api-key` + optional signature headers.
+All endpoints require Wiro authentication: see [Authentication](/docs/authentication) for `x-api-key` + optional signature headers.
 
 ### POST /UserAgentOAuth/OAuthConnect
 
@@ -16841,13 +16841,13 @@ All endpoints require Wiro authentication — see [Authentication](/docs/authent
 | `useragentguid` | string | Yes | Agent instance GUID. |
 | `credentialkey` | string | Yes | `"tiktok-ads"`. |
 | `redirecturl` | string | Yes | HTTPS URL (or `http://localhost` / `http://127.0.0.1` for development) where the browser returns after TikTok. |
-| `authmethod` | string | No | `"wiro"` — the default and the only accepted value. |
+| `authmethod` | string | No | `"wiro"`: the default and the only accepted value. |
 
-Response: `{ result, errors, authorizeUrl }`. If `result: false`, inspect `errors[0].message` — common messages: `Request parameter [useragentguid] required`, `Request parameter [credentialkey] required`, `Request parameter [redirecturl] required`, `Invalid redirect URL`, `User agent not found or unauthorized`, `Unsupported connection mode for TikTok Ads`, and `TikTok Ads credentials not configured`.
+Response: `{ result, errors, authorizeUrl }`. If `result: false`, inspect `errors[0].message`. Common messages: `Request parameter [useragentguid] required`, `Request parameter [credentialkey] required`, `Request parameter [redirecturl] required`, `Invalid redirect URL`, `User agent not found or unauthorized`, `Unsupported connection mode for TikTok Ads`, and `TikTok Ads credentials not configured`.
 
 ### GET /UserAgentOAuth/TikTokAdsCallback
 
-Server-side endpoint invoked by TikTok. You don't call it — you only handle the final redirect back to your `redirecturl`. The callback path is per-provider — TikTok Ads's is `TikTokAdsCallback`, separate from the organic TikTok integration's `TikTokCallback`.
+Server-side endpoint invoked by TikTok. You don't call it. You only handle the final redirect back to your `redirecturl`. The callback path is per-provider: TikTok Ads's is `TikTokAdsCallback`, separate from the organic TikTok integration's `TikTokCallback`.
 
 | Query param | Meaning |
 |-------------|---------|
@@ -16903,7 +16903,7 @@ Wiro renews the 24-hour access token automatically while the agent is running. T
 
 ## Using the Skill
 
-TikTok Ads Manager has `int-tiktok-ads` on by default. On any other agent, enable it via `POST /UserAgent/SkillsApply` (see [Agent Skills → Toggling Integration Skills](/docs/agent-skills#toggling-integration-skills)). Adjust the cron of a bundled task such as the daily performance report with `enabled` and `interval` only — the task body (`value`) is owned by the bundled integration skill and silently dropped on writes:
+TikTok Ads Manager has `int-tiktok-ads` on by default. On any other agent, enable it via `POST /UserAgent/SkillsApply` (see [Agent Skills → Toggling Integration Skills](/docs/agent-skills#toggling-integration-skills)). Adjust the cron of a bundled task such as the daily performance report with `enabled` and `interval` only. The task body (`value`) is owned by the bundled integration skill and silently dropped on writes:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
@@ -16917,7 +16917,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   }'
 ```
 
-To change **what** the reports include (tracking quality gates, kill thresholds, placement strategy, Spark Ads and Smart+ rules), edit the preference skill `tiktok-ads-strategy` (stored as `cs-tiktok-ads-strategy`), or `ad-strategy` for cross-platform thresholds — see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preference-skills).
+To change **what** the reports include (tracking quality gates, kill thresholds, placement strategy, Spark Ads and Smart+ rules), edit the preference skill `tiktok-ads-strategy` (stored as `cs-tiktok-ads-strategy`), or `ad-strategy` for cross-platform thresholds (see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preference-skills)).
 
 ## Troubleshooting
 
@@ -16962,19 +16962,19 @@ Nothing to do. The agent drops the metric TikTok rejected and runs the report ag
 For SaaS products connecting many customers' TikTok Ads accounts through a single Wiro-powered backend:
 
 1. **One Wiro agent instance per customer.** Call `POST /UserAgent/Deploy` during onboarding, then run the connection flow for that customer's `useragentguid`. Each customer signs in with their own TikTok for Business account.
-2. **Tokens are isolated per agent instance.** Customer A's TikTok authorization is never visible to Customer B — they live under different `useragentguid` values.
+2. **Tokens are isolated per agent instance.** Customer A's TikTok authorization is never visible to Customer B, because they live under different `useragentguid` values.
 3. **The consent screen shows Wiro AI.** There is no customer-owned app mode, so the consent screen cannot be white-labeled.
 4. **Plan for the 30-day renewal.** Every customer has to reconnect every 30 days. Track `connectedat` from `OAuthStatus` and prompt the customer before the 30 days are up.
 5. **Rate limits are mostly per TikTok for Business user.** TikTok allows most tools 3 requests per second per tool for each user; asynchronous report creation and campaign copies have lower per-app limits that all connections share.
 
 ## Related
 
-- [Agent Credentials & OAuth](/docs/agent-credentials) — integration catalog hub and generic OAuth reference.
-- [Agent Overview](/docs/agent-overview) — deploying, starting, and lifecycle.
-- [Agent Skills](/docs/agent-skills) — configuring `int-tiktok-ads` and scheduled runs.
-- [TikTok integration](/docs/integration-tiktok-skills) — organic video posting to a TikTok profile (separate `tiktok` credential).
-- [Meta Ads integration](/docs/integration-metaads-skills) — for cross-platform paid campaigns.
-- [Google Ads integration](/docs/integration-googleads-skills) — for cross-platform paid campaigns.
+- [Agent Credentials & OAuth](/docs/agent-credentials): integration catalog hub and generic OAuth reference.
+- [Agent Overview](/docs/agent-overview): deploying, starting, and lifecycle.
+- [Agent Skills](/docs/agent-skills): configuring `int-tiktok-ads` and scheduled runs.
+- [TikTok integration](/docs/integration-tiktok-skills): organic video posting to a TikTok profile (separate `tiktok` credential).
+- [Meta Ads integration](/docs/integration-metaads-skills): for cross-platform paid campaigns.
+- [Google Ads integration](/docs/integration-googleads-skills): for cross-platform paid campaigns.
 
 ---
 
@@ -16994,7 +16994,7 @@ Customer-owned OAuth remains available as an advanced path.
 
 **Skills that use this integration:**
 
-- `int-facebookpage-post` — Publish text, photo, and video posts to a Facebook Page
+- `int-facebookpage-post`: Publish text, photo, and video posts to a Facebook Page
 
 **Agents that typically enable this integration:**
 
@@ -17011,9 +17011,9 @@ Customer-owned OAuth remains available as an advanced path.
 
 ## Prerequisites
 
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview); keep the `useragents[0].guid`.
-- **A Meta Business account** — [business.facebook.com](https://business.facebook.com/).
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)); keep the `useragents[0].guid`.
+- **A Meta Business account** ([business.facebook.com](https://business.facebook.com/)).
 - **At least one Facebook Page assigned to the connecting principal** with the
   `CREATE_CONTENT` task. Add `MODERATE` when the agent should add comments.
 - **Recommended direct mode:** a System User and the Business app used to
@@ -17181,7 +17181,7 @@ These work without App Review in Development Mode for any Facebook user in App R
 
 ### Step 5: Add other Facebook accounts as Testers (only if needed)
 
-Connecting your own Facebook account? You're the app Admin — skip. Connecting a customer's account? Add them under **App Roles → Roles → Add People → Testers**. They accept at [facebook.com/settings → Business Integrations](https://www.facebook.com/settings?tab=business_tools).
+Connecting your own Facebook account? You're the app Admin, so skip this. Connecting a customer's account? Add them under **App Roles → Roles → Add People → Testers**. They accept at [facebook.com/settings → Business Integrations](https://www.facebook.com/settings?tab=business_tools).
 
 ### Step 6: Save your Meta App credentials to Wiro
 
@@ -17199,7 +17199,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   }'
 ```
 
-Wiro merges this into only the `facebook-pages` group — other credentials are untouched.
+Wiro merges this into only the `facebook-pages` group, and other credentials are untouched.
 
 ### Step 7: Initiate OAuth
 
@@ -17244,7 +17244,7 @@ Query parameters:
 | Param | Meaning |
 |-------|---------|
 | `fb_connected=true` | OAuth completed; credentials are cached server-side awaiting page selection. |
-| `fb_pages` | URL-encoded JSON array `[{ id, name }, ...]` of every admin-managed Page. The per-page access tokens stay server-side — the client only receives ID and name. |
+| `fb_pages` | URL-encoded JSON array `[{ id, name }, ...]` of every admin-managed Page. The per-page access tokens stay server-side. The client only receives ID and name. |
 | `fb_error=<code>` | Failure. See [Troubleshooting](#troubleshooting). |
 
 Parse:
@@ -17308,7 +17308,7 @@ If the 15-minute window lapses before you call `SetPickerAccounts`, you'll get
 `No pending Facebook connection. Please reconnect via OAuthConnect.` Repeat
 Step 3 for System User mode or Step 7 for OAuth.
 
-`fbpagename` is optional; if omitted, Wiro uses the name from the cached page list. The Facebook Pages picker accepts one or more entries — pass multiple `{ pageid, fbpagename }` objects to authorize the agent against several pages at once.
+`fbpagename` is optional; if omitted, Wiro uses the name from the cached page list. The Facebook Pages picker accepts one or more entries: pass multiple `{ pageid, fbpagename }` objects to authorize the agent against several pages at once.
 
 ### Step 10: Verify the connection
 
@@ -17377,7 +17377,7 @@ Server-side. Query params appended to your `redirecturl`:
 | `fb_pages` | URL-encoded JSON `[{id, name}, ...]` of admin-managed Pages. |
 | `fb_error=<code>` | Failure. |
 
-The callback path is per-provider — Facebook's stays `FBCallback`.
+The callback path is per-provider: Facebook's stays `FBCallback`.
 
 ### POST /UserAgentOAuth/SetPickerAccounts
 
@@ -17385,7 +17385,7 @@ The callback path is per-provider — Facebook's stays `FBCallback`.
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
 | `credentialkey` | string | Yes | `"facebook-pages"`. |
-| `accounts` | array | Yes | One or more `{ pageid, fbpagename? }` entries. The per-page access token is resolved from the latest server-side OAuth or System User discovery result — don't supply it. |
+| `accounts` | array | Yes | One or more `{ pageid, fbpagename? }` entries. The per-page access token is resolved from the latest server-side OAuth or System User discovery result, so don't supply it. |
 
 Response: `{ result, accounts: [{id, name}, ...], errors }`. Triggers auto-restart if running.
 
@@ -17442,12 +17442,12 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
 ```
 
 To change **what** the scheduled task posts (topics, tone, content angle), edit
-the paired preference skill `cs-content-tone` instead — see
-[Agent Skills → Updating Preference Skills](/docs/agent-skills#updating-preference-skills).
+the paired preference skill `cs-content-tone` instead (see
+[Agent Skills → Updating Preference Skills](/docs/agent-skills#updating-preference-skills)).
 
 The agent posts an approved draft, or the text, link and media you give it in
 chat. Hashtags, calls to action and links come from the draft, `cs-content-tone`,
-or the agent's preferences; without hashtag rules the agent adds 1–3. Facebook
+or the agent's preferences; without hashtag rules the agent adds 1 to 3. Facebook
 makes links clickable, so a draft's page link goes into the post.
 
 ## Troubleshooting
@@ -17509,10 +17509,10 @@ OAuth), then ask again.
 - [Agent Credentials & OAuth](/docs/agent-credentials)
 - [Agent Overview](/docs/agent-overview)
 - [Agent Skills](/docs/agent-skills)
-- [Meta Ads integration](/docs/integration-metaads-skills) — separate product; used for paid media, not organic posting.
+- [Meta Ads integration](/docs/integration-metaads-skills): separate product; used for paid media, not organic posting.
 - [Instagram integration](/docs/integration-instagram-skills)
-- [Meta for Developers — Pages API](https://developers.facebook.com/docs/pages-api)
-- [Meta for Developers — System User API calls](https://developers.facebook.com/docs/marketing-api/system-users/guides/api-calls/)
+- [Meta for Developers: Pages API](https://developers.facebook.com/docs/pages-api)
+- [Meta for Developers: System User API calls](https://developers.facebook.com/docs/marketing-api/system-users/guides/api-calls/)
 
 ---
 
@@ -17539,12 +17539,12 @@ Instagram Login issues an Instagram User access token and publishes through
 
 **Skills that use this integration:**
 
-- `int-instagram-post` — Publish feed carousels, Reels, and Stories; any agent can also post a finished video as a Reel
+- `int-instagram-post`: Publish feed carousels, Reels, and Stories; any agent can also post a finished video as a Reel
 
 **Agents that typically enable this integration:**
 
 - Social Manager
-- Video Creator — to post the videos it makes as Reels. Add `int-instagram-post` with
+- Video Creator: to post the videos it makes as Reels. Add `int-instagram-post` with
   [`SkillsApply`](/docs/agent-skills#toggling-integration-skills); it adds $1 a month to the Starter
   price. Video Creator then posts a Reel when the request asks for it or an `Instagram` line in its
   `video-preferences` says to, and otherwise offers to.
@@ -17560,10 +17560,10 @@ Instagram Login issues an Instagram User access token and publishes through
 
 ## Prerequisites
 
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview); keep the `useragents[0].guid`.
-- **A Meta Business account** — [business.facebook.com](https://business.facebook.com/).
-- **One or more Instagram Business or Creator accounts** — personal accounts cannot use
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)); keep the `useragents[0].guid`.
+- **A Meta Business account** ([business.facebook.com](https://business.facebook.com/)).
+- **One or more Instagram Business or Creator accounts**. Personal accounts cannot use
   content publishing.
 - **Recommended direct mode:** a System User, the Business app used to generate
   its token, and a Facebook Page linked to each Instagram professional account
@@ -17714,7 +17714,7 @@ configured.
 ### Step 2: Add the "Instagram" product
 
 1. From the app dashboard, **Add product**.
-2. Find **"Instagram"** (not "Instagram Basic Display" — that's for personal accounts and is being deprecated).
+2. Find **"Instagram"** (not "Instagram Basic Display", which is for personal accounts and is being deprecated).
 3. **Set up**.
 
 ### Step 3: Configure the OAuth redirect URI
@@ -17747,7 +17747,7 @@ instagram_business_basic,instagram_business_content_publish,instagram_business_m
 | `instagram_business_manage_comments` | Read, reply, hide, delete comments. |
 | `instagram_business_manage_insights` | Read engagement insights for posts and profile. |
 
-These work without App Review in Development Mode for any Facebook user in App Roles. **No `pages_*` scopes are requested** — Instagram Login uses its own scope family.
+These work without App Review in Development Mode for any Facebook user in App Roles. **No `pages_*` scopes are requested**, since Instagram Login uses its own scope family.
 
 ### Step 5: Copy your App ID and App Secret
 
@@ -17860,7 +17860,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
   Login OAuth returns one entry because one account is authorized per consent.
 - `tokenexpiresat` is empty for direct System User mode and approximately 60
   days for customer-owned Instagram OAuth.
-- **No `refreshtokenexpiresat`** — Instagram does not expose a separate refresh token for this connection.
+- **No `refreshtokenexpiresat`**: Instagram does not expose a separate refresh token for this connection.
 
 ### Step 11: Start the agent if it's not running
 
@@ -17895,7 +17895,7 @@ Server-side. Query params appended to your `redirecturl`:
 | `ig_username` | Connected Instagram handle (without `@`). |
 | `ig_error=<code>` | Failure. |
 
-The callback path is per-provider — Instagram's stays `IGCallback`.
+The callback path is per-provider: Instagram's stays `IGCallback`.
 
 ### POST /UserAgentOAuth/SetPickerAccounts
 
@@ -17955,11 +17955,11 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
 ```
 
 To change **what** the scheduled task posts (topics, tone, hashtag rules,
-caption style), edit the paired preference skill `cs-content-tone` instead —
-see [Agent Skills → Updating Preference Skills](/docs/agent-skills#updating-preference-skills).
+caption style), edit the paired preference skill `cs-content-tone` instead
+(see [Agent Skills → Updating Preference Skills](/docs/agent-skills#updating-preference-skills)).
 
 Hashtags, calls to action and links come from your draft, `cs-content-tone`,
-or the agent's preferences. Without hashtag rules the agent adds 3–5 relevant
+or the agent's preferences. Without hashtag rules the agent adds 3 to 5 relevant
 hashtags; Instagram allows at most 5 per post. Instead of a drafted post, you
 can give the agent the caption and the images or videos in chat: the first one
 is the cover.
@@ -18012,7 +18012,7 @@ Common causes:
 - Image resolution too low (<320px) or aspect ratio outside Instagram's allowed ranges.
 - Media that does not meet Meta's current format, duration, size, or codec
   requirements.
-- Instagram account switched back to Personal after connection — the token becomes invalid. Ask the user to switch back to Business and reconnect.
+- Instagram account switched back to Personal after connection: the token becomes invalid. Ask the user to switch back to Business and reconnect.
 
 ### The agent says no Instagram account is connected
 
@@ -18038,10 +18038,10 @@ do nothing. Connect an account (in System User mode, select it with
 - [Agent Credentials & OAuth](/docs/agent-credentials)
 - [Agent Overview](/docs/agent-overview)
 - [Agent Skills](/docs/agent-skills)
-- [Facebook Page integration](/docs/integration-facebook-skills) — Page linkage is required for System User mode, not Instagram Login OAuth.
-- [Meta Ads integration](/docs/integration-metaads-skills) — for Instagram-placement paid ads.
-- [Meta for Developers — Instagram Graph API](https://developers.facebook.com/docs/instagram-api)
-- [Meta for Developers — Content Publishing API comparison](https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/content-publishing/)
+- [Facebook Page integration](/docs/integration-facebook-skills): Page linkage is required for System User mode, not Instagram Login OAuth.
+- [Meta Ads integration](/docs/integration-metaads-skills): for Instagram-placement paid ads.
+- [Meta for Developers: Instagram Graph API](https://developers.facebook.com/docs/instagram-api)
+- [Meta for Developers: Content Publishing API comparison](https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/content-publishing/)
 
 ---
 
@@ -18482,23 +18482,23 @@ The 100 queries-per-minute OAuth-client limit, averaged over a 10-minute window,
 
 # Roasit Integration
 
-Connect your agent to Roasit mobile attribution — creative, campaign and network ROAS, cohort revenue and retention, iOS SKAdNetwork reports and install reconciliation, read with one read-only API token.
+Connect your agent to Roasit mobile attribution: creative, campaign and network ROAS, cohort revenue and retention, iOS SKAdNetwork reports and install reconciliation, read with one read-only API token.
 
 ## Overview
 
-[Roasit](https://roasit.com) is a mobile measurement partner (MMP): it attributes app installs to ad networks, pulls ad spend from Meta, Google Ads, TikTok and AppLovin, and joins in-app and ad revenue into install cohorts. This integration lets an agent read those numbers — the same figures the Roasit dashboard's Reports screen shows — and act on them through the ad-platform skills.
+[Roasit](https://roasit.com) is a mobile measurement partner (MMP): it attributes app installs to ad networks, pulls ad spend from Meta, Google Ads, TikTok and AppLovin, and joins in-app and ad revenue into install cohorts. This integration lets an agent read those numbers (the same figures the Roasit dashboard's Reports screen shows) and act on them through the ad-platform skills.
 
 **Skills that use this integration:**
 
-- `int-roasit-attribution` — Read-only reports from the Roasit API: creative / campaign / network ROAS (`roas_all`, ad-only and in-app-only ROAS, day-N ROAS), installs, spend, CPI, cohort revenue, retention, iOS SKAdNetwork reports, install reconciliation against the stores, and data freshness. Rows carry the ad networks' own campaign / ad ids, so the agent can map a creative back to Google Ads, Meta Ads or TikTok Ads.
+- `int-roasit-attribution`: Read-only reports from the Roasit API: creative / campaign / network ROAS (`roas_all`, ad-only and in-app-only ROAS, day-N ROAS), installs, spend, CPI, cohort revenue, retention, iOS SKAdNetwork reports, install reconciliation against the stores, and data freshness. Rows carry the ad networks' own campaign / ad ids, so the agent can map a creative back to Google Ads, Meta Ads or TikTok Ads.
 
 **Bundled task:**
 
-- `cs-cron-roasit-creative-roas-reporter` — daily at 10:30 UTC: the last 7 days' creative ROAS per app, pause / scale recommendations for creatives that pass the significance gate, and an attribution audit (network-claimed vs Roasit-attributed installs, network claims vs store installs). Off until the Roasit credential is filled.
+- `cs-cron-roasit-creative-roas-reporter` runs daily at 10:30 UTC and reports the last 7 days' creative ROAS per app, pause / scale recommendations for creatives that pass the significance gate, and an attribution audit (network-claimed vs Roasit-attributed installs, network claims vs store installs). Off until the Roasit credential is filled.
 
 **Agents that typically enable this integration:**
 
-- [Google Ads Manager](https://wiro.ai/agents/google-ads-manager), [Meta Ads Manager](https://wiro.ai/agents/meta-ads-manager) and [TikTok Ads Manager](https://wiro.ai/agents/tiktok-ads-manager) — MMP-verified ROAS next to the platform's own numbers.
+- [Google Ads Manager](https://wiro.ai/agents/google-ads-manager), [Meta Ads Manager](https://wiro.ai/agents/meta-ads-manager) and [TikTok Ads Manager](https://wiro.ai/agents/tiktok-ads-manager): MMP-verified ROAS next to the platform's own numbers.
 - Custom app-marketing agents that report on app growth.
 
 ## Availability
@@ -18509,8 +18509,8 @@ Connect your agent to Roasit mobile attribution — creative, campaign and netwo
 
 ## Prerequisites
 
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
 - **A Roasit account** with at least one app, and its Roasit SDK sending installs.
 
 ## Setup
@@ -18528,7 +18528,7 @@ Connect your agent to Roasit mobile attribution — creative, campaign and netwo
 Leave the apps list empty and the agent reports on every app the token can see. To limit it to specific apps, or to give an app the name you use in chat, add one row per app and platform:
 
 1. Open the app in Roasit.
-2. Copy the **App token** shown in the app's header — 12 lowercase hex characters such as `a1b2c3d4e5f6`, the same token the app's Roasit SDK starts with.
+2. Copy the **App token** shown in the app's header: 12 lowercase hex characters such as `a1b2c3d4e5f6`, the same token the app's Roasit SDK starts with.
 3. Pick the row's **Platform**: iOS, Android, or Web for a web app measured by Roasit's browser SDK and Stripe sales. One app token covers every platform of the app, so an app you run on several gets one row per platform with the same token; the agent filters each row's reports to its platform.
 
 ### Step 3: Save the credential to Wiro
@@ -18610,7 +18610,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ## What the agent reports
 
-The agent reads Roasit's report API, one app per request, and never recomputes a metric itself — every number equals the Roasit dashboard's for the same app, dates, grouping, filters and IAP setting.
+The agent reads Roasit's report API, one app per request, and never recomputes a metric itself, so every number equals the Roasit dashboard's for the same app, dates, grouping, filters and IAP setting.
 
 | Metric | Meaning |
 |--------|---------|
@@ -18621,7 +18621,7 @@ The agent reads Roasit's report API, one app per request, and never recomputes a
 | `spend`, `cpi`, `impressions`, `clicks` | Paid media, in the report's currency (USD unless the app reports in another one). |
 | `rev_all`, `rev_ad`, `rev_iap` | Cohort revenue to date, total / ads / in-app. |
 
-Breakdowns: day, platform, country, network, campaign, ad group and ad. A "-" (null) value means the dashboard shows none yet — no spend, a cohort not old enough, or a day whose spend is not final — and is never treated as zero.
+Breakdowns: day, platform, country, network, campaign, ad group and ad. A "-" (null) value means the dashboard shows none yet (no spend, a cohort not old enough, or a day whose spend is not final) and is never treated as zero.
 
 Creative-level ROAS needs Roasit to pull spend at ad level for that network (**Spend detail** in the Roasit app settings); networks pulled at campaign level are reported at campaign level.
 
@@ -18631,13 +18631,13 @@ The integration adds nothing to the agent's monthly price or credit pool. Like e
 
 ## Recommendations & approval
 
-The daily task writes `pause_creative_low_roas`, `scale_creative_high_roas` and `attribution_audit` items to the agent's recommendation ledger; nothing changes on an ad platform until you approve an item (`apply 1,3`, `apply all safe`, `skip 2`). Thresholds — minimum spend and installs, the ROAS metric, floor and ceiling, drift and overcount limits — live in the editable `roasit-strategy` custom skill and fall back to `ad-strategy`.
+The daily task writes `pause_creative_low_roas`, `scale_creative_high_roas` and `attribution_audit` items to the agent's recommendation ledger; nothing changes on an ad platform until you approve an item (`apply 1,3`, `apply all safe`, `skip 2`). Thresholds (minimum spend and installs, the ROAS metric, floor and ceiling, drift and overcount limits) live in the editable `roasit-strategy` custom skill and fall back to `ad-strategy`.
 
 ## Troubleshooting
 
-- **401:** The token was revoked or mistyped — create a new one on Roasit's Account page and save it again.
+- **401:** The token was revoked or mistyped. Create a new one on Roasit's Account page and save it again.
 - **404 for an app:** The app token is wrong, or the Roasit account behind the token cannot see that app.
-- **Creative ROAS shows "-":** That network's spend is pulled at campaign level in Roasit — raise Spend detail, or read the campaign-level row.
+- **Creative ROAS shows "-":** That network's spend is pulled at campaign level in Roasit, so raise Spend detail or read the campaign-level row.
 - **Today's or yesterday's ROAS is missing:** Roasit's nightly spend pull has not finalised the day yet; the report names the excluded days.
 - **Agent says "not connected" with the token filled:** The agent restarts to pick up new credentials; give it a moment after saving, then retry.
 
@@ -18661,17 +18661,17 @@ The Google Business Profile integration powers the `int-google-business-reviews`
 
 **Skills that use this integration:**
 
-- `int-google-business-reviews` — Reads the Google reviews of the selected locations, drafts replies, posts approved replies, and follows Google's moderation of each posted reply.
+- `int-google-business-reviews`: Reads the Google reviews of the selected locations, drafts replies, posts approved replies, and follows Google's moderation of each posted reply.
 
 **Bundled task:**
 
-- `cs-cron-google-review-scanner` — every 2 hours (`0 */2 * * *`): scans the selected locations for new reviews and sends you the drafted replies. It runs only when Google Business Profile is connected.
+- `cs-cron-google-review-scanner` runs every 2 hours (`0 */2 * * *`), scans the selected locations for new reviews and sends you the drafted replies. It runs only when Google Business Profile is connected.
 
 ## Availability
 
 | Mode | Status | Notes |
 |------|--------|-------|
-| `"own"` | Available — the only mode | An OAuth client from your own Google Cloud project. Google must approve that project for Business Profile API access before any call works. |
+| `"own"` | Available (the only mode) | An OAuth client from your own Google Cloud project. Google must approve that project for Business Profile API access before any call works. |
 | `"wiro"` | Not available | Wiro-managed one-click connect is not available for Google Business Profile. |
 
 > **Google approves the project first.** You request Business Profile API access for your Google Cloud project, and Google reviews requests within 14 days. Until the project is approved, every call to Google fails, and connecting typically ends with "No accounts available". See [Google Cloud setup](#google-cloud-setup).
@@ -18680,8 +18680,8 @@ The Google Business Profile integration powers the `int-google-business-reviews`
 
 - **A verified Business Profile.** Google asks for a profile that has been verified and active for 60+ days, with the business website listed, before it grants API access.
 - **A Google account that is an owner or manager of the Business Profile.** Request API access with its email, and connect with the Google account that manages the business.
-- **A Google Cloud project approved for Business Profile API access**, with an OAuth client of type Web application — see [Google Cloud setup](#google-cloud-setup).
-- **An agent with `int-google-business-reviews` enabled** — see [Using the Skill](#using-the-skill).
+- **A Google Cloud project approved for Business Profile API access**, with an OAuth client of type Web application (see [Google Cloud setup](#google-cloud-setup)).
+- **An agent with `int-google-business-reviews` enabled**: see [Using the Skill](#using-the-skill).
 - **For API integrations only:** a Wiro API key ([Authentication](/docs/authentication)), a deployed agent ([Agent Overview](/docs/agent-overview)) and its `useragentguid`, and an HTTPS return URL that your backend controls. `http://localhost` and `http://127.0.0.1` are accepted for local development only.
 
 ## Google Cloud setup
@@ -18702,14 +18702,14 @@ In the Google Cloud Console, create a project or pick an existing one. Copy its 
 
 Open [IAM & Admin → Quotas](https://console.cloud.google.com/iam-admin/quotas) for the project and look at the requests-per-minute quota of the Business Profile APIs:
 
-- **0 requests per minute** — not approved yet. Every call to Google fails until this changes.
-- **300 requests per minute** — approved. Continue with Step 4.
+- **0 requests per minute**: not approved yet. Every call to Google fails until this changes.
+- **300 requests per minute**: approved. Continue with Step 4.
 
 ### Step 4: Enable the APIs
 
 After approval, enable these three APIs in the project:
 
-- [Google My Business API](https://console.cloud.google.com/apis/library/mybusiness.googleapis.com) — listed in the API Library only after the project is approved.
+- [Google My Business API](https://console.cloud.google.com/apis/library/mybusiness.googleapis.com): listed in the API Library only after the project is approved.
 - [My Business Account Management API](https://console.cloud.google.com/apis/library/mybusinessaccountmanagement.googleapis.com)
 - [My Business Business Information API](https://console.cloud.google.com/apis/library/mybusinessbusinessinformation.googleapis.com)
 
@@ -18757,10 +18757,10 @@ To change the locations later, use **Manage** on the Google Business Profile car
 - **Drafts one reply per new review, in the reviewer's language.** When Google shows a translated review, the agent answers the original text.
 - **Follows your review preferences.** Before drafting, it reads the `cs-review-preferences` custom skill: tone, length by rating, contact line, sign-off, and house rules.
 - **Sends the drafts to you**, numbered, in chat and on Telegram if it is connected. Answer in chat:
-  - `ok 1` — approve draft 1
-  - `ok all` — approve every draft
-  - `skip 2` — skip draft 2
-  - `edit 1: <text>` — replace draft 1 with your text
+  - `ok 1`: approve draft 1
+  - `ok all`: approve every draft
+  - `skip 2`: skip draft 2
+  - `edit 1: <text>` (replace draft 1 with your text)
 - **Posts approved replies** through the Google Business Profile API.
 - **Follows Google's moderation.** Google reviews every reply before it is public: a reply is `PENDING`, then `APPROVED`, or `REJECTED` with a policy violation. The agent tells you about rejected replies.
 - **Edits or deletes a posted reply** only when you ask.
@@ -18773,7 +18773,7 @@ To change the locations later, use **Manage** on the Google Business Profile car
 
 These are outside this integration:
 
-- **Changing business details** — name, hours, address, or photos.
+- **Changing business details**: name, hours, address, or photos.
 - **Creating posts.**
 - **Answering Q&A.**
 - **Reporting or removing a review.** The business does that in Google Maps.
@@ -18803,8 +18803,8 @@ These are outside this integration:
 
 To change **what** the scanner does, edit the custom skills it reads rather than the task:
 
-- `cs-review-preferences` — tone, length by rating, contact line, sign-off, house rules, and the number of automatic replies per scan.
-- `cs-approval-policy` — which replies wait for your approval.
+- `cs-review-preferences`: tone, length by rating, contact line, sign-off, house rules, and the number of automatic replies per scan.
+- `cs-approval-policy`: which replies wait for your approval.
 
 ## Connect through the API
 
@@ -19069,7 +19069,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
   -d '{ "guid": "your-useragent-guid" }'
 ```
 
-Check `POST /UserAgent/Detail` first: if `setuprequired` is still `true`, a credential the agent requires is incomplete, and Start will refuse. See [Agent Credentials — Setup Required](/docs/agent-credentials#setup-required-state).
+Check `POST /UserAgent/Detail` first: if `setuprequired` is still `true`, a credential the agent requires is incomplete, and Start will refuse. See [Agent Credentials: Setup Required](/docs/agent-credentials#setup-required-state).
 
 ## Credential fields
 
@@ -19085,7 +19085,7 @@ Check `POST /UserAgent/Detail` first: if `setuprequired` is still `true`, a cred
 
 ## API Reference
 
-All endpoints require Wiro authentication — see [Authentication](/docs/authentication) for `x-api-key` + optional signature headers.
+All endpoints require Wiro authentication: see [Authentication](/docs/authentication) for `x-api-key` + optional signature headers.
 
 ### POST /UserAgentOAuth/OAuthConnect
 
@@ -19096,7 +19096,7 @@ All endpoints require Wiro authentication — see [Authentication](/docs/authent
 | `redirecturl` | string | Yes | HTTPS URL (or `http://localhost` / `http://127.0.0.1` for development) where the browser returns after Google. |
 | `authmethod` | string | Yes | `"own"`, the only available mode. |
 
-Response: `{ result, errors, authorizeUrl }`. If `result: false`, inspect `errors[0].message` — common messages: `Invalid redirect URL`, `User agent not found or unauthorized`, `Wiro-managed OAuth is not enabled for Google Business Profile` (no `authmethod`, or `"wiro"`), and `Google Business Profile credentials not configured` (the Client ID or Client Secret is not saved).
+Response: `{ result, errors, authorizeUrl }`. If `result: false`, inspect `errors[0].message`. Common messages: `Invalid redirect URL`, `User agent not found or unauthorized`, `Wiro-managed OAuth is not enabled for Google Business Profile` (no `authmethod`, or `"wiro"`), and `Google Business Profile credentials not configured` (the Client ID or Client Secret is not saved).
 
 ### GET /UserAgentOAuth/GBPCallback
 
@@ -19182,7 +19182,7 @@ Response: `{ "result": true, "errors": [] }`. Running agents restart automatical
 
 ### Token lifecycle
 
-Wiro renews the access token with the stored refresh token while the agent is running. While the consent screen is in **Testing**, Google expires the refresh token after 7 days; set it to **In production** to avoid weekly disconnects. If Google revokes the access, or `OAuthStatus` keeps reporting `connected: false`, call `OAuthDisconnect` and run Steps 2–5 again. There is no customer-facing token-refresh endpoint.
+Wiro renews the access token with the stored refresh token while the agent is running. While the consent screen is in **Testing**, Google expires the refresh token after 7 days; set it to **In production** to avoid weekly disconnects. If Google revokes the access, or `OAuthStatus` keeps reporting `connected: false`, call `OAuthDisconnect` and run Steps 2 to 5 again. There is no customer-facing token-refresh endpoint.
 
 ## Using the Skill
 
@@ -19203,7 +19203,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
 
 **Pricing:** like the App Store and Google Play review skills, `int-google-business-reviews` adds $1 and 100 credits per month to the agent's skill weights (`monthly_price_weight_usd: 1`, `monthly_credits_weight: 100`). Preview the result with [`POST /UserAgent/PricingPreview`](/docs/agent-overview#post-useragentpricingpreview) before you apply it. As with every agent turn, scans and replies are billed on the LLM tokens they use.
 
-Adjust the scanner's schedule with `enabled` and `interval` only — the task body (`value`) is owned by the bundled integration skill and silently dropped on writes:
+Adjust the scanner's schedule with `enabled` and `interval` only. The task body (`value`) is owned by the bundled integration skill and silently dropped on writes:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
@@ -19217,7 +19217,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   }'
 ```
 
-To change how replies read, edit `cs-review-preferences`; to change which replies wait for approval, edit `cs-approval-policy` — see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preference-skills).
+To change how replies read, edit `cs-review-preferences`; to change which replies wait for approval, edit `cs-approval-policy` (see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preference-skills)).
 
 ## Troubleshooting
 
@@ -19266,17 +19266,17 @@ Google reviews every reply before it is public. When it marks a reply `REJECTED`
 For SaaS products connecting many businesses through a single Wiro-powered backend:
 
 1. **One Wiro agent instance per business.** Call `POST /UserAgent/Deploy` during onboarding, then run the connection flow for that business's `useragentguid`.
-2. **Tokens are isolated per agent instance.** One business's Google authorization is never visible to another — they live under different `useragentguid` values.
+2. **Tokens are isolated per agent instance.** One business's Google authorization is never visible to another, because they live under different `useragentguid` values.
 3. **The consent screen shows your app.** The connection uses your own OAuth client, so Google shows the app name of your Google Cloud project.
 4. **The quota belongs to the Google Cloud project.** Every connection made with the same OAuth client shares its 300 requests per minute.
 
 ## Related
 
-- [Agent Credentials & OAuth](/docs/agent-credentials) — integration catalog hub and generic OAuth reference.
-- [Agent Overview](/docs/agent-overview) — deploying, starting, and lifecycle.
-- [Agent Skills](/docs/agent-skills) — configuring `int-google-business-reviews`, custom skills, and scheduled runs.
-- [Telegram integration](/docs/integration-telegram-skills) — receive the drafts on Telegram as well as in chat.
-- [App Store Connect integration](/docs/integration-appstore-skills) and [Google Play integration](/docs/integration-googleplay-skills) — reviews of your apps.
+- [Agent Credentials & OAuth](/docs/agent-credentials): integration catalog hub and generic OAuth reference.
+- [Agent Overview](/docs/agent-overview): deploying, starting, and lifecycle.
+- [Agent Skills](/docs/agent-skills): configuring `int-google-business-reviews`, custom skills, and scheduled runs.
+- [Telegram integration](/docs/integration-telegram-skills): receive the drafts on Telegram as well as in chat.
+- [App Store Connect integration](/docs/integration-appstore-skills) and [Google Play integration](/docs/integration-googleplay-skills): reviews of your apps.
 - [Business Profile APIs prerequisites](https://developers.google.com/my-business/content/prereqs)
 
 ---

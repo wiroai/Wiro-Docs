@@ -8,8 +8,8 @@ The Google Ads integration uses Google OAuth 2.0 with the Google Ads API v23 RES
 
 **Skills that use this integration:**
 
-- `int-googleads-manage` — Campaign / ad group / keyword management, insights
-- `util-ads-manager-common` — Shared ads helpers
+- `int-googleads-manage`: Campaign / ad group / keyword management, insights
+- `util-ads-manager-common`: Shared ads helpers
 
 **Agents that typically enable this integration:**
 
@@ -25,15 +25,15 @@ The Google Ads integration uses Google OAuth 2.0 with the Google Ads API v23 RES
 
 ## Prerequisites
 
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
 - **A Google Ads account (or MCC)** the connecting user administers.
 - **A Google Cloud project** with the Google Ads API enabled.
-- **A Google Ads Developer Token** — request from your MCC.
+- **A Google Ads Developer Token**, requested from your MCC.
 - **Your Manager (MCC) Customer ID** (10 digits, no dashes) for server-to-server calls.
 - **An HTTPS callback URL**.
 
-## Complete Integration Walkthrough — Own Mode
+## Complete Integration Walkthrough: Own Mode
 
 ### Step 1: Create a Google Cloud Project
 
@@ -45,16 +45,16 @@ The Google Ads integration uses Google OAuth 2.0 with the Google Ads API v23 RES
    - Add scope: `https://www.googleapis.com/auth/adwords`.
    - While in Testing status: add test users (the Google accounts that will connect).
 
-> **Using this OAuth client for other Google services?** One OAuth client can serve Google Ads, YouTube, Google Analytics 4, and Merchant Center — they share the `https://www.googleapis.com/auth/content` / `adwords` / `youtube` / `analytics.readonly` scope family. If you want any of those integrations too, enable the matching Google Cloud APIs in the same project:
+> **Using this OAuth client for other Google services?** One OAuth client can serve Google Ads, YouTube, Google Analytics 4, and Merchant Center, since they share the `https://www.googleapis.com/auth/content` / `adwords` / `youtube` / `analytics.readonly` scope family. If you want any of those integrations too, enable the matching Google Cloud APIs in the same project:
 >
-> - **Google Ads API** — for Google Ads
-> - **YouTube Data API v3** + **YouTube Analytics API v2** — for YouTube (used by the `int-youtube-manage` skill, also consumed by `int-googleads-manage` for Video / Demand Gen campaigns)
-> - **Google Analytics Data API** + **Google Analytics Admin API** — for Google Analytics 4
-> - **Merchant API** — for Merchant Center
+> - **Google Ads API**: for Google Ads
+> - **YouTube Data API v3** + **YouTube Analytics API v2**: for YouTube (used by the `int-youtube-manage` skill, also consumed by `int-googleads-manage` for Video / Demand Gen campaigns)
+> - **Google Analytics Data API** + **Google Analytics Admin API**: for Google Analytics 4
+> - **Merchant API**: for Merchant Center
 >
-> You don't need a separate OAuth client per API — one client + all four APIs enabled + the corresponding scopes works.
+> You don't need a separate OAuth client per API: one client + all four APIs enabled + the corresponding scopes works.
 
-> **Merchant Center — one extra step:** you must register your Google Cloud project once against your own primary Merchant Center account before the API will answer for any merchant account you authorize:
+> **Merchant Center needs one extra step:** you must register your Google Cloud project once against your own primary Merchant Center account before the API will answer for any merchant account you authorize:
 >
 > ```bash
 > curl -X POST \
@@ -64,7 +64,7 @@ The Google Ads integration uses Google OAuth 2.0 with the Google Ads API v23 RES
 >   -d '{}'
 > ```
 >
-> This call is made once per GCP project. After it returns a `DeveloperRegistration` resource, the same GCP can call the Merchant API against any merchant account whose admin grants OAuth consent — no per-account registration needed (see Google's [3P/agency guidance](https://developers.google.com/merchant/api/guides/quickstart/faq#i_work_with_multiple_merchant_center_accounts_do_i_need_to_register_every_merchant_center_account_i_want_to_use_with_the_merchant_api)). Each GCP can be registered with at most one primary Merchant Center at a time; registering against a second account returns `ALREADY_REGISTERED`.
+> This call is made once per GCP project. After it returns a `DeveloperRegistration` resource, the same GCP can call the Merchant API against any merchant account whose admin grants OAuth consent, with no per-account registration needed (see Google's [3P/agency guidance](https://developers.google.com/merchant/api/guides/quickstart/faq#i_work_with_multiple_merchant_center_accounts_do_i_need_to_register_every_merchant_center_account_i_want_to_use_with_the_merchant_api)). Each GCP can be registered with at most one primary Merchant Center at a time; registering against a second account returns `ALREADY_REGISTERED`.
 
 ### Step 2: Create OAuth 2.0 Client ID
 
@@ -141,7 +141,7 @@ https://your-app.com/settings/integrations?gads_connected=true&gads_accounts=%5B
 ```
 
 - `gads_accounts` is only populated when a developer token is available. If the callback finishes without accessible customers, `gads_accounts` is omitted entirely (not an empty array).
-- Each entry: `{ id, name, status }` — `status` comes from the Google Ads API customer status (e.g. `"ENABLED"`, `"CANCELLED"`) and may be an empty string if the per-customer lookup failed.
+- Each entry: `{ id, name, status }`, where `status` comes from the Google Ads API customer status (e.g. `"ENABLED"`, `"CANCELLED"`) and may be an empty string if the per-customer lookup failed.
 
 ```javascript
 const params = new URLSearchParams(window.location.search);
@@ -170,7 +170,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
   }'
 ```
 
-- `customerid`: either 10-digit or `123-456-7890` format works — non-digits are stripped automatically.
+- `customerid`: either 10-digit or `123-456-7890` format works, and non-digits are stripped automatically.
 - `customerdescriptivename` (optional): human-readable account label. Shown in the dashboard next to the customer ID so users can tell accounts apart when they manage many MCC sub-accounts. Typically the `customer.descriptive_name` you received in the `gads_accounts` array from the OAuth callback.
 - Pass multiple `{ customerid, customerdescriptivename }` entries to authorize the agent against several customers at once.
 
@@ -239,7 +239,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ### GET /UserAgentOAuth/GAdsCallback
 
-Query params: `gads_connected=true&gads_accounts=<JSON>` (when developer token available) or `gads_error=<code>`. The callback path is per-provider — Google Ads's stays `GAdsCallback`.
+Query params: `gads_connected=true&gads_accounts=<JSON>` (when developer token available) or `gads_error=<code>`. The callback path is per-provider: Google Ads's stays `GAdsCallback`.
 
 ### POST /UserAgentOAuth/SetPickerAccounts
 
@@ -253,7 +253,7 @@ Response: `{ result, accounts: [{id, name}, ...], errors }`. Triggers agent rest
 
 ### POST /UserAgentOAuth/OAuthStatus
 
-Body: `{ useragentguid, credentialkey: "google-ads" }`. Response: `connected`, `accounts: [{id, name}, ...]` (one entry per selected customer — `id` = `customerid`, `name` = `customerdescriptivename`), `connectedat`, `tokenexpiresat` (~1h).
+Body: `{ useragentguid, credentialkey: "google-ads" }`. Response: `connected`, `accounts: [{id, name}, ...]` (one entry per selected customer: `id` = `customerid`, `name` = `customerdescriptivename`), `connectedat`, `tokenexpiresat` (~1h).
 
 ### POST /UserAgentOAuth/OAuthDisconnect
 
@@ -265,7 +265,7 @@ Wiro maintains the Google Ads connection automatically while the agent is runnin
 
 ## Using the Skill
 
-Once Google Ads is connected and `customerid` is persisted, the agent's scheduled tasks use the `int-googleads-manage` platform skill to pull metrics and manage campaigns. Adjust the cron of the built-in `cs-cron-googleads-performance-reporter` task (Google Ads Manager) with `enabled` and `interval` only — the task body (`value`) is owned by the bundled integration skill and silently dropped on writes:
+Once Google Ads is connected and `customerid` is persisted, the agent's scheduled tasks use the `int-googleads-manage` platform skill to pull metrics and manage campaigns. Adjust the cron of the built-in `cs-cron-googleads-performance-reporter` task (Google Ads Manager) with `enabled` and `interval` only. The task body (`value`) is owned by the bundled integration skill and silently dropped on writes:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
@@ -279,7 +279,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   }'
 ```
 
-To change **what** the reporter includes (wasted-spend threshold, target ROAS, reporting preferences), edit the paired preference skill `ad-strategy` instead — see [Agent Skills → Updating Preference Skills](/docs/agent-skills#updating-preference-skills).
+To change **what** the reporter includes (wasted-spend threshold, target ROAS, reporting preferences), edit the paired preference skill `ad-strategy` instead (see [Agent Skills → Updating Preference Skills](/docs/agent-skills#updating-preference-skills)).
 
 ## Troubleshooting
 
@@ -301,7 +301,7 @@ The OAuth-authorized user lacks access to the `customerid` you chose. Pick a dif
 
 ### Developer Token rejected
 
-Test tokens can only query accounts in your own MCC hierarchy. For customer accounts outside your MCC, you need Basic Access — apply in **Tools → API Center**.
+Test tokens can only query accounts in your own MCC hierarchy. For customer accounts outside your MCC, you need Basic Access. Apply in **Tools → API Center**.
 
 ## Multi-Tenant Architecture
 

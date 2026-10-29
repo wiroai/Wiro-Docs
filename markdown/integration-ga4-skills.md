@@ -8,7 +8,7 @@ The GA4 integration uses Google OAuth 2.0 with the GA4 Data API v1beta and the G
 
 **Skills that use this integration:**
 
-- `int-ga4-analytics` — Direct GA4 reporting + Google Ads / Meta Ads attribution cross-check
+- `int-ga4-analytics`: Direct GA4 reporting + Google Ads / Meta Ads attribution cross-check
 
 **Agents that typically enable this integration:**
 
@@ -26,8 +26,8 @@ The GA4 integration uses Google OAuth 2.0 with the GA4 Data API v1beta and the G
 
 ## Prerequisites
 
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
 - **A GA4 Property** the connecting user administers.
 - **A Google Cloud project** with GA4 Data API and GA4 Admin API enabled.
 - **An HTTPS callback URL**.
@@ -37,7 +37,7 @@ The GA4 integration uses Google OAuth 2.0 with the GA4 Data API v1beta and the G
 ### Step 1: Create a Google Cloud Project
 
 1. [console.cloud.google.com](https://console.cloud.google.com/) → create a project.
-2. **APIs & Services → Library** — enable:
+2. **APIs & Services → Library** → enable:
    - [Google Analytics Data API](https://console.cloud.google.com/apis/library/analyticsdata.googleapis.com)
    - [Google Analytics Admin API](https://console.cloud.google.com/apis/library/analyticsadmin.googleapis.com)
 3. **OAuth consent screen**:
@@ -104,7 +104,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
   }'
 ```
 
-Pass multiple `{ propertyid, propertydisplayname }` entries to authorize the agent against several GA4 properties at once. Only `propertyid` and `propertydisplayname` are persisted by the picker — the GA4 `account` resource name (`accounts/12345`) is discoverable from the redirect-URL JSON if you need it for UI grouping but is not stored.
+Pass multiple `{ propertyid, propertydisplayname }` entries to authorize the agent against several GA4 properties at once. Only `propertyid` and `propertydisplayname` are persisted by the picker. The GA4 `account` resource name (`accounts/12345`) is discoverable from the redirect-URL JSON if you need it for UI grouping but is not stored.
 
 ## Disconnect
 
@@ -183,4 +183,4 @@ Agent reads GA4 predefined + custom audiences via Admin API and can propose Cust
 
 ## Skill reference
 
-- [agent-skills.md](/docs/agent-skills) — custom skill schema and the `int-ga4-analytics` key
+- [agent-skills.md](/docs/agent-skills): custom skill schema and the `int-ga4-analytics` key

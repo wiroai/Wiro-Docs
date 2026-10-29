@@ -8,7 +8,7 @@ The LinkedIn integration uses the LinkedIn Marketing Developer Platform via OAut
 
 **Skills that use this integration:**
 
-- `int-linkedin-post` — Publish text, image, and video posts to a Company Page
+- `int-linkedin-post`: Publish text, image, and video posts to a Company Page
 
 **Agents that typically enable this integration:**
 
@@ -24,9 +24,9 @@ The LinkedIn integration uses the LinkedIn Marketing Developer Platform via OAut
 
 ## Prerequisites
 
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
-- **A LinkedIn Company Page** the connecting user is an **admin** of — personal profiles are not supported.
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
+- **A LinkedIn Company Page** the connecting user is an **admin** of. Personal profiles are not supported.
 - **The numeric LinkedIn organization ID** (not the vanity slug). Find it in `linkedin.com/company/<ID>/admin/`.
 - **An HTTPS callback URL** for your backend.
 
@@ -37,7 +37,7 @@ The LinkedIn integration uses the LinkedIn Marketing Developer Platform via OAut
 1. [linkedin.com/developers/apps](https://www.linkedin.com/developers/apps) → **Create app**.
 2. Fill in:
    - **App name** (shown on consent screen).
-   - **LinkedIn Page** (associate with a Company Page you own — this gives admins automatic development access).
+   - **LinkedIn Page** (associate with a Company Page you own, which gives admins automatic development access).
    - **Privacy policy URL**.
    - **App logo** (128×128 PNG).
 3. Agree to Legal terms → **Create app**.
@@ -46,10 +46,10 @@ The LinkedIn integration uses the LinkedIn Marketing Developer Platform via OAut
 
 **Products** tab. Request:
 
-- **Sign In with LinkedIn using OpenID Connect** — for `openid` and `profile` scopes.
-- **Community Management API** — required for Company Page posting (`w_organization_social`, `r_organization_social`).
+- **Sign In with LinkedIn using OpenID Connect**: for `openid` and `profile` scopes.
+- **Community Management API**: required for Company Page posting (`w_organization_social`, `r_organization_social`).
 
-Community Management API approval is a manual review that can take days. While pending, your app can still post **to the Company Page it's associated with** for admins listed on that page — this is enough for development and testing.
+Community Management API approval is a manual review that can take days. While pending, your app can still post **to the Company Page it's associated with** for admins listed on that page, which is enough for development and testing.
 
 ### Step 3: Configure the OAuth redirect URI
 
@@ -83,7 +83,7 @@ Enable all four in **Auth → OAuth 2.0 scopes**. Scopes not enabled in this lis
 
 ### Step 5: Copy your Client ID and Client Secret
 
-**Auth → Application credentials** → copy **Client ID**. Copy the **Primary Client Secret** — it's shown in plain text here. Store it like a password.
+**Auth → Application credentials** → copy **Client ID**. Copy the **Primary Client Secret**, which is shown in plain text here. Store it like a password.
 
 ### Step 6: Save credentials to Wiro
 
@@ -140,7 +140,7 @@ After consent, LinkedIn redirects to Wiro's callback. Wiro exchanges the code fo
 https://your-app.com/settings/integrations?li_connected=true&li_name=Jane%20Doe
 ```
 
-`li_name` is the connected LinkedIn member's display name (a human), **not** the Company Page name — the page is identified by `organizationid` which you set in Step 6.
+`li_name` is the connected LinkedIn member's display name (a human), **not** the Company Page name. The page is identified by `organizationid` which you set in Step 6.
 
 ```javascript
 const params = new URLSearchParams(window.location.search);
@@ -180,7 +180,7 @@ Response:
 }
 ```
 
-- `accounts[0].id` and `accounts[0].name` both carry the connected LinkedIn member's display name (a human), **not** the Company Page name — the page is identified by `organizationid` you set in Step 6.
+- `accounts[0].id` and `accounts[0].name` both carry the connected LinkedIn member's display name (a human), **not** the Company Page name. The page is identified by `organizationid` you set in Step 6.
 - Access tokens last ~60 days; LinkedIn typically issues a longer-lived refresh token. Wiro maintains the connection automatically while the agent is running.
 
 ### Step 10: Start the agent
@@ -205,7 +205,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ### GET /UserAgentOAuth/LICallback
 
-Query params: `li_connected=true&li_name=...` or `li_error=...`. The callback path is per-provider — LinkedIn's stays `LICallback`.
+Query params: `li_connected=true&li_name=...` or `li_error=...`. The callback path is per-provider: LinkedIn's stays `LICallback`.
 
 ### POST /UserAgentOAuth/OAuthStatus
 
@@ -221,7 +221,7 @@ Wiro maintains the LinkedIn connection automatically while the agent is running.
 
 ## Using the Skill
 
-Once the LinkedIn Company Page is connected (organization ID persisted), the agent's scheduled tasks use the `int-linkedin-post` platform skill to publish text, image, and video posts to the Company Page. To adjust the cron of the built-in `cs-cron-social-content-scanner` task (Social Manager), call `POST /UserAgent/CustomSkillUpsert` with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for bundled crons:
+Once the LinkedIn Company Page is connected (organization ID persisted), the agent's scheduled tasks use the `int-linkedin-post` platform skill to publish text, image, and video posts to the Company Page. To adjust the cron of the built-in `cs-cron-social-content-scanner` task (Social Manager), call `POST /UserAgent/CustomSkillUpsert` with `enabled` and `interval` only. Cron skill bodies are template-controlled and `value` is silently ignored for bundled crons:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
@@ -235,7 +235,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   }'
 ```
 
-To change **what** the scheduled task posts (topics, tone, audience angle), edit the paired preference skill `content-tone` instead — see [Agent Skills → Updating Preference Skills](/docs/agent-skills#updating-preference-skills).
+To change **what** the scheduled task posts (topics, tone, audience angle), edit the paired preference skill `content-tone` instead (see [Agent Skills → Updating Preference Skills](/docs/agent-skills#updating-preference-skills)).
 
 ## Troubleshooting
 
@@ -259,13 +259,13 @@ Enable it under **Auth → OAuth 2.0 scopes**, then have the user reconnect. Lin
 
 ### Wrong organization ID
 
-Use the numeric ID from `linkedin.com/company/<ID>/admin/` — not the slug. Update via `POST /UserAgent/CredentialUpsert` and reconnect if needed.
+Use the numeric ID from `linkedin.com/company/<ID>/admin/`, not the slug. Update via `POST /UserAgent/CredentialUpsert` and reconnect if needed.
 
 ## Multi-Tenant Architecture
 
 1. **One LinkedIn Developer App** per product.
 2. **One Wiro agent instance per customer**; capture `organizationid` during onboarding.
-3. **Community Management API approval** is per app (not per customer) — apply once.
+3. **Community Management API approval** is per app (not per customer), so apply once.
 4. **Tokens are isolated per agent instance.**
 5. **Rate limits** per app and per organization; see LinkedIn's [rate-limits docs](https://learn.microsoft.com/en-us/linkedin/shared/api-guide/concepts/rate-limits).
 

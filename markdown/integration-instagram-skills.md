@@ -21,12 +21,12 @@ Instagram Login issues an Instagram User access token and publishes through
 
 **Skills that use this integration:**
 
-- `int-instagram-post` — Publish feed carousels, Reels, and Stories; any agent can also post a finished video as a Reel
+- `int-instagram-post`: Publish feed carousels, Reels, and Stories; any agent can also post a finished video as a Reel
 
 **Agents that typically enable this integration:**
 
 - Social Manager
-- Video Creator — to post the videos it makes as Reels. Add `int-instagram-post` with
+- Video Creator: to post the videos it makes as Reels. Add `int-instagram-post` with
   [`SkillsApply`](/docs/agent-skills#toggling-integration-skills); it adds $1 a month to the Starter
   price. Video Creator then posts a Reel when the request asks for it or an `Instagram` line in its
   `video-preferences` says to, and otherwise offers to.
@@ -42,10 +42,10 @@ Instagram Login issues an Instagram User access token and publishes through
 
 ## Prerequisites
 
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview); keep the `useragents[0].guid`.
-- **A Meta Business account** — [business.facebook.com](https://business.facebook.com/).
-- **One or more Instagram Business or Creator accounts** — personal accounts cannot use
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)); keep the `useragents[0].guid`.
+- **A Meta Business account** ([business.facebook.com](https://business.facebook.com/)).
+- **One or more Instagram Business or Creator accounts**. Personal accounts cannot use
   content publishing.
 - **Recommended direct mode:** a System User, the Business app used to generate
   its token, and a Facebook Page linked to each Instagram professional account
@@ -196,7 +196,7 @@ configured.
 ### Step 2: Add the "Instagram" product
 
 1. From the app dashboard, **Add product**.
-2. Find **"Instagram"** (not "Instagram Basic Display" — that's for personal accounts and is being deprecated).
+2. Find **"Instagram"** (not "Instagram Basic Display", which is for personal accounts and is being deprecated).
 3. **Set up**.
 
 ### Step 3: Configure the OAuth redirect URI
@@ -229,7 +229,7 @@ instagram_business_basic,instagram_business_content_publish,instagram_business_m
 | `instagram_business_manage_comments` | Read, reply, hide, delete comments. |
 | `instagram_business_manage_insights` | Read engagement insights for posts and profile. |
 
-These work without App Review in Development Mode for any Facebook user in App Roles. **No `pages_*` scopes are requested** — Instagram Login uses its own scope family.
+These work without App Review in Development Mode for any Facebook user in App Roles. **No `pages_*` scopes are requested**, since Instagram Login uses its own scope family.
 
 ### Step 5: Copy your App ID and App Secret
 
@@ -342,7 +342,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
   Login OAuth returns one entry because one account is authorized per consent.
 - `tokenexpiresat` is empty for direct System User mode and approximately 60
   days for customer-owned Instagram OAuth.
-- **No `refreshtokenexpiresat`** — Instagram does not expose a separate refresh token for this connection.
+- **No `refreshtokenexpiresat`**: Instagram does not expose a separate refresh token for this connection.
 
 ### Step 11: Start the agent if it's not running
 
@@ -377,7 +377,7 @@ Server-side. Query params appended to your `redirecturl`:
 | `ig_username` | Connected Instagram handle (without `@`). |
 | `ig_error=<code>` | Failure. |
 
-The callback path is per-provider — Instagram's stays `IGCallback`.
+The callback path is per-provider: Instagram's stays `IGCallback`.
 
 ### POST /UserAgentOAuth/SetPickerAccounts
 
@@ -437,11 +437,11 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
 ```
 
 To change **what** the scheduled task posts (topics, tone, hashtag rules,
-caption style), edit the paired preference skill `cs-content-tone` instead —
-see [Agent Skills → Updating Preference Skills](/docs/agent-skills#updating-preference-skills).
+caption style), edit the paired preference skill `cs-content-tone` instead
+(see [Agent Skills → Updating Preference Skills](/docs/agent-skills#updating-preference-skills)).
 
 Hashtags, calls to action and links come from your draft, `cs-content-tone`,
-or the agent's preferences. Without hashtag rules the agent adds 3–5 relevant
+or the agent's preferences. Without hashtag rules the agent adds 3 to 5 relevant
 hashtags; Instagram allows at most 5 per post. Instead of a drafted post, you
 can give the agent the caption and the images or videos in chat: the first one
 is the cover.
@@ -494,7 +494,7 @@ Common causes:
 - Image resolution too low (<320px) or aspect ratio outside Instagram's allowed ranges.
 - Media that does not meet Meta's current format, duration, size, or codec
   requirements.
-- Instagram account switched back to Personal after connection — the token becomes invalid. Ask the user to switch back to Business and reconnect.
+- Instagram account switched back to Personal after connection: the token becomes invalid. Ask the user to switch back to Business and reconnect.
 
 ### The agent says no Instagram account is connected
 
@@ -520,7 +520,7 @@ do nothing. Connect an account (in System User mode, select it with
 - [Agent Credentials & OAuth](/docs/agent-credentials)
 - [Agent Overview](/docs/agent-overview)
 - [Agent Skills](/docs/agent-skills)
-- [Facebook Page integration](/docs/integration-facebook-skills) — Page linkage is required for System User mode, not Instagram Login OAuth.
-- [Meta Ads integration](/docs/integration-metaads-skills) — for Instagram-placement paid ads.
-- [Meta for Developers — Instagram Graph API](https://developers.facebook.com/docs/instagram-api)
-- [Meta for Developers — Content Publishing API comparison](https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/content-publishing/)
+- [Facebook Page integration](/docs/integration-facebook-skills): Page linkage is required for System User mode, not Instagram Login OAuth.
+- [Meta Ads integration](/docs/integration-metaads-skills): for Instagram-placement paid ads.
+- [Meta for Developers: Instagram Graph API](https://developers.facebook.com/docs/instagram-api)
+- [Meta for Developers: Content Publishing API comparison](https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/content-publishing/)
