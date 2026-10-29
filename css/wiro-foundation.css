@@ -1573,6 +1573,154 @@ html.wiro-dark .mcp-client-card.is-active .mcp-client-logo {
   opacity: 1;
 }
 
+/* MCP browser sign-in: the quick start at the top of the Wiro MCP Server page.
+   A green-washed card, so the easiest way to connect is the first thing a
+   reader sees, ahead of the per-client Setup cards. */
+.mcp-signin {
+  margin: 20px 0 8px;
+  padding: 20px 22px 22px;
+  border: 1px solid var(--wiro-green-border);
+  border-radius: var(--wiro-radius-2xl);
+  background: var(--wiro-green-bg);
+}
+
+.mcp-signin-badge {
+  display: inline-block;
+  margin-bottom: 8px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--wiro-green);
+  color: var(--wiro-surface);
+  font-size: var(--wiro-type-eyebrow-size);
+  font-weight: 600;
+  letter-spacing: var(--wiro-type-eyebrow-letter);
+  line-height: 1.6;
+  text-transform: uppercase;
+}
+
+.docs-section .mcp-signin h2 {
+  margin-top: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.mcp-signin-url {
+  margin: 14px 0;
+  padding: 11px 14px;
+  border: 1px solid var(--wiro-border-med);
+  border-radius: var(--wiro-radius-control);
+  background: var(--wiro-surface);
+  overflow-x: auto;
+}
+
+.docs-section .mcp-signin-url code {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--wiro-ink);
+  font-family: var(--wiro-mono);
+  font-size: 15px;
+  white-space: nowrap;
+}
+
+.docs-section .mcp-signin-apps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 20px;
+  padding: 0;
+  list-style: none;
+}
+
+.docs-section .mcp-signin-apps li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 3px 10px 3px 7px;
+  border: 1px solid var(--wiro-border-med);
+  border-radius: var(--wiro-radius-chip);
+  background: var(--wiro-surface);
+  color: var(--wiro-ink2);
+  font-size: var(--wiro-type-meta-size);
+  line-height: 1.6;
+}
+
+.mcp-signin-apps svg {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+
+.mcp-signin-install {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.docs-section .mcp-signin-install a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: var(--wiro-radius-control);
+  background: var(--wiro-ink);
+  color: var(--wiro-bg);
+  font-size: var(--wiro-type-button-sm-size);
+  font-weight: var(--wiro-type-button-weight);
+  transition: var(--wiro-transition);
+}
+
+.docs-section .mcp-signin-install a:hover {
+  background: var(--wiro-ink-hover);
+  color: var(--wiro-bg);
+  opacity: 1;
+}
+
+.mcp-signin-install svg {
+  width: 15px;
+  height: 15px;
+  filter: brightness(0) invert(1);
+}
+
+/* Apps without a one-click link: a quieter row of settings links. */
+.docs-section .mcp-signin-more {
+  margin: 16px 0 0;
+  color: var(--wiro-ink3);
+  font-size: var(--wiro-type-meta-size);
+}
+
+.mcp-signin-install.is-secondary {
+  margin-top: 8px;
+}
+
+.docs-section .mcp-signin-install.is-secondary a {
+  border: 1px solid var(--wiro-border-med);
+  background: var(--wiro-surface);
+  color: var(--wiro-ink);
+}
+
+.docs-section .mcp-signin-install.is-secondary a:hover {
+  border-color: var(--wiro-border-strong);
+  background: var(--wiro-bg-warm);
+  color: var(--wiro-ink);
+}
+
+.mcp-signin-install.is-secondary svg {
+  filter: none;
+}
+
+html.wiro-dark .mcp-signin-apps svg,
+html.wiro-dark .mcp-signin-install.is-secondary svg {
+  filter: brightness(0) invert(1);
+}
+
+html.wiro-dark .mcp-signin-install:not(.is-secondary) svg {
+  filter: brightness(0);
+}
+
 html.wiro-dark .dark-invert-icon,
 html.wiro-dark .docs-nav-icon-img[src*="twitterx"],
 html.wiro-dark .docs-nav-icon-img[src*="tiktok"],
