@@ -5486,10 +5486,8 @@ Run these two commands inside Claude Code:
 /plugin install wiro-ai@wiro
 ```
 
-Claude Code asks for your API key when the plugin is enabled and keeps it in
-your system's secure credential store. Enter the project's API key, or
-`API_KEY:API_SECRET` (both values joined with a colon) if the project uses
-signature-based auth. The plugin comes from the
+Then open `/mcp`, pick the Wiro server and choose **Authenticate** to sign in
+to Wiro in your browser. The plugin comes from the
 [wiroai/Wiro-Plugin](https://github.com/wiroai/Wiro-Plugin) repository.
 
 #### Or add the server with your API key
@@ -5568,9 +5566,8 @@ in your terminal:
 gemini extensions install https://github.com/wiroai/Wiro-Plugin
 ```
 
-Gemini CLI asks for your API key during install. Enter the project's API key,
-or `API_KEY:API_SECRET` (both values joined with a colon) if the project uses
-signature-based auth. To change it later, run `gemini extensions config wiro-ai`.
+Then run `/mcp auth wiro` inside Gemini CLI and sign in to Wiro in your
+browser.
 
 ### Devin
 
@@ -5584,12 +5581,11 @@ devin plugins install wiroai/Wiro-Plugin
 
 In the Devin web app, go to
 **Customize > Plugins > Add plugin > From repository** and enter
-`wiroai/Wiro-Plugin`. Then connect the Wiro server with your API key: the
-project's API key, or `API_KEY:API_SECRET` (both values joined with a colon) if
-the project uses signature-based auth. In the Devin web app you can also add
+`wiroai/Wiro-Plugin`. Devin opens Wiro's sign-in page in your browser the first
+time it connects. In the Devin web app you can also skip the plugin: add
 `https://mcp.wiro.ai/v1` as a custom MCP server under
 [Customize, MCPs](https://app.devin.ai/customize?tab=mcps) and sign in to Wiro
-in your browser instead.
+in your browser.
 
 ### Kiro
 
