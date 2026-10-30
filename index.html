@@ -7418,6 +7418,7 @@ if (!data.result) {
                       <li><svg width="18" height="18" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-devin"></use></svg>Devin</li>
                       <li><svg width="18" height="18" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-kiro"></use></svg>Kiro</li>
                       <li><svg width="18" height="18" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-goose"></use></svg>goose</li>
+                      <li><svg width="18" height="18" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-grok"></use></svg>Grok</li>
                     </ul>
                     <ol class="docs-steps">
                       <li><strong>Add the server</strong><span>In your app, add a remote MCP server with the URL above. Leave the <code>Authorization</code> header out.</span></li>
@@ -7457,7 +7458,7 @@ if (!data.result) {
 
                   <section id="mcp-oauth-details">
                     <h2>Browser sign-in details</h2>
-                    <p>ChatGPT, Claude (claude.ai, Claude Desktop and Claude Code), Cursor, VS Code, Gemini CLI, Codex, Zed, Devin, Kiro, goose, Cline and MCP Inspector connect this way, and so does any app on your computer that follows the <a href="https://modelcontextprotocol.io/specification/latest/basic/authorization" target="_blank" rel="noopener">MCP authorization spec</a>. An app that signs in through its own website needs its callback address on Wiro's list: write to <a href="mailto:support@wiro.ai">support@wiro.ai</a> to add one.</p>
+                    <p>ChatGPT, Claude (claude.ai, Claude Desktop and Claude Code), Cursor, VS Code, Gemini CLI, Codex, Zed, Devin, Kiro, goose, Grok, Grok Bot, Cline and MCP Inspector connect this way, and so does any app on your computer that follows the <a href="https://modelcontextprotocol.io/specification/latest/basic/authorization" target="_blank" rel="noopener">MCP authorization spec</a>. An app that signs in through its own website needs its callback address on Wiro's list: write to <a href="mailto:support@wiro.ai">support@wiro.ai</a> to add one.</p>
                     <h3>Projects and billing</h3>
                     <ul>
                       <li>Each connection uses one project. A personal project bills your personal wallet, a team project the team's wallet.</li>
@@ -7556,6 +7557,11 @@ if (!data.result) {
                         <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-goose"></use></svg>
                         <strong>goose</strong>
                         <span>One-click install</span>
+                      </a>
+                      <a href="/docs/wiro-mcp-server#mcp-setup-grok" class="mcp-client-card" data-toggle-target="mcp-setup-grok">
+                        <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-grok"></use></svg>
+                        <strong>Grok</strong>
+                        <span>Custom connector</span>
                       </a>
                       <a href="/docs/wiro-mcp-server#mcp-setup-windsurf" class="mcp-client-card" data-toggle-target="mcp-setup-windsurf">
                         <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-windsurf"></use></svg>
@@ -7760,6 +7766,14 @@ if (!data.result) {
     enabled: true
     timeout: 300</code></pre>
                         <p>Use <code>YOUR_API_KEY:YOUR_API_SECRET</code> (both values joined with a colon) if the project uses signature-based auth.</p>
+                      </div>
+
+                      <div class="mcp-setup-panel" id="mcp-setup-grok">
+                        <h3>Grok</h3>
+                        <h4>On grok.com</h4>
+                        <p>Open <a href="https://grok.com/connectors" target="_blank" rel="noopener">grok.com/connectors</a>, click <strong>New Connector</strong>, choose <strong>Custom</strong> and enter <code>https://mcp.wiro.ai/v1</code>. Grok opens Wiro's sign-in page in your browser: sign in, pick the project whose wallet pays for runs and click <strong>Allow</strong>.</p>
+                        <h4>In Grok Bot</h4>
+                        <p>Ask your Bot to add the MCP server <code>https://mcp.wiro.ai/v1</code>. Grok Bot opens Wiro's sign-in page in your browser the first time it connects.</p>
                       </div>
 
                       <div class="mcp-setup-panel" id="mcp-setup-windsurf">

@@ -5384,7 +5384,7 @@ Connect AI coding assistants to Wiro's AI models via the Model Context Protocol.
 **Easiest way.** No API key to copy. Add `https://mcp.wiro.ai/v1` as a remote
 MCP server in your app, then sign in with your Wiro account when the app asks.
 Works with ChatGPT, Claude, Claude Code, Cursor, VS Code, Gemini CLI, Codex,
-Devin, Kiro and goose.
+Devin, Kiro, goose and Grok.
 
 1. **Add the server.** Add a remote MCP server with the URL `https://mcp.wiro.ai/v1`, without an `Authorization` header.
 2. **Sign in to Wiro.** The app opens wiro.ai. Sign in, or create an account.
@@ -5415,10 +5415,10 @@ run Wiro's official local `npx` package.
 ## Browser sign-in details
 
 ChatGPT, Claude (claude.ai, Claude Desktop and Claude Code), Cursor, VS Code,
-Gemini CLI, Codex, Zed, Devin, Kiro, goose, Cline and MCP Inspector connect this way, and so
-does any app on your computer that follows the MCP authorization spec. An app
-that signs in through its own website needs its callback on Wiro's list; write
-to support@wiro.ai to add one.
+Gemini CLI, Codex, Zed, Devin, Kiro, goose, Grok, Grok Bot, Cline and MCP
+Inspector connect this way, and so does any app on your computer that follows
+the MCP authorization spec. An app that signs in through its own website needs
+its callback on Wiro's list; write to support@wiro.ai to add one.
 
 Team members can connect the projects they created; team admins and the
 organization owner any project of the team. A project with an IP whitelist only
@@ -5659,6 +5659,20 @@ extensions:
 
 Use `YOUR_API_KEY:YOUR_API_SECRET` (both values joined with a colon) if the
 project uses signature-based auth.
+
+### Grok
+
+#### On grok.com
+
+Open [grok.com/connectors](https://grok.com/connectors), click
+**New Connector**, choose **Custom** and enter `https://mcp.wiro.ai/v1`. Grok
+opens Wiro's sign-in page in your browser: sign in, pick the project whose
+wallet pays for runs and click **Allow**.
+
+#### In Grok Bot
+
+Ask your Bot to add the MCP server `https://mcp.wiro.ai/v1`. Grok Bot opens
+Wiro's sign-in page in your browser the first time it connects.
 
 ### OpenClaw
 
