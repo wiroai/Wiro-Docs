@@ -13613,7 +13613,7 @@ Returns whether the credential is connected and lists every account/property/pag
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `connected` | `boolean` | `true` when the active mode has a validated secret, the access token has not passed `tokenexpiresat`, and, for picker credentials, at least one account is selected. Second-step picks (Meta Ads Pages, Business Profile locations) don't count; `pickersteps` shows them. Wiro renews tokens while the agent runs, so a stopped agent can read `false` once its token expires (about an hour after the last renewal for Google, 30 minutes for HubSpot) and reads `true` again after it starts. `_connected` in `UserAgent/Detail` ignores the expiry. Mailchimp's API key mode always reads `false` here. |
+| `connected` | `boolean` | `true` when the active mode has a validated secret, the access token has not passed `tokenexpiresat`, and, for picker credentials, at least one account is selected. Second-step picks (Meta Ads Pages, Business Profile locations) don't count; `pickersteps` shows them. Wiro renews tokens while the agent runs, so a stopped agent can read `false` once its token expires (about an hour after the last renewal for Google, 30 minutes for HubSpot) and reads `true` again after it starts. If the agent cannot start yet, for example in Setup Required, connect again with `OAuthConnect` in the same mode; the saved accounts stay selected. `_connected` in `UserAgent/Detail` ignores the expiry. Mailchimp's API key mode always reads `false` here. |
 | `accounts` | `array<{id, name}>` | Picker credentials: one entry per selected account, Page or property, `[]` until something is saved. Credentials without a picker (X, TikTok, LinkedIn, HubSpot, Mailchimp, Reddit, Shopify): one entry while `connected` is `true`, with the connected account's display name in both `id` and `name` (for example the X username or the Shopify store name), and `[]` otherwise. |
 | `connectedat` | `string` | ISO timestamp of the last successful Connect. Automatic token refreshes do not change it. |
 | `tokenexpiresat` | `string` | ISO timestamp when the current access token expires. Empty for providers without a fixed expiry (e.g. Mailchimp). |
@@ -13712,7 +13712,7 @@ A group's `errorcode` is a short code such as `too_many_pages` (more than 500 Pa
 | `Request parameter [<name>] required` | `useragentguid`, `credentialkey` or `pickerkey` is missing. |
 | `Unknown credential picker` | `credentialkey` and `pickerkey` do not name a chained picker. |
 | `User agent not found or unauthorized` | `useragentguid` doesn't exist or doesn't belong to the caller. |
-| `<Provider> account not connected` | No parent account is saved yet, or `OAuthStatus` would report `connected: false`, for example because the access token expired while the agent was stopped. |
+| `<Provider> account not connected` | No parent account is saved yet, or `OAuthStatus` would report `connected: false`, for example because the access token expired while the agent was stopped. For an expired token, start the agent, or connect again with `OAuthConnect` in the same mode if it cannot start yet: the saved accounts stay selected. |
 | `Too many parent accounts selected for picker discovery` | More than 50 Meta ad accounts or more than 20 Business Profile accounts are selected. |
 | `Picker candidate limit exceeded` | Discovery found more than 2,000 items across all groups. |
 | `Picker candidates could not be secured for selection` / `Picker discovery failed` | Temporary failure. Try again. |
@@ -13847,7 +13847,7 @@ Saving the root accounts again replaces the selection. Pages or locations alread
 | `Each account selection must include <field>` | An entry has no ID in the credential's ID field, such as `customerid`. |
 | `Duplicate account selection: <id>` | Two entries have the same ID after cleanup (for example `123-456-7890` and `1234567890`). |
 | `Single-select picker requires exactly one account; got <N>` | Single-select credential received multiple entries. |
-| `<Provider> account not connected` | Standard picker (e.g. Google Ads) called before the OAuth callback wrote tokens. A chained step also returns it when no parent account is saved or the access token has expired. |
+| `<Provider> account not connected` | Standard picker (e.g. Google Ads) called before the OAuth callback wrote tokens. A chained step also returns it when no parent account is saved or the access token has expired. For an expired token, start the agent, or connect again with `OAuthConnect` in the same mode if it cannot start yet, then call `DiscoverPickerItems` again. |
 | `No pending <Provider> connection. Please reconnect via OAuthConnect.` | Facebook Pages or System User Instagram: the 15-minute discovery window expired, or an earlier save already used it. |
 | `Selected <field> not found in pending list: <value>` | Deferred-token picker: the selected ID is not in the latest server-side discovery result. |
 | `Credential does not support account picker: <key>` | `credentialkey` doesn't have an `account_picker` (e.g. Twitter / TikTok / HubSpot). |
@@ -13898,7 +13898,7 @@ running. Direct Meta System User connections have no generic refresh contract:
 regenerate and reconnect an expiring or invalidated token. There is no
 customer-facing token-refresh endpoint or manual refresh action.
 
-Use `POST /UserAgentOAuth/OAuthStatus` to monitor the connection. Wiro renews tokens only while the agent runs and when it starts, so a stopped agent reports `connected: false` once its last access token has expired, although the authorization is still valid (for example about an hour after the last renewal for Google, 30 minutes for HubSpot). Start the agent and check again. `DiscoverPickerItems` and the second-step `SetPickerAccounts` need a current token too. If `connected` stays `false` while the agent runs, or the provider revokes a connection that cannot be renewed, reconnect through `POST /UserAgentOAuth/OAuthConnect`. Provider-specific exceptions are documented in each integration guide.
+Use `POST /UserAgentOAuth/OAuthStatus` to monitor the connection. Wiro renews tokens only while the agent runs and when it starts, so a stopped agent reports `connected: false` once its last access token has expired, although the authorization is still valid (for example about an hour after the last renewal for Google, 30 minutes for HubSpot). Start the agent and check again. `DiscoverPickerItems` and the second-step `SetPickerAccounts` need a current token too. If the agent cannot start yet, for example while it is still in [Setup Required](#setup-required-state), connect again with `OAuthConnect` in the same mode instead. Wiro stores the fresh token and keeps the saved accounts selected; run `DiscoverPickerItems` again before the second-step save. If `connected` stays `false` while the agent runs, or the provider revokes a connection that cannot be renewed, reconnect through `POST /UserAgentOAuth/OAuthConnect`. Provider-specific exceptions are documented in each integration guide.
 
 ## Web UI Behaviors (Wiro Dashboard)
 

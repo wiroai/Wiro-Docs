@@ -20192,7 +20192,7 @@ without a browser redirect.</p>
 <tr>
 <td><code>connected</code></td>
 <td><code>boolean</code></td>
-<td><code>true</code> when the active mode has a validated secret, the access token has not passed <code>tokenexpiresat</code>, and, for picker credentials, at least one account is selected. Second-step picks (Meta Ads Pages, Business Profile locations) don't count; <code>pickersteps</code> shows them. Wiro renews tokens while the agent runs, so a stopped agent can read <code>false</code> once its token expires (about an hour after the last renewal for Google, 30 minutes for HubSpot) and reads <code>true</code> again after it starts. <code>_connected</code> in <code>UserAgent/Detail</code> ignores the expiry. Mailchimp's API key mode always reads <code>false</code> here.</td>
+<td><code>true</code> when the active mode has a validated secret, the access token has not passed <code>tokenexpiresat</code>, and, for picker credentials, at least one account is selected. Second-step picks (Meta Ads Pages, Business Profile locations) don't count; <code>pickersteps</code> shows them. Wiro renews tokens while the agent runs, so a stopped agent can read <code>false</code> once its token expires (about an hour after the last renewal for Google, 30 minutes for HubSpot) and reads <code>true</code> again after it starts. If the agent cannot start yet, for example in Setup Required, connect again with <code>OAuthConnect</code> in the same mode; the saved accounts stay selected. <code>_connected</code> in <code>UserAgent/Detail</code> ignores the expiry. Mailchimp's API key mode always reads <code>false</code> here.</td>
 </tr>
 <tr>
 <td><code>accounts</code></td>
@@ -20341,7 +20341,7 @@ expires.</p>
 </tr>
 <tr>
 <td><code>&lt;Provider&gt; account not connected</code></td>
-<td>No parent account is saved yet, or <code>OAuthStatus</code> would report <code>connected: false</code>, for example because the access token expired while the agent was stopped.</td>
+<td>No parent account is saved yet, or <code>OAuthStatus</code> would report <code>connected: false</code>, for example because the access token expired while the agent was stopped. For an expired token, start the agent, or connect again with <code>OAuthConnect</code> in the same mode if it cannot start yet: the saved accounts stay selected.</td>
 </tr>
 <tr>
 <td><code>Too many parent accounts selected for picker discovery</code></td>
@@ -20629,7 +20629,7 @@ response (see <a href="/docs/integration-googlebusiness-skills#connect-through-t
 </tr>
 <tr>
 <td><code>&lt;Provider&gt; account not connected</code></td>
-<td>Standard picker (e.g. Google Ads) called before the OAuth callback wrote tokens. A chained step also returns it when no parent account is saved or the access token has expired.</td>
+<td>Standard picker (e.g. Google Ads) called before the OAuth callback wrote tokens. A chained step also returns it when no parent account is saved or the access token has expired. For an expired token, start the agent, or connect again with <code>OAuthConnect</code> in the same mode if it cannot start yet, then call <code>DiscoverPickerItems</code> again.</td>
 </tr>
 <tr>
 <td><code>No pending &lt;Provider&gt; connection. Please reconnect via OAuthConnect.</code></td>
@@ -20732,7 +20732,7 @@ again for a direct mode). The agent restarts automatically if it was running.</p
 running. Direct Meta System User connections have no generic refresh contract:
 regenerate and reconnect an expiring or invalidated token. There is no
 customer-facing token-refresh endpoint or manual refresh action.</p>
-<p>Use <code>POST /UserAgentOAuth/OAuthStatus</code> to monitor the connection. Wiro renews tokens only while the agent runs and when it starts, so a stopped agent reports <code>connected: false</code> once its last access token has expired, although the authorization is still valid (for example about an hour after the last renewal for Google, 30 minutes for HubSpot). Start the agent and check again. <code>DiscoverPickerItems</code> and the second-step <code>SetPickerAccounts</code> need a current token too. If <code>connected</code> stays <code>false</code> while the agent runs, or the provider revokes a connection that cannot be renewed, reconnect through <code>POST /UserAgentOAuth/OAuthConnect</code>. Provider-specific exceptions are documented in each integration guide.</p>
+<p>Use <code>POST /UserAgentOAuth/OAuthStatus</code> to monitor the connection. Wiro renews tokens only while the agent runs and when it starts, so a stopped agent reports <code>connected: false</code> once its last access token has expired, although the authorization is still valid (for example about an hour after the last renewal for Google, 30 minutes for HubSpot). Start the agent and check again. <code>DiscoverPickerItems</code> and the second-step <code>SetPickerAccounts</code> need a current token too. If the agent cannot start yet, for example while it is still in <a href="#setup-required-state">Setup Required</a>, connect again with <code>OAuthConnect</code> in the same mode instead. Wiro stores the fresh token and keeps the saved accounts selected; run <code>DiscoverPickerItems</code> again before the second-step save. If <code>connected</code> stays <code>false</code> while the agent runs, or the provider revokes a connection that cannot be renewed, reconnect through <code>POST /UserAgentOAuth/OAuthConnect</code>. Provider-specific exceptions are documented in each integration guide.</p>
 <h2 id="web-ui-behaviors-wiro-dashboard">Web UI Behaviors (Wiro Dashboard)</h2>
 <p>If you're comparing against the Wiro Dashboard, here's what happens under the hood for parity with the API:</p>
 <ul>
