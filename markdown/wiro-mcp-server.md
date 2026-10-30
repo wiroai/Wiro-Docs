@@ -73,8 +73,10 @@ days, 1 year, or unlimited. When the time is up, the app asks you to sign in
 again. An unlimited connection lasts until you disconnect it.
 
 A connection also ends when its project is removed, or when you leave the team
-or lose the role that allowed it. Access tokens last one hour and renew on their
-own, so there is nothing to copy or rotate.
+or lose the role that allowed it. The same happens once the project's API key
+stops working, for example when the person who created a team project leaves
+the team; the sign-in page then no longer offers that project. Access tokens
+last one hour and renew on their own, so there is nothing to copy or rotate.
 
 ### See, change and disconnect apps
 

@@ -4837,7 +4837,9 @@ All API responses return HTTP `200`. Auth errors return HTTP `401`.
 |------|---------|------|
 | `0` | The person who created this API key is no longer in its team. Ask a team admin for a new key. | HTTP `401`: the user who created the team project left the team |
 | `0` | API keys can't manage teams or organizations. Sign in and try again. | HTTP `401`: an organization, team, member or transfer change sent with an API key |
-| `0` | You must be a member of this team to perform this action | HTTP `403`: a Studio or Workflow Agent request with a team key whose creator is not an active member of the team |
+| `0` | You must be a member of this team to perform this action | HTTP `403`: a Studio or Workflow Agent request with a team key whose creator is the organization owner but not a member of the team |
+
+Public endpoints such as `Tool/List` and `Agent/List` still answer a key whose creator left the team, as if the request had no key.
 
 ## Run Errors (POST /Run)
 
@@ -5434,7 +5436,9 @@ with their project, last use and end date; pick a new length there (it counts
 from that day), or **Disconnect** to end an app's access within a minute. An
 unlimited connection lasts until you disconnect it, and any connection ends when
 its project is removed or when you leave the team or lose the role that allowed
-it. Access tokens last one hour and renew on their own.
+it. The same happens once the project's API key stops working, for example when
+the person who created a team project leaves the team; the sign-in page then no
+longer offers that project. Access tokens last one hour and renew on their own.
 
 For client developers: protected resource metadata at
 `https://mcp.wiro.ai/.well-known/oauth-protected-resource/v1`, authorization

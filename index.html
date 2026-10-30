@@ -6846,9 +6846,9 @@ x-nonce: Unix timestamp or random integer</code></pre>
                     <p>If your project has an IP whitelist configured, requests from unlisted IPs will be rejected. Use <code>*</code> in the whitelist to allow all IPs.</p>
 
                     <h3>Team API Key Errors</h3>
-                    <p>A team project's API key works only while the user who created the project is an active member of the team or the organization owner. Once they leave the team, every request with the key fails with "The person who created this API key is no longer in its team." Switch to a key from a project that an active member created.</p>
+                    <p>A team project's API key works only while the user who created the project is an active member of the team or the organization owner. Once they leave the team, requests with the key fail with "The person who created this API key is no longer in its team." Public endpoints such as <code>Tool/List</code> and <code>Agent/List</code> still answer, as if the request had no key. Switch to a key from a project that an active member created.</p>
                     <p>Creating, changing, deleting or restoring organizations and teams, managing members and invitations, and moving projects, agents or credit need a signed-in user, in the dashboard or with a Bearer token. With an API key, these calls fail with "API keys can't manage teams or organizations." See <a href="/docs/organizations-api-access">Team API Access</a>.</p>
-                    <p>Studio and the Workflow Agent are stricter: the user who created the key's project must be an active member of the team, and being the organization owner is not enough. Otherwise, requests to them fail with HTTP <code>403</code>:</p>
+                    <p>Studio and the Workflow Agent are stricter: the user who created the key's project must be an active member of the team, and being the organization owner is not enough. When that user is the organization owner but not a member of the team, requests to them fail with HTTP <code>403</code>:</p>
                     <table>
                       <thead>
                         <tr>
@@ -7492,7 +7492,7 @@ if (!data.result) {
                     </ul>
                     <h3>How long it stays connected</h3>
                     <p>You pick it on the sign-in page: 7 days, 30 days, 90 days (the default), 180 days, 1 year, or unlimited. When the time is up, the app asks you to sign in again. An unlimited connection lasts until you disconnect it.</p>
-                    <p>A connection also ends when its project is removed, or when you leave the team or lose the role that allowed it. Access tokens last one hour and renew on their own, so there is nothing to copy or rotate.</p>
+                    <p>A connection also ends when its project is removed, or when you leave the team or lose the role that allowed it. The same happens once the project's API key stops working, for example when the person who created a team project leaves the team; the sign-in page then no longer offers that project. Access tokens last one hour and renew on their own, so there is nothing to copy or rotate.</p>
                     <h3>See, change and disconnect apps</h3>
                     <p>Every app you connected is listed under <a href="https://wiro.ai/panel/project?view=apps" target="_blank">Projects, Connected apps</a> in the panel, with its project, when it was last used and when it ends. Pick a new length there to extend or shorten it; it counts from that day. <strong>Disconnect</strong> ends its access within a minute, and the app asks you to sign in again the next time.</p>
                     <h3>For MCP client developers</h3>

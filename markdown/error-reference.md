@@ -68,11 +68,11 @@ If your project has an IP whitelist configured, requests from unlisted IPs will 
 
 ### Team API Key Errors
 
-A team project's API key works only while the user who created the project is an active member of the team or the organization owner. Once they leave the team, every request with the key fails with "The person who created this API key is no longer in its team." Switch to a key from a project that an active member created.
+A team project's API key works only while the user who created the project is an active member of the team or the organization owner. Once they leave the team, requests with the key fail with "The person who created this API key is no longer in its team." Public endpoints such as `Tool/List` and `Agent/List` still answer, as if the request had no key. Switch to a key from a project that an active member created.
 
 Creating, changing, deleting or restoring organizations and teams, managing members and invitations, and moving projects, agents or credit need a signed-in user, in the dashboard or with a Bearer token. With an API key, these calls fail with "API keys can't manage teams or organizations." See [Team API Access](/docs/organizations-api-access).
 
-Studio and the Workflow Agent are stricter: the user who created the key's project must be an active member of the team, and being the organization owner is not enough. Otherwise, requests to them fail with HTTP `403`:
+Studio and the Workflow Agent are stricter: the user who created the key's project must be an active member of the team, and being the organization owner is not enough. When that user is the organization owner but not a member of the team, requests to them fail with HTTP `403`:
 
 | Error | Code | Message |
 |-------|------|---------|
