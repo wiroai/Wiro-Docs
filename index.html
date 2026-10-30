@@ -16595,7 +16595,7 @@ func main() {
 </code></pre>
 <ul>
 <li><code>type</code>: must be the literal string <code>"agent_info"</code>. Other values are ignored (the server routes by type; unknown types are silently dropped).</li>
-<li><code>agenttoken</code>: the token returned by <code>POST /UserAgent/Message/Send</code>. Required. If missing or empty, the server responds with an <code>error</code> frame (see <a href="#subscribe-errors">Subscribe errors</a>).</li>
+<li><code>agenttoken</code>: the token returned by <code>POST /UserAgent/Message/Send</code>. Required, and only that token is accepted: a 30-character string of letters and digits. If it is missing, empty, or anything else (a session key, for example), the server responds with an <code>error</code> frame and subscribes to nothing (see <a href="#subscribe-errors">Subscribe errors</a>).</li>
 </ul>
 <p>The server keeps the mapping <code>connection ↔ agenttoken</code> in memory for the life of the connection. You can send additional <code>agent_info</code> frames on the same socket to subscribe to more tokens (see <a href="#multi-session-subscription">Multi-session subscription</a>).</p>
 <h3 id="3-subscribe-errors">3. Subscribe errors</h3>
@@ -16606,9 +16606,16 @@ func main() {
   &quot;result&quot;: false
 }
 </code></pre>
-<p>The connection stays open: no disconnect. Fix the payload and resend. The same frame is used for any shape-level rejection of a subscribe; message routing failures (unknown types, internal exceptions) are silently dropped and produce no frame at all.</p>
+<p>If <code>agenttoken</code> does not look like a <code>Message/Send</code> token (a session key, a user id, a number), the server replies with this instead and subscribes to nothing:</p>
+<pre><code class="language-json">{
+  &quot;type&quot;: &quot;error&quot;,
+  &quot;message&quot;: &quot;agenttoken-invalid&quot;,
+  &quot;result&quot;: false
+}
+</code></pre>
+<p>The connection stays open: no disconnect. Fix the payload and resend. These two frames cover every shape-level rejection of an <code>agent_info</code> subscribe; message routing failures (unknown types, internal exceptions) are silently dropped and produce no frame at all.</p>
 <h3 id="multi-session-subscription">Multi-session subscription</h3>
-<p>A single WebSocket connection can hold subscriptions to multiple agent sessions simultaneously. Send one <code>agent_info</code> frame per token; the server de-duplicates, so resending the same token is a no-op.</p>
+<p>A single WebSocket connection can hold subscriptions to multiple agent sessions simultaneously. Send one <code>agent_info</code> frame per token; the server de-duplicates, so resending the same token does not add a second subscription. A connection holds up to 256 tokens: once it is full, each new token drops the oldest one, and a token you send again counts as the newest.</p>
 <pre><code class="language-text">WS connect              →  { &quot;type&quot;: &quot;connected&quot;, &quot;version&quot;: &quot;1.0&quot; }
 { agent_info, token: A } →  { agent_subscribed ... token: A }
 { agent_info, token: B } →  { agent_subscribed ... token: B }
@@ -16643,12 +16650,12 @@ func main() {
 <tr>
 <td>↑</td>
 <td><code>agent_info</code></td>
-<td>Client-initiated subscribe frame. Carries the <code>agenttoken</code> issued by <code>Message/Send</code>. Can be sent multiple times on the same socket (one per token).</td>
+<td>Client-initiated subscribe frame. Carries the <code>agenttoken</code> issued by <code>Message/Send</code>. Can be sent multiple times on the same socket (one per token, up to 256).</td>
 </tr>
 <tr>
 <td>↓</td>
 <td><code>error</code></td>
-<td>Server-side rejection of a malformed subscribe (missing <code>agenttoken</code>, or a malformed <code>sessiontoken</code>). Connection stays open; retry with a valid frame.</td>
+<td>Server-side rejection of a malformed subscribe (a missing or invalid <code>agenttoken</code>, or a malformed <code>sessiontoken</code>). Connection stays open; retry with a valid frame.</td>
 </tr>
 <tr>
 <td>↓</td>
@@ -16693,7 +16700,7 @@ func main() {
 <tr>
 <td>↓</td>
 <td><code>agent_wiroai_runtask</code></td>
-<td>Model-run discovery frame. Fires whenever the agent itself launches a Wiro model run during a turn (e.g. generating an image or video via <code>int-wiro-aimodels</code>). Broadcast on the <strong>session-key</strong> channel (not the per-turn <code>agenttoken</code>), carrying the new task's <code>socketaccesstoken</code> so you can subscribe to that run's <code>task_*</code> lifecycle and collect its outputs. See <a href="#model-runs-the-agent-triggers">Model runs the agent triggers</a>.</td>
+<td>Model-run discovery frame. Fires whenever the agent itself launches a Wiro model run during a turn (e.g. generating an image or video via <code>int-wiro-aimodels</code>). Arrives on the <code>agenttoken</code> of the turn that launched the run, carrying the new task's <code>socketaccesstoken</code> so you can subscribe to that run's <code>task_*</code> lifecycle and collect its outputs. See <a href="#model-runs-the-agent-triggers">Model runs the agent triggers</a>.</td>
 </tr>
 <tr>
 <td>↑</td>
@@ -17073,15 +17080,15 @@ func main() {
 <p>When the agent <strong>itself</strong> kicks off a Wiro model run during a turn (for example generating an image or a video through the <code>int-wiro-aimodels</code> skill), the bridge emits an <code>agent_wiroai_runtask</code> discovery frame. It hands you the new model run's <code>socketaccesstoken</code> so you can subscribe to that run and stream its progress and final media outputs. This is how a chat product surfaces a "live activity feed" of the media the agent is producing.</p>
 <pre><code class="language-json">{
   &quot;type&quot;: &quot;agent_wiroai_runtask&quot;,
-  &quot;agenttoken&quot;: &quot;user-42&quot;,
+  &quot;agenttoken&quot;: &quot;aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb&quot;,
   &quot;message&quot;: {
-    &quot;taskid&quot;: 534574,
+    &quot;taskid&quot;: &quot;534574&quot;,
     &quot;socketaccesstoken&quot;: &quot;eDcCm5yy7Z…&quot;,
     &quot;slugowner&quot;: &quot;openai&quot;,
     &quot;slugproject&quot;: &quot;gpt-image-1&quot;,
     &quot;categories&quot;: [&quot;image&quot;],
     &quot;status&quot;: &quot;task_queue&quot;,
-    &quot;response&quot;: { &quot;result&quot;: true, &quot;taskid&quot;: 534574, &quot;socketaccesstoken&quot;: &quot;eDcCm5yy7Z…&quot; }
+    &quot;response&quot;: { &quot;result&quot;: true, &quot;taskid&quot;: &quot;534574&quot;, &quot;socketaccesstoken&quot;: &quot;eDcCm5yy7Z…&quot; }
   },
   &quot;result&quot;: true
 }
@@ -17099,8 +17106,8 @@ func main() {
 <tbody>
 <tr>
 <td><code>taskid</code></td>
-<td>number</td>
-<td>The model run's task id.</td>
+<td>string</td>
+<td>The model run's task id, the same value as <code>taskid</code> in a <code>POST /Run</code> response.</td>
 </tr>
 <tr>
 <td><code>socketaccesstoken</code></td>
@@ -17136,13 +17143,10 @@ func main() {
 </table>
 </div>
 </div>
-<p><strong>This frame is keyed on the session, not the per-turn token.</strong> Unlike the lifecycle frames above, <code>agent_wiroai_runtask</code> is broadcast on the <strong><code>sessionkey</code></strong> you passed to <code>Message/Send</code> (the frame's <code>agenttoken</code> field carries that session key, not a per-turn token). To receive it, send a second subscribe frame with your session key as the token:</p>
-<pre><code class="language-json">{ &quot;type&quot;: &quot;agent_info&quot;, &quot;agenttoken&quot;: &quot;user-42&quot; }
-</code></pre>
-<p>A single socket can hold both subscriptions at once: the per-turn <code>agenttoken</code> (for the chat stream) and the <code>sessionkey</code> (for run discovery).</p>
+<p><strong>This frame arrives on the turn's <code>agenttoken</code>.</strong> Like the lifecycle frames above, <code>agent_wiroai_runtask</code> goes to the sockets subscribed to the <code>agenttoken</code> of the turn in which the agent launched the run, and its <code>agenttoken</code> field carries that token. The subscription you already hold for the chat stream receives it, so no extra subscribe is needed. A session key is not a channel: <code>agent_info</code> with a session key returns <code>agenttoken-invalid</code> and brings nothing.</p>
 <p><strong>Then pivot to the task socket for outputs.</strong> Take <code>message.socketaccesstoken</code> and subscribe to the standard model-run WebSocket exactly as documented in <a href="/docs/websocket">WebSocket</a>: send <code>{ "type": "task_info", "tasktoken": "&lt;socketaccesstoken&gt;" }</code> and stream <code>task_queue → task_start → task_output → task_postprocess_end</code>. The final <code>task_postprocess_end</code> carries the output array (media URLs). The model-run <code>task_*</code> events are <strong>only</strong> delivered on the task's own <code>socketaccesstoken</code> channel. They are never re-broadcast on the agent channel.</p>
 <blockquote>
-<p><strong>Only fires for agent-initiated runs.</strong> <code>agent_wiroai_runtask</code> is emitted when the <em>agent</em> calls a model mid-turn. Model runs you launch yourself with <code>POST /Run</code> (your own <code>x-api-key</code>) do not produce this frame, because you already hold their <code>socketaccesstoken</code> from the <code>/Run</code> response.</p>
+<p><strong>Only fires for agent-initiated runs.</strong> <code>agent_wiroai_runtask</code> is emitted when the <em>agent</em> calls a model mid-turn. Model runs you launch yourself with <code>POST /Run</code> (your own <code>x-api-key</code>) do not produce this frame, because you already hold their <code>socketaccesstoken</code> from the <code>/Run</code> response. Runs that a sub-agent, a scheduled task or a hook launches do not produce it either.</p>
 </blockquote>
 <h3 id="following-a-session">Following a session</h3>
 <p>Some messages are added to a session between turns: a scheduled report, files the agent sends after its answer, or the result of longer work it finished in the background. They belong to no turn, so they never stream on an <code>agenttoken</code>. To receive them as they are added, follow the session with the <code>sessiontoken</code> that <a href="/docs/agent-messaging#post-useragentmessagehistory"><code>Message/History</code></a> returns for it:</p>
@@ -17354,7 +17358,7 @@ ws.onopen = () =&gt; {
 <pre><code class="language-text">agent_queue  →  agent_start  →  (agent_timeline_delta | agent_output) × N  →  agent_end  →  agent_usage_report
 </code></pre>
 <p><code>agent_queue</code> is <strong>not</strong> a WebSocket frame: it's the <code>status</code> returned synchronously in the <code>Message/Send</code> response (and reflected by <code>agent_subscribed</code> if you subscribe while the message is still queued). Timeline and provisional answer events can interleave between start and terminal status. On the failure path, <code>agent_error</code> or <code>agent_cancel</code> takes the place of <code>agent_end</code>, and <strong>no</strong> <code>agent_usage_report</code> follows. <code>Message/Detail</code> is authoritative for the final persisted timeline.</p>
-<p><a href="#model-runs-the-agent-triggers"><code>agent_wiroai_runtask</code></a> is <strong>not</strong> part of this linear order: it fires out-of-band (zero or more times per turn, whenever the agent launches a model run) on the <strong>session-key</strong> channel rather than the per-turn <code>agenttoken</code>.</p>
+<p><a href="#model-runs-the-agent-triggers"><code>agent_wiroai_runtask</code></a> is <strong>not</strong> part of this linear order: it fires out-of-band (zero or more times per turn, whenever the agent launches a model run) on the same <code>agenttoken</code> as the turn's other frames.</p>
 <h2 id="code-examples">Code Examples</h2>
 <h3 id="javascript">JavaScript</h3>
 <pre><code class="language-javascript">const agentToken = 'your-agent-token';
@@ -17719,6 +17723,13 @@ channel.stream.listen((message) {
 <pre><code class="language-json">{
   &quot;type&quot;: &quot;error&quot;,
   &quot;message&quot;: &quot;agenttoken-required&quot;,
+  &quot;result&quot;: false
+}
+</code></pre>
+<p><strong><code>error</code> for a value that is not an agenttoken</strong> (server → client, for example a session key in <code>agent_info</code>):</p>
+<pre><code class="language-json">{
+  &quot;type&quot;: &quot;error&quot;,
+  &quot;message&quot;: &quot;agenttoken-invalid&quot;,
   &quot;result&quot;: false
 }
 </code></pre>
@@ -33985,7 +33996,7 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                     <p><strong>How:</strong> Deploy one instance via <code>POST /UserAgent/Deploy</code>, then send messages with different <code>sessionkey</code> values per user.</p>
                     <p>
                       <strong>About <code>sessionkey</code>:</strong> This field is optional. If omitted, messages go into a shared <code>"default"</code> session. Reuse the same <code>sessionkey</code> to continue a conversation (the agent retrieves prior messages as context). Use a fresh UUID to start a new conversation. The common convention is one <code>sessionkey</code> per end-user (e.g. <code>"user-456"</code>), but you can also use it per-thread (e.g. <code>"ticket-2025-0817"</code>)
-                      for products that group conversations by topic. See the <a href="/docs/agent-messaging" class="docs-link">Agent Messaging</a> guide for how sessions work.
+                      for products that group conversations by topic. See the <a href="/docs/agent-messaging" class="docs-link">Agent Messaging</a> guide for how sessions work. The session key is a label, not a WebSocket channel: you follow a turn with its <code>agenttoken</code> and a session with the <code>sessiontoken</code> from <code>Message/History</code> (see <a href="/docs/agent-websocket" class="docs-link">Agent WebSocket</a>).
                     </p>
 
                     <h4>Real-World Examples</h4>
@@ -34141,10 +34152,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
                       <li><strong>Deploy once</strong> (prepaid): <code>POST /UserAgent/Deploy</code> with <code>useprepaid: true</code> + <code>tier</code>. Set the <code>wiro</code> credential with <code>POST /UserAgent/CredentialUpsert</code>, then <code>Start</code>.</li>
                       <li><strong>Open the socket</strong>: connect to <code>wss://socket.wiro.ai/v1</code> and wait for the <code>connected</code> frame.</li>
                       <li><strong>(Optional) name the session</strong>: <code>POST /UserAgent/Message/RenameSession</code> seeds a titled, empty session that shows up immediately in <code>Message/Sessions</code>.</li>
-                      <li><strong>Subscribe to run discovery</strong>: send <code>{ "type": "agent_info", "agenttoken": "&lt;sessionkey&gt;" }</code> so you receive <code>agent_wiroai_runtask</code> frames for this session.</li>
                       <li><strong>Send a message</strong>: <code>POST /UserAgent/Message/Send</code> with the user's <code>sessionkey</code>. Subscribe <code>{ "type": "agent_info", "agenttoken": "&lt;agenttoken-from-send&gt;" }</code> and stream <code>agent_start → agent_output × N → agent_end</code>.</li>
                       <li><strong>Patch token usage</strong>: ~250-500 ms after <code>agent_end</code>, an <code>agent_usage_report</code> frame delivers the turn's token counts, <code>tokencost</code>, and <code>remainingcredits</code>; splice them onto the message by <code>messageguid</code>.</li>
-                      <li><strong>Collect generated media</strong>: when the agent runs a model, an <code>agent_wiroai_runtask</code> frame arrives on the session channel with a <code>socketaccesstoken</code>. Subscribe to it with <code>{ "type": "task_info", "tasktoken": "&lt;socketaccesstoken&gt;" }</code> and stream <code>task_queue → task_start → task_output → task_postprocess_end</code>; the final frame carries the output media URLs. See <a href="/docs/agent-websocket#ws-agent-wiroai-runtask">Agent WebSocket → Model runs the agent triggers</a>.</li>
+                      <li><strong>Collect generated media</strong>: when the agent runs a model, an <code>agent_wiroai_runtask</code> frame arrives on the same <code>agenttoken</code> with a <code>socketaccesstoken</code>. Subscribe to it with <code>{ "type": "task_info", "tasktoken": "&lt;socketaccesstoken&gt;" }</code> and stream <code>task_queue → task_start → task_output → task_postprocess_end</code>; the final frame carries the output media URLs. See <a href="/docs/agent-websocket#ws-agent-wiroai-runtask">Agent WebSocket → Model runs the agent triggers</a>.</li>
                       <li><strong>Manage sessions</strong>: list with <code>Message/Sessions</code>, rename with <code>Message/RenameSession</code>, clear/forget with <code>Message/DeleteSession</code> (<code>rotate: true</code> to wipe the agent's memory of the thread).</li>
                     </ol>
                     <p>Either deployment shape works: run <strong>one</strong> media agent and separate users by <code>sessionkey</code>, or deploy <strong>separate</strong> agents per workspace/customer. Both use the exact same socket and messaging surface.</p>

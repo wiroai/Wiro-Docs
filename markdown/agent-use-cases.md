@@ -54,7 +54,7 @@ For conversational agents that don't need per-user credentials. One agent instan
 
 **How:** Deploy one instance via `POST /UserAgent/Deploy`, then send messages with different `sessionkey` values per user.
 
-**About `sessionkey`:** This field is optional. If omitted, messages go into a shared `"default"` session. Reuse the same `sessionkey` to continue a conversation (the agent retrieves prior messages as context). Use a fresh UUID to start a new conversation. The common convention is one `sessionkey` per end-user (e.g. `"user-456"`), but you can also use it per-thread (e.g. `"ticket-2025-0817"`) for products that group conversations by topic. See the [Agent Messaging](/docs/agent-messaging) guide for how sessions work.
+**About `sessionkey`:** This field is optional. If omitted, messages go into a shared `"default"` session. Reuse the same `sessionkey` to continue a conversation (the agent retrieves prior messages as context). Use a fresh UUID to start a new conversation. The common convention is one `sessionkey` per end-user (e.g. `"user-456"`), but you can also use it per-thread (e.g. `"ticket-2025-0817"`) for products that group conversations by topic. See the [Agent Messaging](/docs/agent-messaging) guide for how sessions work. The session key is a label, not a WebSocket channel: you follow a turn with its `agenttoken` and a session with the `sessiontoken` from `Message/History` (see [Agent WebSocket](/docs/agent-websocket)).
 
 #### Real-World Examples
 
@@ -175,11 +175,10 @@ A richer variant of white-label chat: besides replying with text, the agent **ge
 1. **Deploy once** (prepaid): `POST /UserAgent/Deploy` with `useprepaid: true` + `tier`. Set the `wiro` credential with `POST /UserAgent/CredentialUpsert`, then `Start`.
 2. **Open the socket**: connect to `wss://socket.wiro.ai/v1` and wait for the `connected` frame.
 3. **(Optional) name the session**: `POST /UserAgent/Message/RenameSession` seeds a titled, empty session that shows up immediately in `Message/Sessions`.
-4. **Subscribe to run discovery**: send `{ "type": "agent_info", "agenttoken": "<sessionkey>" }` so you receive `agent_wiroai_runtask` frames for this session.
-5. **Send a message**: `POST /UserAgent/Message/Send` with the user's `sessionkey`. Subscribe `{ "type": "agent_info", "agenttoken": "<agenttoken-from-send>" }` and stream `agent_start → agent_output × N → agent_end`.
-6. **Patch token usage**: ~250-500 ms after `agent_end`, an `agent_usage_report` frame delivers the turn's token counts, `tokencost`, and `remainingcredits`; splice them onto the message by `messageguid`.
-7. **Collect generated media**: when the agent runs a model, an `agent_wiroai_runtask` frame arrives on the session channel with a `socketaccesstoken`. Subscribe to it with `{ "type": "task_info", "tasktoken": "<socketaccesstoken>" }` and stream `task_queue → task_start → task_output → task_postprocess_end`; the final frame carries the output media URLs. See [Agent WebSocket → Model runs the agent triggers](/docs/agent-websocket#model-runs-the-agent-triggers).
-8. **Manage sessions**: list with `Message/Sessions`, rename with `Message/RenameSession`, clear/forget with `Message/DeleteSession` (`rotate: true` to wipe the agent's memory of the thread).
+4. **Send a message**: `POST /UserAgent/Message/Send` with the user's `sessionkey`. Subscribe `{ "type": "agent_info", "agenttoken": "<agenttoken-from-send>" }` and stream `agent_start → agent_output × N → agent_end`.
+5. **Patch token usage**: ~250-500 ms after `agent_end`, an `agent_usage_report` frame delivers the turn's token counts, `tokencost`, and `remainingcredits`; splice them onto the message by `messageguid`.
+6. **Collect generated media**: when the agent runs a model, an `agent_wiroai_runtask` frame arrives on the same `agenttoken` with a `socketaccesstoken`. Subscribe to it with `{ "type": "task_info", "tasktoken": "<socketaccesstoken>" }` and stream `task_queue → task_start → task_output → task_postprocess_end`; the final frame carries the output media URLs. See [Agent WebSocket → Model runs the agent triggers](/docs/agent-websocket#model-runs-the-agent-triggers).
+7. **Manage sessions**: list with `Message/Sessions`, rename with `Message/RenameSession`, clear/forget with `Message/DeleteSession` (`rotate: true` to wipe the agent's memory of the thread).
 
 Either deployment shape works: run **one** media agent and separate users by `sessionkey`, or deploy **separate** agents per workspace/customer. Both use the exact same socket and messaging surface.
 

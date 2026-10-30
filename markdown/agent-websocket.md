@@ -45,7 +45,7 @@ Use it as a signal that the socket is fully ready to receive a subscribe. Most c
 ```
 
 - `type`: must be the literal string `"agent_info"`. Other values are ignored (the server routes by type; unknown types are silently dropped).
-- `agenttoken`: the token returned by `POST /UserAgent/Message/Send`. Required. If missing or empty, the server responds with an `error` frame (see [Subscribe errors](#subscribe-errors)).
+- `agenttoken`: the token returned by `POST /UserAgent/Message/Send`. Required, and only that token is accepted: a 30-character string of letters and digits. If it is missing, empty, or anything else (a session key, for example), the server responds with an `error` frame and subscribes to nothing (see [Subscribe errors](#subscribe-errors)).
 
 The server keeps the mapping `connection ↔ agenttoken` in memory for the life of the connection. You can send additional `agent_info` frames on the same socket to subscribe to more tokens (see [Multi-session subscription](#multi-session-subscription)).
 
@@ -61,11 +61,21 @@ If `agenttoken` is missing or blank, the server replies with:
 }
 ```
 
-The connection stays open: no disconnect. Fix the payload and resend. The same frame is used for any shape-level rejection of a subscribe; message routing failures (unknown types, internal exceptions) are silently dropped and produce no frame at all.
+If `agenttoken` does not look like a `Message/Send` token (a session key, a user id, a number), the server replies with this instead and subscribes to nothing:
+
+```json
+{
+  "type": "error",
+  "message": "agenttoken-invalid",
+  "result": false
+}
+```
+
+The connection stays open: no disconnect. Fix the payload and resend. These two frames cover every shape-level rejection of an `agent_info` subscribe; message routing failures (unknown types, internal exceptions) are silently dropped and produce no frame at all.
 
 ### Multi-session subscription
 
-A single WebSocket connection can hold subscriptions to multiple agent sessions simultaneously. Send one `agent_info` frame per token; the server de-duplicates, so resending the same token is a no-op.
+A single WebSocket connection can hold subscriptions to multiple agent sessions simultaneously. Send one `agent_info` frame per token; the server de-duplicates, so resending the same token does not add a second subscription. A connection holds up to 256 tokens: once it is full, each new token drops the oldest one, and a token you send again counts as the newest.
 
 ```text
 WS connect              →  { "type": "connected", "version": "1.0" }
@@ -91,8 +101,8 @@ Frames flow in two directions. `↓` = server → client, `↑` = client → ser
 | Direction | Event Type | Description |
 |---|---|---|
 | ↓ | `connected` | Welcome frame pushed by the server right after the WebSocket upgrade. Fires exactly once per connection. |
-| ↑ | `agent_info` | Client-initiated subscribe frame. Carries the `agenttoken` issued by `Message/Send`. Can be sent multiple times on the same socket (one per token). |
-| ↓ | `error` | Server-side rejection of a malformed subscribe (missing `agenttoken`, or a malformed `sessiontoken`). Connection stays open; retry with a valid frame. |
+| ↑ | `agent_info` | Client-initiated subscribe frame. Carries the `agenttoken` issued by `Message/Send`. Can be sent multiple times on the same socket (one per token, up to 256). |
+| ↓ | `error` | Server-side rejection of a malformed subscribe (a missing or invalid `agenttoken`, or a malformed `sessiontoken`). Connection stays open; retry with a valid frame. |
 | ↓ | `agent_subscribed` | Subscribe acknowledged. Carries the current lifecycle `status`, accumulated `debugoutput`, `messageguid`, and persisted `timeline[]`. If the agent already finished before you subscribed, this frame is your reconnect snapshot. |
 | ↓ | `agent_start` | The bridge has opened an SSE stream to the agent container. The underlying model is now generating. Emits exactly once per message. |
 | ↓ | `agent_timeline_delta` | One ordered public timeline-block update. Carries `messageguid` and one `block`; merge by `blockid` and that block's `version`, then sort by `callindex`, `contentindex`, and `blockid`. |
@@ -101,7 +111,7 @@ Frames flow in two directions. `↓` = server → client, `↑` = client → ser
 | ↓ | `agent_error` | Terminal failure event. `message` is either a sanitized string ("Agent is temporarily unavailable…" when an exception was caught) or a `progressGenerate` object (when the stream finished but content was a degenerate `"..."` / `"Error: internal error"`). Emits at most once. |
 | ↓ | `agent_cancel` | Terminal cancel event. Fires **only** when an already-active message is aborted mid-stream (via `Message/Cancel` or upstream abort). Cancels against a still-queued message do **not** broadcast this event, so check `Message/Detail` for those. Emits at most once. |
 | ↓ | `agent_usage_report` | Post-terminal usage/billing frame. Fires once, ~250-500 ms after a successful `agent_end`, on the same `agenttoken`. Carries the final token counts, `model`, `tokencost`, and `remainingcredits` for the message identified by `messageguid`. Not emitted for replayed usage callbacks or for turns with no chat message (cron/hook turns). |
-| ↓ | `agent_wiroai_runtask` | Model-run discovery frame. Fires whenever the agent itself launches a Wiro model run during a turn (e.g. generating an image or video via `int-wiro-aimodels`). Broadcast on the **session-key** channel (not the per-turn `agenttoken`), carrying the new task's `socketaccesstoken` so you can subscribe to that run's `task_*` lifecycle and collect its outputs. See [Model runs the agent triggers](#model-runs-the-agent-triggers). |
+| ↓ | `agent_wiroai_runtask` | Model-run discovery frame. Fires whenever the agent itself launches a Wiro model run during a turn (e.g. generating an image or video via `int-wiro-aimodels`). Arrives on the `agenttoken` of the turn that launched the run, carrying the new task's `socketaccesstoken` so you can subscribe to that run's `task_*` lifecycle and collect its outputs. See [Model runs the agent triggers](#model-runs-the-agent-triggers). |
 | ↑ | `agent_session_subscribe` | Follow a session with the `sessiontoken` from `Message/History`. See [Following a session](#following-a-session). |
 | ↓ | `agent_session_subscribed` | Session follow acknowledged. |
 | ↓ | `agent_message_inserted` | A message was added to a followed session between turns (a scheduled report, files sent after an answer, the result of background work). Carries the `sessiontoken` and the new row in `message`. |
@@ -404,15 +414,15 @@ When the agent **itself** kicks off a Wiro model run during a turn (for example 
 ```json
 {
   "type": "agent_wiroai_runtask",
-  "agenttoken": "user-42",
+  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
   "message": {
-    "taskid": 534574,
+    "taskid": "534574",
     "socketaccesstoken": "eDcCm5yy7Z…",
     "slugowner": "openai",
     "slugproject": "gpt-image-1",
     "categories": ["image"],
     "status": "task_queue",
-    "response": { "result": true, "taskid": 534574, "socketaccesstoken": "eDcCm5yy7Z…" }
+    "response": { "result": true, "taskid": "534574", "socketaccesstoken": "eDcCm5yy7Z…" }
   },
   "result": true
 }
@@ -420,7 +430,7 @@ When the agent **itself** kicks off a Wiro model run during a turn (for example 
 
 | Field | Type | Description |
 |---|---|---|
-| `taskid` | number | The model run's task id. |
+| `taskid` | string | The model run's task id, the same value as `taskid` in a `POST /Run` response. |
 | `socketaccesstoken` | string | The run's task token. Subscribe to it (see below) to stream the model run's lifecycle and outputs. |
 | `slugowner` | string | Model owner slug (e.g. `"openai"`, `"black-forest-labs"`). |
 | `slugproject` | string | Model slug (e.g. `"gpt-image-1"`). |
@@ -428,17 +438,11 @@ When the agent **itself** kicks off a Wiro model run during a turn (for example 
 | `status` | string | Always `"task_queue"` at discovery: the run was just enqueued. |
 | `response` | object | Convenience echo `{ result, taskid, socketaccesstoken }`. |
 
-**This frame is keyed on the session, not the per-turn token.** Unlike the lifecycle frames above, `agent_wiroai_runtask` is broadcast on the **`sessionkey`** you passed to `Message/Send` (the frame's `agenttoken` field carries that session key, not a per-turn token). To receive it, send a second subscribe frame with your session key as the token:
-
-```json
-{ "type": "agent_info", "agenttoken": "user-42" }
-```
-
-A single socket can hold both subscriptions at once: the per-turn `agenttoken` (for the chat stream) and the `sessionkey` (for run discovery).
+**This frame arrives on the turn's `agenttoken`.** Like the lifecycle frames above, `agent_wiroai_runtask` goes to the sockets subscribed to the `agenttoken` of the turn in which the agent launched the run, and its `agenttoken` field carries that token. The subscription you already hold for the chat stream receives it, so no extra subscribe is needed. A session key is not a channel: `agent_info` with a session key returns `agenttoken-invalid` and brings nothing.
 
 **Then pivot to the task socket for outputs.** Take `message.socketaccesstoken` and subscribe to the standard model-run WebSocket exactly as documented in [WebSocket](/docs/websocket): send `{ "type": "task_info", "tasktoken": "<socketaccesstoken>" }` and stream `task_queue → task_start → task_output → task_postprocess_end`. The final `task_postprocess_end` carries the output array (media URLs). The model-run `task_*` events are **only** delivered on the task's own `socketaccesstoken` channel. They are never re-broadcast on the agent channel.
 
-> **Only fires for agent-initiated runs.** `agent_wiroai_runtask` is emitted when the *agent* calls a model mid-turn. Model runs you launch yourself with `POST /Run` (your own `x-api-key`) do not produce this frame, because you already hold their `socketaccesstoken` from the `/Run` response.
+> **Only fires for agent-initiated runs.** `agent_wiroai_runtask` is emitted when the *agent* calls a model mid-turn. Model runs you launch yourself with `POST /Run` (your own `x-api-key`) do not produce this frame, because you already hold their `socketaccesstoken` from the `/Run` response. Runs that a sub-agent, a scheduled task or a hook launches do not produce it either.
 
 ### Following a session
 
@@ -593,7 +597,7 @@ agent_queue  →  agent_start  →  (agent_timeline_delta | agent_output) × N  
 
 `agent_queue` is **not** a WebSocket frame: it's the `status` returned synchronously in the `Message/Send` response (and reflected by `agent_subscribed` if you subscribe while the message is still queued). Timeline and provisional answer events can interleave between start and terminal status. On the failure path, `agent_error` or `agent_cancel` takes the place of `agent_end`, and **no** `agent_usage_report` follows. `Message/Detail` is authoritative for the final persisted timeline.
 
-[`agent_wiroai_runtask`](#model-runs-the-agent-triggers) is **not** part of this linear order: it fires out-of-band (zero or more times per turn, whenever the agent launches a model run) on the **session-key** channel rather than the per-turn `agenttoken`.
+[`agent_wiroai_runtask`](#model-runs-the-agent-triggers) is **not** part of this linear order: it fires out-of-band (zero or more times per turn, whenever the agent launches a model run) on the same `agenttoken` as the turn's other frames.
 
 ## Code Examples
 
@@ -996,6 +1000,16 @@ channel.stream.listen((message) {
 {
   "type": "error",
   "message": "agenttoken-required",
+  "result": false
+}
+```
+
+**`error` for a value that is not an agenttoken** (server → client, for example a session key in `agent_info`):
+
+```json
+{
+  "type": "error",
+  "message": "agenttoken-invalid",
   "result": false
 }
 ```
