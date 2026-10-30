@@ -829,7 +829,7 @@ All API responses return HTTP 200. Check `result` field and error `code`:
 - Code 98: Authentication required (sign in)
 - Code 99: Bearer token invalid/expired
 
-Auth errors return HTTP 401: invalid API key, missing signature, IP not allowed.
+Auth errors return HTTP 401: invalid API key, missing signature, IP not allowed, a team project's key whose creator left the team (`The person who created this API key is no longer in its team. Ask a team admin for a new key.`), and organization or team changes sent with an API key (`API keys can't manage teams or organizations. Sign in and try again.`). Studio and Workflow Agent requests with a team key whose creator is not an active member of the team, such as an organization owner who is not in it, get HTTP 403 `You must be a member of this team to perform this action`.
 
 ## Pricing
 
@@ -869,7 +869,7 @@ Claude Desktop: add https://mcp.wiro.ai/v1 as a custom connector (https://claude
 OpenClaw: configure `mcp.servers.wiro` with `transport: "streamable-http"`, `connectionTimeoutMs: 10000`, and an environment-backed Authorization header; verify with `openclaw mcp doctor wiro --probe`, or on older releases use `openclaw mcp show wiro`, restart, and run `/tools verbose`.
 Hermes: configure `mcp_servers.wiro` in `~/.hermes/config.yaml`, keep `WIRO_MCP_AUTH` in `~/.hermes/.env`, then run `/reload-mcp` and `/tools`.
 The hosted endpoint needs a client that supports Streamable HTTP, plus either MCP sign-in (OAuth) or a custom Authorization header. Without credentials it answers HTTP 401 with a `WWW-Authenticate` header that points to the sign-in.
-Errors: a failed tool call is a normal tool result with `isError: true` and text `Wiro API error <status>: <message>`. Sending only the API key for a signature-auth project gives `This project uses signature-based auth. Enter API_KEY:API_SECRET (the key and secret joined with a colon) as the API key.` The other connection errors (`Project authorization is not founded.`, `Project authorization is not valid.`, `Requested ip {ip} is not allowed.`) are explained at https://wiro.ai/docs/wiro-mcp-server; a request without an `Authorization` header gets HTTP 401 from the endpoint itself.
+Errors: a failed tool call is a normal tool result with `isError: true` and text `Wiro API error <status>: <message>`. Sending only the API key for a signature-auth project gives `This project uses signature-based auth. Enter API_KEY:API_SECRET (the key and secret joined with a colon) as the API key.` The other connection errors (`Project authorization is not founded.`, `Project authorization is not valid.`, `Requested ip {ip} is not allowed.`, `The person who created this API key is no longer in its team. Ask a team admin for a new key.`) are explained at https://wiro.ai/docs/wiro-mcp-server; a request without an `Authorization` header gets HTTP 401 from the endpoint itself.
 
 ### Self-Hosted (npx)
 ```json

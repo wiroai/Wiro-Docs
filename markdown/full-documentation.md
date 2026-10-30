@@ -4831,6 +4831,14 @@ Understand API error responses, error codes, and how to handle them.
 
 All API responses return HTTP `200`. Auth errors return HTTP `401`.
 
+## Team API Key Errors
+
+| Code | Message | When |
+|------|---------|------|
+| `0` | The person who created this API key is no longer in its team. Ask a team admin for a new key. | HTTP `401`: the user who created the team project left the team |
+| `0` | API keys can't manage teams or organizations. Sign in and try again. | HTTP `401`: an organization, team, member or transfer change sent with an API key |
+| `0` | You must be a member of this team to perform this action | HTTP `403`: a Studio or Workflow Agent request with a team key whose creator is not an active member of the team |
+
 ## Run Errors (POST /Run)
 
 | Code | Message | Action |
@@ -5740,6 +5748,7 @@ Messages you may see while connecting:
 | `Project authorization is not founded.` | No project has this API key. Copy the key again from your project page. |
 | `Project authorization is not valid.` | The API secret does not match the API key. Check that both come from the same project. |
 | `Requested ip {ip} is not allowed.` | The project has an IP whitelist, and the address in the message is not on it. Check the whitelist in your project settings. |
+| `The person who created this API key is no longer in its team. Ask a team admin for a new key.` | The user who created this team project has left the team, so its key no longer works. Use a key from another project, or sign in again and pick another project. |
 
 A request without an `Authorization` header never reaches a tool. The MCP
 endpoint answers HTTP `401` with `Missing or invalid Authorization header` in

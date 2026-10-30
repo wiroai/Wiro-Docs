@@ -574,6 +574,7 @@ Messages you may see while connecting:
 | `Project authorization is not founded.` | No project has this API key. Copy the key again from your project page. |
 | `Project authorization is not valid.` | The API secret does not match the API key. Check that both come from the same project. |
 | `Requested ip {ip} is not allowed.` | The project has an IP whitelist, and the address in the message is not on it. Check the whitelist in your project settings. |
+| `The person who created this API key is no longer in its team. Ask a team admin for a new key.` | The user who created this team project has left the team, so its key no longer works. Use a key from another project, or sign in again and pick another project. |
 
 A request without an `Authorization` header never reaches a tool. The MCP
 endpoint answers HTTP `401` with `Missing or invalid Authorization header` in

@@ -6803,6 +6803,16 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                           <td>Requested ip {ip} is not allowed.</td>
                         </tr>
                         <tr>
+                          <td>Key creator left the team</td>
+                          <td><code>0</code></td>
+                          <td>The person who created this API key is no longer in its team. Ask a team admin for a new key.</td>
+                        </tr>
+                        <tr>
+                          <td>Team change with an API key</td>
+                          <td><code>0</code></td>
+                          <td>API keys can't manage teams or organizations. Sign in and try again.</td>
+                        </tr>
+                        <tr>
                           <td>Bearer token missing</td>
                           <td><code>99</code></td>
                           <td>Authorization bearer token is not founded in headers.</td>
@@ -6834,6 +6844,27 @@ x-nonce: Unix timestamp or random integer</code></pre>
 
                     <h3>IP Whitelist Errors</h3>
                     <p>If your project has an IP whitelist configured, requests from unlisted IPs will be rejected. Use <code>*</code> in the whitelist to allow all IPs.</p>
+
+                    <h3>Team API Key Errors</h3>
+                    <p>A team project's API key works only while the user who created the project is an active member of the team or the organization owner. Once they leave the team, every request with the key fails with "The person who created this API key is no longer in its team." Switch to a key from a project that an active member created.</p>
+                    <p>Creating, changing, deleting or restoring organizations and teams, managing members and invitations, and moving projects, agents or credit need a signed-in user, in the dashboard or with a Bearer token. With an API key, these calls fail with "API keys can't manage teams or organizations." See <a href="/docs/organizations-api-access">Team API Access</a>.</p>
+                    <p>Studio and the Workflow Agent are stricter: the user who created the key's project must be an active member of the team, and being the organization owner is not enough. Otherwise, requests to them fail with HTTP <code>403</code>:</p>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Error</th>
+                          <th>Code</th>
+                          <th>Message</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>Not a team member</td>
+                          <td><code>0</code></td>
+                          <td>You must be a member of this team to perform this action</td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </section>
 
                   <section id="error-run">
@@ -7878,6 +7909,10 @@ if (!data.result) {
                             <tr>
                               <td><code>Requested ip {ip} is not allowed.</code></td>
                               <td>The project has an IP whitelist, and the address in the message is not on it. Check the whitelist in your project settings.</td>
+                            </tr>
+                            <tr>
+                              <td><code>The person who created this API key is no longer in its team. Ask a team admin for a new key.</code></td>
+                              <td>The user who created this team project has left the team, so its key no longer works. Use a key from another project, or sign in again and pick another project.</td>
                             </tr>
                           </tbody>
                         </table>

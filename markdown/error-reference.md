@@ -43,6 +43,8 @@ These errors are returned when API key or bearer token authentication fails. All
 | Signature required | `0` | "Project requires signature authentication. x-signature and x-nonce headers are required." |
 | Invalid signature | `0` | "Project authorization is not valid." |
 | IP not allowed | `0` | "Requested ip {ip} is not allowed." |
+| Key creator left the team | `0` | "The person who created this API key is no longer in its team. Ask a team admin for a new key." |
+| Team change with an API key | `0` | "API keys can't manage teams or organizations. Sign in and try again." |
 | Bearer token missing | `99` | "Authorization bearer token is not founded in headers." |
 | Bearer token invalid | `99` | "Authorization bearer token is invalid." |
 | Bearer token expired | `99` | "Authorization bearer token expired." |
@@ -63,6 +65,18 @@ See [Authentication](/docs/authentication) for details.
 ### IP Whitelist Errors
 
 If your project has an IP whitelist configured, requests from unlisted IPs will be rejected. Use `*` in the whitelist to allow all IPs.
+
+### Team API Key Errors
+
+A team project's API key works only while the user who created the project is an active member of the team or the organization owner. Once they leave the team, every request with the key fails with "The person who created this API key is no longer in its team." Switch to a key from a project that an active member created.
+
+Creating, changing, deleting or restoring organizations and teams, managing members and invitations, and moving projects, agents or credit need a signed-in user, in the dashboard or with a Bearer token. With an API key, these calls fail with "API keys can't manage teams or organizations." See [Team API Access](/docs/organizations-api-access).
+
+Studio and the Workflow Agent are stricter: the user who created the key's project must be an active member of the team, and being the organization owner is not enough. Otherwise, requests to them fail with HTTP `403`:
+
+| Error | Code | Message |
+|-------|------|---------|
+| Not a team member | `0` | "You must be a member of this team to perform this action" |
 
 ## Run Errors
 
