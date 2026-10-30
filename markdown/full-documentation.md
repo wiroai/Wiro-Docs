@@ -5431,7 +5431,7 @@ servers.
 
 You pick how long an app stays connected on the sign-in page: 7 days, 30 days,
 90 days (the default), 180 days, 1 year, or unlimited. Connected apps are
-listed under [Projects, Connected apps](https://wiro.ai/panel/project?view=apps)
+listed under [Projects, Connected Apps](https://wiro.ai/panel/project?view=apps)
 with their project, last use and end date; pick a new length there (it counts
 from that day), or **Disconnect** to end an app's access within a minute. An
 unlimited connection lasts until you disconnect it, and any connection ends when

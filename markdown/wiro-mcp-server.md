@@ -81,7 +81,7 @@ last one hour and renew on their own, so there is nothing to copy or rotate.
 ### See, change and disconnect apps
 
 Every app you connected is listed under
-[Projects, Connected apps](https://wiro.ai/panel/project?view=apps) in the
+[Projects, Connected Apps](https://wiro.ai/panel/project?view=apps) in the
 panel, with its project, when it was last used and when it ends. Pick a new
 length there to extend or shorten it; it counts from that day. **Disconnect**
 ends its access within a minute, and the app asks you to sign in again the next
