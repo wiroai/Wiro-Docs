@@ -1040,7 +1040,9 @@ Google Business Profile (`google-business`, skill `int-google-business-reviews`)
 
 Wiro supports personal and team workspaces. Personal is the default. Organizations group teams; teams hold projects, agents, and wallets.
 
-Context resolution: API key determines context automatically. Team project API key → team context. Personal project API key → personal context. No extra headers needed.
+Context resolution: API key determines context automatically. Team project API key → team context. Personal project API key → personal context. No extra headers needed. A team project's API key works only while the user who created the project is an active member of the team or the organization owner; once the creator is removed, requests with it fail with HTTP 401 "The person who created this API key is no longer in its team. Ask a team admin for a new key." (public endpoints answer as if no key was sent).
+
+Team and organization changes need a signed-in user (dashboard or Bearer token): Organization/Create, Organization/Remove, Organization/Restore, Team/Create, Team/Update, Team/Remove, Team/Member/Invite, Team/Member/CancelInvite, Team/Member/UpdateRole, Team/Member/Remove, Team/TransferAgent, Team/TransferProject and Team/TransferCredit fail with HTTP 401 "API keys can't manage teams or organizations. Sign in and try again." for any API key. Reads (Organization/List, Team/Member/List, Team/Spending/Summary) work with an API key.
 
 Roles: Owner (org creator: creates/removes teams, edits/removes/restores the org, admin of every team they create and can't be demoted to member), Admin (team settings, invites, roles and member limits, team agents and projects, transfers, coupons, team wallet auto-pay), Member (run models, create projects, chat with team agents, view members and every member's spending).
 
@@ -1056,10 +1058,10 @@ Endpoints:
 - POST /Team/Member/Accept: `{ invitetoken }`. Accepts an invite (the token from the invite link, valid 72 hours); you must be signed in with the invited email address. Without a signed-in account the call fails with "Please sign in or sign up to accept this invitation" (code 98); signed in with a different email, it fails with "This invitation was sent to a different email address"; the organization owner always joins as admin
 - POST /Team/Member/CancelInvite: `{ teammemberguid }`. Owner or team admin; cancels a pending invite
 - POST /Team/Member/List: `{ teamguid }` → member[] (guid = teammemberguid, role, status, spendlimit, user profile; pending invites included); any team member
-- POST /Team/Member/Remove: `{ teammemberguid }`. Owner or team admin; `teammemberguid` is the member's `guid` from Team/Member/List; the team's last admin can't be removed; another admin can't remove the organization owner ("Only the organization owner can remove the owner from this team"), but the owner can remove themselves
+- POST /Team/Member/Remove: `{ teammemberguid }`. Owner or team admin; `teammemberguid` is the member's `guid` from Team/Member/List; the team's last admin can't be removed; another admin can't remove the organization owner ("Only the organization owner can remove the owner from this team"), but the owner can remove themselves; the API keys of projects the removed member created stop working unless they are the organization owner
 - POST /Team/Member/UpdateRole: `{ teammemberguid, role, spendlimit? }`. `role` is `"admin"` or `"member"`; `spendlimit` sets the member's limit (0 or null = none); the last admin can't be demoted, and nobody can demote the organization owner ("The organization owner is always an admin of their teams and can't be made a member")
 - POST /Team/TransferAgent: `{ useragentguid, targetteamguid }`. Empty string for personal; team side needs team admin or org owner, personal side only the deployer
-- POST /Team/TransferProject: `{ projectapikey, targetteamguid }`. Empty string for personal; team side needs team admin or org owner, personal side only the creator
+- POST /Team/TransferProject: `{ projectapikey, targetteamguid }`. Empty string for personal; team side needs team admin or org owner, personal side only the creator; the key stops working if its creator is neither an active member of the target team nor the org owner
 - POST /Team/TransferCredit: `{ amount, sourceteamguid, targetteamguid }`. Transfer credit between wallets, preserves expiry
 - POST /Team/Spending/Summary: `{ teamguid }` → teamtotal, playgroundTotal, apiTotal, spending[] (one row per active member: memberguid, useruuid, role, spendlimit, spent, playgroundSpent, apiSpent, user); any team member can call it; anyone else gets "You must be a member of this team to perform this action"
 
@@ -1069,7 +1071,7 @@ Spend limits: Team-level (spendlimit on team, via Team/Update) and member-level 
 
 Agent context guards: Message/Send, Message/History, Message/Sessions, Message/DeleteSession, Message/RenameSession, CreateExtraCreditCheckout, CreateSubscriptionCheckout, PricingPreview, CancelSubscription, RenewSubscription and UpgradeTier require the request's workspace (the API key's project) to match the agent's; Message/Delete, SkillsApply and SkillToggle require the same for team agents only. Realtime/WebStart checks team agents only too, and also accepts the member who deployed the agent from any workspace while they are still an active member of its team. A mismatch returns "This agent belongs to a team. Switch to the team context to access it.", "This agent is in your personal workspace. Switch to personal context to access it." or "This agent belongs to a different team." Deploy creates the agent in the key's workspace; with a team key, the key's owner must be a team admin.
 
-Resource isolation: Project/List, Project/UsageSummary, UserAgent/MyAgents, Task/List, Task/Stat, Wallet/List, Wallet/TransactionList, Coupon/UserList all filter by active context.
+Resource isolation: Project/List, Project/UsageSummary, UserAgent/MyAgents, Task/List, Task/Stat, Wallet/List, Wallet/TransactionList, Coupon/UserList all filter by active context. In team context, Project/List rows carry `apikey` only for projects the caller created, unless the caller is a team admin or the organization owner; other rows carry `apikeymasked` (first and last 4 characters) instead. With an API key, the caller is the user who created the key's project.
 
 ## Links
 

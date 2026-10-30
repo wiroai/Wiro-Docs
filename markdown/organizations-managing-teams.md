@@ -2,6 +2,8 @@
 
 Create organizations, invite members, and manage roles and permissions.
 
+Creating, changing, deleting or restoring organizations and teams, managing members and invitations, and moving projects, agents or credit all need a signed-in user, as in the dashboard. With an API key these calls fail with HTTP `401` (see [Team API Access](/docs/organizations-api-access)).
+
 ## **POST** /Organization/Create
 
 Creates a new organization. The caller automatically becomes the organization **owner**, and only the owner can create teams, delete the organization, or restore it after deletion. A team named `Default Team` is created with it automatically: the caller is added as its admin, and it gets its own wallet (starting at $0.00), no spend limit, and access to all models. Use `/Team/Create` only for additional teams.
@@ -198,7 +200,7 @@ Removes a member from the team. Organization owners and team admins can remove m
 - Regular members cannot remove themselves; a team admin or the organization owner has to remove them.
 - Another admin can't remove the organization owner from a team: the request fails with `Only the organization owner can remove the owner from this team`. The owner can remove themselves.
 - Only active members can be removed. To withdraw a pending invitation, use `/Team/Member/CancelInvite`.
-- Team projects stay in the team, and their API credentials are not tied to membership: anyone who still has a team project's credentials can keep using them and billing the team wallet. If the removed member had them, delete the project. Changing the project's IP whitelist issues a new API secret, so old signatures stop working on a Signature-Based project, but an API Key Only project's key keeps working from any IP still on its whitelist.
+- Team projects stay in the team. The API keys of the projects the removed member created stop working right away, unless that member is the organization owner. Apps and agents that use those keys lose access too, so move them to a key from another member's project before you remove someone. Keys of projects other members created keep working for anyone who has them: if the removed member had one, delete that project. Changing the project's IP whitelist issues a new API secret, so old signatures stop working on a Signature-Based project, but an API Key Only project's key keeps working from any IP still on its whitelist.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -311,6 +313,7 @@ Transfers a project between workspaces. Future tasks on the project are billed t
 When a project is transferred:
 - The project's `teamguid` is updated
 - Future tasks using this project's API key are billed to the new workspace
+- If the user who created the project is neither an active member of the new team nor the organization owner, the project's API key stops working
 
 > **Important:** Agents can only access projects in the same workspace. Transferring a project may break agent workflows that depend on it.
 

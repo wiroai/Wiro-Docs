@@ -946,7 +946,7 @@
 
                   <section id="api-credentials">
                     <h2>API Credentials</h2>
-                    <p>After creating a project, copy your API key (and secret, if signature-based) and store them securely. You can see them again later on the <a href="https://wiro.ai/panel/project" class="docs-link">Projects page</a> after you confirm it's you with your password or a code we email you. Anyone who can open the project there can see its API key again. Only the owner of a personal project can see its secret again; for a team project, a team admin or the organization owner can.</p>
+                    <p>After creating a project, copy your API key (and secret, if signature-based) and store them securely. You can see them again later on the <a href="https://wiro.ai/panel/project" class="docs-link">Projects page</a> after you confirm it's you with your password or a code we email you. In a team, team admins and the organization owner can see every project's key. Other members see the keys of the projects they created, and only a masked form of the rest. Only the owner of a personal project can see its secret again; for a team project, a team admin or the organization owner can.</p>
                     <div class="info-callout">
                       <p><strong>Important:</strong> Treat your API secret like a password. Never commit it to version control or put it in browser or mobile app code. Keep it on your own server.</p>
                     </div>
@@ -34552,6 +34552,7 @@ Organization (created by you)
 
                   <h1>Managing Teams</h1>
                   <p class="section-subtitle">Create organizations, invite members, and manage roles and permissions.</p>
+                  <p>Creating, changing, deleting or restoring organizations and teams, managing members and invitations, and moving projects, agents or credit all need a signed-in user, as in the dashboard. With an API key these calls fail with HTTP <code>401</code> (see <a href="/docs/organizations-api-access">Team API Access</a>).</p>
 
                   <section id="creating-an-organization">
                     <h2>
@@ -34980,7 +34981,7 @@ Organization (created by you)
                       <li>Regular members cannot remove themselves; a team admin or the organization owner has to remove them.</li>
                       <li>Another admin can't remove the organization owner from a team: the request fails with <code>Only the organization owner can remove the owner from this team</code>. The owner can remove themselves.</li>
                       <li>Only active members can be removed. To withdraw a pending invitation, use <code>/Team/Member/CancelInvite</code>.</li>
-                      <li>Team projects stay in the team, and their API credentials are not tied to membership: anyone who still has a team project's credentials can keep using them and billing the team wallet. If the removed member had them, delete the project. Changing the project's IP whitelist issues a new API secret, so old signatures stop working on a Signature-Based project, but an API Key Only project's key keeps working from any IP still on its whitelist.</li>
+                      <li>Team projects stay in the team. The API keys of the projects the removed member created stop working right away, unless that member is the organization owner. Apps and agents that use those keys lose access too, so move them to a key from another member's project before you remove someone. Keys of projects other members created keep working for anyone who has them: if the removed member had one, delete that project. Changing the project's IP whitelist issues a new API secret, so old signatures stop working on a Signature-Based project, but an API Key Only project's key keeps working from any IP still on its whitelist.</li>
                     </ul>
 
                     <div class="docs-param-table">
@@ -35276,6 +35277,7 @@ Organization (created by you)
                     <ul>
                       <li>The project's <code>teamguid</code> is updated</li>
                       <li>Future tasks using this project's API key are billed to the new workspace</li>
+                      <li>If the user who created the project is neither an active member of the new team nor the organization owner, the project's API key stops working</li>
                     </ul>
 
                     <div class="info-callout">
@@ -35371,7 +35373,7 @@ Organization (created by you)
                       <span class="endpoint-badge post">POST</span>
                       /Team/Update
                     </h2>
-                    <p>Updates team settings, including model access controls, the team-level spend limit and the budget alert threshold. Only the organization owner and team admins can call it.</p>
+                    <p>Updates team settings, including model access controls, the team-level spend limit and the budget alert threshold. Only the organization owner and team admins can call it, and only while signed in: with an API key it fails with HTTP <code>401</code>.</p>
 
                     <div class="docs-param-table">
                       <div class="docs-param-table-wrapper">
@@ -35638,7 +35640,7 @@ Organization (created by you)
                       <span class="endpoint-badge post">POST</span>
                       /Team/TransferCredit
                     </h2>
-                    <p>Transfers credit between your personal wallet and team wallets. Useful for moving team budgets around or recovering personal funds. Only organization owners and team admins can transfer credit, and the same user must control both source and target workspaces.</p>
+                    <p>Transfers credit between your personal wallet and team wallets. Useful for moving team budgets around or recovering personal funds. Only organization owners and team admins can transfer credit, and the same user must control both source and target workspaces. Transfers need a signed-in user: with an API key the call fails with HTTP <code>401</code>.</p>
 
                     <div class="docs-param-table">
                       <div class="docs-param-table-wrapper">
@@ -35812,7 +35814,8 @@ curl -X POST "https://api.wiro.ai/v1/Run/google/nano-banana" \
   -d '{"prompt": "Hello"}'</code></pre>
                     <p>These examples use API-key-only authentication. For projects that use signature authentication, also send <code>x-nonce</code> and <code>x-signature</code> (see <a href="/docs/authentication">Authentication</a>).</p>
                     <p>Create a project inside a team to get a team API key, or use a personal project for personal context. The same <code>x-api-key</code> header works for both, with no extra configuration needed.</p>
-                    <p>A team project's API key does not depend on its creator's team membership. If the member who created the project is removed from the team, the project stays in the team and its key keeps working and charging the team wallet. Delete the project to revoke the key. While the project's creator is a team member, runs made with the key count toward that user's member spend limit; after they are removed, only the team spend limit applies.</p>
+                    <p>A team project's API key works only while the user who created the project is an active member of the team or the owner of its organization. Once the creator is removed from the team, the key stops working right away, in your apps and in any agent that uses it. The project stays in the team. Requests with the key then fail with HTTP <code>401</code> and <code>The person who created this API key is no longer in its team. Ask a team admin for a new key.</code> Public endpoints such as <code>Agent/List</code> still answer, as if the request had no key. While the key works, runs made with it count toward the creator's member spend limit.</p>
+                    <p>API keys can't change teams or organizations. <code>Organization/Create</code>, <code>Organization/Remove</code>, <code>Organization/Restore</code>, <code>Team/Create</code>, <code>Team/Update</code>, <code>Team/Remove</code>, <code>Team/Member/Invite</code>, <code>Team/Member/CancelInvite</code>, <code>Team/Member/UpdateRole</code>, <code>Team/Member/Remove</code>, <code>Team/TransferAgent</code>, <code>Team/TransferProject</code> and <code>Team/TransferCredit</code> need a signed-in user: use the dashboard, or send that user's Bearer token. With any API key, personal or team, they fail with HTTP <code>401</code> and <code>API keys can't manage teams or organizations. Sign in and try again.</code> Endpoints that only read, such as <code>Organization/List</code>, <code>Team/Member/List</code> and <code>Team/Spending/Summary</code>, work with an API key.</p>
                   </section>
 
                   <section id="filtered-endpoints">
@@ -35873,6 +35876,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/google/nano-banana" \
                         </table>
                       </div>
                     </div>
+                    <p>In team context, <code>Project/List</code> returns a project's <code>apikey</code> only to the user who created the project, team admins and the organization owner. Other members get <code>apikeymasked</code> instead, which shows only the first and last four characters of the key. With an API key, this follows the user who created the key's project.</p>
                     <p>Model listings show the same models in every workspace (only favorites are kept per workspace). Team model access rules apply when a model runs, not when models are listed.</p>
                   </section>
 

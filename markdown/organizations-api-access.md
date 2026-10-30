@@ -31,7 +31,9 @@ These examples use API-key-only authentication. For projects that use signature 
 
 Create a project inside a team to get a team API key, or use a personal project for personal context. The same `x-api-key` header works for both, with no extra configuration needed.
 
-A team project's API key does not depend on its creator's team membership. If the member who created the project is removed from the team, the project stays in the team and its key keeps working and charging the team wallet. Delete the project to revoke the key. While the project's creator is a team member, runs made with the key count toward that user's member spend limit; after they are removed, only the team spend limit applies.
+A team project's API key works only while the user who created the project is an active member of the team or the owner of its organization. Once the creator is removed from the team, the key stops working right away, in your apps and in any agent that uses it. The project stays in the team. Requests with the key then fail with HTTP `401` and `The person who created this API key is no longer in its team. Ask a team admin for a new key.` Public endpoints such as `Agent/List` still answer, as if the request had no key. While the key works, runs made with it count toward the creator's member spend limit.
+
+API keys can't change teams or organizations. `Organization/Create`, `Organization/Remove`, `Organization/Restore`, `Team/Create`, `Team/Update`, `Team/Remove`, `Team/Member/Invite`, `Team/Member/CancelInvite`, `Team/Member/UpdateRole`, `Team/Member/Remove`, `Team/TransferAgent`, `Team/TransferProject` and `Team/TransferCredit` need a signed-in user: use the dashboard, or send that user's Bearer token. With any API key, personal or team, they fail with HTTP `401` and `API keys can't manage teams or organizations. Sign in and try again.` Endpoints that only read, such as `Organization/List`, `Team/Member/List` and `Team/Spending/Summary`, work with an API key.
 
 ## What Gets Filtered by Context
 
@@ -47,6 +49,8 @@ When a workspace context is active, these list endpoints return only resources b
 | `Wallet/List` | Personal wallet | Team wallet |
 | `Wallet/TransactionList` | Personal transactions | Team transactions |
 | `Coupon/UserList` | Personal coupons | Team coupons |
+
+In team context, `Project/List` returns a project's `apikey` only to the user who created the project, team admins and the organization owner. Other members get `apikeymasked` instead, which shows only the first and last four characters of the key. With an API key, this follows the user who created the key's project.
 
 Model listings show the same models in every workspace (only favorites are kept per workspace). Team model access rules apply when a model runs, not when models are listed.
 

@@ -204,7 +204,7 @@ A project is a container that holds your **API keys**, **authentication settings
 
 ## API Credentials
 
-After creating a project, copy your API key (and secret, if signature-based) and store them securely. You can see them again later on the [Projects page](https://wiro.ai/panel/project) after you confirm it's you with your password or a code we email you. Anyone who can open the project there can see its API key again. Only the owner of a personal project can see its secret again; for a team project, a team admin or the organization owner can.
+After creating a project, copy your API key (and secret, if signature-based) and store them securely. You can see them again later on the [Projects page](https://wiro.ai/panel/project) after you confirm it's you with your password or a code we email you. In a team, team admins and the organization owner can see every project's key. Other members see the keys of the projects they created, and only a masked form of the rest. Only the owner of a personal project can see its secret again; for a team project, a team admin or the organization owner can.
 
 > **Important:** Treat your API secret like a password. Never commit it to version control or put it in browser or mobile app code. Keep it on your own server.
 
@@ -19592,6 +19592,8 @@ For step-by-step instructions, see [Managing Teams](/docs/organizations-managing
 
 Create organizations, invite members, and manage roles and permissions.
 
+Creating, changing, deleting or restoring organizations and teams, managing members and invitations, and moving projects, agents or credit all need a signed-in user, as in the dashboard. With an API key these calls fail with HTTP `401` (see [Team API Access](/docs/organizations-api-access)).
+
 ## **POST** /Organization/Create
 
 Creates a new organization. The caller automatically becomes the organization **owner**, and only the owner can create teams, delete the organization, or restore it after deletion. A team named `Default Team` is created with it automatically: the caller is added as its admin, and it gets its own wallet (starting at $0.00), no spend limit, and access to all models. Use `/Team/Create` only for additional teams.
@@ -19788,7 +19790,7 @@ Removes a member from the team. Organization owners and team admins can remove m
 - Regular members cannot remove themselves; a team admin or the organization owner has to remove them.
 - Another admin can't remove the organization owner from a team: the request fails with `Only the organization owner can remove the owner from this team`. The owner can remove themselves.
 - Only active members can be removed. To withdraw a pending invitation, use `/Team/Member/CancelInvite`.
-- Team projects stay in the team, and their API credentials are not tied to membership: anyone who still has a team project's credentials can keep using them and billing the team wallet. If the removed member had them, delete the project. Changing the project's IP whitelist issues a new API secret, so old signatures stop working on a Signature-Based project, but an API Key Only project's key keeps working from any IP still on its whitelist.
+- Team projects stay in the team. The API keys of the projects the removed member created stop working right away, unless that member is the organization owner. Apps and agents that use those keys lose access too, so move them to a key from another member's project before you remove someone. Keys of projects other members created keep working for anyone who has them: if the removed member had one, delete that project. Changing the project's IP whitelist issues a new API secret, so old signatures stop working on a Signature-Based project, but an API Key Only project's key keeps working from any IP still on its whitelist.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -19901,6 +19903,7 @@ Transfers a project between workspaces. Future tasks on the project are billed t
 When a project is transferred:
 - The project's `teamguid` is updated
 - Future tasks using this project's API key are billed to the new workspace
+- If the user who created the project is neither an active member of the new team nor the organization owner, the project's API key stops working
 
 > **Important:** Agents can only access projects in the same workspace. Transferring a project may break agent workflows that depend on it.
 
@@ -19964,7 +19967,7 @@ Team-level limits are set in **Team Settings** or via `/Team/Update` (see below)
 
 ## **POST** /Team/Update
 
-Updates team settings, including model access controls, the team-level spend limit and the budget alert threshold. Only the organization owner and team admins can call it.
+Updates team settings, including model access controls, the team-level spend limit and the budget alert threshold. Only the organization owner and team admins can call it, and only while signed in: with an API key it fails with HTTP `401`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -20111,7 +20114,7 @@ For project-level breakdown, call `/Project/UsageSummary` in team context. For t
 
 ## **POST** /Team/TransferCredit
 
-Transfers credit between your personal wallet and team wallets. Useful for moving team budgets around or recovering personal funds. Only organization owners and team admins can transfer credit, and the same user must control both source and target workspaces.
+Transfers credit between your personal wallet and team wallets. Useful for moving team budgets around or recovering personal funds. Only organization owners and team admins can transfer credit, and the same user must control both source and target workspaces. Transfers need a signed-in user: with an API key the call fails with HTTP `401`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -20234,7 +20237,9 @@ These examples use API-key-only authentication. For projects that use signature 
 
 Create a project inside a team to get a team API key, or use a personal project for personal context. The same `x-api-key` header works for both, with no extra configuration needed.
 
-A team project's API key does not depend on its creator's team membership. If the member who created the project is removed from the team, the project stays in the team and its key keeps working and charging the team wallet. Delete the project to revoke the key. While the project's creator is a team member, runs made with the key count toward that user's member spend limit; after they are removed, only the team spend limit applies.
+A team project's API key works only while the user who created the project is an active member of the team or the owner of its organization. Once the creator is removed from the team, the key stops working right away, in your apps and in any agent that uses it. The project stays in the team. Requests with the key then fail with HTTP `401` and `The person who created this API key is no longer in its team. Ask a team admin for a new key.` Public endpoints such as `Agent/List` still answer, as if the request had no key. While the key works, runs made with it count toward the creator's member spend limit.
+
+API keys can't change teams or organizations. `Organization/Create`, `Organization/Remove`, `Organization/Restore`, `Team/Create`, `Team/Update`, `Team/Remove`, `Team/Member/Invite`, `Team/Member/CancelInvite`, `Team/Member/UpdateRole`, `Team/Member/Remove`, `Team/TransferAgent`, `Team/TransferProject` and `Team/TransferCredit` need a signed-in user: use the dashboard, or send that user's Bearer token. With any API key, personal or team, they fail with HTTP `401` and `API keys can't manage teams or organizations. Sign in and try again.` Endpoints that only read, such as `Organization/List`, `Team/Member/List` and `Team/Spending/Summary`, work with an API key.
 
 ## What Gets Filtered by Context
 
@@ -20250,6 +20255,8 @@ When a workspace context is active, these list endpoints return only resources b
 | `Wallet/List` | Personal wallet | Team wallet |
 | `Wallet/TransactionList` | Personal transactions | Team transactions |
 | `Coupon/UserList` | Personal coupons | Team coupons |
+
+In team context, `Project/List` returns a project's `apikey` only to the user who created the project, team admins and the organization owner. Other members get `apikeymasked` instead, which shows only the first and last four characters of the key. With an API key, this follows the user who created the key's project.
 
 Model listings show the same models in every workspace (only favorites are kept per workspace). Team model access rules apply when a model runs, not when models are listed.
 

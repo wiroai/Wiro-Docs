@@ -24,7 +24,7 @@ A project is a container that holds your **API keys**, **authentication settings
 
 ## API Credentials
 
-After creating a project, copy your API key (and secret, if signature-based) and store them securely. You can see them again later on the [Projects page](https://wiro.ai/panel/project) after you confirm it's you with your password or a code we email you. Anyone who can open the project there can see its API key again. Only the owner of a personal project can see its secret again; for a team project, a team admin or the organization owner can.
+After creating a project, copy your API key (and secret, if signature-based) and store them securely. You can see them again later on the [Projects page](https://wiro.ai/panel/project) after you confirm it's you with your password or a code we email you. In a team, team admins and the organization owner can see every project's key. Other members see the keys of the projects they created, and only a masked form of the rest. Only the owner of a personal project can see its secret again; for a team project, a team admin or the organization owner can.
 
 > **Important:** Treat your API secret like a password. Never commit it to version control or put it in browser or mobile app code. Keep it on your own server.
 

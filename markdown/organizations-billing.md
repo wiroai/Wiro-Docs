@@ -46,7 +46,7 @@ Team-level limits are set in **Team Settings** or via `/Team/Update` (see below)
 
 ## **POST** /Team/Update
 
-Updates team settings, including model access controls, the team-level spend limit and the budget alert threshold. Only the organization owner and team admins can call it.
+Updates team settings, including model access controls, the team-level spend limit and the budget alert threshold. Only the organization owner and team admins can call it, and only while signed in: with an API key it fails with HTTP `401`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -193,7 +193,7 @@ For project-level breakdown, call `/Project/UsageSummary` in team context. For t
 
 ## **POST** /Team/TransferCredit
 
-Transfers credit between your personal wallet and team wallets. Useful for moving team budgets around or recovering personal funds. Only organization owners and team admins can transfer credit, and the same user must control both source and target workspaces.
+Transfers credit between your personal wallet and team wallets. Useful for moving team budgets around or recovering personal funds. Only organization owners and team admins can transfer credit, and the same user must control both source and target workspaces. Transfers need a signed-in user: with an API key the call fails with HTTP `401`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
