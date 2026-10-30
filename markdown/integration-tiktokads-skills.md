@@ -369,7 +369,7 @@ To change **what** the reports include (tracking quality gates, kill thresholds,
 | Error code | Meaning | What to do |
 |------------|---------|------------|
 | `missing_params` | The callback was opened without an OAuth `state`. | Don't open the callback URL directly. Start a new flow with `OAuthConnect`. |
-| `session_expired` | More than 15 minutes passed between `OAuthConnect` and the return from TikTok, or the state was already used. | Call `OAuthConnect` again. |
+| `session_expired` | More than 15 minutes passed between `OAuthConnect` and the return from TikTok. A callback the browser repeats after a completed one is not an error: it lands where the first one did. | Call `OAuthConnect` again. |
 | `authorization_denied` | The user cancelled on TikTok's consent screen, or TikTok returned an error instead of an authorization code. | Start again and approve the consent screen. |
 | `token_exchange_failed` | TikTok did not return a usable access and refresh token for the authorization code. | Start a new flow. If it persists, contact Wiro support. |
 | `no_accounts` | Sign-in worked, but no advertiser could be listed for this TikTok for Business user: the user has no advertiser access, or TikTok's advertiser lookup failed. | Get access to an advertiser in TikTok Ads Manager or Business Center, then connect again. If this user already has advertiser access, try connecting again. |
@@ -380,7 +380,7 @@ To change **what** the reports include (tracking quality gates, kill thresholds,
 | `TikTok Ads credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when TikTok Ads is not yet enabled on Wiro's side. | Contact Wiro support. |
 | `TikTok Ads account not connected` | Returned by `SetPickerAccounts` before the TikTok authorization completed. | Finish Steps 1-2, then save the selection. |
 
-Because no valid state is left to read your `redirecturl` from, `missing_params` and `session_expired` send the browser to `https://wiro.ai` with the error parameter instead of to your app.
+`missing_params` sends the browser to `https://wiro.ai`, because a callback without a `state` has no return address. `session_expired` comes back to your `redirecturl`. It lands on `https://wiro.ai` only when the callback arrives more than 24 hours after `OAuthConnect` or carries a `state` Wiro never issued.
 
 ### "No accounts available" after signing in
 

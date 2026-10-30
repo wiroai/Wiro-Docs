@@ -138,6 +138,7 @@ These are outside this integration:
 |-------|-------|
 | Reply length | At most 4096 bytes. Letters such as ç, ğ, ş and é count as 2 bytes. |
 | Google API quota | 300 requests per minute for the Google Cloud project after approval (0 before). |
+| Business Profile accounts listed | Up to 20. |
 | Locations listed per account | Up to 100. |
 | Automatic replies | At most 5 per scan, unless `cs-review-preferences` sets another number. |
 | Review content kept | At most 30 days. |
@@ -218,7 +219,7 @@ https://your-app.com/settings/integrations?gbp_connected=true&gbp_accounts=%5B%7
 - `gbp_accounts` is `encodeURIComponent(JSON.stringify([...]))`.
 - Each element is `{ id, name }`: `id` is the numeric Business Profile account ID as a string, `name` is the account name.
 - The list is never empty on success. When no Business Profile account can be listed, the callback returns `gbp_error=no_accounts` instead; right after setup this usually means Google has not approved the project yet or an API is disabled (see [Troubleshooting](#troubleshooting)).
-- On failure the URL carries `gbp_error=<code>`, and possibly `gbp_error_detail`.
+- On failure the URL carries only `gbp_error=<code>`.
 
 Parse in the browser:
 
@@ -305,9 +306,9 @@ Response:
 }
 ```
 
-Up to 100 locations per account are listed. A group carries `errorcode` and an empty `items` array when Google did not return the locations of that account.
+Up to 100 locations per account are listed. A group carries `errorcode` and an empty `items` array when Google did not return the locations of that account. `errorcode` is `provider_rejected_request` when Google refused the call (for example the Google user can't manage that account, or an API is disabled) and `provider_timeout` when Google did not answer within 10 seconds; `provider_request_failed`, `invalid_provider_response`, `response_too_large` and `picker_discovery_failed` cover other failures.
 
-Save the selection within five minutes. Copy `locationid` and `locationtitle` from the discovery response unchanged, and include every group returned without an `errorcode` exactly once; an empty `items` array selects no location for that account:
+Save the selection within five minutes. Copy `locationid` and `locationtitle` from the discovery response unchanged, and include every group returned without an `errorcode` exactly once; an empty `items` array selects no location for that account. Leave out groups that carry an `errorcode`: sending one fails with `Selected parent is not available`, and the locations already saved for that account stay as they are:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
@@ -440,7 +441,7 @@ All endpoints require Wiro authentication: see [Authentication](/docs/authentica
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
 | `credentialkey` | string | Yes | `"google-business"`. |
-| `redirecturl` | string | Yes | HTTPS URL (or `http://localhost` / `http://127.0.0.1` for development) where the browser returns after Google. |
+| `redirecturl` | string | Yes | Any HTTPS URL you control (or `http://localhost` / `http://127.0.0.1` for development) where the browser returns after Google. |
 | `authmethod` | string | Yes | `"own"`, the only available mode. |
 
 Response: `{ result, errors, authorizeUrl }`. If `result: false`, inspect `errors[0].message`. Common messages: `Invalid redirect URL`, `User agent not found or unauthorized`, `Wiro-managed OAuth is not enabled for Google Business Profile` (no `authmethod`, or `"wiro"`), and `Google Business Profile credentials not configured` (the Client ID or Client Secret is not saved).
@@ -452,9 +453,8 @@ Server-side endpoint invoked by Google. You don't call it: you register it as th
 | Query param | Meaning |
 |-------------|---------|
 | `gbp_connected=true` | Authorization completed. |
-| `gbp_accounts` | URL-encoded JSON array of `{ id, name }` for the Business Profile accounts the Google user can access. Always at least one entry. |
+| `gbp_accounts` | URL-encoded JSON array of `{ id, name }`, with up to 20 Business Profile accounts the Google user can access. Always at least one entry. |
 | `gbp_error=<code>` | The connection failed. See [Troubleshooting](#troubleshooting). |
-| `gbp_error_detail` | Optional detail that can accompany `gbp_error`. |
 
 ### POST /UserAgentOAuth/SetPickerAccounts
 
@@ -477,7 +477,7 @@ Location selection, after `DiscoverPickerItems`:
 | `useragentguid` | string | Yes | Agent instance GUID. |
 | `credentialkey` | string | Yes | `"google-business"`. |
 | `pickerkey` | string | Yes | `"locations"`. |
-| `selections` | array | Yes | One `{ parentvalue, items }` entry for every group discovery returned without an `errorcode`. `parentvalue` is the account ID; each item carries `locationid` and `locationtitle`. Empty `items` selects no location for that account. |
+| `selections` | array | Yes | One `{ parentvalue, items }` entry for every group discovery returned without an `errorcode`. `parentvalue` is the account ID; each item carries `locationid` and `locationtitle`. Empty `items` selects no location for that account. Leave out groups that carry an `errorcode`: sending one fails with `Selected parent is not available`, and the locations already saved for that account stay as they are. |
 
 Response: `{ result, errors, pickerkey: "locations", locationmappings: [{accountid, accountname, locationid, locationtitle}] }`.
 
@@ -529,7 +529,7 @@ Response: `{ "result": true, "errors": [] }`. Running agents restart automatical
 
 ### Token lifecycle
 
-Wiro renews the access token with the stored refresh token while the agent is running. While the consent screen is in **Testing**, Google expires the refresh token after 7 days; set it to **In production** to avoid weekly disconnects. If Google revokes the access, or `OAuthStatus` keeps reporting `connected: false`, call `OAuthDisconnect` and run Steps 2 to 5 again. There is no customer-facing token-refresh endpoint.
+Wiro renews the access token with the stored refresh token while the agent is running. When the agent is stopped, the token runs out about an hour after the last renewal: `OAuthStatus` then reports `connected: false`, and `DiscoverPickerItems` answers `Google Business Profile account not connected`, until the agent starts and renews it. While the consent screen is in **Testing**, Google expires the refresh token after 7 days; set it to **In production** to avoid weekly disconnects. If Google revokes the access, or `connected` stays `false` while the agent runs, call `OAuthDisconnect` and run Steps 2 to 5 again. There is no customer-facing token-refresh endpoint.
 
 ## Using the Skill
 
@@ -572,7 +572,7 @@ To change how replies read, edit `cs-review-preferences`; to change which replie
 |------------|---------|------------|
 | `no_accounts` | Sign-in worked, but no Business Profile account could be listed for this Google user. Right after setup this usually means the project is not approved yet (quota 0) or an API is disabled. | Check Steps 3 and 4 of the Google Cloud setup, then connect again. Otherwise connect with the Google account that owns or manages the business. |
 | `authorization_denied` | The user cancelled on Google's consent screen, or Google returned an error instead of an authorization code. | Start again and approve the consent screen. |
-| `session_expired` | More than 15 minutes passed between `OAuthConnect` and the return from Google, or the state was already used. | Call `OAuthConnect` again. |
+| `session_expired` | More than 15 minutes passed between `OAuthConnect` and the return from Google. A repeated return after a completed one is not an error: it lands where the first one did. | Call `OAuthConnect` again. |
 | `missing_params` | The callback was opened without an OAuth `state`. | Don't open the callback URL directly. Start a new flow with `OAuthConnect`. |
 | `token_exchange_failed` | Google did not return an access token for the authorization code, usually because of a wrong Client Secret or a redirect URI mismatch. | Re-copy the Client Secret, check the redirect URI, and connect again. |
 | `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow, before Google returned. | Start again with `OAuthConnect` for an existing agent. |
@@ -581,8 +581,9 @@ To change how replies read, edit `cs-review-preferences`; to change which replie
 | `Google Business Profile credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when the Client ID or Client Secret is not saved. | Save both with `POST /UserAgent/CredentialUpsert` (Step 1), then retry. |
 | `Picker candidates expired. Discover them again.` | More than five minutes passed after location discovery, or the account selection changed. | Call `DiscoverPickerItems` again, then resubmit the location selection. |
 | `selections must include every available parent exactly once` | The location selection left out or repeated an account group. | Send one `selections[]` entry per group returned without `errorcode`; use `items: []` to select no location for an account. |
+| `Google Business Profile account not connected` | Returned by `DiscoverPickerItems` or the location `SetPickerAccounts` call when no account is saved yet, or when the access token has run out: about an hour after the last renewal while the agent is stopped. | Save the account selection (Step 4). If it is saved, start the agent so Wiro renews the token, or connect again with Steps 2 and 3: the saved accounts stay selected. |
 
-Because no valid state is left to read your `redirecturl` from, `missing_params` and `session_expired` send the browser to `https://wiro.ai` with the error parameter instead of to your app.
+Without a `state`, Wiro can't tell which flow the callback belongs to, so `missing_params` sends the browser to `https://wiro.ai` instead of to your app. `session_expired` returns to your `redirecturl`, as long as the return comes within a day of `OAuthConnect`.
 
 ### "No accounts available" right after connecting
 

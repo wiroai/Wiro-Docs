@@ -33,7 +33,7 @@ The prerequisites are cumulative:
 4. A dedicated app account used only for app functions, not a mixed-use personal account.
 5. A customer-owned Reddit `web app` registered with the Wiro callback.
 
-Wiro's `apiaccessapproved: true` field is only an operator attestation. It grants no rights, does not replace Reddit review or the commercial contract, and does not make the currently unavailable feature usable.
+Three Wiro-managed flags gate the connection: `developerprofileverified`, `dataapiaccessapproved` and `commercialwrittenapproval`. Wiro sets them only after it has reviewed the labeled developer profile, Reddit's Data API approval for this app and Reddit's written commercial approval. You cannot set them: `CredentialUpsert` refuses each one with `<Field label> is managed by Wiro`. Until all three are on, `OAuthConnect` returns an error such as `Wiro must verify Reddit Data API approval for this app before connecting.` The flags grant no rights and do not replace Reddit's review or the commercial contract.
 
 ## Prerequisites
 
@@ -57,7 +57,7 @@ https://api.wiro.ai/v1/UserAgentOAuth/RedditCallback
 
 Copy the app's client ID and client secret. The developer profile, App profile label, and dedicated app account must remain attached to this app; do not create duplicate accounts or apps to evade review or limits.
 
-### 2. Save app credentials and the operator attestation
+### 2. Save the app credentials and the developer profile
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
@@ -69,10 +69,12 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
       { "credentialkey": "reddit", "fieldname": "authmethod", "fieldvalue": "own" },
       { "credentialkey": "reddit", "fieldname": "clientid", "fieldvalue": "YOUR_REDDIT_CLIENT_ID" },
       { "credentialkey": "reddit", "fieldname": "clientsecret", "fieldvalue": "YOUR_REDDIT_CLIENT_SECRET" },
-      { "credentialkey": "reddit", "fieldname": "apiaccessapproved", "fieldvalue": true }
+      { "credentialkey": "reddit", "fieldname": "developerprofileusername", "fieldvalue": "your_app_account" }
     ]
   }'
 ```
+
+`developerprofileusername` is the dedicated Reddit app account that owns the web app, without the `u/` prefix (3 to 20 letters, digits, `_` or `-`). Without it `OAuthConnect` returns `Developer Profile Username is required`. Do not send the approval flags: Wiro sets them and `CredentialUpsert` refuses them.
 
 ### 3. Start OAuth
 
@@ -96,7 +98,7 @@ identity read mysubreddits submit edit history
 
 `history` is used only for bounded recovery: after an ambiguous create/reply outcome, Wiro may inspect at most the connected user's latest 25 submissions/comments to determine whether the write landed. It is not permission for broad history collection.
 
-The flow requests `duration=permanent`, allowing Wiro to refresh the one-hour access token with the callback-managed refresh token. After consent, the browser returns to your `redirecturl` with `reddit_connected=true` and the connected username. Production OAuth remains blocked until Wiro's approval/contract gate is complete.
+The flow requests `duration=permanent`, allowing Wiro to refresh the one-hour access token with the callback-managed refresh token. Approve access while signed in to Reddit as the developer profile account. After consent, the browser returns to your `redirecturl` with `reddit_connected=true&reddit_username=<name>`. If the account that approved access is not `developerprofileusername`, or Wiro cannot read it, the redirect carries `reddit_error=developer_profile_mismatch` instead and nothing is saved. Other failures return `reddit_error=<code>`, such as `authorization_denied`, `session_expired` or `token_exchange_failed`. Production OAuth remains blocked until Wiro's approval/contract gate is complete.
 
 ## Check or disconnect
 
@@ -114,10 +116,12 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthDisconnect" \
   -d '{ "useragentguid": "your-useragent-guid", "credentialkey": "reddit" }'
 ```
 
+Disconnect asks Reddit to revoke the refresh token and clears the connection in Wiro even if that request fails. `clientid` and `clientsecret` stay saved, but `developerprofileusername` and Wiro's three approval flags are cleared too, so save the username again and wait for Wiro to set the flags before you reconnect.
+
 ## Runtime safeguards
 
 - Authenticated API calls use `https://oauth.reddit.com`; OAuth token calls use `https://www.reddit.com`.
-- Every request includes the compliant, distinctive User-Agent `Wiro-Agent-Reddit/1.0 client/<CLIENT_ID> (+https://wiro.ai)`. Wiro does not use a browser/default User-Agent or misidentify the client.
+- Every request carries the User-Agent `server:<CLIENT_ID>:1.0.0 (by /u/<DEVELOPER_PROFILE_USERNAME>)`, built from the app's client ID and `developerprofileusername`. Wiro does not use a browser/default User-Agent or misidentify the client.
 - The agent reads subreddit rules before a write.
 - One approval covers one concrete subreddit or fullname and one payload. A request to post everywhere is refused.
 - The agent blocks duplicate and near-duplicate submissions and does not fan a single payload out across communities.

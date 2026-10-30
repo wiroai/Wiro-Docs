@@ -117,7 +117,7 @@ Response:
 Success: `?tiktok_connected=true&tiktok_username=<display_name>`.
 Error: `?tiktok_error=<code>`.
 
-> `tiktok_username` in the callback is populated from TikTok's `display_name` field (the creator's public display name), not the handle. The handle/username as it appears in URLs is not exposed by TikTok's OAuth user info endpoint.
+> `tiktok_username` in the callback is populated from TikTok's `display_name` field (the creator's public display name), not the handle. The handle/username as it appears in URLs is not exposed by TikTok's OAuth user info endpoint. It is left out when TikTok's profile lookup fails during the callback; the account is still connected, but `OAuthStatus` then returns an empty `accounts` array.
 
 ### Step 9: Verify
 
@@ -167,7 +167,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
 | `credentialkey` | string | Yes | `"tiktok"`. |
-| `redirecturl` | string | Yes | HTTPS URL. |
+| `redirecturl` | string | Yes | Any HTTPS URL you control (or `http://localhost` / `http://127.0.0.1` for development). The browser returns there after TikTok. |
 | `authmethod` | string | No | `"own"`. Omitted, it means `"wiro"`, which is not available yet. |
 
 ### GET /UserAgentOAuth/TikTokCallback
@@ -184,18 +184,18 @@ Body: `{ useragentguid, credentialkey: "tiktok" }`. Calls TikTok's revoke endpoi
 
 ### Token lifecycle
 
-Wiro maintains the TikTok connection automatically while the agent is running. If TikTok revokes the authorization or `OAuthStatus` reports `connected: false`, reconnect through the OAuth flow.
+Wiro renews the 24-hour access token while the agent is running. `OAuthStatus` checks that token, so it can report `connected: false` while the agent is stopped; starting the agent renews it. Reconnect through the OAuth flow when TikTok revoked the authorization, or when `connected` stays `false` while the agent runs.
 
 ## Troubleshooting
 
 | Error code | Meaning | What to do |
 |------------|---------|------------|
-| `missing_params` | Callback hit without `state` or `code`. | Start a new OAuth flow. |
+| `missing_params` | The callback was opened without an OAuth `state`. This error lands on `https://wiro.ai`, not on your app. | Don't open the callback URL directly. Start a new OAuth flow. |
 | `authorization_denied` | User cancelled, or scopes not enabled. | Verify scope configuration. |
 | `session_expired` | 15-min state cache expired. | Restart OAuth. |
 | `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy; verify URL. |
 | `Wiro-managed OAuth is not enabled for TikTok` | Returned in `OAuthConnect`'s `errors[]`: Wiro mode isn't available yet, and it is the default when `authmethod` is left out. | Save your app credentials (Step 6) and call `OAuthConnect` with `"authmethod": "own"`. |
-| `useragent_not_found` | Invalid guid. | Use `POST /UserAgent/MyAgents`. |
+| `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow, before TikTok returned. | Start again with `OAuthConnect` for an existing agent. |
 | `TikTok credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `clientkey` / `clientsecret` are missing. | `UserAgent/CredentialUpsert` with `clientkey` + `clientsecret`. |
 | `internal_error` | Server error. | Retry. |
 

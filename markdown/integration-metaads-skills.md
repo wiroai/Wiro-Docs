@@ -20,7 +20,7 @@ The Meta Ads integration powers the `int-metaads-manage` skill: creating and man
 
 | Path | Status | Notes |
 |------|--------|-------|
-| Wiro-owned approved-app OAuth | Pending provider approval | The registry carries this mode, but the dashboard keeps it unavailable while Wiro's Meta app is awaiting the required App Review, Advanced Access, and rollout checks. |
+| Wiro-owned approved-app OAuth | Pending provider approval | Not available yet. `OAuthConnect` with `"wiro"`, or with no `authmethod`, returns `Wiro-managed OAuth is not enabled for Meta Ads` while Wiro's Meta app waits for App Review and Advanced Access. |
 | `"own"` | Available now | You create your own Meta Developer App and connect it to Wiro. No App Review required when Development Mode + App Roles is used. |
 | `"api_key"` | Available now (recommended) | Paste a Business Manager System User token. No browser OAuth redirect and no App ID or App Secret is submitted to Wiro. Choose **Never** for token expiration when Meta offers it. |
 
@@ -98,8 +98,6 @@ not require or store an App ID/App Secret for this direct mode.
    chained `SetPickerAccounts` shape shown in Step 10b.
 
 ## Customer-owned app OAuth
-
-Every curl example and response shape below matches Wiro's production behavior verified against the source code. Nothing is invented.
 
 ### Step 1: Create a Meta Developer App
 
@@ -236,10 +234,11 @@ After the user consents, Meta sends them back to Wiro's callback URL. Wiro excha
 https://your-app.com/settings/integrations?metaads_connected=true&metaads_accounts=%5B%7B%22id%22%3A%22123456789%22%2C%22name%22%3A%22My%20Ad%20Account%22%7D%5D
 ```
 
-- `metaads_accounts` is `encodeURIComponent(JSON.stringify([...]))`.
+- `metaads_accounts` is `encodeURIComponent(JSON.stringify([...]))`. Your query parser decodes it, so parse it once with `JSON.parse`.
 - Each array element: `{ id, name }`.
 - The `id` has the `act_` prefix stripped by Wiro.
 - Only ad accounts with `account_status === 1` and effective `user_tasks` containing both `ADVERTISE` and `ANALYZE` are included. Read-only `ANALYZE` accounts are excluded because this skill supports mutations.
+- The list always holds at least one account. When no ad account qualifies, the redirect carries `metaads_error=no_accounts` instead, and nothing is saved.
 
 Parse in the browser:
 
@@ -247,15 +246,16 @@ Parse in the browser:
 const params = new URLSearchParams(window.location.search);
 
 if (params.get("metaads_connected") === "true") {
-  const accounts = JSON.parse(decodeURIComponent(params.get("metaads_accounts") || "[]"));
-  if (accounts.length === 0) {
-    showError("No active ad accounts found on this Meta user.");
-  } else if (accounts.length === 1) {
-    await setAdAccount(accounts[0]);
+  // URLSearchParams has already decoded the value, so don't call decodeURIComponent on it.
+  const accounts = JSON.parse(params.get("metaads_accounts") || "[]");
+  if (accounts.length === 1) {
+    // One ad account: SetPickerAccounts is still required.
+    await setAdAccount({ adaccountid: accounts[0].id, adaccountname: accounts[0].name });
   } else {
     presentAccountPicker(accounts);
   }
 } else if (params.get("metaads_error")) {
+  // For example no_accounts: no active ad account with ADVERTISE and ANALYZE tasks.
   handleError(params.get("metaads_error"));
 }
 ```
@@ -297,6 +297,7 @@ Behavior:
 - Pass the ad account ID **without** the `act_` prefix. If you include it, Wiro strips it automatically.
 - `adaccountname` is optional but recommended: it surfaces in `OAuthStatus` responses and dashboards.
 - Pass multiple `{ adaccountid, adaccountname }` entries to authorize the agent against several ad accounts at once.
+- Each call replaces the previous selection. Page mappings are kept only for ad accounts that stay selected, so run Step 10b again for ad accounts you add.
 - If the agent was running (status `3` or `4`), Wiro marks it `status: 1` and restarts it after the stop cycle, so the daemon picks up the new ad account. No manual Start needed.
 
 ### Step 10b: Discover and select Facebook Pages (optional)
@@ -336,9 +337,10 @@ Response:
 }
 ```
 
-Save the selected Pages within five minutes. Include every successfully
-returned parent exactly once; an empty `items` array means no Page is selected
-for that ad account:
+Save the selected Pages within five minutes. Include every parent returned
+without an `errorcode` exactly once, and copy `pageid` and `pagename` exactly as
+discovered; an empty `items` array means no Page is selected for that ad
+account:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
@@ -413,7 +415,7 @@ Response:
     }
   },
   "connectedat": "2026-04-17T12:00:00.000Z",
-  "tokenexpiresat": "",
+  "tokenexpiresat": "2026-06-16T12:00:00.000Z",
   "errors": []
 }
 ```
@@ -479,10 +481,12 @@ All endpoints require Wiro authentication: see [Authentication](/docs/authentica
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
 | `credentialkey` | string | Yes | `"meta-ads"`. |
-| `redirecturl` | string | OAuth only | HTTPS URL (or `http://localhost` / `http://127.0.0.1` for dev) where users return after consent. Direct System User token validation does not use this field. |
-| `authmethod` | string | No | `"api_key"` for the recommended System User token mode (registry default) or `"own"` for advanced customer-owned app OAuth. |
+| `redirecturl` | string | OAuth only | Any HTTPS URL you control (or `http://localhost` / `http://127.0.0.1` for dev) where users return after consent. Direct System User token validation does not use this field. |
+| `authmethod` | string | No | `"api_key"` for the recommended System User token mode or `"own"` for advanced customer-owned app OAuth. Always send it: without it the request runs in Wiro mode and fails with `Wiro-managed OAuth is not enabled for Meta Ads`. |
 
-OAuth response: `{ result, authorizeUrl, errors }`. Direct System User token response: `{ result, accounts: [{id, name}], errors }` with no `authorizeUrl`. If `result: false`, inspect `errors[0].message`. Common messages: `Missing useragentguid`, `Missing credentialkey`, `Missing redirecturl` (OAuth only), `Invalid redirect URL`, `User agent not found or unauthorized`, and `Meta Ads credentials not configured` (own mode without prior Update).
+OAuth response: `{ result, authorizeUrl, errors }`. Direct System User token response: `{ result, accounts: [{id, name}], errors }` with no `authorizeUrl`. A failed direct check returns `{ result: false, errorcode, errors }`: `no_accounts` (no active ad account with both `ADVERTISE` and `ANALYZE`), `too_many_ad_accounts` (Meta listed more than 500 ad accounts), `direct_token_missing`, `direct_token_invalid`, `provider_rejected_request`, `provider_timeout` or `provider_request_failed`. A check that finds a saved token first clears the saved ad account and Page selection.
+
+If `result: false`, inspect `errors[0].message`. Common messages: `Request parameter [useragentguid] required`, `Request parameter [credentialkey] required`, `Request parameter [redirecturl] required` (OAuth only), `Invalid redirect URL`, `User agent not found or unauthorized`, `Wiro-managed OAuth is not enabled for Meta Ads` (no `authmethod`, or `"wiro"`), `Unsupported connection mode for Meta Ads`, and `Meta Ads credentials not configured` (own mode before `appid` and `appsecret` are saved with `CredentialUpsert`).
 
 ### GET /UserAgentOAuth/MetaAdsCallback
 
@@ -491,7 +495,7 @@ Server-side endpoint invoked by Meta. You don't call it. You only handle the fin
 | Query param | Meaning |
 |-------------|---------|
 | `metaads_connected=true` | OAuth completed successfully. |
-| `metaads_accounts` | URL-encoded JSON array of `{ id, name }` for active ad accounts. |
+| `metaads_accounts` | URL-encoded JSON array of `{ id, name }` for active ad accounts. Always at least one entry. |
 | `metaads_error=<code>` | OAuth failed. See [Troubleshooting](#troubleshooting). |
 
 ### POST /UserAgentOAuth/SetPickerAccounts
@@ -515,7 +519,7 @@ Chained Page selection, after `DiscoverPickerItems`:
 | `useragentguid` | string | Yes | Agent instance GUID. |
 | `credentialkey` | string | Yes | `"meta-ads"`. |
 | `pickerkey` | string | Yes | `"pages"`. |
-| `selections` | array | Yes | One `{ parentvalue, items }` entry for every successful discovery group. `parentvalue` is the ad account ID; each item carries `pageid` and `pagename`. Empty `items` is allowed because Pages are optional. |
+| `selections` | array | Yes | One `{ parentvalue, items }` entry for every discovery group without an `errorcode`. `parentvalue` is the ad account ID; each item carries `pageid` and `pagename` exactly as discovered. Empty `items` is allowed because Pages are optional. |
 
 Response:
 `{ result, pickerkey: "pages", pagemappings: [{adaccountid, adaccountname, pageid, pagename}], errors }`.
@@ -536,6 +540,8 @@ Response:
 Wiro keeps the active token server-side and caches only secret-free candidates
 for five minutes. Call the chained `SetPickerAccounts` shape before they expire.
 
+Discovery covers at most 50 selected ad accounts and 2,000 Pages in total; above that the call fails with `Too many parent accounts selected for picker discovery` or `Picker candidate limit exceeded`. An ad account with more than 500 Pages comes back with `errorcode: "too_many_pages"`. Leave groups that carry an `errorcode` out of `selections` (their saved Pages stay as they are), and copy `pageid` and `pagename` from the response unchanged. Otherwise `SetPickerAccounts` returns `Selected parent is not available` or `Selected picker item is not available`.
+
 ### POST /UserAgentOAuth/OAuthStatus
 
 | Parameter | Type | Required | Description |
@@ -547,7 +553,7 @@ Response fields:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `connected` | boolean | `true` when the selected customer-owned mode has a validated credential and at least one selected ad account. **Note:** this reflects connection completion, not readiness of unrelated required credentials. Use `setupcomplete` from `POST /UserAgent/Detail` for whole-agent readiness. |
+| `connected` | boolean | `true` when the selected customer-owned mode has a validated credential and at least one selected ad account. **Note:** this reflects connection completion, not readiness of unrelated required credentials. Use `setuprequired` from `POST /UserAgent/Detail` for whole-agent readiness. |
 | `accounts` | array | One `{ id, name }` per selected ad account (`id` = `adaccountid` without `act_` prefix, `name` = `adaccountname`). |
 | `pagemappings` | array | Flat, account-scoped Page mappings. Each entry contains `adaccountid`, optional `adaccountname`, `pageid`, and `pagename`. |
 | `pickersteps.pages` | object | Grouped Page status for UI rendering: `{ pickerkey, optional, configured, groups[] }`. |
@@ -605,13 +611,15 @@ To change **what** the reporter includes (thresholds, reporting preferences, hol
 
 | Error code | Meaning | What to do |
 |------------|---------|------------|
-| `missing_params` | Callback was hit without `state` or `code`. | Don't hit the callback URL directly. Start a new flow from Step 8. |
+| `missing_params` | The callback was opened without an OAuth `state`. This error lands on `https://wiro.ai`, not on your app. | Don't open the callback URL directly. Start a new flow from Step 8. |
 | `session_expired` | More than 15 minutes elapsed between `OAuthConnect` and the consent return. | Call `OAuthConnect` again to refresh the state. |
 | `authorization_denied` | User clicked Cancel, or Facebook returned `error=access_denied`. In Development Mode this also happens when the user isn't listed under App Roles. | Add the user as a Tester (Step 6), have them accept, retry. |
 | `token_exchange_failed` | Facebook rejected the token exchange. Usually wrong App Secret, revoked app, or redirect URI mismatch. | Re-copy the App Secret from Settings → Basic, verify the redirect URI exactly matches, retry. |
-| `useragent_not_found` | Wrong `useragentguid` or agent doesn't belong to your API key's user. | Fetch the correct guid with `POST /UserAgent/MyAgents`. |
+| `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow, before Meta returned. | Start again with `OAuthConnect` for an existing agent. |
 | `Meta Ads credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `appid` / `appsecret` are missing. | Call `POST /UserAgent/CredentialUpsert` to add `meta-ads.appid` and `meta-ads.appsecret`, then retry `OAuthConnect`. |
-| `required_meta_scopes_missing` | `debug_token` did not report every scope required by the full management skill. | Grant the listed scopes to the app/token and reconnect. |
+| `required_meta_scopes_missing` | Meta's `debug_token` check reported the token as invalid, or without every scope listed in Step 4. | Grant the listed scopes to the app/token and reconnect. |
+| `long_lived_exchange_failed` | Meta did not return a long-lived token with an expiry for this authorization. | Start a new flow from Step 8. If it keeps happening, contact Wiro support. |
+| `too_many_ad_accounts` | Meta listed more than 500 ad accounts for this user or System User. | Connect with a user or System User that has access to fewer ad accounts. |
 | `meta_app_mismatch` | The token was issued to a different Meta App ID. | Generate or authorize the token with the same app whose App ID and Secret were saved. |
 | `meta_token_expired` | The OAuth token or its data-access window has expired. | Reconnect customer-owned OAuth. Direct mode does not use `debug_token`; replace a rejected/expired System User token in Business Settings. |
 | `no_accounts` | No active account has both `ADVERTISE` and `ANALYZE` tasks. | Assign the connected principal those tasks on an active ad account in Business Settings, then reconnect. |

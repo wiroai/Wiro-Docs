@@ -68,6 +68,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
 
 This is a server-side credential exchange and probe, not a browser redirect. Wiro submits the Shopify client-credentials form (`grant_type=client_credentials`, Client ID, and Client Secret) to the canonical shop, receives an access token whose `expires_in` is exactly `86399` seconds, verifies the shop identity, and stores the connection. Running agents re-exchange the client credentials before expiry; the Client Secret is never sent to the GraphQL Admin API.
 
+The response is `{ "result": true, "errors": [], "accounts": [] }`. Shopify has no account picker, so there is nothing to select; `OAuthStatus` then reports `connected: true` with the shop name in `accounts[0]`. If the check fails, the response has `result: false`, a message asking you to check the `myshopify.com` domain, the app's organization and its Admin API scopes, and an `errorcode`. `direct_token_missing` means `authmethod` is not saved as `"api_key"` or one of the three fields is empty. Any other code, such as `provider_rejected_request` or `direct_token_invalid`, means the exchange or the shop check failed, and any earlier Shopify connection on the agent is cleared too.
+
 ## Option B: Customer-owned app OAuth
 
 ### 1. Configure the Shopify app
@@ -78,9 +80,11 @@ Create or select the customer's app in the Shopify Dev Dashboard and add this ex
 https://api.wiro.ai/v1/UserAgentOAuth/ShopifyCallback
 ```
 
-The authorization-code grant requests an **expiring offline** token. Wiro validates the callback before exchanging the code:
+The authorization-code grant requests an **expiring offline** token. Wiro's authorize URL asks for these Admin API scopes: `read_products`, `write_products`, `read_inventory`, `write_inventory`, `read_orders`, `write_orders`, `read_customers`, `write_customers`, `read_discounts`, `write_discounts`, `read_publications`, `write_publications`, `read_returns`, `read_merchant_managed_fulfillment_orders`, `write_merchant_managed_fulfillment_orders` and `read_locations`.
 
-- the callback HMAC is computed with the app's Client Secret over the alphabetically sorted callback query fields after removing `hmac` and `signature`;
+Wiro validates the callback before exchanging the code:
+
+- the callback HMAC is computed with the app's Client Secret over every callback query field except `hmac`, sorted by name;
 - comparison is timing-safe, and the callback `state` and canonical `shop` must match the connection that Wiro started;
 - the authorization code is sent only to that shop's `/admin/oauth/access_token` endpoint as `application/x-www-form-urlencoded`, with `expiring=1`.
 
@@ -117,7 +121,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
   }'
 ```
 
-Open the returned `authorizeUrl` in the user's browser. After consent, Wiro exchanges the code for an expiring offline access token and refresh token, records both provider expiry values, verifies the shop through GraphQL, and redirects to your `redirecturl` with `shopify_connected=true`. Refresh uses `grant_type=refresh_token`; Shopify can rotate both tokens, so Wiro stores each replacement atomically rather than reusing an old refresh token.
+Open the returned `authorizeUrl` in the user's browser. After consent, Wiro exchanges the code for an expiring offline access token and refresh token, records both provider expiry values, reads the shop's ID, name and `myshopify.com` domain through GraphQL, and redirects to your `redirecturl` with `shopify_connected=true&shopify_shop=<shop>.myshopify.com&shopify_name=<shop name>` (the shop parameters are left out when that lookup fails). A failed connection gets `shopify_error=<code>` instead, for example `invalid_signature` (the callback HMAC is missing or does not match), `invalid_shop` (the callback `shop` is not the saved `shopdomain`), `authorization_denied`, `session_expired` or `token_exchange_failed` (also when Shopify's token response has no refresh token or expiry values). Refresh uses `grant_type=refresh_token`; Shopify can rotate both tokens, so Wiro stores each replacement atomically rather than reusing an old refresh token.
 
 ## Check or disconnect
 
@@ -134,6 +138,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthDisconnect" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{ "useragentguid": "your-useragent-guid", "credentialkey": "shopify" }'
 ```
+
+Disconnect clears the tokens, the shop name and ID, `shopdomain` and the saved `authmethod`. Wiro does not revoke the token at Shopify. `clientid` and `clientsecret` stay saved. Before you reconnect, save `shopdomain` again, plus `authmethod: "api_key"` for Client ID + Secret. Without `shopdomain`, `OAuthConnect` in `"own"` mode returns `Shop Domain is required`.
 
 ## Runtime behavior
 

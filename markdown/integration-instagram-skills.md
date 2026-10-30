@@ -297,7 +297,7 @@ const params = new URLSearchParams(window.location.search);
 
 if (params.get("ig_connected") === "true") {
   const username = params.get("ig_username");
-  showSuccess(`Connected @${username}`);
+  showSuccess(username ? `Connected @${username}` : "Instagram connected");
 } else if (params.get("ig_error")) {
   handleError(params.get("ig_error"));
 }
@@ -361,11 +361,22 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
 | `credentialkey` | string | Yes | `"instagram"`. |
-| `redirecturl` | string | OAuth only | HTTPS URL (or localhost/127.0.0.1 for dev). Direct System User validation does not use it. |
+| `redirecturl` | string | OAuth only | Any HTTPS URL you control (or localhost/127.0.0.1 for dev). Direct System User validation does not use it. |
 | `authmethod` | string | No | `"api_key"` for recommended System User mode, `"own"` for customer-owned Instagram OAuth, or `"wiro"` when Wiro-managed OAuth becomes available. Send the value explicitly. |
 
 OAuth response: `{ result, authorizeUrl, errors }`. Direct response:
-`{ result, accounts: [{id, name}], errors }` with no `authorizeUrl`.
+`{ result, accounts: [{id, name}], errors }` with no `authorizeUrl`. A failed
+direct check returns `{ result: false, errorcode, errors }`. Read `errorcode`,
+because most failures share one message: `no_accounts` (no assigned Page
+exposes a linked Instagram professional account with `CREATE_CONTENT`),
+`too_many_instagram_accounts` (Meta listed more than 500 Pages),
+`direct_token_missing` (no `systemusertoken` saved, or the saved `authmethod` is
+not `"api_key"`), `direct_token_invalid` or `provider_rejected_request` (Meta
+refused the token or the request), `provider_timeout` or
+`provider_request_failed` (Meta did not answer). Other codes mean the check
+could not finish; try again. A check that finds a saved token first clears the
+saved account selection, so call `SetPickerAccounts` after every successful
+check.
 
 ### GET /UserAgentOAuth/IGCallback
 
@@ -387,7 +398,7 @@ Used only by direct System User mode after `OAuthConnect` discovery.
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
 | `credentialkey` | string | Yes | `"instagram"`. |
-| `accounts` | array | Yes | One or more `{ accountId, igusername? }` entries from the latest discovery response. Do not supply access tokens. |
+| `accounts` | array | Yes | One or more `{ accountId, igusername }` entries from the latest discovery response (`accountId` is its `id`, `igusername` its `name`; Wiro stores the name you send). Do not supply access tokens. |
 
 Call within 15 minutes of direct discovery. The response contains
 `{ result, accounts: [{id, name}], errors }` and restarts a running agent after
@@ -413,7 +424,8 @@ is running. Direct mode uses a System User token plus a derived Page token with
 no fixed expiry recorded by Wiro. Meta can still invalidate either token when
 permissions, asset assignments, or account security change; expiring System
 User tokens must be regenerated before Meta's stated expiry. If `OAuthStatus`
-reports `connected: false`, reconnect using the active mode.
+keeps reporting `connected: false` while the agent runs, reconnect using the
+active mode.
 
 ## Using the Skill
 
@@ -470,22 +482,19 @@ Instagram allows each account 50 posts through the API in 24 hours.
 
 | Error code | Meaning | What to do |
 |------------|---------|------------|
-| `missing_params` | Callback hit without `state` or `code`. | Start a new flow from Step 8. |
+| `missing_params` | The callback was opened without an OAuth `state`. This error lands on `https://wiro.ai`, not on your app. | Don't open the callback URL directly. Start a new flow from Step 8. |
 | `session_expired` | >15 min between `OAuthConnect` and callback. | Call `OAuthConnect` again. |
 | `authorization_denied` | User cancelled, or not in App Roles (Development Mode). | Add as Tester (Step 6), retry. |
 | `token_exchange_failed` | Wrong App Secret, redirect URI mismatch, or Instagram rejected the authorization code. | Re-copy the App Secret, verify the redirect URI, and retry Instagram Login. |
-| `useragent_not_found` | Invalid or unauthorized guid. | Use `POST /UserAgent/MyAgents`. |
+| `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow, before Instagram returned. | Start again with `OAuthConnect` for an existing agent. |
 | `Instagram credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `appid` / `appsecret` are missing. | `POST /UserAgent/CredentialUpsert` with `instagram.appid` and `instagram.appsecret`. |
 | `Meta could not validate this System User token` | Direct mode received an invalid token, missing permission, or inaccessible asset. | Generate a current token with the documented permissions and asset assignments, save it, and retry. |
 | Valid token but no connected Instagram professional account | No assigned Page exposes a linked professional account with `CREATE_CONTENT`. | Link the account to the Page, assign both assets to the System User, and reconnect. |
 | `internal_error` | Unexpected server error. | Retry. If persistent, contact support. |
 
-### "No Instagram Business Account found" during OAuth
+### No Instagram account found after connecting
 
-In System User mode, the account is still Personal, is not linked to an
-assigned Facebook Page, or the Page lacks `CREATE_CONTENT`. In advanced
-Instagram OAuth mode, the usual cause is a Personal account or an app-role /
-permission problem. Follow the mode-specific prerequisites above.
+In System User mode, `OAuthConnect` returns `errorcode: "no_accounts"` when the account is still Personal, is not linked to an assigned Facebook Page, or the Page lacks `CREATE_CONTENT`. In advanced Instagram OAuth mode, the usual cause is a Personal account or an app-role / permission problem. Follow the mode-specific prerequisites above.
 
 ### Publishing fails with "media upload failed"
 

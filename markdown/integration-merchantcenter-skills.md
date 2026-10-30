@@ -40,6 +40,7 @@ The Merchant Center integration uses the [Merchant API v1](https://developers.go
    - **External** user type for multi-tenant use
    - App name, support email
    - Add scope: `https://www.googleapis.com/auth/content`
+   - Publish the app (**In production**). While it is in **Testing**, Google expires its refresh tokens after 7 days and the agent loses access.
 
 ### Step 2: Create OAuth Client
 
@@ -103,7 +104,7 @@ The response returns `{ result: true, authorizeUrl: "..." }`. Redirect the user 
 
 ### Step 5: Save the account selection
 
-After consent the user returns with `?mc_connected=true&mc_accounts=<URL-encoded-JSON>`. The JSON array entries come straight from the Merchant Center API and carry `{ id, name, websiteUrl }` per account. Map them to the picker's `{ merchantid, accountname }` shape and call `SetPickerAccounts`:
+After consent the user returns with `?mc_connected=true&mc_accounts=<URL-encoded-JSON>`. Each entry is `{ id, name, websiteUrl }`: `id` is the numeric Merchant Center ID, `name` is the account name and can be empty, and `websiteUrl` is always empty. When `name` is empty, label the account with its ID. Send the user's choice to `SetPickerAccounts` as `{ merchantid, accountname }` (`id` becomes `merchantid`, `name` becomes `accountname`):
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
@@ -118,6 +119,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
   }'
 ```
 
+This call is required, even when `mc_accounts` has one entry. Until it runs, `OAuthStatus` reports `connected: false`.
+
 Pass multiple `{ merchantid, accountname }` entries to authorize the agent against several merchant accounts at once.
 
 ## Disconnect
@@ -131,6 +134,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthDisconnect" \
     "credentialkey": "google-merchant-center"
   }'
 ```
+
+Clears the tokens and the selected accounts in Wiro. Your Client ID and Client Secret are kept. Wiro does not ask Google to revoke the authorization.
 
 ## Status
 
@@ -171,6 +176,11 @@ Response:
 |---------|-------|-----|
 | `Wiro-managed OAuth is not enabled for Merchant Center` in `OAuthConnect`'s `errors[]` | Wiro mode isn't available yet, and it is the default when `authmethod` is left out | Save your OAuth client (Step 4) and call `OAuthConnect` with `"authmethod": "own"` |
 | `PERMISSION_DENIED` on any merchant call | GCP project not registered | Complete Step 3 once |
-| `invalid_grant` | Refresh token expired | Re-connect via `OAuthConnect` |
-| `No Merchant Center accounts available` | User has no MC access | User creates/gains access at `merchants.google.com` |
+| `Merchant Center credentials not configured` in `OAuthConnect`'s `errors[]` | `authmethod: "own"` without a saved `clientid` and `clientsecret` | Save them (Step 4), then retry |
+| `invalid_grant` | Refresh token expired or revoked; a consent screen still in Testing expires it after 7 days | Publish the consent screen, then re-connect via `OAuthConnect` |
+| `mc_error=no_accounts` on your `redirecturl` | The Merchant API listed no account for this Google user, and Wiro saved nothing. With `mc_error_detail` (for example `PERMISSION_DENIED`), Google refused the call: the Merchant API may be disabled or the project not registered (Step 3). | Enable the Merchant API, complete Step 3, or connect with a user who has Merchant Center access, then call `OAuthConnect` again. |
 | Content API deprecation error | You're on old v2.1 endpoints | Switch to v1 (`merchantapi.googleapis.com`) |
+
+### `redirect_uri_mismatch` on Google's page
+
+The Authorized redirect URIs of your OAuth client don't include `https://api.wiro.ai/v1/UserAgentOAuth/MCCallback` exactly as written. Google stops on its own error page, so nothing comes back to your `redirecturl`. Add the URI (Step 2) and connect again.

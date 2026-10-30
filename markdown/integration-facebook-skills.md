@@ -249,9 +249,9 @@ Redirect the user's browser to `authorizeUrl`. State has a 15-minute TTL.
 
 ### Step 8: Handle the callback and list returned Pages
 
-After consent, Wiro exchanges the code for a user access token, fetches every admin-managed Page **with its page-specific access token**, caches the full list server-side, and redirects the user to your `redirecturl`.
+After consent, Wiro exchanges the code for a user access token, reads the user's Pages **with their page-specific access tokens**, keeps the list server-side, and redirects the user to your `redirecturl`. Wiro reads only the first page of Meta's Page list, so a user with many Pages may not see all of them, and the list does not check the user's task on each Page. System User mode reads up to 500 assigned Pages and lists only Pages with `CREATE_CONTENT`.
 
-**Crucial:** Wiro does **not** auto-select a Page. The connection is incomplete until the client calls `SetPickerAccounts` with a chosen page. `POST /UserAgentOAuth/OAuthStatus` returns `connected: false` during this window.
+**Crucial:** Wiro does **not** auto-select a Page. On a first connection, after `OAuthDisconnect`, or when switching from System User mode, the connection is incomplete until the client calls `SetPickerAccounts`, and `OAuthStatus` returns `connected: false` until then. On a reconnect, the Pages saved earlier stay connected until `SetPickerAccounts` replaces them.
 
 **Success URL:**
 
@@ -264,7 +264,7 @@ Query parameters:
 | Param | Meaning |
 |-------|---------|
 | `fb_connected=true` | OAuth completed; credentials are cached server-side awaiting page selection. |
-| `fb_pages` | URL-encoded JSON array `[{ id, name }, ...]` of every admin-managed Page. The per-page access tokens stay server-side. The client only receives ID and name. |
+| `fb_pages` | URL-encoded JSON array `[{ id, name }, ...]` of the Pages Wiro read for this user (the first page of Meta's list). The per-page access tokens stay server-side. The client only receives ID and name. |
 | `fb_error=<code>` | Failure. See [Troubleshooting](#troubleshooting). |
 
 Parse:
@@ -273,15 +273,15 @@ Parse:
 const params = new URLSearchParams(window.location.search);
 
 if (params.get("fb_connected") === "true") {
-  const pages = JSON.parse(decodeURIComponent(params.get("fb_pages") || "[]"));
+  // URLSearchParams already decodes the value, so don't call decodeURIComponent on it.
+  const pages = JSON.parse(params.get("fb_pages") || "[]");
 
   if (pages.length === 0) {
-    // Shouldn't normally happen — the callback returns fb_error=no_pages if the user
-    // has no Pages. But handle defensively.
+    // Not expected: the callback returns fb_error=no_pages when no Page can be listed.
     showError("No Facebook Pages to manage.");
   } else if (pages.length === 1) {
-    // One-page case: still required to confirm via SetPickerAccounts
-    await setPickerAccounts([pages[0]]);
+    // One Page: SetPickerAccounts is still required.
+    await setPickerAccounts([{ pageid: pages[0].id, fbpagename: pages[0].name }]);
   } else {
     presentPagePicker(pages);
   }
@@ -292,8 +292,9 @@ if (params.get("fb_connected") === "true") {
 
 ### Step 9: Persist the page selection (required)
 
-**This step is mandatory.** The connection remains incomplete and
-`OAuthStatus` reports `connected: false` until you call `SetPickerAccounts`.
+**This step is mandatory.** On a first connection, the connection remains
+incomplete and `OAuthStatus` reports `connected: false` until you call
+`SetPickerAccounts`.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
@@ -324,11 +325,12 @@ Wiro validates every requested Page against the server-side discovery result,
 stores its long-lived Page access token without returning it to the client, and
 restarts a running agent so the new selection takes effect.
 
-If the 15-minute window lapses before you call `SetPickerAccounts`, you'll get
+If the 15-minute window lapses before you call `SetPickerAccounts`, or an
+earlier call already saved a selection from it, you'll get
 `No pending Facebook connection. Please reconnect via OAuthConnect.` Repeat
 Step 3 for System User mode or Step 7 for OAuth.
 
-`fbpagename` is optional; if omitted, Wiro uses the name from the cached page list. The Facebook Pages picker accepts one or more entries: pass multiple `{ pageid, fbpagename }` objects to authorize the agent against several pages at once.
+Send `fbpagename` with every Page, copied from the `name` in `fb_pages` or in the `OAuthConnect` response. Wiro stores the name you send; a Page sent without one is saved with an empty name. The Facebook Pages picker accepts one or more entries: pass multiple `{ pageid, fbpagename }` objects to authorize the agent against several Pages at once.
 
 ### Step 10: Verify the connection
 
@@ -381,11 +383,20 @@ Agents already running at `SetPickerAccounts` time restart automatically to pick
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
 | `credentialkey` | string | Yes | `"facebook-pages"`. |
-| `redirecturl` | string | OAuth only | HTTPS URL (or `http://localhost` / `http://127.0.0.1` for dev). Direct System User validation does not use it. |
+| `redirecturl` | string | OAuth only | Any HTTPS URL you control (or `http://localhost` / `http://127.0.0.1` for dev). Direct System User validation does not use it. |
 | `authmethod` | string | No | `"api_key"` for the recommended System User path, `"own"` for customer-owned OAuth, or `"wiro"` when Wiro-managed OAuth becomes available. Send the value explicitly. |
 
 OAuth response: `{ result, authorizeUrl, errors }`. Direct response:
-`{ result, accounts: [{id, name}], errors }` with no `authorizeUrl`.
+`{ result, accounts: [{id, name}], errors }` with no `authorizeUrl`. A failed
+direct check returns `{ result: false, errorcode, errors }`. Read `errorcode`,
+because most failures share one message: `no_pages` (no assigned Page with
+`CREATE_CONTENT`), `too_many_pages` (Meta listed more than 500 Pages),
+`direct_token_missing` (no `systemusertoken` saved, or the saved `authmethod` is
+not `"api_key"`), `direct_token_invalid` or `provider_rejected_request` (Meta
+refused the token or the request), `provider_timeout` or
+`provider_request_failed` (Meta did not answer). Other codes mean the check
+could not finish; try again. A check that finds a saved token first clears the
+saved Page selection, so call `SetPickerAccounts` after every successful check.
 
 ### GET /UserAgentOAuth/FBCallback
 
@@ -394,7 +405,7 @@ Server-side. Query params appended to your `redirecturl`:
 | Param | Meaning |
 |-------|---------|
 | `fb_connected=true` | OAuth completed; pending payload cached awaiting `SetPickerAccounts`. |
-| `fb_pages` | URL-encoded JSON `[{id, name}, ...]` of admin-managed Pages. |
+| `fb_pages` | URL-encoded JSON `[{id, name}, ...]` of the Pages Wiro read for this user (the first page of Meta's list). |
 | `fb_error=<code>` | Failure. |
 
 The callback path is per-provider: Facebook's stays `FBCallback`.
@@ -405,12 +416,13 @@ The callback path is per-provider: Facebook's stays `FBCallback`.
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
 | `credentialkey` | string | Yes | `"facebook-pages"`. |
-| `accounts` | array | Yes | One or more `{ pageid, fbpagename? }` entries. The per-page access token is resolved from the latest server-side OAuth or System User discovery result, so don't supply it. |
+| `accounts` | array | Yes | One or more `{ pageid, fbpagename }` entries. The per-page access token is resolved from the latest server-side OAuth or System User discovery result, so don't supply it. |
 
 Response: `{ result, accounts: [{id, name}, ...], errors }`. Triggers auto-restart if running.
 
 > Call within **15 minutes** of the OAuth callback or direct
-> `OAuthConnect` discovery. After that, restart the selected connection flow.
+> `OAuthConnect` discovery. A successful call uses up that discovery result, so
+> to choose other Pages later, restart the selected connection flow.
 
 ### POST /UserAgentOAuth/OAuthStatus
 
@@ -474,12 +486,12 @@ makes links clickable, so a draft's page link goes into the post.
 
 | Error code | Meaning | What to do |
 |------------|---------|------------|
-| `missing_params` | Callback hit without `state` or `code`. | Start a new flow from Step 7. |
+| `missing_params` | The callback was opened without an OAuth `state`. This error lands on `https://wiro.ai`, not on your app. | Don't open the callback URL directly. Start a new flow from Step 7. |
 | `session_expired` | >15 min between `OAuthConnect` and the callback. | Call `OAuthConnect` again. |
 | `authorization_denied` | User cancelled, or not listed in App Roles (Development Mode). | Add as Tester (Step 5), retry. |
 | `token_exchange_failed` | Wrong App Secret or redirect URI mismatch. | Re-copy App Secret; verify redirect URI exactly. |
 | `no_pages` | User has no administered Facebook Pages. | Ask the user to create/administer a Page first, retry. |
-| `useragent_not_found` | Invalid or unauthorized `useragentguid`. | Use `POST /UserAgent/MyAgents`. |
+| `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow, before Facebook returned. | Start again with `OAuthConnect` for an existing agent. |
 | `Facebook credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `appid` / `appsecret` are missing. | Call `POST /UserAgent/CredentialUpsert` with `facebook-pages.appid` and `facebook-pages.appsecret`, then retry. |
 | `Meta could not validate this System User token` | Direct mode received an invalid token, missing permission, or inaccessible asset. | Generate a current System User token with the documented permissions and Page assignments, save it, and retry. |
 | Valid token but no assigned Facebook Page | The System User has no Page with the `CREATE_CONTENT` task. | Assign the Page in Business Settings and reconnect. |
@@ -487,13 +499,11 @@ makes links clickable, so a draft's page link goes into the post.
 
 ### `SetPickerAccounts` returns "No pending Facebook connection"
 
-The 15-minute pending cache expired, or you passed a `pageid` that wasn't in
-the latest discovery result. Repeat Step 3 for System User mode or Step 7 for
-OAuth.
+No discovery result is waiting: the 15-minute window expired, or a previous `SetPickerAccounts` already used it. Repeat Step 3 for System User mode or Step 7 for OAuth.
 
-### `SetPickerAccounts` returns "Selected pageid not found in pending pages list"
+### `SetPickerAccounts` returns "Selected pageid not found in pending list"
 
-The `pageid` you sent doesn't match any ID in the cached list. Verify you're parsing `fb_pages` correctly and sending the exact ID string.
+The `pageid` you sent doesn't match any ID in the latest discovery result. Verify you're parsing `fb_pages` correctly and sending the exact ID string.
 
 ### Posts publish but as the wrong author
 

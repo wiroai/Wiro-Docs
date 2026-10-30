@@ -4,7 +4,7 @@ Connect your agent to Mailchimp for audience and campaign management. Supports O
 
 ## Overview
 
-The Mailchimp integration is unique in supporting three authentication options: Wiro's shared OAuth app, your own OAuth app, or a direct API key bypassing OAuth entirely.
+The Mailchimp integration supports three connection modes: Wiro's shared OAuth app, your own OAuth app, or a direct API key with no OAuth.
 
 **Skills that use this integration:**
 
@@ -90,6 +90,8 @@ Response:
 
 No `scope` parameter: Mailchimp OAuth doesn't use scopes.
 
+> **Starting OAuth removes a saved API key.** `OAuthConnect` with `"wiro"` or `"own"` clears `apikey` first, so an API-key setup stops working even if the OAuth start fails or the user never finishes consent.
+
 ### OAuth Step 4: Handle the callback
 
 Wiro exchanges the code via `POST https://login.mailchimp.com/oauth2/token`, then fetches metadata from `GET https://login.mailchimp.com/oauth2/metadata` with `Authorization: OAuth <access_token>` to retrieve the server prefix (`dc`) and account name.
@@ -170,12 +172,12 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
 | `credentialkey` | string | Yes | `"mailchimp"`. |
-| `redirecturl` | string | Yes | HTTPS URL. |
+| `redirecturl` | string | Yes | Any HTTPS URL you control; the browser returns there after consent. `http://localhost` and `http://127.0.0.1` also work for development. |
 | `authmethod` | string | No | `"wiro"` (default) or `"own"`. |
 
 ### GET /UserAgentOAuth/MailchimpCallback
 
-Query params: `mailchimp_connected=true&mailchimp_account=<name>` or `mailchimp_error=<code>`. The callback path is per-provider: Mailchimp's stays `MailchimpCallback`.
+Server-side endpoint invoked by Mailchimp with `code` and `state`. You don't call it. You only handle the final redirect back to your `redirecturl`, which carries `mailchimp_connected=true&mailchimp_account=<name>` or `mailchimp_error=<code>`. The callback path is per-provider: Mailchimp's stays `MailchimpCallback`.
 
 ### POST /UserAgentOAuth/OAuthStatus
 
@@ -185,7 +187,7 @@ Body: `{ useragentguid, credentialkey: "mailchimp" }`. Response: `connected`, `a
 
 ### POST /UserAgentOAuth/OAuthDisconnect
 
-Body: `{ useragentguid, credentialkey: "mailchimp" }`. Clears credentials (no remote revoke, since Mailchimp doesn't expose a revoke endpoint for OAuth tokens).
+Body: `{ useragentguid, credentialkey: "mailchimp" }`. Clears the token, the account name and the server prefix (no remote revoke, since Mailchimp doesn't expose a revoke endpoint for OAuth tokens). `clientid` and `clientsecret` stay saved. In API-key mode, Disconnect also clears `apikey`; an OAuth disconnect keeps it.
 
 ### Token lifecycle
 
@@ -216,7 +218,7 @@ To change **what** the scanner checks (target lists, bounce thresholds, tone, au
 | `authorization_denied` | User cancelled. | Retry. |
 | `session_expired` | State cache expired (15 min). | Restart. |
 | `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy; verify URL. |
-| `useragent_not_found` | Invalid guid. | Use `POST /UserAgent/MyAgents`. |
+| `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow, before Mailchimp returned. | Start again with `OAuthConnect` for an existing agent. |
 | `Mailchimp credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `clientid` / `clientsecret` are missing. | Update with `POST /UserAgent/CredentialUpsert`. |
 | `internal_error` | Server error. | Retry; contact support. |
 

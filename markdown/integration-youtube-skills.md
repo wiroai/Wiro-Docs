@@ -88,7 +88,7 @@ Send the user to the returned `authorizeUrl`.
 
 ### Step 5: Save the channel selection
 
-After consent the user returns with `?yt_connected=true&yt_channels=<URL-encoded-JSON>`. The JSON array entries come straight from the YouTube Data API and carry `{ id, title, customUrl, subscriberCount }` per channel. When the Google account has a single channel, Wiro selects it for you. Otherwise map the user's choice to the picker's `{ channelid, channeltitle }` shape and call `SetPickerAccounts`:
+After consent the user returns with `?yt_connected=true&yt_channels=<URL-encoded-JSON>`. Each entry is `{ id, title, customUrl, subscriberCount }`: `id` is the channel ID, `title` the channel name, `customUrl` its custom URL or handle (empty when it has none), and `subscriberCount` a string (`"0"` when YouTube returns no count). When the Google account has a single channel, Wiro selects it for you. Otherwise map the user's choice to `{ channelid, channeltitle }` (`id` becomes `channelid`, `title` becomes `channeltitle`) and call `SetPickerAccounts`:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
@@ -154,12 +154,12 @@ Response:
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
 | `credentialkey` | string | Yes | `"youtube"`. |
-| `redirecturl` | string | Yes | HTTPS URL. |
+| `redirecturl` | string | Yes | Any HTTPS URL you control (or `http://localhost` / `http://127.0.0.1` for development). |
 | `authmethod` | string | No | `"own"`. Omitted, it means `"wiro"`, which is not available yet. |
 
 ### GET /UserAgentOAuth/YTCallback
 
-Query params: `yt_connected=true&yt_channels=<JSON>` (URL-encoded JSON array of `{ id, title, customUrl, subscriberCount }` straight from the YouTube Data API) or `yt_error=<code>`. The callback path is per-provider: YouTube's stays `YTCallback`. When you hand the array off to `SetPickerAccounts`, map each entry to `{ channelid: id, channeltitle: title }`, since the picker uses those names for storage.
+Server-side endpoint invoked by Google. You don't call it: you register it as the Authorized redirect URI of your OAuth client. Wiro then sends the browser to your `redirecturl` with `yt_connected=true&yt_channels=<JSON>` (a URL-encoded array of `{ id, title, customUrl, subscriberCount }`) or `yt_error=<code>`. The callback path is per-provider: YouTube's stays `YTCallback`. When you pass a channel to `SetPickerAccounts`, map it to `{ channelid: id, channeltitle: title }`.
 
 ### POST /UserAgentOAuth/SetPickerAccounts
 
@@ -177,7 +177,7 @@ Body: `{ useragentguid, credentialkey: "youtube" }`. Response: `connected`, `acc
 
 ### POST /UserAgentOAuth/OAuthDisconnect
 
-Body: `{ useragentguid, credentialkey: "youtube" }`. Clears YouTube credentials (no remote revoke).
+Body: `{ useragentguid, credentialkey: "youtube" }`. Clears the tokens and the selected channels in Wiro. Your Client ID and Client Secret are kept. Wiro does not ask Google to revoke the authorization.
 
 ## What the agent does with this integration
 
@@ -236,8 +236,12 @@ Agent → POST /youtubeAnalytics/v2/reports
 |---------|-------|-----|
 | `Wiro-managed OAuth is not enabled for YouTube` in `OAuthConnect`'s `errors[]` | Wiro mode isn't available yet, and it is the default when `authmethod` is left out | Save your OAuth client (Step 3) and call `OAuthConnect` with `"authmethod": "own"` |
 | `YouTube credentials not configured` | `authmethod: "own"` without a saved `clientid` and `clientsecret` | Save them (Step 3), then retry |
-| Empty channel list | User has no YouTube channel | User creates a channel |
+| `yt_error=no_accounts` on your `redirecturl` | Google listed no YouTube channel for this account, and Wiro saved nothing: the account has no channel, or the YouTube Data API v3 is not enabled in your project | Enable the API (Step 1), or have the user create a channel, then call `OAuthConnect` again |
 | `quotaExceeded` | Daily quota hit | Wait 24h or request higher quota from Google |
 | `channelNotFound` | Channel deleted or moved | User re-selects via `SetPickerAccounts` |
 | `invalid_grant` | Refresh token expired or revoked; a consent screen still in Testing expires it after 7 days | Publish the consent screen, then re-connect via `OAuthConnect` |
 | A video uploaded as public or unlisted stays private | The Google Cloud project hasn't passed the YouTube API audit | Request the audit; until then upload the video in YouTube Studio |
+
+### `redirect_uri_mismatch` on Google's page
+
+The Authorized redirect URIs of your OAuth client don't include `https://api.wiro.ai/v1/UserAgentOAuth/YTCallback` exactly as written. Google stops on its own error page, so nothing comes back to your `redirecturl`. Add the URI (Step 2) and connect again.

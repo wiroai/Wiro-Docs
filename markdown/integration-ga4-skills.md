@@ -44,6 +44,7 @@ The GA4 integration uses Google OAuth 2.0 with the GA4 Data API v1beta and the G
    - **External** user type for multi-tenant use
    - App name, support email, developer contact
    - Add scopes: `analytics.readonly`, `analytics.edit`
+   - Publish the app (**In production**). While it is in **Testing**, Google expires its refresh tokens after 7 days and the agent loses access.
 
 ### Step 2: Create OAuth Client
 
@@ -89,7 +90,7 @@ The response returns `{ result: true, authorizeUrl: "..." }`. Redirect the user 
 
 ### Step 4: Property Picker
 
-After consent, the user returns with `?ga4_connected=true&ga4_properties=<URL-encoded-JSON>`. The JSON array entries come straight from GA4's Admin API and carry `{ id, displayName, account, propertyType }` per property. Map them to the picker shape and call `SetPickerAccounts`:
+After consent, the user returns with `?ga4_connected=true&ga4_properties=<URL-encoded-JSON>`. Each entry is `{ id, displayName, account, propertyType }`: `id` is the property number, `displayName` the property name, `account` the name of the GA4 account that owns it, and `propertyType` Google's property type (for example `PROPERTY_TYPE_ORDINARY`). Map the user's choice to the picker shape and call `SetPickerAccounts`:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
@@ -99,12 +100,12 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
     "useragentguid": "your-useragent-guid",
     "credentialkey": "ga4",
     "accounts": [
-      { "propertyid": "123456789", "propertydisplayname": "MyApp — Production" }
+      { "propertyid": "123456789", "propertydisplayname": "MyApp Production" }
     ]
   }'
 ```
 
-Pass multiple `{ propertyid, propertydisplayname }` entries to authorize the agent against several GA4 properties at once. Only `propertyid` and `propertydisplayname` are persisted by the picker. The GA4 `account` resource name (`accounts/12345`) is discoverable from the redirect-URL JSON if you need it for UI grouping but is not stored.
+Pass several `{ propertyid, propertydisplayname }` entries to authorize the agent against several GA4 properties at once (`id` becomes `propertyid`, `displayName` becomes `propertydisplayname`). Only these two are saved. `account` is handy for grouping the list in your UI, but it is not stored.
 
 ## Disconnect
 
@@ -118,7 +119,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthDisconnect" \
   }'
 ```
 
-Clears `accesstoken`, `refreshtoken`, `propertyid`, `propertydisplayname` and resets `_connected` to `false`. The credential template shape is preserved so the UI can re-offer Connect.
+Clears the tokens and the selected properties in Wiro. Your Client ID and Client Secret are kept, so you can connect again without saving them again. Wiro does not ask Google to revoke the authorization.
 
 ## Status
 
@@ -139,7 +140,7 @@ Response:
   "result": true,
   "connected": true,
   "accounts": [
-    { "id": "123456789", "name": "MyApp — Production" }
+    { "id": "123456789", "name": "MyApp Production" }
   ],
   "connectedat": "2026-04-17T12:00:00.000Z",
   "tokenexpiresat": "2026-04-17T13:00:00.000Z",
@@ -175,11 +176,16 @@ Agent reads GA4 predefined + custom audiences via Admin API and can propose Cust
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | `Wiro-managed OAuth is not enabled for Google Analytics 4` in `OAuthConnect`'s `errors[]` | Wiro mode isn't available yet, and it is the default when `authmethod` is left out | Save your OAuth client (Step 3) and call `OAuthConnect` with `"authmethod": "own"` |
-| `invalid_grant` | Refresh token expired | Re-connect via `OAuthConnect` |
+| `Google Analytics 4 credentials not configured` in `OAuthConnect`'s `errors[]` | `authmethod: "own"` without a saved `clientid` and `clientsecret` | Save them (Step 3), then retry |
+| `invalid_grant` | Refresh token expired or revoked; a consent screen still in Testing expires it after 7 days | Publish the consent screen, then re-connect via `OAuthConnect` |
 | `PERMISSION_DENIED` | User not a property administrator | Ask user to add the GA account |
 | `403 Request had insufficient authentication` | Missing scopes | Re-consent with full scope set |
-| Empty property picker | User has no GA4 property access | Instruct user to create/gain access |
+| `ga4_error=no_accounts` on your `redirecturl` | Google listed no GA4 property for this user, and Wiro saved nothing: the user has no property, or the Google Analytics Admin API is not enabled in your project | Enable the Admin API (Step 1), or have the user create a property or get access to one, then call `OAuthConnect` again |
 | `OAuthStatus` returns `connected: false` right after consent | No GA4 property has been saved yet; the connection is complete only once `SetPickerAccounts` stores at least one | Call `SetPickerAccounts` with a property from `ga4_properties` (Step 4) |
+
+### `redirect_uri_mismatch` on Google's page
+
+The Authorized redirect URIs of your OAuth client don't include `https://api.wiro.ai/v1/UserAgentOAuth/GA4Callback` exactly as written. Google stops on its own error page, so nothing comes back to your `redirecturl`. Add the URI (Step 2) and connect again.
 
 ## Skill reference
 

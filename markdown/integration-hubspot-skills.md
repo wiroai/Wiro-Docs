@@ -124,7 +124,7 @@ Response:
 
 ### Step 6: Handle the callback
 
-Wiro exchanges the code, then calls `GET https://api.hubapi.com/oauth/v1/access-tokens/<access_token>` to fetch `hub_id` (portalid) and `hub_domain` (portalname).
+Wiro exchanges the code, then calls `GET https://api.hubapi.com/oauth/v1/access-tokens/<access_token>` to fetch `hub_id` (portalid) and `hub_domain` (portalname). When HubSpot returns no `hub_domain`, portalname is the response's `user` value, the email of the user who connected. If this lookup fails, the connection still succeeds and the redirect carries only `hubspot_connected=true`.
 
 **Success URL:**
 
@@ -178,12 +178,12 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
 | `credentialkey` | string | Yes | `"hubspot"`. |
-| `redirecturl` | string | Yes | HTTPS URL. |
+| `redirecturl` | string | Yes | Any HTTPS URL you control; the browser returns there after consent. `http://localhost` and `http://127.0.0.1` also work for development. |
 | `authmethod` | string | No | `"wiro"` (default) or `"own"`. |
 
 ### GET /UserAgentOAuth/HubSpotCallback
 
-Query params: `hubspot_connected=true&hubspot_portal=<id>&hubspot_name=<name>` or `hubspot_error=<code>`. The callback path is per-provider: HubSpot's stays `HubSpotCallback`.
+Server-side endpoint invoked by HubSpot with `code` and `state`. You don't call it. You only handle the final redirect back to your `redirecturl`, which carries `hubspot_connected=true&hubspot_portal=<id>&hubspot_name=<name>` or `hubspot_error=<code>`. The callback path is per-provider: HubSpot's stays `HubSpotCallback`.
 
 ### POST /UserAgentOAuth/OAuthStatus
 
@@ -195,7 +195,7 @@ Body: `{ useragentguid, credentialkey: "hubspot" }`. Clears HubSpot credentials 
 
 ### Token lifecycle
 
-Wiro maintains the HubSpot connection automatically while the agent is running. If HubSpot revokes the authorization or `OAuthStatus` reports `connected: false`, reconnect through OAuth.
+Wiro renews the HubSpot token while the agent is running and when it starts. `OAuthStatus` reports `connected: false` and an empty `accounts` array as soon as the stored token has expired, so an agent stopped for more than 30 minutes shows `false` while its authorization is still valid. Start the agent and check again. Reconnect through OAuth only if HubSpot revoked the authorization or the status stays `false` while the agent runs.
 
 ## Using the Skill
 
@@ -216,11 +216,11 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
 
 | Error code | Meaning | What to do |
 |------------|---------|------------|
-| `missing_params` | Callback hit without `state` or `code`. | User didn't complete consent; restart the flow. |
-| `authorization_denied` | User cancelled, or missing scopes. | Verify scope list in the HubSpot app's Auth tab. |
+| `missing_params` | The callback was opened without an OAuth `state`. The browser lands on `https://wiro.ai`, not on your `redirecturl`. | Don't open the callback URL directly. Start a new flow with `OAuthConnect`. |
+| `authorization_denied` | The user cancelled, or HubSpot returned an error instead of an authorization code. | Verify the scope list in the HubSpot app's Auth tab. |
 | `session_expired` | State cache expired (15 min TTL). | Restart the OAuth flow. |
 | `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy; verify URL. |
-| `useragent_not_found` | Invalid guid. | Use `POST /UserAgent/MyAgents`. |
+| `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow, before HubSpot returned. | Start again with `OAuthConnect` for an existing agent. |
 | `HubSpot credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `clientid` / `clientsecret` are missing. | `UserAgent/CredentialUpsert` with `clientid` + `clientsecret`. |
 | `internal_error` | Server error. | Retry; contact support. |
 

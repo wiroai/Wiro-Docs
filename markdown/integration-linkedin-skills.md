@@ -147,7 +147,7 @@ const params = new URLSearchParams(window.location.search);
 
 if (params.get("li_connected") === "true") {
   const name = params.get("li_name");
-  showSuccess(`Connected as ${name}`);
+  showSuccess(name ? `Connected as ${name}` : "LinkedIn connected");
 } else if (params.get("li_error")) {
   handleError(params.get("li_error"));
 }
@@ -200,12 +200,12 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
 | `credentialkey` | string | Yes | `"linkedin"`. |
-| `redirecturl` | string | Yes | HTTPS URL. |
-| `authmethod` | string | No | `"wiro"` (coming soon) or `"own"`. |
+| `redirecturl` | string | Yes | Any HTTPS URL you control; the browser returns there after consent. `http://localhost` and `http://127.0.0.1` also work for development. |
+| `authmethod` | string | Yes | `"own"`. Wiro mode is not available yet: leaving `authmethod` out (it defaults to `"wiro"`) or sending `"wiro"` returns `Wiro-managed OAuth is not enabled for LinkedIn`. |
 
 ### GET /UserAgentOAuth/LICallback
 
-Query params: `li_connected=true&li_name=...` or `li_error=...`. The callback path is per-provider: LinkedIn's stays `LICallback`.
+Server-side endpoint invoked by LinkedIn with `code` and `state`. You don't call it. You only handle the final redirect back to your `redirecturl`, which carries `li_connected=true&li_name=<name>` or `li_error=<code>`. The callback path is per-provider: LinkedIn's stays `LICallback`.
 
 ### POST /UserAgentOAuth/OAuthStatus
 
@@ -213,11 +213,11 @@ Body: `{ useragentguid, credentialkey: "linkedin" }`. Response: `connected`, `ac
 
 ### POST /UserAgentOAuth/OAuthDisconnect
 
-Body: `{ useragentguid, credentialkey: "linkedin" }`. Clears LinkedIn credentials (no remote revoke).
+Body: `{ useragentguid, credentialkey: "linkedin" }`. Clears the tokens, the connected name and `organizationid` (no remote revoke). `clientid` and `clientsecret` stay saved. Save `organizationid` again when you reconnect.
 
 ### Token lifecycle
 
-Wiro maintains the LinkedIn connection automatically while the agent is running. If LinkedIn revokes the authorization or `OAuthStatus` reports `connected: false`, reconnect through the OAuth flow.
+Wiro renews the LinkedIn token while the agent is running and when it starts, if LinkedIn issued a refresh token. `OAuthStatus` reports `connected: false` as soon as the stored token has expired, which can happen to a stopped agent while its authorization is still valid. Start the agent and check again. Reconnect through the OAuth flow if LinkedIn revoked the authorization or the status stays `false` while the agent runs.
 
 ## Using the Skill
 
@@ -241,12 +241,13 @@ To change **what** the scheduled task posts (topics, tone, audience angle), edit
 
 | Error code | Meaning | What to do |
 |------------|---------|------------|
-| `missing_params` | Callback reached without `state` or `code`. | Restart from Step 7. |
+| `missing_params` | The callback was opened without an OAuth `state`. The browser lands on `https://wiro.ai`, not on your `redirecturl`. | Don't open the callback URL directly. Start again from Step 7. |
 | `session_expired` | >15 min between `OAuthConnect` and callback. | Call `OAuthConnect` again. |
-| `authorization_denied` | User cancelled, or missing required scopes in app. | Verify all four scopes are enabled under Auth → OAuth 2.0 scopes. |
+| `authorization_denied` | The user cancelled, or LinkedIn returned an error instead of an authorization code. | Verify all four scopes are enabled under Auth → OAuth 2.0 scopes. |
 | `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy secret; verify URL. |
-| `useragent_not_found` | Invalid or unauthorized guid. | Use `POST /UserAgent/MyAgents`. |
+| `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow, before LinkedIn returned. | Start again with `OAuthConnect` for an existing agent. |
 | `LinkedIn credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `clientid` / `clientsecret` are missing. | `UserAgent/CredentialUpsert` with `clientid` + `clientsecret`. |
+| `Wiro-managed OAuth is not enabled for LinkedIn` | Returned in `OAuthConnect`'s `errors[]` when `authmethod` is missing or `"wiro"`. | Send `authmethod: "own"`. |
 | `internal_error` | Server error. | Retry; contact support if persistent. |
 
 ### Posts rejected with 401 Unauthorized
