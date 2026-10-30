@@ -6337,6 +6337,7 @@ for the channel contract.
 | `credentials` | object | No | Inline credential groups. If a communication-channel group is included, its matching `credentials[credential_key]` object must contain all channel `required_fields`; completeness activates that channel automatically. |
 | `skills` | object | No | Inline skill toggles `{ "skillname": true \| false }`. For custom builds this seeds the initial skill set; for template deploys it overlays the template defaults. |
 | `customskills` | array | No | Inline custom skill rows. Each entry: `{ key, value?, interval?, enabled?, description?, _user_created? }`. |
+| `wiroapiallowedpaths` | string[] | No | The Wiro API endpoints this agent may call with its own Wiro project key, as rules in the format described under [`UpdateSettings`](#post-useragentupdatesettings). The list is saved before the agent first starts, so it applies from the first turn. An invalid list is rejected with `invalid-wiro-api-path-rule` and no agent is created. If the list can't be saved, no agent is created either and the call returns `Failed to save wiroapiallowedpaths`; deploy again. Omit it, or send `null`, for no limit. |
 
 **Headers:** Standard API authentication, with `x-api-key` for key-based projects, or `x-nonce` + `x-signature` for signature-based projects (see [Authentication](/docs/authentication)). To deploy into a team, use the credentials of a project that belongs to that team: the agent is created in the project's team, and the project's owner must be an admin of that team (otherwise code `97`). No extra header is needed.
 
@@ -7055,6 +7056,7 @@ Retrieves full details for a single deployed agent instance, including subscript
 | `tokenRates` | `object\|null` | Per-model token-billing rates (credits per 1,000,000 tokens). Shape: `{ default_model, fallback_rate, models: { "<slug>": { input_per_1m, output_per_1m, cached_input_per_1m?, cache_write_per_1m?, selectable?, label?, tier? } } }`. Each turn's cost is metered from these rates (1 credit = $0.01). See [Token Billing](#pricing-model-tiers-skills--token-billing). `null` only on registry-read failure. |
 | `agentModel` | `object` | The resolved model slugs this instance runs: `{ chatModel, cronModel, voicePrepModel, voicePostcallModel }` (camelCase). Each falls back to the platform default when the operator hasn't overridden it. Change them via [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) using the lowercase keys `chatmodel` / `cronmodel` / `voiceprepmodel` / `voicepostcallmodel`. |
 | `enabledCommands` | `array<string>\|null` | The in-chat slash-command allowlist (camelCase read). `null` = the operator never customized it, so **all** slash commands are available. An array (including `[]`) is an explicit allowlist of command keys (no leading slash); `[]` hides the slash-command menu. Write it via [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) with the lowercase `enabledcommands` key. Also present on `MyAgents` / `PinnedAgents` rows. |
+| `wiroApiAllowedPaths` | `array<string>\|null` | The Wiro API endpoints the agent may call with its own Wiro project key (camelCase read), for example `["POST /v1/Run/*/*", "POST /v1/Task/Detail"]`. `null` = no list, so the agent can call any endpoint its key allows. `[]` blocks all of them. Write it via [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) or at Deploy with the lowercase `wiroapiallowedpaths` key. Also on the `Deploy` and `Update` responses; not on `MyAgents` / `PinnedAgents` rows. |
 
 **Lifecycle**
 
@@ -7208,7 +7210,7 @@ Updates an agent instance's **scalar fields only** (title, description, categori
 
 #### **POST** /UserAgent/UpdateSettings
 
-Writes per-agent preference toggles that are not credentials and not skill rows. Exposes `timezone` (operator-selected IANA zone, propagates into the agent container's `TZ` env, cron `schedule.tz`, and caller-facing voice prep), `teamsessionmode` (the one Chat Mode for team web-chat history and external-channel DMs), the four **model overrides** (`chatmodel`, `cronmodel`, `voiceprepmodel`, `voicepostcallmodel`) that choose which LLM the agent uses for chat replies, scheduled (cron) turns, voice-call prep, and the post-call summary turn, and `enabledcommands` (the in-chat slash-command allowlist). Submit any subset in the same call: partial updates are supported and untouched fields keep their current value.
+Writes per-agent preference toggles that are not credentials and not skill rows. Exposes `timezone` (operator-selected IANA zone, propagates into the agent container's `TZ` env, cron `schedule.tz`, and caller-facing voice prep), `teamsessionmode` (the one Chat Mode for team web-chat history and external-channel DMs), the four **model overrides** (`chatmodel`, `cronmodel`, `voiceprepmodel`, `voicepostcallmodel`) that choose which LLM the agent uses for chat replies, scheduled (cron) turns, voice-call prep, and the post-call summary turn, `enabledcommands` (the in-chat slash-command allowlist), and `wiroapiallowedpaths` (the Wiro API endpoints the agent may call with its own Wiro project key). Submit any subset in the same call: partial updates are supported and untouched fields keep their current value.
 
 **Permission**: owner OR team admin (the same `requireRole: "admin"` gate as `/UserAgent/Update`). Team members cannot flip these knobs.
 
@@ -7224,6 +7226,7 @@ Writes per-agent preference toggles that are not credentials and not skill rows.
 | `voiceprepmodel` | string\|null | No | Same rules as `chatmodel`, applied to the **voice-call prep** turn (context assembled before a realtime call). |
 | `voicepostcallmodel` | string\|null | No | Same rules as `chatmodel`, applied to the **post-call summary** turn after a realtime voice call ends. |
 | `enabledcommands` | string[] | No | Allowlist of in-chat **slash commands** the agent exposes, as an array of command keys **without** the leading slash (e.g. `["agent_help", "new_session", "agent_status"]`). Validated against the command catalog: an unknown key is rejected with `invalid-command-selection`, a non-array value with `invalid-command-list`. Order is preserved and duplicates are removed. An empty array `[]` is valid and **hides the slash-command menu** entirely. Omit the field to leave the current allowlist untouched. |
+| `wiroapiallowedpaths` | string[]\|null | No | Limits the agent's own calls to the Wiro API, the ones it makes with its Wiro project key (for example through `int-wiro-aimodels`), to the endpoints you list. Each rule is a method in capitals (`GET`, `POST`, `PUT`, `PATCH`, `DELETE` or `HEAD`), one space and a `/v1` path, such as `"POST /v1/Task/Detail"`. A `*` stands for exactly one whole path segment: `"POST /v1/Run/*/*"` allows every model run, while `"POST /v1/Run/x*"` is invalid. Up to 64 rules of at most 200 characters each; duplicates are removed and the order is kept. Calls to endpoints that no rule matches are refused. `[]` refuses every call, model runs included; `null` removes the list. An invalid rule, or a value that isn't an array, is rejected with `invalid-wiro-api-path-rule`, and nothing in the request is saved. Omit the field to keep the current list. |
 
 > **Slash-command catalog.** Valid `enabledcommands` keys are: `agent_help`, `new_session`, `agent_status`, `agent_limits`, `last_scan`, `last_heartbeat`, `agent_restart`, `clear_all_sessions`, `clear_history`. Read the agent's current allowlist from the `enabledCommands` field (camelCase) on [`UserAgent/Detail`](#post-useragentdetail) / `MyAgents` / `PinnedAgents`, where `null` means the operator never customized it (all commands available) and an array (including `[]`) is an explicit allowlist.
 
@@ -7280,6 +7283,15 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
     "enabledcommands": ["agent_help", "new_session", "agent_status"]
   }'
 
+# Limit the agent's own Wiro API calls to model lookups, model runs and task reads
+curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
+  -H "Authorization: Bearer $WIRO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
+    "wiroapiallowedpaths": ["POST /v1/Tool/List", "POST /v1/Tool/Detail", "POST /v1/Run/*/*", "POST /v1/Task/Detail"]
+  }'
+
 # Update both preference toggles in one call
 curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
   -H "Authorization: Bearer $WIRO_API_KEY" \
@@ -7307,13 +7319,14 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
 | Code | Message key | When |
 |------|-------------|------|
 | 400 | `request-parameter-required` | `useragentguid` missing from the body. |
-| 400 | `nothing-to-update` | Body had none of the recognised fields (`timezone`, `teamsessionmode`, a model override, or `enabledcommands`). |
+| 400 | `nothing-to-update` | Body had none of the recognised fields (`timezone`, `teamsessionmode`, a model override, `enabledcommands` or `wiroapiallowedpaths`). |
 | 400 | `invalid-timezone` | `timezone` wasn't a string the runtime's `Intl.DateTimeFormat` could resolve. |
 | 400 | `teamsessionmode must be private or collaborative` | `teamsessionmode` wasn't one of the two supported values. |
 | 400 | `directchatmode is not accepted` | Obsolete separate mode was sent instead of unified `teamsessionmode`. |
 | 400 | `invalid-model-selection` | A model override (`chatmodel` / `cronmodel` / `voiceprepmodel` / `voicepostcallmodel`) was an unknown or non-selectable slug (`tokenRates.models[<slug>].selectable !== true`). |
 | 400 | `invalid-command-list` | `enabledcommands` was present but not an array. |
 | 400 | `invalid-command-selection` | `enabledcommands` contained a key that isn't in the slash-command catalog. |
+| 400 | `invalid-wiro-api-path-rule` | `wiroapiallowedpaths` was not an array, or a rule broke the format or the limits above. |
 | 403 | `useragent-access-denied` | Caller is neither the owner nor on the agent's team. |
 | 403 | `useragent-team-admin-required` | Caller is a member of the agent's team but not a team admin. Carries `errors[0].code: 97`. |
 | 500 | `failed-to-update-useragent` | DB write failed (transient, safe to retry). |

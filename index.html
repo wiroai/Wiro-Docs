@@ -9898,6 +9898,12 @@ pro.credits = starter.credits × tiermultiplier
 <td>No</td>
 <td>Inline custom skill rows. Each entry: <code>{ key, value?, interval?, enabled?, description?, _user_created? }</code>.</td>
 </tr>
+<tr>
+<td><code>wiroapiallowedpaths</code></td>
+<td>string[]</td>
+<td>No</td>
+<td>The Wiro API endpoints this agent may call with its own Wiro project key, as rules in the format described under <a href="#post-useragentupdatesettings"><code>UpdateSettings</code></a>. The list is saved before the agent first starts, so it applies from the first turn. An invalid list is rejected with <code>invalid-wiro-api-path-rule</code> and no agent is created. If the list can't be saved, no agent is created either and the call returns <code>Failed to save wiroapiallowedpaths</code>; deploy again. Omit it, or send <code>null</code>, for no limit.</td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -10865,6 +10871,11 @@ pro.credits = starter.credits × tiermultiplier
 <td><code>array&lt;string&gt;|null</code></td>
 <td>The in-chat slash-command allowlist (camelCase read). <code>null</code> = the operator never customized it, so <strong>all</strong> slash commands are available. An array (including <code>[]</code>) is an explicit allowlist of command keys (no leading slash); <code>[]</code> hides the slash-command menu. Write it via <a href="#post-useragentupdatesettings"><code>POST /UserAgent/UpdateSettings</code></a> with the lowercase <code>enabledcommands</code> key. Also present on <code>MyAgents</code> / <code>PinnedAgents</code> rows.</td>
 </tr>
+<tr>
+<td><code>wiroApiAllowedPaths</code></td>
+<td><code>array&lt;string&gt;|null</code></td>
+<td>The Wiro API endpoints the agent may call with its own Wiro project key (camelCase read), for example <code>["POST /v1/Run/*/*", "POST /v1/Task/Detail"]</code>. <code>null</code> = no list, so the agent can call any endpoint its key allows. <code>[]</code> blocks all of them. Write it via <a href="#post-useragentupdatesettings"><code>POST /UserAgent/UpdateSettings</code></a> or at Deploy with the lowercase <code>wiroapiallowedpaths</code> key. Also on the <code>Deploy</code> and <code>Update</code> responses; not on <code>MyAgents</code> / <code>PinnedAgents</code> rows.</td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -11274,7 +11285,7 @@ pro.credits = starter.credits × tiermultiplier
 <p><strong>Restart on running agents.</strong> When the call lands on a status <code>3</code>/<code>4</code> agent, the response shows the lifecycle transition mid-flight: <code>status: 1</code> (Stopping) with a fresh <code>stoppingat</code> timestamp, <code>runningat</code> cleared, and <code>queuedat</code> set to the same instant. Wiro auto-queues the agent so it picks the new settings up after the next stop cycle.</p>
 </blockquote>
 <h4 id="post-useragentupdatesettings"><strong>POST</strong> /UserAgent/UpdateSettings</h4>
-<p>Writes per-agent preference toggles that are not credentials and not skill rows. Exposes <code>timezone</code> (operator-selected IANA zone, propagates into the agent container's <code>TZ</code> env, cron <code>schedule.tz</code>, and caller-facing voice prep), <code>teamsessionmode</code> (the one Chat Mode for team web-chat history and external-channel DMs), the four <strong>model overrides</strong> (<code>chatmodel</code>, <code>cronmodel</code>, <code>voiceprepmodel</code>, <code>voicepostcallmodel</code>) that choose which LLM the agent uses for chat replies, scheduled (cron) turns, voice-call prep, and the post-call summary turn, and <code>enabledcommands</code> (the in-chat slash-command allowlist). Submit any subset in the same call: partial updates are supported and untouched fields keep their current value.</p>
+<p>Writes per-agent preference toggles that are not credentials and not skill rows. Exposes <code>timezone</code> (operator-selected IANA zone, propagates into the agent container's <code>TZ</code> env, cron <code>schedule.tz</code>, and caller-facing voice prep), <code>teamsessionmode</code> (the one Chat Mode for team web-chat history and external-channel DMs), the four <strong>model overrides</strong> (<code>chatmodel</code>, <code>cronmodel</code>, <code>voiceprepmodel</code>, <code>voicepostcallmodel</code>) that choose which LLM the agent uses for chat replies, scheduled (cron) turns, voice-call prep, and the post-call summary turn, <code>enabledcommands</code> (the in-chat slash-command allowlist), and <code>wiroapiallowedpaths</code> (the Wiro API endpoints the agent may call with its own Wiro project key). Submit any subset in the same call: partial updates are supported and untouched fields keep their current value.</p>
 <p><strong>Permission</strong>: owner OR team admin (the same <code>requireRole: "admin"</code> gate as <code>/UserAgent/Update</code>). Team members cannot flip these knobs.</p>
 <p><strong>Restart</strong>: if the agent is <strong>starting (status <code>3</code>)</strong> or <strong>running (status <code>4</code>)</strong>, the call auto-stops the container and schedules a restart so the daemon worker picks up the fresh <code>settings.json</code> (new timezone, session mode, and / or model selection) on the next launch cycle. Status <code>0</code>/<code>1</code>/<code>2</code>/<code>5</code>/<code>6</code> agents take effect on the next manual <code>Start</code> without a soft-stop.</p>
 <div class="docs-param-table">
@@ -11337,6 +11348,12 @@ pro.credits = starter.credits × tiermultiplier
 <td>No</td>
 <td>Allowlist of in-chat <strong>slash commands</strong> the agent exposes, as an array of command keys <strong>without</strong> the leading slash (e.g. <code>["agent_help", "new_session", "agent_status"]</code>). Validated against the command catalog: an unknown key is rejected with <code>invalid-command-selection</code>, a non-array value with <code>invalid-command-list</code>. Order is preserved and duplicates are removed. An empty array <code>[]</code> is valid and <strong>hides the slash-command menu</strong> entirely. Omit the field to leave the current allowlist untouched.</td>
 </tr>
+<tr>
+<td><code>wiroapiallowedpaths</code></td>
+<td>string[]|null</td>
+<td>No</td>
+<td>Limits the agent's own calls to the Wiro API, the ones it makes with its Wiro project key (for example through <code>int-wiro-aimodels</code>), to the endpoints you list. Each rule is a method in capitals (<code>GET</code>, <code>POST</code>, <code>PUT</code>, <code>PATCH</code>, <code>DELETE</code> or <code>HEAD</code>), one space and a <code>/v1</code> path, such as <code>"POST /v1/Task/Detail"</code>. A <code>*</code> stands for exactly one whole path segment: <code>"POST /v1/Run/*/*"</code> allows every model run, while <code>"POST /v1/Run/x*"</code> is invalid. Up to 64 rules of at most 200 characters each; duplicates are removed and the order is kept. Calls to endpoints that no rule matches are refused. <code>[]</code> refuses every call, model runs included; <code>null</code> removes the list. An invalid rule, or a value that isn't an array, is rejected with <code>invalid-wiro-api-path-rule</code>, and nothing in the request is saved. Omit the field to keep the current list.</td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -11393,6 +11410,15 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
     &quot;enabledcommands&quot;: [&quot;agent_help&quot;, &quot;new_session&quot;, &quot;agent_status&quot;]
   }'
 
+# Limit the agent's own Wiro API calls to model lookups, model runs and task reads
+curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
+  -H &quot;Authorization: Bearer $WIRO_API_KEY&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{
+    &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;,
+    &quot;wiroapiallowedpaths&quot;: [&quot;POST /v1/Tool/List&quot;, &quot;POST /v1/Tool/Detail&quot;, &quot;POST /v1/Run/*/*&quot;, &quot;POST /v1/Task/Detail&quot;]
+  }'
+
 # Update both preference toggles in one call
 curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
   -H &quot;Authorization: Bearer $WIRO_API_KEY&quot; \
@@ -11432,7 +11458,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <tr>
 <td>400</td>
 <td><code>nothing-to-update</code></td>
-<td>Body had none of the recognised fields (<code>timezone</code>, <code>teamsessionmode</code>, a model override, or <code>enabledcommands</code>).</td>
+<td>Body had none of the recognised fields (<code>timezone</code>, <code>teamsessionmode</code>, a model override, <code>enabledcommands</code> or <code>wiroapiallowedpaths</code>).</td>
 </tr>
 <tr>
 <td>400</td>
@@ -11463,6 +11489,11 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <td>400</td>
 <td><code>invalid-command-selection</code></td>
 <td><code>enabledcommands</code> contained a key that isn't in the slash-command catalog.</td>
+</tr>
+<tr>
+<td>400</td>
+<td><code>invalid-wiro-api-path-rule</code></td>
+<td><code>wiroapiallowedpaths</code> was not an array, or a rule broke the format or the limits above.</td>
 </tr>
 <tr>
 <td>403</td>
