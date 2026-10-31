@@ -67,7 +67,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
       {
         "credentialkey": "telegram",
         "fieldname": "allowedusers",
-        "fieldvalue": ["761381461", "987654321"]
+        "fieldvalue": ["123456789", "987654321"]
       },
       {
         "credentialkey": "telegram",
@@ -75,7 +75,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
         "fieldvalue": [
           {
             "chatid": "-1001234567890",
-            "allowedusers": ["761381461"]
+            "allowedusers": ["123456789"]
           }
         ]
       }

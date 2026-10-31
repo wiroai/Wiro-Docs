@@ -71,7 +71,7 @@ activation fields in one `fields[]` request when connecting a channel:
     {
       "credentialkey": "telegram",
       "fieldname": "allowedusers",
-      "fieldvalue": ["761381461"]
+      "fieldvalue": ["123456789"]
     },
     {
       "credentialkey": "telegram",
@@ -79,7 +79,7 @@ activation fields in one `fields[]` request when connecting a channel:
       "fieldvalue": [
         {
           "chatid": "-1001234567890",
-          "allowedusers": ["761381461"]
+          "allowedusers": ["123456789"]
         }
       ]
     }

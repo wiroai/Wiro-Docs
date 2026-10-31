@@ -114,7 +114,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
     "useragentguid": "your-useragent-guid",
     "credentialkey": "google-merchant-center",
     "accounts": [
-      { "merchantid": "5769377374", "accountname": "Acme Store" }
+      { "merchantid": "1234567890", "accountname": "Acme Store" }
     ]
   }'
 ```
@@ -156,7 +156,7 @@ Response:
   "result": true,
   "connected": true,
   "accounts": [
-    { "id": "5769377374", "name": "Acme Store" }
+    { "id": "1234567890", "name": "Acme Store" }
   ],
   "connectedat": "2026-04-17T12:00:00.000Z",
   "tokenexpiresat": "2026-04-17T13:00:00.000Z",

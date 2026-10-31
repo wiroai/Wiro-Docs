@@ -69,7 +69,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
       { "credentialkey": "apple-appstore", "fieldname": "issuerid",   "fieldvalue": "12345678-1234-1234-1234-123456789012" },
       { "credentialkey": "apple-appstore", "fieldname": "privatekey", "fieldvalue": "LS0tLS1CRUdJTi..." },
       { "credentialkey": "apple-appstore", "parentfield": "apps", "ordinal": 0, "fieldname": "appname", "fieldvalue": "My iOS App" },
-      { "credentialkey": "apple-appstore", "parentfield": "apps", "ordinal": 0, "fieldname": "appid",   "fieldvalue": "6479306352" },
+      { "credentialkey": "apple-appstore", "parentfield": "apps", "ordinal": 0, "fieldname": "appid",   "fieldvalue": "1234567890" },
       { "credentialkey": "apple-appstore", "parentfield": "apps", "ordinal": 1, "fieldname": "appname", "fieldvalue": "My Other App" },
       { "credentialkey": "apple-appstore", "parentfield": "apps", "ordinal": 1, "fieldname": "appid",   "fieldvalue": "1234567890" }
     ]

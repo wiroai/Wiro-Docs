@@ -61,7 +61,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
   },
   "transactions": [
     {
-      "guid": "7f3e8c21-1be1-4f5a-96e8-2b1a9e2a6a01",
+      "guid": "3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e01",
       "type": "deduct",
       "action": "tokens",
       "amount": -5,
@@ -69,7 +69,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "description": "Input Tokens: 3450 / Output Tokens: 820 / Model: openai/gpt-5.4",
       "sessionkey": "default",
       "agentsessionkey": "default",
-      "messageguid": "5c41dabf-f2be-4aa8-a5a4-8c9e3d2f3f11",
+      "messageguid": "5d6e7f80-9a1b-4c2d-8e3f-4a5b6c7d8e01",
       "inputtokens": 3450,
       "outputtokens": 820,
       "cachereadtokens": 512,
@@ -94,7 +94,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "createdat": 1714694400
     },
     {
-      "guid": "a40b5473-aedb-47d7-966b-7b038eed30dc",
+      "guid": "3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e02",
       "type": "purchase",
       "action": "small",
       "amount": 45000,
@@ -126,7 +126,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "createdat": 1714692800
     },
     {
-      "guid": "312e2a5f-1002-4c9a-af7d-70571e8b1739",
+      "guid": "3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e03",
       "type": "renewal",
       "action": "monthly",
       "amount": 9000,
@@ -158,7 +158,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "createdat": 1714608000
     },
     {
-      "guid": "98a14c2e-ee0f-4a2d-b73b-d33fe8e57cf2",
+      "guid": "3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e04",
       "type": "grant",
       "action": "skill-toggle",
       "amount": 1000,

@@ -63,7 +63,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
             "appname": "My App",
             "serviceaccountjson": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii...",
             "apps": [
-              { "platform": "ios", "id": "6479306352" },
+              { "platform": "ios", "id": "1234567890" },
               { "platform": "android", "id": "com.example.app" }
             ],
             "topics": [
@@ -116,7 +116,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
           {
             "appname": "Consumer App",
             "serviceaccountjson": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii...",
-            "apps": [{ "platform": "ios", "id": "6479306352" }],
+            "apps": [{ "platform": "ios", "id": "1234567890" }],
             "topics": [{ "topickey": "locale_en", "topicdesc": "English users" }]
           },
           {

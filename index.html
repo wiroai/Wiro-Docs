@@ -13067,7 +13067,7 @@ pro.credits = starter.credits × tiermultiplier
   },
   &quot;credentials&quot;: {
     &quot;gmail&quot;:    { &quot;account&quot;: &quot;agent@company.com&quot;, &quot;apppassword&quot;: &quot;xxxx xxxx xxxx xxxx&quot; },
-    &quot;telegram&quot;: { &quot;bottoken&quot;: &quot;123456:ABC-DEF...&quot;, &quot;allowedusers&quot;: [&quot;761381461&quot;] }
+    &quot;telegram&quot;: { &quot;bottoken&quot;: &quot;123456:ABC-DEF...&quot;, &quot;allowedusers&quot;: [&quot;123456789&quot;] }
   }
 }
 </code></pre>
@@ -16500,7 +16500,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
   &quot;result&quot;: true,
   &quot;errors&quot;: [],
   &quot;data&quot;: [
-    { &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;, &quot;lastmessageguid&quot;: &quot;5c41dabf-f2be-4aa8-a5a4-8c9e3d2f3f11&quot; },
+    { &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;, &quot;lastmessageguid&quot;: &quot;5d6e7f80-9a1b-4c2d-8e3f-4a5b6c7d8e01&quot; },
     { &quot;useragentguid&quot;: &quot;a1b2c3d4-e5f6-7890-abcd-ef1234567890&quot;, &quot;lastmessageguid&quot;: null }
   ]
 }
@@ -16720,7 +16720,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
   &quot;errors&quot;: [],
   &quot;data&quot;: [
     {
-      &quot;messageguid&quot;: &quot;5c41dabf-f2be-4aa8-a5a4-8c9e3d2f3f11&quot;,
+      &quot;messageguid&quot;: &quot;5d6e7f80-9a1b-4c2d-8e3f-4a5b6c7d8e01&quot;,
       &quot;agenttoken&quot;: &quot;8a5b9e2f-4d3c-4a01-9c2e-1b6d4e7a9c5d&quot;,
       &quot;channel&quot;: &quot;twilio&quot;,
       &quot;callsid&quot;: &quot;CAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx&quot;,
@@ -16734,7 +16734,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
       &quot;endedAt&quot;:   1730473458000
     },
     {
-      &quot;messageguid&quot;: &quot;9d11baa2-7ce8-44b7-a3e0-2f8a31f6c4ee&quot;,
+      &quot;messageguid&quot;: &quot;5d6e7f80-9a1b-4c2d-8e3f-4a5b6c7d8e02&quot;,
       &quot;agenttoken&quot;: &quot;8a5b9e2f-4d3c-4a01-9c2e-1b6d4e7a9c5d&quot;,
       &quot;channel&quot;: &quot;web&quot;,
       &quot;callsid&quot;: &quot;voice-call-7f3c2b1d8e&quot;,
@@ -21690,7 +21690,7 @@ email tools, CRMs) through three credential methods:</p>
     {
       &quot;credentialkey&quot;: &quot;telegram&quot;,
       &quot;fieldname&quot;: &quot;allowedusers&quot;,
-      &quot;fieldvalue&quot;: [&quot;761381461&quot;]
+      &quot;fieldvalue&quot;: [&quot;123456789&quot;]
     },
     {
       &quot;credentialkey&quot;: &quot;telegram&quot;,
@@ -21698,7 +21698,7 @@ email tools, CRMs) through three credential methods:</p>
       &quot;fieldvalue&quot;: [
         {
           &quot;chatid&quot;: &quot;-1001234567890&quot;,
-          &quot;allowedusers&quot;: [&quot;761381461&quot;]
+          &quot;allowedusers&quot;: [&quot;123456789&quot;]
         }
       ]
     }
@@ -23965,7 +23965,7 @@ async function saveGoogleAdsPick(useragentguid, picked) {
                     {
                       "label": "API Keys (curl)",
                       "language": "bash",
-                      "code": "# Set Brevo API key\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/CredentialUpsert\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"useragentguid\": \"your-useragent-guid\",\n    \"fields\": [\n      { \"credentialkey\": \"brevo\", \"fieldname\": \"apikey\", \"fieldvalue\": \"xkeysib-abc123...\" }\n    ]\n  }'\n\n# Set WordPress credentials\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/CredentialUpsert\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"useragentguid\": \"your-useragent-guid\",\n    \"fields\": [\n      { \"credentialkey\": \"wordpress\", \"fieldname\": \"url\",         \"fieldvalue\": \"https://blog.example.com\" },\n      { \"credentialkey\": \"wordpress\", \"fieldname\": \"user\",        \"fieldvalue\": \"WiroBlogAgent\" },\n      { \"credentialkey\": \"wordpress\", \"fieldname\": \"apppassword\", \"fieldvalue\": \"xxxx xxxx xxxx xxxx\" }\n    ]\n  }'\n\n# Set Telegram credentials\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/CredentialUpsert\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"useragentguid\": \"your-useragent-guid\",\n    \"fields\": [\n      { \"credentialkey\": \"telegram\", \"fieldname\": \"bottoken\",     \"fieldvalue\": \"123456:ABC-DEF1234ghIkl\" },\n      { \"credentialkey\": \"telegram\", \"fieldname\": \"allowedusers\", \"fieldvalue\": \"[\\\"761381461\\\"]\" }\n    ]\n  }'\n\n# Set multiple credentials at once (one CredentialUpsert call, mixed providers)\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/CredentialUpsert\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"useragentguid\": \"your-useragent-guid\",\n    \"fields\": [\n      { \"credentialkey\": \"brevo\",    \"fieldname\": \"apikey\",       \"fieldvalue\": \"xkeysib-abc123...\" },\n      { \"credentialkey\": \"sendgrid\", \"fieldname\": \"apikey\",       \"fieldvalue\": \"SG.xxxx...\" },\n      { \"credentialkey\": \"telegram\", \"fieldname\": \"bottoken\",     \"fieldvalue\": \"123456:ABC-DEF...\" },\n      { \"credentialkey\": \"telegram\", \"fieldname\": \"allowedusers\", \"fieldvalue\": \"[\\\"761381461\\\"]\" }\n    ]\n  }'"
+                      "code": "# Set Brevo API key\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/CredentialUpsert\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"useragentguid\": \"your-useragent-guid\",\n    \"fields\": [\n      { \"credentialkey\": \"brevo\", \"fieldname\": \"apikey\", \"fieldvalue\": \"xkeysib-abc123...\" }\n    ]\n  }'\n\n# Set WordPress credentials\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/CredentialUpsert\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"useragentguid\": \"your-useragent-guid\",\n    \"fields\": [\n      { \"credentialkey\": \"wordpress\", \"fieldname\": \"url\",         \"fieldvalue\": \"https://blog.example.com\" },\n      { \"credentialkey\": \"wordpress\", \"fieldname\": \"user\",        \"fieldvalue\": \"your-wp-username\" },\n      { \"credentialkey\": \"wordpress\", \"fieldname\": \"apppassword\", \"fieldvalue\": \"xxxx xxxx xxxx xxxx\" }\n    ]\n  }'\n\n# Set Telegram credentials\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/CredentialUpsert\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"useragentguid\": \"your-useragent-guid\",\n    \"fields\": [\n      { \"credentialkey\": \"telegram\", \"fieldname\": \"bottoken\",     \"fieldvalue\": \"123456:ABC-DEF1234ghIkl\" },\n      { \"credentialkey\": \"telegram\", \"fieldname\": \"allowedusers\", \"fieldvalue\": \"[\\\"123456789\\\"]\" }\n    ]\n  }'\n\n# Set multiple credentials at once (one CredentialUpsert call, mixed providers)\ncurl -X POST \"https://api.wiro.ai/v1/UserAgent/CredentialUpsert\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"useragentguid\": \"your-useragent-guid\",\n    \"fields\": [\n      { \"credentialkey\": \"brevo\",    \"fieldname\": \"apikey\",       \"fieldvalue\": \"xkeysib-abc123...\" },\n      { \"credentialkey\": \"sendgrid\", \"fieldname\": \"apikey\",       \"fieldvalue\": \"SG.xxxx...\" },\n      { \"credentialkey\": \"telegram\", \"fieldname\": \"bottoken\",     \"fieldvalue\": \"123456:ABC-DEF...\" },\n      { \"credentialkey\": \"telegram\", \"fieldname\": \"allowedusers\", \"fieldvalue\": \"[\\\"123456789\\\"]\" }\n    ]\n  }'"
                     },
                     {
                       "label": "OAuth (curl)",
@@ -23975,12 +23975,12 @@ async function saveGoogleAdsPick(useragentguid, picked) {
                     {
                       "label": "Python",
                       "language": "python",
-                      "code": "import requests\n\nheaders = {\n    \"x-api-key\": \"YOUR_API_KEY\",\n    \"Content-Type\": \"application/json\"\n}\nguid = \"your-useragent-guid\"\n\n# --- API Key Credentials (CredentialUpsert per provider) ---\n\n# Set Brevo\nrequests.post(\"https://api.wiro.ai/v1/UserAgent/CredentialUpsert\", headers=headers,\n    json={\"useragentguid\": guid, \"fields\": [\n        {\"credentialkey\": \"brevo\", \"fieldname\": \"apikey\", \"fieldvalue\": \"xkeysib-abc123...\"}\n    ]})\n\n# Set WordPress\nrequests.post(\"https://api.wiro.ai/v1/UserAgent/CredentialUpsert\", headers=headers,\n    json={\"useragentguid\": guid, \"fields\": [\n        {\"credentialkey\": \"wordpress\", \"fieldname\": \"url\",         \"fieldvalue\": \"https://blog.example.com\"},\n        {\"credentialkey\": \"wordpress\", \"fieldname\": \"user\",        \"fieldvalue\": \"WiroBlogAgent\"},\n        {\"credentialkey\": \"wordpress\", \"fieldname\": \"apppassword\", \"fieldvalue\": \"xxxx xxxx xxxx xxxx\"}\n    ]})\n\n# Set Gmail\nrequests.post(\"https://api.wiro.ai/v1/UserAgent/CredentialUpsert\", headers=headers,\n    json={\"useragentguid\": guid, \"fields\": [\n        {\"credentialkey\": \"gmail\", \"fieldname\": \"account\",     \"fieldvalue\": \"agent@company.com\"},\n        {\"credentialkey\": \"gmail\", \"fieldname\": \"apppassword\", \"fieldvalue\": \"xxxx xxxx xxxx xxxx\"}\n    ]})\n\n# Set Telegram\nrequests.post(\"https://api.wiro.ai/v1/UserAgent/CredentialUpsert\", headers=headers,\n    json={\"useragentguid\": guid, \"fields\": [\n        {\"credentialkey\": \"telegram\", \"fieldname\": \"bottoken\",     \"fieldvalue\": \"123456:ABC-DEF1234ghIkl\"},\n        {\"credentialkey\": \"telegram\", \"fieldname\": \"allowedusers\", \"fieldvalue\": \"[\\\"761381461\\\"]\"}\n    ]})\n\n# --- OAuth ---\n\n# Connect Twitter\nresp = requests.post(\"https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect\",\n    headers=headers,\n    json={\n        \"useragentguid\": guid,\n        \"credentialkey\": \"twitter\",\n        \"redirecturl\": \"https://your-app.com/settings?provider=twitter\",\n        \"authmethod\": \"wiro\"\n    })\nauthorize_url = resp.json().get(\"authorizeUrl\")\n# Redirect customer's browser to authorize_url\n\n# Check status\nstatus = requests.post(\"https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus\",\n    headers=headers, json={\"useragentguid\": guid, \"credentialkey\": \"twitter\"}).json()\nfirst = (status.get(\"accounts\") or [{}])[0]\nprint(f\"Connected: {status['connected']}, Username: {first.get('name')}\")"
+                      "code": "import requests\n\nheaders = {\n    \"x-api-key\": \"YOUR_API_KEY\",\n    \"Content-Type\": \"application/json\"\n}\nguid = \"your-useragent-guid\"\n\n# --- API Key Credentials (CredentialUpsert per provider) ---\n\n# Set Brevo\nrequests.post(\"https://api.wiro.ai/v1/UserAgent/CredentialUpsert\", headers=headers,\n    json={\"useragentguid\": guid, \"fields\": [\n        {\"credentialkey\": \"brevo\", \"fieldname\": \"apikey\", \"fieldvalue\": \"xkeysib-abc123...\"}\n    ]})\n\n# Set WordPress\nrequests.post(\"https://api.wiro.ai/v1/UserAgent/CredentialUpsert\", headers=headers,\n    json={\"useragentguid\": guid, \"fields\": [\n        {\"credentialkey\": \"wordpress\", \"fieldname\": \"url\",         \"fieldvalue\": \"https://blog.example.com\"},\n        {\"credentialkey\": \"wordpress\", \"fieldname\": \"user\",        \"fieldvalue\": \"your-wp-username\"},\n        {\"credentialkey\": \"wordpress\", \"fieldname\": \"apppassword\", \"fieldvalue\": \"xxxx xxxx xxxx xxxx\"}\n    ]})\n\n# Set Gmail\nrequests.post(\"https://api.wiro.ai/v1/UserAgent/CredentialUpsert\", headers=headers,\n    json={\"useragentguid\": guid, \"fields\": [\n        {\"credentialkey\": \"gmail\", \"fieldname\": \"account\",     \"fieldvalue\": \"agent@company.com\"},\n        {\"credentialkey\": \"gmail\", \"fieldname\": \"apppassword\", \"fieldvalue\": \"xxxx xxxx xxxx xxxx\"}\n    ]})\n\n# Set Telegram\nrequests.post(\"https://api.wiro.ai/v1/UserAgent/CredentialUpsert\", headers=headers,\n    json={\"useragentguid\": guid, \"fields\": [\n        {\"credentialkey\": \"telegram\", \"fieldname\": \"bottoken\",     \"fieldvalue\": \"123456:ABC-DEF1234ghIkl\"},\n        {\"credentialkey\": \"telegram\", \"fieldname\": \"allowedusers\", \"fieldvalue\": \"[\\\"123456789\\\"]\"}\n    ]})\n\n# --- OAuth ---\n\n# Connect Twitter\nresp = requests.post(\"https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect\",\n    headers=headers,\n    json={\n        \"useragentguid\": guid,\n        \"credentialkey\": \"twitter\",\n        \"redirecturl\": \"https://your-app.com/settings?provider=twitter\",\n        \"authmethod\": \"wiro\"\n    })\nauthorize_url = resp.json().get(\"authorizeUrl\")\n# Redirect customer's browser to authorize_url\n\n# Check status\nstatus = requests.post(\"https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus\",\n    headers=headers, json={\"useragentguid\": guid, \"credentialkey\": \"twitter\"}).json()\nfirst = (status.get(\"accounts\") or [{}])[0]\nprint(f\"Connected: {status['connected']}, Username: {first.get('name')}\")"
                     },
                     {
                       "label": "Node.js",
                       "language": "javascript",
-                      "code": "const axios = require('axios');\n\nconst headers = {\n  'x-api-key': 'YOUR_API_KEY',\n  'Content-Type': 'application/json'\n};\nconst guid = 'your-useragent-guid';\nconst base = 'https://api.wiro.ai/v1';\n\n// --- API Key Credentials (CredentialUpsert per provider) ---\n\n// Set Brevo\nawait axios.post(`${base}/UserAgent/CredentialUpsert`, {\n  useragentguid: guid,\n  fields: [\n    { credentialkey: 'brevo', fieldname: 'apikey', fieldvalue: 'xkeysib-abc123...' }\n  ]\n}, { headers });\n\n// Set WordPress\nawait axios.post(`${base}/UserAgent/CredentialUpsert`, {\n  useragentguid: guid,\n  fields: [\n    { credentialkey: 'wordpress', fieldname: 'url',         fieldvalue: 'https://blog.example.com' },\n    { credentialkey: 'wordpress', fieldname: 'user',        fieldvalue: 'WiroBlogAgent' },\n    { credentialkey: 'wordpress', fieldname: 'apppassword', fieldvalue: 'xxxx xxxx xxxx xxxx' }\n  ]\n}, { headers });\n\n// Set Telegram\nawait axios.post(`${base}/UserAgent/CredentialUpsert`, {\n  useragentguid: guid,\n  fields: [\n    { credentialkey: 'telegram', fieldname: 'bottoken',     fieldvalue: '123456:ABC-DEF1234ghIkl' },\n    { credentialkey: 'telegram', fieldname: 'allowedusers', fieldvalue: '[\"761381461\"]' }\n  ]\n}, { headers });\n\n// Set multiple providers at once (one CredentialUpsert, mixed providers)\nawait axios.post(`${base}/UserAgent/CredentialUpsert`, {\n  useragentguid: guid,\n  fields: [\n    { credentialkey: 'brevo',    fieldname: 'apikey',       fieldvalue: 'xkeysib-abc123...' },\n    { credentialkey: 'sendgrid', fieldname: 'apikey',       fieldvalue: 'SG.xxxx...' },\n    { credentialkey: 'telegram', fieldname: 'bottoken',     fieldvalue: '123456:ABC-DEF...' },\n    { credentialkey: 'telegram', fieldname: 'allowedusers', fieldvalue: '[\"761381461\"]' }\n  ]\n}, { headers });\n\n// --- OAuth ---\n\n// Connect Twitter\nconst { data } = await axios.post(\n  `${base}/UserAgentOAuth/OAuthConnect`,\n  {\n    useragentguid: guid,\n    credentialkey: 'twitter',\n    redirecturl: 'https://your-app.com/settings?provider=twitter',\n    authmethod: 'wiro'\n  },\n  { headers }\n);\nconst { authorizeUrl } = data;\n// Redirect customer's browser to authorizeUrl\n\n// Check status\nconst status = await axios.post(\n  `${base}/UserAgentOAuth/OAuthStatus`,\n  { useragentguid: guid, credentialkey: 'twitter' },\n  { headers }\n);\nconsole.log('Connected:', status.data.connected);"
+                      "code": "const axios = require('axios');\n\nconst headers = {\n  'x-api-key': 'YOUR_API_KEY',\n  'Content-Type': 'application/json'\n};\nconst guid = 'your-useragent-guid';\nconst base = 'https://api.wiro.ai/v1';\n\n// --- API Key Credentials (CredentialUpsert per provider) ---\n\n// Set Brevo\nawait axios.post(`${base}/UserAgent/CredentialUpsert`, {\n  useragentguid: guid,\n  fields: [\n    { credentialkey: 'brevo', fieldname: 'apikey', fieldvalue: 'xkeysib-abc123...' }\n  ]\n}, { headers });\n\n// Set WordPress\nawait axios.post(`${base}/UserAgent/CredentialUpsert`, {\n  useragentguid: guid,\n  fields: [\n    { credentialkey: 'wordpress', fieldname: 'url',         fieldvalue: 'https://blog.example.com' },\n    { credentialkey: 'wordpress', fieldname: 'user',        fieldvalue: 'your-wp-username' },\n    { credentialkey: 'wordpress', fieldname: 'apppassword', fieldvalue: 'xxxx xxxx xxxx xxxx' }\n  ]\n}, { headers });\n\n// Set Telegram\nawait axios.post(`${base}/UserAgent/CredentialUpsert`, {\n  useragentguid: guid,\n  fields: [\n    { credentialkey: 'telegram', fieldname: 'bottoken',     fieldvalue: '123456:ABC-DEF1234ghIkl' },\n    { credentialkey: 'telegram', fieldname: 'allowedusers', fieldvalue: '[\"123456789\"]' }\n  ]\n}, { headers });\n\n// Set multiple providers at once (one CredentialUpsert, mixed providers)\nawait axios.post(`${base}/UserAgent/CredentialUpsert`, {\n  useragentguid: guid,\n  fields: [\n    { credentialkey: 'brevo',    fieldname: 'apikey',       fieldvalue: 'xkeysib-abc123...' },\n    { credentialkey: 'sendgrid', fieldname: 'apikey',       fieldvalue: 'SG.xxxx...' },\n    { credentialkey: 'telegram', fieldname: 'bottoken',     fieldvalue: '123456:ABC-DEF...' },\n    { credentialkey: 'telegram', fieldname: 'allowedusers', fieldvalue: '[\"123456789\"]' }\n  ]\n}, { headers });\n\n// --- OAuth ---\n\n// Connect Twitter\nconst { data } = await axios.post(\n  `${base}/UserAgentOAuth/OAuthConnect`,\n  {\n    useragentguid: guid,\n    credentialkey: 'twitter',\n    redirecturl: 'https://your-app.com/settings?provider=twitter',\n    authmethod: 'wiro'\n  },\n  { headers }\n);\nconst { authorizeUrl } = data;\n// Redirect customer's browser to authorizeUrl\n\n// Check status\nconst status = await axios.post(\n  `${base}/UserAgentOAuth/OAuthStatus`,\n  { useragentguid: guid, credentialkey: 'twitter' },\n  { headers }\n);\nconsole.log('Connected:', status.data.connected);"
                     }
                   ]
                 </script>
@@ -26003,7 +26003,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
       &quot;gmail&quot;:    { &quot;account&quot;: &quot;agent@company.com&quot;, &quot;apppassword&quot;: &quot;xxxx xxxx xxxx xxxx&quot; },
       &quot;telegram&quot;: {
         &quot;bottoken&quot;: &quot;123456:ABC-DEF...&quot;,
-        &quot;allowedusers&quot;: [&quot;761381461&quot;]
+        &quot;allowedusers&quot;: [&quot;123456789&quot;]
       }
     },
     &quot;customskills&quot;: [
@@ -26070,7 +26070,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
       &quot;teamsessionmode&quot;: &quot;private&quot;,
       &quot;credentials&quot;: {
         &quot;gmail&quot;:    { &quot;_connected&quot;: false, &quot;optional&quot;: false, &quot;extra&quot;: false, &quot;account&quot;: &quot;agent@company.com&quot;, &quot;apppassword&quot;: &quot;[present]&quot; },
-        &quot;telegram&quot;: { &quot;_connected&quot;: false, &quot;optional&quot;: false, &quot;extra&quot;: false, &quot;bottoken&quot;: &quot;[present]&quot;, &quot;allowedusers&quot;: [&quot;761381461&quot;] }
+        &quot;telegram&quot;: { &quot;_connected&quot;: false, &quot;optional&quot;: false, &quot;extra&quot;: false, &quot;bottoken&quot;: &quot;[present]&quot;, &quot;allowedusers&quot;: [&quot;123456789&quot;] }
       },
       &quot;agent&quot;: {
         &quot;custom&quot;: true,
@@ -26161,7 +26161,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
   &quot;skills&quot;: { &quot;int-gmail-check&quot;: true, &quot;int-wordpress-post&quot;: true },
   &quot;credentials&quot;: {
     &quot;gmail&quot;:    { &quot;account&quot;: &quot;agent@company.com&quot;, &quot;apppassword&quot;: &quot;xxxx xxxx xxxx xxxx&quot; },
-    &quot;telegram&quot;: { &quot;bottoken&quot;: &quot;123456:ABC-DEF...&quot;, &quot;allowedusers&quot;: [&quot;761381461&quot;] }
+    &quot;telegram&quot;: { &quot;bottoken&quot;: &quot;123456:ABC-DEF...&quot;, &quot;allowedusers&quot;: [&quot;123456789&quot;] }
   },
   &quot;customskills&quot;: [
     {
@@ -26371,7 +26371,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
   },
   "transactions": [
     {
-      "guid": "7f3e8c21-1be1-4f5a-96e8-2b1a9e2a6a01",
+      "guid": "3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e01",
       "type": "deduct",
       "action": "tokens",
       "amount": -5,
@@ -26379,7 +26379,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
       "description": "Input Tokens: 3450 / Output Tokens: 820 / Model: openai/gpt-5.4",
       "sessionkey": "default",
       "agentsessionkey": "default",
-      "messageguid": "5c41dabf-f2be-4aa8-a5a4-8c9e3d2f3f11",
+      "messageguid": "5d6e7f80-9a1b-4c2d-8e3f-4a5b6c7d8e01",
       "inputtokens": 3450,
       "outputtokens": 820,
       "cachereadtokens": 512,
@@ -26404,7 +26404,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
       "createdat": 1714694400
     },
     {
-      "guid": "a40b5473-aedb-47d7-966b-7b038eed30dc",
+      "guid": "3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e02",
       "type": "purchase",
       "action": "small",
       "amount": 45000,
@@ -26436,7 +26436,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
       "createdat": 1714692800
     },
     {
-      "guid": "312e2a5f-1002-4c9a-af7d-70571e8b1739",
+      "guid": "3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e03",
       "type": "renewal",
       "action": "monthly",
       "amount": 9000,
@@ -26468,7 +26468,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
       "createdat": 1714608000
     },
     {
-      "guid": "98a14c2e-ee0f-4a2d-b73b-d33fe8e57cf2",
+      "guid": "3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e04",
       "type": "grant",
       "action": "skill-toggle",
       "amount": 1000,
@@ -32626,7 +32626,7 @@ Agent → POST /v1beta/properties/123456789:runReport
     "useragentguid": "your-useragent-guid",
     "credentialkey": "google-merchant-center",
     "accounts": [
-      { "merchantid": "5769377374", "accountname": "Acme Store" }
+      { "merchantid": "1234567890", "accountname": "Acme Store" }
     ]
   }'</code></pre>
                     <p>This call is required, even when <code>mc_accounts</code> has one entry. Until it runs, <code>OAuthStatus</code> reports <code>connected: false</code>.</p>
@@ -32659,7 +32659,7 @@ Agent → POST /v1beta/properties/123456789:runReport
   "result": true,
   "connected": true,
   "accounts": [
-    { "id": "5769377374", "name": "Acme Store" }
+    { "id": "1234567890", "name": "Acme Store" }
   ],
   "connectedat": "2026-04-17T12:00:00.000Z",
   "tokenexpiresat": "2026-04-17T13:00:00.000Z",
@@ -34910,7 +34910,7 @@ if (params.get("gbp_connected") === "true") {
       {
         "credentialkey": "telegram",
         "fieldname": "allowedusers",
-        "fieldvalue": ["761381461", "987654321"]
+        "fieldvalue": ["123456789", "987654321"]
       },
       {
         "credentialkey": "telegram",
@@ -34918,7 +34918,7 @@ if (params.get("gbp_connected") === "true") {
         "fieldvalue": [
           {
             "chatid": "-1001234567890",
-            "allowedusers": ["761381461"]
+            "allowedusers": ["123456789"]
           }
         ]
       }
@@ -35108,7 +35108,7 @@ base64 -b 0 firebase-service-account.json > firebase-sa.b64</code></pre>
             "appname": "My App",
             "serviceaccountjson": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii...",
             "apps": [
-              { "platform": "ios", "id": "6479306352" },
+              { "platform": "ios", "id": "1234567890" },
               { "platform": "android", "id": "com.example.app" }
             ],
             "topics": [
@@ -35191,7 +35191,7 @@ base64 -b 0 firebase-service-account.json > firebase-sa.b64</code></pre>
           {
             "appname": "Consumer App",
             "serviceaccountjson": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii...",
-            "apps": [{ "platform": "ios", "id": "6479306352" }],
+            "apps": [{ "platform": "ios", "id": "1234567890" }],
             "topics": [{ "topickey": "locale_en", "topicdesc": "English users" }]
           },
           {
@@ -35331,7 +35331,7 @@ base64 -b 0 firebase-service-account.json > firebase-sa.b64</code></pre>
     "useragentguid": "your-useragent-guid",
     "fields": [
       { "credentialkey": "wordpress", "fieldname": "url",         "fieldvalue": "https://blog.example.com" },
-      { "credentialkey": "wordpress", "fieldname": "user",        "fieldvalue": "WiroBlogAgent" },
+      { "credentialkey": "wordpress", "fieldname": "user",        "fieldvalue": "your-wp-username" },
       { "credentialkey": "wordpress", "fieldname": "apppassword", "fieldvalue": "xxxx xxxx xxxx xxxx xxxx xxxx" }
     ]
   }'</code></pre>
@@ -35511,7 +35511,7 @@ base64 -b 0 AuthKey_ABC1234DEF.p8 > appstore-key.b64</code></pre>
       { "credentialkey": "apple-appstore", "fieldname": "issuerid",   "fieldvalue": "12345678-1234-1234-1234-123456789012" },
       { "credentialkey": "apple-appstore", "fieldname": "privatekey", "fieldvalue": "LS0tLS1CRUdJTi..." },
       { "credentialkey": "apple-appstore", "parentfield": "apps", "ordinal": 0, "fieldname": "appname", "fieldvalue": "My App" },
-      { "credentialkey": "apple-appstore", "parentfield": "apps", "ordinal": 0, "fieldname": "appid",   "fieldvalue": "6479306352" },
+      { "credentialkey": "apple-appstore", "parentfield": "apps", "ordinal": 0, "fieldname": "appid",   "fieldvalue": "1234567890" },
       { "credentialkey": "apple-appstore", "parentfield": "apps", "ordinal": 1, "fieldname": "appname", "fieldvalue": "Pro Version" },
       { "credentialkey": "apple-appstore", "parentfield": "apps", "ordinal": 1, "fieldname": "appid",   "fieldvalue": "1234567890" }
     ]
@@ -36464,7 +36464,7 @@ Base URL: <code>https://api.sendgrid.com/v3</code>.</p>
                       <li>Digits only: no spaces, dashes, or parentheses</li>
                       <li>Max 15 digits total</li>
                     </ul>
-                    <p><strong>Examples:</strong> <code>+14155551234</code> (US), <code>+447911123456</code> (UK), <code>+905551234567</code> (Turkey), <code>+5511955256325</code> (Brazil).</p>
+                    <p><strong>Examples:</strong> <code>+14155551234</code> (US), <code>+447911123456</code> (UK), <code>+905551234567</code> (Turkey), <code>+5511900000000</code> (Brazil).</p>
 
                     <h3>Step 3: Save credentials to Wiro</h3>
                     <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
@@ -36643,7 +36643,7 @@ Base URL: <code>https://api.sendgrid.com/v3</code>.</p>
   "errors": [],
   "data": [
     {
-      "messageguid": "5c41dabf-f2be-4aa8-a5a4-8c9e3d2f3f11",
+      "messageguid": "5d6e7f80-9a1b-4c2d-8e3f-4a5b6c7d8e01",
       "agenttoken": "8a5b9e2f-4d3c-4a01-9c2e-1b6d4e7a9c5d",
       "channel": "twilio",
       "callsid": "CAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
@@ -38093,7 +38093,7 @@ Organization (created by you)
       "guid": "1b43089c-3b56-4638-b4ac-24268bb1d970",
       "name": "Acme Corp",
       "description": null,
-      "owneruuid": "86ae3c1d-edd1-4c2e-ba19-d1a3a23eeca4",
+      "owneruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
       "status": 1,
       "teams": [
         {
@@ -38444,7 +38444,7 @@ Organization (created by you)
     {
       "guid": "a3c9e1f2-4b7d-4c1e-9f2a-6d8b0e5c7a91",
       "teamguid": "0d9aade4-d31b-4b97-88f3-a90482f080ea",
-      "useruuid": "86ae3c1d-edd1-4c2e-ba19-d1a3a23eeca4",
+      "useruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
       "role": "admin",
       "status": "active",
       "spendlimit": null,
@@ -38674,7 +38674,7 @@ Organization (created by you)
       "guid": "1b43089c-3b56-4638-b4ac-24268bb1d970",
       "name": "Acme Corp",
       "avatar": null,
-      "owneruuid": "86ae3c1d-edd1-4c2e-ba19-d1a3a23eeca4",
+      "owneruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
       "status": 1,
       "teams": [
         {

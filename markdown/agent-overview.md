@@ -454,7 +454,7 @@ for the channel contract.
   },
   "credentials": {
     "gmail":    { "account": "agent@company.com", "apppassword": "xxxx xxxx xxxx xxxx" },
-    "telegram": { "bottoken": "123456:ABC-DEF...", "allowedusers": ["761381461"] }
+    "telegram": { "bottoken": "123456:ABC-DEF...", "allowedusers": ["123456789"] }
   }
 }
 ```
@@ -2516,7 +2516,7 @@ Returns the latest message GUID per pinned agent. Compare each `lastmessageguid`
   "result": true,
   "errors": [],
   "data": [
-    { "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "lastmessageguid": "5c41dabf-f2be-4aa8-a5a4-8c9e3d2f3f11" },
+    { "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "lastmessageguid": "5d6e7f80-9a1b-4c2d-8e3f-4a5b6c7d8e01" },
     { "useragentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "lastmessageguid": null }
   ]
 }
@@ -2611,7 +2611,7 @@ Returns the last N realtime voice sessions for a useragent, covering **both Twil
   "errors": [],
   "data": [
     {
-      "messageguid": "5c41dabf-f2be-4aa8-a5a4-8c9e3d2f3f11",
+      "messageguid": "5d6e7f80-9a1b-4c2d-8e3f-4a5b6c7d8e01",
       "agenttoken": "8a5b9e2f-4d3c-4a01-9c2e-1b6d4e7a9c5d",
       "channel": "twilio",
       "callsid": "CAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
@@ -2625,7 +2625,7 @@ Returns the last N realtime voice sessions for a useragent, covering **both Twil
       "endedAt":   1730473458000
     },
     {
-      "messageguid": "9d11baa2-7ce8-44b7-a3e0-2f8a31f6c4ee",
+      "messageguid": "5d6e7f80-9a1b-4c2d-8e3f-4a5b6c7d8e02",
       "agenttoken": "8a5b9e2f-4d3c-4a01-9c2e-1b6d4e7a9c5d",
       "channel": "web",
       "callsid": "voice-call-7f3c2b1d8e",

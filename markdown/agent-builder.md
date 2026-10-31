@@ -178,7 +178,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
       "gmail":    { "account": "agent@company.com", "apppassword": "xxxx xxxx xxxx xxxx" },
       "telegram": {
         "bottoken": "123456:ABC-DEF...",
-        "allowedusers": ["761381461"]
+        "allowedusers": ["123456789"]
       }
     },
     "customskills": [
@@ -248,7 +248,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
       "teamsessionmode": "private",
       "credentials": {
         "gmail":    { "_connected": false, "optional": false, "extra": false, "account": "agent@company.com", "apppassword": "[present]" },
-        "telegram": { "_connected": false, "optional": false, "extra": false, "bottoken": "[present]", "allowedusers": ["761381461"] }
+        "telegram": { "_connected": false, "optional": false, "extra": false, "bottoken": "[present]", "allowedusers": ["123456789"] }
       },
       "agent": {
         "custom": true,
@@ -357,7 +357,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   "skills": { "int-gmail-check": true, "int-wordpress-post": true },
   "credentials": {
     "gmail":    { "account": "agent@company.com", "apppassword": "xxxx xxxx xxxx xxxx" },
-    "telegram": { "bottoken": "123456:ABC-DEF...", "allowedusers": ["761381461"] }
+    "telegram": { "bottoken": "123456:ABC-DEF...", "allowedusers": ["123456789"] }
   },
   "customskills": [
     {

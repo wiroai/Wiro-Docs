@@ -22,7 +22,7 @@ Creates a new organization. The caller automatically becomes the organization **
       "guid": "1b43089c-3b56-4638-b4ac-24268bb1d970",
       "name": "Acme Corp",
       "description": null,
-      "owneruuid": "86ae3c1d-edd1-4c2e-ba19-d1a3a23eeca4",
+      "owneruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
       "status": 1,
       "teams": [
         {
@@ -166,7 +166,7 @@ Lists all members of a team, including pending invitations. Any active member of
     {
       "guid": "a3c9e1f2-4b7d-4c1e-9f2a-6d8b0e5c7a91",
       "teamguid": "0d9aade4-d31b-4b97-88f3-a90482f080ea",
-      "useruuid": "86ae3c1d-edd1-4c2e-ba19-d1a3a23eeca4",
+      "useruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
       "role": "admin",
       "status": "active",
       "spendlimit": null,
@@ -268,7 +268,7 @@ Returns all organizations you belong to, including active and deleted ones. Each
       "guid": "1b43089c-3b56-4638-b4ac-24268bb1d970",
       "name": "Acme Corp",
       "avatar": null,
-      "owneruuid": "86ae3c1d-edd1-4c2e-ba19-d1a3a23eeca4",
+      "owneruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
       "status": 1,
       "teams": [
         {

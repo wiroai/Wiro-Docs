@@ -57,7 +57,7 @@ Numbers must be in **E.164** format when you save them to Wiro:
 - Digits only: no spaces, dashes, or parentheses
 - Max 15 digits total
 
-**Examples:** `+14155551234` (US), `+447911123456` (UK), `+905551234567` (Turkey), `+5511955256325` (Brazil).
+**Examples:** `+14155551234` (US), `+447911123456` (UK), `+905551234567` (Turkey), `+5511900000000` (Brazil).
 
 ### Step 3: Save credentials to Wiro
 
@@ -196,7 +196,7 @@ Response:
   "errors": [],
   "data": [
     {
-      "messageguid": "5c41dabf-f2be-4aa8-a5a4-8c9e3d2f3f11",
+      "messageguid": "5d6e7f80-9a1b-4c2d-8e3f-4a5b6c7d8e01",
       "agenttoken": "8a5b9e2f-4d3c-4a01-9c2e-1b6d4e7a9c5d",
       "channel": "twilio",
       "callsid": "CAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",

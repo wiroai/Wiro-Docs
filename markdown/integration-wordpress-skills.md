@@ -54,7 +54,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
     "useragentguid": "your-useragent-guid",
     "fields": [
       { "credentialkey": "wordpress", "fieldname": "url",         "fieldvalue": "https://blog.example.com" },
-      { "credentialkey": "wordpress", "fieldname": "user",        "fieldvalue": "WiroBlogAgent" },
+      { "credentialkey": "wordpress", "fieldname": "user",        "fieldvalue": "your-wp-username" },
       { "credentialkey": "wordpress", "fieldname": "apppassword", "fieldvalue": "xxxx xxxx xxxx xxxx xxxx xxxx" }
     ]
   }'

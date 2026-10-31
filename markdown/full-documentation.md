@@ -7643,7 +7643,7 @@ for the channel contract.
   },
   "credentials": {
     "gmail":    { "account": "agent@company.com", "apppassword": "xxxx xxxx xxxx xxxx" },
-    "telegram": { "bottoken": "123456:ABC-DEF...", "allowedusers": ["761381461"] }
+    "telegram": { "bottoken": "123456:ABC-DEF...", "allowedusers": ["123456789"] }
   }
 }
 ```
@@ -9705,7 +9705,7 @@ Returns the latest message GUID per pinned agent. Compare each `lastmessageguid`
   "result": true,
   "errors": [],
   "data": [
-    { "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "lastmessageguid": "5c41dabf-f2be-4aa8-a5a4-8c9e3d2f3f11" },
+    { "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "lastmessageguid": "5d6e7f80-9a1b-4c2d-8e3f-4a5b6c7d8e01" },
     { "useragentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "lastmessageguid": null }
   ]
 }
@@ -9800,7 +9800,7 @@ Returns the last N realtime voice sessions for a useragent, covering **both Twil
   "errors": [],
   "data": [
     {
-      "messageguid": "5c41dabf-f2be-4aa8-a5a4-8c9e3d2f3f11",
+      "messageguid": "5d6e7f80-9a1b-4c2d-8e3f-4a5b6c7d8e01",
       "agenttoken": "8a5b9e2f-4d3c-4a01-9c2e-1b6d4e7a9c5d",
       "channel": "twilio",
       "callsid": "CAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
@@ -9814,7 +9814,7 @@ Returns the last N realtime voice sessions for a useragent, covering **both Twil
       "endedAt":   1730473458000
     },
     {
-      "messageguid": "9d11baa2-7ce8-44b7-a3e0-2f8a31f6c4ee",
+      "messageguid": "5d6e7f80-9a1b-4c2d-8e3f-4a5b6c7d8e02",
       "agenttoken": "8a5b9e2f-4d3c-4a01-9c2e-1b6d4e7a9c5d",
       "channel": "web",
       "callsid": "voice-call-7f3c2b1d8e",
@@ -10817,7 +10817,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
       "gmail":    { "account": "agent@company.com", "apppassword": "xxxx xxxx xxxx xxxx" },
       "telegram": {
         "bottoken": "123456:ABC-DEF...",
-        "allowedusers": ["761381461"]
+        "allowedusers": ["123456789"]
       }
     },
     "customskills": [
@@ -10887,7 +10887,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
       "teamsessionmode": "private",
       "credentials": {
         "gmail":    { "_connected": false, "optional": false, "extra": false, "account": "agent@company.com", "apppassword": "[present]" },
-        "telegram": { "_connected": false, "optional": false, "extra": false, "bottoken": "[present]", "allowedusers": ["761381461"] }
+        "telegram": { "_connected": false, "optional": false, "extra": false, "bottoken": "[present]", "allowedusers": ["123456789"] }
       },
       "agent": {
         "custom": true,
@@ -10996,7 +10996,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   "skills": { "int-gmail-check": true, "int-wordpress-post": true },
   "credentials": {
     "gmail":    { "account": "agent@company.com", "apppassword": "xxxx xxxx xxxx xxxx" },
-    "telegram": { "bottoken": "123456:ABC-DEF...", "allowedusers": ["761381461"] }
+    "telegram": { "bottoken": "123456:ABC-DEF...", "allowedusers": ["123456789"] }
   },
   "customskills": [
     {
@@ -14017,7 +14017,7 @@ activation fields in one `fields[]` request when connecting a channel:
     {
       "credentialkey": "telegram",
       "fieldname": "allowedusers",
-      "fieldvalue": ["761381461"]
+      "fieldvalue": ["123456789"]
     },
     {
       "credentialkey": "telegram",
@@ -14025,7 +14025,7 @@ activation fields in one `fields[]` request when connecting a channel:
       "fieldvalue": [
         {
           "chatid": "-1001234567890",
-          "allowedusers": ["761381461"]
+          "allowedusers": ["123456789"]
         }
       ]
     }
@@ -16465,7 +16465,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
   },
   "transactions": [
     {
-      "guid": "7f3e8c21-1be1-4f5a-96e8-2b1a9e2a6a01",
+      "guid": "3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e01",
       "type": "deduct",
       "action": "tokens",
       "amount": -5,
@@ -16473,7 +16473,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "description": "Input Tokens: 3450 / Output Tokens: 820 / Model: openai/gpt-5.4",
       "sessionkey": "default",
       "agentsessionkey": "default",
-      "messageguid": "5c41dabf-f2be-4aa8-a5a4-8c9e3d2f3f11",
+      "messageguid": "5d6e7f80-9a1b-4c2d-8e3f-4a5b6c7d8e01",
       "inputtokens": 3450,
       "outputtokens": 820,
       "cachereadtokens": 512,
@@ -16498,7 +16498,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "createdat": 1714694400
     },
     {
-      "guid": "a40b5473-aedb-47d7-966b-7b038eed30dc",
+      "guid": "3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e02",
       "type": "purchase",
       "action": "small",
       "amount": 45000,
@@ -16530,7 +16530,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "createdat": 1714692800
     },
     {
-      "guid": "312e2a5f-1002-4c9a-af7d-70571e8b1739",
+      "guid": "3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e03",
       "type": "renewal",
       "action": "monthly",
       "amount": 9000,
@@ -16562,7 +16562,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "createdat": 1714608000
     },
     {
-      "guid": "98a14c2e-ee0f-4a2d-b73b-d33fe8e57cf2",
+      "guid": "3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e04",
       "type": "grant",
       "action": "skill-toggle",
       "amount": 1000,
@@ -21087,7 +21087,7 @@ Creates a new organization. The caller automatically becomes the organization **
       "guid": "1b43089c-3b56-4638-b4ac-24268bb1d970",
       "name": "Acme Corp",
       "description": null,
-      "owneruuid": "86ae3c1d-edd1-4c2e-ba19-d1a3a23eeca4",
+      "owneruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
       "status": 1,
       "teams": [
         {
@@ -21231,7 +21231,7 @@ Lists all members of a team, including pending invitations. Any active member of
     {
       "guid": "a3c9e1f2-4b7d-4c1e-9f2a-6d8b0e5c7a91",
       "teamguid": "0d9aade4-d31b-4b97-88f3-a90482f080ea",
-      "useruuid": "86ae3c1d-edd1-4c2e-ba19-d1a3a23eeca4",
+      "useruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
       "role": "admin",
       "status": "active",
       "spendlimit": null,
@@ -21333,7 +21333,7 @@ Returns all organizations you belong to, including active and deleted ones. Each
       "guid": "1b43089c-3b56-4638-b4ac-24268bb1d970",
       "name": "Acme Corp",
       "avatar": null,
-      "owneruuid": "86ae3c1d-edd1-4c2e-ba19-d1a3a23eeca4",
+      "owneruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
       "status": 1,
       "teams": [
         {
@@ -21933,7 +21933,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
       {
         "credentialkey": "telegram",
         "fieldname": "allowedusers",
-        "fieldvalue": ["761381461"]
+        "fieldvalue": ["123456789"]
       },
       {
         "credentialkey": "telegram",
@@ -21941,7 +21941,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
         "fieldvalue": [
           {
             "chatid": "-1001234567890",
-            "allowedusers": ["761381461"]
+            "allowedusers": ["123456789"]
           }
         ]
       }
