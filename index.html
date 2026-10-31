@@ -6163,7 +6163,7 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
                       Once uploaded, reference a file by its URL or ID in your model run parameters. For example, an image upscaler model might accept an
                       <code>inputImageUrl</code> parameter. Pass the URL returned from the upload response.
                     </p>
-                    <p>You don't always need to upload files first. Most models take a public URL in place of an upload: send it in the parameter's URL field, such as <code>inputImageUrl</code> for <code>inputImage</code>, or <code>inputDocumentUrlMultiple</code> for <code>inputDocumentMultiple</code>. See <a href="/docs/model-parameters">Model Parameters</a> for the <code>fileinput</code>, <code>multifileinput</code> and <code>combinefileinput</code> patterns.</p>
+                    <p>You don't always need to upload files first. Most models take a public URL in place of an upload, and the parameter's type decides where it goes: a <code>combinefileinput</code> takes it in the field itself (for example <code>inputImage</code> on most image models), a <code>fileinput</code> takes it in its <code>{id}Url</code> field (for example <code>inputImageUrl</code>), and a <code>multifileinput</code> takes a list in the field that puts <code>Url</code> before <code>Multiple</code> (for example <code>inputDocumentUrlMultiple</code>). See <a href="/docs/model-parameters">Model Parameters</a> for each pattern.</p>
                     <pre><code>{
   "inputImageUrl": "https://cdn1.wiro.ai/...",
   "scale": 4
@@ -8651,7 +8651,7 @@ if (!data.result) {
                     <h3>upload_file</h3>
                     <p>Upload a file from a URL to Wiro for use as model input. Downloads the file and uploads it via <code>POST /File/Upload</code>.</p>
                     <div class="info-callout">
-                      <p><strong>Tip:</strong> Most models take a public URL in the parameter's URL field (e.g. <code>inputImageUrl</code> for <code>inputImage</code>), so you don't need to upload first. Use <code>upload_file</code> when you need to reuse the same file across multiple runs or when the model specifically requires a Wiro-hosted file. See <a href="/docs/model-parameters" class="docs-link">Model Parameters</a> for details.</p>
+                      <p><strong>Tip:</strong> Most models take a public URL instead of an upload, so you don't need to upload first: in the field itself for a <code>combinefileinput</code> (e.g. <code>inputImage</code> on most image models), or in the <code>{id}Url</code> / <code>UrlMultiple</code> field for a <code>fileinput</code> or <code>multifileinput</code> (e.g. <code>inputImageUrl</code>). <code>get_model_schema</code> shows each parameter's type. Use <code>upload_file</code> when you need to reuse the same file across multiple runs or when the model specifically requires a Wiro-hosted file. See <a href="/docs/model-parameters" class="docs-link">Model Parameters</a> for details.</p>
                     </div>
                     <table>
                       <thead>
@@ -9139,7 +9139,7 @@ WIRO_API_SECRET=your-api-secret</code></pre>
                         <tr>
                           <td><code>upload_file</code></td>
                           <td><code>POST /File/Upload</code></td>
-                          <td>Upload a file from a public http(s) URL (up to about 100 MB). Most models also take a public URL in the parameter's URL field, without uploading first.</td>
+                          <td>Upload a file from a public http(s) URL (up to about 100 MB). Most models also take a public URL directly, without uploading first.</td>
                         </tr>
                       </tbody>
                     </table>
@@ -9652,7 +9652,7 @@ if (task.pexit === '0') {
 
                     <h3>Upload a File and Use It</h3>
                     <div class="info-callout">
-                      <p><strong>Tip:</strong> Most models take a public URL in the parameter's URL field, so you can pass <code>inputImageUrl: 'https://example.com/photo.jpg'</code> without uploading. Use <code>uploadFile()</code> when you need to reuse files across multiple runs.</p>
+                      <p><strong>Tip:</strong> Most models take a public URL instead of an upload. For most image and video inputs you pass it in the field itself, such as <code>inputImage: 'https://example.com/photo.jpg'</code>; a <code>fileinput</code> takes it in its <code>{id}Url</code> field (such as <code>inputImageUrl</code>), so check the model's parameter types. Use <code>uploadFile()</code> when you need to reuse files across multiple runs.</p>
                     </div>
                     <pre><code>// Upload an image
 const upload = await client.uploadFile('https://example.com/photo.jpg');

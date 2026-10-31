@@ -156,7 +156,7 @@ if (task.pexit === '0') {
 
 ### Upload a File and Use It
 
-> **Tip:** Most models take a public URL in the parameter's URL field, so you can pass `inputImageUrl: 'https://example.com/photo.jpg'` without uploading. Use `uploadFile()` when you need to reuse files across multiple runs.
+> **Tip:** Most models take a public URL instead of an upload. For most image and video inputs you pass it in the field itself, such as `inputImage: 'https://example.com/photo.jpg'`; a `fileinput` takes it in its `{id}Url` field (such as `inputImageUrl`), so check the model's parameter types. Use `uploadFile()` when you need to reuse files across multiple runs.
 
 ```javascript
 // Upload an image

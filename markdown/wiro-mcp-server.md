@@ -1062,7 +1062,7 @@ The worker will stop processing and the task will move to `task_cancel` status.
 
 Upload a file from a URL to Wiro for use as model input. Downloads the file and uploads it to Wiro's file system via `POST /File/Upload`.
 
-> **Tip:** Most models take a public URL in the parameter's URL field (e.g. `inputImageUrl` for `inputImage`), so you don't need to upload first. Use `upload_file` when you need to reuse the same file across multiple runs or when the model specifically requires a Wiro-hosted file. See [Model Parameters](/docs/model-parameters) for details.
+> **Tip:** Most models take a public URL instead of an upload, so you don't need to upload first: in the field itself for a `combinefileinput` (e.g. `inputImage` on most image models), or in the `{id}Url` / `UrlMultiple` field for a `fileinput` or `multifileinput` (e.g. `inputImageUrl`). `get_model_schema` shows each parameter's type. Use `upload_file` when you need to reuse the same file across multiple runs or when the model specifically requires a Wiro-hosted file. See [Model Parameters](/docs/model-parameters) for details.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
