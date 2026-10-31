@@ -271,7 +271,7 @@ Lists all credentials in the registry.
 | `readonly_when_connected` | `boolean?` | `true` when the field becomes read-only after a successful OAuth connection. |
 | `only_in_modes` | `array<string>?` | When set (e.g. `["own"]`), the field only appears in the listed `authmethod` mode. |
 | `runtime_excluded` | `boolean?` | `true` when a setup secret is used only by Wiro's server and must never enter the agent runtime. Meta System User tokens use this flag. |
-| `platform_managed` | `boolean?` | `true` when Wiro fills the value server-side (you can't supply it). Every `sys-openai` field is `platform_managed`, which hides the whole credential from `UserAgent/Detail`. Reddit's three approval flags are `platform_managed` too. `CredentialUpsert` rejects writes to these fields with `<Field label> is managed by Wiro`, and Deploy drops them. |
+| `platform_managed` | `boolean?` | `true` when Wiro fills the value server-side, so you can't supply it, such as Reddit's three approval flags. These fields are never returned. `CredentialUpsert` rejects writes to these fields with `<Field label> is managed by Wiro`, and Deploy drops them. |
 | `item_schema` / `item_type` | `object?` | For array-of-object fields: describes the per-entry shape (e.g. `apple-appstore.apps[].{appname, appid}`). |
 
 **`oauth_provider` object** (present when `credential_mode` includes OAuth):
@@ -506,7 +506,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   }'
 ```
 
-> **Don't confuse `credentials.wiro.apikey` with your operator-level Wiro API key.** `credentials.wiro.apikey` is the per-agent project key the agent container uses to call Wiro models internally (gets exported as `WIRO_API_KEY` env var inside the container). The `x-api-key` header you send to Wiro endpoints from your own backend is your operator key, which is entirely separate (see [Authentication](/docs/authentication)).
+> **Don't confuse `credentials.wiro.apikey` with your operator-level Wiro API key.** `credentials.wiro.apikey` is the project key the agent uses to run Wiro models. The `x-api-key` header you send to Wiro endpoints from your own backend is your operator key, which is entirely separate (see [Authentication](/docs/authentication)).
 
 Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, TikTok Ads, Google Ads) ship with `int-wiro-aimodels: true` enabled, but the agent stays in `status: 6` (Setup Required) until the operator supplies a `wiro` project key.
 
@@ -534,11 +534,11 @@ Templates that scan global holidays (App Event Manager, Push Notification Manage
 
 ## Platform-Managed Credentials
 
-One credential is fully **managed by Wiro**. You don't provide it and you can't see it in API responses:
+Some credential fields are **managed by Wiro**. You don't provide them, and they are never returned in API responses.
 
-- **OpenAI** (`sys-openai`): Wiro provides the OpenAI API key for every agent. The same model line-up (default + fallback + cron) is shared across all Wiro agents and rotated by the Wiro team. Operators cannot edit these values.
+- The chat model your agent runs on is set up by Wiro. Pick the model with `UserAgent/UpdateSettings`; there is no key to supply.
 
-The `sys-openai` credential is stored with every field flagged `platform_managed: true` in the registry. `POST /UserAgent/Detail` omits the entire credential entry from the `credentials` response. `CredentialUpsert` rejects writes to its fields with `<Field label> is managed by Wiro`, and Deploy drops them from `credentials`.
+`CredentialUpsert` rejects writes to these fields with `<Field label> is managed by Wiro`, and Deploy drops them from `credentials`.
 
 ## Auditing Credential Changes: `CredentialFieldHistory`
 
@@ -647,7 +647,7 @@ Response: `{ "result": true, "applied": 2, "errors": [] }`. `applied` is the cou
 
 - **`fieldstatus` is assigned by the server.** Any `fieldstatus` you send is ignored: a field that already exists keeps its stored status, and a new field gets the status its registry schema implies. That is why own-mode app keys (`clientid` / `clientsecret`, `appid` / `appsecret`, …) and the `authmethod` switch can be written here. Fields that the connection flow fills in (schema flag `auto_filled_by_oauth` or `server_managed`, such as account and page selections) are rejected with `<Field label> is managed by the connection flow` in `errors[]`; set them through the OAuth and picker endpoints. OAuth tokens are written by Wiro's OAuth callback flow, not by your API.
 - **Wiro-managed fields and OAuth tokens are rejected.** You can't write a field whose status is `platform` or `oauth_session`. A `platform` field fails with `<Field label> is managed by Wiro` and an `oauth_session` field with `<Field label> is managed by the connection flow`; a field with no schema label is named `<credentialkey>.<fieldname>` instead. As with any invalid field, the whole request is rejected and nothing is saved.
-  - `platform`: every `sys-openai` field, and Reddit's approval flags that Wiro sets after its own review (`developerprofileverified`, `dataapiaccessapproved`, `commercialwrittenapproval`).
+  - `platform`: fields Wiro manages, such as Reddit's approval flags that Wiro sets after its own review (`developerprofileverified`, `dataapiaccessapproved`, `commercialwrittenapproval`).
   - `oauth_session`: the token fields `accesstoken`, `refreshtoken`, `connectedat`, `tokenexpiresat` and `refreshtokenexpiresat`, on any credential and in any letter case. They have no schema label, so the message reads, for example, `reddit.accesstoken is managed by the connection flow`.
   - These fields are rejected whatever status is stored. For any other field, the rejection check uses the schema's status when the registry schema declares it as a top-level field, even if a different status is stored, and the stored status otherwise; the write is rejected when that status is `platform` or `oauth_session`.
 - **Reserved fieldnames are rejected.** Any `fieldname` starting with `_` (e.g. `_isoptional`, `_isextra`) is a sentinel used by the template itself and cannot be set by API callers.
@@ -666,7 +666,7 @@ If you call `POST /UserAgent/Deploy` with `useprepaid: true`, you may pass `cred
 - Registry-declared `string-array` and `object-array` fields are accepted as native JSON arrays. This includes channel allowlists (`allowedusers`, Telegram `groups`, Slack `channels`, Discord `guilds`).
 - Fieldnames starting with `_` are reserved and ignored.
 - Each field's `fieldstatus` is assigned by the server, exactly as for `CredentialUpsert`.
-- Deploy never saves a `platform` or `oauth_session` field sent in `credentials`, such as a `sys-openai` field, one of Reddit's approval flags or `accesstoken`. This applies whether `credentials` is sent as an object or as a JSON string. In a communication-channel group (Telegram, Slack, Discord), such a field fails Deploy before the agent is created. In any other group, the field is dropped and Deploy continues.
+- Deploy never saves a `platform` or `oauth_session` field sent in `credentials`, such as one of Reddit's approval flags or `accesstoken`. This applies whether `credentials` is sent as an object or as a JSON string. In a communication-channel group (Telegram, Slack, Discord), such a field fails Deploy before the agent is created. In any other group, the field is dropped and Deploy continues.
 - If `credentials` includes a communication-channel group, all of that channel's `required_fields` must be present. A missing or invalid activation credential fails Deploy instead of creating a partially configured channel.
 
 **Deploy body `customskills` semantics:**
@@ -1228,7 +1228,7 @@ If you're comparing against the Wiro Dashboard, here's what happens under the ho
 - **No manual token refresh button**: Wiro maintains supported connections automatically; reconnect when the Dashboard reports that authorization is required.
 - **LLM Markdown feature**: The Dashboard includes an "LLM Markdown" tab that generates a ready-to-paste prompt for AI assistants summarizing every credential field the agent needs. Useful for API users building their own configuration UIs. See the per-integration help texts for equivalent guidance.
 - **Registry-backed validation**: Wiro validates declared types, patterns, lengths, URLs, enum values, and provider response contracts before persisting or connecting credentials. The provider remains authoritative for permissions and asset access.
-- **Platform-managed credentials are hidden**: Groups whose fields are all flagged `platform_managed: true` (currently only `sys-openai`) are omitted from `POST /UserAgent/Detail` responses entirely. They're pre-configured by Wiro and can't be set by customers.
+- **Platform-managed credentials are hidden**: groups whose fields are all managed by Wiro are omitted from `POST /UserAgent/Detail` responses. They're set up by Wiro and can't be set by customers.
 
 ## Setup Required State
 
@@ -1249,7 +1249,7 @@ The two branches are checked together: `setuprequired` stays `true` until every 
 
 - **Tokens are stored server-side** and are never returned by the customer-facing credential endpoints.
 - **`oauth_session` fields are always stripped** from Detail, `MyAgents`, and `CredentialUpsert` responses: `accesstoken`, `refreshtoken`, `pageAccessToken` and any similar token rows never leave the server. `OAuthStatus` returns only the `connectedat` and `tokenexpiresat` timestamps, never a token.
-- **`platform` fields are always stripped** from responses. In practice this affects every `sys-openai` field and Reddit's three approval flags; the `sys-openai` key never leaves the server. `credentials.wiro.apikey` and `credentials.calendarific.apikey` are user-supplied and appear normally in the response.
+- **`platform` fields are always stripped** from responses. In practice this affects Reddit's three approval flags and every other Wiro-managed field. `credentials.wiro.apikey` and `credentials.calendarific.apikey` are user-supplied and appear normally in the response.
 - **`oauth_app` fields (`clientid` / `clientsecret`, `appid` / `appsecret`) are stripped from Detail responses**, even after an OAuth "own mode" setup writes them. The append-only credential history redacts `clientsecret` to `[REDACTED]` and always redacts `oauth_session` rows.
 - **`fieldstatus` is server-assigned.** A `fieldstatus` sent to `CredentialUpsert` is ignored; the server assigns the status itself.
   - Fields that the connection flow fills in, OAuth tokens included, are rejected with `<Field label> is managed by the connection flow` in `errors[]`. A token field has no schema label, so it is named `<credentialkey>.<fieldname>`.

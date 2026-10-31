@@ -267,7 +267,7 @@ The hard-cutover merge contract is:
 3. Replace only that block; a newer update for one block must never evict another block.
 4. Sort the merged values by `callindex ASC`, `contentindex ASC`, then `blockid ASC`.
 
-`version` is per block, not global. A turn can therefore render `Thinking → Answer or Tool → Thinking → Answer` across multiple calls. `reasoning` blocks contain only provider-supplied OpenAI GPT-5 summaries, never raw chain-of-thought. `answer` blocks expose safe answer text. `tool` blocks expose only `toollabel` and `toolstatus`; their `text` is `null`, and tool IDs, arguments, and results are not public.
+`version` is per block, not global. A turn can therefore render `Thinking → Answer or Tool → Thinking → Answer` across multiple calls. `reasoning` blocks contain only model-provided reasoning summaries, never raw chain-of-thought. `answer` blocks expose safe answer text. `tool` blocks expose only `toollabel` and `toolstatus`; their `text` is `null`, and tool IDs, arguments, and results are not public.
 
 The complete public block shape is `blockid`, `callindex`, `contentindex`, `type`, `text`, `toollabel`, `toolstatus`, `phase`, `version`, `startedat`, and `updatedat`. `phase` is `stream`, `end`, or `error`; timestamps can be `null` when unavailable. No additional internal correlation or execution metadata is emitted in this block.
 
@@ -442,7 +442,7 @@ When the agent **itself** kicks off a Wiro model run during a turn (for example 
 
 **Then pivot to the task socket for outputs.** Take `message.socketaccesstoken` and subscribe to the standard model-run WebSocket exactly as documented in [WebSocket](/docs/websocket): send `{ "type": "task_info", "tasktoken": "<socketaccesstoken>" }` and stream `task_queue → task_start → task_output → task_postprocess_end`. The final `task_postprocess_end` carries the output array (media URLs). The model-run `task_*` events are **only** delivered on the task's own `socketaccesstoken` channel. They are never re-broadcast on the agent channel.
 
-> **Only fires for agent-initiated runs.** `agent_wiroai_runtask` is emitted when the *agent* calls a model mid-turn. Model runs you launch yourself with `POST /Run` (your own `x-api-key`) do not produce this frame, because you already hold their `socketaccesstoken` from the `/Run` response. Runs that a sub-agent, a scheduled task or a hook launches do not produce it either.
+> **Only fires for agent-initiated runs.** `agent_wiroai_runtask` is emitted when the *agent* calls a model mid-turn. Model runs you launch yourself with `POST /Run` (your own `x-api-key`) do not produce this frame, because you already hold their `socketaccesstoken` from the `/Run` response. Runs the agent starts in the background, from a scheduled task or from a hook do not produce it either.
 
 ### Following a session
 
@@ -491,7 +491,7 @@ Each message added to that session afterwards arrives as an `agent_message_inser
 | `content` | string | Always `""`: no prompt of yours belongs to these messages. |
 | `response` | string | The message text. |
 | `status` | string | Always `"agent_end"`. |
-| `metadata` | object | `type` is `"subagent"` for the result of work the agent handed to a sub-agent, `"system"` for the other messages. Other keys may appear; ignore the ones you don't use. |
+| `metadata` | object | `type` is `"subagent"` for the result of work the agent finished in the background, `"system"` for the other messages. Other keys may appear; ignore the ones you don't use. |
 | `createdat` / `startedat` / `endedat` | number | Unix timestamps in seconds, all set to when the message was added. |
 
 - **What arrives.** A follower receives exactly the new messages its `Message/History` read would show. Turns you start with `Message/Send` keep streaming on their own `agenttoken`; following the session doesn't repeat them.

@@ -118,8 +118,8 @@ Lists all skills in the registry.
 | `brand_text_color` | `string\|null` | Foreground colour to render on top of `brand_color`. |
 | `brand_logo_filter` | `string\|null` | CSS `filter` value applied to monochrome SVG icons (e.g. `"brightness(0) invert(1)"`) so the same source SVG renders correctly on light and dark brand colours. |
 | `docs_url` | `string\|null` | Slug or path of the integration page on this docs site. Frontends prefix with `/docs/` when rendering. |
-| `requires_credentials` | `boolean` | `true` when the skill needs a credential the operator must supply (effectively `true` whenever `credential_key` resolves to a non-platform-only credential, currently every credential except `sys-openai`). |
-| `credential_key` | `string\|null` | The provider this skill needs (`"instagram"`, `"google-ads"`, `"wiro"`, `"calendarific"`, …). `null` for `util` skills and the rare skills backed by a platform-only credential like `sys-openai`. Use [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail) to inspect the schema. |
+| `requires_credentials` | `boolean` | `true` when the skill needs a credential the operator must supply (effectively `true` whenever `credential_key` names a credential you supply). |
+| `credential_key` | `string\|null` | The provider this skill needs (`"instagram"`, `"google-ads"`, `"wiro"`, `"calendarific"`, …). `null` for `util` skills and skills whose credential Wiro manages. Use [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail) to inspect the schema. |
 | `additional_credential_keys` | `array<string>` | **Optional: only present when the skill writes secondary credentials.** App-store / Google-Play review skills include `["var-support-email"]` for the support-email variable bag; most skills omit this field entirely. |
 | `capabilities` | `array<string>` | High-level snake_case capability tags from the closed vocabulary returned by [`POST /Skills/Capabilities`](#post-skillscapabilities). Drives the "Find skills that can: ___" picker. |
 | `depends_on` | `array<string>` | Other skill names that must be enabled. Wiro auto-enables transitive deps when you toggle the parent skill on. |
@@ -500,7 +500,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
 
 Scheduled tasks are cron skills: bundled ones (`_source: "skill-bundle"`) ship with integration skills and run automatically when the integration is enabled. User-created crons (`_source: "user-created"`) are added at any time.
 
-> **For bundled crons, only `enabled` and `interval` are writable.** The task body (`value`) is owned by the integration skill and re-materialised on every container restart. To change **what** a bundled scheduled task does, edit the paired preference skill (e.g. `content-tone` is read by `cs-cron-social-content-scanner` at runtime). For user-created crons, all three (`value`, `interval`, `enabled`) are writable.
+> **For bundled crons, only `enabled` and `interval` are writable.** The task body (`value`) comes from the integration skill and is restored whenever the agent restarts. To change **what** a bundled scheduled task does, edit the paired preference skill (e.g. `content-tone` is read by `cs-cron-social-content-scanner` at runtime). For user-created crons, all three (`value`, `interval`, `enabled`) are writable.
 
 ### Example: Change a bundled cron's frequency
 
@@ -1018,7 +1018,7 @@ Agents can optionally forward operator notifications to a Telegram bot via the `
 `int-wiro-aimodels` lets an agent call Wiro's own AI models (image / video / audio / LLM generation, cover image creation, model discovery) from inside the agent container. When it's enabled on an agent:
 
 - `credentials.wiro.apikey` is **operator-supplied**: pick or create a Wiro project at [wiro.ai/panel/projects](https://wiro.ai/panel/projects), copy its API key, and write it via `POST /UserAgent/CredentialUpsert`. Each generated asset is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).
-- The agent container gets `WIRO_API_KEY` as an env var only when both `int-wiro-aimodels` is enabled **and** a `wiro.apikey` value has been written.
+- The agent can run Wiro models only when `int-wiro-aimodels` is enabled **and** a `wiro.apikey` value has been written.
 - `int-wiro-aimodels` is marked `user_invocable: true` in the registry: end-user messages can trigger it directly, and other skills / scheduled tasks invoke it internally when they need to generate content.
 
 Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, TikTok Ads, Google Ads) ship with `int-wiro-aimodels: true`. Templates that don't need AI generation (App Review Support, Lead Generation Manager) ship with `int-wiro-aimodels: false`. Either way, the agent stays at `status: 6` (Setup Required) until you upsert the `wiro` credential, the same as any other API-key integration.
@@ -1048,7 +1048,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Detail" \
 
 ### Project key vs operator key
 
-`credentials.wiro.apikey` is a **per-agent Wiro project key**: it lives inside that agent container and only the container ever uses it. The `x-api-key` header you send to the public Wiro endpoints from your own backend (e.g. `POST /UserAgent/Deploy`, `POST /Run`) is your **operator key**, which is entirely separate. If you're building on top of Wiro programmatically and want to call the Run / Task / LLM APIs directly from your own backend (not from inside an agent container), use your operator key (see [Run a Model](/docs/run-a-model) and [LLM & Chat Streaming](/docs/llm-chat-streaming)).
+`credentials.wiro.apikey` is a **per-agent Wiro project key**: only the agent uses it, to run Wiro models. The `x-api-key` header you send to the public Wiro endpoints from your own backend (e.g. `POST /UserAgent/Deploy`, `POST /Run`) is your **operator key**, which is entirely separate. If you're building on top of Wiro programmatically and want to call the Run / Task / LLM APIs directly from your own backend, use your operator key (see [Run a Model](/docs/run-a-model) and [LLM & Chat Streaming](/docs/llm-chat-streaming)).
 
 ## Update Rules Summary
 

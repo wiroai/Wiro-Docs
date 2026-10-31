@@ -28,18 +28,6 @@ The Meta Ads integration powers the `int-metaads-manage` skill: creating and man
 
 Today the two enabled modes are the recommended token-only System User path and customer-owned OAuth. Once Wiro's approved app has Advanced Access, a Wiro-owned OAuth option can be enabled without removing either customer-owned path.
 
-## Why Wiro remains on direct Graph API v26
-
-Meta's official Ads MCP is not a drop-in replacement yet. Wiro has not verified live parity for:
-
-- targeting interest search and related raw targeting queries;
-- reach/delivery estimates;
-- lead-form and lead retrieval workflows;
-- raw Graph flexibility needed for account-specific fields, edges, and versioned fallbacks;
-- some financial, media upload, and creative-management operations.
-
-Meta does not document a separate MCP “machine key”; MCP authentication still rests on Meta app/user or System User authorization. Replacing the direct integration is therefore deferred until Wiro completes live parity tests, permission/App Review checks, rate-limit and latency validation, error-shape regression tests, and a controlled rollout with rollback. Until those checks pass, Graph API v26 remains the authoritative runtime path.
-
 ## Prerequisites
 
 - **A Wiro API key**: see [Authentication](/docs/authentication) for how to issue keys and sign requests.
@@ -298,7 +286,7 @@ Behavior:
 - `adaccountname` is optional but recommended: it surfaces in `OAuthStatus` responses and dashboards.
 - Pass multiple `{ adaccountid, adaccountname }` entries to authorize the agent against several ad accounts at once.
 - Each call replaces the previous selection. Page mappings are kept only for ad accounts that stay selected, so run Step 10b again for ad accounts you add.
-- If the agent was running (status `3` or `4`), Wiro marks it `status: 1` and restarts it after the stop cycle, so the daemon picks up the new ad account. No manual Start needed.
+- If the agent was running (status `3` or `4`), Wiro marks it `status: 1` and restarts it after the stop cycle, so the agent uses the new ad account. No manual Start needed.
 
 ### Step 10b: Discover and select Facebook Pages (optional)
 
@@ -646,7 +634,7 @@ User OAuth and System User tokens do not have the same lifecycle:
 
 For SaaS products connecting many customers' Meta Ads accounts through a single Wiro-powered backend:
 
-1. **Recommended today:** use one System User token per customer-owned Business Portfolio when that operating model fits. Customer-owned OAuth remains available for interactive user authorization; Wiro-owned OAuth stays disabled until Advanced Access and rollout approval.
+1. **Recommended today:** use one System User token per customer-owned Business Portfolio when that operating model fits. Customer-owned OAuth remains available for interactive user authorization; Wiro-owned OAuth is not available yet.
 2. **One Wiro agent instance per customer.** Call `POST /UserAgent/Deploy` during onboarding, then complete the recommended direct steps or the advanced OAuth flow for that customer's `useragentguid`.
 3. **Tokens are isolated per agent instance.** Customer A's Meta token is never visible to Customer B, because they live under different `useragentguid` values.
 4. **Consent branding follows the selected path.** Customer-owned OAuth shows the customer's app; the future simple path shows Wiro's reviewed app.

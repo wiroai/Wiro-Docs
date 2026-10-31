@@ -262,13 +262,13 @@ Provide either `taskid` or `socketaccesstoken`.
 
 ## **POST** /Task/InputOutputDelete
 
-Deletes all output files and input files associated with a completed task. Removes files from S3 storage, local filesystem, and the database. Also invalidates CloudFront CDN cache so deleted files stop being served immediately.
+Deletes the task's input and output files. Their URLs stop working right away.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `tasktoken` | string | Yes | The task token (socketaccesstoken) |
 
-The task must be in a terminal state (`task_postprocess_end` or `task_cancel`). Only the task owner can delete files. Shared sample input files (`/sampleinputs/`) are automatically excluded from deletion.
+The task must be in a terminal state (`task_postprocess_end` or `task_cancel`). Only the task owner can delete files. Shared sample input files are kept.
 
 ### Response
 
@@ -280,9 +280,8 @@ The task must be in a terminal state (`task_postprocess_end` or `task_cancel`). 
 ```
 
 After deletion:
-- Output files are removed from S3 and CDN cache
-- Input files uploaded by the user are removed from S3 and local storage
-- The task's `outputfolderid` is set to `"0"` (Task Detail will return empty outputs)
+- Output files and the input files you uploaded are deleted, and their URLs stop working
+- Task Detail then returns no outputs
 - Task record and parameters are preserved. Only the files are deleted
 - Calling the endpoint again on the same task returns `result: true` immediately (idempotent)
 

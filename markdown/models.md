@@ -86,7 +86,7 @@ Returns full details for a specific model, including its input parameters, prici
     "image": "https://cdn.wiro.ai/uploads/models/google-nano-banana-cover.webp",
     "computingtime": "10 seconds",
     "readme": "Google's Gemini 2.5 Flash Image Preview model for text-to-image and image-to-image generation.",
-    "categories": ["tool", "partner", "google", "image-to-image", "compare-landscape", "use-agent", "quick-showcase", "text-to-image", "price-list", "fast-inference", "image-editing", "nogpu-pipeline"],
+    "categories": ["image-to-image", "text-to-image", "image-editing"],
     "parameters": [
       {
         "title": "",
@@ -428,7 +428,7 @@ print(response.body);
     "cleanslugowner": "google",
     "cleanslugproject": "nano-banana",
     "description": "Google's Gemini 2.5 Flash Image Preview, also known as Nano Banana, model for text-to-image and image-to-image generation.",
-    "categories": ["tool", "partner", "google", "image-to-image", "compare-landscape", "use-agent", "quick-showcase", "text-to-image", "price-list", "fast-inference", "image-editing", "nogpu-pipeline"],
+    "categories": ["image-to-image", "text-to-image", "image-editing"],
     "parameters": [{
       "title": "",
       "subtitle": "",

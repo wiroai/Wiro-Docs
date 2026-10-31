@@ -29,7 +29,7 @@ Toggle `util-web-channel` on a useragent and a single REST call (`POST /UserAgen
 
 | Mode | Status | Notes |
 |------|--------|-------|
-| Bearer auth (Wiro-Web operator session) | Available | Origin must be `https://wiro.ai` / `https://www.wiro.ai` (or `http://localhost:3000` / `http://localhost:8080` in non-prod, while other dev ports like `:5173` / `:4200` are rejected). |
+| Bearer auth (wiro.ai dashboard session) | Available | Requests must come from wiro.ai. From your own site, call `WebStart` from your backend with an API key. |
 | `x-api-key` (project API key) | Available | No Origin check. Use this when proxying through your own backend, or when embedding the voice button in a non-Wiro origin. |
 
 ## Prerequisites
@@ -87,7 +87,7 @@ Response:
 | `expiresAt` | Expiry of both handles, in ms since epoch (5 minutes after issue). After this point, call `WebStart` again for fresh handles. |
 | `estimatedReadyMs` | Approximate time (ms) until the agent will be ready to speak after WS connect. The real "ready" signal is the `{ type: "ready" }` frame on the WebSocket. |
 
-> The endpoint also kicks off an asynchronous **agent prep** so the realtime model has the agent's system prompt + memory warm by the time the browser finishes the WS handshake. That's why a separate `Realtime/Cancel` call exists: if the browser never makes it to the WS step (mic permission denied, user changed their mind), Cancel tears the prep down immediately instead of leaving the warmed session to idle until the cleanup guard fires.
+> The endpoint also gets the agent ready for the call, so it can answer as soon as the browser connects. If the browser never connects (mic permission denied, user changed their mind), call `Realtime/Cancel` to release the session right away.
 
 ### Step 2: Connect the WebSocket
 
@@ -239,7 +239,7 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);
 
 ### Step 3 (optional): Cancel a stale session with `POST /UserAgent/Realtime/Cancel`
 
-If the browser can't progress past `WebStart` (mic permission denied, user navigated away, tab crashed), call `Realtime/Cancel` so the server-side agent prep tears down immediately instead of waiting on the 5-minute cleanup guard. Send the `cancelToken` from `WebStart`, authenticated as the user who called `WebStart`; each cancel handle works once.
+If the browser can't progress past `WebStart` (mic permission denied, user navigated away, tab crashed), call `Realtime/Cancel` to release the session right away; otherwise it is released after about 5 minutes. Send the `cancelToken` from `WebStart`, authenticated as the user who called `WebStart`; each cancel handle works once.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Realtime/Cancel" \
@@ -266,11 +266,11 @@ Response:
 | 401 | `invalid token` | Unknown, already used or expired handle. |
 | 403 | `access denied` | The handle was issued to another user. |
 
-> No-op when the session is already cleaned up (bridge teardown or the 5-min cleanup guard). The endpoint always returns `cancelled: true` on success, and there's no separate "already cleaned" signal. Reusing a cancel handle returns `invalid token`.
+> No-op when the session has already ended. The endpoint always returns `cancelled: true` on success, and there's no separate "already cleaned" signal. Reusing a cancel handle returns `invalid token`.
 
 ## WebSocket Protocol
 
-The browser bridge lives at `wss://<env>/v1/AgentRealtime/Web`. The same prefix hosts the Twilio Media Streams handler at `/v1/AgentRealtime/Twilio`, but you never call that directly, because Twilio's auto-configured `VoiceUrl` points at it.
+The browser bridge lives at `wss://<env>/v1/AgentRealtime/Web`.
 
 ### First message (text frame)
 
@@ -313,13 +313,13 @@ The bridge transcodes server-side if a downstream model needs a different sample
 ### Session lifetime
 
 - The `sessionToken` handle is valid for **300 seconds** from issue (until `expiresAt`) and works once, so the browser must send `session_start` before then. To connect again, call `WebStart` for fresh handles, since there's no in-band refresh.
-- The `WebStart`-armed 5-minute pre-WS cleanup guard is cancelled the moment the bridge accepts your `session_start` frame, so a live call is never torn down by it. Live call audio is billed through `int-wiro-aimodels` against your own Wiro AI Models balance, and the pre-WS prep window carries no audio charge.
+- Once the bridge accepts your `session_start` frame, the 5-minute release timer no longer applies to the call. Live call audio is billed through `int-wiro-aimodels` against your own Wiro AI Models balance; the time before the browser connects carries no audio charge.
 
 ## Rate Limits
 
 - **60 sessions / hour per operator** (fixed window). The operator identity is hashed and never logged raw.
 - Fast-fail sessions (prep timeout, model rejecting the realtime session, WS upgrade error) **decrement the counter back** so a flaky downstream doesn't burn through quota during an incident.
-- **Origin allow-list** (Bearer auth path only): `https://wiro.ai` / `https://www.wiro.ai` (plus `http://localhost:3000` / `http://localhost:8080` in non-production). The API-key path skips the Origin check because key + IP whitelist already authenticated the caller.
+- **Origin check** (Bearer auth only): browser requests must come from wiro.ai. API-key requests have no Origin check.
 
 ## Common Errors
 
@@ -336,15 +336,9 @@ The bridge transcodes server-side if a downstream model needs a different sample
 | 429  | none       | `Rate limit: max N web voice sessions per hour` | Operator burned through the per-hour cap. Wait for the fixed-window expiry. |
 | 500  | none       | `internal error`         | Unexpected backend failure: check `POST /UserAgent/Logs` for context. |
 
-## Multi-Tenant Architecture
+## Session Handles
 
-Every WebStart call is scoped by:
-
-- **One-time handles**: `sessionToken` and `cancelToken` are opaque, random and single-use, valid until `expiresAt`. Nothing readable travels in the handle or the WS URL, the same "single endpoint, first-message token" pattern Wiro uses for its native realtime models.
-- **`useragentguid` + caller uuid**: kept on the server behind the handle, never sent to the browser; the bridge re-checks the agent when the browser connects.
-- **Origin allow-list** (Bearer path only): defence-in-depth against a stolen localStorage Bearer being weaponised from a third-party site.
-- **Per-operator rate-limit key**: hashed, so logs never carry the raw operator identity.
-- **Channel-isolated upgrade handlers**: `/v1/AgentRealtime/Web` and `/v1/AgentRealtime/Twilio` are distinct upgrade handlers on the same process; one cannot read the other's session state. Adding a new provider in the future is a single new handler under the same `/v1/AgentRealtime/<NewChannel>` prefix, with no nginx config churn.
+`sessionToken` and `cancelToken` are opaque, random and single-use, valid until `expiresAt`. Nothing readable travels in a handle or in the WebSocket URL. Call `WebStart` from your own backend with your API key, and pass only the handles to the browser.
 
 ## Related
 

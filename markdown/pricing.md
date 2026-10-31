@@ -26,16 +26,16 @@ Every model on Wiro uses one of the following billing methods. The method is set
 | Billing Method | Code | How it works |
 |---|---|---|
 | **Per Pixel** | `cp-pixel` | Cost based on output resolution. Each 1,048,576 pixels (1024×1024) counts as one tier. Higher resolutions cost proportionally more. Can also include per-input-image costs (`priceInput`) when the model processes input images. |
-| **Per Audio Second** | `cp-audiosecondslength` | Cost per second of input audio duration. The system measures the duration of all input audio files using ffprobe and bills accordingly. |
+| **Per Audio Second** | `cp-audiosecondslength` | Cost per second of input audio duration. It is measured from the duration of the input audio files. |
 | **Per Character** | `cp-promptlength` | Cost per character in the input prompt. Total cost = prompt length × price per character. |
-| **Per Video Second** | `cp-outputVideoLength` | Cost per second of generated output video. The system measures the output video duration using ffprobe and bills accordingly. |
+| **Per Video Second** | `cp-outputVideoLength` | Cost per second of generated output video. It is measured from the duration of the output video. |
 
 ### Special Methods
 
 | Billing Method | Code | How it works |
 |---|---|---|
 | **Per Realtime Turn** | `cp-realtimeturn` | Used for realtime voice conversation models. Billing happens per turn during the session: each conversation turn has a cost that is deducted in real time. |
-| **Model-Reported** | `cp-readoutput` | The model itself reports the cost in its output. The system extracts the price from the model's stdout or stderr JSON output. |
+| **Model-Reported** | `cp-readoutput` | The model reports its cost when the run ends. |
 
 ## Dynamic Pricing
 
@@ -105,7 +105,7 @@ When a model does not have `dynamicprice` set, billing falls back to **per-secon
 totalcost = elapsed_seconds × cps
 ```
 
-Where `cps` (cost per second) is either the model's own rate or the queue group's default rate. The API also returns an `approximatelycost` field, an estimate based on the model's average run time:
+Where `cps` (cost per second) is the model's own rate or Wiro's default per-second rate. The API also returns an `approximatelycost` field, an estimate based on the model's average run time:
 
 ```
 approximatelycost = average_elapsed_seconds × cps

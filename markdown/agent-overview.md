@@ -19,7 +19,7 @@ The endpoints below cover the full programmatic surface. If you also want to see
 
 ## What are Wiro Agents?
 
-Wiro Agents are autonomous AI assistants that run persistently in isolated containers. Unlike one-shot model runs, agents maintain conversation memory, connect to external services, and use tools to complete tasks on your behalf, all managed through the API.
+Wiro Agents are autonomous AI assistants that keep running on Wiro. Unlike one-shot model runs, agents maintain conversation memory, connect to external services, and use tools to complete tasks on your behalf, all managed through the API.
 
 The system has two layers:
 
@@ -196,7 +196,7 @@ Lists available agents in the catalog. This is a **public endpoint**, so no auth
 }
 ```
 
-> `Agent/List` returns only catalog-header columns plus inlined `tiers` (so the catalog card can render the price without a per-row `Agent/Detail` round-trip). The `id` / `totalrun` / `activerun` columns are not returned. Call `POST /Agent/Detail` with `type: "full"` when you need the full template (skills map, credential schema, custom skills, scheduled skills).
+> `Agent/List` returns the catalog fields plus inlined `tiers`, so a catalog card can show the price without a per-row `Agent/Detail` call. Call `POST /Agent/Detail` with `type: "full"` when you need the full template (skills map, credential schema, custom skills, scheduled skills).
 
 #### **POST** /Agent/Detail
 
@@ -352,7 +352,7 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
 - Schema fields marked `runtime_excluded: true`, including Meta
   `systemusertoken`, are write-only setup secrets. They never enter the agent
   runtime and are not reflected to customer-facing credential responses.
-- `fieldstatus: "platform"` fields (every `sys-openai` field, plus Reddit's three approval flags `developerprofileverified`, `dataapiaccessapproved` and `commercialwrittenapproval`) are stripped from every API response. The `sys-openai` credential entry itself is also dropped from the response. Only the daemon container ever sees the values. `credentials.wiro.apikey` and `credentials.calendarific.apikey` are operator-supplied user-input fields and appear in the response with `fieldstatus: "user"` like any other API-key credential.
+- `fieldstatus: "platform"` fields (Wiro-managed fields, such as Reddit's three approval flags `developerprofileverified`, `dataapiaccessapproved` and `commercialwrittenapproval`) are stripped from every API response. `credentials.wiro.apikey` and `credentials.calendarific.apikey` are operator-supplied user-input fields and appear in the response with `fieldstatus: "user"` like any other API-key credential.
 - `fieldstatus: "oauth_app"` fields (`clientid` / `clientsecret`, `appid` / `appsecret`) are stripped from Detail responses, even after an own-mode OAuth setup writes them. History writes redact `clientsecret` to `[REDACTED]`.
 - Sentinel rows `_isoptional` / `_isextra`: never appear as fields; they're folded into the `optional` and `extra` flags above.
 
@@ -384,7 +384,7 @@ Creates a new agent instance from a catalog template, **or** builds a brand-new 
 
 > **API agent deployment is prepaid-only.** Pass `useprepaid: true` + `tier`. The subscription cost is deducted from your prepaid wallet immediately and the instance is created server-side in one call. There is no API path that accepts a credit card directly; subscriptions from a card can only be created through the Wiro dashboard at [wiro.ai/panel/agents](https://wiro.ai/panel/agents). Top up your wallet on [wiro.ai/panel/billing](https://wiro.ai/panel/billing) before calling Deploy.
 
-Prepaid deploy (`useprepaid: true` + `tier`) charges your wallet for the chosen tier price immediately and inserts a 30-day subscription row (`plan: "agent"`, `provider: "prepaid"`). **Every fresh Deploy lands at `status: 6` first**. The row is then auto-queued to `status: 2` (Queued) once the prepaid subscription is provisioned. No manual `UserAgent/Start` is needed for prepaid deploys; the daemon picks the row up from the queue.
+Prepaid deploy (`useprepaid: true` + `tier`) charges your wallet for the chosen tier price immediately and inserts a 30-day subscription row (`plan: "agent"`, `provider: "prepaid"`). **Every fresh Deploy lands at `status: 6` first**. The row is then auto-queued to `status: 2` (Queued) once the prepaid subscription is provisioned. No manual `UserAgent/Start` is needed for prepaid deploys; Wiro starts the agent from the queue.
 
 If you pass `credentials`, `skills`, or `customskills` at the top level of the
 Deploy body they are applied server-side in the same call. Chat Mode is not a
@@ -473,7 +473,7 @@ Both paths hit the same endpoint, but a few server-side behaviours diverge:
 | `tiermultiplier` | **Snapshotted from `agent.tiermultiplier`** so future template tweaks don't retroactively change pricing on already-deployed instances | Fixed at the platform default (`10`) |
 | Bundled cron skills | Cloned from the template's preset custom skills | Materialized from the standalone cron registry based on the enabled skill set |
 | Onboarding placeholders | None: the template ships its own preset strategies | One invocation-only `cs-my-custom-strategy` and one scheduled `cs-cron-my-scheduled-task` are seeded so the panel always has something to render under "Custom Skills" / "Scheduled Skills" |
-| Platform-managed credentials (currently `sys-openai` only) | Inherited from the template's preset credentials | Seeded directly onto the useragent so its runtime configuration is complete |
+| Platform-managed credentials | Set up by Wiro | Set up by Wiro |
 | Marketplace run counter | Bumped by 1 | Not touched (custom agents have no template to count against) |
 | `tiers` / `extracreditpacks` in the response | Read from the template definition | Pre-subscribe state: `tiers` reflects the live registry pricing for the toggled skills, `extracreditpacks: []` until the subscription provisions |
 
@@ -564,8 +564,8 @@ The Deploy response reflects the same composed shape you get from `UserAgent/Det
 
 | Field | Meaning |
 |-------|---------|
-| `status: 6` | **Setup Required**: initial state for every fresh Deploy. With `useprepaid: true`, auto-queues to `status: 2` as soon as the subscription is provisioned, regardless of credential completeness. If credentials are still missing when the daemon picks the row up, the start fails with `Agent setup is not complete` and the row drops to `status: 5` (Errored). Fill the missing credentials with `POST /UserAgent/CredentialUpsert`, then call `POST /UserAgent/Update` (any scalar body, even just `{ "guid": "<useragent-guid>" }`) to flip the row back to `status: 0` (Stopped). `Update` is the endpoint that performs the `setuprequired` re-check and the `6 → 0` transition. Then call `Start` to launch. |
-| `status: 2` | **Queued**: `useprepaid: true` charged the wallet, the subscription was provisioned, and the daemon's pickup loop will start the container. No manual `UserAgent/Start` is required. |
+| `status: 6` | **Setup Required**: initial state for every fresh Deploy. With `useprepaid: true`, auto-queues to `status: 2` as soon as the subscription is provisioned, regardless of credential completeness. If credentials are still missing when the agent starts, the start fails with `Agent setup is not complete` and the row drops to `status: 5` (Errored). Fill the missing credentials with `POST /UserAgent/CredentialUpsert`, then call `POST /UserAgent/Update` (any scalar body, even just `{ "guid": "<useragent-guid>" }`) to flip the row back to `status: 0` (Stopped). `Update` is the endpoint that performs the `setuprequired` re-check and the `6 → 0` transition. Then call `Start` to launch. |
+| `status: 2` | **Queued**: `useprepaid: true` charged the wallet, the subscription was provisioned, and Wiro will start the agent. No manual `UserAgent/Start` is required. |
 | `setuprequired: true` | Any non-optional credential is missing. While `true`, `Start` rejects with `Agent setup is not complete`. |
 | `setuprequired: false` | All non-optional credentials complete. The next `POST /UserAgent/Update` call flips the row 6 → 0 if it was sitting at Setup Required; `Start` then launches it normally. |
 
@@ -576,7 +576,7 @@ Next steps for the API integration flow:
 1. Inspect `credentials` in the Deploy response (or call `POST /UserAgent/Detail`) to see each provider's fields, the `optional` / `extra` flags, the registry-driven `_schema`, and the `_connected` OAuth status.
 2. Call `POST /UserAgent/CredentialUpsert` per provider (or in bulk via the `fields[]` array) to write API keys, bot tokens, WordPress credentials, etc. For OAuth providers (Meta, Google Ads, HubSpot, …) use the unified `/UserAgentOAuth/OAuthConnect` flow with `credentialkey` (see [Agent Credentials & OAuth](/docs/agent-credentials)).
 3. Call `POST /UserAgent/CustomSkillUpsert` per skill to customize strategy text or cron intervals, if the template exposes any.
-4. Once all non-optional credentials are filled, the row's `setuprequired` flag flips to `false`. If the prepaid subscription was already provisioned during Deploy, the daemon picks the row up from the queue automatically and the status progresses `2` → `3` (Starting) → `4` (Running).
+4. Once all non-optional credentials are filled, the row's `setuprequired` flag flips to `false`. If the prepaid subscription was already provisioned during Deploy, Wiro starts the agent from the queue automatically and the status progresses `2` → `3` (Starting) → `4` (Running).
 5. If you want to re-launch a stopped agent (status `0`) or recover an errored one (status `5`), call `POST /UserAgent/Start` explicitly.
 
 ##### Idempotency: duplicate Deploy guard
@@ -596,7 +596,7 @@ Deploy rejects a second call from the same caller for the same template and team
 }
 ```
 
-This guards against double-tap CTAs, client-side retries, and ALB/CDN retries on transient 5xx responses creating duplicate subscriptions and double-charging the wallet. `existingUserAgentGuid` is the only top-level field added on this error. The `errors[]` array always carries `code: 99` for the dedup hit.
+This prevents a duplicate subscription when a request is retried. `existingUserAgentGuid` is the only top-level field added on this error. The `errors[]` array always carries `code: 99` for the dedup hit.
 
 > **Tip: keep your dashboard clean.** Deployed instances always land pinned in your account. To unpin programmatically (e.g. after bulk-provisioning one instance per customer) call [`POST /UserAgent/Pin`](#post-useragentpin) with `{ "useragentguid": "...", "pinned": false }` immediately after the Deploy call resolves.
 
@@ -1147,7 +1147,7 @@ Retrieves full details for a single deployed agent instance, including subscript
 | `skills` | `array<object>` | Currently-enabled integration skills. Each entry: `{ name, enabled: true, _edited, _user_created }`. Toggle via `SkillsApply` (single-skill or batch). Note: object array (not string array). |
 | `skillsmeta` | `object` | Inline registry snapshot keyed by skill name: `title`, `icon`, `brand_color`, `category`, `docs_url`, `credential_key`, `requires_credentials`, `user_invocable`, `description`. Lets the panel render skill chips without a `Skills/List` round-trip. |
 | `teamsessionmode` | `string` | The unified Chat Mode: `"collaborative"` or `"private"` for every agent. For team agents it drives `Message/History`, `Sessions`, and native web-chat memory scope; for all agents it also drives Telegram, Slack, and Discord DM scope. Team deployments/transfers default collaborative; personal deployments/team detachments default private. Write with [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) (team admins / owner only). |
-| `timezone` | `string\|null` | Operator-selected IANA timezone (e.g. `"Europe/Istanbul"`, `"America/New_York"`). `null` means **system default (UTC)**: the agent container runs `TZ=UTC` and `current_time` in voice prep stays in UTC ISO form. When set, propagates through `settings.json.useragentTimezone` → container `TZ` env → cron `schedule.tz` → caller-facing voice prep / business-hours rendering. Write with [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings). |
+| `timezone` | `string\|null` | Operator-selected IANA timezone (e.g. `"Europe/Istanbul"`, `"America/New_York"`). `null` means **UTC**. The agent uses this zone for its scheduled tasks, for the times it gives on voice calls and for business hours. Write with [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings). |
 
 **Subscription & template**
 
@@ -1281,16 +1281,16 @@ Updates an agent instance's **scalar fields only** (title, description, categori
 
 #### **POST** /UserAgent/UpdateSettings
 
-Writes per-agent preference toggles that are not credentials and not skill rows. Exposes `timezone` (operator-selected IANA zone, propagates into the agent container's `TZ` env, cron `schedule.tz`, and caller-facing voice prep), `teamsessionmode` (the one Chat Mode for team web-chat history and external-channel DMs), the four **model overrides** (`chatmodel`, `cronmodel`, `voiceprepmodel`, `voicepostcallmodel`) that choose which LLM the agent uses for chat replies, scheduled (cron) turns, voice-call prep, and the post-call summary turn, `enabledcommands` (the in-chat slash-command allowlist), and `wiroapiallowedpaths` (the Wiro API endpoints the agent may call with its own Wiro project key). Submit any subset in the same call: partial updates are supported and untouched fields keep their current value.
+Writes per-agent preference toggles that are not credentials and not skill rows. Exposes `timezone` (operator-selected IANA zone the agent uses for scheduled tasks and voice calls), `teamsessionmode` (the one Chat Mode for team web-chat history and external-channel DMs), the four **model overrides** (`chatmodel`, `cronmodel`, `voiceprepmodel`, `voicepostcallmodel`) that choose which LLM the agent uses for chat replies, scheduled (cron) turns, voice-call prep, and the post-call summary turn, `enabledcommands` (the in-chat slash-command allowlist), and `wiroapiallowedpaths` (the Wiro API endpoints the agent may call with its own Wiro project key). Submit any subset in the same call: partial updates are supported and untouched fields keep their current value.
 
-**Permission**: owner OR team admin (the same `requireRole: "admin"` gate as `/UserAgent/Update`). Team members cannot flip these knobs.
+**Permission**: owner or team admin only, as for `/UserAgent/Update`. Team members cannot change these settings.
 
-**Restart**: if the agent is **starting (status `3`)** or **running (status `4`)**, the call auto-stops the container and schedules a restart so the daemon worker picks up the fresh `settings.json` (new timezone, session mode, and / or model selection) on the next launch cycle. Status `0`/`1`/`2`/`5`/`6` agents take effect on the next manual `Start` without a soft-stop.
+**Restart**: if the agent is **starting (status `3`)** or **running (status `4`)**, the call restarts it so the new timezone, session mode or model selection applies. For agents in status `0`/`1`/`2`/`5`/`6` the change applies on the next `Start`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Your UserAgent instance guid. |
-| `timezone` | string\|null | No | IANA timezone identifier (e.g. `"Europe/Istanbul"`, `"America/New_York"`, `"Asia/Tokyo"`). Pass `null`, `""`, or the literal `"UTC"` to **clear** the override. The row is set back to `NULL`, which makes the propagation chain a no-op (container stays on `TZ=UTC`, no per-job `schedule.tz` injection, voice prep `current_time` stays in single-line UTC ISO form). Validated server-side via `new Intl.DateTimeFormat("en-GB", { timeZone })`, and unknown zones are rejected with `invalid-timezone`. |
+| `timezone` | string\|null | No | IANA timezone identifier (e.g. `"Europe/Istanbul"`, `"America/New_York"`, `"Asia/Tokyo"`). Pass `null`, `""`, or the literal `"UTC"` to **clear** the override; the agent then uses UTC. Unknown zones are rejected with `invalid-timezone`. |
 | `teamsessionmode` | string | No | Unified Chat Mode: `"private"` isolates each team member's Wiro web-chat history and native agent memory plus each approved external-channel DM operator; `"collaborative"` shares both runtime contexts. Personal agents can set it because external-channel DMs can have multiple operators. Web and external-channel message lists remain separate transports; room/thread sessions remain room-scoped. Channel activation remains credential-derived. |
 | `chatmodel` | string\|null | No | Canonical model slug for **chat replies** (e.g. `"openai/gpt-5.6-sol"`). Must be a **selectable** model, i.e. `tokenRates.models[<slug>].selectable === true`; an unknown / non-selectable slug is rejected with `invalid-model-selection`. Pass `null` or `""` to clear the override and fall back to the platform default. |
 | `cronmodel` | string\|null | No | Same rules as `chatmodel`, applied to **scheduled (cron) turns**. |
@@ -1404,7 +1404,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
 
 #### **POST** /UserAgent/Cover
 
-Uploads a new cover image for the agent instance via multipart. Mirrors the `/User/Avatar` pattern: accepts `jpg`, `png`, `gif`, `jpeg`, `webp`; converts to webp; uploads to S3; saves the resulting CDN URL as the agent's `cover`.
+Uploads a new cover image for the agent instance via multipart. Mirrors the `/User/Avatar` pattern: accepts `jpg`, `png`, `gif`, `jpeg`, `webp`; converts it to webp and saves its URL as the agent's `cover`.
 
 If you already have a hosted URL, use `POST /UserAgent/Update` with `cover: "<url>"` instead.
 
@@ -1533,7 +1533,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
 
 #### **POST** /UserAgent/CredentialFileUpload
 
-Multipart-upload sibling of `CredentialUpsert` for credential fields whose registry schema declares `type: "fileinput"`, typically large binary assets that don't fit comfortably in a JSON body (e.g. Twilio voice greeting MP3, custom hold music). The endpoint stores the blob under your account's MyUploads area, writes the resulting reference into the credential field the same way `CredentialUpsert` does, and triggers an automatic restart so the new URL flows into the daemon's `settings.json` on the next start.
+Multipart-upload sibling of `CredentialUpsert` for credential fields whose registry schema declares `type: "fileinput"`, typically large binary assets that don't fit comfortably in a JSON body (e.g. Twilio voice greeting MP3, custom hold music). The endpoint stores the blob under your account's MyUploads area, writes the resulting reference into the credential field the same way `CredentialUpsert` does, and restarts the agent so it uses the new file.
 
 Unlike `CredentialUpsert`, this endpoint expects `multipart/form-data`: pass the metadata as form fields and the blob in a `file` part.
 
@@ -1544,7 +1544,7 @@ Unlike `CredentialUpsert`, this endpoint expects `multipart/form-data`: pass the
 | `fieldname` | text | Yes | The exact `fieldname` whose registry `type` is `"fileinput"` (e.g. `holdaudio` or `holdmusic` on `twilio-voice`). |
 | `file` | file | Yes | The blob. Mimetype + size are validated against the registry's `filetypes[]` whitelist and `maxsize` (KB) cap. Default cap is 10 MB when the field omits `maxsize`. |
 
-> **`fileinput` vs `fileinput-base64`.** This endpoint is the storage path for the `fileinput` type only: the binary lives in S3 and the credential row stores a reference. The companion `fileinput-base64` type stays inline in the DB (encrypted at rest) and is written via the standard `CredentialUpsert` JSON `fields[]` array (e.g. `serviceaccountjson` on `google-drive`/`google-calendar`/`google-play`/`firebase`, `privatekey` on `apple-appstore`). Sending a base64 field through this endpoint returns `Field is not a fileinput type`.
+> **`fileinput` vs `fileinput-base64`.** This endpoint is the storage path for the `fileinput` type only: the file is stored by Wiro and the credential keeps a reference to it. The companion `fileinput-base64` type is stored with the credential (encrypted at rest) and is written via the standard `CredentialUpsert` JSON `fields[]` array (e.g. `serviceaccountjson` on `google-drive`/`google-calendar`/`google-play`/`firebase`, `privatekey` on `apple-appstore`). Sending a base64 field through this endpoint returns `Field is not a fileinput type`.
 
 ##### Request
 
@@ -1569,7 +1569,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialFileUpload" \
 }
 ```
 
-The `url` is the public, AES-keyed CDN URL the daemon will fetch at runtime. The credential row stores the raw `<path>/<name>` reference under the hood and recomposes the URL on every read, so the field stays valid across CDN domain rotation and AES key rotation.
+The `url` is the public URL of the stored file, which the agent uses at runtime. Read the field again to get its current URL.
 
 ##### Common errors
 
@@ -1634,7 +1634,7 @@ Version history is migrated under the new key so the full audit chain stays cont
 | `newskillkey` | string | Yes | The new skill key. The server canonicalises bare slugs using the flavour of `oldskillkey`: if old is `cs-cron-*` the new slug lands on `cs-cron-*`; otherwise `cs-*`. |
 | `description` | string | No | New description. Omit to leave unchanged; pass an empty string to clear. |
 
-> **Restart.** The renamed key surfaces in the container's settings.json, so the useragent is auto-restarted on success (same behaviour as `CustomSkillUpsert` functional edits).
+> **Restart.** The agent restarts on success so it uses the renamed key (same behaviour as `CustomSkillUpsert` functional edits).
 
 ##### Request
 
@@ -1855,7 +1855,7 @@ Reverts a custom skill to either (a) the agent template's preset default or (b) 
 Returns the per-field write history for one credential group on a useragent. Sensitive values are redacted at read time as a belt-and-suspenders guard:
 - `oauth_session` fields (access / refresh tokens) **never** appear in history at all. They're stripped before persisting.
 - `clientsecret` and similar `oauth_app` secret fields are stored as `[REDACTED]` in history rows (the live value stays server-side, and `UserAgent/Detail` doesn't return it either).
-- The platform-managed `sys-openai` credential short-circuits to an empty `entries[]` (no user-facing history to show).
+- Wiro-managed credentials return an empty `entries[]`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -2210,7 +2210,7 @@ Delete is safe to repeat: calling it again on an agent that's already deleted re
 
 #### **POST** /UserAgent/Logs
 
-Live activity feed for a useragent: what the agent did, when, and (post-rollout) which user triggered it. The daemon writes one JSONL row per skill invocation / cron tick / user message into the worker's per-day activity file; this endpoint tails the latest N rows for a given date and decorates each event with the resolved actor.
+Live activity feed for a useragent: what the agent did, when, and which user triggered it. The agent records one event per skill invocation, scheduled task and user message, grouped by day; this endpoint returns the latest N events for a given date, each with the user who triggered it.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -2298,7 +2298,7 @@ Calls are rate-limited via a 30-second server-side cache keyed on `(useragentgui
 | `events[]` | array | One row per activity entry, **newest first** (descending by `ts`), so `events[0]` is the most recent event. Do not re-reverse for display. |
 | `events[].ts` | string | ISO-8601 UTC datetime when the event was emitted (e.g. `"2026-05-03T14:00:01.000Z"`). Parse with `Date.parse(ts)` for arithmetic. |
 | `events[].kind` | string | Fine-grained event class. One of: `"turn_started"`, `"turn_ended"` (an LLM turn boundary); `"tool_started"`, `"tool_completed"` (one pair per tool call); `"tool_blocked"` (a tool call the agent's safety rules refused); `"cron_finished"` (a scheduled task finished); `"user_message"` (a message received on a connected Telegram, Slack or Discord channel, not web chat); `"token_usage"` (a billed turn's token usage: chat / cron / voice post-call); `"token_usage_idempotent"` (a replayed usage report, already billed, informational only); `"media_relay"` (files from a reply were delivered); `"background_reply"` (a result that finished in the background was delivered to the chat). |
-| `events[].tool` | string \| null | Present on `tool_started` / `tool_completed` / `tool_blocked`. The tool's name, e.g. `"exec"`, `"read"`, `"write"`, `"edit"`, `"web_fetch"`, `"browser"`, `"image"`, `"sessions_spawn"`, `"message"`. |
+| `events[].tool` | string \| null | Present on `tool_started` / `tool_completed` / `tool_blocked`. The name of the tool the agent used. |
 | `events[].title` | string | Human-readable one-line description (always present). |
 | `events[].summary` | object \| null | Structured event-specific payload. Treat as opaque and render as JSON when expanding. Secret values (`apikey`, `apppassword`, `clientsecret`, `bearer`, `token`, …) are masked before the event is written. Keys vary per `kind`/`tool`. |
 | `events[].durationMs` | number \| null | Wall-clock duration in milliseconds. Populated on `tool_completed`, `turn_ended`, `cron_finished` and `token_usage` events. |
@@ -2556,7 +2556,7 @@ Starts a browser-embedded realtime voice session with the agent. Returns two opa
 }
 ```
 
-- **Auth**: same Bearer / API key path as every other `UserAgent/*` endpoint. Bearer requests additionally enforce an Origin allow-list (`https://wiro.ai`, `https://www.wiro.ai`, plus `http://localhost:*` in non-production); API-key requests skip the Origin check.
+- **Auth**: same Bearer / API key path as every other `UserAgent/*` endpoint. Bearer requests must come from wiro.ai; API-key requests have no Origin check.
 - **Rate limit**: fixed 60 sessions/hour per operator (the operator identity is hashed and never logged raw). Fast-fail sessions are decremented back from the counter.
 - **Full WebSocket protocol, control frames, and JS snippet** are in [Web Voice](/docs/integration-webvoice-skills).
 
@@ -2592,7 +2592,7 @@ Cancels a `WebStart`-initiated session **before the WebSocket handshake**. Use i
 | 401 | `invalid token` (unknown, already used or expired handle) |
 | 403 | `access denied` (the handle was issued to another user) |
 
-> Without this call, the server-side agent prep `WebStart` kicked off lingers for ~5 minutes (the fallback cleanup guard) before being released. Calling `Cancel` immediately frees the prep state and releases the held realtime session slot.
+> Without this call, the session is released after about 5 minutes. Calling `Cancel` releases it right away.
 
 #### **POST** /UserAgent/TwilioCallHistory/List
 
@@ -2649,7 +2649,7 @@ Returns the last N realtime voice sessions for a useragent, covering **both Twil
 | `channel` | `"twilio"` \| `"web"` | Which voice surface served the call. |
 | `callsid` | string | Twilio Call SID for `channel: "twilio"`; the internal session id (`voice-call-*`) for `channel: "web"`. |
 | `callerInfo` | object | Twilio rows: `{ number, country }` (E.164 + ISO-2). Web rows: `{ page_url, display_identifier? }`, where `display_identifier` is only present when the embedding page validated a phone-style identifier; `page_url` is the page hosting the widget. |
-| `callerProfile` | string \| null | Free-text persona summary written by the prep step (`prepSummary`). `null` when the bridge hasn't finished prep yet. |
+| `callerProfile` | string \| null | Free-text summary of the caller that the agent writes before the call. `null` until it is ready. |
 | `status` | string | `realtime_session_incoming` (call accepted, prep in flight) → `realtime_session_active` (audio flowing) → `realtime_session` (completed normally) or `realtime_session_rejected` (rejected before active state, with `metadata.reason`). |
 | `endReason` | string \| null | Set on `realtime_session` rows only. One of: `wiro_completed`, `wiro_cancelled`, `wiro_disconnect`, `wiro_error`, `twilio_disconnect`, `browser_disconnect`, `max_duration`. `null` while the call is still in flight or rejected. |
 | `durationSeconds` | number \| null | Total elapsed seconds. `null` until end. |
@@ -2768,7 +2768,7 @@ Upgrades the active subscription from **Starter → Pro**. The capability surfac
 
 **Headers:** No extra header is needed. For team agents, use an API key from a project in the agent's team. Keys from another workspace are rejected.
 
-API-deployed agents always upgrade through the prepaid path. The endpoint debits the prorated upgrade fee `Math.max(0, ((P_pro − P_starter) / totalDays) × remainingDays)` from your wallet synchronously, updates the subscription row + useragent snapshot to Pro pricing / credits inline, and restarts the daemon to refresh `settings.json`. Existing extra credits and `usedcredits` are preserved.
+API-deployed agents always upgrade through the prepaid path. The endpoint debits the prorated upgrade fee `Math.max(0, ((P_pro − P_starter) / totalDays) × remainingDays)` from your wallet synchronously, moves the subscription to Pro pricing and credits right away, and restarts the agent. Existing extra credits and `usedcredits` are preserved.
 
 ##### Response
 
@@ -2835,7 +2835,7 @@ Called after the subscription has expired (daily cron flipped it to `status: "ex
 - Renews the subscription in place: `status` becomes `"active"`, a new 30-day period starts now (`currentperiodend` moves to now + 30 days), and `pendingdowngrade` is cleared to `null`.
 - Debits `amount` (the snapshot `monthlypriceusd`) from the wallet (caller's personal wallet, or the agent's team wallet if the agent is team-scoped).
 - Zeroes `usedcredits` and stamps the new `creditperiod`. Existing extra credits are preserved.
-- If the agent was in `status: 0` (Stopped) or `5` (Error), it's auto-queued back to `2` (Queued). The daemon picks it up on the next cycle, with no extra `Start` call needed. Statuses `1`/`2`/`3`/`4` are mid-flight and the daemon settles them on its own.
+- If the agent was in `status: 0` (Stopped) or `5` (Error), it's auto-queued back to `2` (Queued). It starts again without an extra `Start` call. Statuses `1`/`2`/`3`/`4` are already in progress and settle on their own.
 - A card checkout still open for the agent (for example, one started in the Wiro panel) is closed before the wallet is charged, so the agent is never paid for twice.
 
 **Common errors:**
