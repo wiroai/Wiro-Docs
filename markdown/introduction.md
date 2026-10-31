@@ -11,6 +11,8 @@ Wiro is an AI model marketplace and API platform that lets you run **AI models**
 - **Real-time WebSocket updates**: stream task progress and outputs live
 - **9 SDK languages**: curl, Python, Node.js, PHP, C#, Swift, Dart, Kotlin, Go
 - **AI Agents**: deploy and manage autonomous AI agents that connect to third-party services, maintain conversation memory, and automate workflows via API
+- **Workflows**: chain models into saved workflows and run them with new inputs through the API, or design them by chat with the [Workflow Agent](/docs/workflow-agent)
+- **Studio**: ask [Studio](/docs/studio), Wiro's creative agent, for images, video and audio; it picks and runs the models for you
 
 ## Base URL
 

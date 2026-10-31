@@ -516,6 +516,8 @@
                       <li><strong>Real-time WebSocket updates</strong>: stream task progress and outputs live</li>
                       <li><strong>9 SDK languages</strong>: curl, Python, Node.js, PHP, C#, Swift, Dart, Kotlin, Go</li>
                       <li><strong>AI Agents</strong>: deploy and manage autonomous AI agents that connect to third-party services, maintain conversation memory, and automate workflows via API</li>
+                      <li><strong>Workflows</strong>: chain models into saved workflows and run them with new inputs through the API, or design them by chat with the <a href="/docs/workflow-agent">Workflow Agent</a></li>
+                      <li><strong>Studio</strong>: ask <a href="/docs/studio">Studio</a>, Wiro's creative agent, for images, video and audio; it picks and runs the models for you</li>
                     </ul>
                   </section>
 
@@ -9954,6 +9956,2411 @@ import type {
                     </div>
                   </section>
                 </article>
+              </div>
+
+              <!-- ==================== WORKFLOWS ==================== -->
+              <div class="docs-page-section" data-page="workflows" style="display: none">
+                <article class="docs-section">
+                  <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="/docs/markdown/workflows.md" target="_blank" class="docs-section-md-btn">View</a> <a href="/docs/markdown/workflows.md" download class="docs-section-md-btn">Download</a></div>
+<h1>Workflows</h1>
+<p class="section-subtitle">Chain models and built-in steps into one graph, save it, and run it again with new inputs.</p>
+<h2 id="overview">Overview</h2>
+<p>A workflow is a saved chain of steps. Each step runs one Wiro model or one built-in utility. The Start node holds the inputs people fill in, and the End node lists the results. A saved workflow runs each time someone starts it, on <a href="https://wiro.ai/workflows">wiro.ai/workflows</a> or through the API.</p>
+<p>The <code>/Workflow/*</code> endpoints list and read workflows, save new ones from a graph, edit, clone and delete them, run them and follow their runs. To design a workflow in plain language, use the <a href="/docs/workflow-agent">Workflow Agent</a>. The <a href="/docs/wiro-mcp-server">Wiro MCP Server</a> offers these endpoints as tools for AI assistants.</p>
+<h3 id="authentication">Authentication</h3>
+<p>Every <code>/Workflow/*</code> route on this page takes a project API key: <code>x-api-key</code>, plus <code>x-nonce</code> and <code>x-signature</code> for a project that uses signature authentication (see <a href="/docs/authentication">Authentication</a>). A key acts as the person who created its project, in that project's workspace.</p>
+<h3 id="workspaces-and-the-gallery">Workspaces and the gallery</h3>
+<ul>
+<li>A workflow belongs to the workspace it was created in: personal, or a team. Another workspace cannot read, run or change it, unless it is published in the public gallery: anyone can read and run a published workflow.</li>
+<li>A <strong>protected</strong> workflow hides its steps from people outside its owner's workspace. They can still see its inputs and outputs and run it.</li>
+<li>Workflows saved through the API are private. Publishing to the gallery happens on wiro.ai, and a published workflow goes through review again after its title, description, tags or steps change.</li>
+</ul>
+<h3 id="slugs">Slugs</h3>
+<p>A workflow is named by its full slug: its <code>slug</code>, a dash and its 5-character <code>slugid</code>, such as <code>product-shots-a1B2c</code>. Every endpoint that takes a workflow takes the full slug as <code>slug</code>. The workflow's page is <code>https://wiro.ai/workflows/&lt;full slug&gt;</code>.</p>
+<h2 id="the-workflow-graph">The Workflow Graph</h2>
+<p>A workflow's definition is one JSON object, its <code>contents</code>. It holds the steps, the Start fields people fill in and the End node that lists the results. Before you save a graph you wrote yourself, prepare it with <a href="#post-workflowprepare">Workflow/Prepare</a>: it checks the graph against the live model catalog and fills in what the Wiro editor would.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>version</code></td>
+<td>string</td>
+<td>Always <code>"1"</code>.</td>
+</tr>
+<tr>
+<td><code>nodes</code></td>
+<td>object</td>
+<td>The steps, keyed by step id, plus the End node under the key <code>output</code>. The Start node is not in <code>nodes</code>.</td>
+</tr>
+<tr>
+<td><code>schema.input</code></td>
+<td>object</td>
+<td>The Start fields, keyed by the input names a run takes.</td>
+</tr>
+<tr>
+<td><code>schema.output</code></td>
+<td>object</td>
+<td>Always <code>{}</code>.</td>
+</tr>
+<tr>
+<td><code>output</code></td>
+<td>object</td>
+<td>A copy of the End node's <code>fields</code>.</td>
+</tr>
+<tr>
+<td><code>metadata.input.position</code></td>
+<td>object</td>
+<td>Where the Start node sits on the canvas, such as <code>{ "x": 0, "y": 0 }</code>.</td>
+</tr>
+<tr>
+<td><code>metadata.input.values</code></td>
+<td>object</td>
+<td>Optional saved values for the Start fields. A run uses them for the fields it leaves out.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p><a href="#post-workflowprepare">Workflow/Prepare</a> accepts a graph of at most 40 KB of JSON (40,960 bytes), and counts it again after it fills each step's defaults.</p>
+<h3 id="steps">Steps</h3>
+<p>Each step is <code>"node-&lt;id&gt;": { "id", "type", "tool", "depends", "input", "metadata" }</code>.</p>
+<ul>
+<li>The key is <code>node-</code> followed by 1 to 64 letters, digits, <code>-</code> or <code>_</code>. <code>id</code> repeats the key exactly, and <code>type</code> is <code>"run"</code>.</li>
+<li><code>tool</code> is a model slug (<code>owner/model</code>) or a built-in utility: <code>workflow-utilities/output-filter</code>, <code>workflow-utilities/merge-text</code> or <code>workflow-utilities/split-text</code>.</li>
+<li><code>input</code> maps the tool's parameter ids, from <a href="/docs/models">Tool/Detail</a>, to values: fixed values, or references to Start fields and earlier steps.</li>
+<li><code>depends</code> lists every source the step reads: <code>"input"</code> when it uses a Start field, and the id of each step it references. No duplicates, never the step itself, never <code>"output"</code>.</li>
+<li><code>metadata.position</code> is <code>{ "x": number, "y": number }</code> and only places the step on the canvas.</li>
+</ul>
+<h3 id="start-fields">Start fields</h3>
+<p>Each key in <code>schema.input</code> is that input's name at run time. Give each field <code>label</code>, <code>type</code>, <code>defaultValue</code> and <code>ui</code> (an object); <a href="#post-workflowprepare">Workflow/Prepare</a> fills in the rest the way the editor does. wiro.ai titles each field with its key in the run form, so use a short readable key such as <code>product_photo</code>.</p>
+<ul>
+<li><strong>Text:</strong> <code>"type": "string"</code> with <code>"ui": { "field": "textarea" }</code>.</li>
+<li><strong>Choice list:</strong> <code>"type": "string"</code> with <code>"ui": { "field": "select", "options": [{ "value": "16:9", "text": "Wide" }] }</code>.</li>
+<li><strong>Number:</strong> <code>"type": "number"</code> (whole) or <code>"float"</code> (decimal). <strong>Yes or no:</strong> <code>"type": "boolean"</code>. Both with <code>"ui": {}</code>.</li>
+<li><strong>File:</strong> <code>"type": "string"</code> with <code>"ui": { "field": "image" }</code>, or <code>"audio"</code>, <code>"video"</code> or <code>"pdf"</code>. The value is a public URL.</li>
+</ul>
+<p>A Start field that a step uses and that has no default must get a value when the workflow runs.</p>
+<h3 id="references">References</h3>
+<ul>
+<li><code>$input.&lt;key&gt;</code> is the value of a Start field.</li>
+<li><code>$node-&lt;id&gt;.outputs</code> is everything a model step produced: its files, or an LLM step's reply.</li>
+<li><code>$node-&lt;id&gt;.result</code> is the result of <code>output-filter</code> or <code>merge-text</code>. <code>$node-&lt;id&gt;.text1</code> to <code>.textN</code> are the parts produced by <code>split-text</code>.</li>
+</ul>
+<p>A reference must be the whole string value, or one whole item of an array. It is never filled in inside longer text, and a fixed value that starts with <code>$</code> is read as a reference. To put a Start field or an LLM answer inside a prompt, join the parts with <code>merge-text</code>, such as <code>"texts": ["Write a caption for:", "$input.name"]</code>, and reference its <code>result</code>.</p>
+<p>When a model step's outputs feed another model, a single file parameter takes the first file, a combined file parameter (<code>combinefileinput</code>) takes all of the files, and a text parameter takes the first file URL or the LLM's answer.</p>
+<h3 id="the-end-node">The End node</h3>
+<p>It is <code>"output": { "id": "output", "type": "display", "depends", "input": {}, "fields", "metadata" }</code>.</p>
+<ul>
+<li><code>fields</code> maps each result name to one reference. Give each result its own source.</li>
+<li><code>depends</code> lists the steps the fields read from. It cannot be empty: a workflow with nothing wired to its End node cannot run.</li>
+<li>The top-level <code>output</code> must equal <code>fields</code>. Steps that do not lead to the End node never run.</li>
+</ul>
+<h3 id="built-in-utilities">Built-in utilities</h3>
+<p>Utilities are free and finish at once. <a href="#post-workflowutilitydetail">Workflow/UtilityDetail</a> returns their parameters and output ports.</p>
+<ul>
+<li><strong><code>output-filter</code></strong> picks items from a model step. Its <code>outputs</code> parameter must be a <code>$node-&lt;id&gt;.outputs</code> reference. With <code>mode</code> <code>"file"</code> it keeps the files that match <code>contenttype</code> (such as <code>"image"</code>, <code>"audio/*"</code> or <code>"mp3"</code>) and <code>name</code>, up to <code>count</code> items (default 1). With <code>mode</code> <code>"llm"</code> it takes <code>field</code> (<code>"answer"</code>, <code>"thinking"</code>, <code>"raw"</code> or <code>"prompt"</code>) from an LLM step. Port: <code>result</code>.</li>
+<li><strong><code>merge-text</code></strong> joins <code>texts</code> (an array of references or fixed strings) with <code>separator</code> (default a space), skipping empty items unless <code>skipEmpty</code> is <code>false</code>. Port: <code>result</code>.</li>
+<li><strong><code>split-text</code></strong> splits <code>text</code> by <code>separator</code> (default a new line) into <code>count</code> parts, 2 to 10 (default 5). <code>count</code> must be a fixed value. Ports: <code>text1</code> to <code>textN</code>.</li>
+</ul>
+<p>Other operations, such as joining videos or adding a voice track to a video, are ordinary models in the catalog.</p>
+<h3 id="model-steps">Model steps</h3>
+<ul>
+<li>Use only parameter ids from the model's <a href="/docs/models">Tool/Detail</a>.</li>
+<li>Set every parameter you care about. A parameter you leave out takes the model's default from <a href="/docs/models">Tool/Detail</a>. To leave a file parameter empty, set it to <code>[]</code>, or <code>""</code> for a single file.</li>
+<li>A single file parameter takes one URL string. A combined file parameter (<code>combinefileinput</code>) takes an array, even for one file. A multi-file parameter (<code>multifileinput</code>) takes its URLs comma-separated in its matching <code>...UrlMultiple</code> field.</li>
+<li>Take each value, such as a duration, a size or an option, from the model's schema in <a href="/docs/models">Tool/Detail</a>.</li>
+<li>Training models cannot be used in workflows.</li>
+</ul>
+<h3 id="a-minimal-workflow">A minimal workflow</h3>
+<p>One text input, one image model and one result. Replace <code>owner/model</code> with a real model and <code>prompt</code> with that model's text parameter id.</p>
+<pre><code class="language-json">{
+  &quot;version&quot;: &quot;1&quot;,
+  &quot;nodes&quot;: {
+    &quot;node-image&quot;: {
+      &quot;id&quot;: &quot;node-image&quot;, &quot;type&quot;: &quot;run&quot;, &quot;tool&quot;: &quot;owner/model&quot;, &quot;depends&quot;: [&quot;input&quot;],
+      &quot;input&quot;: { &quot;prompt&quot;: &quot;$input.prompt&quot; },
+      &quot;metadata&quot;: { &quot;position&quot;: { &quot;x&quot;: 350, &quot;y&quot;: 0 } }
+    },
+    &quot;output&quot;: {
+      &quot;id&quot;: &quot;output&quot;, &quot;type&quot;: &quot;display&quot;, &quot;depends&quot;: [&quot;node-image&quot;], &quot;input&quot;: {},
+      &quot;fields&quot;: { &quot;image&quot;: &quot;$node-image.outputs&quot; },
+      &quot;metadata&quot;: { &quot;position&quot;: { &quot;x&quot;: 700, &quot;y&quot;: 0 } }
+    }
+  },
+  &quot;output&quot;: { &quot;image&quot;: &quot;$node-image.outputs&quot; },
+  &quot;schema&quot;: {
+    &quot;input&quot;: {
+      &quot;prompt&quot;: { &quot;label&quot;: &quot;Prompt&quot;, &quot;type&quot;: &quot;string&quot;, &quot;defaultValue&quot;: &quot;&quot;, &quot;ui&quot;: { &quot;field&quot;: &quot;textarea&quot; } }
+    },
+    &quot;output&quot;: {}
+  },
+  &quot;metadata&quot;: { &quot;input&quot;: { &quot;position&quot;: { &quot;x&quot;: 0, &quot;y&quot;: 0 } } }
+}
+</code></pre>
+<p>To turn that image into a video, add a second model step that reads the first step's file and a <code>motion</code> Start field:</p>
+<pre><code class="language-json">&quot;node-video&quot;: {
+  &quot;id&quot;: &quot;node-video&quot;, &quot;type&quot;: &quot;run&quot;, &quot;tool&quot;: &quot;owner/video-model&quot;,
+  &quot;depends&quot;: [&quot;input&quot;, &quot;node-image&quot;],
+  &quot;input&quot;: { &quot;inputImage&quot;: &quot;$node-image.outputs&quot;, &quot;prompt&quot;: &quot;$input.motion&quot; },
+  &quot;metadata&quot;: { &quot;position&quot;: { &quot;x&quot;: 700, &quot;y&quot;: 0 } }
+}
+</code></pre>
+<p>Then set the End node's <code>"depends": ["node-video"]</code> and <code>"fields": { "video": "$node-video.outputs" }</code>, copy those fields to the top-level <code>output</code>, and move the End node to <code>"x": 1050</code>. <code>inputImage</code> stands for the video model's image parameter: check its real id in the model's schema.</p>
+<h2 id="how-a-run-works">How a Run Works</h2>
+<p><a href="#post-workflowrun">Workflow/Run</a> answers at once with a run token, the <code>workflowtoken</code>; the steps run after that. Read the run with <a href="#post-workflowrundetail">Workflow/RunDetail</a> until its <code>status</code> is final.</p>
+<ul>
+<li>Only the steps that lead to the End node run. Steps run in layers: a step that depends on no other step is in the first layer, and any other step is one layer after the latest of the steps it depends on. The steps of a layer start together, and the next layer starts once every step of the current one has finished.</li>
+<li>When a step fails, every step in a later layer is skipped, on every branch, and the run ends as <code>failed</code>.</li>
+<li>Check the expected cost (see <a href="#costs">Costs</a>) before you start a run.</li>
+<li>The run belongs to the caller's workspace and is paid from that workspace's wallet, also when the workflow is a public one from another workspace.</li>
+</ul>
+<h3 id="run-statuses">Run statuses</h3>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Status</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>running</code></td>
+<td>Steps are queued or running.</td>
+</tr>
+<tr>
+<td><code>completed</code></td>
+<td>Every step finished. The End node's fields hold the results.</td>
+</tr>
+<tr>
+<td><code>failed</code></td>
+<td>A step failed, and the steps after it were skipped.</td>
+</tr>
+<tr>
+<td><code>stopped</code></td>
+<td>The run reached its breakpoint. Continue it with <a href="#post-workflowrunresume">RunResume</a>.</td>
+</tr>
+<tr>
+<td><code>cancelled</code></td>
+<td>One of the run's steps was cancelled.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>A step is <code>pending</code>, <code>running</code>, <code>completed</code>, <code>failed</code>, <code>cancelled</code> or <code>aborted</code> (skipped because an earlier step failed). A failed step's <code>cause</code> is <code>tool-error</code> (the model refused its inputs or the task failed; <code>error</code> says why), <code>poll-timeout</code> (the step ran past 4 hours and was not charged), or another short code.</p>
+<h3 id="breakpoints">Breakpoints</h3>
+<p>To test the first steps, start the run with <code>breakpointNodeId</code>. The run executes every layer up to and including the one that holds that step, then ends as <code>stopped</code>, and the steps after it stay <code>pending</code>. The breakpoint must be a step the run executes and cannot be in the last layer. Only people who can edit the workflow can set one. Check the outputs, then continue with <a href="#post-workflowrunresume">RunResume</a>, to the end or to a later breakpoint.</p>
+<h3 id="resuming">Resuming</h3>
+<p><a href="#post-workflowrunresume">RunResume</a> continues a <code>failed</code> or <code>stopped</code> run on the same <code>workflowtoken</code>. Completed steps keep their outputs and are not charged again. Failed, skipped and not yet run steps run again as new tasks, billed to the wallet that paid for the run.</p>
+<p>A resume runs the remaining steps exactly as the run started them, with the same inputs and settings: changes saved to the workflow since then apply to new runs only. So resume after a temporary failure, such as a timeout or a model that asked to try again later. An error about a parameter value, a file or a limit such as duration or size comes from the inputs or the settings: fix them and start a new run.</p>
+<h2 id="costs">Costs</h2>
+<ul>
+<li>Saving, reading, preparing, cloning and deleting workflows is free.</li>
+<li>Nothing is charged when a run starts. Each model step is a normal <a href="/docs/run-a-model">model task</a>, billed when it finishes successfully at that model's price. Failed steps are not charged, and utility steps are free.</li>
+<li>To start, the wallet must hold $0.50 for each model step the run will execute (up to the breakpoint, when one is set). Otherwise the run is refused with code <code>97</code>, <code>Insufficient balance</code>. The <a href="/docs/concurrency-limits">concurrency limit</a> also applies (code <code>96</code>).</li>
+<li>The expected cost of a run is the sum of the model prices for the settings each step uses, from <a href="/docs/models">Tool/Detail</a>. A run's <code>totalcost</code> shows the list price of the steps finished so far, and once the run has ended <code>chargedcost</code> and <code>discountamount</code> show what the wallet paid. <code>chargedcost</code> is <code>null</code> while a step's charge is still settling.</li>
+<li>In a team workspace, the team's spend limits and model access rules apply when a run starts.</li>
+</ul>
+<h2 id="post-workflowlist"><strong>POST</strong> /Workflow/List</h2>
+<p>Lists the workflows of the key's workspace, or searches the public gallery.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>scope</code></td>
+<td>string</td>
+<td>No</td>
+<td><code>"my"</code> (default) for the key's workspace, <code>"public"</code> for the public gallery.</td>
+</tr>
+<tr>
+<td><code>search</code></td>
+<td>string</td>
+<td>No</td>
+<td>Text to look for in the slug, title, description or tags.</td>
+</tr>
+<tr>
+<td><code>sort</code></td>
+<td>string</td>
+<td>No</td>
+<td><code>my</code>: <code>createtime</code> (default), <code>updatetime</code> or <code>title</code>. <code>public</code>: <code>createtime</code> (default), <code>runcount</code>, <code>likecount</code>, <code>clonecount</code> or <code>ratingscore</code>.</td>
+</tr>
+<tr>
+<td><code>order</code></td>
+<td>string</td>
+<td>No</td>
+<td><code>DESC</code> (default) or <code>ASC</code>.</td>
+</tr>
+<tr>
+<td><code>start</code></td>
+<td>number</td>
+<td>No</td>
+<td>Offset for paging. Default <code>0</code>.</td>
+</tr>
+<tr>
+<td><code>limit</code></td>
+<td>number</td>
+<td>No</td>
+<td>Rows per page. <code>my</code>: default <code>20</code>, maximum <code>1000</code>. <code>public</code>: default <code>50</code>, maximum <code>200</code>.</td>
+</tr>
+<tr>
+<td><code>ispublic</code></td>
+<td>string</td>
+<td>No</td>
+<td><code>my</code> only: <code>"0"</code> for private workflows, <code>"1"</code> for workflows submitted to the gallery.</td>
+</tr>
+<tr>
+<td><code>tags</code></td>
+<td>array</td>
+<td>No</td>
+<td><code>public</code> only: workflows with any of these tags, up to 20.</td>
+</tr>
+<tr>
+<td><code>model</code></td>
+<td>string</td>
+<td>No</td>
+<td><code>public</code> only: workflows that use this model, as <code>"owner/model"</code>.</td>
+</tr>
+<tr>
+<td><code>onlyfavorites</code></td>
+<td>string</td>
+<td>No</td>
+<td><code>public</code> only: <code>"1"</code> for the workflows you liked.</td>
+</tr>
+<tr>
+<td><code>toolpreview</code></td>
+<td>string</td>
+<td>No</td>
+<td><code>public</code> only: <code>"1"</code> adds <code>toolitems</code>, the models each workflow uses with their titles and covers.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>The response is <code>{ "result": true, "errors": [], "workflow": [...], "total": 1 }</code>. In your workspace (<code>my</code>), a personal key lists your own workflows and a team key lists every workflow of the team.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>The workflow's numeric id.</td>
+</tr>
+<tr>
+<td><code>slug</code>, <code>slugid</code></td>
+<td>The full slug is <code>&lt;slug&gt;-&lt;slugid&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>title</code>, <code>description</code>, <code>tags</code>, <code>cover</code></td>
+<td>The workflow's details.</td>
+</tr>
+<tr>
+<td><code>ispublic</code></td>
+<td><code>1</code> when the workflow was submitted to the gallery.</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td><code>null</code> when never published, <code>1</code> waiting for review, <code>2</code> listed in the gallery, <code>3</code> rejected.</td>
+</tr>
+<tr>
+<td><code>isprotected</code></td>
+<td><code>1</code> when the steps are hidden from people outside the owner's workspace.</td>
+</tr>
+<tr>
+<td><code>clonedfromid</code></td>
+<td>On a clone, the id of the workflow it was copied from.</td>
+</tr>
+<tr>
+<td><code>stepcount</code>, <code>toolcount</code>, <code>utilitycount</code></td>
+<td>The number of steps, model steps and utility steps.</td>
+</tr>
+<tr>
+<td><code>teamname</code></td>
+<td>The team the workflow belongs to, if any.</td>
+</tr>
+<tr>
+<td><code>runcount</code>, <code>likecount</code>, <code>clonecount</code>, <code>ratingaverage</code>, <code>ratingcount</code>, <code>commentcount</code></td>
+<td>Gallery counters. <code>runcount</code> counts runs while the workflow is listed.</td>
+</tr>
+<tr>
+<td><code>createtime</code>, <code>updatetime</code></td>
+<td>Unix seconds. Pass <code>updatetime</code> to <a href="#post-workflowupdate">Update</a> as <code>loadedUpdatetime</code>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Gallery rows (<code>public</code>) also carry <code>tools</code> (the models the workflow uses; <code>null</code> on a protected workflow) and <code>user</code> (<code>username</code>, <code>avatar</code>) for the creator.</p>
+<h3 id="response">Response</h3>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;workflow&quot;: [
+    {
+      &quot;id&quot;: 1842,
+      &quot;slug&quot;: &quot;product-ad&quot;,
+      &quot;slugid&quot;: &quot;a1B2c&quot;,
+      &quot;title&quot;: &quot;Product ad&quot;,
+      &quot;description&quot;: &quot;Turns a product photo into a short ad video&quot;,
+      &quot;tags&quot;: [&quot;ads&quot;, &quot;video&quot;],
+      &quot;cover&quot;: null,
+      &quot;ispublic&quot;: 0,
+      &quot;status&quot;: null,
+      &quot;isprotected&quot;: 0,
+      &quot;clonedfromid&quot;: null,
+      &quot;stepcount&quot;: 2,
+      &quot;toolcount&quot;: 2,
+      &quot;utilitycount&quot;: 0,
+      &quot;teamname&quot;: null,
+      &quot;runcount&quot;: 0,
+      &quot;likecount&quot;: 0,
+      &quot;clonecount&quot;: 0,
+      &quot;ratingaverage&quot;: null,
+      &quot;ratingcount&quot;: 0,
+      &quot;commentcount&quot;: 0,
+      &quot;createtime&quot;: &quot;1761901200&quot;,
+      &quot;updatetime&quot;: &quot;1761901200&quot;
+    }
+  ],
+  &quot;total&quot;: 1
+}
+</code></pre>
+<h2 id="post-workflowdetail"><strong>POST</strong> /Workflow/Detail</h2>
+<p>Returns one workflow with its graph.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>slug</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>The full slug, such as <code>product-ad-a1B2c</code>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>The response is <code>{ "result": true, "errors": [], "workflow": [ { ... } ] }</code>: the fields of List plus <code>contents</code>, the graph as an object (see <a href="#the-workflow-graph">The Workflow Graph</a>). Its <code>schema.input</code> lists the inputs a run takes, and <code>metadata.input.values</code> the saved values.</p>
+<ul>
+<li>A workflow from your workspace, or one published in the gallery, can be read. A private workflow of another workspace answers <code>This workflow does not belong to your current workspace.</code> or <code>You don't have any permission for this action.</code>, and a clone can only be read by its owner's workspace.</li>
+<li>A protected workflow read from outside its owner's workspace comes back with its steps removed: <code>contents</code> keeps only the Start fields and the End node, and <code>estimatedcost</code> gives an estimate of one run, <code>{ "type": "estimated", "value": 0.42 }</code> (<code>"unavailable"</code> with <code>value: null</code> when it cannot be estimated).</li>
+<li><code>rejectreason</code> is present only for the workflow's own workspace: on a rejected workflow it says why.</li>
+<li>A deleted or unknown workflow answers <code>Workflow not found</code>.</li>
+</ul>
+<p>Saved Start values are part of the workflow: everyone who can read it sees them, the gallery too once it is published, and clones keep them. Never save a key, token or password there. Model steps are billed to the Wiro wallet and need no key from the model's provider.</p>
+<h2 id="post-workflowprepare"><strong>POST</strong> /Workflow/Prepare</h2>
+<p>Prepares a graph you wrote for saving, the way the Wiro editor does: it checks every step against the live model catalog, fills each model parameter you left out with its default, completes the Start fields and the End node, and lays the steps out. It writes and charges nothing. Prepare the graph, then save the prepared <code>contents</code> with <a href="#post-workflowadd">Add</a> or <a href="#post-workflowupdate">Update</a>.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>contents</code></td>
+<td>object</td>
+<td>Yes</td>
+<td>The graph, as an object or a JSON string.</td>
+</tr>
+<tr>
+<td><code>mode</code></td>
+<td>string</td>
+<td>No</td>
+<td><code>"create"</code> (default) lays every step out again, for a new workflow. <code>"apply"</code> keeps the positions you sent, for a change to an existing workflow; every step then needs a numeric position.</td>
+</tr>
+<tr>
+<td><code>anchorNodeIds</code></td>
+<td>array</td>
+<td>No</td>
+<td><code>apply</code> only: step ids (<code>"input"</code> for Start, <code>"output"</code> for End) that keep their exact positions; the other steps move down until nothing overlaps.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>On success, <code>contents</code> is the prepared graph. On failure, <code>result</code> is <code>false</code> and <code>issues</code> lists every problem at once, each <code>{ code, message, nodeId, input }</code>: <code>nodeId</code> is the step (<code>"input"</code> for a Start field, <code>"output"</code> for an End field) and <code>input</code> the parameter or field. <code>warnings</code> can come back either way; <code>required-input-missing</code> means a Start field a step uses has no default, so every run must send a value for it.</p>
+<pre><code class="language-json">{
+  &quot;result&quot;: false,
+  &quot;errors&quot;: [{ &quot;code&quot;: 0, &quot;message&quot;: &quot;...&quot;, &quot;time&quot;: 1761901200 }],
+  &quot;issues&quot;: [
+    { &quot;code&quot;: &quot;unknown-input&quot;, &quot;message&quot;: &quot;...&quot;, &quot;nodeId&quot;: &quot;node-image&quot;, &quot;input&quot;: &quot;promt&quot; },
+    { &quot;code&quot;: &quot;contents-too-large&quot;, &quot;message&quot;: &quot;Workflow JSON exceeds the 40960-byte limit.&quot;, &quot;bytes&quot;: 52114, &quot;limit&quot;: 40960 }
+  ],
+  &quot;warnings&quot;: []
+}
+</code></pre>
+<p>Common issue codes: <code>tool-not-found</code> and <code>tool-not-marketplace</code> (the model does not exist or is not public), <code>unknown-input</code> (a parameter id the model does not have), <code>unknown-input-reference</code>, <code>unknown-node-reference</code> and <code>reference-missing-dependency</code> (a reference to a missing Start field or step, or one not listed in <code>depends</code>), <code>embedded-workflow-reference</code> (a reference inside longer text), <code>file-input-not-array</code> and <code>single-file-only</code> (one file where an array is needed, or the reverse), <code>request-parameter-required</code> (a required model parameter has no value), <code>param-out-of-bounds</code>, <code>cycle-detected</code>, <code>workflow-has-no-reachable-nodes</code>, <code>duplicate-end-reference</code>, and <code>contents-too-large</code> or <code>prepared-contents-too-large</code> with <code>bytes</code> and <code>limit</code>.</p>
+<p>Prepare fills every model parameter you leave out with the model's default: compare the prepared step inputs with what you sent, and set or empty the ones you did not mean to keep.</p>
+<h2 id="post-workflowadd"><strong>POST</strong> /Workflow/Add</h2>
+<p>Saves a new, private workflow in the key's workspace.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>title</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>The workflow's title. If the workspace already has a workflow with this title, a number is added, such as <code>Product ad-2</code>.</td>
+</tr>
+<tr>
+<td><code>slug</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>The title part of the slug: lowercase letters, digits and dashes, such as <code>product-ad</code>. Wiro adds the 5-character <code>slugid</code>.</td>
+</tr>
+<tr>
+<td><code>contents</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>The prepared graph as a JSON string.</td>
+</tr>
+<tr>
+<td><code>description</code></td>
+<td>string</td>
+<td>No</td>
+<td>What the workflow does and what people should put in its inputs.</td>
+</tr>
+<tr>
+<td><code>tags</code></td>
+<td>string</td>
+<td>No</td>
+<td>A JSON string of an array of tags, such as <code>"[\"ads\",\"video\"]"</code>. Tags that start with <code>wiro-</code> are reserved.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>The response is <code>{ "result": true, "errors": [], "workflow": [ { ... } ] }</code> with the saved workflow, including its <code>slugid</code> and <code>updatetime</code>. Add checks that every model and utility exists; run the graph through <a href="#post-workflowprepare">Prepare</a> first, which checks the references, the inputs and everything else a run needs.</p>
+<h2 id="post-workflowupdate"><strong>POST</strong> /Workflow/Update</h2>
+<p>Changes a workflow of the key's workspace.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>slug</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>The full slug.</td>
+</tr>
+<tr>
+<td><code>title</code></td>
+<td>string</td>
+<td>No</td>
+<td>A new title.</td>
+</tr>
+<tr>
+<td><code>description</code></td>
+<td>string</td>
+<td>No</td>
+<td>A new description.</td>
+</tr>
+<tr>
+<td><code>tags</code></td>
+<td>string</td>
+<td>No</td>
+<td>A JSON string of the new tag array. Keep any <code>wiro-</code> tags the workflow already has.</td>
+</tr>
+<tr>
+<td><code>contents</code></td>
+<td>string</td>
+<td>No</td>
+<td>A new graph as a JSON string, prepared with <code>mode: "apply"</code>. It replaces the old one.</td>
+</tr>
+<tr>
+<td><code>loadedUpdatetime</code></td>
+<td>string</td>
+<td>No</td>
+<td>The <code>updatetime</code> you read. If someone saved the workflow since then, nothing is written.</td>
+</tr>
+<tr>
+<td><code>force</code></td>
+<td>boolean</td>
+<td>No</td>
+<td><code>true</code> saves even when <code>loadedUpdatetime</code> no longer matches.</td>
+</tr>
+<tr>
+<td><code>input</code></td>
+<td>object</td>
+<td>No</td>
+<td>Protected clones only: new saved values for the Start fields, by key.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Title and description are changed only when you send a non-empty value. The response holds the workflow after the change, with its new <code>updatetime</code>.</p>
+<ul>
+<li><strong>Concurrent edits.</strong> When <code>loadedUpdatetime</code> no longer matches, the update is refused with <code>This workflow was modified by another user. Reload to see latest changes or save to overwrite.</code> and the response carries <code>currentUpdatetime</code>. Read the workflow again and redo the change on top, or send <code>force: true</code> to overwrite.</li>
+<li><strong>Published workflows.</strong> Changing the title, description, tags or graph of a workflow in the gallery sends it back to review, and it leaves the gallery until it is approved again.</li>
+<li><strong>Clones.</strong> A clone of a protected workflow keeps its steps hidden: you can change its title, description and tags, and its saved Start values with <code>input</code>, but not its <code>contents</code>.</li>
+<li>When a new graph stops using files that were uploaded into the workflow in the wiro.ai editor, those files are deleted, unless a past run or a clone still uses them.</li>
+</ul>
+<h2 id="post-workflowclone"><strong>POST</strong> /Workflow/Clone</h2>
+<p>Copies a workflow from the public gallery into the key's workspace.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>slug</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>The full slug of a workflow listed in the gallery.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>The copy is private and free. It keeps the graph and the saved Start values; a taken title becomes <code>Title-Clone</code>. The response holds the new workflow, without <code>contents</code>: read it with <a href="#post-workflowdetail">Detail</a>. Each call makes another copy.</p>
+<ul>
+<li>Only a workflow listed in the gallery can be cloned (<code>This workflow cannot be cloned</code>), and not into the workspace it already belongs to (<code>This workflow already belongs to this workspace</code>).</li>
+<li>A clone can never be published or cloned again, and only its own workspace can read it.</li>
+<li>A clone of a protected workflow keeps its steps hidden from everyone, its owner included. It can still be run.</li>
+</ul>
+<h2 id="post-workflowdelete"><strong>POST</strong> /Workflow/Delete</h2>
+<p>Deletes a workflow of the key's workspace. It leaves every list and the gallery and can no longer be run or read. Runs already started finish, and clones keep working.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>slug</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>The full slug.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>The response is <code>{ "result": true, "errors": [], "workflow": [] }</code>. There is no undo.</p>
+<h2 id="post-workflowrun"><strong>POST</strong> /Workflow/Run</h2>
+<p>Starts a run and answers at once with its token.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>slug</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>The full slug.</td>
+</tr>
+<tr>
+<td><code>input</code></td>
+<td>object</td>
+<td>No</td>
+<td>Values for the Start fields, keyed as in <code>schema.input</code>: strings, numbers, booleans or arrays. Files are public URLs. A field you leave out uses its saved value, then its default.</td>
+</tr>
+<tr>
+<td><code>breakpointNodeId</code></td>
+<td>string</td>
+<td>No</td>
+<td>A step id to stop after (see <a href="#breakpoints">Breakpoints</a>).</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;workflowtoken&quot;: &quot;Lk3vQ9xT2mWc7Rp4Yh8Nd1Fs6Gb0Zj&quot;
+}
+</code></pre>
+<ul>
+<li>Your own workspace's workflows and the workflows listed in the gallery can be run. On a protected gallery workflow from another workspace, a field you leave out uses its default, not the creator's saved value.</li>
+<li>An unknown input key is refused with <code>Unknown input field(s): &lt;keys&gt;. Check your workflow's Start Node schema for valid field names.</code>, and a Start field that a step needs and that has no value is refused with <code>A required input value is missing: &lt;key&gt;.</code></li>
+<li>Missing inputs and broken references are all returned at once, and nothing is charged for a refused run.</li>
+<li>File inputs are fetched from public http(s) URLs, up to about 100 MB each.</li>
+</ul>
+<h2 id="post-workflowrundetail"><strong>POST</strong> /Workflow/RunDetail</h2>
+<p>Returns a run and its steps. Call it until <code>status</code> is <code>completed</code>, <code>failed</code>, <code>stopped</code> or <code>cancelled</code>.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>workflowtoken</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>The run token.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>The response has <code>workflowrun</code> and <code>workflowrunnodes</code>. Runs are private: the person who started a run can read it, and in a team workspace every member of the team can.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th><code>workflowrun</code> field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>workflowtoken</code>, <code>workflowslug</code></td>
+<td>The run token and the workflow's full slug.</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td><code>running</code>, <code>completed</code>, <code>failed</code>, <code>stopped</code> or <code>cancelled</code>.</td>
+</tr>
+<tr>
+<td><code>outcome</code></td>
+<td>The final status, once the run has ended.</td>
+</tr>
+<tr>
+<td><code>canresume</code></td>
+<td><code>true</code> when you can continue this run with <a href="#post-workflowrunresume">RunResume</a>.</td>
+</tr>
+<tr>
+<td><code>breakpointnodeid</code></td>
+<td>The breakpoint in effect, or <code>null</code>.</td>
+</tr>
+<tr>
+<td><code>contents</code></td>
+<td>The graph as this run started it, with the Start values it used.</td>
+</tr>
+<tr>
+<td><code>totalcost</code></td>
+<td>The list price of the steps finished so far, in USD.</td>
+</tr>
+<tr>
+<td><code>chargedcost</code>, <code>discountamount</code></td>
+<td>Once the run has ended: what the wallet paid and the discount. <code>null</code> while a charge is still settling.</td>
+</tr>
+<tr>
+<td><code>startedAt</code></td>
+<td>Start time in milliseconds. <code>resumedAt</code> is added when the run was resumed.</td>
+</tr>
+<tr>
+<td><code>elapsedseconds</code></td>
+<td>Running time, summed over resumes.</td>
+</tr>
+<tr>
+<td><code>failedNodeCount</code>, <code>abortedNodeCount</code>, <code>cancelledNodeCount</code></td>
+<td>Step counts.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th><code>workflowrunnodes</code> field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nodeId</code>, <code>tool</code>, <code>kind</code></td>
+<td>The step id, its model or utility, and <code>tool</code> or <code>utility</code>.</td>
+</tr>
+<tr>
+<td><code>layerIdx</code></td>
+<td>The step's layer, from 0.</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td><code>pending</code>, <code>running</code>, <code>completed</code>, <code>failed</code>, <code>cancelled</code> or <code>aborted</code>.</td>
+</tr>
+<tr>
+<td><code>cause</code>, <code>error</code></td>
+<td>Why the step did not complete.</td>
+</tr>
+<tr>
+<td><code>tasktoken</code></td>
+<td>For a model step that started a task. Pass it to <a href="#post-workflowrunnodedetail">RunNodeDetail</a>.</td>
+</tr>
+<tr>
+<td><code>outputs</code></td>
+<td>A model step's results: files with <code>url</code>, <code>name</code>, <code>contenttype</code> and <code>size</code>, or an LLM's reply as <code>{ "contenttype": "raw", "content": { "answer": [...] } }</code>. A utility step's ports, such as <code>{ "result": [...] }</code>.</td>
+</tr>
+<tr>
+<td><code>elapsedseconds</code></td>
+<td>How long the step ran.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>To find a run's results, read the End node's <code>fields</code> in <code>contents</code> and take the <code>outputs</code> of the steps they reference.</p>
+<p>When the workflow's steps are hidden from you, as on a protected workflow from another workspace, the run comes back with <code>graphmasked: true</code>: <code>contents</code> shows only the Start fields and the End node, and <code>workflowrunnodes</code> holds only the steps the End node shows, with their <code>status</code> and <code>outputs</code>.</p>
+<h3 id="response_1">Response</h3>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;workflowrun&quot;: {
+    &quot;workflowtoken&quot;: &quot;Lk3vQ9xT2mWc7Rp4Yh8Nd1Fs6Gb0Zj&quot;,
+    &quot;workflowslug&quot;: &quot;product-ad-a1B2c&quot;,
+    &quot;status&quot;: &quot;completed&quot;,
+    &quot;outcome&quot;: &quot;completed&quot;,
+    &quot;breakpointnodeid&quot;: null,
+    &quot;startedAt&quot;: 1761902400000,
+    &quot;elapsedseconds&quot;: 74,
+    &quot;totalcost&quot;: &quot;0.84&quot;,
+    &quot;chargedcost&quot;: &quot;0.84&quot;,
+    &quot;discountamount&quot;: &quot;0&quot;,
+    &quot;failedNodeCount&quot;: 0,
+    &quot;abortedNodeCount&quot;: 0,
+    &quot;cancelledNodeCount&quot;: 0,
+    &quot;contents&quot;: { &quot;...&quot;: &quot;...&quot; }
+  },
+  &quot;workflowrunnodes&quot;: [
+    {
+      &quot;nodeId&quot;: &quot;node-image&quot;,
+      &quot;tool&quot;: &quot;google/nano-banana-pro&quot;,
+      &quot;kind&quot;: &quot;tool&quot;,
+      &quot;layerIdx&quot;: 0,
+      &quot;status&quot;: &quot;completed&quot;,
+      &quot;cause&quot;: null,
+      &quot;error&quot;: null,
+      &quot;tasktoken&quot;: &quot;Ab12Cd34Ef56Gh78Ij90Kl12Mn34Op&quot;,
+      &quot;outputs&quot;: [
+        {
+          &quot;url&quot;: &quot;https://cdn1.wiro.ai/5e8d7a1c/product.png&quot;,
+          &quot;name&quot;: &quot;product.png&quot;,
+          &quot;contenttype&quot;: &quot;image/png&quot;,
+          &quot;size&quot;: &quot;1843212&quot;
+        }
+      ],
+      &quot;elapsedseconds&quot;: 31
+    },
+    {
+      &quot;nodeId&quot;: &quot;node-video&quot;,
+      &quot;tool&quot;: &quot;klingai/kling-v3&quot;,
+      &quot;kind&quot;: &quot;tool&quot;,
+      &quot;layerIdx&quot;: 1,
+      &quot;status&quot;: &quot;completed&quot;,
+      &quot;cause&quot;: null,
+      &quot;error&quot;: null,
+      &quot;tasktoken&quot;: &quot;Qr56St78Uv90Wx12Yz34Ab56Cd78Ef&quot;,
+      &quot;outputs&quot;: [
+        {
+          &quot;url&quot;: &quot;https://cdn1.wiro.ai/9b2f4e6a/ad.mp4&quot;,
+          &quot;name&quot;: &quot;ad.mp4&quot;,
+          &quot;contenttype&quot;: &quot;video/mp4&quot;,
+          &quot;size&quot;: &quot;6200412&quot;
+        }
+      ],
+      &quot;elapsedseconds&quot;: 43
+    }
+  ]
+}
+</code></pre>
+<h2 id="post-workflowrunnodedetail"><strong>POST</strong> /Workflow/RunNodeDetail</h2>
+<p>Shows what one model step received and returned, to debug a failed step.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>tasktoken</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>The step's <code>tasktoken</code> from RunDetail.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>The response's <code>workflowrunnode</code> has the step's RunDetail fields plus <code>taskDetail</code>: the <code>parameters</code> the model received, its <code>debugoutput</code>, <code>taskStatus</code>, and <code>modelslugowner</code> and <code>modelslugproject</code>. Utility steps have no task to read. When the workflow's steps are hidden from you, it answers <code>You don't have any permission for this action.</code></p>
+<h2 id="post-workflowrunhistory"><strong>POST</strong> /Workflow/RunHistory</h2>
+<p>Lists runs, newest first. A personal key lists your own runs; a team key lists the runs of every member of the team. Runs started on wiro.ai are included.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>start</code></td>
+<td>number</td>
+<td>No</td>
+<td>Offset. Default <code>0</code>.</td>
+</tr>
+<tr>
+<td><code>limit</code></td>
+<td>number</td>
+<td>No</td>
+<td>Default <code>20</code>, maximum <code>1000</code>.</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td>string</td>
+<td>No</td>
+<td><code>running</code>, <code>completed</code>, <code>failed</code>, <code>stopped</code> or <code>cancelled</code>.</td>
+</tr>
+<tr>
+<td><code>search</code></td>
+<td>string</td>
+<td>No</td>
+<td>Text in the workflow's title, or its slug without the 5-character id: <code>product-ad</code> finds the runs of <code>product-ad-a1B2c</code>.</td>
+</tr>
+<tr>
+<td><code>workflowid</code></td>
+<td>number</td>
+<td>No</td>
+<td>Only the runs of this workflow id.</td>
+</tr>
+<tr>
+<td><code>sort</code></td>
+<td>string</td>
+<td>No</td>
+<td><code>id</code> (default), <code>starttime</code>, <code>status</code> or <code>totalcost</code>.</td>
+</tr>
+<tr>
+<td><code>order</code></td>
+<td>string</td>
+<td>No</td>
+<td><code>DESC</code> (default) or <code>ASC</code>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>The response is <code>{ "result": true, "errors": [], "workflowruns": [...], "total": 12 }</code>. Each row has the <code>workflowrun</code> fields of <a href="#post-workflowrundetail">RunDetail</a> without <code>contents</code>, plus <code>workflowid</code>, <code>workflowtitle</code>, <code>teamname</code> and <code>nodes</code>, each step's <code>{ nodeId, tool, kind, layerIdx, status }</code>. To read a run's outputs, call RunDetail with its token.</p>
+<h2 id="post-workflowrunresume"><strong>POST</strong> /Workflow/RunResume</h2>
+<p>Continues a <code>failed</code> or <code>stopped</code> run on the same token. See <a href="#resuming">Resuming</a>.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>workflowtoken</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>The run token.</td>
+</tr>
+<tr>
+<td><code>breakpointNodeId</code></td>
+<td>string</td>
+<td>No</td>
+<td>A new breakpoint. Send <code>null</code> to run to the end. Leave the field out and a failed run keeps the breakpoint it started with, while a stopped run runs to the end.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>The response is <code>{ "result": true, "errors": [], "workflowtoken": "..." }</code>; follow the run with RunDetail again.</p>
+<ul>
+<li>The person who started the run can resume it after a failure. Continuing a stopped run, and setting a breakpoint, needs someone who can edit the workflow; in a team workspace any such member can.</li>
+<li>The balance check runs again for the steps that will run.</li>
+<li><code>This run is already resuming or still wrapping up. Try again in a moment</code> and <code>A step of this run is still finishing. Try again in a few minutes</code> mean an earlier step is still settling: wait a few minutes and try once more.</li>
+<li>Any other status is refused with <code>Only a failed or stopped run can be resumed</code>.</li>
+</ul>
+<h2 id="post-workflowutilitydetail"><strong>POST</strong> /Workflow/UtilityDetail</h2>
+<p>Returns a built-in utility's parameters and output ports, in the same shape as a model's parameters in <a href="/docs/models">Tool/Detail</a>.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>slug</code></td>
+<td>string</td>
+<td>Yes</td>
+<td><code>workflow-utilities/output-filter</code>, <code>workflow-utilities/merge-text</code> or <code>workflow-utilities/split-text</code>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>The response's <code>utility</code> holds one entry with <code>slug</code>, <code>title</code>, <code>description</code>, <code>parameters</code> (groups of parameter definitions with <code>id</code>, <code>type</code>, <code>label</code>, <code>defaultvalue</code>, <code>options</code>, <code>minvalue</code> and <code>maxvalue</code>) and <code>outputs</code>, the ports, each <code>{ id, label, type }</code>.</p>
+<h2 id="errors">Errors</h2>
+<p>Business errors come back with HTTP 200, <code>result: false</code> and an <code>errors</code> array, as everywhere in the Wiro API. The ones you will see most:</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Message</th>
+<th>Code</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Workflow not found</code></td>
+<td>0</td>
+<td>An unknown or deleted workflow.</td>
+</tr>
+<tr>
+<td><code>This workflow does not belong to your current workspace.</code></td>
+<td>0</td>
+<td>A private workflow of another workspace. Use a key from a project in the workflow's workspace.</td>
+</tr>
+<tr>
+<td><code>You don't have any permission for this action.</code></td>
+<td>0</td>
+<td>The key's project creator has no rights on this workflow or run.</td>
+</tr>
+<tr>
+<td><code>You must be a member of this team to perform this action</code></td>
+<td>0</td>
+<td>A team project's key whose creator is no longer a member of the team.</td>
+</tr>
+<tr>
+<td><code>slug has invalid format</code></td>
+<td>0</td>
+<td>Not a full slug ending in a dash and a 5-character id.</td>
+</tr>
+<tr>
+<td><code>invalid json for contents param.</code></td>
+<td>0</td>
+<td>Add or Update with <code>contents</code> that is not a JSON string.</td>
+</tr>
+<tr>
+<td><code>Contents do not match the expected workflow structure.</code></td>
+<td>0</td>
+<td>A graph without the required shape (see <a href="#the-workflow-graph">The Workflow Graph</a>).</td>
+</tr>
+<tr>
+<td><code>This tool in the workflow was not found: &lt;slug&gt;</code></td>
+<td>0</td>
+<td>A step's model does not exist.</td>
+</tr>
+<tr>
+<td><code>Tags that start with wiro- are reserved for Wiro</code></td>
+<td>0</td>
+<td>Add or Update with a <code>wiro-</code> tag.</td>
+</tr>
+<tr>
+<td><code>This workflow was modified by another user. Reload to see latest changes or save to overwrite.</code></td>
+<td>0</td>
+<td>Update with an outdated <code>loadedUpdatetime</code>; the response adds <code>currentUpdatetime</code>.</td>
+</tr>
+<tr>
+<td><code>This workflow cannot be cloned</code></td>
+<td>0</td>
+<td>Clone of a workflow that is not listed in the gallery.</td>
+</tr>
+<tr>
+<td><code>Unknown input field(s): &lt;keys&gt;. Check your workflow's Start Node schema for valid field names.</code></td>
+<td>0</td>
+<td>Run with an input key the workflow does not have.</td>
+</tr>
+<tr>
+<td><code>A required input value is missing: &lt;key&gt;.</code></td>
+<td>0</td>
+<td>Run without a value for a Start field a step needs.</td>
+</tr>
+<tr>
+<td><code>Workflows cannot include train tools as they take days to complete</code></td>
+<td>0</td>
+<td>A step uses a training model.</td>
+</tr>
+<tr>
+<td><code>Insufficient balance</code></td>
+<td>97</td>
+<td>The wallet holds less than $0.50 per model step that will run.</td>
+</tr>
+<tr>
+<td><code>You have reached your concurrent task limit...</code></td>
+<td>96</td>
+<td>See <a href="/docs/concurrency-limits">Concurrency Limits</a>.</td>
+</tr>
+<tr>
+<td><code>Only people who can edit this workflow can stop a run at a step</code></td>
+<td>0</td>
+<td><code>breakpointNodeId</code> from someone who cannot edit the workflow.</td>
+</tr>
+<tr>
+<td><code>There is no workflow run yet.</code></td>
+<td>0</td>
+<td>An unknown run token.</td>
+</tr>
+<tr>
+<td><code>Only a failed or stopped run can be resumed</code></td>
+<td>0</td>
+<td>RunResume on a run that is running or completed.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Authentication errors are listed in the <a href="/docs/error-reference">Error Reference</a>.</p>
+                </article>
+
+                <script type="application/json" class="code-examples-data">
+                  [
+                    {
+                      "label": "curl (List)",
+                      "language": "bash",
+                      "code": "curl -X POST \"https://api.wiro.ai/v1/Workflow/List\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{ \"scope\": \"my\", \"sort\": \"updatetime\", \"limit\": 20 }'"
+                    },
+                    {
+                      "label": "curl (Prepare)",
+                      "language": "bash",
+                      "code": "curl -X POST \"https://api.wiro.ai/v1/Workflow/Prepare\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d @- <<'JSON'\n{\n  \"mode\": \"create\",\n  \"contents\": {\n    \"version\": \"1\",\n    \"nodes\": {\n      \"node-image\": {\n        \"id\": \"node-image\", \"type\": \"run\", \"tool\": \"google/nano-banana-pro\", \"depends\": [\"input\"],\n        \"input\": { \"prompt\": \"$input.prompt\" },\n        \"metadata\": { \"position\": { \"x\": 350, \"y\": 0 } }\n      },\n      \"output\": {\n        \"id\": \"output\", \"type\": \"display\", \"depends\": [\"node-image\"], \"input\": {},\n        \"fields\": { \"image\": \"$node-image.outputs\" },\n        \"metadata\": { \"position\": { \"x\": 700, \"y\": 0 } }\n      }\n    },\n    \"output\": { \"image\": \"$node-image.outputs\" },\n    \"schema\": {\n      \"input\": { \"prompt\": { \"label\": \"Prompt\", \"type\": \"string\", \"defaultValue\": \"\", \"ui\": { \"field\": \"textarea\" } } },\n      \"output\": {}\n    },\n    \"metadata\": { \"input\": { \"position\": { \"x\": 0, \"y\": 0 } } }\n  }\n}\nJSON"
+                    },
+                    {
+                      "label": "curl (Run)",
+                      "language": "bash",
+                      "code": "curl -X POST \"https://api.wiro.ai/v1/Workflow/Run\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"slug\": \"product-ad-a1B2c\",\n    \"input\": { \"prompt\": \"A ceramic mug on a wooden table, morning light\" }\n  }'"
+                    },
+                    {
+                      "label": "curl (RunDetail)",
+                      "language": "bash",
+                      "code": "curl -X POST \"https://api.wiro.ai/v1/Workflow/RunDetail\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{ \"workflowtoken\": \"Lk3vQ9xT2mWc7Rp4Yh8Nd1Fs6Gb0Zj\" }'"
+                    },
+                    {
+                      "label": "Python",
+                      "language": "python",
+                      "code": "import json\nimport time\nimport requests\n\nBASE = \"https://api.wiro.ai/v1\"\nheaders = {\"x-api-key\": \"YOUR_API_KEY\", \"Content-Type\": \"application/json\"}\n\ngraph = {\n    \"version\": \"1\",\n    \"nodes\": {\n        \"node-image\": {\n            \"id\": \"node-image\", \"type\": \"run\", \"tool\": \"google/nano-banana-pro\", \"depends\": [\"input\"],\n            \"input\": {\"prompt\": \"$input.prompt\"},\n            \"metadata\": {\"position\": {\"x\": 350, \"y\": 0}},\n        },\n        \"output\": {\n            \"id\": \"output\", \"type\": \"display\", \"depends\": [\"node-image\"], \"input\": {},\n            \"fields\": {\"image\": \"$node-image.outputs\"},\n            \"metadata\": {\"position\": {\"x\": 700, \"y\": 0}},\n        },\n    },\n    \"output\": {\"image\": \"$node-image.outputs\"},\n    \"schema\": {\n        \"input\": {\"prompt\": {\"label\": \"Prompt\", \"type\": \"string\", \"defaultValue\": \"\", \"ui\": {\"field\": \"textarea\"}}},\n        \"output\": {},\n    },\n    \"metadata\": {\"input\": {\"position\": {\"x\": 0, \"y\": 0}}},\n}\n\n# 1. Prepare: every problem comes back at once\nprepared = requests.post(f\"{BASE}/Workflow/Prepare\", headers=headers,\n                         json={\"contents\": graph, \"mode\": \"create\"}).json()\nif not prepared[\"result\"]:\n    raise SystemExit(prepared[\"issues\"])\n\n# 2. Save it (contents is a JSON string here)\nsaved = requests.post(f\"{BASE}/Workflow/Add\", headers=headers, json={\n    \"title\": \"Product shot\",\n    \"slug\": \"product-shot\",\n    \"contents\": json.dumps(prepared[\"contents\"]),\n}).json()\nrow = saved[\"workflow\"][0]\nfull_slug = f\"{row['slug']}-{row['slugid']}\"\n\n# 3. Run it and wait\nrun = requests.post(f\"{BASE}/Workflow/Run\", headers=headers, json={\n    \"slug\": full_slug,\n    \"input\": {\"prompt\": \"A ceramic mug on a wooden table, morning light\"},\n}).json()\nif not run[\"result\"]:\n    raise SystemExit(run[\"errors\"])\n\nwhile True:\n    detail = requests.post(f\"{BASE}/Workflow/RunDetail\", headers=headers,\n                           json={\"workflowtoken\": run[\"workflowtoken\"]}).json()\n    status = detail[\"workflowrun\"][\"status\"]\n    if status in (\"completed\", \"failed\", \"stopped\", \"cancelled\"):\n        break\n    time.sleep(5)\n\nfor node in detail[\"workflowrunnodes\"]:\n    print(node[\"nodeId\"], node[\"status\"], [o.get(\"url\") for o in node[\"outputs\"] or []])\nprint(\"Charged:\", detail[\"workflowrun\"].get(\"chargedcost\"))"
+                    },
+                    {
+                      "label": "Node.js",
+                      "language": "javascript",
+                      "code": "const axios = require('axios');\n\nconst BASE = 'https://api.wiro.ai/v1';\nconst headers = { 'x-api-key': 'YOUR_API_KEY', 'Content-Type': 'application/json' };\n\n// Run a saved workflow and wait for it\nconst { data: run } = await axios.post(`${BASE}/Workflow/Run`, {\n  slug: 'product-ad-a1B2c',\n  input: { prompt: 'A ceramic mug on a wooden table, morning light' }\n}, { headers });\nif (!run.result) throw new Error(JSON.stringify(run.errors));\n\nlet detail;\ndo {\n  await new Promise((resolve) => setTimeout(resolve, 5000));\n  ({ data: detail } = await axios.post(`${BASE}/Workflow/RunDetail`, {\n    workflowtoken: run.workflowtoken\n  }, { headers }));\n} while (detail.workflowrun.status === 'running');\n\nfor (const node of detail.workflowrunnodes) {\n  console.log(node.nodeId, node.status, (node.outputs || []).map((o) => o.url));\n}\nif (detail.workflowrun.canresume) {\n  // A failed or stopped run can continue without paying again for finished steps\n  await axios.post(`${BASE}/Workflow/RunResume`, { workflowtoken: run.workflowtoken }, { headers });\n}"
+                    },
+                    {
+                      "label": "PHP",
+                      "language": "php",
+                      "code": "<?php\nfunction wiro($path, $body) {\n    $ch = curl_init(\"https://api.wiro.ai/v1\" . $path);\n    curl_setopt($ch, CURLOPT_POST, true);\n    curl_setopt($ch, CURLOPT_HTTPHEADER, [\n        \"Content-Type: application/json\",\n        \"x-api-key: YOUR_API_KEY\"\n    ]);\n    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));\n    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n    $response = json_decode(curl_exec($ch), true);\n    curl_close($ch);\n    return $response;\n}\n\n$run = wiro(\"/Workflow/Run\", [\n    \"slug\" => \"product-ad-a1B2c\",\n    \"input\" => [\"prompt\" => \"A ceramic mug on a wooden table, morning light\"]\n]);\n\ndo {\n    sleep(5);\n    $detail = wiro(\"/Workflow/RunDetail\", [\"workflowtoken\" => $run[\"workflowtoken\"]]);\n} while ($detail[\"workflowrun\"][\"status\"] === \"running\");\n\necho $detail[\"workflowrun\"][\"status\"];"
+                    },
+                    {
+                      "label": "C#",
+                      "language": "csharp",
+                      "code": "using System.Net.Http.Json;\nusing System.Text.Json;\n\nusing var client = new HttpClient { BaseAddress = new Uri(\"https://api.wiro.ai/v1/\") };\nclient.DefaultRequestHeaders.Add(\"x-api-key\", \"YOUR_API_KEY\");\n\nvar run = await (await client.PostAsJsonAsync(\"Workflow/Run\", new {\n    slug = \"product-ad-a1B2c\",\n    input = new { prompt = \"A ceramic mug on a wooden table, morning light\" }\n})).Content.ReadFromJsonAsync<JsonElement>();\nvar token = run.GetProperty(\"workflowtoken\").GetString();\n\nstring status;\nJsonElement detail;\ndo {\n    await Task.Delay(5000);\n    detail = await (await client.PostAsJsonAsync(\"Workflow/RunDetail\", new { workflowtoken = token }))\n        .Content.ReadFromJsonAsync<JsonElement>();\n    status = detail.GetProperty(\"workflowrun\").GetProperty(\"status\").GetString();\n} while (status == \"running\");\n\nConsole.WriteLine(status);"
+                    },
+                    {
+                      "label": "Go",
+                      "language": "go",
+                      "code": "package main\n\nimport (\n    \"bytes\"\n    \"encoding/json\"\n    \"fmt\"\n    \"net/http\"\n    \"time\"\n)\n\nfunc wiro(path string, body map[string]interface{}) map[string]interface{} {\n    payload, _ := json.Marshal(body)\n    req, _ := http.NewRequest(\"POST\", \"https://api.wiro.ai/v1\"+path, bytes.NewBuffer(payload))\n    req.Header.Set(\"Content-Type\", \"application/json\")\n    req.Header.Set(\"x-api-key\", \"YOUR_API_KEY\")\n    resp, err := http.DefaultClient.Do(req)\n    if err != nil {\n        panic(err)\n    }\n    defer resp.Body.Close()\n    var out map[string]interface{}\n    json.NewDecoder(resp.Body).Decode(&out)\n    return out\n}\n\nfunc main() {\n    run := wiro(\"/Workflow/Run\", map[string]interface{}{\n        \"slug\":  \"product-ad-a1B2c\",\n        \"input\": map[string]interface{}{\"prompt\": \"A ceramic mug on a wooden table, morning light\"},\n    })\n    for {\n        time.Sleep(5 * time.Second)\n        detail := wiro(\"/Workflow/RunDetail\", map[string]interface{}{\"workflowtoken\": run[\"workflowtoken\"]})\n        status := detail[\"workflowrun\"].(map[string]interface{})[\"status\"].(string)\n        if status != \"running\" {\n            fmt.Println(status)\n            break\n        }\n    }\n}"
+                    },
+                    {
+                      "label": "Response (Run)",
+                      "language": "json",
+                      "code": "{\n  \"result\": true,\n  \"errors\": [],\n  \"workflowtoken\": \"Lk3vQ9xT2mWc7Rp4Yh8Nd1Fs6Gb0Zj\"\n}"
+                    },
+                    {
+                      "label": "Response (RunDetail)",
+                      "language": "json",
+                      "code": "{\n  \"result\": true,\n  \"errors\": [],\n  \"workflowrun\": {\n    \"workflowtoken\": \"Lk3vQ9xT2mWc7Rp4Yh8Nd1Fs6Gb0Zj\",\n    \"workflowslug\": \"product-ad-a1B2c\",\n    \"status\": \"completed\",\n    \"outcome\": \"completed\",\n    \"startedAt\": 1761902400000,\n    \"elapsedseconds\": 74,\n    \"totalcost\": \"0.84\",\n    \"chargedcost\": \"0.84\",\n    \"discountamount\": \"0\"\n  },\n  \"workflowrunnodes\": [\n    {\n      \"nodeId\": \"node-image\",\n      \"tool\": \"google/nano-banana-pro\",\n      \"kind\": \"tool\",\n      \"layerIdx\": 0,\n      \"status\": \"completed\",\n      \"outputs\": [\n        { \"url\": \"https://cdn1.wiro.ai/5e8d7a1c/product.png\", \"name\": \"product.png\", \"contenttype\": \"image/png\", \"size\": \"1843212\" }\n      ]\n    }\n  ]\n}"
+                    }
+                  ]
+                </script>
+              </div>
+
+              <!-- ==================== WORKFLOW AGENT ==================== -->
+              <div class="docs-page-section" data-page="workflow-agent" style="display: none">
+                <article class="docs-section">
+                  <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="/docs/markdown/workflow-agent.md" target="_blank" class="docs-section-md-btn">View</a> <a href="/docs/markdown/workflow-agent.md" download class="docs-section-md-btn">Download</a></div>
+<h1>Workflow Agent</h1>
+<p class="section-subtitle">Design and edit Wiro workflows by chat: describe the job, read the agent's proposals and save the one you want.</p>
+<h2 id="overview">Overview</h2>
+<p>The Workflow Agent is a Wiro chat agent that designs and edits <a href="/docs/workflows">workflows</a>. It looks up current models and utilities in the Wiro catalog and replies with an explanation and zero or more proposed workflows. It never saves, changes or runs anything itself: your application saves a proposal with the <a href="/docs/workflows">Workflows</a> endpoints and runs it there.</p>
+<p>The Workflow Agent API uses the message protocol of <a href="/docs/agent-messaging">Agent Messaging</a> on its own routes under <code>/StudioWorkflow/</code>:</p>
+<ol>
+<li><strong>Send</strong> a brief with <a href="#post-studioworkflowmessagesend">Message/Send</a>. Attach a workflow in <code>workflowContext</code> to have it edited.</li>
+<li><strong>Follow</strong> the turn on the <a href="/docs/agent-websocket">Agent WebSocket</a> with the <code>agenttoken</code>, or poll <a href="#post-studioworkflowmessagedetail">Message/Detail</a> until it ends.</li>
+<li><strong>Read the proposals</strong> from the reply (see <a href="#proposals">Proposals</a>) and save the one you want with <a href="/docs/workflows#post-workflowadd">Workflow/Add</a>, or onto the attached workflow with <a href="/docs/workflows#post-workflowupdate">Workflow/Update</a>.</li>
+</ol>
+<p>A question the catalog answers, such as which model is cheapest for a job, needs no turn: <a href="/docs/models">Tool/List</a> and <a href="/docs/models">Tool/Detail</a> answer it for free. When you already know the graph, write it yourself and save it with <a href="/docs/workflows#post-workflowadd">Workflow/Add</a>.</p>
+<h3 id="authentication">Authentication</h3>
+<p>Every <code>/StudioWorkflow/*</code> route takes a project API key: <code>x-api-key</code>, plus <code>x-nonce</code> and <code>x-signature</code> for a project that uses signature authentication (see <a href="/docs/authentication">Authentication</a>). A key acts as the person who created its project, in that project's workspace. For a team project, that person must still be a member of the team; otherwise every route answers HTTP 403 with <code>You must be a member of this team to perform this action</code>.</p>
+<h3 id="sessions">Sessions</h3>
+<p>A session is one conversation with its own memory. <code>sessionkey</code> names it, and <code>"default"</code> is used when you leave it out.</p>
+<ul>
+<li>Sessions started with an API key belong to that key's project. Everyone who uses the key shares them, and they are separate from the Workflow Agent chats on wiro.ai and from other projects' sessions. Each project has its own <code>"default"</code> session.</li>
+<li>A session name uses letters, digits, <code>.</code>, <code>_</code>, <code>:</code> and <code>-</code>, without <code>:cron:</code>, up to 100 characters. Any other name is refused with <code>sessionkey has invalid format</code>.</li>
+<li>Use one session per task and keep using it to refine its proposals; start a new one for an unrelated task.</li>
+<li>The turns of one session run one at a time. A project can have at most 2 turns queued or running at once through its API key; a third message is refused with <code>This project already has 2 Workflow Agent replies in progress. Wait for one to finish before sending another message.</code></li>
+</ul>
+<h2 id="costs">Costs</h2>
+<ul>
+<li><strong>$10 to start a turn.</strong> Send and SendForm need at least $10 spendable in the wallet of the key's workspace. Below that, the message is refused with code <code>97</code> (<code>Insufficient balance</code>), with <code>walletUsd</code> and <code>minTopup</code> in the response, and nothing is charged.</li>
+<li><strong>Chat.</strong> Each turn is charged after it ends for the tokens it used, at the chat model's rates in <a href="#post-studioworkflowstatus">StudioWorkflow/Status</a> (credits per 1M tokens; 1 credit is $0.01). The reply's <code>tokencost</code> shows the charge in credits: <code>tokencost / 100</code> is the amount in USD.</li>
+<li>The agent only reads the catalog, so its turns start no model runs. Saving a proposal is free, and running the saved workflow is billed like any <a href="/docs/workflows#costs">workflow run</a>.</li>
+<li><a href="#post-studioworkflowtransactions">StudioWorkflow/Transactions</a> lists the charges.</li>
+</ul>
+<h2 id="post-studioworkflowstatus"><strong>POST</strong> /StudioWorkflow/Status</h2>
+<p>Returns the wallet check and the chat models the agent can use, after settling your pending Workflow Agent charges. It takes no request fields, and its fields are the same as <a href="/docs/studio#post-studiostatus">Studio/Status</a>: <code>walletUsd</code>, <code>needsTopup</code>, <code>minTopup</code> (<code>10</code>), <code>tokenRates</code> and <code>agentModel.chatModel</code>. <code>title</code> is <code>"Workflow Agent"</code>.</p>
+<h2 id="post-studioworkflowmessagesend"><strong>POST</strong> /StudioWorkflow/Message/Send</h2>
+<p>Sends a message to the Workflow Agent and returns at once with the turn's <code>messageguid</code> and <code>agenttoken</code>.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>message</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>The brief, at most 16 KB (UTF-8). Say what the workflow should do, what people will give it as input and which results they want back. Pass on limits such as budget, speed, quality or a model.</td>
+</tr>
+<tr>
+<td><code>sessionkey</code></td>
+<td>string</td>
+<td>No</td>
+<td>The session. Defaults to <code>"default"</code>, the project's main session.</td>
+</tr>
+<tr>
+<td><code>model</code></td>
+<td>string</td>
+<td>No</td>
+<td>The chat model for this turn: a slug whose <code>selectable</code> is <code>true</code> in <a href="#post-studioworkflowstatus">StudioWorkflow/Status</a>. Leave it out to use the default.</td>
+</tr>
+<tr>
+<td><code>workflowContext</code></td>
+<td>object</td>
+<td>No</td>
+<td>A workflow for the agent to edit, at most 40 KB of JSON. See <a href="#editing-a-workflow">Editing a workflow</a>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<h3 id="response">Response</h3>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;messageguid&quot;: &quot;0b7f2c1e-5d4a-4c3b-9a8f-1e2d3c4b5a69&quot;,
+  &quot;agenttoken&quot;: &quot;Qm7Tz2LpX9vKc4RwN8yHa3JdF6sGb1&quot;,
+  &quot;status&quot;: &quot;agent_queue&quot;
+}
+</code></pre>
+<p>If a request times out, check <a href="#post-studioworkflowmessagehistory">Message/History</a> before you send it again: each accepted message starts a paid turn.</p>
+<h2 id="post-studioworkflowmessagesendform"><strong>POST</strong> /StudioWorkflow/Message/SendForm</h2>
+<p>The same as Send, as <code>multipart/form-data</code>, to attach files such as a sample image or a brief as a PDF.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>message</code></td>
+<td>string</td>
+<td>Conditional</td>
+<td>The brief, at most 16 KB. Required unless a file is attached.</td>
+</tr>
+<tr>
+<td><code>sessionkey</code></td>
+<td>string</td>
+<td>No</td>
+<td>The session.</td>
+</tr>
+<tr>
+<td><code>model</code></td>
+<td>string</td>
+<td>No</td>
+<td>As in Send.</td>
+</tr>
+<tr>
+<td><code>workflowContext</code></td>
+<td>string</td>
+<td>No</td>
+<td>The same object as in Send, as a JSON string.</td>
+</tr>
+<tr>
+<td><code>attachments</code></td>
+<td>file</td>
+<td>No</td>
+<td>Repeat the <code>attachments</code> field once per file; a single file can also be sent as <code>attachment</code>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Up to 8 files per message, each up to 50 MB (<code>File too large (max 50MB): &lt;name&gt;</code>). The accepted types are the same as for <a href="/docs/studio#post-studiomessagesendform">Studio</a>.</p>
+<h2 id="post-studioworkflowmessagedetail"><strong>POST</strong> /StudioWorkflow/Message/Detail</h2>
+<p>Returns one message and its reply.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>messageguid</code></td>
+<td>string</td>
+<td>Conditional</td>
+<td>The message id. Required unless <code>agenttoken</code> is given.</td>
+</tr>
+<tr>
+<td><code>agenttoken</code></td>
+<td>string</td>
+<td>Conditional</td>
+<td>The turn token.</td>
+</tr>
+<tr>
+<td><code>sessionkey</code></td>
+<td>string</td>
+<td>No</td>
+<td>The message's session. Defaults to <code>"default"</code>. A message from another session or another project is <code>Message not found</code>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>The reply fields are those of <a href="/docs/studio#post-studiomessagedetail">Studio's Message/Detail</a>: <code>status</code>, <code>content</code>, <code>response</code>, <code>debugoutput</code>, <code>timeline</code>, <code>attachments</code>, <code>model</code>, the token counts, <code>tokencost</code>, <code>createdat</code>, <code>startedat</code> and <code>endedat</code>, plus <code>sessionkey</code>. The proposals are in <code>response</code> once <code>status</code> is <code>agent_end</code>.</p>
+<h2 id="post-studioworkflowmessagehistory"><strong>POST</strong> /StudioWorkflow/Message/History</h2>
+<p>Returns the messages of one session, newest first: <code>sessionkey</code>, <code>limit</code> (default <code>50</code>, maximum <code>200</code>) and <code>before</code> (a message <code>guid</code>, for the next page). The response is <code>{ "data": { "messages": [...], "count": 2, "hasmore": false } }</code>. A proposal in an earlier reply can still be saved later.</p>
+<h2 id="post-studioworkflowmessagesessions"><strong>POST</strong> /StudioWorkflow/Message/Sessions</h2>
+<p>Lists the sessions of the key's project, most recent first, each with <code>sessionkey</code>, <code>messagecount</code>, <code>updatedat</code>, <code>lastmessage</code> and an optional <code>name</code>. <code>"default"</code> is always listed. It takes no request fields.</p>
+<h2 id="post-studioworkflowmessagecancel"><strong>POST</strong> /StudioWorkflow/Message/Cancel</h2>
+<p>Stops a turn that is queued or running (<code>messageguid</code> or <code>agenttoken</code>, and <code>sessionkey</code>). Only a message in <code>agent_queue</code>, <code>agent_start</code> or <code>agent_output</code> can be cancelled. Tokens the turn already used are charged.</p>
+<h2 id="post-studioworkflowmessageclearsession"><strong>POST</strong> /StudioWorkflow/Message/ClearSession</h2>
+<p>Deletes the session's messages and starts the agent's memory of it fresh. The session keeps its display name. It works on <code>"default"</code> too.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sessionkey</code></td>
+<td>string</td>
+<td>No</td>
+<td>The session. Defaults to <code>"default"</code>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<h2 id="post-studioworkflowmessagedeletesession"><strong>POST</strong> /StudioWorkflow/Message/DeleteSession</h2>
+<p>Deletes a session: its messages, its display name and the agent's memory of it. Send the <code>sessionkey</code> of the session to delete; <code>"default"</code> cannot be deleted (<code>The main session cannot be deleted.</code>), so clear it with ClearSession. Workflows you saved are not affected.</p>
+<h2 id="post-studioworkflowmessagerenamesession"><strong>POST</strong> /StudioWorkflow/Message/RenameSession</h2>
+<p>Sets a session's display name: <code>name</code> (required, up to 40 characters) and <code>sessionkey</code>.</p>
+<h2 id="post-studioworkflowtransactions"><strong>POST</strong> /StudioWorkflow/Transactions</h2>
+<p>Lists your Workflow Agent charges in the key's workspace, newest first (<code>limit</code>, default <code>50</code>, maximum <code>200</code>). Each row has <code>guid</code>, <code>type</code>, <code>amount</code>, <code>description</code>, <code>modelid</code>, <code>taskid</code>, <code>confirmed</code> and <code>time</code>; a chat charge is described as <code>Workflow Agent LLM &lt;model&gt; (...)</code> with its token counts.</p>
+<h2 id="editing-a-workflow">Editing a workflow</h2>
+<p>To have the agent change a workflow, read it with <a href="/docs/workflows#post-workflowdetail">Workflow/Detail</a> and send it with the message as <code>workflowContext</code>:</p>
+<pre><code class="language-json">{
+  &quot;message&quot;: &quot;Add an upscale step after the image and return both images&quot;,
+  &quot;sessionkey&quot;: &quot;product-ad-edit&quot;,
+  &quot;workflowContext&quot;: {
+    &quot;protocolVersion&quot;: 1,
+    &quot;source&quot;: {
+      &quot;slug&quot;: &quot;product-ad&quot;,
+      &quot;slugid&quot;: &quot;a1B2c&quot;,
+      &quot;fullSlug&quot;: &quot;product-ad-a1B2c&quot;,
+      &quot;title&quot;: &quot;Product ad&quot;,
+      &quot;description&quot;: &quot;Turns a product photo into a short ad video&quot;,
+      &quot;updatetime&quot;: &quot;1761901200&quot;,
+      &quot;workspace&quot;: &quot;personal&quot;
+    },
+    &quot;contents&quot;: { &quot;version&quot;: &quot;1&quot;, &quot;nodes&quot;: { &quot;...&quot;: &quot;...&quot; }, &quot;output&quot;: {}, &quot;schema&quot;: { &quot;input&quot;: {}, &quot;output&quot;: {} }, &quot;metadata&quot;: { &quot;input&quot;: { &quot;position&quot;: { &quot;x&quot;: 0, &quot;y&quot;: 0 } } } }
+  }
+}
+</code></pre>
+<ul>
+<li><code>contents</code> is the workflow's graph, as <a href="/docs/workflows#post-workflowdetail">Workflow/Detail</a> returns it (see <a href="/docs/workflows#the-workflow-graph">The Workflow Graph</a>). You can also send the graph alone, without <code>protocolVersion</code> and <code>source</code>.</li>
+<li><code>source</code> names the workflow: <code>slug</code>, <code>slugid</code>, <code>fullSlug</code>, <code>title</code> (up to 300 characters), <code>updatetime</code> and <code>workspace</code> (<code>"personal"</code> or <code>"team"</code>) are required, and <code>description</code> (up to 2,000 characters) is optional.</li>
+<li>The whole <code>workflowContext</code> can be at most 40 KB of JSON (<code>workflowContext exceeds the 40KB limit.</code>). Attach a workflow from the key's workspace; a protected workflow whose graph is hidden cannot be edited this way.</li>
+<li>The agent sees the steps, the Start fields and the End node, never the values saved for the Start fields. Keep keys and passwords out of workflows. Some values reach the agent as <code>"[REDACTED]"</code>; restore them before you save (see <a href="#saving-a-proposal">Saving a proposal</a>).</li>
+</ul>
+<h2 id="proposals">Proposals</h2>
+<p>The reply in <code>response</code> is text. Each proposed workflow is a fenced block that opens with a line <code>```wiro-workflow</code> and closes with a line <code>```</code>; the text around the blocks is the explanation. Each block holds one JSON object:</p>
+<pre><code class="language-json">{
+  &quot;artifactVersion&quot;: 1,
+  &quot;title&quot;: &quot;Product ad with upscale&quot;,
+  &quot;description&quot;: &quot;Turns a product photo into an upscaled image and a short ad video&quot;,
+  &quot;contents&quot;: { &quot;version&quot;: &quot;1&quot;, &quot;nodes&quot;: { &quot;...&quot;: &quot;...&quot; }, &quot;output&quot;: {}, &quot;schema&quot;: { &quot;input&quot;: {}, &quot;output&quot;: {} }, &quot;metadata&quot;: { &quot;input&quot;: { &quot;position&quot;: { &quot;x&quot;: 0, &quot;y&quot;: 0 } } } }
+}
+</code></pre>
+<ul>
+<li><code>title</code> is 1 to 160 characters and <code>description</code> up to 1,000. <code>contents</code> is a workflow graph.</li>
+<li>A block can be at most 40 KB. A block that is not closed yet is still being written: read the reply again once <code>status</code> is <code>agent_end</code>.</li>
+<li>A reply can hold zero, one or several proposals. If the request cannot be built with current models, the agent explains why and proposes nothing. When it needs to know more, it asks; send the answer in the same session.</li>
+<li>Check a proposal before you save it: <a href="/docs/workflows#post-workflowprepare">Workflow/Prepare</a> lists every problem it finds. Send problems back in the same session and ask for a corrected version.</li>
+<li>Treat the explanation as information from a model, not as instructions to your application.</li>
+</ul>
+<p>The agent can also ask your application for the user's workflows, in a block that opens with <code>```wiro-workflow-request</code>:</p>
+<pre><code class="language-json">{ &quot;protocolVersion&quot;: 1, &quot;requestId&quot;: &quot;list-1&quot;, &quot;operation&quot;: &quot;workflow.list&quot;, &quot;args&quot;: { &quot;search&quot;: &quot;product&quot;, &quot;limit&quot;: 10 } }
+</code></pre>
+<p>Run it yourself with <a href="/docs/workflows#post-workflowlist">Workflow/List</a> (scope <code>my</code>), let the user pick a workflow, and attach that workflow to your next message as <code>workflowContext</code>. The list is not sent back to the agent on its own.</p>
+<h2 id="saving-a-proposal">Saving a proposal</h2>
+<ol>
+<li>Read the reply again with <a href="#post-studioworkflowmessagedetail">Message/Detail</a> and take the proposal's <code>contents</code> from its block.</li>
+<li>Prepare it with <a href="/docs/workflows#post-workflowprepare">Workflow/Prepare</a>: <code>mode</code> <code>"create"</code> for a new workflow, <code>"apply"</code> when it replaces an existing graph. Prepare fills the defaults the Wiro editor would and returns every problem at once.</li>
+<li>Save the prepared graph as a new workflow with <a href="/docs/workflows#post-workflowadd">Workflow/Add</a>, or onto the workflow you attached with <a href="/docs/workflows#post-workflowupdate">Workflow/Update</a>. Pass the <code>updatetime</code> you attached as <code>loadedUpdatetime</code>, so a change someone saved in the meantime is not overwritten. Values the agent saw as <code>"[REDACTED]"</code> must be restored from the original workflow first.</li>
+</ol>
+<p>Saving creates or changes a workflow and runs nothing. Applying a proposal to a published workflow sends it back to review.</p>
+<h2 id="errors">Errors</h2>
+<p>Business errors come back with HTTP 200, <code>result: false</code> and an <code>errors</code> array. These are the ones specific to the Workflow Agent:</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Message</th>
+<th>Code</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Insufficient balance</code></td>
+<td>97</td>
+<td>Send or SendForm with less than $10 spendable. The response adds <code>walletUsd</code> and <code>minTopup</code>.</td>
+</tr>
+<tr>
+<td><code>Request parameter [message] required</code></td>
+<td>0</td>
+<td>No message, and no file on SendForm.</td>
+</tr>
+<tr>
+<td><code>message exceeds the 16KB limit.</code></td>
+<td>0</td>
+<td>The message is longer than 16 KB.</td>
+</tr>
+<tr>
+<td><code>sessionkey has invalid format</code></td>
+<td>0</td>
+<td>A session name with other characters, <code>:cron:</code>, or more than 100 characters.</td>
+</tr>
+<tr>
+<td><code>workflowContext exceeds the 40KB limit.</code></td>
+<td>0</td>
+<td>The attached workflow is too large.</td>
+</tr>
+<tr>
+<td><code>workflowContext must be a WorkflowContents object.</code>, <code>workflowContext must be valid JSON data.</code>, <code>workflowContext protocolVersion must be 1.</code>, <code>workflowContext source has an invalid shape.</code>, <code>workflowContext has an invalid WorkflowContents shape.</code></td>
+<td>0</td>
+<td>The <code>workflowContext</code> does not have the shape described above.</td>
+</tr>
+<tr>
+<td><code>This project already has 2 Workflow Agent replies in progress. Wait for one to finish before sending another message.</code></td>
+<td>0</td>
+<td>A third turn while two of the project's turns are queued or running.</td>
+</tr>
+<tr>
+<td><code>Invalid model: &lt;model&gt; is not in the selectable model allowlist.</code></td>
+<td>0</td>
+<td><code>model</code> is not a selectable slug.</td>
+</tr>
+<tr>
+<td><code>Too many files (max 8)</code>, <code>File too large (max 50MB): &lt;name&gt;</code></td>
+<td>0</td>
+<td>SendForm attachment limits.</td>
+</tr>
+<tr>
+<td><code>Message not found</code></td>
+<td>0</td>
+<td>Detail or Cancel with an unknown message, or one from another session or project.</td>
+</tr>
+<tr>
+<td><code>The main session cannot be deleted.</code></td>
+<td>0</td>
+<td>DeleteSession on <code>"default"</code>.</td>
+</tr>
+<tr>
+<td><code>Agent is temporarily unavailable. Please try again shortly.</code></td>
+<td>0</td>
+<td>Try again shortly.</td>
+</tr>
+<tr>
+<td><code>You must be a member of this team to perform this action</code></td>
+<td>HTTP 403</td>
+<td>A team project's key whose creator is no longer a member of the team.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Authentication errors are listed in the <a href="/docs/error-reference">Error Reference</a>.</p>
+                </article>
+
+                <script type="application/json" class="code-examples-data">
+                  [
+                    {
+                      "label": "curl (Send)",
+                      "language": "bash",
+                      "code": "curl -X POST \"https://api.wiro.ai/v1/StudioWorkflow/Message/Send\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"message\": \"A workflow that turns a recipe text into a short cooking video with a voice-over. Input: the recipe. Output: one vertical video under 30 seconds.\",\n    \"sessionkey\": \"recipe-video\"\n  }'"
+                    },
+                    {
+                      "label": "curl (Detail)",
+                      "language": "bash",
+                      "code": "curl -X POST \"https://api.wiro.ai/v1/StudioWorkflow/Message/Detail\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"messageguid\": \"0b7f2c1e-5d4a-4c3b-9a8f-1e2d3c4b5a69\",\n    \"sessionkey\": \"recipe-video\"\n  }'"
+                    },
+                    {
+                      "label": "Python",
+                      "language": "python",
+                      "code": "import json\nimport re\nimport time\nimport requests\n\nBASE = \"https://api.wiro.ai/v1\"\nheaders = {\"x-api-key\": \"YOUR_API_KEY\", \"Content-Type\": \"application/json\"}\nsession = \"recipe-video\"\n\nsent = requests.post(f\"{BASE}/StudioWorkflow/Message/Send\", headers=headers, json={\n    \"message\": \"A workflow that turns a recipe text into a short cooking video with a voice-over.\",\n    \"sessionkey\": session,\n}).json()\nif not sent[\"result\"]:\n    raise SystemExit(sent[\"errors\"])\n\nwhile True:\n    detail = requests.post(f\"{BASE}/StudioWorkflow/Message/Detail\", headers=headers, json={\n        \"messageguid\": sent[\"messageguid\"],\n        \"sessionkey\": session,\n    }).json()[\"data\"]\n    if detail[\"status\"] in (\"agent_end\", \"agent_error\", \"agent_cancel\"):\n        break\n    time.sleep(3)\n\n# Each proposal is a ```wiro-workflow fenced block in the reply\nblocks = re.findall(r\"^ {0,3}```wiro-workflow[ \\t]*\\n(.*?)\\n {0,3}```[ \\t]*$\",\n                    detail[\"response\"], re.S | re.M)\nproposals = [json.loads(block) for block in blocks]\nfor p in proposals:\n    print(p[\"title\"], \"-\", len(p[\"contents\"][\"nodes\"]) - 1, \"steps\")\n\nif proposals:\n    contents = proposals[0][\"contents\"]\n    prepared = requests.post(f\"{BASE}/Workflow/Prepare\", headers=headers, json={\n        \"contents\": contents, \"mode\": \"create\",\n    }).json()\n    if prepared[\"result\"]:\n        saved = requests.post(f\"{BASE}/Workflow/Add\", headers=headers, json={\n            \"slug\": \"recipe-video\",\n            \"title\": proposals[0][\"title\"],\n            \"contents\": json.dumps(prepared[\"contents\"]),\n        }).json()\n        print(saved)\n    else:\n        print(prepared[\"issues\"])"
+                    },
+                    {
+                      "label": "Node.js",
+                      "language": "javascript",
+                      "code": "const axios = require('axios');\n\nconst BASE = 'https://api.wiro.ai/v1';\nconst headers = { 'x-api-key': 'YOUR_API_KEY', 'Content-Type': 'application/json' };\nconst session = 'recipe-video';\n\nconst { data: sent } = await axios.post(`${BASE}/StudioWorkflow/Message/Send`, {\n  message: 'A workflow that turns a recipe text into a short cooking video with a voice-over.',\n  sessionkey: session\n}, { headers });\nif (!sent.result) throw new Error(JSON.stringify(sent.errors));\n\nlet detail;\ndo {\n  await new Promise((resolve) => setTimeout(resolve, 3000));\n  const { data } = await axios.post(`${BASE}/StudioWorkflow/Message/Detail`, {\n    messageguid: sent.messageguid,\n    sessionkey: session\n  }, { headers });\n  detail = data.data;\n} while (!['agent_end', 'agent_error', 'agent_cancel'].includes(detail.status));\n\nconst fence = /^ {0,3}```wiro-workflow[ \\t]*\\n([\\s\\S]*?)\\n {0,3}```[ \\t]*$/gm;\nconst proposals = [...detail.response.matchAll(fence)].map((m) => JSON.parse(m[1]));\nproposals.forEach((p) => console.log(p.title));"
+                    },
+                    {
+                      "label": "Response (Send)",
+                      "language": "json",
+                      "code": "{\n  \"result\": true,\n  \"errors\": [],\n  \"messageguid\": \"0b7f2c1e-5d4a-4c3b-9a8f-1e2d3c4b5a69\",\n  \"agenttoken\": \"Qm7Tz2LpX9vKc4RwN8yHa3JdF6sGb1\",\n  \"status\": \"agent_queue\"\n}"
+                    }
+                  ]
+                </script>
+              </div>
+
+              <!-- ==================== STUDIO ==================== -->
+              <div class="docs-page-section" data-page="studio" style="display: none">
+                <article class="docs-section">
+                  <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="/docs/markdown/studio.md" target="_blank" class="docs-section-md-btn">View</a> <a href="/docs/markdown/studio.md" download class="docs-section-md-btn">Download</a></div>
+<h1>Studio</h1>
+<p class="section-subtitle">Ask Wiro's creative agent for images, video, audio and more through the API, then collect every result it made.</p>
+<h2 id="overview">Overview</h2>
+<p>Studio is Wiro's creative agent. You describe what you want, such as a product shot, a short video, a voice-over or a set of ad banners, and Studio picks suitable models from the Wiro catalog, runs them and replies with the results. It is the same Studio you use on <a href="https://wiro.ai">wiro.ai</a>.</p>
+<p>The Studio API uses the message protocol of <a href="/docs/agent-messaging">Agent Messaging</a> on its own routes under <code>/Studio/</code>:</p>
+<ol>
+<li><strong>Send</strong> a message with <a href="#post-studiomessagesend">Message/Send</a> and get its <code>messageguid</code> and <code>agenttoken</code> back at once.</li>
+<li><strong>Follow</strong> the turn on the <a href="/docs/agent-websocket">Agent WebSocket</a> with the <code>agenttoken</code>, or poll <a href="#post-studiomessagedetail">Message/Detail</a> until the turn ends.</li>
+<li><strong>Collect</strong> the files. The reply lists them, and <a href="#post-studiotasks">Studio/Tasks</a> returns every model run Studio started for you, with its outputs and cost.</li>
+</ol>
+<p>There is no agent guid to pass: every route talks to Studio. Studio is paid from your Wiro wallet, as described under <a href="#costs">Costs</a>.</p>
+<h3 id="authentication">Authentication</h3>
+<p>Every <code>/Studio/*</code> route takes a project API key: <code>x-api-key</code>, plus <code>x-nonce</code> and <code>x-signature</code> for a project that uses signature authentication (see <a href="/docs/authentication">Authentication</a>). A key acts as the person who created its project, in that project's workspace: a personal project works in the personal workspace and pays from the personal wallet, a team project works in the team and pays from the team wallet. For a team project, that person must still be a member of the team; otherwise every route answers HTTP 403 with <code>You must be a member of this team to perform this action</code>.</p>
+<h3 id="sessions">Sessions</h3>
+<p>A session is one conversation with its own memory. <code>sessionkey</code> names it, and <code>"default"</code> is used when you leave it out.</p>
+<ul>
+<li>Studio conversations belong to the person who created the key's project. <code>"default"</code> is their main Studio chat on wiro.ai, and sessions started with a key appear in their Studio on wiro.ai, in the same workspace. Everyone who uses the same key shares these sessions.</li>
+<li>Use a new session name for each piece of work, such as <code>"bakery-banners"</code>, and keep using it for follow-ups such as "make it brighter": Studio remembers the conversation. Use letters, digits, dots, dashes, underscores and colons, up to 128 characters. Names that contain <code>:cron:</code> are reserved.</li>
+<li>The turns of one session run one at a time, in order: a second message waits in <code>agent_queue</code> until the turn before it ends. Different sessions run in parallel.</li>
+</ul>
+<h2 id="costs">Costs</h2>
+<ul>
+<li><strong>$10 to start a turn.</strong> <a href="#post-studiomessagesend">Message/Send</a> and <a href="#post-studiomessagesendform">Message/SendForm</a> need at least $10 spendable in the wallet of the key's workspace. Below that, the message is refused with code <code>97</code> (<code>Insufficient balance</code>), and the response carries <code>walletUsd</code>, the balance, and <code>minTopup</code>, the minimum. Nothing is charged for a refused message. Reading messages, sessions and results is free.</li>
+<li><strong>What a turn costs.</strong> A turn's cost depends on the models Studio runs for it, and can be more than $10.</li>
+<li><strong>Chat.</strong> Each turn is charged for the tokens it used, at the chat model's rates in <a href="#post-studiostatus">Studio/Status</a> (credits per 1M tokens; 1 credit is $0.01). The reply shows the chat charge in <code>tokencost</code>, in credits: <code>tokencost / 100</code> is the amount in USD.</li>
+<li><strong>Model runs.</strong> Each model run Studio starts is charged at that model's price when it succeeds. Failed and cancelled runs are not charged. <a href="#post-studiotasks">Studio/Tasks</a> shows each run's <code>totalcost</code>.</li>
+<li>Charges are made within about a minute of the work finishing. <a href="#post-studiotransactions">Studio/Transactions</a> lists them, and they also appear in the wallet's transactions.</li>
+</ul>
+<h2 id="post-studiostatus"><strong>POST</strong> /Studio/Status</h2>
+<p>Returns the wallet check and the chat models Studio can use. It settles your pending Studio charges first, so <code>walletUsd</code> is current. It takes no request fields.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>walletUsd</code></td>
+<td>number</td>
+<td>Spendable balance of the workspace wallet in USD.</td>
+</tr>
+<tr>
+<td><code>needsTopup</code></td>
+<td>boolean</td>
+<td><code>true</code> when <code>walletUsd</code> is below <code>minTopup</code>.</td>
+</tr>
+<tr>
+<td><code>minTopup</code></td>
+<td>number</td>
+<td>The balance a turn needs to start: <code>10</code>.</td>
+</tr>
+<tr>
+<td><code>tokenRates</code></td>
+<td>object</td>
+<td>Chat model rates. <code>default_model</code> is the default chat model, and <code>models</code> is keyed by model slug: each entry has <code>input_per_1m</code> and <code>output_per_1m</code> (credits per 1M tokens), optional cached-input, cache-write and long-context rates, a <code>label</code>, and <code>selectable: true</code> when you can pick it with <code>model</code>.</td>
+</tr>
+<tr>
+<td><code>agentModel.chatModel</code></td>
+<td>string</td>
+<td>The chat model a turn uses when you leave <code>model</code> out.</td>
+</tr>
+<tr>
+<td><code>title</code></td>
+<td>string</td>
+<td>The agent's name.</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td>number</td>
+<td>Always <code>4</code>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>The response also carries fields that Wiro's own apps use. Ignore the ones not listed here.</p>
+<h3 id="response">Response</h3>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;title&quot;: &quot;Generative Media Agent&quot;,
+  &quot;status&quot;: 4,
+  &quot;walletUsd&quot;: 42.5,
+  &quot;needsTopup&quot;: false,
+  &quot;minTopup&quot;: 10,
+  &quot;tokenRates&quot;: {
+    &quot;default_model&quot;: &quot;openai/gpt-5.6-sol&quot;,
+    &quot;models&quot;: {
+      &quot;openai/gpt-5.6-sol&quot;: {
+        &quot;input_per_1m&quot;: 625,
+        &quot;output_per_1m&quot;: 3750,
+        &quot;cached_input_per_1m&quot;: 62.5,
+        &quot;selectable&quot;: true,
+        &quot;label&quot;: &quot;GPT-5.6 Sol&quot;
+      },
+      &quot;openai/gpt-5.4-mini&quot;: {
+        &quot;input_per_1m&quot;: 93.75,
+        &quot;output_per_1m&quot;: 562.5,
+        &quot;cached_input_per_1m&quot;: 9.375,
+        &quot;selectable&quot;: true,
+        &quot;label&quot;: &quot;GPT-5.4 Mini&quot;
+      }
+    }
+  },
+  &quot;agentModel&quot;: {
+    &quot;chatModel&quot;: &quot;openai/gpt-5.6-sol&quot;
+  }
+}
+</code></pre>
+<h2 id="post-studiomessagesend"><strong>POST</strong> /Studio/Message/Send</h2>
+<p>Sends a message to Studio. It returns at once with the turn's <code>messageguid</code> and <code>agenttoken</code>; the reply arrives on the WebSocket and in <a href="#post-studiomessagedetail">Message/Detail</a>.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>message</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>Your request, as you would type it in Studio. Say what the result is for, the look (subject, style, format or aspect ratio, length for video and audio) and how many results you want. Quote any exact text that must appear in an image or be spoken.</td>
+</tr>
+<tr>
+<td><code>sessionkey</code></td>
+<td>string</td>
+<td>No</td>
+<td>The session to send to. Defaults to <code>"default"</code>, the main Studio chat.</td>
+</tr>
+<tr>
+<td><code>model</code></td>
+<td>string</td>
+<td>No</td>
+<td>The chat model for this turn: a slug whose <code>selectable</code> is <code>true</code> in <a href="#post-studiostatus">Studio/Status</a>. Leave it out to use Studio's default. Use the same <code>model</code> on every turn of a session; when it differs from the previous turn, the response includes <code>modelChangeMarker</code>, as in <a href="/docs/agent-messaging">Agent Messaging</a>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>To attach files, use <a href="#post-studiomessagesendform">Message/SendForm</a>.</p>
+<h3 id="response_1">Response</h3>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;messageguid&quot;: &quot;c3d4e5f6-a7b8-9012-cdef-345678901234&quot;,
+  &quot;agenttoken&quot;: &quot;aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb&quot;,
+  &quot;status&quot;: &quot;agent_queue&quot;
+}
+</code></pre>
+<p>A wallet below the minimum gets:</p>
+<pre><code class="language-json">{
+  &quot;result&quot;: false,
+  &quot;errors&quot;: [{ &quot;code&quot;: 97, &quot;message&quot;: &quot;Insufficient balance&quot;, &quot;time&quot;: 1761902400 }],
+  &quot;walletUsd&quot;: 6.4,
+  &quot;minTopup&quot;: 10
+}
+</code></pre>
+<p>If a request times out, check <a href="#post-studiomessagehistory">Message/History</a> before you send it again: each accepted message starts a paid turn.</p>
+<h2 id="post-studiomessagesendform"><strong>POST</strong> /Studio/Message/SendForm</h2>
+<p>The same as <a href="#post-studiomessagesend">Message/Send</a>, as <code>multipart/form-data</code>, so you can attach files such as a product photo or a logo.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>message</code></td>
+<td>string</td>
+<td>Conditional</td>
+<td>Your request. Required unless at least one file is attached.</td>
+</tr>
+<tr>
+<td><code>sessionkey</code></td>
+<td>string</td>
+<td>No</td>
+<td>The session to send to. Defaults to <code>"default"</code>.</td>
+</tr>
+<tr>
+<td><code>model</code></td>
+<td>string</td>
+<td>No</td>
+<td>As in Send.</td>
+</tr>
+<tr>
+<td><code>attachments</code></td>
+<td>file</td>
+<td>No</td>
+<td>The files. Repeat the <code>attachments</code> field once per file; a single file can also be sent as <code>attachment</code>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<ul>
+<li>Up to 8 files per message, each up to about 100 MB. A larger file is refused with HTTP 413.</li>
+<li>Accepted: images (jpg, jpeg, png, gif, webp, heic, svg), video (mp4, webm, mov), audio (mp3, wav, m4a, webm) and documents (pdf, txt, md, csv, doc, docx, xls, xlsx, ppt, pptx, epub). The file name needs its extension. Other files are refused with <code>Uploaded file format invalid. Supported: ...</code>.</li>
+<li>The message's <code>attachments</code> then lists each file with <code>ordinal</code>, <code>mentionLabel</code>, <code>url</code>, <code>name</code>, <code>type</code> and <code>size</code>.</li>
+</ul>
+<p>The response is the same as Send's.</p>
+<h2 id="post-studiomessagedetail"><strong>POST</strong> /Studio/Message/Detail</h2>
+<p>Returns one message and its reply. Poll it until <code>status</code> is <code>agent_end</code>, <code>agent_error</code> or <code>agent_cancel</code>, or follow the turn on the <a href="/docs/agent-websocket">Agent WebSocket</a>.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>messageguid</code></td>
+<td>string</td>
+<td>Conditional</td>
+<td>The message id from Send. Required unless <code>agenttoken</code> is given.</td>
+</tr>
+<tr>
+<td><code>agenttoken</code></td>
+<td>string</td>
+<td>Conditional</td>
+<td>The turn token from Send.</td>
+</tr>
+<tr>
+<td><code>sessionkey</code></td>
+<td>string</td>
+<td>No</td>
+<td>The message's session. Defaults to <code>"default"</code>. A message from another session is <code>Message not found</code>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<h3 id="reply-fields">Reply fields</h3>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>status</code></td>
+<td><code>agent_queue</code>, <code>agent_start</code>, <code>agent_output</code>, then <code>agent_end</code>; or <code>agent_error</code> or <code>agent_cancel</code>.</td>
+</tr>
+<tr>
+<td><code>content</code></td>
+<td>Your message.</td>
+</tr>
+<tr>
+<td><code>response</code></td>
+<td>The final reply, set when the turn ends. Each file Studio made is on its own line as a public URL. After <code>agent_error</code> it reads <code>Agent is temporarily unavailable. Please try again shortly.</code>, and after <code>agent_cancel</code> <code>Request cancelled.</code></td>
+</tr>
+<tr>
+<td><code>debugoutput</code></td>
+<td>The reply text so far while the turn runs, the final text after.</td>
+</tr>
+<tr>
+<td><code>timeline</code></td>
+<td>The ordered reasoning, answer and tool blocks of the turn, as described in <a href="/docs/agent-messaging">Agent Messaging</a>. Tool labels are display names: show them, but do not parse them.</td>
+</tr>
+<tr>
+<td><code>attachments</code></td>
+<td>The files you attached.</td>
+</tr>
+<tr>
+<td><code>model</code></td>
+<td>The chat model that ran the turn.</td>
+</tr>
+<tr>
+<td><code>inputtokens</code>, <code>outputtokens</code>, <code>cachereadtokens</code>, <code>cachewritetokens</code>, <code>totaltokens</code></td>
+<td>The turn's token use.</td>
+</tr>
+<tr>
+<td><code>tokencost</code></td>
+<td>The chat charge in credits; <code>tokencost / 100</code> is the amount in USD. Model runs are charged separately (see <a href="#post-studiotasks">Studio/Tasks</a>).</td>
+</tr>
+<tr>
+<td><code>createdat</code>, <code>startedat</code>, <code>endedat</code></td>
+<td>Unix seconds.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<h3 id="response_2">Response</h3>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;data&quot;: {
+    &quot;guid&quot;: &quot;c3d4e5f6-a7b8-9012-cdef-345678901234&quot;,
+    &quot;agenttoken&quot;: &quot;aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb&quot;,
+    &quot;content&quot;: &quot;Two square banner images for my bakery's weekend sale, warm colors&quot;,
+    &quot;response&quot;: &quot;Here are your two banners.\nhttps://cdn1.wiro.ai/7f3a9c2e/banner-1.png\nhttps://cdn1.wiro.ai/7f3a9c2e/banner-2.png&quot;,
+    &quot;debugoutput&quot;: &quot;Here are your two banners.\nhttps://cdn1.wiro.ai/7f3a9c2e/banner-1.png\nhttps://cdn1.wiro.ai/7f3a9c2e/banner-2.png&quot;,
+    &quot;status&quot;: &quot;agent_end&quot;,
+    &quot;metadata&quot;: {},
+    &quot;createdat&quot;: &quot;1761902400&quot;,
+    &quot;startedat&quot;: &quot;1761902401&quot;,
+    &quot;endedat&quot;: &quot;1761902466&quot;,
+    &quot;attachments&quot;: [],
+    &quot;timeline&quot;: [],
+    &quot;model&quot;: &quot;openai/gpt-5.6-sol&quot;,
+    &quot;inputtokens&quot;: 6400,
+    &quot;outputtokens&quot;: 610,
+    &quot;cachereadtokens&quot;: 0,
+    &quot;cachewritetokens&quot;: 0,
+    &quot;totaltokens&quot;: 7010,
+    &quot;tokencost&quot;: 7
+  }
+}
+</code></pre>
+<p>In this example the chat part cost 7 credits ($0.07). The two images are charged separately, as the model runs Studio started.</p>
+<h2 id="post-studiomessagehistory"><strong>POST</strong> /Studio/Message/History</h2>
+<p>Returns the messages of one session, newest first.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sessionkey</code></td>
+<td>string</td>
+<td>No</td>
+<td>The session. Defaults to <code>"default"</code>.</td>
+</tr>
+<tr>
+<td><code>limit</code></td>
+<td>number</td>
+<td>No</td>
+<td>Messages per page. Default <code>50</code>, maximum <code>200</code>.</td>
+</tr>
+<tr>
+<td><code>before</code></td>
+<td>string</td>
+<td>No</td>
+<td>A message <code>guid</code>: returns the messages older than it, for the next page.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>The response is <code>{ "result": true, "errors": [], "data": { "messages": [...], "count": 2, "hasmore": false } }</code>. Each message has the reply fields of <a href="#post-studiomessagedetail">Message/Detail</a> except <code>startedat</code> and <code>endedat</code>.</p>
+<p>When a turn hands work to the background, its reply says so and ends early. The result arrives later as a new message in the same session, already finished: <code>status</code> is <code>agent_end</code>, <code>content</code> is empty and the text is in <code>response</code>. Read it with History, and find the files in <a href="#post-studiotasks">Studio/Tasks</a>.</p>
+<h2 id="post-studiomessagesessions"><strong>POST</strong> /Studio/Message/Sessions</h2>
+<p>Lists your Studio sessions in the key's workspace, most recent first, including those started on wiro.ai. It takes no request fields.</p>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;data&quot;: {
+    &quot;sessions&quot;: [
+      {
+        &quot;sessionkey&quot;: &quot;bakery-banners&quot;,
+        &quot;messagecount&quot;: 3,
+        &quot;updatedat&quot;: 1761902466,
+        &quot;lastmessage&quot;: &quot;Make the second one brighter&quot;,
+        &quot;name&quot;: &quot;Bakery banners&quot;
+      },
+      {
+        &quot;sessionkey&quot;: &quot;default&quot;,
+        &quot;messagecount&quot;: 0,
+        &quot;updatedat&quot;: null,
+        &quot;lastmessage&quot;: &quot;&quot;
+      }
+    ]
+  }
+}
+</code></pre>
+<p><code>messagecount</code> counts turns, <code>lastmessage</code> is the last message (up to 500 characters), and <code>name</code> is the display name set with <a href="#post-studiomessagerenamesession">Message/RenameSession</a>. <code>"default"</code> is always listed.</p>
+<h2 id="post-studiomessagecancel"><strong>POST</strong> /Studio/Message/Cancel</h2>
+<p>Stops a turn that is queued or running.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>messageguid</code></td>
+<td>string</td>
+<td>Conditional</td>
+<td>The message id. Required unless <code>agenttoken</code> is given.</td>
+</tr>
+<tr>
+<td><code>agenttoken</code></td>
+<td>string</td>
+<td>Conditional</td>
+<td>The turn token.</td>
+</tr>
+<tr>
+<td><code>sessionkey</code></td>
+<td>string</td>
+<td>No</td>
+<td>The message's session. Defaults to <code>"default"</code>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Only a message in <code>agent_queue</code>, <code>agent_start</code> or <code>agent_output</code> can be cancelled; any other is refused with <code>Message cannot be cancelled (status: &lt;status&gt;)</code>. Cancelling stops the reply, and the message moves to <code>agent_cancel</code>. Tokens already used are charged, and model runs that already started are billed when they succeed.</p>
+<h2 id="post-studiomessageclearsession"><strong>POST</strong> /Studio/Message/ClearSession</h2>
+<p>Deletes your messages in a session and starts Studio's memory of it fresh. The session keeps its display name.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sessionkey</code></td>
+<td>string</td>
+<td>No</td>
+<td>The session. Defaults to <code>"default"</code>, the main Studio chat.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Pending charges are settled first. Deleted messages cannot be restored, and they disappear from Studio on wiro.ai too. Files Studio made are not deleted.</p>
+<h2 id="post-studiomessagedeletesession"><strong>POST</strong> /Studio/Message/DeleteSession</h2>
+<p>Deletes a session's messages and its display name.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sessionkey</code></td>
+<td>string</td>
+<td>No</td>
+<td>The session. Defaults to <code>"default"</code>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>To start a session over with a fresh memory, use <a href="#post-studiomessageclearsession">Message/ClearSession</a>.</p>
+<h2 id="post-studiomessagerenamesession"><strong>POST</strong> /Studio/Message/RenameSession</h2>
+<p>Sets a session's display name, the name shown in the session list on wiro.ai.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>The display name, up to 40 characters.</td>
+</tr>
+<tr>
+<td><code>sessionkey</code></td>
+<td>string</td>
+<td>No</td>
+<td>The session. Defaults to <code>"default"</code>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<h2 id="post-studiotasks"><strong>POST</strong> /Studio/Tasks</h2>
+<p>Lists the model runs Studio started for you in the key's workspace, newest first, across all your Studio sessions, including those on wiro.ai.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>limit</code></td>
+<td>number</td>
+<td>No</td>
+<td>How many recent runs to return. Default <code>30</code>, maximum <code>100</code>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>The run's id.</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td>The task status, such as <code>task_queue</code>, <code>task_start</code>, <code>task_postprocess_end</code> or <code>task_cancel</code> (see <a href="/docs/tasks">Tasks</a>).</td>
+</tr>
+<tr>
+<td><code>success</code></td>
+<td><code>true</code> for a run that finished successfully, <code>false</code> for a failed or cancelled run, <code>null</code> while it runs.</td>
+</tr>
+<tr>
+<td><code>terminal</code></td>
+<td><code>true</code> once the run has finished.</td>
+</tr>
+<tr>
+<td><code>model</code></td>
+<td><code>{ title, slugowner, slugproject }</code>.</td>
+</tr>
+<tr>
+<td><code>categories</code></td>
+<td>The model's categories. <code>llm</code> marks a text run.</td>
+</tr>
+<tr>
+<td><code>parameters</code></td>
+<td>The inputs the run used, such as its prompt.</td>
+</tr>
+<tr>
+<td><code>outputs</code></td>
+<td>The result files, each with <code>name</code>, <code>contenttype</code>, <code>size</code> and <code>url</code>. An LLM run returns its text as <code>{ "contenttype": "raw", "content": { "answer": [...] } }</code>.</td>
+</tr>
+<tr>
+<td><code>totalcost</code></td>
+<td>The run's price in USD, charged when it succeeds.</td>
+</tr>
+<tr>
+<td><code>socketaccesstoken</code></td>
+<td>While the run is active, a token for the task <a href="/docs/websocket">WebSocket</a>; empty once it finished.</td>
+</tr>
+<tr>
+<td><code>createtime</code>, <code>starttime</code>, <code>endtime</code></td>
+<td>Unix seconds.</td>
+</tr>
+<tr>
+<td><code>elapsedseconds</code></td>
+<td>How long the run took.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<h3 id="response_3">Response</h3>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;tasks&quot;: [
+    {
+      &quot;id&quot;: &quot;48211907&quot;,
+      &quot;status&quot;: &quot;task_postprocess_end&quot;,
+      &quot;success&quot;: true,
+      &quot;terminal&quot;: true,
+      &quot;model&quot;: {
+        &quot;title&quot;: &quot;Nano Banana Pro API: Create Mobile &amp; Web Apps with Nano Banana&quot;,
+        &quot;slugowner&quot;: &quot;google&quot;,
+        &quot;slugproject&quot;: &quot;nano-banana-pro&quot;
+      },
+      &quot;categories&quot;: [&quot;text-to-image&quot;, &quot;image-to-image&quot;, &quot;image-editing&quot;],
+      &quot;parameters&quot;: { &quot;prompt&quot;: &quot;Square banner for a bakery weekend sale, warm colors&quot;, &quot;resolution&quot;: &quot;2K&quot; },
+      &quot;outputs&quot;: [
+        {
+          &quot;name&quot;: &quot;banner-1.png&quot;,
+          &quot;contenttype&quot;: &quot;image/png&quot;,
+          &quot;size&quot;: &quot;1843212&quot;,
+          &quot;url&quot;: &quot;https://cdn1.wiro.ai/7f3a9c2e/banner-1.png&quot;
+        }
+      ],
+      &quot;totalcost&quot;: 0.14,
+      &quot;socketaccesstoken&quot;: &quot;&quot;,
+      &quot;createtime&quot;: &quot;1761902420&quot;,
+      &quot;starttime&quot;: &quot;1761902421&quot;,
+      &quot;endtime&quot;: &quot;1761902452&quot;,
+      &quot;elapsedseconds&quot;: 31
+    }
+  ]
+}
+</code></pre>
+<p>Delete a finished run's files with <a href="#post-studiotaskdeleteoutput">Studio/Task/DeleteOutput</a>.</p>
+<h2 id="post-studiotransactions"><strong>POST</strong> /Studio/Transactions</h2>
+<p>Lists the wallet charges for your Studio use in the key's workspace, newest first.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>limit</code></td>
+<td>number</td>
+<td>No</td>
+<td>Default <code>50</code>, maximum <code>200</code>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Each row has <code>guid</code>, <code>type</code>, <code>amount</code>, <code>description</code>, <code>modelid</code>, <code>taskid</code>, <code>confirmed</code> and <code>time</code>. A chat charge is described as <code>Generative Media Agent LLM &lt;model&gt; (...)</code> with its token counts, and a model run as <code>Generative Media Agent media run</code>.</p>
+<h2 id="post-studiotaskdeleteoutput"><strong>POST</strong> /Studio/Task/DeleteOutput</h2>
+<p>Deletes the output and input files of one of your Studio runs once it has finished or was cancelled.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>The run's <code>id</code> from <a href="#post-studiotasks">Studio/Tasks</a>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>A run that is not yours answers <code>There is no task yet.</code>, and a run that has not finished answers <code>Task must be completed or cancelled before deleting files</code>.</p>
+<h2 id="errors">Errors</h2>
+<p>Business errors come back with HTTP 200, <code>result: false</code> and an <code>errors</code> array, as everywhere in the Wiro API. These are the ones specific to Studio:</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Message</th>
+<th>Code</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Insufficient balance</code></td>
+<td>97</td>
+<td>Send or SendForm with less than $10 spendable. The response adds <code>walletUsd</code> and <code>minTopup</code>.</td>
+</tr>
+<tr>
+<td><code>Request parameter [message] required</code></td>
+<td>0</td>
+<td>Send without a message, or SendForm with neither a message nor a file.</td>
+</tr>
+<tr>
+<td><code>Invalid model: &lt;model&gt; is not in the selectable model allowlist.</code></td>
+<td>0</td>
+<td><code>model</code> is not a selectable slug in Studio/Status.</td>
+</tr>
+<tr>
+<td><code>Reserved sessionkey</code></td>
+<td>0</td>
+<td>The session name contains <code>:cron:</code>.</td>
+</tr>
+<tr>
+<td><code>Too many files (max 8)</code></td>
+<td>0</td>
+<td>SendForm with more than 8 files.</td>
+</tr>
+<tr>
+<td><code>Uploaded file format invalid. Supported: ...</code></td>
+<td>0</td>
+<td>An attachment type that is not accepted.</td>
+</tr>
+<tr>
+<td><code>Message not found</code></td>
+<td>0</td>
+<td>Detail or Cancel with an unknown message, or one from another session.</td>
+</tr>
+<tr>
+<td><code>Message cannot be cancelled (status: &lt;status&gt;)</code></td>
+<td>0</td>
+<td>Cancel on a turn that has already ended.</td>
+</tr>
+<tr>
+<td><code>Agent is temporarily unavailable. Please try again shortly.</code></td>
+<td>0</td>
+<td>Try again shortly.</td>
+</tr>
+<tr>
+<td><code>You must be a member of this team to perform this action</code></td>
+<td>HTTP 403</td>
+<td>A team project's key whose creator is no longer a member of the team.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Authentication errors are listed in the <a href="/docs/error-reference">Error Reference</a>.</p>
+                </article>
+
+                <script type="application/json" class="code-examples-data">
+                  [
+                    {
+                      "label": "curl (Send)",
+                      "language": "bash",
+                      "code": "curl -X POST \"https://api.wiro.ai/v1/Studio/Message/Send\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"message\": \"Two square banner images for a bakery weekend sale, warm colors\",\n    \"sessionkey\": \"bakery-banners\"\n  }'"
+                    },
+                    {
+                      "label": "curl (Detail)",
+                      "language": "bash",
+                      "code": "curl -X POST \"https://api.wiro.ai/v1/Studio/Message/Detail\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{\n    \"messageguid\": \"c3d4e5f6-a7b8-9012-cdef-345678901234\",\n    \"sessionkey\": \"bakery-banners\"\n  }'"
+                    },
+                    {
+                      "label": "curl (Tasks)",
+                      "language": "bash",
+                      "code": "curl -X POST \"https://api.wiro.ai/v1/Studio/Tasks\" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -d '{ \"limit\": 20 }'"
+                    },
+                    {
+                      "label": "curl (SendForm)",
+                      "language": "bash",
+                      "code": "curl -X POST \"https://api.wiro.ai/v1/Studio/Message/SendForm\" \\\n  -H \"x-api-key: YOUR_API_KEY\" \\\n  -F \"message=Put this mug on a wooden table in morning light\" \\\n  -F \"sessionkey=mug-shots\" \\\n  -F \"attachments=@/path/to/mug.jpg\""
+                    },
+                    {
+                      "label": "Python",
+                      "language": "python",
+                      "code": "import time\nimport requests\n\nBASE = \"https://api.wiro.ai/v1\"\nheaders = {\"x-api-key\": \"YOUR_API_KEY\", \"Content-Type\": \"application/json\"}\nsession = \"bakery-banners\"\n\n# 1. Send the brief\nsent = requests.post(f\"{BASE}/Studio/Message/Send\", headers=headers, json={\n    \"message\": \"Two square banner images for a bakery weekend sale, warm colors\",\n    \"sessionkey\": session,\n}).json()\nif not sent[\"result\"]:\n    raise SystemExit(sent[\"errors\"])\n\n# 2. Poll until the turn ends\nwhile True:\n    detail = requests.post(f\"{BASE}/Studio/Message/Detail\", headers=headers, json={\n        \"messageguid\": sent[\"messageguid\"],\n        \"sessionkey\": session,\n    }).json()[\"data\"]\n    if detail[\"status\"] in (\"agent_end\", \"agent_error\", \"agent_cancel\"):\n        break\n    time.sleep(3)\n\nprint(detail[\"response\"])\nprint(\"Chat charge (USD):\", (detail.get(\"tokencost\") or 0) / 100)\n\n# 3. The model runs Studio started, with their files and cost\ntasks = requests.post(f\"{BASE}/Studio/Tasks\", headers=headers, json={\"limit\": 10}).json()\nfor task in tasks[\"tasks\"]:\n    files = [o.get(\"url\") for o in task[\"outputs\"] if o.get(\"url\")]\n    print(task[\"model\"][\"slugproject\"], task[\"status\"], task[\"totalcost\"], files)"
+                    },
+                    {
+                      "label": "Node.js",
+                      "language": "javascript",
+                      "code": "const axios = require('axios');\n\nconst BASE = 'https://api.wiro.ai/v1';\nconst headers = { 'x-api-key': 'YOUR_API_KEY', 'Content-Type': 'application/json' };\nconst session = 'bakery-banners';\n\nconst { data: sent } = await axios.post(`${BASE}/Studio/Message/Send`, {\n  message: \"Two square banner images for a bakery weekend sale, warm colors\",\n  sessionkey: session\n}, { headers });\nif (!sent.result) throw new Error(JSON.stringify(sent.errors));\n\nlet detail;\ndo {\n  await new Promise((resolve) => setTimeout(resolve, 3000));\n  const { data } = await axios.post(`${BASE}/Studio/Message/Detail`, {\n    messageguid: sent.messageguid,\n    sessionkey: session\n  }, { headers });\n  detail = data.data;\n} while (!['agent_end', 'agent_error', 'agent_cancel'].includes(detail.status));\n\nconsole.log(detail.response);\nconsole.log('Chat charge (USD):', (detail.tokencost || 0) / 100);\n\nconst { data: runs } = await axios.post(`${BASE}/Studio/Tasks`, { limit: 10 }, { headers });\nfor (const task of runs.tasks) {\n  console.log(task.model.slugproject, task.status, task.totalcost, task.outputs.map((o) => o.url));\n}"
+                    },
+                    {
+                      "label": "PHP",
+                      "language": "php",
+                      "code": "<?php\nfunction wiro($path, $body) {\n    $ch = curl_init(\"https://api.wiro.ai/v1\" . $path);\n    curl_setopt($ch, CURLOPT_POST, true);\n    curl_setopt($ch, CURLOPT_HTTPHEADER, [\n        \"Content-Type: application/json\",\n        \"x-api-key: YOUR_API_KEY\"\n    ]);\n    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));\n    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n    $response = json_decode(curl_exec($ch), true);\n    curl_close($ch);\n    return $response;\n}\n\n$sent = wiro(\"/Studio/Message/Send\", [\n    \"message\" => \"Two square banner images for a bakery weekend sale, warm colors\",\n    \"sessionkey\" => \"bakery-banners\"\n]);\n\ndo {\n    sleep(3);\n    $detail = wiro(\"/Studio/Message/Detail\", [\n        \"messageguid\" => $sent[\"messageguid\"],\n        \"sessionkey\" => \"bakery-banners\"\n    ])[\"data\"];\n} while (!in_array($detail[\"status\"], [\"agent_end\", \"agent_error\", \"agent_cancel\"]));\n\necho $detail[\"response\"];"
+                    },
+                    {
+                      "label": "C#",
+                      "language": "csharp",
+                      "code": "using System.Net.Http.Json;\nusing System.Text.Json;\n\nusing var client = new HttpClient { BaseAddress = new Uri(\"https://api.wiro.ai/v1/\") };\nclient.DefaultRequestHeaders.Add(\"x-api-key\", \"YOUR_API_KEY\");\n\nvar sent = await (await client.PostAsJsonAsync(\"Studio/Message/Send\", new {\n    message = \"Two square banner images for a bakery weekend sale, warm colors\",\n    sessionkey = \"bakery-banners\"\n})).Content.ReadFromJsonAsync<JsonElement>();\nvar messageGuid = sent.GetProperty(\"messageguid\").GetString();\n\nJsonElement data;\nstring status;\ndo {\n    await Task.Delay(3000);\n    var detail = await (await client.PostAsJsonAsync(\"Studio/Message/Detail\", new {\n        messageguid = messageGuid,\n        sessionkey = \"bakery-banners\"\n    })).Content.ReadFromJsonAsync<JsonElement>();\n    data = detail.GetProperty(\"data\");\n    status = data.GetProperty(\"status\").GetString();\n} while (status != \"agent_end\" && status != \"agent_error\" && status != \"agent_cancel\");\n\nConsole.WriteLine(data.GetProperty(\"response\").GetString());"
+                    },
+                    {
+                      "label": "Go",
+                      "language": "go",
+                      "code": "package main\n\nimport (\n    \"bytes\"\n    \"encoding/json\"\n    \"fmt\"\n    \"net/http\"\n    \"time\"\n)\n\nfunc wiro(path string, body map[string]interface{}) map[string]interface{} {\n    payload, _ := json.Marshal(body)\n    req, _ := http.NewRequest(\"POST\", \"https://api.wiro.ai/v1\"+path, bytes.NewBuffer(payload))\n    req.Header.Set(\"Content-Type\", \"application/json\")\n    req.Header.Set(\"x-api-key\", \"YOUR_API_KEY\")\n    resp, err := http.DefaultClient.Do(req)\n    if err != nil {\n        panic(err)\n    }\n    defer resp.Body.Close()\n    var out map[string]interface{}\n    json.NewDecoder(resp.Body).Decode(&out)\n    return out\n}\n\nfunc main() {\n    sent := wiro(\"/Studio/Message/Send\", map[string]interface{}{\n        \"message\":    \"Two square banner images for a bakery weekend sale, warm colors\",\n        \"sessionkey\": \"bakery-banners\",\n    })\n\n    for {\n        time.Sleep(3 * time.Second)\n        detail := wiro(\"/Studio/Message/Detail\", map[string]interface{}{\n            \"messageguid\": sent[\"messageguid\"],\n            \"sessionkey\":  \"bakery-banners\",\n        })[\"data\"].(map[string]interface{})\n        status := detail[\"status\"].(string)\n        if status == \"agent_end\" || status == \"agent_error\" || status == \"agent_cancel\" {\n            fmt.Println(detail[\"response\"])\n            break\n        }\n    }\n}"
+                    },
+                    {
+                      "label": "Response (Send)",
+                      "language": "json",
+                      "code": "{\n  \"result\": true,\n  \"errors\": [],\n  \"messageguid\": \"c3d4e5f6-a7b8-9012-cdef-345678901234\",\n  \"agenttoken\": \"aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb\",\n  \"status\": \"agent_queue\"\n}"
+                    }
+                  ]
+                </script>
               </div>
 
               <!-- ==================== AGENT OVERVIEW ==================== -->

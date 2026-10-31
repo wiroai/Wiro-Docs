@@ -1,6 +1,6 @@
 # Wiro API Integration
 
-> Wiro is a unified API platform for running AI models (video, image, audio, LLM, 3D) and deploying autonomous AI agents through a single API. Pay-per-use pricing, real-time streaming via WebSocket, webhook callbacks, and 9-language code examples.
+> Wiro is a unified API platform for running AI models (video, image, audio, LLM, 3D), building multi-step workflows, creating media with Studio and deploying autonomous AI agents through a single API. Pay-per-use pricing, real-time streaming via WebSocket, webhook callbacks, and 9-language code examples.
 
 - Base URL: `https://api.wiro.ai/v1`
 - WebSocket: `wss://socket.wiro.ai/v1`
@@ -23,6 +23,12 @@
 - [Files](https://wiro.ai/docs/files): Upload files for model inputs
 - [Pricing](https://wiro.ai/docs/pricing): Pay-per-use credit system
 - [Error Reference](https://wiro.ai/docs/error-reference): Error codes and troubleshooting
+
+## Workflow & Studio API Docs
+
+- [Workflows](https://wiro.ai/docs/workflows): Save multi-step workflows from a graph (`/Workflow/Prepare`, `Add`, `Update`), run them with new inputs, follow and resume runs, clone from the public gallery
+- [Workflow Agent](https://wiro.ai/docs/workflow-agent): Chat agent that designs and edits workflows (`/StudioWorkflow/*`); proposals arrive as `wiro-workflow` blocks to save with Workflow/Prepare + Add
+- [Studio](https://wiro.ai/docs/studio): Wiro's creative agent (`/Studio/*`): send a brief, read the reply, collect the model runs it started with `/Studio/Tasks`
 
 ## Agent API Docs
 
@@ -960,6 +966,50 @@ const result = await client.waitForTask(run.socketaccesstoken);
 ```
 
 Methods: `searchModels()`, `getModelSchema()`, `explore()`, `runModel()`, `waitForTask()`, `getTask()`, `listTasks()`, `cancelTask()`, `killTask()`, `uploadFile()`, and `post(path, body)` / `postForm(path, form)` for any other Wiro API endpoint with the same credentials (check `result` on the returned body). `waitForTask` supports task token or ID, AbortSignal, stepped polling, progress callbacks, retries, and preserves the last detail in `TaskWaitTimeoutError`.
+
+## Workflow & Studio API
+
+### Workflows (/Workflow/*)
+A workflow is a saved graph of steps: each step runs one Wiro model or a built-in utility; Start fields are the inputs, the End node lists the results. Every route takes a project API key (signature or key-only); the key acts as its project's creator in the project's workspace. A workflow belongs to its workspace; published gallery workflows can be read and run by anyone. Full slug = `<slug>-<5-char slugid>`, sent as `slug`. Business errors are HTTP 200 with `result: false`.
+- `POST /Workflow/List`: `scope` ("my" default, or "public" gallery), `search`, `sort` (my: createtime/updatetime/title; public: createtime/runcount/likecount/clonecount/ratingscore), `order`, `start`, `limit` (my default 20 max 1000; public default 50 max 200), `ispublic` (my), `tags` / `model` / `onlyfavorites` / `toolpreview` (public). Returns `workflow[]`, `total`
+- `POST /Workflow/Detail` (`slug`): the row plus `contents` (graph object). Protected workflows from another workspace: steps removed, `estimatedcost { type: "estimated"|"unavailable", value }`
+- `POST /Workflow/Prepare` (`contents` object or JSON string, `mode` "create"|"apply", `anchorNodeIds` for apply): checks the graph against the live catalog, fills model defaults, completes Start fields and End node, lays out steps; writes and charges nothing. `result: true` → prepared `contents`; else `issues[] { code, message, nodeId, input, bytes?, limit? }` all at once; `warnings[]` (`required-input-missing`). Graph limit 40960 bytes before and after preparation
+- `POST /Workflow/Add`: `title`, `slug` (lowercase letters, digits, dashes; Wiro adds the slugid), `contents` (JSON string, prepared), `description`, `tags` (JSON string array; `wiro-` reserved). Private, in the key's workspace
+- `POST /Workflow/Update`: `slug`, `title`, `description`, `tags`, `contents` (JSON string), `loadedUpdatetime`, `force`, `input` (protected clones only). Conflict: `This workflow was modified by another user. Reload to see latest changes or save to overwrite.` + `currentUpdatetime`. Changing a published workflow sends it back to review
+- `POST /Workflow/Clone` (`slug` of a gallery workflow): private copy in the key's workspace; clones cannot be published or cloned again; a protected source keeps its steps hidden
+- `POST /Workflow/Delete` (`slug`): runs already started finish, clones keep working, no undo
+- `POST /Workflow/Run`: `slug`, `input` (object keyed by Start field; strings, numbers, booleans, arrays; files are public URLs), `breakpointNodeId`. Returns `workflowtoken` at once. Refusals: `Unknown input field(s): ...`, `A required input value is missing: <key>.`, code 97 `Insufficient balance` (wallet below $0.50 per model step that will run), code 96 concurrency. The run is paid by the caller's workspace wallet
+- `POST /Workflow/RunDetail` (`workflowtoken`): `workflowrun { workflowtoken, workflowslug, status, outcome, canresume, breakpointnodeid, contents, totalcost, chargedcost, discountamount, startedAt (ms), resumedAt, elapsedseconds, failed/aborted/cancelledNodeCount }` and `workflowrunnodes[] { nodeId, tool, kind, layerIdx, status, cause, error, tasktoken, outputs, elapsedseconds }`; `graphmasked: true` when the steps are hidden from the caller
+- `POST /Workflow/RunNodeDetail` (`tasktoken` of a model step): `taskDetail { parameters, debugoutput, taskStatus, modelslugowner, modelslugproject }`
+- `POST /Workflow/RunHistory`: `start`, `limit` (default 20, max 1000), `status`, `search` (workflow title, or slug without the id), `workflowid`, `sort`, `order`. Personal key: own runs; team key: every member's runs
+- `POST /Workflow/RunResume`: `workflowtoken`, `breakpointNodeId` (null = to the end; absent = a failed run keeps its breakpoint, a stopped run runs to the end). Same token; completed steps are not charged again
+- `POST /Workflow/UtilityDetail` (`slug`: workflow-utilities/output-filter, merge-text or split-text): parameters and output ports
+Run statuses: running, completed, failed, stopped (breakpoint), cancelled. Step statuses: pending, running, completed, failed, cancelled, aborted. Steps run in layers by `depends`; a failed step skips every later layer. Breakpoint: not in the last layer; only people who can edit the workflow. Billing: nothing at start; each model step billed like a model task when it succeeds; utilities free; `totalcost` = list price so far, `chargedcost` once ended (null while settling).
+Graph: `{ "version": "1", "nodes": { "node-<id>": { "id", "type": "run", "tool": "owner/model" | "workflow-utilities/<name>", "depends": ["input", "node-..."], "input": {...}, "metadata": { "position": { "x", "y" } } }, "output": { "id": "output", "type": "display", "depends": [...], "input": {}, "fields": { "<name>": "$node-<id>.outputs" }, "metadata": {...} } }, "output": <copy of End fields>, "schema": { "input": { "<key>": { "label", "type": "string"|"number"|"float"|"boolean", "defaultValue", "ui": { "field": "textarea"|"select"|"image"|"audio"|"video"|"pdf" } } }, "output": {} }, "metadata": { "input": { "position": {...}, "values"?: {...} } } }`. References are whole string values: `$input.<key>`, `$node-<id>.outputs` (model step), `$node-<id>.result` (output-filter, merge-text), `$node-<id>.text1`..`textN` (split-text). Training models cannot run in workflows.
+Docs: https://wiro.ai/docs/workflows
+
+### Workflow Agent (/StudioWorkflow/*)
+Chat agent that designs and edits workflows from the live catalog; it replies with an explanation and zero or more proposals and never saves or runs anything. Same message protocol as Agent Messaging, no `useragentguid`. Project API key (x-api-key, plus x-nonce/x-signature for signature projects); the key acts as its project's creator in the project's workspace; a team key whose creator left the team gets HTTP 403 `You must be a member of this team to perform this action`.
+- `POST /StudioWorkflow/Status`: `walletUsd`, `needsTopup`, `minTopup` (10), `tokenRates` (credits per 1M tokens, `selectable` models, `default_model`), `agentModel.chatModel`
+- `POST /StudioWorkflow/Message/Send`: `message` (required, at most 16 KB), `sessionkey` (default "default"), `model` (a selectable slug), `workflowContext` (the workflow to edit, at most 40 KB). Returns `messageguid`, `agenttoken`, `status: "agent_queue"`
+- `POST /StudioWorkflow/Message/SendForm`: multipart; same fields (`workflowContext` as a JSON string) plus files in `attachments` (repeat the field) or `attachment`; up to 8 files, 50 MB each
+- `POST /StudioWorkflow/Message/Detail` (`messageguid` or `agenttoken`, `sessionkey`), `History` (`sessionkey`, `limit` default 50 max 200, `before`), `Sessions`, `Cancel`, `ClearSession` (deletes messages, fresh memory, keeps the name), `DeleteSession` ("default" refused: `The main session cannot be deleted.`), `RenameSession` (`name` up to 40 chars), `POST /StudioWorkflow/Transactions` (`limit`)
+Sessions: API-key sessions belong to the key's project, shared by everyone using the key, separate from wiro.ai chats and other projects; each project has its own "default". Names: letters, digits, `.`, `_`, `:`, `-`, no `:cron:`, at most 100 characters; else `sessionkey has invalid format`. At most 2 turns queued or running per project key: `This project already has 2 Workflow Agent replies in progress. Wait for one to finish before sending another message.`
+Billing: at least $10 spendable in the workspace wallet to start a turn, else code 97 `Insufficient balance` with `walletUsd`, `minTopup`; nothing charged on refusal. Each turn is charged after it ends for its tokens (`tokencost` in credits, USD = tokencost / 100). No model runs; saving is free; running the saved workflow is billed as a workflow run.
+workflowContext: `{ "protocolVersion": 1, "source": { "slug", "slugid", "fullSlug", "title" (<= 300), "description"? (<= 2000), "updatetime", "workspace": "personal"|"team" }, "contents": <graph> }`, or the graph alone; at most 40 KB. The agent never sees saved Start values; some values reach it as "[REDACTED]": restore them before saving.
+Proposals: in `response`, each is a fenced block opened by a line ```wiro-workflow and closed by ```; JSON `{ "artifactVersion": 1, "title" (1-160), "description"? (<= 1000), "contents": <graph> }`; a block is at most 40 KB. A ```wiro-workflow-request block `{ "protocolVersion": 1, "requestId", "operation": "workflow.list", "args": { "search"?, "limit"? } }` asks the client to list the user's workflows (Workflow/List scope my) and attach the chosen one to the next message. Save a proposal with Workflow/Prepare, then Workflow/Add, or Workflow/Update with `loadedUpdatetime` onto the attached workflow.
+Docs: https://wiro.ai/docs/workflow-agent
+
+### Studio (/Studio/*)
+Wiro's creative agent: it picks and runs models for a brief (images, video, audio) and replies with the results. Same message protocol as Agent Messaging, no `useragentguid`. Project API key; the key acts as its project's creator, and Studio conversations belong to that person: "default" is their main Studio chat on wiro.ai, and key sessions appear in their Studio on wiro.ai in the same workspace. A team key whose creator left the team gets HTTP 403.
+- `POST /Studio/Status`: `walletUsd`, `needsTopup`, `minTopup` (10), `tokenRates`, `agentModel.chatModel`
+- `POST /Studio/Message/Send`: `message` (required), `sessionkey` (default "default"), `model`. Returns `messageguid`, `agenttoken`, `status`
+- `POST /Studio/Message/SendForm`: multipart, files in `attachments` (repeat) or `attachment`; up to 8 files, about 100 MB each (larger: HTTP 413)
+- `POST /Studio/Message/Detail`, `History`, `Sessions`, `Cancel`, `ClearSession` (deletes messages, fresh memory, keeps the name), `DeleteSession` (messages and name), `RenameSession`
+- `POST /Studio/Tasks` (`limit` default 30, max 100): the model runs Studio started for you in the workspace, newest first, across sessions: `id`, `status`, `success`, `terminal`, `model { title, slugowner, slugproject }`, `categories`, `parameters`, `outputs`, `totalcost` (USD, charged on success), `socketaccesstoken` (while running), `createtime`, `starttime`, `endtime`, `elapsedseconds`.
+- `POST /Studio/Transactions` (`limit`): the wallet charges for Studio. `POST /Studio/Task/DeleteOutput` (`id`): delete a finished run's files.
+Billing: $10 spendable to start a turn (code 97 otherwise). A turn's cost depends on the models Studio runs for it. The chat part is charged after the turn by tokens (`tokencost` credits); each model run is charged at its price when it succeeds; charges land within about a minute. Cancel stops the reply; tokens already used are charged, and model runs that already started are billed when they succeed. Each produced file is on its own line in `response` as a public URL. A turn that hands work to the background ends early, and its result arrives later as a finished message in the same session (read it with History).
+Docs: https://wiro.ai/docs/studio
 
 ## Agent API
 
