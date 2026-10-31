@@ -1493,7 +1493,7 @@ Each field row:
 | `fieldname` | string | Field inside that credential: e.g. `"apikey"`, `"clientid"`, `"bottoken"`. Must not start with `_` (reserved for internal sentinels such as `_isoptional`, `_isextra`). |
 | `fieldvalue` | string \| number \| array | The value to write. An empty string clears an optional single-value field; send `[]` to clear a list field. Clearing a required field fails validation, except on Telegram, Slack and Discord, where it disables the channel. |
 | `fieldstatus` | string | **Server-managed: ignored from the request body for API callers.** The value is derived from the registry / OAuth flow on the server side (e.g. `user` for hand-edited fields, `oauth_session` for tokens written by the OAuth callback, `oauth_app` for app credentials, etc.). Do not set this field. It is stripped before any write. |
-| `parentfield` | string | Optional. Dotted path when the credential has a nested array (e.g. `"accounts.0.apps"` for `firebase.accounts[0].apps[*]`). |
+| `parentfield` | string | Optional. The key of a list field (e.g. `"accounts"` for `firebase.accounts[]`) when the row sets one field of a single entry in that list. A list inside the entry, such as its `apps`, is sent whole as that field's `fieldvalue`. |
 | `ordinal` | number | Optional. Array index inside `parentfield`. Defaults to `0`. |
 
 ##### Request

@@ -46,6 +46,8 @@ base64 -b 0 firebase-service-account.json > firebase-sa.b64
 
 ### Step 3: Save to Wiro
 
+Send the `accounts` list as one field row. Each account carries its own `apps` and `topics` lists.
+
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -H "Content-Type: application/json" \
@@ -53,16 +55,24 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -d '{
     "useragentguid": "your-useragent-guid",
     "fields": [
-      { "credentialkey": "firebase", "parentfield": "accounts",          "ordinal": 0, "fieldname": "appname",                  "fieldvalue": "My App" },
-      { "credentialkey": "firebase", "parentfield": "accounts",          "ordinal": 0, "fieldname": "serviceaccountjson", "fieldvalue": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii..." },
-      { "credentialkey": "firebase", "parentfield": "accounts.0.apps",   "ordinal": 0, "fieldname": "platform",                 "fieldvalue": "ios" },
-      { "credentialkey": "firebase", "parentfield": "accounts.0.apps",   "ordinal": 0, "fieldname": "id",                       "fieldvalue": "6479306352" },
-      { "credentialkey": "firebase", "parentfield": "accounts.0.apps",   "ordinal": 1, "fieldname": "platform",                 "fieldvalue": "android" },
-      { "credentialkey": "firebase", "parentfield": "accounts.0.apps",   "ordinal": 1, "fieldname": "id",                       "fieldvalue": "com.example.app" },
-      { "credentialkey": "firebase", "parentfield": "accounts.0.topics", "ordinal": 0, "fieldname": "topickey",                 "fieldvalue": "locale_en" },
-      { "credentialkey": "firebase", "parentfield": "accounts.0.topics", "ordinal": 0, "fieldname": "topicdesc",                "fieldvalue": "English users" },
-      { "credentialkey": "firebase", "parentfield": "accounts.0.topics", "ordinal": 1, "fieldname": "topickey",                 "fieldvalue": "tier_paid" },
-      { "credentialkey": "firebase", "parentfield": "accounts.0.topics", "ordinal": 1, "fieldname": "topicdesc",                "fieldvalue": "Paid subscribers" }
+      {
+        "credentialkey": "firebase",
+        "fieldname": "accounts",
+        "fieldvalue": [
+          {
+            "appname": "My App",
+            "serviceaccountjson": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii...",
+            "apps": [
+              { "platform": "ios", "id": "6479306352" },
+              { "platform": "android", "id": "com.example.app" }
+            ],
+            "topics": [
+              { "topickey": "locale_en", "topicdesc": "English users" },
+              { "topickey": "tier_paid", "topicdesc": "Paid subscribers" }
+            ]
+          }
+        ]
+      }
     ]
   }'
 ```
@@ -84,13 +94,13 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 |-------|------|----------|-------------|
 | `appname` | string | Yes | Display name for this project. |
 | `serviceaccountjson` | string | Yes | Base64-encoded service account JSON. |
-| `apps` | object[] | Yes | `{ platform: "ios" \| "android", id: string }`. `id` is App Store ID for iOS, package name for Android. |
-| `topics` | object[] \| object | Yes | Either an array of `{ topickey, topicdesc }` or a flat object map `{ topickey: topicdesc, ... }`. Both are accepted; the runtime converts arrays into the map form. Topics you've subscribed clients to on the device side. |
+| `apps` | object[] | Yes | `{ platform: "ios" \| "android", id: string }`, both required. `id` is App Store ID for iOS, package name for Android. |
+| `topics` | object[] | Yes | `{ topickey: string, topicdesc?: string }`. `topickey` is a topic you've subscribed clients to on the device side; `topicdesc` is an optional description of its audience. |
 | `projectid` | string | **No** (derived from service account) | Read from the decoded JSON. |
 
 ### Multi-project setups
 
-Add more entries to `accounts[]` to manage multiple Firebase projects from one agent. Each new account is just a higher `ordinal` in the same `accounts` parent, with its nested `apps` and `topics` addressed via `accounts.{N}.apps` / `accounts.{N}.topics`:
+Add more entries to `accounts[]` to manage multiple Firebase projects from one agent. Saving `accounts` replaces the stored list, so send every account you want to keep:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
@@ -99,28 +109,54 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   -d '{
     "useragentguid": "your-useragent-guid",
     "fields": [
-      { "credentialkey": "firebase", "parentfield": "accounts",          "ordinal": 0, "fieldname": "appname",                  "fieldvalue": "Consumer App" },
-      { "credentialkey": "firebase", "parentfield": "accounts",          "ordinal": 0, "fieldname": "serviceaccountjson", "fieldvalue": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii..." },
-      { "credentialkey": "firebase", "parentfield": "accounts.0.apps",   "ordinal": 0, "fieldname": "platform",                 "fieldvalue": "ios" },
-      { "credentialkey": "firebase", "parentfield": "accounts.0.apps",   "ordinal": 0, "fieldname": "id",                       "fieldvalue": "6479306352" },
-      { "credentialkey": "firebase", "parentfield": "accounts.0.topics", "ordinal": 0, "fieldname": "topickey",                 "fieldvalue": "locale_en" },
-      { "credentialkey": "firebase", "parentfield": "accounts.0.topics", "ordinal": 0, "fieldname": "topicdesc",                "fieldvalue": "English users" },
-
-      { "credentialkey": "firebase", "parentfield": "accounts",          "ordinal": 1, "fieldname": "appname",                  "fieldvalue": "Business App" },
-      { "credentialkey": "firebase", "parentfield": "accounts",          "ordinal": 1, "fieldname": "serviceaccountjson", "fieldvalue": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii..." },
-      { "credentialkey": "firebase", "parentfield": "accounts.1.apps",   "ordinal": 0, "fieldname": "platform",                 "fieldvalue": "android" },
-      { "credentialkey": "firebase", "parentfield": "accounts.1.apps",   "ordinal": 0, "fieldname": "id",                       "fieldvalue": "com.example.business" },
-      { "credentialkey": "firebase", "parentfield": "accounts.1.topics", "ordinal": 0, "fieldname": "topickey",                 "fieldvalue": "tier_paid" },
-      { "credentialkey": "firebase", "parentfield": "accounts.1.topics", "ordinal": 0, "fieldname": "topicdesc",                "fieldvalue": "Paid subscribers" }
+      {
+        "credentialkey": "firebase",
+        "fieldname": "accounts",
+        "fieldvalue": [
+          {
+            "appname": "Consumer App",
+            "serviceaccountjson": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii...",
+            "apps": [{ "platform": "ios", "id": "6479306352" }],
+            "topics": [{ "topickey": "locale_en", "topicdesc": "English users" }]
+          },
+          {
+            "appname": "Business App",
+            "serviceaccountjson": "eyJ0eXBlIjoic2VydmljZV9hY2NvdW50Ii...",
+            "apps": [{ "platform": "android", "id": "com.example.business" }],
+            "topics": [{ "topickey": "tier_paid", "topicdesc": "Paid subscribers" }]
+          }
+        ]
+      }
     ]
   }'
 ```
 
-Wiro's merge logic uses positional indexes: sending `accounts` ordinal `2` while the agent has 1 account creates a new account entry at index 2 populated with the field rows you supply.
+To change one saved account and leave the others as they are, send a row with `parentfield: "accounts"` and that account's position as `ordinal` (from `0`). Send its `apps` or `topics` the same way, each as one row holding the whole new list. This replaces the topics of the second account:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      {
+        "credentialkey": "firebase",
+        "parentfield": "accounts",
+        "ordinal": 1,
+        "fieldname": "topics",
+        "fieldvalue": [
+          { "topickey": "tier_paid", "topicdesc": "Paid subscribers" },
+          { "topickey": "tier_trial", "topicdesc": "Trial users" }
+        ]
+      }
+    ]
+  }'
+```
 
 ## Runtime Behavior
 
-The `int-firebase-push` skill is active only when it is enabled and `accounts` is non-empty. For each saved account it uses the project ID from that account's service account, plus the app name, topics (`{ topickey: topicdesc }`) and apps (`{ platform, id }`) you saved.
+The `int-firebase-push` skill is active only when it is enabled and `accounts` is non-empty. For each saved account it uses the project ID from that account's service account, plus the app name, topics and apps you saved.
 
 Auth: FCM HTTP v1 `Authorization: Bearer <token>`, with tokens minted from the account's service account.
 
