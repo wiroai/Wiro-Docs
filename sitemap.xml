@@ -115,6 +115,9 @@
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
+  <url><loc>https://wiro.ai/docs/workflows</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://wiro.ai/docs/workflow-agent</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://wiro.ai/docs/studio</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://wiro.ai/docs/agent-overview</loc></url>
   <url><loc>https://wiro.ai/docs/agent-builder</loc></url>
   <url><loc>https://wiro.ai/docs/agent-messaging</loc></url>

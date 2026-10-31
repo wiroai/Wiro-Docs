@@ -68,6 +68,10 @@ One row per page, in sidebar order. Each path is live under `https://wiro.ai`.
 | Concurrency Limits | `/docs/concurrency-limits` | [concurrency-limits.md](./markdown/concurrency-limits.md) |
 | Error Reference | `/docs/error-reference` | [error-reference.md](./markdown/error-reference.md) |
 | FAQ | `/docs/faq` | [faq.md](./markdown/faq.md) |
+| **Workflow & Studio API Reference** | | |
+| Workflows | `/docs/workflows` | [workflows.md](./markdown/workflows.md) |
+| Workflow Agent | `/docs/workflow-agent` | [workflow-agent.md](./markdown/workflow-agent.md) |
+| Studio | `/docs/studio` | [studio.md](./markdown/studio.md) |
 | **Agent API Reference** | | |
 | Agent Overview | `/docs/agent-overview` | [agent-overview.md](./markdown/agent-overview.md) |
 | Agent Builder | `/docs/agent-builder` | [agent-builder.md](./markdown/agent-builder.md) |
