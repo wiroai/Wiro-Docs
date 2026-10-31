@@ -1,14 +1,13 @@
 /* ==========================================================================
-   Wiro Docs — design-system checkpoint
+   Wiro Docs: design-system layer
    --------------------------------------------------------------------------
-   This layer adapts the current Wiro-Web token and component contracts to the
-   static Docs runtime. It intentionally sits after docs.css so the checkpoint
-   can be removed without rewriting the legacy stylesheet.
+   This layer applies the Wiro design tokens and component styles to the
+   static Docs pages. It sits after docs.css so it can be removed without
+   rewriting the older stylesheet.
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   1. Current Wiro design tokens
-   Source: Wiro-Web/src/scss/wiro-design-system/_tokens.scss
+   1. Wiro design tokens
    -------------------------------------------------------------------------- */
 :root {
   --wiro-sans: "Inter", -apple-system, blinkmacsystemfont, "Segoe UI", roboto, helvetica, arial, sans-serif;
@@ -233,7 +232,7 @@ summary:focus-visible {
   box-shadow: var(--wiro-focus-ring);
 }
 
-/* Keep Wiro-Web's exact WebKit-only 6px, trackless scrollbar geometry. Docs
+/* Keep the Wiro web app's WebKit-only 6px, trackless scrollbar geometry. Docs
    additionally drives the tokenized thumb color from app.js so each scroll
    surface can reveal and fade independently without shifting layout. */
 html::-webkit-scrollbar,
@@ -454,7 +453,7 @@ body::-webkit-scrollbar-thumb,
 }
 
 /* --------------------------------------------------------------------------
-   4. Sidebar — styleguide navigation contract
+   4. Sidebar: styleguide navigation
    -------------------------------------------------------------------------- */
 .docs-nav-wrapper {
   height: 100%;
@@ -965,7 +964,7 @@ body::-webkit-scrollbar-thumb,
   line-height: var(--wiro-type-meta-line);
 }
 
-/* Static table adapter follows WiroTable's bordered surface contract. */
+/* Static tables follow the Wiro web app's bordered table style. */
 .docs-section table {
   width: 100%;
   margin: 14px 0;
@@ -1170,7 +1169,7 @@ html.wiro-dark .shiki span {
   color: var(--wiro-danger-text);
 }
 
-/* Bordered HTML tables mirror WiroTable's surface, header, row and type
+/* Bordered HTML tables match the Wiro web app's table surface, header, row and type
    hierarchy while preserving the existing semantic table markup. */
 .docs-param-table,
 .docs-comparison-table,
@@ -1305,7 +1304,7 @@ html.wiro-dark .shiki span {
   color: var(--wiro-ink2);
 }
 
-/* Existing segmented controls implement WiroTabs inset behaviour. */
+/* Segmented controls use the Wiro web app's inset tab style. */
 .auth-method-toggle,
 .playground-auth-toggle {
   max-width: 100%;
@@ -1384,7 +1383,7 @@ html.wiro-dark .shiki span {
   color: var(--wiro-ink2);
 }
 
-/* SgNote-style neutral callout for API behavior and scope notes. */
+/* Neutral callout for API behavior and scope notes. */
 .docs-callout {
   margin: 14px 0;
   padding: 14px 16px;
@@ -1398,7 +1397,7 @@ html.wiro-dark .shiki span {
   color: var(--wiro-ink);
 }
 
-/* Code-adjacent note card follows the styleguide's cx-notecard surface. */
+/* Code-adjacent note card follows the styleguide's note card surface. */
 .docs-note {
   margin: 14px 0;
   padding: 12px 14px;
@@ -1728,7 +1727,7 @@ html.wiro-dark .docs-nav-icon-img[src*="roasit"] {
   filter: invert(1);
 }
 
-/* Underline and pill tab families mirror WiroTabs. */
+/* Underline and pill tabs match the Wiro web app's tabs. */
 .content-tabs-nav {
   display: flex;
   gap: 12px;
@@ -1815,7 +1814,7 @@ html.wiro-dark .docs-nav-icon-img[src*="roasit"] {
   color: var(--wiro-bg);
 }
 
-/* Details and FAQ surfaces use the same neutral row language as WiroTable. */
+/* Details and FAQ surfaces use the same neutral row style as tables. */
 .docs-section details,
 .faq-accordion {
   overflow: hidden;

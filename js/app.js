@@ -85,7 +85,7 @@ const DOCS_SCROLL_FADE_MS = 140;
 const DOCS_SCROLL_IDLE_MS = 1000;
 const docsScrollbarStates = new WeakMap();
 
-// Current Wiro code-surface hues from Wiro-Web's --wiro-code-* contract.
+// Current Wiro code-surface hues, matching the Wiro web app's --wiro-code-* colors.
 // Shiki emits both themes into one DOM tree so changing preference never
 // requires rebuilding code blocks or forcing an always-dark API surface.
 const WIRO_SHIKI_LIGHT = {
@@ -529,12 +529,7 @@ function highlightInlineCode(slug) {
       themes: { light: 'wiro-light', dark: 'wiro-dark' },
       defaultColor: false,
     });
-    // Shiki kendi <pre>'sini uretiyor; outerHTML ile degistirmek yazarin koydugu
-    // SINIFLARI DUSURUYORDU. Olculdu: VS Code panelindeki model JSON'u
-    // pre-scroll tasiyor ama Shiki'den sonra sinifi yok ve max-height: none --
-    // yani sayfayi asagi dogru metrelerce uzatiyordu. Ayni blok duz metin olsa
-    // (Cursor listesi gibi) Shiki'ye hic girmedigi icin duzgun scroll oluyordu,
-    // bu yuzden fark gozden kaciyordu. Sinifi tasiyoruz.
+    // Copy the author's classes onto Shiki's <pre> (pre-scroll needs max-height).
     const wrapper = block.closest('pre');
     const holder = document.createElement('template');
     holder.innerHTML = html.trim();
