@@ -7417,7 +7417,7 @@ if (!data.result) {
                   <div class="docs-section-md-row"><span>This section as Markdown:</span> <a href="/docs/markdown/wiro-mcp-server.md" target="_blank" class="docs-section-md-btn">View</a> <a href="/docs/markdown/wiro-mcp-server.md" download class="docs-section-md-btn">Download</a></div>
 
                   <h1>Wiro MCP Server</h1>
-                  <p class="section-subtitle">Connect AI coding assistants to Wiro's AI models via the Model Context Protocol.</p>
+                  <p class="section-subtitle">Connect AI assistants to Wiro's models, workflows, Studio and agents through the Model Context Protocol.</p>
 
                   <section id="mcp-oauth" class="mcp-signin">
                     <span class="mcp-signin-badge">Easiest way</span>
@@ -7459,7 +7459,7 @@ if (!data.result) {
 
                   <section id="mcp-what-is">
                     <h2>What is MCP?</h2>
-                    <p><a href="https://modelcontextprotocol.io/" target="_blank">Model Context Protocol</a> (MCP) is an open standard that lets AI assistants use external tools directly. With the Wiro MCP server, your AI assistant can search models, run inference, track tasks, and upload files, all without leaving your editor.</p>
+                    <p><a href="https://modelcontextprotocol.io/" target="_blank">Model Context Protocol</a> (MCP) is an open standard that lets AI assistants use external tools directly. With the Wiro MCP server, your AI assistant can find and run models, build and run workflows, create media with Studio, and deploy and talk to your own agents, all without leaving your editor or chat app.</p>
                     <p>The hosted MCP server is available at <code>mcp.wiro.ai/v1</code>. Most apps connect with the browser sign-in above. Clients that send custom request headers, including Cursor, Claude Code, Windsurf, Kiro, goose, OpenClaw, and Hermes, can use your API key instead. An API key sent in a header is never stored on the hosted server.</p>
                     <p>You need a Wiro account. With a browser sign-in you pick a project while connecting. For the API key method, <a href="https://wiro.ai/panel/project/new" target="_blank">create a project here</a>.</p>
 
@@ -7671,7 +7671,7 @@ if (!data.result) {
                       <div class="mcp-setup-panel" id="mcp-setup-claude-desktop">
                         <h3>Claude Desktop</h3>
                         <p>The quickest way is a custom connector: open <a href="https://claude.ai/customize/connectors" target="_blank" rel="noopener">Connectors</a> in Claude, click <strong>Add custom connector</strong>, enter the URL <code>https://mcp.wiro.ai/v1</code> and sign in with your Wiro account when Claude asks. See <a href="/docs/wiro-mcp-server#mcp-oauth">Connect with a browser sign-in</a>. The same connector works on claude.ai.</p>
-                        <p>You can also run the official local package. It provides the same 13 Wiro tools through Claude Desktop's stdio MCP support.</p>
+                        <p>You can also run the official local package. It provides the same Wiro tools through Claude Desktop's stdio MCP support.</p>
                         <p>Install <a href="https://nodejs.org/" target="_blank" rel="noopener">Node.js 20 or later</a>, then add the following to your <code>claude_desktop_config.json</code>:</p>
                         <pre><code class="language-json">{
   "mcpServers": {
@@ -7825,7 +7825,7 @@ if (!data.result) {
     }
   }
 }</code></pre>
-                        <p>Verify the saved definition, connection, and 13 advertised tools:</p>
+                        <p>Verify the saved definition, the connection and the advertised tools:</p>
                         <pre><code class="language-bash">openclaw mcp doctor wiro --probe</code></pre>
                         <p>On older OpenClaw releases without that command, use <code>openclaw mcp show wiro</code>, restart OpenClaw, and run <code>/tools verbose</code>.</p>
                         <p>Wiro's default bounded wait is 45 seconds; if your client has a configurable tool-call timeout, keep it above that value.</p>
@@ -7915,9 +7915,9 @@ if (!data.result) {
 
                   <section id="mcp-tools">
                     <h2>Available Tools</h2>
-                    <p>The MCP server exposes 13 tools organized in four categories. Your AI assistant picks the right tool automatically.</p>
+                    <p>The MCP server has 48 tools. Most of them belong to one of three groups, Models, Workflows and Agents, and three tools for your account, the playbooks and the docs are always available. Your AI assistant picks the right tool for each request, and for longer jobs it reads a playbook first.</p>
                     <p><strong>Model slugs:</strong> Use the clean/lowercase format <code>owner/model</code> (e.g. <code>openai/sora-2</code>, <code>wiro/virtual-try-on</code>). These correspond to the <code>cleanslugowner/cleanslugproject</code> values returned by <code>search_models</code>.</p>
-                    <h3>Discovery</h3>
+                    <h3>Models</h3>
                     <table>
                       <thead>
                         <tr>
@@ -7928,49 +7928,27 @@ if (!data.result) {
                       <tbody>
                         <tr>
                           <td><code>search_models</code></td>
-                          <td>Search Wiro's model catalog by keyword, category, or owner</td>
+                          <td>Search and browse AI models by keyword, category, or owner</td>
                         </tr>
                         <tr>
                           <td><code>get_model_schema</code></td>
-                          <td>Get the full parameter schema and pricing for any model</td>
+                          <td>Get the full parameter schema and pricing for any model, or the parameters and output ports of a workflow utility</td>
                         </tr>
                         <tr>
                           <td><code>recommend_model</code></td>
-                          <td>Describe what you want to build and get model recommendations ranked by relevance</td>
+                          <td>Find models for a goal from two or three key words, best matches first</td>
                         </tr>
                         <tr>
                           <td><code>explore</code></td>
-                          <td>Browse curated AI models organized by category: featured, recently added, popular</td>
+                          <td>Browse curated models grouped by category, no parameters needed</td>
                         </tr>
-                      </tbody>
-                    </table>
-                    <h3>Execution</h3>
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Tool</th>
-                          <th>Description</th>
-                        </tr>
-                      </thead>
-                      <tbody>
                         <tr>
                           <td><code>run_model</code></td>
-                          <td>Run any model. Waits up to 45 seconds by default, then returns a recoverable task token if still running</td>
+                          <td>Run any model, waiting up to 45 seconds by default before it returns a recoverable task token</td>
                         </tr>
-                      </tbody>
-                    </table>
-                    <h3>Task Management</h3>
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Tool</th>
-                          <th>Description</th>
-                        </tr>
-                      </thead>
-                      <tbody>
                         <tr>
                           <td><code>wait_for_task</code></td>
-                          <td>Continue waiting for an existing task without creating or billing a duplicate run</td>
+                          <td>Continue waiting for an existing task without submitting or billing a duplicate run</td>
                         </tr>
                         <tr>
                           <td><code>get_task</code></td>
@@ -7978,24 +7956,30 @@ if (!data.result) {
                         </tr>
                         <tr>
                           <td><code>list_tasks</code></td>
-                          <td>Browse authenticated generation history across conversations, then continue with <code>get_task</code></td>
+                          <td>Browse authenticated task history across conversations, then continue with <code>get_task</code></td>
                         </tr>
                         <tr>
                           <td><code>get_task_price</code></td>
-                          <td>Get the cost of a completed task, showing whether it was billed and the total charge</td>
+                          <td>Get the cost of a completed task</td>
                         </tr>
                         <tr>
                           <td><code>cancel_task</code></td>
-                          <td>Cancel a task still in the queue</td>
+                          <td>Cancel a queued task</td>
                         </tr>
                         <tr>
                           <td><code>kill_task</code></td>
-                          <td>Kill a task that is currently running</td>
+                          <td>Stop a queued or running task</td>
+                        </tr>
+                        <tr>
+                          <td><code>upload_file</code></td>
+                          <td>Upload a file from a public http(s) URL (up to about 100 MB) for use as model input</td>
                         </tr>
                       </tbody>
                     </table>
+                    <p>For long generations, <code>run_model</code> returns the existing task ID and token when its wait ends. The assistant continues with <code>wait_for_task</code>; calling <code>run_model</code> again would start a separate billable task.</p>
 
-                    <h3>Utility</h3>
+                    <h3>Workflows</h3>
+                    <p>A workflow chains models and built-in utility steps into one graph with its own inputs and outputs. Every model step is charged like a normal model run when it finishes. Wiro fills a model input you leave out with the model's default, so the save result lists what it filled, and a graph can be at most 40 KB of JSON. The API behind these tools is described on the <a href="/docs/workflows">Workflows</a> page.</p>
                     <table>
                       <thead>
                         <tr>
@@ -8005,15 +7989,269 @@ if (!data.result) {
                       </thead>
                       <tbody>
                         <tr>
-                          <td><code>upload_file</code></td>
-                          <td>Upload a file from a URL to Wiro. Most models accept direct URLs without uploading first. Use this for reuse across runs.</td>
+                          <td><code>list_workflows</code></td>
+                          <td>List the workflows in your workspace, or search the public gallery by text, tag or model</td>
                         </tr>
                         <tr>
-                          <td><code>search_docs</code></td>
-                          <td>Search the Wiro documentation for guides, API references, and examples</td>
+                          <td><code>get_workflow</code></td>
+                          <td>Read a workflow's inputs, outputs and step graph</td>
+                        </tr>
+                        <tr>
+                          <td><code>create_workflow</code></td>
+                          <td>Save a new workflow from a step graph. Wiro checks it against the live model catalog and returns every problem it finds at once</td>
+                        </tr>
+                        <tr>
+                          <td><code>update_workflow</code></td>
+                          <td>Edit a workflow's title, description, tags or graph without overwriting newer changes; a new graph is saved only after you confirm a summary of the change</td>
+                        </tr>
+                        <tr>
+                          <td><code>clone_workflow</code></td>
+                          <td>Copy a public workflow into your workspace</td>
+                        </tr>
+                        <tr>
+                          <td><code>delete_workflow</code></td>
+                          <td>Delete a workflow, after your confirmation</td>
+                        </tr>
+                        <tr>
+                          <td><code>run_workflow</code></td>
+                          <td>Run a workflow and wait for its outputs; can stop after a chosen step to test the first steps</td>
+                        </tr>
+                        <tr>
+                          <td><code>wait_for_workflow_run</code></td>
+                          <td>Keep waiting on a run, read its outputs, or see why a step failed</td>
+                        </tr>
+                        <tr>
+                          <td><code>resume_workflow_run</code></td>
+                          <td>Continue a failed or stopped run without paying again for finished steps</td>
+                        </tr>
+                        <tr>
+                          <td><code>list_workflow_runs</code></td>
+                          <td>Browse past and current runs, including runs started on wiro.ai</td>
+                        </tr>
+                        <tr>
+                          <td><code>save_workflow_from_agent</code></td>
+                          <td>Save a workflow the Workflow Agent proposed, as a new workflow, or onto an existing one after you confirm a summary of the change</td>
                         </tr>
                       </tbody>
                     </table>
+                    <p>The <strong>Workflow Agent</strong> designs workflows with you in plain language: talk to it with <code>send_agent_message</code> and <code>agent: "workflow-agent"</code>, attach an existing workflow to edit, then save its proposal with <code>save_workflow_from_agent</code>. Conversations started through the MCP server belong to the connected project and are separate from your Workflow Agent chats on wiro.ai. See <a href="/docs/workflow-agent">Workflow Agent</a>.</p>
+
+                    <h3>Agents</h3>
+                    <p>One set of tools talks to every Wiro agent. <code>agent</code> is <code>"studio"</code>, <code>"workflow-agent"</code> or the guid of one of your own agents.</p>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Tool</th>
+                          <th>Description</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td><code>send_agent_message</code></td>
+                          <td>Send a message and wait for the reply, with any media, workflows or model runs it produced</td>
+                        </tr>
+                        <tr>
+                          <td><code>get_agent_message</code></td>
+                          <td>Keep waiting on a reply, or read one again</td>
+                        </tr>
+                        <tr>
+                          <td><code>get_agent_conversation</code></td>
+                          <td>List conversations, or read one conversation's history</td>
+                        </tr>
+                        <tr>
+                          <td><code>cancel_agent_message</code></td>
+                          <td>Stop a reply that is still being written</td>
+                        </tr>
+                        <tr>
+                          <td><code>delete_agent_session</code></td>
+                          <td>Delete a conversation and the agent's memory of it, after your confirmation</td>
+                        </tr>
+                        <tr>
+                          <td><code>list_studio_results</code></td>
+                          <td>List the images, videos and other results Studio generated for you</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <p><strong>Studio</strong> is Wiro's creative agent: it picks and runs models for you and charges your wallet after each reply (see <a href="/docs/studio">Studio</a>). Your own agents run on a monthly plan with credits (see <a href="/docs/agent-overview">Agent Overview</a>).</p>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Tool</th>
+                          <th>Description</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td><code>list_agent_templates</code></td>
+                          <td>Browse ready-made agent templates and their monthly prices</td>
+                        </tr>
+                        <tr>
+                          <td><code>get_agent_template</code></td>
+                          <td>Read a template's skills, plans, and the accounts and keys it needs</td>
+                        </tr>
+                        <tr>
+                          <td><code>list_agent_skills</code></td>
+                          <td>Browse the skills an agent can have, and what each one needs to work</td>
+                        </tr>
+                        <tr>
+                          <td><code>deploy_agent</code></td>
+                          <td>Deploy an agent from a template or build one from skills; shows the price and asks before charging</td>
+                        </tr>
+                        <tr>
+                          <td><code>list_my_agents</code></td>
+                          <td>List your agents with their status, plan and credits</td>
+                        </tr>
+                        <tr>
+                          <td><code>get_my_agent</code></td>
+                          <td>Read one agent's setup, plan and credits; can wait until it is running</td>
+                        </tr>
+                        <tr>
+                          <td><code>control_agent</code></td>
+                          <td>Start, stop or restart an agent</td>
+                        </tr>
+                        <tr>
+                          <td><code>update_agent</code></td>
+                          <td>Change an agent's name, description, time zone, models and chat commands</td>
+                        </tr>
+                        <tr>
+                          <td><code>apply_agent_skills</code></td>
+                          <td>Turn skills on or off; shows the price change and asks before charging</td>
+                        </tr>
+                        <tr>
+                          <td><code>set_agent_credentials</code></td>
+                          <td>Save the keys, tokens and settings an agent's skills and channels need, such as a Telegram bot token or a Gmail app password</td>
+                        </tr>
+                        <tr>
+                          <td><code>connect_agent_oauth</code></td>
+                          <td>Connect sign-in accounts such as HubSpot or X; you approve the connection in your browser. Some services need your own app keys or a token first</td>
+                        </tr>
+                        <tr>
+                          <td><code>disconnect_agent_oauth</code></td>
+                          <td>Disconnect a connected account, after your confirmation</td>
+                        </tr>
+                        <tr>
+                          <td><code>manage_agent_custom_skill</code></td>
+                          <td>Add, edit, schedule, restore or remove an agent's own instructions and scheduled tasks</td>
+                        </tr>
+                        <tr>
+                          <td><code>manage_agent_billing</code></td>
+                          <td>Subscribe, upgrade to Pro, cancel, renew or buy extra credits from your wallet, after your confirmation</td>
+                        </tr>
+                        <tr>
+                          <td><code>get_agent_activity</code></td>
+                          <td>Read an agent's credit usage and activity logs</td>
+                        </tr>
+                        <tr>
+                          <td><code>delete_agent</code></td>
+                          <td>Delete an agent, after your confirmation</td>
+                        </tr>
+                      </tbody>
+                    </table>
+
+                    <h3>Account and guides</h3>
+                    <p>These three tools are always available, whichever groups are loaded.</p>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Tool</th>
+                          <th>Description</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td><code>get_account</code></td>
+                          <td>Show which workspace the connected project belongs to and its wallet balance</td>
+                        </tr>
+                        <tr>
+                          <td><code>get_playbook</code></td>
+                          <td>Step-by-step guides: getting started, models, workflows, workflow graphs, the Workflow Agent, Studio, agents and billing</td>
+                        </tr>
+                        <tr>
+                          <td><code>search_docs</code></td>
+                          <td>Search the Wiro documentation for guides and API references</td>
+                        </tr>
+                      </tbody>
+                    </table>
+
+                    <h3>Playbooks</h3>
+                    <p>A tool description is too short to carry the order of calls, the money rules and the formats of a multi-step job, so the server keeps them in playbooks. The server tells the assistant to read the matching playbook with <code>get_playbook</code> before a multi-step job.</p>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Topic</th>
+                          <th>What it covers</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td><code>getting-started</code></td>
+                          <td>Which route fits a request, what costs money, keys and workspaces, errors, long waits and the money rules</td>
+                        </tr>
+                        <tr>
+                          <td><code>models</code></td>
+                          <td>Finding and comparing models, schemas and file fields, running, batches, waiting and stopping, prices and limits, earlier tasks and LLM chats</td>
+                        </tr>
+                        <tr>
+                          <td><code>workflows</code></td>
+                          <td>Finding and running workflows, costs, breakpoints, failed runs, editing, cloning and deleting</td>
+                        </tr>
+                        <tr>
+                          <td><code>workflow-graph</code></td>
+                          <td>The graph <code>create_workflow</code> and <code>update_workflow</code> take: steps, Start fields, references, utilities and examples</td>
+                        </tr>
+                        <tr>
+                          <td><code>workflow-agent</code></td>
+                          <td>Briefing the Workflow Agent, editing a workflow by chat, pricing and saving its proposals, sessions</td>
+                        </tr>
+                        <tr>
+                          <td><code>studio</code></td>
+                          <td>When to use Studio, what a turn costs, the brief, collecting the results and slow turns</td>
+                        </tr>
+                        <tr>
+                          <td><code>agents</code></td>
+                          <td>Templates and plans, deploying, statuses, setup and sign-ins, an agent that does not answer, messages, plan changes and credits, skills and schedules, removal</td>
+                        </tr>
+                        <tr>
+                          <td><code>billing</code></td>
+                          <td>Which wallet pays, what is charged and when, minimums and limits, teams, estimates and where to see past spending</td>
+                        </tr>
+                      </tbody>
+                    </table>
+
+                    <h3>Prompts</h3>
+                    <p>The server also offers prompts for common jobs. Clients that support MCP prompts show them as ready-made commands. Each prompt sends the assistant to the matching playbook first.</p>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Prompt</th>
+                          <th>What it does</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td><code>build_workflow</code></td>
+                          <td>Plan, save and test a multi-step workflow for a goal, confirming costs before any run</td>
+                        </tr>
+                        <tr>
+                          <td><code>deploy_agent</code></td>
+                          <td>Choose a template or skills, quote and deploy an agent, then set it up and test it</td>
+                        </tr>
+                        <tr>
+                          <td><code>create_with_studio</code></td>
+                          <td>Ask Studio to create images, video or audio, after explaining what a turn can cost</td>
+                        </tr>
+                        <tr>
+                          <td><code>talk_to_my_agent</code></td>
+                          <td>Find one of your agents, make sure it is running, send it a message and show the reply</td>
+                        </tr>
+                      </tbody>
+                    </table>
+
+                    <h3>Paid and irreversible actions</h3>
+                    <p>Running a model or a workflow, sending a message to Studio or the Workflow Agent, and messages to your own agents (which use the agent's credits) cost money. The assistant tells you the expected cost in one line before it starts such work.</p>
+                    <p>Agent plans, plan changes, credit packs and skill changes are charged to your wallet, so <code>deploy_agent</code>, <code>manage_agent_billing</code> and <code>apply_agent_skills</code> first return the price (an estimate for prorated changes such as an upgrade to Pro). They act only when they are called again with <code>confirm: true</code> and the quote's reference after you agree: <code>confirm_charge_usd</code> with the approved amount, or the quote's <code>idempotency_key</code> for skill changes. If the price changed in between, nothing is charged and you get a new quote.</p>
+                    <p>Deleting a workflow, an agent, a conversation or an account connection also waits for <code>confirm: true</code>, and so does replacing a workflow's steps with <code>update_workflow</code> or <code>save_workflow_from_agent</code>: you see a summary of the change first. No tool adds funds or takes a card payment. Funds are added in the Wiro dashboard, and an agent plan paid by card is upgraded or topped up there.</p>
+                    <p>The connected project decides the workspace: a personal project uses your personal wallet, a team project uses the team wallet. <code>get_account</code> shows which one and its balance.</p>
                   </section>
 
                   <section id="mcp-contract">
@@ -8046,6 +8284,8 @@ if (!data.result) {
   }
 }</code></pre>
                     <p>Task states are <code>submitted</code>, <code>running</code>, <code>completed</code>, <code>failed</code>, or <code>cancelled</code>. The LLM should execute <code>nextAction</code> when present. A two- or three-minute video can therefore use several bounded <code>wait_for_task</code> calls without creating another billable generation.</p>
+                    <p>Workflow runs, agent replies and agent start-up follow the same pattern: when a wait ends before the job does, the result names the tool and arguments that keep waiting on that same job, such as <code>wait_for_workflow_run</code> or <code>get_agent_message</code>.</p>
+                    <p>An LLM model can continue a chat only when its schema lists <code>session_id</code>. Send the same <code>session_id</code> on every turn, the first one included, with the next <code>prompt</code>. A turn that ended with tool calls is continued with <code>previousTaskToken</code>, that turn's task token, and <code>toolOutputs</code>, as the turn's <code>nextAction</code> template shows.</p>
                   </section>
 
                   <section id="mcp-examples">
@@ -8065,6 +8305,24 @@ if (!data.result) {
                     <h3>Resume a previous production</h3>
                     <div class="info-callout"><p>"Show my latest productions and open the newest result"</p></div>
                     <p>The assistant will call <code>list_tasks</code>, select the matching task, and call <code>get_task</code>. History is scoped from the authenticated project; the LLM never sends a user UUID.</p>
+                    <h3>Build and run a workflow</h3>
+                    <div class="info-callout"><p>"Build a workflow that turns a product photo into a short ad video, then run it on this photo"</p></div>
+                    <p>The assistant reads the <code>workflows</code> and <code>workflow-graph</code> playbooks, picks a model for each step with <code>search_models</code> and <code>get_model_schema</code>, and saves the graph with <code>create_workflow</code>. It tells you the expected cost, then calls <code>run_workflow</code> and follows <code>wait_for_workflow_run</code> until the video is ready.</p>
+                    <h3>Edit a workflow with the Workflow Agent</h3>
+                    <div class="info-callout"><p>"Ask the Workflow Agent to add an upscale step to my product ad workflow and save it"</p></div>
+                    <p>The assistant finds the workflow with <code>list_workflows</code> and sends your request with <code>send_agent_message</code> (<code>agent: "workflow-agent"</code>) with the workflow attached. It shows you the proposal and the models it uses, and saves it with <code>save_workflow_from_agent</code> once you agree to the change.</p>
+                    <h3>Fix a failed run</h3>
+                    <div class="info-callout"><p>"Why did my last workflow run fail? Resume it if it can be resumed"</p></div>
+                    <p>The assistant calls <code>list_workflow_runs</code> with status <code>failed</code>, reads the failed step with <code>wait_for_workflow_run</code>, and continues the run with <code>resume_workflow_run</code>. Steps that already finished are not charged again.</p>
+                    <h3>Create with Studio</h3>
+                    <div class="info-callout"><p>"Ask Studio for three logo ideas for a coffee shop"</p></div>
+                    <p>The assistant checks the balance with <code>get_account</code>, tells you what a Studio turn costs, sends the brief with <code>send_agent_message</code> (<code>agent: "studio"</code>) and shows the images from the reply.</p>
+                    <h3>Deploy an agent</h3>
+                    <div class="info-callout"><p>"Deploy an agent that posts to our Instagram account and tell me what it still needs"</p></div>
+                    <p>The assistant compares templates with <code>list_agent_templates</code> and <code>get_agent_template</code>, gets the price from <code>deploy_agent</code>, and deploys only after you confirm the amount. Then it lists the missing setup with <code>get_my_agent</code> and connects the account with <code>connect_agent_oauth</code>.</p>
+                    <h3>Talk to your agent</h3>
+                    <div class="info-callout"><p>"Tell my support agent to summarise today's tickets"</p></div>
+                    <p>The assistant finds the agent with <code>list_my_agents</code>, checks that it is running with <code>get_my_agent</code>, and sends the message with <code>send_agent_message</code>. The message uses the agent's credits.</p>
                   </section>
 
                   <section id="mcp-how-it-works">
@@ -8080,6 +8338,7 @@ if (!data.result) {
 
                   <section id="mcp-tool-reference">
                     <h2>Tool Reference</h2>
+                    <p>The model tools are described one by one below. The workflow, conversation and agent tools follow in tables of their main arguments.</p>
 
                     <h3>search_models</h3>
                     <p>Search Wiro's model catalog by keyword, category, owner, or any combination. Calls <code>POST /Tool/List</code> on the Wiro API.</p>
@@ -8421,6 +8680,179 @@ if (!data.result) {
                       </tbody>
                     </table>
                     <p>Returns relevant documentation sections matching your query.</p>
+                    <h3>get_account and get_playbook</h3>
+                    <p><code>get_account</code> takes no arguments. It names the workspace of the connected project, personal or a team, and shows that wallet's balance. It is also the call that proves the connection works, since model search, schema reads and <code>search_docs</code> answer without credentials. <code>get_playbook</code> takes <code>topics</code>, one or more of the playbook topics listed under <a href="#mcp-tools">Available Tools</a>, such as <code>["workflows"]</code> or <code>["agents", "billing"]</code>.</p>
+
+                    <h3>Workflow tools</h3>
+                    <p>The workflow, conversation and agent tools publish their full input schemas, which your MCP client reads, so the tables below list only their main arguments. A workflow is named by its full slug, such as <code>product-shots-a1B2c</code>, and a run by its run token. The <a href="/docs/workflows">Workflows</a> page describes the API behind these tools.</p>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Tool</th>
+                          <th>Main arguments</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td><code>list_workflows</code></td>
+                          <td><code>scope</code> (<code>mine</code> or <code>public</code>), <code>search</code>, <code>tags</code>, <code>model</code>, <code>sort</code>, <code>start</code>, <code>limit</code></td>
+                        </tr>
+                        <tr>
+                          <td><code>get_workflow</code></td>
+                          <td><code>slug</code>, <code>include_graph</code></td>
+                        </tr>
+                        <tr>
+                          <td><code>create_workflow</code></td>
+                          <td><code>title</code>, <code>contents</code> (the graph), <code>description</code>, <code>tags</code></td>
+                        </tr>
+                        <tr>
+                          <td><code>update_workflow</code></td>
+                          <td><code>slug</code>, <code>loaded_updatetime</code>, <code>title</code>, <code>description</code>, <code>tags</code>, <code>contents</code>, <code>confirm</code></td>
+                        </tr>
+                        <tr>
+                          <td><code>clone_workflow</code></td>
+                          <td><code>slug</code></td>
+                        </tr>
+                        <tr>
+                          <td><code>delete_workflow</code></td>
+                          <td><code>slug</code>, <code>confirm</code></td>
+                        </tr>
+                        <tr>
+                          <td><code>run_workflow</code></td>
+                          <td><code>slug</code>, <code>input</code> (values keyed by the workflow's input names), <code>breakpoint_node_id</code>, <code>wait_seconds</code></td>
+                        </tr>
+                        <tr>
+                          <td><code>wait_for_workflow_run</code></td>
+                          <td><code>workflowtoken</code>, <code>wait_seconds</code>, <code>debug_node_id</code> (shows what a step's model received)</td>
+                        </tr>
+                        <tr>
+                          <td><code>resume_workflow_run</code></td>
+                          <td><code>workflowtoken</code>, <code>breakpoint_node_id</code>, <code>wait_seconds</code></td>
+                        </tr>
+                        <tr>
+                          <td><code>list_workflow_runs</code></td>
+                          <td><code>status</code>, <code>search</code>, <code>start</code>, <code>limit</code></td>
+                        </tr>
+                        <tr>
+                          <td><code>save_workflow_from_agent</code></td>
+                          <td><code>message_id</code>, <code>session</code>, <code>artifact_hash</code> (which proposal), <code>workflow</code> and <code>loaded_updatetime</code> to save onto an existing workflow, <code>confirm</code></td>
+                        </tr>
+                      </tbody>
+                    </table>
+
+                    <h3>Conversation tools</h3>
+                    <p>These tools work the same for Studio, the Workflow Agent and your own agents. <code>agent</code> is <code>"studio"</code>, <code>"workflow-agent"</code> or the guid of one of your agents, and <code>session</code> names the conversation. See <a href="/docs/studio">Studio</a>, <a href="/docs/workflow-agent">Workflow Agent</a> and <a href="/docs/agent-messaging">Agent Messaging</a>.</p>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Tool</th>
+                          <th>Main arguments</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td><code>send_agent_message</code></td>
+                          <td><code>agent</code>, <code>message</code>, <code>session</code>, <code>model</code> (Studio and the Workflow Agent), <code>attachment_urls</code>, <code>workflow</code> (the workflow to edit, Workflow Agent only), <code>wait_seconds</code></td>
+                        </tr>
+                        <tr>
+                          <td><code>get_agent_message</code></td>
+                          <td><code>agent</code>, <code>message_id</code>, <code>session</code>, <code>wait_seconds</code></td>
+                        </tr>
+                        <tr>
+                          <td><code>get_agent_conversation</code></td>
+                          <td><code>agent</code>, <code>session</code> (leave it out to list the conversations), <code>limit</code>, <code>before</code></td>
+                        </tr>
+                        <tr>
+                          <td><code>cancel_agent_message</code></td>
+                          <td><code>agent</code>, <code>message_id</code>, <code>session</code></td>
+                        </tr>
+                        <tr>
+                          <td><code>delete_agent_session</code></td>
+                          <td><code>agent</code>, <code>session</code>, <code>confirm</code></td>
+                        </tr>
+                        <tr>
+                          <td><code>list_studio_results</code></td>
+                          <td><code>limit</code> (up to 100 recent runs), <code>state</code>, <code>since</code></td>
+                        </tr>
+                      </tbody>
+                    </table>
+
+                    <h3>Agent tools</h3>
+                    <p>An agent is named by its guid, which <code>list_my_agents</code> returns. See <a href="/docs/agent-overview">Agent Overview</a>, <a href="/docs/agent-builder">Agent Builder</a>, <a href="/docs/agent-credentials">Agent Credentials &amp; OAuth</a> and <a href="/docs/agent-skills">Agent Skills</a> for the API behind these tools.</p>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Tool</th>
+                          <th>Main arguments</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td><code>list_agent_templates</code></td>
+                          <td><code>search</code>, <code>category</code>, <code>sort</code> (<code>newest</code>, <code>popular</code> or <code>title</code>), <code>start</code>, <code>limit</code></td>
+                        </tr>
+                        <tr>
+                          <td><code>get_agent_template</code></td>
+                          <td><code>template</code>, <code>include_tasks</code></td>
+                        </tr>
+                        <tr>
+                          <td><code>list_agent_skills</code></td>
+                          <td><code>name</code>, <code>category</code>, <code>capability</code></td>
+                        </tr>
+                        <tr>
+                          <td><code>deploy_agent</code></td>
+                          <td><code>template</code>, or <code>custom: true</code> with <code>skills</code>; <code>tier</code> (<code>starter</code> or <code>pro</code>), <code>title</code>, <code>credentials</code>, <code>confirm</code>, <code>confirm_charge_usd</code></td>
+                        </tr>
+                        <tr>
+                          <td><code>list_my_agents</code></td>
+                          <td><code>sort</code>, <code>start</code>, <code>limit</code></td>
+                        </tr>
+                        <tr>
+                          <td><code>get_my_agent</code></td>
+                          <td><code>agent_guid</code>, <code>wait_seconds</code> (wait until it is running)</td>
+                        </tr>
+                        <tr>
+                          <td><code>control_agent</code></td>
+                          <td><code>agent_guid</code>, <code>action</code> (<code>start</code>, <code>stop</code> or <code>restart</code>)</td>
+                        </tr>
+                        <tr>
+                          <td><code>update_agent</code></td>
+                          <td><code>agent_guid</code>, <code>title</code>, <code>description</code>, <code>timezone</code>, <code>team_session_mode</code>, <code>chat_model</code>, <code>cron_model</code>, <code>enabled_commands</code></td>
+                        </tr>
+                        <tr>
+                          <td><code>apply_agent_skills</code></td>
+                          <td><code>agent_guid</code>, <code>skills</code>, <code>tier</code>, <code>confirm</code>, <code>idempotency_key</code></td>
+                        </tr>
+                        <tr>
+                          <td><code>set_agent_credentials</code></td>
+                          <td><code>agent_guid</code>, <code>credential</code>, <code>fields</code></td>
+                        </tr>
+                        <tr>
+                          <td><code>connect_agent_oauth</code></td>
+                          <td><code>agent_guid</code>, <code>credential</code>, <code>action</code> (<code>connect</code>, <code>status</code> or <code>select_accounts</code>), <code>mode</code> (<code>wiro</code>, <code>own</code> or <code>api_key</code>)</td>
+                        </tr>
+                        <tr>
+                          <td><code>disconnect_agent_oauth</code></td>
+                          <td><code>agent_guid</code>, <code>credential</code>, <code>confirm</code></td>
+                        </tr>
+                        <tr>
+                          <td><code>manage_agent_custom_skill</code></td>
+                          <td><code>agent_guid</code>, <code>action</code> (<code>upsert</code>, <code>rename</code>, <code>delete</code>, <code>history</code> or <code>revert</code>), <code>key</code>, <code>kind</code>, <code>value</code>, <code>interval</code>, <code>enabled</code></td>
+                        </tr>
+                        <tr>
+                          <td><code>manage_agent_billing</code></td>
+                          <td><code>agent_guid</code>, <code>action</code> (<code>subscribe</code>, <code>upgrade_to_pro</code>, <code>cancel</code>, <code>renew</code> or <code>buy_credits</code>), <code>pack</code>, <code>confirm</code>, <code>confirm_charge_usd</code></td>
+                        </tr>
+                        <tr>
+                          <td><code>get_agent_activity</code></td>
+                          <td><code>agent_guid</code>, <code>kind</code> (<code>usage</code>, <code>logs</code> or <code>log_dates</code>), <code>date</code></td>
+                        </tr>
+                        <tr>
+                          <td><code>delete_agent</code></td>
+                          <td><code>agent_guid</code>, <code>confirm</code></td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </section>
 
                   <section id="mcp-faq">
@@ -8430,7 +8862,7 @@ if (!data.result) {
                     <h3>Is my API key stored?</h3>
                     <p>No. The server is fully stateless. Credentials are sent per-request and never stored or logged.</p>
                     <h3>Does it cost extra?</h3>
-                    <p>No. The MCP server is free. You pay for model runs at standard pricing.</p>
+                    <p>No. The MCP server itself is free. You pay the normal prices for the work the tools start: model runs, the model steps of workflow runs, Studio and Workflow Agent turns, and agent plans and credits.</p>
                     <h3>What about rate limits?</h3>
                     <p>The hosted MCP endpoint applies a 60-request-per-minute guard per Authorization value, in addition to Wiro API project limits. Long generations do not require rapid polling: follow the returned bounded <code>wait_for_task</code> action.</p>
                     <h3>Can I self-host?</h3>
@@ -8462,7 +8894,7 @@ if (!data.result) {
     }
   }
 }</code></pre>
-                    <p>That's it. Your assistant now has access to all Wiro AI models. The <code>args</code> entry pins the current published version (<code>@wiro-ai/wiro-mcp@1.4.0</code>) so <code>npx</code> does not reuse an older cached build.</p>
+                    <p>That's it. Your assistant can now run Wiro models, build and run workflows, and work with Studio and your own agents. The <code>args</code> entry pins the current published version (<code>@wiro-ai/wiro-mcp@1.4.0</code>) so <code>npx</code> does not reuse an older cached build.</p>
                   </section>
 
                   <section id="self-hosted-setup">
@@ -8621,16 +9053,16 @@ WIRO_API_SECRET=your-api-secret</code></pre>
 
                   <section id="self-hosted-tools">
                     <h2>Available Tools</h2>
-                    <p>The self-hosted server provides the same 13 typed tools as the <a href="/docs/wiro-mcp-server">hosted MCP server</a>. Successful calls include <code>structuredContent</code> for LLM chaining plus text content for compatibility. Completed media calls return standard MCP resource links and an assistant-audience delivery instruction so the assistant can present image previews and clickable media links in its user-facing response even when the client does not render media inside its tool card.</p>
+                    <p>The self-hosted server provides the same 48 typed tools, playbooks and prompts as the <a href="/docs/wiro-mcp-server">hosted MCP server</a>. Successful calls include <code>structuredContent</code> for LLM chaining plus text content for compatibility. Completed media calls return standard MCP resource links and an assistant-audience delivery instruction so the assistant can present image previews and clickable media links in its user-facing response even when the client does not render media inside its tool card.</p>
+                    <p>All three tool groups load by default. To load fewer tools, set <code>WIRO_TOOLSETS</code> (see <a href="#self-hosted-env">Environment Variables</a>). <code>get_account</code>, <code>get_playbook</code> and <code>search_docs</code> are always available.</p>
                     <p><strong>Model slugs:</strong> Use the clean/lowercase format <code>owner/model</code> (e.g. <code>openai/sora-2</code>, <code>wiro/virtual-try-on</code>). These correspond to <code>cleanslugowner/cleanslugproject</code> values returned by <code>search_models</code>.</p>
-
-                    <h3>Discovery</h3>
+                    <h3>Models</h3>
                     <table>
                       <thead>
                         <tr>
                           <th>Tool</th>
-                          <th>API Endpoint</th>
-                          <th>What it does</th>
+                          <th>Wiro API</th>
+                          <th>Description</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -8641,50 +9073,24 @@ WIRO_API_SECRET=your-api-secret</code></pre>
                         </tr>
                         <tr>
                           <td><code>get_model_schema</code></td>
-                          <td><code>POST /Tool/Detail</code></td>
-                          <td>Get full parameter schema and pricing for any model: parameter names, types, options, defaults, and required fields.</td>
+                          <td><code>POST /Tool/Detail</code>, <code>POST /Workflow/UtilityDetail</code></td>
+                          <td>Get full parameter schema and pricing for any model: parameter names, types, options, defaults, and required fields. For a workflow utility, its parameters and output ports.</td>
                         </tr>
                         <tr>
                           <td><code>recommend_model</code></td>
                           <td><code>POST /Tool/List</code></td>
-                          <td>Describe what you want to build and get model recommendations ranked by relevance.</td>
+                          <td>Find models for a goal from two or three key words, best matches first.</td>
                         </tr>
                         <tr>
                           <td><code>explore</code></td>
                           <td><code>POST /Tool/Explore</code></td>
                           <td>Browse curated AI models organized by category. No parameters needed.</td>
                         </tr>
-                      </tbody>
-                    </table>
-
-                    <h3>Execution</h3>
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Tool</th>
-                          <th>API Endpoint</th>
-                          <th>What it does</th>
-                        </tr>
-                      </thead>
-                      <tbody>
                         <tr>
                           <td><code>run_model</code></td>
                           <td><code>POST /Run/{owner}/{model}</code></td>
                           <td>Run any model with parameters. Waits up to 45 seconds by default; if still active, returns a recoverable token for <code>wait_for_task</code>.</td>
                         </tr>
-                      </tbody>
-                    </table>
-
-                    <h3>Task Management</h3>
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Tool</th>
-                          <th>API Endpoint</th>
-                          <th>What it does</th>
-                        </tr>
-                      </thead>
-                      <tbody>
                         <tr>
                           <td><code>wait_for_task</code></td>
                           <td><code>POST /Task/Detail</code></td>
@@ -8713,25 +9119,224 @@ WIRO_API_SECRET=your-api-secret</code></pre>
                         <tr>
                           <td><code>kill_task</code></td>
                           <td><code>POST /Task/Kill</code></td>
-                          <td>Kill a running task (after worker assignment). Task moves to <code>task_cancel</code> status.</td>
+                          <td>Stop a queued or running task. Task moves to <code>task_cancel</code> status.</td>
+                        </tr>
+                        <tr>
+                          <td><code>upload_file</code></td>
+                          <td><code>POST /File/Upload</code></td>
+                          <td>Upload a file from a public http(s) URL (up to about 100 MB). Most models accept direct URLs without uploading first.</td>
                         </tr>
                       </tbody>
                     </table>
-
-                    <h3>Utility</h3>
+                    <h3>Workflows</h3>
                     <table>
                       <thead>
                         <tr>
                           <th>Tool</th>
-                          <th>API Endpoint</th>
-                          <th>What it does</th>
+                          <th>Wiro API</th>
+                          <th>Description</th>
                         </tr>
                       </thead>
                       <tbody>
                         <tr>
-                          <td><code>upload_file</code></td>
-                          <td><code>POST /File/Upload</code></td>
-                          <td>Upload a file from a URL to Wiro. Most models accept direct URLs without uploading first.</td>
+                          <td><code>list_workflows</code></td>
+                          <td><code>POST /Workflow/List</code></td>
+                          <td>List the workflows in your workspace, or search the public gallery by text, tag or model.</td>
+                        </tr>
+                        <tr>
+                          <td><code>get_workflow</code></td>
+                          <td><code>POST /Workflow/Detail</code></td>
+                          <td>Read a workflow's inputs, outputs and step graph.</td>
+                        </tr>
+                        <tr>
+                          <td><code>create_workflow</code></td>
+                          <td><code>POST /Workflow/Prepare</code>, <code>POST /Workflow/Add</code></td>
+                          <td>Save a new workflow from a step graph. Wiro checks it against the live model catalog and returns every problem it finds at once.</td>
+                        </tr>
+                        <tr>
+                          <td><code>update_workflow</code></td>
+                          <td><code>POST /Workflow/Prepare</code>, <code>POST /Workflow/Update</code></td>
+                          <td>Edit a workflow's title, description, tags or graph without overwriting newer changes; a new graph is saved only after you confirm a summary of the change.</td>
+                        </tr>
+                        <tr>
+                          <td><code>clone_workflow</code></td>
+                          <td><code>POST /Workflow/Clone</code></td>
+                          <td>Copy a public workflow into your workspace.</td>
+                        </tr>
+                        <tr>
+                          <td><code>delete_workflow</code></td>
+                          <td><code>POST /Workflow/Delete</code></td>
+                          <td>Delete a workflow, after your confirmation.</td>
+                        </tr>
+                        <tr>
+                          <td><code>run_workflow</code></td>
+                          <td><code>POST /Workflow/Run</code></td>
+                          <td>Run a workflow and wait for its outputs; can stop after a chosen step to test the first steps.</td>
+                        </tr>
+                        <tr>
+                          <td><code>wait_for_workflow_run</code></td>
+                          <td><code>POST /Workflow/RunDetail</code>, <code>POST /Workflow/RunNodeDetail</code></td>
+                          <td>Keep waiting on a run, read its outputs, or see why a step failed.</td>
+                        </tr>
+                        <tr>
+                          <td><code>resume_workflow_run</code></td>
+                          <td><code>POST /Workflow/RunResume</code></td>
+                          <td>Continue a failed or stopped run without paying again for finished steps.</td>
+                        </tr>
+                        <tr>
+                          <td><code>list_workflow_runs</code></td>
+                          <td><code>POST /Workflow/RunHistory</code></td>
+                          <td>Browse past and current runs, including runs started on wiro.ai.</td>
+                        </tr>
+                        <tr>
+                          <td><code>save_workflow_from_agent</code></td>
+                          <td><code>POST /StudioWorkflow/Message/Detail</code>, then <code>/Workflow/Add</code> or <code>/Workflow/Update</code></td>
+                          <td>Save a workflow the Workflow Agent proposed, as a new workflow, or onto an existing one after you confirm a summary of the change.</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <h3>Agents</h3>
+                    <p>The conversation tools call the matching <code>Message/*</code> route of <a href="/docs/studio">Studio</a> (<code>/Studio/</code>), the <a href="/docs/workflow-agent">Workflow Agent</a> (<code>/StudioWorkflow/</code>) or a deployed agent (<code>/UserAgent/</code>), chosen by their <code>agent</code> argument.</p>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Tool</th>
+                          <th>Wiro API</th>
+                          <th>Description</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td><code>send_agent_message</code></td>
+                          <td><code>Message/Send</code>, or <code>Message/SendForm</code> with attachments</td>
+                          <td>Send a message and wait for the reply, with any media, workflows or model runs it produced.</td>
+                        </tr>
+                        <tr>
+                          <td><code>get_agent_message</code></td>
+                          <td><code>Message/Detail</code></td>
+                          <td>Keep waiting on a reply, or read one again.</td>
+                        </tr>
+                        <tr>
+                          <td><code>get_agent_conversation</code></td>
+                          <td><code>Message/Sessions</code>, <code>Message/History</code></td>
+                          <td>List conversations, or read one conversation's history.</td>
+                        </tr>
+                        <tr>
+                          <td><code>cancel_agent_message</code></td>
+                          <td><code>Message/Cancel</code></td>
+                          <td>Stop a reply that is still being written.</td>
+                        </tr>
+                        <tr>
+                          <td><code>delete_agent_session</code></td>
+                          <td><code>Message/ClearSession</code> (Studio), <code>Message/DeleteSession</code></td>
+                          <td>Delete a conversation and the agent's memory of it, after your confirmation.</td>
+                        </tr>
+                        <tr>
+                          <td><code>list_studio_results</code></td>
+                          <td><code>POST /Studio/Tasks</code></td>
+                          <td>List the images, videos and other results Studio generated for you.</td>
+                        </tr>
+                        <tr>
+                          <td><code>list_agent_templates</code></td>
+                          <td><code>POST /Agent/List</code></td>
+                          <td>Browse ready-made agent templates and their monthly prices.</td>
+                        </tr>
+                        <tr>
+                          <td><code>get_agent_template</code></td>
+                          <td><code>POST /Agent/Detail</code></td>
+                          <td>Read a template's skills, plans, and the accounts and keys it needs.</td>
+                        </tr>
+                        <tr>
+                          <td><code>list_agent_skills</code></td>
+                          <td><code>POST /Skills/List</code>, <code>/Skills/Detail</code>, <code>/Skills/Capabilities</code></td>
+                          <td>Browse the skills an agent can have, and what each one needs to work.</td>
+                        </tr>
+                        <tr>
+                          <td><code>deploy_agent</code></td>
+                          <td><code>POST /UserAgent/PricingPreview</code>, <code>/UserAgent/Deploy</code></td>
+                          <td>Deploy an agent from a template or build one from skills; shows the price and asks before charging.</td>
+                        </tr>
+                        <tr>
+                          <td><code>list_my_agents</code></td>
+                          <td><code>POST /UserAgent/MyAgents</code></td>
+                          <td>List your agents with their status, plan and credits.</td>
+                        </tr>
+                        <tr>
+                          <td><code>get_my_agent</code></td>
+                          <td><code>POST /UserAgent/Detail</code></td>
+                          <td>Read one agent's setup, plan and credits; can wait until it is running.</td>
+                        </tr>
+                        <tr>
+                          <td><code>control_agent</code></td>
+                          <td><code>POST /UserAgent/Start</code>, <code>/UserAgent/Stop</code>, <code>/UserAgent/Update</code> (restart)</td>
+                          <td>Start, stop or restart an agent.</td>
+                        </tr>
+                        <tr>
+                          <td><code>update_agent</code></td>
+                          <td><code>POST /UserAgent/Update</code>, <code>/UserAgent/UpdateSettings</code></td>
+                          <td>Change an agent's name, description, time zone, models and chat commands.</td>
+                        </tr>
+                        <tr>
+                          <td><code>apply_agent_skills</code></td>
+                          <td><code>POST /UserAgent/PricingPreview</code>, <code>/UserAgent/SkillsApply</code></td>
+                          <td>Turn skills on or off; shows the price change and asks before charging.</td>
+                        </tr>
+                        <tr>
+                          <td><code>set_agent_credentials</code></td>
+                          <td><code>POST /UserAgent/CredentialUpsert</code>, <code>/UserAgent/CredentialFileUpload</code></td>
+                          <td>Save the keys, tokens and settings an agent's skills and channels need, such as a Telegram bot token or a Gmail app password.</td>
+                        </tr>
+                        <tr>
+                          <td><code>connect_agent_oauth</code></td>
+                          <td><code>POST /UserAgentOAuth/OAuthConnect</code>, <code>/UserAgentOAuth/OAuthStatus</code>, <code>/UserAgentOAuth/SetPickerAccounts</code></td>
+                          <td>Connect sign-in accounts such as HubSpot or X; you approve the connection in your browser. Some services need your own app keys or a token first.</td>
+                        </tr>
+                        <tr>
+                          <td><code>disconnect_agent_oauth</code></td>
+                          <td><code>POST /UserAgentOAuth/OAuthDisconnect</code></td>
+                          <td>Disconnect a connected account, after your confirmation.</td>
+                        </tr>
+                        <tr>
+                          <td><code>manage_agent_custom_skill</code></td>
+                          <td><code>POST /UserAgent/CustomSkillUpsert</code>, <code>CustomSkillRename</code>, <code>CustomSkillDelete</code>, <code>CustomSkillHistory</code>, <code>CustomSkillRevert</code></td>
+                          <td>Add, edit, schedule, restore or remove an agent's own instructions and scheduled tasks.</td>
+                        </tr>
+                        <tr>
+                          <td><code>manage_agent_billing</code></td>
+                          <td><code>POST /UserAgent/CreateSubscriptionCheckout</code>, <code>UpgradeTier</code>, <code>CancelSubscription</code>, <code>RenewSubscription</code>, <code>CreateExtraCreditCheckout</code></td>
+                          <td>Subscribe, upgrade to Pro, cancel, renew or buy extra credits from your wallet, after your confirmation.</td>
+                        </tr>
+                        <tr>
+                          <td><code>get_agent_activity</code></td>
+                          <td><code>POST /UserAgent/TransactionList</code>, <code>/UserAgent/LogsList</code>, <code>/UserAgent/Logs</code></td>
+                          <td>Read an agent's credit usage and activity logs.</td>
+                        </tr>
+                        <tr>
+                          <td><code>delete_agent</code></td>
+                          <td><code>POST /UserAgent/Delete</code></td>
+                          <td>Delete an agent, after your confirmation.</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <h3>Account and guides</h3>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Tool</th>
+                          <th>Wiro API</th>
+                          <th>Description</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td><code>get_account</code></td>
+                          <td><code>POST /Wallet/List</code></td>
+                          <td>Show which workspace the connected project belongs to and its wallet balance.</td>
+                        </tr>
+                        <tr>
+                          <td><code>get_playbook</code></td>
+                          <td>Built into the server</td>
+                          <td>Step-by-step guides: getting started, models, workflows, workflow graphs, the Workflow Agent, Studio, agents and billing.</td>
                         </tr>
                         <tr>
                           <td><code>search_docs</code></td>
@@ -8740,8 +9345,7 @@ WIRO_API_SECRET=your-api-secret</code></pre>
                         </tr>
                       </tbody>
                     </table>
-
-                    <p>See the <a href="/docs/wiro-mcp-server">Wiro MCP Server</a> page for detailed parameter tables and examples.</p>
+                    <p>See the <a href="/docs/wiro-mcp-server">Wiro MCP Server</a> page for the playbook topics, the prompts, the rules for paid and irreversible actions, and the tool arguments.</p>
                   </section>
 
                   <section id="self-hosted-env">
@@ -8770,8 +9374,20 @@ WIRO_API_SECRET=your-api-secret</code></pre>
                           <td>No</td>
                           <td>Override API URL (default: <code>https://api.wiro.ai/v1</code>)</td>
                         </tr>
+                        <tr>
+                          <td><code>WIRO_TOOLSETS</code></td>
+                          <td>No</td>
+                          <td>Comma-separated tool groups to load: <code>models</code>, <code>workflows</code>, <code>agents</code> (default: all)</td>
+                        </tr>
                       </tbody>
                     </table>
+                    <h3>Choosing tool groups</h3>
+                    <p>Some clients work best with fewer tools. Set <code>WIRO_TOOLSETS</code> to load only the groups you need:</p>
+                    <pre><code class="language-json">"env": {
+  "WIRO_API_KEY": "your-api-key",
+  "WIRO_TOOLSETS": "models,workflows"
+}</code></pre>
+                    <p><code>get_account</code>, <code>get_playbook</code> and <code>search_docs</code> are always available, and <code>workflows</code> also brings the model search tools it needs. The conversation tools for Studio and the Workflow Agent, with <code>save_workflow_from_agent</code>, come with either <code>workflows</code> or <code>agents</code>, and each prompt appears only when its tools are loaded. If a job needs a tool from a group that is not loaded, the server instructions tell the assistant to say so.</p>
                   </section>
 
                   <section id="self-hosted-links">
@@ -8785,7 +9401,10 @@ WIRO_API_SECRET=your-api-secret</code></pre>
 import { createMcpServer } from '@wiro-ai/wiro-mcp/server';
 
 const client = new WiroClient('your-api-key', 'your-api-secret');
-const server = createMcpServer(client);</code></pre>
+const server = createMcpServer(client);
+
+// Only the model and workflow tools
+const modelsAndWorkflows = createMcpServer(client, { toolsets: ['models', 'workflows'] });</code></pre>
                     <table>
                       <thead>
                         <tr>
@@ -8795,16 +9414,20 @@ const server = createMcpServer(client);</code></pre>
                       </thead>
                       <tbody>
                         <tr>
-                          <td><code>createMcpServer(client)</code></td>
-                          <td>Creates an McpServer with all 13 tools registered</td>
+                          <td><code>createMcpServer(client, options?)</code></td>
+                          <td>Creates an McpServer with the tools, prompts and server instructions registered. <code>options.toolsets</code> picks tool groups and the prompts that use them; <code>options.instructions</code> replaces the instructions; <code>options.wrapTool(tool, handler)</code> returns the handler to register for each tool, for your own logging or permission checks</td>
                         </tr>
                         <tr>
                           <td><code>WiroClient</code></td>
-                          <td>API client supporting both auth types (signature + apikey-only)</td>
+                          <td>API client supporting both auth types (signature + apikey-only); <code>post(path, body)</code> calls any Wiro API endpoint with the same credentials</td>
                         </tr>
                         <tr>
-                          <td><code>registerTools(server, client)</code></td>
+                          <td><code>registerTools(server, client, options?)</code></td>
                           <td>Register tools on an existing McpServer</td>
+                        </tr>
+                        <tr>
+                          <td><code>parseToolsets(value)</code></td>
+                          <td>Parse a <code>WIRO_TOOLSETS</code>-style list such as <code>"models,agents"</code></td>
                         </tr>
                       </tbody>
                     </table>
@@ -8943,8 +9566,20 @@ if (task.pexit === '0') {
                               <td>Kill a running task using its socket access token or task ID.</td>
                             </tr>
                             <tr>
+                              <td><code>listTasks(params?, signal?)</code></td>
+                              <td>List the tasks of the key's workspace, newest first.</td>
+                            </tr>
+                            <tr>
                               <td><code>uploadFile(url, fileName?)</code></td>
                               <td>Upload a file from a URL for use as model input.</td>
+                            </tr>
+                            <tr>
+                              <td><code>post(path, body?, signal?)</code></td>
+                              <td>Call any other Wiro API endpoint with the same credentials, for example <code>post('/Workflow/List', { scope: 'my' })</code>. Wiro reports each outcome in the response body, so check <code>result</code> on the returned body.</td>
+                            </tr>
+                            <tr>
+                              <td><code>postForm(path, form, signal?)</code></td>
+                              <td>Same as <code>post</code>, for endpoints that take <code>multipart/form-data</code>.</td>
                             </tr>
                           </tbody>
                         </table>

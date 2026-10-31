@@ -5374,7 +5374,7 @@ func main() {
 
 # MCP Server
 
-Connect AI coding assistants to Wiro's AI models via the Model Context Protocol.
+Connect AI assistants to Wiro's models, workflows, Studio and agents through the Model Context Protocol.
 
 ## Connect with a browser sign-in
 
@@ -5401,7 +5401,7 @@ settings and paste the URL above:
 
 ## What is MCP?
 
-[Model Context Protocol](https://modelcontextprotocol.io/) (MCP) is an open standard that lets AI assistants use external tools directly. With the Wiro MCP server, your AI assistant can search models, run inference, track tasks, and upload files, all without leaving your editor.
+[Model Context Protocol](https://modelcontextprotocol.io/) (MCP) is an open standard that lets AI assistants use external tools directly. With the Wiro MCP server, your AI assistant can find and run models, build and run workflows, create media with Studio, and deploy and talk to your own agents, all without leaving your editor or chat app.
 
 The hosted MCP server is available at `mcp.wiro.ai/v1`. Most apps connect with
 the browser sign-in above. Clients that send custom request headers, including
@@ -5529,7 +5529,7 @@ Or install Node.js 20 or later and add this local stdio entry to
 For API Key Only authentication, remove `WIRO_API_SECRET` completely. Fully quit
 and reopen Claude Desktop after saving. Pin `@wiro-ai/wiro-mcp@1.4.0` in `args`
 so `npx` does not reuse an older cached build. This runs the local package
-and provides the same 13 Wiro tools.
+and provides the same Wiro tools.
 
 Claude Desktop may enforce a fixed client-side tool timeout. Wiro returns from
 each generation wait within 45 seconds; when `nextAction.tool` is
@@ -5758,11 +5758,14 @@ Wiro API error.
 
 **Model slugs:** Use the clean/lowercase format `owner/model` (e.g. `openai/sora-2`, `wiro/virtual-try-on`). These correspond to the `cleanslugowner/cleanslugproject` values returned by `search_models`.
 
+The server has 48 tools: three groups (Models, Workflows, Agents) and three
+tools that are always available.
+
 | Tool | Description |
 |------|-------------|
 | `search_models` | Search models by keyword, category, or owner |
-| `get_model_schema` | Get parameter schema and pricing for any model |
-| `recommend_model` | Describe a task, get model recommendations by relevance |
+| `get_model_schema` | Get parameter schema and pricing for any model, or the parameters and output ports of a workflow utility |
+| `recommend_model` | Find models for a goal from two or three key words, best matches first |
 | `explore` | Browse curated models by category |
 | `run_model` | Run any model; waits up to 45 seconds by default, then returns a recoverable task token |
 | `wait_for_task` | Continue waiting for an existing task without creating a duplicate run |
@@ -5770,14 +5773,82 @@ Wiro API error.
 | `list_tasks` | Browse authenticated generation history and continue with `get_task` |
 | `get_task_price` | Get the cost of a completed task |
 | `cancel_task` | Cancel a queued task |
-| `kill_task` | Kill a running task |
-| `upload_file` | Upload a file from URL for use as model input |
+| `kill_task` | Stop a queued or running task |
+| `upload_file` | Upload a file from a public http(s) URL for use as model input |
+
+Workflows ([Workflows](/docs/workflows), [Workflow Agent](/docs/workflow-agent)):
+
+| Tool | Description |
+|------|-------------|
+| `list_workflows` | List your workspace's workflows, or search the public gallery by text, tag or model |
+| `get_workflow` | Read a workflow's inputs, outputs and step graph |
+| `create_workflow` | Save a new workflow from a step graph; every problem comes back at once |
+| `update_workflow` | Edit title, description, tags or graph without overwriting newer changes; a new graph needs your confirmation |
+| `clone_workflow` | Copy a public workflow into your workspace |
+| `delete_workflow` | Delete a workflow, after your confirmation |
+| `run_workflow` | Run a workflow and wait for its outputs; can stop after a chosen step |
+| `wait_for_workflow_run` | Keep waiting on a run, read its outputs, or see why a step failed |
+| `resume_workflow_run` | Continue a failed or stopped run without paying again for finished steps |
+| `list_workflow_runs` | Browse past and current runs, including runs started on wiro.ai |
+| `save_workflow_from_agent` | Save a Workflow Agent proposal as a new workflow, or onto an existing one after your confirmation |
+
+Agents ([Studio](/docs/studio), [Agent Overview](/docs/agent-overview)). `agent`
+is `"studio"`, `"workflow-agent"` or the guid of one of your own agents:
+
+| Tool | Description |
+|------|-------------|
+| `send_agent_message` | Send a message and wait for the reply, with any media, workflows or model runs it produced |
+| `get_agent_message` | Keep waiting on a reply, or read one again |
+| `get_agent_conversation` | List conversations, or read one conversation's history |
+| `cancel_agent_message` | Stop a reply that is still being written |
+| `delete_agent_session` | Delete a conversation and the agent's memory of it, after your confirmation |
+| `list_studio_results` | List the results Studio generated for you |
+| `list_agent_templates` | Browse agent templates and their monthly prices |
+| `get_agent_template` | Read a template's skills, plans, and the accounts and keys it needs |
+| `list_agent_skills` | Browse agent skills and what each one needs |
+| `deploy_agent` | Deploy from a template or from skills; quotes the price and asks before charging |
+| `list_my_agents` | List your agents with their status, plan and credits |
+| `get_my_agent` | Read one agent's setup, plan and credits; can wait until it is running |
+| `control_agent` | Start, stop or restart an agent |
+| `update_agent` | Change an agent's name, description, time zone, models and chat commands |
+| `apply_agent_skills` | Turn skills on or off; quotes the price change and asks before charging |
+| `set_agent_credentials` | Save the keys, tokens and settings an agent's skills and channels need |
+| `connect_agent_oauth` | Connect sign-in accounts such as HubSpot or X, approved in your browser |
+| `disconnect_agent_oauth` | Disconnect a connected account, after your confirmation |
+| `manage_agent_custom_skill` | Add, edit, schedule, restore or remove an agent's own instructions and scheduled tasks |
+| `manage_agent_billing` | Subscribe, upgrade to Pro, cancel, renew or buy extra credits from your wallet, after your confirmation |
+| `get_agent_activity` | Read an agent's credit usage and activity logs |
+| `delete_agent` | Delete an agent, after your confirmation |
+
+Always available:
+
+| Tool | Description |
+|------|-------------|
+| `get_account` | Show which workspace the connected project belongs to and its wallet balance |
+| `get_playbook` | Step-by-step guides: `getting-started`, `models`, `workflows`, `workflow-graph`, `workflow-agent`, `studio`, `agents`, `billing` |
 | `search_docs` | Search Wiro documentation |
+
+Prompts: `build_workflow`, `deploy_agent`, `create_with_studio` and
+`talk_to_my_agent`. Each one sends the assistant to the matching playbook first.
+
+Paid work: model and workflow runs, Studio and Workflow Agent turns, and
+messages to your own agents (from the agent's credits) cost money. Agent plans,
+plan changes, credit packs and skill changes first return a quote and act only
+when called again with `confirm: true` and the quote's reference
+(`confirm_charge_usd`, or `idempotency_key` for skill changes); if the price
+changed, nothing is charged and a new quote comes back. Deletions and graph
+replacements also wait for `confirm: true`. No tool adds funds or takes a card
+payment.
 
 If a generation exceeds the wait budget, continue with `wait_for_task` using
 the returned token. Do not call `run_model` again for the same request.
 `task_error` remains non-terminal in Task/Detail; the wait ends only at
 `task_postprocess_end` or `task_cancel`.
+Workflow runs, agent replies and agent start-up use the same bounded waits:
+follow the returned `nextAction` instead of starting the job again.
+An LLM model continues a chat only when its schema lists `session_id`: send the
+same `session_id` on every turn with the next `prompt`. A turn that ended with
+tool calls is continued with `previousTaskToken` and `toolOutputs`.
 Tools advertise typed input/output schemas and return `structuredContent` with
 stable task states and an executable `nextAction` for reliable LLM chaining.
 Completed media responses include standard MCP resource links plus an
@@ -5809,8 +5880,8 @@ Run the Wiro MCP server locally on your own machine using npx.
 }
 ```
 
-The self-hosted server exposes the same 13 tools as the hosted server,
-including bounded `run_model`, `wait_for_task`, and optional short waits through
+The self-hosted server exposes the same 48 tools, playbooks and prompts as
+the hosted server, including bounded `run_model`, `wait_for_task`, and optional short waits through
 `get_task.wait_seconds`. Pin `@wiro-ai/wiro-mcp@1.4.0` in the npx `args` so
 clients do not reuse an older cached package.
 
@@ -5821,6 +5892,11 @@ clients do not reuse an older cached package.
 | `WIRO_API_KEY` | Yes | Your Wiro project API key |
 | `WIRO_API_SECRET` | No | API secret (for signature auth) |
 | `WIRO_API_BASE_URL` | No | Override API URL (default: `https://api.wiro.ai/v1`) |
+| `WIRO_TOOLSETS` | No | Comma-separated tool groups to load: `models`, `workflows`, `agents` (default: all) |
+
+`get_account`, `get_playbook` and `search_docs` are always available, and
+`workflows` also brings the model search tools it needs. The conversation tools
+for Studio and the Workflow Agent come with either `workflows` or `agents`.
 
 ## Authentication errors
 
@@ -5886,7 +5962,10 @@ if (task.pexit === '0') {
 | `getTask({ tasktoken?, taskid? }, signal?)` | Get current task status and outputs. |
 | `cancelTask(tasktokenOrReference, signal?)` | Cancel a queued task using the API-required task ID. |
 | `killTask(tasktokenOrReference, signal?)` | Kill a running task using its token or task ID. |
+| `listTasks(params?, signal?)` | List the tasks of the key's workspace, newest first. |
 | `uploadFile(url, fileName?)` | Upload a file from URL for use as model input. |
+| `post(path, body?, signal?)` | Call any other Wiro API endpoint with the same credentials; check `result` on the returned body. |
+| `postForm(path, form, signal?)` | Same as `post`, for `multipart/form-data` endpoints. |
 
 `TaskWaitTimeoutError` preserves the last Task/Detail response. Resume
 `waitForTask` with the same identifier instead of calling `runModel` again.

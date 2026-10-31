@@ -90,7 +90,10 @@ const client = new WiroClient('key', 'secret', 'https://custom-api.example.com/v
 | `getTask({ tasktoken?, taskid? }, signal?)` | Get current task status and outputs. |
 | `cancelTask(tasktokenOrReference, signal?)` | Cancel a queued task. Resolves a token to the `taskid` required by the API. |
 | `killTask(tasktokenOrReference, signal?)` | Kill a running task. Sends the token as `socketaccesstoken` or accepts a `taskid`. |
+| `listTasks(params?, signal?)` | List the tasks of the key's workspace, newest first. |
 | `uploadFile(url, fileName?)` | Upload a file from a URL for use as model input. |
+| `post(path, body?, signal?)` | Call any other Wiro API endpoint with the same credentials, for example `post('/Workflow/List', { scope: 'my' })`. Wiro reports each outcome in the response body, so check `result` on the returned body. |
+| `postForm(path, form, signal?)` | Same as `post`, for endpoints that take `multipart/form-data`. |
 
 If `waitForTask` exceeds its timeout, it throws `TaskWaitTimeoutError`. The
 error preserves `lastDetail`; call `waitForTask` again with the same token or

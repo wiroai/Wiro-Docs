@@ -877,10 +877,18 @@ Errors: a failed tool call is a normal tool result with `isError: true` and text
 
 Errors: with only `WIRO_API_KEY` set on a signature-auth project, tool calls fail with `Wiro API error 401: This project uses signature-based auth. Set WIRO_API_SECRET to the project's API secret in your MCP server config.` Add `WIRO_API_SECRET` to `env`.
 
-### MCP Tools (13 total)
+### MCP Tools (48 total)
+Three groups (models, workflows, agents) plus three tools that are always available. The self-hosted server loads all groups by default; `WIRO_TOOLSETS` (comma-separated `models`, `workflows`, `agents`) loads fewer. `workflows` also brings the model search tools it needs; the conversation tools for Studio and the Workflow Agent, with `save_workflow_from_agent`, come with either `workflows` or `agents`.
+
+Always available:
+- `get_account`: Workspace of the connected project and its wallet balance; the call that proves the connection works (POST /Wallet/List)
+- `get_playbook`: Step-by-step guides by topic: getting-started, models, workflows, workflow-graph, workflow-agent, studio, agents, billing (built into the server)
+- `search_docs`: Search Wiro documentation for guides, API references, and examples
+
+Models:
 - `search_models`: Search/browse models by keyword, category, or owner (POST /Tool/List)
-- `get_model_schema`: Get model parameters, types, and pricing (POST /Tool/Detail). Use clean model slug
-- `recommend_model`: Describe what you want to build, get models ranked by relevance (POST /Tool/List)
+- `get_model_schema`: Get model parameters, types, and pricing (POST /Tool/Detail), or a workflow utility's parameters and output ports (POST /Workflow/UtilityDetail). Use clean model slug
+- `recommend_model`: Find models for a goal from two or three key words, best matches first (POST /Tool/List)
 - `explore`: Browse curated models organized by category (POST /Tool/Explore). No parameters needed.
 - `run_model`: Run any model; waits 45s by default, then returns a recoverable task token (POST /Run/{cleanslugowner}/{cleanslugproject})
 - `wait_for_task`: Continue waiting for an existing task without creating a duplicate run (POST /Task/Detail)
@@ -888,11 +896,51 @@ Errors: with only `WIRO_API_KEY` set on a signature-auth project, tool calls fai
 - `list_tasks`: Browse authenticated generation history across conversations, then continue with `get_task` (POST /Task/List; no uuid parameter)
 - `get_task_price`: Get cost of a completed task. Only successful tasks (pexit "0") are billed (POST /Task/Detail)
 - `cancel_task`: Cancel a queued task (POST /Task/Cancel)
-- `kill_task`: Kill a running task (POST /Task/Kill)
-- `upload_file`: Upload a file from URL to Wiro for model input (POST /File/Upload)
-- `search_docs`: Search Wiro documentation for guides, API references, and examples
+- `kill_task`: Stop a queued or running task (POST /Task/Kill)
+- `upload_file`: Upload a file from a public http(s) URL, up to about 100 MB, for model input (POST /File/Upload)
 
-Tools advertise typed input/output schemas and return `structuredContent` plus text fallback. Task states are `submitted`, `running`, `completed`, `failed`, or `cancelled`. If `nextAction` is present, execute it with the exact arguments returned. If `run_model` is still running, call `wait_for_task`; do not resubmit `run_model`, because that creates a separate billable task. Use `list_tasks → get_task` to resume output from a different conversation. Completed media results include MCP `resource_link` blocks and an assistant-audience delivery instruction: render images and preserve clickable video/audio/file links in the user-facing response, because some clients expose resource links as tool metadata instead of previewing them in the tool card.
+Workflows (see https://wiro.ai/docs/workflows):
+- `list_workflows`: Your workspace's workflows (scope mine) or the public gallery (scope public) by text, tag or model (POST /Workflow/List)
+- `get_workflow`: A workflow's inputs, outputs, state and step graph (POST /Workflow/Detail)
+- `create_workflow`: Save a new private workflow from a graph; Wiro checks it against the live catalog and lists every problem at once (POST /Workflow/Prepare, then /Workflow/Add)
+- `update_workflow`: Edit title, description, tags or graph without overwriting newer changes; a new graph is previewed and saved only with `confirm: true` (POST /Workflow/Prepare, then /Workflow/Update)
+- `clone_workflow`: Copy a public gallery workflow into your workspace (POST /Workflow/Clone)
+- `delete_workflow`: Delete a workflow, with `confirm: true` (POST /Workflow/Delete)
+- `run_workflow`: Run a workflow and wait for its outputs; `breakpoint_node_id` stops after that step's layer (POST /Workflow/Run)
+- `wait_for_workflow_run`: Keep waiting on a run, read its outputs, or see why a step failed; `debug_node_id` shows what a step's model received (POST /Workflow/RunDetail, /Workflow/RunNodeDetail)
+- `resume_workflow_run`: Continue a failed or stopped run; finished steps are not charged again (POST /Workflow/RunResume)
+- `list_workflow_runs`: Past and current runs, including runs started on wiro.ai (POST /Workflow/RunHistory)
+- `save_workflow_from_agent`: Save a Workflow Agent proposal as a new workflow, or onto the attached workflow with `confirm: true` (POST /StudioWorkflow/Message/Detail, then /Workflow/Add or /Workflow/Update)
+
+Agents (`agent` is "studio", "workflow-agent" or the guid of a deployed agent; see https://wiro.ai/docs/studio, https://wiro.ai/docs/workflow-agent, https://wiro.ai/docs/agent-messaging):
+- `send_agent_message`: Send a message and wait for the reply, with media, workflow proposals and model runs (Message/Send, or Message/SendForm with attachments)
+- `get_agent_message`: Keep waiting on a reply, or read one again (Message/Detail)
+- `get_agent_conversation`: List conversations, or read one conversation's history (Message/Sessions, Message/History)
+- `cancel_agent_message`: Stop a reply that is still being written (Message/Cancel)
+- `delete_agent_session`: Delete a conversation and the agent's memory of it, with `confirm: true` (Studio Message/ClearSession, others Message/DeleteSession)
+- `list_studio_results`: Model runs Studio started, newest first, across sessions (POST /Studio/Tasks)
+- `list_agent_templates`: Agent templates and their monthly prices (POST /Agent/List)
+- `get_agent_template`: A template's skills, plans, credentials and channels (POST /Agent/Detail)
+- `list_agent_skills`: Skills, what each one needs, and their prices (POST /Skills/List, /Skills/Detail, /Skills/Capabilities)
+- `deploy_agent`: Deploy from a template or from skills; quote first, then `confirm: true` with `confirm_charge_usd` (POST /UserAgent/PricingPreview, /UserAgent/Deploy)
+- `list_my_agents`: Your agents with status, plan and credits (POST /UserAgent/MyAgents)
+- `get_my_agent`: One agent's setup, plan and credits; can wait until it runs (POST /UserAgent/Detail)
+- `control_agent`: Start, stop or restart (POST /UserAgent/Start, /UserAgent/Stop, /UserAgent/Update)
+- `update_agent`: Name, description, time zone, models and chat commands (POST /UserAgent/Update, /UserAgent/UpdateSettings)
+- `apply_agent_skills`: Turn skills on or off; quote first, then `confirm: true` with the quote's `idempotency_key` (POST /UserAgent/PricingPreview, /UserAgent/SkillsApply)
+- `set_agent_credentials`: Save keys, tokens and settings for skills and channels (POST /UserAgent/CredentialUpsert, /UserAgent/CredentialFileUpload)
+- `connect_agent_oauth`: Connect sign-in accounts, approved in the browser; status and account selection (POST /UserAgentOAuth/OAuthConnect, /UserAgentOAuth/OAuthStatus, /UserAgentOAuth/SetPickerAccounts)
+- `disconnect_agent_oauth`: Disconnect a connected account, with `confirm: true` (POST /UserAgentOAuth/OAuthDisconnect)
+- `manage_agent_custom_skill`: Add, edit, schedule, restore or remove custom skills and scheduled tasks (POST /UserAgent/CustomSkillUpsert, CustomSkillRename, CustomSkillDelete, CustomSkillHistory, CustomSkillRevert)
+- `manage_agent_billing`: Subscribe, upgrade to Pro, cancel, renew or buy extra credits from the wallet; quote first, then `confirm: true` with `confirm_charge_usd` (POST /UserAgent/CreateSubscriptionCheckout, UpgradeTier, CancelSubscription, RenewSubscription, CreateExtraCreditCheckout)
+- `get_agent_activity`: Credit usage and activity logs (POST /UserAgent/TransactionList, /UserAgent/LogsList, /UserAgent/Logs)
+- `delete_agent`: Delete an agent, with `confirm: true` (POST /UserAgent/Delete)
+
+Prompts: `build_workflow`, `deploy_agent`, `create_with_studio`, `talk_to_my_agent`; each sends the assistant to the matching playbook first and appears only when its tools are loaded.
+
+Paid and irreversible actions: model and workflow runs, Studio and Workflow Agent turns, and messages to deployed agents (from the agent's credits) cost money. Plans, plan changes, credit packs and skill changes return a quote first and act only with `confirm: true` plus the quote's reference; a changed price charges nothing and returns a new quote. Deletions and graph replacements also need `confirm: true`. No tool adds funds or takes a card payment. The connected project decides the workspace and wallet (personal or team).
+
+Tools advertise typed input/output schemas and return `structuredContent` plus text fallback. Task states are `submitted`, `running`, `completed`, `failed`, or `cancelled`. If `nextAction` is present, execute it with the exact arguments returned. If `run_model` is still running, call `wait_for_task`; do not resubmit `run_model`, because that creates a separate billable task. Use `list_tasks → get_task` to resume output from a different conversation. Workflow runs, agent replies and agent start-up use the same bounded waits with `nextAction`. An LLM model continues a chat only when its schema lists `session_id`: send the same `session_id` on every turn with the next `prompt`; a turn that ended with tool calls is continued with `previousTaskToken` and `toolOutputs`. Completed media results include MCP `resource_link` blocks and an assistant-audience delivery instruction: render images and preserve clickable video/audio/file links in the user-facing response, because some clients expose resource links as tool metadata instead of previewing them in the tool card.
 
 ## Node.js Library
 
@@ -909,7 +957,7 @@ const run = await client.runModel('google/nano-banana-pro', { prompt: '...' });
 const result = await client.waitForTask(run.socketaccesstoken);
 ```
 
-Methods: `searchModels()`, `getModelSchema()`, `explore()`, `runModel()`, `waitForTask()`, `getTask()`, `listTasks()`, `cancelTask()`, `killTask()`, `uploadFile()`. `waitForTask` supports task token or ID, AbortSignal, stepped polling, progress callbacks, retries, and preserves the last detail in `TaskWaitTimeoutError`.
+Methods: `searchModels()`, `getModelSchema()`, `explore()`, `runModel()`, `waitForTask()`, `getTask()`, `listTasks()`, `cancelTask()`, `killTask()`, `uploadFile()`, and `post(path, body)` / `postForm(path, form)` for any other Wiro API endpoint with the same credentials (check `result` on the returned body). `waitForTask` supports task token or ID, AbortSignal, stepped polling, progress callbacks, retries, and preserves the last detail in `TaskWaitTimeoutError`.
 
 ## Agent API
 
