@@ -1605,8 +1605,8 @@ is separate from the full website/model catalog at `POST /v1/Tool/List`.
         "pricing_source": {
           "name": "wiro-pricing-catalog",
           "schema_version": 1,
-          "revision": "3a2430b5188fcaf69b5d7af1cb40d0a59062cc37",
-          "sha256": "f74c5d378dfd8b28360b2464dc2590711550df501a7c6c7f9b673db105f7798f",
+          "revision": "0123456789abcdef0123456789abcdef01234567",
+          "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
           "source_model": "openai/gpt-5.6-sol",
           "basis": "local-rate"
         },
@@ -1625,14 +1625,13 @@ is separate from the full website/model catalog at `POST /v1/Tool/List`.
 ```
 
 The example is intentionally explicit about nullable values that have a Wiro
-source. Context, modalities, and pricing come from the audited local gateway
-catalog; live Run parameters and capability flags come from the selected
-model's current `Tool/Detail` contract. Fields without a Wiro source are
-omitted instead of being copied from OpenRouter with `null` placeholders.
+source. Context, modalities, and pricing come from Wiro's model catalog; live
+Run parameters and capability flags come from the selected model's current
+`Tool/Detail` contract. Fields Wiro does not publish are omitted.
 `pricing.prompt` and `pricing.completion` are USD-per-token strings.
 Models with tiered rates expose those exact bands in `x_wiro.pricing_tiers`.
-Pricing and context fields can be `null` for catalog entries without audited
-local metadata.
+Pricing and context fields can be `null` when the catalog has no value for
+them.
 
 The list accepts:
 
@@ -1687,8 +1686,8 @@ curl "https://llm.wiro.ai/v1/models/openai/gpt-5-6-sol" \
 
 The detail route returns the same complete model object as the matching list
 entry. Query parameters are rejected on detail routes. An unavailable or
-non-gateway model returns `model_not_found` without exposing private catalog
-state. Team Model Access is checked when the model runs, not on this route.
+non-gateway model returns `model_not_found`. Team Model Access is checked when
+the model runs, not on this route.
 
 ## Generic finite task completion
 
@@ -1738,7 +1737,7 @@ billed amount at task-level `totalcost`.
 The gateway's Files routes are a compatibility view over the authenticated
 Wiro project's existing upload folder. Uploads, lists, retrieval, and deletion
 use the same storage as `File/Upload`, `File/List`, and `File/Delete` on
-`api.wiro.ai`; the gateway does not create a second file database.
+`api.wiro.ai`.
 
 The supported routes are:
 

@@ -24,7 +24,7 @@ Wiro Agents are autonomous AI assistants that keep running on Wiro. Unlike one-s
 The system has two layers:
 
 - **Agent templates** (the catalog): Pre-built agent definitions published by Wiro. Each template defines the agent's default skill set, required credentials, the per-tier credit multiplier, and a per-instance pricing recipe. Browse the catalog with `POST /Agent/List`.
-- **UserAgent instances** (your deployments): When you deploy an agent template (or build a custom one), Wiro creates a personal instance tied to your account. Each instance runs in its own container with its own credentials, configuration, conversation history, billing, and per-model token-rate profile.
+- **UserAgent instances** (your deployments): When you deploy an agent template (or build a custom one), Wiro creates a personal instance tied to your account. Each instance runs in its own isolated environment with its own credentials, configuration, conversation history, billing, and per-model token-rate profile.
 
 Every instance is fully isolated. Your credentials, conversations, and data are never shared with other users.
 
@@ -53,7 +53,7 @@ For full details, see [Authentication](/docs/authentication).
 
 ## Pricing Model: Tiers, Skills & Token Billing
 
-Agent pricing is **fully derived from the agent's enabled skill set** plus a per-template `tiermultiplier`. There is no fixed monthly base price per template and no per-agent rate override. Both were dropped in favor of skill-driven pricing. The single source of truth is the skill registry, exposed via [`POST /Skills/List`](/docs/agent-skills#post-skillslist) and [`POST /Skills/Detail`](/docs/agent-skills#post-skillsdetail).
+Agent pricing is **fully derived from the agent's enabled skill set** plus a per-template `tiermultiplier`. There is no fixed monthly base price per template and no per-agent rate override. The single source of truth is the skill registry, exposed via [`POST /Skills/List`](/docs/agent-skills#post-skillslist) and [`POST /Skills/Detail`](/docs/agent-skills#post-skillsdetail).
 
 Pricing has **two layers**: a monthly **tier** (price + credit pool, set by the enabled skills) and **per-turn token billing** (each message / cron / voice-prep turn deducts credits from that pool, metered by the tokens the agent's model consumes).
 
@@ -77,7 +77,7 @@ pro.credits = starter.credits × tiermultiplier
 
 Every paid skill adds 100 monthly credits for each $1 it adds to the price, so a tier always carries 100 credits per dollar (1 credit = $0.01): the $9 Starter above comes with 900 credits a month, and its $90 Pro with 9,000.
 
-> **Starter tier minimum: $4/month.** Every agent pays at least $4/month on Starter. When the raw sum of enabled-skill weights would land below $4, the resolver bumps the Starter price up to $4 **and** scales the credit pool up by the same ratio, so the user gets a proportional credit increase, not a free upgrade. An agent made only of free (`ZERO`-tier) skills pays the floor too: $4/month with 400 credits. Default Pro = Starter × `tiermultiplier` (default `10`), so an agent that lands on the $4 floor pays **$40/month on Pro** with the same credit pool × 10.
+> **Starter tier minimum: $4/month.** Every agent pays at least $4/month on Starter. When the raw sum of enabled-skill weights would land below $4, Wiro raises the Starter price to $4 **and** scales the credit pool up by the same ratio, so the user gets a proportional credit increase, not a free upgrade. An agent made only of free (`ZERO`-tier) skills pays the floor too: $4/month with 400 credits. Default Pro = Starter × `tiermultiplier` (default `10`), so an agent that lands on the $4 floor pays **$40/month on Pro** with the same credit pool × 10.
 
 ### Token Billing
 
@@ -106,7 +106,7 @@ tokencost = ceil(Σ call_input_cost)
           + ceil(Σ call_cache_write_cost)
 ```
 
-Cache-read and cache-write categories are charged only when the selected model rate defines them. `inputtokens` contains only uncached input; `totaltokens` is always the exact sum of input, output, cache-read, and cache-write tokens. For models with `long_context_threshold_tokens`, Wiro selects the long-context rate **per LLM call** using `input + cacheRead + cacheWrite`; it never infers a surcharge from a turn-level aggregate that lost call boundaries. You don't send anything. The agent runtime reports exact call-level usage after each turn, Wiro deducts the credits once, and records a ledger row with `action: "tokens"` (see [`POST /UserAgent/TransactionList`](/docs/agent-transactions#post-useragenttransactionlist)). Per-turn token counts and cost also ride on each assistant message (`inputtokens` / `outputtokens` / `cachereadtokens` / `cachewritetokens` / `totaltokens` / `tokencost` / `model`, see [Agent Messaging](/docs/agent-messaging)).
+Cache-read and cache-write categories are charged only when the selected model rate defines them. `inputtokens` contains only uncached input; `totaltokens` is always the exact sum of input, output, cache-read, and cache-write tokens. For models with `long_context_threshold_tokens`, Wiro selects the long-context rate **per LLM call** using `input + cacheRead + cacheWrite`. You don't send anything. Each billed turn appears once as a ledger row with `action: "tokens"` (see [`POST /UserAgent/TransactionList`](/docs/agent-transactions#post-useragenttransactionlist)). Per-turn token counts and cost also ride on each assistant message (`inputtokens` / `outputtokens` / `cachereadtokens` / `cachewritetokens` / `totaltokens` / `tokencost` / `model`, see [Agent Messaging](/docs/agent-messaging)).
 
 When the credit pool is exhausted, [`POST /UserAgent/Message/Send`](/docs/agent-messaging#post-useragentmessagesend) and [`POST /UserAgent/Start`](#post-useragentstart) refuse with an `Agent has no remaining credits…` error plus an `agentbalance` snapshot; renew the subscription or buy an extra credit pack to continue.
 
@@ -124,7 +124,7 @@ Deploying and running an agent follows this flow:
 2. **Deploy**: call `POST /UserAgent/Deploy` with `useprepaid: true` and `tier` (`"starter"` or `"pro"`). The selected tier price is debited from your prepaid wallet immediately and a 30-day subscription row is created.
 3. **Configure**: set integration and optional Telegram, Slack, or Discord credentials with `POST /UserAgent/CredentialUpsert`, and preferences with `POST /UserAgent/CustomSkillUpsert`. See [Agent Credentials](/docs/agent-credentials) for details
 4. **Start**: call `POST /UserAgent/Start` to queue the agent for launch
-5. **Running**: the agent's container starts and the agent becomes available for conversation
+5. **Running**: the agent starts and becomes available for conversation
 6. **Chat**: send messages via `POST /UserAgent/Message/Send`. See [Agent Messaging](/docs/agent-messaging) for the full messaging API
 
 ## UserAgent Statuses
@@ -135,15 +135,15 @@ Every deployed agent instance has a numeric status that reflects its current sta
 |--------|------|-------------|
 | `0` | Stopped | Agent is not running. Call Start to launch it. |
 | `1` | Stopping | Agent is shutting down. Wait for it to reach Stopped before taking action. |
-| `2` | Queued | Agent is queued and waiting for a worker to pick it up. |
-| `3` | Starting | A worker has accepted the agent and is spinning up the container. |
+| `2` | Queued | Agent is queued and waiting to start. |
+| `3` | Starting | The agent is starting up. |
 | `4` | Running | Agent is live and ready to receive messages. |
 | `5` | Error | Agent encountered an error during execution. Call Start to retry. |
 | `6` | Setup Required | Agent needs credentials or configuration before it can start. Provide them via `CredentialUpsert` / `CustomSkillUpsert` / `SkillsApply`. |
 
 ### Automatic Restart
 
-When you mutate an agent's configuration while it is **starting** (status `3`) or **running** (status `4`), the system automatically triggers a restart cycle: the agent is moved to **Stopping** (status `1`) and flagged to restart. Once the container fully stops, the system automatically re-queues it, applying the new configuration on startup.
+When you mutate an agent's configuration while it is **starting** (status `3`) or **running** (status `4`), the system automatically triggers a restart cycle: the agent is moved to **Stopping** (status `1`) and flagged to restart. Once the agent fully stops, the system automatically re-queues it, applying the new configuration on startup.
 
 This means you can update credentials, toggle skills, or change a custom skill on a running agent without manually stopping and starting it.
 
@@ -161,7 +161,7 @@ Lists available agents in the catalog. This is a **public endpoint**, so no auth
 |-----------|------|----------|-------------|
 | `search` | string | No | Full-text search across agent titles and descriptions |
 | `category` | string | No | Filter by category (e.g. `"productivity"`, `"social-media"`) |
-| `sort` | string | No | Sort column: `id`, `title`, `slug`, `status`, `createdat`, `updatedat`, `totalrun`, `activerun`. Default: `id` |
+| `sort` | string | No | Sort column: `id`, `title`, `slug`, `status`, `createdat`, `updatedat`. Default: `id` |
 | `order` | string | No | Sort direction: `ASC` or `DESC`. Default: `DESC` |
 | `limit` | number | No | Results per page (max 1000). Default: `20` |
 | `start` | number | No | Offset for pagination. Default: `0` |
@@ -271,10 +271,10 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
           "credential_key": "wiro",
           "additional_credential_keys": [],
           "requires_credentials": true,
-          "user_invocable": false,
+          "user_invocable": true,
           "deprecated": false,
           "replacement": null,
-          "description": "Internal: lets the agent call Wiro's own image / video / LLM generation API. Other skills invoke it; users do not."
+          "description": "Universal access to every AI model on Wiro: text-to-image, text-to-video, image-to-image, image-to-video, audio/voice generation, realtime conversational AI, vision LLMs and more."
         }
       },
       "credentials": {
@@ -698,7 +698,7 @@ Lists all agent instances deployed under your account.
 
 > **`MyAgents` returns one row per useragent with its scalar fields, the trimmed `agent` template summary (no `extracreditpacks`), `subscription`, `setuprequired` (status-based check only), `extracredits` / `extracreditsexpiry`, the resolved `enabledSkills` (template defaults ∪ user overrides, including transitive `depends_on` closure), `tokenRates` (per-model token rates, the same map as `UserAgent/Detail.tokenRates`), `agentModel` (the resolved chat / cron / voice-prep / voice-postcall model slugs), and `enabledCommands` (the slash-command allowlist, `null` when uncustomized).** Heavier composed children (`credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `remainingcredits`) are **not** included. Call `UserAgent/Detail` on a single guid for the full composed shape.
 
-> **`enabledSkills`, `tokenRates`, and `agentModel`** ride on each list row so the dock chat / pinned-agents UI can decide whether to show the realtime voice-call button (`enabledSkills` includes `util-web-channel`) and render the model picker + live token-rate card without round-tripping `UserAgent/Detail` per row.
+> **`enabledSkills`, `tokenRates`, and `agentModel`** ride on each list row so a chat or pinned-agents UI can decide whether to show the realtime voice-call button (`enabledSkills` includes `util-web-channel`) and render the model picker + live token-rate card without round-tripping `UserAgent/Detail` per row.
 
 #### **POST** /UserAgent/Detail
 
@@ -1021,10 +1021,10 @@ Retrieves full details for a single deployed agent instance, including subscript
           "credential_key": "wiro",
           "additional_credential_keys": [],
           "requires_credentials": true,
-          "user_invocable": false,
+          "user_invocable": true,
           "deprecated": false,
           "replacement": null,
-          "description": "Internal: lets the agent call Wiro's own image / video / LLM generation API. Other skills invoke it; users do not."
+          "description": "Universal access to every AI model on Wiro: text-to-image, text-to-video, image-to-image, image-to-video, audio/voice generation, realtime conversational AI, vision LLMs and more."
         }
       },
       "monthlycredits": 9000,
@@ -1301,7 +1301,7 @@ Writes per-agent preference toggles that are not credentials and not skill rows.
 
 > **Slash-command catalog.** Valid `enabledcommands` keys are: `agent_help`, `new_session`, `agent_status`, `agent_limits`, `last_scan`, `last_heartbeat`, `agent_restart`, `clear_all_sessions`, `clear_history`. Read the agent's current allowlist from the `enabledCommands` field (camelCase) on [`UserAgent/Detail`](#post-useragentdetail) / `MyAgents` / `PinnedAgents`, where `null` means the operator never customized it (all commands available) and an array (including `[]`) is an explicit allowlist.
 
-> **Omitted fields are preserved.** The handler distinguishes between "field not in the body" and "field present with `null`/`""`/value", so a POST that carries only `timezone` does **not** touch `teamsessionmode` or any model field, and vice versa. Sending an empty body (none of the recognised fields) is rejected with `nothing-to-update` to avoid charging a no-op container restart.
+> **Omitted fields are preserved.** The handler distinguishes between "field not in the body" and "field present with `null`/`""`/value", so a POST that carries only `timezone` does **not** touch `teamsessionmode` or any model field, and vice versa. Sending an empty body (none of the recognised fields) is rejected with `nothing-to-update` to avoid charging a no-op restart.
 
 > **Read vs write casing.** You **read** the current selection from the `agentModel` object on `UserAgent/Detail` / `MyAgents` / `PinnedAgents` in camelCase (`chatModel`, `cronModel`, `voicePrepModel`, `voicePostcallModel`); you **write** it here in lowercase (`chatmodel`, `cronmodel`, `voiceprepmodel`, `voicepostcallmodel`). The selectable set is exactly the models that `tokenRates.models` marks `selectable: true`. There is no separate "list models" endpoint, so read `tokenRates` to populate a picker.
 
@@ -1391,7 +1391,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/UpdateSettings" \
 |------|-------------|------|
 | 400 | `request-parameter-required` | `useragentguid` missing from the body. |
 | 400 | `nothing-to-update` | Body had none of the recognised fields (`timezone`, `teamsessionmode`, a model override, `enabledcommands` or `wiroapiallowedpaths`). |
-| 400 | `invalid-timezone` | `timezone` wasn't a string the runtime's `Intl.DateTimeFormat` could resolve. |
+| 400 | `invalid-timezone` | `timezone` is not a valid IANA time zone. |
 | 400 | `teamsessionmode must be private or collaborative` | `teamsessionmode` wasn't one of the two supported values. |
 | 400 | `directchatmode is not accepted` | Obsolete separate mode was sent instead of unified `teamsessionmode`. |
 | 400 | `invalid-model-selection` | A model override (`chatmodel` / `cronmodel` / `voiceprepmodel` / `voicepostcallmodel`) was an unknown or non-selectable slug (`tokenRates.models[<slug>].selectable !== true`). |
@@ -1581,7 +1581,7 @@ The `url` is the public URL of the stored file, which the agent uses at runtime.
 | `Field is not a fileinput type` | The schema field's `type` is not `"fileinput"` (use `CredentialUpsert` instead) |
 | `Invalid file type. Allowed: <list>` | Mimetype not in the registry's `filetypes[]` whitelist |
 | `File too large. Max: <kb> KB` | Size exceeds the registry's `maxsize` cap (default 10240 KB / 10 MB) |
-| `Could not resolve upload folder` / `Upload failed` | Filesystem helper rejected the write: usually transient, retry |
+| `Could not resolve upload folder` / `Upload failed` | The upload failed; usually transient, retry |
 
 #### **POST** /UserAgent/CustomSkillUpsert
 
@@ -1595,7 +1595,7 @@ The endpoint auto-normalises the skillkey to its canonical form. Bare slugs beco
 | `skillkey` | string | Yes | The skill key. Strategies use bare names (e.g. `"content-tone"` → stored as `cs-content-tone`). For a scheduled task, send its full key (e.g. `"cs-cron-social-content-scanner"`), or a bare slug together with `interval` (`"weekly-report"` → `cs-cron-weekly-report`). Don't send a `cron-…` key with an `interval`: it becomes `cs-cron-cron-…`, a new task. |
 | `value` | string | No | Strategy body / cron prompt text. Editable for preset strategies and user-created entries; bundled crons silently drop `value` writes. |
 | `interval` | string | No | Cron expression (e.g. `"0 */4 * * *"`). Only persisted on `cs-cron-*` rows. |
-| `enabled` | boolean | No | Turn the skill on or off. **Writable for both strategies (`cs-*`) and crons (`cs-cron-*`)**. A disabled strategy is suppressed end-to-end (the IDE still shows it, but the agent never loads it). Defaults to `true` on insert. |
+| `enabled` | boolean | No | Turn the skill on or off. **Writable for both strategies (`cs-*`) and crons (`cs-cron-*`)**. A disabled strategy is suppressed end-to-end (it still appears in the list, but the agent never loads it). Defaults to `true` on insert. |
 | `description` | string | No | Only persisted for user-created skills (preset descriptions are template-owned). On a preset row, sending the current description back unchanged is ignored; a different text is rejected with `customskill-preset-description-not-editable`. |
 
 > **Description-only edits skip the restart.** If you only change `description` and the row's functional fields (`value`, `interval`, `enabled`) stay the same, the agent is **not** restarted. Functional changes still trigger the standard auto-restart.
@@ -1822,7 +1822,7 @@ Returns the version history for one custom skill on a useragent: a per-write aud
 > - `prev_*`: value as of the immediately-older entry (`null` for the oldest row).
 > - `after_*`: value the row was left with after this action committed: pulled from the next-newer entry's BEFORE state, or from the skill's current live state for the newest entry. `null` when `operation: "delete-user"` (row was removed).
 > - `changed_fields[]`: names of fields whose value differs from the immediately-older entry. Subset of `["value", "interval", "enabled"]`.
-> - `changedby_user`: resolved actor object (full shape: `uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`). `null` when `changedby` is a sentinel like `"system"` / `"backfill-*"` (cron / migration writes) or when the user record was deleted.
+> - `changedby_user`: resolved actor object (full shape: `uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`). `null` when `changedby` is a system value such as `"system"` or `"backfill-*"`, or when the user record was deleted.
 
 #### **POST** /UserAgent/CustomSkillRevert
 
@@ -1919,7 +1919,7 @@ Returns the per-field write history for one credential group on a useragent. Sen
 }
 ```
 
-> `changedby_user` is the resolved actor object (`uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`). It is `null` when `changedby` is a sentinel like `"system"` / `"backfill-*"` (cron / migration writes) or when the user record has been deleted.
+> `changedby_user` is the resolved actor object (`uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`). It is `null` when `changedby` is a system value such as `"system"` or `"backfill-*"`, or when the user record has been deleted.
 
 #### **POST** /UserAgent/SkillsApply
 
@@ -1928,8 +1928,8 @@ Applies a batch of skill toggles + an optional tier change in a single transacti
 Designed for both the Skill Editor modal (multiple toggles in one save) and one-off API mutations:
 
 1. Charges the wallet (or proration) **once**, not N times.
-2. Triggers exactly **one container restart** after all toggles land.
-3. Uses **idempotency** + a UA-level mutex: concurrent calls or FE retries can't double-apply.
+2. Triggers exactly **one agent restart** after all toggles land.
+3. Uses **idempotency**: concurrent calls or client retries can't apply the change twice.
 4. **Atomic**: a payment-side failure rolls back to the pre-call skill set.
 
 | Parameter | Type | Required | Description |
@@ -1937,7 +1937,7 @@ Designed for both the Skill Editor modal (multiple toggles in one save) and one-
 | `useragentguid` | string | Yes | Your UserAgent instance guid (template deploy or custom build) |
 | `skills` | object | Yes | Map of `{ "skillname": true \| false }` for every skill you want to set. Skills not in the map keep their current state. |
 | `tier` | string | No | `"starter"` or `"pro"`: change the tier in the same call. **Pro → Starter downgrade is rejected** (cancel + re-subscribe instead). |
-| `idempotencyKey` | string | Yes | Caller-generated unique key (UUID recommended). Replays of the same key return the cached response without re-running the saga. |
+| `idempotencyKey` | string | Yes | Caller-generated unique key (UUID recommended). Replays of the same key return the cached response without applying the change again. |
 
 **Headers:** No extra header is needed. For team agents, use an API key from a project in the agent's team. Keys from another workspace are rejected.
 
@@ -2047,7 +2047,7 @@ Two body shapes:
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `draft` | boolean | A | When `true`, no useragent lookup happens; the resolver synthesises pricing from the `skills` array directly. Used by Build Your Agent. |
+| `draft` | boolean | A | When `true`, no useragent lookup happens; Wiro prices the `skills` array directly. Used by Build Your Agent. |
 | `skills` | array<string> | A | Draft mode only: the proposed enabled skill set. |
 | `useragentguid` | string | B | Required for non-draft previews. |
 | `skillOverrides` | object | No | Override the persisted state with `{ skillname: boolean }` for the preview. Omit for "current state" preview. |
@@ -2089,7 +2089,7 @@ Two body shapes:
 
 `enabledSkills` is the full closure (including transitive `depends_on`); `directSkills` is just what the user explicitly toggled. `agentBase` is always `{ priceUsd: 0, credits: 0 }`: pricing is fully skill-driven, and the field is kept on the response so callers don't have to null-check. `skillBreakdown[].billing_model` is always `"tokens"`; `tokenRates` carries the per-model rates used to meter each turn (see [Token Billing](#pricing-model-tiers-skills--token-billing)).
 
-> **$4 starter floor.** When the raw weight sum lands below $4 (e.g. a single `LIGHT` skill at $1/100), the resolver bumps `tiers.starter.priceUsd` up to $4 **and** scales `tiers.starter.credits` up by the same ratio (100 → 400); the applied floor is echoed as `starterFloorUsd`. Pro derives from the post-floor starter via × `tiermultiplier` (default `10`), so a $1-weight agent becomes Starter `$4/400` and Pro `$40/4000`. See [Pricing Model: Tiers, Skills & Token Billing](#pricing-model-tiers-skills--token-billing) for the full rules.
+> **$4 starter floor.** When the raw weight sum lands below $4 (e.g. a single `LIGHT` skill at $1/100), Wiro raises `tiers.starter.priceUsd` to $4 **and** scales `tiers.starter.credits` up by the same ratio (100 → 400); the applied floor is echoed as `starterFloorUsd`. Pro derives from the post-floor starter via × `tiermultiplier` (default `10`), so a $1-weight agent becomes Starter `$4/400` and Pro `$40/4000`. See [Pricing Model: Tiers, Skills & Token Billing](#pricing-model-tiers-skills--token-billing) for the full rules.
 
 #### **POST** /UserAgent/CreateSubscriptionCheckout
 
@@ -2125,7 +2125,7 @@ If a card checkout for the agent is still open (for example, one started in the 
 
 #### **POST** /UserAgent/Start
 
-Starts a stopped agent instance. The agent is moved to Queued (status `2`) and picked up by a worker. Also valid for agents in Error state (`5`): Start re-queues them for another launch attempt.
+Starts a stopped agent instance. The agent is moved to Queued (status `2`) and then starts. Also valid for agents in Error state (`5`): Start re-queues them for another launch attempt.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -2151,7 +2151,7 @@ Start will fail (returns `{ "result": false, "errors": [...] }`) if:
 
 #### **POST** /UserAgent/Stop
 
-Stops a running agent instance. If the agent is Queued (status `2`), it is immediately set to Stopped. If it is Starting or Running (status `3`/`4`), it moves to Stopping (status `1`) and the container is shut down gracefully.
+Stops a running agent instance. If the agent is Queued (status `2`), it is immediately set to Stopped. If it is Starting or Running (status `3`/`4`), it moves to Stopping (status `1`) and the agent is shut down gracefully.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -2222,7 +2222,7 @@ Live activity feed for a useragent: what the agent did, when, and which user tri
 
 ##### Rate limit
 
-Calls are rate-limited via a 30-second server-side cache keyed on `(useragentguid, date, lines)`. The first call within a 30s window hits the worker; subsequent calls within the window receive the cached payload. Tune your polling cadence to ≥30s to avoid serving stale data. The cache TTL was chosen to match the panel's lowest polling interval.
+Calls are rate-limited via a 30-second server-side cache keyed on `(useragentguid, date, lines)`. The first call within a 30s window reads the live log; later calls within the window receive the cached payload. Poll every 30 seconds or more.
 
 ##### Response
 
@@ -2309,7 +2309,7 @@ Calls are rate-limited via a 30-second server-side cache keyed on `(useragentgui
 | `events[].tokencost` | number \| null | Credits deducted for the turn (1 credit = $0.01). Present on `token_usage` events. |
 | `events[].calls` | number \| null | Number of LLM calls made in the billed turn. Present on `token_usage` events. |
 | `events[].remainingcredits` | number \| null | Credit pool remaining after the deduct. Present on `token_usage` events. |
-| `events[].userUuid` | string \| null | Originating actor's UUID. `"system"` for cron / internal events. May be missing on legacy rows from the 180-day retention window pre-attribution rollout, in which case the server falls back to the useragent owner. |
+| `events[].userUuid` | string \| null | Originating actor's UUID. `"system"` for cron / internal events. May be missing on older rows, in which case the server falls back to the agent owner. |
 | `events[].user` | object \| null | Resolved user shape (`uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`) when the actor is a real user. `null` for `system` events. |
 | `date` | string | The date that was actually read (`YYYY-MM-DD`). |
 | `totalLines` | number | **Total lines in the file** (regardless of `lines` cap). Use this to show "showing X of Y events" headers. |
@@ -2319,13 +2319,13 @@ Calls are rate-limited via a 30-second server-side cache keyed on `(useragentgui
 | Error | When |
 |-------|------|
 | `useragentguid is required` | Missing `useragentguid` in the body |
-| `Agent is not assigned to a worker. It may not be running.` | The useragent has never been deployed to a worker yet |
-| `Worker not found` | The agent's worker is no longer available (extremely rare) |
+| `Agent is not assigned to a worker. It may not be running.` | The agent isn't running on a host yet (never started, or being moved). Start it and retry |
+| `Worker not found` | The agent's host is not available right now. Retry later |
 | `Agent is temporarily unavailable. Please try again shortly.` | The agent's host did not answer (offline, network blip). Retry |
 
 #### **POST** /UserAgent/LogsList
 
-Lists the dates for which an activity log file exists on the worker host. Useful for building a date-picker UI before calling `Logs` / `LogsFile` for that day.
+Lists the dates for which an activity log exists. Useful for building a date-picker UI before calling `Logs` / `LogsFile` for that day.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -2349,13 +2349,13 @@ Lists the dates for which an activity log file exists on the worker host. Useful
 |-------|------|-------------|
 | `dates[].date` | string | Activity-file date in `YYYY-MM-DD` form. Sorted newest-first. |
 | `dates[].sizeBytes` | number | Raw byte size of the file on disk (compressed size if `compressed: true`). |
-| `dates[].compressed` | boolean | `true` once the worker's daily maintenance cron has gzipped the file (`<date>.jsonl.gz`); `false` for the active day's plain `.jsonl`. |
+| `dates[].compressed` | boolean | `true` once the day's log has been compressed (`<date>.jsonl.gz`); `false` for the active day's plain `.jsonl`. |
 
-The host retains activity files for 180 days (rolling); older dates are pruned by a worker cron and won't appear here.
+The host retains activity files for 180 days (rolling); older dates are removed and won't appear here.
 
 #### **POST** /UserAgent/LogsDelete
 
-Removes one date's activity JSONL file (and its gzipped sibling if present) from the worker host. Useful for scrubbing a specific day without waiting for the 180-day rotation.
+Removes one date's activity log, plain or compressed. Useful for scrubbing a specific day without waiting for the 180-day rotation.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -2400,7 +2400,7 @@ Downloads the **full** day's activity log (no `lines` cap). Use this when you ne
 }
 ```
 
-`events` is sorted **newest first** (descending by `ts`), the same contract as `Logs`, so `events[0]` is the freshest entry whether you're tailing the live day or downloading a historical one. `truncated: true` only when the worker's read buffer hit a hard ceiling (currently 250k rows / 50 MB). For typical agents this stays `false`; if you ever see `true`, fall back to streaming the file directly via the panel's download link.
+`events` is sorted **newest first** (descending by `ts`), the same contract as `Logs`, so `events[0]` is the freshest entry whether you're tailing the live day or downloading a historical one. `truncated: true` only when the log is larger than the read limit (currently 250k rows / 50 MB). For typical agents this stays `false`; if you ever see `true`, fall back to streaming the file directly via the panel's download link.
 
 #### **POST** /UserAgent/Pin
 
@@ -2557,7 +2557,7 @@ Starts a browser-embedded realtime voice session with the agent. Returns two opa
 ```
 
 - **Auth**: same Bearer / API key path as every other `UserAgent/*` endpoint. Bearer requests must come from wiro.ai; API-key requests have no Origin check.
-- **Rate limit**: fixed 60 sessions/hour per operator (the operator identity is hashed and never logged raw). Fast-fail sessions are decremented back from the counter.
+- **Rate limit**: fixed 60 sessions/hour per operator. Sessions that fail to start are not counted.
 - **Full WebSocket protocol, control frames, and JS snippet** are in [Web Voice](/docs/integration-webvoice-skills).
 
 ##### Common errors
@@ -2902,7 +2902,7 @@ All API subscriptions use your **prepaid wallet balance**. The cost is deducted 
 
 ### Credit Consumption
 
-Credits are consumed by the agent runtime (container) as it processes messages and generates content, not at `Message/Send` time. Each turn is billed by **token usage**: the runtime reports the input / output / cached token counts once the turn completes, Wiro meters them against the per-model `tokenRates` (1 credit = $0.01), writes an `action: "tokens"` deduct row, bumps `usedcredits`, and derives the live `remainingcredits = max(0, monthlycredits + extracredits - usedcredits)`. You don't send anything: token billing is fully server-side. Per-turn token counts and cost also ride on each assistant message and arrive over the message WebSocket as an `agent_usage_report` frame (see [Agent Messaging](/docs/agent-messaging) and [Agent WebSocket](/docs/agent-websocket)).
+Credits are used as the agent processes messages and generates content, not at `Message/Send` time. Each turn is billed by **token usage**: once the turn completes, Wiro prices its input, output and cached tokens with the per-model `tokenRates` (1 credit = $0.01). Each billed turn appears as an `action: "tokens"` row in TransactionList and lowers `remainingcredits = max(0, monthlycredits + extracredits - usedcredits)`. You don't send anything: token billing is fully server-side. Per-turn token counts and cost also ride on each assistant message and arrive over the message WebSocket as an `agent_usage_report` frame (see [Agent Messaging](/docs/agent-messaging) and [Agent WebSocket](/docs/agent-websocket)).
 
 The API-side check is gating only: `POST /UserAgent/Start` and `POST /UserAgent/Message/Send` refuse to launch / accept messages when `remainingcredits <= 0`, returning an `Agent has no remaining credits…` error plus an `agentbalance` snapshot (`{ monthlycredits, extracredits, usedcredits, remainingcredits }`). During an active session, monthly credits are consumed first; once `usedcredits >= monthlycredits`, extra credits (purchased via `CreateExtraCreditCheckout`) absorb the rest. When both pools are empty the agent stops accepting new turns until the subscription renews or an extra credit pack is bought.
 
@@ -2934,13 +2934,13 @@ Agent-specific errors you may encounter:
 | `Downgrading to Starter is not supported. /UserAgent/UpgradeTier is upgrade-only (Starter → Pro).` | `UpgradeTier` with `targetTier: "starter"` |
 | `Already on {tier} tier` | `UpgradeTier` when current tier matches the target: no-op |
 | `No active subscription — use /UserAgent/CreateSubscriptionCheckout to subscribe at the chosen tier` | `UpgradeTier` called without an active sub |
-| `Failed to compute target-tier pricing` | `UpgradeTier`: pricing resolver returned null (skill registry inconsistency) |
+| `Failed to compute target-tier pricing` | `UpgradeTier`: the Pro price could not be computed. Try again or contact support |
 | `Insufficient wallet balance. Required: $X.XX, Available: $Y.YY` | `UpgradeTier`: wallet can't cover the prorated upgrade charge |
 | `Wallet deduction failed: {error}` | `UpgradeTier`: wallet write itself failed (rare; transient backend error) |
 | `Agent not found or access denied` | Message endpoint with invalid useragentguid |
 | `User agent not found` (code `95`) | `Message/History`, `Message/Sessions`, `Message/DeleteSession`, `Message/RenameSession` or `Message/Delete` called for an agent that has been deleted |
-| `Agent is not running. Current status: {n}` | `Message/Send` when not running. Response includes `agentstatus` (the integer) so the FE can branch. |
-| `Agent has no remaining credits. Renew your subscription or buy a credit pack to continue.` | `Message/Send` while `remainingcredits <= 0`. Response includes `agentbalance` for the FE to render a "Buy credits" CTA. |
+| `Agent is not running. Current status: {n}` | `Message/Send` when not running. Response includes `agentstatus` (the integer) so your client can branch on it. |
+| `Agent has no remaining credits. Renew your subscription or buy a credit pack to continue.` | `Message/Send` while `remainingcredits <= 0`. Response includes `agentbalance`, so your client can offer to buy credits. |
 | `Message not found` | `Detail` / `Cancel` with invalid messageguid |
 | `Message cannot be cancelled (status: {status})` | `Cancel` on a message that's already in a terminal state |
 | `Invalid redirect URL` | OAuth `Connect` with non-HTTPS URL |

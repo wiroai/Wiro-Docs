@@ -240,20 +240,20 @@ Transfers preserve the original deposit structure: expiry dates, coupon tracking
 
 **Consumption order (matches task billing):**
 
-1. Tracked coupons (model-specific first, then universal, FIFO)
-2. Untracked gifted (checklist rewards, pooled)
+1. Coupons: model-specific coupons first, then other coupons, oldest first
+2. Checklist rewards
 3. Store revenue
-4. Regular amount (deposits)
+4. Deposits
 
 **Expiry is preserved:** When you transfer $600 from a wallet containing a $500 coupon (30-day expiry) and a $500 deposit (365-day expiry), the target receives two separate deposits, a $500 coupon and a $100 deposit, each with its original expiry date.
 
 ### Transaction History
 
-Both wallets receive audit transactions:
+Both wallets get a transaction row:
 - Source: `TRANSFER OUT` with a description like "Transfer to Engineering (Acme Corp) - $100.00 (Coupons: $50.00 / Store: $0.00 / Deposits: $50.00)."
 - Target: `TRANSFER IN` with a description like "Transfer from personal - $100.00 (Coupons: $50.00 / Store: $0.00 / Deposits: $50.00)."
 
-These audit transactions do not affect balance calculations or expiry. They are for display only. The actual balance changes come from updated deposit amounts (source) and new deposit records (target).
+`TRANSFER OUT` and `TRANSFER IN` rows record the transfer; moved credit keeps its original expiry.
 
 ### Important Behaviors
 

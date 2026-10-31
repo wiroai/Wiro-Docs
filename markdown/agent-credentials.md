@@ -609,7 +609,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialFieldHistory" \
 }
 ```
 
-`changedby_user` is the resolved actor object (`uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`). It is `null` when `changedby` is a sentinel like `"system"` / `"backfill-*"` (cron / migration writes) or when the user record has been deleted.
+`changedby_user` is the resolved actor object (`uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`). It is `null` when `changedby` is a system value such as `"system"` or `"backfill-*"`, or when the user record has been deleted.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -887,7 +887,7 @@ Direct probes return `{ "result": true, "errors": [], "accounts": [...] }` and n
 |---------------|-------|
 | `Request parameter [<name>] required` | `useragentguid` or `credentialkey` is missing, or `redirecturl` is missing in an OAuth mode. |
 | `Unknown OAuth credential: <key>` | `credentialkey` not in registry, or not OAuth-enabled. |
-| `Credential is not configured for the generic OAuth dispatcher: <key>` | Registry entry is partial: missing `oauth_flow` config. |
+| `Credential is not configured for the generic OAuth dispatcher: <key>` | This credential does not support OAuth. |
 | `Unsupported connection mode for <Provider>` | `authmethod` is not in the credential's `connection_modes`, for example `"own"` for TikTok Ads or `"wiro"` for Shopify and Reddit. |
 | `Invalid redirect URL` | `redirecturl` is not an https URL, or uses http on a host other than `localhost` / `127.0.0.1`. |
 | `<Provider> credentials not configured` | `authmethod: "own"` but `clientid`/`clientsecret` not saved yet. |
@@ -1216,16 +1216,13 @@ Use `POST /UserAgentOAuth/OAuthStatus` to monitor the connection. Wiro renews to
 
 ## Web UI Behaviors (Wiro Dashboard)
 
-If you're comparing against the Wiro Dashboard, here's what happens under the hood for parity with the API:
+The Wiro Dashboard uses the same API. To match its behavior in your own integration:
 
-- **Per-group save**: Each credential card has its own Save button. Saving a card calls `POST /UserAgent/CredentialUpsert` with only that group's `fields[]` (one request per card).
-- **Own mode 2-step**: When a user clicks "Connect" in own mode, the Dashboard first calls `CredentialUpsert` to save `appid`/`appsecret` + `authmethod: "own"`, then calls the Connect endpoint with `authmethod: "own"`. API users must make both calls explicitly.
-- **Recommended Meta direct mode**: Facebook Pages, Instagram, and Meta Ads
-  default to System User Token. The Dashboard saves `authmethod: "api_key"` and
-  `systemusertoken`, calls `OAuthConnect`, then completes the registry picker
-  without exposing provider tokens to browser state.
-- **Full-page redirect, not popup**: `window.location.href = authorizeUrl`, with no popup windows (avoids third-party cookie issues).
-- **No manual token refresh button**: Wiro maintains supported connections automatically; reconnect when the Dashboard reports that authorization is required.
+- **Per-group save**: Save each credential group with its own `POST /UserAgent/CredentialUpsert` call that sends only that group's `fields[]`.
+- **Own mode in two steps**: In own mode, first save `appid`/`appsecret` and `authmethod: "own"` with `CredentialUpsert`, then call `POST /UserAgentOAuth/OAuthConnect` with `authmethod: "own"`.
+- **Recommended Meta direct mode**: Facebook Pages, Instagram, and Meta Ads default to a System User token. Save `authmethod: "api_key"` and `systemusertoken` with `CredentialUpsert`, call `OAuthConnect`, then finish the account selection with `SetPickerAccounts`.
+- **Same-tab redirect**: Open `authorizeUrl` in the same tab, not in a popup, to avoid third-party cookie issues.
+- **No manual token refresh**: Wiro maintains supported connections automatically; reconnect with `OAuthConnect` when authorization is required.
 - **LLM Markdown feature**: The Dashboard includes an "LLM Markdown" tab that generates a ready-to-paste prompt for AI assistants summarizing every credential field the agent needs. Useful for API users building their own configuration UIs. See the per-integration help texts for equivalent guidance.
 - **Registry-backed validation**: Wiro validates declared types, patterns, lengths, URLs, enum values, and provider response contracts before persisting or connecting credentials. The provider remains authoritative for permissions and asset access.
 - **Platform-managed credentials are hidden**: groups whose fields are all managed by Wiro are omitted from `POST /UserAgent/Detail` responses. They're set up by Wiro and can't be set by customers.

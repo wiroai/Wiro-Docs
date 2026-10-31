@@ -317,8 +317,8 @@ The bridge transcodes server-side if a downstream model needs a different sample
 
 ## Rate Limits
 
-- **60 sessions / hour per operator** (fixed window). The operator identity is hashed and never logged raw.
-- Fast-fail sessions (prep timeout, model rejecting the realtime session, WS upgrade error) **decrement the counter back** so a flaky downstream doesn't burn through quota during an incident.
+- **60 sessions / hour per operator** (fixed window).
+- Sessions that fail to start are not counted.
 - **Origin check** (Bearer auth only): browser requests must come from wiro.ai. API-key requests have no Origin check.
 
 ## Common Errors

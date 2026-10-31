@@ -495,7 +495,7 @@ makes links clickable, so a draft's page link goes into the post.
 | `Facebook credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `appid` / `appsecret` are missing. | Call `POST /UserAgent/CredentialUpsert` with `facebook-pages.appid` and `facebook-pages.appsecret`, then retry. |
 | `Meta could not validate this System User token` | Direct mode received an invalid token, missing permission, or inaccessible asset. | Generate a current System User token with the documented permissions and Page assignments, save it, and retry. |
 | Valid token but no assigned Facebook Page | The System User has no Page with the `CREATE_CONTENT` task. | Assign the Page in Business Settings and reconnect. |
-| `internal_error` | Unexpected server error (includes cache write failures). | Retry once. If persistent, contact support. |
+| `internal_error` | Unexpected server error. | Retry once. If persistent, contact support. |
 
 ### `SetPickerAccounts` returns "No pending Facebook connection"
 

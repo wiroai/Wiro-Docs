@@ -90,7 +90,7 @@ Typical use cases:
 
 - Multi-tab chat clients that keep several live conversations.
 - Dashboards watching several users' agents in parallel.
-- Combining task streaming and agent streaming on the same connection: `task_info` and `agent_info` frames both map to the same connection's token list (tasks under `taskTokens`, agents under `agentTokens`).
+- Combining task streaming and agent streaming on the same connection: `task_info` and `agent_info` frames both map to the same connection's token list.
 
 There is no `unsubscribe` frame for `agent_info` tokens. To stop listening to a token without reconnecting, ignore its events client-side; tokens are cleaned up automatically when the connection closes.
 
@@ -104,7 +104,7 @@ Frames flow in two directions. `↓` = server → client, `↑` = client → ser
 | ↑ | `agent_info` | Client-initiated subscribe frame. Carries the `agenttoken` issued by `Message/Send`. Can be sent multiple times on the same socket (one per token, up to 256). |
 | ↓ | `error` | Server-side rejection of a malformed subscribe (a missing or invalid `agenttoken`, or a malformed `sessiontoken`). Connection stays open; retry with a valid frame. |
 | ↓ | `agent_subscribed` | Subscribe acknowledged. Carries the current lifecycle `status`, accumulated `debugoutput`, `messageguid`, and persisted `timeline[]`. If the agent already finished before you subscribed, this frame is your reconnect snapshot. |
-| ↓ | `agent_start` | The bridge has opened an SSE stream to the agent container. The underlying model is now generating. Emits exactly once per message. |
+| ↓ | `agent_start` | The agent has started working on the message. The model is now generating. Emits exactly once per message. |
 | ↓ | `agent_timeline_delta` | One ordered public timeline-block update. Carries `messageguid` and one `block`; merge by `blockid` and that block's `version`, then sort by `callindex`, `contentindex`, and `blockid`. |
 | ↓ | `agent_output` | Provisional answer snapshot. Emits **many times**, and each carries the full accumulated `raw` answer text so far plus real-time metrics (`speed`, `elapsedTime`, `tokenCount`, `wordCount`). Replace (don't append) the typing surface on each event. |
 | ↓ | `agent_end` | Terminal success event. Same payload shape as `agent_output` but contains the final complete text with total metrics. Emits at most once. |
@@ -260,7 +260,7 @@ Each event carries exactly one changed public block:
 }
 ```
 
-The hard-cutover merge contract is:
+The merge contract is:
 
 1. Treat `blockid` as an opaque deterministic identity.
 2. Keep the incoming block only if there is no stored block with that ID, or its `version` is strictly greater than the stored version.
@@ -298,7 +298,7 @@ Fires when the agent finishes responding. The structure is identical to `agent_o
 
 An error occurred during processing. The `message` field can take two forms: a **sanitized string** when the stream is aborted by an exception, or a **progress object** when the stream finished naturally but the model returned a non-response.
 
-**Sanitized string error**: any exception during streaming (bridge timeout, upstream HTTP 5xx, worker crash, SSE read error, etc.) surfaces as a single user-safe sentence:
+**Sanitized string error**: any failure during streaming surfaces as a single user-safe sentence:
 
 ```json
 {
@@ -442,7 +442,7 @@ When the agent **itself** kicks off a Wiro model run during a turn (for example 
 
 **Then pivot to the task socket for outputs.** Take `message.socketaccesstoken` and subscribe to the standard model-run WebSocket exactly as documented in [WebSocket](/docs/websocket): send `{ "type": "task_info", "tasktoken": "<socketaccesstoken>" }` and stream `task_queue → task_start → task_output → task_postprocess_end`. The final `task_postprocess_end` carries the output array (media URLs). The model-run `task_*` events are **only** delivered on the task's own `socketaccesstoken` channel. They are never re-broadcast on the agent channel.
 
-> **Only fires for agent-initiated runs.** `agent_wiroai_runtask` is emitted when the *agent* calls a model mid-turn. Model runs you launch yourself with `POST /Run` (your own `x-api-key`) do not produce this frame, because you already hold their `socketaccesstoken` from the `/Run` response. Runs the agent starts in the background, from a scheduled task or from a hook do not produce it either.
+> **Only fires for agent-initiated runs.** `agent_wiroai_runtask` is emitted when the *agent* calls a model mid-turn. Model runs you launch yourself with `POST /Run` (your own `x-api-key`) do not produce this frame, because you already hold their `socketaccesstoken` from the `/Run` response. It fires only for model runs the agent starts while answering your `Message/Send` turn.
 
 ### Following a session
 
@@ -1343,7 +1343,7 @@ An `agenttoken` is issued per message by `POST /UserAgent/Message/Send` and stay
 | Event | Effect on token |
 |---|---|
 | `Message/Send` | Token is minted, row is inserted with `status: "agent_queue"`, broadcast to all queue subscribers. |
-| Worker picks up | Emits `agent_start` to every active subscriber. |
+| Agent starts working | Emits `agent_start` to every active subscriber. |
 | Timeline block changes | Emits one `agent_timeline_delta` update with `{ messageguid, block }`; the persisted row keeps the merged ordered timeline. |
 | Each SSE chunk | Emits `agent_output` to every active subscriber (with full accumulated `raw`). |
 | Stream finishes | Emits `agent_end` (or `agent_error` for `"..."` / internal-error content) with final `progressGenerate` payload; the message's `status` becomes terminal. |

@@ -3093,8 +3093,8 @@ const second = await client.chat.completions.create({
         "pricing_source": {
           "name": "wiro-pricing-catalog",
           "schema_version": 1,
-          "revision": "3a2430b5188fcaf69b5d7af1cb40d0a59062cc37",
-          "sha256": "f74c5d378dfd8b28360b2464dc2590711550df501a7c6c7f9b673db105f7798f",
+          "revision": "0123456789abcdef0123456789abcdef01234567",
+          "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
           "source_model": "openai/gpt-5.6-sol",
           "basis": "local-rate"
         },
@@ -3110,7 +3110,7 @@ const second = await client.chat.completions.create({
   "first_id": "openai/gpt-5-6-sol",
   "last_id": "openai/gpt-5-6-sol"
 }</code></pre>
-                    <p>The example is intentionally explicit about nullable values that have a Wiro source. Context, modalities, and pricing come from the audited local gateway catalog; live Run parameters and capability flags come from the selected model's current <code>Tool/Detail</code> contract. Fields without a Wiro source are omitted instead of being copied from OpenRouter with <code>null</code> placeholders. <code>pricing.prompt</code> and <code>pricing.completion</code> are USD-per-token strings. Models with tiered rates expose those exact bands in <code>x_wiro.pricing_tiers</code>. Pricing and context fields can be <code>null</code> for catalog entries without audited local metadata.</p>
+                    <p>The example is intentionally explicit about nullable values that have a Wiro source. Context, modalities, and pricing come from Wiro's model catalog; live Run parameters and capability flags come from the selected model's current <code>Tool/Detail</code> contract. Fields Wiro does not publish are omitted. <code>pricing.prompt</code> and <code>pricing.completion</code> are USD-per-token strings. Models with tiered rates expose those exact bands in <code>x_wiro.pricing_tiers</code>. Pricing and context fields can be <code>null</code> when the catalog has no value for them.</p>
                     <p>The list accepts:</p>
                     <ul>
                       <li><code>search</code> (at most 256 bytes), <code>order=asc|desc</code>, and <code>limit=1..1000</code></li>
@@ -3131,7 +3131,7 @@ const second = await client.chat.completions.create({
                     <h3><span class="endpoint-badge get">GET</span> /v1/models/{owner}/{model}</h3>
                     <pre><code>curl "https://llm.wiro.ai/v1/models/openai/gpt-5-6-sol" \
   -H "Authorization: Bearer YOUR_API_KEY"</code></pre>
-                    <p>The detail route returns the same complete model object as the matching list entry. Query parameters are rejected on detail routes. An unavailable or non-gateway model returns <code>model_not_found</code> without exposing private catalog state. Team Model Access is checked when the model runs, not on this route.</p>
+                    <p>The detail route returns the same complete model object as the matching list entry. Query parameters are rejected on detail routes. An unavailable or non-gateway model returns <code>model_not_found</code>. Team Model Access is checked when the model runs, not on this route.</p>
                   </section>
 
                   <section id="gateway-sync">
@@ -3154,7 +3154,7 @@ const second = await client.chat.completions.create({
 
                   <section id="gateway-files">
                     <h2>Files compatibility</h2>
-                    <p>The gateway's Files routes are a compatibility view over the authenticated Wiro project's existing upload folder. Uploads, lists, retrieval, and deletion use the same storage as <code>File/Upload</code>, <code>File/List</code>, and <code>File/Delete</code> on <code>api.wiro.ai</code>; the gateway does not create a second file database.</p>
+                    <p>The gateway's Files routes are a compatibility view over the authenticated Wiro project's existing upload folder. Uploads, lists, retrieval, and deletion use the same storage as <code>File/Upload</code>, <code>File/List</code>, and <code>File/Delete</code> on <code>api.wiro.ai</code>.</p>
                     <p>The supported routes are:</p>
                     <div class="table-wrapper">
                       <table>
@@ -12438,7 +12438,7 @@ import type {
 <p>The system has two layers:</p>
 <ul>
 <li><strong>Agent templates</strong> (the catalog): Pre-built agent definitions published by Wiro. Each template defines the agent's default skill set, required credentials, the per-tier credit multiplier, and a per-instance pricing recipe. Browse the catalog with <code>POST /Agent/List</code>.</li>
-<li><strong>UserAgent instances</strong> (your deployments): When you deploy an agent template (or build a custom one), Wiro creates a personal instance tied to your account. Each instance runs in its own container with its own credentials, configuration, conversation history, billing, and per-model token-rate profile.</li>
+<li><strong>UserAgent instances</strong> (your deployments): When you deploy an agent template (or build a custom one), Wiro creates a personal instance tied to your account. Each instance runs in its own isolated environment with its own credentials, configuration, conversation history, billing, and per-model token-rate profile.</li>
 </ul>
 <p>Every instance is fully isolated. Your credentials, conversations, and data are never shared with other users.</p>
 <blockquote>
@@ -12475,7 +12475,7 @@ import type {
 <p><strong>Authenticated endpoints</strong>: All <code>UserAgent/*</code> endpoints require a valid API key.</p>
 <p>For full details, see <a href="/docs/authentication">Authentication</a>.</p>
 <h2 id="pricing-model-tiers-skills-token-billing">Pricing Model: Tiers, Skills &amp; Token Billing</h2>
-<p>Agent pricing is <strong>fully derived from the agent's enabled skill set</strong> plus a per-template <code>tiermultiplier</code>. There is no fixed monthly base price per template and no per-agent rate override. Both were dropped in favor of skill-driven pricing. The single source of truth is the skill registry, exposed via <a href="/docs/agent-skills#post-skillslist"><code>POST /Skills/List</code></a> and <a href="/docs/agent-skills#post-skillsdetail"><code>POST /Skills/Detail</code></a>.</p>
+<p>Agent pricing is <strong>fully derived from the agent's enabled skill set</strong> plus a per-template <code>tiermultiplier</code>. There is no fixed monthly base price per template and no per-agent rate override. The single source of truth is the skill registry, exposed via <a href="/docs/agent-skills#post-skillslist"><code>POST /Skills/List</code></a> and <a href="/docs/agent-skills#post-skillsdetail"><code>POST /Skills/Detail</code></a>.</p>
 <p>Pricing has <strong>two layers</strong>: a monthly <strong>tier</strong> (price + credit pool, set by the enabled skills) and <strong>per-turn token billing</strong> (each message / cron / voice-prep turn deducts credits from that pool, metered by the tokens the agent's model consumes).</p>
 <h3 id="tiers">Tiers</h3>
 <p>Every agent ships with two tier presets: <strong>Starter</strong> and <strong>Pro</strong>. Each tier has its own <code>price</code> (USD/month) and <code>credits</code> (monthly credit allowance). The relationship between the two is fixed by the agent's <code>tiermultiplier</code>:</p>
@@ -12490,7 +12490,7 @@ pro.credits = starter.credits × tiermultiplier
 </code></pre>
 <p>Every paid skill adds 100 monthly credits for each $1 it adds to the price, so a tier always carries 100 credits per dollar (1 credit = $0.01): the $9 Starter above comes with 900 credits a month, and its $90 Pro with 9,000.</p>
 <blockquote>
-<p><strong>Starter tier minimum: $4/month.</strong> Every agent pays at least $4/month on Starter. When the raw sum of enabled-skill weights would land below $4, the resolver bumps the Starter price up to $4 <strong>and</strong> scales the credit pool up by the same ratio, so the user gets a proportional credit increase, not a free upgrade. An agent made only of free (<code>ZERO</code>-tier) skills pays the floor too: $4/month with 400 credits. Default Pro = Starter × <code>tiermultiplier</code> (default <code>10</code>), so an agent that lands on the $4 floor pays <strong>$40/month on Pro</strong> with the same credit pool × 10.</p>
+<p><strong>Starter tier minimum: $4/month.</strong> Every agent pays at least $4/month on Starter. When the raw sum of enabled-skill weights would land below $4, Wiro raises the Starter price to $4 <strong>and</strong> scales the credit pool up by the same ratio, so the user gets a proportional credit increase, not a free upgrade. An agent made only of free (<code>ZERO</code>-tier) skills pays the floor too: $4/month with 400 credits. Default Pro = Starter × <code>tiermultiplier</code> (default <code>10</code>), so an agent that lands on the $4 floor pays <strong>$40/month on Pro</strong> with the same credit pool × 10.</p>
 </blockquote>
 <h3 id="token-billing">Token Billing</h3>
 <p>The monthly tier buys a <strong>credit pool</strong>; each turn the agent runs (a chat reply, a scheduled cron tick, or a voice-prep turn) deducts credits from that pool, <strong>metered by the tokens its model consumes</strong>. There are no flat per-action costs: what a turn costs depends on the model and how many input / output / cached tokens it used.</p>
@@ -12511,7 +12511,7 @@ pro.credits = starter.credits × tiermultiplier
           + ceil(Σ call_cache_read_cost)
           + ceil(Σ call_cache_write_cost)
 </code></pre>
-<p>Cache-read and cache-write categories are charged only when the selected model rate defines them. <code>inputtokens</code> contains only uncached input; <code>totaltokens</code> is always the exact sum of input, output, cache-read, and cache-write tokens. For models with <code>long_context_threshold_tokens</code>, Wiro selects the long-context rate <strong>per LLM call</strong> using <code>input + cacheRead + cacheWrite</code>; it never infers a surcharge from a turn-level aggregate that lost call boundaries. You don't send anything. The agent runtime reports exact call-level usage after each turn, Wiro deducts the credits once, and records a ledger row with <code>action: "tokens"</code> (see <a href="/docs/agent-transactions#post-useragenttransactionlist"><code>POST /UserAgent/TransactionList</code></a>). Per-turn token counts and cost also ride on each assistant message (<code>inputtokens</code> / <code>outputtokens</code> / <code>cachereadtokens</code> / <code>cachewritetokens</code> / <code>totaltokens</code> / <code>tokencost</code> / <code>model</code>, see <a href="/docs/agent-messaging">Agent Messaging</a>).</p>
+<p>Cache-read and cache-write categories are charged only when the selected model rate defines them. <code>inputtokens</code> contains only uncached input; <code>totaltokens</code> is always the exact sum of input, output, cache-read, and cache-write tokens. For models with <code>long_context_threshold_tokens</code>, Wiro selects the long-context rate <strong>per LLM call</strong> using <code>input + cacheRead + cacheWrite</code>. You don't send anything. Each billed turn appears once as a ledger row with <code>action: "tokens"</code> (see <a href="/docs/agent-transactions#post-useragenttransactionlist"><code>POST /UserAgent/TransactionList</code></a>). Per-turn token counts and cost also ride on each assistant message (<code>inputtokens</code> / <code>outputtokens</code> / <code>cachereadtokens</code> / <code>cachewritetokens</code> / <code>totaltokens</code> / <code>tokencost</code> / <code>model</code>, see <a href="/docs/agent-messaging">Agent Messaging</a>).</p>
 <p>When the credit pool is exhausted, <a href="/docs/agent-messaging#post-useragentmessagesend"><code>POST /UserAgent/Message/Send</code></a> and <a href="#post-useragentstart"><code>POST /UserAgent/Start</code></a> refuse with an <code>Agent has no remaining credits…</code> error plus an <code>agentbalance</code> snapshot; renew the subscription or buy an extra credit pack to continue.</p>
 <blockquote>
 <p><strong>Voice realtime audio is billed separately.</strong> Live voice-call audio (for <code>util-voice-receptionist</code> agents) is <strong>not</strong> charged to the platform credit pool. It flows through the operator's own Wiro AI Models balance via the <code>int-wiro-aimodels</code> skill (you bring your own Wiro API key). The voice-prep turn before the call and the post-call text turn are billed as normal token deducts.</p>
@@ -12525,7 +12525,7 @@ pro.credits = starter.credits × tiermultiplier
 <li><strong>Deploy</strong>: call <code>POST /UserAgent/Deploy</code> with <code>useprepaid: true</code> and <code>tier</code> (<code>"starter"</code> or <code>"pro"</code>). The selected tier price is debited from your prepaid wallet immediately and a 30-day subscription row is created.</li>
 <li><strong>Configure</strong>: set integration and optional Telegram, Slack, or Discord credentials with <code>POST /UserAgent/CredentialUpsert</code>, and preferences with <code>POST /UserAgent/CustomSkillUpsert</code>. See <a href="/docs/agent-credentials">Agent Credentials</a> for details</li>
 <li><strong>Start</strong>: call <code>POST /UserAgent/Start</code> to queue the agent for launch</li>
-<li><strong>Running</strong>: the agent's container starts and the agent becomes available for conversation</li>
+<li><strong>Running</strong>: the agent starts and becomes available for conversation</li>
 <li><strong>Chat</strong>: send messages via <code>POST /UserAgent/Message/Send</code>. See <a href="/docs/agent-messaging">Agent Messaging</a> for the full messaging API</li>
 </ol>
 <h2 id="useragent-statuses">UserAgent Statuses</h2>
@@ -12554,12 +12554,12 @@ pro.credits = starter.credits × tiermultiplier
 <tr>
 <td><code>2</code></td>
 <td>Queued</td>
-<td>Agent is queued and waiting for a worker to pick it up.</td>
+<td>Agent is queued and waiting to start.</td>
 </tr>
 <tr>
 <td><code>3</code></td>
 <td>Starting</td>
-<td>A worker has accepted the agent and is spinning up the container.</td>
+<td>The agent is starting up.</td>
 </tr>
 <tr>
 <td><code>4</code></td>
@@ -12581,7 +12581,7 @@ pro.credits = starter.credits × tiermultiplier
 </div>
 </div>
 <h3 id="automatic-restart-restartafter">Automatic Restart</h3>
-<p>When you mutate an agent's configuration while it is <strong>starting</strong> (status <code>3</code>) or <strong>running</strong> (status <code>4</code>), the system automatically triggers a restart cycle: the agent is moved to <strong>Stopping</strong> (status <code>1</code>) and flagged to restart. Once the container fully stops, the system automatically re-queues it, applying the new configuration on startup.</p>
+<p>When you mutate an agent's configuration while it is <strong>starting</strong> (status <code>3</code>) or <strong>running</strong> (status <code>4</code>), the system automatically triggers a restart cycle: the agent is moved to <strong>Stopping</strong> (status <code>1</code>) and flagged to restart. Once the agent fully stops, the system automatically re-queues it, applying the new configuration on startup.</p>
 <p>This means you can update credentials, toggle skills, or change a custom skill on a running agent without manually stopping and starting it.</p>
 <p>Endpoints that auto-trigger a restart on success: <code>CredentialUpsert</code>, <code>SkillsApply</code>, <code>CustomSkillUpsert</code> (when functional fields change), <code>CustomSkillRename</code>, <code>CustomSkillDelete</code>, <code>CustomSkillRevert</code>, <code>Update</code> (scalar edits).</p>
 <h2 id="endpoints">Endpoints</h2>
@@ -12616,7 +12616,7 @@ pro.credits = starter.credits × tiermultiplier
 <td><code>sort</code></td>
 <td>string</td>
 <td>No</td>
-<td>Sort column: <code>id</code>, <code>title</code>, <code>slug</code>, <code>status</code>, <code>createdat</code>, <code>updatedat</code>, <code>totalrun</code>, <code>activerun</code>. Default: <code>id</code></td>
+<td>Sort column: <code>id</code>, <code>title</code>, <code>slug</code>, <code>status</code>, <code>createdat</code>, <code>updatedat</code>. Default: <code>id</code></td>
 </tr>
 <tr>
 <td><code>order</code></td>
@@ -12768,10 +12768,10 @@ pro.credits = starter.credits × tiermultiplier
           &quot;credential_key&quot;: &quot;wiro&quot;,
           &quot;additional_credential_keys&quot;: [],
           &quot;requires_credentials&quot;: true,
-          &quot;user_invocable&quot;: false,
+          &quot;user_invocable&quot;: true,
           &quot;deprecated&quot;: false,
           &quot;replacement&quot;: null,
-          &quot;description&quot;: &quot;Internal: lets the agent call Wiro's own image / video / LLM generation API. Other skills invoke it; users do not.&quot;
+          &quot;description&quot;: &quot;Universal access to every AI model on Wiro: text-to-image, text-to-video, image-to-image, image-to-video, audio/voice generation, realtime conversational AI, vision LLMs and more.&quot;
         }
       },
       &quot;credentials&quot;: {
@@ -13405,7 +13405,7 @@ pro.credits = starter.credits × tiermultiplier
 </code></pre>
 <blockquote>
 <p><strong><code>MyAgents</code> returns one row per useragent with its scalar fields, the trimmed <code>agent</code> template summary (no <code>extracreditpacks</code>), <code>subscription</code>, <code>setuprequired</code> (status-based check only), <code>extracredits</code> / <code>extracreditsexpiry</code>, the resolved <code>enabledSkills</code> (template defaults ∪ user overrides, including transitive <code>depends_on</code> closure), <code>tokenRates</code> (per-model token rates, the same map as <code>UserAgent/Detail.tokenRates</code>), <code>agentModel</code> (the resolved chat / cron / voice-prep / voice-postcall model slugs), and <code>enabledCommands</code> (the slash-command allowlist, <code>null</code> when uncustomized).</strong> Heavier composed children (<code>credentials</code>, <code>customskills</code>, <code>scheduledskills</code>, <code>skills</code>, <code>skillsmeta</code>, <code>remainingcredits</code>) are <strong>not</strong> included. Call <code>UserAgent/Detail</code> on a single guid for the full composed shape.</p>
-<p><strong><code>enabledSkills</code>, <code>tokenRates</code>, and <code>agentModel</code></strong> ride on each list row so the dock chat / pinned-agents UI can decide whether to show the realtime voice-call button (<code>enabledSkills</code> includes <code>util-web-channel</code>) and render the model picker + live token-rate card without round-tripping <code>UserAgent/Detail</code> per row.</p>
+<p><strong><code>enabledSkills</code>, <code>tokenRates</code>, and <code>agentModel</code></strong> ride on each list row so a chat or pinned-agents UI can decide whether to show the realtime voice-call button (<code>enabledSkills</code> includes <code>util-web-channel</code>) and render the model picker + live token-rate card without round-tripping <code>UserAgent/Detail</code> per row.</p>
 </blockquote>
 <h4 id="post-useragentdetail"><strong>POST</strong> /UserAgent/Detail</h4>
 <p>Retrieves full details for a single deployed agent instance, including subscription info, the per-instance credit ledger summary, the resolved per-model token-rate table (<code>tokenRates</code>) plus model selection (<code>agentModel</code>), and the <code>extracreditpacks</code> catalog.</p>
@@ -13742,10 +13742,10 @@ pro.credits = starter.credits × tiermultiplier
           &quot;credential_key&quot;: &quot;wiro&quot;,
           &quot;additional_credential_keys&quot;: [],
           &quot;requires_credentials&quot;: true,
-          &quot;user_invocable&quot;: false,
+          &quot;user_invocable&quot;: true,
           &quot;deprecated&quot;: false,
           &quot;replacement&quot;: null,
-          &quot;description&quot;: &quot;Internal: lets the agent call Wiro's own image / video / LLM generation API. Other skills invoke it; users do not.&quot;
+          &quot;description&quot;: &quot;Universal access to every AI model on Wiro: text-to-image, text-to-video, image-to-image, image-to-video, audio/voice generation, realtime conversational AI, vision LLMs and more.&quot;
         }
       },
       &quot;monthlycredits&quot;: 9000,
@@ -14442,7 +14442,7 @@ pro.credits = starter.credits × tiermultiplier
 </div>
 <blockquote>
 <p><strong>Slash-command catalog.</strong> Valid <code>enabledcommands</code> keys are: <code>agent_help</code>, <code>new_session</code>, <code>agent_status</code>, <code>agent_limits</code>, <code>last_scan</code>, <code>last_heartbeat</code>, <code>agent_restart</code>, <code>clear_all_sessions</code>, <code>clear_history</code>. Read the agent's current allowlist from the <code>enabledCommands</code> field (camelCase) on <a href="#post-useragentdetail"><code>UserAgent/Detail</code></a> / <code>MyAgents</code> / <code>PinnedAgents</code>, where <code>null</code> means the operator never customized it (all commands available) and an array (including <code>[]</code>) is an explicit allowlist.</p>
-<p><strong>Omitted fields are preserved.</strong> The handler distinguishes between "field not in the body" and "field present with <code>null</code>/<code>""</code>/value", so a POST that carries only <code>timezone</code> does <strong>not</strong> touch <code>teamsessionmode</code> or any model field, and vice versa. Sending an empty body (none of the recognised fields) is rejected with <code>nothing-to-update</code> to avoid charging a no-op container restart.</p>
+<p><strong>Omitted fields are preserved.</strong> The handler distinguishes between "field not in the body" and "field present with <code>null</code>/<code>""</code>/value", so a POST that carries only <code>timezone</code> does <strong>not</strong> touch <code>teamsessionmode</code> or any model field, and vice versa. Sending an empty body (none of the recognised fields) is rejected with <code>nothing-to-update</code> to avoid charging a no-op restart.</p>
 <p><strong>Read vs write casing.</strong> You <strong>read</strong> the current selection from the <code>agentModel</code> object on <code>UserAgent/Detail</code> / <code>MyAgents</code> / <code>PinnedAgents</code> in camelCase (<code>chatModel</code>, <code>cronModel</code>, <code>voicePrepModel</code>, <code>voicePostcallModel</code>); you <strong>write</strong> it here in lowercase (<code>chatmodel</code>, <code>cronmodel</code>, <code>voiceprepmodel</code>, <code>voicepostcallmodel</code>). The selectable set is exactly the models that <code>tokenRates.models</code> marks <code>selectable: true</code>. There is no separate "list models" endpoint, so read <code>tokenRates</code> to populate a picker.</p>
 </blockquote>
 <h5 id="request">Request</h5>
@@ -14545,7 +14545,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <tr>
 <td>400</td>
 <td><code>invalid-timezone</code></td>
-<td><code>timezone</code> wasn't a string the runtime's <code>Intl.DateTimeFormat</code> could resolve.</td>
+<td><code>timezone</code> is not a valid IANA time zone.</td>
 </tr>
 <tr>
 <td>400</td>
@@ -14915,7 +14915,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </tr>
 <tr>
 <td><code>Could not resolve upload folder</code> / <code>Upload failed</code></td>
-<td>Filesystem helper rejected the write: usually transient, retry</td>
+<td>The upload failed; usually transient, retry</td>
 </tr>
 </tbody>
 </table>
@@ -14964,7 +14964,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <td><code>enabled</code></td>
 <td>boolean</td>
 <td>No</td>
-<td>Turn the skill on or off. <strong>Writable for both strategies (<code>cs-*</code>) and crons (<code>cs-cron-*</code>)</strong>. A disabled strategy is suppressed end-to-end (the IDE still shows it, but the agent never loads it). Defaults to <code>true</code> on insert.</td>
+<td>Turn the skill on or off. <strong>Writable for both strategies (<code>cs-*</code>) and crons (<code>cs-cron-*</code>)</strong>. A disabled strategy is suppressed end-to-end (it still appears in the list, but the agent never loads it). Defaults to <code>true</code> on insert.</td>
 </tr>
 <tr>
 <td><code>description</code></td>
@@ -15319,7 +15319,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <li><code>prev_*</code>: value as of the immediately-older entry (<code>null</code> for the oldest row).</li>
 <li><code>after_*</code>: value the row was left with after this action committed: pulled from the next-newer entry's BEFORE state, or from the skill's current live state for the newest entry. <code>null</code> when <code>operation: "delete-user"</code> (row was removed).</li>
 <li><code>changed_fields[]</code>: names of fields whose value differs from the immediately-older entry. Subset of <code>["value", "interval", "enabled"]</code>.</li>
-<li><code>changedby_user</code>: resolved actor object (full shape: <code>uuid</code>, <code>firstname</code>, <code>lastname</code>, <code>email</code>, <code>username</code>, <code>avatar</code>, <code>avatarinitials</code>). <code>null</code> when <code>changedby</code> is a sentinel like <code>"system"</code> / <code>"backfill-*"</code> (cron / migration writes) or when the user record was deleted.</li>
+<li><code>changedby_user</code>: resolved actor object (full shape: <code>uuid</code>, <code>firstname</code>, <code>lastname</code>, <code>email</code>, <code>username</code>, <code>avatar</code>, <code>avatarinitials</code>). <code>null</code> when <code>changedby</code> is a system value such as <code>"system"</code> or <code>"backfill-*"</code>, or when the user record was deleted.</li>
 </ul>
 </blockquote>
 <h4 id="post-useragentcustomskillrevert"><strong>POST</strong> /UserAgent/CustomSkillRevert</h4>
@@ -15475,15 +15475,15 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 }
 </code></pre>
 <blockquote>
-<p><code>changedby_user</code> is the resolved actor object (<code>uuid</code>, <code>firstname</code>, <code>lastname</code>, <code>email</code>, <code>username</code>, <code>avatar</code>, <code>avatarinitials</code>). It is <code>null</code> when <code>changedby</code> is a sentinel like <code>"system"</code> / <code>"backfill-*"</code> (cron / migration writes) or when the user record has been deleted.</p>
+<p><code>changedby_user</code> is the resolved actor object (<code>uuid</code>, <code>firstname</code>, <code>lastname</code>, <code>email</code>, <code>username</code>, <code>avatar</code>, <code>avatarinitials</code>). It is <code>null</code> when <code>changedby</code> is a system value such as <code>"system"</code> or <code>"backfill-*"</code>, or when the user record has been deleted.</p>
 </blockquote>
 <h4 id="post-useragentskillsapply"><strong>POST</strong> /UserAgent/SkillsApply</h4>
 <p>Applies a batch of skill toggles + an optional tier change in a single transactional unit. <strong>This is the only skill-toggle endpoint API consumers should use</strong>. Even when you're flipping a single skill, send it as a one-entry <code>skills</code> map. The single-skill <code>SkillToggle</code> endpoint also exists, but <code>SkillsApply</code> is the one to use from the API.</p>
 <p>Designed for both the Skill Editor modal (multiple toggles in one save) and one-off API mutations:</p>
 <ol>
 <li>Charges the wallet (or proration) <strong>once</strong>, not N times.</li>
-<li>Triggers exactly <strong>one container restart</strong> after all toggles land.</li>
-<li>Uses <strong>idempotency</strong> + a UA-level mutex: concurrent calls or FE retries can't double-apply.</li>
+<li>Triggers exactly <strong>one agent restart</strong> after all toggles land.</li>
+<li>Uses <strong>idempotency</strong>: concurrent calls or client retries can't apply the change twice.</li>
 <li><strong>Atomic</strong>: a payment-side failure rolls back to the pre-call skill set.</li>
 </ol>
 <div class="docs-param-table">
@@ -15520,7 +15520,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <td><code>idempotencyKey</code></td>
 <td>string</td>
 <td>Yes</td>
-<td>Caller-generated unique key (UUID recommended). Replays of the same key return the cached response without re-running the saga.</td>
+<td>Caller-generated unique key (UUID recommended). Replays of the same key return the cached response without applying the change again.</td>
 </tr>
 </tbody>
 </table>
@@ -15703,7 +15703,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <td><code>draft</code></td>
 <td>boolean</td>
 <td>A</td>
-<td>When <code>true</code>, no useragent lookup happens; the resolver synthesises pricing from the <code>skills</code> array directly. Used by Build Your Agent.</td>
+<td>When <code>true</code>, no useragent lookup happens; Wiro prices the <code>skills</code> array directly. Used by Build Your Agent.</td>
 </tr>
 <tr>
 <td><code>skills</code></td>
@@ -15766,7 +15766,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </code></pre>
 <p><code>enabledSkills</code> is the full closure (including transitive <code>depends_on</code>); <code>directSkills</code> is just what the user explicitly toggled. <code>agentBase</code> is always <code>{ priceUsd: 0, credits: 0 }</code>: pricing is fully skill-driven, and the field is kept on the response so callers don't have to null-check. <code>skillBreakdown[].billing_model</code> is always <code>"tokens"</code>; <code>tokenRates</code> carries the per-model rates used to meter each turn (see <a href="#pricing-model-tiers-skills-token-billing">Token Billing</a>).</p>
 <blockquote>
-<p><strong>$4 starter floor.</strong> When the raw weight sum lands below $4 (e.g. a single <code>LIGHT</code> skill at $1/100), the resolver bumps <code>tiers.starter.priceUsd</code> up to $4 <strong>and</strong> scales <code>tiers.starter.credits</code> up by the same ratio (100 → 400); the applied floor is echoed as <code>starterFloorUsd</code>. Pro derives from the post-floor starter via × <code>tiermultiplier</code> (default <code>10</code>), so a $1-weight agent becomes Starter <code>$4/400</code> and Pro <code>$40/4000</code>. See <a href="#pricing-model-tiers-skills-token-billing">Pricing Model: Tiers, Skills &amp; Token Billing</a> for the full rules.</p>
+<p><strong>$4 starter floor.</strong> When the raw weight sum lands below $4 (e.g. a single <code>LIGHT</code> skill at $1/100), Wiro raises <code>tiers.starter.priceUsd</code> to $4 <strong>and</strong> scales <code>tiers.starter.credits</code> up by the same ratio (100 → 400); the applied floor is echoed as <code>starterFloorUsd</code>. Pro derives from the post-floor starter via × <code>tiermultiplier</code> (default <code>10</code>), so a $1-weight agent becomes Starter <code>$4/400</code> and Pro <code>$40/4000</code>. See <a href="#pricing-model-tiers-skills-token-billing">Pricing Model: Tiers, Skills &amp; Token Billing</a> for the full rules.</p>
 </blockquote>
 <h4 id="post-useragentcreatesubscriptioncheckout"><strong>POST</strong> /UserAgent/CreateSubscriptionCheckout</h4>
 <p>Subscribes a useragent that doesn't yet have an active subscription. Wallet is debited, a prepaid subscription row is inserted, and the agent is auto-queued, the same single-call behaviour as <code>Deploy</code> with <code>useprepaid: true</code>. Always pass <code>useprepaid: true</code> from the API.</p>
@@ -15842,7 +15842,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </div>
 </div>
 <h4 id="post-useragentstart"><strong>POST</strong> /UserAgent/Start</h4>
-<p>Starts a stopped agent instance. The agent is moved to Queued (status <code>2</code>) and picked up by a worker. Also valid for agents in Error state (<code>5</code>): Start re-queues them for another launch attempt.</p>
+<p>Starts a stopped agent instance. The agent is moved to Queued (status <code>2</code>) and then starts. Also valid for agents in Error state (<code>5</code>): Start re-queues them for another launch attempt.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -15883,7 +15883,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <li>No credits remain (<code>monthlycredits + extracredits - usedcredits &lt;= 0</code>)</li>
 </ul>
 <h4 id="post-useragentstop"><strong>POST</strong> /UserAgent/Stop</h4>
-<p>Stops a running agent instance. If the agent is Queued (status <code>2</code>), it is immediately set to Stopped. If it is Starting or Running (status <code>3</code>/<code>4</code>), it moves to Stopping (status <code>1</code>) and the container is shut down gracefully.</p>
+<p>Stops a running agent instance. If the agent is Queued (status <code>2</code>), it is immediately set to Stopped. If it is Starting or Running (status <code>3</code>/<code>4</code>), it moves to Stopping (status <code>1</code>) and the agent is shut down gracefully.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -16028,7 +16028,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </div>
 <p><strong>Headers:</strong> No extra header is needed. Access: the agent's owner or a team admin of the agent's team (plain team members are rejected with code <code>97</code>).</p>
 <h5 id="logs-rate-limit">Rate limit</h5>
-<p>Calls are rate-limited via a 30-second server-side cache keyed on <code>(useragentguid, date, lines)</code>. The first call within a 30s window hits the worker; subsequent calls within the window receive the cached payload. Tune your polling cadence to ≥30s to avoid serving stale data. The cache TTL was chosen to match the panel's lowest polling interval.</p>
+<p>Calls are rate-limited via a 30-second server-side cache keyed on <code>(useragentguid, date, lines)</code>. The first call within a 30s window reads the live log; later calls within the window receive the cached payload. Poll every 30 seconds or more.</p>
 <h5 id="response_20">Response</h5>
 <pre><code class="language-json">{
   &quot;result&quot;: true,
@@ -16178,7 +16178,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <tr>
 <td><code>events[].userUuid</code></td>
 <td>string | null</td>
-<td>Originating actor's UUID. <code>"system"</code> for cron / internal events. May be missing on legacy rows from the 180-day retention window pre-attribution rollout, in which case the server falls back to the useragent owner.</td>
+<td>Originating actor's UUID. <code>"system"</code> for cron / internal events. May be missing on older rows, in which case the server falls back to the agent owner.</td>
 </tr>
 <tr>
 <td><code>events[].user</code></td>
@@ -16216,11 +16216,11 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </tr>
 <tr>
 <td><code>Agent is not assigned to a worker. It may not be running.</code></td>
-<td>The useragent has never been deployed to a worker yet</td>
+<td>The agent isn't running on a host yet (never started, or being moved). Start it and retry</td>
 </tr>
 <tr>
 <td><code>Worker not found</code></td>
-<td>The agent's worker is no longer available (extremely rare)</td>
+<td>The agent's host is not available right now. Retry later</td>
 </tr>
 <tr>
 <td><code>Agent is temporarily unavailable. Please try again shortly.</code></td>
@@ -16231,7 +16231,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </div>
 </div>
 <h4 id="post-useragentlogslist"><strong>POST</strong> /UserAgent/LogsList</h4>
-<p>Lists the dates for which an activity log file exists on the worker host. Useful for building a date-picker UI before calling <code>Logs</code> / <code>LogsFile</code> for that day.</p>
+<p>Lists the dates for which an activity log exists. Useful for building a date-picker UI before calling <code>Logs</code> / <code>LogsFile</code> for that day.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -16289,15 +16289,15 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <tr>
 <td><code>dates[].compressed</code></td>
 <td>boolean</td>
-<td><code>true</code> once the worker's daily maintenance cron has gzipped the file (<code>&lt;date&gt;.jsonl.gz</code>); <code>false</code> for the active day's plain <code>.jsonl</code>.</td>
+<td><code>true</code> once the day's log has been compressed (<code>&lt;date&gt;.jsonl.gz</code>); <code>false</code> for the active day's plain <code>.jsonl</code>.</td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
-<p>The host retains activity files for 180 days (rolling); older dates are pruned by a worker cron and won't appear here.</p>
+<p>The host retains activity files for 180 days (rolling); older dates are removed and won't appear here.</p>
 <h4 id="post-useragentlogsdelete"><strong>POST</strong> /UserAgent/LogsDelete</h4>
-<p>Removes one date's activity JSONL file (and its gzipped sibling if present) from the worker host. Useful for scrubbing a specific day without waiting for the 180-day rotation.</p>
+<p>Removes one date's activity log, plain or compressed. Useful for scrubbing a specific day without waiting for the 180-day rotation.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -16376,7 +16376,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
   &quot;truncated&quot;: false
 }
 </code></pre>
-<p><code>events</code> is sorted <strong>newest first</strong> (descending by <code>ts</code>), the same contract as <code>Logs</code>, so <code>events[0]</code> is the freshest entry whether you're tailing the live day or downloading a historical one. <code>truncated: true</code> only when the worker's read buffer hit a hard ceiling (currently 250k rows / 50 MB). For typical agents this stays <code>false</code>; if you ever see <code>true</code>, fall back to streaming the file directly via the panel's download link.</p>
+<p><code>events</code> is sorted <strong>newest first</strong> (descending by <code>ts</code>), the same contract as <code>Logs</code>, so <code>events[0]</code> is the freshest entry whether you're tailing the live day or downloading a historical one. <code>truncated: true</code> only when the log is larger than the read limit (currently 250k rows / 50 MB). For typical agents this stays <code>false</code>; if you ever see <code>true</code>, fall back to streaming the file directly via the panel's download link.</p>
 <h4 id="post-useragentpin"><strong>POST</strong> /UserAgent/Pin</h4>
 <p>Pins or unpins an agent instance from the user's pinned-agents quick list. Pinned agents appear in the global header dropdown (<code>PinnedAgents</code>) and get an unread badge from <code>PinnedUnread</code>.</p>
 <div class="docs-param-table">
@@ -16581,7 +16581,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </code></pre>
 <ul>
 <li><strong>Auth</strong>: same Bearer / API key path as every other <code>UserAgent/*</code> endpoint. Bearer requests must come from wiro.ai; API-key requests have no Origin check.</li>
-<li><strong>Rate limit</strong>: fixed 60 sessions/hour per operator (the operator identity is hashed and never logged raw). Fast-fail sessions are decremented back from the counter.</li>
+<li><strong>Rate limit</strong>: fixed 60 sessions/hour per operator. Sessions that fail to start are not counted.</li>
 <li><strong>Full WebSocket protocol, control frames, and JS snippet</strong> are in <a href="/docs/integration-webvoice-skills">Web Voice</a>.</li>
 </ul>
 <h5 id="common-errors_4">Common errors</h5>
@@ -17223,7 +17223,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <h3 id="payment-method">Payment Method</h3>
 <p>All API subscriptions use your <strong>prepaid wallet balance</strong>. The cost is deducted immediately when you deploy, renew, upgrade, or buy an extra credit pack. Always pass <code>useprepaid: true</code> on <code>Deploy</code>, <code>CreateSubscriptionCheckout</code>, and <code>CreateExtraCreditCheckout</code>. That's the only path designed for API consumers. Make sure your wallet balance covers the upfront tier price before calling these endpoints; otherwise you'll get an <code>Insufficient wallet balance</code> error.</p>
 <h3 id="credit-consumption">Credit Consumption</h3>
-<p>Credits are consumed by the agent runtime (container) as it processes messages and generates content, not at <code>Message/Send</code> time. Each turn is billed by <strong>token usage</strong>: the runtime reports the input / output / cached token counts once the turn completes, Wiro meters them against the per-model <code>tokenRates</code> (1 credit = $0.01), writes an <code>action: "tokens"</code> deduct row, bumps <code>usedcredits</code>, and derives the live <code>remainingcredits = max(0, monthlycredits + extracredits - usedcredits)</code>. You don't send anything: token billing is fully server-side. Per-turn token counts and cost also ride on each assistant message and arrive over the message WebSocket as an <code>agent_usage_report</code> frame (see <a href="/docs/agent-messaging">Agent Messaging</a> and <a href="/docs/agent-websocket">Agent WebSocket</a>).</p>
+<p>Credits are used as the agent processes messages and generates content, not at <code>Message/Send</code> time. Each turn is billed by <strong>token usage</strong>: once the turn completes, Wiro prices its input, output and cached tokens with the per-model <code>tokenRates</code> (1 credit = $0.01). Each billed turn appears as an <code>action: "tokens"</code> row in TransactionList and lowers <code>remainingcredits = max(0, monthlycredits + extracredits - usedcredits)</code>. You don't send anything: token billing is fully server-side. Per-turn token counts and cost also ride on each assistant message and arrive over the message WebSocket as an <code>agent_usage_report</code> frame (see <a href="/docs/agent-messaging">Agent Messaging</a> and <a href="/docs/agent-websocket">Agent WebSocket</a>).</p>
 <p>The API-side check is gating only: <code>POST /UserAgent/Start</code> and <code>POST /UserAgent/Message/Send</code> refuse to launch / accept messages when <code>remainingcredits &lt;= 0</code>, returning an <code>Agent has no remaining credits…</code> error plus an <code>agentbalance</code> snapshot (<code>{ monthlycredits, extracredits, usedcredits, remainingcredits }</code>). During an active session, monthly credits are consumed first; once <code>usedcredits &gt;= monthlycredits</code>, extra credits (purchased via <code>CreateExtraCreditCheckout</code>) absorb the rest. When both pools are empty the agent stops accepting new turns until the subscription renews or an extra credit pack is bought.</p>
 <p>On each billing cycle (subscription renewal) <code>usedcredits</code> is reset to zero and <code>creditperiod</code> advances to the new <code>'YYYY-MM'</code> window; extra-credit purchases simply bump <code>extracredits</code> without resetting usage.</p>
 <p>For the full audit trail (every token deduct / grant / purchase / renewal / expiry) call <a href="/docs/agent-transactions#post-useragenttransactionlist"><code>POST /UserAgent/TransactionList</code></a> (see <a href="/docs/agent-transactions">Agent Transactions</a>).</p>
@@ -17313,7 +17313,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </tr>
 <tr>
 <td><code>Failed to compute target-tier pricing</code></td>
-<td><code>UpgradeTier</code>: pricing resolver returned null (skill registry inconsistency)</td>
+<td><code>UpgradeTier</code>: the Pro price could not be computed. Try again or contact support</td>
 </tr>
 <tr>
 <td><code>Insufficient wallet balance. Required: $X.XX, Available: $Y.YY</code></td>
@@ -17333,11 +17333,11 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </tr>
 <tr>
 <td><code>Agent is not running. Current status: {n}</code></td>
-<td><code>Message/Send</code> when not running. Response includes <code>agentstatus</code> (the integer) so the FE can branch.</td>
+<td><code>Message/Send</code> when not running. Response includes <code>agentstatus</code> (the integer) so your client can branch on it.</td>
 </tr>
 <tr>
 <td><code>Agent has no remaining credits. Renew your subscription or buy a credit pack to continue.</code></td>
-<td><code>Message/Send</code> while <code>remainingcredits &lt;= 0</code>. Response includes <code>agentbalance</code> for the FE to render a "Buy credits" CTA.</td>
+<td><code>Message/Send</code> while <code>remainingcredits &lt;= 0</code>. Response includes <code>agentbalance</code>, so your client can offer to buy credits.</td>
 </tr>
 <tr>
 <td><code>Message not found</code></td>
@@ -18086,7 +18086,7 @@ print(response.body);
 <tr>
 <td>Agent not running (<code>status</code> ≠ 4)</td>
 <td><code>agentstatus: &lt;int&gt;</code></td>
-<td>Echoes the agent's current <code>status</code> so the caller can decide whether to wait, call <code>Start</code>, or surface "Setup Required" UI. Common codes: <code>0</code> initializing, <code>1</code> stopping, <code>2</code> starting, <code>3</code> starting (container booting, wait and retry), <code>5</code> upgrading, <code>6</code> setup required.</td>
+<td>Echoes the agent's current <code>status</code> so the caller can decide whether to wait, call <code>Start</code>, or surface "Setup Required" UI. Common codes: <code>0</code> initializing, <code>1</code> stopping, <code>2</code> starting, <code>3</code> starting (wait and retry), <code>5</code> upgrading, <code>6</code> setup required.</td>
 </tr>
 <tr>
 <td>Out of credits</td>
@@ -18423,7 +18423,7 @@ print(response.body);
 </div>
 </div>
 <blockquote>
-<p><strong>Team agents:</strong> If the agent's <code>teamsessionmode</code> is <code>collaborative</code>, History returns messages from <strong>all team members</strong> in the session and their turns use one shared native agent-memory session. In <code>private</code> mode, History only returns messages sent by the caller's own <code>uuid</code> and memory stays per operator. The same visibility rule applies to <code>Sessions</code> listing.</p>
+<p><strong>Team agents:</strong> If the agent's <code>teamsessionmode</code> is <code>collaborative</code>, History returns messages from <strong>all team members</strong> in the session, and the agent keeps one shared memory for the team. In <code>private</code> mode, History only returns messages sent by the caller's own <code>uuid</code> and memory stays per operator. The same visibility rule applies to <code>Sessions</code> listing.</p>
 </blockquote>
 <h3 id="response_2">Response</h3>
 <pre><code class="language-json">{
@@ -18798,7 +18798,7 @@ print(response.body);
 <td><code>rotate</code></td>
 <td>boolean</td>
 <td>No</td>
-<td>Default <code>false</code>. When <code>true</code>, after wiping the rows the server also rotates the session's memory bucket so the agent's container <strong>forgets</strong> the cleared turns, and the next <code>Message/Send</code> on the same <code>sessionkey</code> starts a fresh reasoning context. With <code>false</code> (or omitted) the message rows are wiped but the running container may still recall them. Any display <code>name</code> set via <a href="#post-useragentmessagerenamesession"><code>RenameSession</code></a> is dropped on delete.</td>
+<td>Default <code>false</code>. When <code>true</code>, after wiping the rows the server also clears the agent's memory of this session, so the next <code>Message/Send</code> on the same <code>sessionkey</code> starts a fresh reasoning context. With <code>false</code> (or omitted) the message rows are wiped but the agent may still recall them. Any display <code>name</code> set via <a href="#post-useragentmessagerenamesession"><code>RenameSession</code></a> is dropped on delete.</td>
 </tr>
 </tbody>
 </table>
@@ -19673,7 +19673,7 @@ func main() {
 <ul>
 <li>Multi-tab chat clients that keep several live conversations.</li>
 <li>Dashboards watching several users' agents in parallel.</li>
-<li>Combining task streaming and agent streaming on the same connection: <code>task_info</code> and <code>agent_info</code> frames both map to the same connection's token list (tasks under <code>taskTokens</code>, agents under <code>agentTokens</code>).</li>
+<li>Combining task streaming and agent streaming on the same connection: <code>task_info</code> and <code>agent_info</code> frames both map to the same connection's token list.</li>
 </ul>
 <p>There is no <code>unsubscribe</code> frame for <code>agent_info</code> tokens. To stop listening to a token without reconnecting, ignore its events client-side; tokens are cleaned up automatically when the connection closes.</p>
 <h2 id="event-types">Event Types</h2>
@@ -19712,7 +19712,7 @@ func main() {
 <tr>
 <td>↓</td>
 <td><code>agent_start</code></td>
-<td>The bridge has opened an SSE stream to the agent container. The underlying model is now generating. Emits exactly once per message.</td>
+<td>The agent has started working on the message. The model is now generating. Emits exactly once per message.</td>
 </tr>
 <tr>
 <td>↓</td>
@@ -19950,7 +19950,7 @@ func main() {
   &quot;result&quot;: true
 }
 </code></pre>
-<p>The hard-cutover merge contract is:</p>
+<p>The merge contract is:</p>
 <ol>
 <li>Treat <code>blockid</code> as an opaque deterministic identity.</li>
 <li>Keep the incoming block only if there is no stored block with that ID, or its <code>version</code> is strictly greater than the stored version.</li>
@@ -19980,7 +19980,7 @@ func main() {
 </code></pre>
 <h3 id="agent_error">agent_error</h3>
 <p>An error occurred during processing. The <code>message</code> field can take two forms: a <strong>sanitized string</strong> when the stream is aborted by an exception, or a <strong>progress object</strong> when the stream finished naturally but the model returned a non-response.</p>
-<p><strong>Sanitized string error</strong>: any exception during streaming (bridge timeout, upstream HTTP 5xx, worker crash, SSE read error, etc.) surfaces as a single user-safe sentence:</p>
+<p><strong>Sanitized string error</strong>: any failure during streaming surfaces as a single user-safe sentence:</p>
 <pre><code class="language-json">{
   &quot;type&quot;: &quot;agent_error&quot;,
   &quot;agenttoken&quot;: &quot;aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb&quot;,
@@ -20193,7 +20193,7 @@ func main() {
 <p><strong>This frame arrives on the turn's <code>agenttoken</code>.</strong> Like the lifecycle frames above, <code>agent_wiroai_runtask</code> goes to the sockets subscribed to the <code>agenttoken</code> of the turn in which the agent launched the run, and its <code>agenttoken</code> field carries that token. The subscription you already hold for the chat stream receives it, so no extra subscribe is needed. A session key is not a channel: <code>agent_info</code> with a session key returns <code>agenttoken-invalid</code> and brings nothing.</p>
 <p><strong>Then pivot to the task socket for outputs.</strong> Take <code>message.socketaccesstoken</code> and subscribe to the standard model-run WebSocket exactly as documented in <a href="/docs/websocket">WebSocket</a>: send <code>{ "type": "task_info", "tasktoken": "&lt;socketaccesstoken&gt;" }</code> and stream <code>task_queue → task_start → task_output → task_postprocess_end</code>. The final <code>task_postprocess_end</code> carries the output array (media URLs). The model-run <code>task_*</code> events are <strong>only</strong> delivered on the task's own <code>socketaccesstoken</code> channel. They are never re-broadcast on the agent channel.</p>
 <blockquote>
-<p><strong>Only fires for agent-initiated runs.</strong> <code>agent_wiroai_runtask</code> is emitted when the <em>agent</em> calls a model mid-turn. Model runs you launch yourself with <code>POST /Run</code> (your own <code>x-api-key</code>) do not produce this frame, because you already hold their <code>socketaccesstoken</code> from the <code>/Run</code> response. Runs the agent starts in the background, from a scheduled task or from a hook do not produce it either.</p>
+<p><strong>Only fires for agent-initiated runs.</strong> <code>agent_wiroai_runtask</code> is emitted when the <em>agent</em> calls a model mid-turn. Model runs you launch yourself with <code>POST /Run</code> (your own <code>x-api-key</code>) do not produce this frame, because you already hold their <code>socketaccesstoken</code> from the <code>/Run</code> response. It fires only for model runs the agent starts while answering your <code>Message/Send</code> turn.</p>
 </blockquote>
 <h3 id="following-a-session">Following a session</h3>
 <p>Some messages are added to a session between turns: a scheduled report, files the agent sends after its answer, or the result of longer work it finished in the background. They belong to no turn, so they never stream on an <code>agenttoken</code>. To receive them as they are added, follow the session with the <code>sessiontoken</code> that <a href="/docs/agent-messaging#post-useragentmessagehistory"><code>Message/History</code></a> returns for it:</p>
@@ -21073,7 +21073,7 @@ function connect(agenttoken, onStreamingChunk, onFinal, onFailure) {
 <td>Token is minted, row is inserted with <code>status: "agent_queue"</code>, broadcast to all queue subscribers.</td>
 </tr>
 <tr>
-<td>Worker picks up</td>
+<td>Agent starts working</td>
 <td>Emits <code>agent_start</code> to every active subscriber.</td>
 </tr>
 <tr>
@@ -22555,7 +22555,7 @@ pending provider review.</p>
   ]
 }
 </code></pre>
-<p><code>changedby_user</code> is the resolved actor object (<code>uuid</code>, <code>firstname</code>, <code>lastname</code>, <code>email</code>, <code>username</code>, <code>avatar</code>, <code>avatarinitials</code>). It is <code>null</code> when <code>changedby</code> is a sentinel like <code>"system"</code> / <code>"backfill-*"</code> (cron / migration writes) or when the user record has been deleted.</p>
+<p><code>changedby_user</code> is the resolved actor object (<code>uuid</code>, <code>firstname</code>, <code>lastname</code>, <code>email</code>, <code>username</code>, <code>avatar</code>, <code>avatarinitials</code>). It is <code>null</code> when <code>changedby</code> is a system value such as <code>"system"</code> or <code>"backfill-*"</code>, or when the user record has been deleted.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -23108,7 +23108,7 @@ without a browser redirect.</p>
 </tr>
 <tr>
 <td><code>Credential is not configured for the generic OAuth dispatcher: &lt;key&gt;</code></td>
-<td>Registry entry is partial: missing <code>oauth_flow</code> config.</td>
+<td>This credential does not support OAuth.</td>
 </tr>
 <tr>
 <td><code>Unsupported connection mode for &lt;Provider&gt;</code></td>
@@ -23750,16 +23750,13 @@ regenerate and reconnect an expiring or invalidated token. There is no
 customer-facing token-refresh endpoint or manual refresh action.</p>
 <p>Use <code>POST /UserAgentOAuth/OAuthStatus</code> to monitor the connection. Wiro renews tokens only while the agent runs and when it starts, so a stopped agent reports <code>connected: false</code> once its last access token has expired, although the authorization is still valid (for example about an hour after the last renewal for Google, 30 minutes for HubSpot). Start the agent and check again. <code>DiscoverPickerItems</code> and the second-step <code>SetPickerAccounts</code> need a current token too. If the agent cannot start yet, for example while it is still in <a href="#setup-required-state">Setup Required</a>, connect again with <code>OAuthConnect</code> in the same mode instead. Wiro stores the fresh token and keeps the saved accounts selected; run <code>DiscoverPickerItems</code> again before the second-step save. If <code>connected</code> stays <code>false</code> while the agent runs, or the provider revokes a connection that cannot be renewed, reconnect through <code>POST /UserAgentOAuth/OAuthConnect</code>. Provider-specific exceptions are documented in each integration guide.</p>
 <h2 id="web-ui-behaviors-wiro-dashboard">Web UI Behaviors (Wiro Dashboard)</h2>
-<p>If you're comparing against the Wiro Dashboard, here's what happens under the hood for parity with the API:</p>
+<p>The Wiro Dashboard uses the same API. To match its behavior in your own integration:</p>
 <ul>
-<li><strong>Per-group save</strong>: Each credential card has its own Save button. Saving a card calls <code>POST /UserAgent/CredentialUpsert</code> with only that group's <code>fields[]</code> (one request per card).</li>
-<li><strong>Own mode 2-step</strong>: When a user clicks "Connect" in own mode, the Dashboard first calls <code>CredentialUpsert</code> to save <code>appid</code>/<code>appsecret</code> + <code>authmethod: "own"</code>, then calls the Connect endpoint with <code>authmethod: "own"</code>. API users must make both calls explicitly.</li>
-<li><strong>Recommended Meta direct mode</strong>: Facebook Pages, Instagram, and Meta Ads
-  default to System User Token. The Dashboard saves <code>authmethod: "api_key"</code> and
-  <code>systemusertoken</code>, calls <code>OAuthConnect</code>, then completes the registry picker
-  without exposing provider tokens to browser state.</li>
-<li><strong>Full-page redirect, not popup</strong>: <code>window.location.href = authorizeUrl</code>, with no popup windows (avoids third-party cookie issues).</li>
-<li><strong>No manual token refresh button</strong>: Wiro maintains supported connections automatically; reconnect when the Dashboard reports that authorization is required.</li>
+<li><strong>Per-group save</strong>: Save each credential group with its own <code>POST /UserAgent/CredentialUpsert</code> call that sends only that group's <code>fields[]</code>.</li>
+<li><strong>Own mode in two steps</strong>: In own mode, first save <code>appid</code>/<code>appsecret</code> and <code>authmethod: "own"</code> with <code>CredentialUpsert</code>, then call <code>POST /UserAgentOAuth/OAuthConnect</code> with <code>authmethod: "own"</code>.</li>
+<li><strong>Recommended Meta direct mode</strong>: Facebook Pages, Instagram, and Meta Ads default to a System User token. Save <code>authmethod: "api_key"</code> and <code>systemusertoken</code> with <code>CredentialUpsert</code>, call <code>OAuthConnect</code>, then finish the account selection with <code>SetPickerAccounts</code>.</li>
+<li><strong>Same-tab redirect</strong>: Open <code>authorizeUrl</code> in the same tab, not in a popup, to avoid third-party cookie issues.</li>
+<li><strong>No manual token refresh</strong>: Wiro maintains supported connections automatically; reconnect with <code>OAuthConnect</code> when authorization is required.</li>
 <li><strong>LLM Markdown feature</strong>: The Dashboard includes an "LLM Markdown" tab that generates a ready-to-paste prompt for AI assistants summarizing every credential field the agent needs. Useful for API users building their own configuration UIs. See the per-integration help texts for equivalent guidance.</li>
 <li><strong>Registry-backed validation</strong>: Wiro validates declared types, patterns, lengths, URLs, enum values, and provider response contracts before persisting or connecting credentials. The provider remains authoritative for permissions and asset access.</li>
 <li><strong>Platform-managed credentials are hidden</strong>: groups whose fields are all managed by Wiro are omitted from <code>POST /UserAgent/Detail</code> responses. They're set up by Wiro and can't be set by customers.</li>
@@ -24010,7 +24007,7 @@ async function saveGoogleAdsPick(useragentguid, picked) {
 <tr>
 <td><strong>Registry skills</strong></td>
 <td>Platform-shipped capabilities: Wiro defines them, they have pricing recipes, credential requirements, and runtime tools. Examples: <code>int-instagram-post</code>, <code>int-gmail-check</code>, <code>int-wordpress-post</code>, <code>int-wiro-aimodels</code>.</td>
-<td>The skill registry (git-tracked JSON definitions).</td>
+<td>Wiro's skill registry.</td>
 <td><code>POST /Skills/List</code> / <code>POST /Skills/Detail</code> (read), <code>POST /UserAgent/SkillsApply</code> (toggle on/off per useragent).</td>
 </tr>
 <tr>
@@ -24265,7 +24262,7 @@ async function saveGoogleAdsPick(useragentguid, picked) {
 <tr>
 <td><code>monthly_price_weight_usd</code></td>
 <td><code>number</code></td>
-<td>Weight (USD) the skill contributes to the agent's Starter monthly price. The resolver sums weights across the agent's enabled-skill closure (incl. transitive <code>depends_on</code>); Pro multiplies the total by <code>tiermultiplier</code>. The platform applies a <strong>$4/month minimum floor</strong> on top of this sum (with credits scaled proportionally). See Pricing in the <a href="/docs/agent-overview#pricing-model--tiers-skills--token-billing">Agent Overview</a>.</td>
+<td>Weight (USD) the skill contributes to the agent's Starter monthly price. Wiro sums weights across the agent's enabled-skill closure (incl. transitive <code>depends_on</code>); Pro multiplies the total by <code>tiermultiplier</code>. The platform applies a <strong>$4/month minimum floor</strong> on top of this sum (with credits scaled proportionally). See Pricing in the <a href="/docs/agent-overview#pricing-model--tiers-skills--token-billing">Agent Overview</a>.</td>
 </tr>
 <tr>
 <td><code>monthly_credits_weight</code></td>
@@ -24610,7 +24607,7 @@ async function saveGoogleAdsPick(useragentguid, picked) {
 <tr>
 <td><code>enabled</code></td>
 <td>boolean</td>
-<td>Whether the skill is active. <strong>Writable for both strategies (<code>cs-*</code>) and crons (<code>cs-cron-*</code>)</strong>. A disabled strategy is suppressed end-to-end (kept in the merged <code>customskills[]</code> so the IDE sees it, but the agent never loads it).</td>
+<td>Whether the skill is active. <strong>Writable for both strategies (<code>cs-*</code>) and crons (<code>cs-cron-*</code>)</strong>. A disabled strategy is suppressed end-to-end (kept in the merged <code>customskills[]</code> so it still appears in the list, but the agent never loads it).</td>
 </tr>
 <tr>
 <td><code>interval</code></td>
@@ -24876,11 +24873,11 @@ async function saveGoogleAdsPick(useragentguid, picked) {
 </code></pre>
 <p>The response carries the post-revert state (<code>current_value</code>, <code>current_interval</code>, <code>current_enabled</code>) so the UI can refresh without a full <code>Detail</code> round-trip.</p>
 <h2 id="toggling-integration-skills">Toggling Integration Skills</h2>
-<p>The top-level <code>skills[]</code> array on <code>UserAgent/Detail</code> lists every integration skill on the instance as an <strong>object array</strong>: <code>[{ name, enabled, _edited?, _user_created? }, ...]</code>. <code>enabled: false</code> entries are still returned (so the IDE can render disabled rows); filter on <code>enabled: true</code> to get only the active set. Example: <code>[{ "name": "int-instagram-post", "enabled": true }, { "name": "int-googleads-manage", "enabled": false }, { "name": "int-wiro-aimodels", "enabled": true }]</code>. To enable, disable, or change tier in one shot, use <strong><code>POST /UserAgent/SkillsApply</code></strong>. Even when you only want to flip a single skill, send it as a one-entry <code>skills</code> map. The endpoint:</p>
+<p>The top-level <code>skills[]</code> array on <code>UserAgent/Detail</code> lists every integration skill on the instance as an <strong>object array</strong>: <code>[{ name, enabled, _edited?, _user_created? }, ...]</code>. <code>enabled: false</code> entries are still returned (so a UI can show disabled rows); filter on <code>enabled: true</code> to get only the active set. Example: <code>[{ "name": "int-instagram-post", "enabled": true }, { "name": "int-googleads-manage", "enabled": false }, { "name": "int-wiro-aimodels", "enabled": true }]</code>. To enable, disable, or change tier in one shot, use <strong><code>POST /UserAgent/SkillsApply</code></strong>. Even when you only want to flip a single skill, send it as a one-entry <code>skills</code> map. The endpoint:</p>
 <ol>
 <li>Charges the wallet (or prorates) <strong>once</strong>, not N times.</li>
-<li>Triggers exactly <strong>one container restart</strong> after the new skill set lands.</li>
-<li>Uses <strong>idempotency</strong> + a UA-level mutex: concurrent calls or FE retries can't double-apply.</li>
+<li>Triggers exactly <strong>one agent restart</strong> after the new skill set lands.</li>
+<li>Uses <strong>idempotency</strong>: concurrent calls or client retries can't apply the change twice.</li>
 <li>Is <strong>atomic</strong>: a payment failure rolls back to the pre-call skill set.</li>
 </ol>
 <p><strong>Single-skill enable:</strong></p>
@@ -25016,7 +25013,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <h2 id="available-skills-by-agent">Available Skills by Agent</h2>
 <blockquote>
 <p><strong>Integration setup guides:</strong> Every skill below that needs a third-party connection links to a dedicated integration page with the full OAuth / API key walkthrough, required scopes or permissions, callback URL, troubleshooting, and multi-tenant architecture notes. See the <a href="/docs/agent-credentials#integration-catalog">Integration Catalog</a> for the full list.</p>
-<p><strong>Discovery is canonical.</strong> Skill keys evolve as agent templates are updated. To see the exact keys for a specific agent instance, always fetch <code>POST /UserAgent/Detail</code> first. The top-level <code>customskills</code> / <code>scheduledskills</code> arrays are the source of truth. The tables below reflect current intended keys but may lag behind the latest agent template revisions; <code>CustomSkillUpsert</code> silently accepts keys that exist on the instance and returns <code>skill-not-found</code> for unknown keys without altering other state.</p>
+<p><strong>Discovery is canonical.</strong> Skill keys evolve as agent templates are updated. To see the exact keys for a specific agent instance, always fetch <code>POST /UserAgent/Detail</code> first. The top-level <code>customskills</code> / <code>scheduledskills</code> arrays are the source of truth. The tables below reflect current intended keys; <code>CustomSkillUpsert</code> silently accepts keys that exist on the instance and returns <code>skill-not-found</code> for unknown keys without altering other state.</p>
 </blockquote>
 <h3 id="preferences-editable-instructions">Preferences (Editable Instructions)</h3>
 <div class="docs-param-table">
@@ -25574,7 +25571,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <p><strong>Restart behavior:</strong> Calls to <code>CustomSkillUpsert</code>, <code>CustomSkillRename</code>, <code>CustomSkillDelete</code>, <code>CustomSkillRevert</code>, and <code>SkillsApply</code> on a running agent (status 3 or 4) each trigger an automatic restart so the new skill configuration is picked up. Same as credential updates. Description-only edits to <code>CustomSkillUpsert</code> skip the restart.</p>
 </blockquote>
 <h2 id="using-wiro-ai-models-from-your-agent">Using Wiro AI Models from Your Agent</h2>
-<p><code>int-wiro-aimodels</code> lets an agent call Wiro's own AI models (image / video / audio / LLM generation, cover image creation, model discovery) from inside the agent container. When it's enabled on an agent:</p>
+<p><code>int-wiro-aimodels</code> lets an agent call Wiro's own AI models (image / video / audio / LLM generation, cover image creation, model discovery) while it works. When it's enabled on an agent:</p>
 <ul>
 <li><code>credentials.wiro.apikey</code> is <strong>operator-supplied</strong>: pick or create a Wiro project at <a href="https://wiro.ai/panel/projects">wiro.ai/panel/projects</a>, copy its API key, and write it via <code>POST /UserAgent/CredentialUpsert</code>. Each generated asset is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).</li>
 <li>The agent can run Wiro models only when <code>int-wiro-aimodels</code> is enabled <strong>and</strong> a <code>wiro.apikey</code> value has been written.</li>
@@ -26032,7 +26029,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
 <li>Communication-channel credentials are validated independently from <code>skills</code>. Every channel group present in <code>credentials</code> must contain all of its <code>required_fields</code> or Deploy fails without leaving a partial agent behind.</li>
 </ul>
 <h2 id="step-4-refine-skills-after-deploy">Step 4: Refine Skills After Deploy</h2>
-<p>Toggle skills on/off after deploy with <a href="/docs/agent-overview#post-useragentskillsapply"><code>POST /UserAgent/SkillsApply</code></a>. Even when you only want to flip a single skill, send it as a one-entry <code>skills</code> map. The endpoint charges the wallet once, triggers exactly one container restart, and rolls back atomically on payment failure. Template deploys accept the same call.</p>
+<p>Toggle skills on/off after deploy with <a href="/docs/agent-overview#post-useragentskillsapply"><code>POST /UserAgent/SkillsApply</code></a>. Even when you only want to flip a single skill, send it as a one-entry <code>skills</code> map. The endpoint charges the wallet once, triggers exactly one agent restart, and rolls back atomically on payment failure. Template deploys accept the same call.</p>
 <h3 id="single-skill-enable">Single-skill enable</h3>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/SkillsApply&quot; \
   -H &quot;Content-Type: application/json&quot; \
@@ -26083,7 +26080,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
     }
   }'
 </code></pre>
-<p><code>idempotencyKey</code> is required: use a UUID per "user clicks Save" event. A retry of the same key returns the cached response without re-running the saga.</p>
+<p><code>idempotencyKey</code> is required: use a UUID per "user clicks Save" event. A retry of the same key returns the cached response without applying the change again.</p>
 <h2 id="common-recipes">Common Recipes</h2>
 <h3 id="a-email-driven-telegram-digest">A. Email-driven Telegram digest</h3>
 <pre><code class="language-json">{
@@ -26473,7 +26470,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
                           <tbody>
                             <tr><td><code>guid</code></td><td><code>string</code></td><td>Stable id of the ledger row. Daemon retries reuse this guid for idempotency.</td></tr>
                             <tr><td><code>type</code></td><td><code>string</code></td><td>One of <code>"deduct"</code>, <code>"renewal"</code>, <code>"purchase"</code>, <code>"grant"</code>, <code>"expired"</code>, <code>"refund"</code>. There is no <code>"cancel"</code> type: a user-initiated subscription cancel only flips auto-renew off; credits are not forfeited until <code>currentperiodend</code> is reached, at which point the cron writes the ledger row as <code>type: "expired"</code>, <code>action: "subscription"</code>.</td></tr>
-                            <tr><td><code>action</code></td><td><code>string|null</code></td><td>Fine-grained detail. Values depend on <code>type</code>: <code>"tokens"</code> (deduct: the per-turn LLM token charge the runtime writes for every chat, cron, and voice post-call turn); <code>"monthly"</code> (renewal); <code>"small"</code>, <code>"medium"</code>, <code>"large"</code> (purchase); <code>"skill-toggle"</code>, <code>"skills-apply"</code>, <code>"upgrade"</code>, <code>"tier-change"</code> (grant); <code>"skill-toggle"</code> (expired, mid-period skill disable); <code>"subscription"</code> (expired, end-of-period cancel rollover; refund). Legacy deduct rows may also carry <code>"message"</code>, <code>"create"</code>, <code>"modify"</code>, or <code>"regenerate"</code>.</td></tr>
+                            <tr><td><code>action</code></td><td><code>string|null</code></td><td>Fine-grained detail. Values depend on <code>type</code>: <code>"tokens"</code> (deduct: the per-turn LLM token charge Wiro records for every chat, cron, and voice post-call turn); <code>"monthly"</code> (renewal); <code>"small"</code>, <code>"medium"</code>, <code>"large"</code> (purchase); <code>"skill-toggle"</code>, <code>"skills-apply"</code>, <code>"upgrade"</code>, <code>"tier-change"</code> (grant); <code>"skill-toggle"</code> (expired, mid-period skill disable); <code>"subscription"</code> (expired, end-of-period cancel rollover; refund). Legacy deduct rows may also carry <code>"message"</code>, <code>"create"</code>, <code>"modify"</code>, or <code>"regenerate"</code>.</td></tr>
                             <tr><td><code>amount</code></td><td><code>number</code></td><td>Signed credit delta: negative for deductions, positive for grants.</td></tr>
                             <tr><td><code>balanceafter</code></td><td><code>number|null</code></td><td>Remaining credit balance snapshot written at the time of the event. <code>null</code> on per-turn <code>deduct</code> rows.</td></tr>
                             <tr><td><code>description</code></td><td><code>string|null</code></td><td>Human-readable label.</td></tr>
@@ -26713,7 +26710,7 @@ foreach (array_slice($resp['transactions'], 0, 10) as $tx) {
                             <tr><td><code>ok</code></td><td><code>boolean?</code></td><td><code>true</code> for a successful completion, <code>false</code> for a failure. Populated on <code>tool_completed</code>, <code>turn_ended</code> and <code>cron_finished</code> events, and always <code>false</code> on <code>tool_blocked</code>. Pair with <code>error</code> for failure rows.</td></tr>
                             <tr><td><code>error</code></td><td><code>string?</code></td><td>One-line failure message (when <code>ok: false</code>).</td></tr>
                             <tr><td><code>cost</code></td><td><code>object?</code></td><td>Legacy per-action credit charge, <code>{ credits, skill, action }</code>. Only events recorded before agents switched to per-turn token billing can carry it; current events never do. See the <code>token_usage</code> event for what a turn cost.</td></tr>
-                            <tr><td><code>userUuid</code></td><td><code>string?</code></td><td>UUID of the actor who triggered the event. <code>"system"</code> for cron / internal events. May be missing on legacy rows from the 180-day retention window pre-attribution rollout, in which case the server falls back to the useragent owner.</td></tr>
+                            <tr><td><code>userUuid</code></td><td><code>string?</code></td><td>UUID of the actor who triggered the event. <code>"system"</code> for cron / internal events. May be missing on older rows, in which case the server falls back to the agent owner.</td></tr>
                             <tr><td><code>user</code></td><td><code>object|null</code></td><td>Resolved actor: <code>{ uuid, firstname, lastname, email, username, avatar, avatarinitials }</code>. <code>null</code> when <code>userUuid</code> is <code>"system"</code> (automation / cron) or when the user record was deleted.</td></tr>
                           </tbody>
                         </table>
@@ -26916,7 +26913,7 @@ foreach (array_slice($resp['transactions'], 0, 10) as $tx) {
     { "date": "2026-05-01", "sizeBytes": 38912,  "compressed": true  }
   ]
 }</code></pre>
-                    <p>Each entry exposes <code>date</code> (<code>YYYY-MM-DD</code>, sorted newest-first), <code>sizeBytes</code> (raw byte size on disk; compressed size when <code>compressed: true</code>), and <code>compressed</code> (<code>true</code> once the worker's daily maintenance cron has gzipped the file to <code>&lt;date&gt;.jsonl.gz</code>; <code>false</code> for the active day's plain <code>.jsonl</code>). Reading either form via <code>LogsFile</code> returns the same decoded events. The host retains activity files for 180 days (rolling); older dates are pruned by a worker cron and won't appear here.</p>
+                    <p>Each entry exposes <code>date</code> (<code>YYYY-MM-DD</code>, sorted newest-first), <code>sizeBytes</code> (raw byte size on disk; compressed size when <code>compressed: true</code>), and <code>compressed</code> (<code>true</code> once the day's log has been compressed to <code>&lt;date&gt;.jsonl.gz</code>; <code>false</code> for the active day's plain <code>.jsonl</code>). Reading either form via <code>LogsFile</code> returns the same decoded events. The host retains activity files for 180 days (rolling); older dates are removed and won't appear here.</p>
                   </section>
 
                   <section id="logs-file">
@@ -28595,7 +28592,7 @@ if (params.get(&quot;tiktokads_connected&quot;) === &quot;true&quot;) {
 </tr>
 <tr>
 <td><code>TikTok Ads credentials not configured</code></td>
-<td>Returned in <code>OAuthConnect</code>'s <code>errors[]</code> when TikTok Ads is not yet enabled on Wiro's side.</td>
+<td>Returned in <code>OAuthConnect</code>'s <code>errors[]</code> when TikTok Ads is not available for this account.</td>
 <td>Contact Wiro support.</td>
 </tr>
 <tr>
@@ -29655,7 +29652,7 @@ if (params.get("fb_connected") === "true") {
                           </tr>
                           <tr>
                             <td><code>internal_error</code></td>
-                            <td>Unexpected server error (includes cache write failures).</td>
+                            <td>Unexpected server error.</td>
                             <td>Retry once. If persistent, contact support.</td>
                           </tr>
                         </tbody>
@@ -37170,8 +37167,8 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                   <section id="rate-limits">
                     <h2>Rate Limits</h2>
                     <ul>
-                      <li><strong>60 sessions / hour per operator</strong> (fixed window). The operator identity is hashed and never logged raw.</li>
-                      <li>Fast-fail sessions (prep timeout, model rejecting the realtime session, WS upgrade error) <strong>decrement the counter back</strong> so a flaky downstream doesn't burn through quota during an incident.</li>
+                      <li><strong>60 sessions / hour per operator</strong> (fixed window).</li>
+                      <li>Sessions that fail to start are not counted.</li>
                       <li><strong>Origin check</strong> (Bearer auth only): browser requests must come from wiro.ai. API-key requests have no Origin check.</li>
                     </ul>
                   </section>
@@ -39129,21 +39126,21 @@ Organization (created by you)
 
                     <p><strong>Consumption order (matches task billing):</strong></p>
                     <ol>
-                      <li>Tracked coupons (model-specific first, then universal, FIFO)</li>
-                      <li>Untracked gifted (checklist rewards, pooled)</li>
+                      <li>Coupons: model-specific coupons first, then other coupons, oldest first</li>
+                      <li>Checklist rewards</li>
                       <li>Store revenue</li>
-                      <li>Regular amount (deposits)</li>
+                      <li>Deposits</li>
                     </ol>
 
                     <p><strong>Expiry is preserved:</strong> When you transfer $600 from a wallet containing a $500 coupon (30-day expiry) and a $500 deposit (365-day expiry), the target receives two separate deposits, a $500 coupon and a $100 deposit, each with its original expiry date.</p>
 
                     <h3>Transaction History</h3>
-                    <p>Both wallets receive audit transactions:</p>
+                    <p>Both wallets get a transaction row:</p>
                     <ul>
                       <li>Source: <code>TRANSFER OUT</code> with a description like "Transfer to Engineering (Acme Corp) - $100.00 (Coupons: $50.00 / Store: $0.00 / Deposits: $50.00)."</li>
                       <li>Target: <code>TRANSFER IN</code> with a description like "Transfer from personal - $100.00 (Coupons: $50.00 / Store: $0.00 / Deposits: $50.00)."</li>
                     </ul>
-                    <p>These audit transactions do not affect balance calculations or expiry. They are for display only. The actual balance changes come from updated deposit amounts (source) and new deposit records (target).</p>
+                    <p><code>TRANSFER OUT</code> and <code>TRANSFER IN</code> rows record the transfer; moved credit keeps its original expiry.</p>
 
                     <h3>Important Behaviors</h3>
                     <ul>
@@ -39434,16 +39431,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
 
                   <section id="billing-flow">
                     <h2>Wallet Billing Flow</h2>
-                    <p>When a task runs in team context:</p>
-                    <ol>
-                      <li>The project's <code>teamguid</code> is resolved from the API key</li>
-                      <li>The task is created with <code>teamguid</code> set</li>
-                      <li>On completion, the billing UUID is set to <code>teamguid</code> (not the user's UUID)</li>
-                      <li>The wallet transaction is recorded against the team wallet</li>
-                      <li>The cost is deducted from the team wallet balance</li>
-                    </ol>
-                    <pre><code>API Key → Project (teamguid) → Task (teamguid) → Wallet Transaction (uuid=teamguid)</code></pre>
-                    <p>For personal context, the flow is the same but <code>teamguid</code> is <code>null</code> and billing uses the user's personal UUID.</p>
+                    <p>Runs made with a team project's key are charged to the team wallet and appear in the team's <code>Wallet/TransactionList</code>; personal project keys charge your personal wallet.</p>
                   </section>
 
                   <section id="best-practices">

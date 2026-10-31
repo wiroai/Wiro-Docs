@@ -189,19 +189,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
 
 ### Wallet Billing Flow
 
-When a task runs in team context:
-
-1. The project's `teamguid` is resolved from the API key
-2. The task is created with `teamguid` set
-3. On completion, the billing UUID is set to `teamguid` (not the user's UUID)
-4. The wallet transaction is recorded against the team wallet
-5. The cost is deducted from the team wallet balance
-
-```
-API Key → Project (teamguid) → Task (teamguid) → Wallet Transaction (uuid=teamguid)
-```
-
-For personal context, the flow is the same but `teamguid` is `null` and billing uses the user's personal UUID.
+Runs made with a team project's key are charged to the team wallet and appear in the team's `Wallet/TransactionList`; personal project keys charge your personal wallet.
 
 ## Best Practices
 
