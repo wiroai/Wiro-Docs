@@ -4672,7 +4672,7 @@ Uploads a file using `multipart/form-data`. You can optionally assign it to a fo
 
 Once uploaded, reference a file by its URL or ID in your model run parameters. For example, an image upscaler model might accept an `inputImageUrl` parameter. Pass the URL returned from the upload response.
 
-You don't always need to upload files first. Most models accept direct URLs in their file parameters, so you can pass any publicly accessible URL. See [Model Parameters](/docs/model-parameters) for details on `fileinput`, `multifileinput`, and `combinefileinput` patterns.
+You don't always need to upload files first. Most models take a public URL in place of an upload: send it in the parameter's URL field, such as `inputImageUrl` for `inputImage`, or `inputDocumentUrlMultiple` for `inputDocumentMultiple`. See [Model Parameters](/docs/model-parameters) for the `fileinput`, `multifileinput` and `combinefileinput` patterns.
 
 ```json
 {
@@ -5991,7 +5991,7 @@ Common questions about using the Wiro API.
 
 **How do LLM responses work?** LLM models return their response in `outputs` (structured, with `contenttype: "raw"` containing `prompt`, `raw`, `thinking`, `answer`) and as merged text in `debugoutput`.
 
-**Can I send a URL instead of uploading a file?** Yes. Most models accept direct URLs in file parameters. For `combinefileinput`, pass an array of URLs directly. The URL must be a public `http(s)` address. See Model Parameters.
+**Can I send a URL instead of uploading a file?** Yes. For `fileinput` parameters, use the `{id}Url` suffix (e.g., `inputImageUrl`). For `multifileinput`, send comma-separated URLs in the field that puts `Url` before `Multiple` (e.g., `inputDocumentUrlMultiple`). For `combinefileinput`, pass URLs directly in the original parameter. The URL must be a public `http(s)` address. See Model Parameters.
 
 **Can I use a webhook instead of polling?** Yes. All models support an optional `callbackUrl` parameter. It must be a public `http(s)` address.
 

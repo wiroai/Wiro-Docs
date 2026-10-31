@@ -187,7 +187,7 @@ All three tool groups load by default. To load fewer tools, set `WIRO_TOOLSETS` 
 | `get_task_price` | `POST /Task/Detail` | Get the cost of a completed task. Shows whether it was billed and the total charge. Only successful tasks (`pexit: "0"`) are billed. |
 | `cancel_task` | `POST /Task/Cancel` | Cancel a task still in queue (before worker assignment). |
 | `kill_task` | `POST /Task/Kill` | Stop a queued or running task. Task moves to `task_cancel` status. |
-| `upload_file` | `POST /File/Upload` | Upload a file from a public http(s) URL (up to about 100 MB). Most models accept direct URLs without uploading first. |
+| `upload_file` | `POST /File/Upload` | Upload a file from a public http(s) URL (up to about 100 MB). Most models also take a public URL in the parameter's URL field, without uploading first. |
 
 ### Workflows
 
