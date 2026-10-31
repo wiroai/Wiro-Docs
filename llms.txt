@@ -150,7 +150,6 @@ File parameter URL rules:
 - `fileinput`: use `{paramId}Url` suffix for URLs (e.g., `inputImageUrl`). Send empty `{paramId}` when using URL, empty `{paramId}Url` when uploading file.
 - `multifileinput`: send comma-separated URLs in the field that puts `Url` before `Multiple` (e.g., `inputDocumentMultiple` takes its URLs in `inputDocumentUrlMultiple`). Send either files or URLs, with the other field empty.
 - `combinefileinput`: pass URLs directly in `{paramId}`, no suffix needed. Files and URLs share the same field.
-- A `fileinput` parameter also accepts a URL directly in `{paramId}` if `{paramId}Url` doesn't exist.
 - Input URLs must be public http(s) addresses, redirects included; a host that is or resolves to a private, loopback or link-local address isn't fetched.
 
 All models support optional `callbackUrl` for webhook notifications on completion (a public http(s) address; a host that is or resolves to a private, loopback or link-local address gets no webhook, and the task's result stays readable with Task/Detail). Wiro POSTs the task as JSON once it has finished, successful or not (check `pexit`); any 2xx answer counts as delivered, anything else, or an endpoint that cannot be reached, is tried again 2 seconds later, up to 3 tries; redirects are not followed; the request carries no authorization header. When a webhook does not arrive, poll Task/Detail with the task ID.

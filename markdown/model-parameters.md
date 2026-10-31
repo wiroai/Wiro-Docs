@@ -54,7 +54,7 @@ The content type depends on whether the model requires file inputs:
 | No file parameters | `application/json` | Text-only models (LLMs, image generation from prompt) |
 | Has file parameters | `multipart/form-data` | Models that accept image, audio, video, or document uploads |
 
-> **Tip:** For `fileinput` parameters, use the `{id}Url` suffix to send a URL (e.g., `inputImageUrl`). For `multifileinput`, send comma-separated URLs in the field that puts `Url` before `Multiple` (e.g., `inputDocumentUrlMultiple` for `inputDocumentMultiple`). For `combinefileinput`, pass URLs directly in the original parameter. No suffix is needed. You can also pass a URL directly to a `fileinput` parameter (e.g., `inputImage`) if the `{id}Url` field doesn't exist. Every URL must be a public `http(s)` address, and so must any address it redirects to: Wiro doesn't fetch a URL whose host is, or resolves to, a private, loopback or link-local address.
+> **Tip:** For `fileinput` parameters, use the `{id}Url` suffix to send a URL (e.g., `inputImageUrl`). For `multifileinput`, send comma-separated URLs in the field that puts `Url` before `Multiple` (e.g., `inputDocumentUrlMultiple` for `inputDocumentMultiple`). For `combinefileinput`, pass URLs directly in the original parameter. No suffix is needed. Every URL must be a public `http(s)` address, and so must any address it redirects to: Wiro doesn't fetch a URL whose host is, or resolves to, a private, loopback or link-local address.
 
 ## File Upload Patterns
 
@@ -74,14 +74,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
   -H "x-api-key: YOUR_API_KEY" \
   -F "inputImage=" \
   -F "inputImageUrl=https://example.com/photo.jpg"
-
-# Option 3: Pass URL directly in {id} (no {id}Url needed)
-curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -F "inputImage=https://example.com/photo.jpg"
 ```
-
-> **Note:** Option 3 is the simplest when you only have a URL. If the `{id}Url` field doesn't exist for a parameter, always use this approach.
 
 ### Multiple Files (multifileinput)
 
