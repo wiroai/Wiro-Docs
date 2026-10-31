@@ -3688,7 +3688,7 @@ claude</code></pre>
                       </table>
                     </div>
                     <div class="info-callout">
-                      <p><strong>Tip:</strong> For <code>fileinput</code> parameters, use the <code>{id}Url</code> suffix to send a URL (e.g., <code>inputImageUrl</code>). For <code>multifileinput</code>, send comma-separated URLs in the field that puts <code>Url</code> before <code>Multiple</code> (e.g., <code>inputDocumentUrlMultiple</code> for <code>inputDocumentMultiple</code>). For <code>combinefileinput</code>, pass URLs directly in the original parameter. No suffix is needed. Every URL must be a public <code>http(s)</code> address, and so must any address it redirects to: Wiro doesn't fetch a URL whose host is, or resolves to, a private, loopback or link-local address.</p>
+                      <p><strong>Tip:</strong> For <code>fileinput</code> parameters, use the <code>{id}Url</code> suffix to send a URL (e.g., <code>inputImageUrl</code>). For <code>multifileinput</code>, send comma-separated URLs in the field that puts <code>Url</code> before <code>Multiple</code> (e.g., <code>inputDocumentUrlMultiple</code> for <code>inputDocumentMultiple</code>). For <code>combinefileinput</code>, pass URLs directly in the original parameter. No suffix is needed. A <code>fileinput</code> or <code>multifileinput</code> with no URL field takes the URL, or the comma-separated list, in the parameter itself. Every URL must be a public <code>http(s)</code> address, and so must any address it redirects to: Wiro doesn't fetch a URL whose host is, or resolves to, a private, loopback or link-local address.</p>
                     </div>
                   </section>
 
@@ -7262,7 +7262,7 @@ if (!data.result) {
                       <button class="faq-question">Can I send a URL instead of uploading a file?</button>
                       <div class="faq-answer">
                         <div class="faq-answer-inner">
-                          <p>Yes. For <code>fileinput</code> parameters, use the <code>{id}Url</code> suffix (e.g., <code>inputImageUrl</code>). For <code>multifileinput</code>, send comma-separated URLs in the field that puts <code>Url</code> before <code>Multiple</code> (e.g., <code>inputDocumentUrlMultiple</code>). For <code>combinefileinput</code>, pass URLs directly in the original parameter. The URL must be a public <code>http(s)</code> address. See <a href="/docs/model-parameters">Model Parameters</a>.</p>
+                          <p>Yes. For <code>fileinput</code> parameters, use the <code>{id}Url</code> suffix (e.g., <code>inputImageUrl</code>). For <code>multifileinput</code>, send comma-separated URLs in the field that puts <code>Url</code> before <code>Multiple</code> (e.g., <code>inputDocumentUrlMultiple</code>). For <code>combinefileinput</code>, pass URLs directly in the original parameter. A <code>fileinput</code> or <code>multifileinput</code> with no URL field takes them in the parameter itself. The URL must be a public <code>http(s)</code> address. See <a href="/docs/model-parameters">Model Parameters</a>.</p>
                         </div>
                       </div>
                     </div>

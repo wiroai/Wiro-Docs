@@ -54,7 +54,7 @@ The content type depends on whether the model requires file inputs:
 | No file parameters | `application/json` | Text-only models (LLMs, image generation from prompt) |
 | Has file parameters | `multipart/form-data` | Models that accept image, audio, video, or document uploads |
 
-> **Tip:** For `fileinput` parameters, use the `{id}Url` suffix to send a URL (e.g., `inputImageUrl`). For `multifileinput`, send comma-separated URLs in the field that puts `Url` before `Multiple` (e.g., `inputDocumentUrlMultiple` for `inputDocumentMultiple`). For `combinefileinput`, pass URLs directly in the original parameter. No suffix is needed. Every URL must be a public `http(s)` address, and so must any address it redirects to: Wiro doesn't fetch a URL whose host is, or resolves to, a private, loopback or link-local address.
+> **Tip:** For `fileinput` parameters, use the `{id}Url` suffix to send a URL (e.g., `inputImageUrl`). For `multifileinput`, send comma-separated URLs in the field that puts `Url` before `Multiple` (e.g., `inputDocumentUrlMultiple` for `inputDocumentMultiple`). For `combinefileinput`, pass URLs directly in the original parameter. No suffix is needed. A `fileinput` or `multifileinput` with no URL field takes the URL, or the comma-separated list, in the parameter itself. Every URL must be a public `http(s)` address, and so must any address it redirects to: Wiro doesn't fetch a URL whose host is, or resolves to, a private, loopback or link-local address.
 
 ## File Upload Patterns
 

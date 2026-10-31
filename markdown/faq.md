@@ -44,7 +44,7 @@ LLM models return their response in two places: as merged text in `debugoutput`,
 
 ## Can I send a URL instead of uploading a file?
 
-Yes. For `fileinput` parameters, use the `{id}Url` suffix (e.g., `inputImageUrl`). For `multifileinput`, send comma-separated URLs in the field that puts `Url` before `Multiple` (e.g., `inputDocumentUrlMultiple`). For `combinefileinput`, pass URLs directly in the original parameter. The URL must be a public `http(s)` address. See [Model Parameters](/docs/model-parameters).
+Yes. For `fileinput` parameters, use the `{id}Url` suffix (e.g., `inputImageUrl`). For `multifileinput`, send comma-separated URLs in the field that puts `Url` before `Multiple` (e.g., `inputDocumentUrlMultiple`). For `combinefileinput`, pass URLs directly in the original parameter. A `fileinput` or `multifileinput` with no URL field takes them in the parameter itself. The URL must be a public `http(s)` address. See [Model Parameters](/docs/model-parameters).
 
 ## What is pexit and how do I use it?
 
