@@ -1510,13 +1510,12 @@ const response = await fetch(
   "session_id": "weather-session-1"
 }</code></pre>
                     <h3>Stateful turn continuation</h3>
-                    <p>For a stateful follow-up that is not submitting tool outputs, pass the prior completed Run output's <code>socketaccesstoken</code> as <code>previousTaskToken</code>, keep the same <code>session_id</code>, and provide exactly one new input: a non-blank <code>prompt</code> or a non-empty <code>messages</code> array. The <code>tools</code>, <code>tool_choice</code>, <code>parallel_tool_calls</code>, and <code>response_format</code> of the earlier turn carry over automatically; you may resend an identical copy, but a different value is rejected as a continuation mismatch. Do not send <code>toolOutputs</code>.</p>
-                    <p>Use the <code>socketaccesstoken</code> returned by a completed task from the same project, model, and session.</p>
+                    <p>A chat continues through its <code>session_id</code>. After a turn that ended with an answer, run the same model again with the same <code>session_id</code> and the next <code>prompt</code>. Wiro keeps the earlier turns of the session; some chat models also need the same <code>user_id</code> on every turn (see <a href="/docs/llm-chat-streaming" class="docs-link">LLM &amp; Chat Streaming</a>). Send the same <code>session_id</code> on every turn, the first one included, and leave <code>previousTaskToken</code> out.</p>
                     <pre><code>{
-  "previousTaskToken": "task-token",
   "prompt": "Give me one concrete example.",
   "session_id": "weather-session-1"
 }</code></pre>
+                    <p><code>previousTaskToken</code> belongs to the tool-call round trip above: together with <code>toolOutputs</code>, it continues a turn whose <code>finishreason</code> is <code>tool_calls</code>, using the <code>socketaccesstoken</code> of that completed task from the same project, model and session. After a plain prompt turn, a request that sends <code>previousTaskToken</code> with the next <code>prompt</code> is refused with code <code>122</code> ("The previous task state for this conversation is no longer available."). Send the same <code>session_id</code> and the next <code>prompt</code> instead.</p>
                     <p>For OpenAI-compatible clients, <code>previous_response_id</code> remains the preferred public field on <code>/v1/responses</code>; do not send <code>previousTaskToken</code> to that endpoint. Direct asynchronous Run and <code>/sync</code> clients use <code>previousTaskToken</code>.</p>
                     <p>For cumulative SSE or WebSocket snapshots, replace the previous <code>segments</code> array. Do not append the complete array again. A call can move from <code>in_progress</code> to <code>completed</code> while keeping the same IDs. The final <code>pexit: "0"</code> remains the success indicator.</p>
                   </section>

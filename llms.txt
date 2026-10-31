@@ -212,13 +212,15 @@ Direct Run LLM turns and tool calls:
   The stored tools, tool choice, and response format are reapplied
   automatically, so a JSON contract set on the first turn survives the tool
   round-trip.
-- For a stateful follow-up without tool outputs, pass the prior completed Run
-  task's `socketaccesstoken` as `previousTaskToken` and exactly one new prompt or
-  non-empty messages array. The stored tools, tool_choice, parallel_tool_calls
-  and response_format carry over; an identical resend is allowed, a different
-  value is a continuation mismatch. Do not include `toolOutputs`.
-- Use the `socketaccesstoken` returned by a completed task from the same project,
-  model, and session.
+- A chat continues through its `session_id`: after a turn that ended with an
+  answer, run the same model with the same `session_id` and the next `prompt`,
+  without `previousTaskToken`. Send the same `session_id` on every turn, the
+  first one included (some chat models also need the same `user_id`).
+- `previousTaskToken` + `toolOutputs` continues only a turn whose
+  `finishreason` is `tool_calls`, with the `socketaccesstoken` of that completed
+  task from the same project, model, and session. After a plain prompt turn,
+  `previousTaskToken` with a new `prompt` is refused with code 122 ("The
+  previous task state for this conversation is no longer available.").
 - OpenAI-compatible clients should use `previous_response_id` on
   `/v1/responses`. Direct Run and `/sync` clients use `previousTaskToken`.
 

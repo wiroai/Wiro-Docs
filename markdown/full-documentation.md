@@ -577,24 +577,27 @@ JSON contract set on the first turn still holds after the tool round-trip.
 
 ### Stateful turn continuation
 
-For a stateful follow-up that is not submitting tool outputs, pass the prior
-completed Run output's `socketaccesstoken` as `previousTaskToken`, keep the same
-`session_id`, and provide exactly one new input: a non-blank `prompt` or a
-non-empty `messages` array. The `tools`, `tool_choice`, `parallel_tool_calls`,
-and `response_format` of the earlier turn carry over automatically; you may
-resend an identical copy, but a different value is rejected as a continuation
-mismatch. Do not send `toolOutputs`.
-
-Use the `socketaccesstoken` returned by a completed task from the same project,
-model, and session.
+A chat continues through its `session_id`. After a turn that ended with an
+answer, run the same model again with the same `session_id` and the next
+`prompt`. Wiro keeps the earlier turns of the session; some chat models also
+need the same `user_id` on every turn (see
+[LLM & Chat Streaming](/docs/llm-chat-streaming)). Send the same `session_id`
+on every turn, the first one included, and leave `previousTaskToken` out.
 
 ```json
 {
-  "previousTaskToken": "task-token",
   "prompt": "Give me one concrete example.",
   "session_id": "weather-session-1"
 }
 ```
+
+`previousTaskToken` belongs to the tool-call round trip above: together with
+`toolOutputs`, it continues a turn whose `finishreason` is `tool_calls`, using
+the `socketaccesstoken` of that completed task from the same project, model and
+session. After a plain prompt turn, a request that sends `previousTaskToken`
+with the next `prompt` is refused with code `122` ("The previous task state for
+this conversation is no longer available."). Send the same `session_id` and the
+next `prompt` instead.
 
 For OpenAI-compatible clients, `previous_response_id` remains the preferred
 public field on `/v1/responses`; do not send `previousTaskToken` to that
