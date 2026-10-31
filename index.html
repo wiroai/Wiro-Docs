@@ -12580,7 +12580,7 @@ pro.credits = starter.credits × tiermultiplier
 </table>
 </div>
 </div>
-<h3 id="automatic-restart-restartafter">Automatic Restart</h3>
+<h3 id="automatic-restart">Automatic Restart</h3>
 <p>When you mutate an agent's configuration while it is <strong>starting</strong> (status <code>3</code>) or <strong>running</strong> (status <code>4</code>), the system automatically triggers a restart cycle: the agent is moved to <strong>Stopping</strong> (status <code>1</code>) and flagged to restart. Once the agent fully stops, the system automatically re-queues it, applying the new configuration on startup.</p>
 <p>This means you can update credentials, toggle skills, or change a custom skill on a running agent without manually stopping and starting it.</p>
 <p>Endpoints that auto-trigger a restart on success: <code>CredentialUpsert</code>, <code>SkillsApply</code>, <code>CustomSkillUpsert</code> (when functional fields change), <code>CustomSkillRename</code>, <code>CustomSkillDelete</code>, <code>CustomSkillRevert</code>, <code>Update</code> (scalar edits).</p>
