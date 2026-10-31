@@ -3281,7 +3281,7 @@ The content type depends on whether the model requires file inputs:
 | No file parameters  | `application/json`    | Text-only models (LLMs, image generation from prompt)       |
 | Has file parameters | `multipart/form-data` | Models that accept image, audio, video, or document uploads |
 
-> **Tip:** For `fileinput` and `multifileinput` parameters, use the `{id}Url` suffix to send URLs (e.g., `inputImageUrl`). For `combinefileinput`, pass URLs directly in the original parameter. No suffix is needed. You can also pass a URL directly to any file parameter (e.g., `inputImage`) if the `{id}Url` field doesn't exist. Every URL must be a public `http(s)` address, and so must any address it redirects to: Wiro doesn't fetch a URL whose host is, or resolves to, a private, loopback or link-local address.
+> **Tip:** For `fileinput` parameters, use the `{id}Url` suffix to send a URL (e.g., `inputImageUrl`). For `multifileinput`, send comma-separated URLs in the field that puts `Url` before `Multiple` (e.g., `inputDocumentUrlMultiple` for `inputDocumentMultiple`). For `combinefileinput`, pass URLs directly in the original parameter. No suffix is needed. You can also pass a URL directly to a `fileinput` parameter (e.g., `inputImage`) if the `{id}Url` field doesn't exist. Every URL must be a public `http(s)` address, and so must any address it redirects to: Wiro doesn't fetch a URL whose host is, or resolves to, a private, loopback or link-local address.
 
 ## File Upload Patterns
 
@@ -3312,27 +3312,21 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
 
 ### Multiple Files (multifileinput)
 
-For parameters like `inputDocumentMultiple`, upload up to N files, send comma-separated URLs, or mix both:
+For parameters like `inputDocumentMultiple`, send either up to N files or a comma-separated list of URLs. The URL list goes in the field that puts `Url` before `Multiple`: `inputDocumentUrlMultiple`. When using multipart, include both fields and leave one empty:
 
 ```bash
-# Option 1: Upload multiple files — add empty {id}Url
+# Option 1: Upload files in {id}, leave inputDocumentUrlMultiple empty
 curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
   -H "x-api-key: YOUR_API_KEY" \
   -F "inputDocumentMultiple=@doc1.pdf" \
   -F "inputDocumentMultiple=@doc2.pdf" \
-  -F "inputDocumentMultipleUrl="
+  -F "inputDocumentUrlMultiple="
 
-# Option 2: Send URLs (comma-separated in {id}Url) — add empty {id}
+# Option 2: Send comma-separated URLs in inputDocumentUrlMultiple, leave {id} empty
 curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
   -H "x-api-key: YOUR_API_KEY" \
   -F "inputDocumentMultiple=" \
-  -F "inputDocumentMultipleUrl=https://example.com/doc1.pdf,https://example.com/doc2.pdf"
-
-# Option 3: Mixed — files in {id}, URLs in {id}Url
-curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -F "inputDocumentMultiple=@doc1.pdf" \
-  -F "inputDocumentMultipleUrl=https://example.com/doc2.pdf,https://example.com/doc3.pdf"
+  -F "inputDocumentUrlMultiple=https://example.com/doc1.pdf,https://example.com/doc2.pdf"
 ```
 
 ### Combined (combinefileinput)

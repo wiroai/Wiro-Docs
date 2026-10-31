@@ -3672,7 +3672,7 @@ claude</code></pre>
                       </table>
                     </div>
                     <div class="info-callout">
-                      <p><strong>Tip:</strong> For <code>fileinput</code> and <code>multifileinput</code> parameters, use the <code>{id}Url</code> suffix to send URLs (e.g., <code>inputImageUrl</code>). For <code>combinefileinput</code>, pass URLs directly in the original parameter. No suffix is needed. You can also pass a URL directly to any file parameter (e.g., <code>inputImage</code>) if the <code>{id}Url</code> field doesn't exist. Every URL must be a public <code>http(s)</code> address, and so must any address it redirects to: Wiro doesn't fetch a URL whose host is, or resolves to, a private, loopback or link-local address.</p>
+                      <p><strong>Tip:</strong> For <code>fileinput</code> parameters, use the <code>{id}Url</code> suffix to send a URL (e.g., <code>inputImageUrl</code>). For <code>multifileinput</code>, send comma-separated URLs in the field that puts <code>Url</code> before <code>Multiple</code> (e.g., <code>inputDocumentUrlMultiple</code> for <code>inputDocumentMultiple</code>). For <code>combinefileinput</code>, pass URLs directly in the original parameter. No suffix is needed. You can also pass a URL directly to a <code>fileinput</code> parameter (e.g., <code>inputImage</code>) if the <code>{id}Url</code> field doesn't exist. Every URL must be a public <code>http(s)</code> address, and so must any address it redirects to: Wiro doesn't fetch a URL whose host is, or resolves to, a private, loopback or link-local address.</p>
                     </div>
                   </section>
 
@@ -3702,25 +3702,19 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
                     </div>
 
                     <h3>Multiple Files (multifileinput)</h3>
-                    <p>For parameters like <code>inputDocumentMultiple</code>, upload up to N files, send comma-separated URLs, or mix both:</p>
-                    <pre><code># Option 1: Upload multiple files — add empty {id}Url
+                    <p>For parameters like <code>inputDocumentMultiple</code>, send either up to N files or a comma-separated list of URLs. The URL list goes in the field that puts <code>Url</code> before <code>Multiple</code>: <code>inputDocumentUrlMultiple</code>. When using multipart, include both fields and leave one empty:</p>
+                    <pre><code># Option 1: Upload files in {id}, leave inputDocumentUrlMultiple empty
 curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
   -H "x-api-key: YOUR_API_KEY" \
   -F "inputDocumentMultiple=@doc1.pdf" \
   -F "inputDocumentMultiple=@doc2.pdf" \
-  -F "inputDocumentMultipleUrl="
+  -F "inputDocumentUrlMultiple="
 
-# Option 2: Send URLs (comma-separated in {id}Url) — add empty {id}
+# Option 2: Send comma-separated URLs in inputDocumentUrlMultiple, leave {id} empty
 curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
   -H "x-api-key: YOUR_API_KEY" \
   -F "inputDocumentMultiple=" \
-  -F "inputDocumentMultipleUrl=https://example.com/doc1.pdf,https://example.com/doc2.pdf"
-
-# Option 3: Mixed — files in {id}, URLs in {id}Url
-curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -F "inputDocumentMultiple=@doc1.pdf" \
-  -F "inputDocumentMultipleUrl=https://example.com/doc2.pdf,https://example.com/doc3.pdf"</code></pre>
+  -F "inputDocumentUrlMultiple=https://example.com/doc1.pdf,https://example.com/doc2.pdf"</code></pre>
 
                     <h3>Combined (combinefileinput)</h3>
                     <p>For parameters like <code>inputImageClothes</code>, files and URLs go directly in the same <code>{id}</code> field, with no <code>{id}Url</code> suffix:</p>
@@ -7230,7 +7224,7 @@ if (!data.result) {
                       <button class="faq-question">Can I send a URL instead of uploading a file?</button>
                       <div class="faq-answer">
                         <div class="faq-answer-inner">
-                          <p>Yes. For <code>fileinput</code> and <code>multifileinput</code> parameters, use the <code>{id}Url</code> suffix (e.g., <code>inputImageUrl</code>). For <code>combinefileinput</code>, pass URLs directly in the original parameter. You can also pass a URL directly to any file parameter if the <code>{id}Url</code> field doesn't exist. The URL must be a public <code>http(s)</code> address. See <a href="/docs/model-parameters">Model Parameters</a>.</p>
+                          <p>Yes. For <code>fileinput</code> parameters, use the <code>{id}Url</code> suffix (e.g., <code>inputImageUrl</code>). For <code>multifileinput</code>, send comma-separated URLs in the field that puts <code>Url</code> before <code>Multiple</code> (e.g., <code>inputDocumentUrlMultiple</code>). For <code>combinefileinput</code>, pass URLs directly in the original parameter. You can also pass a URL directly to a <code>fileinput</code> parameter if the <code>{id}Url</code> field doesn't exist. The URL must be a public <code>http(s)</code> address. See <a href="/docs/model-parameters">Model Parameters</a>.</p>
                         </div>
                       </div>
                     </div>
