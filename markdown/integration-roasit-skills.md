@@ -71,7 +71,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   }'
 ```
 
-Or fill it in the panel: **[My Agents](https://wiro.ai/panel/agents)** → open agent → **Credentials → Roasit**.
+Or fill it in the panel: **[My Agents](https://wiro.ai/panel/agents)** → open agent → **Connectors → Roasit**.
 
 ### Step 4: Make sure the skill is on
 
@@ -124,7 +124,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 }
 ```
 
-`optional` and `extra` are `true` on the ads-manager agents: Roasit is an optional attribution source, and its credential card shows up even before the skill is on.
+`optional` and `extra` are `true` on the ads-manager agents: Roasit is an optional attribution source, and its connector card shows up even before the skill is on.
 
 ## What the agent reports
 

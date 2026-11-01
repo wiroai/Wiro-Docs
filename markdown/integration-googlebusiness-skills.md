@@ -89,7 +89,7 @@ Copy the **Client ID** and the **Client Secret**.
 
 ## Connect in the Wiro dashboard
 
-1. Open your agent, go to **Credentials**, and find the **Google Business Profile** card.
+1. Open your agent, go to **Connectors**, and find the **Google Business Profile** card.
 2. Paste the **OAuth Client ID** and **OAuth Client Secret** from Step 7.
 3. Click **Connect Google Business Profile** and sign in with the Google account that manages the business. If Google warns that the app is unverified, continue as the app's owner.
 4. Choose the Business Profile accounts the agent may use.

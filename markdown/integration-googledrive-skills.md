@@ -49,7 +49,7 @@ If your agent will also read/write Google Docs or Sheets, enable those APIs as w
 4. Open the service account → **Keys → Add key → Create new key → JSON**. Download.
 5. Note the service account email from the account details page (format: `wiro-drive-agent@YOUR-PROJECT.iam.gserviceaccount.com`).
 
-> **Tip:** In **[My Agents](https://wiro.ai/panel/agents)** → open your agent → **Credentials**, upload the JSON and your service account email will appear with a **Copy** button.
+> **Tip:** In **[My Agents](https://wiro.ai/panel/agents)** → open your agent → **Connectors**, upload the JSON and your service account email will appear with a **Copy** button.
 
 ### Step 3: Share your Drive folders with the service account
 

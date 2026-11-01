@@ -7665,7 +7665,7 @@ Both paths hit the same endpoint, but a few server-side behaviours diverge:
 | `cover` | Cloned from `agent.cover` automatically | Optional: pass `cover` in the body if you want one |
 | `tiermultiplier` | **Snapshotted from `agent.tiermultiplier`** so future template tweaks don't retroactively change pricing on already-deployed instances | Fixed at the platform default (`10`) |
 | Bundled cron skills | Cloned from the template's preset custom skills | Materialized from the standalone cron registry based on the enabled skill set |
-| Onboarding placeholders | None: the template ships its own preset strategies | One invocation-only `cs-my-custom-strategy` and one scheduled `cs-cron-my-scheduled-task` are seeded so the panel always has something to render under "Custom Skills" / "Scheduled Skills" |
+| Onboarding placeholders | None: the template ships its own preset strategies | One invocation-only `cs-my-custom-strategy` and one scheduled `cs-cron-my-scheduled-task` are seeded so the panel always has something to render under "Custom Skills" / "Scheduled Tasks" |
 | Platform-managed credentials | Set up by Wiro | Set up by Wiro |
 | Marketplace run counter | Bumped by 1 | Not touched (custom agents have no template to count against) |
 | `tiers` / `extracreditpacks` in the response | Read from the template definition | Pre-subscribe state: `tiers` reflects the live registry pricing for the toggled skills, `extracreditpacks: []` until the subscription provisions |
@@ -8372,8 +8372,8 @@ Every provider entry under `credentials.<key>` carries:
 | `optional` | `boolean` | `true` when the agent template marks this credential as optional (the agent can run without it; the dependent skill just won't fire). `false` for required credentials. |
 | `extra` | `boolean` | `true` when this credential surfaces in the "alternative" / secondary group on the panel (rare; most credentials are primary). |
 | `_editable` | `object` | Per-field edit map: `{ fieldname: true\|false }`. `false` means the field is read-only (managed by OAuth, platform-managed, or computed). The frontend uses this to disable inputs. |
-| `_schema` | `object` | Inline registry descriptor: `title`, `icon`, `brand_color`, `docs_url`, `credential_mode` (`oauth`, `api_key`, `hybrid`, etc.), `connection_modes`, `default_connection_mode`, `mode_badges`, `oauth_provider`, plus a `fields[]` array describing every input the form should render. Lets the panel build credential cards without a separate `Credentials/Detail` round-trip. |
-| `_required_missing` | `boolean` | `true` when the operator should look at this credential: required + user-editable fields are still empty (or the optional card is partially filled but incomplete). Drives the "needs attention" bullet on each credential card and the aggregate count badge on the Credentials tab. `false` when the card is complete or untouched-and-optional. |
+| `_schema` | `object` | Inline registry descriptor: `title`, `icon`, `brand_color`, `docs_url`, `credential_mode` (`oauth`, `api_key`, `hybrid`, etc.), `connection_modes`, `default_connection_mode`, `mode_badges`, `oauth_provider`, plus a `fields[]` array describing every input the form should render. Lets the panel build connector cards without a separate `Credentials/Detail` round-trip. |
+| `_required_missing` | `boolean` | `true` when the operator should look at this credential: required + user-editable fields are still empty (or the optional card is partially filled but incomplete). Drives the "needs attention" bullet on each connector card and the aggregate count badge on the Connectors tab. `false` when the card is complete or untouched-and-optional. |
 | `connectedat` | `string\|null` | OAuth and hybrid providers: ISO timestamp of the last successful connection. |
 | `tokenexpiresat` | `string\|null` | ISO timestamp when the current token expires, or an empty value when the provider reports no fixed expiry. |
 | `<fieldname>` | `string\|number\|boolean\|array` | The actual field value as the user (or OAuth callback) saved it. Field types match `_schema.fields[].type`. Sensitive values (`oauth_session` access/refresh tokens, `clientsecret`, `password`-typed fields) are NEVER returned in this surface. They stay server-side. |
@@ -8867,7 +8867,7 @@ The `url` is the public URL of the stored file, which the agent uses at runtime.
 
 Writes a single custom skill: either a **strategy** (instructions read by other skills at runtime) or a **scheduled task** (`cs-cron-*`).
 
-The endpoint auto-normalises the skillkey to its canonical form. Bare slugs become `cs-<slug>`; if you also send `interval` (a non-empty cron string), the slug is treated as a cron and becomes `cs-cron-<slug>`. So `"weekly-health-check"` with `interval: "0 9 * * 1"` is stored as `cs-cron-weekly-health-check`. Pass `interval` (or send the prefixed `cs-cron-…` key explicitly) to land in the Scheduled Skills tab. Rows created through this endpoint are stored with `usercreated: true`, so they can later be renamed or deleted; updating an existing row keeps its current `usercreated` value, so a preset row stays preset.
+The endpoint auto-normalises the skillkey to its canonical form. Bare slugs become `cs-<slug>`; if you also send `interval` (a non-empty cron string), the slug is treated as a cron and becomes `cs-cron-<slug>`. So `"weekly-health-check"` with `interval: "0 9 * * 1"` is stored as `cs-cron-weekly-health-check`. Pass `interval` (or send the prefixed `cs-cron-…` key explicitly) to land under Scheduled Tasks. Rows created through this endpoint are stored with `usercreated: true`, so they can later be renamed or deleted; updating an existing row keeps its current `usercreated` value, so a preset row stays preset.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -10228,7 +10228,7 @@ Agent-specific errors you may encounter:
 | `Agent is currently stopping, please wait` | Start called on an agent with status `1` |
 | `Agent is in error state, use Start to retry` | Stop called on an agent with status `5` that has nothing left to stop; an errored agent that still holds its runtime is accepted and moves to `1` (Stopping) |
 | `Duplicate deploy: an identical agent ("<title>") was already deployed Ns ago. Open the existing one in your panel, or wait a few seconds and retry.` | `Deploy` called a second time within 10s for the same caller, template and team (custom builds: same caller, `title` and team). Carries `errors[0].code: 99` and a top-level `existingUserAgentGuid` field. |
-| `Agent setup is not complete. Please fill in your credentials before starting.` | Status is `6`: call `CredentialUpsert` / `SkillsApply` / `CustomSkillUpsert` to provide required values |
+| `Agent setup is not complete. Please finish setting up your connectors before starting.` | Status is `6`: call `CredentialUpsert` / `CredentialProjectBind` / `SkillsApply` / `CustomSkillUpsert` to provide required values |
 | `Subscription required — please subscribe to this agent before starting it.` | `Start` called on a row with no active subscription AND no spendable extras (`extracredits - usedcredits ≤ 0`). Most often hit after a subscription expires with empty extras. Call `RenewSubscription` (`useprepaid: true`) to continue. |
 | `No credits available. Please renew your subscription or purchase extra credits.` | Monthly and extra credits are both exhausted |
 | `Subscription already active for this useragent. Cancel or modify the existing subscription instead.` | `CreateSubscriptionCheckout` called when a sub already exists |
@@ -14273,7 +14273,7 @@ Lists all credentials in the registry.
 | Field | Type | Description |
 |-------|------|-------------|
 | `key` | `string` | Canonical credential key. Use this in `CredentialUpsert.fields[].credentialkey`. |
-| `title` | `string` | Display label shown on credential cards. |
+| `title` | `string` | Display label shown on connector cards. |
 | `icon` | `string` | Path or URL to the brand icon (relative paths absolutized server-side). |
 | `brand_color` / `brand_text_color` / `brand_logo_filter` | `string\|null` | Brand colours and CSS filter for icon rendering, the same shape as on skill registry entries. |
 | `docs_url` | `string\|null` | Slug of the integration page on this docs site. Frontends prefix with `/docs/`. |
@@ -14663,7 +14663,7 @@ Use `POST /UserAgent/CredentialUpsert` with a flat `fields[]` array. Each field 
 
 ### Bulk upsert pattern
 
-`/UserAgent/CredentialUpsert` takes an array of field rows in one request. Only the fields you send are written; other credential groups and other fields inside the same group are untouched. The Wiro Dashboard follows this pattern exactly: each credential card sends a single `CredentialUpsert` call with its group's fields.
+`/UserAgent/CredentialUpsert` takes an array of field rows in one request. Only the fields you send are written; other credential groups and other fields inside the same group are untouched. The Wiro Dashboard follows this pattern exactly: each connector card sends a single `CredentialUpsert` call with its group's fields.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
@@ -15260,7 +15260,7 @@ The Wiro Dashboard uses the same API. To match its behavior in your own integrat
 - **Recommended Meta direct mode**: Facebook Pages, Instagram, and Meta Ads default to a System User token. Save `authmethod: "api_key"` and `systemusertoken` with `CredentialUpsert`, call `OAuthConnect`, then finish the account selection with `SetPickerAccounts`.
 - **Same-tab redirect**: Open `authorizeUrl` in the same tab, not in a popup, to avoid third-party cookie issues.
 - **No manual token refresh**: Wiro maintains supported connections automatically; reconnect with `OAuthConnect` when authorization is required.
-- **LLM Markdown feature**: The Dashboard includes an "LLM Markdown" tab that generates a ready-to-paste prompt for AI assistants summarizing every credential field the agent needs. Useful for API users building their own configuration UIs. See the per-integration help texts for equivalent guidance.
+- **AI Setup Guide**: On a connector that isn't set up yet, the Dashboard shows a **Copy the AI Setup Guide** link under the form. It opens a ready-to-paste prompt for AI assistants that goes through every connector field the agent needs. Useful for API users building their own configuration UIs. See the per-integration help texts for equivalent guidance.
 - **Registry-backed validation**: Wiro validates declared types, patterns, lengths, URLs, enum values, and provider response contracts before persisting or connecting credentials. The provider remains authoritative for permissions and asset access.
 - **Platform-managed credentials are hidden**: groups whose fields are all managed by Wiro are omitted from `POST /UserAgent/Detail` responses. They're set up by Wiro and can't be set by customers.
 
@@ -17649,9 +17649,9 @@ Each agent is an independent instance with its own credentials. Your backend pas
 
 ## Available Agents
 
-Wiro provides pre-built agent templates you can deploy immediately. Each agent specializes in a specific domain and comes with the relevant skills and credential slots pre-configured.
+Wiro provides pre-built agent templates you can deploy immediately. Each agent specializes in a specific domain and comes with the relevant skills and connectors pre-configured.
 
-| Agent | What It Does | Credentials |
+| Agent | What It Does | Connectors |
 |-------|-------------|-------------|
 | **[Social Manager](https://wiro.ai/agents/social-manager)** | Create, schedule, and publish social media content | Twitter/X, TikTok, LinkedIn (OAuth); Instagram and Facebook Pages (System User recommended or own OAuth) |
 | **[Blog Content Editor](https://wiro.ai/agents/blog-content-editor)** | Write and publish blog posts (WordPress draft + publish workflow) | WordPress (App Password), Gmail (optional, for inbox requests) |
@@ -18426,7 +18426,7 @@ This integration covers **advertising only**. It does not post organic videos to
 
 ## Connect in the Wiro dashboard
 
-1. Open your agent, go to **Credentials**, and find the **TikTok Ads** card.
+1. Open your agent, go to **Connectors**, and find the **TikTok Ads** card.
 2. Click **Connect TikTok for Business**.
 3. Sign in to TikTok for Business and approve the consent screen. It names the app **Wiro AI** and asks for the `mcp:tt4b` permission scope.
 4. Back in Wiro, pick the advertisers the agent may manage. You can select several; when your account has exactly one advertiser, it is selected for you.
@@ -20418,7 +20418,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   }'
 ```
 
-Or fill it in the panel: **[My Agents](https://wiro.ai/panel/agents)** → open agent → **Credentials → Roasit**.
+Or fill it in the panel: **[My Agents](https://wiro.ai/panel/agents)** → open agent → **Connectors → Roasit**.
 
 ### Step 4: Make sure the skill is on
 
@@ -20471,7 +20471,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 }
 ```
 
-`optional` and `extra` are `true` on the ads-manager agents: Roasit is an optional attribution source, and its credential card shows up even before the skill is on.
+`optional` and `extra` are `true` on the ads-manager agents: Roasit is an optional attribution source, and its connector card shows up even before the skill is on.
 
 ## What the agent reports
 
@@ -20607,7 +20607,7 @@ Copy the **Client ID** and the **Client Secret**.
 
 ## Connect in the Wiro dashboard
 
-1. Open your agent, go to **Credentials**, and find the **Google Business Profile** card.
+1. Open your agent, go to **Connectors**, and find the **Google Business Profile** card.
 2. Paste the **OAuth Client ID** and **OAuth Client Secret** from Step 7.
 3. Click **Connect Google Business Profile** and sign in with the Google account that manages the business. If Google warns that the app is unverified, continue as the app's owner.
 4. Choose the Business Profile accounts the agent may use.

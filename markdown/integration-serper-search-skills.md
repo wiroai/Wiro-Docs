@@ -53,7 +53,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   }'
 ```
 
-Or fill it in the panel: **[My Agents](https://wiro.ai/panel/agents)** → open agent → **Credentials → Serper Web Search**.
+Or fill it in the panel: **[My Agents](https://wiro.ai/panel/agents)** → open agent → **Connectors → Serper Web Search**.
 
 ### Step 3: Enable the skill
 
@@ -98,7 +98,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 }
 ```
 
-`optional` and `extra` are `true` because Serper Web Search is an optional add-on: its credential card surfaces on the content presets even before the skill is toggled on.
+`optional` and `extra` are `true` because Serper Web Search is an optional add-on: its connector card surfaces on the content presets even before the skill is toggled on.
 
 ## Query options
 

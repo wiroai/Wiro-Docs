@@ -240,7 +240,7 @@ Lists all credentials in the registry.
 | Field | Type | Description |
 |-------|------|-------------|
 | `key` | `string` | Canonical credential key. Use this in `CredentialUpsert.fields[].credentialkey`. |
-| `title` | `string` | Display label shown on credential cards. |
+| `title` | `string` | Display label shown on connector cards. |
 | `icon` | `string` | Path or URL to the brand icon (relative paths absolutized server-side). |
 | `brand_color` / `brand_text_color` / `brand_logo_filter` | `string\|null` | Brand colours and CSS filter for icon rendering, the same shape as on skill registry entries. |
 | `docs_url` | `string\|null` | Slug of the integration page on this docs site. Frontends prefix with `/docs/`. |
@@ -630,7 +630,7 @@ Use `POST /UserAgent/CredentialUpsert` with a flat `fields[]` array. Each field 
 
 ### Bulk upsert pattern
 
-`/UserAgent/CredentialUpsert` takes an array of field rows in one request. Only the fields you send are written; other credential groups and other fields inside the same group are untouched. The Wiro Dashboard follows this pattern exactly: each credential card sends a single `CredentialUpsert` call with its group's fields.
+`/UserAgent/CredentialUpsert` takes an array of field rows in one request. Only the fields you send are written; other credential groups and other fields inside the same group are untouched. The Wiro Dashboard follows this pattern exactly: each connector card sends a single `CredentialUpsert` call with its group's fields.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
@@ -1227,7 +1227,7 @@ The Wiro Dashboard uses the same API. To match its behavior in your own integrat
 - **Recommended Meta direct mode**: Facebook Pages, Instagram, and Meta Ads default to a System User token. Save `authmethod: "api_key"` and `systemusertoken` with `CredentialUpsert`, call `OAuthConnect`, then finish the account selection with `SetPickerAccounts`.
 - **Same-tab redirect**: Open `authorizeUrl` in the same tab, not in a popup, to avoid third-party cookie issues.
 - **No manual token refresh**: Wiro maintains supported connections automatically; reconnect with `OAuthConnect` when authorization is required.
-- **LLM Markdown feature**: The Dashboard includes an "LLM Markdown" tab that generates a ready-to-paste prompt for AI assistants summarizing every credential field the agent needs. Useful for API users building their own configuration UIs. See the per-integration help texts for equivalent guidance.
+- **AI Setup Guide**: On a connector that isn't set up yet, the Dashboard shows a **Copy the AI Setup Guide** link under the form. It opens a ready-to-paste prompt for AI assistants that goes through every connector field the agent needs. Useful for API users building their own configuration UIs. See the per-integration help texts for equivalent guidance.
 - **Registry-backed validation**: Wiro validates declared types, patterns, lengths, URLs, enum values, and provider response contracts before persisting or connecting credentials. The provider remains authoritative for permissions and asset access.
 - **Platform-managed credentials are hidden**: groups whose fields are all managed by Wiro are omitted from `POST /UserAgent/Detail` responses. They're set up by Wiro and can't be set by customers.
 

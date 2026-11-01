@@ -35,7 +35,7 @@ This integration covers **advertising only**. It does not post organic videos to
 
 ## Connect in the Wiro dashboard
 
-1. Open your agent, go to **Credentials**, and find the **TikTok Ads** card.
+1. Open your agent, go to **Connectors**, and find the **TikTok Ads** card.
 2. Click **Connect TikTok for Business**.
 3. Sign in to TikTok for Business and approve the consent screen. It names the app **Wiro AI** and asks for the `mcp:tt4b` permission scope.
 4. Back in Wiro, pick the advertisers the agent may manage. You can select several; when your account has exactly one advertiser, it is selected for you.

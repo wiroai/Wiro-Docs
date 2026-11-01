@@ -45,7 +45,7 @@ This is the **same auth pattern as [Google Drive](/docs/integration-googledrive-
 4. Open the service account → **Keys → Add key → Create new key → JSON**. Download the JSON file.
 5. Note the service account email (format: `wiro-calendar-agent@YOUR-PROJECT.iam.gserviceaccount.com`).
 
-> **Tip:** In **[My Agents](https://wiro.ai/panel/agents)** → open your agent → **Credentials**, you can upload the JSON via the file picker; the service account email is detected and surfaced with a **Copy** button.
+> **Tip:** In **[My Agents](https://wiro.ai/panel/agents)** → open your agent → **Connectors**, you can upload the JSON via the file picker; the service account email is detected and surfaced with a **Copy** button.
 
 ### Step 3: Share the calendar with the service account
 
@@ -76,7 +76,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   }'
 ```
 
-Or upload directly through the panel: **[My Agents](https://wiro.ai/panel/agents)** → open agent → **Credentials → Google Calendar**.
+Or upload directly through the panel: **[My Agents](https://wiro.ai/panel/agents)** → open agent → **Connectors → Google Calendar**.
 
 ### Step 5: Start the agent
 

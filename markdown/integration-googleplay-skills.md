@@ -46,7 +46,7 @@ The Google Play integration uses a Google Cloud service account with API access 
 5. Open the service account → **Keys → Add key → Create new key → JSON**. Download.
 6. Note the service account email from the account details page (format: `wiro-play-agent@YOUR-PROJECT.iam.gserviceaccount.com`).
 
-> **Tip:** In **[My Agents](https://wiro.ai/panel/agents)** → open your agent → **Credentials**, upload the JSON and your service account email will appear with a **Copy** button.
+> **Tip:** In **[My Agents](https://wiro.ai/panel/agents)** → open your agent → **Connectors**, upload the JSON and your service account email will appear with a **Copy** button.
 
 ### Step 3: Link the service account to Play Console
 
