@@ -27049,7 +27049,7 @@ foreach (array_slice($resp['transactions'], 0, 10) as $tx) {
     "avatarinitials": "AL"
   }
 }</code></pre>
-                    <p><code>title</code> is the line to show. <code>summary</code> holds the names and amounts behind it, never a saved value. <code>userUuid</code> and <code>user</code> name who did it. When an API key made the change, the title ends with <code>(API key "&lt;project name&gt;")</code> or <code>(via API key)</code>.</p>
+                    <p><code>title</code> is the line to show. <code>summary</code> holds the names and amounts behind it, never a connector value. <code>userUuid</code> and <code>user</code> name who did it. When an API key made the change, the title ends with <code>(API key "&lt;project name&gt;")</code> or <code>(via API key)</code>.</p>
                     <div class="docs-param-table">
                       <div class="docs-param-table-wrapper">
                         <table>
@@ -27060,9 +27060,9 @@ foreach (array_slice($resp['transactions'], 0, 10) as $tx) {
                             <tr><td><code>AGENT_STARTED</code>, <code>AGENT_STOPPED</code>, <code>AGENT_RESTARTED</code></td><td><code>Agent started</code>, <code>Agent stopped</code>, <code>Agent restarted</code></td></tr>
                             <tr><td><code>AGENT_RENAMED</code></td><td><code>Agent renamed from "Inbox Bot" to "Inbox Watcher"</code></td></tr>
                             <tr><td><code>AGENT_UPDATED</code></td><td><code>Agent details updated: description, cover</code></td></tr>
-                            <tr><td><code>AGENT_SETTINGS_UPDATED</code></td><td><code>Agent settings updated: timezone</code></td></tr>
+                            <tr><td><code>AGENT_SETTINGS_UPDATED</code></td><td><code>Agent settings updated: timezone Europe/Istanbul</code></td></tr>
                             <tr><td><code>AGENT_TRANSFERRED</code></td><td><code>Agent moved to a team workspace</code>, <code>Agent moved to the personal workspace</code></td></tr>
-                            <tr><td><code>AGENT_INSTRUCTION_ADDED</code>, <code>AGENT_INSTRUCTION_UPDATED</code>, <code>AGENT_INSTRUCTION_RENAMED</code>, <code>AGENT_INSTRUCTION_DELETED</code>, <code>AGENT_INSTRUCTION_REVERTED</code></td><td><code>Custom skill added: cs-brand-voice</code>, <code>Scheduled task updated: cs-cron-blog-scanner (value, interval)</code>, <code>Custom skill renamed: cs-brand-voice to cs-house-style</code>, <code>Scheduled task deleted: cs-cron-blog-scanner</code>, <code>Custom skill reverted to its preset: cs-brand-voice</code></td></tr>
+                            <tr><td><code>AGENT_INSTRUCTION_ADDED</code>, <code>AGENT_INSTRUCTION_UPDATED</code>, <code>AGENT_INSTRUCTION_RENAMED</code>, <code>AGENT_INSTRUCTION_DELETED</code>, <code>AGENT_INSTRUCTION_REVERTED</code></td><td><code>Custom skill added: cs-brand-voice</code>, <code>Scheduled task updated: cs-cron-blog-scanner (text, schedule 0 9 * * 1)</code>, <code>Custom skill renamed: cs-brand-voice to cs-house-style</code>, <code>Scheduled task deleted: cs-cron-blog-scanner</code>, <code>Custom skill reverted to its preset: cs-brand-voice</code></td></tr>
                             <tr><td><code>AGENT_SKILLS_UPDATED</code></td><td><code>Connectors updated: int-gmail-check on</code>, <code>Skills updated: util-web-channel off</code>, <code>Connectors and skills updated: int-gmail-check on, util-web-channel off; $1.20 charged</code></td></tr>
                             <tr><td><code>AGENT_CREDENTIAL_SAVED</code></td><td><code>Connector setting saved: wiro.apikey</code></td></tr>
                             <tr><td><code>AGENT_OAUTH_CONNECT_STARTED</code>, <code>AGENT_OAUTH_CONNECTED</code>, <code>AGENT_OAUTH_DISCONNECTED</code></td><td><code>Connection started: instagram (own)</code>, <code>Connected: instagram</code>, <code>Disconnected: instagram</code></td></tr>

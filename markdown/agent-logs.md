@@ -124,16 +124,16 @@ A `token_usage` event records the token spend and credit deduction for one bille
 }
 ```
 
-`title` is the line to show. `summary` holds the names and amounts behind it, never a saved value. `userUuid` and `user` name who did it. When an API key made the change, the title ends with `(API key "<project name>")` or `(via API key)`.
+`title` is the line to show. `summary` holds the names and amounts behind it, never a connector value. `userUuid` and `user` name who did it. When an API key made the change, the title ends with `(API key "<project name>")` or `(via API key)`.
 
 | `kind` | Example `title` |
 |--------|-----------------|
 | `AGENT_STARTED`, `AGENT_STOPPED`, `AGENT_RESTARTED` | `Agent started`, `Agent stopped`, `Agent restarted` |
 | `AGENT_RENAMED` | `Agent renamed from "Inbox Bot" to "Inbox Watcher"` |
 | `AGENT_UPDATED` | `Agent details updated: description, cover` |
-| `AGENT_SETTINGS_UPDATED` | `Agent settings updated: timezone` |
+| `AGENT_SETTINGS_UPDATED` | `Agent settings updated: timezone Europe/Istanbul` |
 | `AGENT_TRANSFERRED` | `Agent moved to a team workspace`, `Agent moved to the personal workspace` |
-| `AGENT_INSTRUCTION_ADDED`, `AGENT_INSTRUCTION_UPDATED`, `AGENT_INSTRUCTION_RENAMED`, `AGENT_INSTRUCTION_DELETED`, `AGENT_INSTRUCTION_REVERTED` | `Custom skill added: cs-brand-voice`, `Scheduled task updated: cs-cron-blog-scanner (value, interval)`, `Custom skill renamed: cs-brand-voice to cs-house-style`, `Scheduled task deleted: cs-cron-blog-scanner`, `Custom skill reverted to its preset: cs-brand-voice` |
+| `AGENT_INSTRUCTION_ADDED`, `AGENT_INSTRUCTION_UPDATED`, `AGENT_INSTRUCTION_RENAMED`, `AGENT_INSTRUCTION_DELETED`, `AGENT_INSTRUCTION_REVERTED` | `Custom skill added: cs-brand-voice`, `Scheduled task updated: cs-cron-blog-scanner (text, schedule 0 9 * * 1)`, `Custom skill renamed: cs-brand-voice to cs-house-style`, `Scheduled task deleted: cs-cron-blog-scanner`, `Custom skill reverted to its preset: cs-brand-voice` |
 | `AGENT_SKILLS_UPDATED` | `Connectors updated: int-gmail-check on`, `Skills updated: util-web-channel off`, `Connectors and skills updated: int-gmail-check on, util-web-channel off; $1.20 charged` |
 | `AGENT_CREDENTIAL_SAVED` | `Connector setting saved: wiro.apikey` |
 | `AGENT_OAUTH_CONNECT_STARTED`, `AGENT_OAUTH_CONNECTED`, `AGENT_OAUTH_DISCONNECTED` | `Connection started: instagram (own)`, `Connected: instagram`, `Disconnected: instagram` |
