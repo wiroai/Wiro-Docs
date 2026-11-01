@@ -11088,8 +11088,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
       "enabledChannels": ["telegram"],
       "teamsessionmode": "private",
       "credentials": {
-        "gmail":    { "_connected": false, "optional": false, "extra": false, "account": "agent@company.com", "apppassword": "[present]" },
-        "telegram": { "_connected": false, "optional": false, "extra": false, "bottoken": "[present]", "allowedusers": ["123456789"] }
+        "gmail":    { "_connected": false, "optional": false, "extra": false, "account": "agent@company.com", "apppassword": "xxxx xxxx xxxx xxxx" },
+        "telegram": { "_connected": false, "optional": false, "extra": false, "bottoken": "123456:ABC-DEF...", "allowedusers": ["123456789"] }
       },
       "agent": {
         "custom": true,
