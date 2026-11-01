@@ -7334,7 +7334,7 @@ When you mutate an agent's configuration while it is **starting** (status `3`) o
 
 This means you can update credentials, toggle skills, or change a custom skill on a running agent without manually stopping and starting it.
 
-Endpoints that auto-trigger a restart on success: `CredentialUpsert`, `CredentialProjectBind` (when the project changes), `SkillsApply`, `CustomSkillUpsert` (when functional fields change), `CustomSkillRename`, `CustomSkillDelete`, `CustomSkillRevert`, `Update` (scalar edits).
+Endpoints that auto-trigger a restart on success: `CredentialUpsert`, `CredentialProjectBind` (when the project changes), `SkillsApply`, `CustomSkillUpsert` (when functional fields change), `CustomSkillRename`, `CustomSkillDelete`, `CustomSkillRevert`, `Update` (a changed `title`, or a body that names no field). A description, categories or cover edit through `Update` doesn't restart the agent.
 
 ## Endpoints
 
@@ -8375,7 +8375,7 @@ Every provider entry under `credentials.<key>` carries:
 
 #### **POST** /UserAgent/Update
 
-Updates an agent instance's **scalar fields only** (title, description, categories, cover URL). If the agent is currently **starting (status `3`)** or **running (status `4`)**, this triggers an automatic restart to apply the new settings (the agent is moved to Stopping, and re-queued after it fully stops).
+Updates an agent instance's **scalar fields only** (title, description, categories, cover URL). A **starting (status `3`)** or **running (status `4`)** agent restarts in two cases: the call changes its `title`, or the body names none of those four fields, which is how you ask for a restart (`{ "guid": "<useragent-guid>" }`). The agent is moved to Stopping and re-queued after it fully stops. A description, categories or cover edit, or a `title` equal to the saved one, doesn't restart it. `restarting` in the response says which happened.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -8407,10 +8407,13 @@ Updates an agent instance's **scalar fields only** (title, description, categori
 
 ##### Response
 
+A changed `title` on a running agent:
+
 ```json
 {
   "result": true,
   "errors": [],
+  "restarting": true,
   "useragents": [
     {
       "guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
@@ -8452,9 +8455,9 @@ Updates an agent instance's **scalar fields only** (title, description, categori
       },
       "createdat": 1714608000,
       "updatedat": 1714694500,
-      "queuedat": 1714694498,
-      "startedat": null,
-      "runningat": null,
+      "queuedat": 1714694395,
+      "startedat": 1714694400,
+      "runningat": 1714694410,
       "stoppingat": 1714694500,
       "stopdat": null,
       "errordat": null
@@ -8465,7 +8468,7 @@ Updates an agent instance's **scalar fields only** (title, description, categori
 
 > **`Update` returns the full composed useragent shape**: same composition path as `UserAgent/Detail`, so `credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `tokenRates`, `agentModel`, and the `agent` template summary (with `tiers` + `extracreditpacks`) are all included. The fields `Update` cannot safely populate without an extra round-trip (`subscription`, `remainingcredits`, `extracreditsexpiry`) stay omitted. Call `UserAgent/Detail` next if you need them. Otherwise the response is suitable for an in-place panel re-render without a follow-up call.
 
-> **Restart on running agents.** When the call lands on a status `3`/`4` agent, the response shows the lifecycle transition mid-flight: `status: 1` (Stopping) with a fresh `stoppingat` timestamp, `runningat` cleared, and `queuedat` set to the same instant. Wiro auto-queues the agent so it picks the new settings up after the next stop cycle.
+> **`restarting`.** `true` when this call restarts the agent, `false` otherwise. With `true`, the row shows the transition mid-flight: `status: 1` (Stopping) with a fresh `stoppingat` timestamp. Wiro re-queues the agent once it has stopped, so it comes back with the new title. A restart request that can't be carried out answers `Failed to restart user agent`; try again.
 
 #### **POST** /UserAgent/UpdateSettings
 
@@ -10201,7 +10204,7 @@ Agent-specific errors you may encounter:
 | `Wallet deduction failed: {error}` | `UpgradeTier`: wallet write itself failed (rare; transient backend error) |
 | `Project not found. Send the id of one of your projects from Project/List: one you created, or any project of a team you are an admin of.` | `CredentialProjectBind` with a project that doesn't exist or that the caller can't bind. See its [other errors](#post-useragentcredentialprojectbind) |
 | `Agent not found or access denied` | Message endpoint with invalid useragentguid |
-| `User agent not found` (code `95`) | `Message/History`, `Message/Sessions`, `Message/DeleteSession`, `Message/RenameSession` or `Message/Delete` called for an agent that has been deleted |
+| `User agent not found` (code `95`) | `Message/Send`, `Message/History`, `Message/Sessions`, `Message/DeleteSession`, `Message/RenameSession` or `Message/Delete` called for an agent that has been deleted |
 | `Agent is not running. Current status: {n}` | `Message/Send` when not running. Response includes `agentstatus` (the integer) so your client can branch on it. |
 | `Agent has no remaining credits. Renew your subscription or buy a credit pack to continue.` | `Message/Send` while `remainingcredits <= 0`. Response includes `agentbalance`, so your client can offer to buy credits. |
 | `Message not found` | `Detail` / `Cancel` with invalid messageguid |

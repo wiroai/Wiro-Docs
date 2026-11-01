@@ -12583,7 +12583,7 @@ pro.credits = starter.credits × tiermultiplier
 <h3 id="automatic-restart">Automatic Restart</h3>
 <p>When you mutate an agent's configuration while it is <strong>starting</strong> (status <code>3</code>) or <strong>running</strong> (status <code>4</code>), the system automatically triggers a restart cycle: the agent is moved to <strong>Stopping</strong> (status <code>1</code>) and flagged to restart. Once the agent fully stops, the system automatically re-queues it, applying the new configuration on startup.</p>
 <p>This means you can update credentials, toggle skills, or change a custom skill on a running agent without manually stopping and starting it.</p>
-<p>Endpoints that auto-trigger a restart on success: <code>CredentialUpsert</code>, <code>CredentialProjectBind</code> (when the project changes), <code>SkillsApply</code>, <code>CustomSkillUpsert</code> (when functional fields change), <code>CustomSkillRename</code>, <code>CustomSkillDelete</code>, <code>CustomSkillRevert</code>, <code>Update</code> (scalar edits).</p>
+<p>Endpoints that auto-trigger a restart on success: <code>CredentialUpsert</code>, <code>CredentialProjectBind</code> (when the project changes), <code>SkillsApply</code>, <code>CustomSkillUpsert</code> (when functional fields change), <code>CustomSkillRename</code>, <code>CustomSkillDelete</code>, <code>CustomSkillRevert</code>, <code>Update</code> (a changed <code>title</code>, or a body that names no field). A description, categories or cover edit through <code>Update</code> doesn't restart the agent.</p>
 <h2 id="endpoints">Endpoints</h2>
 <h3 id="browse-the-catalog">Browse the Catalog</h3>
 <h4 id="post-agentlist"><strong>POST</strong> /Agent/List</h4>
@@ -14194,7 +14194,7 @@ pro.credits = starter.credits × tiermultiplier
 </div>
 </div>
 <h4 id="post-useragentupdate"><strong>POST</strong> /UserAgent/Update</h4>
-<p>Updates an agent instance's <strong>scalar fields only</strong> (title, description, categories, cover URL). If the agent is currently <strong>starting (status <code>3</code>)</strong> or <strong>running (status <code>4</code>)</strong>, this triggers an automatic restart to apply the new settings (the agent is moved to Stopping, and re-queued after it fully stops).</p>
+<p>Updates an agent instance's <strong>scalar fields only</strong> (title, description, categories, cover URL). A <strong>starting (status <code>3</code>)</strong> or <strong>running (status <code>4</code>)</strong> agent restarts in two cases: the call changes its <code>title</code>, or the body names none of those four fields, which is how you ask for a restart (<code>{ "guid": "&lt;useragent-guid&gt;" }</code>). The agent is moved to Stopping and re-queued after it fully stops. A description, categories or cover edit, or a <code>title</code> equal to the saved one, doesn't restart it. <code>restarting</code> in the response says which happened.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -14312,9 +14312,11 @@ pro.credits = starter.credits × tiermultiplier
 <p><strong>Note:</strong> <code>CredentialUpsert</code> writes credential fields <strong>but does not transition <code>status: 6</code> on its own</strong>. After filling the missing credentials, call <code>POST /UserAgent/Update</code> once (any scalar body works, even just <code>{ "guid": "&lt;useragent-guid&gt;" }</code>) to trigger the <code>setuprequired</code> re-check; that's the call that flips <code>status: 6 → 0</code> (Stopped) so the next <code>Start</code> succeeds.</p>
 </blockquote>
 <h5 id="response_4">Response</h5>
+<p>A changed <code>title</code> on a running agent:</p>
 <pre><code class="language-json">{
   &quot;result&quot;: true,
   &quot;errors&quot;: [],
+  &quot;restarting&quot;: true,
   &quot;useragents&quot;: [
     {
       &quot;guid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;,
@@ -14356,9 +14358,9 @@ pro.credits = starter.credits × tiermultiplier
       },
       &quot;createdat&quot;: 1714608000,
       &quot;updatedat&quot;: 1714694500,
-      &quot;queuedat&quot;: 1714694498,
-      &quot;startedat&quot;: null,
-      &quot;runningat&quot;: null,
+      &quot;queuedat&quot;: 1714694395,
+      &quot;startedat&quot;: 1714694400,
+      &quot;runningat&quot;: 1714694410,
       &quot;stoppingat&quot;: 1714694500,
       &quot;stopdat&quot;: null,
       &quot;errordat&quot;: null
@@ -14368,7 +14370,7 @@ pro.credits = starter.credits × tiermultiplier
 </code></pre>
 <blockquote>
 <p><strong><code>Update</code> returns the full composed useragent shape</strong>: same composition path as <code>UserAgent/Detail</code>, so <code>credentials</code>, <code>customskills</code>, <code>scheduledskills</code>, <code>skills</code>, <code>skillsmeta</code>, <code>tokenRates</code>, <code>agentModel</code>, and the <code>agent</code> template summary (with <code>tiers</code> + <code>extracreditpacks</code>) are all included. The fields <code>Update</code> cannot safely populate without an extra round-trip (<code>subscription</code>, <code>remainingcredits</code>, <code>extracreditsexpiry</code>) stay omitted. Call <code>UserAgent/Detail</code> next if you need them. Otherwise the response is suitable for an in-place panel re-render without a follow-up call.</p>
-<p><strong>Restart on running agents.</strong> When the call lands on a status <code>3</code>/<code>4</code> agent, the response shows the lifecycle transition mid-flight: <code>status: 1</code> (Stopping) with a fresh <code>stoppingat</code> timestamp, <code>runningat</code> cleared, and <code>queuedat</code> set to the same instant. Wiro auto-queues the agent so it picks the new settings up after the next stop cycle.</p>
+<p><strong><code>restarting</code>.</strong> <code>true</code> when this call restarts the agent, <code>false</code> otherwise. With <code>true</code>, the row shows the transition mid-flight: <code>status: 1</code> (Stopping) with a fresh <code>stoppingat</code> timestamp. Wiro re-queues the agent once it has stopped, so it comes back with the new title. A restart request that can't be carried out answers <code>Failed to restart user agent</code>; try again.</p>
 </blockquote>
 <h4 id="post-useragentupdatesettings"><strong>POST</strong> /UserAgent/UpdateSettings</h4>
 <p>Writes per-agent preference toggles that are not credentials and not skill rows. Exposes <code>timezone</code> (operator-selected IANA zone the agent uses for scheduled tasks and voice calls), <code>teamsessionmode</code> (the one Chat Mode for team web-chat history and external-channel DMs), the four <strong>model overrides</strong> (<code>chatmodel</code>, <code>cronmodel</code>, <code>voiceprepmodel</code>, <code>voicepostcallmodel</code>) that choose which LLM the agent uses for chat replies, scheduled (cron) turns, voice-call prep, and the post-call summary turn, <code>enabledcommands</code> (the in-chat slash-command allowlist), and <code>wiroapiallowedpaths</code> (the Wiro API endpoints the agent may call with its own Wiro project key). Submit any subset in the same call: partial updates are supported and untouched fields keep their current value.</p>
@@ -17531,7 +17533,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </tr>
 <tr>
 <td><code>User agent not found</code> (code <code>95</code>)</td>
-<td><code>Message/History</code>, <code>Message/Sessions</code>, <code>Message/DeleteSession</code>, <code>Message/RenameSession</code> or <code>Message/Delete</code> called for an agent that has been deleted</td>
+<td><code>Message/Send</code>, <code>Message/History</code>, <code>Message/Sessions</code>, <code>Message/DeleteSession</code>, <code>Message/RenameSession</code> or <code>Message/Delete</code> called for an agent that has been deleted</td>
 </tr>
 <tr>
 <td><code>Agent is not running. Current status: {n}</code></td>
