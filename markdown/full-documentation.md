@@ -6077,7 +6077,7 @@ Each key in `schema.input` is that input's name at run time. Give each field `la
 - **Number:** `"type": "number"` (whole) or `"float"` (decimal). **Yes or no:** `"type": "boolean"`. Both with `"ui": {}`.
 - **File:** `"type": "string"` with `"ui": { "field": "image" }`, or `"audio"`, `"video"` or `"pdf"`. The value is a public URL.
 
-A Start field that a step uses and that has no default must get a value when the workflow runs.
+A Start field that a step uses and that has no saved value and no default must get a value when the workflow runs. [Workflow/Detail](#post-workflowdetail) names these fields in `requiredinputs`.
 
 ### References
 
@@ -6280,6 +6280,7 @@ Returns one workflow with its graph.
 
 The response is `{ "result": true, "errors": [], "workflow": [ { ... } ] }`: the fields of List plus `contents`, the graph as an object (see [The Workflow Graph](#the-workflow-graph)). Its `schema.input` lists the inputs a run takes, and `metadata.input.values` the saved values.
 
+- `requiredinputs` lists the Start fields a run must be given: the ones a step uses that have no saved value and no default. An empty array means every Start field already has a value. Read this list to decide what to ask for; a field's `required` flag in `schema.input` doesn't decide it. On a protected workflow from another workspace, a run doesn't use the creator's saved values, so only a default takes a field off the list.
 - A workflow from your workspace, or one published in the gallery, can be read. A private workflow of another workspace answers `This workflow does not belong to your current workspace.` or `You don't have any permission for this action.`, and a clone can only be read by its owner's workspace.
 - A protected workflow read from outside its owner's workspace comes back with its steps removed: `contents` keeps only the Start fields and the End node, and `estimatedcost` gives an estimate of one run, `{ "type": "estimated", "value": 0.42 }` (`"unavailable"` with `value: null` when it cannot be estimated).
 - `rejectreason` is present only for the workflow's own workspace: on a rejected workflow it says why.
@@ -6429,7 +6430,7 @@ The response has `workflowrun` and `workflowrunnodes`. Runs are private: the per
 | `status` | `pending`, `running`, `completed`, `failed`, `cancelled` or `aborted`. |
 | `cause`, `error` | Why the step did not complete. |
 | `tasktoken` | For a model step that started a task. Pass it to [RunNodeDetail](#post-workflowrunnodedetail). |
-| `outputs` | A model step's results: files with `url`, `name`, `contenttype` and `size`, or an LLM's reply as `{ "contenttype": "raw", "content": { "answer": [...] } }`. A utility step's ports, such as `{ "result": [...] }`. |
+| `outputs` | A model step's results: files with `url`, `name`, `contenttype` and `size`, or an LLM's reply as `{ "contenttype": "raw", "content": { "answer": [...] } }`. A utility step's ports, such as `{ "result": [...] }`. A file entry carries no `path` or `mntpath`: use its `url`. |
 | `elapsedseconds` | How long the step ran. |
 
 To find a run's results, read the End node's `fields` in `contents` and take the `outputs` of the steps they reference.
