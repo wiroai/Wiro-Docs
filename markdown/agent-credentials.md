@@ -512,7 +512,7 @@ The response names the project and says what happened to the agent: `{ "result":
 
 > **Don't confuse `credentials.wiro.apikey` with your operator-level Wiro API key.** `credentials.wiro.apikey` is the project key the agent uses to run Wiro models. The `x-api-key` header you send to Wiro endpoints from your own backend is your operator key, which authenticates your request (see [Authentication](/docs/authentication)). They are the same key only when you bind the project of the key you call with.
 
-Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, TikTok Ads, Google Ads) ship with `int-wiro-aimodels: true` enabled, but the agent stays in `status: 6` (Setup Required) until the operator connects a Wiro project.
+Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, TikTok Ads, Google Ads) ship with `int-wiro-aimodels: true` enabled. The agent starts without a Wiro project and runs Wiro models once one is connected. Where the template marks this connector required (`optional: false`), `UserAgent/Detail` reads `setuprequired: true` until then.
 
 ### Calendarific in your agent
 
@@ -534,7 +534,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   }'
 ```
 
-Templates that scan global holidays (App Event Manager, Push Notification Manager, Meta Ads, TikTok Ads, Google Ads) ship with `int-calendarific: true`. As with Wiro AI Models, the agent stays in `status: 6` until a key is provided.
+Templates that scan global holidays (App Event Manager, Push Notification Manager, Meta Ads, TikTok Ads, Google Ads) ship with `int-calendarific: true` and mark this connector optional (`optional: true`), so `setuprequired` doesn't wait for it. The agent starts without a key, and its holiday lookups need one.
 
 ## Platform-Managed Credentials
 
@@ -1235,11 +1235,11 @@ The Wiro Dashboard uses the same API. To match its behavior in your own integrat
 
 ## Setup Required State
 
-If an agent has required credentials not yet filled in, it's in **Setup Required** state (`status: 6`). It can't be started until credentials are complete.
+Every fresh Deploy starts in **Setup Required** state (`status: 6`). While an agent is at `status: 6`, `Start` refuses it with `Agent setup is not complete. Please finish setting up your connectors before starting.`
 
-**Every fresh deploy lands at `status: 6` first.** API deploys must always pass `useprepaid: true`. The server provisions the prepaid subscription inline and auto-queues the row to `status: 2` (Queued). No manual `Start` call is needed unless you also need to fill credentials first; if so, Start will reject with the Setup-Required guard until the required credentials are in place.
+API deploys must always pass `useprepaid: true`. The server provisions the prepaid subscription inline and moves the agent to `status: 2` (Queued) whatever its connectors hold, and Wiro then starts it, so no `Start` call is needed. A connector the agent requires may still be incomplete while it runs: `UserAgent/Detail` reads `setuprequired: true` until every required connector is set up, and a running agent restarts to pick up each connector you save.
 
-Saving a connector doesn't move the agent out of `status: 6`, whether with `CredentialUpsert`, `CredentialProjectBind` or an OAuth connection. After the last one, call `POST /UserAgent/Update` once with `{ "guid": "<useragent-guid>" }`: that call moves the agent to `status: 0` (Stopped) once every required connector is set up, so `Start` can launch it.
+Saving a connector doesn't move the agent out of `status: 6`, whether with `CredentialUpsert`, `CredentialProjectBind` or an OAuth connection. After the last one, call `POST /UserAgent/Update` once with `{ "guid": "<useragent-guid>" }`: that call moves the agent to `status: 0` (Stopped) once every required connector is set up, so `Start` can launch it. `Start` doesn't read `setuprequired` on a stopped (`status: 0`) or errored (`status: 5`) agent.
 
 `setuprequired` in `UserAgent/Detail` is `true` while the agent is at `status: 6` or any non-optional credential is still incomplete; on `UserAgent/MyAgents` rows it follows `status: 6` alone. The server treats a credential as complete when either:
 

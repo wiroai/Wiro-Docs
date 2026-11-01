@@ -54,7 +54,7 @@ This integration covers **advertising only**. It does not post organic videos to
 
 - The agent works only on the advertisers you selected when you connected. Any request for another advertiser is refused.
 - To change the selection, click **Disconnect** on the TikTok Ads card, then connect again and pick the advertisers you want.
-- Until at least one advertiser is selected, an agent that requires TikTok Ads (such as TikTok Ads Manager) stays in Setup Required and cannot start.
+- Until at least one advertiser is selected, the TikTok Ads card reads `_connected: false`, and an agent that requires TikTok Ads (such as TikTok Ads Manager) reads `setuprequired: true` on `UserAgent/Detail`.
 
 ## What the agent can do
 
@@ -262,7 +262,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
   -d '{ "guid": "your-useragent-guid" }'
 ```
 
-Check `POST /UserAgent/Detail` first: if `setuprequired` is still `true`, TikTok Ads or some other credential the agent requires is incomplete, and Start will refuse. See [Agent Credentials: Setup Required](/docs/agent-credentials#setup-required-state).
+`Start` doesn't wait for every connector. `setuprequired: true` on `POST /UserAgent/Detail` means TikTok Ads or another connector the agent requires is still incomplete, and the agent starts all the same. Only an agent still at `status: 6` is refused: call `POST /UserAgent/Update` on it first. See [Agent Credentials: Setup Required](/docs/agent-credentials#setup-required-state).
 
 Agents already running when you connected TikTok Ads restart automatically.
 

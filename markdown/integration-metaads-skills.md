@@ -432,7 +432,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
   -d '{ "guid": "your-useragent-guid" }'
 ```
 
-Check `POST /UserAgent/Detail` first: if `setuprequired` is still `true`, some other credential the agent requires is missing, and Start will refuse. See [Agent Credentials: Setup Required](/docs/agent-credentials#setup-required-state).
+`Start` doesn't wait for every connector. `setuprequired: true` on `POST /UserAgent/Detail` means another connector the agent requires is still missing, and the agent starts all the same. Only an agent still at `status: 6` is refused: call `POST /UserAgent/Update` on it first. See [Agent Credentials: Setup Required](/docs/agent-credentials#setup-required-state).
 
 Agents already running when you connected Meta Ads restart automatically.
 

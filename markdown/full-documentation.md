@@ -7779,7 +7779,7 @@ Next steps for the API integration flow:
 1. Inspect `credentials` in the Deploy response (or call `POST /UserAgent/Detail`) to see each provider's fields, the `optional` / `extra` flags, the registry-driven `_schema`, and the `_connected` OAuth status.
 2. Call `POST /UserAgent/CredentialUpsert` per provider (or in bulk via the `fields[]` array) to write API keys, bot tokens, WordPress credentials, etc. For OAuth providers (Meta, Google Ads, HubSpot, …) use the unified `/UserAgentOAuth/OAuthConnect` flow with `credentialkey` (see [Agent Credentials & OAuth](/docs/agent-credentials)). To connect the Wiro project the agent runs models with, call `POST /UserAgent/CredentialProjectBind`.
 3. Call `POST /UserAgent/CustomSkillUpsert` per skill to customize strategy text or cron intervals, if the template exposes any.
-4. Once all non-optional credentials are filled, the row's `setuprequired` flag flips to `false`. If the prepaid subscription was already provisioned during Deploy, Wiro starts the agent from the queue automatically and the status progresses `2` → `3` (Starting) → `4` (Running).
+4. Once every non-optional connector is set up, `setuprequired` reads `false`. The start doesn't wait for it: the prepaid Deploy already queued the agent, Wiro starts it from the queue (`2` → `3` (Starting) → `4` (Running)), and a running agent restarts to pick up each connector you save.
 5. If you want to re-launch a stopped agent (status `0`) or recover an errored one (status `5`), call `POST /UserAgent/Start` explicitly.
 
 ##### Idempotency: duplicate Deploy guard
@@ -14635,7 +14635,7 @@ The response names the project and says what happened to the agent: `{ "result":
 
 > **Don't confuse `credentials.wiro.apikey` with your operator-level Wiro API key.** `credentials.wiro.apikey` is the project key the agent uses to run Wiro models. The `x-api-key` header you send to Wiro endpoints from your own backend is your operator key, which authenticates your request (see [Authentication](/docs/authentication)). They are the same key only when you bind the project of the key you call with.
 
-Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, TikTok Ads, Google Ads) ship with `int-wiro-aimodels: true` enabled, but the agent stays in `status: 6` (Setup Required) until the operator connects a Wiro project.
+Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, TikTok Ads, Google Ads) ship with `int-wiro-aimodels: true` enabled. The agent starts without a Wiro project and runs Wiro models once one is connected. Where the template marks this connector required (`optional: false`), `UserAgent/Detail` reads `setuprequired: true` until then.
 
 ### Calendarific in your agent
 
@@ -14657,7 +14657,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   }'
 ```
 
-Templates that scan global holidays (App Event Manager, Push Notification Manager, Meta Ads, TikTok Ads, Google Ads) ship with `int-calendarific: true`. As with Wiro AI Models, the agent stays in `status: 6` until a key is provided.
+Templates that scan global holidays (App Event Manager, Push Notification Manager, Meta Ads, TikTok Ads, Google Ads) ship with `int-calendarific: true` and mark this connector optional (`optional: true`), so `setuprequired` doesn't wait for it. The agent starts without a key, and its holiday lookups need one.
 
 ## Platform-Managed Credentials
 
@@ -15358,11 +15358,11 @@ The Wiro Dashboard uses the same API. To match its behavior in your own integrat
 
 ## Setup Required State
 
-If an agent has required credentials not yet filled in, it's in **Setup Required** state (`status: 6`). It can't be started until credentials are complete.
+Every fresh Deploy starts in **Setup Required** state (`status: 6`). While an agent is at `status: 6`, `Start` refuses it with `Agent setup is not complete. Please finish setting up your connectors before starting.`
 
-**Every fresh deploy lands at `status: 6` first.** API deploys must always pass `useprepaid: true`. The server provisions the prepaid subscription inline and auto-queues the row to `status: 2` (Queued). No manual `Start` call is needed unless you also need to fill credentials first; if so, Start will reject with the Setup-Required guard until the required credentials are in place.
+API deploys must always pass `useprepaid: true`. The server provisions the prepaid subscription inline and moves the agent to `status: 2` (Queued) whatever its connectors hold, and Wiro then starts it, so no `Start` call is needed. A connector the agent requires may still be incomplete while it runs: `UserAgent/Detail` reads `setuprequired: true` until every required connector is set up, and a running agent restarts to pick up each connector you save.
 
-Saving a connector doesn't move the agent out of `status: 6`, whether with `CredentialUpsert`, `CredentialProjectBind` or an OAuth connection. After the last one, call `POST /UserAgent/Update` once with `{ "guid": "<useragent-guid>" }`: that call moves the agent to `status: 0` (Stopped) once every required connector is set up, so `Start` can launch it.
+Saving a connector doesn't move the agent out of `status: 6`, whether with `CredentialUpsert`, `CredentialProjectBind` or an OAuth connection. After the last one, call `POST /UserAgent/Update` once with `{ "guid": "<useragent-guid>" }`: that call moves the agent to `status: 0` (Stopped) once every required connector is set up, so `Start` can launch it. `Start` doesn't read `setuprequired` on a stopped (`status: 0`) or errored (`status: 5`) agent.
 
 `setuprequired` in `UserAgent/Detail` is `true` while the agent is at `status: 6` or any non-optional credential is still incomplete; on `UserAgent/MyAgents` rows it follows `status: 6` alone. The server treats a credential as complete when either:
 
@@ -16519,7 +16519,7 @@ Agents can optionally forward operator notifications to a Telegram bot via the `
 - The agent can run Wiro models only when `int-wiro-aimodels` is enabled **and** a `wiro.apikey` value has been written.
 - `int-wiro-aimodels` is marked `user_invocable: true` in the registry: end-user messages can trigger it directly, and other skills / scheduled tasks invoke it internally when they need to generate content.
 
-Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, TikTok Ads, Google Ads) ship with `int-wiro-aimodels: true`. Templates that don't need AI generation (App Review Support, Lead Generation Manager) ship with `int-wiro-aimodels: false`. Either way, the agent stays at `status: 6` (Setup Required) until a Wiro project is connected, the same as any other API-key integration. `projectid` in the call below comes from `POST /Project/List`; see [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) for the response and errors.
+Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, TikTok Ads, Google Ads) ship with `int-wiro-aimodels: true`. Templates that don't need AI generation (App Review Support, Lead Generation Manager) ship with `int-wiro-aimodels: false`. Either way, the agent starts without a Wiro project. Where the template marks this connector required, `UserAgent/Detail` reads `setuprequired: true` until one is connected. `projectid` in the call below comes from `POST /Project/List`; see [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) for the response and errors.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialProjectBind" \
@@ -18269,7 +18269,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
   -d '{ "guid": "your-useragent-guid" }'
 ```
 
-Check `POST /UserAgent/Detail` first: if `setuprequired` is still `true`, some other credential the agent requires is missing, and Start will refuse. See [Agent Credentials: Setup Required](/docs/agent-credentials#setup-required-state).
+`Start` doesn't wait for every connector. `setuprequired: true` on `POST /UserAgent/Detail` means another connector the agent requires is still missing, and the agent starts all the same. Only an agent still at `status: 6` is refused: call `POST /UserAgent/Update` on it first. See [Agent Credentials: Setup Required](/docs/agent-credentials#setup-required-state).
 
 Agents already running when you connected Meta Ads restart automatically.
 
@@ -18544,7 +18544,7 @@ This integration covers **advertising only**. It does not post organic videos to
 
 - The agent works only on the advertisers you selected when you connected. Any request for another advertiser is refused.
 - To change the selection, click **Disconnect** on the TikTok Ads card, then connect again and pick the advertisers you want.
-- Until at least one advertiser is selected, an agent that requires TikTok Ads (such as TikTok Ads Manager) stays in Setup Required and cannot start.
+- Until at least one advertiser is selected, the TikTok Ads card reads `_connected: false`, and an agent that requires TikTok Ads (such as TikTok Ads Manager) reads `setuprequired: true` on `UserAgent/Detail`.
 
 ## What the agent can do
 
@@ -18752,7 +18752,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
   -d '{ "guid": "your-useragent-guid" }'
 ```
 
-Check `POST /UserAgent/Detail` first: if `setuprequired` is still `true`, TikTok Ads or some other credential the agent requires is incomplete, and Start will refuse. See [Agent Credentials: Setup Required](/docs/agent-credentials#setup-required-state).
+`Start` doesn't wait for every connector. `setuprequired: true` on `POST /UserAgent/Detail` means TikTok Ads or another connector the agent requires is still incomplete, and the agent starts all the same. Only an agent still at `status: 6` is refused: call `POST /UserAgent/Update` on it first. See [Agent Credentials: Setup Required](/docs/agent-credentials#setup-required-state).
 
 Agents already running when you connected TikTok Ads restart automatically.
 
@@ -21036,7 +21036,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
   -d '{ "guid": "your-useragent-guid" }'
 ```
 
-Check `POST /UserAgent/Detail` first: if `setuprequired` is still `true`, a credential the agent requires is incomplete, and Start will refuse. See [Agent Credentials: Setup Required](/docs/agent-credentials#setup-required-state).
+`Start` doesn't wait for every connector. `setuprequired: true` on `POST /UserAgent/Detail` means a connector the agent requires is still incomplete, and the agent starts all the same. Only an agent still at `status: 6` is refused: call `POST /UserAgent/Update` on it first. See [Agent Credentials: Setup Required](/docs/agent-credentials#setup-required-state).
 
 ## Credential fields
 
