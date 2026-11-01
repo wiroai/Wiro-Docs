@@ -94,7 +94,7 @@ The deploy flow has three stages: Deploy, Setup (only when the agent has connect
 
 1. **Deploy** an agent via `POST /UserAgent/Deploy`: returns `useragents[0].guid` and starts the instance in `status: 6` (setup-required). A prepaid Deploy then queues it (`status: 2`) once its subscription is provisioned.
 2. **Setup** the connectors (only if the agent template requires them) via one or more `POST /UserAgent/CredentialUpsert` calls, `POST /UserAgent/CredentialProjectBind` for the Wiro project, and the matching OAuth flows (see [Agent Credentials & OAuth](/docs/agent-credentials)). These calls don't change `status`: on an agent still at `status: 6`, call `POST /UserAgent/Update` with `{ "guid": "<useragent-guid>" }` after the last one and check `setuprequired` on its response. While it's `true`, the agent cannot start. Once all required connectors are set up, that call flips `setuprequired` to `false` and `status` to `0`. For Pattern 2 (knowledge-base / chat-only agents) there are no connectors to set up, so this stage is skipped and the agent is ready to start right after Deploy.
-3. **Start** the agent with `POST /UserAgent/Start`: transitions through `status: 3` (starting) → `status: 4` (running).
+3. **Start**: a prepaid Deploy already queued the agent, and it goes through `status: 3` (starting) → `status: 4` (running). Call `POST /UserAgent/Start` when it is stopped (`status: 0`, for example after `Update` moved it out of `status: 6`) or errored (`status: 5`).
 4. Build your own chat UI.
 5. Send messages via `POST /UserAgent/Message/Send`.
 6. Stream responses in real-time via [Agent WebSocket](/docs/agent-websocket) using the `agenttoken`.
@@ -120,7 +120,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Detail" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{ "guid": "deployed-useragent-guid" }'
 
-# Start the agent (skipped if Deploy already returned status: 4 for cheap chat-only templates)
+# Start the agent when it is stopped (status 0) or errored (status 5): a prepaid Deploy already queues it
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \

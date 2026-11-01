@@ -13246,7 +13246,7 @@ pro.credits = starter.credits × tiermultiplier
 <tbody>
 <tr>
 <td><code>status: 6</code></td>
-<td><strong>Setup Required</strong>: initial state for every fresh Deploy. With <code>useprepaid: true</code>, auto-queues to <code>status: 2</code> as soon as the subscription is provisioned, regardless of credential completeness. If credentials are still missing when the agent starts, the start fails with <code>Agent setup is not complete</code> and the row drops to <code>status: 5</code> (Errored). Fill the missing connectors with <code>POST /UserAgent/CredentialUpsert</code> or <code>POST /UserAgent/CredentialProjectBind</code>, then call <code>Start</code> again. A row still at <code>status: 6</code> needs <code>POST /UserAgent/Update</code> first (any scalar body, even just <code>{ "guid": "&lt;useragent-guid&gt;" }</code>) to flip it to <code>status: 0</code> (Stopped): <code>Update</code> is the endpoint that performs the <code>setuprequired</code> re-check and the <code>6 → 0</code> transition.</td>
+<td><strong>Setup Required</strong>: initial state for every fresh Deploy. With <code>useprepaid: true</code>, auto-queues to <code>status: 2</code> as soon as the subscription is provisioned, regardless of credential completeness. The agent then starts even if a connector is still missing, and <code>UserAgent/Detail</code> reads <code>setuprequired: true</code> until it is filled. Fill a missing connector with <code>POST /UserAgent/CredentialUpsert</code> or <code>POST /UserAgent/CredentialProjectBind</code>: a running agent restarts to pick it up. A row still at <code>status: 6</code> needs <code>POST /UserAgent/Update</code> first (any scalar body, even just <code>{ "guid": "&lt;useragent-guid&gt;" }</code>) to flip it to <code>status: 0</code> (Stopped): <code>Update</code> is the endpoint that performs the <code>setuprequired</code> re-check and the <code>6 → 0</code> transition.</td>
 </tr>
 <tr>
 <td><code>status: 2</code></td>
@@ -38062,7 +38062,7 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                         <strong>Setup</strong> the connectors (only if the agent template requires them) via one or more <code>POST /UserAgent/CredentialUpsert</code> calls, <code>POST /UserAgent/CredentialProjectBind</code> for the Wiro project, and the matching OAuth flows (see <a href="/docs/agent-credentials" class="docs-link">Agent Credentials &amp; OAuth</a>). These calls don't change <code>status</code>: on an agent still at <code>status: 6</code>, call <code>POST /UserAgent/Update</code> with <code>{ "guid": "&lt;useragent-guid&gt;" }</code> after the last one and check <code>setuprequired</code> on its response. While it's <code>true</code>, the agent cannot start. Once all required connectors are set up, that call flips <code>setuprequired</code> to <code>false</code> and
                         <code>status</code> to <code>0</code>. For Pattern 2 (knowledge-base / chat-only agents) there are no connectors to set up, so this stage is skipped and the agent is ready to start right after Deploy.
                       </li>
-                      <li><strong>Start</strong> the agent with <code>POST /UserAgent/Start</code>: transitions through <code>status: 3</code> (starting) → <code>status: 4</code> (running).</li>
+                      <li><strong>Start</strong>: a prepaid Deploy already queued the agent, and it goes through <code>status: 3</code> (starting) → <code>status: 4</code> (running). Call <code>POST /UserAgent/Start</code> when it is stopped (<code>status: 0</code>, for example after <code>Update</code> moved it out of <code>status: 6</code>) or errored (<code>status: 5</code>).</li>
                       <li>Build your own chat UI.</li>
                       <li>Send messages via <code>POST /UserAgent/Message/Send</code>.</li>
                       <li>Stream responses in real-time via <a href="/docs/agent-websocket" class="docs-link">Agent WebSocket</a> using the <code>agenttoken</code>.</li>
@@ -38086,7 +38086,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Detail" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{ "guid": "deployed-useragent-guid" }'
 
-# Start the agent (skipped if Deploy already returned status: 4 for cheap chat-only templates)
+# Start the agent when it is stopped (status 0) or errored (status 5): a prepaid Deploy already queues it
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \

@@ -7764,7 +7764,7 @@ The Deploy response reflects the same composed shape you get from `UserAgent/Det
 
 | Field | Meaning |
 |-------|---------|
-| `status: 6` | **Setup Required**: initial state for every fresh Deploy. With `useprepaid: true`, auto-queues to `status: 2` as soon as the subscription is provisioned, regardless of credential completeness. If credentials are still missing when the agent starts, the start fails with `Agent setup is not complete` and the row drops to `status: 5` (Errored). Fill the missing connectors with `POST /UserAgent/CredentialUpsert` or `POST /UserAgent/CredentialProjectBind`, then call `Start` again. A row still at `status: 6` needs `POST /UserAgent/Update` first (any scalar body, even just `{ "guid": "<useragent-guid>" }`) to flip it to `status: 0` (Stopped): `Update` is the endpoint that performs the `setuprequired` re-check and the `6 → 0` transition. |
+| `status: 6` | **Setup Required**: initial state for every fresh Deploy. With `useprepaid: true`, auto-queues to `status: 2` as soon as the subscription is provisioned, regardless of credential completeness. The agent then starts even if a connector is still missing, and `UserAgent/Detail` reads `setuprequired: true` until it is filled. Fill a missing connector with `POST /UserAgent/CredentialUpsert` or `POST /UserAgent/CredentialProjectBind`: a running agent restarts to pick it up. A row still at `status: 6` needs `POST /UserAgent/Update` first (any scalar body, even just `{ "guid": "<useragent-guid>" }`) to flip it to `status: 0` (Stopped): `Update` is the endpoint that performs the `setuprequired` re-check and the `6 → 0` transition. |
 | `status: 2` | **Queued**: `useprepaid: true` charged the wallet, the subscription was provisioned, and Wiro will start the agent. No manual `UserAgent/Start` is required. |
 | `setuprequired: true` | A non-optional connector is missing, or the row is still at `status: 6`. At `status: 6`, `Start` rejects with `Agent setup is not complete`. |
 | `setuprequired: false` | All non-optional connectors are set up and the row has left `status: 6`. A row sitting at Setup Required reads `true` until a `POST /UserAgent/Update` call flips it 6 → 0; `Start` then launches it normally. |
@@ -17606,7 +17606,7 @@ The deploy flow has three stages: Deploy, Setup (only when the agent has connect
 
 1. **Deploy** an agent via `POST /UserAgent/Deploy`: returns `useragents[0].guid` and starts the instance in `status: 6` (setup-required). A prepaid Deploy then queues it (`status: 2`) once its subscription is provisioned.
 2. **Setup** the connectors (only if the agent template requires them) via one or more `POST /UserAgent/CredentialUpsert` calls, `POST /UserAgent/CredentialProjectBind` for the Wiro project, and the matching OAuth flows (see [Agent Credentials & OAuth](/docs/agent-credentials)). These calls don't change `status`: on an agent still at `status: 6`, call `POST /UserAgent/Update` with `{ "guid": "<useragent-guid>" }` after the last one and check `setuprequired` on its response. While it's `true`, the agent cannot start. Once all required connectors are set up, that call flips `setuprequired` to `false` and `status` to `0`. For Pattern 2 (knowledge-base / chat-only agents) there are no connectors to set up, so this stage is skipped and the agent is ready to start right after Deploy.
-3. **Start** the agent with `POST /UserAgent/Start`: transitions through `status: 3` (starting) → `status: 4` (running).
+3. **Start**: a prepaid Deploy already queued the agent, and it goes through `status: 3` (starting) → `status: 4` (running). Call `POST /UserAgent/Start` when it is stopped (`status: 0`, for example after `Update` moved it out of `status: 6`) or errored (`status: 5`).
 4. Build your own chat UI.
 5. Send messages via `POST /UserAgent/Message/Send`.
 6. Stream responses in real-time via [Agent WebSocket](/docs/agent-websocket) using the `agenttoken`.
@@ -17632,7 +17632,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Detail" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{ "guid": "deployed-useragent-guid" }'
 
-# Start the agent (skipped if Deploy already returned status: 4 for cheap chat-only templates)
+# Start the agent when it is stopped (status 0) or errored (status 5): a prepaid Deploy already queues it
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
