@@ -1550,7 +1550,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
 
 #### **POST** /UserAgent/CredentialProjectBind
 
-Connects an agent's `wiro` credential, the one `int-wiro-aimodels` runs models with, to one of your Wiro projects. You name the project, and Wiro saves that project's API key on the agent. The agent's model runs are paid from the wallet of the workspace that owns the project.
+Connects an agent's Wiro AI Models connector (`int-wiro-aimodels`, the `wiro` key under `credentials`) to one of your Wiro projects. You name the project, and Wiro saves that project's API key on the agent. The agent's model runs are paid from the wallet of the workspace that owns the project.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|

@@ -678,7 +678,7 @@ If you call `POST /UserAgent/Deploy` with `useprepaid: true`, you may pass `cred
 - Each entry must have a `key`. Server reads `value`, `interval`, `enabled`, `description`, and treats `_user_created: true` as an explicit user-created cron (auto-prefixing the key with `cron-` if missing).
 - The request body accepts a single top-level `customskills` array; server-side values are merged onto any existing preset rows for the same key.
 
-If you skip these keys in Deploy entirely, the instance is created empty and you set credentials/skills later with `CredentialUpsert`, `CustomSkillUpsert`, and `SkillsApply`.
+If you skip these keys in Deploy entirely, the instance is created empty and you set credentials/skills later with `CredentialUpsert`, `CredentialProjectBind`, `CustomSkillUpsert`, and `SkillsApply`.
 
 ## OAuth Authorization Flow
 

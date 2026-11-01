@@ -102,7 +102,7 @@ A `token_usage` event records the token spend and credit deduction for one bille
 
 ### Who-did-what rows
 
-`Logs`, `LogsFile` and `LogsList` also cover what people and API keys did **to** the agent. These rows sit in the same `events` list, in time order, with an `AGENT_*` value in `kind`. They come on top of the kinds above, which keep their meaning.
+`Logs` and `LogsFile` also return what people and API keys did **to** the agent, and `LogsList` lists the days that have such rows. These rows sit in the same `events` list, in time order, with an `AGENT_*` value in `kind`. They come on top of the kinds above, which keep their meaning.
 
 ```json
 {
@@ -124,7 +124,7 @@ A `token_usage` event records the token spend and credit deduction for one bille
 }
 ```
 
-`title` is the line to show. `summary` holds the names and amounts behind it, never a credential value. `userUuid` and `user` name who did it. When an API key made the change, the title ends with `(API key "<project name>")` or `(via API key)`.
+`title` is the line to show. `summary` holds the names and amounts behind it, never a saved value. `userUuid` and `user` name who did it. When an API key made the change, the title ends with `(API key "<project name>")` or `(via API key)`.
 
 | `kind` | Example `title` |
 |--------|-----------------|

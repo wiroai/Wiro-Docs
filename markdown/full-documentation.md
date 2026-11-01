@@ -8743,7 +8743,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
 
 #### **POST** /UserAgent/CredentialProjectBind
 
-Connects an agent's `wiro` credential, the one `int-wiro-aimodels` runs models with, to one of your Wiro projects. You name the project, and Wiro saves that project's API key on the agent. The agent's model runs are paid from the wallet of the workspace that owns the project.
+Connects an agent's Wiro AI Models connector (`int-wiro-aimodels`, the `wiro` key under `credentials`) to one of your Wiro projects. You name the project, and Wiro saves that project's API key on the agent. The agent's model runs are paid from the wallet of the workspace that owns the project.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -14711,7 +14711,7 @@ If you call `POST /UserAgent/Deploy` with `useprepaid: true`, you may pass `cred
 - Each entry must have a `key`. Server reads `value`, `interval`, `enabled`, `description`, and treats `_user_created: true` as an explicit user-created cron (auto-prefixing the key with `cron-` if missing).
 - The request body accepts a single top-level `customskills` array; server-side values are merged onto any existing preset rows for the same key.
 
-If you skip these keys in Deploy entirely, the instance is created empty and you set credentials/skills later with `CredentialUpsert`, `CustomSkillUpsert`, and `SkillsApply`.
+If you skip these keys in Deploy entirely, the instance is created empty and you set credentials/skills later with `CredentialUpsert`, `CredentialProjectBind`, `CustomSkillUpsert`, and `SkillsApply`.
 
 ## OAuth Authorization Flow
 
@@ -16425,7 +16425,7 @@ Agents can optionally forward operator notifications to a Telegram bot via the `
 - The agent can run Wiro models only when `int-wiro-aimodels` is enabled **and** a `wiro.apikey` value has been written.
 - `int-wiro-aimodels` is marked `user_invocable: true` in the registry: end-user messages can trigger it directly, and other skills / scheduled tasks invoke it internally when they need to generate content.
 
-Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, TikTok Ads, Google Ads) ship with `int-wiro-aimodels: true`. Templates that don't need AI generation (App Review Support, Lead Generation Manager) ship with `int-wiro-aimodels: false`. Either way, the agent stays at `status: 6` (Setup Required) until the `wiro` credential is set, the same as any other API-key integration. `projectid` in the call below comes from `POST /Project/List`; see [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) for the response and errors.
+Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, TikTok Ads, Google Ads) ship with `int-wiro-aimodels: true`. Templates that don't need AI generation (App Review Support, Lead Generation Manager) ship with `int-wiro-aimodels: false`. Either way, the agent stays at `status: 6` (Setup Required) until a Wiro project is connected, the same as any other API-key integration. `projectid` in the call below comes from `POST /Project/List`; see [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) for the response and errors.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialProjectBind" \
@@ -16986,7 +16986,7 @@ A `token_usage` event records the token spend and credit deduction for one bille
 
 ### Who-did-what rows
 
-`Logs`, `LogsFile` and `LogsList` also cover what people and API keys did **to** the agent. These rows sit in the same `events` list, in time order, with an `AGENT_*` value in `kind`. They come on top of the kinds above, which keep their meaning.
+`Logs` and `LogsFile` also return what people and API keys did **to** the agent, and `LogsList` lists the days that have such rows. These rows sit in the same `events` list, in time order, with an `AGENT_*` value in `kind`. They come on top of the kinds above, which keep their meaning.
 
 ```json
 {
@@ -17008,7 +17008,7 @@ A `token_usage` event records the token spend and credit deduction for one bille
 }
 ```
 
-`title` is the line to show. `summary` holds the names and amounts behind it, never a credential value. `userUuid` and `user` name who did it. When an API key made the change, the title ends with `(API key "<project name>")` or `(via API key)`.
+`title` is the line to show. `summary` holds the names and amounts behind it, never a saved value. `userUuid` and `user` name who did it. When an API key made the change, the title ends with `(API key "<project name>")` or `(via API key)`.
 
 | `kind` | Example `title` |
 |--------|-----------------|
@@ -17602,7 +17602,7 @@ A richer variant of white-label chat: besides replying with text, the agent **ge
 
 **Shape:**
 
-- One deployed agent that has the `int-wiro-aimodels` skill enabled, with its `wiro` credential connected to your Wiro project (see [Agent Credentials](/docs/agent-credentials#wiro-ai-models-wiro-credential)). Media the agent generates is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).
+- One deployed agent that has the `int-wiro-aimodels` skill enabled, with its Wiro AI Models connector set to your Wiro project (see [Agent Credentials](/docs/agent-credentials#wiro-ai-models-wiro-credential)). Media the agent generates is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).
 - One `sessionkey` per end user (Pattern 2 above): the same agent instance serves everyone; each user's chat and media history is isolated by session.
 - A single WebSocket connection carries three things at once: the streaming chat reply, the per-turn token-usage report, and discovery of any model runs the agent launches.
 
