@@ -640,6 +640,7 @@ Lists all agent instances deployed under your account.
       "monthlycredits": 9000,
       "extracredits": 45000,
       "usedcredits": 1450,
+      "remainingcredits": 52550,
       "creditperiod": "2026-05",
       "creditsyncat": 1714694410,
       "status": 4,
@@ -701,7 +702,7 @@ Lists all agent instances deployed under your account.
 }
 ```
 
-> **`MyAgents` returns one row per useragent with its scalar fields, the trimmed `agent` template summary (no `extracreditpacks`), `subscription`, `setuprequired` (status-based check only), `extracredits` / `extracreditsexpiry`, `lastactivityat`, the resolved `enabledSkills` (template defaults ∪ user overrides, including transitive `depends_on` closure), `tokenRates` (per-model token rates, the same map as `UserAgent/Detail.tokenRates`), `agentModel` (the resolved chat / cron / voice-prep / voice-postcall model slugs), and `enabledCommands` (the slash-command allowlist, `null` when uncustomized).** Heavier composed children (`credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `communicationChannels`, `enabledChannels`, `remainingcredits`) are **not** included. Call `UserAgent/Detail` on a single guid for the full composed shape.
+> **`MyAgents` returns one row per useragent with its scalar fields, the trimmed `agent` template summary (no `extracreditpacks`), `subscription`, `setuprequired` (status-based check only), `extracredits` / `remainingcredits` / `extracreditsexpiry`, `lastactivityat`, the resolved `enabledSkills` (template defaults ∪ user overrides, including transitive `depends_on` closure), `tokenRates` (per-model token rates, the same map as `UserAgent/Detail.tokenRates`), `agentModel` (the resolved chat / cron / voice-prep / voice-postcall model slugs), and `enabledCommands` (the slash-command allowlist, `null` when uncustomized).** Heavier composed children (`credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `communicationChannels`, `enabledChannels`) are **not** included. Call `UserAgent/Detail` on a single guid for the full composed shape.
 
 > **`enabledSkills`, `tokenRates`, and `agentModel`** ride on each list row so a chat or pinned-agents UI can decide whether to show the realtime voice-call button (`enabledSkills` includes `util-web-channel`) and render the model picker + live token-rate card without round-tripping `UserAgent/Detail` per row.
 
@@ -2557,6 +2558,7 @@ No request body fields are required: the workspace of your API key's project sco
       "monthlycredits": 9000,
       "extracredits": 45000,
       "usedcredits": 1450,
+      "remainingcredits": 52550,
       "creditperiod": "2026-05",
       "creditsyncat": 1714694410,
       "status": 4,

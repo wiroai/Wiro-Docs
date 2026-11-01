@@ -13362,6 +13362,7 @@ pro.credits = starter.credits × tiermultiplier
       &quot;monthlycredits&quot;: 9000,
       &quot;extracredits&quot;: 45000,
       &quot;usedcredits&quot;: 1450,
+      &quot;remainingcredits&quot;: 52550,
       &quot;creditperiod&quot;: &quot;2026-05&quot;,
       &quot;creditsyncat&quot;: 1714694410,
       &quot;status&quot;: 4,
@@ -13423,7 +13424,7 @@ pro.credits = starter.credits × tiermultiplier
 }
 </code></pre>
 <blockquote>
-<p><strong><code>MyAgents</code> returns one row per useragent with its scalar fields, the trimmed <code>agent</code> template summary (no <code>extracreditpacks</code>), <code>subscription</code>, <code>setuprequired</code> (status-based check only), <code>extracredits</code> / <code>extracreditsexpiry</code>, <code>lastactivityat</code>, the resolved <code>enabledSkills</code> (template defaults ∪ user overrides, including transitive <code>depends_on</code> closure), <code>tokenRates</code> (per-model token rates, the same map as <code>UserAgent/Detail.tokenRates</code>), <code>agentModel</code> (the resolved chat / cron / voice-prep / voice-postcall model slugs), and <code>enabledCommands</code> (the slash-command allowlist, <code>null</code> when uncustomized).</strong> Heavier composed children (<code>credentials</code>, <code>customskills</code>, <code>scheduledskills</code>, <code>skills</code>, <code>skillsmeta</code>, <code>communicationChannels</code>, <code>enabledChannels</code>, <code>remainingcredits</code>) are <strong>not</strong> included. Call <code>UserAgent/Detail</code> on a single guid for the full composed shape.</p>
+<p><strong><code>MyAgents</code> returns one row per useragent with its scalar fields, the trimmed <code>agent</code> template summary (no <code>extracreditpacks</code>), <code>subscription</code>, <code>setuprequired</code> (status-based check only), <code>extracredits</code> / <code>remainingcredits</code> / <code>extracreditsexpiry</code>, <code>lastactivityat</code>, the resolved <code>enabledSkills</code> (template defaults ∪ user overrides, including transitive <code>depends_on</code> closure), <code>tokenRates</code> (per-model token rates, the same map as <code>UserAgent/Detail.tokenRates</code>), <code>agentModel</code> (the resolved chat / cron / voice-prep / voice-postcall model slugs), and <code>enabledCommands</code> (the slash-command allowlist, <code>null</code> when uncustomized).</strong> Heavier composed children (<code>credentials</code>, <code>customskills</code>, <code>scheduledskills</code>, <code>skills</code>, <code>skillsmeta</code>, <code>communicationChannels</code>, <code>enabledChannels</code>) are <strong>not</strong> included. Call <code>UserAgent/Detail</code> on a single guid for the full composed shape.</p>
 <p><strong><code>enabledSkills</code>, <code>tokenRates</code>, and <code>agentModel</code></strong> ride on each list row so a chat or pinned-agents UI can decide whether to show the realtime voice-call button (<code>enabledSkills</code> includes <code>util-web-channel</code>) and render the model picker + live token-rate card without round-tripping <code>UserAgent/Detail</code> per row.</p>
 </blockquote>
 <h4 id="post-useragentdetail"><strong>POST</strong> /UserAgent/Detail</h4>
@@ -16695,6 +16696,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
       &quot;monthlycredits&quot;: 9000,
       &quot;extracredits&quot;: 45000,
       &quot;usedcredits&quot;: 1450,
+      &quot;remainingcredits&quot;: 52550,
       &quot;creditperiod&quot;: &quot;2026-05&quot;,
       &quot;creditsyncat&quot;: 1714694410,
       &quot;status&quot;: 4,
@@ -21857,7 +21859,7 @@ email tools, CRMs) through three credential methods:</p>
 </div>
 </div>
 <blockquote>
-<p>Read responses from <code>POST /UserAgent/Detail</code> / <code>POST /UserAgent/MyAgents</code> expose the composed <code>credentials</code> tree (each provider with its <code>_connected</code> / <code>optional</code> / <code>extra</code> / <code>_editable</code> / <code>_schema</code> flags), the <code>customskills[]</code> array, the <code>scheduledskills[]</code> array (cron skills), the <code>skills[]</code> array of enabled skill names, the <code>tokenRates</code> + <code>agentModel</code> objects, and the flat credit fields (<code>monthlycredits</code>, <code>extracredits</code>, <code>usedcredits</code>, <code>remainingcredits</code>, <code>creditperiod</code>, <code>creditsyncat</code>) as <strong>top-level fields</strong> on the useragent object. See <a href="/docs/agent-overview">Agent Overview</a> for the full endpoint catalog.</p>
+<p>Read responses from <code>POST /UserAgent/Detail</code> expose the composed <code>credentials</code> tree (each provider with its <code>_connected</code> / <code>optional</code> / <code>extra</code> / <code>_editable</code> / <code>_schema</code> flags), the <code>customskills[]</code> array, the <code>scheduledskills[]</code> array (cron skills), the <code>skills[]</code> array of enabled skill names, the <code>tokenRates</code> + <code>agentModel</code> objects, and the flat credit fields (<code>monthlycredits</code>, <code>extracredits</code>, <code>usedcredits</code>, <code>remainingcredits</code>, <code>creditperiod</code>, <code>creditsyncat</code>) as <strong>top-level fields</strong> on the useragent object. <code>POST /UserAgent/MyAgents</code> rows carry <code>tokenRates</code>, <code>agentModel</code> and the credit fields, without the composed children. See <a href="/docs/agent-overview">Agent Overview</a> for the full endpoint catalog.</p>
 </blockquote>
 <h2 id="communication-channels">Communication Channels</h2>
 <p>Every Wiro agent is reachable through web chat and the Agent Messaging API without additional configuration. Telegram, Slack, and Discord are optional external channels. They are available to every marketplace template and custom agent, but remain disabled until every registry-declared activation credential is complete. There is no separate enable switch on an existing agent.</p>
