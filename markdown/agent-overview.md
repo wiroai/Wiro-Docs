@@ -319,10 +319,7 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
               { "key": "accountId", "type": "text", "label": "Instagram Account ID", "auto_filled_by_oauth": true, "readonly_when_connected": true },
               { "key": "igusername", "type": "text", "label": "Connected Account", "auto_filled_by_oauth": true, "readonly_when_connected": true }
             ]
-          },
-          "authmethod": "",
-          "igusername": "",
-          "connectedat": ""
+          }
         }
       },
       "extracreditpacks": [],
@@ -334,9 +331,9 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
 }
 ```
 
-> `Agent/Detail` describes the **template**, so its `credentials` block only carries the `optional` / `extra` meta flags plus the registry-driven `_schema` (field labels / types) and `_editable` map. The `_connected` flag is per-instance and appears on `UserAgent/Detail` / `UserAgent/MyAgents`, not on the catalog endpoint. `extracreditpacks` is always `[]` here, because packs are derived from the deployed instance's actual monthly allocation (see [Extra Credit Packs](#extra-credit-packs)) and only appear on `UserAgent/Detail`.
+> `Agent/Detail` describes the **template**, so its `credentials` block only carries the `optional` / `extra` meta flags (when the template sets them) plus the registry-driven `_schema` (field labels / types) and `_editable` map. It holds no saved values, whoever calls it and whatever `type` is sent. The `_connected` flag is per-instance and appears on `UserAgent/Detail` and the `Deploy` and `Update` responses, not on the catalog endpoint. `extracreditpacks` is always `[]` here, because packs are derived from the deployed instance's actual monthly allocation (see [Extra Credit Packs](#extra-credit-packs)) and only appear on `UserAgent/Detail`.
 
-**Credential response flags** (on `UserAgent/Detail` / `UserAgent/MyAgents`): every credential object in the top-level `credentials` tree on the per-instance endpoints carries:
+**Credential response flags** (on `UserAgent/Detail` and the `Deploy` and `Update` responses): every credential object in the top-level `credentials` tree on the per-instance endpoints carries:
 
 | Flag | Type | Meaning |
 |------|------|---------|
@@ -354,6 +351,7 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
   runtime and are not reflected to customer-facing credential responses.
 - `fieldstatus: "platform"` fields (Wiro-managed fields, such as Reddit's three approval flags `developerprofileverified`, `dataapiaccessapproved` and `commercialwrittenapproval`) are stripped from every API response. `credentials.wiro.apikey` and `credentials.calendarific.apikey` are operator-supplied user-input fields and appear in the response with `fieldstatus: "user"` like any other API-key credential.
 - `fieldstatus: "oauth_app"` fields (`clientid` / `clientsecret`, `appid` / `appsecret`) are stripped from Detail responses, even after an own-mode OAuth setup writes them. History writes redact `clientsecret` to `[REDACTED]`.
+- A value the agent template holds on a secret field (one Wiro stores encrypted, such as a key, token, password or service account, or an `oauth_managed` OAuth app key) is not returned: the field reads empty, and a list entry keeps its place with an empty value, until you save your own. Values you save yourself come back to the agent's owner and team admins.
 - Sentinel rows `_isoptional` / `_isextra`: never appear as fields; they're folded into the `optional` and `extra` flags above.
 
 API callers see the non-sensitive fields (display-only values like `igusername`, flags like `authmethod`, and the flags above).
@@ -1188,7 +1186,7 @@ Every provider entry under `credentials.<key>` carries:
 | `_filled` | `boolean` | `true` when the connector is set up: its OAuth connection is made, or at least one field holds a value and no required field you fill in is empty. |
 | `connectedat` | `string\|null` | OAuth and hybrid providers: ISO timestamp of the last successful connection. |
 | `tokenexpiresat` | `string\|null` | ISO timestamp when the current token expires, or an empty value when the provider reports no fixed expiry. |
-| `<fieldname>` | `string\|number\|boolean\|array` | The actual field value as the user (or OAuth callback) saved it. Field types match `_schema.fields[].type`. Sensitive values (`oauth_session` access/refresh tokens, `clientsecret`, `password`-typed fields) are NEVER returned in this surface. They stay server-side. |
+| `<fieldname>` | `string\|number\|boolean\|array` | The field value as you (or the OAuth callback) saved it, returned to the agent's owner and team admins. Field types match `_schema.fields[].type`. Never returned: OAuth tokens (`oauth_session`), OAuth app keys (`clientid` / `clientsecret`, `appid` / `appsecret`), Wiro-managed fields, write-only setup secrets such as `systemusertoken`, and a value the agent template holds on a field Wiro stores encrypted or on an `oauth_managed` field: such a field reads empty until you save your own. |
 
 ##### Subscription object
 

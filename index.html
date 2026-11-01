@@ -12830,10 +12830,7 @@ pro.credits = starter.credits × tiermultiplier
               { &quot;key&quot;: &quot;accountId&quot;, &quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Instagram Account ID&quot;, &quot;auto_filled_by_oauth&quot;: true, &quot;readonly_when_connected&quot;: true },
               { &quot;key&quot;: &quot;igusername&quot;, &quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Connected Account&quot;, &quot;auto_filled_by_oauth&quot;: true, &quot;readonly_when_connected&quot;: true }
             ]
-          },
-          &quot;authmethod&quot;: &quot;&quot;,
-          &quot;igusername&quot;: &quot;&quot;,
-          &quot;connectedat&quot;: &quot;&quot;
+          }
         }
       },
       &quot;extracreditpacks&quot;: [],
@@ -12845,9 +12842,9 @@ pro.credits = starter.credits × tiermultiplier
 }
 </code></pre>
 <blockquote>
-<p><code>Agent/Detail</code> describes the <strong>template</strong>, so its <code>credentials</code> block only carries the <code>optional</code> / <code>extra</code> meta flags plus the registry-driven <code>_schema</code> (field labels / types) and <code>_editable</code> map. The <code>_connected</code> flag is per-instance and appears on <code>UserAgent/Detail</code> / <code>UserAgent/MyAgents</code>, not on the catalog endpoint. <code>extracreditpacks</code> is always <code>[]</code> here, because packs are derived from the deployed instance's actual monthly allocation (see <a href="#extra-credit-packs">Extra Credit Packs</a>) and only appear on <code>UserAgent/Detail</code>.</p>
+<p><code>Agent/Detail</code> describes the <strong>template</strong>, so its <code>credentials</code> block only carries the <code>optional</code> / <code>extra</code> meta flags (when the template sets them) plus the registry-driven <code>_schema</code> (field labels / types) and <code>_editable</code> map. It holds no saved values, whoever calls it and whatever <code>type</code> is sent. The <code>_connected</code> flag is per-instance and appears on <code>UserAgent/Detail</code> and the <code>Deploy</code> and <code>Update</code> responses, not on the catalog endpoint. <code>extracreditpacks</code> is always <code>[]</code> here, because packs are derived from the deployed instance's actual monthly allocation (see <a href="#extra-credit-packs">Extra Credit Packs</a>) and only appear on <code>UserAgent/Detail</code>.</p>
 </blockquote>
-<p><strong>Credential response flags</strong> (on <code>UserAgent/Detail</code> / <code>UserAgent/MyAgents</code>): every credential object in the top-level <code>credentials</code> tree on the per-instance endpoints carries:</p>
+<p><strong>Credential response flags</strong> (on <code>UserAgent/Detail</code> and the <code>Deploy</code> and <code>Update</code> responses): every credential object in the top-level <code>credentials</code> tree on the per-instance endpoints carries:</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -12894,6 +12891,7 @@ pro.credits = starter.credits × tiermultiplier
 <li>Schema fields marked <code>runtime_excluded: true</code>, including Meta <code>systemusertoken</code>, are write-only setup secrets. They never enter the agent runtime and are not reflected to customer-facing credential responses.</li>
 <li><code>fieldstatus: "platform"</code> fields (Wiro-managed fields, such as Reddit's three approval flags <code>developerprofileverified</code>, <code>dataapiaccessapproved</code> and <code>commercialwrittenapproval</code>) are stripped from every API response. <code>credentials.wiro.apikey</code> and <code>credentials.calendarific.apikey</code> are operator-supplied user-input fields and appear in the response with <code>fieldstatus: "user"</code> like any other API-key credential.</li>
 <li><code>fieldstatus: "oauth_app"</code> fields (<code>clientid</code> / <code>clientsecret</code>, <code>appid</code> / <code>appsecret</code>) are stripped from Detail responses, even after an own-mode OAuth setup writes them. History writes redact <code>clientsecret</code> to <code>[REDACTED]</code>.</li>
+<li>A value the agent template holds on a secret field (one Wiro stores encrypted, such as a key, token, password or service account, or an <code>oauth_managed</code> OAuth app key) is not returned: the field reads empty, and a list entry keeps its place with an empty value, until you save your own. Values you save yourself come back to the agent's owner and team admins.</li>
 <li>Sentinel rows <code>_isoptional</code> / <code>_isextra</code>: never appear as fields; they're folded into the <code>optional</code> and <code>extra</code> flags above.</li>
 </ul>
 <p>API callers see the non-sensitive fields (display-only values like <code>igusername</code>, flags like <code>authmethod</code>, and the flags above).</p>
@@ -14174,7 +14172,7 @@ pro.credits = starter.credits × tiermultiplier
 <tr>
 <td><code>&lt;fieldname&gt;</code></td>
 <td><code>string|number|boolean|array</code></td>
-<td>The actual field value as the user (or OAuth callback) saved it. Field types match <code>_schema.fields[].type</code>. Sensitive values (<code>oauth_session</code> access/refresh tokens, <code>clientsecret</code>, <code>password</code>-typed fields) are NEVER returned in this surface. They stay server-side.</td>
+<td>The field value as you (or the OAuth callback) saved it, returned to the agent's owner and team admins. Field types match <code>_schema.fields[].type</code>. Never returned: OAuth tokens (<code>oauth_session</code>), OAuth app keys (<code>clientid</code> / <code>clientsecret</code>, <code>appid</code> / <code>appsecret</code>), Wiro-managed fields, write-only setup secrets such as <code>systemusertoken</code>, and a value the agent template holds on a field Wiro stores encrypted or on an <code>oauth_managed</code> field: such a field reads empty until you save your own.</td>
 </tr>
 </tbody>
 </table>
