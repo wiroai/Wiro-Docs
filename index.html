@@ -10061,7 +10061,7 @@ import type {
 <li><strong>Number:</strong> <code>"type": "number"</code> (whole) or <code>"float"</code> (decimal). <strong>Yes or no:</strong> <code>"type": "boolean"</code>. Both with <code>"ui": {}</code>.</li>
 <li><strong>File:</strong> <code>"type": "string"</code> with <code>"ui": { "field": "image" }</code>, or <code>"audio"</code>, <code>"video"</code> or <code>"pdf"</code>. The value is a public URL.</li>
 </ul>
-<p>A Start field that a step uses and that has no saved value and no default must get a value when the workflow runs. <a href="#post-workflowdetail">Workflow/Detail</a> names these fields in <code>requiredinputs</code>.</p>
+<p>A Start field that the End node or a step leading to it uses, with no saved value and no default, must get a value when the workflow runs. <a href="#post-workflowdetail">Workflow/Detail</a> names these fields in <code>requiredinputs</code>.</p>
 <h3 id="references">References</h3>
 <ul>
 <li><code>$input.&lt;key&gt;</code> is the value of a Start field.</li>
@@ -10389,7 +10389,7 @@ import type {
 </div>
 <p>The response is <code>{ "result": true, "errors": [], "workflow": [ { ... } ] }</code>: the fields of List plus <code>contents</code>, the graph as an object (see <a href="#the-workflow-graph">The Workflow Graph</a>). Its <code>schema.input</code> lists the inputs a run takes, and <code>metadata.input.values</code> the saved values.</p>
 <ul>
-<li><code>requiredinputs</code> lists the Start fields a run must be given: the ones a step uses that have no saved value and no default. An empty array means every Start field already has a value. Read this list to decide what to ask for; a field's <code>required</code> flag in <code>schema.input</code> doesn't decide it. On a protected workflow from another workspace, a run doesn't use the creator's saved values, so only a default takes a field off the list.</li>
+<li><code>requiredinputs</code> lists the Start fields a run must be given: the ones used by the End node or by a step leading to it that have no saved value and no default. An empty array means a run needs no input. Read this list to decide what to ask for; a field's <code>required</code> flag in <code>schema.input</code> doesn't decide it. On a protected workflow from another workspace, a run doesn't use the creator's saved values, so only a default takes a field off the list.</li>
 <li>A workflow from your workspace, or one published in the gallery, can be read. A private workflow of another workspace answers <code>This workflow does not belong to your current workspace.</code> or <code>You don't have any permission for this action.</code>, and a clone can only be read by its owner's workspace.</li>
 <li>A protected workflow read from outside its owner's workspace comes back with its steps removed: <code>contents</code> keeps only the Start fields and the End node, and <code>estimatedcost</code> gives an estimate of one run, <code>{ "type": "estimated", "value": 0.42 }</code> (<code>"unavailable"</code> with <code>value: null</code> when it cannot be estimated).</li>
 <li><code>rejectreason</code> is present only for the workflow's own workspace: on a rejected workflow it says why.</li>
