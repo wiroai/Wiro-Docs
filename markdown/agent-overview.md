@@ -341,7 +341,7 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
 | Flag | Type | Meaning |
 |------|------|---------|
 | `_connected` | boolean | **Connection readiness indicator.** `true` when Wiro has a validated OAuth or hybrid direct connection and every required picker field (`customerid`, `merchantid`, `channelid`, ad-account, page ID, Instagram account ID, etc.) is populated. Plain API-key and service-account providers that do not write `connectedat` can remain `false`; use `setuprequired` to determine overall setup readiness. |
-| `optional` | boolean | `true` when the template marks this credential as not required for the agent to run. Agents can start even if `optional: true` credentials are empty. |
+| `optional` | boolean | `true` when the template marks this credential as not required for the agent to run. Agents can start even if `optional: true` credentials are empty. On a custom build, each skill's own connector reads `false`, and a connector it lists in `additional_credential_keys` reads `true`, unless another skill on the agent has that connector as its own. |
 | `extra` | boolean | `true` when the template groups the credential under "extra integrations" in the UI (disabled by default until the user opts into the skill). |
 | `_editable` | object | Map of `fieldname → true` for fields the caller may write. Computed from the registry schema. |
 | `_schema` | object | Inlined registry descriptor: `{ title, icon, brand_color, brand_text_color, brand_logo_filter, docs_url, credential_mode, connection_modes[], default_connection_mode, mode_badges, wiro_connect_pending, oauth_provider, fields[] }`. Lets a UI render the form without a separate `Credentials/Detail` round-trip. |
@@ -823,6 +823,7 @@ Retrieves full details for a single deployed agent instance, including subscript
             ]
           },
           "_required_missing": false,
+          "_filled": true,
           "authmethod": "api_key",
           "accountId": "17841400000000000",
           "igusername": "mybrand",
@@ -878,6 +879,7 @@ Retrieves full details for a single deployed agent instance, including subscript
             ]
           },
           "_required_missing": false,
+          "_filled": false,
           "bottoken": "",
           "allowedusers": [],
           "groups": []
@@ -929,6 +931,7 @@ Retrieves full details for a single deployed agent instance, including subscript
             ]
           },
           "_required_missing": true,
+          "_filled": false,
           "siteurl": "",
           "username": "",
           "applicationpass": ""
@@ -1177,11 +1180,12 @@ Every provider entry under `credentials.<key>` carries:
 | Sub-field | Type | Description |
 |-----------|------|-------------|
 | `_connected` | `boolean` | Connection-readiness flag. `true` when Wiro has a validated OAuth or hybrid direct credential and every required picker field is populated. Plain API-key and service-account providers can remain `false`; for those use `_required_missing` or inspect the field values directly. |
-| `optional` | `boolean` | `true` when the agent template marks this credential as optional (the agent can run without it; the dependent skill just won't fire). `false` for required credentials. |
+| `optional` | `boolean` | `true` when the agent template marks this credential as optional (the agent can run without it; the dependent skill just won't fire). `false` for required credentials. On a custom build, each skill's own connector reads `false`, and a connector it lists in `additional_credential_keys` reads `true`, unless another skill on the agent has that connector as its own. |
 | `extra` | `boolean` | `true` when this credential surfaces in the "alternative" / secondary group on the panel (rare; most credentials are primary). |
 | `_editable` | `object` | Per-field edit map: `{ fieldname: true\|false }`. `false` means the field is read-only (managed by OAuth, platform-managed, or computed). The frontend uses this to disable inputs. |
 | `_schema` | `object` | Inline registry descriptor: `title`, `icon`, `brand_color`, `docs_url`, `credential_mode` (`oauth`, `api_key`, `hybrid`, etc.), `connection_modes`, `default_connection_mode`, `mode_badges`, `oauth_provider`, plus a `fields[]` array describing every input the form should render. Lets the panel build connector cards without a separate `Credentials/Detail` round-trip. |
-| `_required_missing` | `boolean` | `true` when the operator should look at this credential: required + user-editable fields are still empty (or the optional card is partially filled but incomplete). Drives the "needs attention" bullet on each connector card and the aggregate count badge on the Connectors tab. `false` when the card is complete or untouched-and-optional. |
+| `_required_missing` | `boolean` | `true` when this connector is required (`optional: false`) and a required field you fill in is still empty. Drives the "needs attention" bullet on each connector card and the aggregate count badge on the Connectors tab. Always `false` on an optional connector. A list field counts as empty while its rows hold nothing but a choice or a switch, such as a default platform on an otherwise blank row. |
+| `_filled` | `boolean` | `true` when the connector is set up: its OAuth connection is made, or at least one field holds a value and no required field you fill in is empty. |
 | `connectedat` | `string\|null` | OAuth and hybrid providers: ISO timestamp of the last successful connection. |
 | `tokenexpiresat` | `string\|null` | ISO timestamp when the current token expires, or an empty value when the provider reports no fixed expiry. |
 | `<fieldname>` | `string\|number\|boolean\|array` | The actual field value as the user (or OAuth callback) saved it. Field types match `_schema.fields[].type`. Sensitive values (`oauth_session` access/refresh tokens, `clientsecret`, `password`-typed fields) are NEVER returned in this surface. They stay server-side. |
