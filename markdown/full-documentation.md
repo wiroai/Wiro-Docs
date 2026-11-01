@@ -14547,7 +14547,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialProjectBind" \
 
 The response names the project and says what happened to the agent: `{ "result": true, "errors": [], "applied": 1, "project": { "id": "4821", "name": "Agent models" }, "restart": "scheduled" }`. See [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) for every field and error. If you already hold a project's key, `POST /UserAgent/CredentialUpsert` with `credentialkey` `wiro` and `fieldname` `apikey` saves it too.
 
-> **Don't confuse `credentials.wiro.apikey` with your operator-level Wiro API key.** `credentials.wiro.apikey` is the project key the agent uses to run Wiro models. The `x-api-key` header you send to Wiro endpoints from your own backend is your operator key, which is entirely separate (see [Authentication](/docs/authentication)).
+> **Don't confuse `credentials.wiro.apikey` with your operator-level Wiro API key.** `credentials.wiro.apikey` is the project key the agent uses to run Wiro models. The `x-api-key` header you send to Wiro endpoints from your own backend is your operator key, which authenticates your request (see [Authentication](/docs/authentication)). They are the same key only when you bind the project of the key you call with.
 
 Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, TikTok Ads, Google Ads) ship with `int-wiro-aimodels: true` enabled, but the agent stays in `status: 6` (Setup Required) until the operator connects a Wiro project.
 
@@ -16456,7 +16456,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Detail" \
 
 ### Project key vs operator key
 
-`credentials.wiro.apikey` is a **per-agent Wiro project key**: only the agent uses it, to run Wiro models. The `x-api-key` header you send to the public Wiro endpoints from your own backend (e.g. `POST /UserAgent/Deploy`, `POST /Run`) is your **operator key**, which is entirely separate. If you're building on top of Wiro programmatically and want to call the Run / Task / LLM APIs directly from your own backend, use your operator key (see [Run a Model](/docs/run-a-model) and [LLM & Chat Streaming](/docs/llm-chat-streaming)).
+`credentials.wiro.apikey` is a **per-agent Wiro project key**: the agent runs Wiro models with it. The `x-api-key` header you send to the public Wiro endpoints from your own backend (e.g. `POST /UserAgent/Deploy`, `POST /Run`) is your **operator key**: it authenticates your request. These are two roles, and they are the same key only when you bind the project of the key you call with. If you're building on top of Wiro programmatically and want to call the Run / Task / LLM APIs directly from your own backend, use your operator key (see [Run a Model](/docs/run-a-model) and [LLM & Chat Streaming](/docs/llm-chat-streaming)).
 
 ## Update Rules Summary
 
