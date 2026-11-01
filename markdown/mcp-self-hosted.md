@@ -162,7 +162,7 @@ If the project uses signature-based auth and `WIRO_API_SECRET` is not set, tool 
 Wiro API error 401: This project uses signature-based auth. Set WIRO_API_SECRET to the project's API secret in your MCP server config.
 ```
 
-Add `WIRO_API_SECRET` to the `env` block of your MCP config and restart the client. The other messages are the same as on the hosted server: see [Authentication errors](/docs/wiro-mcp-server#authentication-errors).
+Add `WIRO_API_SECRET` to the `env` block of your MCP config and restart the client. The other messages are the same as on the hosted server: see [Authentication errors](/docs/wiro-mcp-server#mcp-auth).
 
 ## Available Tools
 
