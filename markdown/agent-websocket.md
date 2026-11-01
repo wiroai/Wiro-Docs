@@ -45,7 +45,7 @@ Use it as a signal that the socket is fully ready to receive a subscribe. Most c
 ```
 
 - `type`: must be the literal string `"agent_info"`. Other values are ignored (the server routes by type; unknown types are silently dropped).
-- `agenttoken`: the token returned by `POST /UserAgent/Message/Send`. Required, and only that token is accepted: a 30-character string of letters and digits. If it is missing, empty, or anything else (a session key, for example), the server responds with an `error` frame and subscribes to nothing (see [Subscribe errors](#subscribe-errors)).
+- `agenttoken`: the token returned by `POST /UserAgent/Message/Send`. Required, and only that token is accepted: a 30-character string of letters and digits. If it is missing, empty, or anything else (a session key, for example), the server responds with an `error` frame and subscribes to nothing (see [Subscribe errors](#3-subscribe-errors)).
 
 The server keeps the mapping `connection ↔ agenttoken` in memory for the life of the connection. You can send additional `agent_info` frames on the same socket to subscribe to more tokens (see [Multi-session subscription](#multi-session-subscription)).
 

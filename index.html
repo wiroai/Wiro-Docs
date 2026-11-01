@@ -12525,7 +12525,7 @@ pro.credits = starter.credits × tiermultiplier
           + ceil(Σ call_cache_read_cost)
           + ceil(Σ call_cache_write_cost)
 </code></pre>
-<p>Cache-read and cache-write categories are charged only when the selected model rate defines them. <code>inputtokens</code> contains only uncached input; <code>totaltokens</code> is always the exact sum of input, output, cache-read, and cache-write tokens. For models with <code>long_context_threshold_tokens</code>, Wiro selects the long-context rate <strong>per LLM call</strong> using <code>input + cacheRead + cacheWrite</code>. You don't send anything. Each billed turn appears once as a ledger row with <code>action: "tokens"</code> (see <a href="/docs/agent-transactions#post-useragenttransactionlist"><code>POST /UserAgent/TransactionList</code></a>). Per-turn token counts and cost also ride on each assistant message (<code>inputtokens</code> / <code>outputtokens</code> / <code>cachereadtokens</code> / <code>cachewritetokens</code> / <code>totaltokens</code> / <code>tokencost</code> / <code>model</code>, see <a href="/docs/agent-messaging">Agent Messaging</a>).</p>
+<p>Cache-read and cache-write categories are charged only when the selected model rate defines them. <code>inputtokens</code> contains only uncached input; <code>totaltokens</code> is always the exact sum of input, output, cache-read, and cache-write tokens. For models with <code>long_context_threshold_tokens</code>, Wiro selects the long-context rate <strong>per LLM call</strong> using <code>input + cacheRead + cacheWrite</code>. You don't send anything. Each billed turn appears once as a ledger row with <code>action: "tokens"</code> (see <a href="/docs/agent-transactions#tx-transactionlist"><code>POST /UserAgent/TransactionList</code></a>). Per-turn token counts and cost also ride on each assistant message (<code>inputtokens</code> / <code>outputtokens</code> / <code>cachereadtokens</code> / <code>cachewritetokens</code> / <code>totaltokens</code> / <code>tokencost</code> / <code>model</code>, see <a href="/docs/agent-messaging">Agent Messaging</a>).</p>
 <p>When the credit pool is exhausted, <a href="/docs/agent-messaging#post-useragentmessagesend"><code>POST /UserAgent/Message/Send</code></a> and <a href="#post-useragentstart"><code>POST /UserAgent/Start</code></a> refuse with an <code>Agent has no remaining credits…</code> error plus an <code>agentbalance</code> snapshot; renew the subscription or buy an extra credit pack to continue.</p>
 <blockquote>
 <p><strong>Voice realtime audio is billed separately.</strong> Live voice-call audio (for <code>util-voice-receptionist</code> agents) is <strong>not</strong> charged to the platform credit pool. It flows through the operator's own Wiro AI Models balance via the <code>int-wiro-aimodels</code> skill (you bring your own Wiro API key). The voice-prep turn before the call and the post-call text turn are billed as normal token deducts.</p>
@@ -17490,7 +17490,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <p>Credits are used as the agent processes messages and generates content, not at <code>Message/Send</code> time. Each turn is billed by <strong>token usage</strong>: once the turn completes, Wiro prices its input, output and cached tokens with the per-model <code>tokenRates</code> (1 credit = $0.01). Each billed turn appears as an <code>action: "tokens"</code> row in TransactionList and lowers <code>remainingcredits = max(0, monthlycredits + extracredits - usedcredits)</code>. You don't send anything: token billing is fully server-side. Per-turn token counts and cost also ride on each assistant message and arrive over the message WebSocket as an <code>agent_usage_report</code> frame (see <a href="/docs/agent-messaging">Agent Messaging</a> and <a href="/docs/agent-websocket">Agent WebSocket</a>).</p>
 <p>The API-side check is gating only: <code>POST /UserAgent/Start</code> and <code>POST /UserAgent/Message/Send</code> refuse to launch / accept messages when <code>remainingcredits &lt;= 0</code>, returning an <code>Agent has no remaining credits…</code> error plus an <code>agentbalance</code> snapshot (<code>{ monthlycredits, extracredits, usedcredits, remainingcredits }</code>). During an active session, monthly credits are consumed first; once <code>usedcredits &gt;= monthlycredits</code>, extra credits (purchased via <code>CreateExtraCreditCheckout</code>) absorb the rest. When both pools are empty the agent stops accepting new turns until the subscription renews or an extra credit pack is bought.</p>
 <p>On each billing cycle (subscription renewal) <code>usedcredits</code> is reset to zero and <code>creditperiod</code> advances to the new <code>'YYYY-MM'</code> window; extra-credit purchases simply bump <code>extracredits</code> without resetting usage.</p>
-<p>For the full audit trail (every token deduct / grant / purchase / renewal / expiry) call <a href="/docs/agent-transactions#post-useragenttransactionlist"><code>POST /UserAgent/TransactionList</code></a> (see <a href="/docs/agent-transactions">Agent Transactions</a>).</p>
+<p>For the full audit trail (every token deduct / grant / purchase / renewal / expiry) call <a href="/docs/agent-transactions#tx-transactionlist"><code>POST /UserAgent/TransactionList</code></a> (see <a href="/docs/agent-transactions">Agent Transactions</a>).</p>
 <h2 id="error-messages">Error Messages</h2>
 <p>Agent-specific errors you may encounter:</p>
 <div class="docs-param-table">
@@ -19910,7 +19910,7 @@ func main() {
 </code></pre>
 <ul>
 <li><code>type</code>: must be the literal string <code>"agent_info"</code>. Other values are ignored (the server routes by type; unknown types are silently dropped).</li>
-<li><code>agenttoken</code>: the token returned by <code>POST /UserAgent/Message/Send</code>. Required, and only that token is accepted: a 30-character string of letters and digits. If it is missing, empty, or anything else (a session key, for example), the server responds with an <code>error</code> frame and subscribes to nothing (see <a href="#subscribe-errors">Subscribe errors</a>).</li>
+<li><code>agenttoken</code>: the token returned by <code>POST /UserAgent/Message/Send</code>. Required, and only that token is accepted: a 30-character string of letters and digits. If it is missing, empty, or anything else (a session key, for example), the server responds with an <code>error</code> frame and subscribes to nothing (see <a href="#3-subscribe-errors">Subscribe errors</a>).</li>
 </ul>
 <p>The server keeps the mapping <code>connection ↔ agenttoken</code> in memory for the life of the connection. You can send additional <code>agent_info</code> frames on the same socket to subscribe to more tokens (see <a href="#multi-session-subscription">Multi-session subscription</a>).</p>
 <h3 id="3-subscribe-errors">3. Subscribe errors</h3>
@@ -24536,7 +24536,7 @@ async function saveGoogleAdsPick(useragentguid, picked) {
 <tr>
 <td><code>monthly_price_weight_usd</code></td>
 <td><code>number</code></td>
-<td>Weight (USD) the skill contributes to the agent's Starter monthly price. Wiro sums weights across the agent's enabled-skill closure (incl. transitive <code>depends_on</code>); Pro multiplies the total by <code>tiermultiplier</code>. The platform applies a <strong>$4/month minimum floor</strong> on top of this sum (with credits scaled proportionally). See Pricing in the <a href="/docs/agent-overview#pricing-model--tiers-skills--token-billing">Agent Overview</a>.</td>
+<td>Weight (USD) the skill contributes to the agent's Starter monthly price. Wiro sums weights across the agent's enabled-skill closure (incl. transitive <code>depends_on</code>); Pro multiplies the total by <code>tiermultiplier</code>. The platform applies a <strong>$4/month minimum floor</strong> on top of this sum (with credits scaled proportionally). See Pricing in the <a href="/docs/agent-overview#pricing-model-tiers-skills-token-billing">Agent Overview</a>.</td>
 </tr>
 <tr>
 <td><code>monthly_credits_weight</code></td>
@@ -24546,7 +24546,7 @@ async function saveGoogleAdsPick(useragentguid, picked) {
 <tr>
 <td><code>billing_model</code></td>
 <td><code>string</code></td>
-<td>Always <code>"tokens"</code>. Per-turn conversation cost is token-metered at the agent's per-model <code>tokenRates</code> (credits per 1M input / output / cached-input tokens). See <a href="/docs/agent-overview#pricing-model--tiers-skills--token-billing">token billing in the Agent Overview</a>. Voice skills stream realtime audio through the operator's own Wiro AI Models balance via <code>int-wiro-aimodels</code> (your own Wiro API key); the voice-prep and post-call text turns are normal token deducts.</td>
+<td>Always <code>"tokens"</code>. Per-turn conversation cost is token-metered at the agent's per-model <code>tokenRates</code> (credits per 1M input / output / cached-input tokens). See <a href="/docs/agent-overview#pricing-model-tiers-skills-token-billing">token billing in the Agent Overview</a>. Voice skills stream realtime audio through the operator's own Wiro AI Models balance via <code>int-wiro-aimodels</code> (your own Wiro API key); the voice-prep and post-call text turns are normal token deducts.</td>
 </tr>
 </tbody>
 </table>
@@ -26178,12 +26178,12 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
 <ul>
 <li><code>tiers.starter.priceUsd</code> and <code>tiers.pro.priceUsd</code> → what your wallet will be charged for each tier.</li>
 <li><code>tiers.starter.credits</code> and <code>tiers.pro.credits</code> → monthly credit allocation.</li>
-<li><code>tokenRates</code> → per-model token rates (credits per 1M input / output / cached-input tokens). Each conversation turn is metered against these (see <a href="/docs/agent-overview#pricing-model--tiers-skills--token-billing">token billing</a>).</li>
+<li><code>tokenRates</code> → per-model token rates (credits per 1M input / output / cached-input tokens). Each conversation turn is metered against these (see <a href="/docs/agent-overview#pricing-model-tiers-skills-token-billing">token billing</a>).</li>
 <li><code>skillBreakdown[]</code> → per-skill contribution to the total. Use this to see which skill is the most expensive.</li>
 <li><code>enabledSkills</code> → final closure (includes any transitively-enabled <code>depends_on</code>).</li>
 </ul>
 <blockquote>
-<p><strong><code>agentBase</code></strong> is always <code>{ priceUsd: 0, credits: 0 }</code>: pricing is fully skill-driven and the field is kept on the response so callers don't have to null-check. The agent's Starter price = Σ(skill weights), bumped to the <strong><code>starterFloorUsd</code></strong> floor (<strong>$4/month</strong> by default) if the raw sum lands below it (credits scale up by the same ratio). Pro = Starter × <code>tiermultiplier</code> (default <code>10</code>). Per-turn conversation cost is metered separately against the agent's <code>tokenRates</code> (see <a href="/docs/agent-overview#pricing-model--tiers-skills--token-billing">token billing</a>).</p>
+<p><strong><code>agentBase</code></strong> is always <code>{ priceUsd: 0, credits: 0 }</code>: pricing is fully skill-driven and the field is kept on the response so callers don't have to null-check. The agent's Starter price = Σ(skill weights), bumped to the <strong><code>starterFloorUsd</code></strong> floor (<strong>$4/month</strong> by default) if the raw sum lands below it (credits scale up by the same ratio). Pro = Starter × <code>tiermultiplier</code> (default <code>10</code>). Per-turn conversation cost is metered separately against the agent's <code>tokenRates</code> (see <a href="/docs/agent-overview#pricing-model-tiers-skills-token-billing">token billing</a>).</p>
 </blockquote>
 <h2 id="step-3-deploy-the-custom-agent">Step 3: Deploy the Custom Agent</h2>
 <p>Send the same skill set you previewed to <code>POST /UserAgent/Deploy</code> with <code>custom: true</code> and <code>useprepaid: true</code>. The selected <code>tier</code> is debited immediately.</p>
@@ -37150,7 +37150,7 @@ Base URL: <code>https://api.sendgrid.com/v3</code>.</p>
                         </table>
                       </div>
                     </div>
-                    <div class="info-callout"><p>No third-party billing on this channel. The live call audio is billed through the <a href="/docs/agent-credentials"><code>int-wiro-aimodels</code></a> skill against your own Wiro AI Models balance (you bring your own Wiro API key). It is <strong>not</strong> charged to the agent's platform credit pool. The voice-prep turn and the post-call text turn are billed as normal token deducts (<code>action: "tokens"</code>) on <a href="/docs/agent-transactions#post-useragenttransactionlist"><code>POST /UserAgent/TransactionList</code></a>.</p></div>
+                    <div class="info-callout"><p>No third-party billing on this channel. The live call audio is billed through the <a href="/docs/agent-credentials"><code>int-wiro-aimodels</code></a> skill against your own Wiro AI Models balance (you bring your own Wiro API key). It is <strong>not</strong> charged to the agent's platform credit pool. The voice-prep turn and the post-call text turn are billed as normal token deducts (<code>action: "tokens"</code>) on <a href="/docs/agent-transactions#tx-transactionlist"><code>POST /UserAgent/TransactionList</code></a>.</p></div>
                   </section>
 
                   <section id="availability">
@@ -37415,7 +37415,7 @@ class PCM24kProcessor extends AudioWorkletProcessor {
 registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                     <div class="info-callout"><p><strong>Sample rate trick.</strong> Browsers treat <code>getUserMedia({audio:{sampleRate:24000}})</code> as a hint, not a guarantee, and most capture at 48 kHz. The <code>AudioContext({sampleRate: 24000})</code> wrapper does the resampling for you on the <code>MediaStreamSource → AudioWorkletNode</code> graph, so the worklet always sees 24 kHz Float32 input. If you create the context at any other rate you'll ship the wrong sample rate and the agent will sound chipmunked or slowed.</p></div>
 
-                    <h3>Step 3 (optional): Cancel a stale session with <code>POST /UserAgent/Realtime/Cancel</code></h3>
+                    <h3 id="step-3-optional-cancel-a-stale-session-with-post-useragentrealtimecancel">Step 3 (optional): Cancel a stale session with <code>POST /UserAgent/Realtime/Cancel</code></h3>
                     <p>If the browser can't progress past <code>WebStart</code> (mic permission denied, user navigated away, tab crashed), call <code>Realtime/Cancel</code> to release the session right away; otherwise it is released after about 5 minutes. Send the <code>cancelToken</code> from <code>WebStart</code>, authenticated as the user who called <code>WebStart</code>; each cancel handle works once.</p>
                     <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/Realtime/Cancel" \
   -H "Content-Type: application/json" \
@@ -37493,7 +37493,7 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                             </tr>
                             <tr>
                               <td>Frame</td>
-                              <td><code>&lt;correlationId&gt;|&lt;binary-pcm&gt;</code>: UTF-8 text prefix (the <code>correlationId</code> returned by <code>WebStart</code>) + <code>|</code> (0x7C) separator + raw PCM bytes. Same shape as the <a href="/docs/realtime-voice-conversation#audio-format">Realtime Voice Conversation</a> channel. <strong>Both directions</strong> use this prefix: when you receive a binary frame from the server you must locate the first <code>0x7C</code> byte and slice everything after it as <code>Int16Array</code>.</td>
+                              <td><code>&lt;correlationId&gt;|&lt;binary-pcm&gt;</code>: UTF-8 text prefix (the <code>correlationId</code> returned by <code>WebStart</code>) + <code>|</code> (0x7C) separator + raw PCM bytes. Same shape as the <a href="/docs/realtime-voice-conversation#realtime-audio-format">Realtime Voice Conversation</a> channel. <strong>Both directions</strong> use this prefix: when you receive a binary frame from the server you must locate the first <code>0x7C</code> byte and slice everything after it as <code>Int16Array</code>.</td>
                             </tr>
                           </tbody>
                         </table>
@@ -37974,7 +37974,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
                       <li><strong>(Optional) name the session</strong>: <code>POST /UserAgent/Message/RenameSession</code> seeds a titled, empty session that shows up immediately in <code>Message/Sessions</code>.</li>
                       <li><strong>Send a message</strong>: <code>POST /UserAgent/Message/Send</code> with the user's <code>sessionkey</code>. Subscribe <code>{ "type": "agent_info", "agenttoken": "&lt;agenttoken-from-send&gt;" }</code> and stream <code>agent_start → agent_output × N → agent_end</code>.</li>
                       <li><strong>Patch token usage</strong>: ~250-500 ms after <code>agent_end</code>, an <code>agent_usage_report</code> frame delivers the turn's token counts, <code>tokencost</code>, and <code>remainingcredits</code>; splice them onto the message by <code>messageguid</code>.</li>
-                      <li><strong>Collect generated media</strong>: when the agent runs a model, an <code>agent_wiroai_runtask</code> frame arrives on the same <code>agenttoken</code> with a <code>socketaccesstoken</code>. Subscribe to it with <code>{ "type": "task_info", "tasktoken": "&lt;socketaccesstoken&gt;" }</code> and stream <code>task_queue → task_start → task_output → task_postprocess_end</code>; the final frame carries the output media URLs. See <a href="/docs/agent-websocket#ws-agent-wiroai-runtask">Agent WebSocket → Model runs the agent triggers</a>.</li>
+                      <li><strong>Collect generated media</strong>: when the agent runs a model, an <code>agent_wiroai_runtask</code> frame arrives on the same <code>agenttoken</code> with a <code>socketaccesstoken</code>. Subscribe to it with <code>{ "type": "task_info", "tasktoken": "&lt;socketaccesstoken&gt;" }</code> and stream <code>task_queue → task_start → task_output → task_postprocess_end</code>; the final frame carries the output media URLs. See <a href="/docs/agent-websocket#model-runs-the-agent-triggers">Agent WebSocket → Model runs the agent triggers</a>.</li>
                       <li><strong>Manage sessions</strong>: list with <code>Message/Sessions</code>, rename with <code>Message/RenameSession</code>, clear/forget with <code>Message/DeleteSession</code> (<code>rotate: true</code> to wipe the agent's memory of the thread).</li>
                     </ol>
                     <p>Either deployment shape works: run <strong>one</strong> media agent and separate users by <code>sessionkey</code>, or deploy <strong>separate</strong> agents per workspace/customer. Both use the exact same socket and messaging surface.</p>
