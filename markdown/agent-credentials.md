@@ -1246,7 +1246,7 @@ Saving a connector doesn't move the agent out of `status: 6`, whether with `Cred
 - **OAuth and hybrid connection credentials**: `_connected: true` (the active
   mode has a validated runtime token **and** every required picker field is
   populated), or
-- **API-key credentials**: at least one field with `fieldstatus: "user"` has a non-empty value (any one user-writable field filled in makes the credential count as "entered"; there is no deeper per-field validation).
+- **API-key credentials**: at least one field saved on this agent with `fieldstatus: "user"` has a non-empty value (any one user-writable field filled in makes the credential count as "entered"; there is no deeper per-field validation). A value the agent template holds doesn't count here, though it counts toward the card's `_filled` and `_required_missing`.
 
 The two branches are checked together: `setuprequired` stays `true` until every required credential passes one of them.
 
