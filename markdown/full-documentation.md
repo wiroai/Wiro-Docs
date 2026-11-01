@@ -5522,7 +5522,7 @@ Or install Node.js 20 or later and add this local stdio entry to
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.4.0"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.4.1"],
       "env": {
         "WIRO_API_KEY": "YOUR_API_KEY",
         "WIRO_API_SECRET": "YOUR_API_SECRET"
@@ -5533,7 +5533,7 @@ Or install Node.js 20 or later and add this local stdio entry to
 ```
 
 For API Key Only authentication, remove `WIRO_API_SECRET` completely. Fully quit
-and reopen Claude Desktop after saving. Pin `@wiro-ai/wiro-mcp@1.4.0` in `args`
+and reopen Claude Desktop after saving. Pin `@wiro-ai/wiro-mcp@1.4.1` in `args`
 so `npx` does not reuse an older cached build. This runs the local package
 and provides the same Wiro tools.
 
@@ -5876,7 +5876,7 @@ Run the Wiro MCP server locally on your own machine using npx.
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.4.0"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.4.1"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -5888,7 +5888,7 @@ Run the Wiro MCP server locally on your own machine using npx.
 
 The self-hosted server exposes the same 48 tools, playbooks and prompts as
 the hosted server, including bounded `run_model`, `wait_for_task`, and optional short waits through
-`get_task.wait_seconds`. Pin `@wiro-ai/wiro-mcp@1.4.0` in the npx `args` so
+`get_task.wait_seconds`. Pin `@wiro-ai/wiro-mcp@1.4.1` in the npx `args` so
 clients do not reuse an older cached package.
 
 ## Environment Variables
