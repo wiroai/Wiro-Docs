@@ -14,7 +14,7 @@ The endpoints below are **owner-or-team-admin** scoped. Plain members of the age
 
 | Endpoint | Purpose |
 |----------|---------|
-| `POST /UserAgent/Logs` | Live tail (last N events for today, or a specific date). Cached server-side for 30s to absorb polling. |
+| `POST /UserAgent/Logs` | Live tail (last N events for today, or a specific date). Poll it every 30 seconds or more. |
 | `POST /UserAgent/LogsList` | List the days (`YYYY-MM-DD`) that have activity, with the size of each day's log. |
 | `POST /UserAgent/LogsFile` | Read the **full** log of a specific date. |
 | `POST /UserAgent/LogsDelete` | Delete the agent's own turns and tool calls for one date. Idempotent. |
@@ -163,7 +163,7 @@ Live tail of the agent's activity feed. Returns the last N events for the reques
 | `date` | string | No | `YYYY-MM-DD` to read a specific day's file. Default: today (UTC). |
 | `lines` | number | No | Max events to return (max 5000). Default: `200`. |
 
-**Caching:** the endpoint is cached server-side for 30 seconds per `(useragentguid, date, lines)` triple to absorb polling bursts. Plan for ≥30 s between repeated polls of the same key. Who-did-what rows are read fresh on every call.
+**Polling:** leave 30 seconds or more between repeated polls.
 
 ##### Request
 
@@ -446,7 +446,7 @@ Deletes the agent's own turns and tool calls for one date: its activity file and
 
 ### Live polling for an in-app activity feed
 
-Polling `Logs` every 30 seconds is the recommended cadence. The server-side cache TTL is calibrated for exactly this interval, so faster polling won't return fresher data:
+Polling `Logs` every 30 seconds is the recommended cadence:
 
 ```javascript
 async function pollActivity(useragentguid, onEvents) {

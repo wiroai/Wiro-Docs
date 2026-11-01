@@ -16268,8 +16268,8 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </div>
 </div>
 <p><strong>Headers:</strong> No extra header is needed. Access: the agent's owner or a team admin of the agent's team (plain team members are rejected with code <code>97</code>).</p>
-<h5 id="logs-rate-limit">Rate limit</h5>
-<p>Calls are rate-limited via a 30-second server-side cache keyed on <code>(useragentguid, date, lines)</code>. The first call within a 30s window reads the live log; later calls within the window receive the cached payload. Poll every 30 seconds or more. Who-did-what rows are read fresh on every call.</p>
+<h5 id="logs-polling">Polling</h5>
+<p>Poll every 30 seconds or more.</p>
 <h5 id="response_20">Response</h5>
 <pre><code class="language-json">{
   &quot;result&quot;: true,
@@ -16600,7 +16600,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </code></pre>
 <p>Idempotent: deleting an already-gone date returns <code>result: true</code> with <code>removed.plain: false</code> and <code>removed.gz: false</code>.</p>
 <h4 id="post-useragentlogsfile"><strong>POST</strong> /UserAgent/LogsFile</h4>
-<p>Downloads the <strong>full</strong> day's activity log (no <code>lines</code> cap). Use this when you need a complete forensic trace. <code>Logs</code> is for live-tail UX (capped at 5000 rows for cache hygiene). The response is the same <code>events[]</code> shape as <code>Logs</code>, plus a <code>truncated</code> flag.</p>
+<p>Downloads the <strong>full</strong> day's activity log (no <code>lines</code> cap). Use this when you need a complete forensic trace. <code>Logs</code> is for live-tail UX (capped at 5000 rows). The response is the same <code>events[]</code> shape as <code>Logs</code>, plus a <code>truncated</code> flag.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -26938,7 +26938,7 @@ foreach (array_slice($resp['transactions'], 0, 10) as $tx) {
                             <tr><th>Endpoint</th><th>Purpose</th></tr>
                           </thead>
                           <tbody>
-                            <tr><td><code>POST /UserAgent/Logs</code></td><td>Live tail (last N events for today, or a specific date). Cached server-side for 30s to absorb polling.</td></tr>
+                            <tr><td><code>POST /UserAgent/Logs</code></td><td>Live tail (last N events for today, or a specific date). Poll it every 30 seconds or more.</td></tr>
                             <tr><td><code>POST /UserAgent/LogsList</code></td><td>List the days (<code>YYYY-MM-DD</code>) that have activity, with the size of each day's log.</td></tr>
                             <tr><td><code>POST /UserAgent/LogsFile</code></td><td>Read the <strong>full</strong> log of a specific date.</td></tr>
                             <tr><td><code>POST /UserAgent/LogsDelete</code></td><td>Delete the agent's own turns and tool calls for one date. Idempotent.</td></tr>
@@ -27115,7 +27115,7 @@ foreach (array_slice($resp['transactions'], 0, 10) as $tx) {
                         </table>
                       </div>
                     </div>
-                    <p><strong>Caching:</strong> the endpoint is cached server-side for 30 seconds per <code>(useragentguid, date, lines)</code> triple to absorb polling bursts. Plan for ≥30 s between repeated polls of the same key. Who-did-what rows are read fresh on every call.</p>
+                    <p><strong>Polling:</strong> leave 30 seconds or more between repeated polls.</p>
 
                     <h3>Request</h3>
                     <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/Logs" \
@@ -27411,7 +27411,7 @@ foreach (array_slice($resp['transactions'], 0, 10) as $tx) {
                     <h2>Usage Patterns</h2>
 
                     <h3>Live polling for an in-app activity feed</h3>
-                    <p>Polling <code>Logs</code> every 30 seconds is the recommended cadence. The server-side cache TTL is calibrated for exactly this interval, so faster polling won't return fresher data:</p>
+                    <p>Polling <code>Logs</code> every 30 seconds is the recommended cadence:</p>
                     <pre><code class="language-javascript">async function pollActivity(useragentguid, onEvents) {
   let lastTs = 0;
 

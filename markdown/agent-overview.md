@@ -2314,9 +2314,9 @@ Live activity feed for a useragent: what the agent did, when, and which user tri
 
 **Headers:** No extra header is needed. Access: the agent's owner or a team admin of the agent's team (plain team members are rejected with code `97`).
 
-##### Rate limit
+##### Polling
 
-Calls are rate-limited via a 30-second server-side cache keyed on `(useragentguid, date, lines)`. The first call within a 30s window reads the live log; later calls within the window receive the cached payload. Poll every 30 seconds or more. Who-did-what rows are read fresh on every call.
+Poll every 30 seconds or more.
 
 ##### Response
 
@@ -2492,7 +2492,7 @@ Idempotent: deleting an already-gone date returns `result: true` with `removed.p
 
 #### **POST** /UserAgent/LogsFile
 
-Downloads the **full** day's activity log (no `lines` cap). Use this when you need a complete forensic trace. `Logs` is for live-tail UX (capped at 5000 rows for cache hygiene). The response is the same `events[]` shape as `Logs`, plus a `truncated` flag.
+Downloads the **full** day's activity log (no `lines` cap). Use this when you need a complete forensic trace. `Logs` is for live-tail UX (capped at 5000 rows). The response is the same `events[]` shape as `Logs`, plus a `truncated` flag.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
