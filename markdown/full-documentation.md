@@ -8898,7 +8898,7 @@ The endpoint auto-normalises the skillkey to its canonical form. Bare slugs beco
 
 > **Description-only edits skip the restart.** If you only change `description` and the row's functional fields (`value`, `interval`, `enabled`) stay the same, the agent is **not** restarted. Functional changes still trigger the standard auto-restart.
 
-> **Schedules the agent can't run are refused.** A scheduled task's `interval` is a cron expression with five fields, `minute hour day month weekday`, such as `0 9 * * 1-5`. A schedule the agent can't run is refused before anything is saved, and the error says what is wrong: `0 25 * * *` gets `This schedule can't run. The hour field takes 0 to 23. A schedule has five fields: minute hour day month weekday, for example 0 9 * * 1-5.` Only a schedule sent in the request is checked, so a task that already has one can still be edited or turned on and off.
+> **Schedules the agent can't run are refused.** A scheduled task's `interval` is a cron expression with five fields, `minute hour day month weekday`, such as `0 9 * * 1-5`. A schedule the agent can't run, or one whose date never comes, such as 30 February, is refused before anything is saved, and the error says what is wrong and what to write: `0 25 * * *` gets `This schedule can't run. The hour field takes 0 to 23. A schedule has five fields: minute hour day month weekday, for example 0 9 * * 1-5.`, and `0 0 30 2 *` gets `This schedule never comes up: February has no 30th. Pick a day February has, such as 28.` Only a schedule sent in the request is checked, so a task that already has one can still be edited or turned on and off.
 
 ##### Request
 
@@ -10291,8 +10291,8 @@ Agent-specific errors you may encounter:
 | `Agent is currently stopping, please wait` | Start called on an agent with status `1` |
 | `Agent is in error state, use Start to retry` | Stop called on an agent with status `5` that has nothing left to stop; an errored agent that still holds its runtime is accepted and moves to `1` (Stopping) |
 | `Duplicate deploy: an identical agent ("<title>") was already deployed Ns ago. Open the existing one in your panel, or wait a few seconds and retry.` | `Deploy` called a second time within 10s for the same caller, template and team (custom builds: same caller, `title` and team). Carries `errors[0].code: 99` and a top-level `existingUserAgentGuid` field. |
-| `This schedule can't run. <what is wrong> A schedule has five fields: minute hour day month weekday, for example 0 9 * * 1-5.` | `CustomSkillUpsert` with an `interval` the agent can't run on a scheduled task. Nothing is saved. |
-| `<skillkey>: This schedule can't run. …` | `Deploy` with a `customskills` entry whose `interval` the agent can't run. Nothing is created or charged. |
+| A sentence that says what is wrong and what to write, such as `This schedule can't run. The hour field takes 0 to 23. A schedule has five fields: minute hour day month weekday, for example 0 9 * * 1-5.` or `This schedule never comes up: February has no 30th. Pick a day February has, such as 28.` | `CustomSkillUpsert` with an `interval` the agent can't run on a scheduled task, or one whose date never comes. Nothing is saved. |
+| `<skillkey>:` followed by the same sentence | `Deploy` with a `customskills` entry whose `interval` the agent can't run, or whose date never comes. Nothing is created or charged. |
 | `Agent setup is not complete. Please finish setting up your connectors before starting.` | Status is `6`: call `CredentialUpsert` / `CredentialProjectBind` / `SkillsApply` / `CustomSkillUpsert` to provide required values, then `POST /UserAgent/Update` to move the agent to status `0` |
 | `Subscription required — please subscribe to this agent before starting it.` | `Start` called on a row with no active subscription AND no spendable extras (`extracredits - usedcredits ≤ 0`). Most often hit after a subscription expires with empty extras. Call `RenewSubscription` (`useprepaid: true`) to continue. |
 | `No credits available. Please renew your subscription or purchase extra credits.` | Monthly and extra credits are both exhausted |
@@ -16549,7 +16549,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Detail" \
 - Send only the fields you want to change. Omitted fields keep their current values.
 - Unknown skill keys return `skill-not-found` in the `errors[]` without altering other state.
 - To clear a cron schedule, call `CustomSkillUpsert` with `enabled: false`. Setting `interval: ""` or `null` also clears it.
-- A schedule must be one the agent can run: a cron expression with five fields, `minute hour day month weekday`, such as `0 9 * * 1-5`. Anything else is refused and nothing is saved, with an error that says what is wrong, for example `This schedule can't run. The hour field takes 0 to 23. A schedule has five fields: minute hour day month weekday, for example 0 9 * * 1-5.`
+- A schedule must be one the agent can run, written as five fields, `minute hour day month weekday`, such as `0 9 * * 1-5`. A schedule the agent can't run, or one whose date never comes, such as 30 February, is refused and nothing is saved. The error says what is wrong and what to write, for example `This schedule can't run. The hour field takes 0 to 23. A schedule has five fields: minute hour day month weekday, for example 0 9 * * 1-5.`
 - Integration toggles (top-level `skills[]`) are a separate endpoint (see [Toggling Integration Skills](#toggling-integration-skills) and [`SkillsApply`](/docs/agent-overview#post-useragentskillsapply)).
 
 ### What happens when Wiro updates an agent template

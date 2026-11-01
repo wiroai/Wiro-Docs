@@ -15223,7 +15223,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <p><strong>Description-only edits skip the restart.</strong> If you only change <code>description</code> and the row's functional fields (<code>value</code>, <code>interval</code>, <code>enabled</code>) stay the same, the agent is <strong>not</strong> restarted. Functional changes still trigger the standard auto-restart.</p>
 </blockquote>
 <blockquote>
-<p><strong>Schedules the agent can't run are refused.</strong> A scheduled task's <code>interval</code> is a cron expression with five fields, <code>minute hour day month weekday</code>, such as <code>0 9 * * 1-5</code>. A schedule the agent can't run is refused before anything is saved, and the error says what is wrong: <code>0 25 * * *</code> gets <code>This schedule can't run. The hour field takes 0 to 23. A schedule has five fields: minute hour day month weekday, for example 0 9 * * 1-5.</code> Only a schedule sent in the request is checked, so a task that already has one can still be edited or turned on and off.</p>
+<p><strong>Schedules the agent can't run are refused.</strong> A scheduled task's <code>interval</code> is a cron expression with five fields, <code>minute hour day month weekday</code>, such as <code>0 9 * * 1-5</code>. A schedule the agent can't run, or one whose date never comes, such as 30 February, is refused before anything is saved, and the error says what is wrong and what to write: <code>0 25 * * *</code> gets <code>This schedule can't run. The hour field takes 0 to 23. A schedule has five fields: minute hour day month weekday, for example 0 9 * * 1-5.</code>, and <code>0 0 30 2 *</code> gets <code>This schedule never comes up: February has no 30th. Pick a day February has, such as 28.</code> Only a schedule sent in the request is checked, so a task that already has one can still be edited or turned on and off.</p>
 </blockquote>
 <h5 id="request_3">Request</h5>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
@@ -17669,12 +17669,12 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <td><code>Deploy</code> called a second time within 10s for the same caller, template and team (custom builds: same caller, <code>title</code> and team). Carries <code>errors[0].code: 99</code> and a top-level <code>existingUserAgentGuid</code> field.</td>
 </tr>
 <tr>
-<td><code>This schedule can't run. &lt;what is wrong&gt; A schedule has five fields: minute hour day month weekday, for example 0 9 * * 1-5.</code></td>
-<td><code>CustomSkillUpsert</code> with an <code>interval</code> the agent can't run on a scheduled task. Nothing is saved.</td>
+<td>A sentence that says what is wrong and what to write, such as <code>This schedule can't run. The hour field takes 0 to 23. A schedule has five fields: minute hour day month weekday, for example 0 9 * * 1-5.</code> or <code>This schedule never comes up: February has no 30th. Pick a day February has, such as 28.</code></td>
+<td><code>CustomSkillUpsert</code> with an <code>interval</code> the agent can't run on a scheduled task, or one whose date never comes. Nothing is saved.</td>
 </tr>
 <tr>
-<td><code>&lt;skillkey&gt;: This schedule can't run. …</code></td>
-<td><code>Deploy</code> with a <code>customskills</code> entry whose <code>interval</code> the agent can't run. Nothing is created or charged.</td>
+<td><code>&lt;skillkey&gt;:</code> followed by the same sentence</td>
+<td><code>Deploy</code> with a <code>customskills</code> entry whose <code>interval</code> the agent can't run, or whose date never comes. Nothing is created or charged.</td>
 </tr>
 <tr>
 <td><code>Agent setup is not complete. Please finish setting up your connectors before starting.</code></td>
@@ -26120,7 +26120,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <li>Send only the fields you want to change. Omitted fields keep their current values.</li>
 <li>Unknown skill keys return <code>skill-not-found</code> in the <code>errors[]</code> without altering other state.</li>
 <li>To clear a cron schedule, call <code>CustomSkillUpsert</code> with <code>enabled: false</code>. Setting <code>interval: ""</code> or <code>null</code> also clears it.</li>
-<li>A schedule must be one the agent can run: a cron expression with five fields, <code>minute hour day month weekday</code>, such as <code>0 9 * * 1-5</code>. Anything else is refused and nothing is saved, with an error that says what is wrong, for example <code>This schedule can't run. The hour field takes 0 to 23. A schedule has five fields: minute hour day month weekday, for example 0 9 * * 1-5.</code></li>
+<li>A schedule must be one the agent can run, written as five fields, <code>minute hour day month weekday</code>, such as <code>0 9 * * 1-5</code>. A schedule the agent can't run, or one whose date never comes, such as 30 February, is refused and nothing is saved. The error says what is wrong and what to write, for example <code>This schedule can't run. The hour field takes 0 to 23. A schedule has five fields: minute hour day month weekday, for example 0 9 * * 1-5.</code></li>
 <li>Integration toggles (top-level <code>skills[]</code>) are a separate endpoint (see <a href="#toggling-integration-skills">Toggling Integration Skills</a> and <a href="/docs/agent-overview#post-useragentskillsapply"><code>SkillsApply</code></a>).</li>
 </ul>
 <h3 id="what-happens-when-wiro-updates-an-agent-template">What happens when Wiro updates an agent template</h3>
