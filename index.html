@@ -12507,7 +12507,7 @@ pro.credits = starter.credits × tiermultiplier
 <p><strong>Starter tier minimum: $4/month.</strong> Every agent pays at least $4/month on Starter. When the raw sum of enabled-skill weights would land below $4, Wiro raises the Starter price to $4 <strong>and</strong> scales the credit pool up by the same ratio, so the user gets a proportional credit increase, not a free upgrade. An agent made only of free (<code>ZERO</code>-tier) skills pays the floor too: $4/month with 400 credits. Default Pro = Starter × <code>tiermultiplier</code> (default <code>10</code>), so an agent that lands on the $4 floor pays <strong>$40/month on Pro</strong> with the same credit pool × 10.</p>
 </blockquote>
 <p><strong>Changing a plan inside a period.</strong> Adding a skill or moving to Pro charges the monthly difference for the time left in the period, by the second and at least one day's worth on a wallet plan, and the added credits come for that same time. Every renewal gives the whole allowance. Example: a $4 Starter adds a $29 skill with 1 day left of 30: $0.97 now, 97 credits now, then $33 a month with 3,300 credits from the renewal. On a card plan the difference goes on the next invoice.</p>
-<p><strong>Taking a skill off.</strong> On a wallet plan, what the time left is worth goes back to the balances that paid for the period, less 1 cent for each credit already used above what the plan keeps, never below zero. Extra credit packs are not counted. Example: a $4 Starter with the $29 skill on since the period began, 3 days into a 30-day period with 1,000 credits used: $26.10 for the 27 days left, less $6.00 for the 600 credits above the 400 that stay, so $20.10 comes back. With 3,300 used, nothing comes back. Each balance keeps the end date of the credit or deposit that paid; a part whose source has ended since lasts until the period ends. A skill's credits end when it comes off, and turning it on again later gives credits for the time left then. On a card plan the difference for the time left comes off the next invoice.</p>
+<p><strong>Taking a skill off.</strong> The skill's credits for the time left end at once; the credits the days already gone paid for stay until the next renewal. On a wallet plan, what the time left is worth goes back to the balances that paid for the period, less 1 cent for each credit already used above what the period keeps, never below zero. Extra credit packs are not counted. Example: a $4 Starter with the $29 skill on since the period began, 3 days into a 30-day period with 1,000 credits used: the period keeps 690 credits (the plan's 400 and 290 for the 3 days gone); $26.10 for the 27 days left, less $3.10 for the 310 credits used above those 690, comes to $23.00 back. With 3,300 used, nothing comes back. Each balance keeps the end date of the credit or deposit that paid; a part whose source has ended since lasts until the period ends. Turning the skill on again later gives credits for the time left then. On a card plan the difference for the time left comes off the next invoice.</p>
 <h3 id="token-billing">Token Billing</h3>
 <p>The monthly tier buys a <strong>credit pool</strong>; each turn the agent runs (a chat reply, a scheduled cron tick, or a voice-prep turn) deducts credits from that pool, <strong>metered by the tokens its model consumes</strong>. There are no flat per-action costs: what a turn costs depends on the model and how many input / output / cached tokens it used.</p>
 <p>Per-model rates live in the <code>tokenRates</code> object, present on <code>Agent/Detail</code>, <code>UserAgent/Detail</code>, <code>MyAgents</code>, <code>PinnedAgents</code>, and <code>PricingPreview</code>. The marketplace catalog (<code>Agent/Detail</code>) and <code>PricingPreview</code> return only the <strong>selectable</strong> models; a deployed instance's <code>UserAgent/Detail</code> / <code>MyAgents</code> / <code>PinnedAgents</code> return the <strong>full</strong> model map (so historical model-change markers and token-usage tooltips can still resolve a model that was later marked non-selectable). Internal metadata (<code>$</code>-prefixed keys) is stripped from every response:</p>
@@ -13937,7 +13937,7 @@ pro.credits = starter.credits × tiermultiplier
 <tr>
 <td><code>monthlycredits</code></td>
 <td><code>number</code></td>
-<td>The credits this period grants. After a skill is added or the agent moves to Pro inside a period, it stays below <code>renewalcredits</code> until the next renewal.</td>
+<td>The credits this period grants. After a change inside a period it can differ from <code>renewalcredits</code> until the next renewal: a skill added or a move to Pro grants credits for the time left, so it reads below; a skill taken off keeps the credits the days already gone paid for, so it reads above.</td>
 </tr>
 <tr>
 <td><code>renewalcredits</code></td>
@@ -15849,7 +15849,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <tr>
 <td><code>usedCreditsUsd</code></td>
 <td><code>number</code></td>
-<td>What came off a credit for credits already used: 1 cent for each credit used above what the plan keeps. <code>0</code> when nothing came off.</td>
+<td>What came off a credit for credits already used: 1 cent for each credit used above what the period keeps (<code>pricing.creditsThisPeriod</code>). <code>0</code> when nothing came off.</td>
 </tr>
 <tr>
 <td><code>prepaidCreditParts</code></td>
@@ -15925,7 +15925,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </tr>
 <tr>
 <td><code>104</code></td>
-<td><code>skillsapply-in-progress</code>: another <code>SkillsApply</code> is already running on this useragent. Wait and retry.</td>
+<td><code>skillsapply-in-progress</code>: another <code>SkillsApply</code> is already running on this useragent. Wait and retry. The same code comes with <code>Another payment from this wallet is still going through, so this skill change was undone and nothing was charged. Please try again in a minute.</code> when another payment from the same wallet is still going through.</td>
 </tr>
 <tr>
 <td><code>105</code></td>
@@ -16192,6 +16192,10 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <tr>
 <td><code>We couldn't confirm this agent's previous checkout. Please try again in a minute.</code></td>
 <td>The agent's previous card checkout couldn't be checked</td>
+</tr>
+<tr>
+<td><code>Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.</code></td>
+<td>Another plan or credit pack payment from the same wallet is still going through</td>
 </tr>
 </tbody>
 </table>
@@ -17527,6 +17531,10 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <td><code>We couldn't confirm this agent's previous checkout. Please try again in a minute.</code></td>
 <td>The agent's previous card checkout couldn't be checked; nothing is charged</td>
 </tr>
+<tr>
+<td><code>Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.</code></td>
+<td>Another plan or credit pack payment from the same wallet is still going through; nothing is charged</td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -17689,6 +17697,10 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <td><code>SkillsApply</code>: wallet can't cover the prorated charge</td>
 </tr>
 <tr>
+<td><code>Another payment from this wallet is still going through, so this skill change was undone and nothing was charged. Please try again in a minute.</code></td>
+<td><code>SkillsApply</code> (code <code>104</code>) while another plan or credit pack payment from the same wallet is going through</td>
+</tr>
+<tr>
 <td><code>targetTier must be 'starter' or 'pro'</code></td>
 <td><code>UpgradeTier</code> with a <code>targetTier</code> outside the closed enum (typos, missing parameter name, etc.). Unlike <code>Deploy</code>'s silent coercion, <code>UpgradeTier</code> rejects invalid input explicitly.</td>
 </tr>
@@ -17715,6 +17727,22 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <tr>
 <td><code>Wallet deduction failed: {error}</code></td>
 <td><code>UpgradeTier</code>: wallet write itself failed (rare; transient backend error)</td>
+</tr>
+<tr>
+<td><code>Another change to this agent's plan is going through. Nothing was changed; please try again in a minute.</code></td>
+<td><code>UpgradeTier</code> (code <code>104</code>) while a skill change or another upgrade of the same agent is going through</td>
+</tr>
+<tr>
+<td><code>The agent's plan changed while this upgrade was asked for. Nothing was changed; please retry.</code></td>
+<td><code>UpgradeTier</code> when the agent's plan ended or moved off the wallet while the upgrade waited its turn</td>
+</tr>
+<tr>
+<td><code>Could not read the agent's plan. Nothing was changed; please retry.</code></td>
+<td><code>UpgradeTier</code>: the agent's plan could not be read</td>
+</tr>
+<tr>
+<td><code>Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.</code></td>
+<td><code>Deploy</code> or <code>CreateSubscriptionCheckout</code> with <code>useprepaid: true</code>, <code>CreateExtraCreditCheckout</code>, <code>RenewSubscription</code> or <code>UpgradeTier</code> (code <code>104</code> on <code>UpgradeTier</code>) while another plan or credit pack payment from the same wallet is going through. A <code>Deploy</code> refused this way creates no agent</td>
 </tr>
 <tr>
 <td><code>Project not found. Send the id of one of your projects from Project/List: one you created, or any project of a team you are an admin of.</code></td>
@@ -26473,7 +26501,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
   }
 }
 </code></pre>
-<p><code>prepaidWalletDelta</code> is the USD amount debited from your wallet for the rest of the current period: the monthly difference for the time left, by the second, rounded up to the cent, and at least one day's worth. The added credits come for that same time (<code>pricing.creditsNow</code>), and every renewal gives the whole allowance (<code>pricing.creditsFromRenewal</code>). If you disable a paid skill mid-period the delta is negative and rounds down to the cent: what the time left is worth goes back to the balances that paid for the period, less 1 cent for each credit already used above what the plan keeps (<code>usedCreditsUsd</code>). Each balance keeps the end date of the credit or deposit that paid; a part whose source has ended since lasts until the period ends.</p>
+<p><code>prepaidWalletDelta</code> is the USD amount debited from your wallet for the rest of the current period: the monthly difference for the time left, by the second, rounded up to the cent, and at least one day's worth. The added credits come for that same time (<code>pricing.creditsNow</code>), and every renewal gives the whole allowance (<code>pricing.creditsFromRenewal</code>). If you disable a paid skill mid-period the delta is negative and rounds down to the cent: what the time left is worth goes back to the balances that paid for the period, less 1 cent for each credit already used above what the period keeps (<code>usedCreditsUsd</code>); the period keeps the credits the days already gone paid for until the next renewal. Each balance keeps the end date of the credit or deposit that paid; a part whose source has ended since lasts until the period ends.</p>
 <h3 id="batch-toggle-tier-upgrade-in-one-call">Batch toggle + tier upgrade in one call</h3>
 <p>When the user stages many toggles in your UI and commits them all together, send everything in one <code>SkillsApply</code> call:</p>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/SkillsApply&quot; \

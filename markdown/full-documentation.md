@@ -7274,7 +7274,7 @@ Every paid skill adds 100 monthly credits for each $1 it adds to the price, so a
 
 **Changing a plan inside a period.** Adding a skill or moving to Pro charges the monthly difference for the time left in the period, by the second and at least one day's worth on a wallet plan, and the added credits come for that same time. Every renewal gives the whole allowance. Example: a $4 Starter adds a $29 skill with 1 day left of 30: $0.97 now, 97 credits now, then $33 a month with 3,300 credits from the renewal. On a card plan the difference goes on the next invoice.
 
-**Taking a skill off.** On a wallet plan, what the time left is worth goes back to the balances that paid for the period, less 1 cent for each credit already used above what the plan keeps, never below zero. Extra credit packs are not counted. Example: a $4 Starter with the $29 skill on since the period began, 3 days into a 30-day period with 1,000 credits used: $26.10 for the 27 days left, less $6.00 for the 600 credits above the 400 that stay, so $20.10 comes back. With 3,300 used, nothing comes back. Each balance keeps the end date of the credit or deposit that paid; a part whose source has ended since lasts until the period ends. A skill's credits end when it comes off, and turning it on again later gives credits for the time left then. On a card plan the difference for the time left comes off the next invoice.
+**Taking a skill off.** The skill's credits for the time left end at once; the credits the days already gone paid for stay until the next renewal. On a wallet plan, what the time left is worth goes back to the balances that paid for the period, less 1 cent for each credit already used above what the period keeps, never below zero. Extra credit packs are not counted. Example: a $4 Starter with the $29 skill on since the period began, 3 days into a 30-day period with 1,000 credits used: the period keeps 690 credits (the plan's 400 and 290 for the 3 days gone); $26.10 for the 27 days left, less $3.10 for the 310 credits used above those 690, comes to $23.00 back. With 3,300 used, nothing comes back. Each balance keeps the end date of the credit or deposit that paid; a part whose source has ended since lasts until the period ends. Turning the skill on again later gives credits for the time left then. On a card plan the difference for the time left comes off the next invoice.
 
 ### Token Billing
 
@@ -8330,7 +8330,7 @@ Retrieves full details for a single deployed agent instance, including subscript
 | `tier` | `string` | `"starter"` or `"pro"`: the active tier for this instance. |
 | `tiermultiplier` | `number` | Per-instance Pro multiplier: snapshotted at deploy from the template (default `10`). Pro `monthlypriceusd` = Starter × `tiermultiplier`. The value is fixed for the life of the instance: it is captured at deploy time and is not refreshed when the platform default changes. |
 | `monthlypriceusd` | `number` | Monthly USD price snapshotted at deploy / renewal. Mirrors `subscription.amount`. |
-| `monthlycredits` | `number` | The credits this period grants. After a skill is added or the agent moves to Pro inside a period, it stays below `renewalcredits` until the next renewal. |
+| `monthlycredits` | `number` | The credits this period grants. After a change inside a period it can differ from `renewalcredits` until the next renewal: a skill added or a move to Pro grants credits for the time left, so it reads below; a skill taken off keeps the credits the days already gone paid for, so it reads above. |
 | `renewalcredits` | `number` | The credits each renewal grants. |
 | `extracredits` | `number` | Active extra-credit balance (sum of non-expired packs from `CreateExtraCreditCheckout`). |
 | `extracreditsexpiry` | `number\|null` | Unix timestamp when the earliest extra credit pack expires. `null` when no extras are active. |
@@ -9303,7 +9303,7 @@ When every entry in your `skills` map already matches the persisted state and th
 | `noOp` | `boolean` | Present and `true` only on the no-op short-circuit response. Absent on the regular success path. When you see `noOp: true`, the rest of the field set (`tier`, `prepaidWalletDelta`, `restartTriggered`, `pricing`) is omitted, because there was nothing to apply. |
 | `tier` | `string` | The tier in effect after the call (`"starter"` or `"pro"`). Mirrors what was passed in `body.tier`, or the unchanged current tier if the request omitted it. |
 | `prepaidWalletDelta` | `number\|null` | USD charged to (positive) or credited back to (negative) the wallet for the time left in the period. `null` when no wallet money moved: on a card plan, when the price didn't change, or when the credits already used took the whole credit (then `usedCreditsUsd` is above `0`, and nothing failed). |
-| `usedCreditsUsd` | `number` | What came off a credit for credits already used: 1 cent for each credit used above what the plan keeps. `0` when nothing came off. |
+| `usedCreditsUsd` | `number` | What came off a credit for credits already used: 1 cent for each credit used above what the period keeps (`pricing.creditsThisPeriod`). `0` when nothing came off. |
 | `prepaidCreditParts` | `object` | Present when a credit landed. How it split over the balances that paid: `couponUsd`, `storeUsd` and `depositUsd`, each keeping the end date of the credit or deposit that paid, and `couponUntilPeriodEndUsd`, `storeUntilPeriodEndUsd` and `depositUntilPeriodEndUsd`, the part of each whose source has ended since, which lasts until the period ends. |
 | `prepaidCreditFailedUsd` | `number` | Present when part of a credit was not added to the wallet. `warnings[]` says what to do next. |
 | `restartTriggered` | `boolean` | `true` when the agent runtime was restarted to pick up the new skill set. `false` for stopped agents (no restart needed) or no-op batches. |
@@ -9321,7 +9321,7 @@ When every entry in your `skills` map already matches the persisted state and th
 | `101` | `skillsapply-deps-violation`: a final enabled skill has unsatisfied `depends_on`. Body includes `deps[]`. |
 | `102` | `skillsapply-conflict`: two finally-enabled skills are mutually exclusive. Body includes `conflicts[]`. |
 | `103` | `skillsapply-insufficient-wallet`: wallet can't cover the prorated charge. Body includes `requiredUsd` / `availableUsd`. |
-| `104` | `skillsapply-in-progress`: another `SkillsApply` is already running on this useragent. Wait and retry. |
+| `104` | `skillsapply-in-progress`: another `SkillsApply` is already running on this useragent. Wait and retry. The same code comes with `Another payment from this wallet is still going through, so this skill change was undone and nothing was charged. Please try again in a minute.` when another payment from the same wallet is still going through. |
 | `105` | `skillsapply-tier-downgrade`: Pro → Starter rejected. Cancel + re-subscribe instead. |
 | `106` | `skillsapply-subscription-inactive`: subscription must be `active` to mutate. |
 | `108` | `skillsapply-db-tx-failed`: DB transaction rolled back; safe to retry with a new idempotency key. |
@@ -9459,6 +9459,7 @@ If a card checkout for the agent is still open (for example, one started in the 
 | `A payment for this agent is already being processed. It usually finishes within a minute; refresh to see the subscription.` | A card payment for the agent has gone through and its subscription is still being set up. The response also carries `checkoutpending: true`; call `UserAgent/Detail` in a minute instead of retrying |
 | `A checkout for this agent is already being opened. Try again in a moment.` | Another subscription request for the same agent is in progress |
 | `We couldn't confirm this agent's previous checkout. Please try again in a minute.` | The agent's previous card checkout couldn't be checked |
+| `Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.` | Another plan or credit pack payment from the same wallet is still going through |
 
 #### **POST** /UserAgent/Start
 
@@ -10213,6 +10214,7 @@ Called after the subscription has expired (daily cron flipped it to `status: "ex
 | `A payment for this agent is already being processed. It usually finishes within a minute; refresh to see the subscription.` | A card payment for the agent has gone through and its subscription is still being set up; nothing is charged. The response also carries `checkoutpending: true` |
 | `A checkout for this agent is already being opened. Try again in a moment.` | Another subscription request for the same agent is in progress; nothing is charged |
 | `We couldn't confirm this agent's previous checkout. Please try again in a minute.` | The agent's previous card checkout couldn't be checked; nothing is charged |
+| `Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.` | Another plan or credit pack payment from the same wallet is still going through; nothing is charged |
 
 ##### Full subscription lifecycle (prepaid)
 
@@ -10296,6 +10298,7 @@ Agent-specific errors you may encounter:
 | `No credits available. Please renew your subscription or purchase extra credits.` | Monthly and extra credits are both exhausted |
 | `Subscription already active for this useragent. Cancel or modify the existing subscription instead.` | `CreateSubscriptionCheckout` called when a sub already exists |
 | `Insufficient wallet balance for proration. Required: $X.XX, available: $Y.YY` | `SkillsApply`: wallet can't cover the prorated charge |
+| `Another payment from this wallet is still going through, so this skill change was undone and nothing was charged. Please try again in a minute.` | `SkillsApply` (code `104`) while another plan or credit pack payment from the same wallet is going through |
 | `targetTier must be 'starter' or 'pro'` | `UpgradeTier` with a `targetTier` outside the closed enum (typos, missing parameter name, etc.). Unlike `Deploy`'s silent coercion, `UpgradeTier` rejects invalid input explicitly. |
 | `Downgrading to Starter is not supported. /UserAgent/UpgradeTier is upgrade-only (Starter → Pro).` | `UpgradeTier` with `targetTier: "starter"` |
 | `Already on {tier} tier` | `UpgradeTier` when current tier matches the target: no-op |
@@ -10303,6 +10306,10 @@ Agent-specific errors you may encounter:
 | `Failed to compute target-tier pricing` | `UpgradeTier`: the Pro price could not be computed. Try again or contact support |
 | `Insufficient wallet balance. Required: $X.XX, Available: $Y.YY` | `UpgradeTier`: wallet can't cover the prorated upgrade charge |
 | `Wallet deduction failed: {error}` | `UpgradeTier`: wallet write itself failed (rare; transient backend error) |
+| `Another change to this agent's plan is going through. Nothing was changed; please try again in a minute.` | `UpgradeTier` (code `104`) while a skill change or another upgrade of the same agent is going through |
+| `The agent's plan changed while this upgrade was asked for. Nothing was changed; please retry.` | `UpgradeTier` when the agent's plan ended or moved off the wallet while the upgrade waited its turn |
+| `Could not read the agent's plan. Nothing was changed; please retry.` | `UpgradeTier`: the agent's plan could not be read |
+| `Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.` | `Deploy` or `CreateSubscriptionCheckout` with `useprepaid: true`, `CreateExtraCreditCheckout`, `RenewSubscription` or `UpgradeTier` (code `104` on `UpgradeTier`) while another plan or credit pack payment from the same wallet is going through. A `Deploy` refused this way creates no agent |
 | `Project not found. Send the id of one of your projects from Project/List: one you created, or any project of a team you are an admin of.` | `CredentialProjectBind` with a project that doesn't exist or that the caller can't bind. See its [other errors](#post-useragentcredentialprojectbind) |
 | `Agent not found or access denied` | Message endpoint with invalid useragentguid |
 | `User agent not found` (code `95`) | `Message/Send`, `Message/History`, `Message/Sessions`, `Message/DeleteSession`, `Message/RenameSession` or `Message/Delete` called for an agent that has been deleted |
@@ -11144,7 +11151,7 @@ The response includes the new pricing snapshot and the prorated wallet debit:
 }
 ```
 
-`prepaidWalletDelta` is the USD amount debited from your wallet for the rest of the current period: the monthly difference for the time left, by the second, rounded up to the cent, and at least one day's worth. The added credits come for that same time (`pricing.creditsNow`), and every renewal gives the whole allowance (`pricing.creditsFromRenewal`). If you disable a paid skill mid-period the delta is negative and rounds down to the cent: what the time left is worth goes back to the balances that paid for the period, less 1 cent for each credit already used above what the plan keeps (`usedCreditsUsd`). Each balance keeps the end date of the credit or deposit that paid; a part whose source has ended since lasts until the period ends.
+`prepaidWalletDelta` is the USD amount debited from your wallet for the rest of the current period: the monthly difference for the time left, by the second, rounded up to the cent, and at least one day's worth. The added credits come for that same time (`pricing.creditsNow`), and every renewal gives the whole allowance (`pricing.creditsFromRenewal`). If you disable a paid skill mid-period the delta is negative and rounds down to the cent: what the time left is worth goes back to the balances that paid for the period, less 1 cent for each credit already used above what the period keeps (`usedCreditsUsd`); the period keeps the credits the days already gone paid for until the next renewal. Each balance keeps the end date of the credit or deposit that paid; a part whose source has ended since lasts until the period ends.
 
 ### Batch toggle + tier upgrade in one call
 

@@ -327,7 +327,7 @@ The response includes the new pricing snapshot and the prorated wallet debit:
 }
 ```
 
-`prepaidWalletDelta` is the USD amount debited from your wallet for the rest of the current period: the monthly difference for the time left, by the second, rounded up to the cent, and at least one day's worth. The added credits come for that same time (`pricing.creditsNow`), and every renewal gives the whole allowance (`pricing.creditsFromRenewal`). If you disable a paid skill mid-period the delta is negative and rounds down to the cent: what the time left is worth goes back to the balances that paid for the period, less 1 cent for each credit already used above what the plan keeps (`usedCreditsUsd`). Each balance keeps the end date of the credit or deposit that paid; a part whose source has ended since lasts until the period ends.
+`prepaidWalletDelta` is the USD amount debited from your wallet for the rest of the current period: the monthly difference for the time left, by the second, rounded up to the cent, and at least one day's worth. The added credits come for that same time (`pricing.creditsNow`), and every renewal gives the whole allowance (`pricing.creditsFromRenewal`). If you disable a paid skill mid-period the delta is negative and rounds down to the cent: what the time left is worth goes back to the balances that paid for the period, less 1 cent for each credit already used above what the period keeps (`usedCreditsUsd`); the period keeps the credits the days already gone paid for until the next renewal. Each balance keeps the end date of the credit or deposit that paid; a part whose source has ended since lasts until the period ends.
 
 ### Batch toggle + tier upgrade in one call
 
