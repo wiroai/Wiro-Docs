@@ -1066,6 +1066,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Detail" \
 - Send only the fields you want to change. Omitted fields keep their current values.
 - Unknown skill keys return `skill-not-found` in the `errors[]` without altering other state.
 - To clear a cron schedule, call `CustomSkillUpsert` with `enabled: false`. Setting `interval: ""` or `null` also clears it.
+- A schedule must be one the agent can run: a cron expression with five fields, `minute hour day month weekday`, such as `0 9 * * 1-5`. Anything else is refused and nothing is saved, with an error that says what is wrong, for example `This schedule can't run. The hour field takes 0 to 23. A schedule has five fields: minute hour day month weekday, for example 0 9 * * 1-5.`
 - Integration toggles (top-level `skills[]`) are a separate endpoint (see [Toggling Integration Skills](#toggling-integration-skills) and [`SkillsApply`](/docs/agent-overview#post-useragentskillsapply)).
 
 ### What happens when Wiro updates an agent template
