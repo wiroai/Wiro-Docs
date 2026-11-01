@@ -361,7 +361,7 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
 - A value the agent template holds on a secret field (one Wiro stores encrypted, such as a key, token, password or service account, or an `oauth_managed` OAuth app key) is not returned: the field reads empty, and a list entry keeps its place with an empty value, until you save your own. Values you save yourself come back to the agent's owner and team admins.
 - Sentinel rows `_isoptional` / `_isextra`: never appear as fields; they're folded into the `optional` and `extra` flags above.
 
-API callers see the non-sensitive fields (display-only values like `igusername`, flags like `authmethod`, and the flags above).
+A plain member of the agent's team gets the same answer with each saved value replaced by `[present]`, apart from display-only values such as `igusername` and the `authmethod` switch, which show as saved.
 
 **Communication channel fields** are returned separately from skill and
 integration credentials:
