@@ -244,6 +244,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
           "_user_created": true
         }
       ],
+      "communicationChannels": [
+        { "id": "telegram", "credentialkey": "telegram", "title": "Telegram", "required_fields": ["bottoken", "allowedusers"], "enabled": true, "configured": true, "missingfields": [] }
+      ],
       "enabledChannels": ["telegram"],
       "teamsessionmode": "private",
       "credentials": {

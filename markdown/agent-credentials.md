@@ -57,6 +57,8 @@ Each row contains:
 | `capabilities` | Public UI hints for direct messages, rooms, threads, role allowlists, and command menus. |
 | `credential` | Full form descriptor, including `credential_schema`, labels, validation patterns, and setup help. |
 
+`POST /UserAgent/Detail`, `POST /UserAgent/Update` and `POST /UserAgent/Deploy` return the same channels with this agent's state in `communicationChannels`: `enabled`, `configured` and `missingfields`.
+
 Use `POST /UserAgent/CredentialUpsert` for an existing useragent. Send all
 activation fields in one `fields[]` request when connecting a channel:
 

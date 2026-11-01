@@ -12891,7 +12891,7 @@ pro.credits = starter.credits × tiermultiplier
 <tr><th>Field</th><th>Type</th><th>Meaning</th></tr>
 </thead>
 <tbody>
-<tr><td><code>communicationChannels</code></td><td>array</td><td>Full external-channel catalog for this instance. Each row includes <code>id</code>, <code>title</code>, <code>credentialkey</code>, <code>required_fields</code>, <code>capabilities</code>, <code>schema</code>, <code>enabled</code>, <code>configured</code>, and <code>missingfields</code>. Use <code>schema.fields</code> to render the setup form.</td></tr>
+<tr><td><code>communicationChannels</code></td><td>array</td><td>Full external-channel catalog for this instance. Each row includes <code>id</code>, <code>title</code>, <code>credentialkey</code>, <code>required_fields</code>, <code>capabilities</code>, <code>schema</code>, <code>enabled</code>, <code>configured</code>, and <code>missingfields</code>. Use <code>schema.fields</code> to render the setup form. <code>UserAgent/Detail</code>, <code>UserAgent/Update</code> and <code>UserAgent/Deploy</code> all carry it; <code>Agent/Detail</code> lists the same channels without <code>enabled</code>, <code>configured</code> and <code>missingfields</code>.</td></tr>
 <tr><td><code>enabledChannels</code></td><td>string[]</td><td>External channel IDs whose registry-declared activation credentials are complete. Current values are <code>telegram</code>, <code>slack</code>, and <code>discord</code>. Web chat is always available and is not included.</td></tr>
 <tr><td><code>teamsessionmode</code></td><td>string</td><td>The unified Chat Mode. <code>"private"</code> isolates team members' Wiro web-chat histories and agent memory plus approved external-channel DM operators; <code>"collaborative"</code> shares those histories and runtime contexts. Web and external-channel message lists remain separate transports. Room and thread conversations remain room-scoped.</td></tr>
 </tbody>
@@ -13186,6 +13186,10 @@ pro.credits = starter.credits × tiermultiplier
         &quot;voicePrepModel&quot;: &quot;openai/gpt-5.4-mini&quot;,
         &quot;voicePostcallModel&quot;: &quot;openai/gpt-5.4&quot;
       },
+      &quot;communicationChannels&quot;: [
+        { &quot;id&quot;: &quot;telegram&quot;, &quot;credentialkey&quot;: &quot;telegram&quot;, &quot;title&quot;: &quot;Telegram&quot;, &quot;required_fields&quot;: [&quot;bottoken&quot;, &quot;allowedusers&quot;], &quot;capabilities&quot;: { &quot;direct&quot;: true, &quot;rooms&quot;: true, &quot;threads&quot;: true, &quot;roles&quot;: false, &quot;command_menu&quot;: true }, &quot;schema&quot;: { &quot;title&quot;: &quot;Telegram&quot;, &quot;fields&quot;: [ &quot;...&quot; ] }, &quot;enabled&quot;: false, &quot;configured&quot;: false, &quot;missingfields&quot;: [&quot;bottoken&quot;, &quot;allowedusers&quot;] }
+      ],
+      &quot;enabledChannels&quot;: [],
       &quot;teamsessionmode&quot;: &quot;private&quot;,
       &quot;status&quot;: 6,
       &quot;setuprequired&quot;: true,
@@ -13214,7 +13218,7 @@ pro.credits = starter.credits × tiermultiplier
 }
 </code></pre>
 <h5 id="status-and-setuprequired-on-deploy">Status and <code>setuprequired</code> on deploy</h5>
-<p>The Deploy response reflects the same composed shape you get from <code>UserAgent/Detail</code>. <strong>Every fresh Deploy starts at <code>status: 6</code> (Setup Required)</strong>. From there, the prepaid path auto-queues the row to <code>status: 2</code> after subscription provisioning:</p>
+<p>The Deploy response reflects the same composed shape you get from <code>UserAgent/Detail</code>, <code>communicationChannels</code> and <code>enabledChannels</code> included. <strong>Every fresh Deploy starts at <code>status: 6</code> (Setup Required)</strong>. From there, the prepaid path auto-queues the row to <code>status: 2</code> after subscription provisioning:</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -13391,6 +13395,7 @@ pro.credits = starter.credits × tiermultiplier
         &quot;voicePostcallModel&quot;: &quot;openai/gpt-5.4&quot;
       },
       &quot;extracreditsexpiry&quot;: 1730419200,
+      &quot;lastactivityat&quot;: 1714698000,
       &quot;createdat&quot;: 1714608000,
       &quot;updatedat&quot;: 1714694400,
       &quot;queuedat&quot;: 1714694395,
@@ -13404,7 +13409,7 @@ pro.credits = starter.credits × tiermultiplier
 }
 </code></pre>
 <blockquote>
-<p><strong><code>MyAgents</code> returns one row per useragent with its scalar fields, the trimmed <code>agent</code> template summary (no <code>extracreditpacks</code>), <code>subscription</code>, <code>setuprequired</code> (status-based check only), <code>extracredits</code> / <code>extracreditsexpiry</code>, the resolved <code>enabledSkills</code> (template defaults ∪ user overrides, including transitive <code>depends_on</code> closure), <code>tokenRates</code> (per-model token rates, the same map as <code>UserAgent/Detail.tokenRates</code>), <code>agentModel</code> (the resolved chat / cron / voice-prep / voice-postcall model slugs), and <code>enabledCommands</code> (the slash-command allowlist, <code>null</code> when uncustomized).</strong> Heavier composed children (<code>credentials</code>, <code>customskills</code>, <code>scheduledskills</code>, <code>skills</code>, <code>skillsmeta</code>, <code>remainingcredits</code>) are <strong>not</strong> included. Call <code>UserAgent/Detail</code> on a single guid for the full composed shape.</p>
+<p><strong><code>MyAgents</code> returns one row per useragent with its scalar fields, the trimmed <code>agent</code> template summary (no <code>extracreditpacks</code>), <code>subscription</code>, <code>setuprequired</code> (status-based check only), <code>extracredits</code> / <code>extracreditsexpiry</code>, <code>lastactivityat</code>, the resolved <code>enabledSkills</code> (template defaults ∪ user overrides, including transitive <code>depends_on</code> closure), <code>tokenRates</code> (per-model token rates, the same map as <code>UserAgent/Detail.tokenRates</code>), <code>agentModel</code> (the resolved chat / cron / voice-prep / voice-postcall model slugs), and <code>enabledCommands</code> (the slash-command allowlist, <code>null</code> when uncustomized).</strong> Heavier composed children (<code>credentials</code>, <code>customskills</code>, <code>scheduledskills</code>, <code>skills</code>, <code>skillsmeta</code>, <code>communicationChannels</code>, <code>enabledChannels</code>, <code>remainingcredits</code>) are <strong>not</strong> included. Call <code>UserAgent/Detail</code> on a single guid for the full composed shape.</p>
 <p><strong><code>enabledSkills</code>, <code>tokenRates</code>, and <code>agentModel</code></strong> ride on each list row so a chat or pinned-agents UI can decide whether to show the realtime voice-call button (<code>enabledSkills</code> includes <code>util-web-channel</code>) and render the model picker + live token-rate card without round-tripping <code>UserAgent/Detail</code> per row.</p>
 </blockquote>
 <h4 id="post-useragentdetail"><strong>POST</strong> /UserAgent/Detail</h4>
@@ -13450,6 +13455,10 @@ pro.credits = starter.credits × tiermultiplier
       &quot;status&quot;: 4,
       &quot;pinned&quot;: true,
       &quot;setuprequired&quot;: false,
+      &quot;communicationChannels&quot;: [
+        { &quot;id&quot;: &quot;telegram&quot;, &quot;credentialkey&quot;: &quot;telegram&quot;, &quot;title&quot;: &quot;Telegram&quot;, &quot;required_fields&quot;: [&quot;bottoken&quot;, &quot;allowedusers&quot;], &quot;capabilities&quot;: { &quot;direct&quot;: true, &quot;rooms&quot;: true, &quot;threads&quot;: true, &quot;roles&quot;: false, &quot;command_menu&quot;: true }, &quot;schema&quot;: { &quot;title&quot;: &quot;Telegram&quot;, &quot;fields&quot;: [ &quot;...&quot; ] }, &quot;enabled&quot;: false, &quot;configured&quot;: false, &quot;missingfields&quot;: [&quot;bottoken&quot;, &quot;allowedusers&quot;] }
+      ],
+      &quot;enabledChannels&quot;: [],
       &quot;teamsessionmode&quot;: &quot;private&quot;,
       &quot;credentials&quot;: {
         &quot;instagram&quot;: {
@@ -13802,6 +13811,7 @@ pro.credits = starter.credits × tiermultiplier
         ]
       },
       &quot;extracreditsexpiry&quot;: 1730419200,
+      &quot;lastactivityat&quot;: 1714698000,
       &quot;createdat&quot;: 1714608000,
       &quot;updatedat&quot;: 1714694400,
       &quot;queuedat&quot;: 1714694395,
@@ -13989,6 +13999,11 @@ pro.credits = starter.credits × tiermultiplier
 <td><code>number|null</code></td>
 <td>Unix seconds for each lifecycle transition. <code>null</code> until the corresponding state is reached.</td>
 </tr>
+<tr>
+<td><code>lastactivityat</code></td>
+<td><code>number|null</code></td>
+<td>Unix seconds of the agent's last activity: the later of its newest message that isn't deleted and its newest token charge in the <a href="/docs/agent-transactions">credit ledger</a>. <code>null</code> when it has neither yet. Also on <code>MyAgents</code> rows; not on <code>PinnedAgents</code> rows.</td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -14029,6 +14044,16 @@ pro.credits = starter.credits × tiermultiplier
 <td><code>skillsmeta</code></td>
 <td><code>object</code></td>
 <td>Inline registry snapshot keyed by skill name: <code>title</code>, <code>icon</code>, <code>brand_color</code>, <code>category</code>, <code>docs_url</code>, <code>credential_key</code>, <code>requires_credentials</code>, <code>user_invocable</code>, <code>description</code>. Lets the panel render skill chips without a <code>Skills/List</code> round-trip.</td>
+</tr>
+<tr>
+<td><code>communicationChannels</code></td>
+<td><code>array</code></td>
+<td>Every external channel with this agent's state: <code>id</code>, <code>title</code>, <code>credentialkey</code>, <code>required_fields</code>, <code>capabilities</code>, <code>schema</code>, <code>enabled</code>, <code>configured</code> and <code>missingfields</code>. Also on the <code>Deploy</code> and <code>Update</code> responses; not on <code>MyAgents</code> / <code>PinnedAgents</code> rows.</td>
+</tr>
+<tr>
+<td><code>enabledChannels</code></td>
+<td><code>array&lt;string&gt;</code></td>
+<td>The ids of the channels in <code>communicationChannels</code> that are enabled. Same endpoints.</td>
 </tr>
 <tr>
 <td><code>teamsessionmode</code></td>
@@ -14369,7 +14394,7 @@ pro.credits = starter.credits × tiermultiplier
 }
 </code></pre>
 <blockquote>
-<p><strong><code>Update</code> returns the full composed useragent shape</strong>: same composition path as <code>UserAgent/Detail</code>, so <code>credentials</code>, <code>customskills</code>, <code>scheduledskills</code>, <code>skills</code>, <code>skillsmeta</code>, <code>tokenRates</code>, <code>agentModel</code>, and the <code>agent</code> template summary (with <code>tiers</code> + <code>extracreditpacks</code>) are all included. The fields <code>Update</code> cannot safely populate without an extra round-trip (<code>subscription</code>, <code>remainingcredits</code>, <code>extracreditsexpiry</code>) stay omitted. Call <code>UserAgent/Detail</code> next if you need them. Otherwise the response is suitable for an in-place panel re-render without a follow-up call.</p>
+<p><strong><code>Update</code> returns the full composed useragent shape</strong>: same composition path as <code>UserAgent/Detail</code>, so <code>credentials</code>, <code>customskills</code>, <code>scheduledskills</code>, <code>skills</code>, <code>skillsmeta</code>, <code>tokenRates</code>, <code>agentModel</code>, <code>communicationChannels</code>, <code>enabledChannels</code>, and the <code>agent</code> template summary (with <code>tiers</code> + <code>extracreditpacks</code>) are all included. The fields <code>Update</code> cannot safely populate without an extra round-trip (<code>subscription</code>, <code>extracreditsexpiry</code>, <code>lastactivityat</code>) stay omitted. Call <code>UserAgent/Detail</code> next if you need them. Otherwise the response is suitable for an in-place panel re-render without a follow-up call.</p>
 <p><strong><code>restarting</code>.</strong> <code>true</code> when this call restarts the agent, <code>false</code> otherwise. With <code>true</code>, the row shows the transition mid-flight: <code>status: 1</code> (Stopping) with a fresh <code>stoppingat</code> timestamp. Wiro re-queues the agent once it has stopped, so it comes back with the new title. A restart request that can't be carried out answers <code>Failed to restart user agent</code>; try again.</p>
 </blockquote>
 <h4 id="post-useragentupdatesettings"><strong>POST</strong> /UserAgent/UpdateSettings</h4>
@@ -16633,7 +16658,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <pre><code class="language-json">{ &quot;result&quot;: true, &quot;errors&quot;: [] }
 </code></pre>
 <h4 id="post-useragentpinnedagents"><strong>POST</strong> /UserAgent/PinnedAgents</h4>
-<p>Lists the user's pinned agents. Returns the <strong>same composed shape as <code>MyAgents</code></strong>: every field that appears on a <code>MyAgents</code> row appears here, just filtered to <code>pinned: true</code>.</p>
+<p>Lists the user's pinned agents. Returns the <strong>same composed shape as <code>MyAgents</code></strong>: every field that appears on a <code>MyAgents</code> row except <code>lastactivityat</code> appears here, just filtered to <code>pinned: true</code>.</p>
 <p>No request body fields are required: the workspace of your API key's project scopes the response.</p>
 <h5 id="response_25">Response</h5>
 <pre><code class="language-json">{
@@ -21841,6 +21866,7 @@ email tools, CRMs) through three credential methods:</p>
 </table>
 </div>
 </div>
+<p><code>POST /UserAgent/Detail</code>, <code>POST /UserAgent/Update</code> and <code>POST /UserAgent/Deploy</code> return the same channels with this agent's state in <code>communicationChannels</code>: <code>enabled</code>, <code>configured</code> and <code>missingfields</code>.</p>
 <p>Use <code>POST /UserAgent/CredentialUpsert</code> for an existing useragent. Send all activation fields in one <code>fields[]</code> request when connecting a channel:</p>
 <pre><code class="language-json">{
   &quot;useragentguid&quot;: &quot;your-useragent-guid&quot;,
@@ -26223,6 +26249,9 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
           &quot;_editable&quot;: true,
           &quot;_user_created&quot;: true
         }
+      ],
+      &quot;communicationChannels&quot;: [
+        { &quot;id&quot;: &quot;telegram&quot;, &quot;credentialkey&quot;: &quot;telegram&quot;, &quot;title&quot;: &quot;Telegram&quot;, &quot;required_fields&quot;: [&quot;bottoken&quot;, &quot;allowedusers&quot;], &quot;enabled&quot;: true, &quot;configured&quot;: true, &quot;missingfields&quot;: [] }
       ],
       &quot;enabledChannels&quot;: [&quot;telegram&quot;],
       &quot;teamsessionmode&quot;: &quot;private&quot;,

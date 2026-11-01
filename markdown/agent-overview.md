@@ -363,7 +363,7 @@ integration credentials:
 
 | Field | Type | Meaning |
 |-------|------|---------|
-| `communicationChannels` | array | Full external-channel catalog for this instance. Each row includes `id`, `title`, `credentialkey`, `required_fields`, `capabilities`, `schema`, `enabled`, `configured`, and `missingfields`. Use `schema.fields` to render the setup form. |
+| `communicationChannels` | array | Full external-channel catalog for this instance. Each row includes `id`, `title`, `credentialkey`, `required_fields`, `capabilities`, `schema`, `enabled`, `configured`, and `missingfields`. Use `schema.fields` to render the setup form. `UserAgent/Detail`, `UserAgent/Update` and `UserAgent/Deploy` all carry it; `Agent/Detail` lists the same channels without `enabled`, `configured` and `missingfields`. |
 | `enabledChannels` | string[] | External channel IDs whose registry-declared activation credentials are complete. Current values are `telegram`, `slack`, and `discord`. Web chat is always available and is not included. |
 | `teamsessionmode` | string | The unified Chat Mode. `"private"` isolates team members' Wiro web-chat histories and agent memory plus approved external-channel DM operators; `"collaborative"` shares those histories and runtime contexts. Web and external-channel message lists remain separate transports. Room and thread conversations remain room-scoped. |
 
@@ -530,6 +530,10 @@ Both paths hit the same endpoint, but a few server-side behaviours diverge:
         "voicePrepModel": "openai/gpt-5.4-mini",
         "voicePostcallModel": "openai/gpt-5.4"
       },
+      "communicationChannels": [
+        { "id": "telegram", "credentialkey": "telegram", "title": "Telegram", "required_fields": ["bottoken", "allowedusers"], "capabilities": { "direct": true, "rooms": true, "threads": true, "roles": false, "command_menu": true }, "schema": { "title": "Telegram", "fields": [ "..." ] }, "enabled": false, "configured": false, "missingfields": ["bottoken", "allowedusers"] }
+      ],
+      "enabledChannels": [],
       "teamsessionmode": "private",
       "status": 6,
       "setuprequired": true,
@@ -560,7 +564,7 @@ Both paths hit the same endpoint, but a few server-side behaviours diverge:
 
 ##### Status and `setuprequired` on deploy
 
-The Deploy response reflects the same composed shape you get from `UserAgent/Detail`. **Every fresh Deploy starts at `status: 6` (Setup Required)**. From there, the prepaid path auto-queues the row to `status: 2` after subscription provisioning:
+The Deploy response reflects the same composed shape you get from `UserAgent/Detail`, `communicationChannels` and `enabledChannels` included. **Every fresh Deploy starts at `status: 6` (Setup Required)**. From there, the prepaid path auto-queues the row to `status: 2` after subscription provisioning:
 
 | Field | Meaning |
 |-------|---------|
@@ -683,6 +687,7 @@ Lists all agent instances deployed under your account.
         "voicePostcallModel": "openai/gpt-5.4"
       },
       "extracreditsexpiry": 1730419200,
+      "lastactivityat": 1714698000,
       "createdat": 1714608000,
       "updatedat": 1714694400,
       "queuedat": 1714694395,
@@ -696,7 +701,7 @@ Lists all agent instances deployed under your account.
 }
 ```
 
-> **`MyAgents` returns one row per useragent with its scalar fields, the trimmed `agent` template summary (no `extracreditpacks`), `subscription`, `setuprequired` (status-based check only), `extracredits` / `extracreditsexpiry`, the resolved `enabledSkills` (template defaults ∪ user overrides, including transitive `depends_on` closure), `tokenRates` (per-model token rates, the same map as `UserAgent/Detail.tokenRates`), `agentModel` (the resolved chat / cron / voice-prep / voice-postcall model slugs), and `enabledCommands` (the slash-command allowlist, `null` when uncustomized).** Heavier composed children (`credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `remainingcredits`) are **not** included. Call `UserAgent/Detail` on a single guid for the full composed shape.
+> **`MyAgents` returns one row per useragent with its scalar fields, the trimmed `agent` template summary (no `extracreditpacks`), `subscription`, `setuprequired` (status-based check only), `extracredits` / `extracreditsexpiry`, `lastactivityat`, the resolved `enabledSkills` (template defaults ∪ user overrides, including transitive `depends_on` closure), `tokenRates` (per-model token rates, the same map as `UserAgent/Detail.tokenRates`), `agentModel` (the resolved chat / cron / voice-prep / voice-postcall model slugs), and `enabledCommands` (the slash-command allowlist, `null` when uncustomized).** Heavier composed children (`credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `communicationChannels`, `enabledChannels`, `remainingcredits`) are **not** included. Call `UserAgent/Detail` on a single guid for the full composed shape.
 
 > **`enabledSkills`, `tokenRates`, and `agentModel`** ride on each list row so a chat or pinned-agents UI can decide whether to show the realtime voice-call button (`enabledSkills` includes `util-web-channel`) and render the model picker + live token-rate card without round-tripping `UserAgent/Detail` per row.
 
@@ -729,6 +734,10 @@ Retrieves full details for a single deployed agent instance, including subscript
       "status": 4,
       "pinned": true,
       "setuprequired": false,
+      "communicationChannels": [
+        { "id": "telegram", "credentialkey": "telegram", "title": "Telegram", "required_fields": ["bottoken", "allowedusers"], "capabilities": { "direct": true, "rooms": true, "threads": true, "roles": false, "command_menu": true }, "schema": { "title": "Telegram", "fields": [ "..." ] }, "enabled": false, "configured": false, "missingfields": ["bottoken", "allowedusers"] }
+      ],
+      "enabledChannels": [],
       "teamsessionmode": "private",
       "credentials": {
         "instagram": {
@@ -1081,6 +1090,7 @@ Retrieves full details for a single deployed agent instance, including subscript
         ]
       },
       "extracreditsexpiry": 1730419200,
+      "lastactivityat": 1714698000,
       "createdat": 1714608000,
       "updatedat": 1714694400,
       "queuedat": 1714694395,
@@ -1136,6 +1146,7 @@ Retrieves full details for a single deployed agent instance, including subscript
 | `status` | `number` | Current status code (see [UserAgent Statuses](#useragent-statuses)). |
 | `setuprequired` | `boolean` | `true` if any required credential is missing or incomplete. Mirrors `status: 6` plus a fresh check against the live credential rows. |
 | `createdat` / `updatedat` / `queuedat` / `startedat` / `runningat` / `stoppingat` / `stopdat` / `errordat` | `number\|null` | Unix seconds for each lifecycle transition. `null` until the corresponding state is reached. |
+| `lastactivityat` | `number\|null` | Unix seconds of the agent's last activity: the later of its newest message that isn't deleted and its newest token charge in the [credit ledger](/docs/agent-transactions). `null` when it has neither yet. Also on `MyAgents` rows; not on `PinnedAgents` rows. |
 
 **Composed children**
 
@@ -1146,6 +1157,8 @@ Retrieves full details for a single deployed agent instance, including subscript
 | `scheduledskills` | `array` | Composed list of **cron** skills (`cs-cron-*`). Same shape as `customskills` plus `interval` (cron expression). `_source` ∈ `"skill-bundle"` (preset cron) \| `"user-created"`. |
 | `skills` | `array<object>` | Currently-enabled integration skills. Each entry: `{ name, enabled: true, _edited, _user_created }`. Toggle via `SkillsApply` (single-skill or batch). Note: object array (not string array). |
 | `skillsmeta` | `object` | Inline registry snapshot keyed by skill name: `title`, `icon`, `brand_color`, `category`, `docs_url`, `credential_key`, `requires_credentials`, `user_invocable`, `description`. Lets the panel render skill chips without a `Skills/List` round-trip. |
+| `communicationChannels` | `array` | Every external channel with this agent's state: `id`, `title`, `credentialkey`, `required_fields`, `capabilities`, `schema`, `enabled`, `configured` and `missingfields`. Also on the `Deploy` and `Update` responses; not on `MyAgents` / `PinnedAgents` rows. |
+| `enabledChannels` | `array<string>` | The ids of the channels in `communicationChannels` that are enabled. Same endpoints. |
 | `teamsessionmode` | `string` | The unified Chat Mode: `"collaborative"` or `"private"` for every agent. For team agents it drives `Message/History`, `Sessions`, and native web-chat memory scope; for all agents it also drives Telegram, Slack, and Discord DM scope. Team deployments/transfers default collaborative; personal deployments/team detachments default private. Write with [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) (team admins / owner only). |
 | `timezone` | `string\|null` | Operator-selected IANA timezone (e.g. `"Europe/Istanbul"`, `"America/New_York"`). `null` means **UTC**. The agent uses this zone for its scheduled tasks, for the times it gives on voice calls and for business hours. Write with [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings). |
 
@@ -1279,7 +1292,7 @@ A changed `title` on a running agent:
 }
 ```
 
-> **`Update` returns the full composed useragent shape**: same composition path as `UserAgent/Detail`, so `credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `tokenRates`, `agentModel`, and the `agent` template summary (with `tiers` + `extracreditpacks`) are all included. The fields `Update` cannot safely populate without an extra round-trip (`subscription`, `remainingcredits`, `extracreditsexpiry`) stay omitted. Call `UserAgent/Detail` next if you need them. Otherwise the response is suitable for an in-place panel re-render without a follow-up call.
+> **`Update` returns the full composed useragent shape**: same composition path as `UserAgent/Detail`, so `credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `tokenRates`, `agentModel`, `communicationChannels`, `enabledChannels`, and the `agent` template summary (with `tiers` + `extracreditpacks`) are all included. The fields `Update` cannot safely populate without an extra round-trip (`subscription`, `extracreditsexpiry`, `lastactivityat`) stay omitted. Call `UserAgent/Detail` next if you need them. Otherwise the response is suitable for an in-place panel re-render without a follow-up call.
 
 > **`restarting`.** `true` when this call restarts the agent, `false` otherwise. With `true`, the row shows the transition mid-flight: `status: 1` (Stopping) with a fresh `stoppingat` timestamp. Wiro re-queues the agent once it has stopped, so it comes back with the new title. A restart request that can't be carried out answers `Failed to restart user agent`; try again.
 
@@ -2516,7 +2529,7 @@ Pins or unpins an agent instance from the user's pinned-agents quick list. Pinne
 
 #### **POST** /UserAgent/PinnedAgents
 
-Lists the user's pinned agents. Returns the **same composed shape as `MyAgents`**: every field that appears on a `MyAgents` row appears here, just filtered to `pinned: true`.
+Lists the user's pinned agents. Returns the **same composed shape as `MyAgents`**: every field that appears on a `MyAgents` row except `lastactivityat` appears here, just filtered to `pinned: true`.
 
 No request body fields are required: the workspace of your API key's project scopes the response.
 
