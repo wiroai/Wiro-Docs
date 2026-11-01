@@ -34144,6 +34144,7 @@ if (params.get("gbp_connected") === "true") {
       { "credentialkey": "mailchimp", "fieldname": "authmethod",   "fieldvalue": "own" }
     ]
   }'</code></pre>
+                    <p><code>clientid</code> and <code>clientsecret</code> are required. <code>CredentialUpsert</code> refuses an empty value with <code>Client ID is required</code> or <code>Client Secret is required</code>, and then saves no field of that request.</p>
 
                     <h3>OAuth Step 3: Initiate</h3>
                     <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
@@ -34167,7 +34168,7 @@ if (params.get("gbp_connected") === "true") {
                     </div>
 
                     <h3>OAuth Step 4: Handle the callback</h3>
-                    <p>Wiro exchanges the code via <code>POST https://login.mailchimp.com/oauth2/token</code>, then fetches metadata from <code>GET https://login.mailchimp.com/oauth2/metadata</code> with <code>Authorization: OAuth &lt;access_token&gt;</code> to retrieve the server prefix (<code>dc</code>) and account name.</p>
+                    <p>Wiro exchanges the code via <code>POST https://login.mailchimp.com/oauth2/token</code>, then fetches metadata from <code>GET https://login.mailchimp.com/oauth2/metadata</code> with <code>Authorization: OAuth &lt;access_token&gt;</code> to retrieve the server prefix (<code>dc</code>) and account name. The connection needs the server prefix: if the metadata has no server prefix, nothing is saved and the redirect carries <code>mailchimp_error=token_exchange_failed</code>.</p>
                     <p><strong>Success URL:</strong></p>
                     <pre><code>https://your-app.com/settings/integrations?mailchimp_connected=true&amp;mailchimp_account=Your%20Company</code></pre>
 
@@ -34215,6 +34216,7 @@ if (params.get("gbp_connected") === "true") {
       { "credentialkey": "mailchimp", "fieldname": "apikey",     "fieldvalue": "abcdef1234567890-us14" }
     ]
   }'</code></pre>
+                    <p><code>apikey</code> is required. An empty value is refused with <code>API Key (alternative) is required</code>, and then no field of that request is saved. To remove a saved key, call <code>OAuthDisconnect</code> in API-key mode.</p>
                     <p>No further OAuth step. The agent uses the API key directly.</p>
                     <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
   -H "Content-Type: application/json" \
@@ -34325,8 +34327,8 @@ if (params.get("gbp_connected") === "true") {
                           </tr>
                           <tr>
                             <td><code>token_exchange_failed</code></td>
-                            <td>Wrong Client Secret or redirect URI mismatch.</td>
-                            <td>Re-copy; verify URL.</td>
+                            <td>Wrong Client Secret, a redirect URI mismatch, or no server prefix in the account details Mailchimp sent. Nothing is saved.</td>
+                            <td>Re-copy; verify URL; connect again.</td>
                           </tr>
                           <tr>
                             <td><code>useragent_not_found</code></td>

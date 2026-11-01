@@ -64,6 +64,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   }'
 ```
 
+`clientid` and `clientsecret` are required. `CredentialUpsert` refuses an empty value with `Client ID is required` or `Client Secret is required`, and then saves no field of that request.
+
 ### OAuth Step 3: Initiate
 
 ```bash
@@ -94,7 +96,7 @@ No `scope` parameter: Mailchimp OAuth doesn't use scopes.
 
 ### OAuth Step 4: Handle the callback
 
-Wiro exchanges the code via `POST https://login.mailchimp.com/oauth2/token`, then fetches metadata from `GET https://login.mailchimp.com/oauth2/metadata` with `Authorization: OAuth <access_token>` to retrieve the server prefix (`dc`) and account name.
+Wiro exchanges the code via `POST https://login.mailchimp.com/oauth2/token`, then fetches metadata from `GET https://login.mailchimp.com/oauth2/metadata` with `Authorization: OAuth <access_token>` to retrieve the server prefix (`dc`) and account name. The connection needs the server prefix: if the metadata has no server prefix, nothing is saved and the redirect carries `mailchimp_error=token_exchange_failed`.
 
 **Success URL:**
 
@@ -154,6 +156,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
     ]
   }'
 ```
+
+`apikey` is required. An empty value is refused with `API Key (alternative) is required`, and then no field of that request is saved. To remove a saved key, call `OAuthDisconnect` in API-key mode.
 
 No further OAuth step. The agent uses the API key directly.
 
@@ -217,7 +221,7 @@ To change **what** the scanner checks (target lists, bounce thresholds, tone, au
 |------------|---------|------------|
 | `authorization_denied` | User cancelled. | Retry. |
 | `session_expired` | State cache expired (15 min). | Restart. |
-| `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy; verify URL. |
+| `token_exchange_failed` | Wrong Client Secret, a redirect URI mismatch, or no server prefix in the account details Mailchimp sent. Nothing is saved. | Re-copy; verify URL; connect again. |
 | `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow, before Mailchimp returned. | Start again with `OAuthConnect` for an existing agent. |
 | `Mailchimp credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `clientid` / `clientsecret` are missing. | Update with `POST /UserAgent/CredentialUpsert`. |
 | `internal_error` | Server error. | Retry; contact support. |
