@@ -6822,7 +6822,10 @@ Every `/Studio/*` route takes a project API key: `x-api-key`, plus `x-nonce` and
 A session is one conversation with its own memory. `sessionkey` names it, and `"default"` is used when you leave it out.
 
 - Studio conversations belong to the person who created the key's project. `"default"` is their main Studio chat on wiro.ai, and sessions started with a key appear in their Studio on wiro.ai, in the same workspace. Everyone who uses the same key shares these sessions.
-- Use a new session name for each piece of work, such as `"bakery-banners"`, and keep using it for follow-ups such as "make it brighter": Studio remembers the conversation. Use letters, digits, dots, dashes, underscores and colons, up to 128 characters. Names that contain `:cron:` are reserved.
+- Use a new session name for each piece of work, such as `"bakery-banners"`, and keep using it for follow-ups such as "make it brighter": Studio remembers the conversation.
+- A name uses letters, digits, `.`, `_`, `:` and `-`, up to 128 characters, and can't end in `-r` followed by a number, such as `-r2`. Names that contain `:cron:` are reserved.
+- Capitals are fine and are kept, but a new name that differs only in capitals from one of your sessions is refused: use its exact name, or another name.
+- [Message/Send](#post-studiomessagesend) and [Message/SendForm](#post-studiomessagesendform) check the name first, so a refused message runs nothing and costs nothing. Reading, renaming and deleting a session work with whatever name it already has.
 - The turns of one session run one at a time, in order: a second message waits in `agent_queue` until the turn before it ends. Different sessions run in parallel.
 
 ## Costs
@@ -7173,6 +7176,8 @@ Business errors come back with HTTP 200, `result: false` and an `errors` array, 
 | `Insufficient balance` | 97 | Send or SendForm with less than $10 spendable. The response adds `walletUsd` and `minTopup`. |
 | `Request parameter [message] required` | 0 | Send without a message, or SendForm with neither a message nor a file. |
 | `Invalid model: <model> is not in the selectable model allowlist.` | 0 | `model` is not a selectable slug in Studio/Status. |
+| `A Studio session name may contain only letters, digits, ".", "_", ":" and "-", at most 128 characters, and cannot end in "-r" followed by a number. Nothing was sent or charged.` | 0 | Send or SendForm with a session name outside that rule. |
+| `You already have a Studio session with this name in different capitals. Use its exact name, or another name. Nothing was sent or charged.` | 0 | Send or SendForm with a new session name that differs only in capitals from one of your sessions. |
 | `Reserved sessionkey` | 0 | The session name contains `:cron:`. |
 | `Too many files (max 8)` | 0 | SendForm with more than 8 files. |
 | `Uploaded file format invalid. Supported: ...` | 0 | An attachment type that is not accepted. |
