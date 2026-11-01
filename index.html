@@ -12794,7 +12794,7 @@ pro.credits = starter.credits × tiermultiplier
         &quot;instagram&quot;: {
           &quot;optional&quot;: false,
           &quot;extra&quot;: false,
-          &quot;_editable&quot;: { &quot;authmethod&quot;: true, &quot;systemusertoken&quot;: true, &quot;igusername&quot;: true },
+          &quot;_editable&quot;: { &quot;appid&quot;: true, &quot;appsecret&quot;: true, &quot;systemusertoken&quot;: true, &quot;accountId&quot;: false, &quot;igusername&quot;: false },
           &quot;_schema&quot;: {
             &quot;title&quot;: &quot;Instagram&quot;,
             &quot;icon&quot;: &quot;https://wiro.ai/images/icons/skills/instagram.svg&quot;,
@@ -12807,6 +12807,7 @@ pro.credits = starter.credits × tiermultiplier
             &quot;default_connection_mode&quot;: &quot;api_key&quot;,
             &quot;mode_badges&quot;: { &quot;api_key&quot;: &quot;Recommended&quot;, &quot;own&quot;: &quot;Advanced&quot; },
             &quot;wiro_connect_pending&quot;: true,
+            &quot;channel&quot;: null,
             &quot;oauth_provider&quot;: {
               &quot;auth_method_value&quot;: &quot;wiro&quot;,
               &quot;connect_endpoint&quot;: &quot;/UserAgentOAuth/OAuthConnect&quot;,
@@ -12827,10 +12828,11 @@ pro.credits = starter.credits × tiermultiplier
               }
             },
             &quot;fields&quot;: [
-              { &quot;key&quot;: &quot;authmethod&quot;, &quot;type&quot;: &quot;select&quot;, &quot;label&quot;: &quot;Auth Method&quot;, &quot;options&quot;: [&quot;api_key&quot;, &quot;own&quot;, &quot;wiro&quot;], &quot;default&quot;: &quot;api_key&quot; },
-              { &quot;key&quot;: &quot;systemusertoken&quot;, &quot;type&quot;: &quot;password&quot;, &quot;label&quot;: &quot;System User Token&quot;, &quot;runtime_excluded&quot;: true, &quot;only_in_modes&quot;: [&quot;api_key&quot;] },
-              { &quot;key&quot;: &quot;accountId&quot;, &quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Instagram Account ID&quot;, &quot;auto_filled_by_oauth&quot;: true, &quot;readonly_when_connected&quot;: true },
-              { &quot;key&quot;: &quot;igusername&quot;, &quot;type&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Connected Account&quot;, &quot;auto_filled_by_oauth&quot;: true, &quot;readonly_when_connected&quot;: true }
+              { &quot;key&quot;: &quot;appid&quot;, &quot;label&quot;: &quot;App ID&quot;, &quot;type&quot;: &quot;text&quot;, &quot;required&quot;: true, &quot;only_in_modes&quot;: [&quot;own&quot;], &quot;pattern&quot;: &quot;^[0-9]+$&quot;, &quot;oauth_managed&quot;: true },
+              { &quot;key&quot;: &quot;appsecret&quot;, &quot;label&quot;: &quot;App Secret&quot;, &quot;type&quot;: &quot;password&quot;, &quot;required&quot;: true, &quot;show_toggle&quot;: true, &quot;only_in_modes&quot;: [&quot;own&quot;], &quot;oauth_managed&quot;: true },
+              { &quot;key&quot;: &quot;systemusertoken&quot;, &quot;label&quot;: &quot;System User Token&quot;, &quot;type&quot;: &quot;password&quot;, &quot;required&quot;: true, &quot;show_toggle&quot;: true, &quot;only_in_modes&quot;: [&quot;api_key&quot;] },
+              { &quot;key&quot;: &quot;accountId&quot;, &quot;label&quot;: &quot;Instagram Account ID&quot;, &quot;type&quot;: &quot;text&quot;, &quot;required&quot;: true, &quot;readonly_when_connected&quot;: true, &quot;pattern&quot;: &quot;^[0-9]+$&quot;, &quot;auto_filled_by_oauth&quot;: true },
+              { &quot;key&quot;: &quot;igusername&quot;, &quot;label&quot;: &quot;Connected Account&quot;, &quot;type&quot;: &quot;text&quot;, &quot;required&quot;: false, &quot;readonly_when_connected&quot;: true, &quot;auto_filled_by_oauth&quot;: true }
             ]
           }
         }
@@ -12876,12 +12878,12 @@ pro.credits = starter.credits × tiermultiplier
 <tr>
 <td><code>_editable</code></td>
 <td>object</td>
-<td>Map of <code>fieldname → true</code> for fields the caller may write. Computed from the registry schema.</td>
+<td>Map of <code>fieldname → true|false</code> over the registry schema: <code>false</code> for a field the caller can't write (filled by the connection flow, platform-managed, or computed).</td>
 </tr>
 <tr>
 <td><code>_schema</code></td>
 <td>object</td>
-<td>Inlined registry descriptor: <code>{ title, icon, brand_color, brand_text_color, brand_logo_filter, docs_url, credential_mode, connection_modes[], default_connection_mode, mode_badges, wiro_connect_pending, oauth_provider, fields[] }</code>. Lets a UI render the form without a separate <code>Credentials/Detail</code> round-trip.</td>
+<td>Inlined registry descriptor: <code>{ title, icon, brand_color, brand_text_color, brand_logo_filter, docs_url, credential_mode, connection_modes[], default_connection_mode, mode_badges, wiro_connect_pending, channel, oauth_provider, fields[] }</code>, where <code>channel</code> describes a communication channel's connector and is <code>null</code> on any other. Lets a UI render the form without a separate <code>Credentials/Detail</code> round-trip.</td>
 </tr>
 </tbody>
 </table>
@@ -13168,7 +13170,7 @@ pro.credits = starter.credits × tiermultiplier
           &quot;_connected&quot;: false,
           &quot;optional&quot;: false,
           &quot;extra&quot;: false,
-          &quot;_editable&quot;: { &quot;authmethod&quot;: true, &quot;systemusertoken&quot;: true, &quot;igusername&quot;: true },
+          &quot;_editable&quot;: { &quot;appid&quot;: true, &quot;appsecret&quot;: true, &quot;systemusertoken&quot;: true, &quot;accountId&quot;: false, &quot;igusername&quot;: false },
           &quot;_schema&quot;: { &quot;title&quot;: &quot;Instagram&quot;, &quot;credential_mode&quot;: &quot;hybrid&quot;, &quot;connection_modes&quot;: [&quot;api_key&quot;, &quot;own&quot;, &quot;wiro&quot;], &quot;default_connection_mode&quot;: &quot;api_key&quot;, &quot;fields&quot;: [ &quot;...&quot; ] },
           &quot;authmethod&quot;: &quot;&quot;,
           &quot;igusername&quot;: &quot;&quot;,
@@ -13483,9 +13485,11 @@ pro.credits = starter.credits × tiermultiplier
           &quot;optional&quot;: false,
           &quot;extra&quot;: false,
           &quot;_editable&quot;: {
-            &quot;authmethod&quot;: true,
+            &quot;appid&quot;: true,
+            &quot;appsecret&quot;: true,
             &quot;systemusertoken&quot;: true,
-            &quot;igusername&quot;: true
+            &quot;accountId&quot;: false,
+            &quot;igusername&quot;: false
           },
           &quot;_schema&quot;: {
             &quot;title&quot;: &quot;Instagram&quot;,
@@ -13502,6 +13506,7 @@ pro.credits = starter.credits × tiermultiplier
               &quot;own&quot;: &quot;Advanced&quot;
             },
             &quot;wiro_connect_pending&quot;: true,
+            &quot;channel&quot;: null,
             &quot;oauth_provider&quot;: {
               &quot;auth_method_value&quot;: &quot;wiro&quot;,
               &quot;connect_endpoint&quot;: &quot;/UserAgentOAuth/OAuthConnect&quot;,
@@ -13522,23 +13527,29 @@ pro.credits = starter.credits × tiermultiplier
             },
             &quot;fields&quot;: [
               {
-                &quot;key&quot;: &quot;authmethod&quot;,
-                &quot;label&quot;: &quot;Authentication Method&quot;,
-                &quot;type&quot;: &quot;select&quot;,
+                &quot;key&quot;: &quot;appid&quot;,
+                &quot;label&quot;: &quot;App ID&quot;,
+                &quot;type&quot;: &quot;text&quot;,
                 &quot;required&quot;: true,
-                &quot;options&quot;: [
-                  { &quot;label&quot;: &quot;System User Token&quot;, &quot;value&quot;: &quot;api_key&quot; },
-                  { &quot;label&quot;: &quot;Own OAuth app&quot;,     &quot;value&quot;: &quot;own&quot; },
-                  { &quot;label&quot;: &quot;Wiro-managed&quot;,      &quot;value&quot;: &quot;wiro&quot; }
-                ],
-                &quot;default&quot;: &quot;api_key&quot;
+                &quot;only_in_modes&quot;: [&quot;own&quot;],
+                &quot;pattern&quot;: &quot;^[0-9]+$&quot;,
+                &quot;oauth_managed&quot;: true
+              },
+              {
+                &quot;key&quot;: &quot;appsecret&quot;,
+                &quot;label&quot;: &quot;App Secret&quot;,
+                &quot;type&quot;: &quot;password&quot;,
+                &quot;required&quot;: true,
+                &quot;show_toggle&quot;: true,
+                &quot;only_in_modes&quot;: [&quot;own&quot;],
+                &quot;oauth_managed&quot;: true
               },
               {
                 &quot;key&quot;: &quot;systemusertoken&quot;,
                 &quot;label&quot;: &quot;System User Token&quot;,
                 &quot;type&quot;: &quot;password&quot;,
                 &quot;required&quot;: true,
-                &quot;runtime_excluded&quot;: true,
+                &quot;show_toggle&quot;: true,
                 &quot;only_in_modes&quot;: [&quot;api_key&quot;]
               },
               {
@@ -13546,22 +13557,24 @@ pro.credits = starter.credits × tiermultiplier
                 &quot;label&quot;: &quot;Instagram Account ID&quot;,
                 &quot;type&quot;: &quot;text&quot;,
                 &quot;required&quot;: true,
-                &quot;auto_filled_by_oauth&quot;: true,
-                &quot;readonly_when_connected&quot;: true
+                &quot;readonly_when_connected&quot;: true,
+                &quot;pattern&quot;: &quot;^[0-9]+$&quot;,
+                &quot;auto_filled_by_oauth&quot;: true
               },
               {
                 &quot;key&quot;: &quot;igusername&quot;,
                 &quot;label&quot;: &quot;Connected Account&quot;,
                 &quot;type&quot;: &quot;text&quot;,
                 &quot;required&quot;: false,
-                &quot;auto_filled_by_oauth&quot;: true,
-                &quot;readonly_when_connected&quot;: true
+                &quot;readonly_when_connected&quot;: true,
+                &quot;auto_filled_by_oauth&quot;: true
               }
             ]
           },
           &quot;_required_missing&quot;: false,
           &quot;_filled&quot;: true,
           &quot;authmethod&quot;: &quot;api_key&quot;,
+          &quot;systemusertoken&quot;: &quot;your-system-user-token&quot;,
           &quot;accountId&quot;: &quot;17841400000000000&quot;,
           &quot;igusername&quot;: &quot;mybrand&quot;,
           &quot;connectedat&quot;: &quot;2026-05-01T12:00:00.000Z&quot;,
@@ -14157,7 +14170,7 @@ pro.credits = starter.credits × tiermultiplier
 <tr>
 <td><code>_schema</code></td>
 <td><code>object</code></td>
-<td>Inline registry descriptor: <code>title</code>, <code>icon</code>, <code>brand_color</code>, <code>docs_url</code>, <code>credential_mode</code> (<code>oauth</code>, <code>api_key</code>, <code>hybrid</code>, etc.), <code>connection_modes</code>, <code>default_connection_mode</code>, <code>mode_badges</code>, <code>oauth_provider</code>, plus a <code>fields[]</code> array describing every input the form should render. Lets the panel build connector cards without a separate <code>Credentials/Detail</code> round-trip.</td>
+<td>Inline registry descriptor: <code>title</code>, <code>icon</code>, <code>brand_color</code>, <code>docs_url</code>, <code>credential_mode</code> (<code>oauth</code>, <code>api_key</code>, <code>hybrid</code>, etc.), <code>connection_modes</code>, <code>default_connection_mode</code>, <code>mode_badges</code>, <code>channel</code> (a communication channel's connector; <code>null</code> on any other), <code>oauth_provider</code>, plus a <code>fields[]</code> array describing every input the form should render. Lets the panel build connector cards without a separate <code>Credentials/Detail</code> round-trip.</td>
 </tr>
 <tr>
 <td><code>_required_missing</code></td>

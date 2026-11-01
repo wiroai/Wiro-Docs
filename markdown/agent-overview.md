@@ -285,7 +285,7 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
         "instagram": {
           "optional": false,
           "extra": false,
-          "_editable": { "authmethod": true, "systemusertoken": true, "igusername": true },
+          "_editable": { "appid": true, "appsecret": true, "systemusertoken": true, "accountId": false, "igusername": false },
           "_schema": {
             "title": "Instagram",
             "icon": "https://wiro.ai/images/icons/skills/instagram.svg",
@@ -298,6 +298,7 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
             "default_connection_mode": "api_key",
             "mode_badges": { "api_key": "Recommended", "own": "Advanced" },
             "wiro_connect_pending": true,
+            "channel": null,
             "oauth_provider": {
               "auth_method_value": "wiro",
               "connect_endpoint": "/UserAgentOAuth/OAuthConnect",
@@ -318,10 +319,11 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
               }
             },
             "fields": [
-              { "key": "authmethod", "type": "select", "label": "Auth Method", "options": ["api_key", "own", "wiro"], "default": "api_key" },
-              { "key": "systemusertoken", "type": "password", "label": "System User Token", "runtime_excluded": true, "only_in_modes": ["api_key"] },
-              { "key": "accountId", "type": "text", "label": "Instagram Account ID", "auto_filled_by_oauth": true, "readonly_when_connected": true },
-              { "key": "igusername", "type": "text", "label": "Connected Account", "auto_filled_by_oauth": true, "readonly_when_connected": true }
+              { "key": "appid", "label": "App ID", "type": "text", "required": true, "only_in_modes": ["own"], "pattern": "^[0-9]+$", "oauth_managed": true },
+              { "key": "appsecret", "label": "App Secret", "type": "password", "required": true, "show_toggle": true, "only_in_modes": ["own"], "oauth_managed": true },
+              { "key": "systemusertoken", "label": "System User Token", "type": "password", "required": true, "show_toggle": true, "only_in_modes": ["api_key"] },
+              { "key": "accountId", "label": "Instagram Account ID", "type": "text", "required": true, "readonly_when_connected": true, "pattern": "^[0-9]+$", "auto_filled_by_oauth": true },
+              { "key": "igusername", "label": "Connected Account", "type": "text", "required": false, "readonly_when_connected": true, "auto_filled_by_oauth": true }
             ]
           }
         }
@@ -344,8 +346,8 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
 | `_connected` | boolean | **Connection readiness indicator.** `true` when Wiro has a validated OAuth or hybrid direct connection and every required picker field (`customerid`, `merchantid`, `channelid`, ad-account, page ID, Instagram account ID, etc.) is populated. Plain API-key and service-account providers that do not write `connectedat` can remain `false`; use `setuprequired` to determine overall setup readiness. |
 | `optional` | boolean | `true` when the template marks this credential as not required for the agent to run. Agents can start even if `optional: true` credentials are empty. On a custom build, each skill's own connector reads `false`, and a connector it lists in `additional_credential_keys` reads `true`, unless another skill on the agent has that connector as its own. |
 | `extra` | boolean | `true` when the template groups the credential under "extra integrations" in the UI (disabled by default until the user opts into the skill). |
-| `_editable` | object | Map of `fieldname → true` for fields the caller may write. Computed from the registry schema. |
-| `_schema` | object | Inlined registry descriptor: `{ title, icon, brand_color, brand_text_color, brand_logo_filter, docs_url, credential_mode, connection_modes[], default_connection_mode, mode_badges, wiro_connect_pending, oauth_provider, fields[] }`. Lets a UI render the form without a separate `Credentials/Detail` round-trip. |
+| `_editable` | object | Map of `fieldname → true\|false` over the registry schema: `false` for a field the caller can't write (filled by the connection flow, platform-managed, or computed). |
+| `_schema` | object | Inlined registry descriptor: `{ title, icon, brand_color, brand_text_color, brand_logo_filter, docs_url, credential_mode, connection_modes[], default_connection_mode, mode_badges, wiro_connect_pending, channel, oauth_provider, fields[] }`, where `channel` describes a communication channel's connector and is `null` on any other. Lets a UI render the form without a separate `Credentials/Detail` round-trip. |
 
 **Field redaction in responses:**
 
@@ -501,7 +503,7 @@ Both paths hit the same endpoint, but a few server-side behaviours diverge:
           "_connected": false,
           "optional": false,
           "extra": false,
-          "_editable": { "authmethod": true, "systemusertoken": true, "igusername": true },
+          "_editable": { "appid": true, "appsecret": true, "systemusertoken": true, "accountId": false, "igusername": false },
           "_schema": { "title": "Instagram", "credential_mode": "hybrid", "connection_modes": ["api_key", "own", "wiro"], "default_connection_mode": "api_key", "fields": [ "..." ] },
           "authmethod": "",
           "igusername": "",
@@ -751,9 +753,11 @@ Retrieves full details for a single deployed agent instance, including subscript
           "optional": false,
           "extra": false,
           "_editable": {
-            "authmethod": true,
+            "appid": true,
+            "appsecret": true,
             "systemusertoken": true,
-            "igusername": true
+            "accountId": false,
+            "igusername": false
           },
           "_schema": {
             "title": "Instagram",
@@ -770,6 +774,7 @@ Retrieves full details for a single deployed agent instance, including subscript
               "own": "Advanced"
             },
             "wiro_connect_pending": true,
+            "channel": null,
             "oauth_provider": {
               "auth_method_value": "wiro",
               "connect_endpoint": "/UserAgentOAuth/OAuthConnect",
@@ -790,23 +795,29 @@ Retrieves full details for a single deployed agent instance, including subscript
             },
             "fields": [
               {
-                "key": "authmethod",
-                "label": "Authentication Method",
-                "type": "select",
+                "key": "appid",
+                "label": "App ID",
+                "type": "text",
                 "required": true,
-                "options": [
-                  { "label": "System User Token", "value": "api_key" },
-                  { "label": "Own OAuth app",     "value": "own" },
-                  { "label": "Wiro-managed",      "value": "wiro" }
-                ],
-                "default": "api_key"
+                "only_in_modes": ["own"],
+                "pattern": "^[0-9]+$",
+                "oauth_managed": true
+              },
+              {
+                "key": "appsecret",
+                "label": "App Secret",
+                "type": "password",
+                "required": true,
+                "show_toggle": true,
+                "only_in_modes": ["own"],
+                "oauth_managed": true
               },
               {
                 "key": "systemusertoken",
                 "label": "System User Token",
                 "type": "password",
                 "required": true,
-                "runtime_excluded": true,
+                "show_toggle": true,
                 "only_in_modes": ["api_key"]
               },
               {
@@ -814,22 +825,24 @@ Retrieves full details for a single deployed agent instance, including subscript
                 "label": "Instagram Account ID",
                 "type": "text",
                 "required": true,
-                "auto_filled_by_oauth": true,
-                "readonly_when_connected": true
+                "readonly_when_connected": true,
+                "pattern": "^[0-9]+$",
+                "auto_filled_by_oauth": true
               },
               {
                 "key": "igusername",
                 "label": "Connected Account",
                 "type": "text",
                 "required": false,
-                "auto_filled_by_oauth": true,
-                "readonly_when_connected": true
+                "readonly_when_connected": true,
+                "auto_filled_by_oauth": true
               }
             ]
           },
           "_required_missing": false,
           "_filled": true,
           "authmethod": "api_key",
+          "systemusertoken": "your-system-user-token",
           "accountId": "17841400000000000",
           "igusername": "mybrand",
           "connectedat": "2026-05-01T12:00:00.000Z",
@@ -1190,7 +1203,7 @@ Every provider entry under `credentials.<key>` carries:
 | `optional` | `boolean` | `true` when the agent template marks this credential as optional (the agent can run without it; the dependent skill just won't fire). `false` for required credentials. On a custom build, each skill's own connector reads `false`, and a connector it lists in `additional_credential_keys` reads `true`, unless another skill on the agent has that connector as its own. |
 | `extra` | `boolean` | `true` when this credential surfaces in the "alternative" / secondary group on the panel (rare; most credentials are primary). |
 | `_editable` | `object` | Per-field edit map: `{ fieldname: true\|false }`. `false` means the field is read-only (managed by OAuth, platform-managed, or computed). The frontend uses this to disable inputs. |
-| `_schema` | `object` | Inline registry descriptor: `title`, `icon`, `brand_color`, `docs_url`, `credential_mode` (`oauth`, `api_key`, `hybrid`, etc.), `connection_modes`, `default_connection_mode`, `mode_badges`, `oauth_provider`, plus a `fields[]` array describing every input the form should render. Lets the panel build connector cards without a separate `Credentials/Detail` round-trip. |
+| `_schema` | `object` | Inline registry descriptor: `title`, `icon`, `brand_color`, `docs_url`, `credential_mode` (`oauth`, `api_key`, `hybrid`, etc.), `connection_modes`, `default_connection_mode`, `mode_badges`, `channel` (a communication channel's connector; `null` on any other), `oauth_provider`, plus a `fields[]` array describing every input the form should render. Lets the panel build connector cards without a separate `Credentials/Detail` round-trip. |
 | `_required_missing` | `boolean` | `true` when this connector is required (`optional: false`) and a required field you fill in is still empty. Drives the "needs attention" bullet on each connector card and the aggregate count badge on the Connectors tab. Always `false` on an optional connector. A list field counts as empty while its rows hold nothing but a choice or a switch, such as a default platform on an otherwise blank row. |
 | `_filled` | `boolean` | `true` when the connector is set up: its OAuth connection is made, or at least one field holds a value and no required field you fill in is empty. |
 | `connectedat` | `string\|null` | OAuth and hybrid providers: ISO timestamp of the last successful connection. |
