@@ -24222,7 +24222,7 @@ customer-facing token-refresh endpoint or manual refresh action.</p>
 <p>The two branches are checked together: <code>setuprequired</code> stays <code>true</code> until every required credential passes one of them.</p>
 <h2 id="security">Security</h2>
 <ul>
-<li><strong>Tokens are stored server-side</strong> and are never returned by the customer-facing credential endpoints.</li>
+<li><strong>OAuth access and refresh tokens are stored server-side</strong> and are never returned by the customer-facing credential endpoints. A token you save yourself, such as a System User token or a bot token, comes back to the agent's owner and team admins like your other connector values.</li>
 <li><strong><code>oauth_session</code> fields are always stripped</strong> from Detail, <code>MyAgents</code>, and <code>CredentialUpsert</code> responses: <code>accesstoken</code>, <code>refreshtoken</code>, <code>pageAccessToken</code> and any similar token rows never leave the server. <code>OAuthStatus</code> returns only the <code>connectedat</code> and <code>tokenexpiresat</code> timestamps, never a token.</li>
 <li><strong><code>platform</code> fields are always stripped</strong> from responses. In practice this affects Reddit's three approval flags and every other Wiro-managed field. <code>credentials.wiro.apikey</code> and <code>credentials.calendarific.apikey</code> are user-supplied and appear normally in the response.</li>
 <li><strong><code>oauth_app</code> fields (<code>clientid</code> / <code>clientsecret</code>, <code>appid</code> / <code>appsecret</code>) are stripped from Detail responses</strong>, even after an OAuth "own mode" setup writes them. The append-only credential history redacts <code>clientsecret</code> to <code>[REDACTED]</code> and always redacts <code>oauth_session</code> rows.</li>
@@ -24238,7 +24238,7 @@ customer-facing token-refresh endpoint or manual refresh action.</p>
 <li>Redirect URLs must be https, on any host you control (or http on localhost/127.0.0.1 for development).</li>
 <li>Facebook Page and direct Instagram discovery results remain server-side for
   15 minutes while the user selects accounts. Clients receive only public
-  <code>{id, name}</code> pairs; System User and Page access tokens never leave the server.</li>
+  <code>{id, name}</code> pairs; the Page access tokens found during discovery never leave the server.</li>
 </ul>
 <h2 id="for-third-party-developers">For Third-Party Developers</h2>
 <p>If you're building a product on top of Wiro agents and need your customers to connect their own accounts:</p>
@@ -27803,8 +27803,9 @@ Business Portfolio.</p>
 </code></pre>
 <p>Wiro validates the token against Meta and returns only active ad accounts whose
 effective <code>user_tasks</code> contain both <code>ADVERTISE</code> and <code>ANALYZE</code>. The token is
-encrypted at rest and never reflected to the browser or API caller. Wiro does
-not require or store an App ID/App Secret for this direct mode.</p>
+encrypted at rest, and this answer never repeats it. Like your other connector
+values, it comes back on <code>UserAgent/Detail</code> only to the agent's owner and team
+admins. Wiro does not require or store an App ID/App Secret for this direct mode.</p>
 <ol start="7">
 <li>Persist one or more returned ad accounts with
    <code>POST /UserAgentOAuth/SetPickerAccounts</code> as shown in Step 10. API clients
@@ -30831,7 +30832,7 @@ if (params.get("ig_connected") === "true") {
                       <li><strong>Recommended direct mode:</strong> each customer supplies a System User token from its own Business Portfolio and assigns its own Page plus Instagram assets.</li>
                       <li><strong>Advanced OAuth mode:</strong> each customer-owned Meta app controls its own App Roles, review status, and Instagram consent branding.</li>
                       <li><strong>Page linkage is mode-specific.</strong> It is mandatory for System User mode but not for Instagram API with Instagram Login.</li>
-                      <li><strong>Tokens are isolated per useragent</strong> and are never returned to another customer or to the browser.</li>
+                      <li><strong>Tokens are isolated per useragent</strong> and are never returned to another customer. Access tokens are never returned at all, and a saved System User token comes back only to the agent's owner and team admins.</li>
                     </ol>
                   </section>
 

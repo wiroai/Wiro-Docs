@@ -523,7 +523,8 @@ do nothing. Connect an account (in System User mode, select it with
 4. **Page linkage is mode-specific.** It is mandatory for System User mode but
    not for Instagram API with Instagram Login.
 5. **Tokens are isolated per useragent** and are never returned to another
-   customer or to the browser.
+   customer. Access tokens are never returned at all, and a saved System User
+   token comes back only to the agent's owner and team admins.
 
 ## Related
 

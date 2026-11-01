@@ -1252,7 +1252,7 @@ The two branches are checked together: `setuprequired` stays `true` until every 
 
 ## Security
 
-- **Tokens are stored server-side** and are never returned by the customer-facing credential endpoints.
+- **OAuth access and refresh tokens are stored server-side** and are never returned by the customer-facing credential endpoints. A token you save yourself, such as a System User token or a bot token, comes back to the agent's owner and team admins like your other connector values.
 - **`oauth_session` fields are always stripped** from Detail, `MyAgents`, and `CredentialUpsert` responses: `accesstoken`, `refreshtoken`, `pageAccessToken` and any similar token rows never leave the server. `OAuthStatus` returns only the `connectedat` and `tokenexpiresat` timestamps, never a token.
 - **`platform` fields are always stripped** from responses. In practice this affects Reddit's three approval flags and every other Wiro-managed field. `credentials.wiro.apikey` and `credentials.calendarific.apikey` are user-supplied and appear normally in the response.
 - **`oauth_app` fields (`clientid` / `clientsecret`, `appid` / `appsecret`) are stripped from Detail responses**, even after an OAuth "own mode" setup writes them. The append-only credential history redacts `clientsecret` to `[REDACTED]` and always redacts `oauth_session` rows.
@@ -1265,7 +1265,7 @@ The two branches are checked together: `setuprequired` stays `true` until every 
 - Redirect URLs must be https, on any host you control (or http on localhost/127.0.0.1 for development).
 - Facebook Page and direct Instagram discovery results remain server-side for
   15 minutes while the user selects accounts. Clients receive only public
-  `{id, name}` pairs; System User and Page access tokens never leave the server.
+  `{id, name}` pairs; the Page access tokens found during discovery never leave the server.
 
 ## For Third-Party Developers
 

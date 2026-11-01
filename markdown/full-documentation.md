@@ -15373,7 +15373,7 @@ The two branches are checked together: `setuprequired` stays `true` until every 
 
 ## Security
 
-- **Tokens are stored server-side** and are never returned by the customer-facing credential endpoints.
+- **OAuth access and refresh tokens are stored server-side** and are never returned by the customer-facing credential endpoints. A token you save yourself, such as a System User token or a bot token, comes back to the agent's owner and team admins like your other connector values.
 - **`oauth_session` fields are always stripped** from Detail, `MyAgents`, and `CredentialUpsert` responses: `accesstoken`, `refreshtoken`, `pageAccessToken` and any similar token rows never leave the server. `OAuthStatus` returns only the `connectedat` and `tokenexpiresat` timestamps, never a token.
 - **`platform` fields are always stripped** from responses. In practice this affects Reddit's three approval flags and every other Wiro-managed field. `credentials.wiro.apikey` and `credentials.calendarific.apikey` are user-supplied and appear normally in the response.
 - **`oauth_app` fields (`clientid` / `clientsecret`, `appid` / `appsecret`) are stripped from Detail responses**, even after an OAuth "own mode" setup writes them. The append-only credential history redacts `clientsecret` to `[REDACTED]` and always redacts `oauth_session` rows.
@@ -15386,7 +15386,7 @@ The two branches are checked together: `setuprequired` stays `true` until every 
 - Redirect URLs must be https, on any host you control (or http on localhost/127.0.0.1 for development).
 - Facebook Page and direct Instagram discovery results remain server-side for
   15 minutes while the user selects accounts. Clients receive only public
-  `{id, name}` pairs; System User and Page access tokens never leave the server.
+  `{id, name}` pairs; the Page access tokens found during discovery never leave the server.
 
 ## For Third-Party Developers
 
@@ -17910,8 +17910,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
 
 Wiro validates the token against Meta and returns only active ad accounts whose
 effective `user_tasks` contain both `ADVERTISE` and `ANALYZE`. The token is
-encrypted at rest and never reflected to the browser or API caller. Wiro does
-not require or store an App ID/App Secret for this direct mode.
+encrypted at rest, and this answer never repeats it. Like your other connector
+values, it comes back on `UserAgent/Detail` only to the agent's owner and team
+admins. Wiro does not require or store an App ID/App Secret for this direct mode.
 
 7. Persist one or more returned ad accounts with
    `POST /UserAgentOAuth/SetPickerAccounts` as shown in Step 10. API clients
@@ -19985,7 +19986,8 @@ do nothing. Connect an account (in System User mode, select it with
 4. **Page linkage is mode-specific.** It is mandatory for System User mode but
    not for Instagram API with Instagram Login.
 5. **Tokens are isolated per useragent** and are never returned to another
-   customer or to the browser.
+   customer. Access tokens are never returned at all, and a saved System User
+   token comes back only to the agent's owner and team admins.
 
 ## Related
 

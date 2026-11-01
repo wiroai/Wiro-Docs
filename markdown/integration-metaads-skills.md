@@ -75,8 +75,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
 
 Wiro validates the token against Meta and returns only active ad accounts whose
 effective `user_tasks` contain both `ADVERTISE` and `ANALYZE`. The token is
-encrypted at rest and never reflected to the browser or API caller. Wiro does
-not require or store an App ID/App Secret for this direct mode.
+encrypted at rest, and this answer never repeats it. Like your other connector
+values, it comes back on `UserAgent/Detail` only to the agent's owner and team
+admins. Wiro does not require or store an App ID/App Secret for this direct mode.
 
 7. Persist one or more returned ad accounts with
    `POST /UserAgentOAuth/SetPickerAccounts` as shown in Step 10. API clients
