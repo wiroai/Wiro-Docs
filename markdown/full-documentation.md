@@ -7309,7 +7309,7 @@ Deploying and running an agent follows this flow:
 
 1. **Browse**: call `POST /Agent/List` to discover available agents in the catalog
 2. **Deploy**: call `POST /UserAgent/Deploy` with `useprepaid: true` and `tier` (`"starter"` or `"pro"`). The selected tier price is debited from your prepaid wallet immediately and a 30-day subscription row is created.
-3. **Configure**: set integration and optional Telegram, Slack, or Discord credentials with `POST /UserAgent/CredentialUpsert`, and preferences with `POST /UserAgent/CustomSkillUpsert`. See [Agent Credentials](/docs/agent-credentials) for details
+3. **Configure**: set integration and optional Telegram, Slack, or Discord credentials with `POST /UserAgent/CredentialUpsert`, connect the Wiro project the agent runs models with using `POST /UserAgent/CredentialProjectBind`, and set preferences with `POST /UserAgent/CustomSkillUpsert`. See [Agent Credentials](/docs/agent-credentials) for details
 4. **Start**: call `POST /UserAgent/Start` to queue the agent for launch
 5. **Running**: the agent starts and becomes available for conversation
 6. **Chat**: send messages via `POST /UserAgent/Message/Send`. See [Agent Messaging](/docs/agent-messaging) for the full messaging API
@@ -7326,7 +7326,7 @@ Every deployed agent instance has a numeric status that reflects its current sta
 | `3` | Starting | The agent is starting up. |
 | `4` | Running | Agent is live and ready to receive messages. |
 | `5` | Error | Agent encountered an error during execution. Call Start to retry. |
-| `6` | Setup Required | Agent needs credentials or configuration before it can start. Provide them via `CredentialUpsert` / `CustomSkillUpsert` / `SkillsApply`. |
+| `6` | Setup Required | Agent needs credentials or configuration before it can start. Provide them via `CredentialUpsert` / `CredentialProjectBind` / `CustomSkillUpsert` / `SkillsApply`. |
 
 ### Automatic Restart
 
@@ -7334,7 +7334,7 @@ When you mutate an agent's configuration while it is **starting** (status `3`) o
 
 This means you can update credentials, toggle skills, or change a custom skill on a running agent without manually stopping and starting it.
 
-Endpoints that auto-trigger a restart on success: `CredentialUpsert`, `SkillsApply`, `CustomSkillUpsert` (when functional fields change), `CustomSkillRename`, `CustomSkillDelete`, `CustomSkillRevert`, `Update` (scalar edits).
+Endpoints that auto-trigger a restart on success: `CredentialUpsert`, `CredentialProjectBind` (when the project changes), `SkillsApply`, `CustomSkillUpsert` (when functional fields change), `CustomSkillRename`, `CustomSkillDelete`, `CustomSkillRevert`, `Update` (scalar edits).
 
 ## Endpoints
 
@@ -7606,7 +7606,7 @@ for the channel contract.
 > | `UserAgent/Deploy` | A team project's credentials deploy into that team; the project's owner must be a team admin |
 > | `UserAgent/Message/Send`, `Message/History`, `Message/Sessions`, `Message/DeleteSession`, `Message/RenameSession` | The project's workspace must match the agent's workspace |
 > | `UserAgent/Message/Delete` | For team agents, the project's workspace must match the agent's workspace; it only hides messages sent by the project's owner |
-> | `UserAgent/CancelSubscription`, `UserAgent/CreateExtraCreditCheckout`, `UserAgent/UpgradeTier`, `UserAgent/RenewSubscription`, `UserAgent/CreateSubscriptionCheckout`, `UserAgent/PricingPreview`, `UserAgent/SkillsApply`, `UserAgent/SkillToggle` | The project's workspace must match the agent's workspace |
+> | `UserAgent/CancelSubscription`, `UserAgent/CreateExtraCreditCheckout`, `UserAgent/UpgradeTier`, `UserAgent/RenewSubscription`, `UserAgent/CreateSubscriptionCheckout`, `UserAgent/PricingPreview`, `UserAgent/SkillsApply`, `UserAgent/SkillToggle`, `UserAgent/CredentialProjectBind` | The project's workspace must match the agent's workspace |
 > | `UserAgent/Message/Detail`, `Message/Cancel` | No workspace match; they only return or cancel messages sent by the project's owner |
 > | `UserAgent/Detail` | No workspace match; the project's owner must own the agent or be a member of its team |
 > | `UserAgent/Update`, `UserAgent/Start`, `UserAgent/Stop` | No workspace match; the project's owner must own the agent or be an admin of its team (plain members get code `97`) |
@@ -7761,7 +7761,7 @@ The Deploy response reflects the same composed shape you get from `UserAgent/Det
 Next steps for the API integration flow:
 
 1. Inspect `credentials` in the Deploy response (or call `POST /UserAgent/Detail`) to see each provider's fields, the `optional` / `extra` flags, the registry-driven `_schema`, and the `_connected` OAuth status.
-2. Call `POST /UserAgent/CredentialUpsert` per provider (or in bulk via the `fields[]` array) to write API keys, bot tokens, WordPress credentials, etc. For OAuth providers (Meta, Google Ads, HubSpot, …) use the unified `/UserAgentOAuth/OAuthConnect` flow with `credentialkey` (see [Agent Credentials & OAuth](/docs/agent-credentials)).
+2. Call `POST /UserAgent/CredentialUpsert` per provider (or in bulk via the `fields[]` array) to write API keys, bot tokens, WordPress credentials, etc. For OAuth providers (Meta, Google Ads, HubSpot, …) use the unified `/UserAgentOAuth/OAuthConnect` flow with `credentialkey` (see [Agent Credentials & OAuth](/docs/agent-credentials)). To connect the Wiro project the agent runs models with, call `POST /UserAgent/CredentialProjectBind`.
 3. Call `POST /UserAgent/CustomSkillUpsert` per skill to customize strategy text or cron intervals, if the template exposes any.
 4. Once all non-optional credentials are filled, the row's `setuprequired` flag flips to `false`. If the prepaid subscription was already provisioned during Deploy, Wiro starts the agent from the queue automatically and the status progresses `2` → `3` (Starting) → `4` (Running).
 5. If you want to re-launch a stopped agent (status `0`) or recover an errored one (status `5`), call `POST /UserAgent/Start` explicitly.
@@ -8390,6 +8390,7 @@ Updates an agent instance's **scalar fields only** (title, description, categori
 > | What you want to change | Use |
 > |-------------------------|-----|
 > | Provider credentials (API keys, OAuth settings) | [`POST /UserAgent/CredentialUpsert`](#post-useragentcredentialupsert) |
+> | The Wiro project the agent runs models with | [`POST /UserAgent/CredentialProjectBind`](#post-useragentcredentialprojectbind) |
 > | Upload a credential `fileinput` field (multipart, e.g. Twilio voice MP3) | [`POST /UserAgent/CredentialFileUpload`](#post-useragentcredentialfileupload) |
 > | Custom skill values (strategy text, cron intervals, enabled flag) | [`POST /UserAgent/CustomSkillUpsert`](#post-useragentcustomskillupsert) |
 > | Rename a user-created custom skill (key + optional description) | [`POST /UserAgent/CustomSkillRename`](#post-useragentcustomskillrename) |
@@ -8717,6 +8718,76 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
 > | `twilioWebhookError` | `string` | Top-level message when the entire VoiceUrl-rewrite flow failed (auth error, network outage). The credential rows are still saved. Only the auto-configuration step failed. |
 >
 > Treat all four fields as best-effort: the credential write itself never depends on Twilio's API call succeeding. See [Twilio Voice Integration](/docs/integration-twiliovoice-skills) for the full lifecycle.
+
+#### **POST** /UserAgent/CredentialProjectBind
+
+Connects an agent's `wiro` credential, the one `int-wiro-aimodels` runs models with, to one of your Wiro projects. You name the project, and Wiro saves that project's API key on the agent. The agent's model runs are paid from the wallet of the workspace that owns the project.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | Your UserAgent instance guid |
+| `projectid` | string \| number | Conditional | The project's `id` from `POST /Project/List`. A request made with a project API key can leave it out to bind that key's own project. Any other request must send it. |
+
+To pick a project, call `POST /Project/List` with an empty body (`{}`). It returns the projects of the workspace you call from, newest first, up to 100. Each row of `project` has the `id` to send here and the project's `name`.
+
+**Who can bind which project:**
+
+- The caller is the agent's owner or a team admin of its team. With an API key, that is the user who created the key's project.
+- The request comes from the agent's workspace: use a team project's key for a team agent and a personal project's key for a personal agent.
+- The project belongs to the agent's workspace too. A personal agent takes one of its owner's personal projects. A team agent takes a project of its team: a team admin can bind any of them, and the member who deployed the agent can bind the ones they created.
+
+##### Request
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialProjectBind" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "projectid": "4821" }'
+```
+
+##### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "applied": 1,
+  "project": { "id": "4821", "name": "Agent models" },
+  "restart": "scheduled"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `applied` | `number` | `1` when the agent's saved key changed. `0` when the agent already had this project. |
+| `project` | `object` | The bound project: `{ id, name }`, with `id` as a string. |
+| `restart` | `string` | What the call did to the agent. `"scheduled"`: it was starting or running and now restarts with the project's key. `"none"`: nothing changed, or it isn't running and uses the key at its next start. `"failed"`: the key is saved, and the running agent picks it up when you stop and start it. |
+
+Binding the project an agent already has changes nothing and restarts nothing. Changing a project's IP whitelist gives the project a new API secret; to load it, restart the agent with `POST /UserAgent/Update` and a body of `{ "guid": "<useragent-guid>" }`.
+
+If you already hold a project's key, [`CredentialUpsert`](#post-useragentcredentialupsert) with `credentialkey` `wiro` and `fieldname` `apikey` saves it too.
+
+##### Common errors
+
+Each of these comes back with `result: false`, and nothing is saved.
+
+| Error | Code | When |
+|-------|------|------|
+| `Request parameter [useragentguid] required` | 0 | `useragentguid` is missing |
+| `projectid is required: send the id of one of your projects from Project/List. Only a request made with a project API key may leave it out, to bind that key's own project.` | 0 | The request has no `projectid` and wasn't made with a project API key |
+| `projectid must be a project's id from Project/List.` | 0 | `projectid` isn't a positive whole number |
+| `User agent not found` | 95 | Unknown guid, or the agent has been deleted |
+| `You don't have access to this user agent` | 96 | The caller is neither the agent's owner nor on its team |
+| `Only a team admin can perform this action on a team-owned agent.` | 97 | The caller is a plain member of the agent's team |
+| `This agent belongs to a team. Switch to the team context to access it.` | 0 | A team agent called from a personal workspace or a personal project's key |
+| `This agent is in your personal workspace. Switch to personal context to access it.` | 0 | A personal agent called from a team workspace or a team project's key |
+| `This agent belongs to a different team.` | 0 | A team agent called from another team's workspace or project key |
+| `Project not found. Send the id of one of your projects from Project/List: one you created, or any project of a team you are an admin of.` | 0 | The project doesn't exist, or the caller can't bind it |
+| `This is a personal agent: bind one of its owner's personal projects. Its model runs are paid from that wallet.` | 0 | A personal agent and a project from another workspace |
+| `This is a team agent: bind one of its team's projects. Its model runs are paid from the team wallet.` | 0 | A team agent and a project from another workspace |
+| `This project's API key no longer works: the account that created it is not active, so the agent's model runs would fail. Bind another project.` | 0 | The account that created the project is not active |
+| `This project's API key no longer works: the person who created it is no longer in the team, so the agent's model runs would fail. Bind another project of the team.` | 0 | The person who created the team project has left the team |
+| `The project could not be bound. Try again.` | 0 | Try again |
 
 #### **POST** /UserAgent/CredentialFileUpload
 
@@ -10128,6 +10199,7 @@ Agent-specific errors you may encounter:
 | `Failed to compute target-tier pricing` | `UpgradeTier`: the Pro price could not be computed. Try again or contact support |
 | `Insufficient wallet balance. Required: $X.XX, Available: $Y.YY` | `UpgradeTier`: wallet can't cover the prorated upgrade charge |
 | `Wallet deduction failed: {error}` | `UpgradeTier`: wallet write itself failed (rare; transient backend error) |
+| `Project not found. Send the id of one of your projects from Project/List: one you created, or any project of a team you are an admin of.` | `CredentialProjectBind` with a project that doesn't exist or that the caller can't bind. See its [other errors](#post-useragentcredentialprojectbind) |
 | `Agent not found or access denied` | Message endpoint with invalid useragentguid |
 | `User agent not found` (code `95`) | `Message/History`, `Message/Sessions`, `Message/DeleteSession`, `Message/RenameSession` or `Message/Delete` called for an agent that has been deleted |
 | `Agent is not running. Current status: {n}` | `Message/Send` when not running. Response includes `agentstatus` (the integer) so your client can branch on it. |
@@ -13940,6 +14012,7 @@ Each external service is documented as its own **integration page** with the com
 | Inspect a single credential schema | [`POST /Credentials/Detail`](#post-credentialsdetail) (public) |
 | Find the credential a skill needs | [`POST /Skills/CredentialSchema`](/docs/agent-skills#post-skillscredentialschema) (public) |
 | Write one or more credential fields | [`POST /UserAgent/CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert) |
+| Connect the agent's Wiro project by its id | [`POST /UserAgent/CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) |
 | Discover external communication channels | [`POST /Skills/List`](/docs/agent-skills#post-skillslist) → `channels[]` (public) |
 | Connect or disable an external channel | [`POST /UserAgent/CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert) |
 | Read version history of a credential | [`POST /UserAgent/CredentialFieldHistory`](/docs/agent-overview#post-useragentcredentialfieldhistory) |
@@ -14404,28 +14477,29 @@ Two integrations are **user-input credentials** that ship in agent templates but
 
 ### Wiro AI Models: `wiro` credential
 
-The `int-wiro-aimodels` skill lets an agent call Wiro's own AI models (image / video / audio / LLM generation, cover image creation, model discovery) using **your own Wiro project API key**. Each generated asset is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).
+The `int-wiro-aimodels` skill lets an agent call Wiro's own AI models (image / video / audio / LLM generation, cover image creation, model discovery) using **one of your Wiro projects**. Each generated asset is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).
 
 - **Credential key:** `wiro`
-- **Field:** `apikey` (single field, type `custom:wiro-project-picker` in the registry; the dashboard renders it as a project picker, the API expects the project's raw API key string).
-- **No secret to supply.** Only the `apikey` is needed. Request signing for the agent's internal Wiro calls is handled automatically: Wiro derives the project's signing secret server-side from the key you pick, so there is no `apisecret` (or similar) field to paste.
-- **Setup:** create / pick a Wiro project at [wiro.ai/panel/projects](https://wiro.ai/panel/projects), copy its API key, then upsert it:
+- **Field:** `apikey` (single field, type `custom:wiro-project-picker` in the registry; the dashboard renders it as a project picker).
+- **No secret to supply.** Only the project is needed. Request signing for the agent's internal Wiro calls is handled automatically: Wiro derives the project's signing secret server-side from the key you pick, so there is no `apisecret` (or similar) field to paste.
+- **Setup in the dashboard:** open the agent's **Connectors** tab and pick a project, or create one on the [Projects page](https://wiro.ai/panel/project).
+- **Setup through the API:** take the project's `id` from `POST /Project/List` and call [`POST /UserAgent/CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind). A request made with a project API key can leave `projectid` out to bind that key's own project:
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialProjectBind" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "fields": [
-      { "credentialkey": "wiro", "fieldname": "apikey", "fieldvalue": "wp_xxx_your_wiro_project_api_key" }
-    ]
+    "projectid": "your-project-id"
   }'
 ```
 
+The response names the project and says what happened to the agent: `{ "result": true, "errors": [], "applied": 1, "project": { "id": "4821", "name": "Agent models" }, "restart": "scheduled" }`. See [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) for every field and error. If you already hold a project's key, `POST /UserAgent/CredentialUpsert` with `credentialkey` `wiro` and `fieldname` `apikey` saves it too.
+
 > **Don't confuse `credentials.wiro.apikey` with your operator-level Wiro API key.** `credentials.wiro.apikey` is the project key the agent uses to run Wiro models. The `x-api-key` header you send to Wiro endpoints from your own backend is your operator key, which is entirely separate (see [Authentication](/docs/authentication)).
 
-Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, TikTok Ads, Google Ads) ship with `int-wiro-aimodels: true` enabled, but the agent stays in `status: 6` (Setup Required) until the operator supplies a `wiro` project key.
+Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, TikTok Ads, Google Ads) ship with `int-wiro-aimodels: true` enabled, but the agent stays in `status: 6` (Setup Required) until the operator connects a Wiro project.
 
 ### Calendarific in your agent
 
@@ -14539,7 +14613,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialFieldHistory" \
 
 ## Setting API Key Credentials
 
-Use `POST /UserAgent/CredentialUpsert` with a flat `fields[]` array. Each field row carries `{credentialkey, fieldname, fieldvalue}`. Each integration page documents the exact field names and shape.
+Use `POST /UserAgent/CredentialUpsert` with a flat `fields[]` array. Each field row carries `{credentialkey, fieldname, fieldvalue}`. Each integration page documents the exact field names and shape. The Wiro project an agent runs models with has its own route, [`POST /UserAgent/CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind), which takes the project's `id`.
 
 ### Bulk upsert pattern
 
@@ -16278,7 +16352,7 @@ Skills that depend on third-party credentials. Follow the linked integration pag
 | `int-apollo-sales` | `apollo` (API key) | [Apollo Skills](/docs/integration-apollo-skills) |
 | `int-lemlist-outreach` | `lemlist` (API key) | [Lemlist Skills](/docs/integration-lemlist-skills) |
 | `int-twilio-channel` | `twilio-voice` (API key) | [Twilio Voice](/docs/integration-twiliovoice-skills) |
-| `int-wiro-aimodels` | `wiro` (your own Wiro project API key) | See [Using Wiro AI Models from Your Agent](#using-wiro-ai-models-from-your-agent) |
+| `int-wiro-aimodels` | `wiro` (the Wiro project the agent runs models with) | See [Using Wiro AI Models from Your Agent](#using-wiro-ai-models-from-your-agent) |
 | `int-calendarific` | `calendarific` (API key) | [Calendarific in your agent](/docs/agent-credentials#calendarific-in-your-agent) |
 
 Agents can optionally forward operator notifications to a Telegram bot via the `telegram` credential (see [Telegram Skills](/docs/integration-telegram-skills)). This is never required; every agent remains fully usable over web chat and the [Messaging API](/docs/agent-messaging) without a bot configured.
@@ -16301,21 +16375,19 @@ Agents can optionally forward operator notifications to a Telegram bot via the `
 
 `int-wiro-aimodels` lets an agent call Wiro's own AI models (image / video / audio / LLM generation, cover image creation, model discovery) while it works. When it's enabled on an agent:
 
-- `credentials.wiro.apikey` is **operator-supplied**: pick or create a Wiro project at [wiro.ai/panel/projects](https://wiro.ai/panel/projects), copy its API key, and write it via `POST /UserAgent/CredentialUpsert`. Each generated asset is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).
+- `credentials.wiro.apikey` is **operator-supplied**: pick or create a Wiro project at [wiro.ai/panel/project](https://wiro.ai/panel/project) and connect it on the agent's **Connectors** tab, or through the API with `POST /UserAgent/CredentialProjectBind`. Each generated asset is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).
 - The agent can run Wiro models only when `int-wiro-aimodels` is enabled **and** a `wiro.apikey` value has been written.
 - `int-wiro-aimodels` is marked `user_invocable: true` in the registry: end-user messages can trigger it directly, and other skills / scheduled tasks invoke it internally when they need to generate content.
 
-Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, TikTok Ads, Google Ads) ship with `int-wiro-aimodels: true`. Templates that don't need AI generation (App Review Support, Lead Generation Manager) ship with `int-wiro-aimodels: false`. Either way, the agent stays at `status: 6` (Setup Required) until you upsert the `wiro` credential, the same as any other API-key integration.
+Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, TikTok Ads, Google Ads) ship with `int-wiro-aimodels: true`. Templates that don't need AI generation (App Review Support, Lead Generation Manager) ship with `int-wiro-aimodels: false`. Either way, the agent stays at `status: 6` (Setup Required) until the `wiro` credential is set, the same as any other API-key integration. `projectid` in the call below comes from `POST /Project/List`; see [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) for the response and errors.
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialProjectBind" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "fields": [
-      { "credentialkey": "wiro", "fieldname": "apikey", "fieldvalue": "wp_xxx_your_wiro_project_api_key" }
-    ]
+    "projectid": "your-project-id"
   }'
 ```
 
@@ -16327,7 +16399,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Detail" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{ "guid": "your-useragent-guid" }'
 # The top-level skills[] array should contain { "name": "int-wiro-aimodels", "enabled": true }
-# credentials.wiro._connected should be true after the apikey is set
+# credentials.wiro.apikey holds the project's key once the project is connected
 ```
 
 ### Project key vs operator key
@@ -17361,13 +17433,13 @@ A richer variant of white-label chat: besides replying with text, the agent **ge
 
 **Shape:**
 
-- One deployed agent that has the `int-wiro-aimodels` skill enabled, with its `wiro` credential set to your Wiro project key (see [Agent Credentials](/docs/agent-credentials#wiro-ai-models--wiro-credential)). Media the agent generates is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).
+- One deployed agent that has the `int-wiro-aimodels` skill enabled, with its `wiro` credential connected to your Wiro project (see [Agent Credentials](/docs/agent-credentials#wiro-ai-models-wiro-credential)). Media the agent generates is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).
 - One `sessionkey` per end user (Pattern 2 above): the same agent instance serves everyone; each user's chat and media history is isolated by session.
 - A single WebSocket connection carries three things at once: the streaming chat reply, the per-turn token-usage report, and discovery of any model runs the agent launches.
 
 **End-to-end sequence an integrator replicates:**
 
-1. **Deploy once** (prepaid): `POST /UserAgent/Deploy` with `useprepaid: true` + `tier`. Set the `wiro` credential with `POST /UserAgent/CredentialUpsert`, then `Start`.
+1. **Deploy once** (prepaid): `POST /UserAgent/Deploy` with `useprepaid: true` + `tier`. Connect the agent's Wiro project with `POST /UserAgent/CredentialProjectBind`, then `Start`.
 2. **Open the socket**: connect to `wss://socket.wiro.ai/v1` and wait for the `connected` frame.
 3. **(Optional) name the session**: `POST /UserAgent/Message/RenameSession` seeds a titled, empty session that shows up immediately in `Message/Sessions`.
 4. **Send a message**: `POST /UserAgent/Message/Send` with the user's `sessionkey`. Subscribe `{ "type": "agent_info", "agenttoken": "<agenttoken-from-send>" }` and stream `agent_start → agent_output × N → agent_end`.
@@ -21704,7 +21776,7 @@ Wiro enforces strict context isolation for agent operations. When you interact w
 | Team A | Personal | **Blocked** |
 | Team A | Team B | **Blocked** |
 
-A matching context is required, but it is not always enough. Any active team member can message a team agent and use its conversation endpoints. Subscription and billing actions (`CreateSubscriptionCheckout`, `RenewSubscription`, `CancelSubscription`, `UpgradeTier`, `CreateExtraCreditCheckout`) are limited to the member who deployed the agent, team admins and the organization owner. The organization owner can pay for a team agent by card or from the team wallet. Cancelling a team agent's card plan needs a team admin or the organization owner. `SkillsApply` and `SkillToggle` are limited to the member who deployed the agent and team admins. Other members get code `97`: "Only a team admin can perform this action on a team-owned agent." With an API key, these checks apply to the user who created the key's project. Card checkouts for a team agent are refused on that path: `CreateSubscriptionCheckout`, `UpgradeTier` and `CreateExtraCreditCheckout` would open the session on the key project creator's own saved billing details, so pay from the team wallet (`useprepaid: true`) or use the dashboard.
+A matching context is required, but it is not always enough. Any active team member can message a team agent and use its conversation endpoints. Subscription and billing actions (`CreateSubscriptionCheckout`, `RenewSubscription`, `CancelSubscription`, `UpgradeTier`, `CreateExtraCreditCheckout`) are limited to the member who deployed the agent, team admins and the organization owner. The organization owner can pay for a team agent by card or from the team wallet. Cancelling a team agent's card plan needs a team admin or the organization owner. `SkillsApply`, `SkillToggle` and `CredentialProjectBind` are limited to the member who deployed the agent and team admins. Other members get code `97`: "Only a team admin can perform this action on a team-owned agent." With an API key, these checks apply to the user who created the key's project. Card checkouts for a team agent are refused on that path: `CreateSubscriptionCheckout`, `UpgradeTier` and `CreateExtraCreditCheckout` would open the session on the key project creator's own saved billing details, so pay from the team wallet (`useprepaid: true`) or use the dashboard.
 
 ### Protected Endpoints
 
@@ -21724,6 +21796,7 @@ The following agent endpoints enforce context guards:
 - `UserAgent/PricingPreview`: pricing preview for an existing agent
 - `UserAgent/SkillsApply`: change skill set (single or batch, auto-prorates)
 - `UserAgent/SkillToggle`: toggle a single skill
+- `UserAgent/CredentialProjectBind`: connect the agent's Wiro project
 - `UserAgent/Realtime/WebStart`: start a web voice session
 
 `Message/Delete`, `SkillsApply` and `SkillToggle` enforce the context guard for team agents only; a personal agent's owner can call them from any workspace. `Realtime/WebStart` also checks team agents only: the member who deployed the agent can call it from any workspace while they are still an active member of the agent's team, so a website voice backend keeps working on a personal project key. Outside the team's context, a caller who has left the team gets the context mismatch error.

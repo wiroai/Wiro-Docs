@@ -994,7 +994,7 @@ Skills that depend on third-party credentials. Follow the linked integration pag
 | `int-apollo-sales` | `apollo` (API key) | [Apollo Skills](/docs/integration-apollo-skills) |
 | `int-lemlist-outreach` | `lemlist` (API key) | [Lemlist Skills](/docs/integration-lemlist-skills) |
 | `int-twilio-channel` | `twilio-voice` (API key) | [Twilio Voice](/docs/integration-twiliovoice-skills) |
-| `int-wiro-aimodels` | `wiro` (your own Wiro project API key) | See [Using Wiro AI Models from Your Agent](#using-wiro-ai-models-from-your-agent) |
+| `int-wiro-aimodels` | `wiro` (the Wiro project the agent runs models with) | See [Using Wiro AI Models from Your Agent](#using-wiro-ai-models-from-your-agent) |
 | `int-calendarific` | `calendarific` (API key) | [Calendarific in your agent](/docs/agent-credentials#calendarific-in-your-agent) |
 
 Agents can optionally forward operator notifications to a Telegram bot via the `telegram` credential (see [Telegram Skills](/docs/integration-telegram-skills)). This is never required; every agent remains fully usable over web chat and the [Messaging API](/docs/agent-messaging) without a bot configured.
@@ -1017,21 +1017,19 @@ Agents can optionally forward operator notifications to a Telegram bot via the `
 
 `int-wiro-aimodels` lets an agent call Wiro's own AI models (image / video / audio / LLM generation, cover image creation, model discovery) while it works. When it's enabled on an agent:
 
-- `credentials.wiro.apikey` is **operator-supplied**: pick or create a Wiro project at [wiro.ai/panel/projects](https://wiro.ai/panel/projects), copy its API key, and write it via `POST /UserAgent/CredentialUpsert`. Each generated asset is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).
+- `credentials.wiro.apikey` is **operator-supplied**: pick or create a Wiro project at [wiro.ai/panel/project](https://wiro.ai/panel/project) and connect it on the agent's **Connectors** tab, or through the API with `POST /UserAgent/CredentialProjectBind`. Each generated asset is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).
 - The agent can run Wiro models only when `int-wiro-aimodels` is enabled **and** a `wiro.apikey` value has been written.
 - `int-wiro-aimodels` is marked `user_invocable: true` in the registry: end-user messages can trigger it directly, and other skills / scheduled tasks invoke it internally when they need to generate content.
 
-Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, TikTok Ads, Google Ads) ship with `int-wiro-aimodels: true`. Templates that don't need AI generation (App Review Support, Lead Generation Manager) ship with `int-wiro-aimodels: false`. Either way, the agent stays at `status: 6` (Setup Required) until you upsert the `wiro` credential, the same as any other API-key integration.
+Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, TikTok Ads, Google Ads) ship with `int-wiro-aimodels: true`. Templates that don't need AI generation (App Review Support, Lead Generation Manager) ship with `int-wiro-aimodels: false`. Either way, the agent stays at `status: 6` (Setup Required) until the `wiro` credential is set, the same as any other API-key integration. `projectid` in the call below comes from `POST /Project/List`; see [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) for the response and errors.
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialProjectBind" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "fields": [
-      { "credentialkey": "wiro", "fieldname": "apikey", "fieldvalue": "wp_xxx_your_wiro_project_api_key" }
-    ]
+    "projectid": "your-project-id"
   }'
 ```
 
@@ -1043,7 +1041,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Detail" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{ "guid": "your-useragent-guid" }'
 # The top-level skills[] array should contain { "name": "int-wiro-aimodels", "enabled": true }
-# credentials.wiro._connected should be true after the apikey is set
+# credentials.wiro.apikey holds the project's key once the project is connected
 ```
 
 ### Project key vs operator key

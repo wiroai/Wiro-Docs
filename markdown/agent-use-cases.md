@@ -166,13 +166,13 @@ A richer variant of white-label chat: besides replying with text, the agent **ge
 
 **Shape:**
 
-- One deployed agent that has the `int-wiro-aimodels` skill enabled, with its `wiro` credential set to your Wiro project key (see [Agent Credentials](/docs/agent-credentials#wiro-ai-models--wiro-credential)). Media the agent generates is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).
+- One deployed agent that has the `int-wiro-aimodels` skill enabled, with its `wiro` credential connected to your Wiro project (see [Agent Credentials](/docs/agent-credentials#wiro-ai-models-wiro-credential)). Media the agent generates is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).
 - One `sessionkey` per end user (Pattern 2 above): the same agent instance serves everyone; each user's chat and media history is isolated by session.
 - A single WebSocket connection carries three things at once: the streaming chat reply, the per-turn token-usage report, and discovery of any model runs the agent launches.
 
 **End-to-end sequence an integrator replicates:**
 
-1. **Deploy once** (prepaid): `POST /UserAgent/Deploy` with `useprepaid: true` + `tier`. Set the `wiro` credential with `POST /UserAgent/CredentialUpsert`, then `Start`.
+1. **Deploy once** (prepaid): `POST /UserAgent/Deploy` with `useprepaid: true` + `tier`. Connect the agent's Wiro project with `POST /UserAgent/CredentialProjectBind`, then `Start`.
 2. **Open the socket**: connect to `wss://socket.wiro.ai/v1` and wait for the `connected` frame.
 3. **(Optional) name the session**: `POST /UserAgent/Message/RenameSession` seeds a titled, empty session that shows up immediately in `Message/Sessions`.
 4. **Send a message**: `POST /UserAgent/Message/Send` with the user's `sessionkey`. Subscribe `{ "type": "agent_info", "agenttoken": "<agenttoken-from-send>" }` and stream `agent_start → agent_output × N → agent_end`.

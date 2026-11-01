@@ -23,6 +23,7 @@ Each external service is documented as its own **integration page** with the com
 | Inspect a single credential schema | [`POST /Credentials/Detail`](#post-credentialsdetail) (public) |
 | Find the credential a skill needs | [`POST /Skills/CredentialSchema`](/docs/agent-skills#post-skillscredentialschema) (public) |
 | Write one or more credential fields | [`POST /UserAgent/CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert) |
+| Connect the agent's Wiro project by its id | [`POST /UserAgent/CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) |
 | Discover external communication channels | [`POST /Skills/List`](/docs/agent-skills#post-skillslist) → `channels[]` (public) |
 | Connect or disable an external channel | [`POST /UserAgent/CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert) |
 | Read version history of a credential | [`POST /UserAgent/CredentialFieldHistory`](/docs/agent-overview#post-useragentcredentialfieldhistory) |
@@ -487,28 +488,29 @@ Two integrations are **user-input credentials** that ship in agent templates but
 
 ### Wiro AI Models: `wiro` credential
 
-The `int-wiro-aimodels` skill lets an agent call Wiro's own AI models (image / video / audio / LLM generation, cover image creation, model discovery) using **your own Wiro project API key**. Each generated asset is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).
+The `int-wiro-aimodels` skill lets an agent call Wiro's own AI models (image / video / audio / LLM generation, cover image creation, model discovery) using **one of your Wiro projects**. Each generated asset is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).
 
 - **Credential key:** `wiro`
-- **Field:** `apikey` (single field, type `custom:wiro-project-picker` in the registry; the dashboard renders it as a project picker, the API expects the project's raw API key string).
-- **No secret to supply.** Only the `apikey` is needed. Request signing for the agent's internal Wiro calls is handled automatically: Wiro derives the project's signing secret server-side from the key you pick, so there is no `apisecret` (or similar) field to paste.
-- **Setup:** create / pick a Wiro project at [wiro.ai/panel/projects](https://wiro.ai/panel/projects), copy its API key, then upsert it:
+- **Field:** `apikey` (single field, type `custom:wiro-project-picker` in the registry; the dashboard renders it as a project picker).
+- **No secret to supply.** Only the project is needed. Request signing for the agent's internal Wiro calls is handled automatically: Wiro derives the project's signing secret server-side from the key you pick, so there is no `apisecret` (or similar) field to paste.
+- **Setup in the dashboard:** open the agent's **Connectors** tab and pick a project, or create one on the [Projects page](https://wiro.ai/panel/project).
+- **Setup through the API:** take the project's `id` from `POST /Project/List` and call [`POST /UserAgent/CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind). A request made with a project API key can leave `projectid` out to bind that key's own project:
 
 ```bash
-curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialProjectBind" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "fields": [
-      { "credentialkey": "wiro", "fieldname": "apikey", "fieldvalue": "wp_xxx_your_wiro_project_api_key" }
-    ]
+    "projectid": "your-project-id"
   }'
 ```
 
+The response names the project and says what happened to the agent: `{ "result": true, "errors": [], "applied": 1, "project": { "id": "4821", "name": "Agent models" }, "restart": "scheduled" }`. See [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) for every field and error. If you already hold a project's key, `POST /UserAgent/CredentialUpsert` with `credentialkey` `wiro` and `fieldname` `apikey` saves it too.
+
 > **Don't confuse `credentials.wiro.apikey` with your operator-level Wiro API key.** `credentials.wiro.apikey` is the project key the agent uses to run Wiro models. The `x-api-key` header you send to Wiro endpoints from your own backend is your operator key, which is entirely separate (see [Authentication](/docs/authentication)).
 
-Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, TikTok Ads, Google Ads) ship with `int-wiro-aimodels: true` enabled, but the agent stays in `status: 6` (Setup Required) until the operator supplies a `wiro` project key.
+Most Wiro-provided agent templates (Social Manager, Blog Content, Push, App Event, Meta Ads, TikTok Ads, Google Ads) ship with `int-wiro-aimodels: true` enabled, but the agent stays in `status: 6` (Setup Required) until the operator connects a Wiro project.
 
 ### Calendarific in your agent
 
@@ -622,7 +624,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialFieldHistory" \
 
 ## Setting API Key Credentials
 
-Use `POST /UserAgent/CredentialUpsert` with a flat `fields[]` array. Each field row carries `{credentialkey, fieldname, fieldvalue}`. Each integration page documents the exact field names and shape.
+Use `POST /UserAgent/CredentialUpsert` with a flat `fields[]` array. Each field row carries `{credentialkey, fieldname, fieldvalue}`. Each integration page documents the exact field names and shape. The Wiro project an agent runs models with has its own route, [`POST /UserAgent/CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind), which takes the project's `id`.
 
 ### Bulk upsert pattern
 
