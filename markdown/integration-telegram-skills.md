@@ -13,7 +13,7 @@ Adding a Telegram bot gives you a third, complementary channel, useful when you 
 
 - Push **operator notifications** (campaign alerts, new leads, error reports) to a private chat or team group on your phone.
 - Give **off-dashboard access** to team members who don't log into wiro.ai but still want to message the agent.
-- Pipe **scheduled status reports** from cron skills into a shared Telegram channel.
+- Pipe **scheduled status reports** from scheduled tasks into a shared Telegram channel.
 
 You can skip this integration entirely: agents keep working through web chat
 and the API regardless. Telegram activates automatically only after both

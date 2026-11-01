@@ -12682,7 +12682,7 @@ pro.credits = starter.credits × tiermultiplier
 }
 </code></pre>
 <blockquote>
-<p><code>Agent/List</code> returns the catalog fields plus inlined <code>tiers</code>, so a catalog card can show the price without a per-row <code>Agent/Detail</code> call. Call <code>POST /Agent/Detail</code> with <code>type: "full"</code> when you need the full template (skills map, credential schema, custom skills, scheduled skills).</p>
+<p><code>Agent/List</code> returns the catalog fields plus inlined <code>tiers</code>, so a catalog card can show the price without a per-row <code>Agent/Detail</code> call. Call <code>POST /Agent/Detail</code> with <code>type: "full"</code> when you need the full template (skills map, credential schema, custom skills, scheduled tasks).</p>
 </blockquote>
 <h4 id="post-agentdetail"><strong>POST</strong> /Agent/Detail</h4>
 <p>Retrieves details for a single agent by guid or slug. This is a <strong>public endpoint</strong>, so no authentication is required.</p>
@@ -12721,7 +12721,7 @@ pro.credits = starter.credits × tiermultiplier
 </div>
 </div>
 <blockquote>
-<p><strong>Note:</strong> You must provide either <code>guid</code> or <code>slug</code>. If both are provided, <code>slug</code> takes priority. Pass <code>type: "full"</code> when you need to preview custom skill keys and scheduled skill cron expressions before deploying; omit it for a lightweight catalog detail call.</p>
+<p><strong>Note:</strong> You must provide either <code>guid</code> or <code>slug</code>. If both are provided, <code>slug</code> takes priority. Pass <code>type: "full"</code> when you need to preview custom skill keys and scheduled task cron expressions before deploying; omit it for a lightweight catalog detail call.</p>
 </blockquote>
 <h5 id="response_1">Response</h5>
 <pre><code class="language-json">{
@@ -13121,7 +13121,7 @@ pro.credits = starter.credits × tiermultiplier
 <td>Fixed at the platform default (<code>10</code>)</td>
 </tr>
 <tr>
-<td>Bundled cron skills</td>
+<td>Bundled scheduled tasks</td>
 <td>Cloned from the template's preset custom skills</td>
 <td>Materialized from the standalone cron registry based on the enabled skill set</td>
 </tr>
@@ -14318,7 +14318,7 @@ pro.credits = starter.credits × tiermultiplier
 <td><a href="#post-useragentcustomskillalternatives"><code>POST /UserAgent/CustomSkillAlternatives</code></a></td>
 </tr>
 <tr>
-<td>Delete a user-created cron skill</td>
+<td>Delete a user-created scheduled task</td>
 <td><a href="#post-useragentcustomskilldelete"><code>POST /UserAgent/CustomSkillDelete</code></a></td>
 </tr>
 <tr>
@@ -21859,7 +21859,7 @@ email tools, CRMs) through three credential methods:</p>
 </div>
 </div>
 <blockquote>
-<p>Read responses from <code>POST /UserAgent/Detail</code> expose the composed <code>credentials</code> tree (each provider with its <code>_connected</code> / <code>optional</code> / <code>extra</code> / <code>_editable</code> / <code>_schema</code> flags), the <code>customskills[]</code> array, the <code>scheduledskills[]</code> array (cron skills), the <code>skills[]</code> array of enabled skill names, the <code>tokenRates</code> + <code>agentModel</code> objects, and the flat credit fields (<code>monthlycredits</code>, <code>extracredits</code>, <code>usedcredits</code>, <code>remainingcredits</code>, <code>creditperiod</code>, <code>creditsyncat</code>) as <strong>top-level fields</strong> on the useragent object. <code>POST /UserAgent/MyAgents</code> rows carry <code>tokenRates</code>, <code>agentModel</code> and the credit fields, without the composed children. See <a href="/docs/agent-overview">Agent Overview</a> for the full endpoint catalog.</p>
+<p>Read responses from <code>POST /UserAgent/Detail</code> expose the composed <code>credentials</code> tree (each provider with its <code>_connected</code> / <code>optional</code> / <code>extra</code> / <code>_editable</code> / <code>_schema</code> flags), the <code>customskills[]</code> array, the <code>scheduledskills[]</code> array (scheduled tasks), the <code>skills[]</code> array of enabled skill names, the <code>tokenRates</code> + <code>agentModel</code> objects, and the flat credit fields (<code>monthlycredits</code>, <code>extracredits</code>, <code>usedcredits</code>, <code>remainingcredits</code>, <code>creditperiod</code>, <code>creditsyncat</code>) as <strong>top-level fields</strong> on the useragent object. <code>POST /UserAgent/MyAgents</code> rows carry <code>tokenRates</code>, <code>agentModel</code> and the credit fields, without the composed children. See <a href="/docs/agent-overview">Agent Overview</a> for the full endpoint catalog.</p>
 </blockquote>
 <h2 id="communication-channels">Communication Channels</h2>
 <p>Every Wiro agent is reachable through web chat and the Agent Messaging API without additional configuration. Telegram, Slack, and Discord are optional external channels. They are available to every marketplace template and custom agent, but remain disabled until every registry-declared activation credential is complete. There is no separate enable switch on an existing agent.</p>
@@ -24238,7 +24238,7 @@ async function saveGoogleAdsPick(useragentguid, picked) {
 <td><a href="/docs/agent-overview#post-useragentcustomskillrename"><code>POST /UserAgent/CustomSkillRename</code></a></td>
 </tr>
 <tr>
-<td>Delete a user-created cron skill</td>
+<td>Delete a user-created scheduled task</td>
 <td><a href="/docs/agent-overview#post-useragentcustomskilldelete"><code>POST /UserAgent/CustomSkillDelete</code></a></td>
 </tr>
 <tr>
@@ -24262,7 +24262,7 @@ async function saveGoogleAdsPick(useragentguid, picked) {
 </div>
 </div>
 <blockquote>
-<p>Read responses from <code>POST /UserAgent/Detail</code> expose the composed <code>customskills[]</code> array (preference skills + non-cron user-created skills), the <code>scheduledskills[]</code> array (cron skills), and the <code>skills[]</code> array as top-level fields on the useragent object. <code>skills[]</code> is an <strong>object array</strong>: each entry is <code>{ name, enabled, _edited?, _user_created? }</code> (e.g. <code>[{ "name": "int-instagram-post", "enabled": true }, { "name": "int-wiro-aimodels", "enabled": true }]</code>).</p>
+<p>Read responses from <code>POST /UserAgent/Detail</code> expose the composed <code>customskills[]</code> array (preference skills + non-cron user-created skills), the <code>scheduledskills[]</code> array (scheduled tasks), and the <code>skills[]</code> array as top-level fields on the useragent object. <code>skills[]</code> is an <strong>object array</strong>: each entry is <code>{ name, enabled, _edited?, _user_created? }</code> (e.g. <code>[{ "name": "int-instagram-post", "enabled": true }, { "name": "int-wiro-aimodels", "enabled": true }]</code>).</p>
 </blockquote>
 <h2 id="skill-registry-vs-custom-skills">Skill Registry vs Custom Skills</h2>
 <p>Two concepts share the word "skill" in the agent system. Keep them straight:</p>
@@ -24286,7 +24286,7 @@ async function saveGoogleAdsPick(useragentguid, picked) {
 </tr>
 <tr>
 <td><strong>Custom skills</strong></td>
-<td>User-editable preference text (<code>cs-content-tone</code>) or scheduled tasks (<code>cs-cron-blog-scanner</code>) that live ON a useragent. They reference registry skills (e.g. a cron skill calls into <code>int-wordpress-post</code>) but are scoped to one instance.</td>
+<td>User-editable preference text (<code>cs-content-tone</code>) or scheduled tasks (<code>cs-cron-blog-scanner</code>) that live ON a useragent. They reference registry skills (e.g. a scheduled task calls into <code>int-wordpress-post</code>) but are scoped to one instance.</td>
 <td>Per useragent on the Wiro platform.</td>
 <td><code>POST /UserAgent/CustomSkillUpsert</code> / <code>POST /UserAgent/CustomSkillRename</code> / <code>POST /UserAgent/CustomSkillDelete</code> / <code>POST /UserAgent/CustomSkillHistory</code> / <code>POST /UserAgent/CustomSkillRevert</code>.</td>
 </tr>
@@ -24801,7 +24801,7 @@ async function saveGoogleAdsPick(useragentguid, picked) {
 </code></pre>
 <p>Capability names are <strong>snake_case</strong> strings. Pass any of them as the <code>capability</code> parameter to <code>Skills/List</code> to filter (e.g. <code>{ "capability": "social_publishing" }</code> returns every skill that publishes to a social platform).</p>
 <h2 id="custom-skills-discovery-per-instance">Custom Skills: Discovery (Per-Instance)</h2>
-<p>Once you've deployed a useragent, its current custom skills live under <code>customskills[]</code> (preferences + non-cron user-created skills) and <code>scheduledskills[]</code> (cron skills) on the <code>POST /UserAgent/Detail</code> response.</p>
+<p>Once you've deployed a useragent, its current custom skills live under <code>customskills[]</code> (preferences + non-cron user-created skills) and <code>scheduledskills[]</code> (scheduled tasks) on the <code>POST /UserAgent/Detail</code> response.</p>
 <p><strong>Request:</strong></p>
 <pre><code class="language-json">{ &quot;guid&quot;: &quot;your-useragent-guid&quot; }
 </code></pre>
@@ -24886,7 +24886,7 @@ async function saveGoogleAdsPick(useragentguid, picked) {
 <tr>
 <td><code>interval</code></td>
 <td>string | null</td>
-<td>Cron expression for scheduled execution, or <code>null</code> for preference skills. Writable on cron skills; ignored on preferences.</td>
+<td>Cron expression for scheduled execution, or <code>null</code> for preference skills. Writable on scheduled tasks; ignored on preferences.</td>
 </tr>
 <tr>
 <td><code>_source</code></td>
@@ -24939,7 +24939,7 @@ async function saveGoogleAdsPick(useragentguid, picked) {
   }'
 </code></pre>
 <h2 id="managing-scheduled-tasks">Managing Scheduled Tasks</h2>
-<p>Scheduled tasks are cron skills: bundled ones (<code>_source: "skill-bundle"</code>) ship with integration skills and run automatically when the integration is enabled. User-created crons (<code>_source: "user-created"</code>) are added at any time.</p>
+<p>Scheduled tasks run on a cron schedule: bundled ones (<code>_source: "skill-bundle"</code>) ship with integration skills and run automatically when the integration is enabled. User-created ones (<code>_source: "user-created"</code>) are added at any time.</p>
 <blockquote>
 <p><strong>For bundled crons, only <code>enabled</code> and <code>interval</code> are writable.</strong> The task body (<code>value</code>) comes from the integration skill and is restored whenever the agent restarts. To change <strong>what</strong> a bundled scheduled task does, edit the paired preference skill (e.g. <code>content-tone</code> is read by <code>cs-cron-social-content-scanner</code> at runtime). For user-created crons, all three (<code>value</code>, <code>interval</code>, <code>enabled</code>) are writable.</p>
 </blockquote>
@@ -25626,12 +25626,12 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 </table>
 </div>
 </div>
-<h3 id="how-preference-and-scheduled-skills-work-together">How Preference and Scheduled Skills Work Together</h3>
-<p>Each scheduled cron skill reads its paired preference skill at runtime. The mechanism:</p>
+<h3 id="how-preferences-and-scheduled-tasks-work-together">How Preferences and Scheduled Tasks Work Together</h3>
+<p>Each scheduled task reads its paired preference skill at runtime. The mechanism:</p>
 <ol>
 <li><code>POST /UserAgent/CustomSkillUpsert</code> writes your preference <code>value</code> for key <code>content-tone</code> (stored as <code>cs-content-tone</code>).</li>
-<li>When the agent starts, each <code>customskills</code> / <code>scheduledskills</code> row becomes a skill named by its key: a preference skill with key <code>cs-content-tone</code> becomes the skill <code>cs-content-tone</code>, and a cron skill with key <code>cs-cron-social-content-scanner</code> becomes <code>cs-cron-social-content-scanner</code>.</li>
-<li>The scheduled cron skill's <code>value</code> (shipped in the integration skill, not user-editable) references its paired preference by its skill name, <code>cs-&lt;preference-key&gt;</code>, for example:
+<li>When the agent starts, each <code>customskills</code> / <code>scheduledskills</code> row becomes a skill named by its key: a preference skill with key <code>cs-content-tone</code> becomes the skill <code>cs-content-tone</code>, and a scheduled task with key <code>cs-cron-social-content-scanner</code> becomes <code>cs-cron-social-content-scanner</code>.</li>
+<li>The scheduled task's <code>value</code> (shipped in the integration skill, not user-editable) references its paired preference by its skill name, <code>cs-&lt;preference-key&gt;</code>, for example:
 <pre><code>0. Read the cs-content-tone skill first — follow ALL its rules.
 1. ...</code></pre></li>
 <li>At each cron tick, the agent LLM reads <code>cs-content-tone</code>, applies your instructions, then executes the scan/report/dispatch workflow.</li>
@@ -25639,7 +25639,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <blockquote>
 <p><strong>Slug normalization:</strong> the <code>&lt;slug&gt;</code> in <code>cs-&lt;slug&gt;</code> / <code>cs-cron-&lt;slug&gt;</code> is the raw key lowercased with any run of non-alphanumeric characters replaced by a single <code>-</code> (leading/trailing dashes trimmed). Template keys already follow this shape so the slug matches 1:1.</p>
 </blockquote>
-<p>This means <strong>your editable preference becomes the single place to customize agent behavior</strong> (brand voice, target audience, content sources, holiday markets, etc.), and the bundled cron skill is a thin orchestration layer that defers to your preference.</p>
+<p>This means <strong>your editable preference becomes the single place to customize agent behavior</strong> (brand voice, target audience, content sources, holiday markets, etc.), and the bundled scheduled task is a thin orchestration layer that defers to your preference.</p>
 <h3 id="skill-integration-mapping">Skill → Integration Mapping</h3>
 <p>Skills that depend on third-party credentials. Follow the linked integration page for provider setup, OAuth walkthrough, and troubleshooting.</p>
 <div class="docs-param-table">
@@ -30938,7 +30938,7 @@ if (params.get("li_connected") === "true") {
                   <section id="using-the-skill">
                     <h2>Using the Skill</h2>
                     <p>
-                      Once the LinkedIn Company Page is connected (organization ID persisted), the agent's scheduled tasks use the <code>int-linkedin-post</code> platform skill to publish text, image, and video posts to the Company Page. To adjust the cron of the built-in <code>cs-cron-social-content-scanner</code> task (Social Manager), call <code>POST /UserAgent/CustomSkillUpsert</code> with <code>enabled</code> and <code>interval</code> only. Cron skill bodies are template-controlled and <code>value</code> is silently ignored for bundled crons.
+                      Once the LinkedIn Company Page is connected (organization ID persisted), the agent's scheduled tasks use the <code>int-linkedin-post</code> platform skill to publish text, image, and video posts to the Company Page. To adjust the cron of the built-in <code>cs-cron-social-content-scanner</code> task (Social Manager), call <code>POST /UserAgent/CustomSkillUpsert</code> with <code>enabled</code> and <code>interval</code> only. Scheduled task bodies are template-controlled and <code>value</code> is silently ignored for bundled tasks.
                     </p>
                     <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "Content-Type: application/json" \
@@ -31307,7 +31307,7 @@ if (params.get("x_connected") === "true") {
 
                   <section id="using-the-skill">
                     <h2>Using the Skill</h2>
-                    <p>Once the X account is connected, the agent's existing scheduled tasks use the <code>int-twitterx-post</code> platform skill to publish. To adjust the cron of the built-in <code>cs-cron-social-content-scanner</code> task (Social Manager), call <code>POST /UserAgent/CustomSkillUpsert</code> with <code>enabled</code> and <code>interval</code> only. Cron skill bodies are template-controlled and <code>value</code> is silently ignored for bundled crons:</p>
+                    <p>Once the X account is connected, the agent's existing scheduled tasks use the <code>int-twitterx-post</code> platform skill to publish. To adjust the cron of the built-in <code>cs-cron-social-content-scanner</code> task (Social Manager), call <code>POST /UserAgent/CustomSkillUpsert</code> with <code>enabled</code> and <code>interval</code> only. Scheduled task bodies are template-controlled and <code>value</code> is silently ignored for bundled tasks:</p>
                     <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
@@ -34267,7 +34267,7 @@ if (params.get("gbp_connected") === "true") {
 
                   <section id="using-the-skill">
                     <h2>Using the Skill</h2>
-                    <p>Once Mailchimp is connected (OAuth or API key), the agent's scheduled tasks use the <code>int-mailchimp-email</code> platform skill for audience and campaign operations. Adjust the cron of the built-in <code>cs-cron-newsletter-subscriber-scanner</code> task (Newsletter Manager) by calling <code>POST /UserAgent/CustomSkillUpsert</code> with <code>enabled</code> and <code>interval</code> only. Cron skill bodies are template-controlled and <code>value</code> is silently ignored for bundled crons:</p>
+                    <p>Once Mailchimp is connected (OAuth or API key), the agent's scheduled tasks use the <code>int-mailchimp-email</code> platform skill for audience and campaign operations. Adjust the cron of the built-in <code>cs-cron-newsletter-subscriber-scanner</code> task (Newsletter Manager) by calling <code>POST /UserAgent/CustomSkillUpsert</code> with <code>enabled</code> and <code>interval</code> only. Scheduled task bodies are template-controlled and <code>value</code> is silently ignored for bundled tasks:</p>
                     <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
@@ -35167,7 +35167,7 @@ if (params.get("gbp_connected") === "true") {
                     <ul>
                       <li>Push <strong>operator notifications</strong> (campaign alerts, new leads, error reports) to a private chat or team group on your phone.</li>
                       <li>Give <strong>off-dashboard access</strong> to team members who don't log into wiro.ai but still want to message the agent.</li>
-                      <li>Pipe <strong>scheduled status reports</strong> from cron skills into a shared Telegram channel.</li>
+                      <li>Pipe <strong>scheduled status reports</strong> from scheduled tasks into a shared Telegram channel.</li>
                     </ul>
                     <p>You can skip this integration entirely: agents keep working through web chat and the API regardless. Telegram activates automatically only after both <code>bottoken</code> and <code>allowedusers</code> are configured.</p>
                   </section>

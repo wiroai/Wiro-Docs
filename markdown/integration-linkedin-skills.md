@@ -221,7 +221,7 @@ Wiro renews the LinkedIn token while the agent is running and when it starts, if
 
 ## Using the Skill
 
-Once the LinkedIn Company Page is connected (organization ID persisted), the agent's scheduled tasks use the `int-linkedin-post` platform skill to publish text, image, and video posts to the Company Page. To adjust the cron of the built-in `cs-cron-social-content-scanner` task (Social Manager), call `POST /UserAgent/CustomSkillUpsert` with `enabled` and `interval` only. Cron skill bodies are template-controlled and `value` is silently ignored for bundled crons:
+Once the LinkedIn Company Page is connected (organization ID persisted), the agent's scheduled tasks use the `int-linkedin-post` platform skill to publish text, image, and video posts to the Company Page. To adjust the cron of the built-in `cs-cron-social-content-scanner` task (Social Manager), call `POST /UserAgent/CustomSkillUpsert` with `enabled` and `interval` only. Scheduled task bodies are template-controlled and `value` is silently ignored for bundled tasks:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \

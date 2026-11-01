@@ -195,7 +195,7 @@ Mailchimp OAuth tokens do not expire. Reconnect only if the user revokes the aut
 
 ## Using the Skill
 
-Once Mailchimp is connected (OAuth or API key), the agent's scheduled tasks use the `int-mailchimp-email` platform skill for audience and campaign operations. Adjust the cron of the built-in `cs-cron-newsletter-subscriber-scanner` task (Newsletter Manager) with `enabled` and `interval` only. Cron skill bodies are template-controlled and `value` is silently ignored for bundled crons:
+Once Mailchimp is connected (OAuth or API key), the agent's scheduled tasks use the `int-mailchimp-email` platform skill for audience and campaign operations. Adjust the cron of the built-in `cs-cron-newsletter-subscriber-scanner` task (Newsletter Manager) with `enabled` and `interval` only. Scheduled task bodies are template-controlled and `value` is silently ignored for bundled tasks:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
