@@ -12890,7 +12890,7 @@ pro.credits = starter.credits × tiermultiplier
 <p><strong>Field redaction in responses:</strong></p>
 <ul>
 <li><code>fieldstatus: "oauth_session"</code> fields (<code>accesstoken</code>, <code>refreshtoken</code>, <code>tokenexpiresat</code>, <code>pageAccessToken</code>, etc.) are always stripped from every response.</li>
-<li>Schema fields marked <code>runtime_excluded: true</code>, including Meta <code>systemusertoken</code>, are write-only setup secrets. They never enter the agent runtime and are not reflected to customer-facing credential responses.</li>
+<li>Schema fields marked <code>runtime_excluded: true</code>, such as the Instagram and Facebook Pages <code>systemusertoken</code>, never reach the agent. The value you saved comes back to the agent's owner and team admins, like your other connector values.</li>
 <li><code>fieldstatus: "platform"</code> fields (Wiro-managed fields, such as Reddit's three approval flags <code>developerprofileverified</code>, <code>dataapiaccessapproved</code> and <code>commercialwrittenapproval</code>) are stripped from every API response. <code>credentials.wiro.apikey</code> and <code>credentials.calendarific.apikey</code> are operator-supplied user-input fields and appear in the response with <code>fieldstatus: "user"</code> like any other API-key credential.</li>
 <li><code>fieldstatus: "oauth_app"</code> fields (<code>clientid</code> / <code>clientsecret</code>, <code>appid</code> / <code>appsecret</code>) are stripped from Detail responses, even after an own-mode OAuth setup writes them. History writes redact <code>clientsecret</code> to <code>[REDACTED]</code>.</li>
 <li>A value the agent template holds on a secret field (one Wiro stores encrypted, such as a key, token, password or service account, or an <code>oauth_managed</code> OAuth app key) is not returned: the field reads empty, and a list entry keeps its place with an empty value, until you save your own. Values you save yourself come back to the agent's owner and team admins.</li>
@@ -14182,7 +14182,7 @@ pro.credits = starter.credits × tiermultiplier
 <tr>
 <td><code>&lt;fieldname&gt;</code></td>
 <td><code>string|number|boolean|array</code></td>
-<td>The field value as you (or the OAuth callback) saved it, returned to the agent's owner and team admins. Field types match <code>_schema.fields[].type</code>. Never returned: OAuth tokens (<code>oauth_session</code>), OAuth app keys (<code>clientid</code> / <code>clientsecret</code>, <code>appid</code> / <code>appsecret</code>), Wiro-managed fields, write-only setup secrets such as <code>systemusertoken</code>, and a value the agent template holds on a field Wiro stores encrypted or on an <code>oauth_managed</code> field: such a field reads empty until you save your own.</td>
+<td>The field value as you (or the OAuth callback) saved it, returned to the agent's owner and team admins. Field types match <code>_schema.fields[].type</code>. Never returned: OAuth tokens (<code>oauth_session</code>), OAuth app keys (<code>clientid</code> / <code>clientsecret</code>, <code>appid</code> / <code>appsecret</code>), Wiro-managed fields, and a value the agent template holds on a field Wiro stores encrypted or on an <code>oauth_managed</code> field: such a field reads empty until you save your own.</td>
 </tr>
 </tbody>
 </table>
@@ -22369,7 +22369,7 @@ email tools, CRMs) through three credential methods:</p>
 <tr>
 <td><code>runtime_excluded</code></td>
 <td><code>boolean?</code></td>
-<td><code>true</code> when a setup secret is used only by Wiro's server and must never enter the agent runtime. Meta System User tokens use this flag.</td>
+<td><code>true</code> when a setup secret is used only by Wiro's server and must never enter the agent runtime. The Instagram and Facebook Pages System User tokens use this flag.</td>
 </tr>
 <tr>
 <td><code>platform_managed</code></td>
@@ -22430,7 +22430,7 @@ email tools, CRMs) through three credential methods:</p>
 <tr>
 <td><code>direct_probe</code></td>
 <td><code>object|null</code></td>
-<td>Registry contract for a non-redirect mode: identifies the mode and write-only token field, validates it server-side, discovers selectable accounts, and declares which public account fields may be returned.</td>
+<td>Registry contract for a non-redirect mode: identifies the mode and its token field, validates it server-side, discovers selectable accounts, and declares which public account fields may be returned.</td>
 </tr>
 <tr>
 <td><code>extra_step</code></td>
@@ -29650,7 +29650,7 @@ if (params.get(&quot;tiktokads_connected&quot;) === &quot;true&quot;) {
 
                   <section id="overview">
                     <h2>Overview</h2>
-                    <p>The Facebook Page integration uses Meta Graph API v26 with a separate Page-scoped access token for every selected Page. The recommended direct mode accepts a Meta Business Manager System User token, validates it only on Wiro's server, discovers its assigned Pages, and derives the selected Page tokens. Neither the System User token nor the Page tokens are returned to the browser. Customer-owned OAuth remains available as an advanced path.</p>
+                    <p>The Facebook Page integration uses Meta Graph API v26 with a separate Page-scoped access token for every selected Page. The recommended direct mode accepts a Meta Business Manager System User token, validates it only on Wiro's server, discovers its assigned Pages, and derives the selected Page tokens. The API never returns the Page tokens, and the System User token never reaches the agent. Customer-owned OAuth remains available as an advanced path.</p>
                     <p><strong>Skills that use this integration:</strong></p>
                     <ul>
                       <li><code>int-facebookpage-post</code>: Publish text, photo, and video posts to a Facebook Page</li>
@@ -29741,7 +29741,7 @@ if (params.get(&quot;tiktokads_connected&quot;) === &quot;true&quot;) {
       { "credentialkey": "facebook-pages", "fieldname": "systemusertoken", "fieldvalue": "YOUR_SYSTEM_USER_ACCESS_TOKEN" }
     ]
   }'</code></pre>
-                    <p>The token is encrypted and write-only. It is excluded from the agent runtime and is never returned by customer-facing credential endpoints.</p>
+                    <p>The token is stored encrypted and never reaches the agent. Like your other connector values, it comes back on <code>UserAgent/Detail</code> only to the agent's owner and team admins.</p>
 
                     <h3>Step 3: Validate the token and discover Pages</h3>
                     <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
@@ -30364,7 +30364,7 @@ if (params.get("fb_connected") === "true") {
       { "credentialkey": "instagram", "fieldname": "systemusertoken", "fieldvalue": "YOUR_SYSTEM_USER_ACCESS_TOKEN" }
     ]
   }'</code></pre>
-                    <p>The System User token is encrypted, write-only, excluded from the agent runtime, and never returned by customer-facing credential endpoints.</p>
+                    <p>The System User token is stored encrypted and never reaches the agent. Like your other connector values, it comes back on <code>UserAgent/Detail</code> only to the agent's owner and team admins.</p>
 
                     <h3>Step 3: Validate and discover Instagram accounts</h3>
                     <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \

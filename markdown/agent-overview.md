@@ -350,9 +350,10 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
 **Field redaction in responses:**
 
 - `fieldstatus: "oauth_session"` fields (`accesstoken`, `refreshtoken`, `tokenexpiresat`, `pageAccessToken`, etc.) are always stripped from every response.
-- Schema fields marked `runtime_excluded: true`, including Meta
-  `systemusertoken`, are write-only setup secrets. They never enter the agent
-  runtime and are not reflected to customer-facing credential responses.
+- Schema fields marked `runtime_excluded: true`, such as the Instagram and
+  Facebook Pages `systemusertoken`, never reach the agent. The value you saved
+  comes back to the agent's owner and team admins, like your other connector
+  values.
 - `fieldstatus: "platform"` fields (Wiro-managed fields, such as Reddit's three approval flags `developerprofileverified`, `dataapiaccessapproved` and `commercialwrittenapproval`) are stripped from every API response. `credentials.wiro.apikey` and `credentials.calendarific.apikey` are operator-supplied user-input fields and appear in the response with `fieldstatus: "user"` like any other API-key credential.
 - `fieldstatus: "oauth_app"` fields (`clientid` / `clientsecret`, `appid` / `appsecret`) are stripped from Detail responses, even after an own-mode OAuth setup writes them. History writes redact `clientsecret` to `[REDACTED]`.
 - A value the agent template holds on a secret field (one Wiro stores encrypted, such as a key, token, password or service account, or an `oauth_managed` OAuth app key) is not returned: the field reads empty, and a list entry keeps its place with an empty value, until you save your own. Values you save yourself come back to the agent's owner and team admins.
@@ -1194,7 +1195,7 @@ Every provider entry under `credentials.<key>` carries:
 | `_filled` | `boolean` | `true` when the connector is set up: its OAuth connection is made, or at least one field holds a value and no required field you fill in is empty. |
 | `connectedat` | `string\|null` | OAuth and hybrid providers: ISO timestamp of the last successful connection. |
 | `tokenexpiresat` | `string\|null` | ISO timestamp when the current token expires, or an empty value when the provider reports no fixed expiry. |
-| `<fieldname>` | `string\|number\|boolean\|array` | The field value as you (or the OAuth callback) saved it, returned to the agent's owner and team admins. Field types match `_schema.fields[].type`. Never returned: OAuth tokens (`oauth_session`), OAuth app keys (`clientid` / `clientsecret`, `appid` / `appsecret`), Wiro-managed fields, write-only setup secrets such as `systemusertoken`, and a value the agent template holds on a field Wiro stores encrypted or on an `oauth_managed` field: such a field reads empty until you save your own. |
+| `<fieldname>` | `string\|number\|boolean\|array` | The field value as you (or the OAuth callback) saved it, returned to the agent's owner and team admins. Field types match `_schema.fields[].type`. Never returned: OAuth tokens (`oauth_session`), OAuth app keys (`clientid` / `clientsecret`, `appid` / `appsecret`), Wiro-managed fields, and a value the agent template holds on a field Wiro stores encrypted or on an `oauth_managed` field: such a field reads empty until you save your own. |
 
 ##### Subscription object
 

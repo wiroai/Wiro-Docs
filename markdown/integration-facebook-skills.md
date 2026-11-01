@@ -9,7 +9,7 @@ The Facebook Page integration uses Meta Graph API v26 with a separate
 Page-scoped access token for every selected Page. The recommended direct mode
 accepts a Meta Business Manager System User token, validates it only on Wiro's
 server, discovers its assigned Pages, and derives the selected Page tokens.
-Neither the System User token nor the Page tokens are returned to the browser.
+The API never returns the Page tokens, and the System User token never reaches the agent.
 Customer-owned OAuth remains available as an advanced path.
 
 **Skills that use this integration:**
@@ -87,8 +87,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   }'
 ```
 
-The token is encrypted and write-only. It is excluded from the agent runtime
-and is never returned by customer-facing credential endpoints.
+The token is stored encrypted and never reaches the agent. Like your other
+connector values, it comes back on `UserAgent/Detail` only to the agent's owner
+and team admins.
 
 ### Step 3: Validate the token and discover Pages
 

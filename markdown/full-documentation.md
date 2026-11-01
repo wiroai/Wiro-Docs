@@ -7543,9 +7543,10 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
 **Field redaction in responses:**
 
 - `fieldstatus: "oauth_session"` fields (`accesstoken`, `refreshtoken`, `tokenexpiresat`, `pageAccessToken`, etc.) are always stripped from every response.
-- Schema fields marked `runtime_excluded: true`, including Meta
-  `systemusertoken`, are write-only setup secrets. They never enter the agent
-  runtime and are not reflected to customer-facing credential responses.
+- Schema fields marked `runtime_excluded: true`, such as the Instagram and
+  Facebook Pages `systemusertoken`, never reach the agent. The value you saved
+  comes back to the agent's owner and team admins, like your other connector
+  values.
 - `fieldstatus: "platform"` fields (Wiro-managed fields, such as Reddit's three approval flags `developerprofileverified`, `dataapiaccessapproved` and `commercialwrittenapproval`) are stripped from every API response. `credentials.wiro.apikey` and `credentials.calendarific.apikey` are operator-supplied user-input fields and appear in the response with `fieldstatus: "user"` like any other API-key credential.
 - `fieldstatus: "oauth_app"` fields (`clientid` / `clientsecret`, `appid` / `appsecret`) are stripped from Detail responses, even after an own-mode OAuth setup writes them. History writes redact `clientsecret` to `[REDACTED]`.
 - A value the agent template holds on a secret field (one Wiro stores encrypted, such as a key, token, password or service account, or an `oauth_managed` OAuth app key) is not returned: the field reads empty, and a list entry keeps its place with an empty value, until you save your own. Values you save yourself come back to the agent's owner and team admins.
@@ -8387,7 +8388,7 @@ Every provider entry under `credentials.<key>` carries:
 | `_filled` | `boolean` | `true` when the connector is set up: its OAuth connection is made, or at least one field holds a value and no required field you fill in is empty. |
 | `connectedat` | `string\|null` | OAuth and hybrid providers: ISO timestamp of the last successful connection. |
 | `tokenexpiresat` | `string\|null` | ISO timestamp when the current token expires, or an empty value when the provider reports no fixed expiry. |
-| `<fieldname>` | `string\|number\|boolean\|array` | The field value as you (or the OAuth callback) saved it, returned to the agent's owner and team admins. Field types match `_schema.fields[].type`. Never returned: OAuth tokens (`oauth_session`), OAuth app keys (`clientid` / `clientsecret`, `appid` / `appsecret`), Wiro-managed fields, write-only setup secrets such as `systemusertoken`, and a value the agent template holds on a field Wiro stores encrypted or on an `oauth_managed` field: such a field reads empty until you save your own. |
+| `<fieldname>` | `string\|number\|boolean\|array` | The field value as you (or the OAuth callback) saved it, returned to the agent's owner and team admins. Field types match `_schema.fields[].type`. Never returned: OAuth tokens (`oauth_session`), OAuth app keys (`clientid` / `clientsecret`, `appid` / `appsecret`), Wiro-managed fields, and a value the agent template holds on a field Wiro stores encrypted or on an `oauth_managed` field: such a field reads empty until you save your own. |
 
 ##### Subscription object
 
@@ -14374,7 +14375,7 @@ Lists all credentials in the registry.
 | `server_managed` | `boolean?` | `true` when a picker endpoint writes the value (e.g. Meta Ads `pagemappings`). `CredentialUpsert` rejects writes to it, as it does for `auto_filled_by_oauth` fields. |
 | `readonly_when_connected` | `boolean?` | `true` when the field becomes read-only after a successful OAuth connection. |
 | `only_in_modes` | `array<string>?` | When set (e.g. `["own"]`), the field only appears in the listed `authmethod` mode. |
-| `runtime_excluded` | `boolean?` | `true` when a setup secret is used only by Wiro's server and must never enter the agent runtime. Meta System User tokens use this flag. |
+| `runtime_excluded` | `boolean?` | `true` when a setup secret is used only by Wiro's server and must never enter the agent runtime. The Instagram and Facebook Pages System User tokens use this flag. |
 | `platform_managed` | `boolean?` | `true` when Wiro fills the value server-side, so you can't supply it, such as Reddit's three approval flags. These fields are never returned. `CredentialUpsert` rejects writes to these fields with `<Field label> is managed by Wiro`, and Deploy drops them. |
 | `item_schema` / `item_type` | `object?` | For array-of-object fields: describes the per-entry shape (e.g. `apple-appstore.apps[].{appname, appid}`). |
 
@@ -14388,7 +14389,7 @@ Lists all credentials in the registry.
 | `username_field` | `string` | The credential field that holds the connected account name (e.g. `"igusername"`, `"channelname"`). |
 | `return_query_param` / `return_error_param` / `return_error_detail_param` | `string` | Names of this provider's result parameters on your `redirecturl`: `return_query_param` carries `true` on success and `return_error_param` the error code on failure. `return_error_detail_param` is only a reserved name: Merchant Center is the one credential that sends a detail parameter (`mc_error_detail`, with `mc_error=no_accounts`). |
 | `account_picker` | `object\|null` | When non-null, the connection flow includes an account / page / channel picker after OAuth or direct discovery. Key fields: `set_endpoint` (always `/UserAgentOAuth/SetPickerAccounts`), `trigger_param` (the redirect parameter that carries the list, such as `gads_accounts`), `url_item_fields` (maps each `accounts[]` key to a field of the list items, such as `{ "customerid": "id" }`), `multi_select` (`true` when 1+ entries can be picked, `false` for exactly one), `item_value_field` / `item_label_field` (which entry keys identify and label each account in the response), `item_fields_to_save` (the fields each entry in the `accounts` body carries; only `item_value_field` is required), and optional `next` for a chained picker. `next.discover_endpoint` is `/UserAgentOAuth/DiscoverPickerItems`; its `key`, parent/item fields, `set_endpoint`, and `persist_field` define the grouped child-selection request and stored result. Meta Ads uses this for ad account → Facebook Pages, and Google Business Profile for account → locations. |
-| `direct_probe` | `object\|null` | Registry contract for a non-redirect mode: identifies the mode and write-only token field, validates it server-side, discovers selectable accounts, and declares which public account fields may be returned. |
+| `direct_probe` | `object\|null` | Registry contract for a non-redirect mode: identifies the mode and its token field, validates it server-side, discovers selectable accounts, and declares which public account fields may be returned. |
 | `extra_step` | `object\|null` | Reserved for providers with a third onboarding step beyond OAuth + picker (currently null for every provider). |
 
 **`fieldstatus` values**. Note: this is **not** part of the registry schema; it's the classification the server stamps onto each stored credential field when it's written. It controls who can see the value:
@@ -18901,7 +18902,7 @@ The Facebook Page integration uses Meta Graph API v26 with a separate
 Page-scoped access token for every selected Page. The recommended direct mode
 accepts a Meta Business Manager System User token, validates it only on Wiro's
 server, discovers its assigned Pages, and derives the selected Page tokens.
-Neither the System User token nor the Page tokens are returned to the browser.
+The API never returns the Page tokens, and the System User token never reaches the agent.
 Customer-owned OAuth remains available as an advanced path.
 
 **Skills that use this integration:**
@@ -18979,8 +18980,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   }'
 ```
 
-The token is encrypted and write-only. It is excluded from the agent runtime
-and is never returned by customer-facing credential endpoints.
+The token is stored encrypted and never reaches the agent. Like your other
+connector values, it comes back on `UserAgent/Detail` only to the agent's owner
+and team admins.
 
 ### Step 3: Validate the token and discover Pages
 
@@ -19558,8 +19560,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   }'
 ```
 
-The System User token is encrypted, write-only, excluded from the agent
-runtime, and never returned by customer-facing credential endpoints.
+The System User token is stored encrypted and never reaches the agent. Like
+your other connector values, it comes back on `UserAgent/Detail` only to the
+agent's owner and team admins.
 
 ### Step 3: Validate and discover Instagram accounts
 
