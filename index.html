@@ -13253,7 +13253,7 @@ pro.credits = starter.credits × tiermultiplier
 </tr>
 <tr>
 <td><code>setuprequired: true</code></td>
-<td>Any non-optional credential is missing. While <code>true</code>, <code>Start</code> rejects with <code>Agent setup is not complete</code>.</td>
+<td>A non-optional connector is missing, or the row is still at <code>status: 6</code>. At <code>status: 6</code>, <code>Start</code> rejects with <code>Agent setup is not complete</code>.</td>
 </tr>
 <tr>
 <td><code>setuprequired: false</code></td>
@@ -24038,7 +24038,7 @@ customer-facing token-refresh endpoint or manual refresh action.</p>
 <p>If an agent has required credentials not yet filled in, it's in <strong>Setup Required</strong> state (<code>status: 6</code>). It can't be started until credentials are complete.</p>
 <p><strong>Every fresh deploy lands at <code>status: 6</code> first.</strong> API deploys must always pass <code>useprepaid: true</code>. The server provisions the prepaid subscription inline and auto-queues the row to <code>status: 2</code> (Queued). No manual <code>Start</code> call is needed unless you also need to fill credentials first; if so, Start will reject with the Setup-Required guard until the required credentials are in place.</p>
 <p>Saving a connector doesn't move the agent out of <code>status: 6</code>, whether with <code>CredentialUpsert</code>, <code>CredentialProjectBind</code> or an OAuth connection. After the last one, call <code>POST /UserAgent/Update</code> once with <code>{ "guid": "&lt;useragent-guid&gt;" }</code>: that call moves the agent to <code>status: 0</code> (Stopped) once every required connector is set up, so <code>Start</code> can launch it.</p>
-<p><code>setuprequired</code> flag in <code>UserAgent/Detail</code> / <code>UserAgent/MyAgents</code> is <code>true</code> when any non-optional credential is still incomplete. The server treats a credential as complete when either:</p>
+<p><code>setuprequired</code> in <code>UserAgent/Detail</code> is <code>true</code> while the agent is at <code>status: 6</code> or any non-optional credential is still incomplete; on <code>UserAgent/MyAgents</code> rows it follows <code>status: 6</code> alone. The server treats a credential as complete when either:</p>
 <ul>
 <li><strong>OAuth and hybrid connection credentials</strong>: <code>_connected: true</code> (the active
   mode has a validated runtime token <strong>and</strong> every required picker field is

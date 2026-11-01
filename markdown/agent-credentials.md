@@ -1239,7 +1239,7 @@ If an agent has required credentials not yet filled in, it's in **Setup Required
 
 Saving a connector doesn't move the agent out of `status: 6`, whether with `CredentialUpsert`, `CredentialProjectBind` or an OAuth connection. After the last one, call `POST /UserAgent/Update` once with `{ "guid": "<useragent-guid>" }`: that call moves the agent to `status: 0` (Stopped) once every required connector is set up, so `Start` can launch it.
 
-`setuprequired` flag in `UserAgent/Detail` / `UserAgent/MyAgents` is `true` when any non-optional credential is still incomplete. The server treats a credential as complete when either:
+`setuprequired` in `UserAgent/Detail` is `true` while the agent is at `status: 6` or any non-optional credential is still incomplete; on `UserAgent/MyAgents` rows it follows `status: 6` alone. The server treats a credential as complete when either:
 
 - **OAuth and hybrid connection credentials**: `_connected: true` (the active
   mode has a validated runtime token **and** every required picker field is
