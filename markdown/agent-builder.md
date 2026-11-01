@@ -213,6 +213,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
       "monthlycredits": 6000,
       "monthlypriceusd": 60,
       "remainingcredits": 6000,
+      "renewalcredits": 6000,
       "creditperiod": "2026-05",
       "tokenRates": {
         "default_model": "openai/gpt-5.6-sol",
@@ -307,6 +308,7 @@ The response includes the new pricing snapshot and the prorated wallet debit:
   "errors": [],
   "tier": "pro",
   "prepaidWalletDelta": 5.0,
+  "usedCreditsUsd": 0,
   "restartTriggered": true,
   "restartedAt": 1714694520,
   "pricing": {
@@ -316,12 +318,16 @@ The response includes the new pricing snapshot and the prorated wallet debit:
     "previousMonthlyCredits": 6000,
     "newMonthlyCredits": 7000,
     "deltaCredits": 1000,
+    "creditsNow": 500,
+    "creditsThisPeriod": 6500,
+    "creditsFromRenewal": 7000,
+    "periodEnd": 1715990520,
     "enabledSkills": ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels", "int-instagram-post"]
   }
 }
 ```
 
-`prepaidWalletDelta` is the USD amount debited from your wallet for the rest of the current period: the monthly difference for the time left, by the second, rounded up to the cent, and at least one day's worth. If you disable a paid skill mid-period the delta is negative and rounds down to the cent: the money goes back to the balances that paid for the period. Coupon credit keeps the end date of its coupon, and store revenue and deposit credit last until the period ends.
+`prepaidWalletDelta` is the USD amount debited from your wallet for the rest of the current period: the monthly difference for the time left, by the second, rounded up to the cent, and at least one day's worth. The added credits come for that same time (`pricing.creditsNow`), and every renewal gives the whole allowance (`pricing.creditsFromRenewal`). If you disable a paid skill mid-period the delta is negative and rounds down to the cent: what the time left is worth goes back to the balances that paid for the period, less 1 cent for each credit already used above what the plan keeps (`usedCreditsUsd`). Each balance keeps the end date of the credit or deposit that paid; a part whose source has ended since lasts until the period ends.
 
 ### Batch toggle + tier upgrade in one call
 

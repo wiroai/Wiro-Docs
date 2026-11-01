@@ -7272,6 +7272,10 @@ Every paid skill adds 100 monthly credits for each $1 it adds to the price, so a
 
 > **Starter tier minimum: $4/month.** Every agent pays at least $4/month on Starter. When the raw sum of enabled-skill weights would land below $4, Wiro raises the Starter price to $4 **and** scales the credit pool up by the same ratio, so the user gets a proportional credit increase, not a free upgrade. An agent made only of free (`ZERO`-tier) skills pays the floor too: $4/month with 400 credits. Default Pro = Starter × `tiermultiplier` (default `10`), so an agent that lands on the $4 floor pays **$40/month on Pro** with the same credit pool × 10.
 
+**Changing a plan inside a period.** Adding a skill or moving to Pro charges the monthly difference for the time left in the period, by the second and at least one day's worth on a wallet plan, and the added credits come for that same time. Every renewal gives the whole allowance. Example: a $4 Starter adds a $29 skill with 1 day left of 30: $0.97 now, 97 credits now, then $33 a month with 3,300 credits from the renewal. On a card plan the difference goes on the next invoice.
+
+**Taking a skill off.** On a wallet plan, what the time left is worth goes back to the balances that paid for the period, less 1 cent for each credit already used above what the plan keeps, never below zero. Extra credit packs are not counted. Example: a $4 Starter with the $29 skill on since the period began, 3 days into a 30-day period with 1,000 credits used: $26.10 for the 27 days left, less $6.00 for the 600 credits above the 400 that stay, so $20.10 comes back. With 3,300 used, nothing comes back. Each balance keeps the end date of the credit or deposit that paid; a part whose source has ended since lasts until the period ends. A skill's credits end when it comes off, and turning it on again later gives credits for the time left then. On a card plan the difference for the time left comes off the next invoice.
+
 ### Token Billing
 
 The monthly tier buys a **credit pool**; each turn the agent runs (a chat reply, a scheduled cron tick, or a voice-prep turn) deducts credits from that pool, **metered by the tokens its model consumes**. There are no flat per-action costs: what a turn costs depends on the model and how many input / output / cached tokens it used.
@@ -7307,7 +7311,7 @@ When the credit pool is exhausted, [`POST /UserAgent/Message/Send`](/docs/agent-
 
 ### Live Pricing Preview
 
-Before you commit a skill change or build a custom agent, fetch a live preview with [`POST /UserAgent/PricingPreview`](#post-useragentpricingpreview). The preview returns the post-toggle `tiers`, `tokenRates`, `starterFloorUsd`, and `enabledSkills` (with transitive `depends_on` resolved) without writing any state.
+Before you commit a skill change or build a custom agent, fetch a live preview with [`POST /UserAgent/PricingPreview`](#post-useragentpricingpreview). The preview returns the post-toggle `tiers`, `tokenRates`, `starterFloorUsd`, and `enabledSkills` (with transitive `depends_on` resolved) without writing any state. For an agent with an active plan it also returns `planChange`: what the change would do today, in credits and in money.
 
 ## Agent Lifecycle
 
@@ -7704,6 +7708,7 @@ Both paths hit the same endpoint, but a few server-side behaviours diverge:
       "extracredits": 0,
       "usedcredits": 0,
       "remainingcredits": 900,
+      "renewalcredits": 900,
       "creditperiod": "2026-05",
       "creditsyncat": null,
       "tokenRates": {
@@ -7832,6 +7837,7 @@ Lists all agent instances deployed under your account.
       "extracredits": 45000,
       "usedcredits": 1450,
       "remainingcredits": 52550,
+      "renewalcredits": 9000,
       "creditperiod": "2026-05",
       "creditsyncat": 1714694410,
       "status": 4,
@@ -7893,7 +7899,7 @@ Lists all agent instances deployed under your account.
 }
 ```
 
-> **`MyAgents` returns one row per useragent with its scalar fields, the trimmed `agent` template summary (no `extracreditpacks`), `subscription`, `setuprequired` (status-based check only), `extracredits` / `remainingcredits` / `extracreditsexpiry`, `lastactivityat`, the resolved `enabledSkills` (template defaults ∪ user overrides, including transitive `depends_on` closure), `tokenRates` (per-model token rates, the same map as `UserAgent/Detail.tokenRates`), `agentModel` (the resolved chat / cron / voice-prep / voice-postcall model slugs), and `enabledCommands` (the slash-command allowlist, `null` when uncustomized).** Heavier composed children (`credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `communicationChannels`, `enabledChannels`) are **not** included. Call `UserAgent/Detail` on a single guid for the full composed shape.
+> **`MyAgents` returns one row per useragent with its scalar fields, the trimmed `agent` template summary (no `extracreditpacks`), `subscription`, `setuprequired` (status-based check only), `extracredits` / `remainingcredits` / `renewalcredits` / `extracreditsexpiry`, `lastactivityat`, the resolved `enabledSkills` (template defaults ∪ user overrides, including transitive `depends_on` closure), `tokenRates` (per-model token rates, the same map as `UserAgent/Detail.tokenRates`), `agentModel` (the resolved chat / cron / voice-prep / voice-postcall model slugs), and `enabledCommands` (the slash-command allowlist, `null` when uncustomized).** Heavier composed children (`credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `communicationChannels`, `enabledChannels`) are **not** included. Call `UserAgent/Detail` on a single guid for the full composed shape.
 
 > **`enabledSkills`, `tokenRates`, and `agentModel`** ride on each list row so a chat or pinned-agents UI can decide whether to show the realtime voice-call button (`enabledSkills` includes `util-web-channel`) and render the model picker + live token-rate card without round-tripping `UserAgent/Detail` per row.
 
@@ -8236,6 +8242,7 @@ Retrieves full details for a single deployed agent instance, including subscript
       "extracredits": 45000,
       "usedcredits": 1450,
       "remainingcredits": 52550,
+      "renewalcredits": 9000,
       "creditperiod": "2026-05",
       "creditsyncat": 1714694410,
       "tokenRates": {
@@ -8322,7 +8329,8 @@ Retrieves full details for a single deployed agent instance, including subscript
 | `tier` | `string` | `"starter"` or `"pro"`: the active tier for this instance. |
 | `tiermultiplier` | `number` | Per-instance Pro multiplier: snapshotted at deploy from the template (default `10`). Pro `monthlypriceusd` = Starter × `tiermultiplier`. The value is fixed for the life of the instance: it is captured at deploy time and is not refreshed when the platform default changes. |
 | `monthlypriceusd` | `number` | Monthly USD price snapshotted at deploy / renewal. Mirrors `subscription.amount`. |
-| `monthlycredits` | `number` | Monthly credit allocation snapshotted at deploy / renewal. |
+| `monthlycredits` | `number` | The credits this period grants. After a skill is added or the agent moves to Pro inside a period, it stays below `renewalcredits` until the next renewal. |
+| `renewalcredits` | `number` | The credits each renewal grants. |
 | `extracredits` | `number` | Active extra-credit balance (sum of non-expired packs from `CreateExtraCreditCheckout`). |
 | `extracreditsexpiry` | `number\|null` | Unix timestamp when the earliest extra credit pack expires. `null` when no extras are active. |
 | `usedcredits` | `number` | Credits consumed during the current billing period, reported by the agent runtime. |
@@ -8452,6 +8460,8 @@ A changed `title` on a running agent:
       "monthlycredits": 900,
       "extracredits": 0,
       "usedcredits": 80,
+      "remainingcredits": 820,
+      "renewalcredits": 900,
       "creditperiod": "2026-05",
       "creditsyncat": 1714694400,
       "status": 1,
@@ -8651,6 +8661,8 @@ If you already have a hosted URL, use `POST /UserAgent/Update` with `cover: "<ur
       "monthlycredits": 900,
       "extracredits": 0,
       "usedcredits": 80,
+      "remainingcredits": 820,
+      "renewalcredits": 900,
       "creditperiod": "2026-05",
       "creditsyncat": 1714694400,
       "status": 4,
@@ -8680,7 +8692,7 @@ If you already have a hosted URL, use `POST /UserAgent/Update` with `cover: "<ur
 }
 ```
 
-> **Cover returns scalar useragent fields + the `agent` template summary only.** It does **not** include `setuprequired`, `tokenRates`, `agentModel`, `remainingcredits`, or any composed children (`credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `subscription`). The endpoint is optimised for the cover refresh round-trip; call `UserAgent/Detail` afterwards if you need the full composed shape.
+> **Cover returns scalar useragent fields + the `agent` template summary only.** Its credit fields read as on `Detail` (`monthlycredits` for this period, `renewalcredits`, `extracredits`, `usedcredits`, `remainingcredits`). It does **not** include `setuprequired`, `tokenRates`, `agentModel`, or any composed children (`credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `subscription`). The endpoint is optimised for the cover refresh round-trip; call `UserAgent/Detail` afterwards if you need the full composed shape.
 
 #### **POST** /UserAgent/CredentialUpsert
 
@@ -9254,6 +9266,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   "errors": [],
   "tier": "pro",
   "prepaidWalletDelta": 18.00,
+  "usedCreditsUsd": 0,
   "restartTriggered": true,
   "restartedAt": 1714694520,
   "pricing": {
@@ -9263,6 +9276,10 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
     "previousMonthlyCredits": 400,
     "newMonthlyCredits": 4000,
     "deltaCredits": 3600,
+    "creditsNow": 1800,
+    "creditsThisPeriod": 2200,
+    "creditsFromRenewal": 4000,
+    "periodEnd": 1715990520,
     "enabledSkills": ["int-instagram-post", "int-twitterx-post", "int-wiro-aimodels"]
   }
 }
@@ -9284,13 +9301,16 @@ When every entry in your `skills` map already matches the persisted state and th
 |-------|------|-------------|
 | `noOp` | `boolean` | Present and `true` only on the no-op short-circuit response. Absent on the regular success path. When you see `noOp: true`, the rest of the field set (`tier`, `prepaidWalletDelta`, `restartTriggered`, `pricing`) is omitted, because there was nothing to apply. |
 | `tier` | `string` | The tier in effect after the call (`"starter"` or `"pro"`). Mirrors what was passed in `body.tier`, or the unchanged current tier if the request omitted it. |
-| `prepaidWalletDelta` | `number` | USD debited (positive) or credited (negative) from the wallet for the prorated price diff. `0` when the toggle batch is a no-op or the agent has no active subscription yet. |
-| `prepaidCreditParts` | `object` | Present when a credit landed. How it split over the balances that paid: `couponUsd`, `couponUntilPeriodEndUsd` (the part of `couponUsd` whose coupon has ended, which lasts until the period ends), `storeUsd`, `depositUsd`. |
+| `prepaidWalletDelta` | `number\|null` | USD charged to (positive) or credited back to (negative) the wallet for the time left in the period. `null` when no wallet money moved: on a card plan, when the price didn't change, or when the credits already used took the whole credit (then `usedCreditsUsd` is above `0`, and nothing failed). |
+| `usedCreditsUsd` | `number` | What came off a credit for credits already used: 1 cent for each credit used above what the plan keeps. `0` when nothing came off. |
+| `prepaidCreditParts` | `object` | Present when a credit landed. How it split over the balances that paid: `couponUsd`, `storeUsd` and `depositUsd`, each keeping the end date of the credit or deposit that paid, and `couponUntilPeriodEndUsd`, `storeUntilPeriodEndUsd` and `depositUntilPeriodEndUsd`, the part of each whose source has ended since, which lasts until the period ends. |
 | `prepaidCreditFailedUsd` | `number` | Present when part of a credit was not added to the wallet. `warnings[]` says what to do next. |
 | `restartTriggered` | `boolean` | `true` when the agent runtime was restarted to pick up the new skill set. `false` for stopped agents (no restart needed) or no-op batches. |
 | `restartedAt` | `number\|null` | Unix seconds when the restart trigger fired. `null` when `restartTriggered` is `false`. |
 | `pricing.previousPriceUsd` / `newPriceUsd` / `deltaUsd` | `number` | USD totals before / after the apply, plus the signed delta. |
-| `pricing.previousMonthlyCredits` / `newMonthlyCredits` / `deltaCredits` | `number` | Monthly credit allocation before / after, plus the signed delta. |
+| `pricing.previousMonthlyCredits` / `newMonthlyCredits` / `deltaCredits` | `number` | The credits each renewal grants, before / after, plus the signed delta. What this period gains is `creditsNow`. |
+| `pricing.creditsNow` / `creditsThisPeriod` / `creditsFromRenewal` | `number` | What this period gained (negative when it lost credits), what this period grants in all after the change, and what each renewal grants. |
+| `pricing.periodEnd` | `number\|null` | Unix seconds when the current period ends. `null` when the agent has no plan. |
 | `pricing.enabledSkills` | `array<string>` | Final enabled skill set including transitive `depends_on` closure, as a flat array of skill names. The matching `useragent.skills` array on the next `Detail` call is an object array (`{name, enabled, _edited?, _user_created?}`); take `.name` from each entry to compare. |
 
 ##### Common error codes
@@ -9366,6 +9386,17 @@ Two body shapes:
     "starter": { "priceUsd": 4,  "credits": 400 },
     "pro":     { "priceUsd": 40, "credits": 4000 }
   },
+  "planChange": {
+    "provider": "prepaid",
+    "periodEnd": 1715990520,
+    "secondsLeft": 1296000,
+    "creditsNow": 1800,
+    "creditsThisPeriod": 2200,
+    "creditsFromRenewal": 4000,
+    "chargeNowUsd": 18,
+    "creditNowUsd": 0,
+    "usedCreditsUsd": 0
+  },
   "tokenRates": {
     "default_model": "openai/gpt-5.6-sol",
     "fallback_rate": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25 },
@@ -9379,6 +9410,20 @@ Two body shapes:
 ```
 
 `enabledSkills` is the full closure (including transitive `depends_on`); `directSkills` is just what the user explicitly toggled. `agentBase` is always `{ priceUsd: 0, credits: 0 }`: pricing is fully skill-driven, and the field is kept on the response so callers don't have to null-check. `skillBreakdown[].billing_model` is always `"tokens"`; `tokenRates` carries the per-model rates used to meter each turn (see [Token Billing](#pricing-model-tiers-skills--token-billing)).
+
+`planChange` comes with a preview of an existing agent: what the change would do today on the plan the agent has now. It is `null` when the agent has no active plan. `totalMonthlyCredits` and `tiers` stay the monthly figures each renewal grants.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `planChange.provider` | `string` | `"prepaid"` (wallet plan) or `"stripe"` (card plan). |
+| `planChange.periodEnd` | `number` | Unix seconds when the current period ends. |
+| `planChange.secondsLeft` | `number` | Seconds left in the current period. |
+| `planChange.creditsNow` | `number` | Credits this period gains now, negative when it loses them. |
+| `planChange.creditsThisPeriod` | `number` | Credits this period grants in all after the change. |
+| `planChange.creditsFromRenewal` | `number` | Credits each renewal grants after the change. |
+| `planChange.chargeNowUsd` | `number` | The wallet charge for the time left, at list price before any discount. `0` on a card plan and when the price goes down. |
+| `planChange.creditNowUsd` | `number\|null` | What goes back to the balances that paid when the price goes down. `0` on a card plan. `null` when it can't be worked out yet: it is worked out when the change is applied. |
+| `planChange.usedCreditsUsd` | `number\|null` | What comes off that credit for credits already used. `null` together with `creditNowUsd`. |
 
 > **$4 starter floor.** When the raw weight sum lands below $4 (e.g. a single `LIGHT` skill at $1/100), Wiro raises `tiers.starter.priceUsd` to $4 **and** scales `tiers.starter.credits` up by the same ratio (100 → 400); the applied floor is echoed as `starterFloorUsd`. Pro derives from the post-floor starter via × `tiermultiplier` (default `10`), so a $1-weight agent becomes Starter `$4/400` and Pro `$40/4000`. See [Pricing Model: Tiers, Skills & Token Billing](#pricing-model-tiers-skills--token-billing) for the full rules.
 
@@ -9756,6 +9801,7 @@ No request body fields are required: the workspace of your API key's project sco
       "extracredits": 45000,
       "usedcredits": 1450,
       "remainingcredits": 52550,
+      "renewalcredits": 9000,
       "creditperiod": "2026-05",
       "creditsyncat": 1714694410,
       "status": 4,
@@ -10079,7 +10125,7 @@ Upgrades the active subscription from **Starter → Pro**. The capability surfac
 
 **Headers:** No extra header is needed. For team agents, use an API key from a project in the agent's team. Keys from another workspace are rejected.
 
-API-deployed agents always upgrade through the prepaid path. The endpoint debits the prorated upgrade fee from your wallet synchronously: the monthly price difference for the time left in the current period, by the second, rounded up to the cent, and at least one day's worth. It moves the subscription to Pro pricing and credits right away, and restarts the agent. Existing extra credits and `usedcredits` are preserved.
+API-deployed agents always upgrade through the prepaid path. The endpoint debits the prorated upgrade fee from your wallet synchronously: the monthly price difference for the time left in the current period, by the second, rounded up to the cent, and at least one day's worth. It moves the subscription to Pro pricing right away and restarts the agent. The added credits come for the time left in the current period, and every renewal gives the whole Pro allowance. Existing extra credits and `usedcredits` are preserved.
 
 ##### Response
 
@@ -10090,10 +10136,16 @@ API-deployed agents always upgrade through the prepaid path. The endpoint debits
   "previousTier": "starter",
   "newPriceUsd": 90,
   "newMonthlyCredits": 9000,
+  "creditsNow": 4590,
+  "creditsThisPeriod": 5490,
+  "creditsFromRenewal": 9000,
+  "periodEnd": 1716940800,
   "proratedCharge": 45.90,
   "errors": []
 }
 ```
+
+`newMonthlyCredits` and `creditsFromRenewal` are what each renewal grants. `creditsNow` is what this period gained, `creditsThisPeriod` what it grants in all, and `periodEnd` when it ends (Unix seconds).
 
 #### **POST** /UserAgent/RenewSubscription
 
@@ -10202,10 +10254,10 @@ Called after the subscription has expired (daily cron flipped it to `status: "ex
 | Component | Source | Notes |
 |-----------|--------|-------|
 | **Tier price** | `agent.tiers.{starter,pro}.price` | Snapshotted on the useragent at deploy as `monthlypriceusd`. Pro = Starter × `tiermultiplier`. |
-| **Monthly credits** | `agent.tiers.{starter,pro}.credits` | Snapshotted on the useragent at deploy as `monthlycredits`. Pro = Starter × `tiermultiplier`. |
+| **Monthly credits** | `agent.tiers.{starter,pro}.credits` | Snapshotted on the useragent at deploy. Pro = Starter × `tiermultiplier`. Every renewal grants them in full (`renewalcredits`); `monthlycredits` is what the current period grants. |
 | **Per-turn token cost** | `tokenRates` (per-model) | Each chat / cron / voice-prep turn deducts credits metered by the tokens its model consumes (1 credit = $0.01). Tier-independent: Pro just buys a larger monthly credit pool. |
 | **Tier multiplier** | `agent.tiermultiplier` | Default `10`. Snapshotted on the useragent at deploy so later template changes don't retroactively change live instances (existing instances keep the multiplier they were deployed under). |
-| **Extra credit packs** | `agent.extracreditpacks[]` | Per-useragent: derived as 5x / 10x / 20x of `monthlycredits`. Listed on both tiers; buying a pack needs the Pro tier. |
+| **Extra credit packs** | `agent.extracreditpacks[]` | Per-useragent: derived as 5x / 10x / 20x of the monthly allowance each renewal grants (`renewalcredits`). Listed on both tiers; buying a pack needs the Pro tier. |
 
 ### Payment Method
 
@@ -10217,7 +10269,7 @@ Credits are used as the agent processes messages and generates content, not at `
 
 The API-side check is gating only: `POST /UserAgent/Start` and `POST /UserAgent/Message/Send` refuse to launch / accept messages when `remainingcredits <= 0`, returning an `Agent has no remaining credits…` error plus an `agentbalance` snapshot (`{ monthlycredits, extracredits, usedcredits, remainingcredits }`). During an active session, monthly credits are consumed first; once `usedcredits >= monthlycredits`, extra credits (purchased via `CreateExtraCreditCheckout`) absorb the rest. When both pools are empty the agent stops accepting new turns until the subscription renews or an extra credit pack is bought.
 
-On each billing cycle (subscription renewal) `usedcredits` is reset to zero and `creditperiod` advances to the new `'YYYY-MM'` window; extra-credit purchases simply bump `extracredits` without resetting usage.
+On each billing cycle (subscription renewal) `usedcredits` is reset to zero, every renewal gives the whole allowance (`monthlycredits` equals `renewalcredits` again), and `creditperiod` advances to the new `'YYYY-MM'` window; extra-credit purchases simply bump `extracredits` without resetting usage.
 
 For the full audit trail (every token deduct / grant / purchase / renewal / expiry) call [`POST /UserAgent/TransactionList`](/docs/agent-transactions#tx-transactionlist) (see [Agent Transactions](/docs/agent-transactions)).
 
@@ -10977,6 +11029,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
       "monthlycredits": 6000,
       "monthlypriceusd": 60,
       "remainingcredits": 6000,
+      "renewalcredits": 6000,
       "creditperiod": "2026-05",
       "tokenRates": {
         "default_model": "openai/gpt-5.6-sol",
@@ -11071,6 +11124,7 @@ The response includes the new pricing snapshot and the prorated wallet debit:
   "errors": [],
   "tier": "pro",
   "prepaidWalletDelta": 5.0,
+  "usedCreditsUsd": 0,
   "restartTriggered": true,
   "restartedAt": 1714694520,
   "pricing": {
@@ -11080,12 +11134,16 @@ The response includes the new pricing snapshot and the prorated wallet debit:
     "previousMonthlyCredits": 6000,
     "newMonthlyCredits": 7000,
     "deltaCredits": 1000,
+    "creditsNow": 500,
+    "creditsThisPeriod": 6500,
+    "creditsFromRenewal": 7000,
+    "periodEnd": 1715990520,
     "enabledSkills": ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels", "int-instagram-post"]
   }
 }
 ```
 
-`prepaidWalletDelta` is the USD amount debited from your wallet for the rest of the current period: the monthly difference for the time left, by the second, rounded up to the cent, and at least one day's worth. If you disable a paid skill mid-period the delta is negative and rounds down to the cent: the money goes back to the balances that paid for the period. Coupon credit keeps the end date of its coupon, and store revenue and deposit credit last until the period ends.
+`prepaidWalletDelta` is the USD amount debited from your wallet for the rest of the current period: the monthly difference for the time left, by the second, rounded up to the cent, and at least one day's worth. The added credits come for that same time (`pricing.creditsNow`), and every renewal gives the whole allowance (`pricing.creditsFromRenewal`). If you disable a paid skill mid-period the delta is negative and rounds down to the cent: what the time left is worth goes back to the balances that paid for the period, less 1 cent for each credit already used above what the plan keeps (`usedCreditsUsd`). Each balance keeps the end date of the credit or deposit that paid; a part whose source has ended since lasts until the period ends.
 
 ### Batch toggle + tier upgrade in one call
 
@@ -16174,7 +16232,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
 
 ## Live Pricing Preview
 
-Before you commit `SkillsApply` (or the user clicks Save in your UI), call `POST /UserAgent/PricingPreview` to see "if I save this, my new monthly price would be $X with Y monthly credits". No state is mutated. See [`PricingPreview`](/docs/agent-overview#post-useragentpricingpreview) for the full response shape.
+Before you commit `SkillsApply` (or the user clicks Save in your UI), call `POST /UserAgent/PricingPreview` to see "if I save this, my new monthly price would be $X with Y monthly credits". No state is mutated. For an agent with an active plan, `planChange` also says what the change would do today: the charge or credit for the time left and the credits that come with it. See [`PricingPreview`](/docs/agent-overview#post-useragentpricingpreview) for the full response shape.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
@@ -16517,8 +16575,8 @@ The ledger is the single source of truth for "where did my credits go?" and powe
 | `deduct` | Agent runtime | Per-turn LLM token charge (`action: "tokens"`) for every chat, cron, and voice post-call turn. Negative `amount`. |
 | `renewal` | Subscription cron | At each 30-day rollover when the wallet successfully covers the renewal. Positive `amount` = monthly credits granted. |
 | `purchase` | Extra-credit checkout | When `POST /UserAgent/CreateExtraCreditCheckout` (`useprepaid: true`) succeeds. Positive `amount` = pack credits. |
-| `grant` | Skill toggle / tier upgrade | When a skill is enabled mid-period and the credit pool grows, or when a tier upgrade lifts the monthly allocation. Positive `amount`. |
-| `expired` | Skill toggle / subscription end | Two cases share the type. Mid-period: when a skill is disabled and the credit pool shrinks (`action: "skill-toggle"`). End-of-period: when a cancelled subscription rolls past `currentperiodend` and the cron revokes any remaining monthly leftover (`action: "subscription"`). Negative `amount` in both cases. |
+| `grant` | Skill toggle / tier upgrade | When a skill is enabled mid-period and the credit pool grows, or when a tier upgrade lifts the monthly allocation. Positive `amount`: what this period gained. `metadata.creditsFromRenewal` is what each renewal grants. |
+| `expired` | Skill toggle / subscription end | Two cases share the type. Mid-period: when a skill is disabled and the credit pool shrinks (`action: "skill-toggle"` or `"skills-apply"`); `amount` is what this period lost, and `metadata.usedCreditsUsd` is what came off the credit for credits already used. End-of-period: when a cancelled subscription rolls past `currentperiodend` and the cron revokes any remaining monthly leftover (`action: "subscription"`). Negative `amount` in both cases. |
 | `refund` | Server-side refund | Issued by Wiro support when a previous charge is reversed. Positive `amount`. |
 | `adjust` | Skill change / Wiro support | A record for Wiro support. `amount` is `0` on `action: "skill-change-not-undone"` (a failed change that could not be taken back) and `action: "skill-credit-failed"` (a credit that was not added to the wallet). |
 
@@ -16557,6 +16615,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
     "extracredits": 45000,
     "usedcredits": 1450,
     "remainingcredits": 52550,
+    "renewalcredits": 9000,
     "creditperiod": "2026-05",
     "creditsyncat": 1714694410,
     "byModel": [
@@ -16666,8 +16725,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "guid": "3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e04",
       "type": "grant",
       "action": "skill-toggle",
-      "amount": 1000,
-      "balanceafter": 5050,
+      "amount": 667,
+      "balanceafter": 4717,
       "description": "Skill enabled: int-instagram-post",
       "sessionkey": null,
       "messageguid": null,
@@ -16686,7 +16745,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
         "enabled": true,
         "previousPriceUsd": 80,
         "newPriceUsd": 90,
-        "proratedCharge": 6.67
+        "proratedCharge": 6.67,
+        "usedCreditsUsd": 0,
+        "creditsFromRenewal": 9000
       },
       "uuid": "ada-uuid",
       "user": {
@@ -16710,7 +16771,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `monthlycredits` | `number` | Current monthly allocation. |
+| `monthlycredits` | `number` | The credits this period grants. |
+| `renewalcredits` | `number` | The credits each renewal grants. |
 | `extracredits` | `number` | Active extra-credit balance (sum of non-expired packs). |
 | `usedcredits` | `number` | Consumed during the current period (reported by the runtime). |
 | `remainingcredits` | `number` | `max(0, monthlycredits + extracredits - usedcredits)`. |
@@ -16725,7 +16787,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 |-------|------|-------------|
 | `guid` | `string` | Stable id of the ledger row. Daemon retries reuse this guid for idempotency. |
 | `type` | `string` | One of `"deduct"`, `"renewal"`, `"purchase"`, `"grant"`, `"expired"`, `"refund"`, `"adjust"`. There is no `"cancel"` type: a user-initiated subscription cancel only flips auto-renew off; credits are not forfeited until `currentperiodend` is reached, at which point the cron writes the ledger row as `type: "expired"`, `action: "subscription"`. |
-| `action` | `string\|null` | Fine-grained detail. Values depend on `type`: `"tokens"` (deduct: the per-turn LLM token charge Wiro records for every chat, cron, and voice post-call turn); `"monthly"` (renewal); `"small"`, `"medium"`, `"large"` (purchase); `"skill-toggle"`, `"skills-apply"`, `"upgrade"`, `"tier-change"` (grant); `"skill-toggle"` (expired, mid-period skill disable); `"subscription"` (expired, end-of-period cancel rollover; refund); `"skill-change-not-undone"`, `"skill-credit-failed"` (adjust). Legacy deduct rows may also carry `"message"`, `"create"`, `"modify"`, or `"regenerate"`. |
+| `action` | `string\|null` | Fine-grained detail. Values depend on `type`: `"tokens"` (deduct: the per-turn LLM token charge Wiro records for every chat, cron, and voice post-call turn); `"monthly"` (renewal); `"small"`, `"medium"`, `"large"` (purchase); `"skill-toggle"`, `"skills-apply"`, `"upgrade"`, `"tier-change"` (grant); `"skill-toggle"`, `"skills-apply"` (expired, mid-period skill disable); `"subscription"` (expired, end-of-period cancel rollover; refund); `"skill-change-not-undone"`, `"skill-credit-failed"` (adjust). Legacy deduct rows may also carry `"message"`, `"create"`, `"modify"`, or `"regenerate"`. |
 | `amount` | `number` | Signed credit delta: negative for deductions, positive for grants. |
 | `balanceafter` | `number\|null` | Remaining credit balance snapshot written at the time of the event. `null` on per-turn `deduct` rows. |
 | `description` | `string\|null` | Human-readable label. On an `action: "tokens"` row it spells the counts out: `LLM <model> (uncached in N, cached in N, out N, cache write N, total N tokens)`, where `cached in` and `cache write` appear only above 0. |
@@ -16790,7 +16852,7 @@ console.log('Now in period:', summary.creditperiod);
 
 ### Reconcile a Pro tier upgrade
 
-When the user upgrades Starter → Pro mid-period, the ledger gets one `grant` row for the added monthly credits. For a wallet-billed (prepaid) agent, `UpgradeTier` writes `action: "tier-change"` with the monthly-credit difference as `amount`, a description like `"Tier starter → pro"` and `metadata: { fromTier, toTier, previousPriceUsd, newPriceUsd, proratedCharge }`; a card-billed upgrade writes `action: "upgrade"`. Use these rows to render an upgrade history in your UI.
+When the user upgrades Starter → Pro mid-period, the ledger gets one `grant` row for the credits the upgrade added to this period. For a wallet-billed (prepaid) agent, `UpgradeTier` writes `action: "tier-change"` with those credits as `amount` (the monthly difference for the time left in the period), a description like `"Tier starter → pro"` and `metadata: { fromTier, toTier, previousPriceUsd, newPriceUsd, proratedCharge, creditsFromRenewal }`; a card-billed upgrade writes `action: "upgrade"`. Use these rows to render an upgrade history in your UI.
 
 ## Errors
 

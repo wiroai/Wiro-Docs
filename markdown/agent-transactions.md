@@ -13,8 +13,8 @@ The ledger is the single source of truth for "where did my credits go?" and powe
 | `deduct` | Agent runtime | Per-turn LLM token charge (`action: "tokens"`) for every chat, cron, and voice post-call turn. Negative `amount`. |
 | `renewal` | Subscription cron | At each 30-day rollover when the wallet successfully covers the renewal. Positive `amount` = monthly credits granted. |
 | `purchase` | Extra-credit checkout | When `POST /UserAgent/CreateExtraCreditCheckout` (`useprepaid: true`) succeeds. Positive `amount` = pack credits. |
-| `grant` | Skill toggle / tier upgrade | When a skill is enabled mid-period and the credit pool grows, or when a tier upgrade lifts the monthly allocation. Positive `amount`. |
-| `expired` | Skill toggle / subscription end | Two cases share the type. Mid-period: when a skill is disabled and the credit pool shrinks (`action: "skill-toggle"`). End-of-period: when a cancelled subscription rolls past `currentperiodend` and the cron revokes any remaining monthly leftover (`action: "subscription"`). Negative `amount` in both cases. |
+| `grant` | Skill toggle / tier upgrade | When a skill is enabled mid-period and the credit pool grows, or when a tier upgrade lifts the monthly allocation. Positive `amount`: what this period gained. `metadata.creditsFromRenewal` is what each renewal grants. |
+| `expired` | Skill toggle / subscription end | Two cases share the type. Mid-period: when a skill is disabled and the credit pool shrinks (`action: "skill-toggle"` or `"skills-apply"`); `amount` is what this period lost, and `metadata.usedCreditsUsd` is what came off the credit for credits already used. End-of-period: when a cancelled subscription rolls past `currentperiodend` and the cron revokes any remaining monthly leftover (`action: "subscription"`). Negative `amount` in both cases. |
 | `refund` | Server-side refund | Issued by Wiro support when a previous charge is reversed. Positive `amount`. |
 | `adjust` | Skill change / Wiro support | A record for Wiro support. `amount` is `0` on `action: "skill-change-not-undone"` (a failed change that could not be taken back) and `action: "skill-credit-failed"` (a credit that was not added to the wallet). |
 
@@ -53,6 +53,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
     "extracredits": 45000,
     "usedcredits": 1450,
     "remainingcredits": 52550,
+    "renewalcredits": 9000,
     "creditperiod": "2026-05",
     "creditsyncat": 1714694410,
     "byModel": [
@@ -162,8 +163,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "guid": "3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e04",
       "type": "grant",
       "action": "skill-toggle",
-      "amount": 1000,
-      "balanceafter": 5050,
+      "amount": 667,
+      "balanceafter": 4717,
       "description": "Skill enabled: int-instagram-post",
       "sessionkey": null,
       "messageguid": null,
@@ -182,7 +183,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
         "enabled": true,
         "previousPriceUsd": 80,
         "newPriceUsd": 90,
-        "proratedCharge": 6.67
+        "proratedCharge": 6.67,
+        "usedCreditsUsd": 0,
+        "creditsFromRenewal": 9000
       },
       "uuid": "ada-uuid",
       "user": {
@@ -206,7 +209,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `monthlycredits` | `number` | Current monthly allocation. |
+| `monthlycredits` | `number` | The credits this period grants. |
+| `renewalcredits` | `number` | The credits each renewal grants. |
 | `extracredits` | `number` | Active extra-credit balance (sum of non-expired packs). |
 | `usedcredits` | `number` | Consumed during the current period (reported by the runtime). |
 | `remainingcredits` | `number` | `max(0, monthlycredits + extracredits - usedcredits)`. |
@@ -221,7 +225,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 |-------|------|-------------|
 | `guid` | `string` | Stable id of the ledger row. Daemon retries reuse this guid for idempotency. |
 | `type` | `string` | One of `"deduct"`, `"renewal"`, `"purchase"`, `"grant"`, `"expired"`, `"refund"`, `"adjust"`. There is no `"cancel"` type: a user-initiated subscription cancel only flips auto-renew off; credits are not forfeited until `currentperiodend` is reached, at which point the cron writes the ledger row as `type: "expired"`, `action: "subscription"`. |
-| `action` | `string\|null` | Fine-grained detail. Values depend on `type`: `"tokens"` (deduct: the per-turn LLM token charge Wiro records for every chat, cron, and voice post-call turn); `"monthly"` (renewal); `"small"`, `"medium"`, `"large"` (purchase); `"skill-toggle"`, `"skills-apply"`, `"upgrade"`, `"tier-change"` (grant); `"skill-toggle"` (expired, mid-period skill disable); `"subscription"` (expired, end-of-period cancel rollover; refund); `"skill-change-not-undone"`, `"skill-credit-failed"` (adjust). Legacy deduct rows may also carry `"message"`, `"create"`, `"modify"`, or `"regenerate"`. |
+| `action` | `string\|null` | Fine-grained detail. Values depend on `type`: `"tokens"` (deduct: the per-turn LLM token charge Wiro records for every chat, cron, and voice post-call turn); `"monthly"` (renewal); `"small"`, `"medium"`, `"large"` (purchase); `"skill-toggle"`, `"skills-apply"`, `"upgrade"`, `"tier-change"` (grant); `"skill-toggle"`, `"skills-apply"` (expired, mid-period skill disable); `"subscription"` (expired, end-of-period cancel rollover; refund); `"skill-change-not-undone"`, `"skill-credit-failed"` (adjust). Legacy deduct rows may also carry `"message"`, `"create"`, `"modify"`, or `"regenerate"`. |
 | `amount` | `number` | Signed credit delta: negative for deductions, positive for grants. |
 | `balanceafter` | `number\|null` | Remaining credit balance snapshot written at the time of the event. `null` on per-turn `deduct` rows. |
 | `description` | `string\|null` | Human-readable label. On an `action: "tokens"` row it spells the counts out: `LLM <model> (uncached in N, cached in N, out N, cache write N, total N tokens)`, where `cached in` and `cache write` appear only above 0. |
@@ -286,7 +290,7 @@ console.log('Now in period:', summary.creditperiod);
 
 ### Reconcile a Pro tier upgrade
 
-When the user upgrades Starter → Pro mid-period, the ledger gets one `grant` row for the added monthly credits. For a wallet-billed (prepaid) agent, `UpgradeTier` writes `action: "tier-change"` with the monthly-credit difference as `amount`, a description like `"Tier starter → pro"` and `metadata: { fromTier, toTier, previousPriceUsd, newPriceUsd, proratedCharge }`; a card-billed upgrade writes `action: "upgrade"`. Use these rows to render an upgrade history in your UI.
+When the user upgrades Starter → Pro mid-period, the ledger gets one `grant` row for the credits the upgrade added to this period. For a wallet-billed (prepaid) agent, `UpgradeTier` writes `action: "tier-change"` with those credits as `amount` (the monthly difference for the time left in the period), a description like `"Tier starter → pro"` and `metadata: { fromTier, toTier, previousPriceUsd, newPriceUsd, proratedCharge, creditsFromRenewal }`; a card-billed upgrade writes `action: "upgrade"`. Use these rows to render an upgrade history in your UI.
 
 ## Errors
 

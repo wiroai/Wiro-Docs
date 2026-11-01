@@ -757,7 +757,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
 
 ## Live Pricing Preview
 
-Before you commit `SkillsApply` (or the user clicks Save in your UI), call `POST /UserAgent/PricingPreview` to see "if I save this, my new monthly price would be $X with Y monthly credits". No state is mutated. See [`PricingPreview`](/docs/agent-overview#post-useragentpricingpreview) for the full response shape.
+Before you commit `SkillsApply` (or the user clicks Save in your UI), call `POST /UserAgent/PricingPreview` to see "if I save this, my new monthly price would be $X with Y monthly credits". No state is mutated. For an agent with an active plan, `planChange` also says what the change would do today: the charge or credit for the time left and the credits that come with it. See [`PricingPreview`](/docs/agent-overview#post-useragentpricingpreview) for the full response shape.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
