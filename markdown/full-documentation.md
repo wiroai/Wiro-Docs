@@ -10321,7 +10321,7 @@ Agent-specific errors you may encounter:
 | `Insufficient wallet balance. Required: $X.XX, Available: $Y.YY` | `UpgradeTier`: wallet can't cover the prorated upgrade charge |
 | `Wallet deduction failed: {error}` | `UpgradeTier`: wallet write itself failed (rare; transient backend error) |
 | `Another change to this agent's plan is going through. Nothing was changed; please try again in a minute.` | `UpgradeTier` (code `104`) while a skill change or another upgrade of the same agent is going through |
-| `The agent's plan changed while this upgrade was asked for. Nothing was changed; please retry.` | `UpgradeTier` when the agent's plan ended or moved off the wallet while the upgrade waited its turn |
+| `The agent's plan changed while this upgrade was asked for. Nothing was changed; please retry.` | `UpgradeTier` when the agent's plan ended or moved off the wallet after the call was made |
 | `Could not read the agent's plan. Nothing was changed; please retry.` | `UpgradeTier`: the agent's plan could not be read |
 | `Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.` | `Deploy` or `CreateSubscriptionCheckout` with `useprepaid: true`, `CreateExtraCreditCheckout`, `RenewSubscription` or `UpgradeTier` (code `104` on `UpgradeTier`) while another plan or credit pack payment from the same wallet is going through. A `Deploy` refused this way creates no agent |
 | `Project not found. Send the id of one of your projects from Project/List: one you created, or any project of a team you are an admin of.` | `CredentialProjectBind` with a project that doesn't exist or that the caller can't bind. See its [other errors](#post-useragentcredentialprojectbind) |
