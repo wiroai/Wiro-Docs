@@ -67,7 +67,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "action": "tokens",
       "amount": -5,
       "balanceafter": null,
-      "description": "Input Tokens: 3450 / Output Tokens: 820 / Model: openai/gpt-5.4",
+      "description": "LLM openai/gpt-5.4 (uncached in 3450, cached in 512, out 820, total 4782 tokens)",
       "sessionkey": "default",
       "agentsessionkey": "default",
       "messageguid": "5d6e7f80-9a1b-4c2d-8e3f-4a5b6c7d8e01",
@@ -224,7 +224,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 | `action` | `string\|null` | Fine-grained detail. Values depend on `type`: `"tokens"` (deduct: the per-turn LLM token charge Wiro records for every chat, cron, and voice post-call turn); `"monthly"` (renewal); `"small"`, `"medium"`, `"large"` (purchase); `"skill-toggle"`, `"skills-apply"`, `"upgrade"`, `"tier-change"` (grant); `"skill-toggle"` (expired, mid-period skill disable); `"subscription"` (expired, end-of-period cancel rollover; refund); `"skill-change-not-undone"`, `"skill-credit-failed"` (adjust). Legacy deduct rows may also carry `"message"`, `"create"`, `"modify"`, or `"regenerate"`. |
 | `amount` | `number` | Signed credit delta: negative for deductions, positive for grants. |
 | `balanceafter` | `number\|null` | Remaining credit balance snapshot written at the time of the event. `null` on per-turn `deduct` rows. |
-| `description` | `string\|null` | Human-readable label. |
+| `description` | `string\|null` | Human-readable label. On an `action: "tokens"` row it spells the counts out: `LLM <model> (uncached in N, cached in N, out N, cache write N, total N tokens)`, where `cached in` and `cache write` appear only above 0. |
 | `sessionkey` | `string\|null` | Session the deduct belongs to (deduct rows only). |
 | `agentsessionkey` | `string\|null` | Alias of `sessionkey` (same value), present on every row for a unified per-session attribution key across `TaskList` / `TransactionList` / wallet responses. |
 | `messageguid` | `string\|null` | Agent message that triggered the deduct (deduct rows only). |

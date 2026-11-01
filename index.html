@@ -14298,7 +14298,7 @@ pro.credits = starter.credits × tiermultiplier
 <td><a href="#post-useragentupdatesettings"><code>POST /UserAgent/UpdateSettings</code></a></td>
 </tr>
 <tr>
-<td>View / download / purge activity logs</td>
+<td>View / download / delete activity logs</td>
 <td><a href="#post-useragentlogs"><code>POST /UserAgent/Logs</code></a> · <a href="#post-useragentlogslist"><code>LogsList</code></a> · <a href="#post-useragentlogsfile"><code>LogsFile</code></a> · <a href="#post-useragentlogsdelete"><code>LogsDelete</code></a></td>
 </tr>
 <tr>
@@ -16191,7 +16191,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </div>
 </div>
 <h4 id="post-useragentlogs"><strong>POST</strong> /UserAgent/Logs</h4>
-<p>Live activity feed for a useragent: what the agent did, when, and which user triggered it. The agent records one event per skill invocation, scheduled task and user message, grouped by day; this endpoint returns the latest N events for a given date, each with the user who triggered it.</p>
+<p>Live activity feed for a useragent: what the agent did, when, and which user triggered it. The agent records one event per skill invocation, scheduled task and user message, grouped by day; this endpoint returns the latest N events for a given date, each with the user who triggered it. What people and API keys did to the agent is in the same list, as <code>AGENT_*</code> rows; see <a href="/docs/agent-logs#who-did-what-rows">Agent Logs</a>.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -16228,7 +16228,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </div>
 <p><strong>Headers:</strong> No extra header is needed. Access: the agent's owner or a team admin of the agent's team (plain team members are rejected with code <code>97</code>).</p>
 <h5 id="logs-rate-limit">Rate limit</h5>
-<p>Calls are rate-limited via a 30-second server-side cache keyed on <code>(useragentguid, date, lines)</code>. The first call within a 30s window reads the live log; later calls within the window receive the cached payload. Poll every 30 seconds or more.</p>
+<p>Calls are rate-limited via a 30-second server-side cache keyed on <code>(useragentguid, date, lines)</code>. The first call within a 30s window reads the live log; later calls within the window receive the cached payload. Poll every 30 seconds or more. Who-did-what rows are read fresh on every call.</p>
 <h5 id="response_20">Response</h5>
 <pre><code class="language-json">{
   &quot;result&quot;: true,
@@ -16237,15 +16237,13 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
     {
       &quot;ts&quot;: &quot;2026-05-03T14:00:03.000Z&quot;,
       &quot;kind&quot;: &quot;token_usage&quot;,
-      &quot;title&quot;: &quot;Turn billed — 5 credits&quot;,
-      &quot;summary&quot;: { &quot;trigger&quot;: &quot;chat&quot; },
+      &quot;title&quot;: &quot;Token Usage&quot;,
       &quot;model&quot;: &quot;openai/gpt-5.4&quot;,
       &quot;tokens&quot;: { &quot;input&quot;: 3450, &quot;output&quot;: 820, &quot;cacheRead&quot;: 2400, &quot;cacheWrite&quot;: 0, &quot;total&quot;: 6670 },
       &quot;tokencost&quot;: 5,
       &quot;durationMs&quot;: 4200,
       &quot;calls&quot;: 2,
       &quot;remainingcredits&quot;: 8995,
-      &quot;ok&quot;: true,
       &quot;userUuid&quot;: &quot;ada-uuid&quot;,
       &quot;user&quot;: {
         &quot;uuid&quot;: &quot;ada-uuid&quot;,
@@ -16318,7 +16316,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <tr>
 <td><code>events[].kind</code></td>
 <td>string</td>
-<td>Fine-grained event class. One of: <code>"turn_started"</code>, <code>"turn_ended"</code> (an LLM turn boundary); <code>"tool_started"</code>, <code>"tool_completed"</code> (one pair per tool call); <code>"tool_blocked"</code> (a tool call the agent's safety rules refused); <code>"cron_finished"</code> (a scheduled task finished); <code>"user_message"</code> (a message received on a connected Telegram, Slack or Discord channel, not web chat); <code>"token_usage"</code> (a billed turn's token usage: chat / cron / voice post-call); <code>"token_usage_idempotent"</code> (a replayed usage report, already billed, informational only); <code>"media_relay"</code> (files from a reply were delivered); <code>"background_reply"</code> (a result that finished in the background was delivered to the chat).</td>
+<td>Fine-grained event class. One of: <code>"turn_started"</code>, <code>"turn_ended"</code> (an LLM turn boundary); <code>"tool_started"</code>, <code>"tool_completed"</code> (one pair per tool call); <code>"tool_blocked"</code> (a tool call the agent's safety rules refused); <code>"cron_finished"</code> (a scheduled task finished); <code>"user_message"</code> (a message received on a connected Telegram, Slack or Discord channel, not web chat); <code>"token_usage"</code> (a billed turn's token usage: chat / cron / voice post-call); <code>"token_usage_idempotent"</code> (a replayed usage report, already billed, informational only); <code>"media_relay"</code> (files from a reply were delivered); <code>"background_reply"</code> (a result that finished in the background was delivered to the chat). Rows about what was done to the agent have <code>AGENT_*</code> kinds, and two note rows, <code>"runtime_log_unavailable"</code> and <code>"runtime_log_deleted"</code>, say what part of a day is missing; see <a href="/docs/agent-logs#who-did-what-rows">Agent Logs</a>. Show any kind you don't recognize by its <code>title</code>.</td>
 </tr>
 <tr>
 <td><code>events[].tool</code></td>
@@ -16343,7 +16341,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <tr>
 <td><code>events[].ok</code></td>
 <td>boolean | null</td>
-<td><code>true</code> on success, <code>false</code> on failure. Populated on <code>tool_completed</code>, <code>turn_ended</code> and <code>cron_finished</code> events, and always <code>false</code> on <code>tool_blocked</code>. Pair with <code>error</code> for failures.</td>
+<td><code>true</code> on success, <code>false</code> on failure. Populated on <code>tool_completed</code>, <code>turn_ended</code> and <code>cron_finished</code> events, and always <code>false</code> on <code>tool_blocked</code>. Pair with <code>error</code> for failures. It is always <code>true</code> on <code>AGENT_*</code> rows. A <code>turn_ended</code> for a turn the caller cancelled has no <code>ok</code>, and its title reads <code>Agent turn cancelled</code>.</td>
 </tr>
 <tr>
 <td><code>events[].error</code></td>
@@ -16393,12 +16391,13 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <tr>
 <td><code>totalLines</code></td>
 <td>number</td>
-<td><strong>Total lines in the file</strong> (regardless of <code>lines</code> cap). Use this to show "showing X of Y events" headers.</td>
+<td><strong>Total rows for the day</strong>, who-did-what rows and notes included, whatever the <code>lines</code> cap. Use this to show "showing X of Y events" headers.</td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
+<p><strong>Reading a stopped agent.</strong> When the agent isn't running, or its host doesn't answer, <code>Logs</code> still answers <code>result: true</code> for a day with who-did-what rows. <code>events</code> starts with a <code>runtime_log_unavailable</code> note, followed by those rows, and <code>totalLines</code> counts the note. An earlier day whose log was deleted starts with a <code>runtime_log_deleted</code> note instead. See <a href="/docs/agent-logs#who-did-what-rows">Agent Logs</a>.</p>
 <h5 id="common-errors_3">Common errors</h5>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -16416,7 +16415,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </tr>
 <tr>
 <td><code>Agent is not assigned to a worker. It may not be running.</code></td>
-<td>The agent isn't running on a host yet (never started, or being moved). Start it and retry</td>
+<td>The agent isn't running on a host (never started, stopped or being moved). Start it and retry</td>
 </tr>
 <tr>
 <td><code>Worker not found</code></td>
@@ -16430,8 +16429,9 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </table>
 </div>
 </div>
+<p><code>Logs</code>, <code>LogsFile</code> and <code>LogsList</code> answer with the last three errors only when there are no who-did-what rows to show. <code>LogsDelete</code> needs the agent on a host every time.</p>
 <h4 id="post-useragentlogslist"><strong>POST</strong> /UserAgent/LogsList</h4>
-<p>Lists the dates for which an activity log exists. Useful for building a date-picker UI before calling <code>Logs</code> / <code>LogsFile</code> for that day.</p>
+<p>Lists the dates with activity: days with an activity log and days that only have who-did-what rows. Useful for building a date-picker UI before calling <code>Logs</code> / <code>LogsFile</code> for that day.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -16461,7 +16461,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
   &quot;dates&quot;: [
     { &quot;date&quot;: &quot;2026-05-03&quot;, &quot;sizeBytes&quot;: 184320, &quot;compressed&quot;: false },
     { &quot;date&quot;: &quot;2026-05-02&quot;, &quot;sizeBytes&quot;: 92160,  &quot;compressed&quot;: true  },
-    { &quot;date&quot;: &quot;2026-05-01&quot;, &quot;sizeBytes&quot;: 71680,  &quot;compressed&quot;: true  }
+    { &quot;date&quot;: &quot;2026-05-01&quot;, &quot;sizeBytes&quot;: 0,      &quot;compressed&quot;: false }
   ]
 }
 </code></pre>
@@ -16479,25 +16479,47 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <tr>
 <td><code>dates[].date</code></td>
 <td>string</td>
-<td>Activity-file date in <code>YYYY-MM-DD</code> form. Sorted newest-first.</td>
+<td>Activity date in <code>YYYY-MM-DD</code> form. Sorted newest-first.</td>
 </tr>
 <tr>
 <td><code>dates[].sizeBytes</code></td>
-<td>number</td>
-<td>Raw byte size of the file on disk (compressed size if <code>compressed: true</code>).</td>
+<td>number | null</td>
+<td>Raw byte size of the file on disk (compressed size if <code>compressed: true</code>). <code>0</code> on a day with who-did-what rows and no log file, for example a day whose log was deleted. <code>null</code> when <code>runtimeUnavailable</code> is present.</td>
 </tr>
 <tr>
 <td><code>dates[].compressed</code></td>
 <td>boolean</td>
 <td><code>true</code> once the day's log has been compressed (<code>&lt;date&gt;.jsonl.gz</code>); <code>false</code> for the active day's plain <code>.jsonl</code>.</td>
 </tr>
+<tr>
+<td><code>runtimeUnavailable</code></td>
+<td>string</td>
+<td><code>"not_running"</code> or <code>"no_answer"</code>. Present only when the agent isn't running or its host doesn't answer and the list holds who-did-what days alone.</td>
+</tr>
+<tr>
+<td><code>note</code></td>
+<td>string</td>
+<td>Present with <code>runtimeUnavailable</code>: <code>The agent's own log days can be read while it runs, so this list may be missing days.</code> for <code>not_running</code>, <code>The agent's own log days could not be read just now, so this list may be missing days.</code> for <code>no_answer</code>.</td>
+</tr>
 </tbody>
 </table>
 </div>
 </div>
+<p><strong>Reading a stopped agent.</strong> A stopped agent, or one whose host doesn't answer, still answers <code>result: true</code> when it has who-did-what days:</p>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;runtimeUnavailable&quot;: &quot;not_running&quot;,
+  &quot;note&quot;: &quot;The agent's own log days can be read while it runs, so this list may be missing days.&quot;,
+  &quot;dates&quot;: [
+    { &quot;date&quot;: &quot;2026-05-03&quot;, &quot;sizeBytes&quot;: null, &quot;compressed&quot;: false },
+    { &quot;date&quot;: &quot;2026-05-01&quot;, &quot;sizeBytes&quot;: null, &quot;compressed&quot;: false }
+  ]
+}
+</code></pre>
 <p>The host retains activity files for 180 days (rolling); older dates are removed and won't appear here.</p>
 <h4 id="post-useragentlogsdelete"><strong>POST</strong> /UserAgent/LogsDelete</h4>
-<p>Removes one date's activity log, plain or compressed. Useful for scrubbing a specific day without waiting for the 180-day rotation.</p>
+<p>Deletes the agent's own turns and tool calls for one date, plain or compressed, without waiting for the 180-day rotation. Who-did-what rows stay: the date can stay in <code>LogsList</code> with <code>sizeBytes: 0</code>, and reads of an earlier day you deleted start with a <code>runtime_log_deleted</code> note that says when.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -16520,7 +16542,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <td><code>date</code></td>
 <td>string</td>
 <td>Yes</td>
-<td>Activity date to purge (<code>YYYY-MM-DD</code>).</td>
+<td>Activity date to delete (<code>YYYY-MM-DD</code>).</td>
 </tr>
 </tbody>
 </table>
@@ -16576,7 +16598,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
   &quot;truncated&quot;: false
 }
 </code></pre>
-<p><code>events</code> is sorted <strong>newest first</strong> (descending by <code>ts</code>), the same contract as <code>Logs</code>, so <code>events[0]</code> is the freshest entry whether you're tailing the live day or downloading a historical one. <code>truncated: true</code> only when the log is larger than the read limit (currently 250k rows / 50 MB). For typical agents this stays <code>false</code>; if you ever see <code>true</code>, fall back to streaming the file directly via the panel's download link.</p>
+<p><code>events</code> is sorted <strong>newest first</strong> (descending by <code>ts</code>), the same contract as <code>Logs</code>, so <code>events[0]</code> is the freshest entry whether you're tailing the live day or downloading a historical one. <code>truncated: true</code> only when the day's file is larger than 10 MiB: its newest 10 MiB of events are returned. Who-did-what rows are included, and a stopped agent and a deleted day read as on <code>Logs</code>.</p>
 <h4 id="post-useragentpin"><strong>POST</strong> /UserAgent/Pin</h4>
 <p>Pins or unpins an agent instance from the user's pinned-agents quick list. Pinned agents appear in the global header dropdown (<code>PinnedAgents</code>) and get an unread badge from <code>PinnedUnread</code>.</p>
 <div class="docs-param-table">
@@ -26517,7 +26539,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
       "action": "tokens",
       "amount": -5,
       "balanceafter": null,
-      "description": "Input Tokens: 3450 / Output Tokens: 820 / Model: openai/gpt-5.4",
+      "description": "LLM openai/gpt-5.4 (uncached in 3450, cached in 512, out 820, total 4782 tokens)",
       "sessionkey": "default",
       "agentsessionkey": "default",
       "messageguid": "5d6e7f80-9a1b-4c2d-8e3f-4a5b6c7d8e01",
@@ -26684,7 +26706,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
                             <tr><td><code>action</code></td><td><code>string|null</code></td><td>Fine-grained detail. Values depend on <code>type</code>: <code>"tokens"</code> (deduct: the per-turn LLM token charge Wiro records for every chat, cron, and voice post-call turn); <code>"monthly"</code> (renewal); <code>"small"</code>, <code>"medium"</code>, <code>"large"</code> (purchase); <code>"skill-toggle"</code>, <code>"skills-apply"</code>, <code>"upgrade"</code>, <code>"tier-change"</code> (grant); <code>"skill-toggle"</code> (expired, mid-period skill disable); <code>"subscription"</code> (expired, end-of-period cancel rollover; refund); <code>"skill-change-not-undone"</code>, <code>"skill-credit-failed"</code> (adjust). Legacy deduct rows may also carry <code>"message"</code>, <code>"create"</code>, <code>"modify"</code>, or <code>"regenerate"</code>.</td></tr>
                             <tr><td><code>amount</code></td><td><code>number</code></td><td>Signed credit delta: negative for deductions, positive for grants.</td></tr>
                             <tr><td><code>balanceafter</code></td><td><code>number|null</code></td><td>Remaining credit balance snapshot written at the time of the event. <code>null</code> on per-turn <code>deduct</code> rows.</td></tr>
-                            <tr><td><code>description</code></td><td><code>string|null</code></td><td>Human-readable label.</td></tr>
+                            <tr><td><code>description</code></td><td><code>string|null</code></td><td>Human-readable label. On an <code>action: "tokens"</code> row it spells the counts out: <code>LLM &lt;model&gt; (uncached in N, cached in N, out N, cache write N, total N tokens)</code>, where <code>cached in</code> and <code>cache write</code> appear only above 0.</td></tr>
                             <tr><td><code>sessionkey</code></td><td><code>string|null</code></td><td>Session the deduct belongs to (deduct rows only).</td></tr>
                             <tr><td><code>agentsessionkey</code></td><td><code>string|null</code></td><td>Alias of <code>sessionkey</code> (same value), present on every row for a unified per-session attribution key across <code>TaskList</code> / <code>TransactionList</code> / wallet responses.</td></tr>
                             <tr><td><code>messageguid</code></td><td><code>string|null</code></td><td>Agent message that triggered the deduct (deduct rows only).</td></tr>
@@ -26860,6 +26882,7 @@ foreach (array_slice($resp['transactions'], 0, 10) as $tx) {
                     <h2>Overview</h2>
                     <p>Every Wiro agent appends one structured <code>ActivityEvent</code> JSON line per tool call, LLM turn boundary, scheduled task run and billed turn, plus each message that arrives on a connected Telegram, Slack or Discord channel. Secrets (matched by field name and by high-entropy value), internal tool-call IDs and API credentials are redacted before an event is written, so what shows up in <code>Logs</code> is safe to show end users.</p>
                     <p>A daily JSONL file is written for each calendar day; files older than 7 days are gzipped, files older than 180 days are deleted by the agent's daily maintenance cron.</p>
+                    <p>The feed also lists what people and API keys did to the agent: starts and stops, renames, skill, connector and billing changes, connections and deleted log days, each with who did it. These <a href="#who-did-what-rows">who-did-what rows</a> don't depend on the agent running.</p>
                     <p>The endpoints below are <strong>owner-or-team-admin</strong> scoped. Plain members of the agent's team receive <code>useragent-team-admin-required</code> (code <code>97</code>); outside callers receive <code>useragent-access-denied</code>.</p>
                     <div class="docs-param-table">
                       <div class="docs-param-table-wrapper">
@@ -26869,9 +26892,9 @@ foreach (array_slice($resp['transactions'], 0, 10) as $tx) {
                           </thead>
                           <tbody>
                             <tr><td><code>POST /UserAgent/Logs</code></td><td>Live tail (last N events for today, or a specific date). Cached server-side for 30s to absorb polling.</td></tr>
-                            <tr><td><code>POST /UserAgent/LogsList</code></td><td>List the date strings (<code>YYYY-MM-DD</code>) for which an activity file exists.</td></tr>
-                            <tr><td><code>POST /UserAgent/LogsFile</code></td><td>Read the <strong>full</strong> JSONL file for a specific date.</td></tr>
-                            <tr><td><code>POST /UserAgent/LogsDelete</code></td><td>Delete one date's activity file (and its gzipped sibling). Idempotent.</td></tr>
+                            <tr><td><code>POST /UserAgent/LogsList</code></td><td>List the days (<code>YYYY-MM-DD</code>) that have activity, with the size of each day's log.</td></tr>
+                            <tr><td><code>POST /UserAgent/LogsFile</code></td><td>Read the <strong>full</strong> log of a specific date.</td></tr>
+                            <tr><td><code>POST /UserAgent/LogsDelete</code></td><td>Delete the agent's own turns and tool calls for one date. Idempotent.</td></tr>
                           </tbody>
                         </table>
                       </div>
@@ -26913,12 +26936,12 @@ foreach (array_slice($resp['transactions'], 0, 10) as $tx) {
                           </thead>
                           <tbody>
                             <tr><td><code>ts</code></td><td><code>string</code></td><td>ISO-8601 UTC datetime when the event was recorded (e.g. <code>"2026-05-03T14:00:10.234Z"</code>). Parse with <code>Date.parse(ts)</code> for arithmetic.</td></tr>
-                            <tr><td><code>kind</code></td><td><code>string</code></td><td>Fine-grained event class. One of: <code>"turn_started"</code>, <code>"turn_ended"</code> (an LLM turn boundary); <code>"tool_started"</code>, <code>"tool_completed"</code> (one pair per tool call); <code>"tool_blocked"</code> (a tool call the agent's safety rules refused); <code>"cron_finished"</code> (a scheduled task finished); <code>"user_message"</code> (a message received on a connected Telegram, Slack or Discord channel, not web chat); <code>"token_usage"</code> (a billed turn's token usage: chat / cron / voice post-call); <code>"token_usage_idempotent"</code> (a replayed usage report, already billed, informational only); <code>"media_relay"</code> (files from a reply were delivered); <code>"background_reply"</code> (a result that finished in the background was delivered to the chat).</td></tr>
+                            <tr><td><code>kind</code></td><td><code>string</code></td><td>Fine-grained event class. One of: <code>"turn_started"</code>, <code>"turn_ended"</code> (an LLM turn boundary); <code>"tool_started"</code>, <code>"tool_completed"</code> (one pair per tool call); <code>"tool_blocked"</code> (a tool call the agent's safety rules refused); <code>"cron_finished"</code> (a scheduled task finished); <code>"user_message"</code> (a message received on a connected Telegram, Slack or Discord channel, not web chat); <code>"token_usage"</code> (a billed turn's token usage: chat / cron / voice post-call); <code>"token_usage_idempotent"</code> (a replayed usage report, already billed, informational only); <code>"media_relay"</code> (files from a reply were delivered); <code>"background_reply"</code> (a result that finished in the background was delivered to the chat). Rows about what was done to the agent have <a href="#who-did-what-rows"><code>AGENT_*</code> kinds</a>, and two note rows, <code>"runtime_log_unavailable"</code> and <code>"runtime_log_deleted"</code>, say what part of a day is missing. Show any kind you don't recognize by its <code>title</code>.</td></tr>
                             <tr><td><code>tool</code></td><td><code>string?</code></td><td>Present on <code>tool_started</code> / <code>tool_completed</code> / <code>tool_blocked</code>. The name of the tool the agent used.</td></tr>
                             <tr><td><code>title</code></td><td><code>string</code></td><td>Human-readable one-line description of what happened (e.g. <code>"Posted carousel: \"Brand voice teaser\""</code>, <code>"Fetched https://…"</code>, <code>"Token Usage"</code>). Always present.</td></tr>
                             <tr><td><code>summary</code></td><td><code>object?</code></td><td>Structured event-specific payload. Opaque on the wire, so render it as JSON when expanding the row. Secret values (<code>apikey</code>, <code>apppassword</code>, <code>clientsecret</code>, <code>bearer</code>, <code>token</code>, …) are masked before the event is written. Common keys: <code>file</code>, <code>method</code>, <code>host</code>, <code>path</code>, <code>preview</code>, <code>messageCount</code>, <code>jobId</code>, <code>status</code>, <code>reason</code>.</td></tr>
                             <tr><td><code>durationMs</code></td><td><code>number?</code></td><td>Wall-clock duration in milliseconds. Populated on <code>tool_completed</code>, <code>turn_ended</code>, <code>cron_finished</code> and <code>token_usage</code> events.</td></tr>
-                            <tr><td><code>ok</code></td><td><code>boolean?</code></td><td><code>true</code> for a successful completion, <code>false</code> for a failure. Populated on <code>tool_completed</code>, <code>turn_ended</code> and <code>cron_finished</code> events, and always <code>false</code> on <code>tool_blocked</code>. Pair with <code>error</code> for failure rows.</td></tr>
+                            <tr><td><code>ok</code></td><td><code>boolean?</code></td><td><code>true</code> for a successful completion, <code>false</code> for a failure. Populated on <code>tool_completed</code>, <code>turn_ended</code> and <code>cron_finished</code> events, and always <code>false</code> on <code>tool_blocked</code>. Pair with <code>error</code> for failure rows. It is always <code>true</code> on <code>AGENT_*</code> rows. A <code>turn_ended</code> for a turn the caller cancelled has no <code>ok</code>, and its title reads <code>Agent turn cancelled</code>.</td></tr>
                             <tr><td><code>error</code></td><td><code>string?</code></td><td>One-line failure message (when <code>ok: false</code>).</td></tr>
                             <tr><td><code>cost</code></td><td><code>object?</code></td><td>Legacy per-action credit charge, <code>{ credits, skill, action }</code>. Only events recorded before agents switched to per-turn token billing can carry it; current events never do. See the <code>token_usage</code> event for what a turn cost.</td></tr>
                             <tr><td><code>userUuid</code></td><td><code>string?</code></td><td>UUID of the actor who triggered the event. <code>"system"</code> for cron / internal events. May be missing on older rows, in which case the server falls back to the agent owner.</td></tr>
@@ -26963,6 +26986,69 @@ foreach (array_slice($resp['transactions'], 0, 10) as $tx) {
 }</code></pre>
                     <div class="info-callout"><strong>Nested vs flat token fields.</strong> The activity-log <code>token_usage</code> event nests its counts in <strong>camelCase</strong> under <code>tokens.{input, output, cacheRead, cacheWrite, total}</code>. <code>input</code> is uncached input and <code>total</code> is the exact sum of all four components. This is distinct from the <strong>flat, lowercase</strong> columns on message rows (<code>inputtokens</code>, <code>outputtokens</code>, <code>cachereadtokens</code>, …). Same underlying data, different shape.</div>
                     <div class="info-callout"><strong>Credits vs. wallet.</strong> An agent's own credits are spent once per LLM turn: each <code>token_usage</code> event is one billed turn, and its <code>tokencost</code> is in credits (100 credits = $1). A Wiro model the agent runs, for example through <code>int-wiro-aimodels</code>, is billed separately: Wiro charges it to the wallet of the workspace that owns the agent's Wiro API key at the model's usual price, passed through unchanged. That run shows up as an ordinary <code>tool_completed</code> event with no credit figure; its cost is the task's <code>totalcost</code> (see <a href="/docs/tasks#task-billing">Billing &amp; Cost</a>).</div>
+
+                    <h3 id="who-did-what-rows">Who-did-what rows</h3>
+                    <p><code>Logs</code>, <code>LogsFile</code> and <code>LogsList</code> also cover what people and API keys did <strong>to</strong> the agent. These rows sit in the same <code>events</code> list, in time order, with an <code>AGENT_*</code> value in <code>kind</code>. They come on top of the kinds above, which keep their meaning.</p>
+                    <pre><code class="language-json">{
+  "ts": "2026-05-03T09:12:44.000Z",
+  "kind": "AGENT_RENAMED",
+  "title": "Agent renamed from \"Inbox Bot\" to \"Inbox Watcher\"",
+  "ok": true,
+  "summary": { "title": "Inbox Watcher", "previoustitle": "Inbox Bot", "fields": ["title"] },
+  "userUuid": "ada-uuid",
+  "user": {
+    "uuid": "ada-uuid",
+    "firstname": "Ada",
+    "lastname": "Lovelace",
+    "email": "ada@example.com",
+    "username": "ada",
+    "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
+    "avatarinitials": "AL"
+  }
+}</code></pre>
+                    <p><code>title</code> is the line to show. <code>summary</code> holds the names and amounts behind it, never a credential value. <code>userUuid</code> and <code>user</code> name who did it. When an API key made the change, the title ends with <code>(API key "&lt;project name&gt;")</code> or <code>(via API key)</code>.</p>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th><code>kind</code></th><th>Example <code>title</code></th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td><code>AGENT_STARTED</code>, <code>AGENT_STOPPED</code>, <code>AGENT_RESTARTED</code></td><td><code>Agent started</code>, <code>Agent stopped</code>, <code>Agent restarted</code></td></tr>
+                            <tr><td><code>AGENT_RENAMED</code></td><td><code>Agent renamed from "Inbox Bot" to "Inbox Watcher"</code></td></tr>
+                            <tr><td><code>AGENT_UPDATED</code></td><td><code>Agent details updated: description, cover</code></td></tr>
+                            <tr><td><code>AGENT_SETTINGS_UPDATED</code></td><td><code>Agent settings updated: timezone</code></td></tr>
+                            <tr><td><code>AGENT_TRANSFERRED</code></td><td><code>Agent moved to a team workspace</code>, <code>Agent moved to the personal workspace</code></td></tr>
+                            <tr><td><code>AGENT_INSTRUCTION_ADDED</code>, <code>AGENT_INSTRUCTION_UPDATED</code>, <code>AGENT_INSTRUCTION_RENAMED</code>, <code>AGENT_INSTRUCTION_DELETED</code>, <code>AGENT_INSTRUCTION_REVERTED</code></td><td><code>Custom skill added: cs-brand-voice</code>, <code>Scheduled task updated: cs-cron-blog-scanner (value, interval)</code>, <code>Custom skill renamed: cs-brand-voice to cs-house-style</code>, <code>Scheduled task deleted: cs-cron-blog-scanner</code>, <code>Custom skill reverted to its preset: cs-brand-voice</code></td></tr>
+                            <tr><td><code>AGENT_SKILLS_UPDATED</code></td><td><code>Connectors updated: int-gmail-check on</code>, <code>Skills updated: util-web-channel off</code>, <code>Connectors and skills updated: int-gmail-check on, util-web-channel off; $1.20 charged</code></td></tr>
+                            <tr><td><code>AGENT_CREDENTIAL_SAVED</code></td><td><code>Connector setting saved: wiro.apikey</code></td></tr>
+                            <tr><td><code>AGENT_OAUTH_CONNECT_STARTED</code>, <code>AGENT_OAUTH_CONNECTED</code>, <code>AGENT_OAUTH_DISCONNECTED</code></td><td><code>Connection started: instagram (own)</code>, <code>Connected: instagram</code>, <code>Disconnected: instagram</code></td></tr>
+                            <tr><td><code>AGENT_PLAN_STARTED</code>, <code>AGENT_PLAN_RENEWED</code>, <code>AGENT_PLAN_CANCELLED</code>, <code>AGENT_PLAN_RESUMED</code></td><td><code>Plan started: $9.00 charged</code>, <code>Plan renewed: $9.00 charged</code>, <code>Plan cancelled, ends 2026-06-01</code>, <code>Plan cancellation undone</code></td></tr>
+                            <tr><td><code>AGENT_TIER_UPGRADED</code></td><td><code>Tier upgraded from starter to pro; $40.50 charged</code></td></tr>
+                            <tr><td><code>AGENT_CREDITS_PURCHASED</code></td><td><code>Extra credits bought: small pack, 4500 credits, $45.00 charged</code></td></tr>
+                            <tr><td><code>AGENT_CHECKOUT_CREATED</code></td><td><code>Card checkout link created: plan</code></td></tr>
+                            <tr><td><code>AGENT_LOG_DAY_DELETED</code></td><td><code>Activity log day deleted: 2026-05-02</code></td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <h4 id="note-rows">Note rows</h4>
+                    <p>Two more kinds say what part of a day is missing. They are notes, so they carry a <code>title</code> and no <code>ok</code>.</p>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th><code>kind</code></th><th><code>title</code></th><th>When</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td><code>runtime_log_unavailable</code></td><td><code>The agent's own turns and tool calls can be read while it runs</code></td><td>The agent isn't running, so only its who-did-what rows are listed.</td></tr>
+                            <tr><td><code>runtime_log_unavailable</code></td><td><code>The agent's own turns and tool calls could not be read just now</code></td><td>The agent's host did not answer. Read the day again later.</td></tr>
+                            <tr><td><code>runtime_log_deleted</code></td><td><code>The agent's own turns and tool calls for this day were deleted on 2026-05-04</code></td><td>The day's log was deleted on a later day with <code>LogsDelete</code>. The day's who-did-what rows follow it.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   </section>
 
                   <section id="logs-tail">
@@ -26982,7 +27068,7 @@ foreach (array_slice($resp['transactions'], 0, 10) as $tx) {
                         </table>
                       </div>
                     </div>
-                    <p><strong>Caching:</strong> the endpoint is cached server-side for 30 seconds per <code>(useragentguid, date, lines)</code> triple to absorb polling bursts. Plan for ≥30 s between repeated polls of the same key.</p>
+                    <p><strong>Caching:</strong> the endpoint is cached server-side for 30 seconds per <code>(useragentguid, date, lines)</code> triple to absorb polling bursts. Plan for ≥30 s between repeated polls of the same key. Who-did-what rows are read fresh on every call.</p>
 
                     <h3>Request</h3>
                     <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/Logs" \
@@ -27091,17 +27177,52 @@ foreach (array_slice($resp['transactions'], 0, 10) as $tx) {
                           </thead>
                           <tbody>
                             <tr><td><code>date</code></td><td><code>string|null</code></td><td>The actual date the events were read from (<code>YYYY-MM-DD</code>).</td></tr>
-                            <tr><td><code>totalLines</code></td><td><code>number</code></td><td>Total lines in the file (regardless of <code>lines</code> cap).</td></tr>
+                            <tr><td><code>totalLines</code></td><td><code>number</code></td><td>Total rows for the day, who-did-what rows and notes included, whatever the <code>lines</code> cap.</td></tr>
                             <tr><td><code>events</code></td><td><code>array&lt;ActivityEvent&gt;</code></td><td>Newest first (descending by <code>ts</code>): <code>events[0]</code> is the most recent event; do not re-reverse.</td></tr>
                           </tbody>
                         </table>
                       </div>
                     </div>
+                    <p>With a <code>lines</code> cap, older who-did-what rows of the day can take the place of the oldest agent events, up to half of the answer, so a stop from this morning stays in reach on a busy day. The answer stays within <code>lines</code>.</p>
+                    <p><strong>Reading a stopped agent.</strong> When the agent isn't running, or its host doesn't answer, <code>Logs</code> still answers <code>result: true</code> for a day with who-did-what rows. <code>events</code> starts with a <code>runtime_log_unavailable</code> note, followed by those rows, and <code>totalLines</code> counts the note:</p>
+                    <pre><code class="language-json">{
+  "result": true,
+  "errors": [],
+  "date": "2026-05-03",
+  "totalLines": 3,
+  "events": [
+    {
+      "ts": "2026-05-03T16:20:11.000Z",
+      "kind": "runtime_log_unavailable",
+      "title": "The agent's own turns and tool calls can be read while it runs",
+      "userUuid": "system",
+      "user": null
+    },
+    {
+      "ts": "2026-05-03T16:20:11.000Z",
+      "kind": "AGENT_STOPPED",
+      "title": "Agent stopped",
+      "ok": true,
+      "userUuid": "ada-uuid",
+      "user": { "uuid": "ada-uuid", "firstname": "Ada", "lastname": "Lovelace" }
+    },
+    {
+      "ts": "2026-05-03T09:12:44.000Z",
+      "kind": "AGENT_CREDENTIAL_SAVED",
+      "title": "Connector setting saved: wiro.apikey",
+      "ok": true,
+      "summary": { "fields": ["wiro.apikey"] },
+      "userUuid": "ada-uuid",
+      "user": { "uuid": "ada-uuid", "firstname": "Ada", "lastname": "Lovelace" }
+    }
+  ]
+}</code></pre>
+                    <p>A day without such rows answers with one of the errors below.</p>
                   </section>
 
                   <section id="logs-list">
                     <h2><span class="endpoint-badge post">POST</span> /UserAgent/LogsList</h2>
-                    <p>Returns the list of dates for which an activity file exists for this agent. Useful for rendering a date-picker.</p>
+                    <p>Returns the dates that have activity for this agent: days with a log file and days that only have who-did-what rows. Useful for rendering a date-picker.</p>
                     <div class="docs-param-table">
                       <div class="docs-param-table-wrapper">
                         <table>
@@ -27121,15 +27242,41 @@ foreach (array_slice($resp['transactions'], 0, 10) as $tx) {
   "dates": [
     { "date": "2026-05-03", "sizeBytes": 184220, "compressed": false },
     { "date": "2026-05-02", "sizeBytes": 41280,  "compressed": true  },
-    { "date": "2026-05-01", "sizeBytes": 38912,  "compressed": true  }
+    { "date": "2026-05-01", "sizeBytes": 0,      "compressed": false }
   ]
 }</code></pre>
-                    <p>Each entry exposes <code>date</code> (<code>YYYY-MM-DD</code>, sorted newest-first), <code>sizeBytes</code> (raw byte size on disk; compressed size when <code>compressed: true</code>), and <code>compressed</code> (<code>true</code> once the day's log has been compressed to <code>&lt;date&gt;.jsonl.gz</code>; <code>false</code> for the active day's plain <code>.jsonl</code>). Reading either form via <code>LogsFile</code> returns the same decoded events. The host retains activity files for 180 days (rolling); older dates are removed and won't appear here.</p>
+                    <p>Each entry exposes <code>date</code> (<code>YYYY-MM-DD</code>, sorted newest-first), <code>sizeBytes</code> (raw byte size on disk; compressed size when <code>compressed: true</code>), and <code>compressed</code> (<code>true</code> once the day's log has been compressed to <code>&lt;date&gt;.jsonl.gz</code>; <code>false</code> for the active day's plain <code>.jsonl</code>). <code>sizeBytes</code> is <code>0</code> on a day with who-did-what rows and no log file, for example a day whose log was deleted. Reading either form via <code>LogsFile</code> returns the same decoded events. The host retains activity files for 180 days (rolling); older dates are removed and won't appear here.</p>
+                    <p><strong>Reading a stopped agent.</strong> When the agent isn't running, or its host doesn't answer, and it has who-did-what days, <code>LogsList</code> still answers <code>result: true</code> with those days and two more fields:</p>
+                    <pre><code class="language-json">{
+  "result": true,
+  "errors": [],
+  "runtimeUnavailable": "not_running",
+  "note": "The agent's own log days can be read while it runs, so this list may be missing days.",
+  "dates": [
+    { "date": "2026-05-03", "sizeBytes": null, "compressed": false },
+    { "date": "2026-05-01", "sizeBytes": null, "compressed": false }
+  ]
+}</code></pre>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td><code>runtimeUnavailable</code></td><td><code>string</code></td><td><code>"not_running"</code> or <code>"no_answer"</code>. Present only on this answer.</td></tr>
+                            <tr><td><code>note</code></td><td><code>string</code></td><td><code>The agent's own log days can be read while it runs, so this list may be missing days.</code> for <code>not_running</code>, <code>The agent's own log days could not be read just now, so this list may be missing days.</code> for <code>no_answer</code>.</td></tr>
+                            <tr><td><code>dates[].sizeBytes</code></td><td><code>null</code></td><td>On this answer the size of a day isn't known.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <p>An agent with no who-did-what days answers with one of the errors below.</p>
                   </section>
 
                   <section id="logs-file">
                     <h2><span class="endpoint-badge post">POST</span> /UserAgent/LogsFile</h2>
-                    <p>Reads the <strong>full</strong> JSONL file for a specific date and returns every event in it. Use this for "Download today's activity" buttons or for off-band analysis.</p>
+                    <p>Reads the <strong>full</strong> log of a specific date and returns every event in it, who-did-what rows included. A stopped agent and a deleted day read as on <code>Logs</code>. Use this for "Download today's activity" buttons or for off-band analysis.</p>
                     <div class="docs-param-table">
                       <div class="docs-param-table-wrapper">
                         <table>
@@ -27189,7 +27336,7 @@ foreach (array_slice($resp['transactions'], 0, 10) as $tx) {
 
                   <section id="logs-delete">
                     <h2><span class="endpoint-badge post">POST</span> /UserAgent/LogsDelete</h2>
-                    <p>Deletes one date's activity file and its gzipped sibling (if present). Idempotent: deleting an already-gone date is a success no-op.</p>
+                    <p>Deletes the agent's own turns and tool calls for one date: its activity file and the gzipped sibling, if present. Who-did-what rows stay, so the date can stay in <code>LogsList</code> with <code>sizeBytes: 0</code>. The deletion adds an <code>AGENT_LOG_DAY_DELETED</code> row on the day you make it, and reads of an earlier day you deleted start with a <code>runtime_log_deleted</code> note that says when. Idempotent: deleting an already-gone date is a success no-op.</p>
                     <div class="docs-param-table">
                       <div class="docs-param-table-wrapper">
                         <table>
@@ -27198,7 +27345,7 @@ foreach (array_slice($resp['transactions'], 0, 10) as $tx) {
                           </thead>
                           <tbody>
                             <tr><td><code>useragentguid</code></td><td>string</td><td>Yes</td><td>Your UserAgent instance guid.</td></tr>
-                            <tr><td><code>date</code></td><td>string</td><td>Yes</td><td><code>YYYY-MM-DD</code> of the file to remove.</td></tr>
+                            <tr><td><code>date</code></td><td>string</td><td>Yes</td><td><code>YYYY-MM-DD</code> of the day to delete.</td></tr>
                           </tbody>
                         </table>
                       </div>
@@ -27266,8 +27413,8 @@ for e in cron_runs:
     summary = e.get("summary") or {}
     print(f"  {e['title']} status={summary.get('status')}")</code></pre>
 
-                    <h3>GDPR-style "scrub a day"</h3>
-                    <p><code>LogsDelete</code> lets the user wipe a specific day's events without waiting for the 180-day rotation:</p>
+                    <h3>Delete a day</h3>
+                    <p><code>LogsDelete</code> removes the agent's own turns and tool calls for one day without waiting for the 180-day rotation. Who did what to the agent that day stays in the log:</p>
                     <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/LogsDelete" \
   -H "x-api-key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -27287,13 +27434,14 @@ for e in cron_runs:
                             <tr><td><code>date is required</code></td><td><code>LogsFile</code> / <code>LogsDelete</code> without <code>date</code></td></tr>
                             <tr><td><code>useragent-access-denied</code></td><td>Caller is neither the owner nor on the agent's team</td></tr>
                             <tr><td><code>useragent-team-admin-required</code></td><td>Caller is a member of the agent's team but not a team admin (code <code>97</code>)</td></tr>
-                            <tr><td><code>Agent is not assigned to a worker. It may not be running.</code></td><td>The agent isn't running on a host yet (never started, or being moved). Start it and retry</td></tr>
+                            <tr><td><code>Agent is not assigned to a worker. It may not be running.</code></td><td>The agent isn't running on a host (never started, stopped or being moved). Start it and retry</td></tr>
                             <tr><td><code>Worker not found</code></td><td>The agent's host is not available right now. Retry later</td></tr>
                             <tr><td><code>Agent is temporarily unavailable. Please try again shortly.</code></td><td>The agent's host did not answer (offline, network blip). Retry</td></tr>
                           </tbody>
                         </table>
                       </div>
                     </div>
+                    <p><code>Logs</code>, <code>LogsFile</code> and <code>LogsList</code> answer with the last three errors only when there are no who-did-what rows to show. <code>LogsDelete</code> needs the agent on a host every time.</p>
                   </section>
 
                   <section id="logs-retention">
@@ -27312,6 +27460,7 @@ for e in cron_runs:
                         </table>
                       </div>
                     </div>
+                    <p>Who-did-what rows are kept for the same 180 days.</p>
                     <div class="info-callout"><strong>Persistence is per-agent.</strong> If Wiro re-allocates the agent's runtime (rare; happens during platform maintenance), the activity history starts fresh from that point. For long-term audit trails, schedule a daily <code>LogsFile</code> download to your own storage.</div>
                   </section>
 

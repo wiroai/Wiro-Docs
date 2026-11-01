@@ -1213,7 +1213,7 @@ Updates an agent instance's **scalar fields only** (title, description, categori
 > | Upgrade Starter → Pro | [`POST /UserAgent/UpgradeTier`](#post-useragentupgradetier) |
 > | Upload a cover image (multipart) | [`POST /UserAgent/Cover`](#post-useragentcover) |
 > | Per-agent timezone or unified Chat Mode | [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) |
-> | View / download / purge activity logs | [`POST /UserAgent/Logs`](#post-useragentlogs) · [`LogsList`](#post-useragentlogslist) · [`LogsFile`](#post-useragentlogsfile) · [`LogsDelete`](#post-useragentlogsdelete) |
+> | View / download / delete activity logs | [`POST /UserAgent/Logs`](#post-useragentlogs) · [`LogsList`](#post-useragentlogslist) · [`LogsFile`](#post-useragentlogsfile) · [`LogsDelete`](#post-useragentlogsdelete) |
 > | Soft-delete a useragent | [`POST /UserAgent/Delete`](#post-useragentdelete) |
 
 > **Note:** `CredentialUpsert` writes credential fields **but does not transition `status: 6` on its own**. After filling the missing credentials, call `POST /UserAgent/Update` once (any scalar body works, even just `{ "guid": "<useragent-guid>" }`) to trigger the `setuprequired` re-check; that's the call that flips `status: 6 → 0` (Stopped) so the next `Start` succeeds.
@@ -2288,7 +2288,7 @@ Delete is safe to repeat: calling it again on an agent that's already deleted re
 
 #### **POST** /UserAgent/Logs
 
-Live activity feed for a useragent: what the agent did, when, and which user triggered it. The agent records one event per skill invocation, scheduled task and user message, grouped by day; this endpoint returns the latest N events for a given date, each with the user who triggered it.
+Live activity feed for a useragent: what the agent did, when, and which user triggered it. The agent records one event per skill invocation, scheduled task and user message, grouped by day; this endpoint returns the latest N events for a given date, each with the user who triggered it. What people and API keys did to the agent is in the same list, as `AGENT_*` rows; see [Agent Logs](/docs/agent-logs#who-did-what-rows).
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -2300,7 +2300,7 @@ Live activity feed for a useragent: what the agent did, when, and which user tri
 
 ##### Rate limit
 
-Calls are rate-limited via a 30-second server-side cache keyed on `(useragentguid, date, lines)`. The first call within a 30s window reads the live log; later calls within the window receive the cached payload. Poll every 30 seconds or more.
+Calls are rate-limited via a 30-second server-side cache keyed on `(useragentguid, date, lines)`. The first call within a 30s window reads the live log; later calls within the window receive the cached payload. Poll every 30 seconds or more. Who-did-what rows are read fresh on every call.
 
 ##### Response
 
@@ -2312,15 +2312,13 @@ Calls are rate-limited via a 30-second server-side cache keyed on `(useragentgui
     {
       "ts": "2026-05-03T14:00:03.000Z",
       "kind": "token_usage",
-      "title": "Turn billed — 5 credits",
-      "summary": { "trigger": "chat" },
+      "title": "Token Usage",
       "model": "openai/gpt-5.4",
       "tokens": { "input": 3450, "output": 820, "cacheRead": 2400, "cacheWrite": 0, "total": 6670 },
       "tokencost": 5,
       "durationMs": 4200,
       "calls": 2,
       "remainingcredits": 8995,
-      "ok": true,
       "userUuid": "ada-uuid",
       "user": {
         "uuid": "ada-uuid",
@@ -2375,12 +2373,12 @@ Calls are rate-limited via a 30-second server-side cache keyed on `(useragentgui
 |-------|------|-------------|
 | `events[]` | array | One row per activity entry, **newest first** (descending by `ts`), so `events[0]` is the most recent event. Do not re-reverse for display. |
 | `events[].ts` | string | ISO-8601 UTC datetime when the event was emitted (e.g. `"2026-05-03T14:00:01.000Z"`). Parse with `Date.parse(ts)` for arithmetic. |
-| `events[].kind` | string | Fine-grained event class. One of: `"turn_started"`, `"turn_ended"` (an LLM turn boundary); `"tool_started"`, `"tool_completed"` (one pair per tool call); `"tool_blocked"` (a tool call the agent's safety rules refused); `"cron_finished"` (a scheduled task finished); `"user_message"` (a message received on a connected Telegram, Slack or Discord channel, not web chat); `"token_usage"` (a billed turn's token usage: chat / cron / voice post-call); `"token_usage_idempotent"` (a replayed usage report, already billed, informational only); `"media_relay"` (files from a reply were delivered); `"background_reply"` (a result that finished in the background was delivered to the chat). |
+| `events[].kind` | string | Fine-grained event class. One of: `"turn_started"`, `"turn_ended"` (an LLM turn boundary); `"tool_started"`, `"tool_completed"` (one pair per tool call); `"tool_blocked"` (a tool call the agent's safety rules refused); `"cron_finished"` (a scheduled task finished); `"user_message"` (a message received on a connected Telegram, Slack or Discord channel, not web chat); `"token_usage"` (a billed turn's token usage: chat / cron / voice post-call); `"token_usage_idempotent"` (a replayed usage report, already billed, informational only); `"media_relay"` (files from a reply were delivered); `"background_reply"` (a result that finished in the background was delivered to the chat). Rows about what was done to the agent have `AGENT_*` kinds, and two note rows, `"runtime_log_unavailable"` and `"runtime_log_deleted"`, say what part of a day is missing; see [Agent Logs](/docs/agent-logs#who-did-what-rows). Show any kind you don't recognize by its `title`. |
 | `events[].tool` | string \| null | Present on `tool_started` / `tool_completed` / `tool_blocked`. The name of the tool the agent used. |
 | `events[].title` | string | Human-readable one-line description (always present). |
 | `events[].summary` | object \| null | Structured event-specific payload. Treat as opaque and render as JSON when expanding. Secret values (`apikey`, `apppassword`, `clientsecret`, `bearer`, `token`, …) are masked before the event is written. Keys vary per `kind`/`tool`. |
 | `events[].durationMs` | number \| null | Wall-clock duration in milliseconds. Populated on `tool_completed`, `turn_ended`, `cron_finished` and `token_usage` events. |
-| `events[].ok` | boolean \| null | `true` on success, `false` on failure. Populated on `tool_completed`, `turn_ended` and `cron_finished` events, and always `false` on `tool_blocked`. Pair with `error` for failures. |
+| `events[].ok` | boolean \| null | `true` on success, `false` on failure. Populated on `tool_completed`, `turn_ended` and `cron_finished` events, and always `false` on `tool_blocked`. Pair with `error` for failures. It is always `true` on `AGENT_*` rows. A `turn_ended` for a turn the caller cancelled has no `ok`, and its title reads `Agent turn cancelled`. |
 | `events[].error` | string \| null | One-line failure message (when `ok: false`). |
 | `events[].model` | string \| null | Canonical model slug billed for the turn. Present on `token_usage` / `token_usage_idempotent` events. |
 | `events[].tokens` | object \| null | Token breakdown on `token_usage` events: `{ input, output, cacheRead, cacheWrite, total }`, **nested camelCase** (distinct from the flat lowercase `inputtokens` / `outputtokens` / … columns on message + transaction rows; same underlying data, different shape). |
@@ -2390,20 +2388,24 @@ Calls are rate-limited via a 30-second server-side cache keyed on `(useragentgui
 | `events[].userUuid` | string \| null | Originating actor's UUID. `"system"` for cron / internal events. May be missing on older rows, in which case the server falls back to the agent owner. |
 | `events[].user` | object \| null | Resolved user shape (`uuid`, `firstname`, `lastname`, `email`, `username`, `avatar`, `avatarinitials`) when the actor is a real user. `null` for `system` events. |
 | `date` | string | The date that was actually read (`YYYY-MM-DD`). |
-| `totalLines` | number | **Total lines in the file** (regardless of `lines` cap). Use this to show "showing X of Y events" headers. |
+| `totalLines` | number | **Total rows for the day**, who-did-what rows and notes included, whatever the `lines` cap. Use this to show "showing X of Y events" headers. |
+
+**Reading a stopped agent.** When the agent isn't running, or its host doesn't answer, `Logs` still answers `result: true` for a day with who-did-what rows. `events` starts with a `runtime_log_unavailable` note, followed by those rows, and `totalLines` counts the note. An earlier day whose log was deleted starts with a `runtime_log_deleted` note instead. See [Agent Logs](/docs/agent-logs#who-did-what-rows).
 
 ##### Common errors
 
 | Error | When |
 |-------|------|
 | `useragentguid is required` | Missing `useragentguid` in the body |
-| `Agent is not assigned to a worker. It may not be running.` | The agent isn't running on a host yet (never started, or being moved). Start it and retry |
+| `Agent is not assigned to a worker. It may not be running.` | The agent isn't running on a host (never started, stopped or being moved). Start it and retry |
 | `Worker not found` | The agent's host is not available right now. Retry later |
 | `Agent is temporarily unavailable. Please try again shortly.` | The agent's host did not answer (offline, network blip). Retry |
 
+`Logs`, `LogsFile` and `LogsList` answer with the last three errors only when there are no who-did-what rows to show. `LogsDelete` needs the agent on a host every time.
+
 #### **POST** /UserAgent/LogsList
 
-Lists the dates for which an activity log exists. Useful for building a date-picker UI before calling `Logs` / `LogsFile` for that day.
+Lists the dates with activity: days with an activity log and days that only have who-did-what rows. Useful for building a date-picker UI before calling `Logs` / `LogsFile` for that day.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -2418,27 +2420,44 @@ Lists the dates for which an activity log exists. Useful for building a date-pic
   "dates": [
     { "date": "2026-05-03", "sizeBytes": 184320, "compressed": false },
     { "date": "2026-05-02", "sizeBytes": 92160,  "compressed": true  },
-    { "date": "2026-05-01", "sizeBytes": 71680,  "compressed": true  }
+    { "date": "2026-05-01", "sizeBytes": 0,      "compressed": false }
   ]
 }
 ```
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `dates[].date` | string | Activity-file date in `YYYY-MM-DD` form. Sorted newest-first. |
-| `dates[].sizeBytes` | number | Raw byte size of the file on disk (compressed size if `compressed: true`). |
+| `dates[].date` | string | Activity date in `YYYY-MM-DD` form. Sorted newest-first. |
+| `dates[].sizeBytes` | number \| null | Raw byte size of the file on disk (compressed size if `compressed: true`). `0` on a day with who-did-what rows and no log file, for example a day whose log was deleted. `null` when `runtimeUnavailable` is present. |
 | `dates[].compressed` | boolean | `true` once the day's log has been compressed (`<date>.jsonl.gz`); `false` for the active day's plain `.jsonl`. |
+| `runtimeUnavailable` | string | `"not_running"` or `"no_answer"`. Present only when the agent isn't running or its host doesn't answer and the list holds who-did-what days alone. |
+| `note` | string | Present with `runtimeUnavailable`: `The agent's own log days can be read while it runs, so this list may be missing days.` for `not_running`, `The agent's own log days could not be read just now, so this list may be missing days.` for `no_answer`. |
+
+**Reading a stopped agent.** A stopped agent, or one whose host doesn't answer, still answers `result: true` when it has who-did-what days:
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "runtimeUnavailable": "not_running",
+  "note": "The agent's own log days can be read while it runs, so this list may be missing days.",
+  "dates": [
+    { "date": "2026-05-03", "sizeBytes": null, "compressed": false },
+    { "date": "2026-05-01", "sizeBytes": null, "compressed": false }
+  ]
+}
+```
 
 The host retains activity files for 180 days (rolling); older dates are removed and won't appear here.
 
 #### **POST** /UserAgent/LogsDelete
 
-Removes one date's activity log, plain or compressed. Useful for scrubbing a specific day without waiting for the 180-day rotation.
+Deletes the agent's own turns and tool calls for one date, plain or compressed, without waiting for the 180-day rotation. Who-did-what rows stay: the date can stay in `LogsList` with `sizeBytes: 0`, and reads of an earlier day you deleted start with a `runtime_log_deleted` note that says when.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Your UserAgent instance guid |
-| `date` | string | Yes | Activity date to purge (`YYYY-MM-DD`). |
+| `date` | string | Yes | Activity date to delete (`YYYY-MM-DD`). |
 
 **Headers:** No extra header is needed. Access: the agent's owner or a team admin of the agent's team (plain team members are rejected with code `97`).
 
@@ -2478,7 +2497,7 @@ Downloads the **full** day's activity log (no `lines` cap). Use this when you ne
 }
 ```
 
-`events` is sorted **newest first** (descending by `ts`), the same contract as `Logs`, so `events[0]` is the freshest entry whether you're tailing the live day or downloading a historical one. `truncated: true` only when the log is larger than the read limit (currently 250k rows / 50 MB). For typical agents this stays `false`; if you ever see `true`, fall back to streaming the file directly via the panel's download link.
+`events` is sorted **newest first** (descending by `ts`), the same contract as `Logs`, so `events[0]` is the freshest entry whether you're tailing the live day or downloading a historical one. `truncated: true` only when the day's file is larger than 10 MiB: its newest 10 MiB of events are returned. Who-did-what rows are included, and a stopped agent and a deleted day read as on `Logs`.
 
 #### **POST** /UserAgent/Pin
 
