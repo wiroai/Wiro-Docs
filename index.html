@@ -17459,7 +17459,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </div>
 <p><strong>Headers:</strong> No extra header is needed. For team agents, use an API key from a project in the agent's team. Keys from another workspace are rejected.</p>
 <blockquote>
-<p>Renewal pricing is <strong>snapshot-driven</strong>: <code>monthlypriceusd</code> and <code>monthlycredits</code> are read straight off the useragent row (last touched by <code>Deploy</code>, <code>SkillsApply</code>, or <code>UpgradeTier</code>). Skill-registry weight changes between renewals do <strong>not</strong> propagate; the user keeps the price they last agreed to. To pick up new pricing, the user must explicitly call <code>SkillsApply</code> or <code>UpgradeTier</code> (both re-snapshot in the same transaction).</p>
+<p>Renewal pricing is <strong>snapshot-driven</strong>: <code>monthlypriceusd</code> and the allowance each renewal grants (<code>renewalcredits</code>) are read straight off the agent (last touched by <code>Deploy</code>, <code>SkillsApply</code>, or <code>UpgradeTier</code>). Skill-registry weight changes between renewals do <strong>not</strong> propagate; the user keeps the price they last agreed to. To pick up new pricing, the user must explicitly call <code>SkillsApply</code> or <code>UpgradeTier</code> (both re-snapshot in the same transaction).</p>
 </blockquote>
 <h5 id="response-undo-cancel">Response: undo-cancel</h5>
 <p>Called while the subscription is still <code>"active"</code> with a pending cancel flag set by <code>CancelSubscription</code>:</p>

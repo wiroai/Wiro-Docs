@@ -2971,7 +2971,7 @@ The endpoint inspects the current subscription state and picks the right operati
 
 **Headers:** No extra header is needed. For team agents, use an API key from a project in the agent's team. Keys from another workspace are rejected.
 
-> Renewal pricing is **snapshot-driven**: `monthlypriceusd` and `monthlycredits` are read straight off the useragent row (last touched by `Deploy`, `SkillsApply`, or `UpgradeTier`). Skill-registry weight changes between renewals do **not** propagate; the user keeps the price they last agreed to. To pick up new pricing, the user must explicitly call `SkillsApply` or `UpgradeTier` (both re-snapshot in the same transaction).
+> Renewal pricing is **snapshot-driven**: `monthlypriceusd` and the allowance each renewal grants (`renewalcredits`) are read straight off the agent (last touched by `Deploy`, `SkillsApply`, or `UpgradeTier`). Skill-registry weight changes between renewals do **not** propagate; the user keeps the price they last agreed to. To pick up new pricing, the user must explicitly call `SkillsApply` or `UpgradeTier` (both re-snapshot in the same transaction).
 
 ##### Response: undo-cancel
 
