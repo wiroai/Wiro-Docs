@@ -9185,6 +9185,8 @@ When every entry in your `skills` map already matches the persisted state and th
 | `noOp` | `boolean` | Present and `true` only on the no-op short-circuit response. Absent on the regular success path. When you see `noOp: true`, the rest of the field set (`tier`, `prepaidWalletDelta`, `restartTriggered`, `pricing`) is omitted, because there was nothing to apply. |
 | `tier` | `string` | The tier in effect after the call (`"starter"` or `"pro"`). Mirrors what was passed in `body.tier`, or the unchanged current tier if the request omitted it. |
 | `prepaidWalletDelta` | `number` | USD debited (positive) or credited (negative) from the wallet for the prorated price diff. `0` when the toggle batch is a no-op or the agent has no active subscription yet. |
+| `prepaidCreditParts` | `object` | Present when a credit landed. How it split over the balances that paid: `couponUsd`, `couponUntilPeriodEndUsd` (the part of `couponUsd` whose coupon has ended, which lasts until the period ends), `storeUsd`, `depositUsd`. |
+| `prepaidCreditFailedUsd` | `number` | Present when part of a credit was not added to the wallet. `warnings[]` says what to do next. |
 | `restartTriggered` | `boolean` | `true` when the agent runtime was restarted to pick up the new skill set. `false` for stopped agents (no restart needed) or no-op batches. |
 | `restartedAt` | `number\|null` | Unix seconds when the restart trigger fired. `null` when `restartTriggered` is `false`. |
 | `pricing.previousPriceUsd` / `newPriceUsd` / `deltaUsd` | `number` | USD totals before / after the apply, plus the signed delta. |
@@ -9202,6 +9204,8 @@ When every entry in your `skills` map already matches the persisted state and th
 | `105` | `skillsapply-tier-downgrade`: Pro → Starter rejected. Cancel + re-subscribe instead. |
 | `106` | `skillsapply-subscription-inactive`: subscription must be `active` to mutate. |
 | `108` | `skillsapply-db-tx-failed`: DB transaction rolled back; safe to retry with a new idempotency key. |
+| `109` | `skillsapply-stripe-failed`: the payment for the change failed, and the change was taken back. Fix the billing, then retry with a new idempotency key. |
+| `110` | The change failed and could not be taken back: the agent may still have the new skills and price. Check them with `UserAgent/Detail` before changing anything. The same idempotency key answers `110` again. |
 
 #### **POST** /UserAgent/PricingPreview
 
@@ -9955,7 +9959,7 @@ Upgrades the active subscription from **Starter → Pro**. The capability surfac
 
 **Headers:** No extra header is needed. For team agents, use an API key from a project in the agent's team. Keys from another workspace are rejected.
 
-API-deployed agents always upgrade through the prepaid path. The endpoint debits the prorated upgrade fee `Math.max(0, ((P_pro − P_starter) / totalDays) × remainingDays)` from your wallet synchronously, moves the subscription to Pro pricing and credits right away, and restarts the agent. Existing extra credits and `usedcredits` are preserved.
+API-deployed agents always upgrade through the prepaid path. The endpoint debits the prorated upgrade fee from your wallet synchronously: the monthly price difference for the time left in the current period, by the second, rounded up to the cent, and at least one day's worth. It moves the subscription to Pro pricing and credits right away, and restarts the agent. Existing extra credits and `usedcredits` are preserved.
 
 ##### Response
 
@@ -10955,7 +10959,7 @@ The response includes the new pricing snapshot and the prorated wallet debit:
 }
 ```
 
-`prepaidWalletDelta` is the prorated USD amount debited from your wallet for the remaining days of the current period. The same wallet is credited if you disable a paid skill mid-period (negative delta).
+`prepaidWalletDelta` is the USD amount debited from your wallet for the rest of the current period: the monthly difference for the time left, by the second, rounded up to the cent, and at least one day's worth. If you disable a paid skill mid-period the delta is negative and rounds down to the cent: the money goes back to the balances that paid for the period. Coupon credit keeps the end date of its coupon, and store revenue and deposit credit last until the period ends.
 
 ### Batch toggle + tier upgrade in one call
 
@@ -16384,6 +16388,7 @@ The ledger is the single source of truth for "where did my credits go?" and powe
 | `grant` | Skill toggle / tier upgrade | When a skill is enabled mid-period and the credit pool grows, or when a tier upgrade lifts the monthly allocation. Positive `amount`. |
 | `expired` | Skill toggle / subscription end | Two cases share the type. Mid-period: when a skill is disabled and the credit pool shrinks (`action: "skill-toggle"`). End-of-period: when a cancelled subscription rolls past `currentperiodend` and the cron revokes any remaining monthly leftover (`action: "subscription"`). Negative `amount` in both cases. |
 | `refund` | Server-side refund | Issued by Wiro support when a previous charge is reversed. Positive `amount`. |
+| `adjust` | Skill change / Wiro support | A record for Wiro support. `amount` is `0` on `action: "skill-change-not-undone"` (a failed change that could not be taken back) and `action: "skill-credit-failed"` (a credit that was not added to the wallet). |
 
 > **The ledger is append-only.** There is no delete endpoint. Each row carries a stable `guid` that the server uses for deduplication (so a duplicate retry of the same deduct event is a no-op).
 
@@ -16587,8 +16592,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 | Field | Type | Description |
 |-------|------|-------------|
 | `guid` | `string` | Stable id of the ledger row. Daemon retries reuse this guid for idempotency. |
-| `type` | `string` | One of `"deduct"`, `"renewal"`, `"purchase"`, `"grant"`, `"expired"`, `"refund"`. There is no `"cancel"` type: a user-initiated subscription cancel only flips auto-renew off; credits are not forfeited until `currentperiodend` is reached, at which point the cron writes the ledger row as `type: "expired"`, `action: "subscription"`. |
-| `action` | `string\|null` | Fine-grained detail. Values depend on `type`: `"tokens"` (deduct: the per-turn LLM token charge Wiro records for every chat, cron, and voice post-call turn); `"monthly"` (renewal); `"small"`, `"medium"`, `"large"` (purchase); `"skill-toggle"`, `"skills-apply"`, `"upgrade"`, `"tier-change"` (grant); `"skill-toggle"` (expired, mid-period skill disable); `"subscription"` (expired, end-of-period cancel rollover; refund). Legacy deduct rows may also carry `"message"`, `"create"`, `"modify"`, or `"regenerate"`. |
+| `type` | `string` | One of `"deduct"`, `"renewal"`, `"purchase"`, `"grant"`, `"expired"`, `"refund"`, `"adjust"`. There is no `"cancel"` type: a user-initiated subscription cancel only flips auto-renew off; credits are not forfeited until `currentperiodend` is reached, at which point the cron writes the ledger row as `type: "expired"`, `action: "subscription"`. |
+| `action` | `string\|null` | Fine-grained detail. Values depend on `type`: `"tokens"` (deduct: the per-turn LLM token charge Wiro records for every chat, cron, and voice post-call turn); `"monthly"` (renewal); `"small"`, `"medium"`, `"large"` (purchase); `"skill-toggle"`, `"skills-apply"`, `"upgrade"`, `"tier-change"` (grant); `"skill-toggle"` (expired, mid-period skill disable); `"subscription"` (expired, end-of-period cancel rollover; refund); `"skill-change-not-undone"`, `"skill-credit-failed"` (adjust). Legacy deduct rows may also carry `"message"`, `"create"`, `"modify"`, or `"regenerate"`. |
 | `amount` | `number` | Signed credit delta: negative for deductions, positive for grants. |
 | `balanceafter` | `number\|null` | Remaining credit balance snapshot written at the time of the event. `null` on per-turn `deduct` rows. |
 | `description` | `string\|null` | Human-readable label. |

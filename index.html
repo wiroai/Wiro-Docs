@@ -15596,6 +15596,16 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <td>USD debited (positive) or credited (negative) from the wallet for the prorated price diff. <code>0</code> when the toggle batch is a no-op or the agent has no active subscription yet.</td>
 </tr>
 <tr>
+<td><code>prepaidCreditParts</code></td>
+<td><code>object</code></td>
+<td>Present when a credit landed. How it split over the balances that paid: <code>couponUsd</code>, <code>couponUntilPeriodEndUsd</code> (the part of <code>couponUsd</code> whose coupon has ended, which lasts until the period ends), <code>storeUsd</code>, <code>depositUsd</code>.</td>
+</tr>
+<tr>
+<td><code>prepaidCreditFailedUsd</code></td>
+<td><code>number</code></td>
+<td>Present when part of a credit was not added to the wallet. <code>warnings[]</code> says what to do next.</td>
+</tr>
+<tr>
 <td><code>restartTriggered</code></td>
 <td><code>boolean</code></td>
 <td><code>true</code> when the agent runtime was restarted to pick up the new skill set. <code>false</code> for stopped agents (no restart needed) or no-op batches.</td>
@@ -15662,6 +15672,14 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <tr>
 <td><code>108</code></td>
 <td><code>skillsapply-db-tx-failed</code>: DB transaction rolled back; safe to retry with a new idempotency key.</td>
+</tr>
+<tr>
+<td><code>109</code></td>
+<td><code>skillsapply-stripe-failed</code>: the payment for the change failed, and the change was taken back. Fix the billing, then retry with a new idempotency key.</td>
+</tr>
+<tr>
+<td><code>110</code></td>
+<td>The change failed and could not be taken back: the agent may still have the new skills and price. Check them with <code>UserAgent/Detail</code> before changing anything. The same idempotency key answers <code>110</code> again.</td>
 </tr>
 </tbody>
 </table>
@@ -17027,7 +17045,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </div>
 </div>
 <p><strong>Headers:</strong> No extra header is needed. For team agents, use an API key from a project in the agent's team. Keys from another workspace are rejected.</p>
-<p>API-deployed agents always upgrade through the prepaid path. The endpoint debits the prorated upgrade fee <code>Math.max(0, ((P_pro − P_starter) / totalDays) × remainingDays)</code> from your wallet synchronously, moves the subscription to Pro pricing and credits right away, and restarts the agent. Existing extra credits and <code>usedcredits</code> are preserved.</p>
+<p>API-deployed agents always upgrade through the prepaid path. The endpoint debits the prorated upgrade fee from your wallet synchronously: the monthly price difference for the time left in the current period, by the second, rounded up to the cent, and at least one day's worth. It moves the subscription to Pro pricing and credits right away, and restarts the agent. Existing extra credits and <code>usedcredits</code> are preserved.</p>
 <h5 id="response_32">Response</h5>
 <pre><code class="language-json">{
   &quot;result&quot;: true,
@@ -26061,7 +26079,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
   }
 }
 </code></pre>
-<p><code>prepaidWalletDelta</code> is the prorated USD amount debited from your wallet for the remaining days of the current period. The same wallet is credited if you disable a paid skill mid-period (negative delta).</p>
+<p><code>prepaidWalletDelta</code> is the USD amount debited from your wallet for the rest of the current period: the monthly difference for the time left, by the second, rounded up to the cent, and at least one day's worth. If you disable a paid skill mid-period the delta is negative and rounds down to the cent: the money goes back to the balances that paid for the period. Coupon credit keeps the end date of its coupon, and store revenue and deposit credit last until the period ends.</p>
 <h3 id="batch-toggle-tier-upgrade-in-one-call">Batch toggle + tier upgrade in one call</h3>
 <p>When the user stages many toggles in your UI and commits them all together, send everything in one <code>SkillsApply</code> call:</p>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/SkillsApply&quot; \
@@ -26229,6 +26247,11 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
                               <td><code>refund</code></td>
                               <td>Server-side refund</td>
                               <td>Issued by Wiro support when a previous charge is reversed. Positive <code>amount</code>.</td>
+                            </tr>
+                            <tr>
+                              <td><code>adjust</code></td>
+                              <td>Skill change / Wiro support</td>
+                              <td>A record for Wiro support. <code>amount</code> is <code>0</code> on <code>action: "skill-change-not-undone"</code> (a failed change that could not be taken back) and <code>action: "skill-credit-failed"</code> (a credit that was not added to the wallet).</td>
                             </tr>
                           </tbody>
                         </table>
@@ -26469,8 +26492,8 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
                           </thead>
                           <tbody>
                             <tr><td><code>guid</code></td><td><code>string</code></td><td>Stable id of the ledger row. Daemon retries reuse this guid for idempotency.</td></tr>
-                            <tr><td><code>type</code></td><td><code>string</code></td><td>One of <code>"deduct"</code>, <code>"renewal"</code>, <code>"purchase"</code>, <code>"grant"</code>, <code>"expired"</code>, <code>"refund"</code>. There is no <code>"cancel"</code> type: a user-initiated subscription cancel only flips auto-renew off; credits are not forfeited until <code>currentperiodend</code> is reached, at which point the cron writes the ledger row as <code>type: "expired"</code>, <code>action: "subscription"</code>.</td></tr>
-                            <tr><td><code>action</code></td><td><code>string|null</code></td><td>Fine-grained detail. Values depend on <code>type</code>: <code>"tokens"</code> (deduct: the per-turn LLM token charge Wiro records for every chat, cron, and voice post-call turn); <code>"monthly"</code> (renewal); <code>"small"</code>, <code>"medium"</code>, <code>"large"</code> (purchase); <code>"skill-toggle"</code>, <code>"skills-apply"</code>, <code>"upgrade"</code>, <code>"tier-change"</code> (grant); <code>"skill-toggle"</code> (expired, mid-period skill disable); <code>"subscription"</code> (expired, end-of-period cancel rollover; refund). Legacy deduct rows may also carry <code>"message"</code>, <code>"create"</code>, <code>"modify"</code>, or <code>"regenerate"</code>.</td></tr>
+                            <tr><td><code>type</code></td><td><code>string</code></td><td>One of <code>"deduct"</code>, <code>"renewal"</code>, <code>"purchase"</code>, <code>"grant"</code>, <code>"expired"</code>, <code>"refund"</code>, <code>"adjust"</code>. There is no <code>"cancel"</code> type: a user-initiated subscription cancel only flips auto-renew off; credits are not forfeited until <code>currentperiodend</code> is reached, at which point the cron writes the ledger row as <code>type: "expired"</code>, <code>action: "subscription"</code>.</td></tr>
+                            <tr><td><code>action</code></td><td><code>string|null</code></td><td>Fine-grained detail. Values depend on <code>type</code>: <code>"tokens"</code> (deduct: the per-turn LLM token charge Wiro records for every chat, cron, and voice post-call turn); <code>"monthly"</code> (renewal); <code>"small"</code>, <code>"medium"</code>, <code>"large"</code> (purchase); <code>"skill-toggle"</code>, <code>"skills-apply"</code>, <code>"upgrade"</code>, <code>"tier-change"</code> (grant); <code>"skill-toggle"</code> (expired, mid-period skill disable); <code>"subscription"</code> (expired, end-of-period cancel rollover; refund); <code>"skill-change-not-undone"</code>, <code>"skill-credit-failed"</code> (adjust). Legacy deduct rows may also carry <code>"message"</code>, <code>"create"</code>, <code>"modify"</code>, or <code>"regenerate"</code>.</td></tr>
                             <tr><td><code>amount</code></td><td><code>number</code></td><td>Signed credit delta: negative for deductions, positive for grants.</td></tr>
                             <tr><td><code>balanceafter</code></td><td><code>number|null</code></td><td>Remaining credit balance snapshot written at the time of the event. <code>null</code> on per-turn <code>deduct</code> rows.</td></tr>
                             <tr><td><code>description</code></td><td><code>string|null</code></td><td>Human-readable label.</td></tr>

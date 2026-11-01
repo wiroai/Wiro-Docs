@@ -1998,6 +1998,8 @@ When every entry in your `skills` map already matches the persisted state and th
 | `noOp` | `boolean` | Present and `true` only on the no-op short-circuit response. Absent on the regular success path. When you see `noOp: true`, the rest of the field set (`tier`, `prepaidWalletDelta`, `restartTriggered`, `pricing`) is omitted, because there was nothing to apply. |
 | `tier` | `string` | The tier in effect after the call (`"starter"` or `"pro"`). Mirrors what was passed in `body.tier`, or the unchanged current tier if the request omitted it. |
 | `prepaidWalletDelta` | `number` | USD debited (positive) or credited (negative) from the wallet for the prorated price diff. `0` when the toggle batch is a no-op or the agent has no active subscription yet. |
+| `prepaidCreditParts` | `object` | Present when a credit landed. How it split over the balances that paid: `couponUsd`, `couponUntilPeriodEndUsd` (the part of `couponUsd` whose coupon has ended, which lasts until the period ends), `storeUsd`, `depositUsd`. |
+| `prepaidCreditFailedUsd` | `number` | Present when part of a credit was not added to the wallet. `warnings[]` says what to do next. |
 | `restartTriggered` | `boolean` | `true` when the agent runtime was restarted to pick up the new skill set. `false` for stopped agents (no restart needed) or no-op batches. |
 | `restartedAt` | `number\|null` | Unix seconds when the restart trigger fired. `null` when `restartTriggered` is `false`. |
 | `pricing.previousPriceUsd` / `newPriceUsd` / `deltaUsd` | `number` | USD totals before / after the apply, plus the signed delta. |
@@ -2015,6 +2017,8 @@ When every entry in your `skills` map already matches the persisted state and th
 | `105` | `skillsapply-tier-downgrade`: Pro → Starter rejected. Cancel + re-subscribe instead. |
 | `106` | `skillsapply-subscription-inactive`: subscription must be `active` to mutate. |
 | `108` | `skillsapply-db-tx-failed`: DB transaction rolled back; safe to retry with a new idempotency key. |
+| `109` | `skillsapply-stripe-failed`: the payment for the change failed, and the change was taken back. Fix the billing, then retry with a new idempotency key. |
+| `110` | The change failed and could not be taken back: the agent may still have the new skills and price. Check them with `UserAgent/Detail` before changing anything. The same idempotency key answers `110` again. |
 
 #### **POST** /UserAgent/PricingPreview
 
@@ -2768,7 +2772,7 @@ Upgrades the active subscription from **Starter → Pro**. The capability surfac
 
 **Headers:** No extra header is needed. For team agents, use an API key from a project in the agent's team. Keys from another workspace are rejected.
 
-API-deployed agents always upgrade through the prepaid path. The endpoint debits the prorated upgrade fee `Math.max(0, ((P_pro − P_starter) / totalDays) × remainingDays)` from your wallet synchronously, moves the subscription to Pro pricing and credits right away, and restarts the agent. Existing extra credits and `usedcredits` are preserved.
+API-deployed agents always upgrade through the prepaid path. The endpoint debits the prorated upgrade fee from your wallet synchronously: the monthly price difference for the time left in the current period, by the second, rounded up to the cent, and at least one day's worth. It moves the subscription to Pro pricing and credits right away, and restarts the agent. Existing extra credits and `usedcredits` are preserved.
 
 ##### Response
 

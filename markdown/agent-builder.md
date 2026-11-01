@@ -318,7 +318,7 @@ The response includes the new pricing snapshot and the prorated wallet debit:
 }
 ```
 
-`prepaidWalletDelta` is the prorated USD amount debited from your wallet for the remaining days of the current period. The same wallet is credited if you disable a paid skill mid-period (negative delta).
+`prepaidWalletDelta` is the USD amount debited from your wallet for the rest of the current period: the monthly difference for the time left, by the second, rounded up to the cent, and at least one day's worth. If you disable a paid skill mid-period the delta is negative and rounds down to the cent: the money goes back to the balances that paid for the period. Coupon credit keeps the end date of its coupon, and store revenue and deposit credit last until the period ends.
 
 ### Batch toggle + tier upgrade in one call
 

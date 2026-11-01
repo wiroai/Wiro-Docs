@@ -16,6 +16,7 @@ The ledger is the single source of truth for "where did my credits go?" and powe
 | `grant` | Skill toggle / tier upgrade | When a skill is enabled mid-period and the credit pool grows, or when a tier upgrade lifts the monthly allocation. Positive `amount`. |
 | `expired` | Skill toggle / subscription end | Two cases share the type. Mid-period: when a skill is disabled and the credit pool shrinks (`action: "skill-toggle"`). End-of-period: when a cancelled subscription rolls past `currentperiodend` and the cron revokes any remaining monthly leftover (`action: "subscription"`). Negative `amount` in both cases. |
 | `refund` | Server-side refund | Issued by Wiro support when a previous charge is reversed. Positive `amount`. |
+| `adjust` | Skill change / Wiro support | A record for Wiro support. `amount` is `0` on `action: "skill-change-not-undone"` (a failed change that could not be taken back) and `action: "skill-credit-failed"` (a credit that was not added to the wallet). |
 
 > **The ledger is append-only.** There is no delete endpoint. Each row carries a stable `guid` that the server uses for deduplication (so a duplicate retry of the same deduct event is a no-op).
 
@@ -219,8 +220,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 | Field | Type | Description |
 |-------|------|-------------|
 | `guid` | `string` | Stable id of the ledger row. Daemon retries reuse this guid for idempotency. |
-| `type` | `string` | One of `"deduct"`, `"renewal"`, `"purchase"`, `"grant"`, `"expired"`, `"refund"`. There is no `"cancel"` type: a user-initiated subscription cancel only flips auto-renew off; credits are not forfeited until `currentperiodend` is reached, at which point the cron writes the ledger row as `type: "expired"`, `action: "subscription"`. |
-| `action` | `string\|null` | Fine-grained detail. Values depend on `type`: `"tokens"` (deduct: the per-turn LLM token charge Wiro records for every chat, cron, and voice post-call turn); `"monthly"` (renewal); `"small"`, `"medium"`, `"large"` (purchase); `"skill-toggle"`, `"skills-apply"`, `"upgrade"`, `"tier-change"` (grant); `"skill-toggle"` (expired, mid-period skill disable); `"subscription"` (expired, end-of-period cancel rollover; refund). Legacy deduct rows may also carry `"message"`, `"create"`, `"modify"`, or `"regenerate"`. |
+| `type` | `string` | One of `"deduct"`, `"renewal"`, `"purchase"`, `"grant"`, `"expired"`, `"refund"`, `"adjust"`. There is no `"cancel"` type: a user-initiated subscription cancel only flips auto-renew off; credits are not forfeited until `currentperiodend` is reached, at which point the cron writes the ledger row as `type: "expired"`, `action: "subscription"`. |
+| `action` | `string\|null` | Fine-grained detail. Values depend on `type`: `"tokens"` (deduct: the per-turn LLM token charge Wiro records for every chat, cron, and voice post-call turn); `"monthly"` (renewal); `"small"`, `"medium"`, `"large"` (purchase); `"skill-toggle"`, `"skills-apply"`, `"upgrade"`, `"tier-change"` (grant); `"skill-toggle"` (expired, mid-period skill disable); `"subscription"` (expired, end-of-period cancel rollover; refund); `"skill-change-not-undone"`, `"skill-credit-failed"` (adjust). Legacy deduct rows may also carry `"message"`, `"create"`, `"modify"`, or `"regenerate"`. |
 | `amount` | `number` | Signed credit delta: negative for deductions, positive for grants. |
 | `balanceafter` | `number\|null` | Remaining credit balance snapshot written at the time of the event. `null` on per-turn `deduct` rows. |
 | `description` | `string\|null` | Human-readable label. |
