@@ -678,6 +678,7 @@ If you call `POST /UserAgent/Deploy` with `useprepaid: true`, you may pass `cred
 - Each entry must have a `key`. Server reads `value`, `interval`, `enabled`, `description`, and treats `_user_created: true` as an explicit user-created cron (auto-prefixing the key with `cron-` if missing).
 - A scheduled task's `interval` is checked as in `CustomSkillUpsert`, and `"manual"` means no schedule. A schedule the agent can't run fails Deploy before anything is created or charged, with an error that starts with the skill's key, such as `cs-cron-daily-report: This schedule can't run. The hour field takes 0 to 23. A schedule has five fields: minute hour day month weekday, for example 0 9 * * 1-5.`
 - The request body accepts a single top-level `customskills` array; server-side values are merged onto any existing preset rows for the same key.
+- Up to 50 entries per Deploy. A longer list is refused before anything is created or charged; add the rest with `CustomSkillUpsert` once the agent is deployed.
 
 If you skip these keys in Deploy entirely, the instance is created empty and you set credentials/skills later with `CredentialUpsert`, `CredentialProjectBind`, `CustomSkillUpsert`, and `SkillsApply`.
 

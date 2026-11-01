@@ -12994,7 +12994,7 @@ pro.credits = starter.credits × tiermultiplier
 <td><code>customskills</code></td>
 <td>array</td>
 <td>No</td>
-<td>Inline custom skill rows. Each entry: <code>{ key, value?, interval?, enabled?, description?, _user_created? }</code>. A scheduled task's <code>interval</code> must be a schedule the agent can run, as in <a href="#post-useragentcustomskillupsert"><code>CustomSkillUpsert</code></a>, and <code>"manual"</code> means no schedule. Otherwise Deploy fails before anything is created or charged, and the error starts with the skill's key.</td>
+<td>Inline custom skill rows. Each entry: <code>{ key, value?, interval?, enabled?, description?, _user_created? }</code>. A scheduled task's <code>interval</code> must be a schedule the agent can run, as in <a href="#post-useragentcustomskillupsert"><code>CustomSkillUpsert</code></a>, and <code>"manual"</code> means no schedule. Otherwise Deploy fails before anything is created or charged, and the error starts with the skill's key. Up to 50 entries; add more with <a href="#post-useragentcustomskillupsert"><code>CustomSkillUpsert</code></a> once the agent is deployed.</td>
 </tr>
 <tr>
 <td><code>wiroapiallowedpaths</code></td>
@@ -17688,6 +17688,10 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <tr>
 <td><code>&lt;skillkey&gt;:</code> followed by the same sentence</td>
 <td><code>Deploy</code> with a <code>customskills</code> entry whose <code>interval</code> the agent can't run, or whose date never comes. Nothing is created or charged.</td>
+</tr>
+<tr>
+<td><code>A deploy takes up to 50 entries in customskills, and this one sent &lt;n&gt;. Send at most 50, then add the rest with /UserAgent/CustomSkillUpsert once the agent is deployed.</code></td>
+<td><code>Deploy</code> with more than 50 <code>customskills</code> entries. Nothing is created or charged.</td>
 </tr>
 <tr>
 <td><code>Agent setup is not complete. Please finish setting up your connectors before starting.</code></td>
@@ -23090,6 +23094,7 @@ pending provider review.</p>
 <li>Each entry must have a <code>key</code>. Server reads <code>value</code>, <code>interval</code>, <code>enabled</code>, <code>description</code>, and treats <code>_user_created: true</code> as an explicit user-created cron (auto-prefixing the key with <code>cron-</code> if missing).</li>
 <li>A scheduled task's <code>interval</code> is checked as in <code>CustomSkillUpsert</code>, and <code>"manual"</code> means no schedule. A schedule the agent can't run fails Deploy before anything is created or charged, with an error that starts with the skill's key, such as <code>cs-cron-daily-report: This schedule can't run. The hour field takes 0 to 23. A schedule has five fields: minute hour day month weekday, for example 0 9 * * 1-5.</code></li>
 <li>The request body accepts a single top-level <code>customskills</code> array; server-side values are merged onto any existing preset rows for the same key.</li>
+<li>Up to 50 entries per Deploy. A longer list is refused before anything is created or charged; add the rest with <code>CustomSkillUpsert</code> once the agent is deployed.</li>
 </ul>
 <p>If you skip these keys in Deploy entirely, the instance is created empty and you set credentials/skills later with <code>CredentialUpsert</code>, <code>CredentialProjectBind</code>, <code>CustomSkillUpsert</code>, and <code>SkillsApply</code>.</p>
 <h2 id="oauth-authorization-flow">OAuth Authorization Flow</h2>
