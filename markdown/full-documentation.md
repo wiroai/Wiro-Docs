@@ -7934,7 +7934,7 @@ Retrieves full details for a single deployed agent instance, including subscript
       "tiermultiplier": 10,
       "status": 4,
       "pinned": true,
-      "setuprequired": false,
+      "setuprequired": true,
       "communicationChannels": [
         { "id": "telegram", "credentialkey": "telegram", "title": "Telegram", "required_fields": ["bottoken", "allowedusers"], "capabilities": { "direct": true, "rooms": true, "threads": true, "roles": false, "command_menu": true }, "schema": { "title": "Telegram", "fields": [ "..." ] }, "enabled": false, "configured": false, "missingfields": ["bottoken", "allowedusers"] }
       ],
