@@ -12588,7 +12588,7 @@ pro.credits = starter.credits × tiermultiplier
 <tr>
 <td><code>6</code></td>
 <td>Setup Required</td>
-<td>Agent needs credentials or configuration before it can start. Provide them via <code>CredentialUpsert</code> / <code>CredentialProjectBind</code> / <code>CustomSkillUpsert</code> / <code>SkillsApply</code>.</td>
+<td>Agent needs credentials or configuration before it can start. Provide them via <code>CredentialUpsert</code> / <code>CredentialProjectBind</code> / <code>CustomSkillUpsert</code> / <code>SkillsApply</code>, then call <code>POST /UserAgent/Update</code>.</td>
 </tr>
 </tbody>
 </table>
@@ -13245,7 +13245,7 @@ pro.credits = starter.credits × tiermultiplier
 <tbody>
 <tr>
 <td><code>status: 6</code></td>
-<td><strong>Setup Required</strong>: initial state for every fresh Deploy. With <code>useprepaid: true</code>, auto-queues to <code>status: 2</code> as soon as the subscription is provisioned, regardless of credential completeness. If credentials are still missing when the agent starts, the start fails with <code>Agent setup is not complete</code> and the row drops to <code>status: 5</code> (Errored). Fill the missing credentials with <code>POST /UserAgent/CredentialUpsert</code>, then call <code>POST /UserAgent/Update</code> (any scalar body, even just <code>{ "guid": "&lt;useragent-guid&gt;" }</code>) to flip the row back to <code>status: 0</code> (Stopped). <code>Update</code> is the endpoint that performs the <code>setuprequired</code> re-check and the <code>6 → 0</code> transition. Then call <code>Start</code> to launch.</td>
+<td><strong>Setup Required</strong>: initial state for every fresh Deploy. With <code>useprepaid: true</code>, auto-queues to <code>status: 2</code> as soon as the subscription is provisioned, regardless of credential completeness. If credentials are still missing when the agent starts, the start fails with <code>Agent setup is not complete</code> and the row drops to <code>status: 5</code> (Errored). Fill the missing connectors with <code>POST /UserAgent/CredentialUpsert</code> or <code>POST /UserAgent/CredentialProjectBind</code>, then call <code>Start</code> again. A row still at <code>status: 6</code> needs <code>POST /UserAgent/Update</code> first (any scalar body, even just <code>{ "guid": "&lt;useragent-guid&gt;" }</code>) to flip it to <code>status: 0</code> (Stopped): <code>Update</code> is the endpoint that performs the <code>setuprequired</code> re-check and the <code>6 → 0</code> transition.</td>
 </tr>
 <tr>
 <td><code>status: 2</code></td>
@@ -13257,7 +13257,7 @@ pro.credits = starter.credits × tiermultiplier
 </tr>
 <tr>
 <td><code>setuprequired: false</code></td>
-<td>All non-optional credentials complete. The next <code>POST /UserAgent/Update</code> call flips the row 6 → 0 if it was sitting at Setup Required; <code>Start</code> then launches it normally.</td>
+<td>All non-optional connectors are set up and the row has left <code>status: 6</code>. A row sitting at Setup Required reads <code>true</code> until a <code>POST /UserAgent/Update</code> call flips it 6 → 0; <code>Start</code> then launches it normally.</td>
 </tr>
 </tbody>
 </table>
@@ -14348,7 +14348,7 @@ pro.credits = starter.credits × tiermultiplier
 </table>
 </div>
 </div>
-<p><strong>Note:</strong> <code>CredentialUpsert</code> writes credential fields <strong>but does not transition <code>status: 6</code> on its own</strong>. After filling the missing credentials, call <code>POST /UserAgent/Update</code> once (any scalar body works, even just <code>{ "guid": "&lt;useragent-guid&gt;" }</code>) to trigger the <code>setuprequired</code> re-check; that's the call that flips <code>status: 6 → 0</code> (Stopped) so the next <code>Start</code> succeeds.</p>
+<p><strong>Note:</strong> <code>CredentialUpsert</code> and <code>CredentialProjectBind</code> save connector fields <strong>but do not transition <code>status: 6</code> on their own</strong>. After setting up the missing connectors, call <code>POST /UserAgent/Update</code> once (any scalar body works, even just <code>{ "guid": "&lt;useragent-guid&gt;" }</code>) to trigger the <code>setuprequired</code> re-check; that's the call that flips <code>status: 6 → 0</code> (Stopped) so the next <code>Start</code> succeeds.</p>
 </blockquote>
 <h5 id="response_4">Response</h5>
 <p>A changed <code>title</code> on a running agent:</p>
@@ -14942,6 +14942,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </div>
 </div>
 <p>Binding the project an agent already has changes nothing and restarts nothing. Changing a project's IP whitelist gives the project a new API secret; to load it, restart the agent with <code>POST /UserAgent/Update</code> and a body of <code>{ "guid": "&lt;useragent-guid&gt;" }</code>.</p>
+<p>On an agent at <code>status: 6</code> (Setup Required), call <code>POST /UserAgent/Update</code> with <code>{ "guid": "&lt;useragent-guid&gt;" }</code> after binding, as after <code>CredentialUpsert</code>. Binding doesn't change <code>status</code>: <code>Update</code> moves the agent to <code>status: 0</code> (Stopped) once every required connector is set up, and <code>Start</code> refuses it until then.</p>
 <p>If you already hold a project's key, <a href="#post-useragentcredentialupsert"><code>CredentialUpsert</code></a> with <code>credentialkey</code> <code>wiro</code> and <code>fieldname</code> <code>apikey</code> saves it too.</p>
 <h5 id="credentialprojectbind-errors">Common errors</h5>
 <p>Each of these comes back with <code>result: false</code>, and nothing is saved.</p>
@@ -17538,7 +17539,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </tr>
 <tr>
 <td><code>Agent setup is not complete. Please finish setting up your connectors before starting.</code></td>
-<td>Status is <code>6</code>: call <code>CredentialUpsert</code> / <code>CredentialProjectBind</code> / <code>SkillsApply</code> / <code>CustomSkillUpsert</code> to provide required values</td>
+<td>Status is <code>6</code>: call <code>CredentialUpsert</code> / <code>CredentialProjectBind</code> / <code>SkillsApply</code> / <code>CustomSkillUpsert</code> to provide required values, then <code>POST /UserAgent/Update</code> to move the agent to status <code>0</code></td>
 </tr>
 <tr>
 <td><code>Subscription required — please subscribe to this agent before starting it.</code></td>
@@ -24034,6 +24035,7 @@ customer-facing token-refresh endpoint or manual refresh action.</p>
 <h2 id="setup-required-state">Setup Required State</h2>
 <p>If an agent has required credentials not yet filled in, it's in <strong>Setup Required</strong> state (<code>status: 6</code>). It can't be started until credentials are complete.</p>
 <p><strong>Every fresh deploy lands at <code>status: 6</code> first.</strong> API deploys must always pass <code>useprepaid: true</code>. The server provisions the prepaid subscription inline and auto-queues the row to <code>status: 2</code> (Queued). No manual <code>Start</code> call is needed unless you also need to fill credentials first; if so, Start will reject with the Setup-Required guard until the required credentials are in place.</p>
+<p>Saving a connector doesn't move the agent out of <code>status: 6</code>, whether with <code>CredentialUpsert</code>, <code>CredentialProjectBind</code> or an OAuth connection. After the last one, call <code>POST /UserAgent/Update</code> once with <code>{ "guid": "&lt;useragent-guid&gt;" }</code>: that call moves the agent to <code>status: 0</code> (Stopped) once every required connector is set up, so <code>Start</code> can launch it.</p>
 <p><code>setuprequired</code> flag in <code>UserAgent/Detail</code> / <code>UserAgent/MyAgents</code> is <code>true</code> when any non-optional credential is still incomplete. The server treats a credential as complete when either:</p>
 <ul>
 <li><strong>OAuth and hybrid connection credentials</strong>: <code>_connected: true</code> (the active
@@ -37908,12 +37910,12 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
 
                     <h3>White-Label Chat</h3>
                     <p>Build a fully branded chat experience with no Wiro UI visible to your users.</p>
-                    <p>The deploy flow has three stages: Deploy, Setup (only when the agent needs third-party credentials), and Start.</p>
+                    <p>The deploy flow has three stages: Deploy, Setup (only when the agent has connectors to set up), and Start.</p>
                     <ol>
-                      <li><strong>Deploy</strong> an agent via <code>POST /UserAgent/Deploy</code>: returns <code>useragents[0].guid</code> and starts the instance in <code>status: 6</code> (setup-required) or <code>status: 0</code> (ready) depending on whether the template needs credentials.</li>
+                      <li><strong>Deploy</strong> an agent via <code>POST /UserAgent/Deploy</code>: returns <code>useragents[0].guid</code> and starts the instance in <code>status: 6</code> (setup-required). A prepaid Deploy then queues it (<code>status: 2</code>) once its subscription is provisioned.</li>
                       <li>
-                        <strong>Setup</strong> the credentials (only if the agent template requires them) via one or more <code>POST /UserAgent/CredentialUpsert</code> calls and the matching OAuth flows (see <a href="/docs/agent-credentials" class="docs-link">Agent Credentials &amp; OAuth</a>). Check <code>setuprequired</code> on the response: while it's <code>true</code>, the agent cannot start. Once all required credential slots are filled, <code>setuprequired</code> flips to <code>false</code> and
-                        <code>status</code> becomes <code>0</code>. For Pattern 2 (knowledge-base / chat-only agents) there are no third-party credentials, so this stage is skipped and the agent is ready to start right after Deploy.
+                        <strong>Setup</strong> the connectors (only if the agent template requires them) via one or more <code>POST /UserAgent/CredentialUpsert</code> calls, <code>POST /UserAgent/CredentialProjectBind</code> for the Wiro project, and the matching OAuth flows (see <a href="/docs/agent-credentials" class="docs-link">Agent Credentials &amp; OAuth</a>). These calls don't change <code>status</code>: on an agent still at <code>status: 6</code>, call <code>POST /UserAgent/Update</code> with <code>{ "guid": "&lt;useragent-guid&gt;" }</code> after the last one and check <code>setuprequired</code> on its response. While it's <code>true</code>, the agent cannot start. Once all required connectors are set up, that call flips <code>setuprequired</code> to <code>false</code> and
+                        <code>status</code> to <code>0</code>. For Pattern 2 (knowledge-base / chat-only agents) there are no connectors to set up, so this stage is skipped and the agent is ready to start right after Deploy.
                       </li>
                       <li><strong>Start</strong> the agent with <code>POST /UserAgent/Start</code>: transitions through <code>status: 3</code> (starting) → <code>status: 4</code> (running).</li>
                       <li>Build your own chat UI.</li>

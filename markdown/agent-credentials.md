@@ -1237,6 +1237,8 @@ If an agent has required credentials not yet filled in, it's in **Setup Required
 
 **Every fresh deploy lands at `status: 6` first.** API deploys must always pass `useprepaid: true`. The server provisions the prepaid subscription inline and auto-queues the row to `status: 2` (Queued). No manual `Start` call is needed unless you also need to fill credentials first; if so, Start will reject with the Setup-Required guard until the required credentials are in place.
 
+Saving a connector doesn't move the agent out of `status: 6`, whether with `CredentialUpsert`, `CredentialProjectBind` or an OAuth connection. After the last one, call `POST /UserAgent/Update` once with `{ "guid": "<useragent-guid>" }`: that call moves the agent to `status: 0` (Stopped) once every required connector is set up, so `Start` can launch it.
+
 `setuprequired` flag in `UserAgent/Detail` / `UserAgent/MyAgents` is `true` when any non-optional credential is still incomplete. The server treats a credential as complete when either:
 
 - **OAuth and hybrid connection credentials**: `_connected: true` (the active
