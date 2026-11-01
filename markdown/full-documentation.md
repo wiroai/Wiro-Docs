@@ -8100,9 +8100,9 @@ Retrieves full details for a single deployed agent instance, including subscript
           "optional": false,
           "extra": false,
           "_editable": {
-            "siteurl":         true,
-            "username":        true,
-            "applicationpass": true
+            "url":         true,
+            "user":        true,
+            "apppassword": true
           },
           "_schema": {
             "title": "WordPress",
@@ -8112,40 +8112,38 @@ Retrieves full details for a single deployed agent instance, including subscript
             "brand_logo_filter": null,
             "docs_url": "/docs/integration-wordpress-skills",
             "credential_mode": "api_key",
-            "connection_modes": ["api_key"],
+            "connection_modes": [],
             "wiro_connect_pending": false,
+            "channel": null,
             "oauth_provider": null,
             "fields": [
               {
-                "key": "siteurl",
-                "label": "Site URL",
-                "type": "text",
+                "key": "url",
+                "label": "WordPress URL",
+                "type": "url",
                 "required": true,
-                "placeholder": "https://blog.example.com",
-                "pattern": "^https?://.+"
+                "placeholder": "https://yourdomain.com"
               },
               {
-                "key": "username",
+                "key": "user",
                 "label": "Username",
                 "type": "text",
-                "required": true,
-                "placeholder": "wp-editor"
+                "required": true
               },
               {
-                "key": "applicationpass",
-                "label": "Application Password",
+                "key": "apppassword",
+                "label": "App Password",
                 "type": "password",
                 "required": true,
-                "placeholder": "xxxx xxxx xxxx xxxx xxxx xxxx",
-                "help": "Generate from WP Admin → Users → Profile → Application Passwords."
+                "show_toggle": true
               }
             ]
           },
           "_required_missing": true,
           "_filled": false,
-          "siteurl": "",
-          "username": "",
-          "applicationpass": ""
+          "url": "",
+          "user": "",
+          "apppassword": ""
         }
       },
       "customskills": [

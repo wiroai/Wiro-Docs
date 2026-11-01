@@ -13639,9 +13639,9 @@ pro.credits = starter.credits × tiermultiplier
           &quot;optional&quot;: false,
           &quot;extra&quot;: false,
           &quot;_editable&quot;: {
-            &quot;siteurl&quot;:         true,
-            &quot;username&quot;:        true,
-            &quot;applicationpass&quot;: true
+            &quot;url&quot;:         true,
+            &quot;user&quot;:        true,
+            &quot;apppassword&quot;: true
           },
           &quot;_schema&quot;: {
             &quot;title&quot;: &quot;WordPress&quot;,
@@ -13651,40 +13651,38 @@ pro.credits = starter.credits × tiermultiplier
             &quot;brand_logo_filter&quot;: null,
             &quot;docs_url&quot;: &quot;/docs/integration-wordpress-skills&quot;,
             &quot;credential_mode&quot;: &quot;api_key&quot;,
-            &quot;connection_modes&quot;: [&quot;api_key&quot;],
+            &quot;connection_modes&quot;: [],
             &quot;wiro_connect_pending&quot;: false,
+            &quot;channel&quot;: null,
             &quot;oauth_provider&quot;: null,
             &quot;fields&quot;: [
               {
-                &quot;key&quot;: &quot;siteurl&quot;,
-                &quot;label&quot;: &quot;Site URL&quot;,
-                &quot;type&quot;: &quot;text&quot;,
+                &quot;key&quot;: &quot;url&quot;,
+                &quot;label&quot;: &quot;WordPress URL&quot;,
+                &quot;type&quot;: &quot;url&quot;,
                 &quot;required&quot;: true,
-                &quot;placeholder&quot;: &quot;https://blog.example.com&quot;,
-                &quot;pattern&quot;: &quot;^https?://.+&quot;
+                &quot;placeholder&quot;: &quot;https://yourdomain.com&quot;
               },
               {
-                &quot;key&quot;: &quot;username&quot;,
+                &quot;key&quot;: &quot;user&quot;,
                 &quot;label&quot;: &quot;Username&quot;,
                 &quot;type&quot;: &quot;text&quot;,
-                &quot;required&quot;: true,
-                &quot;placeholder&quot;: &quot;wp-editor&quot;
+                &quot;required&quot;: true
               },
               {
-                &quot;key&quot;: &quot;applicationpass&quot;,
-                &quot;label&quot;: &quot;Application Password&quot;,
+                &quot;key&quot;: &quot;apppassword&quot;,
+                &quot;label&quot;: &quot;App Password&quot;,
                 &quot;type&quot;: &quot;password&quot;,
                 &quot;required&quot;: true,
-                &quot;placeholder&quot;: &quot;xxxx xxxx xxxx xxxx xxxx xxxx&quot;,
-                &quot;help&quot;: &quot;Generate from WP Admin → Users → Profile → Application Passwords.&quot;
+                &quot;show_toggle&quot;: true
               }
             ]
           },
           &quot;_required_missing&quot;: true,
           &quot;_filled&quot;: false,
-          &quot;siteurl&quot;: &quot;&quot;,
-          &quot;username&quot;: &quot;&quot;,
-          &quot;applicationpass&quot;: &quot;&quot;
+          &quot;url&quot;: &quot;&quot;,
+          &quot;user&quot;: &quot;&quot;,
+          &quot;apppassword&quot;: &quot;&quot;
         }
       },
       &quot;customskills&quot;: [
