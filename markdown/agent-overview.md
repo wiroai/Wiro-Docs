@@ -2685,7 +2685,7 @@ Starts a browser-embedded realtime voice session with the agent. Returns two opa
 | `This agent belongs to a different team.` | Team agent called from another team's workspace or project key by a caller who is no longer a member of the agent's team. |
 | `Agent is not running` | Useragent is not in `status: 4`. |
 | `util-web-channel not enabled` | Toggle the skill via `SkillsApply` or pick a preset that bundles it. |
-| `web voice only available from Wiro-Web (Bearer auth) or via API key` | Bearer auth with an Origin outside the allow-list. |
+| `Web voice is available from the Wiro panel or with an API key.` | Bearer auth with an Origin outside the allow-list. |
 | `Rate limit: max N web voice sessions per hour` | Operator burned through the per-hour cap. |
 
 #### **POST** /UserAgent/Realtime/Cancel

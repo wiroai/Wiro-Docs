@@ -332,7 +332,7 @@ The bridge transcodes server-side if a downstream model needs a different sample
 | 200  | none       | `This agent belongs to a different team.` | Team agent called from another team's workspace or project key by a caller who is no longer a member of the agent's team. |
 | 200  | none       | `Agent is not running`   | Useragent is not in `status: 4`. Start it via `POST /UserAgent/Start` first. |
 | 200  | none       | `util-web-channel not enabled` | Toggle `util-web-channel` via `POST /UserAgent/SkillsApply` (custom agents) or pick a preset that bundles it (Voice Receptionist / Voice Sales Rep). |
-| 403  | none       | `web voice only available from Wiro-Web (Bearer auth) or via API key` | Bearer auth call with an Origin outside the Wiro allow-list. Either switch to API-key auth or call from an allow-listed origin. |
+| 403  | none       | `Web voice is available from the Wiro panel or with an API key.` | Bearer auth call with an Origin outside the Wiro allow-list. Either switch to API-key auth or call from an allow-listed origin. |
 | 429  | none       | `Rate limit: max N web voice sessions per hour` | Operator burned through the per-hour cap. Wait for the fixed-window expiry. |
 | 500  | none       | `internal error`         | Unexpected backend failure: check `POST /UserAgent/Logs` for context. |
 

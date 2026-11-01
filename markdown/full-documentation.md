@@ -9878,7 +9878,7 @@ Starts a browser-embedded realtime voice session with the agent. Returns two opa
 | `This agent belongs to a different team.` | Team agent called from another team's workspace or project key by a caller who is no longer a member of the agent's team. |
 | `Agent is not running` | Useragent is not in `status: 4`. |
 | `util-web-channel not enabled` | Toggle the skill via `SkillsApply` or pick a preset that bundles it. |
-| `web voice only available from Wiro-Web (Bearer auth) or via API key` | Bearer auth with an Origin outside the allow-list. |
+| `Web voice is available from the Wiro panel or with an API key.` | Bearer auth with an Origin outside the allow-list. |
 | `Rate limit: max N web voice sessions per hour` | Operator burned through the per-hour cap. |
 
 #### **POST** /UserAgent/Realtime/Cancel
@@ -15745,12 +15745,12 @@ Returns the closed-set vocabulary of high-level capability tags. Use this to bui
   "result": true,
   "errors": [],
   "capabilities": [
-    { "name": "direct_reporting",         "description": "Skill generates direct reports on operator request" },
+    { "name": "direct_reporting",         "description": "Generates direct reports on request" },
     { "name": "attribution_cross_check",  "description": "Cross-check platform conversions vs GA4 paid traffic" },
     { "name": "cross_check",              "description": "Cross-system data validation" },
     { "name": "campaign_management",      "description": "Create/pause/modify ad campaigns" },
     { "name": "campaign_reporting",       "description": "Campaign performance reports" },
-    { "name": "approval_flow",            "description": "Approval command grammar for operator-gated actions" },
+    { "name": "approval_flow",            "description": "Approval commands for actions that wait for your approval" },
     { "name": "recommendation_ledger",    "description": "Recommendation queue/log management" },
     { "name": "recommendation_execution", "description": "Execute approved recommendations" },
     { "name": "content_generation",       "description": "Generate content (text, media)" },
@@ -15763,7 +15763,7 @@ Returns the closed-set vocabulary of high-level capability tags. Use this to bui
     { "name": "vision",                   "description": "Vision LLM analysis of images (caption, describe, OCR, visual QA)" },
     { "name": "human_copywriting",        "description": "Enforce anti-AI human copy rules" },
     { "name": "anti_ai_tone",             "description": "Reject AI-generated tone patterns" },
-    { "name": "memory_management",        "description": "Manage memory/*.json hygiene (size limits, trim, dedupe, schema)" },
+    { "name": "memory_management",        "description": "Keep the agent's memory files tidy (size limits, trimming, removing duplicates)" },
     { "name": "markdown_reporting",       "description": "Structured markdown reports (tables, code blocks, splits)" },
     { "name": "store_review_response",    "description": "Craft App Store / Google Play review responses" },
     { "name": "outreach_compliance",      "description": "Outreach PII/opt-out/consent rules (GDPR, CAN-SPAM)" },
@@ -15783,13 +15783,13 @@ Returns the closed-set vocabulary of high-level capability tags. Use this to bui
     { "name": "file_asset_management",    "description": "Manage asset files from cloud storage (Drive)" },
     { "name": "voice_call_handling",      "description": "Receive and handle inbound voice calls via Twilio or web browser" },
     { "name": "caller_identification",    "description": "Match caller phone number against CRM records (HubSpot, Apollo)" },
-    { "name": "live_transcript",          "description": "Stream real-time call transcripts to operator chat" },
+    { "name": "live_transcript",          "description": "Stream real-time call transcripts to your chat" },
     { "name": "voice_persona",            "description": "Configure AI voice persona (alloy/echo/etc) for phone interactions" },
     { "name": "phone_inbound",            "description": "Accept inbound PSTN phone calls (Twilio)" },
     { "name": "browser_voice",            "description": "Accept inbound voice calls from website browser (Web Audio API)" },
     { "name": "appointment_management",   "description": "Manage calendar appointments (find slots, create events)" },
     { "name": "calendar_lookup",          "description": "Read calendar/availability data (Google Calendar)" },
-    { "name": "realtime_session_prep",    "description": "Pre-call orchestration: bridge ↔ agent handshake before realtime audio starts (read operator's cs-* custom skills, run realtime model, callback to bridge)" },
+    { "name": "realtime_session_prep",    "description": "Gets a call ready before realtime audio starts: reads your own skills, starts the realtime model and connects the call" },
     { "name": "web_search",               "description": "Search the public web (Google Programmable Search / Custom Search JSON API)" },
     { "name": "weather_lookup",           "description": "Current weather and forecasts for any place (MET Norway, OpenStreetMap geocoding)" },
     { "name": "diagram_rendering",        "description": "Render diagrams (Mermaid flowcharts, sequence, state and ER diagrams, mind maps, timelines; agent-drawn SVG) to PNG with an SVG copy" }

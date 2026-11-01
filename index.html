@@ -16883,7 +16883,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <td>Toggle the skill via <code>SkillsApply</code> or pick a preset that bundles it.</td>
 </tr>
 <tr>
-<td><code>web voice only available from Wiro-Web (Bearer auth) or via API key</code></td>
+<td><code>Web voice is available from the Wiro panel or with an API key.</code></td>
 <td>Bearer auth with an Origin outside the allow-list.</td>
 </tr>
 <tr>
@@ -24760,12 +24760,12 @@ async function saveGoogleAdsPick(useragentguid, picked) {
   &quot;result&quot;: true,
   &quot;errors&quot;: [],
   &quot;capabilities&quot;: [
-    { &quot;name&quot;: &quot;direct_reporting&quot;,         &quot;description&quot;: &quot;Skill generates direct reports on operator request&quot; },
+    { &quot;name&quot;: &quot;direct_reporting&quot;,         &quot;description&quot;: &quot;Generates direct reports on request&quot; },
     { &quot;name&quot;: &quot;attribution_cross_check&quot;,  &quot;description&quot;: &quot;Cross-check platform conversions vs GA4 paid traffic&quot; },
     { &quot;name&quot;: &quot;cross_check&quot;,              &quot;description&quot;: &quot;Cross-system data validation&quot; },
     { &quot;name&quot;: &quot;campaign_management&quot;,      &quot;description&quot;: &quot;Create/pause/modify ad campaigns&quot; },
     { &quot;name&quot;: &quot;campaign_reporting&quot;,       &quot;description&quot;: &quot;Campaign performance reports&quot; },
-    { &quot;name&quot;: &quot;approval_flow&quot;,            &quot;description&quot;: &quot;Approval command grammar for operator-gated actions&quot; },
+    { &quot;name&quot;: &quot;approval_flow&quot;,            &quot;description&quot;: &quot;Approval commands for actions that wait for your approval&quot; },
     { &quot;name&quot;: &quot;recommendation_ledger&quot;,    &quot;description&quot;: &quot;Recommendation queue/log management&quot; },
     { &quot;name&quot;: &quot;recommendation_execution&quot;, &quot;description&quot;: &quot;Execute approved recommendations&quot; },
     { &quot;name&quot;: &quot;content_generation&quot;,       &quot;description&quot;: &quot;Generate content (text, media)&quot; },
@@ -24778,7 +24778,7 @@ async function saveGoogleAdsPick(useragentguid, picked) {
     { &quot;name&quot;: &quot;vision&quot;,                   &quot;description&quot;: &quot;Vision LLM analysis of images (caption, describe, OCR, visual QA)&quot; },
     { &quot;name&quot;: &quot;human_copywriting&quot;,        &quot;description&quot;: &quot;Enforce anti-AI human copy rules&quot; },
     { &quot;name&quot;: &quot;anti_ai_tone&quot;,             &quot;description&quot;: &quot;Reject AI-generated tone patterns&quot; },
-    { &quot;name&quot;: &quot;memory_management&quot;,        &quot;description&quot;: &quot;Manage memory/*.json hygiene (size limits, trim, dedupe, schema)&quot; },
+    { &quot;name&quot;: &quot;memory_management&quot;,        &quot;description&quot;: &quot;Keep the agent's memory files tidy (size limits, trimming, removing duplicates)&quot; },
     { &quot;name&quot;: &quot;markdown_reporting&quot;,       &quot;description&quot;: &quot;Structured markdown reports (tables, code blocks, splits)&quot; },
     { &quot;name&quot;: &quot;store_review_response&quot;,    &quot;description&quot;: &quot;Craft App Store / Google Play review responses&quot; },
     { &quot;name&quot;: &quot;outreach_compliance&quot;,      &quot;description&quot;: &quot;Outreach PII/opt-out/consent rules (GDPR, CAN-SPAM)&quot; },
@@ -24798,13 +24798,13 @@ async function saveGoogleAdsPick(useragentguid, picked) {
     { &quot;name&quot;: &quot;file_asset_management&quot;,    &quot;description&quot;: &quot;Manage asset files from cloud storage (Drive)&quot; },
     { &quot;name&quot;: &quot;voice_call_handling&quot;,      &quot;description&quot;: &quot;Receive and handle inbound voice calls via Twilio or web browser&quot; },
     { &quot;name&quot;: &quot;caller_identification&quot;,    &quot;description&quot;: &quot;Match caller phone number against CRM records (HubSpot, Apollo)&quot; },
-    { &quot;name&quot;: &quot;live_transcript&quot;,          &quot;description&quot;: &quot;Stream real-time call transcripts to operator chat&quot; },
+    { &quot;name&quot;: &quot;live_transcript&quot;,          &quot;description&quot;: &quot;Stream real-time call transcripts to your chat&quot; },
     { &quot;name&quot;: &quot;voice_persona&quot;,            &quot;description&quot;: &quot;Configure AI voice persona (alloy/echo/etc) for phone interactions&quot; },
     { &quot;name&quot;: &quot;phone_inbound&quot;,            &quot;description&quot;: &quot;Accept inbound PSTN phone calls (Twilio)&quot; },
     { &quot;name&quot;: &quot;browser_voice&quot;,            &quot;description&quot;: &quot;Accept inbound voice calls from website browser (Web Audio API)&quot; },
     { &quot;name&quot;: &quot;appointment_management&quot;,   &quot;description&quot;: &quot;Manage calendar appointments (find slots, create events)&quot; },
     { &quot;name&quot;: &quot;calendar_lookup&quot;,          &quot;description&quot;: &quot;Read calendar/availability data (Google Calendar)&quot; },
-    { &quot;name&quot;: &quot;realtime_session_prep&quot;,    &quot;description&quot;: &quot;Pre-call orchestration: bridge ↔ agent handshake before realtime audio starts (read operator's cs-* custom skills, run realtime model, callback to bridge)&quot; },
+    { &quot;name&quot;: &quot;realtime_session_prep&quot;,    &quot;description&quot;: &quot;Gets a call ready before realtime audio starts: reads your own skills, starts the realtime model and connects the call&quot; },
     { &quot;name&quot;: &quot;web_search&quot;,               &quot;description&quot;: &quot;Search the public web (Google Programmable Search / Custom Search JSON API)&quot; },
     { &quot;name&quot;: &quot;weather_lookup&quot;,           &quot;description&quot;: &quot;Current weather and forecasts for any place (MET Norway, OpenStreetMap geocoding)&quot; },
     { &quot;name&quot;: &quot;diagram_rendering&quot;,        &quot;description&quot;: &quot;Render diagrams (Mermaid flowcharts, sequence, state and ER diagrams, mind maps, timelines; agent-drawn SVG) to PNG with an SVG copy&quot; }
@@ -36822,7 +36822,7 @@ Base URL: <code>https://api.sendgrid.com/v3</code>.</p>
       { "credentialkey": "twilio-voice", "fieldname": "holdvoice",       "fieldvalue": "Polly.Joanna-Neural" }
     ]
   }'</code></pre>
-                    <p>Or save through the panel: <strong><a href="https://wiro.ai/panel/agents" target="_blank" rel="noopener">My Agents</a></strong> → open agent → <strong>Connectors → Twilio Voice</strong>. The panel form auto-validates Account SID format and runs <em>Setup webhooks</em> on save.</p>
+                    <p>Or save through the panel: <strong><a href="https://wiro.ai/panel/agents" target="_blank" rel="noopener">My Agents</a></strong> → open agent → <strong>Connectors → Twilio Voice</strong>. The panel form checks the Account SID format and sets up the number webhooks when you save.</p>
 
                     <h3>Step 4: Verify webhook configuration</h3>
                     <p>After saving credentials, the response includes:</p>
@@ -37647,7 +37647,7 @@ registerProcessor("pcm-24k-processor", PCM24kProcessor);</code></pre>
                             <tr>
                               <td>403</td>
                               <td>none</td>
-                              <td><code>web voice only available from Wiro-Web (Bearer auth) or via API key</code></td>
+                              <td><code>Web voice is available from the Wiro panel or with an API key.</code></td>
                               <td>Bearer auth call with an Origin outside the Wiro allow-list. Either switch to API-key auth or call from an allow-listed origin.</td>
                             </tr>
                             <tr>

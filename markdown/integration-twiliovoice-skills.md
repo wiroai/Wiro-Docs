@@ -79,7 +79,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   }'
 ```
 
-Or save through the panel: **[My Agents](https://wiro.ai/panel/agents)** → open agent → **Connectors → Twilio Voice**. The panel form auto-validates Account SID format and runs *Setup webhooks* on save.
+Or save through the panel: **[My Agents](https://wiro.ai/panel/agents)** → open agent → **Connectors → Twilio Voice**. The panel form checks the Account SID format and sets up the number webhooks when you save.
 
 ### Step 4: Verify webhook configuration
 
