@@ -274,7 +274,7 @@ Tool blocks carry two closed-list words:
 - `toolintegration` names the connector the step works in, as its `key` from [`POST /Credentials/List`](/docs/agent-credentials#post-credentialslist): `adjust`, `apollo`, `apple-appstore`, `brevo`, `calendarific`, `facebook-pages`, `firebase`, `ga4`, `gmail`, `google-ads`, `google-business`, `google-calendar`, `google-drive`, `google-merchant-center`, `google-play`, `hubspot`, `instagram`, `lemlist`, `linkedin`, `mailchimp`, `meta-ads`, `reddit`, `roasit`, `sendgrid`, `serper`, `shopify`, `telegram`, `tiktok`, `tiktok-ads`, `twitter`, `wiro`, `woocommerce`, `wordpress`, or `youtube`.
 - `toolaction` names what the step does: `screenshot`, `open-page`, `read-page`, `click`, `type`, `press-key`, `wait`, `upload`, `download`, `read-file`, or `edit-media`.
 
-Each is `null` when no word fits, and a block never has both. The words come with the block's first update, and every later update of the block carries them. A later update can carry a different word if the step changed, so read them from the newest version of the block. Treat a value you don't know like `null`; [Agent Messaging](/docs/agent-messaging#tool-integration-and-action-values) says what each word means.
+Each is `null` when no word fits, and a block never has both. The words come with the block's first update, and every later update of the block carries them. A later update can carry a different word if the step changed, so read them from the newest version of the block. A block whose step is rewritten and no longer fits a word keeps its last word. Treat a value you don't know like `null`; [Agent Messaging](/docs/agent-messaging#tool-integration-and-action-values) says what each word means.
 
 A tool block update:
 
