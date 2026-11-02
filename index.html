@@ -14424,6 +14424,10 @@ pro.credits = starter.credits × tiermultiplier
 <td><a href="#post-useragentlogs"><code>POST /UserAgent/Logs</code></a> · <a href="#post-useragentlogslist"><code>LogsList</code></a> · <a href="#post-useragentlogsfile"><code>LogsFile</code></a> · <a href="#post-useragentlogsdelete"><code>LogsDelete</code></a></td>
 </tr>
 <tr>
+<td>Follow Scheduled Tasks, background runs and model runs live</td>
+<td><a href="#post-useragentrunstreamtoken"><code>POST /UserAgent/RunStreamToken</code></a></td>
+</tr>
+<tr>
 <td>Soft-delete a useragent</td>
 <td><a href="#post-useragentdelete"><code>POST /UserAgent/Delete</code></a></td>
 </tr>
@@ -16340,7 +16344,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 }
 </code></pre>
 <h4 id="post-useragentdelete"><strong>POST</strong> /UserAgent/Delete</h4>
-<p>Soft-deletes a useragent. Delete stamps <code>deletedat</code> (returned in the response) and unpins the agent; it doesn't erase the agent's history (transactions, credential and custom-skill change history, messages). The agent's working files, such as its memory and the files it saved while it ran, are kept for 30 days after the delete and then removed for good; media the agent sent in chat is stored separately and stays. The agent is then excluded from <code>Detail</code>, <code>MyAgents</code>, <code>Start</code>, <code>Stop</code>, the agent runtime and its scheduled jobs, and <code>TransactionList</code>, <code>CredentialFieldHistory</code>, <code>CustomSkillHistory</code>, <code>Logs</code>, <code>LogsList</code>, <code>LogsFile</code>, <code>LogsDelete</code>, <code>Message/History</code>, <code>Message/Sessions</code>, <code>Message/DeleteSession</code>, <code>Message/RenameSession</code> and <code>Message/Delete</code> return <code>useragent-not-found</code> (code <code>95</code>) for it, so export anything you need before deleting.</p>
+<p>Soft-deletes a useragent. Delete stamps <code>deletedat</code> (returned in the response) and unpins the agent; it doesn't erase the agent's history (transactions, credential and custom-skill change history, messages). The agent's working files, such as its memory and the files it saved while it ran, are kept for 30 days after the delete and then removed for good; media the agent sent in chat is stored separately and stays. The agent is then excluded from <code>Detail</code>, <code>MyAgents</code>, <code>Start</code>, <code>Stop</code>, the agent runtime and its scheduled jobs, and <code>TransactionList</code>, <code>CredentialFieldHistory</code>, <code>CustomSkillHistory</code>, <code>Logs</code>, <code>LogsList</code>, <code>LogsFile</code>, <code>LogsDelete</code>, <code>RunStreamToken</code>, <code>Message/History</code>, <code>Message/Sessions</code>, <code>Message/DeleteSession</code>, <code>Message/RenameSession</code> and <code>Message/Delete</code> return <code>useragent-not-found</code> (code <code>95</code>) for it, so export anything you need before deleting.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -16835,6 +16839,106 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 }
 </code></pre>
 <p><code>events</code> is sorted <strong>newest first</strong> (descending by <code>ts</code>), the same contract as <code>Logs</code>, so <code>events[0]</code> is the freshest entry whether you're tailing the live day or downloading a historical one. <code>truncated: true</code> only when the day's file is larger than 10 MiB: its newest 10 MiB of events are returned. Who-did-what rows are included, and a stopped agent and a deleted day read as on <code>Logs</code>.</p>
+<h4 id="post-useragentrunstreamtoken"><strong>POST</strong> /UserAgent/RunStreamToken</h4>
+<p>Returns a token for following the agent's Scheduled Tasks, background runs and model runs live on the Agent WebSocket. Send it in an <code>agent_run_subscribe</code> frame: the events that follow say when each run starts, which step it is on and when it ends, with labels only. See <a href="/docs/agent-websocket#following-an-agents-background-runs">Following an agent's background runs</a>.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>useragentguid</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>The guid of your deployed agent</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p><strong>Headers:</strong> No extra header is needed. Access: the agent's owner or a team admin of the agent's team (plain team members are rejected with code <code>97</code>). A stopped agent gets a token too.</p>
+<h5 id="runstreamtoken-response">Response</h5>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;runstreamtoken&quot;: &quot;Zr8Qm2Kx7VbN4tLpW1sYc9HdF6gJaE3uTo5iRk0nXqM&quot;,
+  &quot;expiresat&quot;: 1793664000,
+  &quot;errors&quot;: []
+}
+</code></pre>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>runstreamtoken</code></td>
+<td>string | null</td>
+<td>An opaque token valid until <code>expiresat</code>, 24 to 48 hours after it is issued. <code>null</code> when the call fails. Keep it private: whoever holds it can follow the agent's runs until it expires.</td>
+</tr>
+<tr>
+<td><code>expiresat</code></td>
+<td>number | null</td>
+<td>Unix seconds when the token stops working. When less than 12 hours remain, get a new token and subscribe again with it. <code>null</code> when the call fails.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<h5 id="runstreamtoken-errors">Common errors</h5>
+<p>A failed call answers <code>result: false</code> with <code>runstreamtoken</code> and <code>expiresat</code> set to <code>null</code> and one entry in <code>errors</code>.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Code</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>useragentguid is required</code></td>
+<td>0</td>
+<td><code>useragentguid</code> is missing or blank</td>
+</tr>
+<tr>
+<td><code>User agent not found</code></td>
+<td>95</td>
+<td>Unknown guid, or the agent has been deleted</td>
+</tr>
+<tr>
+<td><code>You don't have access to this user agent</code></td>
+<td>96</td>
+<td>The caller is neither the agent's owner nor on its team</td>
+</tr>
+<tr>
+<td><code>Only a team admin can perform this action on a team-owned agent.</code></td>
+<td>97</td>
+<td>The caller is a plain member of the agent's team</td>
+</tr>
+<tr>
+<td><code>runstream-unavailable</code></td>
+<td>0</td>
+<td>Following runs live is not available right now. Try again later</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
 <h4 id="post-useragentpin"><strong>POST</strong> /UserAgent/Pin</h4>
 <p>Pins or unpins an agent instance from the user's pinned-agents quick list. Pinned agents appear in the global header dropdown (<code>PinnedAgents</code>) and get an unread badge from <code>PinnedUnread</code>.</p>
 <div class="docs-param-table">
@@ -17863,6 +17967,10 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <tr>
 <td><code>Could not retrieve wallet balance</code></td>
 <td>Wallet service lookup failed while checking balance</td>
+</tr>
+<tr>
+<td><code>runstream-unavailable</code></td>
+<td><code>RunStreamToken</code> while following runs live is not available. Try again later</td>
 </tr>
 </tbody>
 </table>
@@ -20211,7 +20319,7 @@ func main() {
 <pre><code>wss://socket.wiro.ai/v1
 </code></pre>
 <p>Connect to this URL after calling the <a href="/docs/agent-messaging">Message / Send</a> endpoint. Use the <code>agenttoken</code> from the send response to subscribe to the agent session. This is the same WebSocket server used for model tasks, so you can subscribe to both task events (<code>task_info</code>) and agent events (<code>agent_info</code>) on the same connection.</p>
-<p>No API key or auth header is required on the WebSocket itself. Authorization is enforced via the <code>agenttoken</code>, which is issued by <code>POST /UserAgent/Message/Send</code> against your API key and is scoped to a single message run. To follow a whole session instead, use the <code>sessiontoken</code> from <code>Message/History</code>; see <a href="#following-a-session">Following a session</a>.</p>
+<p>No API key or auth header is required on the WebSocket itself. Authorization is enforced via the <code>agenttoken</code>, which is issued by <code>POST /UserAgent/Message/Send</code> against your API key and is scoped to a single message run. To follow a whole session instead, use the <code>sessiontoken</code> from <code>Message/History</code>; see <a href="#following-a-session">Following a session</a>. To follow an agent's Scheduled Tasks and other background runs, use a <code>runstreamtoken</code>; see <a href="#following-an-agents-background-runs">Following an agent's background runs</a>.</p>
 <h2 id="connection-flow">Connection Flow</h2>
 <ol>
 <li><strong>Connect</strong>: open a WebSocket connection to <code>wss://socket.wiro.ai/v1</code>.</li>
@@ -20298,7 +20406,7 @@ func main() {
 <tr>
 <td>↓</td>
 <td><code>error</code></td>
-<td>Server-side rejection of a malformed subscribe (a missing or invalid <code>agenttoken</code>, or a malformed <code>sessiontoken</code>). Connection stays open; retry with a valid frame.</td>
+<td>Server-side rejection of a malformed subscribe (a missing or invalid <code>agenttoken</code>, or a malformed <code>sessiontoken</code>). Connection stays open; retry with a valid frame. An <code>agent_run_subscribe</code> can also get <code>runstreamtoken-invalid</code> or <code>runstream-unavailable</code>, which carry <code>useragentguid</code>; see <a href="#run-stream-errors">Run stream errors</a>.</td>
 </tr>
 <tr>
 <td>↓</td>
@@ -20338,7 +20446,7 @@ func main() {
 <tr>
 <td>↓</td>
 <td><code>agent_usage_report</code></td>
-<td>Post-terminal usage/billing frame. Fires once, ~250-500 ms after a successful <code>agent_end</code>, on the same <code>agenttoken</code>. Carries the final token counts, <code>model</code>, <code>tokencost</code>, and <code>remainingcredits</code> for the message identified by <code>messageguid</code>. Not emitted for replayed usage callbacks or for turns with no chat message (cron/hook turns).</td>
+<td>Post-terminal usage/billing frame. Fires once, ~250-500 ms after a successful <code>agent_end</code>, on the same <code>agenttoken</code>. Carries the final token counts, <code>model</code>, <code>tokencost</code>, and <code>remainingcredits</code> for the message identified by <code>messageguid</code>. Not emitted for replayed usage callbacks or for turns with no chat message (cron/hook turns); follow those on the <a href="#following-an-agents-background-runs">run stream</a>.</td>
 </tr>
 <tr>
 <td>↓</td>
@@ -20364,6 +20472,51 @@ func main() {
 <td>↑</td>
 <td><code>agent_session_unsubscribe</code></td>
 <td>Stop following a session. No reply.</td>
+</tr>
+<tr>
+<td>↑</td>
+<td><code>agent_run_subscribe</code></td>
+<td>Follow an agent's background runs and model runs with the <code>runstreamtoken</code> from <code>POST /UserAgent/RunStreamToken</code>. See <a href="#following-an-agents-background-runs">Following an agent's background runs</a>.</td>
+</tr>
+<tr>
+<td>↓</td>
+<td><code>agent_run_subscribed</code></td>
+<td>Run stream follow acknowledged. Carries <code>expiresat</code> and the agent's open runs (<code>runs</code>) and model runs (<code>models</code>).</td>
+</tr>
+<tr>
+<td>↓</td>
+<td><code>agent_run_start</code></td>
+<td>A background run started: a Scheduled Task, a sub-agent, or another run with no chat message. Once per run.</td>
+</tr>
+<tr>
+<td>↓</td>
+<td><code>agent_run_block</code></td>
+<td>One step of an open background run changed. Carries one public block with <code>text: null</code>.</td>
+</tr>
+<tr>
+<td>↓</td>
+<td><code>agent_run_end</code></td>
+<td>A background run ended, with <code>ok</code>, <code>reason</code>, <code>durationms</code>, and <code>endedat</code>. Once per run.</td>
+</tr>
+<tr>
+<td>↓</td>
+<td><code>agent_run_model_start</code></td>
+<td>The agent started a Wiro model run, in a chat turn or a background run. Once per model run.</td>
+</tr>
+<tr>
+<td>↓</td>
+<td><code>agent_run_model_end</code></td>
+<td>A model run the agent started ended, with <code>ok</code>, <code>outcome</code>, <code>durationms</code>, and <code>endedat</code>. Once per model run.</td>
+</tr>
+<tr>
+<td>↑</td>
+<td><code>agent_run_unsubscribe</code></td>
+<td>Stop following an agent's runs.</td>
+</tr>
+<tr>
+<td>↓</td>
+<td><code>agent_run_unsubscribed</code></td>
+<td>Run stream follow stopped.</td>
 </tr>
 </tbody>
 </table>
@@ -20420,6 +20573,7 @@ func main() {
 // Subscribe rejection — stays connected, just indicates the last agent_info was malformed
 { &quot;type&quot;: &quot;error&quot;, &quot;message&quot;: &quot;agenttoken-required&quot;, &quot;result&quot;: false }
 </code></pre>
+<p>Run stream frames (<code>agent_run_*</code>) and their two errors carry <code>useragentguid</code> instead of an <code>agenttoken</code>; see <a href="#following-an-agents-background-runs">Following an agent's background runs</a>.</p>
 <p>The <code>agent_subscribed</code> frame is a snapshot rather than a <code>message</code> wrapper. For a known token it carries <code>status</code>, <code>debugoutput</code>, <code>messageguid</code>, and <code>timeline</code> at the top level. When the token is unknown, <code>status</code> is <code>"unknown"</code> and those row-backed fields are omitted.</p>
 <h3 id="agent_subscribed">agent_subscribed</h3>
 <p>Sent immediately after the server accepts your subscription. The <code>status</code> field reflects where the agent currently is in its lifecycle.</p>
@@ -20746,7 +20900,7 @@ func main() {
 <p>It is <strong>not</strong> emitted for:</p>
 <ul>
 <li><strong>Idempotent / replayed usage callbacks</strong>: a turn is billed once, and a replayed usage callback does not re-broadcast the frame.</li>
-<li><strong>Turns with no chat message</strong>: e.g. cron- or hook-triggered turns that produce no assistant message row have no <code>messageguid</code> to key on, so no frame is sent.</li>
+<li><strong>Turns with no chat message</strong>: e.g. cron- or hook-triggered turns that produce no assistant message row have no <code>messageguid</code> to key on, so no frame is sent. Follow those runs on the <a href="#following-an-agents-background-runs">run stream</a> instead.</li>
 </ul>
 <h3 id="model-runs-the-agent-triggers">Model runs the agent triggers</h3>
 <p>When the agent <strong>itself</strong> kicks off a Wiro model run during a turn (for example generating an image or a video through the <code>int-wiro-aimodels</code> skill), the bridge emits an <code>agent_wiroai_runtask</code> discovery frame. It hands you the new model run's <code>socketaccesstoken</code> so you can subscribe to that run and stream its progress and final media outputs. This is how a chat product surfaces a "live activity feed" of the media the agent is producing.</p>
@@ -20818,7 +20972,7 @@ func main() {
 <p><strong>This frame arrives on the turn's <code>agenttoken</code>.</strong> Like the lifecycle frames above, <code>agent_wiroai_runtask</code> goes to the sockets subscribed to the <code>agenttoken</code> of the turn in which the agent launched the run, and its <code>agenttoken</code> field carries that token. The subscription you already hold for the chat stream receives it, so no extra subscribe is needed. A session key is not a channel: <code>agent_info</code> with a session key returns <code>agenttoken-invalid</code> and brings nothing.</p>
 <p><strong>Then pivot to the task socket for outputs.</strong> Take <code>message.socketaccesstoken</code> and subscribe to the standard model-run WebSocket exactly as documented in <a href="/docs/websocket">WebSocket</a>: send <code>{ "type": "task_info", "tasktoken": "&lt;socketaccesstoken&gt;" }</code> and stream <code>task_queue → task_start → task_output → task_postprocess_end</code>. The final <code>task_postprocess_end</code> carries the output array (media URLs). The model-run <code>task_*</code> events are <strong>only</strong> delivered on the task's own <code>socketaccesstoken</code> channel. They are never re-broadcast on the agent channel.</p>
 <blockquote>
-<p><strong>Only fires for agent-initiated runs.</strong> <code>agent_wiroai_runtask</code> is emitted when the <em>agent</em> calls a model mid-turn. Model runs you launch yourself with <code>POST /Run</code> (your own <code>x-api-key</code>) do not produce this frame, because you already hold their <code>socketaccesstoken</code> from the <code>/Run</code> response. It fires only for model runs the agent starts while answering your <code>Message/Send</code> turn.</p>
+<p><strong>Only fires for agent-initiated runs.</strong> <code>agent_wiroai_runtask</code> is emitted when the <em>agent</em> calls a model mid-turn. Model runs you launch yourself with <code>POST /Run</code> (your own <code>x-api-key</code>) do not produce this frame, because you already hold their <code>socketaccesstoken</code> from the <code>/Run</code> response. It fires only for model runs the agent starts while answering your <code>Message/Send</code> turn. To see every model run the agent starts, Scheduled Tasks included, follow its <a href="#following-an-agents-background-runs">run stream</a> (<code>agent_run_model_start</code> and <code>agent_run_model_end</code>).</p>
 </blockquote>
 <h3 id="following-a-session">Following a session</h3>
 <p>Some messages are added to a session between turns: a scheduled report, files the agent sends after its answer, or the result of longer work it finished in the background. They belong to no turn, so they never stream on an <code>agenttoken</code>. To receive them as they are added, follow the session with the <code>sessiontoken</code> that <a href="/docs/agent-messaging#post-useragentmessagehistory"><code>Message/History</code></a> returns for it:</p>
@@ -20912,6 +21066,425 @@ func main() {
 <li><strong>Reconnects.</strong> Frames aren't replayed, and follows end with the connection. After reconnecting, send <code>agent_session_subscribe</code> again and read History once to catch anything added while you were away.</li>
 <li><strong>Keep the token private.</strong> Whoever holds it receives the session's new messages. Read it from History when you open the session instead of storing it.</li>
 </ul>
+<h3 id="following-an-agents-background-runs">Following an agent's background runs</h3>
+<p>Some of an agent's work never shows up as a chat turn: its Scheduled Tasks, the sub-agents it starts to work on something in the background, and other runs that have no chat message, such as a reply on a connected Telegram, Slack or Discord channel. The run stream lets you follow them live: when each run starts, each step it takes, and when it ends. It also reports every Wiro model run the agent starts, in chat turns too, from start to end.</p>
+<p>The stream carries labels only. Reasoning and answer text never appear on it (a block's <code>text</code> is always <code>null</code>), and a tool step shows only its label, its status and the two closed-list words a timeline tool block has.</p>
+<p><strong>Who can follow.</strong> The agent's owner and, on a team agent, the team's admins: the same people who can read the agent's <a href="/docs/agent-logs">Logs</a>. With an API key, the check applies to the user who created the key's project, so the owner's project API key works too.</p>
+<h4 id="get-a-run-stream-token">Get a run stream token</h4>
+<p>Call <a href="/docs/agent-logs#post-useragentrunstreamtoken"><code>POST /UserAgent/RunStreamToken</code></a> with the agent's guid:</p>
+<pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/RunStreamToken&quot; \
+  -H &quot;x-api-key: YOUR_API_KEY&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{ &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot; }'
+</code></pre>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;runstreamtoken&quot;: &quot;Zr8Qm2Kx7VbN4tLpW1sYc9HdF6gJaE3uTo5iRk0nXqM&quot;,
+  &quot;expiresat&quot;: 1793664000,
+  &quot;errors&quot;: []
+}
+</code></pre>
+<p><code>runstreamtoken</code> is an opaque token valid until <code>expiresat</code>, 24 to 48 hours after it is issued. Send it exactly as you got it, and keep it private: whoever holds it can follow the agent's runs until it expires. When less than 12 hours remain, get a new token and subscribe again with it. A stopped agent gets a token too.</p>
+<h4 id="subscribe-and-unsubscribe">Subscribe and unsubscribe</h4>
+<p>Send <code>agent_run_subscribe</code> on a connection to <code>wss://socket.wiro.ai/v1</code>. The same connection can carry your <code>agent_info</code> subscriptions too:</p>
+<pre><code class="language-json">{
+  &quot;type&quot;: &quot;agent_run_subscribe&quot;,
+  &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;,
+  &quot;runstreamtoken&quot;: &quot;Zr8Qm2Kx7VbN4tLpW1sYc9HdF6gJaE3uTo5iRk0nXqM&quot;
+}
+</code></pre>
+<p>The server answers with the runs and model runs that are open right now:</p>
+<pre><code class="language-json">{
+  &quot;type&quot;: &quot;agent_run_subscribed&quot;,
+  &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;,
+  &quot;expiresat&quot;: 1793664000,
+  &quot;runs&quot;: [
+    {
+      &quot;runref&quot;: &quot;q2Vt8kXw1bN0aZ3cR5sY7u&quot;,
+      &quot;runkind&quot;: &quot;cron&quot;,
+      &quot;sessionkey&quot;: null,
+      &quot;root&quot;: &quot;cron&quot;,
+      &quot;startedat&quot;: 1793491800,
+      &quot;steps&quot;: 3,
+      &quot;block&quot;: {
+        &quot;blockid&quot;: &quot;c2:i1&quot;,
+        &quot;callindex&quot;: 2,
+        &quot;contentindex&quot;: 1,
+        &quot;type&quot;: &quot;tool&quot;,
+        &quot;text&quot;: null,
+        &quot;toollabel&quot;: &quot;exec&quot;,
+        &quot;toolstatus&quot;: &quot;requested&quot;,
+        &quot;toolintegration&quot;: &quot;shopify&quot;,
+        &quot;toolaction&quot;: null,
+        &quot;phase&quot;: &quot;stream&quot;,
+        &quot;version&quot;: 1,
+        &quot;startedat&quot;: 1793491850,
+        &quot;updatedat&quot;: 1793491850
+      }
+    }
+  ],
+  &quot;models&quot;: [
+    {
+      &quot;modelref&quot;: &quot;Hn4pW0sLx9Qe2Tm7Vb1Kd8&quot;,
+      &quot;runref&quot;: &quot;q2Vt8kXw1bN0aZ3cR5sY7u&quot;,
+      &quot;sessionkey&quot;: null,
+      &quot;slugowner&quot;: &quot;google&quot;,
+      &quot;slugproject&quot;: &quot;nano-banana-pro&quot;,
+      &quot;categories&quot;: [&quot;image-generation&quot;],
+      &quot;startedat&quot;: 1793491860
+    }
+  ],
+  &quot;dropped&quot;: [],
+  &quot;result&quot;: true
+}
+</code></pre>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>useragentguid</code></td>
+<td>string</td>
+<td>The agent you subscribed to.</td>
+</tr>
+<tr>
+<td><code>expiresat</code></td>
+<td>number</td>
+<td>Unix seconds when this subscription ends: the <code>expiresat</code> of the token you sent.</td>
+</tr>
+<tr>
+<td><code>runs</code></td>
+<td>array</td>
+<td>The agent's open runs, most recently active first, up to 256. Each has <code>runref</code>, <code>runkind</code>, <code>sessionkey</code>, <code>root</code>, <code>startedat</code>, <code>steps</code>, and <code>block</code>.</td>
+</tr>
+<tr>
+<td><code>models</code></td>
+<td>array</td>
+<td>The agent's open model runs, newest <code>startedat</code> first, up to 256. Each has <code>modelref</code>, <code>runref</code>, <code>sessionkey</code>, <code>slugowner</code>, <code>slugproject</code>, <code>categories</code>, and <code>startedat</code>.</td>
+</tr>
+<tr>
+<td><code>dropped</code></td>
+<td>array</td>
+<td>The guids of agents this connection stopped following to make room for this one. Usually empty; see <a href="#run-stream-limits">Run stream limits</a>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p><a href="#run-stream-fields">Run stream fields</a> describes each field of a run and a model run. Events can start reaching you as soon as the subscription is in place, so one can arrive just before this reply. Subscribing again on the same connection is fine: the subscription then ends at the <code>expiresat</code> of the token you sent, and the reply has fresh lists.</p>
+<p>To stop following an agent, send <code>agent_run_unsubscribe</code>. It needs no token, and the server answers <code>agent_run_unsubscribed</code>:</p>
+<pre><code class="language-json">{
+  &quot;type&quot;: &quot;agent_run_unsubscribe&quot;,
+  &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;type&quot;: &quot;agent_run_unsubscribed&quot;,
+  &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;,
+  &quot;result&quot;: true
+}
+</code></pre>
+<p>The reply comes even for an agent you weren't following. An unsubscribe with a malformed <code>useragentguid</code> gets no reply.</p>
+<h4 id="run-events">Run events</h4>
+<p>Each event carries <code>type</code>, <code>useragentguid</code>, <code>message</code>, and <code>result</code>. <code>result</code> is always <code>true</code>, also for a run that failed, so read <code>ok</code>. No event carries an <code>agenttoken</code> or any other token.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th><code>message</code> keys</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>agent_run_start</code></td>
+<td><code>runref</code>, <code>runkind</code>, <code>sessionkey</code>, <code>root</code>, <code>startedat</code></td>
+<td>A background run started. Once per run.</td>
+</tr>
+<tr>
+<td><code>agent_run_block</code></td>
+<td><code>runref</code>, <code>runkind</code>, <code>sessionkey</code>, <code>root</code>, <code>block</code></td>
+<td>A step of an open background run changed. Sent only for a newer <code>version</code> of that block.</td>
+</tr>
+<tr>
+<td><code>agent_run_end</code></td>
+<td><code>runref</code>, <code>runkind</code>, <code>sessionkey</code>, <code>root</code>, <code>ok</code>, <code>reason</code>, <code>durationms</code>, <code>endedat</code></td>
+<td>The run ended. Once per run, and nothing follows it.</td>
+</tr>
+<tr>
+<td><code>agent_run_model_start</code></td>
+<td><code>modelref</code>, <code>runref</code>, <code>sessionkey</code>, <code>slugowner</code>, <code>slugproject</code>, <code>categories</code>, <code>startedat</code></td>
+<td>The agent started a Wiro model run. Once per model run.</td>
+</tr>
+<tr>
+<td><code>agent_run_model_end</code></td>
+<td><code>modelref</code>, <code>ok</code>, <code>outcome</code>, <code>durationms</code>, <code>endedat</code></td>
+<td>That model run ended. Once per model run.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p><code>agent_run_start</code>, <code>agent_run_block</code>, and <code>agent_run_end</code> cover only runs that have no chat message. A chat turn you start with <code>Message/Send</code> streams on its <code>agenttoken</code> and never shows up here. <code>agent_run_model_start</code> and <code>agent_run_model_end</code> cover every Wiro model run the agent starts, chat turns included.</p>
+<p>A model run can start before its run's <code>agent_run_start</code> reaches you, and in rare cases a block can too: treat either one as the run being open.</p>
+<p>A sub-agent started from a chat session:</p>
+<pre><code class="language-json">{
+  &quot;type&quot;: &quot;agent_run_start&quot;,
+  &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;,
+  &quot;message&quot;: {
+    &quot;runref&quot;: &quot;Lw7cR2nYb5Xq0Tz8Mk3Vh1&quot;,
+    &quot;runkind&quot;: &quot;subagent&quot;,
+    &quot;sessionkey&quot;: &quot;default&quot;,
+    &quot;root&quot;: &quot;chat&quot;,
+    &quot;startedat&quot;: 1793492400
+  },
+  &quot;result&quot;: true
+}
+</code></pre>
+<p>A step of a Scheduled Task run finished:</p>
+<pre><code class="language-json">{
+  &quot;type&quot;: &quot;agent_run_block&quot;,
+  &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;,
+  &quot;message&quot;: {
+    &quot;runref&quot;: &quot;q2Vt8kXw1bN0aZ3cR5sY7u&quot;,
+    &quot;runkind&quot;: &quot;cron&quot;,
+    &quot;sessionkey&quot;: null,
+    &quot;root&quot;: &quot;cron&quot;,
+    &quot;block&quot;: {
+      &quot;blockid&quot;: &quot;c2:i1&quot;,
+      &quot;callindex&quot;: 2,
+      &quot;contentindex&quot;: 1,
+      &quot;type&quot;: &quot;tool&quot;,
+      &quot;text&quot;: null,
+      &quot;toollabel&quot;: &quot;exec&quot;,
+      &quot;toolstatus&quot;: &quot;completed&quot;,
+      &quot;toolintegration&quot;: &quot;shopify&quot;,
+      &quot;toolaction&quot;: null,
+      &quot;phase&quot;: &quot;end&quot;,
+      &quot;version&quot;: 2,
+      &quot;startedat&quot;: 1793491850,
+      &quot;updatedat&quot;: 1793491858
+    }
+  },
+  &quot;result&quot;: true
+}
+</code></pre>
+<p>The Scheduled Task run ended:</p>
+<pre><code class="language-json">{
+  &quot;type&quot;: &quot;agent_run_end&quot;,
+  &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;,
+  &quot;message&quot;: {
+    &quot;runref&quot;: &quot;q2Vt8kXw1bN0aZ3cR5sY7u&quot;,
+    &quot;runkind&quot;: &quot;cron&quot;,
+    &quot;sessionkey&quot;: null,
+    &quot;root&quot;: &quot;cron&quot;,
+    &quot;ok&quot;: true,
+    &quot;reason&quot;: &quot;report&quot;,
+    &quot;durationms&quot;: 147230,
+    &quot;endedat&quot;: 1793491947
+  },
+  &quot;result&quot;: true
+}
+</code></pre>
+<p>A model run started in a chat turn, then its end:</p>
+<pre><code class="language-json">{
+  &quot;type&quot;: &quot;agent_run_model_start&quot;,
+  &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;,
+  &quot;message&quot;: {
+    &quot;modelref&quot;: &quot;Pz5mT1qXv8Rk3Nw0Yb7Lc2&quot;,
+    &quot;runref&quot;: null,
+    &quot;sessionkey&quot;: &quot;default&quot;,
+    &quot;slugowner&quot;: &quot;google&quot;,
+    &quot;slugproject&quot;: &quot;nano-banana-pro&quot;,
+    &quot;categories&quot;: [&quot;image-generation&quot;],
+    &quot;startedat&quot;: 1793492460
+  },
+  &quot;result&quot;: true
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;type&quot;: &quot;agent_run_model_end&quot;,
+  &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;,
+  &quot;message&quot;: {
+    &quot;modelref&quot;: &quot;Pz5mT1qXv8Rk3Nw0Yb7Lc2&quot;,
+    &quot;ok&quot;: true,
+    &quot;outcome&quot;: &quot;done&quot;,
+    &quot;durationms&quot;: 41000,
+    &quot;endedat&quot;: 1793492501
+  },
+  &quot;result&quot;: true
+}
+</code></pre>
+<h4 id="run-stream-fields">Run stream fields</h4>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>useragentguid</code></td>
+<td>string</td>
+<td>The agent the frame belongs to, for example <code>"f8e7d6c5-b4a3-2190-fedc-ba0987654321"</code>. Route frames by it.</td>
+</tr>
+<tr>
+<td><code>runref</code></td>
+<td>string | null</td>
+<td>Identifies one background run, for example <code>"q2Vt8kXw1bN0aZ3cR5sY7u"</code>: 22 letters, digits, <code>-</code> or <code>_</code>. Every frame of a run carries the same value. Always set on run events and in <code>runs</code>. On model events and in <code>models</code> it names the run that started the model run, and it is <code>null</code> when a chat turn started it.</td>
+</tr>
+<tr>
+<td><code>modelref</code></td>
+<td>string</td>
+<td>Identifies one model run, for example <code>"Hn4pW0sLx9Qe2Tm7Vb1Kd8"</code>: 22 letters, digits, <code>-</code> or <code>_</code>. It is not the model run's <code>taskid</code>: this stream never carries a <code>taskid</code> or a <code>socketaccesstoken</code>.</td>
+</tr>
+<tr>
+<td><code>runkind</code></td>
+<td>string</td>
+<td>What kind of run it is: <code>cron</code> (a Scheduled Task), <code>subagent</code> (a sub-agent working in the background), <code>announce</code> (a run that writes the result of background work back to its chat session), or <code>other</code> (any other run with no chat message, such as a reply on a connected channel). It can change while the run is open, for example from <code>other</code> to <code>cron</code>, but never back to <code>other</code>. Every event repeats it; the value on <code>agent_run_end</code> is final. Treat a value you don't know as <code>other</code>.</td>
+</tr>
+<tr>
+<td><code>root</code></td>
+<td>string</td>
+<td>What the run belongs to: <code>chat</code> (a chat session, named in <code>sessionkey</code>), <code>cron</code> (a Scheduled Task), or <code>unknown</code> (not known yet). A later event can fill it in; once it is <code>chat</code> or <code>cron</code>, it never goes back to <code>unknown</code>. Model events don't carry it. Treat a value you don't know as <code>unknown</code>.</td>
+</tr>
+<tr>
+<td><code>sessionkey</code></td>
+<td>string | null</td>
+<td>The chat session the run works for, as <code>Message/Sessions</code> and <code>Message/History</code> name it, for example <code>"default"</code>. Up to 512 characters. A Scheduled Task run has <code>null</code> here, or its <code>cs-cron-</code> session key; <code>root</code> is <code>cron</code> either way. It is also <code>null</code> while the session isn't known yet, and when the key can't be shown on this stream (one with a space, for example). Once a run has a <code>sessionkey</code>, it doesn't go back to <code>null</code>. On model events it is the session of the chat turn or run that started the model run, or <code>null</code>.</td>
+</tr>
+<tr>
+<td><code>startedat</code></td>
+<td>number</td>
+<td>Unix seconds when the run or model run started, for example <code>1793491800</code>. When a run is first seen as it ends, <code>agent_run_start</code> and <code>agent_run_end</code> come together and <code>startedat</code> is worked out from the run's duration.</td>
+</tr>
+<tr>
+<td><code>steps</code></td>
+<td>number</td>
+<td>In <code>runs</code> only: how many tool steps the run has taken so far, 0 or more.</td>
+</tr>
+<tr>
+<td><code>block</code></td>
+<td>object | null</td>
+<td>On <code>agent_run_block</code>, the step that changed. In <code>runs</code>, the run's newest step, or <code>null</code> when it has none yet. See the block shape below.</td>
+</tr>
+<tr>
+<td><code>ok</code></td>
+<td>boolean | null</td>
+<td>On end events: <code>true</code> when the run or model run succeeded, <code>false</code> when it failed, and <code>null</code> when its result is unknown (<code>reason</code> or <code>outcome</code> is <code>lost</code>).</td>
+</tr>
+<tr>
+<td><code>reason</code></td>
+<td>string</td>
+<td>On <code>agent_run_end</code>, how the run ended. <code>report</code>: the run reported its own end. <code>terminal</code>: its latest step ended (<code>ok: true</code>) or failed (<code>ok: false</code>), and no new step began within two minutes. <code>lost</code>: nothing came from the run for 60 minutes, or the agent stopped, restarted or was deleted while the run was open (<code>ok: null</code>). Treat a value you don't know as <code>lost</code>.</td>
+</tr>
+<tr>
+<td><code>outcome</code></td>
+<td>string</td>
+<td>On <code>agent_run_model_end</code>: <code>done</code> (the task reached <code>task_postprocess_end</code> with <code>pexit</code> <code>"0"</code>; <code>ok: true</code>), <code>failed</code> (<code>task_error</code>, or <code>task_postprocess_end</code> with another <code>pexit</code>; <code>ok: false</code>), <code>cancelled</code> (<code>task_cancel</code>: the task was cancelled or killed; <code>ok: false</code>), or <code>lost</code> (its end could not be read, for example it was still open after 24 hours; <code>ok: null</code>). Treat a value you don't know as <code>lost</code>.</td>
+</tr>
+<tr>
+<td><code>durationms</code></td>
+<td>number</td>
+<td>On end events: how long the run or model run took, in milliseconds, for example <code>147230</code>. Never <code>null</code>.</td>
+</tr>
+<tr>
+<td><code>endedat</code></td>
+<td>number</td>
+<td>On end events: Unix seconds when it ended, for example <code>1793491947</code>. With <code>reason: "terminal"</code>, it is when the last step ended; with <code>reason: "lost"</code>, it is the run's last activity.</td>
+</tr>
+<tr>
+<td><code>slugowner</code>, <code>slugproject</code></td>
+<td>string | null</td>
+<td>The model, as in <code>POST /Run/{owner-slug}/{model-slug}</code>, for example <code>"google"</code> and <code>"nano-banana-pro"</code>. Each is up to 128 letters, digits, <code>.</code>, <code>_</code> or <code>-</code>, or <code>null</code> when the slug is anything else.</td>
+</tr>
+<tr>
+<td><code>categories</code></td>
+<td>array</td>
+<td>The model's categories as strings, for example <code>["image-generation"]</code>. Up to 16, never <code>null</code>: an empty array when none are known.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Every time is a whole number of Unix seconds and every duration a whole number of milliseconds.</p>
+<p><code>block</code> has the shape of an <a href="#agent_timeline_delta"><code>agent_timeline_delta</code></a> block, with <code>text</code> always <code>null</code>:</p>
+<ul>
+<li>A tool block has <code>blockid</code>, <code>callindex</code>, <code>contentindex</code>, <code>type</code> (<code>tool</code>), <code>text</code>, <code>toollabel</code>, <code>toolstatus</code> (<code>requested</code>, <code>completed</code>, or <code>error</code>), <code>toolintegration</code>, <code>toolaction</code>, <code>phase</code>, <code>version</code>, <code>startedat</code>, and <code>updatedat</code>. <code>toolintegration</code> and <code>toolaction</code> use the same closed lists as timeline tool blocks, and when <code>toolintegration</code> is set, <code>toolaction</code> is <code>null</code>.</li>
+<li>A <code>reasoning</code> or <code>answer</code> block has <code>blockid</code>, <code>callindex</code>, <code>contentindex</code>, <code>type</code>, <code>text</code>, <code>phase</code>, <code>version</code>, <code>startedat</code>, and <code>updatedat</code>.</li>
+<li>A <code>blockid</code> is unique within one run only, so key blocks by <code>runref</code> and <code>blockid</code> together. <code>version</code> starts at 1 and only grows: keep a block only when its <code>version</code> is higher than the one you hold.</li>
+<li><code>startedat</code> is when the step was first seen, and <code>updatedat</code> is the time of this update.</li>
+<li><code>phase</code> is <code>stream</code>, <code>end</code>, or <code>error</code>. A step that reached <code>end</code> or <code>error</code> stays there. An update that names no tool word keeps the block's last word.</li>
+</ul>
+<h4 id="run-stream-errors">Run stream errors</h4>
+<p>Both errors are <code>error</code> frames that carry <code>useragentguid</code>, and the connection stays open:</p>
+<pre><code class="language-json">{
+  &quot;type&quot;: &quot;error&quot;,
+  &quot;message&quot;: &quot;runstreamtoken-invalid&quot;,
+  &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;,
+  &quot;result&quot;: false
+}
+</code></pre>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th><code>message</code></th>
+<th>When</th>
+<th>What to do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>runstreamtoken-invalid</code></td>
+<td>The token is wrong, belongs to another agent or has expired, or the guid or the token is malformed. <code>useragentguid</code> is <code>null</code> when the guid itself is malformed.</td>
+<td>Get a new token, at most once a minute, and subscribe again.</td>
+</tr>
+<tr>
+<td><code>runstream-unavailable</code></td>
+<td>The agent's open runs could not be read just now, or the run stream is not available.</td>
+<td>Keep the runs you hold and subscribe again later.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>When only the lists could not be read, your subscription is in place and events keep coming. The server never sends empty lists in place of <code>runstream-unavailable</code>, so empty <code>runs</code> and <code>models</code> always mean that nothing is open.</p>
+<h4 id="run-stream-limits">Run stream limits</h4>
+<ul>
+<li>One connection follows up to 256 agents. Subscribing to one more drops the agent whose subscription is the oldest, and the reply lists it in <code>dropped</code>. Subscribing again to an agent makes it the newest. Expired subscriptions are removed first and are not listed.</li>
+<li><code>runs</code> and <code>models</code> hold up to 256 items each.</li>
+<li><code>categories</code> holds up to 16 items, and <code>sessionkey</code> up to 512 characters.</li>
+<li>A run sends <code>agent_run_block</code> for up to 512 different blocks. New blocks after that are not sent, and the run's end still comes.</li>
+<li>A subscription ends at its <code>expiresat</code>. Nothing arrives after that until you subscribe again with a new token.</li>
+</ul>
+<h4 id="client-rules">Client rules</h4>
+<ol>
+<li>Key runs by <code>runref</code>, blocks by <code>runref</code> and <code>blockid</code> (keep a block only when its <code>version</code> is higher), and model runs by <code>modelref</code>.</li>
+<li>On <code>agent_run_subscribed</code>, replace the agent's open runs and model runs with the lists, except one whose start or first frame reached you after you sent that subscribe: keep it, and let the next reply decide.</li>
+<li>A run or model run missing from a list has ended, and its result is unknown.</li>
+<li>After <code>agent_run_end</code> or <code>agent_run_model_end</code>, keep that <code>runref</code> or <code>modelref</code> ended for at least 10 minutes: a later list or frame never reopens it.</li>
+<li>An <code>agent_run_block</code> or <code>agent_run_model_start</code> for a ref you don't know opens it.</li>
+<li>After a reconnect, subscribe again for every agent: subscriptions belong to the connection, and frames are not replayed.</li>
+<li>While an agent has an open run or model run, subscribe again after 30 seconds with no <code>agent_run_*</code> frame for it.</li>
+<li>With no reply to <code>agent_run_subscribe</code> within 10 seconds, send it again after 5 seconds, then 15, then 60.</li>
+<li>On <code>runstreamtoken-invalid</code>, get a new token (at most once a minute) and subscribe again. On <code>runstream-unavailable</code>, keep what you hold and try again later.</li>
+<li>When less than 12 hours remain before <code>expiresat</code>, get a new token and send <code>agent_run_subscribe</code> with it.</li>
+</ol>
 <h2 id="the-result-field">The <code>result</code> Field</h2>
 <p>Every agent lifecycle event includes a <code>result</code> boolean:</p>
 <div class="docs-param-table">
@@ -20926,16 +21499,17 @@ func main() {
 <tbody>
 <tr>
 <td><code>true</code></td>
-<td><code>agent_subscribed</code>, <code>agent_start</code>, <code>agent_timeline_delta</code>, <code>agent_output</code>, <code>agent_end</code>, <code>agent_usage_report</code>, <code>agent_session_subscribed</code>, <code>agent_message_inserted</code></td>
+<td><code>agent_subscribed</code>, <code>agent_start</code>, <code>agent_timeline_delta</code>, <code>agent_output</code>, <code>agent_end</code>, <code>agent_usage_report</code>, <code>agent_session_subscribed</code>, <code>agent_message_inserted</code>, <code>agent_run_subscribed</code>, <code>agent_run_unsubscribed</code>, <code>agent_run_start</code>, <code>agent_run_block</code>, <code>agent_run_end</code>, <code>agent_run_model_start</code>, <code>agent_run_model_end</code></td>
 </tr>
 <tr>
 <td><code>false</code></td>
-<td><code>error</code>, <code>agent_error</code>, <code>agent_cancel</code></td>
+<td><code>error</code> (including the run stream's <code>runstreamtoken-invalid</code> and <code>runstream-unavailable</code>), <code>agent_error</code>, <code>agent_cancel</code></td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
+<p>On <code>agent_run_end</code> and <code>agent_run_model_end</code>, <code>result</code> is <code>true</code> even when the run failed: read <code>ok</code> for how it went.</p>
 <p>Use <code>result</code> to quickly determine whether the event represents a successful state. When <code>result</code> is <code>false</code>, inspect <code>message</code> for error details or cancellation context. The welcome <code>connected</code> frame has no <code>result</code> field. It's a one-shot ack and always implies success (you got the frame, so the upgrade worked).</p>
 <h2 id="streaming-metrics">Streaming Metrics</h2>
 <p>Each <code>agent_output</code> and <code>agent_end</code> event includes real-time performance data in the <code>message</code> object:</p>
@@ -21507,10 +22081,17 @@ channel.stream.listen((message) {
   }
 }
 </code></pre>
+<p><strong><code>agent_run_subscribe</code></strong>, to follow an agent's background runs (client → server). Its reply, events, and errors are in <a href="#following-an-agents-background-runs">Following an agent's background runs</a>:</p>
+<pre><code class="language-json">{
+  &quot;type&quot;: &quot;agent_run_subscribe&quot;,
+  &quot;useragentguid&quot;: &quot;f8e7d6c5-...&quot;,
+  &quot;runstreamtoken&quot;: &quot;Zr8Qm2...&quot;
+}
+</code></pre>
 <h2 id="connection-keep-alive">Connection Keep-Alive</h2>
 <p>The Wiro WebSocket server sends a ping every <strong>30 seconds</strong> to keep the connection alive. Most standard WebSocket client libraries respond to pings automatically; if your client implements a custom frame handler, make sure it sends a pong within a few seconds of each ping or the server will drop the connection. After <code>agent_error</code> / <code>agent_cancel</code> you can close the socket immediately. After <code>agent_end</code>, one more frame (<code>agent_usage_report</code>) follows ~250-500 ms later; wait for it if you need usage/billing data. Read <code>Message/Detail</code> whenever you need the authoritative completed timeline.</p>
 <h2 id="correlating-events-with-your-messages">Correlating Events With Your Messages</h2>
-<p>Every agent lifecycle frame carries <code>agenttoken</code>, so keep the mapping returned by <code>Message/Send</code>. Most stream frames do not include <code>messageguid</code>; <code>agent_timeline_delta</code> additionally carries <code>message.messageguid</code>, and <code>agent_subscribed</code> carries top-level <code>messageguid</code>. No frame carries <code>useragentguid</code>.</p>
+<p>Every agent lifecycle frame carries <code>agenttoken</code>, so keep the mapping returned by <code>Message/Send</code>. Most stream frames do not include <code>messageguid</code>; <code>agent_timeline_delta</code> additionally carries <code>message.messageguid</code>, and <code>agent_subscribed</code> carries top-level <code>messageguid</code>. No chat stream frame carries <code>useragentguid</code>; only the <a href="#following-an-agents-background-runs">run stream</a> frames (<code>agent_run_*</code>) do.</p>
 <p>The post-terminal <code>agent_usage_report</code> also names <code>message.messageguid</code>, but it arrives only after <code>agent_end</code>, so you still need the <code>agenttoken → messageguid</code> mapping for start/output/end/error/cancel routing.</p>
 <h3 id="why-agenttoken-is-the-correlation-key">Why <code>agenttoken</code> is the correlation key</h3>
 <ul>
@@ -21713,7 +22294,7 @@ function connect(agenttoken, onStreamingChunk, onFinal, onFailure) {
 </tr>
 <tr>
 <td>Usage billed</td>
-<td>~250-500 ms after a successful <code>agent_end</code>, emits <code>agent_usage_report</code> with final token counts, <code>model</code>, <code>tokencost</code>, and <code>remainingcredits</code>. Not emitted for replayed usage callbacks or for turns with no chat message (cron/hook turns).</td>
+<td>~250-500 ms after a successful <code>agent_end</code>, emits <code>agent_usage_report</code> with final token counts, <code>model</code>, <code>tokencost</code>, and <code>remainingcredits</code>. Not emitted for replayed usage callbacks or for turns with no chat message (cron/hook turns), which you follow on the <a href="#following-an-agents-background-runs">run stream</a>.</td>
 </tr>
 <tr>
 <td>Bridge exception</td>
@@ -27310,6 +27891,7 @@ foreach (array_slice($resp['transactions'], 0, 10) as $tx) {
                             <tr><td><code>POST /UserAgent/LogsList</code></td><td>List the days (<code>YYYY-MM-DD</code>) that have activity, with the size of each day's log.</td></tr>
                             <tr><td><code>POST /UserAgent/LogsFile</code></td><td>Read the <strong>full</strong> log of a specific date.</td></tr>
                             <tr><td><code>POST /UserAgent/LogsDelete</code></td><td>Delete the agent's own turns and tool calls for one date. Idempotent.</td></tr>
+                            <tr><td><code>POST /UserAgent/RunStreamToken</code></td><td>Get a token for following the agent's Scheduled Tasks, background runs and model runs live on the <a href="/docs/agent-websocket#following-an-agents-background-runs">Agent WebSocket</a>, instead of polling <code>Logs</code>.</td></tr>
                           </tbody>
                         </table>
                       </div>
@@ -27779,6 +28361,80 @@ foreach (array_slice($resp['transactions'], 0, 10) as $tx) {
                     <p><code>removed.{plain,gz}</code> reports which physical files were actually deleted. Both <code>false</code> is also a success (file was already gone).</p>
                   </section>
 
+                  <section id="logs-runstreamtoken">
+                    <h2 id="post-useragentrunstreamtoken"><span class="endpoint-badge post">POST</span> /UserAgent/RunStreamToken</h2>
+                    <p>Returns a token for following the agent's Scheduled Tasks, background runs and model runs live on the Agent WebSocket, so you see a run while it happens instead of polling <code>Logs</code>. Same access as <code>Logs</code>: the agent's owner and, on a team agent, the team's admins. A stopped agent gets a token too.</p>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td><code>useragentguid</code></td><td>string</td><td>Yes</td><td>The guid of your deployed agent.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <h3>Request</h3>
+                    <pre><code class="language-bash">curl -X POST "https://api.wiro.ai/v1/UserAgent/RunStreamToken" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321" }'</code></pre>
+
+                    <h3>Response</h3>
+                    <pre><code class="language-json">{
+  "result": true,
+  "runstreamtoken": "Zr8Qm2Kx7VbN4tLpW1sYc9HdF6gJaE3uTo5iRk0nXqM",
+  "expiresat": 1793664000,
+  "errors": []
+}</code></pre>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td><code>runstreamtoken</code></td><td>string | null</td><td>An opaque token valid until <code>expiresat</code>, 24 to 48 hours after it is issued. Send it in an <code>agent_run_subscribe</code> frame. <code>null</code> when the call fails.</td></tr>
+                            <tr><td><code>expiresat</code></td><td>number | null</td><td>Unix seconds when the token stops working, for example <code>1793664000</code>. <code>null</code> when the call fails.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <p>Keep the token private: whoever holds it can follow the agent's runs until <code>expiresat</code>. When less than 12 hours remain, call <code>RunStreamToken</code> again and subscribe with the new token. How to subscribe, the events, and the client rules are in <a href="/docs/agent-websocket#following-an-agents-background-runs">Following an agent's background runs</a>.</p>
+                    <p>A failed call has one entry in <code>errors</code>:</p>
+                    <pre><code class="language-json">{
+  "result": false,
+  "runstreamtoken": null,
+  "expiresat": null,
+  "errors": [
+    {
+      "code": 97,
+      "message": "Only a team admin can perform this action on a team-owned agent.",
+      "time": 1793491800
+    }
+  ]
+}</code></pre>
+                    <div class="docs-param-table">
+                      <div class="docs-param-table-wrapper">
+                        <table>
+                          <thead>
+                            <tr><th>Error</th><th>Code</th><th>When</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td><code>useragentguid is required</code></td><td>0</td><td><code>useragentguid</code> is missing or blank</td></tr>
+                            <tr><td><code>User agent not found</code></td><td>95</td><td>Unknown guid, or the agent has been deleted</td></tr>
+                            <tr><td><code>You don't have access to this user agent</code></td><td>96</td><td>The caller is neither the agent's owner nor on its team</td></tr>
+                            <tr><td><code>Only a team admin can perform this action on a team-owned agent.</code></td><td>97</td><td>The caller is a plain member of the agent's team</td></tr>
+                            <tr><td><code>runstream-unavailable</code></td><td>0</td><td>Following runs live is not available right now. Try again later</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </section>
+
                   <section id="logs-patterns">
                     <h2>Usage Patterns</h2>
 
@@ -27801,6 +28457,7 @@ foreach (array_slice($resp['transactions'], 0, 10) as $tx) {
     lastTs = Date.parse(fresh[0].ts);
   }, 30_000);
 }</code></pre>
+                    <p>To show a Scheduled Task or another background run while it happens, follow the agent's <a href="/docs/agent-websocket#following-an-agents-background-runs">run stream</a> and read <code>Logs</code> again when <code>agent_run_end</code> arrives.</p>
 
                     <h3>Daily download for off-band analysis</h3>
                     <pre><code class="language-bash"># 1) discover available dates
@@ -27856,11 +28513,12 @@ for e in cron_runs:
                             <tr><td><code>Agent is not assigned to a worker. It may not be running.</code></td><td>The agent isn't running on a host (never started, stopped or being moved). Start it and retry</td></tr>
                             <tr><td><code>Worker not found</code></td><td>The agent's host is not available right now. Retry later</td></tr>
                             <tr><td><code>Agent is temporarily unavailable. Please try again shortly.</code></td><td>The agent's host did not answer (offline, network blip). Retry</td></tr>
+                            <tr><td><code>runstream-unavailable</code></td><td><code>RunStreamToken</code> only: following runs live is not available right now. Try again later</td></tr>
                           </tbody>
                         </table>
                       </div>
                     </div>
-                    <p><code>Logs</code>, <code>LogsFile</code> and <code>LogsList</code> answer with the last three errors only when there are no who-did-what rows to show. <code>LogsDelete</code> needs the agent on a host every time.</p>
+                    <p><code>Logs</code>, <code>LogsFile</code> and <code>LogsList</code> answer with the last three errors only when there are no who-did-what rows to show. <code>LogsDelete</code> needs the agent on a host every time. <code>RunStreamToken</code> needs no host: a stopped agent gets a token too.</p>
                   </section>
 
                   <section id="logs-retention">
@@ -27888,6 +28546,7 @@ for e in cron_runs:
                     <ul>
                       <li><a href="/docs/agent-transactions">Agent Transactions</a>: Credit ledger for the same useragent</li>
                       <li><a href="/docs/agent-messaging">Agent Messaging</a>: User-facing message exchanges (with full prompts and responses)</li>
+                      <li><a href="/docs/agent-websocket#following-an-agents-background-runs">Agent WebSocket</a>: Follow the agent's Scheduled Tasks, background runs and model runs live</li>
                       <li><a href="/docs/agent-overview">Agent Overview</a>: Full agent endpoint catalog</li>
                     </ul>
                   </section>

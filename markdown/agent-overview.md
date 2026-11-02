@@ -1250,6 +1250,7 @@ Updates an agent instance's **scalar fields only** (title, description, categori
 > | Upload a cover image (multipart) | [`POST /UserAgent/Cover`](#post-useragentcover) |
 > | Per-agent timezone or unified Chat Mode | [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) |
 > | View / download / delete activity logs | [`POST /UserAgent/Logs`](#post-useragentlogs) · [`LogsList`](#post-useragentlogslist) · [`LogsFile`](#post-useragentlogsfile) · [`LogsDelete`](#post-useragentlogsdelete) |
+> | Follow Scheduled Tasks, background runs and model runs live | [`POST /UserAgent/RunStreamToken`](#post-useragentrunstreamtoken) |
 > | Soft-delete a useragent | [`POST /UserAgent/Delete`](#post-useragentdelete) |
 
 > **Note:** `CredentialUpsert` and `CredentialProjectBind` save connector fields **but do not transition `status: 6` on their own**. After setting up the missing connectors, call `POST /UserAgent/Update` once (any scalar body works, even just `{ "guid": "<useragent-guid>" }`) to trigger the `setuprequired` re-check; that's the call that flips `status: 6 → 0` (Stopped) so the next `Start` succeeds.
@@ -2325,7 +2326,7 @@ Stops a running agent instance. If the agent is Queued (status `2`), it is immed
 
 #### **POST** /UserAgent/Delete
 
-Soft-deletes a useragent. Delete stamps `deletedat` (returned in the response) and unpins the agent; it doesn't erase the agent's history (transactions, credential and custom-skill change history, messages). The agent's working files, such as its memory and the files it saved while it ran, are kept for 30 days after the delete and then removed for good; media the agent sent in chat is stored separately and stays. The agent is then excluded from `Detail`, `MyAgents`, `Start`, `Stop`, the agent runtime and its scheduled jobs, and `TransactionList`, `CredentialFieldHistory`, `CustomSkillHistory`, `Logs`, `LogsList`, `LogsFile`, `LogsDelete`, `Message/History`, `Message/Sessions`, `Message/DeleteSession`, `Message/RenameSession` and `Message/Delete` return `useragent-not-found` (code `95`) for it, so export anything you need before deleting.
+Soft-deletes a useragent. Delete stamps `deletedat` (returned in the response) and unpins the agent; it doesn't erase the agent's history (transactions, credential and custom-skill change history, messages). The agent's working files, such as its memory and the files it saved while it ran, are kept for 30 days after the delete and then removed for good; media the agent sent in chat is stored separately and stays. The agent is then excluded from `Detail`, `MyAgents`, `Start`, `Stop`, the agent runtime and its scheduled jobs, and `TransactionList`, `CredentialFieldHistory`, `CustomSkillHistory`, `Logs`, `LogsList`, `LogsFile`, `LogsDelete`, `RunStreamToken`, `Message/History`, `Message/Sessions`, `Message/DeleteSession`, `Message/RenameSession` and `Message/Delete` return `useragent-not-found` (code `95`) for it, so export anything you need before deleting.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -2578,6 +2579,44 @@ Downloads the **full** day's activity log (no `lines` cap). Use this when you ne
 ```
 
 `events` is sorted **newest first** (descending by `ts`), the same contract as `Logs`, so `events[0]` is the freshest entry whether you're tailing the live day or downloading a historical one. `truncated: true` only when the day's file is larger than 10 MiB: its newest 10 MiB of events are returned. Who-did-what rows are included, and a stopped agent and a deleted day read as on `Logs`.
+
+#### **POST** /UserAgent/RunStreamToken
+
+Returns a token for following the agent's Scheduled Tasks, background runs and model runs live on the Agent WebSocket. Send it in an `agent_run_subscribe` frame: the events that follow say when each run starts, which step it is on and when it ends, with labels only. See [Following an agent's background runs](/docs/agent-websocket#following-an-agents-background-runs).
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | The guid of your deployed agent |
+
+**Headers:** No extra header is needed. Access: the agent's owner or a team admin of the agent's team (plain team members are rejected with code `97`). A stopped agent gets a token too.
+
+##### Response
+
+```json
+{
+  "result": true,
+  "runstreamtoken": "Zr8Qm2Kx7VbN4tLpW1sYc9HdF6gJaE3uTo5iRk0nXqM",
+  "expiresat": 1793664000,
+  "errors": []
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `runstreamtoken` | string \| null | An opaque token valid until `expiresat`, 24 to 48 hours after it is issued. `null` when the call fails. Keep it private: whoever holds it can follow the agent's runs until it expires. |
+| `expiresat` | number \| null | Unix seconds when the token stops working. When less than 12 hours remain, get a new token and subscribe again with it. `null` when the call fails. |
+
+##### Common errors
+
+A failed call answers `result: false` with `runstreamtoken` and `expiresat` set to `null` and one entry in `errors`.
+
+| Error | Code | When |
+|-------|------|------|
+| `useragentguid is required` | 0 | `useragentguid` is missing or blank |
+| `User agent not found` | 95 | Unknown guid, or the agent has been deleted |
+| `You don't have access to this user agent` | 96 | The caller is neither the agent's owner nor on its team |
+| `Only a team admin can perform this action on a team-owned agent.` | 97 | The caller is a plain member of the agent's team |
+| `runstream-unavailable` | 0 | Following runs live is not available right now. Try again later |
 
 #### **POST** /UserAgent/Pin
 
@@ -3141,6 +3180,7 @@ Agent-specific errors you may encounter:
 | `Invalid redirect URL` | OAuth `Connect` with non-HTTPS URL |
 | `Pack key required` | `CreateExtraCreditCheckout` without `pack` |
 | `Could not retrieve wallet balance` | Wallet service lookup failed while checking balance |
+| `runstream-unavailable` | `RunStreamToken` while following runs live is not available. Try again later |
 
 ## Code Examples
 

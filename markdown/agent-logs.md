@@ -18,6 +18,7 @@ The endpoints below are **owner-or-team-admin** scoped. Plain members of the age
 | `POST /UserAgent/LogsList` | List the days (`YYYY-MM-DD`) that have activity, with the size of each day's log. |
 | `POST /UserAgent/LogsFile` | Read the **full** log of a specific date. |
 | `POST /UserAgent/LogsDelete` | Delete the agent's own turns and tool calls for one date. Idempotent. |
+| `POST /UserAgent/RunStreamToken` | Get a token for following the agent's Scheduled Tasks, background runs and model runs live on the [Agent WebSocket](/docs/agent-websocket#following-an-agents-background-runs), instead of polling `Logs`. |
 
 > **Activity feed vs `Message/History`.** `Message/History` is a chat-bubble-level read of the conversation. `Logs` is a **runtime** view: every tool call, every turn and every scheduled task run. They serve different audiences (`Message/History` for end users, `Logs` for operators / power users).
 
@@ -447,6 +448,66 @@ Deletes the agent's own turns and tool calls for one date: its activity file and
 
 `removed.{plain,gz}` reports which physical files were actually deleted. Both `false` is also a success (file was already gone).
 
+## **POST** /UserAgent/RunStreamToken
+
+Returns a token for following the agent's Scheduled Tasks, background runs and model runs live on the Agent WebSocket, so you see a run while it happens instead of polling `Logs`. Same access as `Logs`: the agent's owner and, on a team agent, the team's admins. A stopped agent gets a token too.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | The guid of your deployed agent. |
+
+##### Request
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/RunStreamToken" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321" }'
+```
+
+##### Response
+
+```json
+{
+  "result": true,
+  "runstreamtoken": "Zr8Qm2Kx7VbN4tLpW1sYc9HdF6gJaE3uTo5iRk0nXqM",
+  "expiresat": 1793664000,
+  "errors": []
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `runstreamtoken` | string \| null | An opaque token valid until `expiresat`, 24 to 48 hours after it is issued. Send it in an `agent_run_subscribe` frame. `null` when the call fails. |
+| `expiresat` | number \| null | Unix seconds when the token stops working, for example `1793664000`. `null` when the call fails. |
+
+Keep the token private: whoever holds it can follow the agent's runs until `expiresat`. When less than 12 hours remain, call `RunStreamToken` again and subscribe with the new token. How to subscribe, the events, and the client rules are in [Following an agent's background runs](/docs/agent-websocket#following-an-agents-background-runs).
+
+A failed call has one entry in `errors`:
+
+```json
+{
+  "result": false,
+  "runstreamtoken": null,
+  "expiresat": null,
+  "errors": [
+    {
+      "code": 97,
+      "message": "Only a team admin can perform this action on a team-owned agent.",
+      "time": 1793491800
+    }
+  ]
+}
+```
+
+| Error | Code | When |
+|-------|------|------|
+| `useragentguid is required` | 0 | `useragentguid` is missing or blank |
+| `User agent not found` | 95 | Unknown guid, or the agent has been deleted |
+| `You don't have access to this user agent` | 96 | The caller is neither the agent's owner nor on its team |
+| `Only a team admin can perform this action on a team-owned agent.` | 97 | The caller is a plain member of the agent's team |
+| `runstream-unavailable` | 0 | Following runs live is not available right now. Try again later |
+
 ## Usage Patterns
 
 ### Live polling for an in-app activity feed
@@ -472,6 +533,8 @@ async function pollActivity(useragentguid, onEvents) {
   }, 30_000);
 }
 ```
+
+To show a Scheduled Task or another background run while it happens, follow the agent's [run stream](/docs/agent-websocket#following-an-agents-background-runs) and read `Logs` again when `agent_run_end` arrives.
 
 ### Daily download for off-band analysis
 
@@ -532,8 +595,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/LogsDelete" \
 | `Agent is not assigned to a worker. It may not be running.` | The agent isn't running on a host (never started, stopped or being moved). Start it and retry |
 | `Worker not found` | The agent's host is not available right now. Retry later |
 | `Agent is temporarily unavailable. Please try again shortly.` | The agent's host did not answer (offline, network blip). Retry |
+| `runstream-unavailable` | `RunStreamToken` only: following runs live is not available right now. Try again later |
 
-`Logs`, `LogsFile` and `LogsList` answer with the last three errors only when there are no who-did-what rows to show. `LogsDelete` needs the agent on a host every time.
+`Logs`, `LogsFile` and `LogsList` answer with the last three errors only when there are no who-did-what rows to show. `LogsDelete` needs the agent on a host every time. `RunStreamToken` needs no host: a stopped agent gets a token too.
 
 ## Retention & Rotation
 
@@ -551,4 +615,5 @@ Who-did-what rows are kept for the same 180 days.
 
 - [Agent Transactions](/docs/agent-transactions): Credit ledger for the same useragent, the audit trail of every credit movement
 - [Agent Messaging](/docs/agent-messaging): User-facing message exchanges (with full prompts and responses)
+- [Agent WebSocket](/docs/agent-websocket#following-an-agents-background-runs): Follow the agent's Scheduled Tasks, background runs and model runs live
 - [Agent Overview](/docs/agent-overview): Full agent endpoint catalog
