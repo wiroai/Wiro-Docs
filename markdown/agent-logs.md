@@ -56,6 +56,8 @@ Every event is a JSON object with this base shape:
 | `ts` | `string` | ISO-8601 UTC datetime when the event was recorded (e.g. `"2026-05-03T14:00:10.234Z"`). Parse with `Date.parse(ts)` for arithmetic. |
 | `kind` | `string` | Fine-grained event class. One of: `"turn_started"`, `"turn_ended"` (an LLM turn boundary); `"tool_started"`, `"tool_completed"` (one pair per tool call); `"tool_blocked"` (a tool call the agent's safety rules refused); `"cron_finished"` (a scheduled task finished); `"user_message"` (a message received on a connected Telegram, Slack or Discord channel, not web chat); `"token_usage"` (a billed turn's token usage: chat / cron / voice post-call); `"token_usage_idempotent"` (a replayed usage report, already billed, informational only); `"media_relay"` (files from a reply were delivered); `"background_reply"` (a result that finished in the background was delivered to the chat). Rows about what was done to the agent have [`AGENT_*` kinds](#who-did-what-rows), and two note rows, `"runtime_log_unavailable"` and `"runtime_log_deleted"`, say what part of a day is missing. Show any kind you don't recognize by its `title`. |
 | `tool` | `string?` | Present on `tool_started` / `tool_completed` / `tool_blocked`. The name of the tool the agent used. |
+| `toolintegration` | `string?` | On `tool_started` and `tool_completed` when the step works in a connector: the connector's `key`, for example `"wordpress"`. Same closed list as on [timeline tool blocks](/docs/agent-messaging#tool-integration-and-action-values). |
+| `toolaction` | `string?` | On `tool_started` and `tool_completed` when a word fits the step: what it does, for example `"click"`. Same closed list as on [timeline tool blocks](/docs/agent-messaging#tool-integration-and-action-values). Never set together with `toolintegration`. |
 | `title` | `string` | Human-readable one-line description of what happened (e.g. `"Posted carousel: \"Brand voice teaser\""`, `"Fetched https://…"`, `"Token Usage"`). Always present. |
 | `summary` | `object?` | Structured event-specific payload. Opaque on the wire, so render it as JSON when expanding the row. Secret values (`apikey`, `apppassword`, `clientsecret`, `bearer`, `token`, …) are masked before the event is written. Common keys: `file`, `method`, `host`, `path`, `preview`, `messageCount`, `jobId`, `status`, `reason`. |
 | `durationMs` | `number?` | Wall-clock duration in milliseconds. Populated on `tool_completed`, `turn_ended`, `cron_finished` and `token_usage` events. |
@@ -66,6 +68,8 @@ Every event is a JSON object with this base shape:
 | `user` | `object\|null` | Resolved actor: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. `null` when `userUuid` is `"system"` (automation / cron) or when the user record was deleted. |
 
 > **What is `summary` for?** Tool events carry a short summary of the call: for example the file path for file tools, the program for `exec`, or the method, host and path for web requests. Turn events carry a short `preview` (plus `messageCount` on `turn_ended`); `cron_finished` carries `{ jobId, status }`; `user_message` carries `{ preview }`; `tool_blocked` carries the `reason`. Treat the object as opaque and render-on-expand, since its shape depends on the tool and may change without a docs revision.
+
+To tell what a tool call is doing, read `toolintegration` and `toolaction` instead of parsing `title` or `summary`. Both are missing when no word fits the step, and `tool_blocked` events don't carry them.
 
 ### Token-usage events
 
@@ -200,6 +204,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Logs" \
       "ts": "2026-05-03T14:02:54.902Z",
       "kind": "tool_completed",
       "tool": "exec",
+      "toolintegration": "wiro",
       "title": "POST api.wiro.ai/v1/Run/google/nano-banana",
       "summary": {
         "method": "POST",

@@ -19,7 +19,7 @@ Every Detail or History message row returns a top-level `timeline[]`. It is the 
 
 `Thinking → Answer or Tool → Thinking → Answer`
 
-Each block has an opaque deterministic `blockid`, call/content ordering coordinates, `type` (`reasoning`, `answer`, or `tool`), safe public text or tool state, `phase` (`stream`, `end`, or `error`), its own monotonically increasing `version`, and timestamps. Reasoning text is a model-provided reasoning summary, never raw hidden chain-of-thought. Tool blocks expose only `toollabel` and `toolstatus`, never a tool ID, arguments, results, or other internal execution metadata. When a turn ends with `agent_error` or `agent_cancel`, the server closes every block still at `stream` and sends each one as an `agent_timeline_delta`, usually just before that final event. After `agent_end`, open blocks normally close a few seconds later. A tool block that closed with `toolstatus` `requested` was cut off before it finished.
+Each block has an opaque deterministic `blockid`, call/content ordering coordinates, `type` (`reasoning`, `answer`, or `tool`), safe public text or tool state, `phase` (`stream`, `end`, or `error`), its own monotonically increasing `version`, and timestamps. Reasoning text is a model-provided reasoning summary, never raw hidden chain-of-thought. Tool blocks expose only `toollabel`, `toolstatus`, `toolintegration`, and `toolaction`, never a tool ID, arguments, results, or other internal execution metadata. `toolintegration` and `toolaction` each hold a word from a [closed list](#tool-integration-and-action-values) or `null`. When a turn ends with `agent_error` or `agent_cancel`, the server closes every block still at `stream` and sends each one as an `agent_timeline_delta`, usually just before that final event. After `agent_end`, open blocks normally close a few seconds later. A tool block that closed with `toolstatus` `requested` was cut off before it finished.
 
 Live WebSocket updates arrive as `agent_timeline_delta` events carrying one public block. Merge by `blockid`, replace that block only when its incoming `version` is strictly newer, then sort by `callindex`, `contentindex`, and `blockid`. `agent_subscribed.timeline` carries the persisted reconnect snapshot. `agent_output` remains provisional cumulative SSE output until the corresponding answer block catches up; after completion or reconnect, `Message/Detail` is authoritative.
 
@@ -221,7 +221,7 @@ Retrieves the current status and content of a single message. You can query by e
 
 ### Public timeline block fields
 
-Only the fields below are returned in browser-facing REST and WebSocket timeline blocks.
+Only the fields below are returned in browser-facing REST and WebSocket timeline blocks. `toollabel`, `toolstatus`, `toolintegration`, and `toolaction` appear on tool blocks only.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -232,6 +232,8 @@ Only the fields below are returned in browser-facing REST and WebSocket timeline
 | `text` | `string\|null` | Safe public text for `reasoning` and `answer`; `null` for tool blocks. Reasoning text is an OpenAI GPT-5 provider summary, not raw chain-of-thought. |
 | `toollabel` | `string` | Tool blocks only. Safe display label for the tool. Arguments and results are never included. |
 | `toolstatus` | `string` | Tool blocks only. `requested` while the step runs, then `completed` or `error`. |
+| `toolintegration` | `string\|null` | Tool blocks only. The connector the step works in, as its `key` from [`POST /Credentials/List`](/docs/agent-credentials#post-credentialslist), for example `shopify`. `null` when the step doesn't work in a connector. See [Tool integration and action values](#tool-integration-and-action-values). |
+| `toolaction` | `string\|null` | Tool blocks only. What the step does, for example `screenshot` or `click`. `null` when no word fits the step, and always `null` when `toolintegration` is set. See [Tool integration and action values](#tool-integration-and-action-values). |
 | `phase` | `string` | `stream`, `end`, or `error` for this block. A block still at `stream` closes when its turn ends with `agent_error` or `agent_cancel`, and normally a few seconds after `agent_end`. |
 | `version` | `number` | Monotonic **within this block**. Ignore a delta whose version is not strictly newer than the stored block's version. |
 | `startedat` | `number\|null` | Block start timestamp when available. |
@@ -240,6 +242,67 @@ Only the fields below are returned in browser-facing REST and WebSocket timeline
 Do not compare `version` across different blocks. Keep a map keyed by `blockid`, apply per-block last-write-wins, and render `callindex ASC, contentindex ASC, blockid ASC`. This makes the result independent of HTTP/WebSocket arrival order.
 
 > **`metadata.tokenCount` vs the billing token columns.** `metadata.tokenCount` is the **live stream counter** emitted inside the `progressGenerate` payload, a running word/token tally for the in-flight response. The flat `inputtokens` / `outputtokens` / `cachereadtokens` / `cachewritetokens` / `totaltokens` / `tokencost` columns are the **final billed usage**, written once the turn completes. They measure different things: use `tokenCount` for a live progress indicator, and the flat columns for accounting and cost.
+
+### Tool integration and action values
+
+`toolintegration` and `toolaction` say which connector a tool step works in and what the step does, so your app can show "Working in Shopify" or "Taking a screenshot" instead of only the tool's name. Each holds a word from a closed list or `null`, never free text, a host, a URL, a path, or an argument.
+
+`toolintegration` is the `key` of the connector the step works in, as [`POST /Credentials/List`](/docs/agent-credentials#post-credentialslist) lists it: `adjust`, `apollo`, `apple-appstore`, `brevo`, `calendarific`, `facebook-pages`, `firebase`, `ga4`, `gmail`, `google-ads`, `google-business`, `google-calendar`, `google-drive`, `google-merchant-center`, `google-play`, `hubspot`, `instagram`, `lemlist`, `linkedin`, `mailchimp`, `meta-ads`, `reddit`, `roasit`, `sendgrid`, `serper`, `shopify`, `telegram`, `tiktok`, `tiktok-ads`, `twitter`, `wiro`, `woocommerce`, `wordpress`, or `youtube`.
+
+`toolaction` is one of these words:
+
+| Value | Meaning |
+|-------|---------|
+| `screenshot` | Takes a screenshot of a page. |
+| `open-page` | Opens a page. |
+| `read-page` | Reads the open page. |
+| `click` | Clicks on the page. |
+| `type` | Types text into the page. |
+| `press-key` | Presses a key. |
+| `wait` | Waits for the page. |
+| `upload` | Uploads a file to the page. |
+| `download` | Downloads a file. |
+| `read-file` | Reads a file. |
+| `edit-media` | Edits a video, an image, or audio. |
+
+A tool block never carries both words: when `toolintegration` is set, `toolaction` is `null`. Both are `null` when no word fits the step and on blocks saved before these fields existed, so fall back to `toollabel` then. The words come with the block's first `requested` update and stay the same until the step ends. More values can be added to either list later, so treat a value you don't know like `null`.
+
+Two tool blocks from a `timeline[]`:
+
+```json
+[
+  {
+    "blockid": "c0:i1",
+    "callindex": 0,
+    "contentindex": 1,
+    "type": "tool",
+    "text": null,
+    "toollabel": "exec",
+    "toolstatus": "completed",
+    "toolintegration": "shopify",
+    "toolaction": null,
+    "phase": "end",
+    "version": 3,
+    "startedat": 1743350402,
+    "updatedat": 1743350406
+  },
+  {
+    "blockid": "c1:i1",
+    "callindex": 1,
+    "contentindex": 1,
+    "type": "tool",
+    "text": null,
+    "toollabel": "browser",
+    "toolstatus": "requested",
+    "toolintegration": null,
+    "toolaction": "screenshot",
+    "phase": "stream",
+    "version": 1,
+    "startedat": 1743350408,
+    "updatedat": 1743350408
+  }
+]
+```
 
 ## **POST** /UserAgent/Message/History
 

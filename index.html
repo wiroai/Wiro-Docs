@@ -16550,6 +16550,16 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <td>Present on <code>tool_started</code> / <code>tool_completed</code> / <code>tool_blocked</code>. The name of the tool the agent used.</td>
 </tr>
 <tr>
+<td><code>events[].toolintegration</code></td>
+<td>string | null</td>
+<td>On <code>tool_started</code> / <code>tool_completed</code> when the step works in a connector: the connector's <code>key</code> (for example <code>"wordpress"</code>). Same closed list as on <a href="/docs/agent-messaging#tool-integration-and-action-values">timeline tool blocks</a>.</td>
+</tr>
+<tr>
+<td><code>events[].toolaction</code></td>
+<td>string | null</td>
+<td>On <code>tool_started</code> / <code>tool_completed</code> when a word fits the step: what it does (for example <code>"click"</code>). Same closed list as on <a href="/docs/agent-messaging#tool-integration-and-action-values">timeline tool blocks</a>. Never set together with <code>toolintegration</code>.</td>
+</tr>
+<tr>
 <td><code>events[].title</code></td>
 <td>string</td>
 <td>Human-readable one-line description (always present).</td>
@@ -18399,7 +18409,7 @@ print(response.body);
 <h3 id="ordered-turn-timeline">Ordered turn timeline</h3>
 <p>Every Detail or History message row returns a top-level <code>timeline[]</code>. It is the ordered, persisted record of the turn. A turn can contain multiple interleaved blocks, for example:</p>
 <p><code>Thinking → Answer or Tool → Thinking → Answer</code></p>
-<p>Each block has an opaque deterministic <code>blockid</code>, call/content ordering coordinates, <code>type</code> (<code>reasoning</code>, <code>answer</code>, or <code>tool</code>), safe public text or tool state, <code>phase</code> (<code>stream</code>, <code>end</code>, or <code>error</code>), its own monotonically increasing <code>version</code>, and timestamps. Reasoning text is a model-provided reasoning summary, never raw hidden chain-of-thought. Tool blocks expose only <code>toollabel</code> and <code>toolstatus</code>, never a tool ID, arguments, results, or other internal execution metadata. When a turn ends with <code>agent_error</code> or <code>agent_cancel</code>, the server closes every block still at <code>stream</code> and sends each one as an <code>agent_timeline_delta</code>, usually just before that final event. After <code>agent_end</code>, open blocks normally close a few seconds later. A tool block that closed with <code>toolstatus</code> <code>requested</code> was cut off before it finished.</p>
+<p>Each block has an opaque deterministic <code>blockid</code>, call/content ordering coordinates, <code>type</code> (<code>reasoning</code>, <code>answer</code>, or <code>tool</code>), safe public text or tool state, <code>phase</code> (<code>stream</code>, <code>end</code>, or <code>error</code>), its own monotonically increasing <code>version</code>, and timestamps. Reasoning text is a model-provided reasoning summary, never raw hidden chain-of-thought. Tool blocks expose only <code>toollabel</code>, <code>toolstatus</code>, <code>toolintegration</code>, and <code>toolaction</code>, never a tool ID, arguments, results, or other internal execution metadata. <code>toolintegration</code> and <code>toolaction</code> each hold a word from a <a href="#tool-integration-and-action-values">closed list</a> or <code>null</code>. When a turn ends with <code>agent_error</code> or <code>agent_cancel</code>, the server closes every block still at <code>stream</code> and sends each one as an <code>agent_timeline_delta</code>, usually just before that final event. After <code>agent_end</code>, open blocks normally close a few seconds later. A tool block that closed with <code>toolstatus</code> <code>requested</code> was cut off before it finished.</p>
 <p>Live WebSocket updates arrive as <code>agent_timeline_delta</code> events carrying one public block. Merge by <code>blockid</code>, replace that block only when its incoming <code>version</code> is strictly newer, then sort by <code>callindex</code>, <code>contentindex</code>, and <code>blockid</code>. <code>agent_subscribed.timeline</code> carries the persisted reconnect snapshot. <code>agent_output</code> remains provisional cumulative SSE output until the corresponding answer block catches up; after completion or reconnect, <code>Message/Detail</code> is authoritative.</p>
 <h2 id="message-lifecycle">Message Lifecycle</h2>
 <p>Every agent message progresses through a defined set of stages:</p>
@@ -18840,7 +18850,7 @@ print(response.body);
 </div>
 </div>
 <h3 id="public-timeline-block-fields">Public timeline block fields</h3>
-<p>Only the fields below are returned in browser-facing REST and WebSocket timeline blocks.</p>
+<p>Only the fields below are returned in browser-facing REST and WebSocket timeline blocks. <code>toollabel</code>, <code>toolstatus</code>, <code>toolintegration</code>, and <code>toolaction</code> appear on tool blocks only.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -18859,6 +18869,8 @@ print(response.body);
 <tr><td><code>text</code></td><td><code>string|null</code></td><td>Safe public text for <code>reasoning</code> and <code>answer</code>; <code>null</code> for tool blocks. Reasoning text is an OpenAI GPT-5 provider summary, not raw chain-of-thought.</td></tr>
 <tr><td><code>toollabel</code></td><td><code>string</code></td><td>Tool blocks only. Safe display label for the tool. Arguments and results are never included.</td></tr>
 <tr><td><code>toolstatus</code></td><td><code>string</code></td><td>Tool blocks only. <code>requested</code> while the step runs, then <code>completed</code> or <code>error</code>.</td></tr>
+<tr><td><code>toolintegration</code></td><td><code>string|null</code></td><td>Tool blocks only. The connector the step works in, as its <code>key</code> from <a href="/docs/agent-credentials#post-credentialslist"><code>POST /Credentials/List</code></a>, for example <code>shopify</code>. <code>null</code> when the step doesn't work in a connector. See <a href="#tool-integration-and-action-values">Tool integration and action values</a>.</td></tr>
+<tr><td><code>toolaction</code></td><td><code>string|null</code></td><td>Tool blocks only. What the step does, for example <code>screenshot</code> or <code>click</code>. <code>null</code> when no word fits the step, and always <code>null</code> when <code>toolintegration</code> is set. See <a href="#tool-integration-and-action-values">Tool integration and action values</a>.</td></tr>
 <tr><td><code>phase</code></td><td><code>string</code></td><td><code>stream</code>, <code>end</code>, or <code>error</code> for this block. A block still at <code>stream</code> closes when its turn ends with <code>agent_error</code> or <code>agent_cancel</code>, and normally a few seconds after <code>agent_end</code>.</td></tr>
 <tr><td><code>version</code></td><td><code>number</code></td><td>Monotonic <strong>within this block</strong>. Ignore a delta whose version is not strictly newer than the stored block's version.</td></tr>
 <tr><td><code>startedat</code></td><td><code>number|null</code></td><td>Block start timestamp when available.</td></tr>
@@ -18871,6 +18883,103 @@ print(response.body);
 <blockquote>
 <p><strong><code>metadata.tokenCount</code> vs the billing token columns.</strong> <code>metadata.tokenCount</code> is the <strong>live stream counter</strong> emitted inside the <code>progressGenerate</code> payload, a running word/token tally for the in-flight response. The flat <code>inputtokens</code> / <code>outputtokens</code> / <code>cachereadtokens</code> / <code>cachewritetokens</code> / <code>totaltokens</code> / <code>tokencost</code> columns are the <strong>final billed usage</strong>, written once the turn completes. They measure different things: use <code>tokenCount</code> for a live progress indicator, and the flat columns for accounting and cost.</p>
 </blockquote>
+<h3 id="tool-integration-and-action-values">Tool integration and action values</h3>
+<p><code>toolintegration</code> and <code>toolaction</code> say which connector a tool step works in and what the step does, so your app can show "Working in Shopify" or "Taking a screenshot" instead of only the tool's name. Each holds a word from a closed list or <code>null</code>, never free text, a host, a URL, a path, or an argument.</p>
+<p><code>toolintegration</code> is the <code>key</code> of the connector the step works in, as <a href="/docs/agent-credentials#post-credentialslist"><code>POST /Credentials/List</code></a> lists it: <code>adjust</code>, <code>apollo</code>, <code>apple-appstore</code>, <code>brevo</code>, <code>calendarific</code>, <code>facebook-pages</code>, <code>firebase</code>, <code>ga4</code>, <code>gmail</code>, <code>google-ads</code>, <code>google-business</code>, <code>google-calendar</code>, <code>google-drive</code>, <code>google-merchant-center</code>, <code>google-play</code>, <code>hubspot</code>, <code>instagram</code>, <code>lemlist</code>, <code>linkedin</code>, <code>mailchimp</code>, <code>meta-ads</code>, <code>reddit</code>, <code>roasit</code>, <code>sendgrid</code>, <code>serper</code>, <code>shopify</code>, <code>telegram</code>, <code>tiktok</code>, <code>tiktok-ads</code>, <code>twitter</code>, <code>wiro</code>, <code>woocommerce</code>, <code>wordpress</code>, or <code>youtube</code>.</p>
+<p><code>toolaction</code> is one of these words:</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>screenshot</code></td>
+<td>Takes a screenshot of a page.</td>
+</tr>
+<tr>
+<td><code>open-page</code></td>
+<td>Opens a page.</td>
+</tr>
+<tr>
+<td><code>read-page</code></td>
+<td>Reads the open page.</td>
+</tr>
+<tr>
+<td><code>click</code></td>
+<td>Clicks on the page.</td>
+</tr>
+<tr>
+<td><code>type</code></td>
+<td>Types text into the page.</td>
+</tr>
+<tr>
+<td><code>press-key</code></td>
+<td>Presses a key.</td>
+</tr>
+<tr>
+<td><code>wait</code></td>
+<td>Waits for the page.</td>
+</tr>
+<tr>
+<td><code>upload</code></td>
+<td>Uploads a file to the page.</td>
+</tr>
+<tr>
+<td><code>download</code></td>
+<td>Downloads a file.</td>
+</tr>
+<tr>
+<td><code>read-file</code></td>
+<td>Reads a file.</td>
+</tr>
+<tr>
+<td><code>edit-media</code></td>
+<td>Edits a video, an image, or audio.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>A tool block never carries both words: when <code>toolintegration</code> is set, <code>toolaction</code> is <code>null</code>. Both are <code>null</code> when no word fits the step and on blocks saved before these fields existed, so fall back to <code>toollabel</code> then. The words come with the block's first <code>requested</code> update and stay the same until the step ends. More values can be added to either list later, so treat a value you don't know like <code>null</code>.</p>
+<p>Two tool blocks from a <code>timeline[]</code>:</p>
+<pre><code class="language-json">[
+  {
+    &quot;blockid&quot;: &quot;c0:i1&quot;,
+    &quot;callindex&quot;: 0,
+    &quot;contentindex&quot;: 1,
+    &quot;type&quot;: &quot;tool&quot;,
+    &quot;text&quot;: null,
+    &quot;toollabel&quot;: &quot;exec&quot;,
+    &quot;toolstatus&quot;: &quot;completed&quot;,
+    &quot;toolintegration&quot;: &quot;shopify&quot;,
+    &quot;toolaction&quot;: null,
+    &quot;phase&quot;: &quot;end&quot;,
+    &quot;version&quot;: 3,
+    &quot;startedat&quot;: 1743350402,
+    &quot;updatedat&quot;: 1743350406
+  },
+  {
+    &quot;blockid&quot;: &quot;c1:i1&quot;,
+    &quot;callindex&quot;: 1,
+    &quot;contentindex&quot;: 1,
+    &quot;type&quot;: &quot;tool&quot;,
+    &quot;text&quot;: null,
+    &quot;toollabel&quot;: &quot;browser&quot;,
+    &quot;toolstatus&quot;: &quot;requested&quot;,
+    &quot;toolintegration&quot;: null,
+    &quot;toolaction&quot;: &quot;screenshot&quot;,
+    &quot;phase&quot;: &quot;stream&quot;,
+    &quot;version&quot;: 1,
+    &quot;startedat&quot;: 1743350408,
+    &quot;updatedat&quot;: 1743350408
+  }
+]
+</code></pre>
 <h2 id="post-useragentmessagehistory"><strong>POST</strong> /UserAgent/Message/History</h2>
 <p>Retrieves conversation history for a specific agent and session. Messages are returned <strong>newest-first</strong> with cursor-based pagination.</p>
 <div class="docs-param-table">
@@ -20442,8 +20551,39 @@ func main() {
 <li>Replace only that block; a newer update for one block must never evict another block.</li>
 <li>Sort the merged values by <code>callindex ASC</code>, <code>contentindex ASC</code>, then <code>blockid ASC</code>.</li>
 </ol>
-<p><code>version</code> is per block, not global. A turn can therefore render <code>Thinking → Answer or Tool → Thinking → Answer</code> across multiple calls. <code>reasoning</code> blocks contain only model-provided reasoning summaries, never raw chain-of-thought. <code>answer</code> blocks expose safe answer text. <code>tool</code> blocks expose only <code>toollabel</code> and <code>toolstatus</code>; their <code>text</code> is <code>null</code>, and tool IDs, arguments, and results are not public.</p>
-<p>The complete public block shape is <code>blockid</code>, <code>callindex</code>, <code>contentindex</code>, <code>type</code>, <code>text</code>, <code>toollabel</code>, <code>toolstatus</code>, <code>phase</code>, <code>version</code>, <code>startedat</code>, and <code>updatedat</code>. <code>phase</code> is <code>stream</code>, <code>end</code>, or <code>error</code>; timestamps can be <code>null</code> when unavailable. No additional internal correlation or execution metadata is emitted in this block.</p>
+<p><code>version</code> is per block, not global. A turn can therefore render <code>Thinking → Answer or Tool → Thinking → Answer</code> across multiple calls. <code>reasoning</code> blocks contain only model-provided reasoning summaries, never raw chain-of-thought. <code>answer</code> blocks expose safe answer text. <code>tool</code> blocks expose only <code>toollabel</code>, <code>toolstatus</code>, <code>toolintegration</code>, and <code>toolaction</code>; their <code>text</code> is <code>null</code>, and tool IDs, arguments, and results are not public.</p>
+<p>The complete public block shape is <code>blockid</code>, <code>callindex</code>, <code>contentindex</code>, <code>type</code>, <code>text</code>, <code>phase</code>, <code>version</code>, <code>startedat</code>, and <code>updatedat</code>, and tool blocks also carry <code>toollabel</code>, <code>toolstatus</code>, <code>toolintegration</code>, and <code>toolaction</code>. Reasoning and answer blocks don't have these four fields. <code>phase</code> is <code>stream</code>, <code>end</code>, or <code>error</code>; timestamps can be <code>null</code> when unavailable. No additional internal correlation or execution metadata is emitted in this block.</p>
+<p>Tool blocks carry two closed-list words:</p>
+<ul>
+<li><code>toolintegration</code> names the connector the step works in, as its <code>key</code> from <a href="/docs/agent-credentials#post-credentialslist"><code>POST /Credentials/List</code></a>: <code>adjust</code>, <code>apollo</code>, <code>apple-appstore</code>, <code>brevo</code>, <code>calendarific</code>, <code>facebook-pages</code>, <code>firebase</code>, <code>ga4</code>, <code>gmail</code>, <code>google-ads</code>, <code>google-business</code>, <code>google-calendar</code>, <code>google-drive</code>, <code>google-merchant-center</code>, <code>google-play</code>, <code>hubspot</code>, <code>instagram</code>, <code>lemlist</code>, <code>linkedin</code>, <code>mailchimp</code>, <code>meta-ads</code>, <code>reddit</code>, <code>roasit</code>, <code>sendgrid</code>, <code>serper</code>, <code>shopify</code>, <code>telegram</code>, <code>tiktok</code>, <code>tiktok-ads</code>, <code>twitter</code>, <code>wiro</code>, <code>woocommerce</code>, <code>wordpress</code>, or <code>youtube</code>.</li>
+<li><code>toolaction</code> names what the step does: <code>screenshot</code>, <code>open-page</code>, <code>read-page</code>, <code>click</code>, <code>type</code>, <code>press-key</code>, <code>wait</code>, <code>upload</code>, <code>download</code>, <code>read-file</code>, or <code>edit-media</code>.</li>
+</ul>
+<p>Each is <code>null</code> when no word fits, and a block never has both. The words come with the block's first update and stay the same until the step ends. Treat a value you don't know like <code>null</code>; <a href="/docs/agent-messaging#tool-integration-and-action-values">Agent Messaging</a> says what each word means.</p>
+<p>A tool block update:</p>
+<pre><code class="language-json">{
+  &quot;type&quot;: &quot;agent_timeline_delta&quot;,
+  &quot;agenttoken&quot;: &quot;aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb&quot;,
+  &quot;message&quot;: {
+    &quot;messageguid&quot;: &quot;c3d4e5f6-a7b8-9012-cdef-345678901234&quot;,
+    &quot;block&quot;: {
+      &quot;blockid&quot;: &quot;c0:i1&quot;,
+      &quot;callindex&quot;: 0,
+      &quot;contentindex&quot;: 1,
+      &quot;type&quot;: &quot;tool&quot;,
+      &quot;text&quot;: null,
+      &quot;toollabel&quot;: &quot;exec&quot;,
+      &quot;toolstatus&quot;: &quot;requested&quot;,
+      &quot;toolintegration&quot;: &quot;shopify&quot;,
+      &quot;toolaction&quot;: null,
+      &quot;phase&quot;: &quot;stream&quot;,
+      &quot;version&quot;: 1,
+      &quot;startedat&quot;: 1743350405,
+      &quot;updatedat&quot;: 1743350405
+    }
+  },
+  &quot;result&quot;: true
+}
+</code></pre>
 <h3 id="agent_end">agent_end</h3>
 <p>Fires when the agent finishes responding. The structure is identical to <code>agent_output</code>, but the <code>message</code> contains the final complete text with total metrics:</p>
 <pre><code class="language-json">{
@@ -20841,7 +20981,7 @@ func main() {
 </div>
 <p>These metrics update with every <code>agent_output</code> event, allowing you to display a live speed indicator or progress bar in your UI.</p>
 <h2 id="timeline-safety-boundary">Timeline safety boundary</h2>
-<p>Public reasoning is available only as <code>type: "reasoning"</code> timeline blocks. Wiro publishes provider-authored summaries from supported OpenAI GPT-5 calls, not raw hidden chain-of-thought or generic provider traces. Tool blocks publish only a safe label and status. Wiro does not parse literal <code>&lt;think&gt;</code> tags from <code>agent_output</code>; treat any such text in <code>raw</code> as ordinary provisional answer output.</p>
+<p>Public reasoning is available only as <code>type: "reasoning"</code> timeline blocks. Wiro publishes provider-authored summaries from supported OpenAI GPT-5 calls, not raw hidden chain-of-thought or generic provider traces. Tool blocks publish only a safe label, a status, and two closed-list words, <code>toolintegration</code> and <code>toolaction</code>. Wiro does not parse literal <code>&lt;think&gt;</code> tags from <code>agent_output</code>; treat any such text in <code>raw</code> as ordinary provisional answer output.</p>
 <h2 id="full-integration-example">Full Integration Example</h2>
 <p>A typical integration follows this pattern: call the REST API to send a message, then subscribe via WebSocket to stream the response.</p>
 <p><strong>Step 1: Send a message via REST</strong></p>
@@ -27213,6 +27353,8 @@ foreach (array_slice($resp['transactions'], 0, 10) as $tx) {
                             <tr><td><code>ts</code></td><td><code>string</code></td><td>ISO-8601 UTC datetime when the event was recorded (e.g. <code>"2026-05-03T14:00:10.234Z"</code>). Parse with <code>Date.parse(ts)</code> for arithmetic.</td></tr>
                             <tr><td><code>kind</code></td><td><code>string</code></td><td>Fine-grained event class. One of: <code>"turn_started"</code>, <code>"turn_ended"</code> (an LLM turn boundary); <code>"tool_started"</code>, <code>"tool_completed"</code> (one pair per tool call); <code>"tool_blocked"</code> (a tool call the agent's safety rules refused); <code>"cron_finished"</code> (a scheduled task finished); <code>"user_message"</code> (a message received on a connected Telegram, Slack or Discord channel, not web chat); <code>"token_usage"</code> (a billed turn's token usage: chat / cron / voice post-call); <code>"token_usage_idempotent"</code> (a replayed usage report, already billed, informational only); <code>"media_relay"</code> (files from a reply were delivered); <code>"background_reply"</code> (a result that finished in the background was delivered to the chat). Rows about what was done to the agent have <a href="#who-did-what-rows"><code>AGENT_*</code> kinds</a>, and two note rows, <code>"runtime_log_unavailable"</code> and <code>"runtime_log_deleted"</code>, say what part of a day is missing. Show any kind you don't recognize by its <code>title</code>.</td></tr>
                             <tr><td><code>tool</code></td><td><code>string?</code></td><td>Present on <code>tool_started</code> / <code>tool_completed</code> / <code>tool_blocked</code>. The name of the tool the agent used.</td></tr>
+                            <tr><td><code>toolintegration</code></td><td><code>string?</code></td><td>On <code>tool_started</code> and <code>tool_completed</code> when the step works in a connector: the connector's <code>key</code>, for example <code>"wordpress"</code>. Same closed list as on <a href="/docs/agent-messaging#tool-integration-and-action-values">timeline tool blocks</a>.</td></tr>
+                            <tr><td><code>toolaction</code></td><td><code>string?</code></td><td>On <code>tool_started</code> and <code>tool_completed</code> when a word fits the step: what it does, for example <code>"click"</code>. Same closed list as on <a href="/docs/agent-messaging#tool-integration-and-action-values">timeline tool blocks</a>. Never set together with <code>toolintegration</code>.</td></tr>
                             <tr><td><code>title</code></td><td><code>string</code></td><td>Human-readable one-line description of what happened (e.g. <code>"Posted carousel: \"Brand voice teaser\""</code>, <code>"Fetched https://…"</code>, <code>"Token Usage"</code>). Always present.</td></tr>
                             <tr><td><code>summary</code></td><td><code>object?</code></td><td>Structured event-specific payload. Opaque on the wire, so render it as JSON when expanding the row. Secret values (<code>apikey</code>, <code>apppassword</code>, <code>clientsecret</code>, <code>bearer</code>, <code>token</code>, …) are masked before the event is written. Common keys: <code>file</code>, <code>method</code>, <code>host</code>, <code>path</code>, <code>preview</code>, <code>messageCount</code>, <code>jobId</code>, <code>status</code>, <code>reason</code>.</td></tr>
                             <tr><td><code>durationMs</code></td><td><code>number?</code></td><td>Wall-clock duration in milliseconds. Populated on <code>tool_completed</code>, <code>turn_ended</code>, <code>cron_finished</code> and <code>token_usage</code> events.</td></tr>
@@ -27226,6 +27368,7 @@ foreach (array_slice($resp['transactions'], 0, 10) as $tx) {
                       </div>
                     </div>
                     <div class="info-callout"><strong>What is <code>summary</code> for?</strong> Tool events carry a short summary of the call: for example the file path for file tools, the program for <code>exec</code>, or the method, host and path for web requests. Turn events carry a short <code>preview</code> (plus <code>messageCount</code> on <code>turn_ended</code>); <code>cron_finished</code> carries <code>{ jobId, status }</code>; <code>user_message</code> carries <code>{ preview }</code>; <code>tool_blocked</code> carries the <code>reason</code>. Treat the object as opaque and render-on-expand, since its shape depends on the tool and may change without a docs revision.</div>
+                    <p>To tell what a tool call is doing, read <code>toolintegration</code> and <code>toolaction</code> instead of parsing <code>title</code> or <code>summary</code>. Both are missing when no word fits the step, and <code>tool_blocked</code> events don't carry them.</p>
 
                     <h3>Token-usage events</h3>
                     <p>A <code>token_usage</code> event records the token spend and credit deduction for one billed turn: a chat reply, a cron run, or a voice post-call. A <code>token_usage_idempotent</code> event carries the <strong>same shape</strong> for a replayed usage callback that was already billed (informational; it does not deduct again). On top of the base <code>ActivityEvent</code> fields, these events add:</p>
@@ -27375,6 +27518,7 @@ foreach (array_slice($resp['transactions'], 0, 10) as $tx) {
       "ts": "2026-05-03T14:02:54.902Z",
       "kind": "tool_completed",
       "tool": "exec",
+      "toolintegration": "wiro",
       "title": "POST api.wiro.ai/v1/Run/google/nano-banana",
       "summary": {
         "method": "POST",

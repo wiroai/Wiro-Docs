@@ -9671,6 +9671,8 @@ Poll every 30 seconds or more.
 | `events[].ts` | string | ISO-8601 UTC datetime when the event was emitted (e.g. `"2026-05-03T14:00:01.000Z"`). Parse with `Date.parse(ts)` for arithmetic. |
 | `events[].kind` | string | Fine-grained event class. One of: `"turn_started"`, `"turn_ended"` (an LLM turn boundary); `"tool_started"`, `"tool_completed"` (one pair per tool call); `"tool_blocked"` (a tool call the agent's safety rules refused); `"cron_finished"` (a scheduled task finished); `"user_message"` (a message received on a connected Telegram, Slack or Discord channel, not web chat); `"token_usage"` (a billed turn's token usage: chat / cron / voice post-call); `"token_usage_idempotent"` (a replayed usage report, already billed, informational only); `"media_relay"` (files from a reply were delivered); `"background_reply"` (a result that finished in the background was delivered to the chat). Rows about what was done to the agent have `AGENT_*` kinds, and two note rows, `"runtime_log_unavailable"` and `"runtime_log_deleted"`, say what part of a day is missing; see [Agent Logs](/docs/agent-logs#who-did-what-rows). Show any kind you don't recognize by its `title`. |
 | `events[].tool` | string \| null | Present on `tool_started` / `tool_completed` / `tool_blocked`. The name of the tool the agent used. |
+| `events[].toolintegration` | string \| null | On `tool_started` / `tool_completed` when the step works in a connector: the connector's `key` (for example `"wordpress"`). Same closed list as on [timeline tool blocks](/docs/agent-messaging#tool-integration-and-action-values). |
+| `events[].toolaction` | string \| null | On `tool_started` / `tool_completed` when a word fits the step: what it does (for example `"click"`). Same closed list as on [timeline tool blocks](/docs/agent-messaging#tool-integration-and-action-values). Never set together with `toolintegration`. |
 | `events[].title` | string | Human-readable one-line description (always present). |
 | `events[].summary` | object \| null | Structured event-specific payload. Treat as opaque and render as JSON when expanding. Secret values (`apikey`, `apppassword`, `clientsecret`, `bearer`, `token`, …) are masked before the event is written. Keys vary per `kind`/`tool`. |
 | `events[].durationMs` | number \| null | Wall-clock duration in milliseconds. Populated on `tool_completed`, `turn_ended`, `cron_finished` and `token_usage` events. |
@@ -11343,7 +11345,7 @@ Every Detail or History message row returns a top-level `timeline[]`. It is the 
 
 `Thinking → Answer or Tool → Thinking → Answer`
 
-Each block has an opaque deterministic `blockid`, call/content ordering coordinates, `type` (`reasoning`, `answer`, or `tool`), safe public text or tool state, `phase` (`stream`, `end`, or `error`), its own monotonically increasing `version`, and timestamps. Reasoning text is a model-provided reasoning summary, never raw hidden chain-of-thought. Tool blocks expose only `toollabel` and `toolstatus`, never a tool ID, arguments, results, or other internal execution metadata. When a turn ends with `agent_error` or `agent_cancel`, the server closes every block still at `stream` and sends each one as an `agent_timeline_delta`, usually just before that final event. After `agent_end`, open blocks normally close a few seconds later. A tool block that closed with `toolstatus` `requested` was cut off before it finished.
+Each block has an opaque deterministic `blockid`, call/content ordering coordinates, `type` (`reasoning`, `answer`, or `tool`), safe public text or tool state, `phase` (`stream`, `end`, or `error`), its own monotonically increasing `version`, and timestamps. Reasoning text is a model-provided reasoning summary, never raw hidden chain-of-thought. Tool blocks expose only `toollabel`, `toolstatus`, `toolintegration`, and `toolaction`, never a tool ID, arguments, results, or other internal execution metadata. `toolintegration` and `toolaction` each hold a word from a [closed list](#tool-integration-and-action-values) or `null`. When a turn ends with `agent_error` or `agent_cancel`, the server closes every block still at `stream` and sends each one as an `agent_timeline_delta`, usually just before that final event. After `agent_end`, open blocks normally close a few seconds later. A tool block that closed with `toolstatus` `requested` was cut off before it finished.
 
 Live WebSocket updates arrive as `agent_timeline_delta` events carrying one public block. Merge by `blockid`, replace that block only when its incoming `version` is strictly newer, then sort by `callindex`, `contentindex`, and `blockid`. `agent_subscribed.timeline` carries the persisted reconnect snapshot. `agent_output` remains provisional cumulative SSE output until the corresponding answer block catches up; after completion or reconnect, `Message/Detail` is authoritative.
 
@@ -11545,7 +11547,7 @@ Retrieves the current status and content of a single message. You can query by e
 
 ### Public timeline block fields
 
-Only the fields below are returned in browser-facing REST and WebSocket timeline blocks.
+Only the fields below are returned in browser-facing REST and WebSocket timeline blocks. `toollabel`, `toolstatus`, `toolintegration`, and `toolaction` appear on tool blocks only.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -11556,6 +11558,8 @@ Only the fields below are returned in browser-facing REST and WebSocket timeline
 | `text` | `string\|null` | Safe public text for `reasoning` and `answer`; `null` for tool blocks. Reasoning text is an OpenAI GPT-5 provider summary, not raw chain-of-thought. |
 | `toollabel` | `string` | Tool blocks only. Safe display label for the tool. Arguments and results are never included. |
 | `toolstatus` | `string` | Tool blocks only. `requested` while the step runs, then `completed` or `error`. |
+| `toolintegration` | `string\|null` | Tool blocks only. The connector the step works in, as its `key` from [`POST /Credentials/List`](/docs/agent-credentials#post-credentialslist), for example `shopify`. `null` when the step doesn't work in a connector. See [Tool integration and action values](#tool-integration-and-action-values). |
+| `toolaction` | `string\|null` | Tool blocks only. What the step does, for example `screenshot` or `click`. `null` when no word fits the step, and always `null` when `toolintegration` is set. See [Tool integration and action values](#tool-integration-and-action-values). |
 | `phase` | `string` | `stream`, `end`, or `error` for this block. A block still at `stream` closes when its turn ends with `agent_error` or `agent_cancel`, and normally a few seconds after `agent_end`. |
 | `version` | `number` | Monotonic **within this block**. Ignore a delta whose version is not strictly newer than the stored block's version. |
 | `startedat` | `number\|null` | Block start timestamp when available. |
@@ -11564,6 +11568,67 @@ Only the fields below are returned in browser-facing REST and WebSocket timeline
 Do not compare `version` across different blocks. Keep a map keyed by `blockid`, apply per-block last-write-wins, and render `callindex ASC, contentindex ASC, blockid ASC`. This makes the result independent of HTTP/WebSocket arrival order.
 
 > **`metadata.tokenCount` vs the billing token columns.** `metadata.tokenCount` is the **live stream counter** emitted inside the `progressGenerate` payload, a running word/token tally for the in-flight response. The flat `inputtokens` / `outputtokens` / `cachereadtokens` / `cachewritetokens` / `totaltokens` / `tokencost` columns are the **final billed usage**, written once the turn completes. They measure different things: use `tokenCount` for a live progress indicator, and the flat columns for accounting and cost.
+
+### Tool integration and action values
+
+`toolintegration` and `toolaction` say which connector a tool step works in and what the step does, so your app can show "Working in Shopify" or "Taking a screenshot" instead of only the tool's name. Each holds a word from a closed list or `null`, never free text, a host, a URL, a path, or an argument.
+
+`toolintegration` is the `key` of the connector the step works in, as [`POST /Credentials/List`](/docs/agent-credentials#post-credentialslist) lists it: `adjust`, `apollo`, `apple-appstore`, `brevo`, `calendarific`, `facebook-pages`, `firebase`, `ga4`, `gmail`, `google-ads`, `google-business`, `google-calendar`, `google-drive`, `google-merchant-center`, `google-play`, `hubspot`, `instagram`, `lemlist`, `linkedin`, `mailchimp`, `meta-ads`, `reddit`, `roasit`, `sendgrid`, `serper`, `shopify`, `telegram`, `tiktok`, `tiktok-ads`, `twitter`, `wiro`, `woocommerce`, `wordpress`, or `youtube`.
+
+`toolaction` is one of these words:
+
+| Value | Meaning |
+|-------|---------|
+| `screenshot` | Takes a screenshot of a page. |
+| `open-page` | Opens a page. |
+| `read-page` | Reads the open page. |
+| `click` | Clicks on the page. |
+| `type` | Types text into the page. |
+| `press-key` | Presses a key. |
+| `wait` | Waits for the page. |
+| `upload` | Uploads a file to the page. |
+| `download` | Downloads a file. |
+| `read-file` | Reads a file. |
+| `edit-media` | Edits a video, an image, or audio. |
+
+A tool block never carries both words: when `toolintegration` is set, `toolaction` is `null`. Both are `null` when no word fits the step and on blocks saved before these fields existed, so fall back to `toollabel` then. The words come with the block's first `requested` update and stay the same until the step ends. More values can be added to either list later, so treat a value you don't know like `null`.
+
+Two tool blocks from a `timeline[]`:
+
+```json
+[
+  {
+    "blockid": "c0:i1",
+    "callindex": 0,
+    "contentindex": 1,
+    "type": "tool",
+    "text": null,
+    "toollabel": "exec",
+    "toolstatus": "completed",
+    "toolintegration": "shopify",
+    "toolaction": null,
+    "phase": "end",
+    "version": 3,
+    "startedat": 1743350402,
+    "updatedat": 1743350406
+  },
+  {
+    "blockid": "c1:i1",
+    "callindex": 1,
+    "contentindex": 1,
+    "type": "tool",
+    "text": null,
+    "toollabel": "browser",
+    "toolstatus": "requested",
+    "toolintegration": null,
+    "toolaction": "screenshot",
+    "phase": "stream",
+    "version": 1,
+    "startedat": 1743350408,
+    "updatedat": 1743350408
+  }
+]
+```
 
 ## **POST** /UserAgent/Message/History
 
@@ -12786,9 +12851,44 @@ The merge contract is:
 3. Replace only that block; a newer update for one block must never evict another block.
 4. Sort the merged values by `callindex ASC`, `contentindex ASC`, then `blockid ASC`.
 
-`version` is per block, not global. A turn can therefore render `Thinking → Answer or Tool → Thinking → Answer` across multiple calls. `reasoning` blocks contain only model-provided reasoning summaries, never raw chain-of-thought. `answer` blocks expose safe answer text. `tool` blocks expose only `toollabel` and `toolstatus`; their `text` is `null`, and tool IDs, arguments, and results are not public.
+`version` is per block, not global. A turn can therefore render `Thinking → Answer or Tool → Thinking → Answer` across multiple calls. `reasoning` blocks contain only model-provided reasoning summaries, never raw chain-of-thought. `answer` blocks expose safe answer text. `tool` blocks expose only `toollabel`, `toolstatus`, `toolintegration`, and `toolaction`; their `text` is `null`, and tool IDs, arguments, and results are not public.
 
-The complete public block shape is `blockid`, `callindex`, `contentindex`, `type`, `text`, `toollabel`, `toolstatus`, `phase`, `version`, `startedat`, and `updatedat`. `phase` is `stream`, `end`, or `error`; timestamps can be `null` when unavailable. No additional internal correlation or execution metadata is emitted in this block.
+The complete public block shape is `blockid`, `callindex`, `contentindex`, `type`, `text`, `phase`, `version`, `startedat`, and `updatedat`, and tool blocks also carry `toollabel`, `toolstatus`, `toolintegration`, and `toolaction`. Reasoning and answer blocks don't have these four fields. `phase` is `stream`, `end`, or `error`; timestamps can be `null` when unavailable. No additional internal correlation or execution metadata is emitted in this block.
+
+Tool blocks carry two closed-list words:
+
+- `toolintegration` names the connector the step works in, as its `key` from [`POST /Credentials/List`](/docs/agent-credentials#post-credentialslist): `adjust`, `apollo`, `apple-appstore`, `brevo`, `calendarific`, `facebook-pages`, `firebase`, `ga4`, `gmail`, `google-ads`, `google-business`, `google-calendar`, `google-drive`, `google-merchant-center`, `google-play`, `hubspot`, `instagram`, `lemlist`, `linkedin`, `mailchimp`, `meta-ads`, `reddit`, `roasit`, `sendgrid`, `serper`, `shopify`, `telegram`, `tiktok`, `tiktok-ads`, `twitter`, `wiro`, `woocommerce`, `wordpress`, or `youtube`.
+- `toolaction` names what the step does: `screenshot`, `open-page`, `read-page`, `click`, `type`, `press-key`, `wait`, `upload`, `download`, `read-file`, or `edit-media`.
+
+Each is `null` when no word fits, and a block never has both. The words come with the block's first update and stay the same until the step ends. Treat a value you don't know like `null`; [Agent Messaging](/docs/agent-messaging#tool-integration-and-action-values) says what each word means.
+
+A tool block update:
+
+```json
+{
+  "type": "agent_timeline_delta",
+  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
+  "message": {
+    "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+    "block": {
+      "blockid": "c0:i1",
+      "callindex": 0,
+      "contentindex": 1,
+      "type": "tool",
+      "text": null,
+      "toollabel": "exec",
+      "toolstatus": "requested",
+      "toolintegration": "shopify",
+      "toolaction": null,
+      "phase": "stream",
+      "version": 1,
+      "startedat": 1743350405,
+      "updatedat": 1743350405
+    }
+  },
+  "result": true
+}
+```
 
 ### agent_end
 
@@ -13047,7 +13147,7 @@ These metrics update with every `agent_output` event, allowing you to display a 
 
 ## Timeline safety boundary
 
-Public reasoning is available only as `type: "reasoning"` timeline blocks. Wiro publishes provider-authored summaries from supported OpenAI GPT-5 calls, not raw hidden chain-of-thought or generic provider traces. Tool blocks publish only a safe label and status. Wiro does not parse literal `<think>` tags from `agent_output`; treat any such text in `raw` as ordinary provisional answer output.
+Public reasoning is available only as `type: "reasoning"` timeline blocks. Wiro publishes provider-authored summaries from supported OpenAI GPT-5 calls, not raw hidden chain-of-thought or generic provider traces. Tool blocks publish only a safe label, a status, and two closed-list words, `toolintegration` and `toolaction`. Wiro does not parse literal `<think>` tags from `agent_output`; treat any such text in `raw` as ordinary provisional answer output.
 
 ## Full Integration Example
 
@@ -17050,6 +17150,8 @@ Every event is a JSON object with this base shape:
 | `ts` | `string` | ISO-8601 UTC datetime when the event was recorded (e.g. `"2026-05-03T14:00:10.234Z"`). Parse with `Date.parse(ts)` for arithmetic. |
 | `kind` | `string` | Fine-grained event class. One of: `"turn_started"`, `"turn_ended"` (an LLM turn boundary); `"tool_started"`, `"tool_completed"` (one pair per tool call); `"tool_blocked"` (a tool call the agent's safety rules refused); `"cron_finished"` (a scheduled task finished); `"user_message"` (a message received on a connected Telegram, Slack or Discord channel, not web chat); `"token_usage"` (a billed turn's token usage: chat / cron / voice post-call); `"token_usage_idempotent"` (a replayed usage report, already billed, informational only); `"media_relay"` (files from a reply were delivered); `"background_reply"` (a result that finished in the background was delivered to the chat). Rows about what was done to the agent have [`AGENT_*` kinds](#who-did-what-rows), and two note rows, `"runtime_log_unavailable"` and `"runtime_log_deleted"`, say what part of a day is missing. Show any kind you don't recognize by its `title`. |
 | `tool` | `string?` | Present on `tool_started` / `tool_completed` / `tool_blocked`. The name of the tool the agent used. |
+| `toolintegration` | `string?` | On `tool_started` and `tool_completed` when the step works in a connector: the connector's `key`, for example `"wordpress"`. Same closed list as on [timeline tool blocks](/docs/agent-messaging#tool-integration-and-action-values). |
+| `toolaction` | `string?` | On `tool_started` and `tool_completed` when a word fits the step: what it does, for example `"click"`. Same closed list as on [timeline tool blocks](/docs/agent-messaging#tool-integration-and-action-values). Never set together with `toolintegration`. |
 | `title` | `string` | Human-readable one-line description of what happened (e.g. `"Posted carousel: \"Brand voice teaser\""`, `"Fetched https://…"`, `"Token Usage"`). Always present. |
 | `summary` | `object?` | Structured event-specific payload. Opaque on the wire, so render it as JSON when expanding the row. Secret values (`apikey`, `apppassword`, `clientsecret`, `bearer`, `token`, …) are masked before the event is written. Common keys: `file`, `method`, `host`, `path`, `preview`, `messageCount`, `jobId`, `status`, `reason`. |
 | `durationMs` | `number?` | Wall-clock duration in milliseconds. Populated on `tool_completed`, `turn_ended`, `cron_finished` and `token_usage` events. |
@@ -17060,6 +17162,8 @@ Every event is a JSON object with this base shape:
 | `user` | `object\|null` | Resolved actor: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. `null` when `userUuid` is `"system"` (automation / cron) or when the user record was deleted. |
 
 > **What is `summary` for?** Tool events carry a short summary of the call: for example the file path for file tools, the program for `exec`, or the method, host and path for web requests. Turn events carry a short `preview` (plus `messageCount` on `turn_ended`); `cron_finished` carries `{ jobId, status }`; `user_message` carries `{ preview }`; `tool_blocked` carries the `reason`. Treat the object as opaque and render-on-expand, since its shape depends on the tool and may change without a docs revision.
+
+To tell what a tool call is doing, read `toolintegration` and `toolaction` instead of parsing `title` or `summary`. Both are missing when no word fits the step, and `tool_blocked` events don't carry them.
 
 ### Token-usage events
 
@@ -17194,6 +17298,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Logs" \
       "ts": "2026-05-03T14:02:54.902Z",
       "kind": "tool_completed",
       "tool": "exec",
+      "toolintegration": "wiro",
       "title": "POST api.wiro.ai/v1/Run/google/nano-banana",
       "summary": {
         "method": "POST",

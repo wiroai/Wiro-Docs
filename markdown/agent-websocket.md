@@ -265,9 +265,44 @@ The merge contract is:
 3. Replace only that block; a newer update for one block must never evict another block.
 4. Sort the merged values by `callindex ASC`, `contentindex ASC`, then `blockid ASC`.
 
-`version` is per block, not global. A turn can therefore render `Thinking → Answer or Tool → Thinking → Answer` across multiple calls. `reasoning` blocks contain only model-provided reasoning summaries, never raw chain-of-thought. `answer` blocks expose safe answer text. `tool` blocks expose only `toollabel` and `toolstatus`; their `text` is `null`, and tool IDs, arguments, and results are not public.
+`version` is per block, not global. A turn can therefore render `Thinking → Answer or Tool → Thinking → Answer` across multiple calls. `reasoning` blocks contain only model-provided reasoning summaries, never raw chain-of-thought. `answer` blocks expose safe answer text. `tool` blocks expose only `toollabel`, `toolstatus`, `toolintegration`, and `toolaction`; their `text` is `null`, and tool IDs, arguments, and results are not public.
 
-The complete public block shape is `blockid`, `callindex`, `contentindex`, `type`, `text`, `toollabel`, `toolstatus`, `phase`, `version`, `startedat`, and `updatedat`. `phase` is `stream`, `end`, or `error`; timestamps can be `null` when unavailable. No additional internal correlation or execution metadata is emitted in this block.
+The complete public block shape is `blockid`, `callindex`, `contentindex`, `type`, `text`, `phase`, `version`, `startedat`, and `updatedat`, and tool blocks also carry `toollabel`, `toolstatus`, `toolintegration`, and `toolaction`. Reasoning and answer blocks don't have these four fields. `phase` is `stream`, `end`, or `error`; timestamps can be `null` when unavailable. No additional internal correlation or execution metadata is emitted in this block.
+
+Tool blocks carry two closed-list words:
+
+- `toolintegration` names the connector the step works in, as its `key` from [`POST /Credentials/List`](/docs/agent-credentials#post-credentialslist): `adjust`, `apollo`, `apple-appstore`, `brevo`, `calendarific`, `facebook-pages`, `firebase`, `ga4`, `gmail`, `google-ads`, `google-business`, `google-calendar`, `google-drive`, `google-merchant-center`, `google-play`, `hubspot`, `instagram`, `lemlist`, `linkedin`, `mailchimp`, `meta-ads`, `reddit`, `roasit`, `sendgrid`, `serper`, `shopify`, `telegram`, `tiktok`, `tiktok-ads`, `twitter`, `wiro`, `woocommerce`, `wordpress`, or `youtube`.
+- `toolaction` names what the step does: `screenshot`, `open-page`, `read-page`, `click`, `type`, `press-key`, `wait`, `upload`, `download`, `read-file`, or `edit-media`.
+
+Each is `null` when no word fits, and a block never has both. The words come with the block's first update and stay the same until the step ends. Treat a value you don't know like `null`; [Agent Messaging](/docs/agent-messaging#tool-integration-and-action-values) says what each word means.
+
+A tool block update:
+
+```json
+{
+  "type": "agent_timeline_delta",
+  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
+  "message": {
+    "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+    "block": {
+      "blockid": "c0:i1",
+      "callindex": 0,
+      "contentindex": 1,
+      "type": "tool",
+      "text": null,
+      "toollabel": "exec",
+      "toolstatus": "requested",
+      "toolintegration": "shopify",
+      "toolaction": null,
+      "phase": "stream",
+      "version": 1,
+      "startedat": 1743350405,
+      "updatedat": 1743350405
+    }
+  },
+  "result": true
+}
+```
 
 ### agent_end
 
@@ -526,7 +561,7 @@ These metrics update with every `agent_output` event, allowing you to display a 
 
 ## Timeline safety boundary
 
-Public reasoning is available only as `type: "reasoning"` timeline blocks. Wiro publishes provider-authored summaries from supported OpenAI GPT-5 calls, not raw hidden chain-of-thought or generic provider traces. Tool blocks publish only a safe label and status. Wiro does not parse literal `<think>` tags from `agent_output`; treat any such text in `raw` as ordinary provisional answer output.
+Public reasoning is available only as `type: "reasoning"` timeline blocks. Wiro publishes provider-authored summaries from supported OpenAI GPT-5 calls, not raw hidden chain-of-thought or generic provider traces. Tool blocks publish only a safe label, a status, and two closed-list words, `toolintegration` and `toolaction`. Wiro does not parse literal `<think>` tags from `agent_output`; treat any such text in `raw` as ordinary provisional answer output.
 
 ## Full Integration Example
 
