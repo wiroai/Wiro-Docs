@@ -21480,7 +21480,7 @@ func main() {
 <li>A run or model run missing from a list has ended, and its result is unknown.</li>
 <li>After <code>agent_run_end</code> or <code>agent_run_model_end</code>, keep that <code>runref</code> or <code>modelref</code> ended for at least 10 minutes: a later list or frame never reopens it.</li>
 <li>An <code>agent_run_block</code> or <code>agent_run_model_start</code> for a ref you don't know opens it.</li>
-<li>When <code>agent_run_block</code>, <code>agent_run_end</code> or <code>agent_run_model_end</code> for an agent you follow names a run or model run you don't hold, send <code>agent_run_subscribe</code> again for that agent, so that its reply brings what you hold up to date. If a subscribe for that agent is already waiting for its reply, that one is enough.</li>
+<li>When <code>agent_run_block</code>, <code>agent_run_end</code> or <code>agent_run_model_end</code> for an agent you follow names a run or model run you don't hold, send <code>agent_run_subscribe</code> again for that agent, at most once every 30 seconds, so that its reply brings what you hold up to date. If a subscribe for that agent is already waiting for its reply, that one is enough.</li>
 <li>After a reconnect, subscribe again for every agent: subscriptions belong to the connection, and frames are not replayed.</li>
 <li>While an agent has an open run or model run, subscribe again after 30 seconds with no <code>agent_run_*</code> frame for it.</li>
 <li>With no reply to <code>agent_run_subscribe</code> within 10 seconds, send it again after 5 seconds, then 15, then 60.</li>

@@ -849,7 +849,7 @@ When only the lists could not be read, your subscription is in place and events 
 3. A run or model run missing from a list has ended, and its result is unknown.
 4. After `agent_run_end` or `agent_run_model_end`, keep that `runref` or `modelref` ended for at least 10 minutes: a later list or frame never reopens it.
 5. An `agent_run_block` or `agent_run_model_start` for a ref you don't know opens it.
-6. When `agent_run_block`, `agent_run_end` or `agent_run_model_end` for an agent you follow names a run or model run you don't hold, send `agent_run_subscribe` again for that agent, so that its reply brings what you hold up to date. If a subscribe for that agent is already waiting for its reply, that one is enough.
+6. When `agent_run_block`, `agent_run_end` or `agent_run_model_end` for an agent you follow names a run or model run you don't hold, send `agent_run_subscribe` again for that agent, at most once every 30 seconds, so that its reply brings what you hold up to date. If a subscribe for that agent is already waiting for its reply, that one is enough.
 7. After a reconnect, subscribe again for every agent: subscriptions belong to the connection, and frames are not replayed.
 8. While an agent has an open run or model run, subscribe again after 30 seconds with no `agent_run_*` frame for it.
 9. With no reply to `agent_run_subscribe` within 10 seconds, send it again after 5 seconds, then 15, then 60.
