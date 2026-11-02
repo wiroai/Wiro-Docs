@@ -21389,7 +21389,7 @@ func main() {
 <tr>
 <td><code>reason</code></td>
 <td>string</td>
-<td>On <code>agent_run_end</code>, how the run ended. <code>report</code>: the run reported its own end. <code>terminal</code>: its latest step ended (<code>ok: true</code>) or failed (<code>ok: false</code>), and no new step began within two minutes. <code>lost</code>: nothing came from the run for 60 minutes, or the agent stopped, restarted or was deleted while the run was open (<code>ok: null</code>). Treat a value you don't know as <code>lost</code>.</td>
+<td>On <code>agent_run_end</code>, how the run ended. <code>report</code>: the run reported its own end. <code>terminal</code>: its latest step ended (<code>ok: true</code>) or failed (<code>ok: false</code>), and no new step began within two minutes. <code>lost</code>: nothing came from the run for 60 minutes, it was still open 6 hours after it started, or the agent stopped, restarted or was deleted while the run was open (<code>ok: null</code>). Treat a value you don't know as <code>lost</code>.</td>
 </tr>
 <tr>
 <td><code>outcome</code></td>
@@ -21468,6 +21468,7 @@ func main() {
 <ul>
 <li>One connection follows up to 256 agents. Subscribing to one more drops the agent whose subscription is the oldest, and the reply lists it in <code>dropped</code>. Subscribing again to an agent makes it the newest. Expired subscriptions are removed first and are not listed.</li>
 <li><code>runs</code> and <code>models</code> hold up to 256 items each.</li>
+<li>An agent has up to 256 open runs at a time. A run that starts while 256 are open is sent late: at its next step once one of them has ended, or with its end.</li>
 <li><code>categories</code> holds up to 16 items, and <code>sessionkey</code> up to 512 characters.</li>
 <li>A run sends <code>agent_run_block</code> for up to 512 different blocks. New blocks after that are not sent, and the run's end still comes.</li>
 <li>A subscription ends at its <code>expiresat</code>. Nothing arrives after that until you subscribe again with a new token.</li>

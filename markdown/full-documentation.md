@@ -13422,7 +13422,7 @@ A model run started in a chat turn, then its end:
 | `steps` | number | In `runs` only: how many tool steps the run has taken so far, 0 or more. |
 | `block` | object \| null | On `agent_run_block`, the step that changed. In `runs`, the run's newest step, or `null` when it has none yet. See the block shape below. |
 | `ok` | boolean \| null | On end events: `true` when the run or model run succeeded, `false` when it failed, and `null` when its result is unknown (`reason` or `outcome` is `lost`). |
-| `reason` | string | On `agent_run_end`, how the run ended. `report`: the run reported its own end. `terminal`: its latest step ended (`ok: true`) or failed (`ok: false`), and no new step began within two minutes. `lost`: nothing came from the run for 60 minutes, or the agent stopped, restarted or was deleted while the run was open (`ok: null`). Treat a value you don't know as `lost`. |
+| `reason` | string | On `agent_run_end`, how the run ended. `report`: the run reported its own end. `terminal`: its latest step ended (`ok: true`) or failed (`ok: false`), and no new step began within two minutes. `lost`: nothing came from the run for 60 minutes, it was still open 6 hours after it started, or the agent stopped, restarted or was deleted while the run was open (`ok: null`). Treat a value you don't know as `lost`. |
 | `outcome` | string | On `agent_run_model_end`: `done` (the task reached `task_postprocess_end` with `pexit` `"0"`; `ok: true`), `failed` (`task_error`, or `task_postprocess_end` with another `pexit`; `ok: false`), `cancelled` (`task_cancel`: the task was cancelled or killed; `ok: false`), or `lost` (its end could not be read, for example it was still open after 24 hours; `ok: null`). Treat a value you don't know as `lost`. |
 | `durationms` | number | On end events: how long the run or model run took, in milliseconds, for example `147230`. Never `null`. |
 | `endedat` | number | On end events: Unix seconds when it ended, for example `1793491947`. With `reason: "terminal"`, it is when the last step ended; with `reason: "lost"`, it is the run's last activity. |
@@ -13463,6 +13463,7 @@ When only the lists could not be read, your subscription is in place and events 
 
 - One connection follows up to 256 agents. Subscribing to one more drops the agent whose subscription is the oldest, and the reply lists it in `dropped`. Subscribing again to an agent makes it the newest. Expired subscriptions are removed first and are not listed.
 - `runs` and `models` hold up to 256 items each.
+- An agent has up to 256 open runs at a time. A run that starts while 256 are open is sent late: at its next step once one of them has ended, or with its end.
 - `categories` holds up to 16 items, and `sessionkey` up to 512 characters.
 - A run sends `agent_run_block` for up to 512 different blocks. New blocks after that are not sent, and the run's end still comes.
 - A subscription ends at its `expiresat`. Nothing arrives after that until you subscribe again with a new token.
