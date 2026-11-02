@@ -21467,7 +21467,7 @@ func main() {
 <h4 id="run-stream-limits">Run stream limits</h4>
 <ul>
 <li>One connection follows up to 256 agents. Subscribing to one more drops the agent whose subscription is the oldest, and the reply lists it in <code>dropped</code>. Subscribing again to an agent makes it the newest. Expired subscriptions are removed first and are not listed.</li>
-<li><code>runs</code> and <code>models</code> hold up to 256 items each.</li>
+<li><code>runs</code> and <code>models</code> hold up to 256 items each. An agent can have more than 256 open model runs: <code>models</code> then holds the 256 newest.</li>
 <li>An agent has up to 256 open runs at a time. A run that starts while 256 are open is sent late: at its next step once one of them has ended, or with its end.</li>
 <li><code>categories</code> holds up to 16 items, and <code>sessionkey</code> up to 512 characters.</li>
 <li>A run sends <code>agent_run_block</code> for up to 512 different blocks. New blocks after that are not sent, and the run's end still comes.</li>
@@ -21476,8 +21476,8 @@ func main() {
 <h4 id="client-rules">Client rules</h4>
 <ol>
 <li>Key runs by <code>runref</code>, blocks by <code>runref</code> and <code>blockid</code> (keep a block only when its <code>version</code> is higher), and model runs by <code>modelref</code>.</li>
-<li>On <code>agent_run_subscribed</code>, replace the agent's open runs and model runs with the lists, except one whose start or first frame reached you after you sent that subscribe: keep it, and let the next reply decide.</li>
-<li>A run or model run missing from a list has ended, and its result is unknown.</li>
+<li>On <code>agent_run_subscribed</code>, replace the agent's open runs and model runs with the lists, except one whose start or first frame reached you after you sent that subscribe: keep it, and let the next reply decide. When <code>models</code> has 256 items, also keep the model runs it leaves out: they can still be open.</li>
+<li>A run missing from a list has ended, and its result is unknown. So has a model run missing from a <code>models</code> list with fewer than 256 items.</li>
 <li>After <code>agent_run_end</code> or <code>agent_run_model_end</code>, keep that <code>runref</code> or <code>modelref</code> ended for at least 10 minutes: a later list or frame never reopens it.</li>
 <li>An <code>agent_run_block</code> or <code>agent_run_model_start</code> for a ref you don't know opens it.</li>
 <li>When <code>agent_run_block</code>, <code>agent_run_end</code> or <code>agent_run_model_end</code> for an agent you follow names a run or model run you don't hold, send <code>agent_run_subscribe</code> again for that agent, at most once every 30 seconds, so that its reply brings what you hold up to date. If a subscribe for that agent is already waiting for its reply, that one is enough.</li>

@@ -13462,7 +13462,7 @@ When only the lists could not be read, your subscription is in place and events 
 #### Run stream limits
 
 - One connection follows up to 256 agents. Subscribing to one more drops the agent whose subscription is the oldest, and the reply lists it in `dropped`. Subscribing again to an agent makes it the newest. Expired subscriptions are removed first and are not listed.
-- `runs` and `models` hold up to 256 items each.
+- `runs` and `models` hold up to 256 items each. An agent can have more than 256 open model runs: `models` then holds the 256 newest.
 - An agent has up to 256 open runs at a time. A run that starts while 256 are open is sent late: at its next step once one of them has ended, or with its end.
 - `categories` holds up to 16 items, and `sessionkey` up to 512 characters.
 - A run sends `agent_run_block` for up to 512 different blocks. New blocks after that are not sent, and the run's end still comes.
@@ -13471,8 +13471,8 @@ When only the lists could not be read, your subscription is in place and events 
 #### Client rules
 
 1. Key runs by `runref`, blocks by `runref` and `blockid` (keep a block only when its `version` is higher), and model runs by `modelref`.
-2. On `agent_run_subscribed`, replace the agent's open runs and model runs with the lists, except one whose start or first frame reached you after you sent that subscribe: keep it, and let the next reply decide.
-3. A run or model run missing from a list has ended, and its result is unknown.
+2. On `agent_run_subscribed`, replace the agent's open runs and model runs with the lists, except one whose start or first frame reached you after you sent that subscribe: keep it, and let the next reply decide. When `models` has 256 items, also keep the model runs it leaves out: they can still be open.
+3. A run missing from a list has ended, and its result is unknown. So has a model run missing from a `models` list with fewer than 256 items.
 4. After `agent_run_end` or `agent_run_model_end`, keep that `runref` or `modelref` ended for at least 10 minutes: a later list or frame never reopens it.
 5. An `agent_run_block` or `agent_run_model_start` for a ref you don't know opens it.
 6. When `agent_run_block`, `agent_run_end` or `agent_run_model_end` for an agent you follow names a run or model run you don't hold, send `agent_run_subscribe` again for that agent, at most once every 30 seconds, so that its reply brings what you hold up to date. If a subscribe for that agent is already waiting for its reply, that one is enough.
