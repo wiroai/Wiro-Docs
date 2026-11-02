@@ -21389,7 +21389,7 @@ func main() {
 <tr>
 <td><code>reason</code></td>
 <td>string</td>
-<td>On <code>agent_run_end</code>, how the run ended. <code>report</code>: the run reported its own end. <code>terminal</code>: its latest step ended (<code>ok: true</code>) or failed (<code>ok: false</code>), and no new step began within two minutes. <code>lost</code>: nothing came from the run for 60 minutes, it was still open 6 hours after it started, or the agent stopped, restarted or was deleted while the run was open (<code>ok: null</code>). Treat a value you don't know as <code>lost</code>.</td>
+<td>On <code>agent_run_end</code>, how the run ended. <code>report</code>: the run reported its own end. <code>terminal</code>: after the run's last update to a running step, a step ended (<code>ok: true</code>) or failed (<code>ok: false</code>), and no step was running again within two minutes. The first step to end or fail after that update sets <code>ok</code> and <code>endedat</code>; steps that end or fail after it change neither. <code>lost</code>: nothing came from the run for 60 minutes, it was still open 6 hours after it started, or the agent stopped, restarted or was deleted while the run was open (<code>ok: null</code>). Treat a value you don't know as <code>lost</code>.</td>
 </tr>
 <tr>
 <td><code>outcome</code></td>
@@ -21404,7 +21404,7 @@ func main() {
 <tr>
 <td><code>endedat</code></td>
 <td>number</td>
-<td>On end events: Unix seconds when it ended, for example <code>1793491947</code>. With <code>reason: "terminal"</code>, it is when the last step ended; with <code>reason: "lost"</code>, it is the run's last activity.</td>
+<td>On end events: Unix seconds when it ended, for example <code>1793491947</code>. With <code>reason: "terminal"</code>, it is when that first step ended or failed (see <code>reason</code>); with <code>reason: "lost"</code>, it is the run's last activity.</td>
 </tr>
 <tr>
 <td><code>slugowner</code>, <code>slugproject</code></td>
