@@ -11591,7 +11591,7 @@ Do not compare `version` across different blocks. Keep a map keyed by `blockid`,
 | `read-file` | Reads a file. |
 | `edit-media` | Edits a video, an image, or audio. |
 
-A tool block never carries both words: when `toolintegration` is set, `toolaction` is `null`. Both are `null` when no word fits the step and on blocks saved before these fields existed, so fall back to `toollabel` then. The words come with the block's first `requested` update and stay the same until the step ends. More values can be added to either list later, so treat a value you don't know like `null`.
+A tool block never carries both words: when `toolintegration` is set, `toolaction` is `null`. Both are `null` when no word fits the step and on blocks saved before these fields existed, so fall back to `toollabel` then. The words come with the block's first `requested` update, and every later update of the block carries them. A later update can carry a different word if the step changed, so read the words from the newest version of the block, like its other fields. More values can be added to either list later, so treat a value you don't know like `null`.
 
 Two tool blocks from a `timeline[]`:
 
@@ -12860,7 +12860,7 @@ Tool blocks carry two closed-list words:
 - `toolintegration` names the connector the step works in, as its `key` from [`POST /Credentials/List`](/docs/agent-credentials#post-credentialslist): `adjust`, `apollo`, `apple-appstore`, `brevo`, `calendarific`, `facebook-pages`, `firebase`, `ga4`, `gmail`, `google-ads`, `google-business`, `google-calendar`, `google-drive`, `google-merchant-center`, `google-play`, `hubspot`, `instagram`, `lemlist`, `linkedin`, `mailchimp`, `meta-ads`, `reddit`, `roasit`, `sendgrid`, `serper`, `shopify`, `telegram`, `tiktok`, `tiktok-ads`, `twitter`, `wiro`, `woocommerce`, `wordpress`, or `youtube`.
 - `toolaction` names what the step does: `screenshot`, `open-page`, `read-page`, `click`, `type`, `press-key`, `wait`, `upload`, `download`, `read-file`, or `edit-media`.
 
-Each is `null` when no word fits, and a block never has both. The words come with the block's first update and stay the same until the step ends. Treat a value you don't know like `null`; [Agent Messaging](/docs/agent-messaging#tool-integration-and-action-values) says what each word means.
+Each is `null` when no word fits, and a block never has both. The words come with the block's first update, and every later update of the block carries them. A later update can carry a different word if the step changed, so read them from the newest version of the block. Treat a value you don't know like `null`; [Agent Messaging](/docs/agent-messaging#tool-integration-and-action-values) says what each word means.
 
 A tool block update:
 

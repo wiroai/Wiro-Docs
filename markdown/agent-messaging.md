@@ -265,7 +265,7 @@ Do not compare `version` across different blocks. Keep a map keyed by `blockid`,
 | `read-file` | Reads a file. |
 | `edit-media` | Edits a video, an image, or audio. |
 
-A tool block never carries both words: when `toolintegration` is set, `toolaction` is `null`. Both are `null` when no word fits the step and on blocks saved before these fields existed, so fall back to `toollabel` then. The words come with the block's first `requested` update and stay the same until the step ends. More values can be added to either list later, so treat a value you don't know like `null`.
+A tool block never carries both words: when `toolintegration` is set, `toolaction` is `null`. Both are `null` when no word fits the step and on blocks saved before these fields existed, so fall back to `toollabel` then. The words come with the block's first `requested` update, and every later update of the block carries them. A later update can carry a different word if the step changed, so read the words from the newest version of the block, like its other fields. More values can be added to either list later, so treat a value you don't know like `null`.
 
 Two tool blocks from a `timeline[]`:
 

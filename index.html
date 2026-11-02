@@ -18945,7 +18945,7 @@ print(response.body);
 </table>
 </div>
 </div>
-<p>A tool block never carries both words: when <code>toolintegration</code> is set, <code>toolaction</code> is <code>null</code>. Both are <code>null</code> when no word fits the step and on blocks saved before these fields existed, so fall back to <code>toollabel</code> then. The words come with the block's first <code>requested</code> update and stay the same until the step ends. More values can be added to either list later, so treat a value you don't know like <code>null</code>.</p>
+<p>A tool block never carries both words: when <code>toolintegration</code> is set, <code>toolaction</code> is <code>null</code>. Both are <code>null</code> when no word fits the step and on blocks saved before these fields existed, so fall back to <code>toollabel</code> then. The words come with the block's first <code>requested</code> update, and every later update of the block carries them. A later update can carry a different word if the step changed, so read the words from the newest version of the block, like its other fields. More values can be added to either list later, so treat a value you don't know like <code>null</code>.</p>
 <p>Two tool blocks from a <code>timeline[]</code>:</p>
 <pre><code class="language-json">[
   {
@@ -20558,7 +20558,7 @@ func main() {
 <li><code>toolintegration</code> names the connector the step works in, as its <code>key</code> from <a href="/docs/agent-credentials#post-credentialslist"><code>POST /Credentials/List</code></a>: <code>adjust</code>, <code>apollo</code>, <code>apple-appstore</code>, <code>brevo</code>, <code>calendarific</code>, <code>facebook-pages</code>, <code>firebase</code>, <code>ga4</code>, <code>gmail</code>, <code>google-ads</code>, <code>google-business</code>, <code>google-calendar</code>, <code>google-drive</code>, <code>google-merchant-center</code>, <code>google-play</code>, <code>hubspot</code>, <code>instagram</code>, <code>lemlist</code>, <code>linkedin</code>, <code>mailchimp</code>, <code>meta-ads</code>, <code>reddit</code>, <code>roasit</code>, <code>sendgrid</code>, <code>serper</code>, <code>shopify</code>, <code>telegram</code>, <code>tiktok</code>, <code>tiktok-ads</code>, <code>twitter</code>, <code>wiro</code>, <code>woocommerce</code>, <code>wordpress</code>, or <code>youtube</code>.</li>
 <li><code>toolaction</code> names what the step does: <code>screenshot</code>, <code>open-page</code>, <code>read-page</code>, <code>click</code>, <code>type</code>, <code>press-key</code>, <code>wait</code>, <code>upload</code>, <code>download</code>, <code>read-file</code>, or <code>edit-media</code>.</li>
 </ul>
-<p>Each is <code>null</code> when no word fits, and a block never has both. The words come with the block's first update and stay the same until the step ends. Treat a value you don't know like <code>null</code>; <a href="/docs/agent-messaging#tool-integration-and-action-values">Agent Messaging</a> says what each word means.</p>
+<p>Each is <code>null</code> when no word fits, and a block never has both. The words come with the block's first update, and every later update of the block carries them. A later update can carry a different word if the step changed, so read them from the newest version of the block. Treat a value you don't know like <code>null</code>; <a href="/docs/agent-messaging#tool-integration-and-action-values">Agent Messaging</a> says what each word means.</p>
 <p>A tool block update:</p>
 <pre><code class="language-json">{
   &quot;type&quot;: &quot;agent_timeline_delta&quot;,
