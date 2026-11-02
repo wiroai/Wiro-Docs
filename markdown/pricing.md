@@ -162,10 +162,11 @@ Check the `totalcost` field in [Task/Detail](/docs/tasks) responses to see the c
 
 ### Via MCP
 
-The [MCP server](/docs/wiro-mcp-server) provides two ways to check costs:
+The [MCP server](/docs/wiro-mcp-server) provides three ways to check costs:
 
 - **`get_task`**: returns full task details including `totalcost`
 - **`get_task_price`**: dedicated tool that returns just the cost, billing status, and duration. Clearly indicates whether the task was billed or not.
+- **`get_account`**: with `recent_transactions`, lists the wallet's latest transactions, newest first, with what each one was for. Use it to check that a charge landed.
 
 ### Dashboard
 

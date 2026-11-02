@@ -5522,7 +5522,7 @@ Or install Node.js 20 or later and add this local stdio entry to
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.4.1"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.5.0"],
       "env": {
         "WIRO_API_KEY": "YOUR_API_KEY",
         "WIRO_API_SECRET": "YOUR_API_SECRET"
@@ -5533,7 +5533,7 @@ Or install Node.js 20 or later and add this local stdio entry to
 ```
 
 For API Key Only authentication, remove `WIRO_API_SECRET` completely. Fully quit
-and reopen Claude Desktop after saving. Pin `@wiro-ai/wiro-mcp@1.4.1` in `args`
+and reopen Claude Desktop after saving. Pin `@wiro-ai/wiro-mcp@1.5.0` in `args`
 so `npx` does not reuse an older cached build. This runs the local package
 and provides the same Wiro tools.
 
@@ -5764,7 +5764,7 @@ Wiro API error.
 
 **Model slugs:** Use the clean/lowercase format `owner/model` (e.g. `openai/sora-2`, `wiro/virtual-try-on`). These correspond to the `cleanslugowner/cleanslugproject` values returned by `search_models`.
 
-The server has 48 tools: three groups (Models, Workflows, Agents) and three
+The server has 50 tools: three groups (Models, Workflows, Agents) and three
 tools that are always available.
 
 | Tool | Description |
@@ -5812,25 +5812,32 @@ is `"studio"`, `"workflow-agent"` or the guid of one of your own agents:
 | `list_agent_templates` | Browse agent templates and their monthly prices |
 | `get_agent_template` | Read a template's skills, plans, and the accounts and keys it needs |
 | `list_agent_skills` | Browse agent skills and what each one needs |
-| `deploy_agent` | Deploy from a template or from skills; quotes the price and asks before charging |
+| `deploy_agent` | Deploy from a template or from skills; quotes the price, the wallet it charges and the other tier's price, and asks before charging |
 | `list_my_agents` | List your agents with their status, plan and credits |
 | `get_my_agent` | Read one agent's setup, plan and credits; can wait until it is running |
 | `control_agent` | Start, stop or restart an agent |
 | `update_agent` | Change an agent's name, description, time zone, models and chat commands |
 | `apply_agent_skills` | Turn skills on or off; quotes the price change and asks before charging |
 | `set_agent_credentials` | Save the keys, tokens and settings an agent's skills and channels need |
-| `connect_agent_oauth` | Connect sign-in accounts such as HubSpot or X, approved in your browser |
+| `connect_agent_oauth` | Connect sign-in accounts such as HubSpot or X for the services an agent's skills use, approved in your browser |
 | `disconnect_agent_oauth` | Disconnect a connected account, after your confirmation |
-| `manage_agent_custom_skill` | Add, edit, schedule, restore or remove an agent's own instructions and scheduled tasks |
+| `list_projects` | List the projects of the connected project's workspace, to pick one for an agent; no keys are shown |
+| `bind_agent_project` | Connect an agent to a Wiro project so it can run models, with no key in the chat; shows the project first, then asks for your confirmation |
+| `manage_agent_custom_skill` | Add, edit, schedule, restore or remove an agent's own instructions and scheduled tasks; turning off its approval policy or changing its rules needs your confirmation |
 | `manage_agent_billing` | Subscribe, upgrade to Pro, cancel, renew or buy extra credits from your wallet, after your confirmation |
-| `get_agent_activity` | Read an agent's credit usage and activity logs |
+| `get_agent_activity` | Read an agent's credit usage and activity logs, including who changed what on it |
 | `delete_agent` | Delete an agent, after your confirmation |
+
+Session names use letters, digits, dots, dashes, underscores and colons, up to
+128 characters (100 for the Workflow Agent), and can't end in `-r` followed by
+a number. Studio refuses a message under any other name; a Studio session that
+already has another name can still be read and deleted.
 
 Always available:
 
 | Tool | Description |
 |------|-------------|
-| `get_account` | Show which workspace the connected project belongs to and its wallet balance |
+| `get_account` | Show which workspace the connected project belongs to, its wallet balance and, when you ask (`recent_transactions`, `transactions_start`), the wallet's recent transactions |
 | `get_playbook` | Step-by-step guides: `getting-started`, `models`, `workflows`, `workflow-graph`, `workflow-agent`, `studio`, `agents`, `billing` |
 | `search_docs` | Search Wiro documentation |
 
@@ -5839,11 +5846,14 @@ Prompts: `build_workflow`, `deploy_agent`, `create_with_studio` and
 
 Paid work: model and workflow runs, Studio and Workflow Agent turns, and
 messages to your own agents (from the agent's credits) cost money. Agent plans,
-plan changes, credit packs and skill changes first return a quote and act only
-when called again with `confirm: true` and the quote's reference
+plan changes, credit packs and skill changes first return a quote (for a change
+inside a billing period, the amount Wiro works out for the time left) and act
+only when called again with `confirm: true` and the quote's reference
 (`confirm_charge_usd`, or `idempotency_key` for skill changes); if the price
-changed, nothing is charged and a new quote comes back. Deletions and graph
-replacements also wait for `confirm: true`. No tool adds funds or takes a card
+changed, nothing is charged and a new quote comes back. Deletions, connecting
+an agent to a Wiro project with `bind_agent_project` and graph replacements also
+wait for `confirm: true`; a graph replacement's summary shows the old and new
+value of each step input that changes. No tool adds funds or takes a card
 payment.
 
 If a generation exceeds the wait budget, continue with `wait_for_task` using
@@ -5857,10 +5867,18 @@ same `session_id` on every turn with the next `prompt`. A turn that ended with
 tool calls is continued with `previousTaskToken` and `toolOutputs`.
 Tools advertise typed input/output schemas and return `structuredContent` with
 stable task states and an executable `nextAction` for reliable LLM chaining.
+Every tool that takes arguments refuses an argument it does not know and names
+the right one where it can, such as `taskid` for `task_id`; a call that carries
+`toolCallId`, a key some clients add on their own, reads only the arguments the
+tool takes.
 Completed media responses include standard MCP resource links plus an
 assistant-audience instruction to render images and preserve clickable media
 links in the user-facing response. This works even when a client displays
 resource links as tool metadata instead of previewing them inside the tool card.
+In the text of a result, an agent's reply, the links taken from it and a
+model's answer sit in fenced blocks under fixed labels, apart from the server's
+own guidance, so the assistant treats them as content and acts only on the
+guidance and `nextAction`.
 
 ---
 
@@ -5876,7 +5894,7 @@ Run the Wiro MCP server locally on your own machine using npx.
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.4.1"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.5.0"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -5886,9 +5904,9 @@ Run the Wiro MCP server locally on your own machine using npx.
 }
 ```
 
-The self-hosted server exposes the same 48 tools, playbooks and prompts as
+The self-hosted server exposes the same 50 tools, playbooks and prompts as
 the hosted server, including bounded `run_model`, `wait_for_task`, and optional short waits through
-`get_task.wait_seconds`. Pin `@wiro-ai/wiro-mcp@1.4.1` in the npx `args` so
+`get_task.wait_seconds`. Pin `@wiro-ai/wiro-mcp@1.5.0` in the npx `args` so
 clients do not reuse an older cached package.
 
 ## Environment Variables
@@ -5972,9 +5990,16 @@ if (task.pexit === '0') {
 | `uploadFile(url, fileName?)` | Upload a file from URL for use as model input. |
 | `post(path, body?, signal?)` | Call any other Wiro API endpoint with the same credentials; check `result` on the returned body. |
 | `postForm(path, form, signal?)` | Same as `post`, for `multipart/form-data` endpoints. |
+| `isOwnApiKey(value)` | Says whether a value is this client's API key, without handing the key out. |
 
 `TaskWaitTimeoutError` preserves the last Task/Detail response. Resume
 `waitForTask` with the same identifier instead of calling `runModel` again.
+
+To send headers of your own with every API request, pass `requestHeaders` in
+the options (fourth parameter): a function that gets `{ pathname, apiKey }` and
+returns a plain object of string values. It cannot set `x-api-key`,
+`x-signature`, `x-nonce` or `Content-Type`. It replaces `trustedProxy`, which
+was removed in 1.5.0.
 
 ---
 

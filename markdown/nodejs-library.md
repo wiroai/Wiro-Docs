@@ -78,6 +78,26 @@ Override the API endpoint if needed (third parameter):
 const client = new WiroClient('key', 'secret', 'https://custom-api.example.com/v1');
 ```
 
+### Your Own Request Headers
+
+To send headers of your own with every API request, pass `requestHeaders` in
+the options (fourth parameter):
+
+```javascript
+const client = new WiroClient('your-api-key', 'your-api-secret', undefined, {
+  requestHeaders: () => ({ 'x-app-name': 'my-app' })
+});
+```
+
+The function runs for every request the client sends, JSON and multipart, and
+gets one object, `{ pathname, apiKey }`, where `pathname` includes the base
+path, such as `/v1/Tool/List`. It returns a plain object of string values, and
+those headers are sent after the client's own. It cannot set `x-api-key`,
+`x-signature`, `x-nonce` or `Content-Type`, in any letter case: such a request
+fails before it is sent. Type it with `RequestHeadersHook`. This option replaces
+`trustedProxy`, which was removed in 1.5.0: a client created with
+`trustedProxy` throws.
+
 ## Available Methods
 
 | Method | Description |
@@ -94,6 +114,7 @@ const client = new WiroClient('key', 'secret', 'https://custom-api.example.com/v
 | `uploadFile(url, fileName?)` | Upload a file from a URL for use as model input. |
 | `post(path, body?, signal?)` | Call any other Wiro API endpoint with the same credentials, for example `post('/Workflow/List', { scope: 'my' })`. Wiro reports each outcome in the response body, so check `result` on the returned body. |
 | `postForm(path, form, signal?)` | Same as `post`, for endpoints that take `multipart/form-data`. |
+| `isOwnApiKey(value)` | Says whether a value is this client's API key, without handing the key out. |
 
 If `waitForTask` exceeds its timeout, it throws `TaskWaitTimeoutError`. The
 error preserves `lastDetail`; call `waitForTask` again with the same token or
@@ -214,6 +235,7 @@ import type {
   SearchModelsParams,
   TaskReference,
   WaitForTaskOptions,
+  RequestHeadersHook,
 } from '@wiro-ai/wiro-mcp/client';
 
 import {
@@ -233,5 +255,6 @@ import {
 | `SearchModelsParams` | Search parameters: `search`, `categories`, `slugowner`, `limit`, etc. |
 | `TaskReference` | Existing task identifier: `tasktoken` or `taskid`. |
 | `WaitForTaskOptions` | Polling options: `signal`, `onPoll`, `pollIntervalMs`, and retry limit. |
+| `RequestHeadersHook` | The `requestHeaders` option: gets `{ pathname, apiKey }` and returns the headers to add. |
 | `TaskWaitTimeoutError` | Bounded wait expired; carries the last Task/Detail response. |
 | `TaskPollingError` | Repeated or permanent status lookup failure; also carries the last response. |

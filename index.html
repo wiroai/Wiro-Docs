@@ -6503,10 +6503,11 @@ curl -X POST "https://api.wiro.ai/v1/File/FolderCreate" \
 }</code></pre>
 
                     <h3>Via MCP</h3>
-                    <p>The <a href="/docs/wiro-mcp-server">MCP server</a> provides two ways to check costs:</p>
+                    <p>The <a href="/docs/wiro-mcp-server">MCP server</a> provides three ways to check costs:</p>
                     <ul>
                       <li><strong><code>get_task</code></strong>: returns full task details including <code>totalcost</code></li>
                       <li><strong><code>get_task_price</code></strong>: dedicated tool that returns just the cost, billing status, and duration. Clearly indicates whether the task was billed or not.</li>
+                      <li><strong><code>get_account</code></strong>: with <code>recent_transactions</code>, lists the wallet's latest transactions, newest first, with what each one was for. Use it to check that a charge landed.</li>
                     </ul>
 
                     <h3>Dashboard</h3>
@@ -7693,7 +7694,7 @@ if (!data.result) {
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.4.1"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.5.0"],
       "env": {
         "WIRO_API_KEY": "YOUR_API_KEY",
         "WIRO_API_SECRET": "YOUR_API_SECRET"
@@ -7702,13 +7703,13 @@ if (!data.result) {
   }
 }</code></pre>
                         <p>For API Key Only authentication, keep <code>WIRO_API_KEY</code> and remove the <code>WIRO_API_SECRET</code> entry completely. Save the file, fully quit Claude Desktop, and reopen it.</p>
-                        <p>Pin the current published version (<code>@wiro-ai/wiro-mcp@1.4.1</code>) in <code>args</code>. Unversioned <code>npx</code> can keep an older cached build after a package update.</p>
+                        <p>Pin the current published version (<code>@wiro-ai/wiro-mcp@1.5.0</code>) in <code>args</code>. Unversioned <code>npx</code> can keep an older cached build after a package update.</p>
                         <p>This setup runs the open-source <a href="https://www.npmjs.com/package/@wiro-ai/wiro-mcp" target="_blank" rel="noopener"><code>@wiro-ai/wiro-mcp</code></a> bridge on your machine and calls Wiro with your project credentials. See <a href="/docs/mcp-self-hosted">Self-Hosted MCP</a> for the complete local package guide.</p>
                         <h4>Claude connection and timeout troubleshooting</h4>
                         <ul>
                           <li><strong>"Not valid MCP server configurations"</strong>: ensure the entry contains <code>"type": "stdio"</code>, <code>command</code>, <code>args</code>, and <code>env</code> exactly as shown above.</li>
                           <li><strong>The Wiro tools do not appear</strong>: confirm <code>node --version</code> reports 20 or later, then fully quit and reopen Claude Desktop.</li>
-                          <li><strong>Tools appear but every call fails immediately</strong>: pin <code>@wiro-ai/wiro-mcp@1.4.1</code> as shown above so <code>npx</code> does not reuse an older cached package, then fully quit and reopen Claude Desktop.</li>
+                          <li><strong>Tools appear but every call fails immediately</strong>: pin <code>@wiro-ai/wiro-mcp@1.5.0</code> as shown above so <code>npx</code> does not reuse an older cached package, then fully quit and reopen Claude Desktop.</li>
                           <li><strong>A generation reaches Claude's tool timeout</strong>: Wiro waits for at most 45 seconds per call. If the task is still running, Claude should execute the returned <code>nextAction.tool: "wait_for_task"</code> until completion and must not call <code>run_model</code> again.</li>
                           <li>Do not add a <code>timeout</code> field to <code>claude_desktop_config.json</code>; Claude Desktop versions with a fixed client-side tool timeout may ignore it. Wiro's bounded wait flow is designed to remain below that boundary.</li>
                         </ul>
@@ -7930,7 +7931,7 @@ if (!data.result) {
 
                   <section id="mcp-tools">
                     <h2>Available Tools</h2>
-                    <p>The MCP server has 48 tools. Most of them belong to one of three groups, Models, Workflows and Agents, and three tools for your account, the playbooks and the docs are always available. Your AI assistant picks the right tool for each request, and for longer jobs it reads a playbook first.</p>
+                    <p>The MCP server has 50 tools. Most of them belong to one of three groups, Models, Workflows and Agents, and three tools for your account, the playbooks and the docs are always available. Your AI assistant picks the right tool for each request, and for longer jobs it reads a playbook first.</p>
                     <p><strong>Model slugs:</strong> Use the clean/lowercase format <code>owner/model</code> (e.g. <code>openai/sora-2</code>, <code>wiro/virtual-try-on</code>). These correspond to the <code>cleanslugowner/cleanslugproject</code> values returned by <code>search_models</code>.</p>
                     <h3>Models</h3>
                     <table>
@@ -8052,7 +8053,7 @@ if (!data.result) {
                     <p>The <strong>Workflow Agent</strong> designs workflows with you in plain language: talk to it with <code>send_agent_message</code> and <code>agent: "workflow-agent"</code>, attach an existing workflow to edit, then save its proposal with <code>save_workflow_from_agent</code>. Conversations started through the MCP server belong to the connected project and are separate from your Workflow Agent chats on wiro.ai. See <a href="/docs/workflow-agent">Workflow Agent</a>.</p>
 
                     <h3>Agents</h3>
-                    <p>One set of tools talks to every Wiro agent. <code>agent</code> is <code>"studio"</code>, <code>"workflow-agent"</code> or the guid of one of your own agents.</p>
+                    <p>One set of tools talks to every Wiro agent. <code>agent</code> is <code>"studio"</code>, <code>"workflow-agent"</code> or the guid of one of your own agents. Session names use letters, digits, dots, dashes, underscores and colons, up to 128 characters (100 for the Workflow Agent), and can't end in <code>-r</code> followed by a number, such as <code>-r2</code>. Studio refuses a message under any other name, and nothing is sent. A Studio session that already has another name can still be read and deleted; to go on with it, start a new session.</p>
                     <table>
                       <thead>
                         <tr>
@@ -8110,7 +8111,7 @@ if (!data.result) {
                         </tr>
                         <tr>
                           <td><code>deploy_agent</code></td>
-                          <td>Deploy an agent from a template or build one from skills; shows the price and asks before charging</td>
+                          <td>Deploy an agent from a template or build one from skills; shows the price, the wallet it charges and the other tier's price, and asks before charging</td>
                         </tr>
                         <tr>
                           <td><code>list_my_agents</code></td>
@@ -8138,15 +8139,23 @@ if (!data.result) {
                         </tr>
                         <tr>
                           <td><code>connect_agent_oauth</code></td>
-                          <td>Connect sign-in accounts such as HubSpot or X; you approve the connection in your browser. Some services need your own app keys or a token first</td>
+                          <td>Connect sign-in accounts such as HubSpot or X for the services an agent's skills use; you approve the connection in your browser. Some services need your own app keys or a token first</td>
                         </tr>
                         <tr>
                           <td><code>disconnect_agent_oauth</code></td>
                           <td>Disconnect a connected account, after your confirmation</td>
                         </tr>
                         <tr>
+                          <td><code>list_projects</code></td>
+                          <td>List the projects of the connected project's workspace, to pick one for an agent; no keys are shown</td>
+                        </tr>
+                        <tr>
+                          <td><code>bind_agent_project</code></td>
+                          <td>Connect an agent to a Wiro project so it can run models, with no key in the chat; shows the project first, then asks for your confirmation</td>
+                        </tr>
+                        <tr>
                           <td><code>manage_agent_custom_skill</code></td>
-                          <td>Add, edit, schedule, restore or remove an agent's own instructions and scheduled tasks</td>
+                          <td>Add, edit, schedule, restore or remove an agent's own instructions and scheduled tasks; turning off its approval policy or changing its rules needs your confirmation</td>
                         </tr>
                         <tr>
                           <td><code>manage_agent_billing</code></td>
@@ -8154,7 +8163,7 @@ if (!data.result) {
                         </tr>
                         <tr>
                           <td><code>get_agent_activity</code></td>
-                          <td>Read an agent's credit usage and activity logs</td>
+                          <td>Read an agent's credit usage and activity logs, including who changed what on it</td>
                         </tr>
                         <tr>
                           <td><code>delete_agent</code></td>
@@ -8175,7 +8184,7 @@ if (!data.result) {
                       <tbody>
                         <tr>
                           <td><code>get_account</code></td>
-                          <td>Show which workspace the connected project belongs to and its wallet balance</td>
+                          <td>Show which workspace the connected project belongs to, its wallet balance and, when you ask, the wallet's recent transactions</td>
                         </tr>
                         <tr>
                           <td><code>get_playbook</code></td>
@@ -8264,15 +8273,17 @@ if (!data.result) {
 
                     <h3>Paid and irreversible actions</h3>
                     <p>Running a model or a workflow, sending a message to Studio or the Workflow Agent, and messages to your own agents (which use the agent's credits) cost money. The assistant tells you the expected cost in one line before it starts such work.</p>
-                    <p>Agent plans, plan changes, credit packs and skill changes are charged to your wallet, so <code>deploy_agent</code>, <code>manage_agent_billing</code> and <code>apply_agent_skills</code> first return the price (an estimate for prorated changes such as an upgrade to Pro). They act only when they are called again with <code>confirm: true</code> and the quote's reference after you agree: <code>confirm_charge_usd</code> with the approved amount, or the quote's <code>idempotency_key</code> for skill changes. If the price changed in between, nothing is charged and you get a new quote.</p>
-                    <p>Deleting a workflow, an agent, a conversation or an account connection also waits for <code>confirm: true</code>, and so does replacing a workflow's steps with <code>update_workflow</code> or <code>save_workflow_from_agent</code>: you see a summary of the change first. No tool adds funds or takes a card payment. Funds are added in the Wiro dashboard, and an agent plan paid by card is upgraded or topped up there.</p>
+                    <p>Agent plans, plan changes, credit packs and skill changes are charged to your wallet, so <code>deploy_agent</code>, <code>manage_agent_billing</code> and <code>apply_agent_skills</code> first return the price (for a change inside a billing period, the amount Wiro works out for the time left). They act only when they are called again with <code>confirm: true</code> and the quote's reference after you agree: <code>confirm_charge_usd</code> with the approved amount, or the quote's <code>idempotency_key</code> for skill changes. If the price changed in between, nothing is charged and you get a new quote.</p>
+                    <p>Deleting a workflow, an agent, a conversation or an account connection also waits for <code>confirm: true</code>, and so do connecting an agent to a Wiro project with <code>bind_agent_project</code> and replacing a workflow's steps with <code>update_workflow</code> or <code>save_workflow_from_agent</code>: you see a summary of the change first, with the old and new value of each step input that changes. No tool adds funds or takes a card payment. Funds are added in the Wiro dashboard, and an agent plan paid by card is upgraded or topped up there.</p>
                     <p>The connected project decides the workspace: a personal project uses your personal wallet, a team project uses the team wallet. <code>get_account</code> shows which one and its balance.</p>
                   </section>
 
                   <section id="mcp-contract">
                     <h2>MCP Request and Response Contract</h2>
                     <p>Every tool advertises typed MCP <code>inputSchema</code> and <code>outputSchema</code> values. Successful calls return <code>structuredContent</code> for reliable LLM tool chaining, concise text <code>content</code> for compatibility, and MCP resource links for generated media.</p>
+                    <p>Every tool that takes arguments refuses an argument it does not know, and nothing is run. The answer lists the arguments the tool takes and names the right one where it can, such as <code>taskid</code> for <code>task_id</code>; <code>run_model</code> adds that model parameters go inside <code>params</code>, and <code>run_workflow</code> that input values go inside <code>input</code>. The one exception is a call that carries <code>toolCallId</code>, a key some clients add on their own: the tool then reads only the arguments it takes.</p>
                     <p>When a task completes with media, Wiro also returns an assistant-audience delivery instruction. MCP clients do not all preview <code>resource_link</code> blocks inside tool cards, so the assistant is explicitly told to render image URLs and preserve clickable video, audio, and file links in its user-facing response. The standard resource link and full-resolution URL remain available without embedding a large base64 payload.</p>
+                    <p>In the text of a result, an agent's reply, the file and link addresses taken from it and a model's answer sit in fenced blocks under fixed labels. The server's own guidance, its <strong>Next:</strong> lines and notes, stays outside them, so the assistant can treat that text as content and act only on the guidance and <code>nextAction</code>. A workflow run's text outputs and step errors show the same way. A saved workflow's title, description and input list are shown as data too, in every result, since an agent or another person can have written them. <code>structuredContent</code> keeps each text unchanged in its own field.</p>
                     <p>For example, an LLM submits one generation:</p>
                     <pre><code class="language-json">{
   "name": "run_model",
@@ -8334,7 +8345,7 @@ if (!data.result) {
                     <p>The assistant checks the balance with <code>get_account</code>, tells you what a Studio turn costs, sends the brief with <code>send_agent_message</code> (<code>agent: "studio"</code>) and shows the images from the reply.</p>
                     <h3>Deploy an agent</h3>
                     <div class="info-callout"><p>"Deploy an agent that posts to our Instagram account and tell me what it still needs"</p></div>
-                    <p>The assistant compares templates with <code>list_agent_templates</code> and <code>get_agent_template</code>, gets the price from <code>deploy_agent</code>, and deploys only after you confirm the amount. Then it lists the missing setup with <code>get_my_agent</code> and connects the account with <code>connect_agent_oauth</code>.</p>
+                    <p>The assistant compares templates with <code>list_agent_templates</code> and <code>get_agent_template</code>, gets the price from <code>deploy_agent</code>, and deploys only after you confirm the amount. Then it lists the missing setup with <code>get_my_agent</code> and connects the account with <code>connect_agent_oauth</code>. If the agent runs Wiro models, it connects a Wiro project with <code>bind_agent_project</code> once you agree to the project it shows.</p>
                     <h3>Talk to your agent</h3>
                     <div class="info-callout"><p>"Tell my support agent to summarise today's tickets"</p></div>
                     <p>The assistant finds the agent with <code>list_my_agents</code>, checks that it is running with <code>get_my_agent</code>, and sends the message with <code>send_agent_message</code>. The message uses the agent's credits.</p>
@@ -8696,7 +8707,7 @@ if (!data.result) {
                     </table>
                     <p>Returns relevant documentation sections matching your query.</p>
                     <h3>get_account and get_playbook</h3>
-                    <p><code>get_account</code> takes no arguments. It names the workspace of the connected project, personal or a team, and shows that wallet's balance. It is also the call that proves the connection works, since model search, schema reads and <code>search_docs</code> answer without credentials. <code>get_playbook</code> takes <code>topics</code>, one or more of the playbook topics listed under <a href="#mcp-tools">Available Tools</a>, such as <code>["workflows"]</code> or <code>["agents", "billing"]</code>.</p>
+                    <p><code>get_account</code> names the workspace of the connected project, personal or a team, and shows that wallet's balance. It is also the call that proves the connection works, since model search, schema reads and <code>search_docs</code> answer without credentials. Without arguments it reads only the balance. With <code>recent_transactions</code> (1 to 50) it also lists that many of the wallet's latest transactions, newest first, as the Transactions page of the Wiro dashboard shows them: each row's time, type, whether it adds to the wallet or takes from it, the amount in USD and what it was for, such as a model run, a store item or an agent. That is how to check that a charge or a credit landed. In a team the wallet is shared, so the list holds the whole team's activity. <code>transactions_start</code> pages back: pass the <code>nextStart</code> of the last answer. <code>get_playbook</code> takes <code>topics</code>, one or more of the playbook topics listed under <a href="#mcp-tools">Available Tools</a>, such as <code>["workflows"]</code> or <code>["agents", "billing"]</code>.</p>
 
                     <h3>Workflow tools</h3>
                     <p>The workflow, conversation and agent tools publish their full input schemas, which your MCP client reads, so the tables below list only their main arguments. A workflow is named by its full slug, such as <code>product-shots-a1B2c</code>, and a run by its run token. The <a href="/docs/workflows">Workflows</a> page describes the API behind these tools.</p>
@@ -8756,7 +8767,7 @@ if (!data.result) {
                     </table>
 
                     <h3>Conversation tools</h3>
-                    <p>These tools work the same for Studio, the Workflow Agent and your own agents. <code>agent</code> is <code>"studio"</code>, <code>"workflow-agent"</code> or the guid of one of your agents, and <code>session</code> names the conversation. See <a href="/docs/studio">Studio</a>, <a href="/docs/workflow-agent">Workflow Agent</a> and <a href="/docs/agent-messaging">Agent Messaging</a>.</p>
+                    <p>These tools work the same for Studio, the Workflow Agent and your own agents. <code>agent</code> is <code>"studio"</code>, <code>"workflow-agent"</code> or the guid of one of your agents, and <code>session</code> names the conversation, following the session name rule under <a href="#mcp-tools">Available Tools</a>. See <a href="/docs/studio">Studio</a>, <a href="/docs/workflow-agent">Workflow Agent</a> and <a href="/docs/agent-messaging">Agent Messaging</a>.</p>
                     <table>
                       <thead>
                         <tr>
@@ -8775,7 +8786,7 @@ if (!data.result) {
                         </tr>
                         <tr>
                           <td><code>get_agent_conversation</code></td>
-                          <td><code>agent</code>, <code>session</code> (leave it out to list the conversations), <code>limit</code>, <code>before</code></td>
+                          <td><code>agent</code>, <code>session</code> (leave it out to list the conversations, newest first), <code>limit</code>, <code>before</code> (older messages: pass <code>nextBefore</code>), <code>start</code> (older conversations: pass <code>nextStart</code>; a list longer than one page also returns <code>total</code>)</td>
                         </tr>
                         <tr>
                           <td><code>cancel_agent_message</code></td>
@@ -8844,15 +8855,23 @@ if (!data.result) {
                         </tr>
                         <tr>
                           <td><code>connect_agent_oauth</code></td>
-                          <td><code>agent_guid</code>, <code>credential</code>, <code>action</code> (<code>connect</code>, <code>status</code> or <code>select_accounts</code>), <code>mode</code> (<code>wiro</code>, <code>own</code> or <code>api_key</code>)</td>
+                          <td><code>agent_guid</code>, <code>credential</code>, <code>action</code> (<code>connect</code>, <code>status</code> or <code>select_accounts</code>), <code>mode</code> (<code>wiro</code>, <code>own</code> or <code>api_key</code>), <code>confirm</code></td>
                         </tr>
                         <tr>
                           <td><code>disconnect_agent_oauth</code></td>
                           <td><code>agent_guid</code>, <code>credential</code>, <code>confirm</code></td>
                         </tr>
                         <tr>
+                          <td><code>list_projects</code></td>
+                          <td><code>agent_guid</code> (optional: also says which listed project that agent uses)</td>
+                        </tr>
+                        <tr>
+                          <td><code>bind_agent_project</code></td>
+                          <td><code>agent_guid</code>, <code>project_id</code> (from <code>list_projects</code>; leave it out for the connection's own project), <code>confirm</code></td>
+                        </tr>
+                        <tr>
                           <td><code>manage_agent_custom_skill</code></td>
-                          <td><code>agent_guid</code>, <code>action</code> (<code>upsert</code>, <code>rename</code>, <code>delete</code>, <code>history</code> or <code>revert</code>), <code>key</code>, <code>kind</code>, <code>value</code>, <code>interval</code>, <code>enabled</code></td>
+                          <td><code>agent_guid</code>, <code>action</code> (<code>upsert</code>, <code>rename</code>, <code>delete</code>, <code>history</code> or <code>revert</code>), <code>key</code>, <code>kind</code>, <code>value</code>, <code>interval</code>, <code>enabled</code>, <code>confirm</code></td>
                         </tr>
                         <tr>
                           <td><code>manage_agent_billing</code></td>
@@ -8868,6 +8887,7 @@ if (!data.result) {
                         </tr>
                       </tbody>
                     </table>
+                    <p><code>list_projects</code> lists the projects of the connected project's workspace by id and name. It marks the connection's own project, the projects this connection can connect to an agent (the ones you created, or any project of a team you are an admin of) and the projects with an IP whitelist, and it shows no keys. <code>bind_agent_project</code> connects the Wiro project an agent runs models with. Called without <code>confirm</code>, it changes nothing: it shows the project, the one it replaces, whether a running agent restarts and which wallet pays for the agent's model runs (the wallet of the workspace that owns the project). After you agree, the assistant repeats the call with <code>confirm: true</code>, as its <code>nextAction</code> shows. Connecting the project an agent already has changes nothing and restarts nothing. On a team agent, a team admin can connect any project of the team, and the person who deployed the agent the projects they created. The API behind it is <a href="/docs/agent-overview#post-useragentcredentialprojectbind"><code>POST /UserAgent/CredentialProjectBind</code></a>.</p>
                   </section>
 
                   <section id="mcp-faq">
@@ -8879,7 +8899,8 @@ if (!data.result) {
                     <h3>Does it cost extra?</h3>
                     <p>No. The MCP server itself is free. You pay the normal prices for the work the tools start: model runs, the model steps of workflow runs, Studio and Workflow Agent turns, and agent plans and credits.</p>
                     <h3>What about rate limits?</h3>
-                    <p>The hosted MCP endpoint applies a 60-request-per-minute guard per Authorization value, in addition to Wiro API project limits. Long generations do not require rapid polling: follow the returned bounded <code>wait_for_task</code> action.</p>
+                    <p>The hosted MCP endpoint counts requests for each Bearer token, or for each caller IP when a request has none, in a fixed 60-second window. Each window allows 60 tool calls and prompt reads, where every message of a batch counts, and 300 other requests, such as <code>initialize</code>, notifications, listings and <code>ping</code>. Responses carry <code>RateLimit-Limit</code>, <code>RateLimit-Remaining</code> and <code>RateLimit-Reset</code> (seconds) for the 60-call budget.</p>
+                    <p>A request over the limit gets HTTP <code>429</code> with <code>Retry-After</code>, the same RateLimit headers for the limit it hit, and a JSON-RPC error (code <code>-32000</code>) that says it was not run and when to try again. A batch larger than one window allows gets HTTP <code>400</code> (code <code>-32600</code>): it was not run, and it has to be split. These limits come on top of Wiro API project limits. Long generations do not require rapid polling: follow the returned bounded <code>wait_for_task</code> action.</p>
                     <h3>Can I self-host?</h3>
                     <p>Yes. See <a href="/docs/mcp-self-hosted">Self-Hosted MCP</a> for instructions.</p>
                   </section>
@@ -8901,7 +8922,7 @@ if (!data.result) {
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.4.1"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.5.0"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -8909,7 +8930,7 @@ if (!data.result) {
     }
   }
 }</code></pre>
-                    <p>That's it. Your assistant can now run Wiro models, build and run workflows, and work with Studio and your own agents. The <code>args</code> entry pins the current published version (<code>@wiro-ai/wiro-mcp@1.4.1</code>) so <code>npx</code> does not reuse an older cached build.</p>
+                    <p>That's it. Your assistant can now run Wiro models, build and run workflows, and work with Studio and your own agents. The <code>args</code> entry pins the current published version (<code>@wiro-ai/wiro-mcp@1.5.0</code>) so <code>npx</code> does not reuse an older cached build.</p>
                   </section>
 
                   <section id="self-hosted-setup">
@@ -8962,7 +8983,7 @@ if (!data.result) {
   "mcpServers": {
     "wiro": {
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.4.1"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.5.0"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -8973,7 +8994,7 @@ if (!data.result) {
                       </div>
                       <div class="mcp-setup-panel" id="sh-setup-claude-code">
                         <h3>Claude Code</h3>
-                        <pre><code class="language-bash">claude mcp add wiro -- npx -y @wiro-ai/wiro-mcp@1.4.1</code></pre>
+                        <pre><code class="language-bash">claude mcp add wiro -- npx -y @wiro-ai/wiro-mcp@1.5.0</code></pre>
                         <p>Then set environment variables:</p>
                         <pre><code class="language-bash">export WIRO_API_KEY="your-api-key"
 export WIRO_API_SECRET="your-api-secret"</code></pre>
@@ -8986,7 +9007,7 @@ export WIRO_API_SECRET="your-api-secret"</code></pre>
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.4.1"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.5.0"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -9002,7 +9023,7 @@ export WIRO_API_SECRET="your-api-secret"</code></pre>
   "mcpServers": {
     "wiro": {
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.4.1"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.5.0"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -9018,7 +9039,7 @@ export WIRO_API_SECRET="your-api-secret"</code></pre>
   "mcpServers": {
     "wiro": {
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.4.1"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.5.0"],
       "env": {
         "WIRO_API_KEY": "your-api-key",
         "WIRO_API_SECRET": "your-api-secret"
@@ -9029,13 +9050,13 @@ export WIRO_API_SECRET="your-api-secret"</code></pre>
                       </div>
                       <div class="mcp-setup-panel" id="sh-setup-goose">
                         <h3>goose</h3>
-                        <p>In the goose CLI, run <code>goose configure</code>, pick <strong>Add Extension &gt; Command-line Extension</strong>, enter <code>npx -y @wiro-ai/wiro-mcp@1.4.1</code> as the command and add <code>WIRO_API_KEY</code> and <code>WIRO_API_SECRET</code> as environment variables. goose Desktop takes the same command and variables under <strong>Extensions &gt; Add custom extension</strong>. Or add Wiro to <code>~/.config/goose/config.yaml</code>:</p>
+                        <p>In the goose CLI, run <code>goose configure</code>, pick <strong>Add Extension &gt; Command-line Extension</strong>, enter <code>npx -y @wiro-ai/wiro-mcp@1.5.0</code> as the command and add <code>WIRO_API_KEY</code> and <code>WIRO_API_SECRET</code> as environment variables. goose Desktop takes the same command and variables under <strong>Extensions &gt; Add custom extension</strong>. Or add Wiro to <code>~/.config/goose/config.yaml</code>:</p>
                         <pre><code class="language-yaml">extensions:
   wiro:
     name: Wiro AI
     type: stdio
     cmd: npx
-    args: ["-y", "@wiro-ai/wiro-mcp@1.4.1"]
+    args: ["-y", "@wiro-ai/wiro-mcp@1.5.0"]
     envs:
       WIRO_API_KEY: your-api-key
       WIRO_API_SECRET: your-api-secret
@@ -9045,7 +9066,7 @@ export WIRO_API_SECRET="your-api-secret"</code></pre>
                       <div class="mcp-setup-panel" id="sh-setup-other">
                         <h3>Other Clients</h3>
                         <p>Any MCP client that supports the <strong>stdio</strong> transport can connect. The command is:</p>
-                        <pre><code class="language-bash">npx -y @wiro-ai/wiro-mcp@1.4.1</code></pre>
+                        <pre><code class="language-bash">npx -y @wiro-ai/wiro-mcp@1.5.0</code></pre>
                         <p>Set <code>WIRO_API_KEY</code> and <code>WIRO_API_SECRET</code> as environment variables in your client's MCP configuration.</p>
                       </div>
                     </div>
@@ -9068,7 +9089,7 @@ WIRO_API_SECRET=your-api-secret</code></pre>
 
                   <section id="self-hosted-tools">
                     <h2>Available Tools</h2>
-                    <p>The self-hosted server provides the same 48 typed tools, playbooks and prompts as the <a href="/docs/wiro-mcp-server">hosted MCP server</a>. Successful calls include <code>structuredContent</code> for LLM chaining plus text content for compatibility. Completed media calls return standard MCP resource links and an assistant-audience delivery instruction so the assistant can present image previews and clickable media links in its user-facing response even when the client does not render media inside its tool card.</p>
+                    <p>The self-hosted server provides the same 50 typed tools, playbooks and prompts as the <a href="/docs/wiro-mcp-server">hosted MCP server</a>. Successful calls include <code>structuredContent</code> for LLM chaining plus text content for compatibility. Completed media calls return standard MCP resource links and an assistant-audience delivery instruction so the assistant can present image previews and clickable media links in its user-facing response even when the client does not render media inside its tool card.</p>
                     <p>All three tool groups load by default. To load fewer tools, set <code>WIRO_TOOLSETS</code> (see <a href="#self-hosted-env">Environment Variables</a>). <code>get_account</code>, <code>get_playbook</code> and <code>search_docs</code> are always available.</p>
                     <p><strong>Model slugs:</strong> Use the clean/lowercase format <code>owner/model</code> (e.g. <code>openai/sora-2</code>, <code>wiro/virtual-try-on</code>). These correspond to <code>cleanslugowner/cleanslugproject</code> values returned by <code>search_models</code>.</p>
                     <h3>Models</h3>
@@ -9269,7 +9290,7 @@ WIRO_API_SECRET=your-api-secret</code></pre>
                         <tr>
                           <td><code>deploy_agent</code></td>
                           <td><code>POST /UserAgent/PricingPreview</code>, <code>/UserAgent/Deploy</code></td>
-                          <td>Deploy an agent from a template or build one from skills; shows the price and asks before charging.</td>
+                          <td>Deploy an agent from a template or build one from skills; shows the price, the wallet it charges and the other tier's price, and asks before charging.</td>
                         </tr>
                         <tr>
                           <td><code>list_my_agents</code></td>
@@ -9304,7 +9325,7 @@ WIRO_API_SECRET=your-api-secret</code></pre>
                         <tr>
                           <td><code>connect_agent_oauth</code></td>
                           <td><code>POST /UserAgentOAuth/OAuthConnect</code>, <code>/UserAgentOAuth/OAuthStatus</code>, <code>/UserAgentOAuth/SetPickerAccounts</code></td>
-                          <td>Connect sign-in accounts such as HubSpot or X; you approve the connection in your browser. Some services need your own app keys or a token first.</td>
+                          <td>Connect sign-in accounts such as HubSpot or X for the services an agent's skills use; you approve the connection in your browser. Some services need your own app keys or a token first.</td>
                         </tr>
                         <tr>
                           <td><code>disconnect_agent_oauth</code></td>
@@ -9312,9 +9333,19 @@ WIRO_API_SECRET=your-api-secret</code></pre>
                           <td>Disconnect a connected account, after your confirmation.</td>
                         </tr>
                         <tr>
+                          <td><code>list_projects</code></td>
+                          <td><code>POST /Project/List</code>, <code>/UserAgent/Detail</code> (with <code>agent_guid</code>)</td>
+                          <td>List the projects of the connected project's workspace, to pick one for an agent; no keys are shown.</td>
+                        </tr>
+                        <tr>
+                          <td><code>bind_agent_project</code></td>
+                          <td><code>POST /UserAgent/Detail</code>, <code>/Project/List</code>, then <code>/UserAgent/CredentialProjectBind</code></td>
+                          <td>Connect an agent to a Wiro project so it can run models, with no key in the chat; shows the project first, then asks for your confirmation.</td>
+                        </tr>
+                        <tr>
                           <td><code>manage_agent_custom_skill</code></td>
                           <td><code>POST /UserAgent/CustomSkillUpsert</code>, <code>CustomSkillRename</code>, <code>CustomSkillDelete</code>, <code>CustomSkillHistory</code>, <code>CustomSkillRevert</code></td>
-                          <td>Add, edit, schedule, restore or remove an agent's own instructions and scheduled tasks.</td>
+                          <td>Add, edit, schedule, restore or remove an agent's own instructions and scheduled tasks; turning off its approval policy or changing its rules needs your confirmation.</td>
                         </tr>
                         <tr>
                           <td><code>manage_agent_billing</code></td>
@@ -9324,7 +9355,7 @@ WIRO_API_SECRET=your-api-secret</code></pre>
                         <tr>
                           <td><code>get_agent_activity</code></td>
                           <td><code>POST /UserAgent/TransactionList</code>, <code>/UserAgent/LogsList</code>, <code>/UserAgent/Logs</code></td>
-                          <td>Read an agent's credit usage and activity logs.</td>
+                          <td>Read an agent's credit usage and activity logs, including who changed what on it.</td>
                         </tr>
                         <tr>
                           <td><code>delete_agent</code></td>
@@ -9345,8 +9376,8 @@ WIRO_API_SECRET=your-api-secret</code></pre>
                       <tbody>
                         <tr>
                           <td><code>get_account</code></td>
-                          <td><code>POST /Wallet/List</code></td>
-                          <td>Show which workspace the connected project belongs to and its wallet balance.</td>
+                          <td><code>POST /Wallet/List</code>, <code>/Wallet/TransactionList</code></td>
+                          <td>Show which workspace the connected project belongs to, its wallet balance and, when you ask, the wallet's recent transactions.</td>
                         </tr>
                         <tr>
                           <td><code>get_playbook</code></td>
@@ -9430,15 +9461,23 @@ const modelsAndWorkflows = createMcpServer(client, { toolsets: ['models', 'workf
                       <tbody>
                         <tr>
                           <td><code>createMcpServer(client, options?)</code></td>
-                          <td>Creates an McpServer with the tools, prompts and server instructions registered. <code>options.toolsets</code> picks tool groups and the prompts that use them; <code>options.instructions</code> replaces the instructions; <code>options.wrapTool(tool, handler)</code> returns the handler to register for each tool, for your own logging or permission checks</td>
+                          <td>Creates an McpServer with the tools, prompts and server instructions registered. <code>options.toolsets</code> picks tool groups and the prompts that use them; <code>options.instructions</code> replaces the instructions; <code>options.wrapTool(tool, handler)</code> returns the handler to register for each tool, for your own logging or permission checks; <code>options.maxToolInputElements</code> caps the array elements and object members one tool call may carry (default 10000, <code>Infinity</code> turns the check off)</td>
                         </tr>
                         <tr>
                           <td><code>WiroClient</code></td>
-                          <td>API client supporting both auth types (signature + apikey-only); <code>post(path, body)</code> calls any Wiro API endpoint with the same credentials</td>
+                          <td>API client supporting both auth types (signature + apikey-only); <code>post(path, body)</code> calls any Wiro API endpoint with the same credentials, and <code>isOwnApiKey(value)</code> says whether a value is this client's API key. Its <code>requestHeaders</code> option sends headers of your own with every request (see <a href="/docs/nodejs-library#nodejs-auth">Node.js Library</a>) and replaces the <code>trustedProxy</code> option, which was removed in 1.5.0</td>
                         </tr>
                         <tr>
                           <td><code>registerTools(server, client, options?)</code></td>
-                          <td>Register tools on an existing McpServer</td>
+                          <td>Registers the tools on an McpServer you already have, with the same <code>toolsets</code> and <code>wrapTool</code> options. That server then lists every tool schema, its own tools included, as JSON Schema 2020-12</td>
+                        </tr>
+                        <tr>
+                          <td><code>advertiseJsonSchema2020_12(server)</code></td>
+                          <td>Makes an McpServer list its tool schemas as JSON Schema 2020-12. Call it when you register single tools from <code>@wiro-ai/wiro-mcp/tools</code> instead of using <code>registerTools</code></td>
+                        </tr>
+                        <tr>
+                          <td><code>withJsonSchema2020_12(transport)</code></td>
+                          <td>The same for one transport: <code>await server.connect(withJsonSchema2020_12(transport))</code></td>
                         </tr>
                         <tr>
                           <td><code>parseToolsets(value)</code></td>
@@ -9534,6 +9573,13 @@ if (task.pexit === '0') {
                     <h3>Custom Base URL</h3>
                     <p>Override the API endpoint if needed (third parameter):</p>
                     <pre><code>const client = new WiroClient('key', 'secret', 'https://custom-api.example.com/v1');</code></pre>
+
+                    <h3>Your Own Request Headers</h3>
+                    <p>To send headers of your own with every API request, pass <code>requestHeaders</code> in the options (fourth parameter):</p>
+                    <pre><code>const client = new WiroClient('your-api-key', 'your-api-secret', undefined, {
+  requestHeaders: () => ({ 'x-app-name': 'my-app' })
+});</code></pre>
+                    <p>The function runs for every request the client sends, JSON and multipart, and gets one object, <code>{ pathname, apiKey }</code>, where <code>pathname</code> includes the base path, such as <code>/v1/Tool/List</code>. It returns a plain object of string values, and those headers are sent after the client's own. It cannot set <code>x-api-key</code>, <code>x-signature</code>, <code>x-nonce</code> or <code>Content-Type</code>, in any letter case: such a request fails before it is sent. Type it with <code>RequestHeadersHook</code>. This option replaces <code>trustedProxy</code>, which was removed in 1.5.0: a client created with <code>trustedProxy</code> throws.</p>
                   </section>
 
                   <section id="nodejs-methods">
@@ -9595,6 +9641,10 @@ if (task.pexit === '0') {
                             <tr>
                               <td><code>postForm(path, form, signal?)</code></td>
                               <td>Same as <code>post</code>, for endpoints that take <code>multipart/form-data</code>.</td>
+                            </tr>
+                            <tr>
+                              <td><code>isOwnApiKey(value)</code></td>
+                              <td>Says whether a value is this client's API key, without handing the key out.</td>
                             </tr>
                           </tbody>
                         </table>
@@ -9704,6 +9754,7 @@ import type {
   SearchModelsParams,
   TaskReference,
   WaitForTaskOptions,
+  RequestHeadersHook,
 } from '@wiro-ai/wiro-mcp/client';</code></pre>
                     <pre><code>import {
   TaskPollingError,
@@ -9755,6 +9806,10 @@ import type {
                             <tr>
                               <td><code>WaitForTaskOptions</code></td>
                               <td>Polling options: <code>signal</code>, <code>onPoll</code>, <code>pollIntervalMs</code>, and retry limit.</td>
+                            </tr>
+                            <tr>
+                              <td><code>RequestHeadersHook</code></td>
+                              <td>The <code>requestHeaders</code> option: gets <code>{ pathname, apiKey }</code> and returns the headers to add.</td>
                             </tr>
                             <tr>
                               <td><code>TaskWaitTimeoutError</code></td>

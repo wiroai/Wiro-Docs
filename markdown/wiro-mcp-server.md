@@ -223,7 +223,7 @@ your `claude_desktop_config.json`:
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.4.1"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.5.0"],
       "env": {
         "WIRO_API_KEY": "YOUR_API_KEY",
         "WIRO_API_SECRET": "YOUR_API_SECRET"
@@ -237,7 +237,7 @@ For API Key Only authentication, keep `WIRO_API_KEY` and remove the
 `WIRO_API_SECRET` entry completely. Save the file, fully quit Claude Desktop,
 and reopen it.
 
-Pin the current published version (`@wiro-ai/wiro-mcp@1.4.1`) in `args`.
+Pin the current published version (`@wiro-ai/wiro-mcp@1.5.0`) in `args`.
 Unversioned `npx` can keep an older cached build after a package update.
 
 This setup runs the open-source
@@ -252,7 +252,7 @@ your machine and calls Wiro with your project credentials. See
 - **The Wiro tools do not appear**: confirm `node --version` reports 20 or
   later, then fully quit and reopen Claude Desktop.
 - **Tools appear but every call fails immediately**: pin
-  `@wiro-ai/wiro-mcp@1.4.1` as shown above so `npx` does not reuse an older
+  `@wiro-ai/wiro-mcp@1.5.0` as shown above so `npx` does not reuse an older
   cached package, then fully quit and reopen Claude Desktop.
 - **A generation reaches Claude's tool timeout**: Wiro waits for at most 45
   seconds per call. If the task is still running, the response contains
@@ -587,7 +587,7 @@ expired or disconnected sign-in gets the same answer with
 
 ## Available Tools
 
-The MCP server has 48 tools. Most of them belong to one of three groups, Models, Workflows and Agents, and three tools for your account, the playbooks and the docs are always available. Your AI assistant picks the right tool for each request, and for longer jobs it reads a playbook first.
+The MCP server has 50 tools. Most of them belong to one of three groups, Models, Workflows and Agents, and three tools for your account, the playbooks and the docs are always available. Your AI assistant picks the right tool for each request, and for longer jobs it reads a playbook first.
 
 **Model slugs:** When a tool requires a model identifier, use the clean/lowercase format `owner/model` (e.g. `openai/sora-2`, `wiro/virtual-try-on`). These correspond to the `cleanslugowner/cleanslugproject` values returned by `search_models`.
 
@@ -644,7 +644,12 @@ and are separate from your Workflow Agent chats on wiro.ai. See
 ### Agents
 
 One set of tools talks to every Wiro agent. `agent` is `"studio"`,
-`"workflow-agent"` or the guid of one of your own agents.
+`"workflow-agent"` or the guid of one of your own agents. Session names use
+letters, digits, dots, dashes, underscores and colons, up to 128 characters
+(100 for the Workflow Agent), and can't end in `-r` followed by a number, such
+as `-r2`. Studio refuses a message under any other name, and nothing is sent. A
+Studio session that already has another name can still be read and deleted; to
+go on with it, start a new session.
 
 | Tool | What it does |
 |------|-------------|
@@ -665,18 +670,20 @@ agents run on a monthly plan with credits (see
 | `list_agent_templates` | Browse ready-made agent templates and their monthly prices |
 | `get_agent_template` | Read a template's skills, plans, and the accounts and keys it needs |
 | `list_agent_skills` | Browse the skills an agent can have, and what each one needs to work |
-| `deploy_agent` | Deploy an agent from a template or build one from skills; shows the price and asks before charging |
+| `deploy_agent` | Deploy an agent from a template or build one from skills; shows the price, the wallet it charges and the other tier's price, and asks before charging |
 | `list_my_agents` | List your agents with their status, plan and credits |
 | `get_my_agent` | Read one agent's setup, plan and credits; can wait until it is running |
 | `control_agent` | Start, stop or restart an agent |
 | `update_agent` | Change an agent's name, description, time zone, models and chat commands |
 | `apply_agent_skills` | Turn skills on or off; shows the price change and asks before charging |
 | `set_agent_credentials` | Save the keys, tokens and settings an agent's skills and channels need, such as a Telegram bot token or a Gmail app password |
-| `connect_agent_oauth` | Connect sign-in accounts such as HubSpot or X; you approve the connection in your browser. Some services need your own app keys or a token first |
+| `connect_agent_oauth` | Connect sign-in accounts such as HubSpot or X for the services an agent's skills use; you approve the connection in your browser. Some services need your own app keys or a token first |
 | `disconnect_agent_oauth` | Disconnect a connected account, after your confirmation |
-| `manage_agent_custom_skill` | Add, edit, schedule, restore or remove an agent's own instructions and scheduled tasks |
+| `list_projects` | List the projects of the connected project's workspace, to pick one for an agent; no keys are shown |
+| `bind_agent_project` | Connect an agent to a Wiro project so it can run models, with no key in the chat; shows the project first, then asks for your confirmation |
+| `manage_agent_custom_skill` | Add, edit, schedule, restore or remove an agent's own instructions and scheduled tasks; turning off its approval policy or changing its rules needs your confirmation |
 | `manage_agent_billing` | Subscribe, upgrade to Pro, cancel, renew or buy extra credits from your wallet, after your confirmation |
-| `get_agent_activity` | Read an agent's credit usage and activity logs |
+| `get_agent_activity` | Read an agent's credit usage and activity logs, including who changed what on it |
 | `delete_agent` | Delete an agent, after your confirmation |
 
 ### Account and guides
@@ -685,7 +692,7 @@ These three tools are always available, whichever groups are loaded.
 
 | Tool | What it does |
 |------|-------------|
-| `get_account` | Show which workspace the connected project belongs to and its wallet balance |
+| `get_account` | Show which workspace the connected project belongs to, its wallet balance and, when you ask, the wallet's recent transactions |
 | `get_playbook` | Step-by-step guides: getting started, models, workflows, workflow graphs, the Workflow Agent, Studio, agents and billing |
 | `search_docs` | Search the Wiro documentation for guides and API references |
 
@@ -729,18 +736,20 @@ such work.
 
 Agent plans, plan changes, credit packs and skill changes are charged to your
 wallet, so `deploy_agent`, `manage_agent_billing` and `apply_agent_skills`
-first return the price (an estimate for prorated changes such as an upgrade to
-Pro). They act only when they are called again with `confirm: true` and the
-quote's reference after you agree: `confirm_charge_usd` with the approved
-amount, or the quote's `idempotency_key` for skill changes. If the price
-changed in between, nothing is charged and you get a new quote.
+first return the price (for a change inside a billing period, the amount Wiro
+works out for the time left). They act only when they are called again with
+`confirm: true` and the quote's reference after you agree:
+`confirm_charge_usd` with the approved amount, or the quote's
+`idempotency_key` for skill changes. If the price changed in between, nothing
+is charged and you get a new quote.
 
 Deleting a workflow, an agent, a conversation or an account connection also
-waits for `confirm: true`, and so does replacing a workflow's steps with
-`update_workflow` or `save_workflow_from_agent`: you see a summary of the
-change first. No tool adds funds or takes a card payment. Funds are added in
-the Wiro dashboard, and an agent plan paid by card is upgraded or topped up
-there.
+waits for `confirm: true`, and so do connecting an agent to a Wiro project with
+`bind_agent_project` and replacing a workflow's steps with `update_workflow` or
+`save_workflow_from_agent`: you see a summary of the change first, with the old
+and new value of each step input that changes. No tool adds funds or takes a
+card payment. Funds are added in the Wiro dashboard, and an agent plan paid by
+card is upgraded or topped up there.
 
 The connected project decides the workspace: a personal project uses your
 personal wallet, a team project uses the team wallet. `get_account` shows which
@@ -754,12 +763,28 @@ Every tool advertises typed MCP `inputSchema` and `outputSchema` values. Success
 - concise text `content` for clients that only render text,
 - MCP resource links when a result contains generated media.
 
+Every tool that takes arguments refuses an argument it does not know, and
+nothing is run. The answer lists the arguments the tool takes and names the
+right one where it can, such as `taskid` for `task_id`; `run_model` adds that
+model parameters go inside `params`, and `run_workflow` that input values go
+inside `input`. The one exception is a call that carries `toolCallId`, a key
+some clients add on their own: the tool then reads only the arguments it takes.
+
 When a task completes with media, Wiro also returns an assistant-audience
 delivery instruction. MCP clients do not all preview `resource_link` blocks
 inside tool cards, so the assistant is explicitly told to render image URLs and
 preserve clickable video, audio, and file links in its user-facing response.
 The standard resource link and full-resolution URL remain available without
 embedding a large base64 payload.
+
+In the text of a result, an agent's reply, the file and link addresses taken
+from it and a model's answer sit in fenced blocks under fixed labels. The
+server's own guidance, its **Next:** lines and notes, stays outside them, so the
+assistant can treat that text as content and act only on the guidance and
+`nextAction`. A workflow run's text outputs and step errors show the same way.
+A saved workflow's title, description and input list are shown as data too, in
+every result, since an agent or another person can have written them.
+`structuredContent` keeps each text unchanged in its own field.
 
 For example, an LLM submits one generation:
 
@@ -887,7 +912,9 @@ shows the images from the reply.
 The assistant compares templates with `list_agent_templates` and
 `get_agent_template`, gets the price from `deploy_agent`, and deploys only
 after you confirm the amount. Then it lists the missing setup with
-`get_my_agent` and connects the account with `connect_agent_oauth`.
+`get_my_agent` and connects the account with `connect_agent_oauth`. If the
+agent runs Wiro models, it connects a Wiro project with `bind_agent_project`
+once you agree to the project it shows.
 
 ### Talk to your agent
 
@@ -1083,10 +1110,18 @@ Returns relevant documentation sections matching your query.
 
 ### get_account and get_playbook
 
-`get_account` takes no arguments. It names the workspace of the connected
-project, personal or a team, and shows that wallet's balance. It is also the
-call that proves the connection works, since model search, schema reads and
-`search_docs` answer without credentials. `get_playbook` takes `topics`, one or
+`get_account` names the workspace of the connected project, personal or a
+team, and shows that wallet's balance. It is also the call that proves the
+connection works, since model search, schema reads and `search_docs` answer
+without credentials. Without arguments it reads only the balance. With
+`recent_transactions` (1 to 50) it also lists that many of the wallet's latest
+transactions, newest first, as the Transactions page of the Wiro dashboard
+shows them: each row's time, type, whether it adds to the wallet or takes from
+it, the amount in USD and what it was for, such as a model run, a store item or
+an agent. That is how to check that a charge or a credit landed. In a team the
+wallet is shared, so the list holds the whole team's activity.
+`transactions_start` pages back: pass the `nextStart` of the last answer.
+`get_playbook` takes `topics`, one or
 more of the playbook topics listed under [Available Tools](#available-tools),
 such as `["workflows"]` or `["agents", "billing"]`.
 
@@ -1116,7 +1151,8 @@ API behind these tools.
 
 These tools work the same for Studio, the Workflow Agent and your own agents.
 `agent` is `"studio"`, `"workflow-agent"` or the guid of one of your agents,
-and `session` names the conversation. See [Studio](/docs/studio),
+and `session` names the conversation, following the session name rule under
+[Available Tools](#available-tools). See [Studio](/docs/studio),
 [Workflow Agent](/docs/workflow-agent) and
 [Agent Messaging](/docs/agent-messaging).
 
@@ -1124,7 +1160,7 @@ and `session` names the conversation. See [Studio](/docs/studio),
 |------|----------------|
 | `send_agent_message` | `agent`, `message`, `session`, `model` (Studio and the Workflow Agent), `attachment_urls`, `workflow` (the workflow to edit, Workflow Agent only), `wait_seconds` |
 | `get_agent_message` | `agent`, `message_id`, `session`, `wait_seconds` |
-| `get_agent_conversation` | `agent`, `session` (leave it out to list the conversations), `limit`, `before` |
+| `get_agent_conversation` | `agent`, `session` (leave it out to list the conversations, newest first), `limit`, `before` (older messages: pass `nextBefore`), `start` (older conversations: pass `nextStart`; a list longer than one page also returns `total`) |
 | `cancel_agent_message` | `agent`, `message_id`, `session` |
 | `delete_agent_session` | `agent`, `session`, `confirm` |
 | `list_studio_results` | `limit` (up to 100 recent runs), `state`, `since` |
@@ -1148,12 +1184,29 @@ An agent is named by its guid, which `list_my_agents` returns. See
 | `update_agent` | `agent_guid`, `title`, `description`, `timezone`, `team_session_mode`, `chat_model`, `cron_model`, `enabled_commands` |
 | `apply_agent_skills` | `agent_guid`, `skills`, `tier`, `confirm`, `idempotency_key` |
 | `set_agent_credentials` | `agent_guid`, `credential`, `fields` |
-| `connect_agent_oauth` | `agent_guid`, `credential`, `action` (`connect`, `status` or `select_accounts`), `mode` (`wiro`, `own` or `api_key`) |
+| `connect_agent_oauth` | `agent_guid`, `credential`, `action` (`connect`, `status` or `select_accounts`), `mode` (`wiro`, `own` or `api_key`), `confirm` |
 | `disconnect_agent_oauth` | `agent_guid`, `credential`, `confirm` |
-| `manage_agent_custom_skill` | `agent_guid`, `action` (`upsert`, `rename`, `delete`, `history` or `revert`), `key`, `kind`, `value`, `interval`, `enabled` |
+| `list_projects` | `agent_guid` (optional: also says which listed project that agent uses) |
+| `bind_agent_project` | `agent_guid`, `project_id` (from `list_projects`; leave it out for the connection's own project), `confirm` |
+| `manage_agent_custom_skill` | `agent_guid`, `action` (`upsert`, `rename`, `delete`, `history` or `revert`), `key`, `kind`, `value`, `interval`, `enabled`, `confirm` |
 | `manage_agent_billing` | `agent_guid`, `action` (`subscribe`, `upgrade_to_pro`, `cancel`, `renew` or `buy_credits`), `pack`, `confirm`, `confirm_charge_usd` |
 | `get_agent_activity` | `agent_guid`, `kind` (`usage`, `logs` or `log_dates`), `date` |
 | `delete_agent` | `agent_guid`, `confirm` |
+
+`list_projects` lists the projects of the connected project's workspace by id
+and name. It marks the connection's own project, the projects this connection
+can connect to an agent (the ones you created, or any project of a team you are
+an admin of) and the projects with an IP whitelist, and it shows no keys.
+`bind_agent_project` connects the Wiro project an agent runs models with.
+Called without `confirm`, it changes nothing: it shows the project, the one it
+replaces, whether a running agent restarts and which wallet pays for the
+agent's model runs (the wallet of the workspace that owns the project). After
+you agree, the assistant repeats the call with `confirm: true`, as its
+`nextAction` shows. Connecting the project an agent already has changes
+nothing and restarts nothing. On a team agent, a team admin can connect any
+project of the team, and the person who deployed the agent the projects they
+created. The API behind it is
+[`POST /UserAgent/CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind).
 
 ## FAQ
 
@@ -1171,7 +1224,19 @@ No. The MCP server itself is free. You pay the normal [Wiro prices](https://wiro
 
 ### What about rate limits?
 
-The hosted MCP endpoint applies a 60-request-per-minute guard per Authorization value, in addition to Wiro API project limits. Long generations do not require rapid polling: follow the returned bounded `wait_for_task` action.
+The hosted MCP endpoint counts requests for each Bearer token, or for each
+caller IP when a request has none, in a fixed 60-second window. Each window
+allows 60 tool calls and prompt reads, where every message of a batch counts,
+and 300 other requests, such as `initialize`, notifications, listings and
+`ping`. Responses carry `RateLimit-Limit`, `RateLimit-Remaining` and
+`RateLimit-Reset` (seconds) for the 60-call budget.
+
+A request over the limit gets HTTP `429` with `Retry-After`, the same RateLimit
+headers for the limit it hit, and a JSON-RPC error (code `-32000`) that says it
+was not run and when to try again. A batch larger than one window allows gets
+HTTP `400` (code `-32600`): it was not run, and it has to be split. These
+limits come on top of Wiro API project limits. Long generations do not require
+rapid polling: follow the returned bounded `wait_for_task` action.
 
 ### Can I self-host?
 
