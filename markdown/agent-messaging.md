@@ -146,8 +146,6 @@ Retrieves the current status and content of a single message. You can query by e
         "contentindex": 0,
         "type": "reasoning",
         "text": "I’ll distinguish deployed capabilities from current research.",
-        "toollabel": null,
-        "toolstatus": null,
         "phase": "end",
         "version": 3,
         "startedat": 1743350401,
@@ -159,8 +157,6 @@ Retrieves the current status and content of a single message. You can query by e
         "contentindex": 1,
         "type": "answer",
         "text": "Here are the key AI trends for 2026...",
-        "toollabel": null,
-        "toolstatus": null,
         "phase": "end",
         "version": 8,
         "startedat": 1743350405,
@@ -234,8 +230,8 @@ Only the fields below are returned in browser-facing REST and WebSocket timeline
 | `contentindex` | `number` | Zero-based content order within the call. Secondary sort key. |
 | `type` | `string` | `reasoning`, `answer`, or `tool`. |
 | `text` | `string\|null` | Safe public text for `reasoning` and `answer`; `null` for tool blocks. Reasoning text is an OpenAI GPT-5 provider summary, not raw chain-of-thought. |
-| `toollabel` | `string\|null` | Safe display label for a tool block; `null` for reasoning and answer blocks. Arguments and results are never included. |
-| `toolstatus` | `string\|null` | Safe public status for a tool block; `null` for reasoning and answer blocks. |
+| `toollabel` | `string` | Tool blocks only. Safe display label for the tool. Arguments and results are never included. |
+| `toolstatus` | `string` | Tool blocks only. `requested` while the step runs, then `completed` or `error`. |
 | `phase` | `string` | `stream`, `end`, or `error` for this block. A block still at `stream` closes when its turn ends with `agent_error` or `agent_cancel`, and normally a few seconds after `agent_end`. |
 | `version` | `number` | Monotonic **within this block**. Ignore a delta whose version is not strictly newer than the stored block's version. |
 | `startedat` | `number\|null` | Block start timestamp when available. |
@@ -289,8 +285,6 @@ Retrieves conversation history for a specific agent and session. Messages are re
             "contentindex": 0,
             "type": "reasoning",
             "text": "I’ll distinguish deployed capabilities from current research.",
-            "toollabel": null,
-            "toolstatus": null,
             "phase": "end",
             "version": 3,
             "startedat": 1743350401,
@@ -713,8 +707,6 @@ Connect to WebSocket and subscribe with the `agenttoken` for real-time streaming
       "contentindex": 0,
       "type": "reasoning",
       "text": "I’ll compare verified releases and adoption data.",
-      "toollabel": null,
-      "toolstatus": null,
       "phase": "stream",
       "version": 2,
       "startedat": 1743350401,

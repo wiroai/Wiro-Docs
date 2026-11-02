@@ -18659,8 +18659,6 @@ print(response.body);
         &quot;contentindex&quot;: 0,
         &quot;type&quot;: &quot;reasoning&quot;,
         &quot;text&quot;: &quot;I’ll distinguish deployed capabilities from current research.&quot;,
-        &quot;toollabel&quot;: null,
-        &quot;toolstatus&quot;: null,
         &quot;phase&quot;: &quot;end&quot;,
         &quot;version&quot;: 3,
         &quot;startedat&quot;: 1743350401,
@@ -18672,8 +18670,6 @@ print(response.body);
         &quot;contentindex&quot;: 1,
         &quot;type&quot;: &quot;answer&quot;,
         &quot;text&quot;: &quot;Here are the key AI trends for 2026...&quot;,
-        &quot;toollabel&quot;: null,
-        &quot;toolstatus&quot;: null,
         &quot;phase&quot;: &quot;end&quot;,
         &quot;version&quot;: 8,
         &quot;startedat&quot;: 1743350405,
@@ -18861,8 +18857,8 @@ print(response.body);
 <tr><td><code>contentindex</code></td><td><code>number</code></td><td>Zero-based content order within the call. Secondary sort key.</td></tr>
 <tr><td><code>type</code></td><td><code>string</code></td><td><code>reasoning</code>, <code>answer</code>, or <code>tool</code>.</td></tr>
 <tr><td><code>text</code></td><td><code>string|null</code></td><td>Safe public text for <code>reasoning</code> and <code>answer</code>; <code>null</code> for tool blocks. Reasoning text is an OpenAI GPT-5 provider summary, not raw chain-of-thought.</td></tr>
-<tr><td><code>toollabel</code></td><td><code>string|null</code></td><td>Safe display label for a tool block; <code>null</code> for reasoning and answer blocks. Arguments and results are never included.</td></tr>
-<tr><td><code>toolstatus</code></td><td><code>string|null</code></td><td>Safe public status for a tool block; <code>null</code> for reasoning and answer blocks.</td></tr>
+<tr><td><code>toollabel</code></td><td><code>string</code></td><td>Tool blocks only. Safe display label for the tool. Arguments and results are never included.</td></tr>
+<tr><td><code>toolstatus</code></td><td><code>string</code></td><td>Tool blocks only. <code>requested</code> while the step runs, then <code>completed</code> or <code>error</code>.</td></tr>
 <tr><td><code>phase</code></td><td><code>string</code></td><td><code>stream</code>, <code>end</code>, or <code>error</code> for this block. A block still at <code>stream</code> closes when its turn ends with <code>agent_error</code> or <code>agent_cancel</code>, and normally a few seconds after <code>agent_end</code>.</td></tr>
 <tr><td><code>version</code></td><td><code>number</code></td><td>Monotonic <strong>within this block</strong>. Ignore a delta whose version is not strictly newer than the stored block's version.</td></tr>
 <tr><td><code>startedat</code></td><td><code>number|null</code></td><td>Block start timestamp when available.</td></tr>
@@ -18949,8 +18945,6 @@ print(response.body);
             &quot;contentindex&quot;: 0,
             &quot;type&quot;: &quot;reasoning&quot;,
             &quot;text&quot;: &quot;I’ll distinguish deployed capabilities from current research.&quot;,
-            &quot;toollabel&quot;: null,
-            &quot;toolstatus&quot;: null,
             &quot;phase&quot;: &quot;end&quot;,
             &quot;version&quot;: 3,
             &quot;startedat&quot;: 1743350401,
@@ -19559,8 +19553,6 @@ call 1 / content 1: answer     → Final answer text
       &quot;contentindex&quot;: 0,
       &quot;type&quot;: &quot;reasoning&quot;,
       &quot;text&quot;: &quot;I’ll compare verified releases and adoption data.&quot;,
-      &quot;toollabel&quot;: null,
-      &quot;toolstatus&quot;: null,
       &quot;phase&quot;: &quot;stream&quot;,
       &quot;version&quot;: 2,
       &quot;startedat&quot;: 1743350401,
@@ -20434,8 +20426,6 @@ func main() {
       &quot;contentindex&quot;: 0,
       &quot;type&quot;: &quot;reasoning&quot;,
       &quot;text&quot;: &quot;I’ll compare the available evidence before making a recommendation.&quot;,
-      &quot;toollabel&quot;: null,
-      &quot;toolstatus&quot;: null,
       &quot;phase&quot;: &quot;stream&quot;,
       &quot;version&quot;: 4,
       &quot;startedat&quot;: 1743350401,
@@ -21314,8 +21304,6 @@ channel.stream.listen((message) {
       &quot;contentindex&quot;: 0,
       &quot;type&quot;: &quot;reasoning&quot;,
       &quot;text&quot;: &quot;I’ll verify the relevant constraints.&quot;,
-      &quot;toollabel&quot;: null,
-      &quot;toolstatus&quot;: null,
       &quot;phase&quot;: &quot;stream&quot;,
       &quot;version&quot;: 1,
       &quot;startedat&quot;: 1743350401,
