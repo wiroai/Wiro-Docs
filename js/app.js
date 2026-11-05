@@ -85,7 +85,8 @@ const DOCS_SCROLL_FADE_MS = 140;
 const DOCS_SCROLL_IDLE_MS = 1000;
 const docsScrollbarStates = new WeakMap();
 
-// Current Wiro code-surface hues, matching the Wiro web app's --wiro-code-* colors.
+// Wiro code-surface hues. Each token reads at least 4.5:1 on its code background,
+// the same values as --wiro-code-* in css/wiro-foundation.css.
 // Shiki emits both themes into one DOM tree so changing preference never
 // requires rebuilding code blocks or forcing an always-dark API surface.
 const WIRO_SHIKI_LIGHT = {
@@ -97,12 +98,12 @@ const WIRO_SHIKI_LIGHT = {
   },
   settings: [
     { settings: { foreground: '#16140f', background: '#f2efe8' } },
-    { scope: ['comment', 'punctuation.definition.comment'], settings: { foreground: '#8b877d' } },
+    { scope: ['comment', 'punctuation.definition.comment'], settings: { foreground: '#706d64' } },
     { scope: ['keyword', 'storage', 'storage.type', 'support.function'], settings: { foreground: '#5f594a' } },
-    { scope: ['string', 'string.quoted', 'constant.character'], settings: { foreground: '#2e7d52' } },
-    { scope: ['constant.numeric', 'constant.language'], settings: { foreground: '#9a6a32' } },
+    { scope: ['string', 'string.quoted', 'constant.character'], settings: { foreground: '#2d7b50' } },
+    { scope: ['constant.numeric', 'constant.language'], settings: { foreground: '#91632f' } },
     { scope: ['variable', 'entity.name', 'support.type', 'meta.object-literal.key'], settings: { foreground: '#3d3a33' } },
-    { scope: ['punctuation', 'meta.brace'], settings: { foreground: '#706c62' } },
+    { scope: ['punctuation', 'meta.brace'], settings: { foreground: '#6b675d' } },
   ],
 };
 
@@ -115,7 +116,7 @@ const WIRO_SHIKI_DARK = {
   },
   settings: [
     { settings: { foreground: '#f7f3ea', background: '#191713' } },
-    { scope: ['comment', 'punctuation.definition.comment'], settings: { foreground: '#5c5a52' } },
+    { scope: ['comment', 'punctuation.definition.comment'], settings: { foreground: '#838074' } },
     { scope: ['keyword', 'storage', 'storage.type', 'support.function'], settings: { foreground: '#7ba8d4' } },
     { scope: ['string', 'string.quoted', 'constant.character'], settings: { foreground: '#8fbf7a' } },
     { scope: ['constant.numeric', 'constant.language'], settings: { foreground: '#cf9060' } },
@@ -404,6 +405,7 @@ function parseCodeExamples(sectionEl) {
 
 function showSection(slug) {
   if (currentSlug === slug) return;
+  const isPageLoad = currentSlug === null;
   currentSlug = slug;
   document.documentElement.dataset.docsPage = slug;
 
@@ -448,9 +450,13 @@ function showSection(slug) {
   buildToc(slug);
   closeCodeDrawer();
 
-  const centerEl = document.querySelector('.docs-center');
-  if (centerEl) centerEl.scrollTo({ top: 0, behavior: 'instant' });
-  else window.scrollTo({ top: 0, behavior: 'instant' });
+  // A section switched in place starts at the top. On a page load the reader may
+  // already have scrolled while the page was arriving, so leave the position alone.
+  if (!isPageLoad) {
+    const centerEl = document.querySelector('.docs-center');
+    if (centerEl) centerEl.scrollTo({ top: 0, behavior: 'instant' });
+    else window.scrollTo({ top: 0, behavior: 'instant' });
+  }
 
   initSectionFeatures(slug);
 }
@@ -1200,8 +1206,8 @@ function revealActiveNavLink() {
   nav.scrollTop += linkRect.top - navRect.top - (nav.clientHeight - linkRect.height) / 2;
 }
 
-// showSection() scrolls the content to the top; a /docs/slug#heading link
-// (search results, cross-page anchors) should land on the heading.
+// A /docs/slug#heading link (search results, cross-page anchors) should land on
+// the heading once the section is set up.
 function scrollToLocationHash() {
   const id = decodeFragment(window.location.hash);
   if (!id || id.startsWith('/')) return;
