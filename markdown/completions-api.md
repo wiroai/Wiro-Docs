@@ -174,9 +174,12 @@ is in [the catalog](https://wiro.ai/models?categories=llm-tool-call) and behind
 (Wiro) claude/opus-5
 (Wiro) claude/opus-5-5
 (Wiro) claude/sonnet-5
+(Wiro) deepseek/v4-1-flash
+(Wiro) deepseek/v4-1-flash-economy
 (Wiro) deepseek/v4-flash
 (Wiro) deepseek/v4-pro
 (Wiro) glm/5-2
+(Wiro) glm/5-3
 (Wiro) google/gemini-2-5-flash
 (Wiro) google/gemini-3-5-flash
 (Wiro) google/gemini-3-5-flash-lite
@@ -224,6 +227,7 @@ is in [the catalog](https://wiro.ai/models?categories=llm-tool-call) and behind
 (Wiro) qwen/qwen3-8-27b
 (Wiro) qwen/qwen3-8-27b-obliterated
 (Wiro) qwen/qwen3-8-27b-uncensored
+(Wiro) ricursiveai/ripple-65b-preview
 (Wiro) xai/grok-4-1-fast
 (Wiro) xai/grok-4-20
 (Wiro) xai/grok-4-5
@@ -358,9 +362,12 @@ Model ID                                     Context
 (Wiro) claude/opus-5                         1000000
 (Wiro) claude/opus-5-5                       1000000
 (Wiro) claude/sonnet-5                       1000000
+(Wiro) deepseek/v4-1-flash                   1000000
+(Wiro) deepseek/v4-1-flash-economy           1000000
 (Wiro) deepseek/v4-flash                     1048576
 (Wiro) deepseek/v4-pro                       1048576
 (Wiro) glm/5-2                               1048576
+(Wiro) glm/5-3                               1000000
 (Wiro) google/gemini-2-5-flash               1048576
 (Wiro) google/gemini-3-5-flash               1048576
 (Wiro) google/gemini-3-5-flash-lite          1048576
@@ -408,6 +415,7 @@ Model ID                                     Context
 (Wiro) qwen/qwen3-8-27b                        25600
 (Wiro) qwen/qwen3-8-27b-obliterated            25600
 (Wiro) qwen/qwen3-8-27b-uncensored             25600
+(Wiro) ricursiveai/ripple-65b-preview          15360
 (Wiro) xai/grok-4-1-fast                     2000000
 (Wiro) xai/grok-4-20                         2000000
 (Wiro) xai/grok-4-5                           500000
@@ -534,6 +542,24 @@ extension required.
         "maxOutputTokens": 128000
       },
       {
+        "id": "deepseek/v4-1-flash",
+        "name": "(Wiro) DeepSeek V4.1 Flash",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1000000,
+        "maxOutputTokens": 384000
+      },
+      {
+        "id": "deepseek/v4-1-flash-economy",
+        "name": "(Wiro) DeepSeek V4.1 Flash Economy",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1000000,
+        "maxOutputTokens": 384000
+      },
+      {
         "id": "deepseek/v4-flash",
         "name": "(Wiro) DeepSeek V4 Flash",
         "url": "https://llm.wiro.ai/v1/chat/completions",
@@ -558,6 +584,15 @@ extension required.
         "toolCalling": true,
         "vision": false,
         "maxInputTokens": 1048576,
+        "maxOutputTokens": 128000
+      },
+      {
+        "id": "glm/5-3",
+        "name": "(Wiro) GLM 5.3",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1000000,
         "maxOutputTokens": 128000
       },
       {
@@ -984,6 +1019,15 @@ extension required.
         "maxOutputTokens": 16384
       },
       {
+        "id": "ricursiveai/ripple-65b-preview",
+        "name": "(Wiro) Ripple-65B Preview",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": false,
+        "maxInputTokens": 15360,
+        "maxOutputTokens": 8192
+      },
+      {
         "id": "xai/grok-4-1-fast",
         "name": "(Wiro) Grok 4.1 Fast",
         "url": "https://llm.wiro.ai/v1/chat/completions",
@@ -1109,9 +1153,12 @@ Model ID                                     Context  Max Output
 (Wiro) claude/opus-5                         1000000      128000
 (Wiro) claude/opus-5-5                       1000000      128000
 (Wiro) claude/sonnet-5                       1000000      128000
+(Wiro) deepseek/v4-1-flash                   1000000      384000
+(Wiro) deepseek/v4-1-flash-economy           1000000      384000
 (Wiro) deepseek/v4-flash                     1048576      384000
 (Wiro) deepseek/v4-pro                       1048576      384000
 (Wiro) glm/5-2                               1048576      128000
+(Wiro) glm/5-3                               1000000      128000
 (Wiro) google/gemini-2-5-flash               1048576       65536
 (Wiro) google/gemini-3-5-flash               1048576       65536
 (Wiro) google/gemini-3-5-flash-lite          1048576       65536
@@ -1159,6 +1206,7 @@ Model ID                                     Context  Max Output
 (Wiro) qwen/qwen3-8-27b                        25600       16384
 (Wiro) qwen/qwen3-8-27b-obliterated            25600       16384
 (Wiro) qwen/qwen3-8-27b-uncensored             25600       16384
+(Wiro) ricursiveai/ripple-65b-preview          15360        8192
 (Wiro) xai/grok-4-1-fast                     2000000       65536
 (Wiro) xai/grok-4-20                         2000000       65536
 (Wiro) xai/grok-4-5                           500000       65536
@@ -1221,9 +1269,12 @@ array. The same set is in the catalog and behind `GET /v1/models`.
           { "id": "(Wiro) claude/opus-5", "name": "(Wiro) Opus 5" },
           { "id": "(Wiro) claude/opus-5-5", "name": "(Wiro) Opus 5.5" },
           { "id": "(Wiro) claude/sonnet-5", "name": "(Wiro) Sonnet 5" },
+          { "id": "(Wiro) deepseek/v4-1-flash", "name": "(Wiro) DeepSeek V4.1 Flash" },
+          { "id": "(Wiro) deepseek/v4-1-flash-economy", "name": "(Wiro) DeepSeek V4.1 Flash Economy" },
           { "id": "(Wiro) deepseek/v4-flash", "name": "(Wiro) DeepSeek V4 Flash" },
           { "id": "(Wiro) deepseek/v4-pro", "name": "(Wiro) DeepSeek V4 Pro" },
           { "id": "(Wiro) glm/5-2", "name": "(Wiro) GLM 5.2" },
+          { "id": "(Wiro) glm/5-3", "name": "(Wiro) GLM 5.3" },
           { "id": "(Wiro) google/gemini-2-5-flash", "name": "(Wiro) Gemini 2.5 Flash" },
           { "id": "(Wiro) google/gemini-3-5-flash", "name": "(Wiro) Gemini 3.5 Flash" },
           { "id": "(Wiro) google/gemini-3-5-flash-lite", "name": "(Wiro) Gemini 3.5 Flash-Lite" },
@@ -1271,6 +1322,7 @@ array. The same set is in the catalog and behind `GET /v1/models`.
           { "id": "(Wiro) qwen/qwen3-8-27b", "name": "(Wiro) Qwen3.8 27B" },
           { "id": "(Wiro) qwen/qwen3-8-27b-obliterated", "name": "(Wiro) Qwen3.8 27B Obliterated" },
           { "id": "(Wiro) qwen/qwen3-8-27b-uncensored", "name": "(Wiro) Qwen3.8 27B Uncensored" },
+          { "id": "(Wiro) ricursiveai/ripple-65b-preview", "name": "(Wiro) Ripple-65B Preview" },
           { "id": "(Wiro) xai/grok-4-1-fast", "name": "(Wiro) Grok 4.1 Fast" },
           { "id": "(Wiro) xai/grok-4-20", "name": "(Wiro) Grok 4.20" },
           { "id": "(Wiro) xai/grok-4-5", "name": "(Wiro) Grok 4.5" }
@@ -1336,9 +1388,12 @@ Every model the gateway serves today. The same set is in the catalog and behind
 (Wiro) claude/opus-5
 (Wiro) claude/opus-5-5
 (Wiro) claude/sonnet-5
+(Wiro) deepseek/v4-1-flash
+(Wiro) deepseek/v4-1-flash-economy
 (Wiro) deepseek/v4-flash
 (Wiro) deepseek/v4-pro
 (Wiro) glm/5-2
+(Wiro) glm/5-3
 (Wiro) google/gemini-2-5-flash
 (Wiro) google/gemini-3-5-flash
 (Wiro) google/gemini-3-5-flash-lite
@@ -1386,6 +1441,7 @@ Every model the gateway serves today. The same set is in the catalog and behind
 (Wiro) qwen/qwen3-8-27b
 (Wiro) qwen/qwen3-8-27b-obliterated
 (Wiro) qwen/qwen3-8-27b-uncensored
+(Wiro) ricursiveai/ripple-65b-preview
 (Wiro) xai/grok-4-1-fast
 (Wiro) xai/grok-4-20
 (Wiro) xai/grok-4-5
@@ -1481,9 +1537,12 @@ Every model the gateway serves today. The same set is in the catalog and behind
 (Wiro) claude/opus-5
 (Wiro) claude/opus-5-5
 (Wiro) claude/sonnet-5
+(Wiro) deepseek/v4-1-flash
+(Wiro) deepseek/v4-1-flash-economy
 (Wiro) deepseek/v4-flash
 (Wiro) deepseek/v4-pro
 (Wiro) glm/5-2
+(Wiro) glm/5-3
 (Wiro) google/gemini-2-5-flash
 (Wiro) google/gemini-3-5-flash
 (Wiro) google/gemini-3-5-flash-lite
@@ -1531,6 +1590,7 @@ Every model the gateway serves today. The same set is in the catalog and behind
 (Wiro) qwen/qwen3-8-27b
 (Wiro) qwen/qwen3-8-27b-obliterated
 (Wiro) qwen/qwen3-8-27b-uncensored
+(Wiro) ricursiveai/ripple-65b-preview
 (Wiro) xai/grok-4-1-fast
 (Wiro) xai/grok-4-20
 (Wiro) xai/grok-4-5
