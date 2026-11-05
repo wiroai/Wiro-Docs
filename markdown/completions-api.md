@@ -414,7 +414,7 @@ Model ID                                     Context
 (Wiro) qwen/qwen3-6-27b                        25600
 (Wiro) qwen/qwen3-8-27b                        25600
 (Wiro) qwen/qwen3-8-27b-obliterated            25600
-(Wiro) qwen/qwen3-8-27b-uncensored             25600
+(Wiro) qwen/qwen3-8-27b-uncensored            126976
 (Wiro) ricursiveai/ripple-65b-preview          15360
 (Wiro) xai/grok-4-1-fast                     2000000
 (Wiro) xai/grok-4-20                         2000000
@@ -1015,7 +1015,7 @@ extension required.
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": false,
-        "maxInputTokens": 25600,
+        "maxInputTokens": 126976,
         "maxOutputTokens": 16384
       },
       {
@@ -1205,7 +1205,7 @@ Model ID                                     Context  Max Output
 (Wiro) qwen/qwen3-6-27b                        25600       16384
 (Wiro) qwen/qwen3-8-27b                        25600       16384
 (Wiro) qwen/qwen3-8-27b-obliterated            25600       16384
-(Wiro) qwen/qwen3-8-27b-uncensored             25600       16384
+(Wiro) qwen/qwen3-8-27b-uncensored            126976       16384
 (Wiro) ricursiveai/ripple-65b-preview          15360        8192
 (Wiro) xai/grok-4-1-fast                     2000000       65536
 (Wiro) xai/grok-4-20                         2000000       65536
