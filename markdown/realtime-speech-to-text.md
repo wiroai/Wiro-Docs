@@ -71,7 +71,7 @@ During a realtime speech-to-text session, you'll receive these WebSocket events:
 | `task_stream_ready` | server → client | Session is ready: start sending microphone audio |
 | `task_output` | server → client | Transcript text prefixed with `TRANSCRIPT_USER:` |
 | `task_stream_end` | server → client | Transcription stream has ended: no more transcripts will arrive |
-| `task_cost` | server → client | Cost update: includes `turnCost`, `cumulativeCost`, and `usage` breakdown |
+| `task_cost` | server → client | Cost update: includes `turnCost`, `cumulativeCost`, and `usage` breakdown. On models priced by time, each update covers the time since the previous one. |
 | `task_end` | server → client | The model process has exited. Post-processing follows. Wait for `task_postprocess_end` before closing. |
 | `task_postprocess_end` | server → client | Post-processing complete: safe to close the WebSocket now. |
 
@@ -88,7 +88,9 @@ Audio flows in one direction only: **client → server**.
 | Sample rate | 24,000 Hz (24 kHz) |
 | Channels | Mono (1 channel) |
 | Byte order | Little-endian |
-| Chunk size | 4,800 samples (200 ms) = 9,600 bytes |
+| Chunk size | Any size. The examples on this page send 4,800 samples (200 ms) = 9,600 bytes. |
+
+The server passes each frame to the model as it arrives. Smaller chunks, such as 20 ms (480 samples, 960 bytes), reach the model sooner.
 
 > The server internally resamples to the model's native rate (e.g. 16 kHz for Voxtral). Always send at 24 kHz. The server handles conversion.
 
@@ -118,23 +120,28 @@ Key steps:
 
 ## Transcripts
 
-Transcripts arrive as `task_output` messages with the `TRANSCRIPT_USER:` prefix. Each message contains a segment of transcribed speech:
+Transcripts arrive as `task_output` messages with the `TRANSCRIPT_USER:` prefix. Each message carries the next piece of transcribed speech, usually a word or a short phrase:
 
 ```json
 {
   "type": "task_output",
-  "message": "TRANSCRIPT_USER:What's the weather like today?"
+  "message": "TRANSCRIPT_USER:What's"
 }
 
 {
   "type": "task_output",
-  "message": "TRANSCRIPT_USER:I need to book a flight to New York."
+  "message": "TRANSCRIPT_USER:the"
+}
+
+{
+  "type": "task_output",
+  "message": "TRANSCRIPT_USER:weather"
 }
 ```
 
 ### Progressive Results
 
-Transcripts arrive progressively as words and phrases are recognized, not just at segment boundaries. The model streams `TRANSCRIPT_USER:` messages word-by-word as speech is detected, so the client can display live, incremental results. To build a full transcript, concatenate all received messages:
+Transcripts arrive progressively as words and phrases are recognized, not just at segment boundaries. The model streams `TRANSCRIPT_USER:` messages word-by-word as speech is detected, so the client can display live, incremental results. A message never repeats or corrects earlier text, so add each one to what you have instead of replacing it. To build a full transcript, concatenate all received messages with spaces:
 
 ```javascript
 var fullTranscript = [];
@@ -164,6 +171,8 @@ To gracefully end a realtime session, send `task_session_end`:
 ```
 
 After sending this, the server processes any remaining buffered audio, sends final transcript and cost events, and then emits `task_postprocess_end`. Wait for `task_postprocess_end` before closing the WebSocket.
+
+The server can also end a session on its own: after a period without speech, or when your balance runs out (see below). It then sends the same closing events, ending with `task_postprocess_end`. The server never sends `task_session_end`; that message only goes from the client to the server.
 
 > **Safety:** If the client disconnects without sending `task_session_end`, the server automatically terminates the session to prevent the pipeline from running indefinitely (and the provider from continuing to charge). Always send `task_session_end` explicitly for a clean shutdown.
 
@@ -484,7 +493,7 @@ function endSession() {
     "direction": "client → server only",
     "format": "tasktoken|pcm_audio_data"
   },
-  "recommended_chunk": {
+  "example_chunk": {
     "samples": 4800,
     "duration_ms": 200,
     "bytes": 9600

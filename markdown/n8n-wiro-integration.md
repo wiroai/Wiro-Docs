@@ -19,11 +19,11 @@ Each model is a **separate node**, so you get dedicated parameters, descriptions
 
 | Category | Models | Examples |
 |----------|--------|----------|
-| Video Generation | Text-to-video, image-to-video | Sora 2, Veo 3, Kling V3, Seedance, Hailuo, PixVerse, Runway |
+| Video Generation | Text-to-video, image-to-video | Veo 3.1, Kling V3, Seedance, Hailuo, PixVerse, Runway |
 | Image Generation | Text-to-image, style transfer | Imagen V4, Flux 2 Pro, Seedream, Nano Banana, SDXL |
 | Image Editing | Try-on, face swap, background removal | Virtual Try-On, Face Swap, Inpainting, Style Transfer |
 | Audio & Speech | TTS, STT, voice clone, music | ElevenLabs TTS, Gemini TTS, Whisper STT, Voice Clone |
-| LLM Chat | Chat completion, RAG | GPT-5, Gemini 3, Qwen 3.5, RAG Chat |
+| LLM Chat | Chat completion, RAG | GPT-5.2, GPT-5 Mini, Gemini 3, RAG Chat |
 | 3D Generation | Image/text to 3D | Trellis 2, Hunyuan3D 2.1 |
 | Translation | Multi-language with image support | Gemma-based (4B, 12B, 27B) |
 | E-Commerce | Product photos, ads, templates | Product Photoshoot, Shopify Templates, UGC Creator |
@@ -65,14 +65,14 @@ Get your credentials at [wiro.ai/panel/project](https://wiro.ai/panel/project/ne
 
 Each Wiro model appears as a separate node in the n8n node picker. Search for "Wiro" or the model name to find it.
 
-### Example: Generate a Video with Sora 2
+### Example: Generate a Video with Kling V3
 
-1. Add the **Wiro - Sora 2 Pro** node to your workflow
+1. Add the **Wiro - Kling V3 Text-to-Video Generator** node to your workflow
 2. Connect your Wiro credentials
 3. Set the parameters:
    - **Prompt:** `A cat astronaut floating in space`
-   - **Seconds:** `8`
-   - **Resolution:** `1080p`
+   - **Duration:** `5 Seconds`
+   - **Ratio:** `16:9`
 4. Run the workflow
 
 The node returns the task result with output URLs:
@@ -87,21 +87,21 @@ The node returns the task result with output URLs:
 
 ### Example: Transcribe Audio with Whisper
 
-1. Add the **Wiro - Whisper Large 3** node
-2. Connect an audio file from a previous node or provide a URL
-3. Select language and output format
-4. Run: get the transcribed text
+1. Search the node picker for `Whisper Large V3` and add the **Wiro - Speech to Text** node
+2. Set **Input Audio URL** to a public link to the audio file. To use a file from an earlier node, map its URL with an expression.
+3. Set **Language** (or **Auto**) and fill in **Chunk Length**, **Batch Size** and **Num Speakers**. The model's sample run uses `30`, `8` and `1`.
+4. Run the workflow: `url` in the output links to the transcript as a text file
 
-### Example: LLM Chat with GPT-5
+### Example: LLM Chat with GPT-5.2
 
-1. Add the **Wiro - GPT-5** node
-2. Set your prompt and system instructions
-3. Run: get the AI response
+1. Add the **Wiro - GPT-5.2 AI Model** node, or **Wiro - GPT-5 Mini AI Model** or **Wiro - GPT-5 Nano AI Model** for a smaller model
+2. Set **Prompt** and, if you need them, **System Instructions**
+3. Run the workflow: the reply is in `message` in the output
 
 ## Compatibility
 
 | Requirement | Version |
 |-------------|---------|
-| n8n | v1.0+ |
+| n8n | v1.85.0+ |
 | Node.js | v18+ |
 | Package | `@wiro-ai/n8n-nodes-wiroai@latest` |

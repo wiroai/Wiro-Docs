@@ -5298,7 +5298,7 @@ ws.onopen = function() {
                           <tr>
                             <td><code>task_cost</code></td>
                             <td>server → client</td>
-                            <td>Cost update per turn: includes <code>turnCost</code>, <code>cumulativeCost</code>, and <code>usage</code> (raw cost breakdown from the model provider)</td>
+                            <td>Cost update per turn: includes <code>turnCost</code>, <code>cumulativeCost</code>, and <code>usage</code> (raw cost breakdown from the model provider). On models priced by tokens a turn is one reply; on models priced by time it is the time since the previous update.</td>
                           </tr>
                           <tr>
                             <td><code>task_output</code></td>
@@ -5323,7 +5323,7 @@ ws.onopen = function() {
                           <tr>
                             <td><code>task_session_interrupt</code></td>
                             <td>client → server</td>
-                            <td>Interrupt AI speech: stops playback and lets the user speak</td>
+                            <td>Stop the current reply on Wiro-hosted models such as PersonaPlex (see Interrupting AI Speech)</td>
                           </tr>
                         </tbody>
                       </table>
@@ -5364,11 +5364,12 @@ ws.onopen = function() {
                           </tr>
                           <tr>
                             <td>Chunk size</td>
-                            <td>4,800 samples (200 ms) = 9,600 bytes</td>
+                            <td>Any size. The examples on this page send 4,800 samples (200 ms) = 9,600 bytes.</td>
                           </tr>
                         </tbody>
                       </table>
                     </div>
+                    <p>The server passes each microphone frame to the model as it arrives. Smaller chunks, such as 20 ms (480 samples, 960 bytes), reach the model sooner, so it notices sooner when the user starts talking.</p>
                     <h3>Binary Frame Format</h3>
                     <p>Every binary WebSocket frame (in both directions) is structured as:</p>
                     <pre><code>[tasktoken]|[PCM audio data]</code></pre>
@@ -5415,25 +5416,27 @@ ws.onopen = function() {
   "type": "task_output",
   "message": "TRANSCRIPT_AI:I'd be happy to help, but I don't have access to real-time weather data."
 }</code></pre>
+                    <p>Each message is final: a later message never repeats or corrects an earlier one. A user message usually holds one turn of speech, and an AI message the reply for that turn, so show each message as a new line.</p>
                   </section>
 
                   <section id="realtime-interrupt">
                     <h2>Interrupting AI Speech</h2>
-                    <p>While the AI is speaking, you can interrupt it to take over the conversation. Send <code>task_session_interrupt</code>:</p>
+                    <p>The user can talk over the AI to take over the conversation. How the reply stops depends on the model:</p>
+                    <ul>
+                      <li><strong>Models with their own barge-in</strong> (the OpenAI realtime family, Gemini Live and ElevenLabs) stop the reply on their own when they hear the user. Keep streaming microphone audio while the AI talks. No message is needed.</li>
+                      <li><strong>Wiro-hosted realtime models</strong> such as PersonaPlex stop the reply when you send <code>task_session_interrupt</code>.</li>
+                    </ul>
                     <pre><code>{
   "type": "task_session_interrupt",
   "tasktoken": "YOUR_SOCKET_ACCESS_TOKEN"
 }</code></pre>
-                    <p>When the server receives this:</p>
+                    <p>When a Wiro-hosted model receives this:</p>
                     <ul>
                       <li>The AI immediately stops generating audio</li>
                       <li>A final <code>task_stream_end</code> is sent for the interrupted turn</li>
                       <li>The session continues: the user can speak and the AI will respond to the next input</li>
                     </ul>
-                    <p>On the client side, stop audio playback immediately when the user triggers an interrupt. This gives instant feedback (AI voice cuts off) while the server processes the signal.</p>
-                    <div class="info-callout">
-                      <p><strong>Tip:</strong> Some models support natural interruption: if the user starts speaking while the AI is talking, the model may stop on its own. Models whose provider does its own barge-in (the OpenAI realtime family and ElevenLabs) may handle interruption natively, while the explicit <code>task_session_interrupt</code> signal stops the current reply on Wiro-hosted realtime models.</p>
-                    </div>
+                    <p>With either kind of model, stop your own audio playback as soon as the user starts talking. Audio that has already reached the client keeps playing until you stop it.</p>
                   </section>
 
                   <section id="realtime-end-session">
@@ -5444,6 +5447,7 @@ ws.onopen = function() {
   "tasktoken": "YOUR_SOCKET_ACCESS_TOKEN"
 }</code></pre>
                     <p>After sending this, the server will process any remaining audio, send final cost/transcript events, and then emit <code>task_postprocess_end</code>. Wait for <code>task_postprocess_end</code> before closing the WebSocket.</p>
+                    <p>The server can also end a session on its own: after a period without speech, or when your balance runs out (see below). It then sends the same closing events, ending with <code>task_postprocess_end</code>. The server never sends <code>task_session_end</code>; that message only goes from the client to the server.</p>
                     <div class="info-callout">
                       <p><strong>Safety:</strong> If the client disconnects without sending <code>task_session_end</code>, the server automatically terminates the session to prevent the pipeline from running indefinitely (and the provider from continuing to charge). Always send <code>task_session_end</code> explicitly for a clean shutdown.</p>
                     </div>
@@ -5483,7 +5487,7 @@ ws.onopen = function() {
                     {
                       "label": "Format",
                       "language": "json",
-                      "code": "{\n  \"audio_format\": {\n    \"codec\": \"PCM\",\n    \"bit_depth\": \"16-bit Int16\",\n    \"sample_rate\": 24000,\n    \"channels\": 1,\n    \"byte_order\": \"little-endian\"\n  },\n  \"binary_frame\": \"tasktoken|pcm_audio_data\",\n  \"recommended_chunk\": {\n    \"samples\": 4800,\n    \"duration_ms\": 200,\n    \"bytes\": 9600\n  },\n  \"events\": {\n    \"task_stream_ready\": \"Start sending audio\",\n    \"task_stream_end\": \"AI finished speaking\",\n    \"task_cost\": \"Cost per turn + cumulative\",\n    \"task_output\": \"TRANSCRIPT_USER: / TRANSCRIPT_AI:\",\n    \"task_session_interrupt\": \"Send to interrupt AI speech\",\n    \"task_session_end\": \"Send to end session\",\n    \"task_end\": \"Server ended session\",\n    \"task_postprocess_end\": \"Post-processing complete — safe to close\"\n  }\n}"
+                      "code": "{\n  \"audio_format\": {\n    \"codec\": \"PCM\",\n    \"bit_depth\": \"16-bit Int16\",\n    \"sample_rate\": 24000,\n    \"channels\": 1,\n    \"byte_order\": \"little-endian\"\n  },\n  \"binary_frame\": \"tasktoken|pcm_audio_data\",\n  \"example_chunk\": {\n    \"samples\": 4800,\n    \"duration_ms\": 200,\n    \"bytes\": 9600\n  },\n  \"events\": {\n    \"task_stream_ready\": \"Start sending audio\",\n    \"task_stream_end\": \"AI finished speaking\",\n    \"task_cost\": \"Cost per turn + cumulative\",\n    \"task_output\": \"TRANSCRIPT_USER: / TRANSCRIPT_AI:\",\n    \"task_session_interrupt\": \"Send to stop the current reply (Wiro-hosted models)\",\n    \"task_session_end\": \"Send to end session\",\n    \"task_end\": \"Server ended session\",\n    \"task_postprocess_end\": \"Post-processing complete: safe to close\"\n  }\n}"
                     }
                   ]
                 </script>
@@ -5897,7 +5901,7 @@ ws.onopen = function() {
                           <tr>
                             <td><code>task_cost</code></td>
                             <td>server → client</td>
-                            <td>Cost update: includes <code>turnCost</code>, <code>cumulativeCost</code>, and <code>usage</code> breakdown</td>
+                            <td>Cost update: includes <code>turnCost</code>, <code>cumulativeCost</code>, and <code>usage</code> breakdown. On models priced by time, each update covers the time since the previous one.</td>
                           </tr>
                           <tr>
                             <td><code>task_end</code></td>
@@ -5951,11 +5955,12 @@ ws.onopen = function() {
                           </tr>
                           <tr>
                             <td>Chunk size</td>
-                            <td>4,800 samples (200 ms) = 9,600 bytes</td>
+                            <td>Any size. The examples on this page send 4,800 samples (200 ms) = 9,600 bytes.</td>
                           </tr>
                         </tbody>
                       </table>
                     </div>
+                    <p>The server passes each frame to the model as it arrives. Smaller chunks, such as 20 ms (480 samples, 960 bytes), reach the model sooner.</p>
                     <div class="info-callout">
                       <p>The server internally resamples to the model's native rate (e.g. 16 kHz for Voxtral). Always send at 24 kHz. The server handles conversion.</p>
                     </div>
@@ -5983,19 +5988,24 @@ ws.onopen = function() {
 
                   <section id="realtime-stt-transcripts">
                     <h2>Transcripts</h2>
-                    <p>Transcripts arrive as <code>task_output</code> messages with the <code>TRANSCRIPT_USER:</code> prefix. Each message contains a segment of transcribed speech:</p>
+                    <p>Transcripts arrive as <code>task_output</code> messages with the <code>TRANSCRIPT_USER:</code> prefix. Each message carries the next piece of transcribed speech, usually a word or a short phrase:</p>
                     <pre><code>{
   "type": "task_output",
-  "message": "TRANSCRIPT_USER:What's the weather like today?"
+  "message": "TRANSCRIPT_USER:What's"
 }
 
 {
   "type": "task_output",
-  "message": "TRANSCRIPT_USER:I need to book a flight to New York."
+  "message": "TRANSCRIPT_USER:the"
+}
+
+{
+  "type": "task_output",
+  "message": "TRANSCRIPT_USER:weather"
 }</code></pre>
 
                     <h3>Progressive Results</h3>
-                    <p>Transcripts arrive progressively as words and phrases are recognized, not just at segment boundaries. The model streams <code>TRANSCRIPT_USER:</code> messages word-by-word as speech is detected, so the client can display live, incremental results. To build a full transcript, concatenate all received messages:</p>
+                    <p>Transcripts arrive progressively as words and phrases are recognized, not just at segment boundaries. The model streams <code>TRANSCRIPT_USER:</code> messages word-by-word as speech is detected, so the client can display live, incremental results. A message never repeats or corrects earlier text, so add each one to what you have instead of replacing it. To build a full transcript, concatenate all received messages with spaces:</p>
                     <pre><code>var fullTranscript = [];
 
 // Inside your message handler
@@ -6020,6 +6030,7 @@ if (msg.type === 'task_output' &amp;&amp;
   "tasktoken": "YOUR_SOCKET_ACCESS_TOKEN"
 }</code></pre>
                     <p>After sending this, the server processes any remaining buffered audio, sends final transcript and cost events, and then emits <code>task_postprocess_end</code>. Wait for <code>task_postprocess_end</code> before closing the WebSocket.</p>
+                    <p>The server can also end a session on its own: after a period without speech, or when your balance runs out (see below). It then sends the same closing events, ending with <code>task_postprocess_end</code>. The server never sends <code>task_session_end</code>; that message only goes from the client to the server.</p>
                     <div class="info-callout">
                       <p><strong>Safety:</strong> If the client disconnects without sending <code>task_session_end</code>, the server automatically terminates the session to prevent the pipeline from running indefinitely (and the provider from continuing to charge). Always send <code>task_session_end</code> explicitly for a clean shutdown.</p>
                     </div>
@@ -6054,7 +6065,7 @@ if (msg.type === 'task_output' &amp;&amp;
                     {
                       "label": "Format",
                       "language": "json",
-                      "code": "{\n  \"audio_format\": {\n    \"codec\": \"PCM\",\n    \"bit_depth\": \"16-bit Int16\",\n    \"sample_rate\": 24000,\n    \"channels\": 1,\n    \"byte_order\": \"little-endian\"\n  },\n  \"binary_frame\": {\n    \"direction\": \"client \u2192 server only\",\n    \"format\": \"tasktoken|pcm_audio_data\"\n  },\n  \"recommended_chunk\": {\n    \"samples\": 4800,\n    \"duration_ms\": 200,\n    \"bytes\": 9600\n  },\n  \"events\": {\n    \"task_stream_ready\": \"Start sending audio\",\n    \"task_stream_end\": \"Transcription stream ended\",\n    \"task_cost\": \"Cost per turn + cumulative\",\n    \"task_output\": \"TRANSCRIPT_USER:<transcribed text>\",\n    \"task_session_end\": \"Send to end session\",\n    \"task_end\": \"Server ended session\",\n    \"task_postprocess_end\": \"Post-processing complete \u2014 safe to close\"\n  },\n  \"output\": {\n    \"transcript_prefix\": \"TRANSCRIPT_USER:\",\n    \"audio_playback\": false,\n    \"server_binary_frames\": false\n  }\n}"
+                      "code": "{\n  \"audio_format\": {\n    \"codec\": \"PCM\",\n    \"bit_depth\": \"16-bit Int16\",\n    \"sample_rate\": 24000,\n    \"channels\": 1,\n    \"byte_order\": \"little-endian\"\n  },\n  \"binary_frame\": {\n    \"direction\": \"client \u2192 server only\",\n    \"format\": \"tasktoken|pcm_audio_data\"\n  },\n  \"example_chunk\": {\n    \"samples\": 4800,\n    \"duration_ms\": 200,\n    \"bytes\": 9600\n  },\n  \"events\": {\n    \"task_stream_ready\": \"Start sending audio\",\n    \"task_stream_end\": \"Transcription stream ended\",\n    \"task_cost\": \"Cost per turn + cumulative\",\n    \"task_output\": \"TRANSCRIPT_USER:<transcribed text>\",\n    \"task_session_end\": \"Send to end session\",\n    \"task_end\": \"Server ended session\",\n    \"task_postprocess_end\": \"Post-processing complete \u2014 safe to close\"\n  },\n  \"output\": {\n    \"transcript_prefix\": \"TRANSCRIPT_USER:\",\n    \"audio_playback\": false,\n    \"server_binary_frames\": false\n  }\n}"
                     }
                   ]
                 </script>
@@ -9923,7 +9934,7 @@ import type {
                           <tr>
                             <td>Video Generation</td>
                             <td>Text-to-video, image-to-video</td>
-                            <td>Sora 2, Veo 3, Kling V3, Seedance, Hailuo, PixVerse, Runway</td>
+                            <td>Veo 3.1, Kling V3, Seedance, Hailuo, PixVerse, Runway</td>
                           </tr>
                           <tr>
                             <td>Image Generation</td>
@@ -9943,7 +9954,7 @@ import type {
                           <tr>
                             <td>LLM Chat</td>
                             <td>Chat completion, RAG</td>
-                            <td>GPT-5, Gemini 3, Qwen 3.5, RAG Chat</td>
+                            <td>GPT-5.2, GPT-5 Mini, Gemini 3, RAG Chat</td>
                           </tr>
                           <tr>
                             <td>3D Generation</td>
@@ -10014,16 +10025,16 @@ import type {
                     <h2>Usage</h2>
                     <p>Each Wiro model appears as a separate node in the n8n node picker. Search for "Wiro" or the model name to find it.</p>
 
-                    <h3>Example: Generate a Video with Sora 2</h3>
+                    <h3>Example: Generate a Video with Kling V3</h3>
                     <ol>
-                      <li>Add the <strong>Wiro - Sora 2 Pro</strong> node to your workflow</li>
+                      <li>Add the <strong>Wiro - Kling V3 Text-to-Video Generator</strong> node to your workflow</li>
                       <li>Connect your Wiro credentials</li>
                       <li>
                         Set the parameters:
                         <ul>
                           <li><strong>Prompt:</strong> <code>A cat astronaut floating in space</code></li>
-                          <li><strong>Seconds:</strong> <code>8</code></li>
-                          <li><strong>Resolution:</strong> <code>1080p</code></li>
+                          <li><strong>Duration:</strong> <code>5 Seconds</code></li>
+                          <li><strong>Ratio:</strong> <code>16:9</code></li>
                         </ul>
                       </li>
                       <li>Run the workflow</li>
@@ -10037,17 +10048,17 @@ import type {
 
                     <h3>Example: Transcribe Audio with Whisper</h3>
                     <ol>
-                      <li>Add the <strong>Wiro - Whisper Large 3</strong> node</li>
-                      <li>Connect an audio file from a previous node or provide a URL</li>
-                      <li>Select language and output format</li>
-                      <li>Run: get the transcribed text</li>
+                      <li>Search the node picker for <code>Whisper Large V3</code> and add the <strong>Wiro - Speech to Text</strong> node</li>
+                      <li>Set <strong>Input Audio URL</strong> to a public link to the audio file. To use a file from an earlier node, map its URL with an expression.</li>
+                      <li>Set <strong>Language</strong> (or <strong>Auto</strong>) and fill in <strong>Chunk Length</strong>, <strong>Batch Size</strong> and <strong>Num Speakers</strong>. The model's sample run uses <code>30</code>, <code>8</code> and <code>1</code>.</li>
+                      <li>Run the workflow: <code>url</code> in the output links to the transcript as a text file</li>
                     </ol>
 
-                    <h3>Example: LLM Chat with GPT-5</h3>
+                    <h3>Example: LLM Chat with GPT-5.2</h3>
                     <ol>
-                      <li>Add the <strong>Wiro - GPT-5</strong> node</li>
-                      <li>Set your prompt and system instructions</li>
-                      <li>Run: get the AI response</li>
+                      <li>Add the <strong>Wiro - GPT-5.2 AI Model</strong> node, or <strong>Wiro - GPT-5 Mini AI Model</strong> or <strong>Wiro - GPT-5 Nano AI Model</strong> for a smaller model</li>
+                      <li>Set <strong>Prompt</strong> and, if you need them, <strong>System Instructions</strong></li>
+                      <li>Run the workflow: the reply is in <code>message</code> in the output</li>
                     </ol>
                   </section>
 
@@ -10064,7 +10075,7 @@ import type {
                         <tbody>
                           <tr>
                             <td>n8n</td>
-                            <td>v1.0+</td>
+                            <td>v1.85.0+</td>
                           </tr>
                           <tr>
                             <td>Node.js</td>

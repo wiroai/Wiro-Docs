@@ -700,14 +700,20 @@ For two-way audio conversations with AI models.
 
 Flow: Run task → Connect WebSocket (task_info) → Wait for task_stream_ready → Stream mic audio as binary → Receive AI audio as binary → End with task_session_end
 
-Audio format: PCM Int16, 24kHz, mono. Binary frame: `tasktoken|pcm_audio_data`
+Audio format: PCM Int16, 24kHz, mono, chunks of any size (the docs examples send 200 ms; 20 ms reaches the model sooner). Binary frame: `tasktoken|pcm_audio_data`
 
-Events: task_stream_ready, task_stream_end, task_cost, task_output (TRANSCRIPT_USER:/TRANSCRIPT_AI: prefixes), task_end
+Events: task_stream_ready, task_stream_end, task_cost, task_output (TRANSCRIPT_USER:/TRANSCRIPT_AI: prefixes), task_end, task_postprocess_end
+
+Transcripts: each TRANSCRIPT_USER:/TRANSCRIPT_AI: message is final (one turn of speech, or the reply for that turn). Show each as a new line.
+
+Interrupting: the OpenAI realtime models, Gemini Live and ElevenLabs stop a reply on their own when they hear the user. Wiro-hosted models such as PersonaPlex stop it on `{ "type": "task_session_interrupt", "tasktoken": "YOUR_SOCKET_ACCESS_TOKEN" }`. Stop local playback either way.
 
 End session:
 ```json
 { "type": "task_session_end", "tasktoken": "YOUR_SOCKET_ACCESS_TOKEN" }
 ```
+
+The server never sends task_session_end. A session the server ends itself (after a period without speech, or when the balance runs out) closes with task_end and task_postprocess_end.
 
 Parameters vary per model. Available realtime models:
 - https://wiro.ai/models/openai/gpt-realtime-mini
@@ -736,7 +742,7 @@ Flow: Run task → Connect WebSocket (task_info) → Wait for task_stream_ready 
 
 Audio format: PCM Int16, 24kHz, mono. Always send 24kHz. Server resamples to model's native rate (e.g. 16kHz for Voxtral). Binary frame: `tasktoken|pcm_audio_data` (client → server only, no server binary frames).
 
-Transcript format: `{ "type": "task_output", "message": "TRANSCRIPT_USER:<text>" }`, progressive, word-by-word. No TRANSCRIPT_AI: prefix.
+Transcript format: `{ "type": "task_output", "message": "TRANSCRIPT_USER:<text>" }`, progressive, word-by-word. Each message is only new text (a word or a short phrase): append messages with spaces, never replace. No TRANSCRIPT_AI: prefix.
 
 Events: task_stream_ready, task_output (TRANSCRIPT_USER: prefix), task_stream_end, task_cost, task_end, task_postprocess_end.
 
