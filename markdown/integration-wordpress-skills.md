@@ -8,7 +8,7 @@ The WordPress integration uses the WordPress REST API with Basic Authentication 
 
 **Skills that use this integration:**
 
-- `wordpress-post` — Publish blog posts, pages, categories, tags; upload media
+- `int-wordpress-post`: Publish blog posts, pages, categories, tags; upload media
 
 **Agents that typically enable this integration:**
 
@@ -22,8 +22,8 @@ The WordPress integration uses the WordPress REST API with Basic Authentication 
 
 ## Prerequisites
 
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
 - **A WordPress site** (self-hosted or WordPress.com Business/Commerce) running **WordPress 5.6+**.
 - **An admin or editor-level user** on that site.
 
@@ -34,7 +34,7 @@ The WordPress integration uses the WordPress REST API with Basic Authentication 
 Enabled by default in WP 5.6+. If your host or security plugin disabled them:
 
 - In `wp-config.php`, confirm `WP_ENVIRONMENT_TYPE` isn't restricting them.
-- Security plugins like Wordfence or iThemes Security sometimes disable Application Passwords — check their settings.
+- Security plugins like Wordfence or iThemes Security sometimes disable Application Passwords, so check their settings.
 
 ### Step 2: Create an Application Password
 
@@ -54,7 +54,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
     "useragentguid": "your-useragent-guid",
     "fields": [
       { "credentialkey": "wordpress", "fieldname": "url",         "fieldvalue": "https://blog.example.com" },
-      { "credentialkey": "wordpress", "fieldname": "user",        "fieldvalue": "WiroBlogAgent" },
+      { "credentialkey": "wordpress", "fieldname": "user",        "fieldvalue": "your-wp-username" },
       { "credentialkey": "wordpress", "fieldname": "apppassword", "fieldvalue": "xxxx xxxx xxxx xxxx xxxx xxxx" }
     ]
   }'
@@ -81,7 +81,6 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ```json
 "wordpress": {
-  "optional": false,
   "_connected": false,
   "optional": false,
   "extra": false,
@@ -93,14 +92,10 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ## Runtime Behavior
 
-Env vars inside the agent container (exported **only when `wordpress-post` skill is enabled** and `url` is set):
+The `int-wordpress-post` skill is active only when it is enabled and `url` is set.
 
-- `WORDPRESS_URL` ← `credentials.wordpress.url`
-- `WORDPRESS_USER` ← `credentials.wordpress.user`
-- `WORDPRESS_APP_PASSWORD` ← `credentials.wordpress.apppassword`
-
-Auth: `--user "$WORDPRESS_USER:$WORDPRESS_APP_PASSWORD"` (Basic via Application Password).
-Base URL: `$WORDPRESS_URL/wp-json/wp/v2/...`
+Auth: Basic auth with your WordPress `user` and its Application Password (`apppassword`).
+Base URL: `<your site url>/wp-json/wp/v2/...`
 
 ## Troubleshooting
 

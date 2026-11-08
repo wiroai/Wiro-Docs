@@ -8,7 +8,7 @@ The Twitter / X integration uses X API v2 with OAuth 2.0 Authorization Code Flow
 
 **Skills that use this integration:**
 
-- `twitterx-post` — Publish posts, threads, and replies; read mentions
+- `int-twitterx-post`: Publish posts, threads, and replies; read mentions
 
 **Agents that typically enable this integration:**
 
@@ -24,9 +24,9 @@ The Twitter / X integration uses X API v2 with OAuth 2.0 Authorization Code Flow
 
 ## Prerequisites
 
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
-- **(Own mode) An X Developer account** — [developer.x.com](https://developer.x.com/).
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
+- **(Own mode) An X Developer account** ([developer.x.com](https://developer.x.com/)).
 - **An HTTPS callback URL** for your backend.
 
 ## Wiro Mode (Simplest)
@@ -46,14 +46,14 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
 
 User consents on the Wiro-branded consent screen. On return parse `x_connected=true&x_username=<handle>`. Jump to [Step 8: Verify](#step-8-verify) below.
 
-## Complete Integration Walkthrough — Own Mode
+## Complete Integration Walkthrough: Own Mode
 
 ### Step 1: Create an X Developer App
 
 1. [developer.x.com/portal](https://developer.x.com/portal/dashboard) → sign in.
 2. Apply for a developer account if needed (free tier works for testing).
 3. Create a **Project** → create an **App** inside it.
-4. Name your app — this shows on the consent screen.
+4. Name your app: this shows on the consent screen.
 
 ### Step 2: Enable OAuth 2.0 with PKCE
 
@@ -71,7 +71,7 @@ User consents on the Wiro-branded consent screen. On return parse `x_connected=t
 
 ### Step 3: Note the required scopes
 
-Wiro requests these exact scopes (sourced from `data/agent-skills-registry/credentials/twitter.json` under `oauth_provider.oauth_flow.scopes`):
+Wiro requests these exact scopes:
 
 ```
 tweet.read tweet.write users.read offline.access
@@ -86,7 +86,7 @@ tweet.read tweet.write users.read offline.access
 
 ### Step 4: Copy Client ID and Client Secret
 
-After enabling OAuth 2.0, X shows **Client ID** and **Client Secret** — **save the secret immediately**. You cannot retrieve it later, only regenerate.
+After enabling OAuth 2.0, X shows **Client ID** and **Client Secret**. Save** the secret immediately**. You cannot retrieve it later, only regenerate.
 
 ### Step 5: Save credentials to Wiro
 
@@ -128,7 +128,7 @@ Response:
 }
 ```
 
-> **PKCE:** Twitter/X is the only Wiro integration that uses PKCE (Proof Key for Code Exchange, S256). Wiro generates the `code_verifier` / `code_challenge` automatically and stores them in the OAuth state cache. You don't need to handle PKCE yourself.
+> **PKCE:** X uses PKCE (Proof Key for Code Exchange, S256), and so does TikTok Ads. Wiro creates the `code_verifier`, keeps it in the OAuth state, and adds the `code_challenge` to `authorizeUrl`. You don't need to handle PKCE yourself.
 
 ### Step 7: Handle the callback
 
@@ -142,11 +142,13 @@ https://your-app.com/settings/integrations?x_connected=true&x_username=jane_doe
 const params = new URLSearchParams(window.location.search);
 if (params.get("x_connected") === "true") {
   const handle = params.get("x_username");
-  showSuccess(`Connected @${handle}`);
+  showSuccess(handle ? `Connected @${handle}` : "X account connected");
 } else if (params.get("x_error")) {
   handleError(params.get("x_error"));
 }
 ```
+
+`x_username` is left out when X's profile lookup fails during the callback. The account is still connected, but `OAuthStatus` then returns an empty `accounts` array.
 
 ### Step 8: Verify
 
@@ -176,8 +178,8 @@ Response:
 ```
 
 - Access token lifetime: **~2 hours** (short!). Wiro auto-refreshes.
-- Refresh token lifetime: **~180 days** from connection (hardcoded by Wiro, since X doesn't report one).
-- `accounts[0].id` = `@`-less X handle (Twitter has no picker — single-account flow).
+- Refresh token: X does not report a lifetime. Wiro uses it to renew the access token while the agent runs; if X stops accepting it, `OAuthStatus` reports `connected: false` and the user reconnects.
+- `accounts[0].id` = `@`-less X handle (Twitter has no picker: it is a single-account flow).
 
 ### Step 9: Start the agent
 
@@ -196,12 +198,12 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
 | `credentialkey` | string | Yes | `"twitter"`. |
-| `redirecturl` | string | Yes | HTTPS URL. |
+| `redirecturl` | string | Yes | Any HTTPS URL you control (or `http://localhost` / `http://127.0.0.1` for development). The browser returns there after X. |
 | `authmethod` | string | No | `"wiro"` (default) or `"own"`. |
 
 ### GET /UserAgentOAuth/XCallback
 
-Query params: `x_connected=true&x_username=<handle>` or `x_error=<code>`. The callback path is per-provider — Twitter's stays `XCallback`.
+Query params: `x_connected=true&x_username=<handle>` or `x_error=<code>`. The callback path is per-provider: Twitter's stays `XCallback`.
 
 ### POST /UserAgentOAuth/OAuthStatus
 
@@ -213,11 +215,11 @@ Body: `{ useragentguid, credentialkey: "twitter" }`. Calls X's revoke endpoint (
 
 ### Token lifecycle
 
-Wiro maintains the X connection automatically while the agent is running. If the user revokes the app or `OAuthStatus` reports `connected: false`, reconnect through the OAuth flow.
+Wiro renews the 2-hour access token while the agent is running. `OAuthStatus` checks that token, so it can report `connected: false` while the agent is stopped; starting the agent renews it. Reconnect through the OAuth flow when the user revoked the app, or when `connected` stays `false` while the agent runs.
 
 ## Using the Skill
 
-Once the X account is connected, the agent's existing scheduled tasks use the `twitterx-post` platform skill to publish. To adjust the cron of the built-in `cron-content-scanner` task (Social Manager), send a `CustomSkillUpsert` with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for bundled crons:
+Once the X account is connected, the agent's existing scheduled tasks use the `int-twitterx-post` platform skill to publish. To adjust the cron of the built-in `cs-cron-social-content-scanner` task (Social Manager), send a `CustomSkillUpsert` with `enabled` and `interval` only. Scheduled task bodies are template-controlled and `value` is silently ignored for bundled tasks:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
@@ -225,29 +227,29 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skillkey": "cron-content-scanner",
+    "skillkey": "cs-cron-social-content-scanner",
     "enabled": true,
     "interval": "0 */4 * * *"
   }'
 ```
 
-To change **what** the scheduled task posts (topics, tone, hashtag rules), edit the paired preference skill `content-tone` instead — see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preference-skills).
+To change **what** the scheduled task posts (topics, tone, hashtag rules), edit the paired preference skill `content-tone` instead (see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preference-skills)).
 
 ## Troubleshooting
 
 | Error code | Meaning | What to do |
 |------------|---------|------------|
-| `missing_params` | Callback reached without `state` or `code`. | Start a new flow from Step 6. |
+| `missing_params` | The callback was opened without an OAuth `state`. This error lands on `https://wiro.ai`, not on your app. | Don't open the callback URL directly. Start a new flow from Step 6. |
 | `authorization_denied` | User cancelled, or OAuth 2.0 not enabled in app settings. | Verify OAuth 2.0 setup (Step 2); retry. |
 | `session_expired` | 15-min state cache expired (includes PKCE verifier). | Call `OAuthConnect` again. |
 | `token_exchange_failed` | Wrong Client Secret, redirect URI mismatch, or lost PKCE verifier. | Re-copy Client Secret; verify URL; start over. |
-| `useragent_not_found` | Invalid guid. | Use `POST /UserAgent/MyAgents`. |
-| `X (Twitter) credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `clientid` / `clientsecret` are missing. | `UserAgent/CredentialUpsert` with `clientid` + `clientsecret`. |
+| `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow, before X returned. | Start again with `OAuthConnect` for an existing agent. |
+| `Twitter / X credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `clientid` / `clientsecret` are missing. | `UserAgent/CredentialUpsert` with `clientid` + `clientsecret`. |
 | `internal_error` | Server error. | Retry; contact support. |
 
 ### Posts fail with 429 Too Many Requests
 
-Free-tier X Developer apps have strict per-app rate limits. For production, move to Basic ($100/mo) or higher. Limits are per app, not per user — high-volume multi-tenant partners need a higher tier.
+Free-tier X Developer apps have strict per-app rate limits. For production, move to Basic ($100/mo) or higher. Limits are per app, not per user, so high-volume multi-tenant partners need a higher tier.
 
 ### Token expires every 2 hours
 

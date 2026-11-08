@@ -6,9 +6,9 @@ Manage folders and upload files for use with AI models.
 
 The Files API lets you organize and upload data that can be referenced in model runs. Common use cases include:
 
-- **Training data** — upload datasets for fine-tuning models
-- **File inputs** — provide images, audio, or documents as model inputs
-- **Batch processing** — store files for repeated use across multiple runs
+- **Training data**: upload datasets for fine-tuning models
+- **File inputs**: provide images, audio, or documents as model inputs
+- **Batch processing**: store files for repeated use across multiple runs
 
 ## Authentication and Public File URLs
 
@@ -87,9 +87,9 @@ Uploads a file using `multipart/form-data`. You can optionally assign it to a fo
 
 ## Using Files in Runs
 
-Once uploaded, reference a file by its URL in your model run parameters. For example, an image upscaler model might accept an `inputImageUrl` parameter — pass the URL returned from the upload response.
+Once uploaded, reference a file by its URL or ID in your model run parameters. For example, an image upscaler model might accept an `inputImageUrl` parameter. Pass the URL returned from the upload response.
 
-You don't always need to upload files first. Most models accept direct URLs in their file parameters — you can pass any publicly accessible URL. See [Model Parameters](/docs/model-parameters) for details on `fileinput`, `multifileinput`, and `combinefileinput` patterns.
+You don't always need to upload files first. Most models take a public URL in place of an upload, and the parameter's type decides where it goes: a `combinefileinput` takes it in the field itself (for example `inputImage` on most image models), a `fileinput` takes it in its `{id}Url` field (for example `inputImageUrl`), and a `multifileinput` takes a list in the field that puts `Url` before `Multiple` (for example `inputDocumentUrlMultiple`). See [Model Parameters](/docs/model-parameters) for each pattern.
 
 ```json
 {

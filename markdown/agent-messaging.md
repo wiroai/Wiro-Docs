@@ -19,7 +19,7 @@ Every Detail or History message row returns a top-level `timeline[]`. It is the 
 
 `Thinking → Answer or Tool → Thinking → Answer`
 
-Each block has an opaque deterministic `blockid`, call/content ordering coordinates, `type` (`reasoning`, `answer`, or `tool`), safe public text or tool state, `phase` (`stream`, `end`, or `error`), its own monotonically increasing `version`, and timestamps. Reasoning text is a provider-supplied OpenAI GPT-5 summary, never raw hidden chain-of-thought. Tool blocks expose only `toollabel` and `toolstatus`, never a tool ID, arguments, results, or other internal execution metadata.
+Each block has an opaque deterministic `blockid`, call/content ordering coordinates, `type` (`reasoning`, `answer`, or `tool`), safe public text or tool state, `phase` (`stream`, `end`, or `error`), its own monotonically increasing `version`, and timestamps. Reasoning text is a model-provided reasoning summary, never raw hidden chain-of-thought. Tool blocks expose only `toollabel`, `toolstatus`, `toolintegration`, and `toolaction`, never a tool ID, arguments, results, or other internal execution metadata. `toolintegration` and `toolaction` each hold a word from a [closed list](#tool-integration-and-action-values) or `null`. When a turn ends with `agent_error` or `agent_cancel`, the server closes every block still at `stream` and sends each one as an `agent_timeline_delta`, usually just before that final event. After `agent_end`, open blocks normally close a few seconds later. A tool block that closed with `toolstatus` `requested` was cut off before it finished.
 
 Live WebSocket updates arrive as `agent_timeline_delta` events carrying one public block. Merge by `blockid`, replace that block only when its incoming `version` is strictly newer, then sort by `callindex`, `contentindex`, and `blockid`. `agent_subscribed.timeline` carries the persisted reconnect snapshot. `agent_output` remains provisional cumulative SSE output until the corresponding answer block catches up; after completion or reconnect, `Message/Detail` is authoritative.
 
@@ -35,28 +35,28 @@ Every agent message progresses through a defined set of stages:
 |--------|-------------|
 | `agent_queue` | The message is queued and waiting to be picked up by the agent runtime. Emitted once when the message enters the queue. |
 | `agent_start` | The agent has accepted the message and begun processing. The underlying LLM call is being prepared. |
-| `agent_output` | The agent is producing output. This event is emitted **multiple times** — each chunk of the response arrives as a separate `agent_output` event via WebSocket, enabling real-time streaming. |
+| `agent_output` | The agent is producing output. This event is emitted **multiple times**: each chunk of the response arrives as a separate `agent_output` event via WebSocket, enabling real-time streaming. |
 | `agent_end` | The agent has finished generating the response. The full output is available in the `response` and `debugoutput` fields. **This is the event you should listen for** to get the final result. |
 | `agent_error` | The agent encountered an error during processing. The `debugoutput` field contains the error message. |
 | `agent_cancel` | The message was cancelled by the user before completion. Only messages in `agent_queue`, `agent_start`, or `agent_output` status can be cancelled. |
-| `agent_done` | **Marker-only terminal status.** Used **exclusively** for `model_change` marker rows (see [Message/History](#post-useragentmessagehistory)) — never for a real user or assistant turn. Normal turns terminate at `agent_end` (or `agent_error` / `agent_cancel`). |
+| `agent_done` | **Marker-only terminal status.** Used **exclusively** for `model_change` marker rows (see [Message/History](#post-useragentmessagehistory)), never for a real user or assistant turn. Normal turns terminate at `agent_end` (or `agent_error` / `agent_cancel`). |
 
 ## **POST** /UserAgent/Message/Send
 
 Sends a user message to a deployed agent. The agent must be in running state (status `4`). Returns immediately with an `agenttoken` that you use to track the response via WebSocket, polling, or webhook.
 
-Accepts either `application/json` (text-only) or `multipart/form-data` (text + file attachments). When sending files, the `message` field can be empty — the agent receives the attachments and any accompanying text.
+Accepts either `application/json` (text-only) or `multipart/form-data` (text + file attachments). When sending files, the `message` field can be empty. The agent receives the attachments and any accompanying text.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | The agent instance GUID (from Deploy or MyAgents). |
 | `message` | string | Conditional | The user message text. Required unless sending files via multipart. |
 | `sessionkey` | string | No | Session identifier for conversation continuity. Defaults to `"default"`. |
-| `callbackurl` | string | No | Webhook URL — the system will POST the final response to this URL when the agent finishes. |
-| `model` | string | No | Canonical model slug to run **this turn** on (e.g. `"openai/gpt-5.6-sol"`), chosen from the agent's selectable set. Validated server-side — an unknown or non-selectable slug is rejected in `errors[]` and the turn is **not** sent. Omit to use the agent's configured chat model. |
-| `attachment` / `attachments[]` | file | No | Multipart only — one or more file attachments that the agent can process. |
+| `callbackurl` | string | No | Webhook URL: the system will POST the final response to this URL when the agent finishes. It must be a public `http(s)` address: a host that is, or resolves to, a private, loopback or link-local address gets no webhook. |
+| `model` | string | No | Canonical model slug to run **this turn** on (e.g. `"openai/gpt-5.6-sol"`), chosen from the agent's selectable set. Validated server-side: an unknown or non-selectable slug is rejected in `errors[]` and the turn is **not** sent. Omit to use the agent's configured chat model. |
+| `attachment` / `attachments[]` | file | No | Multipart only: one or more file attachments that the agent can process. |
 
-> **Per-turn model selection.** `model` selects the chat model for a single turn instead of the agent's configured default. Valid values are the agent's **selectable** slugs — the `tokenRates.models[]` entries where `selectable` is `true`, returned by `UserAgent/Detail` (see [Agent Overview](/docs/agent-overview)). The current set includes `openai/gpt-5.6-sol` (the platform chat default), `openai/gpt-5.6-terra`, `openai/gpt-5.6-luna`, `openai/gpt-5.5`, `openai/gpt-5.5-pro`, `openai/gpt-5.4`, `openai/gpt-5.4-mini`, `openai/gpt-5.2`, `openai/gpt-5.1`, `openai/gpt-5`, and `openai/gpt-5-mini` — always read the live set from that field. The server applies the chosen model to that turn only.
+> **Per-turn model selection.** `model` selects the chat model for a single turn instead of the agent's configured default. Valid values are the agent's **selectable** slugs: the `tokenRates.models[]` entries where `selectable` is `true`, returned by `UserAgent/Detail` (see [Agent Overview](/docs/agent-overview)). The current set includes `openai/gpt-5.6-sol` (the platform chat default), `openai/gpt-5.6-terra`, `openai/gpt-5.6-luna`, `openai/gpt-5.5`, `openai/gpt-5.5-pro`, `openai/gpt-5.4`, `openai/gpt-5.4-mini`, `openai/gpt-5.2`, `openai/gpt-5.1`, `openai/gpt-5`, and `openai/gpt-5-mini`. Always read the live set from that field. The server applies the chosen model to that turn only.
 
 ### Response
 
@@ -70,16 +70,16 @@ Accepts either `application/json` (text-only) or `multipart/form-data` (text + f
 }
 ```
 
-> **A successful Send response means the message was accepted and queued — not that it will definitely reach the agent.** After this response the system queues the message for the agent. If that queueing step itself fails (for example, a queue outage), the message's `status` is set to `agent_error` server-side **after** the HTTP response was already sent with `result: true`. Always confirm the final state via `POST /UserAgent/Message/Detail` or the WebSocket stream; don't assume the message progresses to `agent_start` just because Send returned `result: true`.
+> **A successful Send response means the message was accepted and queued, not that it will definitely reach the agent.** After this response the system queues the message for the agent. If that queueing step itself fails (for example, a queue outage), the message's `status` is set to `agent_error` server-side **after** the HTTP response was already sent with `result: true`. Always confirm the final state via `POST /UserAgent/Message/Detail` or the WebSocket stream; don't assume the message progresses to `agent_start` just because Send returned `result: true`.
 
-> **Reserved session keys.** The platform reserves a small set of `sessionkey` prefixes for system-managed threads — `wiro:api`, `voice-prep*`, `voice-call-*`, and `cs-cron-*`. Sending a user message into one of these keys is rejected with `Reserved sessionkey` (the same guard that protects `Message/DeleteSession`). Pick any other identifier for your own threads.
+> **Reserved session keys.** The platform reserves a small set of `sessionkey` prefixes for system-managed threads: `wiro:api`, `voice-prep*`, `voice-call-*`, and `cs-cron-*`. Sending a user message into one of these keys is rejected with `Reserved sessionkey` (the same guard that protects `Message/DeleteSession`). Pick any other identifier for your own threads.
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `messageguid` | `string` | Unique identifier for this message. Use it with Detail, History, or Cancel. |
 | `agenttoken` | `string` | Token for WebSocket subscription and polling. Equivalent to `tasktoken` in model runs. |
-| `status` | `string` | Initial status — always `"agent_queue"` on success. |
-| `modelChangeMarker` | `object\|null` | Present **only** when this turn's `model` selects a different chat model than the session was running — i.e. it rotates the model mid-session. Shape: `{ guid, type: "model_change", fromModel, toModel, createdat }`. The platform also writes a matching marker row into history (see [Message/History](#post-useragentmessagehistory)). Absent on turns that keep the session's model. |
+| `status` | `string` | Initial status: always `"agent_queue"` on success. |
+| `modelChangeMarker` | `object\|null` | Present **only** when this turn's `model` selects a different chat model than the session was running, i.e. it rotates the model mid-session. Shape: `{ guid, type: "model_change", fromModel, toModel, createdat }`. The platform also writes a matching marker row into history (see [Message/History](#post-useragentmessagehistory)). Absent on turns that keep the session's model. |
 
 > **`model_change` marker.** When `model` rotates the session to a different chat model, the Send response carries a `modelChangeMarker` describing the switch, and a standalone marker row (status `agent_done`) is written into history at the same time:
 >
@@ -101,7 +101,7 @@ When `result: false`, the response shape is `{ result: false, errors: [{ code, m
 
 | Failure branch | Extra fields | Notes |
 |----------------|--------------|-------|
-| Agent not running (`status` ≠ 4) | `agentstatus: <int>` | Echoes the agent's current `status` so the caller can decide whether to wait, call `Start`, or surface "Setup Required" UI. Common codes: `0` initializing, `1` stopping, `2` starting, `3` starting (container booting — wait and retry), `5` upgrading, `6` setup required. |
+| Agent not running (`status` ≠ 4) | `agentstatus: <int>` | Echoes the agent's current `status` so the caller can decide whether to wait, call `Start`, or surface "Setup Required" UI. Common codes: `0` initializing, `1` stopping, `2` starting, `3` starting (wait and retry), `5` upgrading, `6` setup required. |
 | Out of credits | `agentstatus`, `agentbalance: { monthlycredits, extracredits, usedcredits, remainingcredits }` | Returned with the `Agent has no remaining credits…` error. `remainingcredits: 0` is the trigger; surface a "Renew or buy a credit pack" CTA. |
 
 ## **POST** /UserAgent/Message/Detail
@@ -146,8 +146,6 @@ Retrieves the current status and content of a single message. You can query by e
         "contentindex": 0,
         "type": "reasoning",
         "text": "I’ll distinguish deployed capabilities from current research.",
-        "toollabel": null,
-        "toolstatus": null,
         "phase": "end",
         "version": 3,
         "startedat": 1743350401,
@@ -159,8 +157,6 @@ Retrieves the current status and content of a single message. You can query by e
         "contentindex": 1,
         "type": "answer",
         "text": "Here are the key AI trends for 2026...",
-        "toollabel": null,
-        "toolstatus": null,
         "phase": "end",
         "version": 8,
         "startedat": 1743350405,
@@ -200,7 +196,7 @@ Retrieves the current status and content of a single message. You can query by e
 |-------|------|-------------|
 | `guid` | `string` | Message GUID. |
 | `uuid` | `string` | The account UUID of the user who sent the message. |
-| `agenttoken` | `string\|null` | The same token issued by `Message/Send` for this message. Lets callers that arrived at the row through `Message/Detail` (or `Message/History`) subscribe to the [Agent WebSocket](/docs/agent-websocket) and pick up an in-flight response — useful when a chat UI rehydrates after a reload and finds a message still in `agent_queue` / `agent_start` / `agent_output` status. Only `null` for very old rows that pre-date the column. |
+| `agenttoken` | `string\|null` | The same token issued by `Message/Send` for this message. Lets callers that arrived at the row through `Message/Detail` (or `Message/History`) subscribe to the [Agent WebSocket](/docs/agent-websocket) and pick up an in-flight response. This is useful when a chat UI rehydrates after a reload and finds a message still in `agent_queue` / `agent_start` / `agent_output` status. Only `null` for very old rows that pre-date the column. |
 | `user` | `object\|null` | Resolved sender info: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. Decorated server-side from the message's `uuid` so the chat bubble can render avatar / hover-tooltip without an extra `User/Detail` round-trip. `null` when the row was written by automation (sentinel `uuid` like `"system"`) or when the user record was deleted. |
 | `sessionkey` | `string` | The session this message belongs to. |
 | `content` | `string` | The original user message. |
@@ -208,8 +204,8 @@ Retrieves the current status and content of a single message. You can query by e
 | `debugoutput` | `string` | Accumulated output text. Updated during streaming, contains the full response after completion. |
 | `timeline` | `array` | Ordered turn blocks. Always an array; `[]` means no public blocks were persisted. Merge live deltas by `blockid` and per-block `version`, then sort by call/content order. |
 | `status` | `string` | Current message status (see Message Lifecycle). |
-| `metadata` | `object` | Parsed JSON object (API returns it already decoded). Populated from the agent bridge on `agent_end`. Fields produced by the bridge's final progress builder include `type`, `task`, `speed`, `speedType`, `elapsedTime`, `tokenCount`, `wordCount`, `raw`, and `answer`. Timeline blocks are intentionally not stored in metadata; read the top-level `timeline` field. Empty object `{}` for `agent_error`, `agent_cancel`, or when the bridge hasn't finished yet. Message status lives in the top-level `status` field — don't read it from `metadata.type`. |
-| `attachments` | `array` | Always present as an array — empty `[]` for text-only messages. When the message was sent via multipart with files, each entry is a resolved `{url, name, type, size}` object (no further file-lookup needed). Identical shape in `Message/History` rows. |
+| `metadata` | `object` | Parsed JSON object (API returns it already decoded). Populated from the agent bridge on `agent_end`. Fields produced by the bridge's final progress builder include `type`, `task`, `speed`, `speedType`, `elapsedTime`, `tokenCount`, `wordCount`, `raw`, and `answer`. Timeline blocks are intentionally not stored in metadata; read the top-level `timeline` field. Empty object `{}` for `agent_error`, `agent_cancel`, or when the bridge hasn't finished yet. Message status lives in the top-level `status` field, so don't read it from `metadata.type`. |
+| `attachments` | `array` | Always present as an array: empty `[]` for text-only messages. When the message was sent via multipart with files, each entry is a resolved `{url, name, type, size}` object (no further file-lookup needed). Identical shape in `Message/History` rows. |
 | `deletestatus` | `number` | Internal flag. `0` for normal messages. |
 | `createdat` | `number` | Unix timestamp (epoch seconds) when the message was created. |
 | `startedat` | `number` | Unix timestamp (epoch seconds) when the agent started processing. |
@@ -225,7 +221,7 @@ Retrieves the current status and content of a single message. You can query by e
 
 ### Public timeline block fields
 
-Only the fields below are returned in browser-facing REST and WebSocket timeline blocks.
+Only the fields below are returned in browser-facing REST and WebSocket timeline blocks. `toollabel`, `toolstatus`, `toolintegration`, and `toolaction` appear on tool blocks only.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -234,16 +230,79 @@ Only the fields below are returned in browser-facing REST and WebSocket timeline
 | `contentindex` | `number` | Zero-based content order within the call. Secondary sort key. |
 | `type` | `string` | `reasoning`, `answer`, or `tool`. |
 | `text` | `string\|null` | Safe public text for `reasoning` and `answer`; `null` for tool blocks. Reasoning text is an OpenAI GPT-5 provider summary, not raw chain-of-thought. |
-| `toollabel` | `string\|null` | Safe display label for a tool block; `null` for reasoning and answer blocks. Arguments and results are never included. |
-| `toolstatus` | `string\|null` | Safe public status for a tool block; `null` for reasoning and answer blocks. |
-| `phase` | `string` | `stream`, `end`, or `error` for this block. |
+| `toollabel` | `string` | Tool blocks only. Safe display label for the tool. Arguments and results are never included. |
+| `toolstatus` | `string` | Tool blocks only. `requested` while the step runs, then `completed` or `error`. |
+| `toolintegration` | `string\|null` | Tool blocks only. The connector the step works in, as its `key` from [`POST /Credentials/List`](/docs/agent-credentials#post-credentialslist), for example `shopify`. `null` when the step doesn't work in a connector. See [Tool integration and action values](#tool-integration-and-action-values). |
+| `toolaction` | `string\|null` | Tool blocks only. What the step does, for example `screenshot` or `click`. `null` when no word fits the step, and always `null` when `toolintegration` is set. See [Tool integration and action values](#tool-integration-and-action-values). |
+| `phase` | `string` | `stream`, `end`, or `error` for this block. A block still at `stream` closes when its turn ends with `agent_error` or `agent_cancel`, and normally a few seconds after `agent_end`. |
 | `version` | `number` | Monotonic **within this block**. Ignore a delta whose version is not strictly newer than the stored block's version. |
 | `startedat` | `number\|null` | Block start timestamp when available. |
 | `updatedat` | `number\|null` | Most recent block update timestamp when available. |
 
 Do not compare `version` across different blocks. Keep a map keyed by `blockid`, apply per-block last-write-wins, and render `callindex ASC, contentindex ASC, blockid ASC`. This makes the result independent of HTTP/WebSocket arrival order.
 
-> **`metadata.tokenCount` vs the billing token columns.** `metadata.tokenCount` is the **live stream counter** emitted inside the `progressGenerate` payload — a running word/token tally for the in-flight response. The flat `inputtokens` / `outputtokens` / `cachereadtokens` / `cachewritetokens` / `totaltokens` / `tokencost` columns are the **final billed usage**, written once the turn completes. They measure different things: use `tokenCount` for a live progress indicator, and the flat columns for accounting and cost.
+> **`metadata.tokenCount` vs the billing token columns.** `metadata.tokenCount` is the **live stream counter** emitted inside the `progressGenerate` payload, a running word/token tally for the in-flight response. The flat `inputtokens` / `outputtokens` / `cachereadtokens` / `cachewritetokens` / `totaltokens` / `tokencost` columns are the **final billed usage**, written once the turn completes. They measure different things: use `tokenCount` for a live progress indicator, and the flat columns for accounting and cost.
+
+### Tool integration and action values
+
+`toolintegration` and `toolaction` say which connector a tool step works in and what the step does, so your app can show "Working in Shopify" or "Taking a screenshot" instead of only the tool's name. Each holds a word from a closed list or `null`, never free text, a host, a URL, a path, or an argument.
+
+`toolintegration` is the `key` of the connector the step works in, as [`POST /Credentials/List`](/docs/agent-credentials#post-credentialslist) lists it: `adjust`, `apollo`, `apple-appstore`, `brevo`, `calendarific`, `facebook-pages`, `firebase`, `ga4`, `gmail`, `google-ads`, `google-business`, `google-calendar`, `google-drive`, `google-merchant-center`, `google-play`, `hubspot`, `instagram`, `lemlist`, `linkedin`, `mailchimp`, `meta-ads`, `reddit`, `roasit`, `sendgrid`, `serper`, `shopify`, `telegram`, `tiktok`, `tiktok-ads`, `twitter`, `wiro`, `woocommerce`, `wordpress`, or `youtube`.
+
+`toolaction` is one of these words:
+
+| Value | Meaning |
+|-------|---------|
+| `screenshot` | Takes a screenshot of a page. |
+| `open-page` | Opens a page. |
+| `read-page` | Reads the open page. |
+| `click` | Clicks on the page. |
+| `type` | Types text into the page. |
+| `press-key` | Presses a key. |
+| `wait` | Waits for the page. |
+| `upload` | Uploads a file to the page. |
+| `download` | Downloads a file. |
+| `read-file` | Reads a file. |
+| `edit-media` | Edits a video, an image, or audio. |
+
+A tool block never carries both words: when `toolintegration` is set, `toolaction` is `null`. Both are `null` when no word fits the step and on blocks saved before these fields existed, so fall back to `toollabel` then. The words come with the block's first `requested` update, and every later update of the block carries them. A later update can carry a different word if the step changed, so read the words from the newest version of the block, like its other fields. A block whose step is rewritten and no longer fits a word keeps its last word. More values can be added to either list later, so treat a value you don't know like `null`.
+
+Two tool blocks from a `timeline[]`:
+
+```json
+[
+  {
+    "blockid": "c0:i1",
+    "callindex": 0,
+    "contentindex": 1,
+    "type": "tool",
+    "text": null,
+    "toollabel": "exec",
+    "toolstatus": "completed",
+    "toolintegration": "shopify",
+    "toolaction": null,
+    "phase": "end",
+    "version": 3,
+    "startedat": 1743350402,
+    "updatedat": 1743350406
+  },
+  {
+    "blockid": "c1:i1",
+    "callindex": 1,
+    "contentindex": 1,
+    "type": "tool",
+    "text": null,
+    "toollabel": "browser",
+    "toolstatus": "requested",
+    "toolintegration": null,
+    "toolaction": "screenshot",
+    "phase": "stream",
+    "version": 1,
+    "startedat": 1743350408,
+    "updatedat": 1743350408
+  }
+]
+```
 
 ## **POST** /UserAgent/Message/History
 
@@ -254,9 +313,9 @@ Retrieves conversation history for a specific agent and session. Messages are re
 | `useragentguid` | string | Yes | The agent instance GUID. |
 | `sessionkey` | string | No | Session identifier. Defaults to `"default"`. |
 | `limit` | number | No | Maximum number of messages to return. Defaults to `50`, max `200`. |
-| `before` | string | No | Message GUID to use as cursor — returns only messages created before this one. Omit for the most recent messages. |
+| `before` | string | No | Message GUID to use as cursor: returns only messages created before this one. Omit for the most recent messages. |
 
-> **Team agents:** If the agent's `teamsessionmode` is `collaborative`, History returns messages from **all team members** in the session and their turns use one shared native agent-memory session. In `private` mode, History only returns messages sent by the caller's own `uuid` and memory stays per operator. The same visibility rule applies to `Sessions` listing.
+> **Team agents:** If the agent's `teamsessionmode` is `collaborative`, History returns messages from **all team members** in the session, and the agent keeps one shared memory for the team. In `private` mode, History only returns messages sent by the caller's own `uuid` and memory stays per operator. The same visibility rule applies to `Sessions` listing.
 
 ### Response
 
@@ -289,8 +348,6 @@ Retrieves conversation history for a specific agent and session. Messages are re
             "contentindex": 0,
             "type": "reasoning",
             "text": "I’ll distinguish deployed capabilities from current research.",
-            "toollabel": null,
-            "toolstatus": null,
             "phase": "end",
             "version": 3,
             "startedat": 1743350401,
@@ -381,20 +438,22 @@ Retrieves conversation history for a specific agent and session. Messages are re
       }
     ],
     "count": 3,
-    "hasmore": false
+    "hasmore": false,
+    "sessiontoken": "Lp4vQ8sWn2KxT7cRb1YhZ6mDg9FjA3uEo5iNk0wXyHt"
   }
 }
 ```
 
-> Each message row carries `uuid` (sender) and a server-decorated `user` object with the full sender shape — same as `Message/Detail`. `user` is `null` for system-inserted rows (e.g. `Message/SystemInsert` writes when `uuid` is `"system"`) or when the underlying account has been deleted.
+> Each message row carries `uuid` (sender) and a server-decorated `user` object with the full sender shape, the same as `Message/Detail`. `user` is `null` for rows with a sentinel `uuid` such as `"system"` (older automation rows) or when the underlying account has been deleted.
 
-> **Resuming an in-flight stream.** Every row carries the original `agenttoken` from `Message/Send`. If a returned message's `status` is non-terminal (`agent_queue`, `agent_start`, or `agent_output`), the agent is still processing it server-side. Hand the `agenttoken` to the [Agent WebSocket](/docs/agent-websocket) (`agent_info` frame) and you'll receive the persisted `agent_subscribed.timeline` snapshot, subsequent `agent_timeline_delta` block updates, remaining provisional `agent_output` snapshots, and the eventual `agent_end` event — no need to re-send the message.
+> **Resuming an in-flight stream.** Every row carries the original `agenttoken` from `Message/Send`. If a returned message's `status` is non-terminal (`agent_queue`, `agent_start`, or `agent_output`), the agent is still processing it server-side. Hand the `agenttoken` to the [Agent WebSocket](/docs/agent-websocket) (`agent_info` frame) and you'll receive the persisted `agent_subscribed.timeline` snapshot, subsequent `agent_timeline_delta` block updates, remaining provisional `agent_output` snapshots, and the eventual `agent_end` event, with no need to re-send the message.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `messages` | `array` | Array of message objects, newest first. Each row has the **same shape as `Message/Detail`** — including persisted `timeline`, the `uuid` sender, the `agenttoken` (so you can resubscribe over WebSocket if `status` is non-terminal), the decorated `user` object, and the per-turn token columns below. The array can also include `model_change` marker rows (see the note under the table). |
+| `messages` | `array` | Array of message objects, newest first. Each row has the **same shape as `Message/Detail`**, including persisted `timeline`, the `uuid` sender, the `agenttoken` (so you can resubscribe over WebSocket if `status` is non-terminal), the decorated `user` object, and the per-turn token columns below. The array can also include `model_change` marker rows (see the note under the table). |
 | `count` | `number` | Number of messages in this page. |
 | `hasmore` | `boolean` | `true` if there are older messages available. Pass the last message's `guid` as `before` to fetch the next page. |
+| `sessiontoken` | `string` | Token for following this session live on the [Agent WebSocket](/docs/agent-websocket#following-a-session): messages added to the session between turns reach you as they are written. Treat it as opaque and keep it private, like an `agenttoken`. It can be absent; then read History again to pick up new messages. |
 
 Each assistant row also carries the per-turn token-accounting columns, identical to [`Message/Detail`](#post-useragentmessagedetail):
 
@@ -411,11 +470,13 @@ Each assistant row also carries the per-turn token-accounting columns, identical
 
 > **`model_change` marker rows.** Switching the chat model (via the [`model`](#post-useragentmessagesend) param) drops a synthetic marker row into history alongside the real turns. A marker row has `status: "agent_done"`, `model: null`, empty `content` / `response` / `debugoutput`, every token column `null`, and `metadata: { "type": "model_change", "fromModel": "…", "toModel": "…" }`. Detect it with `metadata.type === "model_change"` and render it as an inline separator (e.g. "Switched to GPT-5.4") rather than a chat bubble. Its `createdat` is the triggering turn's `createdat` minus one second, so it orders immediately before that turn (in the newest-first response it appears directly after the turn that triggered it).
 
+> **Messages added between turns.** Not every row answers a `Message/Send` of yours: the agent can also add a message to the session on its own, such as a scheduled report, files it sends after an answer, or the result of longer work it finished in the background. When it moves work to the background, the turn you sent ends with a short line saying the result will follow, and the result arrives later as a separate row. These rows arrive finished (`status: "agent_end"`) with an empty `content` and the text in `response`. Their `metadata.type` is `"subagent"` for the result of work the agent finished in the background (show it as the agent's reply) and `"system"` for the rest. They have no turn of their own: nothing streams on an `agenttoken` for them and no `callbackurl` is called. Read them with History, or follow the session with `sessiontoken` to receive each one as it is added; see [Following a session](/docs/agent-websocket#following-a-session).
+
 ### Pagination
 
 To paginate through a long conversation:
 
-**Page 1** — most recent messages:
+**Page 1** (most recent messages):
 
 ```json
 {
@@ -425,7 +486,7 @@ To paginate through a long conversation:
 }
 ```
 
-**Page 2** — pass the **last** (oldest, smallest `createdat`) message's `guid` from page 1 as the `before` cursor:
+**Page 2**, passing the **last** (oldest, smallest `createdat`) message's `guid` from page 1 as the `before` cursor:
 
 ```json
 {
@@ -482,14 +543,14 @@ Lists all conversation sessions for an agent. Returns each session's key, messag
 | `sessionkey` | `string` | The session identifier. |
 | `messagecount` | `number` | Total number of messages in this session. |
 | `updatedat` | `number` | Unix timestamp (epoch seconds) of the last activity in this session. |
-| `lastmessage` | `string` | The most recent message body — the message's `content` if the user sent a message, falling back to its `response` (assistant reply) when `content` is empty. |
-| `name` | `string?` | Optional display name set via [`Message/RenameSession`](#post-useragentmessagerenamesession). Omitted when the session was never named — fall back to your own default label (e.g. the `sessionkey` or "New chat"). |
+| `lastmessage` | `string` | The most recent message body: the message's `content` if the user sent a message, falling back to its `response` (assistant reply) when `content` is empty. |
+| `name` | `string?` | Optional display name set via [`Message/RenameSession`](#post-useragentmessagerenamesession). Omitted when the session was never named, so fall back to your own default label (e.g. the `sessionkey` or "New chat"). |
 
-> **Named-but-empty sessions appear too.** A session created by [`RenameSession`](#post-useragentmessagerenamesession) before its first `Message/Send` surfaces here with `messagecount: 0`, `lastmessage: ""`, and the `name` you set — so a freshly created chat shows up in the list immediately.
+> **Named-but-empty sessions appear too.** A session created by [`RenameSession`](#post-useragentmessagerenamesession) before its first `Message/Send` surfaces here with `messagecount: 0`, `lastmessage: ""`, and the `name` you set, so a freshly created chat shows up in the list immediately.
 
-> **Reserved sessionkeys filtered out.** The list omits internal sessions used by the runtime: `wiro:api` (gateway hooks default), `voice-prep*` (per-call prep threads), `voice-call-*` (active voice-call rows), and `cs-cron-*` (one thread per scheduled cron skill). These rows still exist on the agent — they're just hidden from operator-facing listings to keep the panel UX clean. The same filter is applied on `Message/History` reads and the `DeleteSession` guard.
+> **Reserved session keys.** The list leaves out the reserved session keys `wiro:api`, `voice-prep*`, `voice-call-*` and `cs-cron-*`. `Message/History` and `DeleteSession` reject them too.
 
-> **Marker rows excluded.** `model_change` marker rows are not real turns — they're skipped when building this list, so they never surface as a session's `lastmessage`.
+> **Marker rows excluded.** `model_change` marker rows are not real turns. They're skipped when building this list, so they never surface as a session's `lastmessage`.
 
 ## **POST** /UserAgent/Message/DeleteSession
 
@@ -499,11 +560,11 @@ Deletes messages in the given session for the **calling user**. This action cann
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | The agent instance GUID. |
 | `sessionkey` | string | Yes | The session key to delete. |
-| `rotate` | boolean | No | Default `false`. When `true`, after wiping the rows the server also rotates the session's memory bucket so the agent's container **forgets** the cleared turns — the next `Message/Send` on the same `sessionkey` starts a fresh reasoning context. With `false` (or omitted) the message rows are wiped but the running container may still recall them. Any display `name` set via [`RenameSession`](#post-useragentmessagerenamesession) is dropped on delete. |
+| `rotate` | boolean | No | Default `false`. When `true`, after wiping the rows the server also clears the agent's memory of this session, so the next `Message/Send` on the same `sessionkey` starts a fresh reasoning context. With `false` (or omitted) the message rows are wiped but the agent may still recall them. Any display `name` set via [`RenameSession`](#post-useragentmessagerenamesession) is dropped on delete. |
 
-> **Scope of deletion:** Hard delete — the session's messages are removed permanently, not hidden. Only the caller's own messages in the session are purged. This holds in both private and collaborative team modes — even when `teamsessionmode: "collaborative"` (e.g. Telegram group-shared sessions) means every member sees the same thread, each member's `DeleteSession` only wipes their own contributions. Compare with `Message/Delete` (per-message), which is a soft delete that hides messages instead of removing them.
+> **Scope of deletion:** Hard delete. The session's messages are removed permanently, not hidden. Only the caller's own messages in the session are purged. This holds in both private and collaborative team modes. Even when `teamsessionmode: "collaborative"` (e.g. Telegram group-shared sessions) means every member sees the same thread, each member's `DeleteSession` only wipes their own contributions. Compare with `Message/Delete` (per-message), which is a soft delete that hides messages instead of removing them.
 
-> **Reserved sessionkeys.** Wiro-API maintains a handful of internal threads keyed under reserved sessionkeys — `voice-prep` and `voice-prep-<sid>` (per-call prep), `voice-call-<sid>` (voice-call bubble rows), `cs-cron-<slug>` (one thread per scheduled cron skill), and `wiro:api` (gateway hooks default). Passing any of these as `sessionkey` returns `"Session not found"` instead of a delete; the response shape is identical to a missing-session result so there's no information leak about what threads exist. The same guard also covers `Message/History` reads, so `Sessions` already filters these keys out of the operator's session list — you only encounter the reserved-key error if you hand-craft the body with a known internal key.
+> **Reserved session keys.** `wiro:api`, `voice-prep*`, `voice-call-*` and `cs-cron-*` are reserved. Passing one of them as `sessionkey` returns `"Session not found"`, and `Sessions` never lists them.
 
 ### Response
 
@@ -524,7 +585,7 @@ Sets a human-readable display **name** on a session without touching its message
 | `sessionkey` | string | Yes | The session to name. Reserved system keys (`wiro:api`, `voice-prep*`, `voice-call-*`, `cs-cron-*`) are rejected with `"Session not found"`, same as `DeleteSession`. |
 | `name` | string | Yes | The display name. The server strips control characters, collapses whitespace, trims, and caps the result at **40 characters**. An empty string after sanitization is rejected with `request-parameter-required`. |
 
-> **Doubles as "create a named session".** Calling `RenameSession` with a brand-new `sessionkey` — before any `Message/Send` on it — seeds a named-but-empty session that immediately appears in [`Message/Sessions`](#post-useragentmessagesessions) with `messagecount: 0` and `lastmessage: ""`. This is the canonical way to let a user open a fresh, titled chat before they type anything.
+> **Doubles as "create a named session".** Calling `RenameSession` with a brand-new `sessionkey`, before any `Message/Send` on it, seeds a named-but-empty session that immediately appears in [`Message/Sessions`](#post-useragentmessagesessions) with `messagecount: 0` and `lastmessage: ""`. This is the canonical way to let a user open a fresh, titled chat before they type anything.
 
 ### Request
 
@@ -550,7 +611,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/RenameSession" \
 
 ## **POST** /UserAgent/Message/Delete
 
-Bulk-deletes one or more messages from a session, with **per-side soft-delete** semantics. Each item lets you choose whether to hide the user side of the bubble, the agent side, or both — supporting "delete just my message" / "delete only the response" / "delete the whole bubble" UX without losing the underlying record.
+Bulk-deletes one or more messages from a session, with **per-side soft-delete** semantics. Each item lets you choose whether to hide the user side of the bubble, the agent side, or both. This supports "delete just my message" / "delete only the response" / "delete the whole bubble" UX without losing the underlying record.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -562,9 +623,9 @@ Each item:
 | Field | Type | Description |
 |-------|------|-------------|
 | `messageguid` | string | The message to delete. Must belong to the agent identified by `useragentguid`, and its `uuid` must be yours: any other `messageguid` (for example, another team member's message in a shared session) is skipped silently and the call still returns `result: true`. On a team agent, any active member of the agent's team can call this from the team's workspace; it still hides only your own messages. |
-| `side` | string | One of `"user"`, `"agent"`, or `"both"`. Sets these bits in the message's `deletestatus` bitmask: `user → 1`, `agent → 3`, `both → 3`. **`agent` and `both` both produce `3`** (full hide on both sides) — there is no `side` value that hides only the agent's view while keeping the row visible to the user. |
+| `side` | string | One of `"user"`, `"agent"`, or `"both"`. Sets these bits in the message's `deletestatus` bitmask: `user → 1`, `agent → 3`, `both → 3`. **`agent` and `both` both produce `3`** (full hide on both sides). There is no `side` value that hides only the agent's view while keeping the row visible to the user. |
 
-> **Soft delete, not hard delete.** Deleted messages are kept with `deletestatus` set rather than erased. `Message/History` only returns messages whose `deletestatus` is **`0`** — i.e. a message is hidden the moment any bit is set, regardless of which side flagged it. To wipe a whole session hard-and-fast (no soft-delete trail), use [`Message/DeleteSession`](#post-useragentmessagedeletesession) instead.
+> **Soft delete, not hard delete.** Deleted messages are kept with `deletestatus` set rather than erased. `Message/History` only returns messages whose `deletestatus` is **`0`**, i.e. a message is hidden the moment any bit is set, regardless of which side flagged it. To wipe a whole session hard-and-fast (no soft-delete trail), use [`Message/DeleteSession`](#post-useragentmessagedeletesession) instead.
 
 ### Request
 
@@ -588,7 +649,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Delete" \
 { "result": true, "errors": [] }
 ```
 
-The endpoint is best-effort across the items array — invalid `messageguid` rows or invalid `side` values are silently skipped. The call returns `result: true` even when zero rows were updated, so callers should refetch `Message/History` to confirm the new state.
+The endpoint is best-effort across the items array: invalid `messageguid` rows or invalid `side` values are silently skipped. The call returns `result: true` even when zero rows were updated, so callers should refetch `Message/History` to confirm the new state.
 
 ## **POST** /UserAgent/Message/Cancel
 
@@ -598,7 +659,7 @@ Cancels an in-progress message. Only messages in `agent_queue`, `agent_start`, o
 |-----------|------|----------|-------------|
 | `messageguid` | string | No | The message GUID to cancel. |
 | `agenttoken` | string | No | The agent token to cancel (alternative to messageguid). |
-| `sessionkey` | string | No | Optional session scope. When supplied, the cancel only matches a row in this `sessionkey` — useful for shared-owner agents so one end user can't cancel another's in-flight turn. Omit for the default single-user behavior. |
+| `sessionkey` | string | No | Optional session scope. When supplied, the cancel only matches a row in this `sessionkey`. This is useful for shared-owner agents so one end user can't cancel another's in-flight turn. Omit for the default single-user behavior. |
 
 > **Note:** You must provide at least one of `messageguid` or `agenttoken`.
 
@@ -615,50 +676,19 @@ On success, the message status changes to `agent_cancel` in the database.
 
 > **Behavior depends on when the cancel hits:**
 >
-> - If the message was **already being processed** by the agent bridge (status `agent_start` or `agent_output`), the bridge's abort handler fires: subscribed WebSocket clients receive an `agent_cancel` event, `debugoutput` / `response` are populated with the abort reason (typically `"AbortError"` or similar technical message — not guaranteed to be a fixed user-facing string), and the `callbackurl` webhook (if set) is triggered with `status: "agent_cancel"`.
+> - If the message was **already being processed** by the agent bridge (status `agent_start` or `agent_output`), the bridge's abort handler fires: subscribed WebSocket clients receive an `agent_cancel` event, `debugoutput` / `response` are populated with the abort reason (typically `"AbortError"` or similar technical message, not guaranteed to be a fixed user-facing string), and the `callbackurl` webhook (if set) is triggered with `status: "agent_cancel"`.
 > - If the message was **still queued** (status `agent_queue`) when cancelled, no processing attempt had started: the row is marked `agent_cancel` but `response` and `debugoutput` remain empty strings, **no WebSocket `agent_cancel` event** is broadcast, and **no webhook** is triggered.
 >
 > When polling for the final state, check `status === "agent_cancel"` rather than relying on non-empty `response` / `debugoutput` (they may be empty for queued-state cancellations).
-
-## **POST** /UserAgent/Message/SystemInsert
-
-Inserts a finished "system" message into the conversation history without running it through the agent. Used by the agent runtime, scheduled cron skills, and external chat-platform bridges (Telegram bot, Slack relay, push-notification webhooks) to drop a pre-rendered message into a session as if the agent had produced it. The endpoint **never** triggers a model call — the supplied `content` is written verbatim to the message's `response` with `status: "agent_end"` and `metadata: {"type":"system"}`.
-
-> **Runtime-only auth.** This endpoint is reserved for the Wiro-managed agent runtime and the platform bridges Wiro ships (Telegram / Slack / cron). API users normally use [`Message/Send`](#post-useragentmessagesend) instead, which goes through the standard auth flow + queue + model call path.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `useragentguid` | string | Yes | The target useragent guid. |
-| `uuid` | string | Yes | The useragent owner uuid. Must match the owner of the agent identified by `useragentguid`. |
-| `content` | string | Yes | The message body to insert. Stored verbatim in `response` and `debugoutput`. |
-| `sessionkey` | string | No | Conversation thread the message belongs to. Defaults to `"auto"` — the endpoint resolves it to the most recent session for this useragent (falls back to `"default"` for empty histories). Pass an explicit value to insert into a specific named session. |
-| `metadata` | object \| string | No | Custom metadata payload to write on the row. Accepts either a JSON object or a JSON-encoded string; invalid JSON falls back to the default `{"type":"system"}`. No schema allowlist is applied — the value is stored verbatim. Used by the realtime voice bridge to seed `{"type":"realtime_session_incoming", "callsid", "callerInfo", "startedAt", "transcript":[]}` rows. |
-
-### Response
-
-```json
-{
-  "result": true,
-  "messageguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
-  "sessionkey": "default",
-  "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
-  "errors": []
-}
-```
-
-- `messageguid` is the inserted row's guid — use it to address the message later via `Message/Detail` or to thread replies.
-- `sessionkey` echoes the resolved session (matters when the caller passed `"auto"` or omitted the field).
-- `agenttoken` is the per-message agent token. The realtime voice bridge subscribes to this token over the [Agent WebSocket](/docs/agent-websocket) to receive POSTCALL hand-off events on the same row.
-- The inserted row carries `status: "agent_end"` (or `metadata.type: "system"` by default) so the chat UI renders it as a non-interactive system bubble (no retry / cancel affordances).
 
 ## Session Management
 
 Sessions let you maintain separate conversation threads with the same agent:
 
-- Each `sessionkey` represents a separate conversation — the agent remembers context within a session
+- Each `sessionkey` represents a separate conversation: the agent remembers context within a session
 - The default session key is `"default"` if you don't specify one
 - Use unique session keys per end-user for multi-tenant applications (e.g. `"user-42"`, `"customer-abc"`)
-- Sessions persist across API calls — send the same `sessionkey` to continue a conversation
+- Sessions persist across API calls: send the same `sessionkey` to continue a conversation
 - Delete a session with `/UserAgent/Message/DeleteSession` to clear history and free resources
 
 User A's conversation:
@@ -693,7 +723,7 @@ call 1 / content 0: reasoning  → Thinking again
 call 1 / content 1: answer     → Final answer text
 ```
 
-Render each reasoning block as its own accessible `Thinking` disclosure at its timeline position. Never combine reasoning blocks across calls, and never move them above or below answer/tool blocks to force an answer-first layout. Every reasoning block contains only the provider-supplied OpenAI GPT-5 summary; raw chain-of-thought is never returned. `agent_output` is still useful for immediate accumulated answer typing, but it does not define the durable block order.
+Render each reasoning block as its own accessible `Thinking` disclosure at its timeline position. Never combine reasoning blocks across calls, and never move them above or below answer/tool blocks to force an answer-first layout. Every reasoning block contains only the model-provided reasoning summary; raw chain-of-thought is never returned. `agent_output` is still useful for immediate accumulated answer typing, but it does not define the durable block order.
 
 ## Tracking a Message
 
@@ -740,8 +770,6 @@ Connect to WebSocket and subscribe with the `agenttoken` for real-time streaming
       "contentindex": 0,
       "type": "reasoning",
       "text": "I’ll compare verified releases and adoption data.",
-      "toollabel": null,
-      "toolstatus": null,
       "phase": "stream",
       "version": 2,
       "startedat": 1743350401,
@@ -754,7 +782,7 @@ Connect to WebSocket and subscribe with the `agenttoken` for real-time streaming
 
 Merge `message.block` by `blockid` and accept it only when its `version` is strictly newer than the stored version of that block.
 
-**4. Provisional streaming output event** (emitted multiple times — replace your typing surface with `message.raw` on each event):
+**4. Provisional streaming output event** (emitted multiple times, so replace your typing surface with `message.raw` on each event):
 
 ```json
 {
@@ -800,12 +828,12 @@ Merge `message.block` by `blockid` and accept it only when its `version` is stri
 |-------|------|-------------|
 | `message.type` | `string` | Always `"progressGenerate"` for agent output events. |
 | `message.speed` | `string` | Generation speed (e.g. `"12.4"`). |
-| `message.speedType` | `string` | Unit for speed — `"words/s"` (words per second). |
+| `message.speedType` | `string` | Unit for speed: `"words/s"` (words per second). |
 | `message.elapsedTime` | `string` | Elapsed time since generation started (e.g. `"3.2s"`). |
 | `message.tokenCount` | `number` | Number of answer chunks received so far. Final model tokens arrive separately in `agent_usage_report`. |
 | `message.wordCount` | `number` | Number of words generated so far. |
 | `message.raw` | `string` | Full accumulated raw output text. |
-| `message.answer` | `string[]` | Array of answer blocks — the content to display. |
+| `message.answer` | `string[]` | Array of answer blocks: the content to display. |
 
 ### 2. Polling via Detail
 

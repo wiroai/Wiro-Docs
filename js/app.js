@@ -1,7 +1,7 @@
 import { initModelBrowser } from './helpers.js';
 
 const sections = [
-  { slug: 'introduction', title: 'Introduction', description: 'Wiro is a unified AI API platform that lets you run any model — video, image, audio, LLM, 3D — with a single API key and pay-per-use pricing.' },
+  { slug: 'introduction', title: 'Introduction', description: 'Wiro is a unified AI API platform that lets you run any model (video, image, audio, LLM, 3D) with a single API key and pay-per-use pricing.' },
   { slug: 'authentication', title: 'Authentication', description: 'Authenticate with the Wiro API using Bearer tokens or query-string API keys. Learn how to generate and manage your credentials securely.' },
   { slug: 'projects', title: 'Projects', description: 'Create projects to organize your Wiro API usage. Each project has its own API key, usage tracking, and webhook configuration.' },
   { slug: 'models', title: 'Models', description: 'Browse, search, and discover AI models on Wiro. Filter by category, view pricing, parameters, and sample outputs for each model.' },
@@ -16,23 +16,26 @@ const sections = [
   { slug: 'realtime-speech-to-text', title: 'Realtime Speech to Text', description: 'Stream microphone audio and receive live transcription via WebSocket. Build real-time dictation and transcription applications.' },
   { slug: 'files', title: 'Files', description: 'Upload files to Wiro for use as model inputs. Manage folders, retrieve file metadata, and reference uploaded assets across multiple API calls.' },
   { slug: 'pricing', title: 'Pricing', description: 'Wiro uses pay-per-use pricing with no subscriptions. Each model has its own cost per run. Add credits to your account and pay only for what you use.' },
-  { slug: 'concurrency-limits', title: 'Concurrency Limits', description: 'Understand Wiro API concurrency limits per plan tier. Learn how concurrent task slots work and how to upgrade for higher throughput.' },
+  { slug: 'concurrency-limits', title: 'Concurrency Limits', description: 'How many unfinished tasks your Wiro balance allows at once, one for each full $10 up to $250 and no limit above that, and how to handle error code 96.' },
   { slug: 'error-reference', title: 'Error Reference', description: 'Complete reference of Wiro API error codes and messages. Troubleshoot authentication failures, rate limits, invalid parameters, and more.' },
-  { slug: 'faq', title: 'FAQ', description: 'Frequently asked questions about the Wiro API — covering authentication, billing, model support, rate limits, webhooks, and integrations.' },
+  { slug: 'faq', title: 'FAQ', description: 'Frequently asked questions about the Wiro API, covering authentication, billing, model support, rate limits, webhooks, and integrations.' },
   { slug: 'code-examples', title: 'Code Examples', description: 'Ready-to-use Wiro API code examples in 9 languages: cURL, Python, Node.js, PHP, C#, Go, Swift, Kotlin, and Dart.' },
-  { slug: 'wiro-mcp-server', title: 'Wiro MCP Server', description: 'Connect AI coding assistants like Cursor, Claude, and Windsurf to all Wiro models using the Model Context Protocol (MCP) server.' },
-  { slug: 'mcp-self-hosted', title: 'Self-Hosted MCP', description: 'Run the Wiro MCP server locally on your machine. Full control over configuration, environment variables, and model access for AI assistants.' },
-  { slug: 'nodejs-library', title: 'Node.js Library', description: 'Use Wiro AI models directly in Node.js and TypeScript projects. Install @wiro-ai/wiro-mcp and use WiroClient for model discovery, execution, task polling, and file uploads.' },
+  { slug: 'wiro-mcp-server', title: 'Wiro MCP Server', description: 'Connect AI assistants like Cursor, Claude, and ChatGPT to Wiro models, workflows, Studio and agents through the Model Context Protocol (MCP) server.' },
+  { slug: 'mcp-self-hosted', title: 'Self-Hosted MCP', description: 'Run the Wiro MCP server locally on your machine with npx: the same tools for models, workflows, Studio and agents, and environment variables to pick the tool groups.' },
+  { slug: 'nodejs-library', title: 'Node.js Library', description: 'Use Wiro AI models directly in Node.js and TypeScript projects. Install @wiro-ai/wiro-mcp and use WiroClient for model discovery, execution, task polling, file uploads, and calls to any other Wiro endpoint.' },
   { slug: 'n8n-wiro-integration', title: 'n8n Wiro Integration', description: 'Use all Wiro AI models as drag-and-drop nodes in n8n workflows. Install the community node for video, image, audio, LLM, and 3D automation.' },
+  { slug: 'workflows', title: 'Workflows', description: 'Save multi-step workflows that chain Wiro models and built-in utilities, run them with new inputs, follow and resume runs, and browse the public gallery through the API.' },
+  { slug: 'workflow-agent', title: 'Workflow Agent', description: 'Design and edit Wiro workflows by chat through the API: send briefs to the Workflow Agent, attach a workflow to change, read its proposals and save them.' },
+  { slug: 'studio', title: 'Studio', description: 'Ask Wiro Studio, the creative agent that picks and runs models for you, for images, video and audio through the API, and collect every result it made.' },
   { slug: 'agent-overview', title: 'Agent Overview', description: 'Deploy and manage autonomous AI agents with the Wiro Agent API. Browse the catalog, configure instances, select models, and understand skill-driven tiers with per-turn token billing.' },
-  { slug: 'agent-builder', title: 'Agent Builder', description: 'Build a custom agent from scratch — pick your own skill set, preview the live tier price, and deploy in one call. PricingPreview, custom: true Deploy, SkillsApply.' },
+  { slug: 'agent-builder', title: 'Agent Builder', description: 'Build a custom agent from scratch: pick your own skill set, preview the live tier price, and deploy in one call. PricingPreview, custom: true Deploy, SkillsApply.' },
   { slug: 'agent-messaging', title: 'Agent Messaging', description: 'Send messages to AI agents and consume an ordered timeline of safe reasoning, answer, and tool label/status blocks with authoritative Detail recovery.' },
   { slug: 'agent-websocket', title: 'Agent WebSocket', description: 'Receive agent_timeline_delta public block updates, merge by opaque blockid and strictly newer per-block version, and stream provisional cumulative answer text.' },
   { slug: 'agent-webhooks', title: 'Agent Webhooks', description: 'Receive agent response notifications via HTTP webhooks. Configure callback URLs for async message processing with automatic retries.' },
   { slug: 'agent-credentials', title: 'Agent Credentials & OAuth', description: 'Configure agent credentials via API keys, direct machine credentials, or OAuth flows. Connect third-party services like Twitter, Google Ads, Meta, HubSpot, and more.' },
   { slug: 'agent-skills', title: 'Agent Skills', description: 'Configure agent behavior with editable preferences, scheduled automation tasks, and skill toggles. Browse the skill registry, capabilities, and per-skill pricing recipes.' },
-  { slug: 'agent-transactions', title: 'Agent Transactions', description: 'Per-instance credit ledger — every credit deduction, renewal, purchase, refund, grant, and cancel for a useragent in a single immutable feed.' },
-  { slug: 'agent-logs', title: 'Agent Logs', description: 'Per-instance activity feed — tool calls, scheduled cron runs, message exchanges, and turn boundaries — for any deployed agent.' },
+  { slug: 'agent-transactions', title: 'Agent Transactions', description: 'Per-instance credit ledger: every credit deduction, renewal, purchase, refund, grant, and cancel for a useragent in a single immutable feed.' },
+  { slug: 'agent-logs', title: 'Agent Logs', description: 'Per-instance activity feed (tool calls, scheduled cron runs, message exchanges, and turn boundaries) for any deployed agent.' },
   { slug: 'agent-use-cases', title: 'Agent Use Cases', description: 'Learn how to build products with Wiro Agents. Deploy agents for your customers, integrate OAuth flows, and create multi-agent workflows.' },
   { slug: 'integration-metaads-skills', title: 'Meta Ads Integration', description: 'Use direct Graph API v26 with recommended token-only System User mode or advanced customer-owned OAuth, then select ad accounts and optional account-scoped Facebook Pages.' },
   { slug: 'integration-tiktokads-skills', title: 'TikTok Ads Integration', description: 'Connect TikTok for Business in one click through the official TikTok for Business MCP server, pick advertisers, and let the agent report on and manage TikTok Ads with approval-gated changes and a 30-day re-authorization.' },
@@ -47,12 +50,14 @@ const sections = [
   { slug: 'integration-googleads-skills', title: 'Google Ads Integration', description: 'Google Ads API setup: Developer Token, MCC customer ID, Google Cloud OAuth configuration, customer ID selection.' },
   { slug: 'integration-youtube-skills', title: 'YouTube Integration', description: 'YouTube Data API v3 + Analytics API v2 setup: channel listing, video assets for Google Ads Video/Demand Gen, channel picker via SetPickerAccounts.' },
   { slug: 'integration-ga4-skills', title: 'Google Analytics 4 Integration', description: 'Google Analytics 4 setup: GA4 Data API + Admin API, OAuth, property picker via SetPickerAccounts for conversion reporting and attribution cross-checks.' },
+  { slug: 'integration-roasit-skills', title: 'Roasit Integration', description: 'Roasit mobile attribution with a read-only API token: creative, campaign and network ROAS, cohort revenue and retention, iOS SKAN reports and install reconciliation, mapped back to Google Ads, Meta Ads and TikTok Ads ids.' },
   { slug: 'integration-merchantcenter-skills', title: 'Google Merchant Center Integration', description: 'Google Merchant Center (Shopping) setup: Merchant API v1, OAuth, merchant account picker via SetPickerAccounts, developer registration for own mode.' },
+  { slug: 'integration-googlebusiness-skills', title: 'Google Business Profile Integration', description: 'Answer Google reviews of your Business Profile locations with an OAuth client from your own Google Cloud project: Business Profile API access, account and location pickers, and replies posted after your approval.' },
   { slug: 'integration-hubspot-skills', title: 'HubSpot Integration', description: 'HubSpot CRM integration: OAuth 2.0 setup, scopes configuration for contacts, deals, and engagement.' },
   { slug: 'integration-mailchimp-skills', title: 'Mailchimp Integration', description: 'Mailchimp email marketing: OAuth flow or direct API key auth. Audience and campaign management.' },
   { slug: 'integration-googledrive-skills', title: 'Google Drive Integration', description: 'Per-user Google Cloud service account upload. User shares Drive folders with the service account email; the agent scans only those folders.' },
   { slug: 'integration-google-calendar-skills', title: 'Google Calendar Integration', description: 'Per-user Google Cloud service account + per-calendar sharing. Read availability, find slots, and draft events. Used by appointment-booking and voice-receptionist agents.' },
-  { slug: 'integration-serper-search-skills', title: 'Serper Web Search Integration', description: 'Real Google web-search results as clean JSON via Serper.dev — title/link/snippet for research before writing, then fetch the top pages. One API key, no Google Cloud project or cx. Used by content and marketing agents.' },
+  { slug: 'integration-serper-search-skills', title: 'Serper Web Search Integration', description: 'Real Google web-search results as clean JSON via Serper.dev: title/link/snippet for research before writing, then fetch the top pages. One API key, no Google Cloud project or cx. Used by content and marketing agents.' },
   { slug: 'integration-gmail-skills', title: 'Gmail Integration', description: 'Gmail IMAP/SMTP setup using Google App Passwords. Inbox monitoring and email sending.' },
   { slug: 'integration-telegram-skills', title: 'Telegram Integration', description: 'Telegram bot setup: BotFather token, allowed users, private vs collaborative session modes.' },
   { slug: 'integration-firebase-skills', title: 'Firebase Integration', description: 'Firebase Cloud Messaging setup: Admin SDK service account, topic targeting, multi-project configuration.' },
@@ -80,7 +85,8 @@ const DOCS_SCROLL_FADE_MS = 140;
 const DOCS_SCROLL_IDLE_MS = 1000;
 const docsScrollbarStates = new WeakMap();
 
-// Current Wiro code-surface hues from Wiro-Web's --wiro-code-* contract.
+// Wiro code-surface hues. Each token reads at least 4.5:1 on its code background,
+// the same values as --wiro-code-* in css/wiro-foundation.css.
 // Shiki emits both themes into one DOM tree so changing preference never
 // requires rebuilding code blocks or forcing an always-dark API surface.
 const WIRO_SHIKI_LIGHT = {
@@ -92,12 +98,12 @@ const WIRO_SHIKI_LIGHT = {
   },
   settings: [
     { settings: { foreground: '#16140f', background: '#f2efe8' } },
-    { scope: ['comment', 'punctuation.definition.comment'], settings: { foreground: '#8b877d' } },
+    { scope: ['comment', 'punctuation.definition.comment'], settings: { foreground: '#706d64' } },
     { scope: ['keyword', 'storage', 'storage.type', 'support.function'], settings: { foreground: '#5f594a' } },
-    { scope: ['string', 'string.quoted', 'constant.character'], settings: { foreground: '#2e7d52' } },
-    { scope: ['constant.numeric', 'constant.language'], settings: { foreground: '#9a6a32' } },
+    { scope: ['string', 'string.quoted', 'constant.character'], settings: { foreground: '#2d7b50' } },
+    { scope: ['constant.numeric', 'constant.language'], settings: { foreground: '#91632f' } },
     { scope: ['variable', 'entity.name', 'support.type', 'meta.object-literal.key'], settings: { foreground: '#3d3a33' } },
-    { scope: ['punctuation', 'meta.brace'], settings: { foreground: '#706c62' } },
+    { scope: ['punctuation', 'meta.brace'], settings: { foreground: '#6b675d' } },
   ],
 };
 
@@ -110,7 +116,7 @@ const WIRO_SHIKI_DARK = {
   },
   settings: [
     { settings: { foreground: '#f7f3ea', background: '#191713' } },
-    { scope: ['comment', 'punctuation.definition.comment'], settings: { foreground: '#5c5a52' } },
+    { scope: ['comment', 'punctuation.definition.comment'], settings: { foreground: '#838074' } },
     { scope: ['keyword', 'storage', 'storage.type', 'support.function'], settings: { foreground: '#7ba8d4' } },
     { scope: ['string', 'string.quoted', 'constant.character'], settings: { foreground: '#8fbf7a' } },
     { scope: ['constant.numeric', 'constant.language'], settings: { foreground: '#cf9060' } },
@@ -399,6 +405,7 @@ function parseCodeExamples(sectionEl) {
 
 function showSection(slug) {
   if (currentSlug === slug) return;
+  const isPageLoad = currentSlug === null;
   currentSlug = slug;
   document.documentElement.dataset.docsPage = slug;
 
@@ -443,9 +450,13 @@ function showSection(slug) {
   buildToc(slug);
   closeCodeDrawer();
 
-  const centerEl = document.querySelector('.docs-center');
-  if (centerEl) centerEl.scrollTo({ top: 0, behavior: 'instant' });
-  else window.scrollTo({ top: 0, behavior: 'instant' });
+  // A section switched in place starts at the top. On a page load the reader may
+  // already have scrolled while the page was arriving, so leave the position alone.
+  if (!isPageLoad) {
+    const centerEl = document.querySelector('.docs-center');
+    if (centerEl) centerEl.scrollTo({ top: 0, behavior: 'instant' });
+    else window.scrollTo({ top: 0, behavior: 'instant' });
+  }
 
   initSectionFeatures(slug);
 }
@@ -524,12 +535,7 @@ function highlightInlineCode(slug) {
       themes: { light: 'wiro-light', dark: 'wiro-dark' },
       defaultColor: false,
     });
-    // Shiki kendi <pre>'sini uretiyor; outerHTML ile degistirmek yazarin koydugu
-    // SINIFLARI DUSURUYORDU. Olculdu: VS Code panelindeki model JSON'u
-    // pre-scroll tasiyor ama Shiki'den sonra sinifi yok ve max-height: none --
-    // yani sayfayi asagi dogru metrelerce uzatiyordu. Ayni blok duz metin olsa
-    // (Cursor listesi gibi) Shiki'ye hic girmedigi icin duzgun scroll oluyordu,
-    // bu yuzden fark gozden kaciyordu. Sinifi tasiyoruz.
+    // Copy the author's classes onto Shiki's <pre> (pre-scroll needs max-height).
     const wrapper = block.closest('pre');
     const holder = document.createElement('template');
     holder.innerHTML = html.trim();
@@ -1201,20 +1207,21 @@ function revealActiveNavLink() {
   nav.scrollTop += linkRect.top - navRect.top - (nav.clientHeight - linkRect.height) / 2;
 }
 
-// showSection() scrolls the content to the top; a /docs/slug#heading link
-// (search results, cross-page anchors) should land on the heading.
+// A /docs/slug#heading link (search results, cross-page anchors) should land on
+// the heading once the section is set up.
 function scrollToLocationHash() {
   const id = decodeFragment(window.location.hash);
   if (!id || id.startsWith('/')) return;
   requestAnimationFrame(() => scrollToAnchor(id, 'auto'));
 }
 
-/** Each section's View/Download buttons use markdown/{slug}.md — slug comes from data-page. */
+/** Each section's View/Download buttons use markdown/{slug}.md under the docs base — slug comes from data-page.
+ * Root-relative, so the link is right before the base tag exists (crawlers read the raw HTML: /docs + markdown/x.md was /markdown/x.md, a 404). */
 function initMarkdownSectionLinks() {
   document.querySelectorAll('.docs-page-section[data-page]').forEach((section) => {
     const slug = section.getAttribute('data-page');
     if (!slug) return;
-    const path = `markdown/${slug}.md`;
+    const path = new URL(`markdown/${slug}.md`, document.baseURI).pathname;
     section.querySelectorAll('.docs-section-md-row .docs-section-md-btn').forEach((a) => {
       a.setAttribute('href', path);
     });

@@ -8,7 +8,7 @@ The Gmail integration uses IMAP with Basic authentication backed by a Google App
 
 **Skills that use this integration:**
 
-- `gmail-check` — Poll Gmail inbox on a schedule, parse messages, route to actions
+- `int-gmail-check`: Poll Gmail inbox on a schedule, parse messages, route to actions
 
 **Agents that typically enable this integration:**
 
@@ -24,8 +24,8 @@ The Gmail integration uses IMAP with Basic authentication backed by a Google App
 
 ## Prerequisites
 
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
 - **A Gmail account** with **2-Step Verification** enabled.
 
 ## Setup
@@ -40,7 +40,7 @@ The Gmail integration uses IMAP with Basic authentication backed by a Google App
 
 1. Same Security page → **App passwords** (appears once 2-Step Verification is on).
 2. Create a new App Password, label it "Wiro agent".
-3. Copy the 16-character password (format: `xxxx xxxx xxxx xxxx`). Spaces are cosmetic — Wiro accepts either form.
+3. Copy the 16-character password (format: `xxxx xxxx xxxx xxxx`). Spaces are cosmetic, and Wiro accepts either form.
 
 ### Step 3: Save to Wiro
 
@@ -57,9 +57,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   }'
 ```
 
-Only `account` and `apppassword` are writable by API callers. `credentials.gmail.interval` (when present in some templates) is NOT used by `start.sh` and NOT wired to the runtime. The actual polling cadence comes from the scheduled skill `cron-gmail-checker` under `customskills[]` (a cron wrapper that invokes the built-in `gmail-check` platform skill). To change how often the inbox is polled, upsert `cron-gmail-checker` via `POST /UserAgent/CustomSkillUpsert` — see [Agent Skills](/docs/agent-skills#managing-scheduled-tasks).
+Only `account` and `apppassword` are writable by API callers. `credentials.gmail.interval` (when present in some templates) is not used by the agent runtime. How often the inbox is read comes from the scheduled task that uses Gmail, `cs-cron-blog-gmail-checker` on the blog presets. To change it, update that task's `interval` via `POST /UserAgent/CustomSkillUpsert` (see [Agent Skills](/docs/agent-skills#managing-scheduled-tasks)).
 
-> **Naming:** the **platform skill** (the IMAP-speaking module loaded from `skills/gmail-check/SKILL.md`) is `gmail-check`. The **cron wrapper** (an entry in `customskills[]` that schedules inbox polling and references `gmail-check` internally) is `cron-gmail-checker` (prefixed with `cron-` to mark it as a scheduled task). When `skills.gmail-check` is disabled on the template, the cron wrapper early-returns with `HEARTBEAT_OK`.
+> **Naming:** the skill is `int-gmail-check`. The scheduled task that reads the inbox on the blog presets is `cs-cron-blog-gmail-checker` (`cs-cron-` marks a scheduled task). If `int-gmail-check` is off or Gmail is not connected, the task does nothing on its runs.
 
 ### Step 4: Start the agent
 
@@ -92,21 +92,18 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ## Runtime Behavior
 
-The `gmail-check` skill uses IMAP:
+The `int-gmail-check` skill reads the inbox over IMAP:
 
 - Host: `imaps://imap.gmail.com:993/INBOX`
-- Auth: `--user "$GMAIL_ACCOUNT:$GMAIL_APP_PASSWORD"` (Basic-style)
-- Polls on the configured `interval`, processes new messages per agent rules
+- Auth: the Gmail address and app password you saved (`account` / `apppassword`)
+- Runs on the schedule of the agent's Gmail scheduled task and processes new messages per the agent's rules
 
-Env vars inside the agent container (exported **only when `gmail-check` skill is enabled** and `account` is set):
-
-- `GMAIL_ACCOUNT` ← `credentials.gmail.account`
-- `GMAIL_APP_PASSWORD` ← `credentials.gmail.apppassword`
+The skill is active only when it is enabled and `account` is set.
 
 ## Troubleshooting
 
 - **"Invalid credentials" when IMAP connects:** Wrong App Password, or 2-Step Verification was turned off (which invalidates all App Passwords). Regenerate.
-- **Agent can't see messages older than ~30 days:** IMAP folder defaults. For broader scope, your agent may need to switch to "All Mail" — ask support.
+- **Agent can't see messages older than ~30 days:** IMAP folder defaults. For broader scope, your agent may need to switch to "All Mail". Ask support.
 - **"Less Secure Apps" mentioned anywhere:** Google removed that option in 2022. App Password is the only supported path for IMAP/SMTP.
 
 ## Related

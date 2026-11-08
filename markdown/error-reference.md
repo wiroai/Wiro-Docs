@@ -18,7 +18,7 @@ When an API request fails, the response includes `result: false` and an `errors`
 }
 ```
 
-All API responses return HTTP `200` — use the `result` field and error `code` to determine success or failure.
+All API responses return HTTP `200`. Use the `result` field and error `code` to determine success or failure.
 
 ## Error Codes
 
@@ -43,10 +43,12 @@ These errors are returned when API key or bearer token authentication fails. All
 | Signature required | `0` | "Project requires signature authentication. x-signature and x-nonce headers are required." |
 | Invalid signature | `0` | "Project authorization is not valid." |
 | IP not allowed | `0` | "Requested ip {ip} is not allowed." |
+| Key creator left the team | `0` | "The person who created this API key is no longer in its team. Ask a team admin for a new key." |
+| Team change with an API key | `0` | "API keys can't manage teams or organizations. Sign in and try again." |
 | Bearer token missing | `99` | "Authorization bearer token is not founded in headers." |
 | Bearer token invalid | `99` | "Authorization bearer token is invalid." |
 | Bearer token expired | `99` | "Authorization bearer token expired." |
-| Endpoint not found | `0` | "Error parsing url." (HTTP 404) |
+| Endpoint not found | `0` | "Parsing url error." (HTTP 404) |
 
 ### Signature Auth Errors
 
@@ -64,6 +66,18 @@ See [Authentication](/docs/authentication) for details.
 
 If your project has an IP whitelist configured, requests from unlisted IPs will be rejected. Use `*` in the whitelist to allow all IPs.
 
+### Team API Key Errors
+
+A team project's API key works only while the user who created the project is an active member of the team or the organization owner. Once they leave the team, requests with the key fail with "The person who created this API key is no longer in its team." Public endpoints such as `Tool/List` and `Agent/List` still answer, as if the request had no key. Switch to a key from a project that an active member created.
+
+Creating, changing, deleting or restoring organizations and teams, managing members and invitations, and moving projects, agents or credit need a signed-in user, in the dashboard or with a Bearer token. With an API key, these calls fail with "API keys can't manage teams or organizations." See [Team API Access](/docs/organizations-api-access).
+
+Studio and the Workflow Agent are stricter: the user who created the key's project must be an active member of the team, and being the organization owner is not enough. When that user is the organization owner but not a member of the team, requests to them fail with HTTP `403`:
+
+| Error | Code | Message |
+|-------|------|---------|
+| Not a team member | `0` | "You must be a member of this team to perform this action" |
+
 ## Run Errors
 
 These errors are returned by the `POST /Run/{owner}/{model}` endpoint.
@@ -72,7 +86,7 @@ These errors are returned by the `POST /Run/{owner}/{model}` endpoint.
 
 | Error | Code | Message | Action |
 |-------|------|---------|--------|
-| Insufficient balance | `97` | "Insufficient balance" | [Add funds](https://wiro.ai/panel/billing) — minimum $0.50 required (or $10 for training models) |
+| Insufficient balance | `97` | "Insufficient balance" | [Add funds](https://wiro.ai/panel/billing): minimum $0.50 required (or $10 for training models) |
 | Concurrent task limit | `96` | "You have reached your concurrent task limit. With your current balance of ${balance}, you can run up to {maxConcurrent} tasks at the same time. Add funds to increase your limit." | Wait for a task to finish, or [add funds](https://wiro.ai/panel/billing). See [Concurrency Limits](/docs/concurrency-limits) |
 | Sign in required | `98` | "sign in to run this model" | Model requires a registered account |
 
@@ -106,15 +120,19 @@ These errors are returned by the `POST /Run/{owner}/{model}` endpoint.
 
 ## Task Errors
 
-These errors are returned by `POST /Task/Detail`, `POST /Task/Cancel`, and `POST /Task/Kill`.
+These errors are returned by `POST /Task/Detail`, `POST /Task/Cancel`, `POST /Task/Kill`, and `POST /Task/InputOutputDelete`.
 
 | Error | Code | Message | Endpoint |
 |-------|------|---------|----------|
-| Task not found | `1` | "There is no task yet." | Detail, Cancel, Kill |
-| Missing identifier | `0` | "taskid or socketaccesstoken is required" | Detail |
+| Task not found | `0` | "task-not-founded" | Detail |
+| Task not found | `1` | "There is no task yet." | Cancel |
+| Task not found | `0` | "There is no task yet." | Kill, InputOutputDelete |
+| Missing identifier | `0` | "Request parameter [taskid or tasktoken] required" | Detail |
+| Missing identifier | `0` | "taskid or socketaccesstoken is required" | Kill |
 | Not cancellable | `1` | "Task is not in a cancellable state." | Cancel |
 | Kill failed | `1` | "Task could not be killed: {reason}" | Kill |
-| Permission denied | `0` | "You don't have any permission for this action." | Detail, Cancel, Kill |
+| Task not completed | `0` | "Task must be completed or cancelled before deleting files" | InputOutputDelete |
+| Permission denied | `0` | "You don't have any permission for this action." | Detail, Cancel |
 
 ## Error Handling Best Practices
 
@@ -155,7 +173,7 @@ if (!data.result) {
 |------|-----------|----------|
 | `0` (validation) | No | Fix the request parameters |
 | `0` (server) | Yes | Retry with exponential backoff |
-| `1` | No | Resource not found — check model slug or task token |
+| `1` | No | Resource not found: check model slug or task token |
 | `96` | Yes | Wait for a running task to complete, then retry |
 | `97` | No | Add funds, then retry |
 | `98` | No | Sign in or use authenticated credentials |

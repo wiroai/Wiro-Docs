@@ -333,7 +333,8 @@ button {
 }
 
 .is-dark .docs-nav-icon-img[src*="twitterx"],
-.is-dark .docs-nav-icon-img[src*="tiktok"] {
+.is-dark .docs-nav-icon-img[src*="tiktok"],
+.is-dark .docs-nav-icon-img[src*="roasit"] {
   filter: invert(1);
 }
 
@@ -1878,6 +1879,13 @@ button {
   transition:
     filter 0.2s,
     opacity 0.2s;
+}
+
+/* The vendor's Hermes artwork is 118 KB, so it stays a file and not part of the inline sprite. */
+.mcp-client-card .mcp-client-logo-hermes {
+  background-color: currentColor;
+  -webkit-mask: url('../assets/mcp-clients/hermes.svg') center / contain no-repeat;
+  mask: url('../assets/mcp-clients/hermes.svg') center / contain no-repeat;
 }
 
 .mcp-client-card:hover .mcp-client-logo,

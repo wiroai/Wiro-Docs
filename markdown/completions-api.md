@@ -88,7 +88,7 @@ The same endpoints also accept `x-api-key` containing either `YOUR_API_KEY` or
 
 If `Authorization` and `x-api-key` are sent together, both must identify the
 same complete project credential. A mismatched key or secret, or a malformed
-Bearer credential returns `401`; Wiro does not silently choose one credential
+credential in either header returns `401`; Wiro does not silently choose one credential
 or fall back to another project.
 
 Never expose a project key or secret in browser or mobile application code.
@@ -102,7 +102,7 @@ Generic `/sync` waits stay on `api.wiro.ai` and use normal Run headers.
 
 `session_id` is the only public session field. It is optional on Chat
 Completions and Anthropic Messages, and must contain
-1–128 letters, digits, `.`, `_`, `:`, or `-`. Reuse the same value for related
+1 to 128 letters, digits, `.`, `_`, `:`, or `-`. Reuse the same value for related
 turns. Wiro maps it to a project-scoped internal session; it does not replace
 the protocol's normal client-history requirements. Responses uses
 `previous_response_id` instead, and `/v1/messages/count_tokens` does not accept
@@ -118,9 +118,9 @@ API Key Only projects send `YOUR_API_KEY`; Signature projects send
 Every client below needs the exact lowercase `owner/model` ID. Two places give
 it to you:
 
-- [The catalog, filtered to gateway models](https://wiro.ai/models?categories=llm-tool-call)
-  — browse them, open one, and copy the ID from its page.
-- `GET /v1/models` — the same set as JSON. `GET /v1/models/{owner}/{model}`
+- [The catalog, filtered to gateway models](https://wiro.ai/models?categories=llm-tool-call):
+  browse them, open one, and copy the ID from its page.
+- `GET /v1/models`: the same set as JSON. `GET /v1/models/{owner}/{model}`
   then reports that model's routes, modalities, tool support and token limits.
 
 ### Cursor
@@ -128,12 +128,12 @@ it to you:
 Cursor reaches the gateway through its OpenAI base URL override, which it
 appends `/chat/completions` to. Point it at the normal `/v1` base.
 
-1. **Open the model settings** — Command Palette (`Cmd+Shift+P`, `Ctrl+Shift+P`
+1. **Open the model settings**: Command Palette (`Cmd+Shift+P`, `Ctrl+Shift+P`
    on Windows) → `Cursor Settings: Models`.
-2. **View All Models** — the settings pane lists only the models Cursor ships
+2. **View All Models**: the settings pane lists only the models Cursor ships
    with. `View All Models`, at the bottom, opens the full list where custom ones
    live.
-3. **+ Add Custom Model** — type the exact lowercase `owner/model` ID — the same
+3. **+ Add Custom Model**: type the exact lowercase `owner/model` ID. These are the same
    IDs VS Code takes, listed below. Repeat for each model you want. Cursor shows
    whatever you type in its picker, so a parenthesised label is read and
    discarded at either end: `(Wiro) claude/sonnet-5` and
@@ -142,21 +142,21 @@ appends `/chat/completions` to. Point it at the normal `/v1` base.
 
    ![Cursor's custom model list showing four Wiro models, each labelled (Wiro
    AI), with the Add Custom Model button below them.](css/cursor-custom-llm.png)
-4. **OpenAI API Key** — put the project credential in the `OpenAI API Key` field;
+4. **OpenAI API Key**: put the project credential in the `OpenAI API Key` field;
    that is the field Cursor uses for the overridden endpoint.
    `YOUR_API_KEY:YOUR_API_SECRET` for a Signature project, `YOUR_API_KEY` alone
    for API Key Only.
-5. **Turn the key on** — flip the switch beside the field. It reads
+5. **Turn the key on**: flip the switch beside the field. It reads
    `Secret saved` once Cursor has stored the credential.
-6. **Override OpenAI Base URL** — turn that switch on too. It sits directly
+6. **Override OpenAI Base URL**: turn that switch on too. It sits directly
    under the key.
-7. **Enter the base URL** — `https://llm.wiro.ai/v1`. Cursor appends
+7. **Enter the base URL**: `https://llm.wiro.ai/v1`. Cursor appends
    `/chat/completions` itself, so do not add it.
-8. **Disable the built-in models** — while the override is on, Cursor sends its
+8. **Disable the built-in models**: while the override is on, Cursor sends its
    own model names to your endpoint too, and those do not exist in the Wiro
    catalog. Leave only the models you added enabled, or every request fails with
    an unknown model.
-9. **Verify** — press `Verify`. A failure here is normally the base URL carrying
+9. **Verify**: press `Verify`. A failure here is normally the base URL carrying
    `/chat/completions`, or a built-in model still switched on.
 
 Every model the gateway serves today, labelled and ready to paste one at a time;
@@ -170,11 +170,16 @@ is in [the catalog](https://wiro.ai/models?categories=llm-tool-call) and behind
 (Wiro) bytedance/seed-v2-mini
 (Wiro) bytedance/seed-v2-pro
 (Wiro) claude/fable-5
+(Wiro) claude/fable-5-1
 (Wiro) claude/opus-5
+(Wiro) claude/opus-5-5
 (Wiro) claude/sonnet-5
+(Wiro) deepseek/v4-1-flash
+(Wiro) deepseek/v4-1-flash-economy
 (Wiro) deepseek/v4-flash
 (Wiro) deepseek/v4-pro
 (Wiro) glm/5-2
+(Wiro) glm/5-3
 (Wiro) google/gemini-2-5-flash
 (Wiro) google/gemini-3-5-flash
 (Wiro) google/gemini-3-5-flash-lite
@@ -183,6 +188,7 @@ is in [the catalog](https://wiro.ai/models?categories=llm-tool-call) and behind
 (Wiro) google/gemini-3-8-flash
 (Wiro) google/gemini-3-flash
 (Wiro) google/gemini-3-pro
+(Wiro) google/gemini-4-argon
 (Wiro) meta-llama/llama-3-2-3b-instruct
 (Wiro) mistralai/mistral-7b-instruct-v0-3
 (Wiro) mistralai/mistral-nemo-instruct-2407
@@ -196,6 +202,10 @@ is in [the catalog](https://wiro.ai/models?categories=llm-tool-call) and behind
 (Wiro) openai/gpt-5-6-terra
 (Wiro) openai/gpt-5-mini
 (Wiro) openai/gpt-5-nano
+(Wiro) openai/gpt-6-1-sol
+(Wiro) openai/gpt-6-astra
+(Wiro) openai/gpt-6-luna
+(Wiro) openai/gpt-6-sol
 (Wiro) qwen/qwen2-5-0-5b-instruct
 (Wiro) qwen/qwen2-5-1-5b-instruct
 (Wiro) qwen/qwen2-5-14b-instruct
@@ -217,6 +227,7 @@ is in [the catalog](https://wiro.ai/models?categories=llm-tool-call) and behind
 (Wiro) qwen/qwen3-8-27b
 (Wiro) qwen/qwen3-8-27b-obliterated
 (Wiro) qwen/qwen3-8-27b-uncensored
+(Wiro) ricursiveai/ripple-65b-preview
 (Wiro) xai/grok-4-1-fast
 (Wiro) xai/grok-4-20
 (Wiro) xai/grok-4-5
@@ -233,16 +244,16 @@ the **terminal** Claude Code: the desktop app manages its own provider and
 cannot be pointed at a gateway, so its model picker keeps listing Anthropic's
 models whatever you configure.
 
-1. **Install the CLI** — in a terminal:
+1. **Install the CLI** in a terminal:
 
    ```bash
    npm i -g @anthropic-ai/claude-code
    ```
 
-2. **Write the settings file** — two places take it, and the file is the same in
+2. **Write the settings file**: two places take it, and the file is the same in
    both. Pick by how widely you want the gateway used.
 
-   **Every folder on this machine** — `~/.claude/settings.json`:
+   **Every folder on this machine** (`~/.claude/settings.json`):
 
    ```json
    {
@@ -256,10 +267,10 @@ models whatever you configure.
    }
    ```
 
-   **One project only** — `<project>/.claude/settings.json`, in the folder you
+   **One project only**: `<project>/.claude/settings.json`, in the folder you
    will open Claude Code in. Your other projects keep whatever they were using.
    If that folder is a git repository, put it in `.claude/settings.local.json`
-   instead, which is not committed — the credential should not reach the shared
+   instead, which is not committed. The credential should not reach the shared
    file:
 
    ```json
@@ -273,7 +284,7 @@ models whatever you configure.
      }
    }
    ```
-   `ANTHROPIC_BASE_URL` carries no `/v1` here — Anthropic clients append the
+   `ANTHROPIC_BASE_URL` carries no `/v1` here: Anthropic clients append the
    path themselves. `ANTHROPIC_API_KEY` takes `YOUR_API_KEY:YOUR_API_SECRET`
    for a Signature project, or `YOUR_API_KEY` alone for API Key Only.
    `ANTHROPIC_MODEL` is the model the session opens with, and is any ID from
@@ -284,7 +295,7 @@ models whatever you configure.
    containing `claude` or `anthropic`, so the picker gains the `claude/` models
    alone; open any other model with `ANTHROPIC_MODEL` or `--model`.
    `CLAUDE_CODE_MAX_CONTEXT_TOKENS` must match the
-   context window of the model you set — Claude Code does not recognise these
+   context window of the model you set. Claude Code does not recognise these
    names, so it otherwise assumes 200k and discards history long before it
    needs to.
 
@@ -294,21 +305,21 @@ models whatever you configure.
    cd /path/to/your/project && claude
    ```
 
-4. **Answer the first-run prompts** — a new install asks three things in a row:
+4. **Answer the first-run prompts**. A new install asks three things in a row:
    a colour theme, its security notes (`Press Enter to continue`), and whether
    to apply `Claude Code's terminal setup`. Answer them once.
-5. **Allow the project's MCP servers, if it has any** — a folder that declares
+5. **Allow the project's MCP servers, if it has any**: a folder that declares
    MCP servers gets `New MCP server found in this project` before the session
    opens. Nothing here concerns the gateway; choose whatever you would normally
    choose.
-6. **Answer the key prompt** — `Do you want to use this API key?` → `No`. It
+6. **Answer the key prompt**: `Do you want to use this API key?` → `No`. It
    asks about a key exported in your shell, not the one you just put in the
    settings file.
-7. **Check the header, then start** — it names the model you configured:
+7. **Check the header, then start**. It names the model you configured:
    `(Wiro) openai/gpt-5-6-sol · API Usage Billing`. Your Claude subscription
    is not used while a gateway credential is set.
 
-8. **Switching models** — open on another model for one session:
+8. **Switching models**. Open on another model for one session:
 
    ```bash
    cd /path/to/your/project && claude --model "(Wiro) xai/grok-4-1-fast"
@@ -317,7 +328,7 @@ models whatever you configure.
    ```
 
    Or change `ANTHROPIC_MODEL` in the settings file, which every session in that
-   scope then opens on. Move `CLAUDE_CODE_MAX_CONTEXT_TOKENS` with it — Grok 4.1
+   scope then opens on. Move `CLAUDE_CODE_MAX_CONTEXT_TOKENS` with it, since Grok 4.1
    Fast holds 2M where GPT 5.6 Sol holds 1.05M:
 
    ```json
@@ -347,11 +358,16 @@ Model ID                                     Context
 (Wiro) bytedance/seed-v2-mini                 256000
 (Wiro) bytedance/seed-v2-pro                  256000
 (Wiro) claude/fable-5                        1000000
+(Wiro) claude/fable-5-1                      1000000
 (Wiro) claude/opus-5                         1000000
+(Wiro) claude/opus-5-5                       1000000
 (Wiro) claude/sonnet-5                       1000000
+(Wiro) deepseek/v4-1-flash                   1000000
+(Wiro) deepseek/v4-1-flash-economy           1000000
 (Wiro) deepseek/v4-flash                     1048576
 (Wiro) deepseek/v4-pro                       1048576
 (Wiro) glm/5-2                               1048576
+(Wiro) glm/5-3                               1000000
 (Wiro) google/gemini-2-5-flash               1048576
 (Wiro) google/gemini-3-5-flash               1048576
 (Wiro) google/gemini-3-5-flash-lite          1048576
@@ -360,6 +376,7 @@ Model ID                                     Context
 (Wiro) google/gemini-3-8-flash               1048576
 (Wiro) google/gemini-3-flash                 1048576
 (Wiro) google/gemini-3-pro                   1048576
+(Wiro) google/gemini-4-argon                 1048576
 (Wiro) meta-llama/llama-3-2-3b-instruct        51200
 (Wiro) mistralai/mistral-7b-instruct-v0-3      17408
 (Wiro) mistralai/mistral-nemo-instruct-2407    35840
@@ -373,6 +390,10 @@ Model ID                                     Context
 (Wiro) openai/gpt-5-6-terra                  1050000
 (Wiro) openai/gpt-5-mini                      400000
 (Wiro) openai/gpt-5-nano                      400000
+(Wiro) openai/gpt-6-1-sol                    1050000
+(Wiro) openai/gpt-6-astra                    1050000
+(Wiro) openai/gpt-6-luna                     1050000
+(Wiro) openai/gpt-6-sol                      1050000
 (Wiro) qwen/qwen2-5-0-5b-instruct              32768
 (Wiro) qwen/qwen2-5-1-5b-instruct              32768
 (Wiro) qwen/qwen2-5-14b-instruct               29696
@@ -393,7 +414,8 @@ Model ID                                     Context
 (Wiro) qwen/qwen3-6-27b                        25600
 (Wiro) qwen/qwen3-8-27b                        25600
 (Wiro) qwen/qwen3-8-27b-obliterated            25600
-(Wiro) qwen/qwen3-8-27b-uncensored             25600
+(Wiro) qwen/qwen3-8-27b-uncensored            126976
+(Wiro) ricursiveai/ripple-65b-preview          15360
 (Wiro) xai/grok-4-1-fast                     2000000
 (Wiro) xai/grok-4-20                         2000000
 (Wiro) xai/grok-4-5                           500000
@@ -407,23 +429,23 @@ before them and applies to every folder.
 
 ### VS Code
 
-VS Code Chat reaches the gateway through its own built-in custom endpoint — no
+VS Code Chat reaches the gateway through its own built-in custom endpoint, no
 extension required.
 
-1. **Open the model manager** — Command Palette (`Cmd+Shift+P`, `Ctrl+Shift+P`
+1. **Open the model manager**: Command Palette (`Cmd+Shift+P`, `Ctrl+Shift+P`
    on Windows) → `Chat: Manage Language Models`.
-2. **Add a provider** — `+ Add Models` opens a provider list (Anthropic,
+2. **Add a provider**: `+ Add Models` opens a provider list (Anthropic,
    Azure, Google, OpenAI, OpenRouter, xAI, Ollama). Pick `Custom Endpoint`,
    last, below the separator.
-3. **Group Name** — arrives pre-filled with "Custom Endpoint"; replace it with
-   `Wiro AI`. It is a label — it titles the next two prompts and groups the
+3. **Group Name**: arrives pre-filled with "Custom Endpoint"; replace it with
+   `Wiro AI`. It is a label: it titles the next two prompts and groups the
    models in the picker.
-4. **API Key** — `YOUR_API_KEY:YOUR_API_SECRET` for a Signature project,
+4. **API Key**: `YOUR_API_KEY:YOUR_API_SECRET` for a Signature project,
    `YOUR_API_KEY` alone for API Key Only. VS Code keeps it in its secret store;
    the file holds only a `${input:…}` reference.
-5. **API Type** — choose `Chat Completions`. Responses and Messages change the
+5. **API Type**: choose `Chat Completions`. Responses and Messages change the
    request shape VS Code sends.
-6. **Describe the models** — VS Code opens `chatLanguageModels.json` with one
+6. **Describe the models**: VS Code opens `chatLanguageModels.json` with one
    empty model. Leave `name`, `vendor`, `apiKey` and `apiType` as generated and
    fill the `models` array. Below is every model the gateway serves today, ready
    to paste; the same set is in
@@ -484,8 +506,26 @@ extension required.
         "maxOutputTokens": 128000
       },
       {
+        "id": "claude/fable-5-1",
+        "name": "(Wiro) Fable 5.1",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1000000,
+        "maxOutputTokens": 128000
+      },
+      {
         "id": "claude/opus-5",
         "name": "(Wiro) Opus 5",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1000000,
+        "maxOutputTokens": 128000
+      },
+      {
+        "id": "claude/opus-5-5",
+        "name": "(Wiro) Opus 5.5",
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
@@ -500,6 +540,24 @@ extension required.
         "vision": true,
         "maxInputTokens": 1000000,
         "maxOutputTokens": 128000
+      },
+      {
+        "id": "deepseek/v4-1-flash",
+        "name": "(Wiro) DeepSeek V4.1 Flash",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1000000,
+        "maxOutputTokens": 384000
+      },
+      {
+        "id": "deepseek/v4-1-flash-economy",
+        "name": "(Wiro) DeepSeek V4.1 Flash Economy",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1000000,
+        "maxOutputTokens": 384000
       },
       {
         "id": "deepseek/v4-flash",
@@ -526,6 +584,15 @@ extension required.
         "toolCalling": true,
         "vision": false,
         "maxInputTokens": 1048576,
+        "maxOutputTokens": 128000
+      },
+      {
+        "id": "glm/5-3",
+        "name": "(Wiro) GLM 5.3",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1000000,
         "maxOutputTokens": 128000
       },
       {
@@ -594,6 +661,15 @@ extension required.
       {
         "id": "google/gemini-3-pro",
         "name": "(Wiro) Gemini 3 Pro",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1048576,
+        "maxOutputTokens": 65536
+      },
+      {
+        "id": "google/gemini-4-argon",
+        "name": "(Wiro) Gemini 4 Argon",
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
@@ -716,6 +792,42 @@ extension required.
         "vision": true,
         "maxInputTokens": 400000,
         "maxOutputTokens": 65536
+      },
+      {
+        "id": "openai/gpt-6-1-sol",
+        "name": "(Wiro) GPT-6.1 Sol",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1050000,
+        "maxOutputTokens": 128000
+      },
+      {
+        "id": "openai/gpt-6-astra",
+        "name": "(Wiro) GPT-6 Astra",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1050000,
+        "maxOutputTokens": 128000
+      },
+      {
+        "id": "openai/gpt-6-luna",
+        "name": "(Wiro) GPT-6 Luna",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1050000,
+        "maxOutputTokens": 128000
+      },
+      {
+        "id": "openai/gpt-6-sol",
+        "name": "(Wiro) GPT-6 Sol",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1050000,
+        "maxOutputTokens": 128000
       },
       {
         "id": "qwen/qwen2-5-0-5b-instruct",
@@ -903,8 +1015,17 @@ extension required.
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": false,
-        "maxInputTokens": 25600,
+        "maxInputTokens": 126976,
         "maxOutputTokens": 16384
+      },
+      {
+        "id": "ricursiveai/ripple-65b-preview",
+        "name": "(Wiro) Ripple-65B Preview",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": false,
+        "maxInputTokens": 15360,
+        "maxOutputTokens": 8192
       },
       {
         "id": "xai/grok-4-1-fast",
@@ -938,69 +1059,82 @@ extension required.
 ]
 ```
 
-- `id` — the lowercase `owner/model` from `GET /v1/models`.
-- `name` — a free label, shown in the picker.
-- `url` — the **full endpoint**, not the base URL. Every model repeats it.
-- `toolCalling`, `vision`, `maxInputTokens`, `maxOutputTokens` — read them from
+- `id`: the lowercase `owner/model` from `GET /v1/models`.
+- `name`: a free label, shown in the picker.
+- `url`: the **full endpoint**, not the base URL. Every model repeats it.
+- `toolCalling`, `vision`, `maxInputTokens`, `maxOutputTokens` come from
   `GET /v1/models/{owner}/{model}`: `capabilities.function_tools`,
   `capabilities.input_modalities`, `max_input_tokens`, `max_tokens`. Do not
   guess.
 - **`maxInputTokens` is not optional.** VS Code sizes every conversation
   against it and answers *"Could not compact conversation"* on each turn when a
   model omits it, before any request reaches the gateway. Take the number from
-  `max_input_tokens`; every catalog model reports one. For a Wiro-hosted model it
-  is the input that deployment actually admits, measured on the running fleet --
-  not the model family's advertised maximum, and not the window of the checkpoint
-  either. Qwen2.5 7B reports 32,768, which is what its shipped configuration sets
+  `max_input_tokens`; every catalog model reports one. For a Wiro-hosted model
+  the number is the input that deployment actually admits, measured on the
+  running fleet -- not the model family's advertised maximum, and not the window
+  of the checkpoint either.
+  Qwen2.5 7B reports 32,768, which is what its shipped configuration sets
   although its card says 131,072; Qwen3.8 27B reports 25,600 even though the
-  checkpoint it runs was built for 262,144, because the GPU it is resident on has
-  room for that much prompt and no more. Send more than the number says and the
-  extra is trimmed off the oldest end of the conversation before the model sees
-  it.
+  checkpoint it runs was built for 262,144, because that is roughly how much
+  prompt fits beside the model on the GPUs that serve it. It is the lowest
+  limit measured across them: most requests get somewhat more in and an
+  occasional one slightly less, so leave some headroom. Send a Wiro-hosted
+  model more than fits and the input is trimmed before the model sees it: the
+  oldest history messages are dropped first, and if it still does not fit, the
+  end of the latest user message is cut off. On a turn that returns tool
+  results, nothing from the latest user message onward is cut; if dropping
+  older history is not enough, the request is rejected with
+  `context_length_exceeded`. Tool definitions are never trimmed, and neither is
+  the system message, except on the two Mistral models: their chat format has
+  no system role, so the system text travels with the oldest message and is
+  dropped with it. Both count toward the limit. If even the question would be
+  cut away entirely, the request is rejected with `context_length_exceeded` and
+  nothing is charged. In a long prompt, put the question at the start, so a cut
+  takes the material after it rather than the question itself.
 
 Save the file and reopen the model picker; the models appear under **Wiro AI**.
-Any other VS Code extension that takes a custom OpenAI base URL — Cline, Roo
-Code, Continue — works the same way: point it at `https://llm.wiro.ai/v1` with
+Any other VS Code extension that takes a custom OpenAI base URL (Cline, Roo
+Code, Continue) works the same way: point it at `https://llm.wiro.ai/v1` with
 the same credential and a model ID from the catalog.
 
 ### Windsurf
 
 Windsurf now ships as **Devin Desktop**; the application is `Devin.app` and its
 docs redirect to `docs.devin.ai`. Cascade, its own agent, has no setting for an
-external provider — there is no base URL to override and no custom model to
+external provider: there is no base URL to override and no custom model to
 register, so it cannot be pointed at this gateway. What does work is running a
 different agent inside the same editor. The steps below use
 [Cline](https://open-vsx.org/extension/saoudrizwan/claude-dev), which is free
 and Apache-2.0; Roo Code and Continue configure the same way.
 
-1. **Open the extension marketplace** — Command Palette (`Cmd+Shift+P`,
+1. **Open the extension marketplace**: Command Palette (`Cmd+Shift+P`,
    `Ctrl+Shift+P` on Windows) → `Extensions: Install Extensions`. The menu bar
    gets you to the same place: `Devin → Preferences → Extensions`.
-2. **Install Cline** — search `cline` and install the one published by
+2. **Install Cline**: search `cline` and install the one published by
    `saoudrizwan`. Devin resolves extensions through the Open VSX mirror, so
    this is the same build VS Code carries.
-3. **Open the panel** — Command Palette (`Cmd+Shift+P`, `Ctrl+Shift+P` on
+3. **Open the panel**: Command Palette (`Cmd+Shift+P`, `Ctrl+Shift+P` on
    Windows) → `Cline: Focus on View`.
-4. **Bring my own API key** — Cline asks how you will use it. Pick the fourth
+4. **Bring my own API key**: Cline asks how you will use it. Pick the fourth
    option, `Bring my own API key`, then `Continue`. The other three are Cline's
    own billing; `Login to Cline` is not needed.
-5. **API Provider** — choose `OpenAI Compatible`, not `OpenAI`; that one goes to
+5. **API Provider**: choose `OpenAI Compatible`, not `OpenAI`; that one goes to
    the official OpenAI API.
-6. **Base URL** — `https://llm.wiro.ai/v1`. Cline appends the route itself.
-7. **OpenAI Compatible API Key** — `YOUR_API_KEY:YOUR_API_SECRET` for a
+6. **Base URL**: `https://llm.wiro.ai/v1`. Cline appends the route itself.
+7. **OpenAI Compatible API Key**: `YOUR_API_KEY:YOUR_API_SECRET` for a
    Signature project, `YOUR_API_KEY` alone for API Key Only. Cline keeps it
    locally.
-8. **Model ID** — one ID from the list below; Cline holds a single model per
+8. **Model ID**: one ID from the list below; Cline holds a single model per
    configuration rather than a list. The `(Wiro)` prefix is optional and the
    gateway strips it; it earns its place here by showing up in the status bar,
    as `openai-compat: (Wiro) openai/gpt-5-6-sol`.
-9. **Open `MODEL CONFIGURATION` and set the context window** — this one matters.
+9. **Open `MODEL CONFIGURATION` and set the context window**: this one matters.
    Cline does not know a custom model, so it assumes `128K` and starts dropping
    history long before it needs to. Put the real number from the list below into
-   `Context Window size`, and tick `Computer Use` so tool calling is enabled —
-   without it the agent cannot run tools. `Max Output Tokens` and the price
+   `Context Window size`, and tick `Computer Use` so tool calling is enabled.
+   Without it the agent cannot run tools. `Max Output Tokens` and the price
    fields are in the same section.
-10. **Continue, and send a message** — the status bar names the model you
+10. **Continue, and send a message**: the status bar names the model you
     configured. `Plan` and `Act` can each hold a different model, and saved API
     configuration profiles let you keep one per model and switch between them.
 
@@ -1015,11 +1149,16 @@ Model ID                                     Context  Max Output
 (Wiro) bytedance/seed-v2-mini                 256000       65536
 (Wiro) bytedance/seed-v2-pro                  256000       65536
 (Wiro) claude/fable-5                        1000000      128000
+(Wiro) claude/fable-5-1                      1000000      128000
 (Wiro) claude/opus-5                         1000000      128000
+(Wiro) claude/opus-5-5                       1000000      128000
 (Wiro) claude/sonnet-5                       1000000      128000
+(Wiro) deepseek/v4-1-flash                   1000000      384000
+(Wiro) deepseek/v4-1-flash-economy           1000000      384000
 (Wiro) deepseek/v4-flash                     1048576      384000
 (Wiro) deepseek/v4-pro                       1048576      384000
 (Wiro) glm/5-2                               1048576      128000
+(Wiro) glm/5-3                               1000000      128000
 (Wiro) google/gemini-2-5-flash               1048576       65536
 (Wiro) google/gemini-3-5-flash               1048576       65536
 (Wiro) google/gemini-3-5-flash-lite          1048576       65536
@@ -1028,6 +1167,7 @@ Model ID                                     Context  Max Output
 (Wiro) google/gemini-3-8-flash               1048576       65536
 (Wiro) google/gemini-3-flash                 1048576       65536
 (Wiro) google/gemini-3-pro                   1048576       65536
+(Wiro) google/gemini-4-argon                 1048576       65536
 (Wiro) meta-llama/llama-3-2-3b-instruct        51200        2048
 (Wiro) mistralai/mistral-7b-instruct-v0-3      17408        2048
 (Wiro) mistralai/mistral-nemo-instruct-2407    35840        2048
@@ -1041,6 +1181,10 @@ Model ID                                     Context  Max Output
 (Wiro) openai/gpt-5-6-terra                  1050000       65536
 (Wiro) openai/gpt-5-mini                      400000       65536
 (Wiro) openai/gpt-5-nano                      400000       65536
+(Wiro) openai/gpt-6-1-sol                    1050000      128000
+(Wiro) openai/gpt-6-astra                    1050000      128000
+(Wiro) openai/gpt-6-luna                     1050000      128000
+(Wiro) openai/gpt-6-sol                      1050000      128000
 (Wiro) qwen/qwen2-5-0-5b-instruct              32768        2048
 (Wiro) qwen/qwen2-5-1-5b-instruct              32768        2048
 (Wiro) qwen/qwen2-5-14b-instruct               29696        2048
@@ -1061,7 +1205,8 @@ Model ID                                     Context  Max Output
 (Wiro) qwen/qwen3-6-27b                        25600       16384
 (Wiro) qwen/qwen3-8-27b                        25600       16384
 (Wiro) qwen/qwen3-8-27b-obliterated            25600       16384
-(Wiro) qwen/qwen3-8-27b-uncensored             25600       16384
+(Wiro) qwen/qwen3-8-27b-uncensored            126976       16384
+(Wiro) ricursiveai/ripple-65b-preview          15360        8192
 (Wiro) xai/grok-4-1-fast                     2000000       65536
 (Wiro) xai/grok-4-20                         2000000       65536
 (Wiro) xai/grok-4-5                           500000       65536
@@ -1083,22 +1228,22 @@ Everything below lives in one file:
 Set `OPENCLAW_CONFIG_PATH` to put it elsewhere, or run
 `openclaw --profile <name>` to keep a separate one under `~/.openclaw-<name>`.
 
-1. **Install** — `npm i -g openclaw`.
-2. **Name the provider** — the key under `providers`, `wiro` below, becomes the
+1. **Install**: `npm i -g openclaw`.
+2. **Name the provider**: the key under `providers`, `wiro` below, becomes the
    prefix you select a model with, as `wiro/<id>`. Pick any name; the rest of
    this page assumes `wiro`.
-3. **Match `api` to the model transport** — read it from
+3. **Match `api` to the model transport**: read it from
    `GET /v1/models/{owner}/{model}`. `openai-completions` and
    `openai-responses` take the `/v1` base; `anthropic-messages` takes the
    origin, `https://llm.wiro.ai`, with no `/v1`. One provider block per
    transport if you mix them.
-4. **Fill `apiKey`** — `YOUR_API_KEY:YOUR_API_SECRET` for a Signature project,
+4. **Fill `apiKey`**: `YOUR_API_KEY:YOUR_API_SECRET` for a Signature project,
    `YOUR_API_KEY` alone for API Key Only.
-5. **List the models** — each entry takes an `id` and a display `name`. The
+5. **List the models**: each entry takes an `id` and a display `name`. The
    `id` is what reaches the gateway, so the `(Wiro)` label is optional there
    and stripped on arrival; the `name` is only ever shown to you. Both carry it
    below so the CLI and the picker read the same.
-6. **Run a turn** —
+6. **Run a turn**:
    `openclaw agent --local --model "wiro/(Wiro) xai/grok-4-1-fast" -m "your prompt"`.
    `--local` runs the embedded agent against these credentials; without it the
    turn goes through an OpenClaw gateway instead.
@@ -1120,11 +1265,16 @@ array. The same set is in the catalog and behind `GET /v1/models`.
           { "id": "(Wiro) bytedance/seed-v2-mini", "name": "(Wiro) Seed V2 Mini" },
           { "id": "(Wiro) bytedance/seed-v2-pro", "name": "(Wiro) Seed V2 Pro" },
           { "id": "(Wiro) claude/fable-5", "name": "(Wiro) Fable 5" },
+          { "id": "(Wiro) claude/fable-5-1", "name": "(Wiro) Fable 5.1" },
           { "id": "(Wiro) claude/opus-5", "name": "(Wiro) Opus 5" },
+          { "id": "(Wiro) claude/opus-5-5", "name": "(Wiro) Opus 5.5" },
           { "id": "(Wiro) claude/sonnet-5", "name": "(Wiro) Sonnet 5" },
+          { "id": "(Wiro) deepseek/v4-1-flash", "name": "(Wiro) DeepSeek V4.1 Flash" },
+          { "id": "(Wiro) deepseek/v4-1-flash-economy", "name": "(Wiro) DeepSeek V4.1 Flash Economy" },
           { "id": "(Wiro) deepseek/v4-flash", "name": "(Wiro) DeepSeek V4 Flash" },
           { "id": "(Wiro) deepseek/v4-pro", "name": "(Wiro) DeepSeek V4 Pro" },
           { "id": "(Wiro) glm/5-2", "name": "(Wiro) GLM 5.2" },
+          { "id": "(Wiro) glm/5-3", "name": "(Wiro) GLM 5.3" },
           { "id": "(Wiro) google/gemini-2-5-flash", "name": "(Wiro) Gemini 2.5 Flash" },
           { "id": "(Wiro) google/gemini-3-5-flash", "name": "(Wiro) Gemini 3.5 Flash" },
           { "id": "(Wiro) google/gemini-3-5-flash-lite", "name": "(Wiro) Gemini 3.5 Flash-Lite" },
@@ -1133,6 +1283,7 @@ array. The same set is in the catalog and behind `GET /v1/models`.
           { "id": "(Wiro) google/gemini-3-8-flash", "name": "(Wiro) Gemini 3.8 Flash" },
           { "id": "(Wiro) google/gemini-3-flash", "name": "(Wiro) Gemini 3 Flash" },
           { "id": "(Wiro) google/gemini-3-pro", "name": "(Wiro) Gemini 3 Pro" },
+          { "id": "(Wiro) google/gemini-4-argon", "name": "(Wiro) Gemini 4 Argon" },
           { "id": "(Wiro) meta-llama/llama-3-2-3b-instruct", "name": "(Wiro) Llama 3.2 3B Instruct" },
           { "id": "(Wiro) mistralai/mistral-7b-instruct-v0-3", "name": "(Wiro) Mistral 7B Instruct v0.3" },
           { "id": "(Wiro) mistralai/mistral-nemo-instruct-2407", "name": "(Wiro) Mistral Nemo Instruct" },
@@ -1146,6 +1297,10 @@ array. The same set is in the catalog and behind `GET /v1/models`.
           { "id": "(Wiro) openai/gpt-5-6-terra", "name": "(Wiro) GPT-5.6 Terra" },
           { "id": "(Wiro) openai/gpt-5-mini", "name": "(Wiro) GPT-5 Mini" },
           { "id": "(Wiro) openai/gpt-5-nano", "name": "(Wiro) GPT-5 Nano" },
+          { "id": "(Wiro) openai/gpt-6-1-sol", "name": "(Wiro) GPT-6.1 Sol" },
+          { "id": "(Wiro) openai/gpt-6-astra", "name": "(Wiro) GPT-6 Astra" },
+          { "id": "(Wiro) openai/gpt-6-luna", "name": "(Wiro) GPT-6 Luna" },
+          { "id": "(Wiro) openai/gpt-6-sol", "name": "(Wiro) GPT-6 Sol" },
           { "id": "(Wiro) qwen/qwen2-5-0-5b-instruct", "name": "(Wiro) Qwen2.5 0.5B Instruct" },
           { "id": "(Wiro) qwen/qwen2-5-1-5b-instruct", "name": "(Wiro) Qwen2.5 1.5B Instruct" },
           { "id": "(Wiro) qwen/qwen2-5-14b-instruct", "name": "(Wiro) Qwen2.5 14B Instruct" },
@@ -1167,6 +1322,7 @@ array. The same set is in the catalog and behind `GET /v1/models`.
           { "id": "(Wiro) qwen/qwen3-8-27b", "name": "(Wiro) Qwen3.8 27B" },
           { "id": "(Wiro) qwen/qwen3-8-27b-obliterated", "name": "(Wiro) Qwen3.8 27B Obliterated" },
           { "id": "(Wiro) qwen/qwen3-8-27b-uncensored", "name": "(Wiro) Qwen3.8 27B Uncensored" },
+          { "id": "(Wiro) ricursiveai/ripple-65b-preview", "name": "(Wiro) Ripple-65B Preview" },
           { "id": "(Wiro) xai/grok-4-1-fast", "name": "(Wiro) Grok 4.1 Fast" },
           { "id": "(Wiro) xai/grok-4-20", "name": "(Wiro) Grok 4.20" },
           { "id": "(Wiro) xai/grok-4-5", "name": "(Wiro) Grok 4.5" }
@@ -1193,22 +1349,22 @@ Set `HERMES_HOME` to put it elsewhere; the project's own Docker image already
 points it at `/opt/data`. The file the repository ships as
 `cli-config.yaml.example` is read under the name `config.yaml`.
 
-1. **Install** — `curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash`
+1. **Install**: `curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash`
    on macOS, Linux and WSL2; `iex (irm https://hermes-agent.nousresearch.com/install.ps1)`
    in PowerShell. The repository also carries a `Dockerfile` and a
    `docker-compose.yml`.
-2. **Choose the custom provider** — `provider: "custom"` is Hermes' name for any
+2. **Choose the custom provider**: `provider: "custom"` is Hermes' name for any
    OpenAI-compatible endpoint; `ollama`, `vllm` and `llamacpp` are aliases of
    it. With it, `base_url` is what decides where the request goes.
-3. **Fill `api_key`** — `YOUR_API_KEY:YOUR_API_SECRET` for a Signature project,
+3. **Fill `api_key`**: `YOUR_API_KEY:YOUR_API_SECRET` for a Signature project,
    `YOUR_API_KEY` alone for API Key Only.
-4. **Name the model** — `model.default` takes one ID from the list below.
+4. **Name the model**: `model.default` takes one ID from the list below.
    Hermes holds a single default rather than a list, so the `(Wiro)` label is
    there for your own benefit; the gateway strips it either way.
-5. **Run a turn** — `hermes -z "your prompt"` for one shot, `hermes chat` for a
+5. **Run a turn**: `hermes -z "your prompt"` for one shot, `hermes chat` for a
    session. Add `--yolo` when you want the agent to use its tools without
    stopping for approval.
-6. **Switch models** — `hermes -m "(Wiro) xai/grok-4-1-fast" -z "your prompt"`
+6. **Switch models**: `hermes -m "(Wiro) xai/grok-4-1-fast" -z "your prompt"`
    overrides the default for one run; `hermes model` changes it for good.
 
 ```yaml
@@ -1228,11 +1384,16 @@ Every model the gateway serves today. The same set is in the catalog and behind
 (Wiro) bytedance/seed-v2-mini
 (Wiro) bytedance/seed-v2-pro
 (Wiro) claude/fable-5
+(Wiro) claude/fable-5-1
 (Wiro) claude/opus-5
+(Wiro) claude/opus-5-5
 (Wiro) claude/sonnet-5
+(Wiro) deepseek/v4-1-flash
+(Wiro) deepseek/v4-1-flash-economy
 (Wiro) deepseek/v4-flash
 (Wiro) deepseek/v4-pro
 (Wiro) glm/5-2
+(Wiro) glm/5-3
 (Wiro) google/gemini-2-5-flash
 (Wiro) google/gemini-3-5-flash
 (Wiro) google/gemini-3-5-flash-lite
@@ -1241,6 +1402,7 @@ Every model the gateway serves today. The same set is in the catalog and behind
 (Wiro) google/gemini-3-8-flash
 (Wiro) google/gemini-3-flash
 (Wiro) google/gemini-3-pro
+(Wiro) google/gemini-4-argon
 (Wiro) meta-llama/llama-3-2-3b-instruct
 (Wiro) mistralai/mistral-7b-instruct-v0-3
 (Wiro) mistralai/mistral-nemo-instruct-2407
@@ -1254,6 +1416,10 @@ Every model the gateway serves today. The same set is in the catalog and behind
 (Wiro) openai/gpt-5-6-terra
 (Wiro) openai/gpt-5-mini
 (Wiro) openai/gpt-5-nano
+(Wiro) openai/gpt-6-1-sol
+(Wiro) openai/gpt-6-astra
+(Wiro) openai/gpt-6-luna
+(Wiro) openai/gpt-6-sol
 (Wiro) qwen/qwen2-5-0-5b-instruct
 (Wiro) qwen/qwen2-5-1-5b-instruct
 (Wiro) qwen/qwen2-5-14b-instruct
@@ -1275,6 +1441,7 @@ Every model the gateway serves today. The same set is in the catalog and behind
 (Wiro) qwen/qwen3-8-27b
 (Wiro) qwen/qwen3-8-27b-obliterated
 (Wiro) qwen/qwen3-8-27b-uncensored
+(Wiro) ricursiveai/ripple-65b-preview
 (Wiro) xai/grok-4-1-fast
 (Wiro) xai/grok-4-20
 (Wiro) xai/grok-4-5
@@ -1285,21 +1452,21 @@ across as many turns as the task needs.
 
 ### OpenAI SDK
 
-The official `openai` package talks to the gateway unchanged — only
+The official `openai` package talks to the gateway unchanged. Only
 `baseURL` moves. Everything below was run against every model the gateway
 serves.
 
-1. **Install** — `npm i openai`. The Python package works the same way with
+1. **Install**: `npm i openai`. The Python package works the same way with
    `base_url`.
-2. **Point the client at the gateway** — `baseURL` is
+2. **Point the client at the gateway**: `baseURL` is
    `https://llm.wiro.ai/v1`. `apiKey` takes `YOUR_API_KEY:YOUR_API_SECRET`
    for a Signature project, `YOUR_API_KEY` alone for API Key Only.
-3. **Name a model** — any ID from the list below. The `(Wiro)` label is
+3. **Name a model**: any ID from the list below. The `(Wiro)` label is
    optional and stripped on arrival, so `openai/gpt-5-6-sol` works just as
    well.
-4. **Give reasoning models room** — `max_completion_tokens` covers reasoning as
+4. **Give reasoning models room**: `max_completion_tokens` covers reasoning as
    well as the answer. Too small a budget returns `finish_reason: "length"`
-   with empty content — not an error, just a spent budget. 512 is a safe floor,
+   with empty content. That is not an error, just a spent budget. 512 is a safe floor,
    more for long answers.
 
 ```javascript
@@ -1323,8 +1490,8 @@ console.log(completion.choices[0].message.content);
 `client.responses.create()` reaches the Responses route. Streaming works on
 both.
 
-Tool calling runs the whole loop — the call, the result, and further turns
-after it:
+Tool calling runs the whole loop (the call, the result, and further turns
+after it):
 
 ```javascript
 const tools = [{
@@ -1366,11 +1533,16 @@ Every model the gateway serves today. The same set is in the catalog and behind
 (Wiro) bytedance/seed-v2-mini
 (Wiro) bytedance/seed-v2-pro
 (Wiro) claude/fable-5
+(Wiro) claude/fable-5-1
 (Wiro) claude/opus-5
+(Wiro) claude/opus-5-5
 (Wiro) claude/sonnet-5
+(Wiro) deepseek/v4-1-flash
+(Wiro) deepseek/v4-1-flash-economy
 (Wiro) deepseek/v4-flash
 (Wiro) deepseek/v4-pro
 (Wiro) glm/5-2
+(Wiro) glm/5-3
 (Wiro) google/gemini-2-5-flash
 (Wiro) google/gemini-3-5-flash
 (Wiro) google/gemini-3-5-flash-lite
@@ -1379,6 +1551,7 @@ Every model the gateway serves today. The same set is in the catalog and behind
 (Wiro) google/gemini-3-8-flash
 (Wiro) google/gemini-3-flash
 (Wiro) google/gemini-3-pro
+(Wiro) google/gemini-4-argon
 (Wiro) meta-llama/llama-3-2-3b-instruct
 (Wiro) mistralai/mistral-7b-instruct-v0-3
 (Wiro) mistralai/mistral-nemo-instruct-2407
@@ -1392,6 +1565,10 @@ Every model the gateway serves today. The same set is in the catalog and behind
 (Wiro) openai/gpt-5-6-terra
 (Wiro) openai/gpt-5-mini
 (Wiro) openai/gpt-5-nano
+(Wiro) openai/gpt-6-1-sol
+(Wiro) openai/gpt-6-astra
+(Wiro) openai/gpt-6-luna
+(Wiro) openai/gpt-6-sol
 (Wiro) qwen/qwen2-5-0-5b-instruct
 (Wiro) qwen/qwen2-5-1-5b-instruct
 (Wiro) qwen/qwen2-5-14b-instruct
@@ -1413,6 +1590,7 @@ Every model the gateway serves today. The same set is in the catalog and behind
 (Wiro) qwen/qwen3-8-27b
 (Wiro) qwen/qwen3-8-27b-obliterated
 (Wiro) qwen/qwen3-8-27b-uncensored
+(Wiro) ricursiveai/ripple-65b-preview
 (Wiro) xai/grok-4-1-fast
 (Wiro) xai/grok-4-20
 (Wiro) xai/grok-4-5
@@ -1487,8 +1665,8 @@ is separate from the full website/model catalog at `POST /v1/Tool/List`.
         "pricing_source": {
           "name": "wiro-pricing-catalog",
           "schema_version": 1,
-          "revision": "3a2430b5188fcaf69b5d7af1cb40d0a59062cc37",
-          "sha256": "f74c5d378dfd8b28360b2464dc2590711550df501a7c6c7f9b673db105f7798f",
+          "revision": "0123456789abcdef0123456789abcdef01234567",
+          "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
           "source_model": "openai/gpt-5.6-sol",
           "basis": "local-rate"
         },
@@ -1507,14 +1685,13 @@ is separate from the full website/model catalog at `POST /v1/Tool/List`.
 ```
 
 The example is intentionally explicit about nullable values that have a Wiro
-source. Context, modalities, and pricing come from the audited local gateway
-catalog; live Run parameters and capability flags come from the selected
-model's current `Tool/Detail` contract. Fields without a Wiro source are
-omitted instead of being copied from OpenRouter with `null` placeholders.
+source. Context, modalities, and pricing come from Wiro's model catalog; live
+Run parameters and capability flags come from the selected model's current
+`Tool/Detail` contract. Fields Wiro does not publish are omitted.
 `pricing.prompt` and `pricing.completion` are USD-per-token strings.
 Models with tiered rates expose those exact bands in `x_wiro.pricing_tiers`.
-Pricing and context fields can be `null` for catalog entries without audited
-local metadata.
+Pricing and context fields can be `null` when the catalog has no value for
+them.
 
 The list accepts:
 
@@ -1569,8 +1746,8 @@ curl "https://llm.wiro.ai/v1/models/openai/gpt-5-6-sol" \
 
 The detail route returns the same complete model object as the matching list
 entry. Query parameters are rejected on detail routes. An unavailable or
-non-gateway model returns `model_not_found` without exposing private catalog
-state. Team Model Access is checked when the model runs, not on this route.
+non-gateway model returns `model_not_found`. Team Model Access is checked when
+the model runs, not on this route.
 
 ## Generic finite task completion
 
@@ -1620,7 +1797,7 @@ billed amount at task-level `totalcost`.
 The gateway's Files routes are a compatibility view over the authenticated
 Wiro project's existing upload folder. Uploads, lists, retrieval, and deletion
 use the same storage as `File/Upload`, `File/List`, and `File/Delete` on
-`api.wiro.ai`; the gateway does not create a second file database.
+`api.wiro.ai`.
 
 The supported routes are:
 
@@ -2322,6 +2499,32 @@ Common codes include `invalid_model`, `model_not_found`,
 `file_catalog_too_large`, `file_content_unavailable`, `file_api_unavailable`,
 and `invalid_file_response`.
 
+`completion_timeout` means the model was still running when the gateway's
+40-minute limit ran out; the limit applies to streamed requests too. The run is
+stopped and is not billed. A streamed request ends with the error event above,
+and Anthropic routes report type `timeout_error`. When an answer can take
+longer, ask for a shorter one with a lower `max_tokens`, `max_completion_tokens`
+or `max_output_tokens`, or split the work across requests.
+
+A non-streamed request that is still running after 60 seconds gets its HTTP
+`200` headers early, then a newline every 15 seconds, so proxies do not close
+the quiet connection. The JSON body follows the newlines and parses as usual. A
+failure after that point, `completion_timeout` included, arrives as the error
+object in that `200` body, whatever status it would otherwise have had, and SDKs
+neither raise nor retry it. Check the body for `error` before reading the
+result, and decide retries from `error.code`. Streaming reports failures as
+events instead.
+
+Anthropic-route error bodies, streamed or not, carry no code; key on
+`error.type` there. `overloaded_error` is `provider_overloaded` and
+`timeout_error` is `completion_timeout`, while `gateway_shutting_down`,
+`provider_unavailable` and `authentication_service_unavailable` read
+`api_error`, like other server failures.
+
+`gateway_shutting_down` (HTTP `503`, or in the `200` body of a non-streamed
+response that has started) means the gateway restarted while the model was
+running. The run is stopped and is not billed; send the same request again.
+
 `unsupported_capability` means the model does not declare something the request
 asked for. A structured-output mode missing from
 `capabilities.structured_output_modes` carries `param: "response_format"` and
@@ -2334,10 +2537,21 @@ created and nothing is billed. Anthropic routes report the same refusal in the
 Anthropic error shape, which carries only `type` and `message`.
 
 Gateway-origin and upstream execution failures use HTTP `500` with their
-specific error code; the public protocol does not return HTTP `502`.
+specific error code; the public protocol does not return HTTP `502`. Other
+statuses carry their code the same way: `completion_timeout` is `504`;
+`provider_overloaded` is `503` (`529` on Anthropic routes); and
+`provider_unavailable`, `authentication_service_unavailable` and
+`gateway_shutting_down` are `503`. The `503` and `529` errors can be retried.
+Once a non-streamed response has started, every failure arrives in its `200`
+body instead.
 Responses under `/v1` include `ratelimit-limit`, `ratelimit-remaining`,
 `ratelimit-reset`, `request-id`, and `x-request-id`. A rate-limit response also
-includes `retry-after`.
+includes `retry-after`. A run refused at your Wiro concurrency limit (error code
+`96`) also arrives as HTTP `429`, with error type `rate_limit_error`, Wiro's
+message and `retry-after`; a streamed Responses request ends with
+`response.failed` carrying code `rate_limit_exceeded` instead, like other errors
+that happen when the run is submitted. See
+[Concurrency Limits](/docs/concurrency-limits#concurrency-handling-code-96).
 
 Protocol execution POST bodies must be JSON and are limited to 16 MiB. Files
 uploads are multipart and use the separate 50 MiB file limit. Unsupported

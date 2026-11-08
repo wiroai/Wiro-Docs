@@ -4,7 +4,7 @@ How workspace context is resolved in API requests, and how access controls prote
 
 ## Context Resolution
 
-Every authenticated API request resolves to a workspace context — either **personal** or a specific **team**. When you authenticate with a project API key (`x-api-key`), the context is determined **automatically** by the project's assignment:
+Every authenticated API request resolves to a workspace context: either **personal** or a specific **team**. When you authenticate with a project API key (`x-api-key`), the context is determined **automatically** by the project's assignment:
 
 - If the project belongs to a team → team context is activated
 - If the project is personal → personal context is activated
@@ -29,9 +29,11 @@ curl -X POST "https://api.wiro.ai/v1/Run/google/nano-banana" \
 
 These examples use API-key-only authentication. For projects that use signature authentication, also send `x-nonce` and `x-signature` (see [Authentication](/docs/authentication)).
 
-Create a project inside a team to get a team API key, or use a personal project for personal context. The same `x-api-key` header works for both — no extra configuration needed.
+Create a project inside a team to get a team API key, or use a personal project for personal context. The same `x-api-key` header works for both, with no extra configuration needed.
 
-A team project's API key does not depend on its creator's team membership. If the member who created the project is removed from the team, the project stays in the team and its key keeps working and charging the team wallet. Delete the project to revoke the key. While the project's creator is a team member, runs made with the key count toward that user's member spend limit; after they are removed, only the team spend limit applies.
+A team project's API key works only while the user who created the project is an active member of the team or the owner of its organization. Once the creator is removed from the team, the key stops working right away, in your apps and in any agent that uses it. The project stays in the team. Requests with the key then fail with HTTP `401` and `The person who created this API key is no longer in its team. Ask a team admin for a new key.` Public endpoints such as `Agent/List` still answer, as if the request had no key. While the key works, runs made with it count toward the creator's member spend limit.
+
+API keys can't change teams or organizations. `Organization/Create`, `Organization/Remove`, `Organization/Restore`, `Team/Create`, `Team/Update`, `Team/Remove`, `Team/Member/Invite`, `Team/Member/CancelInvite`, `Team/Member/UpdateRole`, `Team/Member/Remove`, `Team/TransferAgent`, `Team/TransferProject` and `Team/TransferCredit` need a signed-in user: use the dashboard, or send that user's Bearer token. With any API key, personal or team, they fail with HTTP `401` and `API keys can't manage teams or organizations. Sign in and try again.` Endpoints that only read, such as `Organization/List`, `Team/Member/List` and `Team/Spending/Summary`, work with an API key.
 
 ## What Gets Filtered by Context
 
@@ -48,6 +50,8 @@ When a workspace context is active, these list endpoints return only resources b
 | `Wallet/TransactionList` | Personal transactions | Team transactions |
 | `Coupon/UserList` | Personal coupons | Team coupons |
 
+In team context, `Project/List` returns a project's `apikey` only to the user who created the project, team admins and the organization owner. Other members get `apikeymasked` instead, which shows only the first and last four characters of the key. With an API key, this follows the user who created the key's project.
+
 Model listings show the same models in every workspace (only favorites are kept per workspace). Team model access rules apply when a model runs, not when models are listed.
 
 ## Agent Context Guards
@@ -62,27 +66,28 @@ Wiro enforces strict context isolation for agent operations. When you interact w
 | Team A | Personal | **Blocked** |
 | Team A | Team B | **Blocked** |
 
-A matching context is required, but it is not always enough. Any active team member can message a team agent and use its conversation endpoints. Subscription and billing actions (`CreateSubscriptionCheckout`, `RenewSubscription`, `CancelSubscription`, `UpgradeTier`, `CreateExtraCreditCheckout`) are limited to the member who deployed the agent, team admins and the organization owner. The organization owner can pay for a team agent by card or from the team wallet. Cancelling a team agent's card plan needs a team admin or the organization owner. `SkillsApply` and `SkillToggle` are limited to the member who deployed the agent and team admins. Other members get code `97`: "Only a team admin can perform this action on a team-owned agent." With an API key, these checks apply to the user who created the key's project. Card checkouts for a team agent are refused on that path: `CreateSubscriptionCheckout`, `UpgradeTier` and `CreateExtraCreditCheckout` would open the session on the key project creator's own saved billing details, so pay from the team wallet (`useprepaid: true`) or use the dashboard.
+A matching context is required, but it is not always enough. Any active team member can message a team agent and use its conversation endpoints. Subscription and billing actions (`CreateSubscriptionCheckout`, `RenewSubscription`, `CancelSubscription`, `UpgradeTier`, `CreateExtraCreditCheckout`) are limited to the member who deployed the agent, team admins and the organization owner. The organization owner can pay for a team agent by card or from the team wallet. Cancelling a team agent's card plan needs a team admin or the organization owner. `SkillsApply`, `SkillToggle` and `CredentialProjectBind` are limited to the member who deployed the agent and team admins. Other members get code `97`: "Only a team admin can perform this action on a team-owned agent." With an API key, these checks apply to the user who created the key's project. Card checkouts for a team agent are refused on that path: `CreateSubscriptionCheckout`, `UpgradeTier` and `CreateExtraCreditCheckout` would open the session on the key project creator's own saved billing details, so pay from the team wallet (`useprepaid: true`) or use the dashboard.
 
 ### Protected Endpoints
 
 The following agent endpoints enforce context guards:
 
-- `UserAgent/Message/Send` — send a message to an agent
-- `UserAgent/Message/History` — view conversation history
-- `UserAgent/Message/Sessions` — list conversation sessions
-- `UserAgent/Message/DeleteSession` — delete a conversation
-- `UserAgent/Message/RenameSession` — rename a conversation
-- `UserAgent/Message/Delete` — hide your own messages
-- `UserAgent/CreateExtraCreditCheckout` — purchase extra credits
-- `UserAgent/CancelSubscription` — cancel subscription
-- `UserAgent/RenewSubscription` — renew subscription
-- `UserAgent/UpgradeTier` — upgrade tier (Starter → Pro)
-- `UserAgent/CreateSubscriptionCheckout` — subscribe a not-yet-subscribed useragent
-- `UserAgent/PricingPreview` — pricing preview for an existing agent
-- `UserAgent/SkillsApply` — change skill set (single or batch) on a custom build (auto-prorates)
-- `UserAgent/SkillToggle` — toggle a single skill on a custom build
-- `UserAgent/Realtime/WebStart` — start a web voice session
+- `UserAgent/Message/Send`: send a message to an agent
+- `UserAgent/Message/History`: view conversation history
+- `UserAgent/Message/Sessions`: list conversation sessions
+- `UserAgent/Message/DeleteSession`: delete a conversation
+- `UserAgent/Message/RenameSession`: rename a conversation
+- `UserAgent/Message/Delete`: hide your own messages
+- `UserAgent/CreateExtraCreditCheckout`: purchase extra credits
+- `UserAgent/CancelSubscription`: cancel subscription
+- `UserAgent/RenewSubscription`: renew subscription
+- `UserAgent/UpgradeTier`: upgrade tier (Starter → Pro)
+- `UserAgent/CreateSubscriptionCheckout`: subscribe a not-yet-subscribed useragent
+- `UserAgent/PricingPreview`: pricing preview for an existing agent
+- `UserAgent/SkillsApply`: change skill set (single or batch, auto-prorates)
+- `UserAgent/SkillToggle`: toggle a single skill
+- `UserAgent/CredentialProjectBind`: connect the agent's Wiro project
+- `UserAgent/Realtime/WebStart`: start a web voice session
 
 `Message/Delete`, `SkillsApply` and `SkillToggle` enforce the context guard for team agents only; a personal agent's owner can call them from any workspace. `Realtime/WebStart` also checks team agents only: the member who deployed the agent can call it from any workspace while they are still an active member of the agent's team, so a website voice backend keeps working on a personal project key. Outside the team's context, a caller who has left the team gets the context mismatch error.
 
@@ -160,7 +165,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/MyAgents" \
   -d '{"limit": 10}'
 ```
 
-This returns only agents with `teamguid` matching the project's team — personal agents are not included.
+This returns only agents with `teamguid` matching the project's team. Personal agents are not included.
 
 ### Sending a Message to a Team Agent
 
@@ -185,30 +190,18 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
 
 ### Wallet Billing Flow
 
-When a task runs in team context:
-
-1. The project's `teamguid` is resolved from the API key
-2. The task is created with `teamguid` set
-3. On completion, the billing UUID is set to `teamguid` (not the user's UUID)
-4. The wallet transaction is recorded against the team wallet
-5. The cost is deducted from the team wallet balance
-
-```
-API Key → Project (teamguid) → Task (teamguid) → Wallet Transaction (uuid=teamguid)
-```
-
-For personal context, the flow is the same but `teamguid` is `null` and billing uses the user's personal UUID.
+Runs made with a team project's key are charged to the team wallet and appear in the team's `Wallet/TransactionList`; personal project keys charge your personal wallet.
 
 ## Best Practices
 
-- **Separate projects by environment** — create distinct team projects for development, staging, and production. The team context is resolved automatically from the API key.
-- **Check agent context before messaging** — if you build a multi-tenant application, ensure the project and agent belong to the same workspace
-- **Transfer resources carefully** — agents can only access projects in the same workspace. Plan your resource layout before transferring
+- **Separate projects by environment**: create distinct team projects for development, staging, and production. The team context is resolved automatically from the API key.
+- **Check agent context before messaging**: if you build a multi-tenant application, ensure the project and agent belong to the same workspace
+- **Transfer resources carefully**: agents can only access projects in the same workspace. Plan your resource layout before transferring
 
 ## What's Next
 
-- [Organizations & Teams Overview](/docs/organizations-overview) — Concepts and workspace hierarchy
-- [Managing Teams](/docs/organizations-managing-teams) — Create organizations, invite members, manage roles
-- [Team Billing & Spending](/docs/organizations-billing) — Wallets, spend limits, and model access controls
-- [Authentication](/docs/authentication) — API key setup and authentication methods
-- [Projects](/docs/projects) — Project management and API credentials
+- [Organizations & Teams Overview](/docs/organizations-overview): Concepts and workspace hierarchy
+- [Managing Teams](/docs/organizations-managing-teams): Create organizations, invite members, manage roles
+- [Team Billing & Spending](/docs/organizations-billing): Wallets, spend limits, and model access controls
+- [Authentication](/docs/authentication): API key setup and authentication methods
+- [Projects](/docs/projects): Project management and API credentials

@@ -6,12 +6,12 @@ Connect your agent to TikTok's advertising platform to report on and manage camp
 
 The TikTok Ads integration powers the `int-tiktok-ads` skill (TikTok Ads Manager). The agent works through TikTok's official **TikTok for Business MCP server** (Model Context Protocol), which exposes TikTok API for Business v1.3 capabilities as tools: reporting, campaign / ad group / ad management, Upgraded Smart+, audiences, creatives, Spark Ads, and TikTok's own diagnosis tools.
 
-This integration covers **advertising only**. It does not post organic videos to a TikTok profile — that is the separate [TikTok integration](/docs/integration-tiktok-skills), which uses its own `tiktok` credential.
+This integration covers **advertising only**. It does not post organic videos to a TikTok profile. That is the separate [TikTok integration](/docs/integration-tiktok-skills), which uses its own `tiktok` credential.
 
 **Skills that use this integration:**
 
-- `int-tiktok-ads` — Reporting, campaign / ad group / ad management, Upgraded Smart+ and GMV Max, audiences, creatives, Spark Ads, and diagnosis
-- `util-ads-manager-common` and `util-ads-playbook` — Shared ads helpers (approval flow, recommendations queue, daily report template, kill / scale / test playbook), also used by the Meta Ads and Google Ads skills
+- `int-tiktok-ads`: Reporting, campaign / ad group / ad management, Upgraded Smart+ and GMV Max, audiences, creatives, Spark Ads, and diagnosis
+- `util-ads-manager-common` and `util-ads-playbook`: Shared ads helpers (approval flow, recommendations queue, daily report template, kill / scale / test playbook), also used by the Meta Ads and Google Ads skills
 
 **Agents that typically enable this integration:**
 
@@ -22,20 +22,20 @@ This integration covers **advertising only**. It does not post organic videos to
 
 | Mode | Status | Notes |
 |------|--------|-------|
-| `"wiro"` | Available — the only mode | One-click connect through Wiro's TikTok for Business app. You don't create a developer app, request an API key, or go through app review. |
+| `"wiro"` | Available (the only mode) | One-click connect through Wiro's TikTok for Business app. You don't create a developer app, request an API key, or go through app review. |
 | Customer-owned app or pasted token | Not offered | TikTok Ads has no `"own"` or `"api_key"` mode. `OAuthConnect` rejects any other `authmethod` with `Unsupported connection mode for TikTok Ads`. |
 
-> **Authorization lasts 30 days.** TikTok ends every TikTok for Business authorization 30 days after it is granted, and refreshing the access token does not extend it. Reconnect with the same TikTok for Business account to renew it — see "The 30-day authorization" below.
+> **Authorization lasts 30 days.** TikTok ends every TikTok for Business authorization 30 days after it is granted, and refreshing the access token does not extend it. Reconnect with the same TikTok for Business account to renew it (see "The 30-day authorization" below).
 
 ## Prerequisites
 
-- **A TikTok for Business account with access to at least one advertiser** (ad account) — for example through TikTok Ads Manager or membership in a Business Center. For the agent to make changes, not just report, that account needs a role on the advertiser that allows campaign management.
-- **An agent with `int-tiktok-ads` enabled** — TikTok Ads Manager has it on by default. On a Custom Build agent, enable it with `POST /UserAgent/SkillsApply` (see "Using the Skill" below). Skill changes are only available on Custom Build agents.
+- **A TikTok for Business account with access to at least one advertiser** (ad account), for example through TikTok Ads Manager or membership in a Business Center. For the agent to make changes, not just report, that account needs a role on the advertiser that allows campaign management.
+- **An agent with `int-tiktok-ads` enabled**: TikTok Ads Manager has it on by default. On any other agent, enable it with `POST /UserAgent/SkillsApply` (see "Using the Skill" below).
 - **For API integrations only:** a Wiro API key ([Authentication](/docs/authentication)), a deployed agent ([Agent Overview](/docs/agent-overview)) and its `useragentguid`, and an HTTPS return URL that your backend controls. `http://localhost` and `http://127.0.0.1` are accepted for local development only.
 
 ## Connect in the Wiro dashboard
 
-1. Open your agent, go to **Credentials**, and find the **TikTok Ads** card.
+1. Open your agent, go to **Connectors**, and find the **TikTok Ads** card.
 2. Click **Connect TikTok for Business**.
 3. Sign in to TikTok for Business and approve the consent screen. It names the app **Wiro AI** and asks for the `mcp:tt4b` permission scope.
 4. Back in Wiro, pick the advertisers the agent may manage. You can select several; when your account has exactly one advertiser, it is selected for you.
@@ -54,7 +54,7 @@ This integration covers **advertising only**. It does not post organic videos to
 
 - The agent works only on the advertisers you selected when you connected. Any request for another advertiser is refused.
 - To change the selection, click **Disconnect** on the TikTok Ads card, then connect again and pick the advertisers you want.
-- Until at least one advertiser is selected, an agent that requires TikTok Ads (such as TikTok Ads Manager) stays in Setup Required and cannot start.
+- Until at least one advertiser is selected, the TikTok Ads card reads `_connected: false`, and an agent that requires TikTok Ads (such as TikTok Ads Manager) reads `setuprequired: true` on `UserAgent/Detail`.
 
 ## What the agent can do
 
@@ -87,7 +87,7 @@ These operations are not available through this integration, by design. When you
 
 ## Safety and approvals
 
-- **Every change goes through the agent's approval policy** (the `approval-policy` custom skill). By default the agent describes the change (object, IDs, old and new value, reason) and waits for your approval. Reads — reports, lookups, previews — never need approval.
+- **Every change goes through the agent's approval policy** (the `approval-policy` custom skill). By default the agent describes the change (object, IDs, old and new value, reason) and waits for your approval. Reads (reports, lookups, previews) never need approval.
 - **New objects start paused.** Campaigns, ad groups, ads, Upgraded Smart+ campaigns, and campaign copies are always created paused. Turning one on is a separate change that needs its own approval.
 - **Deletes happen only when you ask.** Campaigns, ad groups, ads, audiences, creative assets, blocked words, ad comments, and search negative keywords can be deleted on request, after approval. Deleting cannot be undone. The agent never deletes on its own; when it recommends stopping something, it pauses it.
 - **Rejected changes are not retried.** If TikTok rejects a change, the agent reports TikTok's message and request ID and stops.
@@ -102,18 +102,18 @@ TikTok Ads Manager ships with these scheduled tasks. Times use the agent's time 
 
 | Task | Skill key | Default schedule | What it does |
 |------|-----------|------------------|--------------|
-| Daily performance report | `cron-tiktokads-performance-reporter` | `0 9 * * *` (daily 09:00) | Account, campaign, placement, device, country, and ad-level performance for the last 7 days, anomaly checks, and recommendations. Carries the 30-day reconnect reminder and the expiry notice. |
-| Weekly audience & account health scan | `cron-tiktokads-audience-scanner` | `0 10 * * 1` (Mondays 10:00) | Age, gender, and placement breakdowns, creative health, custom audience status, rejected or stuck ads, audience fatigue, and new targeting ideas. |
-| Drive creative scanner | `cron-tiktokads-drive-scanner` | `0 10 * * *` (daily 10:00) | Looks for new creative folders in Google Drive and proposes TikTok campaigns for them. Runs daily; does nothing until Google Drive is connected and has creative folders. |
-| Holiday campaign planner | `cron-tiktokads-holiday-planner` | `0 10 * * 3` (Wednesdays 10:00) | Scans upcoming holidays from the holiday calendar (Calendarific) and suggests seasonal campaigns. Does nothing until Calendarific is connected. |
+| Daily performance report | `cs-cron-tiktokads-performance-reporter` | `0 9 * * *` (daily 09:00) | Account, campaign, placement, device, country, and ad-level performance for the last 7 days, anomaly checks, and recommendations. Carries the 30-day reconnect reminder and the expiry notice. |
+| Weekly audience & account health scan | `cs-cron-tiktokads-audience-scanner` | `0 10 * * 1` (Mondays 10:00) | Age, gender, and placement breakdowns, creative health, custom audience status, rejected or stuck ads, audience fatigue, and new targeting ideas. |
+| Drive creative scanner | `cs-cron-tiktokads-drive-scanner` | `0 10 * * *` (daily 10:00) | Looks for new creative folders in Google Drive and proposes TikTok campaigns for them. Runs daily; does nothing until Google Drive is connected and has creative folders. |
+| Holiday campaign planner | `cs-cron-tiktokads-holiday-planner` | `0 10 * * 3` (Wednesdays 10:00) | Scans upcoming holidays from the holiday calendar (Calendarific) and suggests seasonal campaigns. Does nothing until Calendarific is connected. |
 
-Shared ads tasks also cover TikTok Ads: the nightly `cron-ads-recommendation-cleanup` expires stale recommendations, and the optional Adjust creative ROAS report (`cron-adjust-creative-roas-reporter`) cross-checks TikTok spend when Adjust is connected.
+Shared ads tasks also cover TikTok Ads: the nightly `cs-cron-ads-recommendation-cleanup` expires stale recommendations, and the optional Adjust creative ROAS report (`cs-cron-adjust-creative-roas-reporter`) cross-checks TikTok spend when Adjust is connected.
 
 To change **what** the tasks look for, edit these custom skills (stored as `cs-<key>`) rather than the tasks:
 
-- `tiktok-ads-strategy` — TikTok-specific knobs: tracking quality gates, kill thresholds, placement strategy, Spark Ads and Smart+ rules.
-- `ad-strategy` — cross-platform KPI thresholds, shared with Meta Ads and Google Ads.
-- `approval-policy` — which changes wait for approval.
+- `tiktok-ads-strategy`: TikTok-specific knobs for tracking quality gates, kill thresholds, placement strategy, Spark Ads and Smart+ rules.
+- `ad-strategy`: cross-platform KPI thresholds, shared with Meta Ads and Google Ads.
+- `approval-policy`: which changes wait for approval.
 
 ## Multiple advertisers
 
@@ -262,7 +262,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
   -d '{ "guid": "your-useragent-guid" }'
 ```
 
-Check `POST /UserAgent/Detail` first: if `setuprequired` is still `true`, TikTok Ads or some other credential the agent requires is incomplete, and Start will refuse. See [Agent Credentials — Setup Required](/docs/agent-credentials#setup-required-state).
+`Start` doesn't wait for every connector. `setuprequired: true` on `POST /UserAgent/Detail` means TikTok Ads or another connector the agent requires is still incomplete, and the agent starts all the same. Only an agent still at `status: 6` is refused: call `POST /UserAgent/Update` on it first. See [Agent Credentials: Setup Required](/docs/agent-credentials#setup-required-state).
 
 Agents already running when you connected TikTok Ads restart automatically.
 
@@ -277,7 +277,7 @@ Both fields are returned by `POST /UserAgent/Detail` and are managed by the conn
 
 ## API Reference
 
-All endpoints require Wiro authentication — see [Authentication](/docs/authentication) for `x-api-key` + optional signature headers.
+All endpoints require Wiro authentication: see [Authentication](/docs/authentication) for `x-api-key` + optional signature headers.
 
 ### POST /UserAgentOAuth/OAuthConnect
 
@@ -286,13 +286,13 @@ All endpoints require Wiro authentication — see [Authentication](/docs/authent
 | `useragentguid` | string | Yes | Agent instance GUID. |
 | `credentialkey` | string | Yes | `"tiktok-ads"`. |
 | `redirecturl` | string | Yes | HTTPS URL (or `http://localhost` / `http://127.0.0.1` for development) where the browser returns after TikTok. |
-| `authmethod` | string | No | `"wiro"` — the default and the only accepted value. |
+| `authmethod` | string | No | `"wiro"`: the default and the only accepted value. |
 
-Response: `{ result, errors, authorizeUrl }`. If `result: false`, inspect `errors[0].message` — common messages: `Request parameter [useragentguid] required`, `Request parameter [credentialkey] required`, `Request parameter [redirecturl] required`, `Invalid redirect URL`, `User agent not found or unauthorized`, `Unsupported connection mode for TikTok Ads`, and `TikTok Ads credentials not configured`.
+Response: `{ result, errors, authorizeUrl }`. If `result: false`, inspect `errors[0].message`. Common messages: `Request parameter [useragentguid] required`, `Request parameter [credentialkey] required`, `Request parameter [redirecturl] required`, `Invalid redirect URL`, `User agent not found or unauthorized`, `Unsupported connection mode for TikTok Ads`, and `TikTok Ads credentials not configured`.
 
 ### GET /UserAgentOAuth/TikTokAdsCallback
 
-Server-side endpoint invoked by TikTok. You don't call it — you only handle the final redirect back to your `redirecturl`. The callback path is per-provider — TikTok Ads's is `TikTokAdsCallback`, separate from the organic TikTok integration's `TikTokCallback`.
+Server-side endpoint invoked by TikTok. You don't call it. You only handle the final redirect back to your `redirecturl`. The callback path is per-provider: TikTok Ads's is `TikTokAdsCallback`, separate from the organic TikTok integration's `TikTokCallback`.
 
 | Query param | Meaning |
 |-------------|---------|
@@ -348,7 +348,7 @@ Wiro renews the 24-hour access token automatically while the agent is running. T
 
 ## Using the Skill
 
-TikTok Ads Manager has `int-tiktok-ads` on by default. On a Custom Build agent, enable it via `POST /UserAgent/SkillsApply` (see [Agent Skills → Toggling Integration Skills](/docs/agent-skills#toggling-integration-skills)); skill changes are only available on Custom Build agents. Adjust the cron of a bundled task such as the daily performance report with `enabled` and `interval` only — the task body (`value`) is owned by the bundled integration skill and silently dropped on writes:
+TikTok Ads Manager has `int-tiktok-ads` on by default. On any other agent, enable it via `POST /UserAgent/SkillsApply` (see [Agent Skills → Toggling Integration Skills](/docs/agent-skills#toggling-integration-skills)). Adjust the cron of a bundled task such as the daily performance report with `enabled` and `interval` only. The task body (`value`) is owned by the bundled integration skill and silently dropped on writes:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
@@ -356,20 +356,20 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skillkey": "cron-tiktokads-performance-reporter",
+    "skillkey": "cs-cron-tiktokads-performance-reporter",
     "enabled": true,
     "interval": "0 9 * * *"
   }'
 ```
 
-To change **what** the reports include (tracking quality gates, kill thresholds, placement strategy, Spark Ads and Smart+ rules), edit the preference skill `tiktok-ads-strategy` (stored as `cs-tiktok-ads-strategy`), or `ad-strategy` for cross-platform thresholds — see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preference-skills).
+To change **what** the reports include (tracking quality gates, kill thresholds, placement strategy, Spark Ads and Smart+ rules), edit the preference skill `tiktok-ads-strategy` (stored as `cs-tiktok-ads-strategy`), or `ad-strategy` for cross-platform thresholds (see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preference-skills)).
 
 ## Troubleshooting
 
 | Error code | Meaning | What to do |
 |------------|---------|------------|
 | `missing_params` | The callback was opened without an OAuth `state`. | Don't open the callback URL directly. Start a new flow with `OAuthConnect`. |
-| `session_expired` | More than 15 minutes passed between `OAuthConnect` and the return from TikTok, or the state was already used. | Call `OAuthConnect` again. |
+| `session_expired` | More than 15 minutes passed between `OAuthConnect` and the return from TikTok. A callback the browser repeats after a completed one is not an error: it lands where the first one did. | Call `OAuthConnect` again. |
 | `authorization_denied` | The user cancelled on TikTok's consent screen, or TikTok returned an error instead of an authorization code. | Start again and approve the consent screen. |
 | `token_exchange_failed` | TikTok did not return a usable access and refresh token for the authorization code. | Start a new flow. If it persists, contact Wiro support. |
 | `no_accounts` | Sign-in worked, but no advertiser could be listed for this TikTok for Business user: the user has no advertiser access, or TikTok's advertiser lookup failed. | Get access to an advertiser in TikTok Ads Manager or Business Center, then connect again. If this user already has advertiser access, try connecting again. |
@@ -377,10 +377,10 @@ To change **what** the reports include (tracking quality gates, kill thresholds,
 | `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow, before TikTok returned. | Start again with `OAuthConnect` for an existing agent. |
 | `internal_error` | Unexpected server error during callback processing. | Retry once. If it persists, contact Wiro support with the timestamp and your `useragentguid`. |
 | `Unsupported connection mode for TikTok Ads` | Returned in `OAuthConnect`'s `errors[]` when `authmethod` is anything other than `"wiro"`. | Omit `authmethod` or send `"wiro"`. |
-| `TikTok Ads credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when TikTok Ads is not yet enabled on Wiro's side. | Contact Wiro support. |
+| `TikTok Ads credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when TikTok Ads is not available for this account. | Contact Wiro support. |
 | `TikTok Ads account not connected` | Returned by `SetPickerAccounts` before the TikTok authorization completed. | Finish Steps 1-2, then save the selection. |
 
-Because no valid state is left to read your `redirecturl` from, `missing_params` and `session_expired` send the browser to `https://wiro.ai` with the error parameter instead of to your app.
+`missing_params` sends the browser to `https://wiro.ai`, because a callback without a `state` has no return address. `session_expired` comes back to your `redirecturl`. It lands on `https://wiro.ai` only when the callback arrives more than 24 hours after `OAuthConnect` or carries a `state` Wiro never issued.
 
 ### "No accounts available" after signing in
 
@@ -407,16 +407,16 @@ Nothing to do. The agent drops the metric TikTok rejected and runs the report ag
 For SaaS products connecting many customers' TikTok Ads accounts through a single Wiro-powered backend:
 
 1. **One Wiro agent instance per customer.** Call `POST /UserAgent/Deploy` during onboarding, then run the connection flow for that customer's `useragentguid`. Each customer signs in with their own TikTok for Business account.
-2. **Tokens are isolated per agent instance.** Customer A's TikTok authorization is never visible to Customer B — they live under different `useragentguid` values.
+2. **Tokens are isolated per agent instance.** Customer A's TikTok authorization is never visible to Customer B, because they live under different `useragentguid` values.
 3. **The consent screen shows Wiro AI.** There is no customer-owned app mode, so the consent screen cannot be white-labeled.
 4. **Plan for the 30-day renewal.** Every customer has to reconnect every 30 days. Track `connectedat` from `OAuthStatus` and prompt the customer before the 30 days are up.
 5. **Rate limits are mostly per TikTok for Business user.** TikTok allows most tools 3 requests per second per tool for each user; asynchronous report creation and campaign copies have lower per-app limits that all connections share.
 
 ## Related
 
-- [Agent Credentials & OAuth](/docs/agent-credentials) — integration catalog hub and generic OAuth reference.
-- [Agent Overview](/docs/agent-overview) — deploying, starting, and lifecycle.
-- [Agent Skills](/docs/agent-skills) — configuring `int-tiktok-ads` and scheduled runs.
-- [TikTok integration](/docs/integration-tiktok-skills) — organic video posting to a TikTok profile (separate `tiktok` credential).
-- [Meta Ads integration](/docs/integration-metaads-skills) — for cross-platform paid campaigns.
-- [Google Ads integration](/docs/integration-googleads-skills) — for cross-platform paid campaigns.
+- [Agent Credentials & OAuth](/docs/agent-credentials): integration catalog hub and generic OAuth reference.
+- [Agent Overview](/docs/agent-overview): deploying, starting, and lifecycle.
+- [Agent Skills](/docs/agent-skills): configuring `int-tiktok-ads` and scheduled runs.
+- [TikTok integration](/docs/integration-tiktok-skills): organic video posting to a TikTok profile (separate `tiktok` credential).
+- [Meta Ads integration](/docs/integration-metaads-skills): for cross-platform paid campaigns.
+- [Google Ads integration](/docs/integration-googleads-skills): for cross-platform paid campaigns.

@@ -115,6 +115,9 @@
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
+  <url><loc>https://wiro.ai/docs/workflows</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://wiro.ai/docs/workflow-agent</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://wiro.ai/docs/studio</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://wiro.ai/docs/agent-overview</loc></url>
   <url><loc>https://wiro.ai/docs/agent-builder</loc></url>
   <url><loc>https://wiro.ai/docs/agent-messaging</loc></url>
@@ -138,7 +141,9 @@
   <url><loc>https://wiro.ai/docs/integration-googleads-skills</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://wiro.ai/docs/integration-youtube-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://wiro.ai/docs/integration-ga4-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://wiro.ai/docs/integration-roasit-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://wiro.ai/docs/integration-merchantcenter-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://wiro.ai/docs/integration-googlebusiness-skills</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://wiro.ai/docs/integration-hubspot-skills</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://wiro.ai/docs/integration-mailchimp-skills</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://wiro.ai/docs/integration-googledrive-skills</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>

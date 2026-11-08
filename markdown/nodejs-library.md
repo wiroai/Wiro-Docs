@@ -4,7 +4,7 @@ Use Wiro AI models directly in your Node.js or TypeScript projects with a simple
 
 ## Overview
 
-The [`@wiro-ai/wiro-mcp`](https://www.npmjs.com/package/@wiro-ai/wiro-mcp) package exports a `WiroClient` class that you can use as a standalone API client — no MCP setup required. It handles authentication (both signature-based and API key only), model discovery, execution, task polling, and file uploads.
+The [`@wiro-ai/wiro-mcp`](https://www.npmjs.com/package/@wiro-ai/wiro-mcp) package exports a `WiroClient` class that you can use as a standalone API client, with no MCP setup required. It handles authentication (both signature-based and API key only), model discovery, execution, task polling, and file uploads.
 
 ### Links
 
@@ -78,6 +78,26 @@ Override the API endpoint if needed (third parameter):
 const client = new WiroClient('key', 'secret', 'https://custom-api.example.com/v1');
 ```
 
+### Your Own Request Headers
+
+To send headers of your own with every API request, pass `requestHeaders` in
+the options (fourth parameter):
+
+```javascript
+const client = new WiroClient('your-api-key', 'your-api-secret', undefined, {
+  requestHeaders: () => ({ 'x-app-name': 'my-app' })
+});
+```
+
+The function runs for every request the client sends, JSON and multipart, and
+gets one object, `{ pathname, apiKey }`, where `pathname` includes the base
+path, such as `/v1/Tool/List`. It returns a plain object of string values, and
+those headers are sent after the client's own. It cannot set `x-api-key`,
+`x-signature`, `x-nonce` or `Content-Type`, in any letter case: such a request
+fails before it is sent. Type it with `RequestHeadersHook`. This option replaces
+`trustedProxy`, which was removed in 1.5.0: a client created with
+`trustedProxy` throws.
+
 ## Available Methods
 
 | Method | Description |
@@ -90,7 +110,11 @@ const client = new WiroClient('key', 'secret', 'https://custom-api.example.com/v
 | `getTask({ tasktoken?, taskid? }, signal?)` | Get current task status and outputs. |
 | `cancelTask(tasktokenOrReference, signal?)` | Cancel a queued task. Resolves a token to the `taskid` required by the API. |
 | `killTask(tasktokenOrReference, signal?)` | Kill a running task. Sends the token as `socketaccesstoken` or accepts a `taskid`. |
+| `listTasks(params?, signal?)` | List the tasks of the key's workspace, newest first. |
 | `uploadFile(url, fileName?)` | Upload a file from a URL for use as model input. |
+| `post(path, body?, signal?)` | Call any other Wiro API endpoint with the same credentials, for example `post('/Workflow/List', { scope: 'my' })`. Wiro reports each outcome in the response body, so check `result` on the returned body. |
+| `postForm(path, form, signal?)` | Same as `post`, for endpoints that take `multipart/form-data`. |
+| `isOwnApiKey(value)` | Says whether a value is this client's API key, without handing the key out. |
 
 If `waitForTask` exceeds its timeout, it throws `TaskWaitTimeoutError`. The
 error preserves `lastDetail`; call `waitForTask` again with the same token or
@@ -153,6 +177,8 @@ if (task.pexit === '0') {
 
 ### Upload a File and Use It
 
+> **Tip:** Most models take a public URL instead of an upload. For most image and video inputs you pass it in the field itself, such as `inputImage: 'https://example.com/photo.jpg'`; a `fileinput` takes it in its `{id}Url` field (such as `inputImageUrl`), so check the model's parameter types. Use `uploadFile()` when you need to reuse files across multiple runs.
+
 ```javascript
 // Upload an image
 const upload = await client.uploadFile('https://example.com/photo.jpg');
@@ -209,6 +235,7 @@ import type {
   SearchModelsParams,
   TaskReference,
   WaitForTaskOptions,
+  RequestHeadersHook,
 } from '@wiro-ai/wiro-mcp/client';
 
 import {
@@ -219,14 +246,15 @@ import {
 
 | Type | Description |
 |------|-------------|
-| `RunModelResult` | Response from `runModel()` — `taskid`, `socketaccesstoken`. |
-| `TaskDetailResponse` | Response from `getTask()` / `waitForTask()` — contains `tasklist` array. |
-| `Task` | Individual task object — `status`, `pexit`, `outputs`, `debugoutput`, etc. |
-| `TaskOutput` | Output entry — file (`name`, `url`) or LLM (`contenttype: "raw"`, `content`). |
-| `ToolListResponse` | Response from `searchModels()` — contains `tool` array. |
-| `ToolDetailResponse` | Response from `getModelSchema()` — contains model with parameters. |
-| `SearchModelsParams` | Search parameters — `search`, `categories`, `slugowner`, `limit`, etc. |
-| `TaskReference` | Existing task identifier — `tasktoken` or `taskid`. |
-| `WaitForTaskOptions` | Polling options — `signal`, `onPoll`, `pollIntervalMs`, and retry limit. |
+| `RunModelResult` | Response from `runModel()`: `taskid`, `socketaccesstoken`. |
+| `TaskDetailResponse` | Response from `getTask()` / `waitForTask()`: contains `tasklist` array. |
+| `Task` | Individual task object: `status`, `pexit`, `outputs`, `debugoutput`, etc. |
+| `TaskOutput` | Output entry: file (`name`, `url`) or LLM (`contenttype: "raw"`, `content`). |
+| `ToolListResponse` | Response from `searchModels()`: contains `tool` array. |
+| `ToolDetailResponse` | Response from `getModelSchema()`: contains model with parameters. |
+| `SearchModelsParams` | Search parameters: `search`, `categories`, `slugowner`, `limit`, etc. |
+| `TaskReference` | Existing task identifier: `tasktoken` or `taskid`. |
+| `WaitForTaskOptions` | Polling options: `signal`, `onPoll`, `pollIntervalMs`, and retry limit. |
+| `RequestHeadersHook` | The `requestHeaders` option: gets `{ pathname, apiKey }` and returns the headers to add. |
 | `TaskWaitTimeoutError` | Bounded wait expired; carries the last Task/Detail response. |
 | `TaskPollingError` | Repeated or permanent status lookup failure; also carries the last response. |

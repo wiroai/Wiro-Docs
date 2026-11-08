@@ -54,13 +54,13 @@ The content type depends on whether the model requires file inputs:
 | No file parameters | `application/json` | Text-only models (LLMs, image generation from prompt) |
 | Has file parameters | `multipart/form-data` | Models that accept image, audio, video, or document uploads |
 
-> **Tip:** For `fileinput` and `multifileinput` parameters, use the `{id}Url` suffix to send URLs (e.g., `inputImageUrl`). For `combinefileinput`, pass URLs directly in the original parameter — no suffix needed. You can also pass a URL directly to any file parameter (e.g., `inputImage`) if the `{id}Url` field doesn't exist.
+> **Tip:** For `fileinput` parameters, use the `{id}Url` suffix to send a URL (e.g., `inputImageUrl`). For `multifileinput`, send comma-separated URLs in the field that puts `Url` before `Multiple` (e.g., `inputDocumentUrlMultiple` for `inputDocumentMultiple`). For `combinefileinput`, pass URLs directly in the original parameter. No suffix is needed. A `fileinput` or `multifileinput` with no URL field takes the URL, or the comma-separated list, in the parameter itself. Every URL must be a public `http(s)` address, and so must any address it redirects to: Wiro doesn't fetch a URL whose host is, or resolves to, a private, loopback or link-local address.
 
 ## File Upload Patterns
 
 ### Single File (fileinput)
 
-For parameters like `inputImage`, send either a file or a URL. When using multipart, always include both the `{id}` and `{id}Url` fields — leave one empty:
+For parameters like `inputImage`, send either a file or a URL. When using multipart, always include both the `{id}` and `{id}Url` fields and leave one empty:
 
 ```bash
 # Option 1: Upload file — send file in {id}, empty {id}Url
@@ -74,43 +74,30 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
   -H "x-api-key: YOUR_API_KEY" \
   -F "inputImage=" \
   -F "inputImageUrl=https://example.com/photo.jpg"
-
-# Option 3: Pass URL directly in {id} (no {id}Url needed)
-curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -F "inputImage=https://example.com/photo.jpg"
 ```
-
-> **Note:** Option 3 is the simplest when you only have a URL. If the `{id}Url` field doesn't exist for a parameter, always use this approach.
 
 ### Multiple Files (multifileinput)
 
-For parameters like `inputDocumentMultiple`, upload up to N files, send comma-separated URLs, or mix both:
+For parameters like `inputDocumentMultiple`, send either up to N files or a comma-separated list of URLs. The URL list goes in the field that puts `Url` before `Multiple`: `inputDocumentUrlMultiple`. When using multipart, include both fields and leave one empty:
 
 ```bash
-# Option 1: Upload multiple files — add empty {id}Url
+# Option 1: Upload files in {id}, leave inputDocumentUrlMultiple empty
 curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
   -H "x-api-key: YOUR_API_KEY" \
   -F "inputDocumentMultiple=@doc1.pdf" \
   -F "inputDocumentMultiple=@doc2.pdf" \
-  -F "inputDocumentMultipleUrl="
+  -F "inputDocumentUrlMultiple="
 
-# Option 2: Send URLs (comma-separated in {id}Url) — add empty {id}
+# Option 2: Send comma-separated URLs in inputDocumentUrlMultiple, leave {id} empty
 curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
   -H "x-api-key: YOUR_API_KEY" \
   -F "inputDocumentMultiple=" \
-  -F "inputDocumentMultipleUrl=https://example.com/doc1.pdf,https://example.com/doc2.pdf"
-
-# Option 3: Mixed — files in {id}, URLs in {id}Url
-curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
-  -H "x-api-key: YOUR_API_KEY" \
-  -F "inputDocumentMultiple=@doc1.pdf" \
-  -F "inputDocumentMultipleUrl=https://example.com/doc2.pdf,https://example.com/doc3.pdf"
+  -F "inputDocumentUrlMultiple=https://example.com/doc1.pdf,https://example.com/doc2.pdf"
 ```
 
 ### Combined (combinefileinput)
 
-For parameters like `inputImageClothes`, files and URLs go directly in the same `{id}` field — no `{id}Url` suffix:
+For parameters like `inputImageClothes`, files and URLs go directly in the same `{id}` field, with no `{id}Url` suffix:
 
 ```bash
 # Option 1: Upload files — each as a separate {id} entry
@@ -136,7 +123,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
 
 ### Image Generation (text-to-image)
 
-Models like Stable Diffusion, Flux — JSON body, no file uploads:
+Models like Stable Diffusion, Flux (JSON body, no file uploads):
 
 ```json
 {
@@ -149,7 +136,7 @@ Models like Stable Diffusion, Flux — JSON body, no file uploads:
 
 ### Image-to-Image (upscaler, style transfer)
 
-Models that take an input image — multipart with file upload:
+Models that take an input image (multipart with file upload):
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
@@ -160,7 +147,7 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
 
 ### Virtual Try-On
 
-Multiple image inputs — multipart with multiple files:
+Multiple image inputs (multipart with multiple files):
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
@@ -186,9 +173,9 @@ curl -X POST "https://api.wiro.ai/v1/Run/{owner-slug}/{model-slug}" \
 
 ### Realtime Voice Conversation
 
-Realtime voice models accept configuration parameters (voice, system instructions, audio format, etc.) as JSON. Parameters vary per model — use `/Tool/Detail` to discover them. The actual audio interaction happens over [WebSocket](/docs/realtime-voice-conversation) after the task starts:
+Realtime voice models accept configuration parameters (voice, system instructions, audio format, etc.) as JSON. Parameters vary per model. Use `/Tool/Detail` to discover them. The actual audio interaction happens over [WebSocket](/docs/realtime-voice-conversation) after the task starts:
 
-Available realtime models:
+Available realtime models include:
 - [openai/gpt-realtime-mini](https://wiro.ai/models/openai/gpt-realtime-mini)
 - [openai/gpt-realtime](https://wiro.ai/models/openai/gpt-realtime)
 - [elevenlabs/realtime-conversational-ai](https://wiro.ai/models/elevenlabs/realtime-conversational-ai)
@@ -209,8 +196,8 @@ Available realtime models:
 
 Realtime TTS models stream synthesized audio back over [WebSocket](/docs/realtime-text-to-speech) as binary frames. Text is required. Reference audio is optional for voice cloning.
 
-Available realtime TTS models:
-- [wiro/moss-tts](https://wiro.ai/models/wiro/moss-tts)
+Available realtime TTS models include:
+- [openmoss/moss-tts-realtime](https://wiro.ai/models/openmoss/moss-tts-realtime)
 
 ```json
 {
@@ -227,10 +214,10 @@ Available realtime TTS models:
 
 ### Realtime Speech to Text
 
-Realtime STT models transcribe audio streamed from the microphone over [WebSocket](/docs/realtime-speech-to-text). No text input needed — audio is streamed from the microphone. The `transcriptionDelay` controls the speed vs accuracy trade-off.
+Realtime STT models transcribe audio streamed from the microphone over [WebSocket](/docs/realtime-speech-to-text). No text input is needed: audio is streamed from the microphone. The `transcriptionDelay` controls the speed vs accuracy trade-off.
 
-Available realtime STT models:
-- [wiro/voxtral-mini-realtime](https://wiro.ai/models/wiro/voxtral-mini-realtime)
+Available realtime STT models include:
+- [mistralai/voxtral-mini-4b-realtime-2602](https://wiro.ai/models/mistralai/voxtral-mini-4b-realtime-2602)
 
 ```json
 {
@@ -240,7 +227,7 @@ Available realtime STT models:
 
 ## Webhook Callback
 
-All models support an optional `callbackUrl` parameter. When provided, Wiro will POST the task result to your URL when the task completes — no polling required:
+All models support an optional `callbackUrl` parameter. When provided, Wiro will POST the task result to your URL when the task completes, so you do not need to poll:
 
 ```json
 {
@@ -248,3 +235,12 @@ All models support an optional `callbackUrl` parameter. When provided, Wiro will
   "callbackUrl": "https://your-server.com/webhook/wiro"
 }
 ```
+
+Wiro sends a `POST` request with a JSON body (`Content-Type: application/json`) once the task has finished, whether it succeeded or failed: check `pexit` in the body. The body is the task, including its parameters and outputs.
+
+- **Any 2xx answer counts as delivered.** Answer with a 2xx as soon as the request arrives, and do slower work after that.
+- **Up to 3 tries.** When your endpoint answers with anything other than a 2xx, or cannot be reached, Wiro tries again 2 seconds later, up to 3 tries in all.
+- **Redirects are not followed.** A 3xx answer counts as not delivered, so pass the final address.
+- **No authorization header.** To check that a webhook comes from your own run, match its task ID with your records.
+
+The `callbackUrl` must be a public `http(s)` address. A host that is, or resolves to, a private, loopback or link-local address gets no webhook; the task still runs. When a webhook does not arrive, poll [`Task/Detail`](/docs/tasks#task-detail) with the task ID to get the result.

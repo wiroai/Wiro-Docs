@@ -4,18 +4,46 @@ Transcribe live microphone audio into text in real time using streaming ASR mode
 
 ## Overview
 
-Realtime speech-to-text models convert streaming audio into text transcripts as the user speaks. Unlike [Realtime Voice Conversation](/docs/realtime-voice-conversation) which produces two-way audio, this mode is **audio in → text out** only. There is no AI audio playback — the server returns transcript strings over the WebSocket.
+Realtime speech-to-text models convert streaming audio into text transcripts as the user speaks. Unlike [Realtime Voice Conversation](/docs/realtime-voice-conversation) which produces two-way audio, this mode is **audio in → text out** only. There is no AI audio playback. The server returns transcript strings over the WebSocket.
 
 The flow is:
 
 1. **Run** the realtime model via [POST /Run](/docs/run-a-model) to get a `socketaccesstoken`
 2. **Connect** to the WebSocket and send `task_info` with your token
-3. **Wait** for `task_stream_ready` — the model is ready to receive audio
+3. **Wait** for `task_stream_ready`: the model is ready to receive audio
 4. **Stream** microphone audio as binary frames (client → server)
 5. **Receive** transcript text as `task_output` messages with `TRANSCRIPT_USER:` prefix
 6. **End** the session with `task_session_end`
 
 > **Key difference from Voice Conversation:** No binary audio is sent back from the server. All server → client messages are JSON text events.
+
+## How It Differs from Realtime Voice Conversation
+
+| | Realtime Voice Conversation | Realtime Speech to Text |
+|---|---|---|
+| Input | Microphone audio (streamed) | Microphone audio (streamed) |
+| Output | AI audio + transcripts | Transcript text only |
+| Direction | Bidirectional (client ↔ server) | Client → server audio, server → client text |
+| Binary frames from server | Yes (AI audio) | No (all server messages are JSON) |
+| Transcripts | `TRANSCRIPT_USER:` and `TRANSCRIPT_AI:` | `TRANSCRIPT_USER:` only |
+| Use case | Interactive voice chat | Live dictation, captioning, meeting transcription |
+
+## Run Parameters
+
+Each realtime STT model has its own set of parameters. Use [POST /Tool/Detail](/docs/models) to discover the exact parameters for a specific model. See [Model Parameters](/docs/model-parameters) for parameter types.
+
+Browse available realtime STT models on the [models page](https://wiro.ai/models) (filter by **Realtime STT** category). Common parameters typically include a transcription delay setting that trades speed for accuracy; some models also take a language. Example run for Voxtral Mini 4B Realtime:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/Run/mistralai/voxtral-mini-4b-realtime-2602" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "transcriptionDelay": "balanced"
+  }'
+```
+
+> **Important:** Parameters vary per model. Always check the model's detail page or use `/Tool/Detail` to get the exact parameter list before integrating. The run response returns a `socketaccesstoken` used to subscribe to the WebSocket.
 
 ## Connection & Registration
 
@@ -40,12 +68,12 @@ During a realtime speech-to-text session, you'll receive these WebSocket events:
 
 | Event | Direction | Description |
 |-------|-----------|-------------|
-| `task_stream_ready` | server → client | Session is ready — start sending microphone audio |
+| `task_stream_ready` | server → client | Session is ready: start sending microphone audio |
 | `task_output` | server → client | Transcript text prefixed with `TRANSCRIPT_USER:` |
-| `task_stream_end` | server → client | Transcription stream has ended — no more transcripts will arrive |
-| `task_cost` | server → client | Cost update — includes `turnCost`, `cumulativeCost`, and `usage` breakdown |
-| `task_end` | server → client | The model process has exited. Post-processing follows — wait for `task_postprocess_end` before closing. |
-| `task_postprocess_end` | server → client | Post-processing complete — safe to close the WebSocket now. |
+| `task_stream_end` | server → client | Transcription stream has ended: no more transcripts will arrive |
+| `task_cost` | server → client | Cost update: includes `turnCost`, `cumulativeCost`, and `usage` breakdown. On models priced by time, each update covers the time since the previous one. |
+| `task_end` | server → client | The model process has exited. Post-processing follows. Wait for `task_postprocess_end` before closing. |
+| `task_postprocess_end` | server → client | Post-processing complete: safe to close the WebSocket now. |
 
 > Unlike voice conversation, there are no binary audio frames from the server. Every server message is a JSON text event.
 
@@ -60,9 +88,11 @@ Audio flows in one direction only: **client → server**.
 | Sample rate | 24,000 Hz (24 kHz) |
 | Channels | Mono (1 channel) |
 | Byte order | Little-endian |
-| Chunk size | 4,800 samples (200 ms) = 9,600 bytes |
+| Chunk size | Any size. The examples on this page send 4,800 samples (200 ms) = 9,600 bytes. |
 
-> The server internally resamples to the model's native rate (e.g. 16 kHz for Voxtral). Always send at 24 kHz — the server handles conversion.
+The server passes each frame to the model as it arrives. Smaller chunks, such as 20 ms (480 samples, 960 bytes), reach the model sooner.
+
+> The server internally resamples to the model's native rate (e.g. 16 kHz for Voxtral). Always send at 24 kHz. The server handles conversion.
 
 ### Binary Frame Format
 
@@ -72,7 +102,7 @@ Every binary WebSocket frame sent from the client is structured as:
 [tasktoken]|[PCM audio data]
 ```
 
-The pipe character `|` (0x7C) separates the token from the raw audio bytes. There are no binary frames from the server — all responses are JSON text.
+The pipe character `|` (0x7C) separates the token from the raw audio bytes. There are no binary frames from the server. All responses are JSON text.
 
 ## Sending Microphone Audio
 
@@ -86,27 +116,32 @@ Key steps:
 4. Send each chunk as `tasktoken|pcm_data` binary frame
 5. Continue sending until you end the session
 
-> **Tip:** You can send audio continuously — the model handles silence detection and only returns transcripts when speech is detected.
+> **Tip:** You can send audio continuously. The model handles silence detection and only returns transcripts when speech is detected.
 
 ## Transcripts
 
-Transcripts arrive as `task_output` messages with the `TRANSCRIPT_USER:` prefix. Each message contains a segment of transcribed speech:
+Transcripts arrive as `task_output` messages with the `TRANSCRIPT_USER:` prefix. Each message carries the next piece of transcribed speech, usually a word or a short phrase:
 
 ```json
 {
   "type": "task_output",
-  "message": "TRANSCRIPT_USER:What's the weather like today?"
+  "message": "TRANSCRIPT_USER:What's"
 }
 
 {
   "type": "task_output",
-  "message": "TRANSCRIPT_USER:I need to book a flight to New York."
+  "message": "TRANSCRIPT_USER:the"
+}
+
+{
+  "type": "task_output",
+  "message": "TRANSCRIPT_USER:weather"
 }
 ```
 
 ### Progressive Results
 
-Transcripts arrive progressively as words and phrases are recognized — not just at segment boundaries. The model streams `TRANSCRIPT_USER:` messages word-by-word as speech is detected, so the client can display live, incremental results. To build a full transcript, concatenate all received messages:
+Transcripts arrive progressively as words and phrases are recognized, not just at segment boundaries. The model streams `TRANSCRIPT_USER:` messages word-by-word as speech is detected, so the client can display live, incremental results. A message never repeats or corrects earlier text, so add each one to what you have instead of replacing it. To build a full transcript, concatenate all received messages with spaces:
 
 ```javascript
 var fullTranscript = [];
@@ -136,6 +171,8 @@ To gracefully end a realtime session, send `task_session_end`:
 ```
 
 After sending this, the server processes any remaining buffered audio, sends final transcript and cost events, and then emits `task_postprocess_end`. Wait for `task_postprocess_end` before closing the WebSocket.
+
+The server can also end a session on its own: after a period without speech, or when your balance runs out (see below). It then sends the same closing events, ending with `task_postprocess_end`. The server never sends `task_session_end`; that message only goes from the client to the server.
 
 > **Safety:** If the client disconnects without sending `task_session_end`, the server automatically terminates the session to prevent the pipeline from running indefinitely (and the provider from continuing to charge). Always send `task_session_end` explicitly for a clean shutdown.
 
@@ -456,7 +493,7 @@ function endSession() {
     "direction": "client → server only",
     "format": "tasktoken|pcm_audio_data"
   },
-  "recommended_chunk": {
+  "example_chunk": {
     "samples": 4800,
     "duration_ms": 200,
     "bytes": 9600

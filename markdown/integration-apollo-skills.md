@@ -8,7 +8,7 @@ The Apollo integration uses Apollo's `x-api-key` header authentication.
 
 **Skills that use this integration:**
 
-- `apollo-sales` — Lead search, enrichment, sequence enrollment, reply handling
+- `int-apollo-sales`: Lead search, enrichment, sequence enrollment, reply handling
 
 **Agents that typically enable this integration:**
 
@@ -22,8 +22,8 @@ The Apollo integration uses Apollo's `x-api-key` header authentication.
 
 ## Prerequisites
 
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
 - **An Apollo.io account** on a plan that includes API access.
 
 ## Setup
@@ -52,7 +52,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   }'
 ```
 
-`masterapikey` is optional — omit if your agent only does enrichment and lookups. Required for people search (`mixed_people/api_search`) and sequence management.
+`masterapikey` is optional: omit if your agent only does enrichment and lookups. Required for people search (`mixed_people/api_search`) and sequence management.
 
 ### Step 4: Start the agent
 
@@ -74,9 +74,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ```json
 "apollo": {
-  "optional": true,
   "_connected": false,
-  "optional": false,
+  "optional": true,
   "extra": false,
   "apikey": "",
   "masterapikey": ""
@@ -85,33 +84,30 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ## Runtime Behavior
 
-Env vars (exported **only when `apollo-sales` skill is enabled** and `apikey` is set):
+The `int-apollo-sales` skill is active only when it is enabled and `apikey` is set; `masterapikey` is optional.
 
-- `APOLLO_API_KEY` ← `credentials.apollo.apikey`
-- `APOLLO_MASTER_KEY` ← `credentials.apollo.masterapikey` (only if set)
+**Endpoint-based key selection**. The `int-apollo-sales` skill picks the key per endpoint and sends it in the `x-api-key` header:
 
-**Endpoint-based key selection** — the `apollo-sales` skill picks the header per endpoint:
-
-| Endpoint group | Header | Env var |
-|----------------|--------|---------|
-| People Search (`POST /mixed_people/api_search`) | `x-api-key: $APOLLO_MASTER_KEY` | **Requires `masterapikey`** |
-| Sequence management (create sequence, add contacts, start/pause) | `x-api-key: $APOLLO_MASTER_KEY` | **Requires `masterapikey`** |
-| People enrichment (`POST /people/match`) | `x-api-key: $APOLLO_API_KEY` | `apikey` sufficient |
-| Organization lookup | `x-api-key: $APOLLO_API_KEY` | `apikey` sufficient |
-| Email verification | `x-api-key: $APOLLO_API_KEY` | `apikey` sufficient |
+| Endpoint group | Key used | Requirement |
+|----------------|----------|-------------|
+| People Search (`POST /mixed_people/api_search`) | `masterapikey` | **Requires `masterapikey`** |
+| Sequence management (create sequence, add contacts, start/pause) | `masterapikey` | **Requires `masterapikey`** |
+| People enrichment (`POST /people/match`) | `apikey` | `apikey` sufficient |
+| Organization lookup | `apikey` | `apikey` sufficient |
+| Email verification | `apikey` | `apikey` sufficient |
 
 Base URL: `https://api.apollo.io/api/v1`.
 
 Rate limits: Apollo enforces strict per-key limits; 429 responses require 60s backoff.
 
-**If `masterapikey` is missing:** People search and sequence endpoints return **401 Unauthorized** with `"error": "Invalid Api Key"`. This is expected — even though `apikey` works for other endpoints, Apollo's master-only endpoints reject the regular key. Add `masterapikey` via `POST /UserAgent/CredentialUpsert` and the same agent can immediately use master-only endpoints (no restart needed if the cron picks up env changes on next run).
+**If `masterapikey` is missing:** People search and sequence endpoints return **401 Unauthorized** with `"error": "Invalid Api Key"`. This is expected: even though `apikey` works for other endpoints, Apollo's master-only endpoints reject the regular key. Add `masterapikey` via `POST /UserAgent/CredentialUpsert`; saving restarts a running agent, and it can use the master-only endpoints from then on.
 
 ## Troubleshooting
 
 - **403 Forbidden:** Plan doesn't include API access. Upgrade to Professional tier or higher.
 - **429 Too Many Requests:** Rate limit hit. Space prospecting runs or request higher tier from Apollo support.
 - **401 on `mixed_people/api_search`:** Missing `masterapikey`. Add it (workspace admins: Apollo → Admin → API keys).
-- **Sequence enrollment fails:** Missing `masterapikey`. Same fix — master key is required for write operations on sequences.
+- **Sequence enrollment fails:** Missing `masterapikey`. Same fix: master key is required for write operations on sequences.
 
 ## Related
 

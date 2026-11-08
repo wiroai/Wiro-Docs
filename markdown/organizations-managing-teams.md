@@ -2,9 +2,11 @@
 
 Create organizations, invite members, and manage roles and permissions.
 
+Creating, changing, deleting or restoring organizations and teams, managing members and invitations, and moving projects, agents or credit all need a signed-in user, as in the dashboard. With an API key these calls fail with HTTP `401` (see [Team API Access](/docs/organizations-api-access)).
+
 ## **POST** /Organization/Create
 
-Creates a new organization. The caller automatically becomes the organization **owner** — only the owner can create teams, delete the organization, or restore it after deletion. A team named `Default Team` is created with it automatically: the caller is added as its admin, and it gets its own wallet (starting at $0.00), no spend limit, and access to all models. Use `/Team/Create` only for additional teams.
+Creates a new organization. The caller automatically becomes the organization **owner**, and only the owner can create teams, delete the organization, or restore it after deletion. A team named `Default Team` is created with it automatically: the caller is added as its admin, and it gets its own wallet (starting at $0.00), no spend limit, and access to all models. Use `/Team/Create` only for additional teams.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -20,7 +22,7 @@ Creates a new organization. The caller automatically becomes the organization **
       "guid": "1b43089c-3b56-4638-b4ac-24268bb1d970",
       "name": "Acme Corp",
       "description": null,
-      "owneruuid": "86ae3c1d-edd1-4c2e-ba19-d1a3a23eeca4",
+      "owneruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
       "status": 1,
       "teams": [
         {
@@ -164,7 +166,7 @@ Lists all members of a team, including pending invitations. Any active member of
     {
       "guid": "a3c9e1f2-4b7d-4c1e-9f2a-6d8b0e5c7a91",
       "teamguid": "0d9aade4-d31b-4b97-88f3-a90482f080ea",
-      "useruuid": "86ae3c1d-edd1-4c2e-ba19-d1a3a23eeca4",
+      "useruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
       "role": "admin",
       "status": "active",
       "spendlimit": null,
@@ -198,7 +200,7 @@ Removes a member from the team. Organization owners and team admins can remove m
 - Regular members cannot remove themselves; a team admin or the organization owner has to remove them.
 - Another admin can't remove the organization owner from a team: the request fails with `Only the organization owner can remove the owner from this team`. The owner can remove themselves.
 - Only active members can be removed. To withdraw a pending invitation, use `/Team/Member/CancelInvite`.
-- Team projects stay in the team, and their API credentials are not tied to membership: anyone who still has a team project's credentials can keep using them and billing the team wallet. If the removed member had them, delete the project. Changing the project's IP whitelist issues a new API secret, so old signatures stop working on a Signature-Based project, but an API Key Only project's key keeps working from any IP still on its whitelist.
+- Team projects stay in the team. The API keys of the projects the removed member created stop working right away, unless that member is the organization owner. Apps and agents that use those keys lose access too, so move them to a key from another member's project before you remove someone. Keys of projects other members created keep working for anyone who has them: if the removed member had one, delete that project. Changing the project's IP whitelist issues a new API secret, so old signatures stop working on a Signature-Based project, but an API Key Only project's key keeps working from any IP still on its whitelist.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -266,7 +268,7 @@ Returns all organizations you belong to, including active and deleted ones. Each
       "guid": "1b43089c-3b56-4638-b4ac-24268bb1d970",
       "name": "Acme Corp",
       "avatar": null,
-      "owneruuid": "86ae3c1d-edd1-4c2e-ba19-d1a3a23eeca4",
+      "owneruuid": "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
       "status": 1,
       "teams": [
         {
@@ -285,7 +287,7 @@ Returns all organizations you belong to, including active and deleted ones. Each
 
 ## **POST** /Team/TransferAgent
 
-Transfers an agent instance between workspaces — personal to team, team to personal, or team to team. On the team side you must be an admin of that team or the organization owner. On the personal side you must be the user who originally deployed the agent: only the deployer can move an agent from their personal workspace into a team, and only the deployer can move it from a team to their personal workspace.
+Transfers an agent instance between workspaces: personal to team, team to personal, or team to team. On the team side you must be an admin of that team or the organization owner. On the personal side you must be the user who originally deployed the agent: only the deployer can move an agent from their personal workspace into a team, and only the deployer can move it from a team to their personal workspace.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -311,6 +313,7 @@ Transfers a project between workspaces. Future tasks on the project are billed t
 When a project is transferred:
 - The project's `teamguid` is updated
 - Future tasks using this project's API key are billed to the new workspace
+- If the user who created the project is neither an active member of the new team nor the organization owner, the project's API key stops working
 
 > **Important:** Agents can only access projects in the same workspace. Transferring a project may break agent workflows that depend on it.
 
@@ -320,6 +323,6 @@ Credit can be transferred between your personal wallet and team wallets. Transfe
 
 ## What's Next
 
-- [Organizations & Teams Overview](/docs/organizations-overview) — Concepts and workspace hierarchy
-- [Team Billing & Spending](/docs/organizations-billing) — Wallets, spend limits, and model access controls
-- [Team API Access](/docs/organizations-api-access) — How context works in API requests
+- [Organizations & Teams Overview](/docs/organizations-overview): Concepts and workspace hierarchy
+- [Team Billing & Spending](/docs/organizations-billing): Wallets, spend limits, and model access controls
+- [Team API Access](/docs/organizations-api-access): How context works in API requests

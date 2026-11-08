@@ -1,17 +1,67 @@
 /* ==========================================================================
-   Wiro Docs — design-system checkpoint
+   Wiro Docs: design-system layer
    --------------------------------------------------------------------------
-   This layer adapts the current Wiro-Web token and component contracts to the
-   static Docs runtime. It intentionally sits after docs.css so the checkpoint
-   can be removed without rewriting the legacy stylesheet.
+   This layer applies the Wiro design tokens and component styles to the
+   static Docs pages. It sits after docs.css so it can be removed without
+   rewriting the older stylesheet.
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   1. Current Wiro design tokens
-   Source: Wiro-Web/src/scss/wiro-design-system/_tokens.scss
+   1. Wiro design tokens
    -------------------------------------------------------------------------- */
+/* The page paints before Inter arrives. These faces scale an installed Arial
+   (or Liberation Sans, which has its widths) or Roboto to Inter's width, on
+   Inter's ascent and descent, so the swap leaves the text where it is. size-adjust
+   is Inter's width over the fallback's across all docs text (Chrome, 2026-11-04);
+   the overrides are Inter's 0.969 and 0.241 over size-adjust. They cover only
+   Inter's latin range: once Inter is in they are never used, and symbols it lacks
+   keep their usual fonts. */
+@font-face {
+  font-family: "Inter Fallback";
+  font-weight: 100 500;
+  src: local("Arial"), local("ArialMT"), local("Helvetica"), local("Liberation Sans");
+  size-adjust: 107.5%;
+  ascent-override: 90.1%;
+  descent-override: 22.4%;
+  line-gap-override: 0%;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Inter Fallback";
+  font-weight: 600 900;
+  src: local("Arial Bold"), local("Arial-BoldMT"), local("Helvetica Bold"), local("Helvetica-Bold"), local("Liberation Sans Bold");
+  size-adjust: 101%;
+  ascent-override: 95.9%;
+  descent-override: 23.9%;
+  line-gap-override: 0%;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Inter Fallback Android";
+  font-weight: 100 500;
+  src: local("Roboto"), local("Roboto-Regular");
+  size-adjust: 107.8%;
+  ascent-override: 89.9%;
+  descent-override: 22.4%;
+  line-gap-override: 0%;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Inter Fallback Android";
+  font-weight: 600 900;
+  src: local("Roboto Bold"), local("Roboto-Bold");
+  size-adjust: 107.3%;
+  ascent-override: 90.3%;
+  descent-override: 22.5%;
+  line-gap-override: 0%;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 :root {
-  --wiro-sans: "Inter", -apple-system, blinkmacsystemfont, "Segoe UI", roboto, helvetica, arial, sans-serif;
+  --wiro-sans: "Inter", "Inter Fallback", "Inter Fallback Android", -apple-system, blinkmacsystemfont, "Segoe UI", roboto, helvetica, arial, sans-serif;
   --wiro-mono: "JetBrains Mono", monospace;
   --wiro-font-mono: var(--wiro-mono);
 
@@ -55,7 +105,7 @@
   --wiro-surface-frost: rgb(255 255 255 / 86%);
   --wiro-ink: #16140f;
   --wiro-ink2: #3d3a33;
-  --wiro-ink3: #706c62;
+  --wiro-ink3: #6b675d;
   --wiro-ink4: #a8a49a;
   --wiro-ink-hover: #2a2820;
   --wiro-border: rgb(22 20 15 / 7%);
@@ -115,10 +165,10 @@
   --wiro-code-fg: var(--wiro-ink);
   --wiro-code-punct: var(--wiro-ink3);
   --wiro-code-name: var(--wiro-ink2);
-  --wiro-code-comment: #8b877d;
+  --wiro-code-comment: #706d64;
   --wiro-code-keyword: #5f594a;
-  --wiro-code-string: #2e7d52;
-  --wiro-code-number: #9a6a32;
+  --wiro-code-string: #2d7b50;
+  --wiro-code-number: #91632f;
 
   --wiro-code-ondark-bg: #131210;
   --wiro-code-ondark-inset: #0e0d0b;
@@ -193,7 +243,7 @@ html.wiro-dark {
   --wiro-code-fg: var(--wiro-ink);
   --wiro-code-punct: var(--wiro-ink3);
   --wiro-code-name: var(--wiro-ink2);
-  --wiro-code-comment: #5c5a52;
+  --wiro-code-comment: #838074;
   --wiro-code-keyword: #7ba8d4;
   --wiro-code-string: #8fbf7a;
   --wiro-code-number: #cf9060;
@@ -233,7 +283,7 @@ summary:focus-visible {
   box-shadow: var(--wiro-focus-ring);
 }
 
-/* Keep Wiro-Web's exact WebKit-only 6px, trackless scrollbar geometry. Docs
+/* Keep the Wiro web app's WebKit-only 6px, trackless scrollbar geometry. Docs
    additionally drives the tokenized thumb color from app.js so each scroll
    surface can reveal and fade independently without shifting layout. */
 html::-webkit-scrollbar,
@@ -303,6 +353,12 @@ body::-webkit-scrollbar-thumb,
   -webkit-backdrop-filter: blur(8px);
 }
 
+/* The drawer's scrim sits under this translucent header. A solid header keeps its
+   labels at their usual contrast while the drawer is open. */
+#app:has(.docs-code-drawer-overlay.is-open) .docs-header {
+  background: var(--wiro-bg);
+}
+
 .docs-header-inner {
   box-sizing: border-box;
   display: flex;
@@ -352,7 +408,7 @@ body::-webkit-scrollbar-thumb,
 
 .docs-header-product-root {
   flex: 0 0 auto;
-  color: var(--wiro-ink4);
+  color: var(--wiro-ink3);
   font-weight: 500;
 }
 
@@ -454,7 +510,7 @@ body::-webkit-scrollbar-thumb,
 }
 
 /* --------------------------------------------------------------------------
-   4. Sidebar — styleguide navigation contract
+   4. Sidebar: styleguide navigation
    -------------------------------------------------------------------------- */
 .docs-nav-wrapper {
   height: 100%;
@@ -550,7 +606,7 @@ body::-webkit-scrollbar-thumb,
 .docs-nav-group-title {
   margin: 0 0 4px;
   padding: 0 10px;
-  color: var(--wiro-ink4);
+  color: var(--wiro-ink3);
   font-size: var(--wiro-type-micro-size);
   font-weight: 600;
   letter-spacing: var(--wiro-type-eyebrow-letter);
@@ -580,6 +636,13 @@ body::-webkit-scrollbar-thumb,
   color: var(--wiro-ink4);
   font-size: 14px;
   transition: var(--wiro-transition);
+}
+
+/* The icon font arrives after the first paint. Holding about an icon's width until
+   then keeps the labels beside these icons in place when it does. */
+.docs-nav-link i,
+.docs-search-trigger i {
+  min-width: 0.96em;
 }
 
 .docs-nav-link:hover,
@@ -617,7 +680,7 @@ body::-webkit-scrollbar-thumb,
 }
 
 .docs-nav-md-label {
-  color: var(--wiro-ink4);
+  color: var(--wiro-ink3);
   font-size: var(--wiro-type-micro-size);
 }
 
@@ -667,7 +730,7 @@ body::-webkit-scrollbar-thumb,
   border: 1px solid var(--wiro-border-med);
   border-radius: var(--wiro-radius-control);
   background: var(--wiro-bg);
-  color: var(--wiro-ink4);
+  color: var(--wiro-ink3);
   font-size: 13px;
   transition: var(--wiro-transition), box-shadow 0.14s ease;
 }
@@ -692,7 +755,7 @@ body::-webkit-scrollbar-thumb,
   border: 1px solid var(--wiro-border-med);
   border-radius: var(--wiro-radius-sm);
   background: var(--wiro-surface);
-  color: var(--wiro-ink4);
+  color: var(--wiro-ink3);
   font-family: var(--wiro-mono);
   font-size: var(--wiro-type-micro-size);
   line-height: 16px;
@@ -720,12 +783,23 @@ body::-webkit-scrollbar-thumb,
   background: var(--wiro-bg);
 }
 
+/* The panel comes after the section in the HTML, so the browser can paint a long
+   page before it has read the panel. Keeping the panel's room until then gives the
+   center column its final width from the first paint. */
+@media (min-width: 1280px) {
+  .docs-content-area:has(> .docs-center:not(.no-code-panel)):not(:has(> .docs-right-panel))::after {
+    content: "";
+    width: min(34vw, 440px);
+    min-width: 380px;
+  }
+}
+
 .docs-right-sticky {
   padding: 28px 20px;
 }
 
 .docs-toc-title {
-  color: var(--wiro-ink4);
+  color: var(--wiro-ink3);
   font-family: var(--wiro-mono);
   font-size: var(--wiro-type-eyebrow-size);
   font-weight: var(--wiro-type-eyebrow-weight);
@@ -767,7 +841,7 @@ body::-webkit-scrollbar-thumb,
 
 .docs-section-md-row {
   margin: 0 0 14px;
-  color: var(--wiro-ink4);
+  color: var(--wiro-ink3);
   font-size: var(--wiro-type-micro-size);
 }
 
@@ -880,6 +954,7 @@ body::-webkit-scrollbar-thumb,
 }
 
 .docs-brand-lockup-primary {
+  width: auto;
   height: 36px;
 }
 
@@ -891,6 +966,7 @@ body::-webkit-scrollbar-thumb,
 }
 
 .docs-brand-lockup-wiro {
+  width: auto;
   height: 16px;
   filter: var(--wiro-brand-filter);
 }
@@ -965,7 +1041,7 @@ body::-webkit-scrollbar-thumb,
   line-height: var(--wiro-type-meta-line);
 }
 
-/* Static table adapter follows WiroTable's bordered surface contract. */
+/* Static tables follow the Wiro web app's bordered table style. */
 .docs-section table {
   width: 100%;
   margin: 14px 0;
@@ -1029,7 +1105,7 @@ body::-webkit-scrollbar-thumb,
 }
 
 .docs-pagination-link small {
-  color: var(--wiro-ink4);
+  color: var(--wiro-ink3);
   font-family: var(--wiro-mono);
   font-size: var(--wiro-type-eyebrow-size);
   font-weight: var(--wiro-type-eyebrow-weight);
@@ -1052,7 +1128,7 @@ body::-webkit-scrollbar-thumb,
 
 .docs-code-panel-title {
   padding: 12px 14px 4px;
-  color: var(--wiro-ink4);
+  color: var(--wiro-ink3);
   font-family: var(--wiro-mono);
   font-size: var(--wiro-type-eyebrow-size);
   font-weight: var(--wiro-type-eyebrow-weight);
@@ -1066,7 +1142,7 @@ body::-webkit-scrollbar-thumb,
 
 .docs-code-tab {
   padding: 6px 8px;
-  color: var(--wiro-ink4);
+  color: var(--wiro-ink3);
   font-size: var(--wiro-type-caption-size);
   transition: var(--wiro-transition);
 }
@@ -1170,7 +1246,7 @@ html.wiro-dark .shiki span {
   color: var(--wiro-danger-text);
 }
 
-/* Bordered HTML tables mirror WiroTable's surface, header, row and type
+/* Bordered HTML tables match the Wiro web app's table surface, header, row and type
    hierarchy while preserving the existing semantic table markup. */
 .docs-param-table,
 .docs-comparison-table,
@@ -1220,7 +1296,7 @@ html.wiro-dark .shiki span {
 .message-table thead th {
   padding: 10px 14px;
   border-bottom: 1px solid var(--wiro-border);
-  color: var(--wiro-ink4);
+  color: var(--wiro-ink3);
   font-family: var(--wiro-mono);
   font-size: var(--wiro-type-eyebrow-size);
   font-weight: var(--wiro-type-eyebrow-weight);
@@ -1286,13 +1362,13 @@ html.wiro-dark .shiki span {
 }
 
 .param-type {
-  color: var(--wiro-ink4);
+  color: var(--wiro-ink3);
   font-family: var(--wiro-mono);
   font-size: var(--wiro-type-micro-size);
 }
 
 .param-required {
-  color: var(--wiro-ink4);
+  color: var(--wiro-ink3);
   font-size: var(--wiro-type-micro-size);
 }
 
@@ -1305,7 +1381,7 @@ html.wiro-dark .shiki span {
   color: var(--wiro-ink2);
 }
 
-/* Existing segmented controls implement WiroTabs inset behaviour. */
+/* Segmented controls use the Wiro web app's inset tab style. */
 .auth-method-toggle,
 .playground-auth-toggle {
   max-width: 100%;
@@ -1384,7 +1460,7 @@ html.wiro-dark .shiki span {
   color: var(--wiro-ink2);
 }
 
-/* SgNote-style neutral callout for API behavior and scope notes. */
+/* Neutral callout for API behavior and scope notes. */
 .docs-callout {
   margin: 14px 0;
   padding: 14px 16px;
@@ -1398,7 +1474,7 @@ html.wiro-dark .shiki span {
   color: var(--wiro-ink);
 }
 
-/* Code-adjacent note card follows the styleguide's cx-notecard surface. */
+/* Code-adjacent note card follows the styleguide's note card surface. */
 .docs-note {
   margin: 14px 0;
   padding: 12px 14px;
@@ -1451,7 +1527,7 @@ html.wiro-dark .shiki span {
 }
 
 .docs-section-md-row {
-  color: var(--wiro-ink4);
+  color: var(--wiro-ink3);
   font-size: var(--wiro-type-micro-size);
 }
 
@@ -1545,11 +1621,14 @@ html.wiro-dark .shiki span {
   box-shadow: inset 0 0 0 1px var(--wiro-border);
 }
 
-.mcp-client-card i,
+.mcp-client-card i {
+  color: var(--wiro-ink4);
+}
+
 .model-card-cat,
 .model-loading,
 .model-empty {
-  color: var(--wiro-ink4);
+  color: var(--wiro-ink3);
 }
 
 .mcp-client-card:hover i,
@@ -1573,13 +1652,162 @@ html.wiro-dark .mcp-client-card.is-active .mcp-client-logo {
   opacity: 1;
 }
 
+/* MCP browser sign-in: the quick start at the top of the Wiro MCP Server page.
+   A green-washed card, so the easiest way to connect is the first thing a
+   reader sees, ahead of the per-client Setup cards. */
+.mcp-signin {
+  margin: 20px 0 8px;
+  padding: 20px 22px 22px;
+  border: 1px solid var(--wiro-green-border);
+  border-radius: var(--wiro-radius-2xl);
+  background: var(--wiro-green-bg);
+}
+
+.mcp-signin-badge {
+  display: inline-block;
+  margin-bottom: 8px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--wiro-green);
+  color: var(--wiro-surface);
+  font-size: var(--wiro-type-eyebrow-size);
+  font-weight: 600;
+  letter-spacing: var(--wiro-type-eyebrow-letter);
+  line-height: 1.6;
+  text-transform: uppercase;
+}
+
+.docs-section .mcp-signin h2 {
+  margin-top: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.mcp-signin-url {
+  margin: 14px 0;
+  padding: 11px 14px;
+  border: 1px solid var(--wiro-border-med);
+  border-radius: var(--wiro-radius-control);
+  background: var(--wiro-surface);
+  overflow-x: auto;
+}
+
+.docs-section .mcp-signin-url code {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--wiro-ink);
+  font-family: var(--wiro-mono);
+  font-size: 15px;
+  white-space: nowrap;
+}
+
+.docs-section .mcp-signin-apps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 20px;
+  padding: 0;
+  list-style: none;
+}
+
+.docs-section .mcp-signin-apps li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 3px 10px 3px 7px;
+  border: 1px solid var(--wiro-border-med);
+  border-radius: var(--wiro-radius-chip);
+  background: var(--wiro-surface);
+  color: var(--wiro-ink2);
+  font-size: var(--wiro-type-meta-size);
+  line-height: 1.6;
+}
+
+.mcp-signin-apps svg {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+
+.mcp-signin-install {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.docs-section .mcp-signin-install a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: var(--wiro-radius-control);
+  background: var(--wiro-ink);
+  color: var(--wiro-bg);
+  font-size: var(--wiro-type-button-sm-size);
+  font-weight: var(--wiro-type-button-weight);
+  transition: var(--wiro-transition);
+}
+
+.docs-section .mcp-signin-install a:hover {
+  background: var(--wiro-ink-hover);
+  color: var(--wiro-bg);
+  opacity: 1;
+}
+
+.mcp-signin-install svg {
+  width: 15px;
+  height: 15px;
+  filter: brightness(0) invert(1);
+}
+
+/* Apps without a one-click link: a quieter row of settings links. */
+.docs-section .mcp-signin-more {
+  margin: 16px 0 0;
+  color: var(--wiro-ink3);
+  font-size: var(--wiro-type-meta-size);
+}
+
+.mcp-signin-install.is-secondary {
+  margin-top: 8px;
+}
+
+.docs-section .mcp-signin-install.is-secondary a {
+  border: 1px solid var(--wiro-border-med);
+  background: var(--wiro-surface);
+  color: var(--wiro-ink);
+}
+
+.docs-section .mcp-signin-install.is-secondary a:hover {
+  border-color: var(--wiro-border-strong);
+  background: var(--wiro-bg-warm);
+  color: var(--wiro-ink);
+}
+
+.mcp-signin-install.is-secondary svg {
+  filter: none;
+}
+
+html.wiro-dark .mcp-signin-apps svg,
+html.wiro-dark .mcp-signin-install.is-secondary svg {
+  filter: brightness(0) invert(1);
+}
+
+html.wiro-dark .mcp-signin-install:not(.is-secondary) svg {
+  filter: brightness(0);
+}
+
 html.wiro-dark .dark-invert-icon,
 html.wiro-dark .docs-nav-icon-img[src*="twitterx"],
-html.wiro-dark .docs-nav-icon-img[src*="tiktok"] {
+html.wiro-dark .docs-nav-icon-img[src*="tiktok"],
+html.wiro-dark .docs-nav-icon-img[src*="roasit"] {
   filter: invert(1);
 }
 
-/* Underline and pill tab families mirror WiroTabs. */
+/* Underline and pill tabs match the Wiro web app's tabs. */
 .content-tabs-nav {
   display: flex;
   gap: 12px;
@@ -1666,7 +1894,7 @@ html.wiro-dark .docs-nav-icon-img[src*="tiktok"] {
   color: var(--wiro-bg);
 }
 
-/* Details and FAQ surfaces use the same neutral row language as WiroTable. */
+/* Details and FAQ surfaces use the same neutral row style as tables. */
 .docs-section details,
 .faq-accordion {
   overflow: hidden;
@@ -1961,6 +2189,11 @@ html.wiro-dark .docs-nav-icon-img[src*="tiktok"] {
     border-color: var(--wiro-border-strong);
     background: var(--wiro-bg-warm);
     color: var(--wiro-ink);
+  }
+
+  /* A page without code examples has no panel for this button to open. */
+  .docs-right-panel.is-empty ~ .docs-code-drawer-toggle {
+    display: none;
   }
 
   .docs-code-drawer-close {

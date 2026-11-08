@@ -8,10 +8,10 @@ The SendGrid integration uses standard Bearer authentication with a SendGrid API
 
 **Skills that use this integration:**
 
-- `sendgrid-email` — Marketing and transactional email via SendGrid v3 API
-- `newsletter-compose` — uses SendGrid as the ESP when enabled alongside
+- `int-sendgrid-email`: Marketing and transactional email via SendGrid v3 API
+- `util-newsletter-compose`: optional; uses SendGrid as the ESP when enabled alongside. Newsletter Manager has it on; on other agents turn on `util-newsletter-compose` yourself. SendGrid alone adds no newsletter tasks.
 
-**Other:** Custom agents can call the SendGrid API via whatever skill invokes `SENDGRID_API_KEY`.
+**Other:** Custom agents can use SendGrid from their own skills once the integration is connected.
 
 **Agents that typically enable this integration:**
 
@@ -25,8 +25,8 @@ The SendGrid integration uses standard Bearer authentication with a SendGrid API
 
 ## Prerequisites
 
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
 - **A SendGrid account**.
 
 ## Setup
@@ -38,7 +38,7 @@ The SendGrid integration uses standard Bearer authentication with a SendGrid API
 3. Permissions:
    - **Full Access** for maximum capability, or
    - **Restricted Access** + enable at least **Mail Send** (and **Marketing Campaigns** if used).
-4. **Create & View**, copy the key once (starts with `SG.`) — **cannot be retrieved later**.
+4. **Create & View**, copy the key once (starts with `SG.`). It **cannot be retrieved later**.
 
 ### Step 2: Save to Wiro
 
@@ -82,11 +82,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 
 ## Runtime Behavior
 
-Env vars (exported **only when `sendgrid-email` skill is enabled** and `apikey` is set):
+The `int-sendgrid-email` skill is active only when it is enabled and `apikey` is set.
 
-- `SENDGRID_API_KEY` ← `credentials.sendgrid.apikey`
-
-Auth: `Authorization: Bearer $SENDGRID_API_KEY`.
+Auth: `Authorization: Bearer <your API key>`.
 Base URL: `https://api.sendgrid.com/v3`.
 
 Rate limits: 600 req/min on most endpoints; higher on marketing endpoints.

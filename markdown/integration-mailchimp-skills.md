@@ -4,12 +4,12 @@ Connect your agent to Mailchimp for audience and campaign management. Supports O
 
 ## Overview
 
-The Mailchimp integration is unique in supporting three authentication options: Wiro's shared OAuth app, your own OAuth app, or a direct API key bypassing OAuth entirely.
+The Mailchimp integration supports three connection modes: Wiro's shared OAuth app, your own OAuth app, or a direct API key with no OAuth.
 
 **Skills that use this integration:**
 
-- `mailchimp-email` — Audience and campaign management
-- `newsletter-compose` — uses Mailchimp as an ESP when enabled alongside
+- `int-mailchimp-email`: Audience and campaign management
+- `util-newsletter-compose`: optional; uses Mailchimp as an ESP when enabled alongside. Newsletter Manager has it on; on other agents turn on `util-newsletter-compose` yourself. Mailchimp alone adds no newsletter tasks.
 
 **Agents that typically enable this integration:**
 
@@ -21,14 +21,14 @@ The Mailchimp integration is unique in supporting three authentication options: 
 |------|--------|-------|
 | `"wiro"` | Available | OAuth with Wiro's shared Mailchimp app. |
 | `"own"` | Available | OAuth with your own Mailchimp registered app. |
-| API key | Available | Paste a server-scoped Mailchimp API key directly — no OAuth. |
+| API key | Available | Paste a server-scoped Mailchimp API key directly, with no OAuth. |
 
 ## Prerequisites
 
-- **A Wiro API key** — [Authentication](/docs/authentication).
-- **A deployed agent** — [Agent Overview](/docs/agent-overview).
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
 - **A Mailchimp account**.
-- **(Own OAuth mode) A registered Mailchimp app** — [admin.mailchimp.com/account/oauth2_client](https://admin.mailchimp.com/account/oauth2_client/).
+- **(Own OAuth mode) A registered Mailchimp app** ([admin.mailchimp.com/account/oauth2_client](https://admin.mailchimp.com/account/oauth2_client/)).
 - **(API-key mode) A server-scoped Mailchimp API key**.
 
 ## Option A: OAuth (Wiro or Own Mode)
@@ -46,7 +46,7 @@ The Mailchimp integration is unique in supporting three authentication options: 
 
 5. Save; copy **Client ID** and **Client Secret**.
 
-> **No OAuth scopes to configure.** Mailchimp's OAuth 2.0 doesn't use scopes — connected apps get full account access. Wiro's `authorizeUrl` omits any scope parameter.
+> **No OAuth scopes to configure.** Mailchimp's OAuth 2.0 doesn't use scopes: connected apps get full account access. Wiro's `authorizeUrl` omits any scope parameter.
 
 ### Own Step 2: Save credentials
 
@@ -63,6 +63,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
     ]
   }'
 ```
+
+`clientid` and `clientsecret` are required. `CredentialUpsert` refuses an empty value with `Client ID is required` or `Client Secret is required`, and then saves no field of that request.
 
 ### OAuth Step 3: Initiate
 
@@ -88,11 +90,13 @@ Response:
 }
 ```
 
-No `scope` parameter — Mailchimp OAuth doesn't use scopes.
+No `scope` parameter: Mailchimp OAuth doesn't use scopes.
+
+> **Starting OAuth removes a saved API key.** `OAuthConnect` with `"wiro"` or `"own"` clears `apikey` first, so an API-key setup stops working even if the OAuth start fails or the user never finishes consent.
 
 ### OAuth Step 4: Handle the callback
 
-Wiro exchanges the code via `POST https://login.mailchimp.com/oauth2/token`, then fetches metadata from `GET https://login.mailchimp.com/oauth2/metadata` with `Authorization: OAuth <access_token>` to retrieve the server prefix (`dc`) and account name.
+Wiro exchanges the code via `POST https://login.mailchimp.com/oauth2/token`, then fetches metadata from `GET https://login.mailchimp.com/oauth2/metadata` with `Authorization: OAuth <access_token>` to retrieve the server prefix (`dc`) and account name. The connection needs the server prefix: if the metadata has no server prefix, nothing is saved and the redirect carries `mailchimp_error=token_exchange_failed`.
 
 **Success URL:**
 
@@ -122,11 +126,12 @@ Response:
     { "id": "Your Company", "name": "Your Company" }
   ],
   "connectedat": "2026-04-17T12:00:00.000Z",
+  "tokenexpiresat": "",
   "errors": []
 }
 ```
 
-> **Mailchimp tokens don't expire.** `OAuthStatus` responses for Mailchimp don't include `tokenexpiresat`. Reconnect only if the authorization is revoked or otherwise invalidated.
+> **Mailchimp tokens don't expire.** `OAuthStatus` responses leave `tokenexpiresat` empty for Mailchimp. Reconnect only if the authorization is revoked or otherwise invalidated.
 
 ## Option B: Direct API Key (No OAuth)
 
@@ -152,6 +157,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   }'
 ```
 
+`apikey` is required. An empty value is refused with `API Key (alternative) is required`, and then no field of that request is saved. To remove a saved key, call `OAuthDisconnect` in API-key mode.
+
 No further OAuth step. The agent uses the API key directly.
 
 ```bash
@@ -169,22 +176,22 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
 | `credentialkey` | string | Yes | `"mailchimp"`. |
-| `redirecturl` | string | Yes | HTTPS URL. |
+| `redirecturl` | string | Yes | Any HTTPS URL you control; the browser returns there after consent. `http://localhost` and `http://127.0.0.1` also work for development. |
 | `authmethod` | string | No | `"wiro"` (default) or `"own"`. |
 
 ### GET /UserAgentOAuth/MailchimpCallback
 
-Query params: `mailchimp_connected=true&mailchimp_account=<name>` or `mailchimp_error=<code>`. The callback path is per-provider — Mailchimp's stays `MailchimpCallback`.
+Server-side endpoint invoked by Mailchimp with `code` and `state`. You don't call it. You only handle the final redirect back to your `redirecturl`, which carries `mailchimp_connected=true&mailchimp_account=<name>` or `mailchimp_error=<code>`. The callback path is per-provider: Mailchimp's stays `MailchimpCallback`.
 
 ### POST /UserAgentOAuth/OAuthStatus
 
-Body: `{ useragentguid, credentialkey: "mailchimp" }`. Response: `connected`, `accounts: [{id, name}]` (1-element with the Mailchimp account name), `connectedat`. **No `tokenexpiresat`** — Mailchimp OAuth tokens don't expire.
+Body: `{ useragentguid, credentialkey: "mailchimp" }`. Response: `connected`, `accounts: [{id, name}]` (1-element with the Mailchimp account name), `connectedat`. **`tokenexpiresat` is empty** because Mailchimp tokens don't expire.
 
-> **API key-only mode caveat:** `OAuthStatus.connected` is computed from `authmethod in {wiro, own}` **and** a non-empty `accesstoken`. If you set up Mailchimp via direct API key (no OAuth), `authmethod` is `"api_key"` and `accesstoken` is empty, so `OAuthStatus.connected` returns `false` — even though the agent runtime is fully functional (the `mailchimp-email` skill reads the API key directly). Don't use `OAuthStatus.connected` as the source of truth for API key setups; check that `credentials.mailchimp.apikey` is non-empty in `POST /UserAgent/Detail` instead.
+> **API key-only mode caveat:** `OAuthStatus.connected` is computed from `authmethod in {wiro, own}` **and** a non-empty `accesstoken`. If you set up Mailchimp via direct API key (no OAuth), `authmethod` is `"api_key"` and `accesstoken` is empty, so `OAuthStatus.connected` returns `false`, even though the agent runtime is fully functional (the `int-mailchimp-email` skill reads the API key directly). Don't use `OAuthStatus.connected` as the source of truth for API key setups; check that `credentials.mailchimp.apikey` is non-empty in `POST /UserAgent/Detail` instead.
 
 ### POST /UserAgentOAuth/OAuthDisconnect
 
-Body: `{ useragentguid, credentialkey: "mailchimp" }`. Clears credentials (no remote revoke — Mailchimp doesn't expose a revoke endpoint for OAuth tokens).
+Body: `{ useragentguid, credentialkey: "mailchimp" }`. Clears the token, the account name and the server prefix (no remote revoke, since Mailchimp doesn't expose a revoke endpoint for OAuth tokens). `clientid` and `clientsecret` stay saved. In API-key mode, Disconnect also clears `apikey`; an OAuth disconnect keeps it.
 
 ### Token lifecycle
 
@@ -192,7 +199,7 @@ Mailchimp OAuth tokens do not expire. Reconnect only if the user revokes the aut
 
 ## Using the Skill
 
-Once Mailchimp is connected (OAuth or API key), the agent's scheduled tasks use the `mailchimp-email` platform skill for audience and campaign operations. Adjust the cron of the built-in `cron-subscriber-scanner` task (Newsletter Manager) with `enabled` and `interval` only — cron skill bodies are template-controlled and `value` is silently ignored for bundled crons:
+Once Mailchimp is connected (OAuth or API key), the agent's scheduled tasks use the `int-mailchimp-email` platform skill for audience and campaign operations. Adjust the cron of the built-in `cs-cron-newsletter-subscriber-scanner` task (Newsletter Manager) with `enabled` and `interval` only. Scheduled task bodies are template-controlled and `value` is silently ignored for bundled tasks:
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
@@ -200,13 +207,13 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "skillkey": "cron-subscriber-scanner",
+    "skillkey": "cs-cron-newsletter-subscriber-scanner",
     "enabled": true,
     "interval": "0 10 * * *"
   }'
 ```
 
-To change **what** the scanner checks (target lists, bounce thresholds, tone, audience segments), edit the paired preference skill `newsletter-strategy` instead — see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preference-skills).
+To change **what** the scanner checks (target lists, bounce thresholds, tone, audience segments), edit the paired preference skill `newsletter-strategy` instead (see [Agent Skills → Updating Preferences](/docs/agent-skills#updating-preference-skills)).
 
 ## Troubleshooting
 
@@ -214,8 +221,8 @@ To change **what** the scanner checks (target lists, bounce thresholds, tone, au
 |------------|---------|------------|
 | `authorization_denied` | User cancelled. | Retry. |
 | `session_expired` | State cache expired (15 min). | Restart. |
-| `token_exchange_failed` | Wrong Client Secret or redirect URI mismatch. | Re-copy; verify URL. |
-| `useragent_not_found` | Invalid guid. | Use `POST /UserAgent/MyAgents`. |
+| `token_exchange_failed` | Wrong Client Secret, a redirect URI mismatch, or no server prefix in the account details Mailchimp sent. Nothing is saved. | Re-copy; verify URL; connect again. |
+| `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow, before Mailchimp returned. | Start again with `OAuthConnect` for an existing agent. |
 | `Mailchimp credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when `authmethod: "own"` but `clientid` / `clientsecret` are missing. | Update with `POST /UserAgent/CredentialUpsert`. |
 | `internal_error` | Server error. | Retry; contact support. |
 

@@ -4,11 +4,11 @@ Common questions about using the Wiro API. If you can't find the answer here, [c
 
 ## How do I get an API key?
 
-Sign up at [wiro.ai](https://wiro.ai), then create a project at [wiro.ai/panel/project](https://wiro.ai/panel/project/new). Your API key (and secret, if signature-based) are displayed once — copy and store them securely.
+Sign up at [wiro.ai](https://wiro.ai), then create a project at [wiro.ai/panel/project](https://wiro.ai/panel/project/new). Copy your API key (and secret, if signature-based) and store them securely. You can see them again on the Projects page after you confirm it's you.
 
 ## Which authentication method should I use?
 
-**Signature-Based** is recommended — it uses HMAC-SHA256 so your API secret never leaves your environment. **API Key Only** is simpler and fine for server-side applications where you control the environment. See [Authentication](/docs/authentication) for details.
+**Signature-Based** is recommended. It uses HMAC-SHA256 so your API secret never leaves your environment. **API Key Only** is simpler and fine for server-side applications where you control the environment. Use either method only from your own server, never in browser or mobile app code. See [Authentication](/docs/authentication) for details.
 
 ## Is there a rate limit?
 
@@ -20,7 +20,7 @@ No. If a task fails (non-zero `pexit`), you are not charged. Only successfully c
 
 ## How do I check the cost before running a model?
 
-Use the [POST /Tool/Detail](/docs/models) endpoint — the response includes the model's pricing information. If you're using the [MCP server](/docs/wiro-mcp-server), the `search_models` and `get_model_schema` tools also return pricing.
+Use the [POST /Tool/Detail](/docs/models) endpoint. The response includes the model's pricing information. If you're using the [MCP server](/docs/wiro-mcp-server), the `search_models` and `get_model_schema` tools also return pricing.
 
 ## How long are generated files stored?
 
@@ -30,21 +30,25 @@ Output files are stored on Wiro's CDN and available for a limited time. Download
 
 Yes. Output URLs returned by Wiro are publicly accessible. Anyone with the URL can access the file. If you need private storage, download the files to your own infrastructure.
 
+## What happens when I delete my account?
+
+Your account is closed right away and its API keys stop working. Its subscriptions stop renewing and end with their current billing period, without a refund. A renewal invoice that is still unpaid is cancelled. Its automatic top-ups stop. 30 days later, or later if something still needs it, such as an active subscription, we permanently delete its data, including your files, tasks, projects and API keys. Until then, write to [support@wiro.ai](mailto:support@wiro.ai) if you want it restored. We keep records the law requires, such as payment and invoice records. See [Data Deletion](https://wiro.ai/agreement/data-deletion) for details.
+
 ## How do I get real-time task updates?
 
 Connect to the [WebSocket](/docs/websocket) at `wss://socket.wiro.ai/v1` and register with the `socketaccesstoken` from your run response. You'll receive events as the task progresses. For simpler integrations, you can poll the [Task Detail](/docs/tasks) endpoint.
 
 ## How do LLM responses work?
 
-LLM models return their response in both places: `outputs` contains a structured entry with `contenttype: "raw"` (with `prompt`, `raw`, `thinking`, and `answer` fields), and `debugoutput` contains the merged plain text. For streaming, each token arrives as a separate `task_output` WebSocket event. See [LLM & Chat Streaming](/docs/llm-chat-streaming) for details.
+LLM models return their response in two places: as merged text in `debugoutput`, and as a structured entry in the `outputs` array with `contenttype: "raw"` containing `prompt`, `raw`, and separate `thinking` and `answer` arrays. For streaming, each `task_output` WebSocket event carries the latest cumulative snapshot of the output. See [LLM & Chat Streaming](/docs/llm-chat-streaming) for details.
 
 ## Can I send a URL instead of uploading a file?
 
-Yes. For `fileinput` and `multifileinput` parameters, use the `{id}Url` suffix (e.g., `inputImageUrl`). For `combinefileinput`, pass URLs directly in the original parameter. You can also pass a URL directly to any file parameter if the `{id}Url` field doesn't exist. See [Model Parameters](/docs/model-parameters).
+Yes. For `fileinput` parameters, use the `{id}Url` suffix (e.g., `inputImageUrl`). For `multifileinput`, send comma-separated URLs in the field that puts `Url` before `Multiple` (e.g., `inputDocumentUrlMultiple`). For `combinefileinput`, pass URLs directly in the original parameter. A `fileinput` or `multifileinput` with no URL field takes them in the parameter itself. The URL must be a public `http(s)` address. See [Model Parameters](/docs/model-parameters).
 
 ## What is pexit and how do I use it?
 
-`pexit` is the process exit code — `"0"` means success, any other value means failure. It's the most reliable way to determine if a task succeeded. Always check `pexit` in the `task_postprocess_end` event or Task Detail response. See [Tasks](/docs/tasks).
+`pexit` is the process exit code: `"0"` means success, any other value means failure. It's the most reliable way to determine if a task succeeded. Always check `pexit` in the `task_postprocess_end` event or Task Detail response. See [Tasks](/docs/tasks).
 
 ## Does the MCP server cost extra?
 
@@ -56,7 +60,7 @@ Yes. Install the [Wiro AI community node](/docs/n8n-wiro-integration) in your n8
 
 ## Can I use a webhook instead of polling?
 
-Yes. All models support an optional `callbackUrl` parameter. When provided, Wiro will POST the task result to your URL when the task completes. See [Webhook Callback](/docs/model-parameters) in Model Parameters.
+Yes. All models support an optional `callbackUrl` parameter. When provided, Wiro will POST the task result to your URL when the task completes. It must be a public `http(s)` address. See [Webhook Callback](/docs/model-parameters) in Model Parameters.
 
 ### What are Wiro Agents?
 
@@ -72,4 +76,4 @@ Yes. Use the Agent Messaging API to send messages programmatically, receive stre
 
 ### How do I connect third-party services to an agent?
 
-Agents connect to services like Twitter, Instagram, Google Ads, and HubSpot via OAuth or API keys. Use the `/UserAgentOAuth/{Provider}Connect` endpoints to initiate OAuth flows, or set API keys via `/UserAgent/CredentialUpsert`. See [Agent Credentials & OAuth](/docs/agent-credentials).
+Agents connect to services like Twitter, Instagram, Google Ads, and HubSpot via OAuth or API keys. Use `POST /UserAgentOAuth/OAuthConnect` with the provider's `credentialkey` to initiate OAuth flows, or set API keys via `/UserAgent/CredentialUpsert`. See [Agent Credentials & OAuth](/docs/agent-credentials).

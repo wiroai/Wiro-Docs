@@ -14,7 +14,7 @@ const MIME = {
 };
 
 const sections = [
-  { slug: 'introduction', title: 'Introduction', description: 'Wiro is a unified AI API platform that lets you run any model — video, image, audio, LLM, 3D — with a single API key and pay-per-use pricing.' },
+  { slug: 'introduction', title: 'Introduction', description: 'Wiro is a unified AI API platform that lets you run any model (video, image, audio, LLM, 3D) with a single API key and pay-per-use pricing.' },
   { slug: 'authentication', title: 'Authentication', description: 'Authenticate with the Wiro API using Bearer tokens or query-string API keys. Learn how to generate and manage your credentials securely.' },
   { slug: 'projects', title: 'Projects', description: 'Create projects to organize your Wiro API usage. Each project has its own API key, usage tracking, and webhook configuration.' },
   { slug: 'models', title: 'Models', description: 'Browse, search, and discover AI models on Wiro. Filter by category, view pricing, parameters, and sample outputs for each model.' },
@@ -29,23 +29,26 @@ const sections = [
   { slug: 'realtime-speech-to-text', title: 'Realtime Speech to Text', description: 'Stream microphone audio and receive live transcription via WebSocket. Build real-time dictation and transcription applications.' },
   { slug: 'files', title: 'Files', description: 'Upload files to Wiro for use as model inputs. Manage folders, retrieve file metadata, and reference uploaded assets across multiple API calls.' },
   { slug: 'pricing', title: 'Pricing', description: 'Wiro uses pay-per-use pricing with no subscriptions. Each model has its own cost per run. Add credits to your account and pay only for what you use.' },
-  { slug: 'concurrency-limits', title: 'Concurrency Limits', description: 'Understand Wiro API concurrency limits per plan tier. Learn how concurrent task slots work and how to upgrade for higher throughput.' },
+  { slug: 'concurrency-limits', title: 'Concurrency Limits', description: 'How many unfinished tasks your Wiro balance allows at once, one for each full $10 up to $250 and no limit above that, and how to handle error code 96.' },
   { slug: 'error-reference', title: 'Error Reference', description: 'Complete reference of Wiro API error codes and messages. Troubleshoot authentication failures, rate limits, invalid parameters, and more.' },
-  { slug: 'faq', title: 'FAQ', description: 'Frequently asked questions about the Wiro API — covering authentication, billing, model support, rate limits, webhooks, and integrations.' },
+  { slug: 'faq', title: 'FAQ', description: 'Frequently asked questions about the Wiro API, covering authentication, billing, model support, rate limits, webhooks, and integrations.' },
   { slug: 'code-examples', title: 'Code Examples', description: 'Ready-to-use Wiro API code examples in 9 languages: cURL, Python, Node.js, PHP, C#, Go, Swift, Kotlin, and Dart.' },
-  { slug: 'wiro-mcp-server', title: 'Wiro MCP Server', description: 'Connect AI coding assistants like Cursor, Claude, and Windsurf to all Wiro models using the Model Context Protocol (MCP) server.' },
-  { slug: 'mcp-self-hosted', title: 'Self-Hosted MCP', description: 'Run the Wiro MCP server locally on your machine. Full control over configuration, environment variables, and model access for AI assistants.' },
-  { slug: 'nodejs-library', title: 'Node.js Library', description: 'Use Wiro AI models directly in Node.js and TypeScript projects. Install @wiro-ai/wiro-mcp and use WiroClient for model discovery, execution, task polling, and file uploads.' },
+  { slug: 'wiro-mcp-server', title: 'Wiro MCP Server', description: 'Connect AI assistants like Cursor, Claude, and ChatGPT to Wiro models, workflows, Studio and agents through the Model Context Protocol (MCP) server.' },
+  { slug: 'mcp-self-hosted', title: 'Self-Hosted MCP', description: 'Run the Wiro MCP server locally on your machine with npx: the same tools for models, workflows, Studio and agents, and environment variables to pick the tool groups.' },
+  { slug: 'nodejs-library', title: 'Node.js Library', description: 'Use Wiro AI models directly in Node.js and TypeScript projects. Install @wiro-ai/wiro-mcp and use WiroClient for model discovery, execution, task polling, file uploads, and calls to any other Wiro endpoint.' },
   { slug: 'n8n-wiro-integration', title: 'n8n Wiro Integration', description: 'Use all Wiro AI models as drag-and-drop nodes in n8n workflows. Install the community node for video, image, audio, LLM, and 3D automation.' },
+  { slug: 'workflows', title: 'Workflows', description: 'Save multi-step workflows that chain Wiro models and built-in utilities, run them with new inputs, follow and resume runs, and browse the public gallery through the API.' },
+  { slug: 'workflow-agent', title: 'Workflow Agent', description: 'Design and edit Wiro workflows by chat through the API: send briefs to the Workflow Agent, attach a workflow to change, read its proposals and save them.' },
+  { slug: 'studio', title: 'Studio', description: 'Ask Wiro Studio, the creative agent that picks and runs models for you, for images, video and audio through the API, and collect every result it made.' },
   { slug: 'agent-overview', title: 'Agent Overview', description: 'Deploy and manage autonomous AI agents with the Wiro Agent API. Browse the catalog, configure instances, select models, and understand skill-driven tiers with per-turn token billing.' },
-  { slug: 'agent-builder', title: 'Agent Builder', description: 'Build a custom agent from scratch — pick your own skill set, preview the live tier price, and deploy in one call. PricingPreview, custom: true Deploy, SkillsApply.' },
+  { slug: 'agent-builder', title: 'Agent Builder', description: 'Build a custom agent from scratch: pick your own skill set, preview the live tier price, and deploy in one call. PricingPreview, custom: true Deploy, SkillsApply.' },
   { slug: 'agent-messaging', title: 'Agent Messaging', description: 'Send messages to AI agents and consume an ordered timeline of safe reasoning, answer, and tool label/status blocks with authoritative Detail recovery.' },
   { slug: 'agent-websocket', title: 'Agent WebSocket', description: 'Receive agent_timeline_delta public block updates, merge by opaque blockid and strictly newer per-block version, and stream provisional cumulative answer text.' },
   { slug: 'agent-webhooks', title: 'Agent Webhooks', description: 'Receive agent response notifications via HTTP webhooks. Configure callback URLs for async message processing with automatic retries.' },
   { slug: 'agent-credentials', title: 'Agent Credentials & OAuth', description: 'Configure agent credentials via API keys, direct machine credentials, or OAuth flows. Connect third-party services like Twitter, Google Ads, Meta, HubSpot, and more.' },
   { slug: 'agent-skills', title: 'Agent Skills', description: 'Configure agent behavior with editable preferences, scheduled automation tasks, and skill toggles. Browse the skill registry, capabilities, and per-skill pricing recipes.' },
-  { slug: 'agent-transactions', title: 'Agent Transactions', description: 'Per-instance credit ledger — every credit deduction, renewal, purchase, refund, grant, and cancel for a useragent in a single immutable feed.' },
-  { slug: 'agent-logs', title: 'Agent Logs', description: 'Per-instance activity feed — tool calls, scheduled cron runs, message exchanges, and turn boundaries — for any deployed agent.' },
+  { slug: 'agent-transactions', title: 'Agent Transactions', description: 'Per-instance credit ledger: every credit deduction, renewal, purchase, refund, grant, and cancel for a useragent in a single immutable feed.' },
+  { slug: 'agent-logs', title: 'Agent Logs', description: 'Per-instance activity feed (tool calls, scheduled cron runs, message exchanges, and turn boundaries) for any deployed agent.' },
   { slug: 'agent-use-cases', title: 'Agent Use Cases', description: 'Learn how to build products with Wiro Agents. Deploy agents for your customers, integrate OAuth flows, and create multi-agent workflows.' },
   { slug: 'integration-metaads-skills', title: 'Meta Ads Integration', description: 'Use direct Graph API v26 with recommended token-only System User mode or advanced customer-owned OAuth, then select ad accounts and optional account-scoped Facebook Pages.' },
   { slug: 'integration-tiktokads-skills', title: 'TikTok Ads Integration', description: 'Connect TikTok for Business in one click through the official TikTok for Business MCP server, pick advertisers, and let the agent report on and manage TikTok Ads with approval-gated changes and a 30-day re-authorization.' },
@@ -60,12 +63,14 @@ const sections = [
   { slug: 'integration-googleads-skills', title: 'Google Ads Integration', description: 'Google Ads API setup: Developer Token, MCC customer ID, Google Cloud OAuth configuration, customer ID selection.' },
   { slug: 'integration-youtube-skills', title: 'YouTube Integration', description: 'YouTube Data API v3 + Analytics API v2 setup: channel listing, video assets for Google Ads Video/Demand Gen, channel picker via SetPickerAccounts.' },
   { slug: 'integration-ga4-skills', title: 'Google Analytics 4 Integration', description: 'Google Analytics 4 setup: GA4 Data API + Admin API, OAuth, property picker via SetPickerAccounts for conversion reporting and attribution cross-checks.' },
+  { slug: 'integration-roasit-skills', title: 'Roasit Integration', description: 'Roasit mobile attribution with a read-only API token: creative, campaign and network ROAS, cohort revenue and retention, iOS SKAN reports and install reconciliation, mapped back to Google Ads, Meta Ads and TikTok Ads ids.' },
   { slug: 'integration-merchantcenter-skills', title: 'Google Merchant Center Integration', description: 'Google Merchant Center (Shopping) setup: Merchant API v1, OAuth, merchant account picker via SetPickerAccounts, developer registration for own mode.' },
+  { slug: 'integration-googlebusiness-skills', title: 'Google Business Profile Integration', description: 'Answer Google reviews of your Business Profile locations with an OAuth client from your own Google Cloud project: Business Profile API access, account and location pickers, and replies posted after your approval.' },
   { slug: 'integration-hubspot-skills', title: 'HubSpot Integration', description: 'HubSpot CRM integration: OAuth 2.0 setup, scopes configuration for contacts, deals, and engagement.' },
   { slug: 'integration-mailchimp-skills', title: 'Mailchimp Integration', description: 'Mailchimp email marketing: OAuth flow or direct API key auth. Audience and campaign management.' },
   { slug: 'integration-googledrive-skills', title: 'Google Drive Integration', description: 'Per-user Google Cloud service account upload. User shares Drive folders with the service account email; the agent scans only those folders.' },
   { slug: 'integration-google-calendar-skills', title: 'Google Calendar Integration', description: 'Per-user Google Cloud service account + per-calendar sharing. Read availability, find slots, and draft events. Used by appointment-booking and voice-receptionist agents.' },
-  { slug: 'integration-serper-search-skills', title: 'Serper Web Search Integration', description: 'Real Google web-search results as clean JSON via Serper.dev — title/link/snippet for research before writing, then fetch the top pages. One API key, no Google Cloud project or cx. Used by content and marketing agents.' },
+  { slug: 'integration-serper-search-skills', title: 'Serper Web Search Integration', description: 'Real Google web-search results as clean JSON via Serper.dev: title/link/snippet for research before writing, then fetch the top pages. One API key, no Google Cloud project or cx. Used by content and marketing agents.' },
   { slug: 'integration-gmail-skills', title: 'Gmail Integration', description: 'Gmail IMAP/SMTP setup using Google App Passwords. Inbox monitoring and email sending.' },
   { slug: 'integration-telegram-skills', title: 'Telegram Integration', description: 'Telegram bot setup: BotFather token, allowed users, private vs collaborative session modes.' },
   { slug: 'integration-firebase-skills', title: 'Firebase Integration', description: 'Firebase Cloud Messaging setup: Admin SDK service account, topic targeting, multi-project configuration.' },
@@ -171,6 +176,12 @@ const SECTION_OPEN = '<div class="docs-page-section" data-page="';
 const SECTION_LIST_END = '<nav class="docs-pagination"';
 const SECTION_DISPLAY = /(<div class="docs-page-section" data-page="[^"]+" style="display:\s*)(?:block|none)/;
 const EMPTY_PAGINATION = '<nav class="docs-pagination" id="docsPagination"></nav>';
+const CENTER_OPEN = '<article class="docs-center">';
+const CENTER_OPEN_NO_CODE = '<article class="docs-center no-code-panel">';
+const CODE_PANEL_OPEN = '<aside class="docs-right-panel" id="codePanel">';
+const CODE_PANEL_OPEN_EMPTY = '<aside class="docs-right-panel is-empty" id="codePanel">';
+const SUBMENU_OPEN = '<details class="docs-nav-group-submenu';
+const CODE_EXAMPLES = /<script\b[^>]*\bclass="code-examples-data"[^>]*>([\s\S]*?)<\/script>/;
 
 // A section's markup begins at the banner comment directly above it, if any.
 function sectionStart(html, index) {
@@ -362,15 +373,33 @@ function buildSearchIndex(pages) {
 // Pages
 // ---------------------------------------------------------------------------
 
+// Cloudflare's email obfuscation turns anything shaped like an address into a
+// "[email protected]" link that only its own script decodes again, so anyone
+// reading the HTML itself (view-source, crawlers, LLM tools) got broken code:
+// `npx -y @wiro-ai/wiro-mcp@1.3.3`, curl's `-F "inputImage=@photo.jpg"`, the
+// example addresses in JSON. Cloudflare skips whatever sits between email_off
+// comments, so each <pre> and inline <code> holding an @ gets a pair, and
+// addresses in prose stay obfuscated. Comments and raw-text elements are left
+// as they are: a marker inside one would end the comment early or show up as
+// text.
+const CODE_WITH_ADDRESSES = /<!--[\s\S]*?-->|<(script|style|textarea|template)(?=[\s>])[\s\S]*?<\/\1\s*>|<(pre|code)(?=[\s>])[\s\S]*?<\/\2\s*>/gi;
+
+function keepCodeAddresses(html) {
+  return html.replace(CODE_WITH_ADDRESSES, (match, rawText, code) =>
+    code && match.includes('@') ? `<!--email_off-->${match}<!--/email_off-->` : match);
+}
+
 let docsCache = null;
 function getDocs() {
   const filePath = path.join(ROOT, 'index.html');
   const mtime = fs.statSync(filePath).mtimeMs;
   if (docsCache === null || docsCache.mtime !== mtime) {
-    const raw = fs.readFileSync(filePath);
-    const docs = splitDocs(raw.toString('utf8'));
+    const raw = fs.readFileSync(filePath, 'utf8');
+    const docs = splitDocs(raw);
     if (docs.pages.size === 0) console.warn('index.html: no docs sections found, serving the whole file for every page');
-    docsCache = { ...docs, raw, mtime };
+    // The search index was built from the markup as written.
+    for (const [slug, markup] of docs.pages) docs.pages.set(slug, keepCodeAddresses(markup));
+    docsCache = { ...docs, raw: keepCodeAddresses(raw), mtime };
   }
   return docsCache;
 }
@@ -396,11 +425,46 @@ function renderPagination(slug) {
   return `<nav class="docs-pagination" id="docsPagination">${html}</nav>`;
 }
 
+// Whether app.js will fill the right panel: the section's first examples list,
+// or the first group of it when they are grouped (Authentication).
+function hasCodeExamples(markup) {
+  const match = CODE_EXAMPLES.exec(markup);
+  if (!match) return false;
+  try {
+    const parsed = JSON.parse(match[1]);
+    const examples = parsed && !Array.isArray(parsed) ? parsed[Object.keys(parsed)[0]] : parsed;
+    return Boolean(examples && examples.length);
+  } catch {
+    return false;
+  }
+}
+
+// The sidebar as updateNavActive() in app.js leaves it: active link marked, its
+// group open, so the links keep their places from the first paint.
+function markActiveNavLink(head, slug) {
+  const link = `<a href="${BASE}/${slug}" class="docs-nav-link"`;
+  const at = head.indexOf(link);
+  if (at === -1) return head;
+  const active = `${head.slice(0, at)}<a href="${BASE}/${slug}" class="docs-nav-link is-active"${head.slice(at + link.length)}`;
+  const submenu = active.lastIndexOf(SUBMENU_OPEN, at);
+  if (submenu === -1 || active.indexOf('</details>', submenu) < at) return active;
+  const afterTagName = submenu + '<details'.length;
+  return `${active.slice(0, afterTagName)} open${active.slice(afterTagName)}`;
+}
+
+// The first HTML carries the classes app.js sets on a page without code examples,
+// so the right panel and the center column have their final widths from the first
+// paint. app.js still sets them for the full index.html, which switches sections
+// in place.
 function renderSectionPage(docs, section) {
-  const head = setHeaderPage(injectMeta(docs.head, section), section.title);
-  const body = docs.pages.get(section.slug).replace(SECTION_DISPLAY, (match, prefix) => `${prefix}block`);
-  const tail = docs.tail.replace(EMPTY_PAGINATION, () => renderPagination(section.slug));
-  return head + body + tail;
+  const markup = docs.pages.get(section.slug);
+  let head = markActiveNavLink(setHeaderPage(injectMeta(docs.head, section), section.title), section.slug);
+  let tail = docs.tail.replace(EMPTY_PAGINATION, () => renderPagination(section.slug));
+  if (!hasCodeExamples(markup)) {
+    head = head.replace(CENTER_OPEN, CENTER_OPEN_NO_CODE);
+    tail = tail.replace(CODE_PANEL_OPEN, CODE_PANEL_OPEN_EMPTY);
+  }
+  return head + markup.replace(SECTION_DISPLAY, (match, prefix) => `${prefix}block`) + tail;
 }
 
 const NOT_FOUND_SECTION = `<!-- ==================== NOT FOUND ==================== -->
@@ -415,7 +479,8 @@ const NOT_FOUND_SECTION = `<!-- ==================== NOT FOUND =================
               `;
 
 function renderNotFoundPage(docs) {
-  return injectNotFoundMeta(docs.head) + NOT_FOUND_SECTION + docs.tail;
+  const head = injectNotFoundMeta(docs.head).replace(CENTER_OPEN, CENTER_OPEN_NO_CODE);
+  return head + NOT_FOUND_SECTION + docs.tail.replace(CODE_PANEL_OPEN, CODE_PANEL_OPEN_EMPTY);
 }
 
 // Maps a URL path to a path inside ROOT. Decoding happens once, before the
@@ -498,8 +563,9 @@ http.createServer((req, res) => {
     return;
   }
 
-  // The file itself, byte for byte: every section inline, for LLMs and
-  // view-source readers. Also the fallback if the split ever finds nothing.
+  // The file itself, every section inline, for LLMs and view-source readers:
+  // byte for byte apart from the email_off comments. Also the fallback if the
+  // split ever finds nothing.
   if (relPath === 'index.html' || docs.pages.size === 0) {
     sendHtml(res, 200, docs.raw, docs);
     return;

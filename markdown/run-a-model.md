@@ -4,7 +4,7 @@ Execute any AI model with a single API call and get real-time updates.
 
 ## **POST** /Run/{owner-slug}/{model-slug}
 
-Starts an AI model run. The endpoint accepts model-specific parameters and returns a **task ID** you can use to track progress via [polling](/docs/tasks), [WebSocket](/docs/websocket), or **webhook** by providing a `callbackUrl` parameter — Wiro will POST the result to your URL when the task completes.
+Starts an AI model run. The endpoint accepts model-specific parameters and returns a **task ID** you can use to track progress via [polling](/docs/tasks), [WebSocket](/docs/websocket), or **webhook** by providing a `callbackUrl` parameter, and Wiro will POST the result to your URL when the task completes.
 
 If you want one HTTP request to wait for the finished task, use
 [POST /Run/{owner}/{model}/sync](#run-sync) on this same API host. For OpenAI or Anthropic LLM protocols, see the
@@ -14,7 +14,7 @@ If you want one HTTP request to wait for the finished task, use
 
 ### JSON (application/json)
 
-Use JSON for text-based inputs — prompts, configuration, numeric parameters. This is the default and most common format.
+Use JSON for text-based inputs: prompts, configuration, numeric parameters. This is the default and most common format.
 
 ### Multipart (multipart/form-data)
 
@@ -28,8 +28,10 @@ Parameters vary by model. Use the [/Tool/Detail](/docs/models) endpoint to disco
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `callbackUrl` | string | No | URL to receive a POST webhook when the task completes |
+| `callbackUrl` | string | No | URL to receive a POST webhook when the task completes. It must be a public `http(s)` address: a host that is, or resolves to, a private, loopback or link-local address gets no webhook. The task still runs, and `Task/Detail` returns its result. Any 2xx answer counts as delivered; see [Webhook Callback](/docs/model-parameters#callback-url) for retries and redirects. |
 | `projectid` | string | No | Override the default project for billing (if you have multiple projects) |
+
+> **URL inputs must be public too.** When you send a file input as a URL, Wiro downloads the file itself, so the URL must be a public `http(s)` address, and so must every address it redirects to. A host that is, or resolves to, a private, loopback or link-local address isn't fetched, and the run gets no file for that input.
 
 ## Response
 
@@ -51,7 +53,7 @@ seven optional ordinary model parameters on both asynchronous Run and `/sync`:
 `messages`, `tools`, `tool_choice`, `parallel_tool_calls`, `response_format`,
 `previousTaskToken`, and `toolOutputs`. `response_format` is present only on
 models that declare it, and it uses the flat shape `{"type":"json_object"}` or
-`{"type":"json_schema","name":"person","schema":{...}}` — not Chat's nested
+`{"type":"json_schema","name":"person","schema":{...}}`, not Chat's nested
 `json_schema` wrapper. A mode the model does not declare is rejected at
 `$.response_format.type` before the task is created. Tool Detail marks them
 `advanced: true` only to place them in the Advanced section of catalog-driven
@@ -218,24 +220,27 @@ JSON contract set on the first turn still holds after the tool round-trip.
 
 ### Stateful turn continuation
 
-For a stateful follow-up that is not submitting tool outputs, pass the prior
-completed Run output's `socketaccesstoken` as `previousTaskToken`, keep the same
-`session_id`, and provide exactly one new input: a non-blank `prompt` or a
-non-empty `messages` array. The `tools`, `tool_choice`, `parallel_tool_calls`,
-and `response_format` of the earlier turn carry over automatically; you may
-resend an identical copy, but a different value is rejected as a continuation
-mismatch. Do not send `toolOutputs`.
-
-Use the `socketaccesstoken` returned by a completed task from the same project,
-model, and session.
+A chat continues through its `session_id`. After a turn that ended with an
+answer, run the same model again with the same `session_id` and the next
+`prompt`. Wiro keeps the earlier turns of the session; some chat models also
+need the same `user_id` on every turn (see
+[LLM & Chat Streaming](/docs/llm-chat-streaming)). Send the same `session_id`
+on every turn, the first one included, and leave `previousTaskToken` out.
 
 ```json
 {
-  "previousTaskToken": "task-token",
   "prompt": "Give me one concrete example.",
   "session_id": "weather-session-1"
 }
 ```
+
+`previousTaskToken` belongs to the tool-call round trip above: together with
+`toolOutputs`, it continues a turn whose `finishreason` is `tool_calls`, using
+the `socketaccesstoken` of that completed task from the same project, model and
+session. After a plain prompt turn, a request that sends `previousTaskToken`
+with the next `prompt` is refused with code `122` ("The previous task state for
+this conversation is no longer available."). Send the same `session_id` and the
+next `prompt` instead.
 
 For OpenAI-compatible clients, `previous_response_id` remains the preferred
 public field on `/v1/responses`; do not send `previousTaskToken` to that
@@ -351,10 +356,10 @@ OpenAI Chat/Responses, Anthropic Messages, and Cursor clients belong on
 
 The typical workflow after calling the Run endpoint:
 
-1. **Run** — call `POST /Run/{owner-slug}/{model-slug}` and receive a task ID
-2. **Track** — connect via WebSocket or poll `POST /Task/Detail`
-3. **Receive** — get outputs as the model produces them (streaming or final)
-4. **Complete** — task reaches `task_postprocess_end`; verify `pexit: "0"` and
+1. **Run**: call `POST /Run/{owner-slug}/{model-slug}` and receive a task ID
+2. **Track**: connect via WebSocket or poll `POST /Task/Detail`
+3. **Receive**: get outputs as the model produces them (streaming or final)
+4. **Complete**: task reaches `task_postprocess_end`; verify `pexit: "0"` and
    read its outputs
 
 For real-time streaming, use the WebSocket connection with the `socketaccesstoken` returned in the run response. For simpler integrations, poll the Task Detail endpoint every few seconds.

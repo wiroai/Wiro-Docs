@@ -1,0 +1,168 @@
+# Roasit Integration
+
+Connect your agent to Roasit mobile attribution: creative, campaign and network ROAS, cohort revenue and retention, iOS SKAdNetwork reports and install reconciliation, read with one read-only API token.
+
+## Overview
+
+[Roasit](https://roasit.com) is a mobile measurement partner (MMP): it attributes app installs to ad networks, pulls ad spend from Meta, Google Ads, TikTok and AppLovin, and joins in-app and ad revenue into install cohorts. This integration lets an agent read those numbers (the same figures the Roasit dashboard's Reports screen shows) and act on them through the ad-platform skills.
+
+**Skills that use this integration:**
+
+- `int-roasit-attribution`: Read-only reports from the Roasit API, covering creative / campaign / network ROAS (`roas_all`, ad-only and in-app-only ROAS, day-N ROAS), installs, spend, CPI, cohort revenue, retention, iOS SKAdNetwork reports, install reconciliation against the stores, and data freshness. Rows carry the ad networks' own campaign / ad ids, so the agent can map a creative back to Google Ads, Meta Ads or TikTok Ads.
+
+**Bundled task:**
+
+- `cs-cron-roasit-creative-roas-reporter` runs daily at 10:30 UTC and reports the last 7 days' creative ROAS per app, pause / scale recommendations for creatives that pass the significance gate, and an attribution audit (network-claimed vs Roasit-attributed installs, network claims vs store installs). Off until the Roasit credential is filled.
+
+**Agents that typically enable this integration:**
+
+- [Google Ads Manager](https://wiro.ai/agents/google-ads-manager), [Meta Ads Manager](https://wiro.ai/agents/meta-ads-manager) and [TikTok Ads Manager](https://wiro.ai/agents/tiktok-ads-manager): MMP-verified ROAS next to the platform's own numbers.
+- Custom app-marketing agents that report on app growth.
+
+## Availability
+
+| Mode | Status | Notes |
+|------|--------|-------|
+| API Token (Roasit) | Available | One read-only Roasit API token per agent. It sees the apps your Roasit account can see and cannot change anything. No extra charge: the skill adds nothing to the agent's monthly price. |
+
+## Prerequisites
+
+- **A Wiro API key** (see [Authentication](/docs/authentication)).
+- **A deployed agent** (see [Agent Overview](/docs/agent-overview)).
+- **A Roasit account** with at least one app, and its Roasit SDK sending installs.
+
+## Setup
+
+### Step 1: Create a Roasit API token
+
+1. Sign in to [Roasit](https://roasit.com) and open your **Account** page.
+2. Under **API tokens**, give the token a name (for example `Wiro agent`) and click **Create**.
+3. Copy the token. It starts with `roapi_` and is **shown only once**.
+
+> The token is read-only: it can read reports for the apps your Roasit account can see, and nothing else. Revoking it on the Account page cuts the agent off immediately.
+
+### Step 2: Find your Roasit app tokens (optional)
+
+Leave the apps list empty and the agent reports on every app the token can see. To limit it to specific apps, or to give an app the name you use in chat, add one row per app and platform:
+
+1. Open the app in Roasit.
+2. Copy the **App token** shown in the app's header: 12 lowercase hex characters such as `a1b2c3d4e5f6`, the same token the app's Roasit SDK starts with.
+3. Pick the row's **Platform**: iOS, Android, or Web for a web app measured by Roasit's browser SDK and Stripe sales. One app token covers every platform of the app, so an app you run on several gets one row per platform with the same token; the agent filters each row's reports to its platform.
+
+### Step 3: Save the credential to Wiro
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "fields": [
+      { "credentialkey": "roasit", "fieldname": "apitoken", "fieldvalue": "roapi_YOUR_ROASIT_TOKEN" },
+      { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 0, "fieldname": "appname",  "fieldvalue": "My Game" },
+      { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 0, "fieldname": "platform", "fieldvalue": "ios" },
+      { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 0, "fieldname": "apptoken", "fieldvalue": "a1b2c3d4e5f6" },
+      { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 0, "fieldname": "storeid",  "fieldvalue": "1234567890" },
+      { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 1, "fieldname": "appname",  "fieldvalue": "My Game" },
+      { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 1, "fieldname": "platform", "fieldvalue": "android" },
+      { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 1, "fieldname": "apptoken", "fieldvalue": "a1b2c3d4e5f6" },
+      { "credentialkey": "roasit", "parentfield": "apps", "ordinal": 1, "fieldname": "storeid",  "fieldvalue": "com.example.game" }
+    ]
+  }'
+```
+
+Or fill it in the panel: **[My Agents](https://wiro.ai/panel/agents)** → open agent → **Connectors → Roasit**.
+
+### Step 4: Make sure the skill is on
+
+Google Ads Manager, Meta Ads Manager and TikTok Ads Manager agents include `int-roasit-attribution` at no extra charge, so saving the credential is enough. On any other agent, turn it on:
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "skills": { "int-roasit-attribution": true },
+    "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000"
+  }'
+```
+
+Or flip the toggle in the panel under **Skills** (see [Agent Skills](/docs/agent-skills#toggling-integration-skills)).
+
+### Step 5: Start the agent
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{ "guid": "your-useragent-guid" }'
+```
+
+## Credential Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `apitoken` | string (secret) | Yes | Roasit API token, `roapi_` followed by 43 characters. Encrypted at rest. |
+| `apps[].appname` | string | Yes (per row) | Friendly label the agent uses in chat and reports. |
+| `apps[].platform` | `ios` / `android` / `web` | Yes (per row) | The platform the row reports on. An app on several platforms has one row per platform with the same app token. A `web` row has no SKAN or install reconciliation. |
+| `apps[].apptoken` | string (12 hex characters) | Yes (per row) | The Roasit app token shown in the app's header. |
+| `apps[].storeid` | string | No | The row's Apple ID or Android package name, to join Roasit numbers with your App Store / Google Play integrations. |
+
+## Credentials schema (as returned by `POST /UserAgent/Detail`)
+
+```json
+"roasit": {
+  "_connected": true,
+  "optional": true,
+  "extra": true,
+  "apitoken": "***encrypted***",
+  "apps": [
+    { "appname": "My Game", "platform": "ios", "apptoken": "a1b2c3d4e5f6", "storeid": "1234567890" },
+    { "appname": "My Game", "platform": "android", "apptoken": "a1b2c3d4e5f6", "storeid": "com.example.game" }
+  ]
+}
+```
+
+`optional` and `extra` are `true` on the ads-manager agents: Roasit is an optional attribution source, and its connector card shows up even before the skill is on.
+
+## What the agent reports
+
+The agent reads Roasit's report API, one app per request, and never recomputes a metric itself, so every number equals the Roasit dashboard's for the same app, dates, grouping, filters and IAP setting.
+
+| Metric | Meaning |
+|--------|---------|
+| `roas_all` | Cohort revenue to date ÷ ad spend. |
+| `roas_ad_all` / `roas_iap_all` | The ad-revenue / in-app-revenue part of it. |
+| `roas_N`, `ret_N`, `arpu_N` | Day-N ROAS, retention and ARPU (mature cohorts only). |
+| `installs`, `network_installs` | Installs Roasit attributed vs. installs the ad networks claim. |
+| `spend`, `cpi`, `impressions`, `clicks` | Paid media, in the report's currency (USD unless the app reports in another one). |
+| `rev_all`, `rev_ad`, `rev_iap` | Cohort revenue to date, total / ads / in-app. |
+
+Breakdowns: day, platform, country, network, campaign, ad group and ad. A "-" (null) value means the dashboard shows none yet (no spend, a cohort not old enough, or a day whose spend is not final) and is never treated as zero.
+
+Creative-level ROAS needs Roasit to pull spend at ad level for that network (**Spend detail** in the Roasit app settings); networks pulled at campaign level are reported at campaign level.
+
+## Billing
+
+The integration adds nothing to the agent's monthly price or credit pool. Like every agent turn, the reports and the daily task are billed on the LLM tokens they use, from the agent's existing credits.
+
+## Recommendations & approval
+
+The daily task writes `pause_creative_low_roas`, `scale_creative_high_roas` and `attribution_audit` items to the agent's recommendation ledger; nothing changes on an ad platform until you approve an item (`apply 1,3`, `apply all safe`, `skip 2`). Thresholds (minimum spend and installs, the ROAS metric, floor and ceiling, drift and overcount limits) live in the editable `roasit-strategy` custom skill and fall back to `ad-strategy`.
+
+## Troubleshooting
+
+- **401:** The token was revoked or mistyped. Create a new one on Roasit's Account page and save it again.
+- **404 for an app:** The app token is wrong, or the Roasit account behind the token cannot see that app.
+- **Creative ROAS shows "-":** That network's spend is pulled at campaign level in Roasit, so raise Spend detail or read the campaign-level row.
+- **Today's or yesterday's ROAS is missing:** Roasit's nightly spend pull has not finalised the day yet; the report names the excluded days.
+- **Agent says "not connected" with the token filled:** The agent restarts to pick up new credentials; give it a moment after saving, then retry.
+
+## Related
+
+- [Agent Credentials & OAuth](/docs/agent-credentials)
+- [Agent Skills](/docs/agent-skills)
+- [Google Ads Integration](/docs/integration-googleads-skills)
+- [Meta Ads Integration](/docs/integration-metaads-skills)
+- [TikTok Ads Integration](/docs/integration-tiktokads-skills)
