@@ -1596,6 +1596,134 @@ Every model the gateway serves today. The same set is in the catalog and behind
 (Wiro) xai/grok-4-5
 ```
 
+### Vercel AI SDK
+
+The [AI SDK](https://ai-sdk.dev) from Vercel reaches the gateway through its
+OpenAI Compatible provider, so there is no Wiro package to install:
+`createOpenAICompatible` with the gateway's base URL is the whole setup. The
+examples below were tested with `ai` 7.0.166 and `@ai-sdk/openai-compatible`
+3.0.87.
+
+1. **Install**: `npm i ai @ai-sdk/openai-compatible zod`. `zod` is only
+   needed for tools and structured output.
+2. **Keep the key on the server**: put the project credential in
+   `WIRO_API_KEY` (`YOUR_API_KEY` for an API Key Only project,
+   `YOUR_API_KEY:YOUR_API_SECRET` for a Signature project). Call the gateway
+   from server code so the key never reaches a browser.
+3. **Point the provider at the gateway**: `baseURL` is
+   `https://llm.wiro.ai/v1`. `includeUsage: true` adds token counts to
+   streamed responses, and `supportsStructuredOutputs: true` lets
+   `Output.object` send a JSON schema.
+4. **Name a model**: any ID from the catalog or `GET /v1/models`, such as
+   `openai/gpt-5-4-nano` or `deepseek/v4-1-flash`.
+
+```javascript
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { generateText } from "ai";
+
+const wiro = createOpenAICompatible({
+  name: "wiro",
+  baseURL: "https://llm.wiro.ai/v1",
+  apiKey: process.env.WIRO_API_KEY,
+  includeUsage: true,
+  supportsStructuredOutputs: true,
+});
+
+const { text } = await generateText({
+  model: wiro("openai/gpt-5-4-nano"),
+  prompt: "Explain what an API gateway does in one sentence.",
+});
+
+console.log(text);
+```
+
+`streamText` streams the answer. When a model thinks before it answers, its
+reasoning comes separately in `reasoningText`, and the token counts arrive at
+the end:
+
+```javascript
+import { streamText } from "ai";
+
+const result = streamText({
+  model: wiro("deepseek/v4-1-flash"),
+  prompt: "Write a two-line poem about routing requests.",
+});
+
+for await (const part of result.textStream) {
+  process.stdout.write(part);
+}
+
+console.log(await result.usage);
+```
+
+Tools run as a loop: the model calls the tool, the SDK runs `execute` and
+sends the result back, and the model writes the answer. `stopWhen` caps the
+number of steps:
+
+```javascript
+import { generateText, isStepCount, tool } from "ai";
+import { z } from "zod";
+
+const { text } = await generateText({
+  model: wiro("openai/gpt-5-4-nano"),
+  tools: {
+    getWeather: tool({
+      description: "Get the current weather for a city",
+      inputSchema: z.object({ city: z.string() }),
+      execute: async ({ city }) => ({ city, temperatureC: 21 }),
+    }),
+  },
+  stopWhen: isStepCount(3),
+  prompt: "What is the weather in Istanbul right now?",
+});
+```
+
+Structured output needs a model whose `structured_output_modes` include
+`json_schema`:
+
+```javascript
+import { generateText, Output } from "ai";
+import { z } from "zod";
+
+const { output } = await generateText({
+  model: wiro("openai/gpt-5-4-nano"),
+  output: Output.object({
+    schema: z.object({ name: z.string(), country: z.string(), population: z.number() }),
+  }),
+  prompt: "Give me the largest city in Turkey.",
+});
+```
+
+On reasoning models, `providerOptions: { wiro: { reasoningEffort: "low" } }`
+sends `reasoning_effort`. The key under `providerOptions` is the provider's
+`name`. Use it only on models that list `reasoning_effort` in
+`supported_parameters`.
+
+The gateway's other two routes work with the AI SDK's own providers:
+`@ai-sdk/openai` reaches the Responses route and `@ai-sdk/anthropic` reaches
+Anthropic Messages. Both take the same `/v1` base URL. Unlike the Anthropic
+SDK, `@ai-sdk/anthropic` expects the `/v1` in it. It caps output at 4,096
+tokens for model IDs it does not know, so pass `maxOutputTokens` for longer
+answers.
+
+```javascript
+import { createAnthropic } from "@ai-sdk/anthropic";
+import { createOpenAI } from "@ai-sdk/openai";
+
+const openai = createOpenAI({
+  baseURL: "https://llm.wiro.ai/v1",
+  apiKey: process.env.WIRO_API_KEY,
+});
+
+const anthropic = createAnthropic({
+  baseURL: "https://llm.wiro.ai/v1",
+  apiKey: process.env.WIRO_API_KEY,
+});
+
+const viaResponses = openai.responses("openai/gpt-5-4-nano");
+const viaMessages = anthropic("claude/sonnet-5");
+```
+
 ## Discover models and capabilities
 
 ### **GET** /v1/models

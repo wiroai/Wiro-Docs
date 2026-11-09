@@ -487,6 +487,9 @@ Generation metadata:
 Client compatibility and boundaries:
 - OpenAI SDKs use base `https://llm.wiro.ai/v1`; Anthropic SDKs and Claude Code
   use origin `https://llm.wiro.ai`.
+- The Vercel AI SDK uses base `https://llm.wiro.ai/v1` with
+  `@ai-sdk/openai-compatible` for Chat, `@ai-sdk/openai` for Responses, and
+  `@ai-sdk/anthropic` for Messages; `@ai-sdk/anthropic` keeps the `/v1`.
 - Cursor's OpenAI base URL override takes `https://llm.wiro.ai/v1`; Cursor
   appends `/chat/completions` itself.
 - OpenClaw can use a model's declared `openai-completions`,

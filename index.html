@@ -1767,6 +1767,10 @@ data: {
                         <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-openai"></use></svg>
                         <strong>OpenAI SDK</strong>
                       </a>
+                      <a href="/docs/completions-api#llm-setup-ai-sdk" class="mcp-client-card" data-toggle-target="llm-setup-ai-sdk">
+                        <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-vercel"></use></svg>
+                        <strong>Vercel AI SDK</strong>
+                      </a>
                     </div>
                     <div class="mcp-setup-panels" data-toggle-panels="llm-setup">
                       <div class="mcp-setup-panel is-visible" id="llm-setup-cursor">
@@ -3084,6 +3088,98 @@ const second = await client.chat.completions.create({
 (Wiro) xai/grok-4-1-fast
 (Wiro) xai/grok-4-20
 (Wiro) xai/grok-4-5</code></pre>
+                      </div>
+                      <div class="mcp-setup-panel" id="llm-setup-ai-sdk">
+                        <h3>Vercel AI SDK</h3>
+                        <p>The <a href="https://ai-sdk.dev" class="docs-link">AI SDK</a> from Vercel reaches the gateway through its OpenAI Compatible provider, so there is no Wiro package to install: <code>createOpenAICompatible</code> with the gateway's base URL is the whole setup. The examples below were tested with <code>ai</code> 7.0.166 and <code>@ai-sdk/openai-compatible</code> 3.0.87.</p>
+                        <ol class="docs-steps">
+                          <li>
+                            <strong>Install</strong> <span><code>npm i ai @ai-sdk/openai-compatible zod</code>. <code>zod</code> is only needed for tools and structured output.</span>
+                          </li>
+                          <li>
+                            <strong>Keep the key on the server</strong> <span>Put the project credential in <code>WIRO_API_KEY</code>: <code>YOUR_API_KEY</code> for an API Key Only project, <code>YOUR_API_KEY:YOUR_API_SECRET</code> for a Signature project. Call the gateway from server code so the key never reaches a browser.</span>
+                          </li>
+                          <li>
+                            <strong>Point the provider at the gateway</strong> <span><code>baseURL</code> is <code>https://llm.wiro.ai/v1</code>. <code>includeUsage: true</code> adds token counts to streamed responses, and <code>supportsStructuredOutputs: true</code> lets <code>Output.object</code> send a JSON schema.</span>
+                          </li>
+                          <li>
+                            <strong>Name a model</strong> <span>Any ID from the catalog or <code>GET /v1/models</code>, such as <code>openai/gpt-5-4-nano</code> or <code>deepseek/v4-1-flash</code>.</span>
+                          </li>
+                        </ol>
+                        <pre><code>import { createOpenAICompatible } from &quot;@ai-sdk/openai-compatible&quot;;
+import { generateText } from &quot;ai&quot;;
+
+const wiro = createOpenAICompatible({
+  name: &quot;wiro&quot;,
+  baseURL: &quot;https://llm.wiro.ai/v1&quot;,
+  apiKey: process.env.WIRO_API_KEY,
+  includeUsage: true,
+  supportsStructuredOutputs: true,
+});
+
+const { text } = await generateText({
+  model: wiro(&quot;openai/gpt-5-4-nano&quot;),
+  prompt: &quot;Explain what an API gateway does in one sentence.&quot;,
+});
+
+console.log(text);</code></pre>
+                        <p><code>streamText</code> streams the answer. When a model thinks before it answers, its reasoning comes separately in <code>reasoningText</code>, and the token counts arrive at the end:</p>
+                        <pre><code>import { streamText } from &quot;ai&quot;;
+
+const result = streamText({
+  model: wiro(&quot;deepseek/v4-1-flash&quot;),
+  prompt: &quot;Write a two-line poem about routing requests.&quot;,
+});
+
+for await (const part of result.textStream) {
+  process.stdout.write(part);
+}
+
+console.log(await result.usage);</code></pre>
+                        <p>Tools run as a loop: the model calls the tool, the SDK runs <code>execute</code> and sends the result back, and the model writes the answer. <code>stopWhen</code> caps the number of steps:</p>
+                        <pre><code>import { generateText, isStepCount, tool } from &quot;ai&quot;;
+import { z } from &quot;zod&quot;;
+
+const { text } = await generateText({
+  model: wiro(&quot;openai/gpt-5-4-nano&quot;),
+  tools: {
+    getWeather: tool({
+      description: &quot;Get the current weather for a city&quot;,
+      inputSchema: z.object({ city: z.string() }),
+      execute: async ({ city }) =&gt; ({ city, temperatureC: 21 }),
+    }),
+  },
+  stopWhen: isStepCount(3),
+  prompt: &quot;What is the weather in Istanbul right now?&quot;,
+});</code></pre>
+                        <p>Structured output needs a model whose <code>structured_output_modes</code> include <code>json_schema</code>:</p>
+                        <pre><code>import { generateText, Output } from &quot;ai&quot;;
+import { z } from &quot;zod&quot;;
+
+const { output } = await generateText({
+  model: wiro(&quot;openai/gpt-5-4-nano&quot;),
+  output: Output.object({
+    schema: z.object({ name: z.string(), country: z.string(), population: z.number() }),
+  }),
+  prompt: &quot;Give me the largest city in Turkey.&quot;,
+});</code></pre>
+                        <p>On reasoning models, <code>providerOptions: { wiro: { reasoningEffort: &quot;low&quot; } }</code> sends <code>reasoning_effort</code>. The key under <code>providerOptions</code> is the provider's <code>name</code>. Use it only on models that list <code>reasoning_effort</code> in <code>supported_parameters</code>.</p>
+                        <p>The gateway's other two routes work with the AI SDK's own providers: <code>@ai-sdk/openai</code> reaches <a href="#gateway-responses" class="docs-link">Responses</a> and <code>@ai-sdk/anthropic</code> reaches <a href="#gateway-anthropic" class="docs-link">Anthropic Messages</a>. Both take the same <code>/v1</code> base URL. Unlike the Anthropic SDK, <code>@ai-sdk/anthropic</code> expects the <code>/v1</code> in it. It caps output at 4,096 tokens for model IDs it does not know, so pass <code>maxOutputTokens</code> for longer answers.</p>
+                        <pre><code>import { createAnthropic } from &quot;@ai-sdk/anthropic&quot;;
+import { createOpenAI } from &quot;@ai-sdk/openai&quot;;
+
+const openai = createOpenAI({
+  baseURL: &quot;https://llm.wiro.ai/v1&quot;,
+  apiKey: process.env.WIRO_API_KEY,
+});
+
+const anthropic = createAnthropic({
+  baseURL: &quot;https://llm.wiro.ai/v1&quot;,
+  apiKey: process.env.WIRO_API_KEY,
+});
+
+const viaResponses = openai.responses(&quot;openai/gpt-5-4-nano&quot;);
+const viaMessages = anthropic(&quot;claude/sonnet-5&quot;);</code></pre>
                       </div>
                     </div>
                   </section>
