@@ -1531,8 +1531,10 @@ html.wiro-dark .shiki span {
   font-size: var(--wiro-type-micro-size);
 }
 
+/* The drawer's Code button shares the Markdown buttons' size. */
 .docs-nav-md-btn,
-.docs-section-md-btn {
+.docs-section-md-btn,
+.docs-code-drawer-toggle {
   padding: 3px 8px;
   font-size: var(--wiro-type-micro-size);
 }
@@ -2176,12 +2178,15 @@ html.wiro-dark .docs-nav-icon-img[src*="roasit"] {
     background: var(--wiro-bg);
   }
 
+  /* On the View / Download row: below the 60px header by the .docs-center top
+     padding, on the 1.72 line of .docs-section that those buttons sit on. */
   .docs-code-drawer-toggle {
-    top: 72px;
+    top: calc(60px + 48px);
     border: 1px solid var(--wiro-border-med);
     border-radius: var(--wiro-radius-control);
     background: var(--wiro-surface);
     color: var(--wiro-ink2);
+    line-height: 1.72;
     transition: var(--wiro-transition);
   }
 
@@ -2254,11 +2259,19 @@ html.wiro-dark .docs-nav-icon-img[src*="roasit"] {
   .docs-center {
     padding: 32px 24px 48px;
   }
+
+  .docs-code-drawer-toggle {
+    top: calc(60px + 32px);
+  }
 }
 
 @media (max-width: 767px) {
   .docs-center {
     padding: 24px 16px 40px;
+  }
+
+  .docs-code-drawer-toggle {
+    top: calc(60px + 24px);
   }
 
   .docs-section ul,
@@ -2308,9 +2321,35 @@ html.wiro-dark .docs-nav-icon-img[src*="roasit"] {
   }
 }
 
+/* Icon only, so the button stays clear of Download; its aria-label still names it.
+   The icon takes the label's line (1lh), so the height still matches View / Download. */
+@media (max-width: 374px) {
+  .docs-code-drawer-toggle span {
+    display: none;
+  }
+
+  .docs-code-drawer-toggle i {
+    height: 1lh;
+    line-height: 1lh;
+  }
+}
+
 @media (max-width: 359px) {
   .docs-header-nav {
     display: none;
+  }
+}
+
+/* The row's label leaves the line to the links (still read by a screen reader), so
+   View, Download and Code never touch. */
+@media (max-width: 334px) {
+  .docs-section-md-row > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
   }
 }
 
