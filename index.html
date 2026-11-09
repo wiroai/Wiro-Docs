@@ -159,6 +159,9 @@
           <path d="M13.2371 21.0407L24.3186 12.8506C24.8619 12.4491 25.6384 12.6057 25.8973 13.2294C27.2597 16.5185 26.651 20.4712 23.9403 23.1851C21.2297 25.8989 17.4581 26.4941 14.0108 25.1386L10.2449 26.8843C15.6463 30.5806 22.2053 29.6665 26.304 25.5601C29.5551 22.3051 30.562 17.8683 29.6205 13.8673L29.629 13.8758C28.2637 7.99809 29.9647 5.64871 33.449 0.844576C33.5314 0.730667 33.6139 0.616757 33.6964 0.5L29.1113 5.09055V5.07631L13.2343 21.0436"></path>
           <path d="M10.9503 23.0313C7.07343 19.3235 7.74185 13.5853 11.0498 10.2763C13.4959 7.82722 17.5036 6.82767 21.0021 8.2971L24.7595 6.55998C24.0826 6.07017 23.215 5.54334 22.2195 5.17313C17.7198 3.31926 12.3326 4.24192 8.67479 7.90126C5.15635 11.4239 4.0499 16.8403 5.94992 21.4622C7.36924 24.9165 5.04257 27.3598 2.69884 29.826C1.86829 30.7002 1.0349 31.5745 0.36364 32.5L10.9474 23.0341"></path>
         </symbol>
+        <symbol id="mcp-client-icon-vercel" viewBox="0 -7.5 115 115">
+          <path fill-rule="evenodd" d="M57.5 0 115 100H0z"></path>
+        </symbol>
       </defs>
     </svg>
     <div class="docs-layout" id="app">
@@ -1766,6 +1769,10 @@ data: {
                         <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-openai"></use></svg>
                         <strong>OpenAI SDK</strong>
                       </a>
+                      <a href="/docs/completions-api#llm-setup-ai-sdk" class="mcp-client-card" data-toggle-target="llm-setup-ai-sdk">
+                        <svg class="mcp-client-logo" width="24" height="24" aria-hidden="true" focusable="false"><use href="#mcp-client-icon-vercel"></use></svg>
+                        <strong>Vercel AI SDK</strong>
+                      </a>
                     </div>
                     <div class="mcp-setup-panels" data-toggle-panels="llm-setup">
                       <div class="mcp-setup-panel is-visible" id="llm-setup-cursor">
@@ -3084,6 +3091,98 @@ const second = await client.chat.completions.create({
 (Wiro) xai/grok-4-20
 (Wiro) xai/grok-4-5</code></pre>
                       </div>
+                      <div class="mcp-setup-panel" id="llm-setup-ai-sdk">
+                        <h3>Vercel AI SDK</h3>
+                        <p>The <a href="https://ai-sdk.dev" class="docs-link">AI SDK</a> from Vercel reaches the gateway through its OpenAI Compatible provider, so there is no Wiro package to install: <code>createOpenAICompatible</code> with the gateway's base URL is the whole setup. The examples below were tested with <code>ai</code> 7.0.166 and <code>@ai-sdk/openai-compatible</code> 3.0.87.</p>
+                        <ol class="docs-steps">
+                          <li>
+                            <strong>Install</strong> <span><code>npm i ai @ai-sdk/openai-compatible zod</code>. <code>zod</code> is only needed for tools and structured output.</span>
+                          </li>
+                          <li>
+                            <strong>Keep the key on the server</strong> <span>Put the project credential in <code>WIRO_API_KEY</code>: <code>YOUR_API_KEY</code> for an API Key Only project, <code>YOUR_API_KEY:YOUR_API_SECRET</code> for a Signature project. Call the gateway from server code so the key never reaches a browser.</span>
+                          </li>
+                          <li>
+                            <strong>Point the provider at the gateway</strong> <span><code>baseURL</code> is <code>https://llm.wiro.ai/v1</code>. <code>includeUsage: true</code> adds token counts to streamed responses, and <code>supportsStructuredOutputs: true</code> lets <code>Output.object</code> send a JSON schema.</span>
+                          </li>
+                          <li>
+                            <strong>Name a model</strong> <span>Any ID from the catalog or <code>GET /v1/models</code>, such as <code>openai/gpt-5-4-nano</code> or <code>deepseek/v4-1-flash</code>.</span>
+                          </li>
+                        </ol>
+                        <pre><code>import { createOpenAICompatible } from &quot;@ai-sdk/openai-compatible&quot;;
+import { generateText } from &quot;ai&quot;;
+
+const wiro = createOpenAICompatible({
+  name: &quot;wiro&quot;,
+  baseURL: &quot;https://llm.wiro.ai/v1&quot;,
+  apiKey: process.env.WIRO_API_KEY,
+  includeUsage: true,
+  supportsStructuredOutputs: true,
+});
+
+const { text } = await generateText({
+  model: wiro(&quot;openai/gpt-5-4-nano&quot;),
+  prompt: &quot;Explain what an API gateway does in one sentence.&quot;,
+});
+
+console.log(text);</code></pre>
+                        <p><code>streamText</code> streams the answer. When a model thinks before it answers, its reasoning comes separately in <code>reasoningText</code>, and the token counts arrive at the end:</p>
+                        <pre><code>import { streamText } from &quot;ai&quot;;
+
+const result = streamText({
+  model: wiro(&quot;deepseek/v4-1-flash&quot;),
+  prompt: &quot;Write a two-line poem about routing requests.&quot;,
+});
+
+for await (const part of result.textStream) {
+  process.stdout.write(part);
+}
+
+console.log(await result.usage);</code></pre>
+                        <p>Tools run as a loop: the model calls the tool, the SDK runs <code>execute</code> and sends the result back, and the model writes the answer. <code>stopWhen</code> caps the number of steps:</p>
+                        <pre><code>import { generateText, isStepCount, tool } from &quot;ai&quot;;
+import { z } from &quot;zod&quot;;
+
+const { text } = await generateText({
+  model: wiro(&quot;openai/gpt-5-4-nano&quot;),
+  tools: {
+    getWeather: tool({
+      description: &quot;Get the current weather for a city&quot;,
+      inputSchema: z.object({ city: z.string() }),
+      execute: async ({ city }) =&gt; ({ city, temperatureC: 21 }),
+    }),
+  },
+  stopWhen: isStepCount(3),
+  prompt: &quot;What is the weather in Istanbul right now?&quot;,
+});</code></pre>
+                        <p>Structured output needs a model whose <code>structured_output_modes</code> include <code>json_schema</code>:</p>
+                        <pre><code>import { generateText, Output } from &quot;ai&quot;;
+import { z } from &quot;zod&quot;;
+
+const { output } = await generateText({
+  model: wiro(&quot;openai/gpt-5-4-nano&quot;),
+  output: Output.object({
+    schema: z.object({ name: z.string(), country: z.string(), population: z.number() }),
+  }),
+  prompt: &quot;Give me the largest city in Turkey.&quot;,
+});</code></pre>
+                        <p>On reasoning models, <code>providerOptions: { wiro: { reasoningEffort: &quot;low&quot; } }</code> sends <code>reasoning_effort</code>. The key under <code>providerOptions</code> is the provider's <code>name</code>. Use it only on models that list <code>reasoning_effort</code> in <code>supported_parameters</code>.</p>
+                        <p>The gateway's other two routes work with the AI SDK's own providers: <code>@ai-sdk/openai</code> reaches <a href="#gateway-responses" class="docs-link">Responses</a> and <code>@ai-sdk/anthropic</code> reaches <a href="#gateway-anthropic" class="docs-link">Anthropic Messages</a>. Both take the same <code>/v1</code> base URL. Unlike the Anthropic SDK, <code>@ai-sdk/anthropic</code> expects the <code>/v1</code> in it. It caps output at 4,096 tokens for model IDs it does not know, so pass <code>maxOutputTokens</code> for longer answers.</p>
+                        <pre><code>import { createAnthropic } from &quot;@ai-sdk/anthropic&quot;;
+import { createOpenAI } from &quot;@ai-sdk/openai&quot;;
+
+const openai = createOpenAI({
+  baseURL: &quot;https://llm.wiro.ai/v1&quot;,
+  apiKey: process.env.WIRO_API_KEY,
+});
+
+const anthropic = createAnthropic({
+  baseURL: &quot;https://llm.wiro.ai/v1&quot;,
+  apiKey: process.env.WIRO_API_KEY,
+});
+
+const viaResponses = openai.responses(&quot;openai/gpt-5-4-nano&quot;);
+const viaMessages = anthropic(&quot;claude/sonnet-5&quot;);</code></pre>
+                      </div>
                     </div>
                   </section>
 
@@ -3205,7 +3304,7 @@ const second = await client.chat.completions.create({
                     </ul>
                     <p>For Chat and Responses, input/prompt totals are cache-inclusive. Their input detail objects (optional on Chat, always present on Responses) can identify <code>cached_tokens</code>, <code>cache_write_tokens</code>, <code>cache_write_5m_tokens</code>, <code>cache_write_1h_tokens</code>, and reported text/audio/image/video tokens. Output/completion totals are reasoning-inclusive; the corresponding output detail can identify <code>reasoning_tokens</code>, reported text/audio/image/video tokens, and accepted/rejected prediction tokens. Cache TTL values are subsets of <code>cache_write_tokens</code>, and all detail counters are already included in their parent total. Never add them to <code>total_tokens</code>.</p>
                     <p>There is intentionally no <code>cached_output_tokens</code> field. Provider prompt caches reuse input context; they do not report previously generated output as cached output usage.</p>
-                    <p>Optional <code>server_tool_use</code> values count requests, not tokens. Providers omit unsupported counters, so clients must not require every detail key. Chat and Responses expose Wiro's billed amount as <code>usage.cost</code>; Anthropic exposes it as <code>usage.cost_usd</code>. The asynchronous Run/Task contract keeps the billed amount at task-level <code>totalcost</code>.</p>
+                    <p>Optional <code>server_tool_use</code> values count requests, not tokens. Providers omit unsupported counters, so clients must not require every detail key. Chat, Responses and Anthropic Messages expose Wiro's billed amount as <code>usage.cost</code>. Anthropic Messages also keeps the same value under <code>usage.cost_usd</code>, and a streamed Messages call carries both on its final <code>message_delta</code>. The asynchronous Run/Task contract keeps the billed amount at task-level <code>totalcost</code>.</p>
                   </section>
 
                   <section id="gateway-files">
