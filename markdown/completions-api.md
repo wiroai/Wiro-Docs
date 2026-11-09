@@ -1915,10 +1915,12 @@ reuse input context; they do not report previously generated output as cached
 output usage.
 
 Optional `server_tool_use` values count requests, not tokens. Providers omit
-unsupported counters, so clients must not require every detail key. Chat and
-Responses expose Wiro's billed amount as `usage.cost`; Anthropic
-exposes it as `usage.cost_usd`. The asynchronous Run/Task contract keeps the
-billed amount at task-level `totalcost`.
+unsupported counters, so clients must not require every detail key. Chat,
+Responses and Anthropic Messages expose Wiro's billed amount as `usage.cost`.
+Anthropic Messages also keeps the same value under `usage.cost_usd`, and a
+streamed Messages call carries both on its final `message_delta`. The
+asynchronous Run/Task contract keeps the billed amount at task-level
+`totalcost`.
 
 ## Files compatibility
 
