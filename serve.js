@@ -19,7 +19,7 @@ const sections = [
   { slug: 'projects', title: 'Projects', description: 'Create projects to organize your Wiro API usage. Each project has its own API key, usage tracking, and webhook configuration.' },
   { slug: 'models', title: 'Models', description: 'Browse, search, and discover AI models on Wiro. Filter by category, view pricing, parameters, and sample outputs for each model.' },
   { slug: 'run-a-model', title: 'Run a Model', description: 'Execute any AI model on Wiro with a single POST request, or wait on /sync for a finite task. Pass parameters, upload files, and receive outputs.' },
-  { slug: 'completions-api', title: 'Direct LLM Gateway', description: 'Use Wiro LLMs through OpenAI Chat Completions, OpenAI Responses, Anthropic Messages, and a beta Cursor-compatible route on llm.wiro.ai.' },
+  { slug: 'completions-api', title: 'Direct LLM Gateway', description: 'Use Wiro LLMs through OpenAI Chat Completions, OpenAI Responses, and Anthropic Messages on llm.wiro.ai.' },
   { slug: 'model-parameters', title: 'Model Parameters', description: 'Understand Wiro model parameter types including text, numeric, file uploads, dropdowns, and boolean inputs. Learn about content-type handling.' },
   { slug: 'tasks', title: 'Tasks', description: 'Track the status and results of your Wiro API tasks. Poll for completion, retrieve outputs, and handle asynchronous model execution.' },
   { slug: 'llm-chat-streaming', title: 'LLM & Chat Streaming', description: 'Stream LLM responses with cumulative ordered text and tool-call segments over WebSocket, plus session history and multi-turn conversations.' },
