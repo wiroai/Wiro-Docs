@@ -309,7 +309,10 @@ Responses expose OpenRouter-style `canonical_slug`, `name`, `description`,
 compatibility fields, and `x_wiro` pricing-source metadata. Tiered
 models expose exact bands in `x_wiro.pricing_tiers`. Fields Wiro does not
 publish are omitted. Source-backed values can remain `null`; they are never
-guessed or replaced by zero.
+guessed or replaced by zero. `pricing` is `null` for models not billed at a
+fixed token rate: Wiro-hosted models bill by processing time, and models with
+`x_wiro.pricing_source.basis` `provider-reported-usd-ticks` bill the cost the
+provider reports. `usage.cost` still carries each call's billed amount.
 Canonical route values are `anthropic`, `chat`, and `responses` in
 `capabilities.endpoints`. Check `capabilities.input_modalities`,
 `capabilities.output`, `function_tools`, `custom_tools`, `structured_outputs`,
@@ -381,6 +384,12 @@ OpenAI Chat:
   creation or billing. `json_object` guarantees parseable JSON but not which
   keys appear.
 - Reasoning, generation controls, and tool combinations are model-specific.
+- A sampling control the model does not declare (`temperature`, `top_p`,
+  `seed`, `stop`, ...) is left out and named in the
+  `x-wiro-dropped-parameters` response header; a control applied with a
+  different value is listed in `x-wiro-adjusted-parameters` as
+  `name=applied` (for example `reasoning.effort=low`). Responses and
+  Messages send the same headers.
 - Remote media uses public HTTPS, validated data/base64, or a supported Wiro
   gateway file ID; private and non-HTTP fetch targets are rejected.
 - Final object is `chat.completion`; native usage can be absent.
@@ -436,7 +445,11 @@ Anthropic Messages:
 - Supports top-level system, required positive max_tokens, Anthropic
   client-history user/assistant content, model-advertised image/document input, client-run
   `tool_use`/`tool_result`, and enabled/adaptive/disabled thinking when
-  advertised. Optional tool `type: "custom"` remains a client function tool
+  advertised. `thinking` and `output_config.effort` drive the model's
+  `generation_controls` (`reasoning_effort`, `reasoning_enabled`,
+  `reasoning_max_tokens`); `supported_parameters` never lists `thinking`.
+  Without `reasoning_max_tokens`, `budget_tokens` becomes an effort (up to
+  4,096 low, up to 16,384 medium, above that high). Optional tool `type: "custom"` remains a client function tool
   with `input_schema`; it is not OpenAI's free-form grammar shape.
 - Provider-hosted tools, hosted containers, and remote MCP servers are rejected.
 - Structured output is `output_config.format`, `json_schema` only, always
@@ -451,15 +464,20 @@ Anthropic Messages:
   data from `max_tokens` or `refusal` turns.
 - Final output content contains `text` and `tool_use`; internal model reasoning
   is not projected as Anthropic `thinking` or `redacted_thinking` output.
-- Native SSE includes `ping`, uses `text_delta` for text and
-  `input_json_delta` for tool input, ends successfully with `message_stop`, and
-  emits `error` on midstream failure. It never emits `thinking_delta` or
-  `[DONE]`.
+- Native SSE sends `: keep-alive` comments while waiting, uses `text_delta`
+  for text and `input_json_delta` for tool input, ends successfully with
+  `message_stop`, and emits `error` on midstream failure. It never emits
+  `thinking_delta` or `[DONE]`.
 - `POST /v1/messages/count_tokens` returns a preflight input-token estimate,
-  not authoritative billing or provider-native usage. The model catalog does
-  not label this local estimate as native token counting.
+  not authoritative billing or provider-native usage. It is computed from the
+  request size and errs high (`x-wiro-token-count-mode:
+  conservative-estimate-v1`), so the billed `input_tokens` are usually lower.
+  The model catalog does not label this local estimate as native token
+  counting.
 - Official Anthropic SDKs use origin `https://llm.wiro.ai` and set
-  `apiKey`/`api_key` to the complete project credential.
+  `apiKey`/`api_key` to the complete project credential. In Node, pass
+  `authToken: null` so an `ANTHROPIC_AUTH_TOKEN` in the environment is not
+  sent as a second credential; in Python, leave that variable unset.
 - Claude Code sets `ANTHROPIC_BASE_URL=https://llm.wiro.ai`,
   `ANTHROPIC_API_KEY` to the complete project credential, for example
   `ANTHROPIC_MODEL=claude/sonnet-5`, and
@@ -487,9 +505,11 @@ Generation metadata:
 Client compatibility and boundaries:
 - OpenAI SDKs use base `https://llm.wiro.ai/v1`; Anthropic SDKs and Claude Code
   use origin `https://llm.wiro.ai`.
-- The Vercel AI SDK uses base `https://llm.wiro.ai/v1` with
-  `@ai-sdk/openai-compatible` for Chat, `@ai-sdk/openai` for Responses, and
-  `@ai-sdk/anthropic` for Messages; `@ai-sdk/anthropic` keeps the `/v1`.
+- The Vercel AI SDK uses Wiro's `@wiro-ai/wiro-llm` provider for Chat
+  (`wiro("owner/model")`, key from `WIRO_API_KEY`, cost in
+  `providerMetadata.wiro.cost`), `@ai-sdk/openai` for Responses, and
+  `@ai-sdk/anthropic` for Messages, all with base `https://llm.wiro.ai/v1`;
+  `@ai-sdk/anthropic` keeps the `/v1`.
 - Cursor's OpenAI base URL override takes `https://llm.wiro.ai/v1`; Cursor
   appends `/chat/completions` itself.
 - OpenClaw can use a model's declared `openai-completions`,

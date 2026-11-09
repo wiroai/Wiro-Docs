@@ -192,6 +192,7 @@ is in [the catalog](https://wiro.ai/models?categories=llm-tool-call) and behind
 (Wiro) meta-llama/llama-3-2-3b-instruct
 (Wiro) mistralai/mistral-7b-instruct-v0-3
 (Wiro) mistralai/mistral-nemo-instruct-2407
+(Wiro) moonshot/kimi-k3-1-pro
 (Wiro) openai/gpt-5-2
 (Wiro) openai/gpt-5-4
 (Wiro) openai/gpt-5-4-mini
@@ -203,6 +204,7 @@ is in [the catalog](https://wiro.ai/models?categories=llm-tool-call) and behind
 (Wiro) openai/gpt-5-mini
 (Wiro) openai/gpt-5-nano
 (Wiro) openai/gpt-6-1-sol
+(Wiro) openai/gpt-6-1-terra
 (Wiro) openai/gpt-6-astra
 (Wiro) openai/gpt-6-luna
 (Wiro) openai/gpt-6-sol
@@ -380,6 +382,7 @@ Model ID                                     Context
 (Wiro) meta-llama/llama-3-2-3b-instruct        51200
 (Wiro) mistralai/mistral-7b-instruct-v0-3      17408
 (Wiro) mistralai/mistral-nemo-instruct-2407    35840
+(Wiro) moonshot/kimi-k3-1-pro                1048576
 (Wiro) openai/gpt-5-2                         400000
 (Wiro) openai/gpt-5-4                        1050000
 (Wiro) openai/gpt-5-4-mini                    400000
@@ -391,6 +394,7 @@ Model ID                                     Context
 (Wiro) openai/gpt-5-mini                      400000
 (Wiro) openai/gpt-5-nano                      400000
 (Wiro) openai/gpt-6-1-sol                    1050000
+(Wiro) openai/gpt-6-1-terra                  1050000
 (Wiro) openai/gpt-6-astra                    1050000
 (Wiro) openai/gpt-6-luna                     1050000
 (Wiro) openai/gpt-6-sol                      1050000
@@ -704,6 +708,15 @@ extension required.
         "maxOutputTokens": 2048
       },
       {
+        "id": "moonshot/kimi-k3-1-pro",
+        "name": "(Wiro) Kimi K3.1 Pro",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1048576,
+        "maxOutputTokens": 1048576
+      },
+      {
         "id": "openai/gpt-5-2",
         "name": "(Wiro) GPT-5.2",
         "url": "https://llm.wiro.ai/v1/chat/completions",
@@ -796,6 +809,15 @@ extension required.
       {
         "id": "openai/gpt-6-1-sol",
         "name": "(Wiro) GPT-6.1 Sol",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1050000,
+        "maxOutputTokens": 128000
+      },
+      {
+        "id": "openai/gpt-6-1-terra",
+        "name": "(Wiro) GPT-6.1 Terra",
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
@@ -1171,6 +1193,7 @@ Model ID                                     Context  Max Output
 (Wiro) meta-llama/llama-3-2-3b-instruct        51200        2048
 (Wiro) mistralai/mistral-7b-instruct-v0-3      17408        2048
 (Wiro) mistralai/mistral-nemo-instruct-2407    35840        2048
+(Wiro) moonshot/kimi-k3-1-pro                1048576     1048576
 (Wiro) openai/gpt-5-2                         400000       65536
 (Wiro) openai/gpt-5-4                        1050000       65536
 (Wiro) openai/gpt-5-4-mini                    400000       65536
@@ -1182,6 +1205,7 @@ Model ID                                     Context  Max Output
 (Wiro) openai/gpt-5-mini                      400000       65536
 (Wiro) openai/gpt-5-nano                      400000       65536
 (Wiro) openai/gpt-6-1-sol                    1050000      128000
+(Wiro) openai/gpt-6-1-terra                  1050000      128000
 (Wiro) openai/gpt-6-astra                    1050000      128000
 (Wiro) openai/gpt-6-luna                     1050000      128000
 (Wiro) openai/gpt-6-sol                      1050000      128000
@@ -1287,6 +1311,7 @@ array. The same set is in the catalog and behind `GET /v1/models`.
           { "id": "(Wiro) meta-llama/llama-3-2-3b-instruct", "name": "(Wiro) Llama 3.2 3B Instruct" },
           { "id": "(Wiro) mistralai/mistral-7b-instruct-v0-3", "name": "(Wiro) Mistral 7B Instruct v0.3" },
           { "id": "(Wiro) mistralai/mistral-nemo-instruct-2407", "name": "(Wiro) Mistral Nemo Instruct" },
+          { "id": "(Wiro) moonshot/kimi-k3-1-pro", "name": "(Wiro) Kimi K3.1 Pro" },
           { "id": "(Wiro) openai/gpt-5-2", "name": "(Wiro) GPT-5.2" },
           { "id": "(Wiro) openai/gpt-5-4", "name": "(Wiro) GPT-5.4" },
           { "id": "(Wiro) openai/gpt-5-4-mini", "name": "(Wiro) GPT-5.4 Mini" },
@@ -1298,6 +1323,7 @@ array. The same set is in the catalog and behind `GET /v1/models`.
           { "id": "(Wiro) openai/gpt-5-mini", "name": "(Wiro) GPT-5 Mini" },
           { "id": "(Wiro) openai/gpt-5-nano", "name": "(Wiro) GPT-5 Nano" },
           { "id": "(Wiro) openai/gpt-6-1-sol", "name": "(Wiro) GPT-6.1 Sol" },
+          { "id": "(Wiro) openai/gpt-6-1-terra", "name": "(Wiro) GPT-6.1 Terra" },
           { "id": "(Wiro) openai/gpt-6-astra", "name": "(Wiro) GPT-6 Astra" },
           { "id": "(Wiro) openai/gpt-6-luna", "name": "(Wiro) GPT-6 Luna" },
           { "id": "(Wiro) openai/gpt-6-sol", "name": "(Wiro) GPT-6 Sol" },
@@ -1406,6 +1432,7 @@ Every model the gateway serves today. The same set is in the catalog and behind
 (Wiro) meta-llama/llama-3-2-3b-instruct
 (Wiro) mistralai/mistral-7b-instruct-v0-3
 (Wiro) mistralai/mistral-nemo-instruct-2407
+(Wiro) moonshot/kimi-k3-1-pro
 (Wiro) openai/gpt-5-2
 (Wiro) openai/gpt-5-4
 (Wiro) openai/gpt-5-4-mini
@@ -1417,6 +1444,7 @@ Every model the gateway serves today. The same set is in the catalog and behind
 (Wiro) openai/gpt-5-mini
 (Wiro) openai/gpt-5-nano
 (Wiro) openai/gpt-6-1-sol
+(Wiro) openai/gpt-6-1-terra
 (Wiro) openai/gpt-6-astra
 (Wiro) openai/gpt-6-luna
 (Wiro) openai/gpt-6-sol
@@ -1466,8 +1494,9 @@ serves.
    well.
 4. **Give reasoning models room**: `max_completion_tokens` covers reasoning as
    well as the answer. Too small a budget returns `finish_reason: "length"`
-   with empty content. That is not an error, just a spent budget. 512 is a safe floor,
-   more for long answers.
+   with empty content. That is not an error, just a spent budget. A model that
+   reasons by default can use several hundred tokens before it starts the
+   answer, so raise the budget or lower `reasoning_effort` when that happens.
 
 ```javascript
 import OpenAI from "openai";
@@ -1555,6 +1584,7 @@ Every model the gateway serves today. The same set is in the catalog and behind
 (Wiro) meta-llama/llama-3-2-3b-instruct
 (Wiro) mistralai/mistral-7b-instruct-v0-3
 (Wiro) mistralai/mistral-nemo-instruct-2407
+(Wiro) moonshot/kimi-k3-1-pro
 (Wiro) openai/gpt-5-2
 (Wiro) openai/gpt-5-4
 (Wiro) openai/gpt-5-4-mini
@@ -1566,6 +1596,7 @@ Every model the gateway serves today. The same set is in the catalog and behind
 (Wiro) openai/gpt-5-mini
 (Wiro) openai/gpt-5-nano
 (Wiro) openai/gpt-6-1-sol
+(Wiro) openai/gpt-6-1-terra
 (Wiro) openai/gpt-6-astra
 (Wiro) openai/gpt-6-luna
 (Wiro) openai/gpt-6-sol
@@ -1598,48 +1629,48 @@ Every model the gateway serves today. The same set is in the catalog and behind
 
 ### Vercel AI SDK
 
-The [AI SDK](https://ai-sdk.dev) from Vercel reaches the gateway through its
-OpenAI Compatible provider, so there is no Wiro package to install:
-`createOpenAICompatible` with the gateway's base URL is the whole setup. The
-examples below were tested with `ai` 7.0.166 and `@ai-sdk/openai-compatible`
-3.0.87.
+[`@wiro-ai/wiro-llm`](https://www.npmjs.com/package/@wiro-ai/wiro-llm) is
+Wiro's provider for the [AI SDK](https://ai-sdk.dev) from Vercel. It reads the
+key from `WIRO_API_KEY`, reports token usage on streamed calls, sends an
+`Output.object` schema as `json_schema`, and returns the cost of each call in
+`providerMetadata.wiro.cost`. The examples below were tested with
+`@wiro-ai/wiro-llm` 0.1.3, `ai` 7.0.166 and `zod` 4.6.7.
 
-1. **Install**: `npm i ai @ai-sdk/openai-compatible zod`. `zod` is only
-   needed for tools and structured output.
+1. **Install**: `npm i @wiro-ai/wiro-llm ai zod`. The package needs Node.js 22
+   or later, like AI SDK 7. `zod` is only needed for tools and structured
+   output.
 2. **Keep the key on the server**: put the project credential in
    `WIRO_API_KEY` (`YOUR_API_KEY` for an API Key Only project,
    `YOUR_API_KEY:YOUR_API_SECRET` for a Signature project). Call the gateway
    from server code so the key never reaches a browser.
-3. **Point the provider at the gateway**: `baseURL` is
-   `https://llm.wiro.ai/v1`. `includeUsage: true` adds token counts to
-   streamed responses, and `supportsStructuredOutputs: true` lets
-   `Output.object` send a JSON schema.
-4. **Name a model**: any ID from the catalog or `GET /v1/models`, such as
+3. **Name a model**: any ID from the catalog or `GET /v1/models`, such as
    `openai/gpt-5-4-nano` or `deepseek/v4-1-flash`.
 
 ```javascript
-import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { wiro } from "@wiro-ai/wiro-llm";
 import { generateText } from "ai";
 
-const wiro = createOpenAICompatible({
-  name: "wiro",
-  baseURL: "https://llm.wiro.ai/v1",
-  apiKey: process.env.WIRO_API_KEY,
-  includeUsage: true,
-  supportsStructuredOutputs: true,
-});
-
-const { text } = await generateText({
+const { text, providerMetadata } = await generateText({
   model: wiro("openai/gpt-5-4-nano"),
   prompt: "Explain what an API gateway does in one sentence.",
 });
 
 console.log(text);
+console.log(providerMetadata?.wiro?.cost);
+```
+
+`wiro` reads `WIRO_API_KEY` when it sends a request. `createWiro` builds a
+provider with your own `apiKey`, `baseURL`, `headers` or `fetch`:
+
+```javascript
+import { createWiro } from "@wiro-ai/wiro-llm";
+
+const wiro = createWiro({ apiKey: process.env.MY_WIRO_KEY });
 ```
 
 `streamText` streams the answer. When a model thinks before it answers, its
-reasoning comes separately in `reasoningText`, and the token counts arrive at
-the end:
+reasoning comes separately in `reasoningText`, and the token counts and the
+cost arrive at the end:
 
 ```javascript
 import { streamText } from "ai";
@@ -1654,11 +1685,13 @@ for await (const part of result.textStream) {
 }
 
 console.log(await result.usage);
+console.log((await result.providerMetadata)?.wiro?.cost);
 ```
 
 Tools run as a loop: the model calls the tool, the SDK runs `execute` and
 sends the result back, and the model writes the answer. `stopWhen` caps the
-number of steps:
+number of steps. Each step is a separate request, and each entry in `steps`
+carries its own `providerMetadata.wiro.cost`:
 
 ```javascript
 import { generateText, isStepCount, tool } from "ai";
@@ -1695,9 +1728,13 @@ const { output } = await generateText({
 ```
 
 On reasoning models, `providerOptions: { wiro: { reasoningEffort: "low" } }`
-sends `reasoning_effort`. The key under `providerOptions` is the provider's
-`name`. Use it only on models that list `reasoning_effort` in
+sends `reasoning_effort`. Use it only on models that list `reasoning_effort` in
 `supported_parameters`.
+
+The provider is built on the AI SDK's OpenAI Compatible provider, which also
+works on its own: `createOpenAICompatible` from `@ai-sdk/openai-compatible`
+with base URL `https://llm.wiro.ai/v1`, `includeUsage: true` and
+`supportsStructuredOutputs: true`.
 
 The gateway's other two routes work with the AI SDK's own providers:
 `@ai-sdk/openai` reaches the Responses route and `@ai-sdk/anthropic` reaches
@@ -1819,7 +1856,11 @@ Run parameters and capability flags come from the selected model's current
 `pricing.prompt` and `pricing.completion` are USD-per-token strings.
 Models with tiered rates expose those exact bands in `x_wiro.pricing_tiers`.
 Pricing and context fields can be `null` when the catalog has no value for
-them.
+them. `pricing` is `null` for models that are not billed at a fixed token
+rate: Wiro-hosted models are billed by processing time, and models whose
+`x_wiro.pricing_source.basis` is `provider-reported-usd-ticks` are billed at
+the cost the provider reports for each call. Every response still carries
+its billed amount in `usage.cost`.
 
 The list accepts:
 
@@ -1986,6 +2027,7 @@ import Anthropic from '@anthropic-ai/sdk';
 const client = new Anthropic({
   baseURL: 'https://llm.wiro.ai',
   apiKey: process.env.WIRO_API_KEY,
+  authToken: null,
 });
 
 const file = await client.files.upload({
@@ -2072,6 +2114,15 @@ are declared independently in `capabilities.structured_output_modes`, and
 `capabilities.strict_json_schema`. A mode the model does not declare is refused
 with HTTP 400, code `unsupported_capability` and `param: "response_format"`,
 before any task is created or billed.
+
+A sampling control the selected model does not declare, such as
+`temperature`, `top_p`, `seed`, or `stop`, is left out of the run rather
+than refused, and the response names it in the `x-wiro-dropped-parameters`
+header. A control that reached the model with a different value, such as an
+effort the model does not offer moved to one it does, is listed in
+`x-wiro-adjusted-parameters` as `name=applied` entries, for example
+`reasoning.effort=low`. Responses and Anthropic Messages send the same two
+headers.
 
 Structured output uses OpenAI's two `response_format` shapes. `json_object`
 asks only for a valid JSON document:
@@ -2423,8 +2474,17 @@ Thinking controls use:
 { "thinking": { "type": "enabled", "budget_tokens": 2048 } }
 ```
 
-`type` can be `enabled`, `adaptive`, or `disabled`. Check
-`supported_parameters` for public reasoning controls and
+`type` can be `enabled`, `adaptive`, or `disabled`. `thinking` and
+`output_config.effort` are this route's names for the model's own
+reasoning control, which `capabilities.generation_controls` lists as
+`reasoning_effort`, `reasoning_enabled`, or `reasoning_max_tokens`.
+`supported_parameters` uses the OpenAI Chat names, so it never lists
+`thinking`. Without a `reasoning_max_tokens` control, `budget_tokens`
+becomes an effort where the model has one (up to 4,096 tokens is `low`, up
+to 16,384 is `medium`, above that `high`) and is left out otherwise; the
+response names both changes in `x-wiro-adjusted-parameters` and
+`x-wiro-dropped-parameters`. `disabled` is refused with
+`unsupported_capability` on a model that cannot turn reasoning off. Check
 `capabilities.output` for reasoning output. Do not fabricate or alter
 signature or redacted-thinking blocks returned by the model.
 
@@ -2436,8 +2496,9 @@ counters are available.
 
 For streaming, set `"stream": true`. The SSE sequence uses Anthropic events
 such as `message_start`, `content_block_start`, `content_block_delta`,
-`content_block_stop`, `message_delta`, and `message_stop`, with `ping`
-keepalives. A midstream failure emits Anthropic's native `error` event and
+`content_block_stop`, `message_delta`, and `message_stop`, with
+`: keep-alive` comments while the model works. A midstream failure emits
+Anthropic's native `error` event and
 closes the connection. A successful stream ends with `message_stop` and
 connection close; it does not emit `[DONE]`. Text blocks use `text_delta`, and
 `tool_use` blocks use `input_json_delta`. The gateway does not emit
@@ -2454,6 +2515,7 @@ import Anthropic from '@anthropic-ai/sdk';
 const client = new Anthropic({
   baseURL: 'https://llm.wiro.ai',
   apiKey: process.env.WIRO_API_KEY,
+  authToken: null,
 });
 const message = await client.messages.create({
   model: 'claude/sonnet-5',
@@ -2463,8 +2525,12 @@ const message = await client.messages.create({
 ```
 
 `WIRO_API_KEY` is `YOUR_API_KEY` for an API Key Only project or
-`YOUR_API_KEY:YOUR_API_SECRET` for a Signature project. Python uses the
-equivalent `base_url` and `api_key` options.
+`YOUR_API_KEY:YOUR_API_SECRET` for a Signature project. `authToken: null`
+keeps an `ANTHROPIC_AUTH_TOKEN` set in the environment out of the request:
+some SDK versions send it as a Bearer token beside the key, and two
+different credentials return `401`. Python uses the equivalent `base_url`
+and `api_key` options; leave `ANTHROPIC_AUTH_TOKEN` unset in the process
+that creates the client.
 
 For Claude Code with a Signature project:
 
@@ -2500,13 +2566,17 @@ curl -X POST "https://llm.wiro.ai/v1/messages/count_tokens" \
 ```
 
 ```json
-{ "input_tokens": 28 }
+{ "input_tokens": 141 }
 ```
 
 This is a local preflight estimate over the submitted Anthropic payload, not
-authoritative billing or provider-native usage. The estimate endpoint is part
-of the Anthropic compatibility route; the model catalog does not label it as
-native token counting.
+authoritative billing or provider-native usage. It is computed from the size
+of the request and errs high, so use it to check that a request fits the
+model's context window; the billed `input_tokens` of the same request are
+usually lower. The response says so in
+`x-wiro-token-count-mode: conservative-estimate-v1`. The estimate endpoint is
+part of the Anthropic compatibility route; the model catalog does not label
+it as native token counting.
 ## Generation metadata
 
 ### **GET** /v1/generation?id=
