@@ -6325,7 +6325,7 @@ Run Wiro AI models, Wiro workflows and Wiro agents from your n8n workflows: vide
 
 The **Wiro AI community node** (`@wiro-ai/n8n-nodes-wiroai`) gives you access to all Wiro AI models as individual nodes you can drag and drop into any workflow.
 
-Two more nodes are not tied to one model: **Wiro Workflow** runs the workflows you saved on Wiro (run, get and list workflows and runs), and **Wiro Agent** sends messages to Wiro Studio, the Workflow Agent or one of your deployed agents and returns the reply. Every node also works as a tool for an n8n AI Agent, and all of them use the same **Wiro API** credential.
+Two more nodes are not tied to one model: **Wiro Workflow** runs the workflows you saved on Wiro (run, get and list workflows and runs), and **Wiro Agent** sends messages to Wiro Studio, the Workflow Agent or one of your deployed agents and returns the reply. Every node also works as a tool for an n8n AI Agent, and all of them take the same credentials: a **Wiro API** key, or, on n8n Cloud and on n8n running on your own computer, a **Wiro OAuth2 API** credential that signs in with your Wiro account.
 
 ## Installation
 

@@ -10167,6 +10167,21 @@ import type {
                       </li>
                     </ol>
                     <p>Get your credentials at <a href="https://wiro.ai/panel/project/new" target="_blank">wiro.ai/panel/project</a>.</p>
+
+                    <h3>Sign in with a Wiro account (OAuth2)</h3>
+                    <p>On n8n Cloud and on n8n running on your own computer, you can connect with your Wiro account instead of an API key:</p>
+                    <ol class="docs-steps">
+                      <li>
+                        <strong>Choose OAuth2</strong> <span>On a Wiro node, set <strong style="font-size: 0.92rem">Authentication</strong> to <strong style="font-size: 0.92rem">OAuth2</strong></span>
+                      </li>
+                      <li>
+                        <strong>Connect</strong> <span>Create a <strong style="font-size: 0.92rem">Wiro OAuth2 API</strong> credential and click <strong style="font-size: 0.92rem">Connect my account</strong></span>
+                      </li>
+                      <li>
+                        <strong>Allow</strong> <span>Sign in to Wiro, pick the project whose wallet pays for the runs, and click <strong style="font-size: 0.92rem">Allow</strong></span>
+                      </li>
+                    </ol>
+                    <p>Other n8n instances connect with the <strong>Wiro API</strong> credential above.</p>
                   </section>
 
                   <section id="n8n-usage">
@@ -10212,7 +10227,7 @@ import type {
 
                   <section id="n8n-workflow-agent-nodes">
                     <h2>Wiro Workflow and Wiro Agent</h2>
-                    <p>These two nodes are not tied to one model. They use the same <strong>Wiro API</strong> credential as the model nodes.</p>
+                    <p>These two nodes are not tied to one model. They use the same credentials as the model nodes.</p>
 
                     <h3>Wiro Workflow</h3>
                     <ul>

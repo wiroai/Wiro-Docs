@@ -63,6 +63,16 @@ The node supports both [Wiro authentication methods](/docs/authentication):
 
 Get your credentials at [wiro.ai/panel/project](https://wiro.ai/panel/project/new).
 
+### Sign in with a Wiro account (OAuth2)
+
+On n8n Cloud and on n8n running on your own computer, you can connect with your Wiro account instead of an API key:
+
+1. On a Wiro node, set **Authentication** to **OAuth2**
+2. Create a **Wiro OAuth2 API** credential and click **Connect my account**
+3. Sign in to Wiro, pick the project whose wallet pays for the runs, and click **Allow**
+
+Other n8n instances connect with the **Wiro API** credential above.
+
 ## Usage
 
 Each Wiro model appears as a separate node in the n8n node picker. Search for "Wiro" or the model name to find it.
@@ -102,7 +112,7 @@ The node returns the task result with output URLs:
 
 ## Wiro Workflow and Wiro Agent
 
-These two nodes are not tied to one model. They use the same **Wiro API** credential as the model nodes.
+These two nodes are not tied to one model. They use the same credentials as the model nodes.
 
 ### Wiro Workflow
 
