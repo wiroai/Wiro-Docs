@@ -2863,15 +2863,15 @@ before any task is created or billed.
 A sampling control the selected model does not declare, such as
 `temperature`, `top_p`, `seed`, or `stop`, is left out of the run rather
 than refused, and the response names it in the `x-wiro-dropped-parameters`
-header. On Chat Completions and Responses the same goes for a request field
-the gateway has no use for, such as a client's own metadata field or an
-option written for another provider: it is left out and named in that
-header, so clients that add fields of their own work unchanged. An empty
-`stop` list is read as no stop sequence. A control that reached the model
-with a different value, such as an effort the model does not offer moved to
-one it does, is listed in `x-wiro-adjusted-parameters` as `name=applied`
-entries, for example `reasoning.effort=low`. Responses and Anthropic Messages
-send the same two headers.
+header. On every route the same goes for a request field the gateway has no
+use for, such as a client's own metadata field or an option written for
+another provider: it is left out and named in that header, so clients that
+add fields of their own work unchanged. An empty `stop` list is read as no
+stop sequence. A control that reached the model with a different value, such
+as an effort the model does not offer moved to one it does, is listed in
+`x-wiro-adjusted-parameters` as `name=applied` entries, for example
+`reasoning.effort=low`. Responses and Anthropic Messages send the same two
+headers.
 
 Structured output uses OpenAI's two `response_format` shapes. `json_object`
 asks only for a valid JSON document:

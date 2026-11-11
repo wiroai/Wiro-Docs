@@ -391,10 +391,10 @@ OpenAI Chat:
   different value is listed in `x-wiro-adjusted-parameters` as
   `name=applied` (for example `reasoning.effort=low`). Responses and
   Messages send the same headers.
-- On Chat Completions and Responses, a request field the gateway has no use
-  for (a client's own metadata field, an option written for another
-  provider) is left out and named in `x-wiro-dropped-parameters` as well. An
-  empty `stop` list is read as no stop sequence.
+- On every route, a request field the gateway has no use for (a client's own
+  metadata field, an option written for another provider) is left out and
+  named in `x-wiro-dropped-parameters` as well. An empty `stop` list is read
+  as no stop sequence.
 - Remote media uses public HTTPS, validated data/base64, or a supported Wiro
   gateway file ID; private and non-HTTP fetch targets are rejected.
 - Final object is `chat.completion`; native usage can be absent.
