@@ -94,7 +94,7 @@ API key integrations:
 - [MCP Server](https://wiro.ai/docs/wiro-mcp-server): Model Context Protocol server for AI assistants
 - [Self-Hosted MCP](https://wiro.ai/docs/mcp-self-hosted): Run MCP server locally via npx
 - [Node.js Library](https://wiro.ai/docs/nodejs-library): Standalone API client for Node.js/TypeScript
-- [n8n Integration](https://wiro.ai/docs/n8n-wiro-integration): Wiro AI nodes for n8n workflows
+- [n8n Integration](https://wiro.ai/docs/n8n-wiro-integration): Wiro AI nodes for n8n workflows, covering every model plus nodes that run Wiro workflows and message Wiro agents
 
 ## Optional
 

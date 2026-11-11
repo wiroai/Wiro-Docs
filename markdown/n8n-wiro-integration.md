@@ -1,12 +1,14 @@
 # n8n Wiro Integration
 
-Use all Wiro AI models directly in your n8n workflows: video, image, audio, LLM, 3D, and more.
+Run Wiro AI models, Wiro workflows and Wiro agents from your n8n workflows: video, image, audio, LLM, 3D, and more.
 
 ## Overview
 
 [n8n](https://n8n.io) is a powerful workflow automation platform. The **Wiro AI community node** gives you access to all Wiro AI models as individual nodes you can drag and drop into any workflow.
 
 Each model is a **separate node**, so you get dedicated parameters, descriptions, and output handling for every model without any configuration hassle.
+
+Two more nodes are not tied to one model: **Wiro Workflow** runs the workflows you saved on Wiro, and **Wiro Agent** sends messages to Wiro Studio, the Workflow Agent or one of your deployed agents. Every node also works as a tool for an n8n AI Agent.
 
 ### Links
 
@@ -20,10 +22,10 @@ Each model is a **separate node**, so you get dedicated parameters, descriptions
 | Category | Models | Examples |
 |----------|--------|----------|
 | Video Generation | Text-to-video, image-to-video | Veo 3.1, Kling V3, Seedance, Hailuo, PixVerse, Runway |
-| Image Generation | Text-to-image, style transfer | Imagen V4, Flux 2 Pro, Seedream, Nano Banana, SDXL |
-| Image Editing | Try-on, face swap, background removal | Virtual Try-On, Face Swap, Inpainting, Style Transfer |
+| Image Generation | Text-to-image, style transfer | GPT Image 2, Flux 2 Pro, Seedream, Nano Banana, Qwen Image |
+| Image Editing | Try-on, face swap, background removal | Virtual Try-On, Face Swap, Prompt-based Editing, Style Transfer |
 | Audio & Speech | TTS, STT, voice clone, music | ElevenLabs TTS, Gemini TTS, Whisper STT, Voice Clone |
-| LLM Chat | Chat completion, RAG | GPT-5.2, GPT-5 Mini, Gemini 3, RAG Chat |
+| LLM Chat | Chat completion, RAG | GPT-5.2, GPT-5 Mini, Gemini 3, Claude Fable 5.2, RAG Chat |
 | 3D Generation | Image/text to 3D | Trellis 2, Hunyuan3D 2.1 |
 | Translation | Multi-language with image support | Gemma-based (4B, 12B, 27B) |
 | E-Commerce | Product photos, ads, templates | Product Photoshoot, Shopify Templates, UGC Creator |
@@ -87,9 +89,9 @@ The node returns the task result with output URLs:
 
 ### Example: Transcribe Audio with Whisper
 
-1. Search the node picker for `Whisper Large V3` and add the **Wiro - Speech to Text** node
+1. Search the node picker for `Whisper` and add the **Wiro - Speech to Text (Whisper Large v3)** node
 2. Set **Input Audio URL** to a public link to the audio file. To use a file from an earlier node, map its URL with an expression.
-3. Set **Language** (or **Auto**) and fill in **Chunk Length**, **Batch Size** and **Num Speakers**. The model's sample run uses `30`, `8` and `1`.
+3. Pick a **Language**, or keep **Auto**. **Chunk Length**, **Batch Size** and **Number Of Speakers** start at `30`, `8` and `1`.
 4. Run the workflow: `url` in the output links to the transcript as a text file
 
 ### Example: LLM Chat with GPT-5.2
@@ -97,6 +99,40 @@ The node returns the task result with output URLs:
 1. Add the **Wiro - GPT-5.2 AI Model** node, or **Wiro - GPT-5 Mini AI Model** or **Wiro - GPT-5 Nano AI Model** for a smaller model
 2. Set **Prompt** and, if you need them, **System Instructions**
 3. Run the workflow: the reply is in `message` in the output
+
+## Wiro Workflow and Wiro Agent
+
+These two nodes are not tied to one model. They use the same **Wiro API** credential as the model nodes.
+
+### Wiro Workflow
+
+- **Workflow > Run** starts a run of a workflow and waits for its outputs. Pick the workflow from the list, or paste its wiro.ai link or slug. The node loads the inputs of that workflow, so you can fill each one or map them from the incoming item. Inputs you leave empty use the values saved in the workflow.
+- **Workflow > Get** returns a workflow with the inputs it takes. **Workflow > Get Many** lists the workflows in your workspace or in the public gallery.
+- **Workflow Run > Get** reads a run by its `workflowtoken` and can wait for it to end. **Workflow Run > Get Many** lists recent runs, newest first.
+
+The node waits up to 20 minutes for a run by default (change it with **Max Wait Time**) and returns the run with its status, outputs and cost:
+
+```json
+{
+  "workflowtoken": "abc123",
+  "status": "completed",
+  "chargedUsd": 0.005,
+  "outputs": {
+    "image": [{ "url": "https://cdn1.wiro.ai/xyz/output_1.jpg", "mimeType": "image/jpeg" }]
+  }
+}
+```
+
+A run that is still going when the wait ends comes back with `status: "running"`. Read it later with **Workflow Run > Get** and the same `workflowtoken` instead of starting it again.
+
+### Wiro Agent
+
+- **Send Message** sends a message to Wiro Studio, which picks and runs AI models for the request, to the Workflow Agent, which designs Wiro workflows, or to one of your own deployed agents. Pass the same **Session**, for example a chat ID, to keep a conversation going.
+- **Get Message** reads a message and its reply again later.
+
+The reply is in `message.reply`, files the agent made are in `message.mediaUrls`, and the model runs Studio started are in `modelRuns`.
+
+Workflow runs and agent turns are billed to the wallet of your project's workspace, the same as model runs. To learn more, see [Workflows](/docs/workflows) and [Agent Messaging](/docs/agent-messaging).
 
 ## Compatibility
 

@@ -6321,9 +6321,11 @@ Common questions about using the Wiro API.
 
 # n8n Wiro Integration
 
-Use all Wiro AI models directly in your n8n workflows: video, image, audio, LLM, 3D, and more.
+Run Wiro AI models, Wiro workflows and Wiro agents from your n8n workflows: video, image, audio, LLM, 3D, and more.
 
 The **Wiro AI community node** (`@wiro-ai/n8n-nodes-wiroai`) gives you access to all Wiro AI models as individual nodes you can drag and drop into any workflow.
+
+Two more nodes are not tied to one model: **Wiro Workflow** runs the workflows you saved on Wiro (run, get and list workflows and runs), and **Wiro Agent** sends messages to Wiro Studio, the Workflow Agent or one of your deployed agents and returns the reply. Every node also works as a tool for an n8n AI Agent, and all of them use the same **Wiro API** credential.
 
 ## Installation
 

@@ -7500,7 +7500,7 @@ if (!data.result) {
                       <button class="faq-question">Can I use Wiro with n8n?</button>
                       <div class="faq-answer">
                         <div class="faq-answer-inner">
-                          <p>Yes. Install the <a href="/docs/n8n-wiro-integration">Wiro AI community node</a> in your n8n instance to access all Wiro models as drag-and-drop nodes in your workflows.</p>
+                          <p>Yes. Install the <a href="/docs/n8n-wiro-integration">Wiro AI community node</a> in your n8n instance to access all Wiro models as drag-and-drop nodes in your workflows. The same package can also run your Wiro workflows and send messages to Wiro agents.</p>
                         </div>
                       </div>
                     </div>
@@ -10048,12 +10048,13 @@ import type {
                     <span class="docs-brand-separator" aria-hidden="true">&times;</span>
                     <img src="https://wiro.ai/images/logos/logo/logo-black.png" alt="Wiro" class="docs-brand-lockup-wiro" width="2998" height="901" />
                   </div>
-                  <p class="section-subtitle">Use all Wiro AI models directly in your n8n workflows: video, image, audio, LLM, 3D, and more.</p>
+                  <p class="section-subtitle">Run Wiro AI models, Wiro workflows and Wiro agents from your n8n workflows: video, image, audio, LLM, 3D, and more.</p>
 
                   <section id="n8n-overview">
                     <h2>Overview</h2>
                     <p><a href="https://n8n.io" target="_blank">n8n</a> is a powerful workflow automation platform. The <strong>Wiro AI community node</strong> gives you access to all Wiro AI models as individual nodes you can drag and drop into any workflow.</p>
                     <p>Each model is a <strong>separate node</strong>, so you get dedicated parameters, descriptions, and output handling for every model without any configuration hassle.</p>
+                    <p>Two more nodes are not tied to one model: <strong>Wiro Workflow</strong> runs the workflows you saved on Wiro, and <strong>Wiro Agent</strong> sends messages to Wiro Studio, the Workflow Agent or one of your deployed agents. Every node also works as a tool for an n8n AI Agent.</p>
 
                     <h3>Links</h3>
                     <ul>
@@ -10084,12 +10085,12 @@ import type {
                           <tr>
                             <td>Image Generation</td>
                             <td>Text-to-image, style transfer</td>
-                            <td>Imagen V4, Flux 2 Pro, Seedream, Nano Banana, SDXL</td>
+                            <td>GPT Image 2, Flux 2 Pro, Seedream, Nano Banana, Qwen Image</td>
                           </tr>
                           <tr>
                             <td>Image Editing</td>
                             <td>Try-on, face swap, background removal</td>
-                            <td>Virtual Try-On, Face Swap, Inpainting, Style Transfer</td>
+                            <td>Virtual Try-On, Face Swap, Prompt-based Editing, Style Transfer</td>
                           </tr>
                           <tr>
                             <td>Audio &amp; Speech</td>
@@ -10099,7 +10100,7 @@ import type {
                           <tr>
                             <td>LLM Chat</td>
                             <td>Chat completion, RAG</td>
-                            <td>GPT-5.2, GPT-5 Mini, Gemini 3, RAG Chat</td>
+                            <td>GPT-5.2, GPT-5 Mini, Gemini 3, Claude Fable 5.2, RAG Chat</td>
                           </tr>
                           <tr>
                             <td>3D Generation</td>
@@ -10193,9 +10194,9 @@ import type {
 
                     <h3>Example: Transcribe Audio with Whisper</h3>
                     <ol>
-                      <li>Search the node picker for <code>Whisper Large V3</code> and add the <strong>Wiro - Speech to Text</strong> node</li>
+                      <li>Search the node picker for <code>Whisper</code> and add the <strong>Wiro - Speech to Text (Whisper Large v3)</strong> node</li>
                       <li>Set <strong>Input Audio URL</strong> to a public link to the audio file. To use a file from an earlier node, map its URL with an expression.</li>
-                      <li>Set <strong>Language</strong> (or <strong>Auto</strong>) and fill in <strong>Chunk Length</strong>, <strong>Batch Size</strong> and <strong>Num Speakers</strong>. The model's sample run uses <code>30</code>, <code>8</code> and <code>1</code>.</li>
+                      <li>Pick a <strong>Language</strong>, or keep <strong>Auto</strong>. <strong>Chunk Length</strong>, <strong>Batch Size</strong> and <strong>Number Of Speakers</strong> start at <code>30</code>, <code>8</code> and <code>1</code>.</li>
                       <li>Run the workflow: <code>url</code> in the output links to the transcript as a text file</li>
                     </ol>
 
@@ -10205,6 +10206,36 @@ import type {
                       <li>Set <strong>Prompt</strong> and, if you need them, <strong>System Instructions</strong></li>
                       <li>Run the workflow: the reply is in <code>message</code> in the output</li>
                     </ol>
+                  </section>
+
+                  <section id="n8n-workflow-agent-nodes">
+                    <h2>Wiro Workflow and Wiro Agent</h2>
+                    <p>These two nodes are not tied to one model. They use the same <strong>Wiro API</strong> credential as the model nodes.</p>
+
+                    <h3>Wiro Workflow</h3>
+                    <ul>
+                      <li><strong>Workflow &gt; Run</strong> starts a run of a workflow and waits for its outputs. Pick the workflow from the list, or paste its wiro.ai link or slug. The node loads the inputs of that workflow, so you can fill each one or map them from the incoming item. Inputs you leave empty use the values saved in the workflow.</li>
+                      <li><strong>Workflow &gt; Get</strong> returns a workflow with the inputs it takes. <strong>Workflow &gt; Get Many</strong> lists the workflows in your workspace or in the public gallery.</li>
+                      <li><strong>Workflow Run &gt; Get</strong> reads a run by its <code>workflowtoken</code> and can wait for it to end. <strong>Workflow Run &gt; Get Many</strong> lists recent runs, newest first.</li>
+                    </ul>
+                    <p>The node waits up to 20 minutes for a run by default (change it with <strong>Max Wait Time</strong>) and returns the run with its status, outputs and cost:</p>
+                    <pre><code class="language-json">{
+  "workflowtoken": "abc123",
+  "status": "completed",
+  "chargedUsd": 0.005,
+  "outputs": {
+    "image": [{ "url": "https://cdn1.wiro.ai/xyz/output_1.jpg", "mimeType": "image/jpeg" }]
+  }
+}</code></pre>
+                    <p>A run that is still going when the wait ends comes back with <code>status: "running"</code>. Read it later with <strong>Workflow Run &gt; Get</strong> and the same <code>workflowtoken</code> instead of starting it again.</p>
+
+                    <h3>Wiro Agent</h3>
+                    <ul>
+                      <li><strong>Send Message</strong> sends a message to Wiro Studio, which picks and runs AI models for the request, to the Workflow Agent, which designs Wiro workflows, or to one of your own deployed agents. Pass the same <strong>Session</strong>, for example a chat ID, to keep a conversation going.</li>
+                      <li><strong>Get Message</strong> reads a message and its reply again later.</li>
+                    </ul>
+                    <p>The reply is in <code>message.reply</code>, files the agent made are in <code>message.mediaUrls</code>, and the model runs Studio started are in <code>modelRuns</code>.</p>
+                    <p>Workflow runs and agent turns are billed to the wallet of your project's workspace, the same as model runs. To learn more, see <a href="/docs/workflows">Workflows</a> and <a href="/docs/agent-messaging">Agent Messaging</a>.</p>
                   </section>
 
                   <section id="n8n-compatibility">
