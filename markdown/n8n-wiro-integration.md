@@ -31,6 +31,47 @@ Two more nodes are not tied to one model: **Wiro Workflow** runs the workflows y
 | E-Commerce | Product photos, ads, templates | Product Photoshoot, Shopify Templates, UGC Creator |
 | HR Tools | CV analysis, job descriptions | CV Evaluator, Resume Parser, Culture Fit |
 
+## Wiro Workflow and Wiro Agent
+
+These two nodes are not tied to one model. They use the same credentials as the model nodes.
+
+| Node | Use it for | Operations |
+|------|------------|------------|
+| Wiro Workflow | Run a saved Wiro workflow and get its outputs, follow its runs | Workflow: Run, Get, Get Many. Workflow Run: Get, Get Many |
+| Wiro Agent: Wiro Studio | Ask for what you need in plain words; Studio picks and runs the models | Send Message, Get Message |
+| Wiro Agent: Workflow Agent | Design or change a Wiro workflow in plain words | Send Message, Get Message |
+| Wiro Agent: your agents | Message an agent you deployed on Wiro | Send Message, Get Message |
+
+### Wiro Workflow
+
+- **Workflow > Run** starts a run of a workflow and waits for its outputs. Pick the workflow from the list, or paste its wiro.ai link or slug. The node loads the inputs of that workflow, so you can fill each one or map them from the incoming item. Inputs you leave empty use the values saved in the workflow.
+- **Workflow > Get** returns a workflow with the inputs it takes. **Workflow > Get Many** lists the workflows in your workspace or in the public gallery.
+- **Workflow Run > Get** reads a run by its `workflowtoken` and can wait for it to end. **Workflow Run > Get Many** lists recent runs, newest first.
+
+The node waits up to 20 minutes for a run by default (change it with **Max Wait Time**) and returns the run with its status, outputs and cost:
+
+```json
+{
+  "workflowtoken": "abc123",
+  "status": "completed",
+  "chargedUsd": 0.005,
+  "outputs": {
+    "image": [{ "url": "https://cdn1.wiro.ai/xyz/output_1.jpg", "mimeType": "image/jpeg" }]
+  }
+}
+```
+
+A run that is still going when the wait ends comes back with `status: "running"`. Read it later with **Workflow Run > Get** and the same `workflowtoken` instead of starting it again.
+
+### Wiro Agent
+
+- **Send Message** sends a message to Wiro Studio, which picks and runs AI models for the request, to the Workflow Agent, which designs Wiro workflows, or to one of your own deployed agents. Pass the same **Session**, for example a chat ID, to keep a conversation going.
+- **Get Message** reads a message and its reply again later.
+
+The reply is in `message.reply`, files the agent made are in `message.mediaUrls`, and the model runs Studio started are in `modelRuns`.
+
+Workflow runs and agent turns are billed to the wallet of your project's workspace, the same as model runs. To learn more, see [Workflows](/docs/workflows) and [Agent Messaging](/docs/agent-messaging).
+
 ## Installation
 
 Install the community node package in your n8n instance:
@@ -109,40 +150,6 @@ The node returns the task result with output URLs:
 1. Add the **Wiro - GPT-5.2 AI Model** node, or **Wiro - GPT-5 Mini AI Model** or **Wiro - GPT-5 Nano AI Model** for a smaller model
 2. Set **Prompt** and, if you need them, **System Instructions**
 3. Run the workflow: the reply is in `message` in the output
-
-## Wiro Workflow and Wiro Agent
-
-These two nodes are not tied to one model. They use the same credentials as the model nodes.
-
-### Wiro Workflow
-
-- **Workflow > Run** starts a run of a workflow and waits for its outputs. Pick the workflow from the list, or paste its wiro.ai link or slug. The node loads the inputs of that workflow, so you can fill each one or map them from the incoming item. Inputs you leave empty use the values saved in the workflow.
-- **Workflow > Get** returns a workflow with the inputs it takes. **Workflow > Get Many** lists the workflows in your workspace or in the public gallery.
-- **Workflow Run > Get** reads a run by its `workflowtoken` and can wait for it to end. **Workflow Run > Get Many** lists recent runs, newest first.
-
-The node waits up to 20 minutes for a run by default (change it with **Max Wait Time**) and returns the run with its status, outputs and cost:
-
-```json
-{
-  "workflowtoken": "abc123",
-  "status": "completed",
-  "chargedUsd": 0.005,
-  "outputs": {
-    "image": [{ "url": "https://cdn1.wiro.ai/xyz/output_1.jpg", "mimeType": "image/jpeg" }]
-  }
-}
-```
-
-A run that is still going when the wait ends comes back with `status: "running"`. Read it later with **Workflow Run > Get** and the same `workflowtoken` instead of starting it again.
-
-### Wiro Agent
-
-- **Send Message** sends a message to Wiro Studio, which picks and runs AI models for the request, to the Workflow Agent, which designs Wiro workflows, or to one of your own deployed agents. Pass the same **Session**, for example a chat ID, to keep a conversation going.
-- **Get Message** reads a message and its reply again later.
-
-The reply is in `message.reply`, files the agent made are in `message.mediaUrls`, and the model runs Studio started are in `modelRuns`.
-
-Workflow runs and agent turns are billed to the wallet of your project's workspace, the same as model runs. To learn more, see [Workflows](/docs/workflows) and [Agent Messaging](/docs/agent-messaging).
 
 ## Compatibility
 
