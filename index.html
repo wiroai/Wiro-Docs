@@ -1703,8 +1703,8 @@ data: {
                     <ul>
                       <li><code>POST /v1/Run/{owner}/{project}</code> remains the asynchronous task-creation endpoint on <code>api.wiro.ai</code>.</li>
                       <li><code>POST /v1/Run/{owner}/{project}/sync</code> is the generic finite-model wait on <code>api.wiro.ai</code>; see <a href="/docs/run-a-model" class="docs-link">Run a Model</a>. It is not a Direct LLM protocol.</li>
-                      <li><code>GET /v1/models</code> lists verified <code>llm-tool-call</code> models. The list is not filtered by a team's Model Access settings; those apply when a model runs. <code>GET /v1/chat/models</code> is equivalent.</li>
-                      <li><code>GET /v1/models/{owner}/{model}</code> returns one model's contract.</li>
+                      <li><code>GET /v1/models</code> lists verified <code>llm-tool-call</code> models and needs no API key. The list is not filtered by a team's Model Access settings; those apply when a model runs. <code>GET /v1/chat/models</code> is equivalent.</li>
+                      <li><code>GET /v1/models/{owner}/{model}</code> returns one model's contract, also without a key.</li>
                       <li><code>POST</code>, <code>GET</code>, and <code>DELETE /v1/files</code> compatibility routes use the authenticated project's existing Wiro file storage.</li>
                       <li><code>POST /v1/chat/completions</code> uses OpenAI Chat JSON/SSE.</li>
                       <li><code>POST /v1/responses</code> uses OpenAI Responses JSON and named SSE.</li>
@@ -3232,9 +3232,8 @@ const viaMessages = anthropic(&quot;claude/sonnet-5&quot;);</code></pre>
                   <section id="gateway-models">
                     <h2>Discover models and capabilities</h2>
                     <h3><span class="endpoint-badge get">GET</span> /v1/models</h3>
-                    <pre><code>curl "https://llm.wiro.ai/v1/models?search=openai%2Fgpt-5-6-sol&amp;limit=1" \
-  -H "Authorization: Bearer YOUR_API_KEY"</code></pre>
-                    <p><code>GET /v1/chat/models</code> returns the same authenticated list. The gateway catalog is separate from the full catalog at <code>POST /v1/Tool/List</code>.</p>
+                    <pre><code>curl "https://llm.wiro.ai/v1/models?search=openai%2Fgpt-5-6-sol&amp;limit=1"</code></pre>
+                    <p>Model discovery needs no API key. A request that sends a key is still checked, so a wrong key returns <code>401</code> as on every other route. <code>GET /v1/chat/models</code> returns the same list. The gateway catalog is separate from the full catalog at <code>POST /v1/Tool/List</code>.</p>
                     <pre><code>{
   "object": "list",
   "data": [
@@ -3327,8 +3326,7 @@ const viaMessages = anthropic(&quot;claude/sonnet-5&quot;);</code></pre>
                     <p>Every discoverable model currently publishes the same endpoint labels. Capability differences are expressed through modalities, supported parameters, tool flags, structured-output flags, reasoning controls, and limits.</p>
                     <p>Structured-output support is per model, not per family: read <code>structured_output_modes</code> and <code>strict_json_schema</code> on the model you are about to call. Some models declare both <code>json_object</code> and <code>json_schema</code>, some declare only one of them, and some declare no structured output at all. A model whose runtime cannot constrain decoding can promise a valid JSON document but nothing about the schema, so it declares <code>json_object</code> alone. <code>strict_json_schema</code> is separate again: a model can accept <code>json_schema</code> and still refuse <code>"strict": true</code>.</p>
                     <h3><span class="endpoint-badge get">GET</span> /v1/models/{owner}/{model}</h3>
-                    <pre><code>curl "https://llm.wiro.ai/v1/models/openai/gpt-5-6-sol" \
-  -H "Authorization: Bearer YOUR_API_KEY"</code></pre>
+                    <pre><code>curl "https://llm.wiro.ai/v1/models/openai/gpt-5-6-sol"</code></pre>
                     <p>The detail route returns the same complete model object as the matching list entry. Query parameters are rejected on detail routes. An unavailable or non-gateway model returns <code>model_not_found</code>. Team Model Access is checked when the model runs, not on this route.</p>
                   </section>
 
@@ -3655,7 +3653,7 @@ ANTHROPIC_API_KEY="YOUR_API_KEY:YOUR_API_SECRET" \
 ANTHROPIC_MODEL="claude/sonnet-5" \
 CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY=1 \
 claude</code></pre>
-                    <p>For an API Key Only project, set <code>ANTHROPIC_API_KEY</code> to <code>YOUR_API_KEY</code>. Model discovery uses Wiro's authenticated <code>/v1/models</code> route with <code>limit=1000</code>. Claude Code adds only discovered IDs containing <code>claude</code> or <code>anthropic</code> to its picker; set <code>ANTHROPIC_MODEL</code> explicitly for any other compatible ID. Native Messages, client tools, streaming, beta headers, thinking continuation, and token-counting calls remain subject to the selected model's advertised capabilities. Provider-hosted tools remain outside this release even when a client beta can describe them.</p>
+                    <p>For an API Key Only project, set <code>ANTHROPIC_API_KEY</code> to <code>YOUR_API_KEY</code>. Model discovery uses Wiro's <code>/v1/models</code> route with <code>limit=1000</code>. Claude Code adds only discovered IDs containing <code>claude</code> or <code>anthropic</code> to its picker; set <code>ANTHROPIC_MODEL</code> explicitly for any other compatible ID. Native Messages, client tools, streaming, beta headers, thinking continuation, and token-counting calls remain subject to the selected model's advertised capabilities. Provider-hosted tools remain outside this release even when a client beta can describe them.</p>
                     <h3><span class="endpoint-badge post">POST</span> /v1/messages/count_tokens</h3>
                     <pre><code>curl -X POST "https://llm.wiro.ai/v1/messages/count_tokens" \
   -H "x-api-key: YOUR_API_KEY" \

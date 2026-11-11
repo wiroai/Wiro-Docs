@@ -770,10 +770,11 @@ name: discover the exact ID and protocol capabilities first.
 - `POST /v1/Run/{owner}/{project}/sync` is the generic finite-model wait on
   `api.wiro.ai`; see [Run a Model](#run-a-model). It is not a Direct LLM
   protocol.
-- `GET /v1/models` lists verified `llm-tool-call` models. The list is not
-  filtered by a team's Model Access settings; those apply when a model runs.
-  `GET /v1/chat/models` is an equivalent compatibility alias.
-- `GET /v1/models/{owner}/{model}` returns one model's exact gateway contract.
+- `GET /v1/models` lists verified `llm-tool-call` models and needs no API key.
+  The list is not filtered by a team's Model Access settings; those apply when
+  a model runs. `GET /v1/chat/models` is an equivalent compatibility alias.
+- `GET /v1/models/{owner}/{model}` returns one model's exact gateway contract,
+  also without a key.
 - `POST`, `GET`, and `DELETE /v1/files` compatibility routes use the
   authenticated project's existing Wiro file storage.
 - `POST /v1/chat/completions` uses OpenAI Chat JSON and SSE.
@@ -2511,12 +2512,13 @@ const viaMessages = anthropic("claude/sonnet-5");
 ### **GET** /v1/models
 
 ```bash
-curl "https://llm.wiro.ai/v1/models?search=openai%2Fgpt-5-6-sol&limit=1" \
-  -H "Authorization: Bearer YOUR_API_KEY"
+curl "https://llm.wiro.ai/v1/models?search=openai%2Fgpt-5-6-sol&limit=1"
 ```
 
-`GET /v1/chat/models` returns the same authenticated list. This gateway catalog
-is separate from the full website/model catalog at `POST /v1/Tool/List`.
+Model discovery needs no API key. A request that sends a key is still checked,
+so a wrong key returns `401` as on every other route. `GET /v1/chat/models`
+returns the same list. This gateway catalog is separate from the full
+website/model catalog at `POST /v1/Tool/List`.
 
 ```json
 {
@@ -2654,8 +2656,7 @@ separate again: a model can accept `json_schema` and still refuse
 ### **GET** /v1/models/{owner}/{model}
 
 ```bash
-curl "https://llm.wiro.ai/v1/models/openai/gpt-5-6-sol" \
-  -H "Authorization: Bearer YOUR_API_KEY"
+curl "https://llm.wiro.ai/v1/models/openai/gpt-5-6-sol"
 ```
 
 The detail route returns the same complete model object as the matching list
@@ -3293,7 +3294,7 @@ claude
 ```
 
 For an API Key Only project, set `ANTHROPIC_API_KEY` to `YOUR_API_KEY`.
-Model discovery uses Wiro's authenticated `/v1/models` route with `limit=1000`.
+Model discovery uses Wiro's `/v1/models` route with `limit=1000`.
 Claude Code adds only discovered IDs containing
 `claude` or `anthropic` to its picker; set `ANTHROPIC_MODEL` explicitly for
 any other compatible ID. Native Messages, client tools,

@@ -298,6 +298,8 @@ Model discovery:
 - `GET /v1/models`
 - `GET /v1/chat/models` (equivalent alias)
 - `GET /v1/models/{owner}/{model}`
+These routes need no API key. A request that sends a key is still checked,
+so a wrong key gets 401.
 List queries accept `search` (maximum 256 bytes), `order=asc|desc`,
 `limit=1..1000`, and either `after`/`after_id` or `before`/`before_id`.
 The default is ascending order with limit 1000. The envelope includes
