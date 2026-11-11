@@ -348,7 +348,8 @@ Files compatibility:
   `purpose`, when present, must be `assistants`. List supports
   `after`/`after_id`, `before`/`before_id`, `limit=1..1000`,
   `order=asc|desc`, and `purpose=assistants`.
-- Anthropic format requires `anthropic-version: 2023-06-01`. Upload omits
+- Anthropic format requires `anthropic-version` (`2023-06-01` or
+  `2026-10-21`). Upload omits
   purpose; list supports `page`, legacy `after_id`/`before_id`, and
   `limit=1..1000`.
   Metadata uses ISO time, MIME/size fields, `downloadable`, and
@@ -390,6 +391,10 @@ OpenAI Chat:
   different value is listed in `x-wiro-adjusted-parameters` as
   `name=applied` (for example `reasoning.effort=low`). Responses and
   Messages send the same headers.
+- On Chat Completions and Responses, a request field the gateway has no use
+  for (a client's own metadata field, an option written for another
+  provider) is left out and named in `x-wiro-dropped-parameters` as well. An
+  empty `stop` list is read as no stop sequence.
 - Remote media uses public HTTPS, validated data/base64, or a supported Wiro
   gateway file ID; private and non-HTTP fetch targets are rejected.
 - Final object is `chat.completion`; native usage can be absent.
@@ -440,7 +445,7 @@ Anthropic Messages:
 - Anthropic SDKs send the credential as `x-api-key: YOUR_API_KEY` for API Key
   Only or `x-api-key: YOUR_API_KEY:YOUR_API_SECRET` for Signature projects;
   an `Authorization: Bearer` header with the same credential also works.
-- `anthropic-version: 2023-06-01` is required. Optional `anthropic-beta` labels
+- `anthropic-version` is required: `2023-06-01` or `2026-10-21`. Optional `anthropic-beta` labels
   and `?beta=true` are accepted but never override model capabilities.
 - Supports top-level system, required positive max_tokens, Anthropic
   client-history user/assistant content, model-advertised image/document input, client-run

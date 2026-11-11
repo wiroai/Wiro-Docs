@@ -1817,6 +1817,7 @@ data: {
 (Wiro) bytedance/seed-v2-pro
 (Wiro) claude/fable-5
 (Wiro) claude/fable-5-1
+(Wiro) claude/fable-5-2
 (Wiro) claude/opus-5
 (Wiro) claude/opus-5-5
 (Wiro) claude/sonnet-5
@@ -1944,7 +1945,7 @@ cd /path/to/your/project &amp;&amp; claude --model "(Wiro) openai/gpt-5-nano"</c
 }</code></pre>
                           </li>
                         </ol>
-                        <p>Every model the gateway serves today, with the context window for <code>CLAUDE_CODE_MAX_CONTEXT_TOKENS</code>. The same values come from <a href="#gateway-models" class="docs-link"><code>GET /v1/models</code></a> as <code>context_length</code>. For a Wiro-hosted model that number is the prompt the GPU it runs on actually has room for, measured on the fleet. It is usually well below the window its checkpoint was built for, and below what its model card advertises. Set the variable to the number the catalog reports, not the card&rsquo;s.</p>
+                        <p>Every model the gateway serves today, with the context window for <code>CLAUDE_CODE_MAX_CONTEXT_TOKENS</code>. The same values come from <a href="#gateway-models" class="docs-link"><code>GET /v1/models</code></a> as <code>max_input_tokens</code>. For a Wiro-hosted model that number is the prompt the GPU it runs on actually has room for, measured on the fleet. It is usually well below the window its checkpoint was built for, and below what its model card advertises. Set the variable to the number the catalog reports, not the card&rsquo;s.</p>
                         <pre class="pre-scroll"><code>Model ID                                     Context
 ----------------------------------------------------
 (Wiro) bytedance/seed-v2-1-turbo              256000
@@ -1953,6 +1954,7 @@ cd /path/to/your/project &amp;&amp; claude --model "(Wiro) openai/gpt-5-nano"</c
 (Wiro) bytedance/seed-v2-pro                  256000
 (Wiro) claude/fable-5                        1000000
 (Wiro) claude/fable-5-1                      1000000
+(Wiro) claude/fable-5-2                      1000000
 (Wiro) claude/opus-5                         1000000
 (Wiro) claude/opus-5-5                       1000000
 (Wiro) claude/sonnet-5                       1000000
@@ -1975,16 +1977,16 @@ cd /path/to/your/project &amp;&amp; claude --model "(Wiro) openai/gpt-5-nano"</c
 (Wiro) mistralai/mistral-7b-instruct-v0-3      17408
 (Wiro) mistralai/mistral-nemo-instruct-2407    35840
 (Wiro) moonshot/kimi-k3-1-pro                1048576
-(Wiro) openai/gpt-5-2                         400000
+(Wiro) openai/gpt-5-2                         272000
 (Wiro) openai/gpt-5-4                        1050000
-(Wiro) openai/gpt-5-4-mini                    400000
-(Wiro) openai/gpt-5-4-nano                    400000
+(Wiro) openai/gpt-5-4-mini                    272000
+(Wiro) openai/gpt-5-4-nano                    272000
 (Wiro) openai/gpt-5-5                        1050000
 (Wiro) openai/gpt-5-6-luna                   1050000
 (Wiro) openai/gpt-5-6-sol                    1050000
 (Wiro) openai/gpt-5-6-terra                  1050000
-(Wiro) openai/gpt-5-mini                      400000
-(Wiro) openai/gpt-5-nano                      400000
+(Wiro) openai/gpt-5-mini                      272000
+(Wiro) openai/gpt-5-nano                      272000
 (Wiro) openai/gpt-6-1-sol                    1050000
 (Wiro) openai/gpt-6-1-terra                  1050000
 (Wiro) openai/gpt-6-astra                    1050000
@@ -2095,6 +2097,15 @@ cd /path/to/your/project &amp;&amp; claude --model "(Wiro) openai/gpt-5-nano"</c
       {
         "id": "claude/fable-5-1",
         "name": "(Wiro) Fable 5.1",
+        "url": "https://llm.wiro.ai/v1/chat/completions",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 1000000,
+        "maxOutputTokens": 128000
+      },
+      {
+        "id": "claude/fable-5-2",
+        "name": "(Wiro) Fable 5.2",
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
@@ -2305,7 +2316,7 @@ cd /path/to/your/project &amp;&amp; claude --model "(Wiro) openai/gpt-5-nano"</c
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
-        "maxInputTokens": 400000,
+        "maxInputTokens": 272000,
         "maxOutputTokens": 65536
       },
       {
@@ -2323,7 +2334,7 @@ cd /path/to/your/project &amp;&amp; claude --model "(Wiro) openai/gpt-5-nano"</c
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
-        "maxInputTokens": 400000,
+        "maxInputTokens": 272000,
         "maxOutputTokens": 65536
       },
       {
@@ -2332,7 +2343,7 @@ cd /path/to/your/project &amp;&amp; claude --model "(Wiro) openai/gpt-5-nano"</c
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
-        "maxInputTokens": 400000,
+        "maxInputTokens": 272000,
         "maxOutputTokens": 65536
       },
       {
@@ -2377,7 +2388,7 @@ cd /path/to/your/project &amp;&amp; claude --model "(Wiro) openai/gpt-5-nano"</c
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
-        "maxInputTokens": 400000,
+        "maxInputTokens": 272000,
         "maxOutputTokens": 65536
       },
       {
@@ -2386,7 +2397,7 @@ cd /path/to/your/project &amp;&amp; claude --model "(Wiro) openai/gpt-5-nano"</c
         "url": "https://llm.wiro.ai/v1/chat/completions",
         "toolCalling": true,
         "vision": true,
-        "maxInputTokens": 400000,
+        "maxInputTokens": 272000,
         "maxOutputTokens": 65536
       },
       {
@@ -2706,7 +2717,7 @@ cd /path/to/your/project &amp;&amp; claude --model "(Wiro) openai/gpt-5-nano"</c
                             <strong>Continue, and send a message</strong> <span>The status bar names the model you configured. <code>Plan</code> and <code>Act</code> can each hold a different model, and saved API configuration profiles let you keep one per model and switch between them.</span>
                           </li>
                         </ol>
-                        <p>Every model the gateway serves today, with the context window Cline needs. The same numbers come from <a href="#gateway-models" class="docs-link"><code>GET /v1/models</code></a> as <code>context_length</code> and <code>max_tokens</code>.</p>
+                        <p>Every model the gateway serves today, with the context window Cline needs. The same numbers come from <a href="#gateway-models" class="docs-link"><code>GET /v1/models</code></a> as <code>max_input_tokens</code> and <code>max_tokens</code>.</p>
                         <pre class="pre-scroll"><code>Model ID                                     Context  Max Output
 ----------------------------------------------------------------
 (Wiro) bytedance/seed-v2-1-turbo              256000       65536
@@ -2715,6 +2726,7 @@ cd /path/to/your/project &amp;&amp; claude --model "(Wiro) openai/gpt-5-nano"</c
 (Wiro) bytedance/seed-v2-pro                  256000       65536
 (Wiro) claude/fable-5                        1000000      128000
 (Wiro) claude/fable-5-1                      1000000      128000
+(Wiro) claude/fable-5-2                      1000000      128000
 (Wiro) claude/opus-5                         1000000      128000
 (Wiro) claude/opus-5-5                       1000000      128000
 (Wiro) claude/sonnet-5                       1000000      128000
@@ -2737,16 +2749,16 @@ cd /path/to/your/project &amp;&amp; claude --model "(Wiro) openai/gpt-5-nano"</c
 (Wiro) mistralai/mistral-7b-instruct-v0-3      17408        2048
 (Wiro) mistralai/mistral-nemo-instruct-2407    35840        2048
 (Wiro) moonshot/kimi-k3-1-pro                1048576     1048576
-(Wiro) openai/gpt-5-2                         400000       65536
+(Wiro) openai/gpt-5-2                         272000       65536
 (Wiro) openai/gpt-5-4                        1050000       65536
-(Wiro) openai/gpt-5-4-mini                    400000       65536
-(Wiro) openai/gpt-5-4-nano                    400000       65536
+(Wiro) openai/gpt-5-4-mini                    272000       65536
+(Wiro) openai/gpt-5-4-nano                    272000       65536
 (Wiro) openai/gpt-5-5                        1050000       65536
 (Wiro) openai/gpt-5-6-luna                   1050000       65536
 (Wiro) openai/gpt-5-6-sol                    1050000       65536
 (Wiro) openai/gpt-5-6-terra                  1050000       65536
-(Wiro) openai/gpt-5-mini                      400000       65536
-(Wiro) openai/gpt-5-nano                      400000       65536
+(Wiro) openai/gpt-5-mini                      272000       65536
+(Wiro) openai/gpt-5-nano                      272000       65536
 (Wiro) openai/gpt-6-1-sol                    1050000      128000
 (Wiro) openai/gpt-6-1-terra                  1050000      128000
 (Wiro) openai/gpt-6-astra                    1050000      128000
@@ -2820,6 +2832,7 @@ cd /path/to/your/project &amp;&amp; claude --model "(Wiro) openai/gpt-5-nano"</c
           { &quot;id&quot;: &quot;(Wiro) bytedance/seed-v2-pro&quot;, &quot;name&quot;: &quot;(Wiro) Seed V2 Pro&quot; },
           { &quot;id&quot;: &quot;(Wiro) claude/fable-5&quot;, &quot;name&quot;: &quot;(Wiro) Fable 5&quot; },
           { &quot;id&quot;: &quot;(Wiro) claude/fable-5-1&quot;, &quot;name&quot;: &quot;(Wiro) Fable 5.1&quot; },
+          { &quot;id&quot;: &quot;(Wiro) claude/fable-5-2&quot;, &quot;name&quot;: &quot;(Wiro) Fable 5.2&quot; },
           { &quot;id&quot;: &quot;(Wiro) claude/opus-5&quot;, &quot;name&quot;: &quot;(Wiro) Opus 5&quot; },
           { &quot;id&quot;: &quot;(Wiro) claude/opus-5-5&quot;, &quot;name&quot;: &quot;(Wiro) Opus 5.5&quot; },
           { &quot;id&quot;: &quot;(Wiro) claude/sonnet-5&quot;, &quot;name&quot;: &quot;(Wiro) Sonnet 5&quot; },
@@ -2926,6 +2939,7 @@ cd /path/to/your/project &amp;&amp; claude --model "(Wiro) openai/gpt-5-nano"</c
 (Wiro) bytedance/seed-v2-pro
 (Wiro) claude/fable-5
 (Wiro) claude/fable-5-1
+(Wiro) claude/fable-5-2
 (Wiro) claude/opus-5
 (Wiro) claude/opus-5-5
 (Wiro) claude/sonnet-5
@@ -3058,6 +3072,7 @@ const second = await client.chat.completions.create({
 (Wiro) bytedance/seed-v2-pro
 (Wiro) claude/fable-5
 (Wiro) claude/fable-5-1
+(Wiro) claude/fable-5-2
 (Wiro) claude/opus-5
 (Wiro) claude/opus-5-5
 (Wiro) claude/sonnet-5
@@ -3399,7 +3414,7 @@ await client.files.delete(file.id);</code></pre>
                     <p>OpenAI list queries accept <code>after</code>/<code>after_id</code>, <code>before</code>/<code>before_id</code>, <code>limit=1..1000</code>, <code>order=asc|desc</code>, and <code>purpose=assistants</code>. The default limit is <code>20</code> and the default order is descending. File metadata uses OpenAI's <code>object: "file"</code>, <code>bytes</code>, Unix <code>created_at</code>, <code>filename</code>, <code>purpose</code>, <code>status</code>, and <code>status_details</code> fields.</p>
 
                     <h3>Anthropic Files</h3>
-                    <p>Anthropic SDKs use origin <code>https://llm.wiro.ai</code> and send the required <code>anthropic-version: 2023-06-01</code> header; that header selects the Anthropic file metadata shape:</p>
+                    <p>Anthropic SDKs use origin <code>https://llm.wiro.ai</code> and send the required <code>anthropic-version</code> header (<code>2023-06-01</code> or <code>2026-10-21</code>); that header selects the Anthropic file metadata shape:</p>
                     <pre><code>import fs from 'node:fs';
 import Anthropic from '@anthropic-ai/sdk';
 
@@ -3443,7 +3458,7 @@ await client.files.delete(file.id);</code></pre>
                     <p>The endpoint accepts <code>system</code>, <code>developer</code>, <code>user</code>, and <code>assistant</code> messages, plus <code>tool</code> results for preceding assistant tool calls. Each request is client-history: send the required conversation history in <code>messages</code>. Calls do not create a saved Wiro Chat session.</p>
                     <p>Text is always available. OpenAI-style image and document content parts are accepted only when the selected model advertises those input modalities. Gateway output is text; this route is not an image, audio, or video generation API. Remote media must use a public HTTPS URL or a validated data/base64 source; supported Wiro gateway file IDs may also be used. Private-network and non-HTTP fetch targets are rejected. Provider-native file IDs are not accepted as Wiro file IDs.</p>
                     <p>Generation fields such as <code>temperature</code>, <code>top_p</code>, <code>max_tokens</code>, <code>max_completion_tokens</code>, penalties, <code>seed</code>, <code>stop</code>, <code>reasoning</code>, and <code>response_format</code> are capability-gated. <code>n</code> must be <code>1</code>, <code>logprobs</code> must be <code>false</code>, and <code>stop</code> accepts at most four non-empty values without semicolons. Use <code>capabilities.structured_outputs</code> before requesting a non-text <code>response_format</code>, then match the exact mode: <code>json_object</code> and <code>json_schema</code> are declared independently in <code>capabilities.structured_output_modes</code>, and <code>"strict": true</code> inside a <code>json_schema</code> request additionally requires <code>capabilities.strict_json_schema</code>. A mode the model does not declare is refused with HTTP 400, code <code>unsupported_capability</code> and <code>param: "response_format"</code>, before any task is created or billed.</p>
-                    <p>A sampling control the selected model does not declare, such as <code>temperature</code>, <code>top_p</code>, <code>seed</code>, or <code>stop</code>, is left out of the run rather than refused, and the response names it in the <code>x-wiro-dropped-parameters</code> header. A control that reached the model with a different value, such as an effort the model does not offer moved to one it does, is listed in <code>x-wiro-adjusted-parameters</code> as <code>name=applied</code> entries, for example <code>reasoning.effort=low</code>. Responses and Anthropic Messages send the same two headers.</p>
+                    <p>A sampling control the selected model does not declare, such as <code>temperature</code>, <code>top_p</code>, <code>seed</code>, or <code>stop</code>, is left out of the run rather than refused, and the response names it in the <code>x-wiro-dropped-parameters</code> header. On Chat Completions and Responses the same goes for a request field the gateway has no use for, such as a client's own metadata field or an option written for another provider: it is left out and named in that header, so clients that add fields of their own work unchanged. An empty <code>stop</code> list is read as no stop sequence. A control that reached the model with a different value, such as an effort the model does not offer moved to one it does, is listed in <code>x-wiro-adjusted-parameters</code> as <code>name=applied</code> entries, for example <code>reasoning.effort=low</code>. Responses and Anthropic Messages send the same two headers.</p>
                     <p>Structured output uses OpenAI's two <code>response_format</code> shapes. <code>json_object</code> asks only for a valid JSON document:</p>
                     <pre><code>{ "response_format": { "type": "json_object" } }</code></pre>
                     <p><code>json_schema</code> is nested: the definition sits under a <code>json_schema</code> key rather than beside <code>type</code>.</p>
@@ -3563,10 +3578,10 @@ await client.files.delete(file.id);</code></pre>
                     <p>Anthropic SDKs normally send:</p>
                     <ul>
                       <li><code>x-api-key: YOUR_API_KEY</code> for an API Key Only project, or <code>x-api-key: YOUR_API_KEY:YOUR_API_SECRET</code> for a Signature project</li>
-                      <li><code>anthropic-version: 2023-06-01</code></li>
+                      <li><code>anthropic-version: 2023-06-01</code> or <code>anthropic-version: 2026-10-21</code></li>
                       <li>Optional <code>anthropic-beta</code> labels, comma-separated or repeated</li>
                     </ul>
-                    <p><code>anthropic-version</code> is required. The credential can arrive in <code>x-api-key</code> or in an <code>Authorization: Bearer</code> header; when both are sent, they must resolve to the same complete credential. Beta headers identify requested compatibility features; they do not override model capabilities. <code>?beta=true</code> is also accepted as a beta-route marker.</p>
+                    <p><code>anthropic-version</code> is required, and both versions are answered the same way. The credential can arrive in <code>x-api-key</code> or in an <code>Authorization: Bearer</code> header; when both are sent, they must resolve to the same complete credential. Beta headers identify requested compatibility features; they do not override model capabilities. <code>?beta=true</code> is also accepted as a beta-route marker.</p>
                     <pre><code>curl -X POST "https://llm.wiro.ai/v1/messages" \
   -H "x-api-key: YOUR_API_KEY" \
   -H "anthropic-version: 2023-06-01" \
