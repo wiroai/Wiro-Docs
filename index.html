@@ -12291,7 +12291,7 @@ import type {
 </tr>
 <tr>
 <td><code>response</code></td>
-<td>The final reply, set when the turn ends. Each file Studio made is on its own line as a public URL. After <code>agent_error</code> it holds the failure message, such as <code>Agent is temporarily unavailable. Please try again shortly.</code> or a <code>[SECURITY_BLOCKED]</code> or <code>[SAFETY_POLICY_BLOCKED]</code> notice (see <a href="/docs/agent-messaging#failed-turns">Failed turns</a>), and after <code>agent_cancel</code> <code>Request cancelled.</code></td>
+<td>The final reply, set when the turn ends. Each file Studio made is on its own line as a public URL. After <code>agent_error</code> or <code>agent_cancel</code> it holds a coded failure message, such as <code>[AGENT_UNAVAILABLE] Agent is temporarily unavailable. Please try again shortly.</code> (see <a href="/docs/agent-messaging#failed-turns">Failed turns</a>).</td>
 </tr>
 <tr>
 <td><code>debugoutput</code></td>
@@ -18946,7 +18946,7 @@ print(response.body);
 </tr>
 <tr>
 <td><code>agent_error</code></td>
-<td>The turn failed. <code>response</code> and <code>debugoutput</code> hold one public message that says why; see <a href="#failed-turns">Failed turns</a>.</td>
+<td>The turn failed. <code>response</code> and <code>debugoutput</code> hold a coded message that says why; see <a href="#failed-turns">Failed turns</a>.</td>
 </tr>
 <tr>
 <td><code>agent_cancel</code></td>
@@ -18961,13 +18961,13 @@ print(response.body);
 </div>
 </div>
 <h3 id="failed-turns">Failed turns</h3>
-<p>When a turn ends with <code>agent_error</code> or <code>agent_cancel</code>, <code>response</code> and <code>debugoutput</code> both hold one public message that says what happened. <a href="#post-useragentmessagedetail">Message/Detail</a>, <a href="#post-useragentmessagehistory">Message/History</a>, the <code>agent_error</code> and <code>agent_cancel</code> events of the <a href="/docs/agent-websocket">Agent WebSocket</a> and the <a href="/docs/agent-webhooks">webhook</a> carry the same text, and the agent chat on wiro.ai shows it on a failed reply. The underlying error is never returned.</p>
+<p>When a turn ends with <code>agent_error</code> or <code>agent_cancel</code>, <code>response</code> and <code>debugoutput</code> both hold one message: a code in brackets, then a fixed sentence. <a href="#post-useragentmessagedetail">Message/Detail</a>, <a href="#post-useragentmessagehistory">Message/History</a>, the <code>agent_error</code> and <code>agent_cancel</code> events of the <a href="/docs/agent-websocket">Agent WebSocket</a> and the <a href="/docs/agent-webhooks">webhook</a> carry the same text, and the agent chat on wiro.ai shows its own sentence for the code. The underlying error is never returned.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
 <thead>
 <tr>
-<th>Message</th>
+<th>Code</th>
 <th>Status</th>
 <th>What happened</th>
 <th>What to do</th>
@@ -18975,40 +18975,47 @@ print(response.body);
 </thead>
 <tbody>
 <tr>
-<td><code>[SECURITY_BLOCKED]</code> followed by a sentence</td>
+<td><code>[SECURITY_BLOCKED]</code></td>
 <td><code>agent_error</code></td>
-<td>The agent's security rules blocked the message. When a rule gives its reason, the sentence is that reason, for example <code>[SECURITY_BLOCKED] This channel operator is not authorized for this agent.</code> Otherwise it reads <code>[SECURITY_BLOCKED] The agent's security rules blocked this message. Change it and send it again.</code></td>
+<td>The agent's security rules blocked the message.</td>
 <td>Change the message and send it again.</td>
 </tr>
 <tr>
-<td><code>[SAFETY_POLICY_BLOCKED] The model's provider declined this request under its safety policy. Rephrase it and send it again.</code></td>
+<td><code>[SAFETY_POLICY_BLOCKED]</code></td>
 <td><code>agent_error</code></td>
-<td>The model's provider refused the request under its usage or safety policy.</td>
+<td>The model's provider declined the request under its usage or safety policy.</td>
 <td>Rephrase the request and send it again.</td>
 </tr>
 <tr>
-<td><code>This request was interrupted by a restart before it finished. Please send it again.</code></td>
+<td><code>[TURN_INTERRUPTED]</code></td>
 <td><code>agent_error</code></td>
 <td>The agent restarted while the turn was running.</td>
 <td>Send the message again.</td>
 </tr>
 <tr>
-<td><code>Agent is temporarily unavailable. Please try again shortly.</code></td>
+<td><code>[AGENT_UNAVAILABLE]</code></td>
 <td><code>agent_error</code></td>
 <td>Any other failure.</td>
 <td>Try again after a short wait.</td>
 </tr>
 <tr>
-<td><code>Request cancelled.</code></td>
+<td><code>[REQUEST_CANCELLED]</code></td>
 <td><code>agent_cancel</code></td>
-<td>The turn was cancelled while it ran. A message cancelled while still queued keeps <code>response</code> and <code>debugoutput</code> empty.</td>
+<td>The turn was cancelled, while it ran or while it was still queued.</td>
 <td>Nothing to do.</td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
-<p>To tell the cases apart in code, match the bracketed code at the start of <code>response</code> (<code>[SECURITY_BLOCKED]</code>, <code>[SAFETY_POLICY_BLOCKED]</code>), not the sentence after it, which can change. All four <code>agent_error</code> messages keep the same status.</p>
+<p>The full texts:</p>
+<pre><code class="language-text">[SECURITY_BLOCKED] The agent's security rules blocked this message. Change it and send it again.
+[SAFETY_POLICY_BLOCKED] The model's provider declined this request under its safety policy. Rephrase it and send it again.
+[TURN_INTERRUPTED] This request was interrupted by a restart before it finished. Please send it again.
+[AGENT_UNAVAILABLE] Agent is temporarily unavailable. Please try again shortly.
+[REQUEST_CANCELLED] Request cancelled.
+</code></pre>
+<p>Match the code in brackets, never the sentence after it, which can change. Turns that failed before the codes existed are returned in the same form.</p>
 <h2 id="post-useragentmessagesend"><strong>POST</strong> /UserAgent/Message/Send</h2>
 <p>Sends a user message to a deployed agent. The agent must be in running state (status <code>4</code>). Returns immediately with an <code>agenttoken</code> that you use to track the response via WebSocket, polling, or webhook.</p>
 <p>Accepts either <code>application/json</code> (text-only) or <code>multipart/form-data</code> (text + file attachments). When sending files, the <code>message</code> field can be empty. The agent receives the attachments and any accompanying text.</p>
@@ -20144,10 +20151,10 @@ print(response.body);
 <blockquote>
 <p><strong>Behavior depends on when the cancel hits:</strong></p>
 <ul>
-<li>If the message was <strong>already being processed</strong> by the agent bridge (status <code>agent_start</code> or <code>agent_output</code>), the bridge's abort handler fires: subscribed WebSocket clients receive an <code>agent_cancel</code> event, <code>debugoutput</code> / <code>response</code> are set to <code>Request cancelled.</code>, and the <code>callbackurl</code> webhook (if set) is triggered with <code>status: "agent_cancel"</code>.</li>
-<li>If the message was <strong>still queued</strong> (status <code>agent_queue</code>) when cancelled, no processing attempt had started: the row is marked <code>agent_cancel</code> but <code>response</code> and <code>debugoutput</code> remain empty strings, <strong>no WebSocket <code>agent_cancel</code> event</strong> is broadcast, and <strong>no webhook</strong> is triggered.</li>
+<li>If the message was <strong>already being processed</strong> by the agent bridge (status <code>agent_start</code> or <code>agent_output</code>), the bridge's abort handler fires: subscribed WebSocket clients receive an <code>agent_cancel</code> event, <code>debugoutput</code> / <code>response</code> are set to <code>[REQUEST_CANCELLED] Request cancelled.</code>, and the <code>callbackurl</code> webhook (if set) is triggered with <code>status: "agent_cancel"</code>.</li>
+<li>If the message was <strong>still queued</strong> (status <code>agent_queue</code>) when cancelled, no processing attempt had started: the row is marked <code>agent_cancel</code>, <a href="#post-useragentmessagedetail">Message/Detail</a> and <a href="#post-useragentmessagehistory">Message/History</a> return <code>[REQUEST_CANCELLED] Request cancelled.</code> for it, <strong>no WebSocket <code>agent_cancel</code> event</strong> is broadcast, and <strong>no webhook</strong> is triggered.</li>
 </ul>
-<p>When polling for the final state, check <code>status === "agent_cancel"</code> rather than relying on non-empty <code>response</code> / <code>debugoutput</code> (they may be empty for queued-state cancellations).</p>
+<p>When polling for the final state, check <code>status === "agent_cancel"</code>.</p>
 </blockquote>
 <h2 id="session-management">Session Management</h2>
 <p>Sessions let you maintain separate conversation threads with the same agent:</p>
@@ -20880,7 +20887,7 @@ func main() {
 <tr>
 <td>↓</td>
 <td><code>agent_error</code></td>
-<td>Terminal failure event. <code>message</code> is a plain string: the turn's public failure message, the same text <code>response</code> holds (see <a href="/docs/agent-messaging#failed-turns">Failed turns</a>). Emits at most once.</td>
+<td>Terminal failure event. <code>message</code> is a plain string: the turn's coded failure message, the same text <code>response</code> holds (see <a href="/docs/agent-messaging#failed-turns">Failed turns</a>). Emits at most once.</td>
 </tr>
 <tr>
 <td>↓</td>
@@ -20999,7 +21006,7 @@ func main() {
 <tr>
 <td><code>message</code></td>
 <td>varies</td>
-<td>Empty string (<code>""</code>) for <code>agent_start</code>, <code>{ messageguid, block }</code> for <code>agent_timeline_delta</code>, a <code>progressGenerate</code> answer object for <code>agent_output</code> / <code>agent_end</code> (and for the object-shaped <code>agent_error</code>), a plain string for string-shaped <code>agent_error</code> and <code>agent_cancel</code>, and a token-usage object for <code>agent_usage_report</code>.</td>
+<td>Empty string (<code>""</code>) for <code>agent_start</code>, <code>{ messageguid, block }</code> for <code>agent_timeline_delta</code>, a <code>progressGenerate</code> answer object for <code>agent_output</code> / <code>agent_end</code>, the coded failure message (a plain string) for <code>agent_error</code> and <code>agent_cancel</code>, and a token-usage object for <code>agent_usage_report</code>.</td>
 </tr>
 <tr>
 <td><code>result</code></td>
@@ -21202,15 +21209,15 @@ func main() {
 }
 </code></pre>
 <h3 id="agent_error">agent_error</h3>
-<p>The turn failed. <code>message</code> is a plain string: the turn's public failure message, the same text the message's <code>response</code> and <code>debugoutput</code> hold. The underlying error is never sent.</p>
+<p>The turn failed. <code>message</code> is a plain string: the turn's failure message, the same text the message's <code>response</code> and <code>debugoutput</code> hold, a code in brackets and a fixed sentence. The underlying error is never sent.</p>
 <pre><code class="language-json">{
   &quot;type&quot;: &quot;agent_error&quot;,
   &quot;agenttoken&quot;: &quot;aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb&quot;,
-  &quot;message&quot;: &quot;Agent is temporarily unavailable. Please try again shortly.&quot;,
+  &quot;message&quot;: &quot;[AGENT_UNAVAILABLE] Agent is temporarily unavailable. Please try again shortly.&quot;,
   &quot;result&quot;: false
 }
 </code></pre>
-<p>A turn that the agent's security rules or the model's safety policy stopped starts with a bracketed code:</p>
+<p>A turn that the model's safety policy stopped reads:</p>
 <pre><code class="language-json">{
   &quot;type&quot;: &quot;agent_error&quot;,
   &quot;agenttoken&quot;: &quot;aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb&quot;,
@@ -21218,7 +21225,7 @@ func main() {
   &quot;result&quot;: false
 }
 </code></pre>
-<p>Show <code>message</code> to the user as it is. To branch in code, match the code at its start; <a href="/docs/agent-messaging#failed-turns">Failed turns</a> lists every message.</p>
+<p>To branch in code, match the code at the start of <code>message</code>; <a href="/docs/agent-messaging#failed-turns">Failed turns</a> lists every code and its text.</p>
 <pre><code class="language-javascript">if (msg.type === 'agent_error') {
   showError(msg.message)
   if (msg.message.startsWith('[SAFETY_POLICY_BLOCKED]')) suggestRephrasing()
@@ -21229,12 +21236,12 @@ func main() {
 <pre><code class="language-json">{
   &quot;type&quot;: &quot;agent_cancel&quot;,
   &quot;agenttoken&quot;: &quot;aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb&quot;,
-  &quot;message&quot;: &quot;Request cancelled.&quot;,
+  &quot;message&quot;: &quot;[REQUEST_CANCELLED] Request cancelled.&quot;,
   &quot;result&quot;: false
 }
 </code></pre>
 <blockquote>
-<p><code>message</code> is <code>Request cancelled.</code>; use <code>type === "agent_cancel"</code> as the signal. Subscribers that cancel from a queued state will receive no event at all (the message is simply marked <code>agent_cancel</code> in the database; check with <code>POST /UserAgent/Message/Detail</code>).</p>
+<p><code>message</code> is <code>[REQUEST_CANCELLED] Request cancelled.</code>; use <code>type === "agent_cancel"</code> as the signal. Subscribers that cancel from a queued state will receive no event at all (the message is simply marked <code>agent_cancel</code> in the database; check with <code>POST /UserAgent/Message/Detail</code>).</p>
 </blockquote>
 <h3 id="agent_usage_report">agent_usage_report</h3>
 <p>A post-terminal frame that reports the final token usage and billing for the turn. It arrives shortly <strong>after</strong> <code>agent_end</code> (~250-500 ms later, once the turn's token usage has been metered and billed) on the <strong>same</strong> <code>agenttoken</code>-keyed channel as <code>agent_start</code> / <code>agent_output</code> / <code>agent_end</code>. A client already subscribed to the turn receives it automatically, with no extra subscribe needed.</p>
@@ -22109,9 +22116,8 @@ ws.onmessage = (event) =&gt; {
       break;
 
     case 'agent_error':
-      // message is either a sanitized string or a progressGenerate object.
-      if (typeof msg.message === 'string') console.error('Error:', msg.message);
-      else console.error('Non-response:', msg.message.raw);
+      // message is the coded failure message, such as '[AGENT_UNAVAILABLE] ...'.
+      console.error('Failed:', msg.message);
       ws.close();
       break;
 
@@ -22480,11 +22486,11 @@ channel.stream.listen((message) {
   &quot;result&quot;: true
 }
 </code></pre>
-<p><strong><code>agent_error</code></strong> as a sanitized string (any exception during streaming):</p>
+<p><strong><code>agent_error</code></strong>, the coded failure message:</p>
 <pre><code class="language-json">{
   &quot;type&quot;: &quot;agent_error&quot;,
   &quot;agenttoken&quot;: &quot;aB3xK9...&quot;,
-  &quot;message&quot;: &quot;Agent is temporarily unavailable. Please try again shortly.&quot;,
+  &quot;message&quot;: &quot;[AGENT_UNAVAILABLE] Agent is temporarily unavailable. Please try again shortly.&quot;,
   &quot;result&quot;: false
 }
 </code></pre>
@@ -22492,7 +22498,7 @@ channel.stream.listen((message) {
 <pre><code class="language-json">{
   &quot;type&quot;: &quot;agent_cancel&quot;,
   &quot;agenttoken&quot;: &quot;aB3xK9...&quot;,
-  &quot;message&quot;: &quot;Request cancelled.&quot;,
+  &quot;message&quot;: &quot;[REQUEST_CANCELLED] Request cancelled.&quot;,
   &quot;result&quot;: false
 }
 </code></pre>
@@ -22749,7 +22755,7 @@ function connect(agenttoken, onStreamingChunk, onFinal, onFailure) {
                     {
                       "label": "JavaScript",
                       "language": "javascript",
-                      "code": "const agentToken = 'your-agent-token';\n\nconst ws = new WebSocket('wss://socket.wiro.ai/v1');\n\nws.onopen = () => {\n  console.log('Connected');\n  ws.send(JSON.stringify({\n    type: 'agent_info',\n    agenttoken: agentToken\n  }));\n};\n\nws.onmessage = (event) => {\n  const msg = JSON.parse(event.data);\n\n  switch (msg.type) {\n    case 'connected':\n      // One-shot welcome frame from server. OK to ignore.\n      break;\n\n    case 'error':\n      // Subscribe shape rejected (e.g. missing agenttoken).\n      console.error('Subscribe error:', msg.message);\n      ws.close();\n      break;\n\n    case 'agent_subscribed':\n      if (msg.status === 'unknown') {\n        console.error('Unknown token:', msg.agenttoken);\n        ws.close();\n      } else if (['agent_end', 'agent_error', 'agent_cancel'].includes(msg.status)) {\n        // We subscribed late — the agent already finished.\n        console.log('Already finished. Snapshot:', msg.debugoutput);\n        ws.close();\n      }\n      break;\n\n    case 'agent_start':\n      console.log('Agent started generating');\n      break;\n\n    case 'agent_output':\n      // message is a progressGenerate object; replace (don't append) your UI.\n      console.log('Streaming:', msg.message.raw);\n      break;\n\n    case 'agent_end':\n      console.log('Final:', msg.message.raw);\n      ws.close();\n      break;\n\n    case 'agent_error':\n      // message is either a sanitized string or a progressGenerate object.\n      if (typeof msg.message === 'string') console.error('Error:', msg.message);\n      else console.error('Non-response:', msg.message.raw);\n      ws.close();\n      break;\n\n    case 'agent_cancel':\n      console.warn('Cancelled:', msg.message);\n      ws.close();\n      break;\n  }\n};\n\nws.onerror = (err) => console.error('WebSocket error:', err);\nws.onclose = () => console.log('Disconnected');"
+                      "code": "const agentToken = 'your-agent-token';\n\nconst ws = new WebSocket('wss://socket.wiro.ai/v1');\n\nws.onopen = () => {\n  console.log('Connected');\n  ws.send(JSON.stringify({\n    type: 'agent_info',\n    agenttoken: agentToken\n  }));\n};\n\nws.onmessage = (event) => {\n  const msg = JSON.parse(event.data);\n\n  switch (msg.type) {\n    case 'connected':\n      // One-shot welcome frame from server. OK to ignore.\n      break;\n\n    case 'error':\n      // Subscribe shape rejected (e.g. missing agenttoken).\n      console.error('Subscribe error:', msg.message);\n      ws.close();\n      break;\n\n    case 'agent_subscribed':\n      if (msg.status === 'unknown') {\n        console.error('Unknown token:', msg.agenttoken);\n        ws.close();\n      } else if (['agent_end', 'agent_error', 'agent_cancel'].includes(msg.status)) {\n        // We subscribed late — the agent already finished.\n        console.log('Already finished. Snapshot:', msg.debugoutput);\n        ws.close();\n      }\n      break;\n\n    case 'agent_start':\n      console.log('Agent started generating');\n      break;\n\n    case 'agent_output':\n      // message is a progressGenerate object; replace (don't append) your UI.\n      console.log('Streaming:', msg.message.raw);\n      break;\n\n    case 'agent_end':\n      console.log('Final:', msg.message.raw);\n      ws.close();\n      break;\n\n    case 'agent_error':\n      // message is the coded failure message, such as '[AGENT_UNAVAILABLE] ...'.\n      console.error('Failed:', msg.message);\n      ws.close();\n      break;\n\n    case 'agent_cancel':\n      console.warn('Cancelled:', msg.message);\n      ws.close();\n      break;\n  }\n};\n\nws.onerror = (err) => console.error('WebSocket error:', err);\nws.onclose = () => console.log('Disconnected');"
                     },
                     {
                       "label": "Python",
@@ -22845,8 +22851,8 @@ function connect(agenttoken, onStreamingChunk, onFinal, onFailure) {
   &quot;messageguid&quot;: &quot;c3d4e5f6-a7b8-9012-cdef-345678901234&quot;,
   &quot;status&quot;: &quot;agent_error&quot;,
   &quot;content&quot;: &quot;What are today's trending topics?&quot;,
-  &quot;response&quot;: &quot;Agent is temporarily unavailable. Please try again shortly.&quot;,
-  &quot;debugoutput&quot;: &quot;Agent is temporarily unavailable. Please try again shortly.&quot;,
+  &quot;response&quot;: &quot;[AGENT_UNAVAILABLE] Agent is temporarily unavailable. Please try again shortly.&quot;,
+  &quot;debugoutput&quot;: &quot;[AGENT_UNAVAILABLE] Agent is temporarily unavailable. Please try again shortly.&quot;,
   &quot;metadata&quot;: {},
   &quot;endedat&quot;: 1712050004
 }
@@ -22856,14 +22862,14 @@ function connect(agenttoken, onStreamingChunk, onFinal, onFailure) {
   &quot;messageguid&quot;: &quot;c3d4e5f6-a7b8-9012-cdef-345678901234&quot;,
   &quot;status&quot;: &quot;agent_cancel&quot;,
   &quot;content&quot;: &quot;What are today's trending topics?&quot;,
-  &quot;response&quot;: &quot;Request cancelled.&quot;,
-  &quot;debugoutput&quot;: &quot;Request cancelled.&quot;,
+  &quot;response&quot;: &quot;[REQUEST_CANCELLED] Request cancelled.&quot;,
+  &quot;debugoutput&quot;: &quot;[REQUEST_CANCELLED] Request cancelled.&quot;,
   &quot;metadata&quot;: {},
   &quot;endedat&quot;: 1712050004
 }
 </code></pre>
 <blockquote>
-<p>The <code>response</code> and <code>debugoutput</code> fields hold <code>Request cancelled.</code>; use <code>status === "agent_cancel"</code> as the signal.</p>
+<p>The <code>response</code> and <code>debugoutput</code> fields hold <code>[REQUEST_CANCELLED] Request cancelled.</code>; use <code>status === "agent_cancel"</code> as the signal.</p>
 <p><strong>When the cancel webhook fires:</strong> <code>agent_cancel</code> is delivered <strong>only when the agent bridge catches an <code>AbortError</code></strong> during active processing, i.e. the message had already started on the agent side and was aborted mid-flight (via <code>POST /UserAgent/Message/Cancel</code> or an upstream timeout). For messages cancelled <strong>before</strong> they reach the bridge (still queued, or an instant <code>Message/Cancel</code> that beats dispatching), the message is marked <code>agent_cancel</code> in the database and returned as such in <code>POST /UserAgent/Message/Detail</code>, but <strong>no webhook is fired</strong>, because there was no processing attempt to report on. Use <code>POST /UserAgent/Message/Detail</code> (checking <code>status === "agent_cancel"</code>) as the canonical source of truth for cancellation; WebSocket subscribers receive the <code>agent_cancel</code> event only on active-processing aborts (same condition as the webhook). Treat the webhook as a best-effort "processing was interrupted" signal.</p>
 </blockquote>
 <h3 id="field-reference">Field Reference</h3>
@@ -22982,7 +22988,7 @@ function connect(agenttoken, onStreamingChunk, onFinal, onFailure) {
 <p>For <code>agent_error</code> and <code>agent_cancel</code>, <code>metadata</code> is an empty object <code>{}</code>. Always check <code>status</code> before accessing metadata fields.</p>
 <p>After receiving the webhook, call <code>POST /UserAgent/Message/Detail</code> with <code>messageguid</code> whenever you need the authoritative top-level <code>timeline[]</code>. It preserves the ordered reasoning, answer, and safe tool-label/status blocks for the completed turn.</p>
 <blockquote>
-<p><strong>Note:</strong> For <code>agent_error</code> and <code>agent_cancel</code>, the webhook's <code>response</code> and <code>debugoutput</code> hold the same public failure message as <code>POST /UserAgent/Message/Detail</code>; see <a href="/docs/agent-messaging#failed-turns">Failed turns</a>. The underlying error is never sent.</p>
+<p><strong>Note:</strong> For <code>agent_error</code> and <code>agent_cancel</code>, the webhook's <code>response</code> and <code>debugoutput</code> hold the same coded failure message as <code>POST /UserAgent/Message/Detail</code>; see <a href="/docs/agent-messaging#failed-turns">Failed turns</a>. The underlying error is never sent.</p>
 </blockquote>
 <h2 id="status-values">Status Values</h2>
 <div class="docs-param-table">
@@ -23012,7 +23018,7 @@ function connect(agenttoken, onStreamingChunk, onFinal, onFailure) {
 <tr>
 <td><code>agent_cancel</code></td>
 <td>Message was cancelled before completion</td>
-<td><code>Request cancelled.</code></td>
+<td><code>[REQUEST_CANCELLED] Request cancelled.</code></td>
 <td>Empty object <code>{}</code></td>
 </tr>
 </tbody>

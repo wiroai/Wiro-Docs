@@ -108,7 +108,7 @@ Frames flow in two directions. `↓` = server → client, `↑` = client → ser
 | ↓ | `agent_timeline_delta` | One ordered public timeline-block update. Carries `messageguid` and one `block`; merge by `blockid` and that block's `version`, then sort by `callindex`, `contentindex`, and `blockid`. |
 | ↓ | `agent_output` | Provisional answer snapshot. Emits **many times**, and each carries the full accumulated `raw` answer text so far plus real-time metrics (`speed`, `elapsedTime`, `tokenCount`, `wordCount`). Replace (don't append) the typing surface on each event. |
 | ↓ | `agent_end` | Terminal success event. Same payload shape as `agent_output` but contains the final complete text with total metrics. Emits at most once. |
-| ↓ | `agent_error` | Terminal failure event. `message` is a plain string: the turn's public failure message, the same text `response` holds (see [Failed turns](/docs/agent-messaging#failed-turns)). Emits at most once. |
+| ↓ | `agent_error` | Terminal failure event. `message` is a plain string: the turn's coded failure message, the same text `response` holds (see [Failed turns](/docs/agent-messaging#failed-turns)). Emits at most once. |
 | ↓ | `agent_cancel` | Terminal cancel event. Fires **only** when an already-active message is aborted mid-stream (via `Message/Cancel` or upstream abort). Cancels against a still-queued message do **not** broadcast this event, so check `Message/Detail` for those. Emits at most once. |
 | ↓ | `agent_usage_report` | Post-terminal usage/billing frame. Fires once, ~250-500 ms after a successful `agent_end`, on the same `agenttoken`. Carries the final token counts, `model`, `tokencost`, and `remainingcredits` for the message identified by `messageguid`. Not emitted for replayed usage callbacks or for turns with no chat message (cron/hook turns); follow those on the [run stream](#following-an-agents-background-runs). |
 | ↓ | `agent_wiroai_runtask` | Model-run discovery frame. Fires whenever the agent itself launches a Wiro model run during a turn (e.g. generating an image or video via `int-wiro-aimodels`). Arrives on the `agenttoken` of the turn that launched the run, carrying the new task's `socketaccesstoken` so you can subscribe to that run's `task_*` lifecycle and collect its outputs. See [Model runs the agent triggers](#model-runs-the-agent-triggers). |
@@ -143,7 +143,7 @@ Every WebSocket frame is a JSON object. Agent stream frames (`agent_start` / `ag
 |---|---|---|
 | `type` | string | Event name. See [Event Types](#event-types) for the full list. |
 | `agenttoken` | string | The token you subscribed with. Present on every agent lifecycle frame so multi-token subscribers can route the event to the right session. |
-| `message` | varies | Empty string (`""`) for `agent_start`, `{ messageguid, block }` for `agent_timeline_delta`, a `progressGenerate` answer object for `agent_output` / `agent_end` (and for the object-shaped `agent_error`), a plain string for string-shaped `agent_error` and `agent_cancel`, and a token-usage object for `agent_usage_report`. |
+| `message` | varies | Empty string (`""`) for `agent_start`, `{ messageguid, block }` for `agent_timeline_delta`, a `progressGenerate` answer object for `agent_output` / `agent_end`, the coded failure message (a plain string) for `agent_error` and `agent_cancel`, and a token-usage object for `agent_usage_report`. |
 | `result` | boolean | `true` for success-side events (`agent_subscribed` / `agent_start` / `agent_timeline_delta` / `agent_output` / `agent_end` / `agent_usage_report`), `false` for failure-side events (`agent_error` / `agent_cancel`). See [The `result` field](#the-result-field). |
 
 The **control frames** (`connected`, `error`) use a different shape with no `agenttoken`:
@@ -340,18 +340,18 @@ Fires when the agent finishes responding. The structure is identical to `agent_o
 
 ### agent_error
 
-The turn failed. `message` is a plain string: the turn's public failure message, the same text the message's `response` and `debugoutput` hold. The underlying error is never sent.
+The turn failed. `message` is a plain string: the turn's failure message, the same text the message's `response` and `debugoutput` hold, a code in brackets and a fixed sentence. The underlying error is never sent.
 
 ```json
 {
   "type": "agent_error",
   "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
-  "message": "Agent is temporarily unavailable. Please try again shortly.",
+  "message": "[AGENT_UNAVAILABLE] Agent is temporarily unavailable. Please try again shortly.",
   "result": false
 }
 ```
 
-A turn that the agent's security rules or the model's safety policy stopped starts with a bracketed code:
+A turn that the model's safety policy stopped reads:
 
 ```json
 {
@@ -362,7 +362,7 @@ A turn that the agent's security rules or the model's safety policy stopped star
 }
 ```
 
-Show `message` to the user as it is. To branch in code, match the code at its start; [Failed turns](/docs/agent-messaging#failed-turns) lists every message.
+To branch in code, match the code at the start of `message`; [Failed turns](/docs/agent-messaging#failed-turns) lists every code and its text.
 
 ```javascript
 if (msg.type === 'agent_error') {
@@ -379,12 +379,12 @@ Sent when the user cancels a message before the agent completes its response (on
 {
   "type": "agent_cancel",
   "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
-  "message": "Request cancelled.",
+  "message": "[REQUEST_CANCELLED] Request cancelled.",
   "result": false
 }
 ```
 
-> `message` is `Request cancelled.`; use `type === "agent_cancel"` as the signal. Subscribers that cancel from a queued state will receive no event at all (the message is simply marked `agent_cancel` in the database; check with `POST /UserAgent/Message/Detail`).
+> `message` is `[REQUEST_CANCELLED] Request cancelled.`; use `type === "agent_cancel"` as the signal. Subscribers that cancel from a queued state will receive no event at all (the message is simply marked `agent_cancel` in the database; check with `POST /UserAgent/Message/Detail`).
 
 ### agent_usage_report
 
@@ -1017,9 +1017,8 @@ ws.onmessage = (event) => {
       break;
 
     case 'agent_error':
-      // message is either a sanitized string or a progressGenerate object.
-      if (typeof msg.message === 'string') console.error('Error:', msg.message);
-      else console.error('Non-response:', msg.message.raw);
+      // message is the coded failure message, such as '[AGENT_UNAVAILABLE] ...'.
+      console.error('Failed:', msg.message);
       ws.close();
       break;
 
@@ -1444,13 +1443,13 @@ channel.stream.listen((message) {
 }
 ```
 
-**`agent_error`** as a sanitized string (any exception during streaming):
+**`agent_error`**, the coded failure message:
 
 ```json
 {
   "type": "agent_error",
   "agenttoken": "aB3xK9...",
-  "message": "Agent is temporarily unavailable. Please try again shortly.",
+  "message": "[AGENT_UNAVAILABLE] Agent is temporarily unavailable. Please try again shortly.",
   "result": false
 }
 ```
@@ -1461,7 +1460,7 @@ channel.stream.listen((message) {
 {
   "type": "agent_cancel",
   "agenttoken": "aB3xK9...",
-  "message": "Request cancelled.",
+  "message": "[REQUEST_CANCELLED] Request cancelled.",
   "result": false
 }
 ```
