@@ -228,7 +228,7 @@ your `claude_desktop_config.json`:
     "wiro": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wiro-ai/wiro-mcp@1.5.2"],
+      "args": ["-y", "@wiro-ai/wiro-mcp@1.5.5"],
       "env": {
         "WIRO_API_KEY": "YOUR_API_KEY",
         "WIRO_API_SECRET": "YOUR_API_SECRET"
@@ -242,7 +242,7 @@ For API Key Only authentication, keep `WIRO_API_KEY` and remove the
 `WIRO_API_SECRET` entry completely. Save the file, fully quit Claude Desktop,
 and reopen it.
 
-Pin the current published version (`@wiro-ai/wiro-mcp@1.5.2`) in `args`.
+Pin the current published version (`@wiro-ai/wiro-mcp@1.5.5`) in `args`.
 Unversioned `npx` can keep an older cached build after a package update.
 
 This setup runs the open-source
@@ -257,7 +257,7 @@ your machine and calls Wiro with your project credentials. See
 - **The Wiro tools do not appear**: confirm `node --version` reports 20 or
   later, then fully quit and reopen Claude Desktop.
 - **Tools appear but every call fails immediately**: pin
-  `@wiro-ai/wiro-mcp@1.5.2` as shown above so `npx` does not reuse an older
+  `@wiro-ai/wiro-mcp@1.5.5` as shown above so `npx` does not reuse an older
   cached package, then fully quit and reopen Claude Desktop.
 - **A generation reaches Claude's tool timeout**: Wiro waits for at most 45
   seconds per call. If the task is still running, the response contains
@@ -1002,7 +1002,7 @@ Run any AI model on Wiro. Calls `POST /Run/{owner}/{model}` on the Wiro API.
 | `model` | string | Model slug in clean/lowercase format. Same as `get_model_schema`. Examples: `"openai/sora-2"`, `"klingai/kling-v3"` |
 | `params` | object | Model-specific parameters as key-value pairs. Use `get_model_schema` to discover accepted fields. Common: `prompt`, `negativePrompt`, `width`, `height`, `aspectRatio` |
 | `wait` | boolean (optional) | If `true` (default), polls `POST /Task/Detail` until the task completes or the wait budget expires. If `false`, returns the task token immediately for `wait_for_task` or one-time `get_task` checks. |
-| `timeout_seconds` | number (optional) | Max seconds to wait (default 45, max 600). Only applies when `wait=true`. Values above 45 should only be used when the MCP client timeout is configured accordingly. |
+| `timeout_seconds` | number (optional) | Max seconds to wait, counted from the start of the call (default 45, max 3600). Only applies when `wait=true`. The default suits clients with a 60-second tool timeout; wait longer, such as 300 seconds for a video, when the client allows longer tool calls. |
 
 When `wait=true`, the tool returns the final task result including `pexit` (exit code, `"0"` = success), `outputs` (clickable CDN URLs for generated files), and `debugoutput` (LLM text responses).
 
@@ -1023,7 +1023,7 @@ Wait for an existing task without submitting another model run. Calls
 |-----------|------|-------------|
 | `tasktoken` | string (optional) | The task token returned from `run_model` |
 | `taskid` | string (optional) | The task ID (alternative to `tasktoken`) |
-| `timeout_seconds` | number (optional) | Max seconds for this wait window (default 45, max 600) |
+| `timeout_seconds` | number (optional) | Max seconds for this wait window (default 45, max 3600) |
 
 If the task completes, this tool returns the final text and file outputs. If it
 is still active, it returns the same identifier so the assistant can call
