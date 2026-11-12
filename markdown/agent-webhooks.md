@@ -60,8 +60,8 @@ When the agent finishes, Wiro sends a **POST** request to your `callbackurl` wit
   "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
   "status": "agent_error",
   "content": "What are today's trending topics?",
-  "response": "Could not resolve agent endpoint",
-  "debugoutput": "Could not resolve agent endpoint",
+  "response": "Agent is temporarily unavailable. Please try again shortly.",
+  "debugoutput": "Agent is temporarily unavailable. Please try again shortly.",
   "metadata": {},
   "endedat": 1712050004
 }
@@ -74,14 +74,14 @@ When the agent finishes, Wiro sends a **POST** request to your `callbackurl` wit
   "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
   "status": "agent_cancel",
   "content": "What are today's trending topics?",
-  "response": "AbortError",
-  "debugoutput": "AbortError",
+  "response": "Request cancelled.",
+  "debugoutput": "Request cancelled.",
   "metadata": {},
   "endedat": 1712050004
 }
 ```
 
-> The `response` and `debugoutput` fields contain the raw abort reason from the runtime, typically `"AbortError"` or a short technical string. Do not rely on a specific fixed user-facing message; use `status === "agent_cancel"` as the signal.
+> The `response` and `debugoutput` fields hold `Request cancelled.`; use `status === "agent_cancel"` as the signal.
 
 > **When the cancel webhook fires:** `agent_cancel` is delivered **only when the agent bridge catches an `AbortError`** during active processing, i.e. the message had already started on the agent side and was aborted mid-flight (via `POST /UserAgent/Message/Cancel` or an upstream timeout). For messages cancelled **before** they reach the bridge (still queued, or an instant `Message/Cancel` that beats dispatching), the message is marked `agent_cancel` in the database and returned as such in `POST /UserAgent/Message/Detail`, but **no webhook is fired**, because there was no processing attempt to report on. Use `POST /UserAgent/Message/Detail` (checking `status === "agent_cancel"`) as the canonical source of truth for cancellation; WebSocket subscribers receive the `agent_cancel` event only on active-processing aborts (same condition as the webhook). Treat the webhook as a best-effort "processing was interrupted" signal.
 
@@ -117,15 +117,15 @@ For `agent_error` and `agent_cancel`, `metadata` is an empty object `{}`. Always
 
 After receiving the webhook, call `POST /UserAgent/Message/Detail` with `messageguid` whenever you need the authoritative top-level `timeline[]`. It preserves the ordered reasoning, answer, and safe tool-label/status blocks for the completed turn.
 
-> **Note:** For `agent_error`, the webhook's `response` / `debugoutput` contain the **raw error** from the agent runtime (useful for debugging). The same message may be **sanitized to a user-facing string** when you read it back via `POST /UserAgent/Message/Detail`, so the two can differ. Log the webhook payload if you need the original.
+> **Note:** For `agent_error` and `agent_cancel`, the webhook's `response` and `debugoutput` hold the same public failure message as `POST /UserAgent/Message/Detail`; see [Failed turns](/docs/agent-messaging#failed-turns). The underlying error is never sent.
 
 ## Status Values
 
 | Status | Description | `response` contains | `metadata` contains |
 |--------|-------------|---------------------|---------------------|
 | `agent_end` | Agent completed successfully | Full response text | Structured answer and metrics |
-| `agent_error` | An error occurred during processing | Error message string | Empty object `{}` |
-| `agent_cancel` | Message was cancelled before completion | Cancellation reason | Empty object `{}` |
+| `agent_error` | The turn failed | The public failure message; see [Failed turns](/docs/agent-messaging#failed-turns) | Empty object `{}` |
+| `agent_cancel` | Message was cancelled before completion | `Request cancelled.` | Empty object `{}` |
 
 ## Retry Policy
 

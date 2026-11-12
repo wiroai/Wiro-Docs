@@ -159,7 +159,7 @@ Returns one message and its reply. Poll it until `status` is `agent_end`, `agent
 |-------|-------------|
 | `status` | `agent_queue`, `agent_start`, `agent_output`, then `agent_end`; or `agent_error` or `agent_cancel`. |
 | `content` | Your message. |
-| `response` | The final reply, set when the turn ends. Each file Studio made is on its own line as a public URL. After `agent_error` it reads `Agent is temporarily unavailable. Please try again shortly.`, and after `agent_cancel` `Request cancelled.` |
+| `response` | The final reply, set when the turn ends. Each file Studio made is on its own line as a public URL. After `agent_error` it holds the failure message, such as `Agent is temporarily unavailable. Please try again shortly.` or a `[SECURITY_BLOCKED]` or `[SAFETY_POLICY_BLOCKED]` notice (see [Failed turns](/docs/agent-messaging#failed-turns)), and after `agent_cancel` `Request cancelled.` |
 | `debugoutput` | The reply text so far while the turn runs, the final text after. |
 | `timeline` | The ordered reasoning, answer and tool blocks of the turn, as described in [Agent Messaging](/docs/agent-messaging). Tool labels are display names: show them, but do not parse them. |
 | `attachments` | The files you attached. |

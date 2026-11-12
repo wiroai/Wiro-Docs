@@ -7454,7 +7454,7 @@ Returns one message and its reply. Poll it until `status` is `agent_end`, `agent
 |-------|-------------|
 | `status` | `agent_queue`, `agent_start`, `agent_output`, then `agent_end`; or `agent_error` or `agent_cancel`. |
 | `content` | Your message. |
-| `response` | The final reply, set when the turn ends. Each file Studio made is on its own line as a public URL. After `agent_error` it reads `Agent is temporarily unavailable. Please try again shortly.`, and after `agent_cancel` `Request cancelled.` |
+| `response` | The final reply, set when the turn ends. Each file Studio made is on its own line as a public URL. After `agent_error` it holds the failure message, such as `Agent is temporarily unavailable. Please try again shortly.` or a `[SECURITY_BLOCKED]` or `[SAFETY_POLICY_BLOCKED]` notice (see [Failed turns](/docs/agent-messaging#failed-turns)), and after `agent_cancel` `Request cancelled.` |
 | `debugoutput` | The reply text so far while the turn runs, the final text after. |
 | `timeline` | The ordered reasoning, answer and tool blocks of the turn, as described in [Agent Messaging](/docs/agent-messaging). Tool labels are display names: show them, but do not parse them. |
 | `attachments` | The files you attached. |
@@ -11874,9 +11874,23 @@ Every agent message progresses through a defined set of stages:
 | `agent_start` | The agent has accepted the message and begun processing. The underlying LLM call is being prepared. |
 | `agent_output` | The agent is producing output. This event is emitted **multiple times**: each chunk of the response arrives as a separate `agent_output` event via WebSocket, enabling real-time streaming. |
 | `agent_end` | The agent has finished generating the response. The full output is available in the `response` and `debugoutput` fields. **This is the event you should listen for** to get the final result. |
-| `agent_error` | The agent encountered an error during processing. The `debugoutput` field contains the error message. |
+| `agent_error` | The turn failed. `response` and `debugoutput` hold one public message that says why; see [Failed turns](#failed-turns). |
 | `agent_cancel` | The message was cancelled by the user before completion. Only messages in `agent_queue`, `agent_start`, or `agent_output` status can be cancelled. |
 | `agent_done` | **Marker-only terminal status.** Used **exclusively** for `model_change` marker rows (see [Message/History](#post-useragentmessagehistory)), never for a real user or assistant turn. Normal turns terminate at `agent_end` (or `agent_error` / `agent_cancel`). |
+
+### Failed turns
+
+When a turn ends with `agent_error` or `agent_cancel`, `response` and `debugoutput` both hold one public message that says what happened. [Message/Detail](#post-useragentmessagedetail), [Message/History](#post-useragentmessagehistory), the `agent_error` and `agent_cancel` events of the [Agent WebSocket](/docs/agent-websocket) and the [webhook](/docs/agent-webhooks) carry the same text, and the agent chat on wiro.ai shows it on a failed reply. The underlying error is never returned.
+
+| Message | Status | What happened | What to do |
+|---------|--------|---------------|------------|
+| `[SECURITY_BLOCKED]` followed by a sentence | `agent_error` | The agent's security rules blocked the message. When a rule gives its reason, the sentence is that reason, for example `[SECURITY_BLOCKED] This channel operator is not authorized for this agent.` Otherwise it reads `[SECURITY_BLOCKED] The agent's security rules blocked this message. Change it and send it again.` | Change the message and send it again. |
+| `[SAFETY_POLICY_BLOCKED] The model's provider declined this request under its safety policy. Rephrase it and send it again.` | `agent_error` | The model's provider refused the request under its usage or safety policy. | Rephrase the request and send it again. |
+| `This request was interrupted by a restart before it finished. Please send it again.` | `agent_error` | The agent restarted while the turn was running. | Send the message again. |
+| `Agent is temporarily unavailable. Please try again shortly.` | `agent_error` | Any other failure. | Try again after a short wait. |
+| `Request cancelled.` | `agent_cancel` | The turn was cancelled while it ran. A message cancelled while still queued keeps `response` and `debugoutput` empty. | Nothing to do. |
+
+To tell the cases apart in code, match the bracketed code at the start of `response` (`[SECURITY_BLOCKED]`, `[SAFETY_POLICY_BLOCKED]`), not the sentence after it, which can change. All four `agent_error` messages keep the same status.
 
 ## **POST** /UserAgent/Message/Send
 
@@ -12037,7 +12051,7 @@ Retrieves the current status and content of a single message. You can query by e
 | `user` | `object\|null` | Resolved sender info: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. Decorated server-side from the message's `uuid` so the chat bubble can render avatar / hover-tooltip without an extra `User/Detail` round-trip. `null` when the row was written by automation (sentinel `uuid` like `"system"`) or when the user record was deleted. |
 | `sessionkey` | `string` | The session this message belongs to. |
 | `content` | `string` | The original user message. |
-| `response` | `string` | The agent's full response text. Empty until `agent_end`. |
+| `response` | `string` | The agent's full response text. Empty until the turn ends. After `agent_error` or `agent_cancel` it holds the failure message; see [Failed turns](#failed-turns). |
 | `debugoutput` | `string` | Accumulated output text. Updated during streaming, contains the full response after completion. |
 | `timeline` | `array` | Ordered turn blocks. Always an array; `[]` means no public blocks were persisted. Merge live deltas by `blockid` and per-block `version`, then sort by call/content order. |
 | `status` | `string` | Current message status (see Message Lifecycle). |
@@ -12513,7 +12527,7 @@ On success, the message status changes to `agent_cancel` in the database.
 
 > **Behavior depends on when the cancel hits:**
 >
-> - If the message was **already being processed** by the agent bridge (status `agent_start` or `agent_output`), the bridge's abort handler fires: subscribed WebSocket clients receive an `agent_cancel` event, `debugoutput` / `response` are populated with the abort reason (typically `"AbortError"` or similar technical message, not guaranteed to be a fixed user-facing string), and the `callbackurl` webhook (if set) is triggered with `status: "agent_cancel"`.
+> - If the message was **already being processed** by the agent bridge (status `agent_start` or `agent_output`), the bridge's abort handler fires: subscribed WebSocket clients receive an `agent_cancel` event, `debugoutput` / `response` are set to `Request cancelled.`, and the `callbackurl` webhook (if set) is triggered with `status: "agent_cancel"`.
 > - If the message was **still queued** (status `agent_queue`) when cancelled, no processing attempt had started: the row is marked `agent_cancel` but `response` and `debugoutput` remain empty strings, **no WebSocket `agent_cancel` event** is broadcast, and **no webhook** is triggered.
 >
 > When polling for the final state, check `status === "agent_cancel"` rather than relying on non-empty `response` / `debugoutput` (they may be empty for queued-state cancellations).
@@ -13205,7 +13219,7 @@ Frames flow in two directions. `↓` = server → client, `↑` = client → ser
 | ↓ | `agent_timeline_delta` | One ordered public timeline-block update. Carries `messageguid` and one `block`; merge by `blockid` and that block's `version`, then sort by `callindex`, `contentindex`, and `blockid`. |
 | ↓ | `agent_output` | Provisional answer snapshot. Emits **many times**, and each carries the full accumulated `raw` answer text so far plus real-time metrics (`speed`, `elapsedTime`, `tokenCount`, `wordCount`). Replace (don't append) the typing surface on each event. |
 | ↓ | `agent_end` | Terminal success event. Same payload shape as `agent_output` but contains the final complete text with total metrics. Emits at most once. |
-| ↓ | `agent_error` | Terminal failure event. `message` is either a sanitized string ("Agent is temporarily unavailable…" when an exception was caught) or a `progressGenerate` object (when the stream finished but content was a degenerate `"..."` / `"Error: internal error"`). Emits at most once. |
+| ↓ | `agent_error` | Terminal failure event. `message` is a plain string: the turn's public failure message, the same text `response` holds (see [Failed turns](/docs/agent-messaging#failed-turns)). Emits at most once. |
 | ↓ | `agent_cancel` | Terminal cancel event. Fires **only** when an already-active message is aborted mid-stream (via `Message/Cancel` or upstream abort). Cancels against a still-queued message do **not** broadcast this event, so check `Message/Detail` for those. Emits at most once. |
 | ↓ | `agent_usage_report` | Post-terminal usage/billing frame. Fires once, ~250-500 ms after a successful `agent_end`, on the same `agenttoken`. Carries the final token counts, `model`, `tokencost`, and `remainingcredits` for the message identified by `messageguid`. Not emitted for replayed usage callbacks or for turns with no chat message (cron/hook turns); follow those on the [run stream](#following-an-agents-background-runs). |
 | ↓ | `agent_wiroai_runtask` | Model-run discovery frame. Fires whenever the agent itself launches a Wiro model run during a turn (e.g. generating an image or video via `int-wiro-aimodels`). Arrives on the `agenttoken` of the turn that launched the run, carrying the new task's `socketaccesstoken` so you can subscribe to that run's `task_*` lifecycle and collect its outputs. See [Model runs the agent triggers](#model-runs-the-agent-triggers). |
@@ -13297,7 +13311,7 @@ Possible `status` values:
 | `agent_start` | Agent has started processing. |
 | `agent_output` | Agent is actively streaming. `debugoutput` will contain accumulated text. |
 | `agent_end` | Agent already finished. `debugoutput` contains the complete response. |
-| `agent_error` | Agent encountered an error. `debugoutput` may contain partial output. |
+| `agent_error` | The turn failed. `debugoutput` holds its public failure message; see [Failed turns](/docs/agent-messaging#failed-turns). |
 | `agent_cancel` | Message was cancelled. `debugoutput` may contain partial output. |
 | `agent_done` | Status of a `model_change` marker row: a zero-content separator inserted when the chat model is switched mid-session. It is **only** used for these markers; normal turns terminate at `agent_end` and never carry this status. See [Agent Messaging](/docs/agent-messaging) for model_change markers. |
 | `unknown` | Status could not be determined. Treat as an error. |
@@ -13437,9 +13451,7 @@ Fires when the agent finishes responding. The structure is identical to `agent_o
 
 ### agent_error
 
-An error occurred during processing. The `message` field can take two forms: a **sanitized string** when the stream is aborted by an exception, or a **progress object** when the stream finished naturally but the model returned a non-response.
-
-**Sanitized string error**: any failure during streaming surfaces as a single user-safe sentence:
+The turn failed. `message` is a plain string: the turn's public failure message, the same text the message's `response` and `debugoutput` hold. The underlying error is never sent.
 
 ```json
 {
@@ -13450,38 +13462,23 @@ An error occurred during processing. The `message` field can take two forms: a *
 }
 ```
 
-> **The raw runtime error is never broadcast over WebSocket.** Internal failure messages are recorded in `debugoutput` (retrievable via `POST /UserAgent/Message/Detail`) but **replaced with the generic sentence above** before being pushed to subscribed clients. Log the raw `debugoutput` for your own debugging; show the sanitized string from the WebSocket event to end users.
-
-**Progress-object error**: the SSE stream completes normally but the model returns `"..."` or `"Error: internal error"`. In that case Wiro flags the message as `agent_error` and broadcasts the same `progressGenerate` shape as `agent_output` / `agent_end`, so the client can render the non-response to the user:
+A turn that the agent's security rules or the model's safety policy stopped starts with a bracketed code:
 
 ```json
 {
   "type": "agent_error",
   "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
-  "message": {
-    "type": "progressGenerate",
-    "task": "Generate",
-    "speed": "2.5",
-    "speedType": "words/s",
-    "elapsedTime": "1.2s",
-    "tokenCount": 3,
-    "wordCount": 1,
-    "raw": "...",
-    "answer": ["..."]
-  },
+  "message": "[SAFETY_POLICY_BLOCKED] The model's provider declined this request under its safety policy. Rephrase it and send it again.",
   "result": false
 }
 ```
 
-Check the runtime type of `message` to branch:
+Show `message` to the user as it is. To branch in code, match the code at its start; [Failed turns](/docs/agent-messaging#failed-turns) lists every message.
 
 ```javascript
 if (msg.type === 'agent_error') {
-  if (typeof msg.message === 'string') {
-    showToast(msg.message)
-  } else {
-    renderResponse(msg.message.raw)
-  }
+  showError(msg.message)
+  if (msg.message.startsWith('[SAFETY_POLICY_BLOCKED]')) suggestRephrasing()
 }
 ```
 
@@ -13493,12 +13490,12 @@ Sent when the user cancels a message before the agent completes its response (on
 {
   "type": "agent_cancel",
   "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb",
-  "message": "AbortError",
+  "message": "Request cancelled.",
   "result": false
 }
 ```
 
-> The `message` field carries the abort reason from the runtime (typically `"AbortError"` or a short technical string). It is **not a fixed user-facing message**, so do not parse it for exact strings; use `type === "agent_cancel"` as the signal. Subscribers that cancel from a queued state will receive no event at all (the message is simply marked `agent_cancel` in the database; check with `POST /UserAgent/Message/Detail`).
+> `message` is `Request cancelled.`; use `type === "agent_cancel"` as the signal. Subscribers that cancel from a queued state will receive no event at all (the message is simply marked `agent_cancel` in the database; check with `POST /UserAgent/Message/Detail`).
 
 ### agent_usage_report
 
@@ -14575,7 +14572,7 @@ channel.stream.listen((message) {
 {
   "type": "agent_cancel",
   "agenttoken": "aB3xK9...",
-  "message": "AbortError",
+  "message": "Request cancelled.",
   "result": false
 }
 ```
@@ -14808,9 +14805,9 @@ An `agenttoken` is issued per message by `POST /UserAgent/Message/Send` and stay
 | Agent starts working | Emits `agent_start` to every active subscriber. |
 | Timeline block changes | Emits one `agent_timeline_delta` update with `{ messageguid, block }`; the persisted row keeps the merged ordered timeline. |
 | Each SSE chunk | Emits `agent_output` to every active subscriber (with full accumulated `raw`). |
-| Stream finishes | Emits `agent_end` (or `agent_error` for `"..."` / internal-error content) with final `progressGenerate` payload; the message's `status` becomes terminal. |
+| Stream finishes | Emits `agent_end` with the final `progressGenerate` payload, or `agent_error` with the public failure message when the turn failed; the message's `status` becomes terminal. |
 | Usage billed | ~250-500 ms after a successful `agent_end`, emits `agent_usage_report` with final token counts, `model`, `tokencost`, and `remainingcredits`. Not emitted for replayed usage callbacks or for turns with no chat message (cron/hook turns), which you follow on the [run stream](#following-an-agents-background-runs). |
-| Bridge exception | Emits `agent_error` with sanitized string; the message's `status` becomes `agent_error`, raw error in `debugoutput`. |
+| Bridge exception | Emits `agent_error` with the public failure message; the message's `status` becomes `agent_error`, and `response` and `debugoutput` hold the same text. |
 | `Message/Cancel` during active stream | Bridge aborts, emits `agent_cancel`; the message's `status` becomes `agent_cancel`. |
 | `Message/Cancel` while queued | The message's `status` becomes `agent_cancel` immediately. **No WebSocket event is broadcast** (the bridge never started). Clients checking via the socket must consult `Message/Detail` for queued-state cancels. |
 
@@ -14882,8 +14879,8 @@ When the agent finishes, Wiro sends a **POST** request to your `callbackurl` wit
   "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
   "status": "agent_error",
   "content": "What are today's trending topics?",
-  "response": "Could not resolve agent endpoint",
-  "debugoutput": "Could not resolve agent endpoint",
+  "response": "Agent is temporarily unavailable. Please try again shortly.",
+  "debugoutput": "Agent is temporarily unavailable. Please try again shortly.",
   "metadata": {},
   "endedat": 1712050004
 }
@@ -14896,14 +14893,14 @@ When the agent finishes, Wiro sends a **POST** request to your `callbackurl` wit
   "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
   "status": "agent_cancel",
   "content": "What are today's trending topics?",
-  "response": "AbortError",
-  "debugoutput": "AbortError",
+  "response": "Request cancelled.",
+  "debugoutput": "Request cancelled.",
   "metadata": {},
   "endedat": 1712050004
 }
 ```
 
-> The `response` and `debugoutput` fields contain the raw abort reason from the runtime, typically `"AbortError"` or a short technical string. Do not rely on a specific fixed user-facing message; use `status === "agent_cancel"` as the signal.
+> The `response` and `debugoutput` fields hold `Request cancelled.`; use `status === "agent_cancel"` as the signal.
 
 > **When the cancel webhook fires:** `agent_cancel` is delivered **only when the agent bridge catches an `AbortError`** during active processing, i.e. the message had already started on the agent side and was aborted mid-flight (via `POST /UserAgent/Message/Cancel` or an upstream timeout). For messages cancelled **before** they reach the bridge (still queued, or an instant `Message/Cancel` that beats dispatching), the message is marked `agent_cancel` in the database and returned as such in `POST /UserAgent/Message/Detail`, but **no webhook is fired**, because there was no processing attempt to report on. Use `POST /UserAgent/Message/Detail` (checking `status === "agent_cancel"`) as the canonical source of truth for cancellation; WebSocket subscribers receive the `agent_cancel` event only on active-processing aborts (same condition as the webhook). Treat the webhook as a best-effort "processing was interrupted" signal.
 
@@ -14939,15 +14936,15 @@ For `agent_error` and `agent_cancel`, `metadata` is an empty object `{}`. Always
 
 After receiving the webhook, call `POST /UserAgent/Message/Detail` with `messageguid` whenever you need the authoritative top-level `timeline[]`. It preserves the ordered reasoning, answer, and safe tool-label/status blocks for the completed turn.
 
-> **Note:** For `agent_error`, the webhook's `response` / `debugoutput` contain the **raw error** from the agent runtime (useful for debugging). The same message may be **sanitized to a user-facing string** when you read it back via `POST /UserAgent/Message/Detail`, so the two can differ. Log the webhook payload if you need the original.
+> **Note:** For `agent_error` and `agent_cancel`, the webhook's `response` and `debugoutput` hold the same public failure message as `POST /UserAgent/Message/Detail`; see [Failed turns](/docs/agent-messaging#failed-turns). The underlying error is never sent.
 
 ## Status Values
 
 | Status | Description | `response` contains | `metadata` contains |
 |--------|-------------|---------------------|---------------------|
 | `agent_end` | Agent completed successfully | Full response text | Structured answer and metrics |
-| `agent_error` | An error occurred during processing | Error message string | Empty object `{}` |
-| `agent_cancel` | Message was cancelled before completion | Cancellation reason | Empty object `{}` |
+| `agent_error` | The turn failed | The public failure message; see [Failed turns](/docs/agent-messaging#failed-turns) | Empty object `{}` |
+| `agent_cancel` | Message was cancelled before completion | `Request cancelled.` | Empty object `{}` |
 
 ## Retry Policy
 
