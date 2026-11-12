@@ -6484,7 +6484,7 @@ Common questions about using the Wiro API.
 
 **Can I send a URL instead of uploading a file?** Yes. For `fileinput` parameters, use the `{id}Url` suffix (e.g., `inputImageUrl`). For `multifileinput`, send comma-separated URLs in the field that puts `Url` before `Multiple` (e.g., `inputDocumentUrlMultiple`). For `combinefileinput`, pass URLs directly in the original parameter. The URL must be a public `http(s)` address. See Model Parameters.
 
-**Which other apps have a Wiro AI add-on?** ComfyUI, Dify, WordPress, Obsidian, Figma, Blender, Raycast, Zed, GitHub Actions, Hermes Agent, the Vercel AI SDK (with a Next.js starter for Vercel and Railway), and the Chrome, Edge, Opera, Brave, Firefox and Safari browsers. Each add-on is open source in the [wiroai](https://github.com/wiroai) GitHub organization, with its install steps in the repository. AI assistants connect through the [Wiro MCP server](/docs/wiro-mcp-server).
+**Which other apps have a Wiro AI add-on?** ComfyUI, Dify, WordPress, Obsidian, Figma, Blender, Raycast, Zed, GitHub Actions, Hermes Agent, coding agents such as Claude Code, Codex and Cursor (agent skills), the Vercel AI SDK (with a Next.js starter for Vercel and Railway), and the Chrome, Edge, Opera, Brave, Firefox and Safari browsers. Each add-on is open source in the [wiroai](https://github.com/wiroai) GitHub organization, with its install steps in the repository. AI assistants connect through the [Wiro MCP server](/docs/wiro-mcp-server).
 
 **Can I use a webhook instead of polling?** Yes. All models support an optional `callbackUrl` parameter. It must be a public `http(s)` address.
 

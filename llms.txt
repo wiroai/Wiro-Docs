@@ -1243,6 +1243,7 @@ Resource isolation: Project/List, Project/UsageSummary, UserAgent/MyAgents, Task
 - [MCP GitHub](https://github.com/wiroai/Wiro-MCP): MCP server source code
 - [MCP npm](https://www.npmjs.com/package/@wiro-ai/wiro-mcp): MCP server package
 - [Wiro-Plugin](https://github.com/wiroai/Wiro-Plugin): plugin for Cursor, Claude Code, Gemini CLI, Devin, Antigravity and Kiro, with slash commands and agent skills
+- [Wiro-Skills](https://github.com/wiroai/Wiro-Skills): agent skills for images, image edits, video, music, speech, transcripts, 3D and model search, for Claude Code, Codex, Cursor, Gemini CLI, GitHub Copilot and OpenClaw (`npx skills add wiroai/Wiro-Skills`)
 - [Wiro-LLM](https://github.com/wiroai/Wiro-LLM): Vercel AI SDK provider for chat, images, speech, transcription and video (`@wiro-ai/wiro-llm` on npm)
 - [Wiro-Next-Starter](https://github.com/wiroai/Wiro-Next-Starter): Next.js starter with a Playground, image, video and audio tools and LLM chat, for Vercel and Railway
 - [Wiro-ComfyUI](https://github.com/wiroai/Wiro-ComfyUI): ComfyUI nodes for image, video, audio, 3D and LLM models

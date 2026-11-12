@@ -72,6 +72,7 @@ Wiro AI has open-source add-ons for these apps. Each repository has the install 
 - [Zed](https://github.com/wiroai/Wiro-Zed): the Wiro MCP server in Zed's Agent Panel
 - [GitHub Actions](https://github.com/wiroai/Wiro-Action): run models, workflows and LLM prompts from a workflow step
 - [Hermes Agent](https://github.com/wiroai/Wiro-Hermes): media tools, plus the LLM gateway as a model provider
+- [Coding agents](https://github.com/wiroai/Wiro-Skills): agent skills for images, image edits, video, music, speech, transcripts, 3D and model search in Claude Code, Codex, Cursor, Gemini CLI, GitHub Copilot and OpenClaw
 - [Vercel AI SDK](https://github.com/wiroai/Wiro-LLM): chat, image, speech, transcription and video models, with a [Next.js starter](https://github.com/wiroai/Wiro-Next-Starter) for Vercel and Railway
 - [Chrome, Edge, Opera and Brave](https://github.com/wiroai/Wiro-Chromium-Extension), [Firefox](https://github.com/wiroai/Wiro-Firefox-Extension) and [Safari](https://github.com/wiroai/Wiro-Safari-Extension): right-click an image, video, audio clip, text or page to run a model
 
