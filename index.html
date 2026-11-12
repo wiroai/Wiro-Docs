@@ -3140,16 +3140,16 @@ const second = await client.chat.completions.create({
                       </div>
                       <div class="mcp-setup-panel" id="llm-setup-ai-sdk">
                         <h3>Vercel AI SDK</h3>
-                        <p><a href="https://www.npmjs.com/package/@wiro-ai/wiro-llm" class="docs-link"><code>@wiro-ai/wiro-llm</code></a> is Wiro's provider for the <a href="https://ai-sdk.dev" class="docs-link">AI SDK</a> from Vercel. It reads the key from <code>WIRO_API_KEY</code>, reports token usage on streamed calls, sends an <code>Output.object</code> schema as <code>json_schema</code>, and returns the cost of each call in <code>providerMetadata.wiro.cost</code>. The examples below were tested with <code>@wiro-ai/wiro-llm</code> 0.1.3, <code>ai</code> 7.0.166 and <code>zod</code> 4.6.7.</p>
+                        <p><a href="https://www.npmjs.com/package/@wiro-ai/wiro-llm" class="docs-link"><code>@wiro-ai/wiro-llm</code></a> is Wiro's provider for the <a href="https://ai-sdk.dev" class="docs-link">AI SDK</a> from Vercel. Its chat models use this gateway, and its image, speech, transcription and video models use the <a href="/docs/run-a-model" class="docs-link">Run API</a>, with the same key. It reads the key from <code>WIRO_API_KEY</code>, reports token usage on streamed calls, sends an <code>Output.object</code> schema as <code>json_schema</code>, and returns the cost of each call in <code>providerMetadata.wiro</code>. The examples below were tested with <code>@wiro-ai/wiro-llm</code> 0.2.0, <code>ai</code> 7.0.170 and <code>zod</code> 4.6.7.</p>
                         <ol class="docs-steps">
                           <li>
                             <strong>Install</strong> <span><code>npm i @wiro-ai/wiro-llm ai zod</code>. The package needs Node.js 22 or later, like AI SDK 7. <code>zod</code> is only needed for tools and structured output.</span>
                           </li>
                           <li>
-                            <strong>Keep the key on the server</strong> <span>Put the project credential in <code>WIRO_API_KEY</code>: <code>YOUR_API_KEY</code> for an API Key Only project, <code>YOUR_API_KEY:YOUR_API_SECRET</code> for a Signature project. Call the gateway from server code so the key never reaches a browser.</span>
+                            <strong>Keep the key on the server</strong> <span>Put the project credential in <code>WIRO_API_KEY</code>: <code>YOUR_API_KEY</code> for an API Key Only project, <code>YOUR_API_KEY:YOUR_API_SECRET</code> for a Signature project. Image, speech, transcription and video calls sign every request of a Signature project with the secret, and the secret itself is never sent. Call Wiro from server code so the key never reaches a browser.</span>
                           </li>
                           <li>
-                            <strong>Name a model</strong> <span>Any ID from the catalog or <code>GET /v1/models</code>, such as <code>openai/gpt-5-4-nano</code> or <code>deepseek/v4-1-flash</code>.</span>
+                            <strong>Name a model</strong> <span>Chat models take any ID from the catalog or <code>GET /v1/models</code>, such as <code>openai/gpt-5-4-nano</code> or <code>deepseek/v4-1-flash</code>. Image, speech, transcription and video models take the <code>owner/model</code> ID of a model in the <a href="https://wiro.ai/models" class="docs-link">model catalog</a>, such as <code>pruna/p-image</code>.</span>
                           </li>
                         </ol>
                         <pre><code>import { wiro } from &quot;@wiro-ai/wiro-llm&quot;;
@@ -3162,7 +3162,7 @@ const { text, providerMetadata } = await generateText({
 
 console.log(text);
 console.log(providerMetadata?.wiro?.cost);</code></pre>
-                        <p><code>wiro</code> reads <code>WIRO_API_KEY</code> when it sends a request. <code>createWiro</code> builds a provider with your own <code>apiKey</code>, <code>baseURL</code>, <code>headers</code> or <code>fetch</code>:</p>
+                        <p><code>wiro</code> reads <code>WIRO_API_KEY</code> when it sends a request. <code>createWiro</code> builds a provider with your own <code>apiKey</code>, <code>baseURL</code>, <code>runBaseURL</code>, <code>poll</code>, <code>headers</code> or <code>fetch</code>:</p>
                         <pre><code>import { createWiro } from &quot;@wiro-ai/wiro-llm&quot;;
 
 const wiro = createWiro({ apiKey: process.env.MY_WIRO_KEY });</code></pre>
@@ -3208,7 +3208,7 @@ const { output } = await generateText({
   prompt: &quot;Give me the largest city in Turkey.&quot;,
 });</code></pre>
                         <p>On reasoning models, <code>providerOptions: { wiro: { reasoningEffort: &quot;low&quot; } }</code> sends <code>reasoning_effort</code>. Use it only on models that list <code>reasoning_effort</code> in <code>supported_parameters</code>.</p>
-                        <p>The provider is built on the AI SDK's OpenAI Compatible provider, which also works on its own: <code>createOpenAICompatible</code> from <code>@ai-sdk/openai-compatible</code> with base URL <code>https://llm.wiro.ai/v1</code>, <code>includeUsage: true</code> and <code>supportsStructuredOutputs: true</code>.</p>
+                        <p>Its chat models are built on the AI SDK's OpenAI Compatible provider, which also works on its own: <code>createOpenAICompatible</code> from <code>@ai-sdk/openai-compatible</code> with base URL <code>https://llm.wiro.ai/v1</code>, <code>includeUsage: true</code> and <code>supportsStructuredOutputs: true</code>.</p>
                         <p>The gateway's other two routes work with the AI SDK's own providers: <code>@ai-sdk/openai</code> reaches <a href="#gateway-responses" class="docs-link">Responses</a> and <code>@ai-sdk/anthropic</code> reaches <a href="#gateway-anthropic" class="docs-link">Anthropic Messages</a>. Both take the same <code>/v1</code> base URL. Unlike the Anthropic SDK, <code>@ai-sdk/anthropic</code> expects the <code>/v1</code> in it. It caps output at 4,096 tokens for model IDs it does not know, so pass <code>maxOutputTokens</code> for longer answers.</p>
                         <pre><code>import { createAnthropic } from &quot;@ai-sdk/anthropic&quot;;
 import { createOpenAI } from &quot;@ai-sdk/openai&quot;;
@@ -3225,6 +3225,76 @@ const anthropic = createAnthropic({
 
 const viaResponses = openai.responses(&quot;openai/gpt-5-4-nano&quot;);
 const viaMessages = anthropic(&quot;claude/sonnet-5&quot;);</code></pre>
+                        <h4>Images</h4>
+                        <p><code>wiro.image</code> creates an image model for <code>generateImage</code>. <code>n</code>, <code>size</code>, <code>aspectRatio</code> and <code>seed</code> go to the model's own settings, whatever the model calls them, and a value the model does not offer comes back in <code>warnings</code>:</p>
+                        <pre><code>import { writeFile } from &quot;node:fs/promises&quot;;
+import { generateImage } from &quot;ai&quot;;
+
+const { image, providerMetadata } = await generateImage({
+  model: wiro.image(&quot;pruna/p-image&quot;),
+  prompt: &quot;A red lighthouse on a rocky coast at dusk, warm light in the windows&quot;,
+  aspectRatio: &quot;16:9&quot;,
+  seed: 42,
+});
+
+await writeFile(&quot;lighthouse.jpg&quot;, image.uint8Array);
+console.log(providerMetadata.wiro.images[0]); // { taskId, cost, url, mediaType }</code></pre>
+                        <p>To edit an image, pass it in <code>prompt.images</code> to a model that takes input images, such as <code>google/nano-banana</code>, <code>openai/gpt-image-2</code> or <code>wiro/flux-2-dev</code>. Images can be bytes, base64 strings or public URLs, and <code>prompt.mask</code> goes to models that take a mask:</p>
+                        <pre><code>import { readFile } from &quot;node:fs/promises&quot;;
+import { generateImage } from &quot;ai&quot;;
+
+const { image } = await generateImage({
+  model: wiro.image(&quot;google/nano-banana&quot;),
+  prompt: {
+    text: &quot;Turn this photo into a soft watercolor painting&quot;,
+    images: [await readFile(&quot;photo.jpg&quot;)],
+  },
+});</code></pre>
+                        <p>Each model's own settings, listed on its catalog page, go in <code>providerOptions.wiro</code> as they are, for example <code>providerOptions: { wiro: { quality: &quot;high&quot; } }</code> on <code>openai/gpt-image-2</code>. Required settings you leave out get the model's default.</p>
+                        <h4>Speech</h4>
+                        <p><code>wiro.speech</code> creates a text-to-speech model for <code>generateSpeech</code>. <code>voice</code> matches the model's voices by ID or by name, <code>language</code> takes ISO 639-1 codes such as <code>en</code> or <code>tr</code>, and <code>outputFormat</code>, <code>instructions</code> and <code>speed</code> go to models that have them:</p>
+                        <pre><code>import { writeFile } from &quot;node:fs/promises&quot;;
+import { generateSpeech } from &quot;ai&quot;;
+
+const { audio, providerMetadata } = await generateSpeech({
+  model: wiro.speech(&quot;elevenlabs/eleven-v4-turbo&quot;),
+  text: &quot;Hello from Wiro AI. This sentence was turned into speech.&quot;,
+  voice: &quot;alice&quot;,
+  language: &quot;en&quot;,
+  outputFormat: &quot;mp3&quot;,
+});
+
+await writeFile(&quot;hello.mp3&quot;, audio.uint8Array);
+console.log(providerMetadata.wiro); // { taskId, cost, elapsedSeconds, url, mediaType }</code></pre>
+                        <h4>Transcription</h4>
+                        <p><code>wiro.transcription</code> creates a speech-to-text model for <code>transcribe</code>. Audio can be bytes, base64 or a URL; a public URL such as <code>new URL(&quot;https://example.com/talk.mp3&quot;)</code> goes to Wiro as it is, so the file never passes through your server. <code>segments</code> holds the timings a model writes:</p>
+                        <pre><code>import { readFile } from &quot;node:fs/promises&quot;;
+import { transcribe } from &quot;ai&quot;;
+
+const { text, segments } = await transcribe({
+  model: wiro.transcription(&quot;openai/whisper-large-v3&quot;),
+  audio: await readFile(&quot;hello.mp3&quot;),
+});
+
+console.log(text);
+console.log(segments); // [{ text, startSecond, endSecond }]</code></pre>
+                        <h4>Video</h4>
+                        <p><code>wiro.video</code> creates a video model for <code>experimental_generateVideo</code>. A start image goes in <code>prompt: { image, text }</code>, and <code>aspectRatio</code>, <code>resolution</code>, <code>duration</code>, <code>fps</code>, <code>seed</code> and <code>generateAudio</code> go to the model's matching settings:</p>
+                        <pre><code>import { writeFile } from &quot;node:fs/promises&quot;;
+import { experimental_generateVideo as generateVideo } from &quot;ai&quot;;
+
+const { video, providerMetadata } = await generateVideo({
+  model: wiro.video(&quot;bytedance/seedance-v1-pro-fast&quot;),
+  prompt: &quot;A paper boat drifting on a calm pond, soft morning light&quot;,
+  resolution: &quot;864x480&quot;,
+  duration: 5,
+});
+
+await writeFile(&quot;boat.mp4&quot;, video.uint8Array);
+console.log(providerMetadata.wiro.videos[0]); // { taskId, cost, url, mediaType }</code></pre>
+                        <p>Video calls use the AI SDK's start and status flow, so the <code>poll</code> and <code>webhook</code> options, <code>experimental_startVideo</code> and <code>experimental_getVideoStatus</code> work with them.</p>
+                        <h4>Tasks and cost</h4>
+                        <p>Image, speech, transcription and video calls run as Wiro <a href="/docs/tasks" class="docs-link">tasks</a>: the provider starts the run, waits for the task and downloads the result. The task ID and what it cost, in USD, are in <code>providerMetadata.wiro</code>: for each image and video under <code>images</code> and <code>videos</code>, and at the top level for speech and transcription. Image, speech and transcription calls wait up to 10 minutes; <code>createWiro({ poll: { timeoutMs } })</code> changes that. A task that ends without a result throws a <code>WiroTaskError</code> with its <code>taskId</code> and a <code>reason</code>.</p>
                       </div>
                     </div>
                   </section>

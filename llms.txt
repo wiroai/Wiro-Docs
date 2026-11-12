@@ -516,7 +516,12 @@ Client compatibility and boundaries:
   (`wiro("owner/model")`, key from `WIRO_API_KEY`, cost in
   `providerMetadata.wiro.cost`), `@ai-sdk/openai` for Responses, and
   `@ai-sdk/anthropic` for Messages, all with base `https://llm.wiro.ai/v1`;
-  `@ai-sdk/anthropic` keeps the `/v1`.
+  `@ai-sdk/anthropic` keeps the `/v1`. The same provider runs image, speech,
+  transcription and video models on the Run API with the same key
+  (`wiro.image` for `generateImage`, `wiro.speech` for `generateSpeech`,
+  `wiro.transcription` for `transcribe`, `wiro.video` for
+  `experimental_generateVideo`); each result carries its task ID and cost in
+  `providerMetadata.wiro`.
 - Cursor's OpenAI base URL override takes `https://llm.wiro.ai/v1`; Cursor
   appends `/chat/completions` itself.
 - OpenClaw can use a model's declared `openai-completions`,
