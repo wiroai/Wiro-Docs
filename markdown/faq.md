@@ -56,7 +56,7 @@ No. The [Wiro MCP server](/docs/wiro-mcp-server) is free. You only pay for the m
 
 ## Can I use Wiro with n8n?
 
-Yes. Install the [Wiro AI community node](/docs/n8n-wiro-integration) in your n8n instance to access all Wiro models as drag-and-drop nodes in your workflows. The same package can also run your Wiro workflows and send messages to Wiro agents.
+Yes. Install the [Wiro AI community node](/docs/n8n-wiro-integration) in your n8n instance to access all Wiro models as drag-and-drop nodes in your workflows. The same package can also run your Wiro workflows and send messages to Wiro agents. For one node that runs any model, install `@wiro-ai/n8n-nodes-wiro`.
 
 ## Which other apps have a Wiro AI add-on?
 

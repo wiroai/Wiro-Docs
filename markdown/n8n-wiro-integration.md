@@ -10,10 +10,14 @@ Each model is a **separate node**, so you get dedicated parameters, descriptions
 
 Two more nodes are not tied to one model: **Wiro Workflow** runs the workflows you saved on Wiro, and **Wiro Agent** sends messages to Wiro Studio, the Workflow Agent or one of your deployed agents. Every node also works as a tool for an n8n AI Agent.
 
+For one node that runs any model, install `@wiro-ai/n8n-nodes-wiro`. Its **Wiro AI** node lists the models in a searchable picker and loads the inputs of the model you pick. See **Wiro AI Node** below.
+
 ### Links
 
 - [npm: @wiro-ai/n8n-nodes-wiroai](https://www.npmjs.com/package/@wiro-ai/n8n-nodes-wiroai)
 - [GitHub: wiroai/n8n-nodes-wiroai](https://github.com/wiroai/n8n-nodes-wiroai)
+- [npm: @wiro-ai/n8n-nodes-wiro](https://www.npmjs.com/package/@wiro-ai/n8n-nodes-wiro) (the Wiro AI node)
+- [GitHub: wiroai/n8n-nodes-wiro](https://github.com/wiroai/n8n-nodes-wiro)
 - [n8n Community Nodes Installation Guide](https://docs.n8n.io/integrations/community-nodes/installation/)
 - [Wiro Model Catalog](https://wiro.ai/models): browse all available models
 
@@ -72,6 +76,36 @@ The reply is in `message.reply`, files the agent made are in `message.mediaUrls`
 
 Workflow runs and agent turns are billed to the wallet of your project's workspace, the same as model runs. To learn more, see [Workflows](/docs/workflows) and [Agent Messaging](/docs/agent-messaging).
 
+## Wiro AI Node
+
+The `@wiro-ai/n8n-nodes-wiro` package adds one **Wiro AI** node that runs any model in the catalog. It also works as a tool for an n8n AI Agent.
+
+| Resource | Operation | What it does |
+|----------|-----------|--------------|
+| Model | Run | Runs a model with your inputs and returns its outputs |
+| Task | Get | Reads a task by its ID, with its status and outputs |
+| Task | Wait | Waits until a task finishes, then returns its outputs |
+
+- **Model**: pick the model from the searchable list, paste its wiro.ai link, or type it as `owner/model`, such as `pruna/p-image`.
+- **Inputs**: the inputs of the model you picked load into the node with their default values. Fill them in or map them from the incoming item. File inputs take public URLs; separate several URLs with commas.
+- **Wait for Completion** is on by default, and the node waits up to 20 minutes (change it with **Max Wait Time**). Turn it off to get the task ID at once, then read the task later with **Task > Get** or **Task > Wait**.
+
+The node returns the task with its output files and cost:
+
+```json
+{
+  "taskId": "5986221",
+  "status": "completed",
+  "model": "pruna/p-image",
+  "url": "https://cdn1.wiro.ai/xyz/0.png",
+  "urls": ["https://cdn1.wiro.ai/xyz/0.png"],
+  "costUsd": 0.005,
+  "elapsedSeconds": 3
+}
+```
+
+A text model's reply is in `text`. A task that fails or is cancelled stops the node with an error. To handle it in its own branch, set the node's **On Error** setting to **Continue (using error output)**.
+
 ## Installation
 
 Install the community node package in your n8n instance:
@@ -84,10 +118,18 @@ Install the community node package in your n8n instance:
 4. Enter: `@wiro-ai/n8n-nodes-wiroai`
 5. Click **Install**
 
+For the Wiro AI node, enter `@wiro-ai/n8n-nodes-wiro` in step 4.
+
 ### Via Command Line
 
 ```bash
 npm install @wiro-ai/n8n-nodes-wiroai
+```
+
+For the Wiro AI node:
+
+```bash
+npm install @wiro-ai/n8n-nodes-wiro
 ```
 
 Restart n8n after installation.
@@ -113,6 +155,10 @@ On n8n Cloud and on n8n running on your own computer, you can connect with your 
 3. Sign in to Wiro, pick the project whose wallet pays for the runs, and click **Allow**
 
 Other n8n instances connect with the **Wiro API** credential above.
+
+### Wiro AI node
+
+The Wiro AI node uses a **Wiro AI API** credential: paste your project's API key, and the API secret if the project uses signature authentication.
 
 ## Usage
 
@@ -151,6 +197,13 @@ The node returns the task result with output URLs:
 2. Set **Prompt** and, if you need them, **System Instructions**
 3. Run the workflow: the reply is in `message` in the output
 
+### Example: Run Any Model with the Wiro AI Node
+
+1. Search the node picker for `Wiro AI` and add the **Wiro AI** node with the **Run a model** action
+2. In **Model**, search for `p-image` and pick `pruna/p-image`
+3. Under **Inputs**, set **Prompt** to `A red bicycle on a sunny street`
+4. Run the workflow: `url` in the output links to the image
+
 ## Compatibility
 
 | Requirement | Version |
@@ -158,3 +211,4 @@ The node returns the task result with output URLs:
 | n8n | v1.85.0+ |
 | Node.js | v18+ |
 | Package | `@wiro-ai/n8n-nodes-wiroai@latest` |
+| Package (Wiro AI node) | `@wiro-ai/n8n-nodes-wiro@latest` |
