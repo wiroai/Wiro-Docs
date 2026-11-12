@@ -8,6 +8,8 @@ When you send a message to an agent via `POST /UserAgent/Message/Send`, include 
 
 This lets you build fully asynchronous workflows: fire a message and let your backend handle the response whenever it arrives, without polling or maintaining a WebSocket connection.
 
+A setup reply that Wiro handles itself, such as a `yes` that applies a setup card, runs no agent turn: Wiro posts its result to the `callbackurl` right away, with `status: "agent_end"`. See [Replies Wiro handles itself](/docs/agent-messaging#handled-setup-replies).
+
 > **Results that arrive later.** When the agent moves longer work to the background, its turn ends with a short line saying the result will follow, and that line is what your `callbackurl` receives (`status: "agent_end"`). The result is added to the session later as a separate message and doesn't call the `callbackurl`. Read it with [`Message/History`](/docs/agent-messaging#post-useragentmessagehistory), or follow the session on the [Agent WebSocket](/docs/agent-websocket#following-a-session).
 
 ## Setting a Callback URL

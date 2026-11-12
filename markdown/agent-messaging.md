@@ -19,7 +19,7 @@ Every Detail or History message row returns a top-level `timeline[]`. It is the 
 
 `Thinking → Answer or Tool → Thinking → Answer`
 
-Each block has an opaque deterministic `blockid`, call/content ordering coordinates, `type` (`reasoning`, `answer`, or `tool`), safe public text or tool state, `phase` (`stream`, `end`, or `error`), its own monotonically increasing `version`, and timestamps. Reasoning text is a model-provided reasoning summary, never raw hidden chain-of-thought. Tool blocks expose only `toollabel`, `toolstatus`, `toolintegration`, and `toolaction`, never a tool ID, arguments, results, or other internal execution metadata. `toolintegration` and `toolaction` each hold a word from a [closed list](#tool-integration-and-action-values) or `null`. When a turn ends with `agent_error` or `agent_cancel`, the server closes every block still at `stream` and sends each one as an `agent_timeline_delta`, usually just before that final event. After `agent_end`, open blocks normally close a few seconds later. A tool block that closed with `toolstatus` `requested` was cut off before it finished.
+Each block has an opaque deterministic `blockid`, call/content ordering coordinates, `type` (`reasoning`, `answer`, `tool`, or `setup`), safe public text, tool state or a setup card, `phase` (`stream`, `end`, or `error`), its own monotonically increasing `version`, and timestamps. Reasoning text is a model-provided reasoning summary, never raw hidden chain-of-thought. Tool blocks expose only `toollabel`, `toolstatus`, `toolintegration`, and `toolaction`, never a tool ID, arguments, results, or other internal execution metadata. `toolintegration` and `toolaction` each hold a word from a [closed list](#tool-integration-and-action-values) or `null`. A `setup` block is a setup change the agent proposes; see [Setup From Chat](#setup-from-chat). When a turn ends with `agent_error` or `agent_cancel`, the server closes every block still at `stream` and sends each one as an `agent_timeline_delta`, usually just before that final event. After `agent_end`, open blocks normally close a few seconds later. A tool block that closed with `toolstatus` `requested` was cut off before it finished.
 
 Live WebSocket updates arrive as `agent_timeline_delta` events carrying one public block. Merge by `blockid`, replace that block only when its incoming `version` is strictly newer, then sort by `callindex`, `contentindex`, and `blockid`. `agent_subscribed.timeline` carries the persisted reconnect snapshot. `agent_output` remains provisional cumulative SSE output until the corresponding answer block catches up; after completion or reconnect, `Message/Detail` is authoritative.
 
@@ -101,9 +101,13 @@ Accepts either `application/json` (text-only) or `multipart/form-data` (text + f
 | Field | Type | Description |
 |-------|------|-------------|
 | `messageguid` | `string` | Unique identifier for this message. Use it with Detail, History, or Cancel. |
-| `agenttoken` | `string` | Token for WebSocket subscription and polling. Equivalent to `tasktoken` in model runs. |
-| `status` | `string` | Initial status: always `"agent_queue"` on success. |
+| `agenttoken` | `string\|null` | Token for WebSocket subscription and polling. Equivalent to `tasktoken` in model runs. `null` when Wiro handled the message itself (see below). |
+| `status` | `string` | Initial status: `"agent_queue"` on success, or `"agent_end"` when Wiro handled the message itself as a setup reply; see [Replies Wiro handles itself](#handled-setup-replies). |
 | `modelChangeMarker` | `object\|null` | Present **only** when this turn's `model` selects a different chat model than the session was running, i.e. it rotates the model mid-session. Shape: `{ guid, type: "model_change", fromModel, toModel, createdat }`. The platform also writes a matching marker row into history (see [Message/History](#post-useragentmessagehistory)). Absent on turns that keep the session's model. |
+| `content` | `string` | Present when Wiro handled the message itself or removed a key from it: the message text as stored. See [Keys in chat](#keys-in-chat). |
+| `contentmasked` | `boolean` | Present (`true`) when Wiro removed a key from the message before the agent saw it; `content` holds the text the agent got. |
+| `response` | `string` | Only when Wiro handled the message itself: its result text. |
+| `setupresult` | `object` | Only when Wiro handled the message itself: `{ applied, dismissed, failed, restarting }`. |
 
 > **`model_change` marker.** When `model` rotates the session to a different chat model, the Send response carries a `modelChangeMarker` describing the switch, and a standalone marker row (status `agent_done`) is written into history at the same time:
 >
@@ -220,7 +224,7 @@ Retrieves the current status and content of a single message. You can query by e
 |-------|------|-------------|
 | `guid` | `string` | Message GUID. |
 | `uuid` | `string` | The account UUID of the user who sent the message. |
-| `agenttoken` | `string\|null` | The same token issued by `Message/Send` for this message. Lets callers that arrived at the row through `Message/Detail` (or `Message/History`) subscribe to the [Agent WebSocket](/docs/agent-websocket) and pick up an in-flight response. This is useful when a chat UI rehydrates after a reload and finds a message still in `agent_queue` / `agent_start` / `agent_output` status. Only `null` for very old rows that pre-date the column. |
+| `agenttoken` | `string\|null` | The same token issued by `Message/Send` for this message. Lets callers that arrived at the row through `Message/Detail` (or `Message/History`) subscribe to the [Agent WebSocket](/docs/agent-websocket) and pick up an in-flight response. This is useful when a chat UI rehydrates after a reload and finds a message still in `agent_queue` / `agent_start` / `agent_output` status. `null` for very old rows that pre-date the column, and for replies Wiro handles itself (see [Replies Wiro handles itself](#handled-setup-replies)). |
 | `user` | `object\|null` | Resolved sender info: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. Decorated server-side from the message's `uuid` so the chat bubble can render avatar / hover-tooltip without an extra `User/Detail` round-trip. `null` when the row was written by automation (sentinel `uuid` like `"system"`) or when the user record was deleted. |
 | `sessionkey` | `string` | The session this message belongs to. |
 | `content` | `string` | The original user message. |
@@ -245,19 +249,20 @@ Retrieves the current status and content of a single message. You can query by e
 
 ### Public timeline block fields
 
-Only the fields below are returned in browser-facing REST and WebSocket timeline blocks. `toollabel`, `toolstatus`, `toolintegration`, and `toolaction` appear on tool blocks only.
+Only the fields below are returned in browser-facing REST and WebSocket timeline blocks. `toollabel`, `toolstatus`, `toolintegration`, and `toolaction` appear on tool blocks only, and `setup` on setup blocks only.
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `blockid` | `string` | Opaque deterministic identity for one logical block (for example `c0:i0`). Use it as the merge key; do not parse its current format. |
 | `callindex` | `number` | Zero-based call order within the turn. Primary sort key. |
 | `contentindex` | `number` | Zero-based content order within the call. Secondary sort key. |
-| `type` | `string` | `reasoning`, `answer`, or `tool`. |
-| `text` | `string\|null` | Safe public text for `reasoning` and `answer`; `null` for tool blocks. Reasoning text is an OpenAI GPT-5 provider summary, not raw chain-of-thought. |
+| `type` | `string` | `reasoning`, `answer`, `tool`, or `setup`. |
+| `text` | `string\|null` | Safe public text for `reasoning` and `answer`; `null` for tool and setup blocks. Reasoning text is an OpenAI GPT-5 provider summary, not raw chain-of-thought. |
 | `toollabel` | `string` | Tool blocks only. Safe display label for the tool. Arguments and results are never included. |
 | `toolstatus` | `string` | Tool blocks only. `requested` while the step runs, then `completed` or `error`. |
 | `toolintegration` | `string\|null` | Tool blocks only. The connector the step works in, as its `key` from [`POST /Credentials/List`](/docs/agent-credentials#post-credentialslist), for example `shopify`. `null` when the step doesn't work in a connector. See [Tool integration and action values](#tool-integration-and-action-values). |
 | `toolaction` | `string\|null` | Tool blocks only. What the step does, for example `screenshot` or `click`. `null` when no word fits the step, and always `null` when `toolintegration` is set. See [Tool integration and action values](#tool-integration-and-action-values). |
+| `setup` | `object` | Setup blocks only. The change the agent proposes and its state; see [The setup block](#setup-blocks). |
 | `phase` | `string` | `stream`, `end`, or `error` for this block. A block still at `stream` closes when its turn ends with `agent_error` or `agent_cancel`, and normally a few seconds after `agent_end`. |
 | `version` | `number` | Monotonic **within this block**. Ignore a delta whose version is not strictly newer than the stored block's version. |
 | `startedat` | `number\|null` | Block start timestamp when available. |
@@ -704,6 +709,237 @@ On success, the message status changes to `agent_cancel` in the database.
 > - If the message was **still queued** (status `agent_queue`) when cancelled, no processing attempt had started: the row is marked `agent_cancel`, [Message/Detail](#post-useragentmessagedetail) and [Message/History](#post-useragentmessagehistory) return `[REQUEST_CANCELLED] Request cancelled.` for it, **no WebSocket `agent_cancel` event** is broadcast, and **no webhook** is triggered.
 >
 > When polling for the final state, check `status === "agent_cancel"`.
+
+## Setup From Chat
+
+An agent can help the people who run it set it up in the chat: save a key for a connector, create or change a scheduled task, add or change a custom skill, or change its time zone. The agent never changes its own setup and never sees a key. It proposes the change as a **setup card**: Wiro checks the card against the agent's current setup and stores it on the message that asked for it, where it shows as a `setup` block in that message's `timeline[]`. Nothing changes until an agent admin (the owner, or an admin of the agent's team) approves the card.
+
+Where cards can be proposed and approved is the agent's `chatsetup` setting. Set it with [`UpdateSettings`](/docs/agent-overview#post-useragentupdatesettings) or at [`Deploy`](/docs/agent-overview#post-useragentdeploy), and read it back as `chatSetup` on [`UserAgent/Detail`](/docs/agent-overview#post-useragentdetail):
+
+| Value | What it allows |
+|-------|----------------|
+| `all` (default) | Setup cards in the Wiro web chat and in messages sent with a project API key, such as from your backend or an MCP client. |
+| `webchat` | Setup cards only in the Wiro web chat on wiro.ai. Messages sent with a project API key never get or approve a card. |
+| `off` | No setup cards. The agent tells people to make the change on the agent page. |
+
+> **Agents your customers talk to.** A message sent with your project API key acts with your rights, even when one of your end users typed it. If people who don't manage the agent talk to it through your app, set `chatsetup` to `"webchat"` or `"off"`, so a "yes" from one of them can't change the agent's setup.
+
+### The setup block
+
+A setup block has `type: "setup"`, `text: null` and a `setup` object with the proposed change and its state. Setup blocks sort after every other block of the turn, in the order the agent proposed them, and their `phase` is always `end`. A message holds at most three. The card's `status` changes when someone approves or dismisses it. A pending card's block has `version` `1`; once the card is applied, dismissed or failed, its block has `version` `2` with the new `status`, so keep the copy with the higher `version` whichever arrives first. Clients still subscribed to the message's `agenttoken` get the new block as an `agent_timeline_delta`, and [Message/Detail](#post-useragentmessagedetail) and [Message/History](#post-useragentmessagehistory) always return the current state.
+
+```json
+{
+  "blockid": "s:k3v9q2m8x1za",
+  "callindex": 1000000,
+  "contentindex": 0,
+  "type": "setup",
+  "text": null,
+  "setup": {
+    "v": 1,
+    "id": "k3v9q2m8x1za",
+    "kind": "schedule",
+    "action": "create",
+    "key": "cs-cron-morning-summary",
+    "title": "Morning summary",
+    "cron": "0 9 * * 1-5",
+    "instructions": "Every weekday, summarize yesterday's orders and post the summary in the web chat.",
+    "requestedby": "ada-uuid",
+    "createdat": 1743350406
+  },
+  "phase": "end",
+  "version": 1,
+  "startedat": 1743350406,
+  "updatedat": 1743350406
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `v` | `number` | Card format version, `1`. |
+| `id` | `string` | The card's id: 12 lower-case letters and digits. Send it as `cardid` to [`SetupCardApply`](#post-useragentmessagesetupcardapply). |
+| `kind` | `string` | `connect` (save a key for a connector), `schedule` (a scheduled task), `skill` (a custom skill) or `timezone`. |
+| `action` | `string` | `schedule`: `create`, `update`, `pause`, `resume` or `delete`. `skill`: `create`, `update`, `disable` or `enable`. Absent on `connect` and `timezone` cards. |
+| `connector` | `string` | `connect` only. The connector's `key`, as [`POST /Credentials/List`](/docs/agent-credentials#post-credentialslist) lists it, for example `serper`. A card never holds a key's value. |
+| `key` | `string` | `schedule` and `skill` only. The scheduled task's key (`cs-cron-<name>`) or the custom skill's key (`cs-<name>`). |
+| `title` | `string` | Optional. One line, up to 80 characters. |
+| `cron` | `string` | `schedule` only: always on `create`, optional on `update`. A 5-field cron in the agent's time zone. A task set up from chat runs at most once an hour. |
+| `instructions` | `string` | `schedule` and `skill` only, on `create` and `update`. The full text of the task or skill, up to 20,000 characters. |
+| `timezone` | `string` | `timezone` only. The proposed IANA time zone, for example `Europe/Istanbul`. |
+| `note` | `string` | Optional. The agent's one-line note about the change, up to 300 characters. |
+| `status` | `string` | `pending`, `applied`, `dismissed` or `failed`. Absent means `pending`. |
+| `actedat` | `number` | Unix seconds when the card was applied, dismissed or failed. Absent while pending. |
+| `actedby` | `string` | Account UUID of the person who applied or dismissed the card. Absent while pending. |
+| `error` | `string` | `failed` only. A plain sentence that says why the change could not be made. When the cause was on Wiro's side, it reads `The change could not be applied. Try again from the agent page.` |
+| `requestedby` | `string` | Account UUID of the person whose message asked for the change. |
+| `createdat` | `number` | Unix seconds when the agent proposed the change. |
+
+Fields that don't apply to a card's kind are absent. More kinds can be added later, so skip a card whose `kind` you don't know.
+
+### Approving a setup card
+
+After proposing a card, the agent asks in one short line whether to apply it, or, for a `connect` card, for the key. An agent admin approves one card at a time, in one of three ways:
+
+1. **Reply yes.** Send a message that is only an approval, such as `yes`, `ok`, `approve`, `go ahead`, `evet` or `👍`, with [`Message/Send`](#post-useragentmessagesend) in the same session. It acts on the pending cards of the agent's latest reply that are less than 30 minutes old, and it applies one card, only one whose exact content Wiro has shown you.
+2. **Press Apply** on the card in the Wiro web chat.
+3. **Call** [`POST /UserAgent/Message/SetupCardApply`](#post-useragentmessagesetupcardapply) with the card's `id`. This also works after 30 minutes, as long as the card is pending.
+
+What a `yes` does depends on where it is sent and how many cards are pending (`connect` cards don't count; see below):
+
+| Pending cards | What `yes` does |
+|---------------|-----------------|
+| One, in the Wiro web chat | Applies it. The card is shown under the agent's reply. |
+| One, in a message sent with a project API key | The first `yes` applies nothing: Wiro answers with the card's exact content (the [card listing](#setup-card-listing)). A second `yes` applies that card. |
+| Several | The first `yes` gets the card listing, which numbers the cards. Then reply `yes` and a number, such as `yes 2`, to apply that card, one card per reply. A plain `yes` never applies one of several cards. In the web chat, the card's Apply button works too. |
+
+A number works only for a card Wiro has listed: `yes 2` sent before the listing gets the listing. A message that says more, such as `yes, but at 10`, is an ordinary message for the agent. A reply such as `no` or `cancel` dismisses every pending card of the latest reply and goes to the agent as usual. A `connect` card needs its key, so a `yes` never applies one: when only `connect` cards are pending, `yes` is an ordinary message.
+
+Wiro applies the stored card, checked again against the agent's current setup, never anything written in the reply. A card is applied at most once. Only an agent admin can apply a card: a reply from anyone else changes nothing and gets `Only an agent admin can apply setup changes.` When a change needs a restart, the agent restarts to load it: continue the chat in about a minute.
+
+### The card listing
+
+When a `yes` can't apply a card yet, Wiro answers it with the exact content of the pending cards and applies nothing. Each card has a number, its place on the agent's reply (1 to 3), a first line that says what it does, and its full instructions, each line starting with `> `. For one card, `response` reads:
+
+```text
+The agent proposes this setup change. Nothing is applied yet.
+
+Card 1: Create scheduled task cs-cron-morning-summary (title: Morning summary), schedule 0 9 * * 1-5.
+Instructions:
+> Every weekday, summarize yesterday's orders and post the summary in the web chat.
+
+Reply "yes" to apply exactly this change, or "no" to turn it down.
+```
+
+With several cards, it starts with `The agent proposes these setup changes. Nothing is applied yet.` and ends with `To apply one, reply "yes" and its number, such as "yes 1", one card per reply, or press Apply on the card in the web chat. Reply "no" to turn them all down.` Show this text, as it is, to the person who approves. The listing is a reply Wiro handles itself (see [below](#handled-setup-replies)), and its `setupresult` lists no card.
+
+### Keys in chat
+
+While setup from chat is on for a message, Wiro keeps keys out of the agent's conversation:
+
+- **A key as the reply.** When the agent's latest reply has one pending `connect` card and its connector takes one key (or has one required key field still empty), an agent admin can paste the key as the reply, a text message of up to 2,000 characters with no attachments. Wiro takes the reply as the key when it is in that connector's own key format, when the whole message is one key-like word, or when the key follows a word such as `key` or `token` (`my key is ...`). A sentence that only holds an id, a URL, an email address or a plain word is an ordinary message, and the card stays pending. Wiro saves the key to the connector and marks the card applied. The key never reaches the agent, and the stored message reads `[key saved to <Connector title>]` in its place. A key in another service's format is not saved, and when the connector needs more fields, the card stays pending and Wiro's answer names them; see [Wiro's answers](#setup-reply-lines).
+- **Keys in other messages.** Wiro removes clear keys: a key format Wiro knows for a provider or connector, and a key written after a word such as `key`, `token`, `secret` or `password`. The stored text and the text the agent gets hold `[key removed]` in their place, and Send returns `contentmasked: true` with that text in `content`. The agent can then propose a `connect` card. Other ids, such as Google Sheet and Drive ids, commit hashes and order numbers, reach the agent unchanged. While a `connect` card of the latest reply waits for its key, every key-like word in any other text message of up to 2,000 characters is removed without being saved.
+- From your own backend, save keys with [`POST /UserAgent/CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert) instead of sending them in a message.
+
+### Replies Wiro handles itself
+
+When Wiro handles a message itself (a `yes` that applies a card or gets the [card listing](#setup-card-listing), a key pasted as the reply, or a reply refused because the sender isn't an agent admin), no agent turn runs and no credits are used, even when the agent has no credits left. [`Message/Send`](#post-useragentmessagesend) answers at once with the result:
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "messageguid": "d4e5f6a7-b8c9-0123-def4-567890123456",
+  "agenttoken": null,
+  "status": "agent_end",
+  "content": "yes",
+  "response": "✅ Applied: Scheduled task Morning summary created.\nYour agent is restarting to load the change. Continue in about a minute.",
+  "setupresult": {
+    "applied": ["k3v9q2m8x1za"],
+    "dismissed": [],
+    "failed": [],
+    "restarting": true
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `agenttoken` | `null` | There is no agent turn to follow on the WebSocket. |
+| `status` | `string` | `"agent_end"`: the message is already finished. |
+| `content` | `string` | The message as stored. A saved key reads `[key saved to <Connector title>]`. |
+| `response` | `string` | Wiro's answer, always in English: the lines in [Wiro's answers](#setup-reply-lines), or the [card listing](#setup-card-listing). Read `setupresult` in code, not this text. |
+| `setupresult` | `object` | `applied` and `dismissed`: the ids of the cards applied and dismissed. `failed`: `[{ id, error }]`. `restarting`: `true` when the agent restarts to load the change. All three lists are empty for a card listing. |
+
+The message is stored like any finished exchange: Message/Detail and Message/History return it with `status: "agent_end"`, `metadata.type: "setup_result"` and `model: null`. When the Send has a `callbackurl`, Wiro posts the result to it right away with `status: "agent_end"`, as for a finished turn; see [Agent Webhooks](/docs/agent-webhooks).
+
+### Wiro's answers
+
+The lines Wiro writes in `response`:
+
+| Line | When |
+|------|------|
+| `✅ Applied: <summary>.` | The card was applied. The summary says what changed, such as `Scheduled task Morning summary created`, `Custom skill Weekly report turned off`, `Time zone set to Europe/Istanbul` or `<Connector> connected`. |
+| `⚠️ Not applied: <reason>` | The change failed. The card's `status` is now `failed`, with the same reason in `error`. |
+| `Your agent is restarting to load the change. Continue in about a minute.` | The change restarts the agent. |
+| `1 more setup change is still pending.` or `<N> more setup changes are still pending.` | Other cards of the same reply still wait. Reply `yes` and a card's number to apply the next one. |
+| `A connector card still needs its key: paste the key as your reply.` or `<N> connector cards still need their keys: add each key on its card.` | `connect` cards of the same reply still wait for their keys. |
+| `Saved <fields> for <Connector>. Still needed: <fields>.` | The pasted key was saved, and the connector needs more fields. The card stays pending: add the rest on the card or on the agent page. When Wiro can't name the missing fields, the second sentence reads `It is not connected yet: finish it on the agent page.` |
+| `⚠️ Not saved: <reason>. Paste the key again as your reply.` | The pasted key was refused, for example because it is too short. Nothing was saved and the card stays pending. |
+| `That does not look like a <Connector> key, so it was not saved. Paste the <Connector> key as your reply.` | The reply holds a key in another service's format. Nothing was saved, the stored message reads `[key removed]` in its place, and the card stays pending. When Wiro knows the format, the sentence names it, such as `(it looks like <kind>)`. |
+| `This setup change is being applied right now. Try again in a moment.` | Someone is applying the same card at this moment. The card is still pending. |
+| `This setup change was already handled.` | The card was applied or dismissed before this reply arrived. |
+| `This card is older than 30 minutes. Use the card's button, or ask the agent again.` | The card turned 30 minutes old while the reply was handled. Apply it with its button or [`SetupCardApply`](#post-useragentmessagesetupcardapply). |
+| `Only an agent admin can apply setup changes.` | The sender isn't an agent admin. Nothing changed. |
+| `The agent proposes this setup change. Nothing is applied yet.` | The start of the [card listing](#setup-card-listing). Nothing changed. |
+
+## **POST** /UserAgent/Message/SetupCardApply
+
+Applies or dismisses one setup card; the card's buttons in the Wiro web chat call it too. Wiro applies the stored card, checked again against the agent's current setup. See [Setup From Chat](#setup-from-chat).
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `useragentguid` | string | Yes | The agent instance GUID. |
+| `messageguid` | string | Yes | The message that holds the card: the row whose `timeline[]` has the `setup` block. |
+| `cardid` | string | Yes | The card's `setup.id`. |
+| `action` | string | Yes | `"apply"` or `"dismiss"`. |
+| `values` | object | No | `connect` cards only: `{ "<fieldname>": "<value>" }` for the connector's fields, as [`POST /Credentials/Detail`](/docs/agent-credentials#post-credentialsdetail) lists them. Only text, password, URL and email fields, up to 4,096 characters each. Wiro saves them to the connector; they are never returned and never reach the agent. |
+
+**Permission**: applying needs an agent admin (the owner, or an admin of the agent's team). Any member who can see the chat can dismiss. The message must be one you can read with [Message/History](#post-useragentmessagehistory) (in private Chat Mode, your own messages), and the card must be pending: an applied or dismissed card is never applied again.
+
+### Request
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+    "cardid": "k3v9q2m8x1za",
+    "action": "apply"
+  }'
+```
+
+### Response
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "setup": {
+    "v": 1,
+    "id": "k3v9q2m8x1za",
+    "kind": "schedule",
+    "action": "create",
+    "key": "cs-cron-morning-summary",
+    "title": "Morning summary",
+    "cron": "0 9 * * 1-5",
+    "instructions": "Every weekday, summarize yesterday's orders and post the summary in the web chat.",
+    "requestedby": "ada-uuid",
+    "createdat": 1743350406,
+    "status": "applied",
+    "actedat": 1743350460,
+    "actedby": "ada-uuid"
+  },
+  "restarting": true,
+  "summary": "Scheduled task Morning summary created"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `setup` | `object` | The card after the action, in the same shape as a [setup block](#setup-blocks)'s `setup`. |
+| `restarting` | `boolean` | `true` when the agent restarts to load the change. Continue the chat in about a minute. |
+| `summary` | `string` | A short English phrase that says what changed, such as `Scheduled task Morning summary created`. Empty when nothing was applied. |
+
+| Error | When |
+|-------|------|
+| `Setup from chat is off for this agent.` | `chatsetup` is `"off"`, or the call is sent with a project API key and `chatsetup` is `"webchat"`. |
+| `Wait until the agent finishes this reply, then apply it.` | `action` is `"apply"` while the reply that holds the card is still being written. `"dismiss"` works at any time. |
+| `Only an agent admin can apply setup changes.` | The caller can see the chat but isn't an agent admin. |
+| `Saved <fields> for <Connector>. Still needed: <fields>.` | A `connect` card's `values` were saved, and the connector needs more fields. The card stays pending and `restarting` can be `true`. Send the missing fields with the same card to finish it. |
+| `The change could not be applied. Try again from the agent page.` | The change failed on Wiro's side. The card's `status` is now `failed`. |
+| Another sentence in `errors[0].message` | The message or card wasn't found, the card is no longer pending, a value was refused (nothing is saved and the card stays pending), or the change no longer fits the agent's setup. When the change itself fails, the card's `status` becomes `failed` with the sentence in `error`. |
 
 ## Session Management
 

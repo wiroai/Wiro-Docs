@@ -13423,7 +13423,13 @@ pro.credits = starter.credits × tiermultiplier
 <td><code>wiroapiallowedpaths</code></td>
 <td>string[]</td>
 <td>No</td>
-<td>The Wiro API endpoints this agent may call with its own Wiro project key, as rules in the format described under <a href="#post-useragentupdatesettings"><code>UpdateSettings</code></a>. The list is saved before the agent first starts, so it applies from the first turn. An invalid list is rejected with <code>invalid-wiro-api-path-rule</code> and no agent is created. If the list can't be saved, no agent is created either and the call returns <code>Failed to save wiroapiallowedpaths</code>; deploy again. Omit it, or send <code>null</code>, for no limit.</td>
+<td>The Wiro API endpoints this agent may call with its own Wiro project key, as rules in the format described under <a href="#post-useragentupdatesettings"><code>UpdateSettings</code></a>. The list is saved before the agent first starts, so it applies from the first turn. An invalid list is rejected with <code>invalid-wiro-api-path-rule</code> and no agent is created. If the list can't be saved, no agent is created either and the call returns <code>Failed to save wiroapiallowedpaths</code>; deploy again. Omit it, or send <code>null</code>, for the default list described under <a href="#post-useragentupdatesettings"><code>UpdateSettings</code></a>.</td>
+</tr>
+<tr>
+<td><code>chatsetup</code></td>
+<td>string</td>
+<td>No</td>
+<td>Setup From Chat: where people can change this agent's setup by approving setup cards in chat. <code>"all"</code> (the default) allows the Wiro web chat and messages sent with a project API key, <code>"webchat"</code> only the Wiro web chat, and <code>"off"</code> neither. Omit it, or send <code>null</code>, for <code>"all"</code>. Deploying an agent that your customers or many people will talk to? Send <code>"webchat"</code> or <code>"off"</code>. See <a href="/docs/agent-messaging#setup-from-chat">Setup From Chat</a>.</td>
 </tr>
 </tbody>
 </table>
@@ -14425,8 +14431,13 @@ pro.credits = starter.credits × tiermultiplier
 </tr>
 <tr>
 <td><code>wiroApiAllowedPaths</code></td>
-<td><code>array&lt;string&gt;|null</code></td>
-<td>The Wiro API endpoints the agent may call with its own Wiro project key (camelCase read), for example <code>["POST /v1/Run/*/*", "POST /v1/Task/Detail"]</code>. <code>null</code> = no list, so the agent can call any endpoint its key allows. <code>[]</code> blocks all of them. Write it via <a href="#post-useragentupdatesettings"><code>POST /UserAgent/UpdateSettings</code></a> or at Deploy with the lowercase <code>wiroapiallowedpaths</code> key. Also on the <code>Deploy</code> and <code>Update</code> responses; not on <code>MyAgents</code> / <code>PinnedAgents</code> rows.</td>
+<td><code>array&lt;string&gt;</code></td>
+<td>The Wiro API endpoints the agent may call with its own Wiro project key (camelCase read), for example <code>["POST /v1/Run/*/*", "POST /v1/Task/Detail"]</code>. Always the list that applies: the agent's own list or, when it has none, the default list described under <a href="#post-useragentupdatesettings"><code>UpdateSettings</code></a>. <code>[]</code> blocks all of them. Write it via <a href="#post-useragentupdatesettings"><code>POST /UserAgent/UpdateSettings</code></a> or at Deploy with the lowercase <code>wiroapiallowedpaths</code> key. Also on the <code>Deploy</code> and <code>Update</code> responses; not on <code>MyAgents</code> / <code>PinnedAgents</code> rows.</td>
+</tr>
+<tr>
+<td><code>chatSetup</code></td>
+<td><code>string</code></td>
+<td>Setup From Chat as it applies to this agent (camelCase read): <code>"all"</code>, <code>"webchat"</code> or <code>"off"</code>. Write it via <a href="#post-useragentupdatesettings"><code>POST /UserAgent/UpdateSettings</code></a> or at Deploy with the lowercase <code>chatsetup</code> key. See <a href="/docs/agent-messaging#setup-from-chat">Setup From Chat</a>.</td>
 </tr>
 </tbody>
 </table>
@@ -14869,7 +14880,7 @@ pro.credits = starter.credits × tiermultiplier
 <p><strong><code>restarting</code>.</strong> <code>true</code> when this call restarts the agent, <code>false</code> otherwise. With <code>true</code>, the row shows the transition mid-flight: <code>status: 1</code> (Stopping) with a fresh <code>stoppingat</code> timestamp. Wiro re-queues the agent once it has stopped, so it comes back with the new title. A restart request that can't be carried out answers <code>Failed to restart user agent</code>; try again.</p>
 </blockquote>
 <h4 id="post-useragentupdatesettings"><strong>POST</strong> /UserAgent/UpdateSettings</h4>
-<p>Writes per-agent preference toggles that are not credentials and not skill rows. Exposes <code>timezone</code> (operator-selected IANA zone the agent uses for scheduled tasks and voice calls), <code>teamsessionmode</code> (the one Chat Mode for team web-chat history and external-channel DMs), the four <strong>model overrides</strong> (<code>chatmodel</code>, <code>cronmodel</code>, <code>voiceprepmodel</code>, <code>voicepostcallmodel</code>) that choose which LLM the agent uses for chat replies, scheduled (cron) turns, voice-call prep, and the post-call summary turn, <code>enabledcommands</code> (the in-chat slash-command allowlist), and <code>wiroapiallowedpaths</code> (the Wiro API endpoints the agent may call with its own Wiro project key). Submit any subset in the same call: partial updates are supported and untouched fields keep their current value.</p>
+<p>Writes per-agent preference toggles that are not credentials and not skill rows. Exposes <code>timezone</code> (operator-selected IANA zone the agent uses for scheduled tasks and voice calls), <code>teamsessionmode</code> (the one Chat Mode for team web-chat history and external-channel DMs), the four <strong>model overrides</strong> (<code>chatmodel</code>, <code>cronmodel</code>, <code>voiceprepmodel</code>, <code>voicepostcallmodel</code>) that choose which LLM the agent uses for chat replies, scheduled (cron) turns, voice-call prep, and the post-call summary turn, <code>enabledcommands</code> (the in-chat slash-command allowlist), <code>wiroapiallowedpaths</code> (the Wiro API endpoints the agent may call with its own Wiro project key), and <code>chatsetup</code> (where people can change the agent's setup from chat). Submit any subset in the same call: partial updates are supported and untouched fields keep their current value.</p>
 <p><strong>Permission</strong>: owner or team admin only, as for <code>/UserAgent/Update</code>. Team members cannot change these settings.</p>
 <p><strong>Restart</strong>: if the agent is <strong>starting (status <code>3</code>)</strong> or <strong>running (status <code>4</code>)</strong>, the call restarts it so the new timezone, session mode or model selection applies. For agents in status <code>0</code>/<code>1</code>/<code>2</code>/<code>5</code>/<code>6</code> the change applies on the next <code>Start</code>.</p>
 <div class="docs-param-table">
@@ -14936,7 +14947,13 @@ pro.credits = starter.credits × tiermultiplier
 <td><code>wiroapiallowedpaths</code></td>
 <td>string[]|null</td>
 <td>No</td>
-<td>Limits the agent's own calls to the Wiro API, the ones it makes with its Wiro project key (for example through <code>int-wiro-aimodels</code>), to the endpoints you list. Each rule is a method in capitals (<code>GET</code>, <code>POST</code>, <code>PUT</code>, <code>PATCH</code>, <code>DELETE</code> or <code>HEAD</code>), one space and a <code>/v1</code> path, such as <code>"POST /v1/Task/Detail"</code>. A <code>*</code> stands for exactly one whole path segment: <code>"POST /v1/Run/*/*"</code> allows every model run, while <code>"POST /v1/Run/x*"</code> is invalid. Up to 64 rules of at most 200 characters each; duplicates are removed and the order is kept. Calls to endpoints that no rule matches are refused. <code>[]</code> refuses every call, model runs included; <code>null</code> removes the list. An invalid rule, or a value that isn't an array, is rejected with <code>invalid-wiro-api-path-rule</code>, and nothing in the request is saved. Omit the field to keep the current list.</td>
+<td>Limits the agent's own calls to the Wiro API, the ones it makes with its Wiro project key (for example through <code>int-wiro-aimodels</code>), to the endpoints you list. Each rule is a method in capitals (<code>GET</code>, <code>POST</code>, <code>PUT</code>, <code>PATCH</code>, <code>DELETE</code> or <code>HEAD</code>), one space and a <code>/v1</code> path, such as <code>"POST /v1/Task/Detail"</code>. A <code>*</code> stands for exactly one whole path segment: <code>"POST /v1/Run/*/*"</code> allows every model run, while <code>"POST /v1/Run/x*"</code> is invalid. Up to 64 rules of at most 200 characters each; duplicates are removed and the order is kept. Calls to endpoints that no rule matches are refused. <code>[]</code> refuses every call, model runs included; <code>null</code> removes your list, and the agent goes back to the default list. An invalid rule, or a value that isn't an array, is rejected with <code>invalid-wiro-api-path-rule</code>, and nothing in the request is saved. Omit the field to keep the current list. An agent with no list of its own uses the default list: <code>POST /v1/Run/*/*</code>, <code>POST /v1/Task/Detail</code>, <code>POST /v1/Tool/List</code>, <code>POST /v1/Tool/Detail</code>, <code>POST /v1/Tool/UploadModelPostImage</code>, <code>POST /v1/Tool/GenerateModelPostImage</code>, <code>GET /v1/Tool/GenerateModelPostImage</code> and <code>POST /v1/UserAgent/Message/UploadAsset</code>. If a custom skill of yours calls another endpoint, send a list that includes it.</td>
+</tr>
+<tr>
+<td><code>chatsetup</code></td>
+<td>string|null</td>
+<td>No</td>
+<td>Setup From Chat: where people can change the agent's setup by approving setup cards in chat. <code>"all"</code> (the default): in the Wiro web chat and in messages sent with a project API key, such as from your backend or an MCP client. <code>"webchat"</code>: only in the Wiro web chat on wiro.ai. <code>"off"</code>: never from chat; the agent points people to the agent page. <code>null</code> goes back to <code>"all"</code>, and any other value is rejected. Agents that your customers or many people talk to usually choose <code>"webchat"</code> or <code>"off"</code>; see <a href="/docs/agent-messaging#setup-from-chat">Setup From Chat</a>. Read it back as <code>chatSetup</code> on <a href="#post-useragentdetail"><code>UserAgent/Detail</code></a>.</td>
 </tr>
 </tbody>
 </table>
@@ -14946,6 +14963,7 @@ pro.credits = starter.credits × tiermultiplier
 <p><strong>Slash-command catalog.</strong> Valid <code>enabledcommands</code> keys are: <code>agent_help</code>, <code>new_session</code>, <code>agent_status</code>, <code>agent_limits</code>, <code>last_scan</code>, <code>last_heartbeat</code>, <code>agent_restart</code>, <code>clear_all_sessions</code>, <code>clear_history</code>. Read the agent's current allowlist from the <code>enabledCommands</code> field (camelCase) on <a href="#post-useragentdetail"><code>UserAgent/Detail</code></a> / <code>MyAgents</code> / <code>PinnedAgents</code>, where <code>null</code> means the operator never customized it (all commands available) and an array (including <code>[]</code>) is an explicit allowlist.</p>
 <p><strong>Omitted fields are preserved.</strong> The handler distinguishes between "field not in the body" and "field present with <code>null</code>/<code>""</code>/value", so a POST that carries only <code>timezone</code> does <strong>not</strong> touch <code>teamsessionmode</code> or any model field, and vice versa. Sending an empty body (none of the recognised fields) is rejected with <code>nothing-to-update</code> to avoid charging a no-op restart.</p>
 <p><strong>Read vs write casing.</strong> You <strong>read</strong> the current selection from the <code>agentModel</code> object on <code>UserAgent/Detail</code> / <code>MyAgents</code> / <code>PinnedAgents</code> in camelCase (<code>chatModel</code>, <code>cronModel</code>, <code>voicePrepModel</code>, <code>voicePostcallModel</code>); you <strong>write</strong> it here in lowercase (<code>chatmodel</code>, <code>cronmodel</code>, <code>voiceprepmodel</code>, <code>voicepostcallmodel</code>). The selectable set is exactly the models that <code>tokenRates.models</code> marks <code>selectable: true</code>. There is no separate "list models" endpoint, so read <code>tokenRates</code> to populate a picker.</p>
+<p><strong>An agent never manages an account.</strong> Calls the agent makes itself to account, agent, team and billing endpoints, such as <code>/UserAgent/*</code>, <code>/Project/*</code>, <code>/Team/*</code> and <code>/Wallet/*</code>, are refused with HTTP <code>403</code> whatever <code>wiroapiallowedpaths</code> allows: <code>An agent can't call this endpoint. Agent settings change only from the agent page or a setup card in chat.</code> <code>POST /v1/UserAgent/Message/UploadAsset</code> stays open. An agent changes its own setup only through <a href="/docs/agent-messaging#setup-from-chat">setup cards</a> that an agent admin approves.</p>
 </blockquote>
 <h5 id="request">Request</h5>
 <pre><code class="language-bash"># Set IANA timezone only
@@ -15003,6 +15021,15 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
     &quot;wiroapiallowedpaths&quot;: [&quot;POST /v1/Tool/List&quot;, &quot;POST /v1/Tool/Detail&quot;, &quot;POST /v1/Run/*/*&quot;, &quot;POST /v1/Task/Detail&quot;]
   }'
 
+# Let setup changes from chat come only from the Wiro web chat
+curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
+  -H &quot;Authorization: Bearer $WIRO_API_KEY&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{
+    &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;,
+    &quot;chatsetup&quot;: &quot;webchat&quot;
+  }'
+
 # Update both preference toggles in one call
 curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
   -H &quot;Authorization: Bearer $WIRO_API_KEY&quot; \
@@ -15042,7 +15069,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <tr>
 <td>400</td>
 <td><code>nothing-to-update</code></td>
-<td>Body had none of the recognised fields (<code>timezone</code>, <code>teamsessionmode</code>, a model override, <code>enabledcommands</code> or <code>wiroapiallowedpaths</code>).</td>
+<td>Body had none of the recognised fields (<code>timezone</code>, <code>teamsessionmode</code>, a model override, <code>enabledcommands</code>, <code>wiroapiallowedpaths</code> or <code>chatsetup</code>).</td>
 </tr>
 <tr>
 <td>400</td>
@@ -18885,7 +18912,7 @@ print(response.body);
 <h3 id="ordered-turn-timeline">Ordered turn timeline</h3>
 <p>Every Detail or History message row returns a top-level <code>timeline[]</code>. It is the ordered, persisted record of the turn. A turn can contain multiple interleaved blocks, for example:</p>
 <p><code>Thinking → Answer or Tool → Thinking → Answer</code></p>
-<p>Each block has an opaque deterministic <code>blockid</code>, call/content ordering coordinates, <code>type</code> (<code>reasoning</code>, <code>answer</code>, or <code>tool</code>), safe public text or tool state, <code>phase</code> (<code>stream</code>, <code>end</code>, or <code>error</code>), its own monotonically increasing <code>version</code>, and timestamps. Reasoning text is a model-provided reasoning summary, never raw hidden chain-of-thought. Tool blocks expose only <code>toollabel</code>, <code>toolstatus</code>, <code>toolintegration</code>, and <code>toolaction</code>, never a tool ID, arguments, results, or other internal execution metadata. <code>toolintegration</code> and <code>toolaction</code> each hold a word from a <a href="#tool-integration-and-action-values">closed list</a> or <code>null</code>. When a turn ends with <code>agent_error</code> or <code>agent_cancel</code>, the server closes every block still at <code>stream</code> and sends each one as an <code>agent_timeline_delta</code>, usually just before that final event. After <code>agent_end</code>, open blocks normally close a few seconds later. A tool block that closed with <code>toolstatus</code> <code>requested</code> was cut off before it finished.</p>
+<p>Each block has an opaque deterministic <code>blockid</code>, call/content ordering coordinates, <code>type</code> (<code>reasoning</code>, <code>answer</code>, <code>tool</code>, or <code>setup</code>), safe public text, tool state or a setup card, <code>phase</code> (<code>stream</code>, <code>end</code>, or <code>error</code>), its own monotonically increasing <code>version</code>, and timestamps. Reasoning text is a model-provided reasoning summary, never raw hidden chain-of-thought. Tool blocks expose only <code>toollabel</code>, <code>toolstatus</code>, <code>toolintegration</code>, and <code>toolaction</code>, never a tool ID, arguments, results, or other internal execution metadata. <code>toolintegration</code> and <code>toolaction</code> each hold a word from a <a href="#tool-integration-and-action-values">closed list</a> or <code>null</code>. A <code>setup</code> block is a setup change the agent proposes; see <a href="#setup-from-chat">Setup From Chat</a>. When a turn ends with <code>agent_error</code> or <code>agent_cancel</code>, the server closes every block still at <code>stream</code> and sends each one as an <code>agent_timeline_delta</code>, usually just before that final event. After <code>agent_end</code>, open blocks normally close a few seconds later. A tool block that closed with <code>toolstatus</code> <code>requested</code> was cut off before it finished.</p>
 <p>Live WebSocket updates arrive as <code>agent_timeline_delta</code> events carrying one public block. Merge by <code>blockid</code>, replace that block only when its incoming <code>version</code> is strictly newer, then sort by <code>callindex</code>, <code>contentindex</code>, and <code>blockid</code>. <code>agent_subscribed.timeline</code> carries the persisted reconnect snapshot. <code>agent_output</code> remains provisional cumulative SSE output until the corresponding answer block catches up; after completion or reconnect, <code>Message/Detail</code> is authoritative.</p>
 <h2 id="message-lifecycle">Message Lifecycle</h2>
 <p>Every agent message progresses through a defined set of stages:</p>
@@ -19078,18 +19105,38 @@ print(response.body);
 </tr>
 <tr>
 <td><code>agenttoken</code></td>
-<td><code>string</code></td>
-<td>Token for WebSocket subscription and polling. Equivalent to <code>tasktoken</code> in model runs.</td>
+<td><code>string|null</code></td>
+<td>Token for WebSocket subscription and polling. Equivalent to <code>tasktoken</code> in model runs. <code>null</code> when Wiro handled the message itself (see below).</td>
 </tr>
 <tr>
 <td><code>status</code></td>
 <td><code>string</code></td>
-<td>Initial status: always <code>"agent_queue"</code> on success.</td>
+<td>Initial status: <code>"agent_queue"</code> on success, or <code>"agent_end"</code> when Wiro handled the message itself as a setup reply; see <a href="#handled-setup-replies">Replies Wiro handles itself</a>.</td>
 </tr>
 <tr>
 <td><code>modelChangeMarker</code></td>
 <td><code>object|null</code></td>
 <td>Present <strong>only</strong> when this turn's <code>model</code> selects a different chat model than the session was running, i.e. it rotates the model mid-session. Shape: <code>{ guid, type: "model_change", fromModel, toModel, createdat }</code>. The platform also writes a matching marker row into history (see <a href="#post-useragentmessagehistory">Message/History</a>). Absent on turns that keep the session's model.</td>
+</tr>
+<tr>
+<td><code>content</code></td>
+<td><code>string</code></td>
+<td>Present when Wiro handled the message itself or removed a key from it: the message text as stored. See <a href="#keys-in-chat">Keys in chat</a>.</td>
+</tr>
+<tr>
+<td><code>contentmasked</code></td>
+<td><code>boolean</code></td>
+<td>Present (<code>true</code>) when Wiro removed a key from the message before the agent saw it; <code>content</code> holds the text the agent got.</td>
+</tr>
+<tr>
+<td><code>response</code></td>
+<td><code>string</code></td>
+<td>Only when Wiro handled the message itself: its result text.</td>
+</tr>
+<tr>
+<td><code>setupresult</code></td>
+<td><code>object</code></td>
+<td>Only when Wiro handled the message itself: <code>{ applied, dismissed, failed, restarting }</code>.</td>
 </tr>
 </tbody>
 </table>
@@ -19270,7 +19317,7 @@ print(response.body);
 <tr>
 <td><code>agenttoken</code></td>
 <td><code>string|null</code></td>
-<td>The same token issued by <code>Message/Send</code> for this message. Lets callers that arrived at the row through <code>Message/Detail</code> (or <code>Message/History</code>) subscribe to the <a href="/docs/agent-websocket">Agent WebSocket</a> and pick up an in-flight response. This is useful when a chat UI rehydrates after a reload and finds a message still in <code>agent_queue</code> / <code>agent_start</code> / <code>agent_output</code> status. Only <code>null</code> for very old rows that pre-date the column.</td>
+<td>The same token issued by <code>Message/Send</code> for this message. Lets callers that arrived at the row through <code>Message/Detail</code> (or <code>Message/History</code>) subscribe to the <a href="/docs/agent-websocket">Agent WebSocket</a> and pick up an in-flight response. This is useful when a chat UI rehydrates after a reload and finds a message still in <code>agent_queue</code> / <code>agent_start</code> / <code>agent_output</code> status. <code>null</code> for very old rows that pre-date the column, and for replies Wiro handles itself (see <a href="#handled-setup-replies">Replies Wiro handles itself</a>).</td>
 </tr>
 <tr>
 <td><code>user</code></td>
@@ -19382,7 +19429,7 @@ print(response.body);
 </div>
 </div>
 <h3 id="public-timeline-block-fields">Public timeline block fields</h3>
-<p>Only the fields below are returned in browser-facing REST and WebSocket timeline blocks. <code>toollabel</code>, <code>toolstatus</code>, <code>toolintegration</code>, and <code>toolaction</code> appear on tool blocks only.</p>
+<p>Only the fields below are returned in browser-facing REST and WebSocket timeline blocks. <code>toollabel</code>, <code>toolstatus</code>, <code>toolintegration</code>, and <code>toolaction</code> appear on tool blocks only, and <code>setup</code> on setup blocks only.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -19397,12 +19444,13 @@ print(response.body);
 <tr><td><code>blockid</code></td><td><code>string</code></td><td>Opaque deterministic identity for one logical block (for example <code>c0:i0</code>). Use it as the merge key; do not parse its current format.</td></tr>
 <tr><td><code>callindex</code></td><td><code>number</code></td><td>Zero-based call order within the turn. Primary sort key.</td></tr>
 <tr><td><code>contentindex</code></td><td><code>number</code></td><td>Zero-based content order within the call. Secondary sort key.</td></tr>
-<tr><td><code>type</code></td><td><code>string</code></td><td><code>reasoning</code>, <code>answer</code>, or <code>tool</code>.</td></tr>
-<tr><td><code>text</code></td><td><code>string|null</code></td><td>Safe public text for <code>reasoning</code> and <code>answer</code>; <code>null</code> for tool blocks. Reasoning text is an OpenAI GPT-5 provider summary, not raw chain-of-thought.</td></tr>
+<tr><td><code>type</code></td><td><code>string</code></td><td><code>reasoning</code>, <code>answer</code>, <code>tool</code>, or <code>setup</code>.</td></tr>
+<tr><td><code>text</code></td><td><code>string|null</code></td><td>Safe public text for <code>reasoning</code> and <code>answer</code>; <code>null</code> for tool and setup blocks. Reasoning text is an OpenAI GPT-5 provider summary, not raw chain-of-thought.</td></tr>
 <tr><td><code>toollabel</code></td><td><code>string</code></td><td>Tool blocks only. Safe display label for the tool. Arguments and results are never included.</td></tr>
 <tr><td><code>toolstatus</code></td><td><code>string</code></td><td>Tool blocks only. <code>requested</code> while the step runs, then <code>completed</code> or <code>error</code>.</td></tr>
 <tr><td><code>toolintegration</code></td><td><code>string|null</code></td><td>Tool blocks only. The connector the step works in, as its <code>key</code> from <a href="/docs/agent-credentials#post-credentialslist"><code>POST /Credentials/List</code></a>, for example <code>shopify</code>. <code>null</code> when the step doesn't work in a connector. See <a href="#tool-integration-and-action-values">Tool integration and action values</a>.</td></tr>
 <tr><td><code>toolaction</code></td><td><code>string|null</code></td><td>Tool blocks only. What the step does, for example <code>screenshot</code> or <code>click</code>. <code>null</code> when no word fits the step, and always <code>null</code> when <code>toolintegration</code> is set. See <a href="#tool-integration-and-action-values">Tool integration and action values</a>.</td></tr>
+<tr><td><code>setup</code></td><td><code>object</code></td><td>Setup blocks only. The change the agent proposes and its state; see <a href="#setup-blocks">The setup block</a>.</td></tr>
 <tr><td><code>phase</code></td><td><code>string</code></td><td><code>stream</code>, <code>end</code>, or <code>error</code> for this block. A block still at <code>stream</code> closes when its turn ends with <code>agent_error</code> or <code>agent_cancel</code>, and normally a few seconds after <code>agent_end</code>.</td></tr>
 <tr><td><code>version</code></td><td><code>number</code></td><td>Monotonic <strong>within this block</strong>. Ignore a delta whose version is not strictly newer than the stored block's version.</td></tr>
 <tr><td><code>startedat</code></td><td><code>number|null</code></td><td>Block start timestamp when available.</td></tr>
@@ -20129,6 +20177,497 @@ print(response.body);
 </ul>
 <p>When polling for the final state, check <code>status === "agent_cancel"</code>.</p>
 </blockquote>
+<h2 id="setup-from-chat">Setup From Chat</h2>
+<p>An agent can help the people who run it set it up in the chat: save a key for a connector, create or change a scheduled task, add or change a custom skill, or change its time zone. The agent never changes its own setup and never sees a key. It proposes the change as a <strong>setup card</strong>: Wiro checks the card against the agent's current setup and stores it on the message that asked for it, where it shows as a <code>setup</code> block in that message's <code>timeline[]</code>. Nothing changes until an agent admin (the owner, or an admin of the agent's team) approves the card.</p>
+<p>Where cards can be proposed and approved is the agent's <code>chatsetup</code> setting. Set it with <a href="/docs/agent-overview#post-useragentupdatesettings"><code>UpdateSettings</code></a> or at <a href="/docs/agent-overview#post-useragentdeploy"><code>Deploy</code></a>, and read it back as <code>chatSetup</code> on <a href="/docs/agent-overview#post-useragentdetail"><code>UserAgent/Detail</code></a>:</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>What it allows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>all</code> (default)</td>
+<td>Setup cards in the Wiro web chat and in messages sent with a project API key, such as from your backend or an MCP client.</td>
+</tr>
+<tr>
+<td><code>webchat</code></td>
+<td>Setup cards only in the Wiro web chat on wiro.ai. Messages sent with a project API key never get or approve a card.</td>
+</tr>
+<tr>
+<td><code>off</code></td>
+<td>No setup cards. The agent tells people to make the change on the agent page.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<blockquote>
+<p><strong>Agents your customers talk to.</strong> A message sent with your project API key acts with your rights, even when one of your end users typed it. If people who don't manage the agent talk to it through your app, set <code>chatsetup</code> to <code>"webchat"</code> or <code>"off"</code>, so a "yes" from one of them can't change the agent's setup.</p>
+</blockquote>
+<h3 id="setup-blocks">The setup block</h3>
+<p>A setup block has <code>type: "setup"</code>, <code>text: null</code> and a <code>setup</code> object with the proposed change and its state. Setup blocks sort after every other block of the turn, in the order the agent proposed them, and their <code>phase</code> is always <code>end</code>. A message holds at most three. The card's <code>status</code> changes when someone approves or dismisses it. A pending card's block has <code>version</code> <code>1</code>; once the card is applied, dismissed or failed, its block has <code>version</code> <code>2</code> with the new <code>status</code>, so keep the copy with the higher <code>version</code> whichever arrives first. Clients still subscribed to the message's <code>agenttoken</code> get the new block as an <code>agent_timeline_delta</code>, and <a href="#post-useragentmessagedetail">Message/Detail</a> and <a href="#post-useragentmessagehistory">Message/History</a> always return the current state.</p>
+<pre><code class="language-json">{
+  &quot;blockid&quot;: &quot;s:k3v9q2m8x1za&quot;,
+  &quot;callindex&quot;: 1000000,
+  &quot;contentindex&quot;: 0,
+  &quot;type&quot;: &quot;setup&quot;,
+  &quot;text&quot;: null,
+  &quot;setup&quot;: {
+    &quot;v&quot;: 1,
+    &quot;id&quot;: &quot;k3v9q2m8x1za&quot;,
+    &quot;kind&quot;: &quot;schedule&quot;,
+    &quot;action&quot;: &quot;create&quot;,
+    &quot;key&quot;: &quot;cs-cron-morning-summary&quot;,
+    &quot;title&quot;: &quot;Morning summary&quot;,
+    &quot;cron&quot;: &quot;0 9 * * 1-5&quot;,
+    &quot;instructions&quot;: &quot;Every weekday, summarize yesterday's orders and post the summary in the web chat.&quot;,
+    &quot;requestedby&quot;: &quot;ada-uuid&quot;,
+    &quot;createdat&quot;: 1743350406
+  },
+  &quot;phase&quot;: &quot;end&quot;,
+  &quot;version&quot;: 1,
+  &quot;startedat&quot;: 1743350406,
+  &quot;updatedat&quot;: 1743350406
+}
+</code></pre>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>v</code></td>
+<td><code>number</code></td>
+<td>Card format version, <code>1</code>.</td>
+</tr>
+<tr>
+<td><code>id</code></td>
+<td><code>string</code></td>
+<td>The card's id: 12 lower-case letters and digits. Send it as <code>cardid</code> to <a href="#post-useragentmessagesetupcardapply"><code>SetupCardApply</code></a>.</td>
+</tr>
+<tr>
+<td><code>kind</code></td>
+<td><code>string</code></td>
+<td><code>connect</code> (save a key for a connector), <code>schedule</code> (a scheduled task), <code>skill</code> (a custom skill) or <code>timezone</code>.</td>
+</tr>
+<tr>
+<td><code>action</code></td>
+<td><code>string</code></td>
+<td><code>schedule</code>: <code>create</code>, <code>update</code>, <code>pause</code>, <code>resume</code> or <code>delete</code>. <code>skill</code>: <code>create</code>, <code>update</code>, <code>disable</code> or <code>enable</code>. Absent on <code>connect</code> and <code>timezone</code> cards.</td>
+</tr>
+<tr>
+<td><code>connector</code></td>
+<td><code>string</code></td>
+<td><code>connect</code> only. The connector's <code>key</code>, as <a href="/docs/agent-credentials#post-credentialslist"><code>POST /Credentials/List</code></a> lists it, for example <code>serper</code>. A card never holds a key's value.</td>
+</tr>
+<tr>
+<td><code>key</code></td>
+<td><code>string</code></td>
+<td><code>schedule</code> and <code>skill</code> only. The scheduled task's key (<code>cs-cron-&lt;name&gt;</code>) or the custom skill's key (<code>cs-&lt;name&gt;</code>).</td>
+</tr>
+<tr>
+<td><code>title</code></td>
+<td><code>string</code></td>
+<td>Optional. One line, up to 80 characters.</td>
+</tr>
+<tr>
+<td><code>cron</code></td>
+<td><code>string</code></td>
+<td><code>schedule</code> only: always on <code>create</code>, optional on <code>update</code>. A 5-field cron in the agent's time zone. A task set up from chat runs at most once an hour.</td>
+</tr>
+<tr>
+<td><code>instructions</code></td>
+<td><code>string</code></td>
+<td><code>schedule</code> and <code>skill</code> only, on <code>create</code> and <code>update</code>. The full text of the task or skill, up to 20,000 characters.</td>
+</tr>
+<tr>
+<td><code>timezone</code></td>
+<td><code>string</code></td>
+<td><code>timezone</code> only. The proposed IANA time zone, for example <code>Europe/Istanbul</code>.</td>
+</tr>
+<tr>
+<td><code>note</code></td>
+<td><code>string</code></td>
+<td>Optional. The agent's one-line note about the change, up to 300 characters.</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td><code>string</code></td>
+<td><code>pending</code>, <code>applied</code>, <code>dismissed</code> or <code>failed</code>. Absent means <code>pending</code>.</td>
+</tr>
+<tr>
+<td><code>actedat</code></td>
+<td><code>number</code></td>
+<td>Unix seconds when the card was applied, dismissed or failed. Absent while pending.</td>
+</tr>
+<tr>
+<td><code>actedby</code></td>
+<td><code>string</code></td>
+<td>Account UUID of the person who applied or dismissed the card. Absent while pending.</td>
+</tr>
+<tr>
+<td><code>error</code></td>
+<td><code>string</code></td>
+<td><code>failed</code> only. A plain sentence that says why the change could not be made. When the cause was on Wiro's side, it reads <code>The change could not be applied. Try again from the agent page.</code></td>
+</tr>
+<tr>
+<td><code>requestedby</code></td>
+<td><code>string</code></td>
+<td>Account UUID of the person whose message asked for the change.</td>
+</tr>
+<tr>
+<td><code>createdat</code></td>
+<td><code>number</code></td>
+<td>Unix seconds when the agent proposed the change.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Fields that don't apply to a card's kind are absent. More kinds can be added later, so skip a card whose <code>kind</code> you don't know.</p>
+<h3 id="approving-setup-cards">Approving a setup card</h3>
+<p>After proposing a card, the agent asks in one short line whether to apply it, or, for a <code>connect</code> card, for the key. An agent admin approves one card at a time, in one of three ways:</p>
+<ol>
+<li><strong>Reply yes.</strong> Send a message that is only an approval, such as <code>yes</code>, <code>ok</code>, <code>approve</code>, <code>go ahead</code>, <code>evet</code> or <code>👍</code>, with <a href="#post-useragentmessagesend"><code>Message/Send</code></a> in the same session. It acts on the pending cards of the agent's latest reply that are less than 30 minutes old, and it applies one card, only one whose exact content Wiro has shown you.</li>
+<li><strong>Press Apply</strong> on the card in the Wiro web chat.</li>
+<li><strong>Call</strong> <a href="#post-useragentmessagesetupcardapply"><code>POST /UserAgent/Message/SetupCardApply</code></a> with the card's <code>id</code>. This also works after 30 minutes, as long as the card is pending.</li>
+</ol>
+<p>What a <code>yes</code> does depends on where it is sent and how many cards are pending (<code>connect</code> cards don't count; see below):</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Pending cards</th>
+<th>What <code>yes</code> does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>One, in the Wiro web chat</td>
+<td>Applies it. The card is shown under the agent's reply.</td>
+</tr>
+<tr>
+<td>One, in a message sent with a project API key</td>
+<td>The first <code>yes</code> applies nothing: Wiro answers with the card's exact content (the <a href="#setup-card-listing">card listing</a>). A second <code>yes</code> applies that card.</td>
+</tr>
+<tr>
+<td>Several</td>
+<td>The first <code>yes</code> gets the card listing, which numbers the cards. Then reply <code>yes</code> and a number, such as <code>yes 2</code>, to apply that card, one card per reply. A plain <code>yes</code> never applies one of several cards. In the web chat, the card's Apply button works too.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>A number works only for a card Wiro has listed: <code>yes 2</code> sent before the listing gets the listing. A message that says more, such as <code>yes, but at 10</code>, is an ordinary message for the agent. A reply such as <code>no</code> or <code>cancel</code> dismisses every pending card of the latest reply and goes to the agent as usual. A <code>connect</code> card needs its key, so a <code>yes</code> never applies one: when only <code>connect</code> cards are pending, <code>yes</code> is an ordinary message.</p>
+<p>Wiro applies the stored card, checked again against the agent's current setup, never anything written in the reply. A card is applied at most once. Only an agent admin can apply a card: a reply from anyone else changes nothing and gets <code>Only an agent admin can apply setup changes.</code> When a change needs a restart, the agent restarts to load it: continue the chat in about a minute.</p>
+<h3 id="setup-card-listing">The card listing</h3>
+<p>When a <code>yes</code> can't apply a card yet, Wiro answers it with the exact content of the pending cards and applies nothing. Each card has a number, its place on the agent's reply (1 to 3), a first line that says what it does, and its full instructions, each line starting with <code>&gt; </code>. For one card, <code>response</code> reads:</p>
+<pre><code class="language-text">The agent proposes this setup change. Nothing is applied yet.
+
+Card 1: Create scheduled task cs-cron-morning-summary (title: Morning summary), schedule 0 9 * * 1-5.
+Instructions:
+&gt; Every weekday, summarize yesterday's orders and post the summary in the web chat.
+
+Reply &quot;yes&quot; to apply exactly this change, or &quot;no&quot; to turn it down.
+</code></pre>
+<p>With several cards, it starts with <code>The agent proposes these setup changes. Nothing is applied yet.</code> and ends with <code>To apply one, reply "yes" and its number, such as "yes 1", one card per reply, or press Apply on the card in the web chat. Reply "no" to turn them all down.</code> Show this text, as it is, to the person who approves. The listing is a reply Wiro handles itself (see <a href="#handled-setup-replies">below</a>), and its <code>setupresult</code> lists no card.</p>
+<h3 id="keys-in-chat">Keys in chat</h3>
+<p>While setup from chat is on for a message, Wiro keeps keys out of the agent's conversation:</p>
+<ul>
+<li><strong>A key as the reply.</strong> When the agent's latest reply has one pending <code>connect</code> card and its connector takes one key (or has one required key field still empty), an agent admin can paste the key as the reply, a text message of up to 2,000 characters with no attachments. Wiro takes the reply as the key when it is in that connector's own key format, when the whole message is one key-like word, or when the key follows a word such as <code>key</code> or <code>token</code> (<code>my key is ...</code>). A sentence that only holds an id, a URL, an email address or a plain word is an ordinary message, and the card stays pending. Wiro saves the key to the connector and marks the card applied. The key never reaches the agent, and the stored message reads <code>[key saved to &lt;Connector title&gt;]</code> in its place. A key in another service's format is not saved, and when the connector needs more fields, the card stays pending and Wiro's answer names them; see <a href="#setup-reply-lines">Wiro's answers</a>.</li>
+<li><strong>Keys in other messages.</strong> Wiro removes clear keys: a key format Wiro knows for a provider or connector, and a key written after a word such as <code>key</code>, <code>token</code>, <code>secret</code> or <code>password</code>. The stored text and the text the agent gets hold <code>[key removed]</code> in their place, and Send returns <code>contentmasked: true</code> with that text in <code>content</code>. The agent can then propose a <code>connect</code> card. Other ids, such as Google Sheet and Drive ids, commit hashes and order numbers, reach the agent unchanged. While a <code>connect</code> card of the latest reply waits for its key, every key-like word in any other text message of up to 2,000 characters is removed without being saved.</li>
+<li>From your own backend, save keys with <a href="/docs/agent-overview#post-useragentcredentialupsert"><code>POST /UserAgent/CredentialUpsert</code></a> instead of sending them in a message.</li>
+</ul>
+<h3 id="handled-setup-replies">Replies Wiro handles itself</h3>
+<p>When Wiro handles a message itself (a <code>yes</code> that applies a card or gets the <a href="#setup-card-listing">card listing</a>, a key pasted as the reply, or a reply refused because the sender isn't an agent admin), no agent turn runs and no credits are used, even when the agent has no credits left. <a href="#post-useragentmessagesend"><code>Message/Send</code></a> answers at once with the result:</p>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;messageguid&quot;: &quot;d4e5f6a7-b8c9-0123-def4-567890123456&quot;,
+  &quot;agenttoken&quot;: null,
+  &quot;status&quot;: &quot;agent_end&quot;,
+  &quot;content&quot;: &quot;yes&quot;,
+  &quot;response&quot;: &quot;✅ Applied: Scheduled task Morning summary created.\nYour agent is restarting to load the change. Continue in about a minute.&quot;,
+  &quot;setupresult&quot;: {
+    &quot;applied&quot;: [&quot;k3v9q2m8x1za&quot;],
+    &quot;dismissed&quot;: [],
+    &quot;failed&quot;: [],
+    &quot;restarting&quot;: true
+  }
+}
+</code></pre>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>agenttoken</code></td>
+<td><code>null</code></td>
+<td>There is no agent turn to follow on the WebSocket.</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td><code>string</code></td>
+<td><code>"agent_end"</code>: the message is already finished.</td>
+</tr>
+<tr>
+<td><code>content</code></td>
+<td><code>string</code></td>
+<td>The message as stored. A saved key reads <code>[key saved to &lt;Connector title&gt;]</code>.</td>
+</tr>
+<tr>
+<td><code>response</code></td>
+<td><code>string</code></td>
+<td>Wiro's answer, always in English: the lines in <a href="#setup-reply-lines">Wiro's answers</a>, or the <a href="#setup-card-listing">card listing</a>. Read <code>setupresult</code> in code, not this text.</td>
+</tr>
+<tr>
+<td><code>setupresult</code></td>
+<td><code>object</code></td>
+<td><code>applied</code> and <code>dismissed</code>: the ids of the cards applied and dismissed. <code>failed</code>: <code>[{ id, error }]</code>. <code>restarting</code>: <code>true</code> when the agent restarts to load the change. All three lists are empty for a card listing.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>The message is stored like any finished exchange: Message/Detail and Message/History return it with <code>status: "agent_end"</code>, <code>metadata.type: "setup_result"</code> and <code>model: null</code>. When the Send has a <code>callbackurl</code>, Wiro posts the result to it right away with <code>status: "agent_end"</code>, as for a finished turn; see <a href="/docs/agent-webhooks">Agent Webhooks</a>.</p>
+<h3 id="setup-reply-lines">Wiro's answers</h3>
+<p>The lines Wiro writes in <code>response</code>:</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Line</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>✅ Applied: &lt;summary&gt;.</code></td>
+<td>The card was applied. The summary says what changed, such as <code>Scheduled task Morning summary created</code>, <code>Custom skill Weekly report turned off</code>, <code>Time zone set to Europe/Istanbul</code> or <code>&lt;Connector&gt; connected</code>.</td>
+</tr>
+<tr>
+<td><code>⚠️ Not applied: &lt;reason&gt;</code></td>
+<td>The change failed. The card's <code>status</code> is now <code>failed</code>, with the same reason in <code>error</code>.</td>
+</tr>
+<tr>
+<td><code>Your agent is restarting to load the change. Continue in about a minute.</code></td>
+<td>The change restarts the agent.</td>
+</tr>
+<tr>
+<td><code>1 more setup change is still pending.</code> or <code>&lt;N&gt; more setup changes are still pending.</code></td>
+<td>Other cards of the same reply still wait. Reply <code>yes</code> and a card's number to apply the next one.</td>
+</tr>
+<tr>
+<td><code>A connector card still needs its key: paste the key as your reply.</code> or <code>&lt;N&gt; connector cards still need their keys: add each key on its card.</code></td>
+<td><code>connect</code> cards of the same reply still wait for their keys.</td>
+</tr>
+<tr>
+<td><code>Saved &lt;fields&gt; for &lt;Connector&gt;. Still needed: &lt;fields&gt;.</code></td>
+<td>The pasted key was saved, and the connector needs more fields. The card stays pending: add the rest on the card or on the agent page. When Wiro can't name the missing fields, the second sentence reads <code>It is not connected yet: finish it on the agent page.</code></td>
+</tr>
+<tr>
+<td><code>⚠️ Not saved: &lt;reason&gt;. Paste the key again as your reply.</code></td>
+<td>The pasted key was refused, for example because it is too short. Nothing was saved and the card stays pending.</td>
+</tr>
+<tr>
+<td><code>That does not look like a &lt;Connector&gt; key, so it was not saved. Paste the &lt;Connector&gt; key as your reply.</code></td>
+<td>The reply holds a key in another service's format. Nothing was saved, the stored message reads <code>[key removed]</code> in its place, and the card stays pending. When Wiro knows the format, the sentence names it, such as <code>(it looks like &lt;kind&gt;)</code>.</td>
+</tr>
+<tr>
+<td><code>This setup change is being applied right now. Try again in a moment.</code></td>
+<td>Someone is applying the same card at this moment. The card is still pending.</td>
+</tr>
+<tr>
+<td><code>This setup change was already handled.</code></td>
+<td>The card was applied or dismissed before this reply arrived.</td>
+</tr>
+<tr>
+<td><code>This card is older than 30 minutes. Use the card's button, or ask the agent again.</code></td>
+<td>The card turned 30 minutes old while the reply was handled. Apply it with its button or <a href="#post-useragentmessagesetupcardapply"><code>SetupCardApply</code></a>.</td>
+</tr>
+<tr>
+<td><code>Only an agent admin can apply setup changes.</code></td>
+<td>The sender isn't an agent admin. Nothing changed.</td>
+</tr>
+<tr>
+<td><code>The agent proposes this setup change. Nothing is applied yet.</code></td>
+<td>The start of the <a href="#setup-card-listing">card listing</a>. Nothing changed.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<h2 id="post-useragentmessagesetupcardapply"><strong>POST</strong> /UserAgent/Message/SetupCardApply</h2>
+<p>Applies or dismisses one setup card; the card's buttons in the Wiro web chat call it too. Wiro applies the stored card, checked again against the agent's current setup. See <a href="#setup-from-chat">Setup From Chat</a>.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>useragentguid</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>The agent instance GUID.</td>
+</tr>
+<tr>
+<td><code>messageguid</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>The message that holds the card: the row whose <code>timeline[]</code> has the <code>setup</code> block.</td>
+</tr>
+<tr>
+<td><code>cardid</code></td>
+<td>string</td>
+<td>Yes</td>
+<td>The card's <code>setup.id</code>.</td>
+</tr>
+<tr>
+<td><code>action</code></td>
+<td>string</td>
+<td>Yes</td>
+<td><code>"apply"</code> or <code>"dismiss"</code>.</td>
+</tr>
+<tr>
+<td><code>values</code></td>
+<td>object</td>
+<td>No</td>
+<td><code>connect</code> cards only: <code>{ "&lt;fieldname&gt;": "&lt;value&gt;" }</code> for the connector's fields, as <a href="/docs/agent-credentials#post-credentialsdetail"><code>POST /Credentials/Detail</code></a> lists them. Only text, password, URL and email fields, up to 4,096 characters each. Wiro saves them to the connector; they are never returned and never reach the agent.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p><strong>Permission</strong>: applying needs an agent admin (the owner, or an admin of the agent's team). Any member who can see the chat can dismiss. The message must be one you can read with <a href="#post-useragentmessagehistory">Message/History</a> (in private Chat Mode, your own messages), and the card must be pending: an applied or dismissed card is never applied again.</p>
+<h3 id="request_2">Request</h3>
+<pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -H &quot;x-api-key: YOUR_API_KEY&quot; \
+  -d '{
+    &quot;useragentguid&quot;: &quot;a1b2c3d4-e5f6-7890-abcd-ef1234567890&quot;,
+    &quot;messageguid&quot;: &quot;c3d4e5f6-a7b8-9012-cdef-345678901234&quot;,
+    &quot;cardid&quot;: &quot;k3v9q2m8x1za&quot;,
+    &quot;action&quot;: &quot;apply&quot;
+  }'
+</code></pre>
+<h3 id="response_8">Response</h3>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;setup&quot;: {
+    &quot;v&quot;: 1,
+    &quot;id&quot;: &quot;k3v9q2m8x1za&quot;,
+    &quot;kind&quot;: &quot;schedule&quot;,
+    &quot;action&quot;: &quot;create&quot;,
+    &quot;key&quot;: &quot;cs-cron-morning-summary&quot;,
+    &quot;title&quot;: &quot;Morning summary&quot;,
+    &quot;cron&quot;: &quot;0 9 * * 1-5&quot;,
+    &quot;instructions&quot;: &quot;Every weekday, summarize yesterday's orders and post the summary in the web chat.&quot;,
+    &quot;requestedby&quot;: &quot;ada-uuid&quot;,
+    &quot;createdat&quot;: 1743350406,
+    &quot;status&quot;: &quot;applied&quot;,
+    &quot;actedat&quot;: 1743350460,
+    &quot;actedby&quot;: &quot;ada-uuid&quot;
+  },
+  &quot;restarting&quot;: true,
+  &quot;summary&quot;: &quot;Scheduled task Morning summary created&quot;
+}
+</code></pre>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>setup</code></td>
+<td><code>object</code></td>
+<td>The card after the action, in the same shape as a <a href="#setup-blocks">setup block</a>'s <code>setup</code>.</td>
+</tr>
+<tr>
+<td><code>restarting</code></td>
+<td><code>boolean</code></td>
+<td><code>true</code> when the agent restarts to load the change. Continue the chat in about a minute.</td>
+</tr>
+<tr>
+<td><code>summary</code></td>
+<td><code>string</code></td>
+<td>A short English phrase that says what changed, such as <code>Scheduled task Morning summary created</code>. Empty when nothing was applied.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Setup from chat is off for this agent.</code></td>
+<td><code>chatsetup</code> is <code>"off"</code>, or the call is sent with a project API key and <code>chatsetup</code> is <code>"webchat"</code>.</td>
+</tr>
+<tr>
+<td><code>Wait until the agent finishes this reply, then apply it.</code></td>
+<td><code>action</code> is <code>"apply"</code> while the reply that holds the card is still being written. <code>"dismiss"</code> works at any time.</td>
+</tr>
+<tr>
+<td><code>Only an agent admin can apply setup changes.</code></td>
+<td>The caller can see the chat but isn't an agent admin.</td>
+</tr>
+<tr>
+<td><code>Saved &lt;fields&gt; for &lt;Connector&gt;. Still needed: &lt;fields&gt;.</code></td>
+<td>A <code>connect</code> card's <code>values</code> were saved, and the connector needs more fields. The card stays pending and <code>restarting</code> can be <code>true</code>. Send the missing fields with the same card to finish it.</td>
+</tr>
+<tr>
+<td><code>The change could not be applied. Try again from the agent page.</code></td>
+<td>The change failed on Wiro's side. The card's <code>status</code> is now <code>failed</code>.</td>
+</tr>
+<tr>
+<td>Another sentence in <code>errors[0].message</code></td>
+<td>The message or card wasn't found, the card is no longer pending, a value was refused (nothing is saved and the card stays pending), or the change no longer fits the agent's setup. When the change itself fails, the card's <code>status</code> becomes <code>failed</code> with the sentence in <code>error</code>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
 <h2 id="session-management">Session Management</h2>
 <p>Sessions let you maintain separate conversation threads with the same agent:</p>
 <ul>
@@ -21131,6 +21670,7 @@ func main() {
 </ol>
 <p><code>version</code> is per block, not global. A turn can therefore render <code>Thinking → Answer or Tool → Thinking → Answer</code> across multiple calls. <code>reasoning</code> blocks contain only model-provided reasoning summaries, never raw chain-of-thought. <code>answer</code> blocks expose safe answer text. <code>tool</code> blocks expose only <code>toollabel</code>, <code>toolstatus</code>, <code>toolintegration</code>, and <code>toolaction</code>; their <code>text</code> is <code>null</code>, and tool IDs, arguments, and results are not public.</p>
 <p>The complete public block shape is <code>blockid</code>, <code>callindex</code>, <code>contentindex</code>, <code>type</code>, <code>text</code>, <code>phase</code>, <code>version</code>, <code>startedat</code>, and <code>updatedat</code>, and tool blocks also carry <code>toollabel</code>, <code>toolstatus</code>, <code>toolintegration</code>, and <code>toolaction</code>. Reasoning and answer blocks don't have these four fields. <code>phase</code> is <code>stream</code>, <code>end</code>, or <code>error</code>; timestamps can be <code>null</code> when unavailable. No additional internal correlation or execution metadata is emitted in this block.</p>
+<p>When the agent proposes a setup change, a <code>setup</code> block arrives the same way. It sorts after the turn's other blocks, its <code>text</code> is <code>null</code> and it carries a <code>setup</code> object instead of tool fields; see <a href="/docs/agent-messaging#setup-from-chat">Setup From Chat</a>. A pending card's block has <code>version</code> 1. When the card is applied, dismissed or fails, the block comes again with <code>version</code> 2 and the new <code>status</code>; <code>Message/Detail</code> and <code>Message/History</code> always have the current state.</p>
 <p>Tool blocks carry two closed-list words:</p>
 <ul>
 <li><code>toolintegration</code> names the connector the step works in, as its <code>key</code> from <a href="/docs/agent-credentials#post-credentialslist"><code>POST /Credentials/List</code></a>: <code>adjust</code>, <code>apollo</code>, <code>apple-appstore</code>, <code>brevo</code>, <code>calendarific</code>, <code>facebook-pages</code>, <code>firebase</code>, <code>ga4</code>, <code>gmail</code>, <code>google-ads</code>, <code>google-business</code>, <code>google-calendar</code>, <code>google-drive</code>, <code>google-merchant-center</code>, <code>google-play</code>, <code>hubspot</code>, <code>instagram</code>, <code>lemlist</code>, <code>linkedin</code>, <code>mailchimp</code>, <code>meta-ads</code>, <code>reddit</code>, <code>roasit</code>, <code>sendgrid</code>, <code>serper</code>, <code>shopify</code>, <code>telegram</code>, <code>tiktok</code>, <code>tiktok-ads</code>, <code>twitter</code>, <code>wiro</code>, <code>woocommerce</code>, <code>wordpress</code>, or <code>youtube</code>.</li>
@@ -22783,6 +23323,7 @@ function connect(agenttoken, onStreamingChunk, onFinal, onFailure) {
 <h2 id="how-it-works">How It Works</h2>
 <p>When you send a message to an agent via <code>POST /UserAgent/Message/Send</code>, include a <code>callbackurl</code> parameter. Once the agent finishes processing on the bridge, Wiro sends a POST request to your URL with the result. Callbacks fire on <code>agent_end</code> (success), <code>agent_error</code> (failure during processing), and <code>agent_cancel</code> <strong>only when the abort hits the bridge mid-flight</strong>. Messages cancelled while still queued (status <code>agent_queue</code>, before the bridge picks them up) are marked <code>agent_cancel</code> in the database but <strong>do not fire a webhook</strong>, because there was no processing attempt to report on. See the "When the cancel webhook fires" note below for the full decision table.</p>
 <p>This lets you build fully asynchronous workflows: fire a message and let your backend handle the response whenever it arrives, without polling or maintaining a WebSocket connection.</p>
+<p>A setup reply that Wiro handles itself, such as a <code>yes</code> that applies a setup card, runs no agent turn: Wiro posts its result to the <code>callbackurl</code> right away, with <code>status: "agent_end"</code>. See <a href="/docs/agent-messaging#handled-setup-replies">Replies Wiro handles itself</a>.</p>
 <blockquote>
 <p><strong>Results that arrive later.</strong> When the agent moves longer work to the background, its turn ends with a short line saying the result will follow, and that line is what your <code>callbackurl</code> receives (<code>status: "agent_end"</code>). The result is added to the session later as a separate message and doesn't call the <code>callbackurl</code>. Read it with <a href="/docs/agent-messaging#post-useragentmessagehistory"><code>Message/History</code></a>, or follow the session on the <a href="/docs/agent-websocket#following-a-session">Agent WebSocket</a>.</p>
 </blockquote>

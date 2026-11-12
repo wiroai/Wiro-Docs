@@ -280,6 +280,8 @@ The merge contract is:
 
 The complete public block shape is `blockid`, `callindex`, `contentindex`, `type`, `text`, `phase`, `version`, `startedat`, and `updatedat`, and tool blocks also carry `toollabel`, `toolstatus`, `toolintegration`, and `toolaction`. Reasoning and answer blocks don't have these four fields. `phase` is `stream`, `end`, or `error`; timestamps can be `null` when unavailable. No additional internal correlation or execution metadata is emitted in this block.
 
+When the agent proposes a setup change, a `setup` block arrives the same way. It sorts after the turn's other blocks, its `text` is `null` and it carries a `setup` object instead of tool fields; see [Setup From Chat](/docs/agent-messaging#setup-from-chat). A pending card's block has `version` 1. When the card is applied, dismissed or fails, the block comes again with `version` 2 and the new `status`; `Message/Detail` and `Message/History` always have the current state.
+
 Tool blocks carry two closed-list words:
 
 - `toolintegration` names the connector the step works in, as its `key` from [`POST /Credentials/List`](/docs/agent-credentials#post-credentialslist): `adjust`, `apollo`, `apple-appstore`, `brevo`, `calendarific`, `facebook-pages`, `firebase`, `ga4`, `gmail`, `google-ads`, `google-business`, `google-calendar`, `google-drive`, `google-merchant-center`, `google-play`, `hubspot`, `instagram`, `lemlist`, `linkedin`, `mailchimp`, `meta-ads`, `reddit`, `roasit`, `sendgrid`, `serper`, `shopify`, `telegram`, `tiktok`, `tiktok-ads`, `twitter`, `wiro`, `woocommerce`, `wordpress`, or `youtube`.
