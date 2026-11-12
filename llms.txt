@@ -521,13 +521,19 @@ Client compatibility and boundaries:
   (`wiro.image` for `generateImage`, `wiro.speech` for `generateSpeech`,
   `wiro.transcription` for `transcribe`, `wiro.video` for
   `experimental_generateVideo`); each result carries its task ID and cost in
-  `providerMetadata.wiro`.
+  `providerMetadata.wiro`. Wiro-Next-Starter
+  (https://github.com/wiroai/Wiro-Next-Starter) is a Next.js app built on this
+  provider that deploys on Vercel or Railway.
 - Cursor's OpenAI base URL override takes `https://llm.wiro.ai/v1`; Cursor
   appends `/chat/completions` itself.
 - OpenClaw can use a model's declared `openai-completions`,
   `openai-responses`, or `anthropic-messages` transport.
 - Hermes function-calling clients, Cline, Roo Code, and Continue can use Chat
   when their custom-provider setup accepts a base URL.
+- Hermes Agent 0.22.6+ also has the `wiro` model provider plugin
+  (https://github.com/wiroai/Wiro-Hermes): `hermes plugins install wiro`,
+  `hermes config set WIRO_API_KEY YOUR_API_KEY:YOUR_API_SECRET` (the key alone
+  for API Key Only), then pick Wiro AI in `hermes model`.
 - Windsurf Cascade has no native provider route; use a custom-endpoint
   extension.
 - No hosted web/file-search, code-interpreter, computer-use, or remote MCP tool
@@ -912,7 +918,7 @@ Transport: Streamable HTTP (stateless)
 Auth: OAuth 2.1 browser sign-in (the easiest way) for apps that support MCP authorization (ChatGPT, Claude connectors, Claude Code, Cursor, VS Code, Gemini CLI, Codex, Zed, Devin, Kiro, goose, Grok, Grok Bot, Cline, MCP Inspector): add the URL without a header, sign in at wiro.ai, pick the project whose workspace wallet pays and how long the app stays connected, Allow. Or a header: `Authorization: Bearer apiKey:apiSecret` (signature) or `Bearer apiKey` (apikey-only), plain text, no base64
 OAuth details: protected resource metadata https://mcp.wiro.ai/.well-known/oauth-protected-resource/v1, authorization server metadata https://mcp.wiro.ai/.well-known/oauth-authorization-server, authorization code + PKCE S256, Client ID Metadata Documents or dynamic registration at https://mcp.wiro.ai/register, resource https://mcp.wiro.ai/v1, scope `mcp`, `iss` on authorization responses; callbacks limited to known apps and loopback. Access tokens last 1 hour and renew. The user picks how long a connection lasts (7 days, 30 days, 90 days by default, 180 days, 1 year, or unlimited until disconnected) and can change it or disconnect at https://wiro.ai/panel/project?view=apps.
 Sign-in setups (one-click links: Cursor https://cursor.com/install-mcp?name=wiro&config=eyJ1cmwiOiJodHRwczovL21jcC53aXJvLmFpL3YxIn0=, VS Code https://vscode.dev/redirect/mcp/install?name=wiro&config=%7B%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Fmcp.wiro.ai%2Fv1%22%7D, Kiro https://kiro.dev/launch/mcp/add/?name=wiro&config=%7B%22url%22%3A%22https%3A%2F%2Fmcp.wiro.ai%2Fv1%22%7D, goose https://goose-docs.ai/extension/?url=https%3A%2F%2Fmcp.wiro.ai%2Fv1&type=streamable_http&id=wiro&name=Wiro%20AI): Cursor `{"mcpServers":{"wiro":{"url":"https://mcp.wiro.ai/v1"}}}` in mcp.json; Claude Code `claude mcp add --transport http wiro https://mcp.wiro.ai/v1`, then `/mcp` to sign in; VS Code `{"servers":{"wiro":{"type":"http","url":"https://mcp.wiro.ai/v1"}}}` in mcp.json; Gemini CLI `gemini mcp add --transport http wiro https://mcp.wiro.ai/v1`, then `/mcp auth wiro`; Kiro `{"mcpServers":{"wiro":{"url":"https://mcp.wiro.ai/v1"}}}` in ~/.kiro/settings/mcp.json; goose: Extensions > Add custom extension (Streamable HTTP) in Desktop, or `goose configure` > Add Extension > Remote Extension (Streamable HTTP) in the CLI, with https://mcp.wiro.ai/v1; Grok: https://grok.com/connectors, New Connector, Custom, then the URL; Grok Bot: ask the Bot to add the URL; ChatGPT: https://chatgpt.com/plugins, +, Add custom MCP server; Claude: https://claude.ai/customize/connectors, Add custom connector; Devin web: https://app.devin.ai/customize?tab=mcps, add a custom MCP server.
-Plugins: Claude Code, Gemini CLI and Devin install the hosted server from https://github.com/wiroai/Wiro-Plugin with only its URL, and the user signs in to Wiro in the browser (OAuth). Claude Code: `/plugin marketplace add wiroai/Wiro-Plugin`, then `/plugin install wiro-ai@wiro`, then `/mcp` and Authenticate. Gemini CLI: `gemini extensions install https://github.com/wiroai/Wiro-Plugin`, then `/mcp auth wiro`. Devin: `devin plugins install wiroai/Wiro-Plugin`, or in the web app Customize > Plugins > Add plugin > From repository with `wiroai/Wiro-Plugin`; Devin opens the Wiro sign-in page the first time it connects.
+Plugins: Claude Code, Gemini CLI and Devin install the hosted server from https://github.com/wiroai/Wiro-Plugin with only its URL, and the user signs in to Wiro in the browser (OAuth). Claude Code: `/plugin marketplace add wiroai/Wiro-Plugin`, then `/plugin install wiro-ai@wiro`, then `/mcp` and Authenticate. Gemini CLI: `gemini extensions install https://github.com/wiroai/Wiro-Plugin`, then `/mcp auth wiro`. Devin: `devin plugins install wiroai/Wiro-Plugin`, or in the web app Customize > Plugins > Add plugin > From repository with `wiroai/Wiro-Plugin`; Devin opens the Wiro sign-in page the first time it connects. The plugin also adds slash commands (Claude Code `/wiro-ai:image`, Gemini CLI `/wiro:image`, Devin commands called by name such as `/wiro-ai:image`) for images, image edits, video, speech, music, transcripts, 3D, models, workflows, agents and tasks, plus five agent skills.
 Claude Desktop: add https://mcp.wiro.ai/v1 as a custom connector (https://claude.ai/customize/connectors, Add custom connector) and sign in with your Wiro account; the same connector works on claude.ai. Or, with Node.js 20+, configure a local stdio server using `{ "type": "stdio", "command": "npx", "args": ["-y", "@wiro-ai/wiro-mcp@1.5.2"], "env": { "WIRO_API_KEY": "...", "WIRO_API_SECRET": "..." } }`; omit `WIRO_API_SECRET` entirely for API Key Only projects, then fully restart Claude Desktop. Pin the published version in `args` so `npx` does not reuse an older cached build. Claude Desktop may ignore custom timeout fields, so follow Wiro's bounded `run_model → wait_for_task` next actions instead of resubmitting a generation.
 OpenClaw: configure `mcp.servers.wiro` with `transport: "streamable-http"`, `connectionTimeoutMs: 10000`, and an environment-backed Authorization header; verify with `openclaw mcp doctor wiro --probe`, or on older releases use `openclaw mcp show wiro`, restart, and run `/tools verbose`.
 Hermes: configure `mcp_servers.wiro` in `~/.hermes/config.yaml`, keep `WIRO_MCP_AUTH` in `~/.hermes/.env`, then run `/reload-mcp` and `/tools`.
@@ -1236,3 +1242,19 @@ Resource isolation: Project/List, Project/UsageSummary, UserAgent/MyAgents, Task
 - [Full Markdown Export](https://raw.githubusercontent.com/wiroai/Wiro-Docs/main/markdown/full-documentation.md): All docs in a single markdown file
 - [MCP GitHub](https://github.com/wiroai/Wiro-MCP): MCP server source code
 - [MCP npm](https://www.npmjs.com/package/@wiro-ai/wiro-mcp): MCP server package
+- [Wiro-Plugin](https://github.com/wiroai/Wiro-Plugin): plugin for Cursor, Claude Code, Gemini CLI, Devin, Antigravity and Kiro, with slash commands and agent skills
+- [Wiro-LLM](https://github.com/wiroai/Wiro-LLM): Vercel AI SDK provider for chat, images, speech, transcription and video (`@wiro-ai/wiro-llm` on npm)
+- [Wiro-Next-Starter](https://github.com/wiroai/Wiro-Next-Starter): Next.js starter with a Playground, image, video and audio tools and LLM chat, for Vercel and Railway
+- [Wiro-ComfyUI](https://github.com/wiroai/Wiro-ComfyUI): ComfyUI nodes for image, video, audio, 3D and LLM models
+- [Wiro-Dify-Plugin](https://github.com/wiroai/Wiro-Dify-Plugin): Dify plugins: the LLM gateway and voice models as a model provider, plus media tools
+- [Wiro-WordPress](https://github.com/wiroai/Wiro-WordPress): WordPress plugin for featured images, image edits, alt text, narration and SEO suggestions
+- [Wiro-Obsidian](https://github.com/wiroai/Wiro-Obsidian): Obsidian plugin for images, video, speech, music, transcription and text tools
+- [Wiro-Figma](https://github.com/wiroai/Wiro-Figma): Figma plugin for images, SVG vectors, image edits and text
+- [Wiro-Blender](https://github.com/wiroai/Wiro-Blender): Blender add-on for text to 3D, image to 3D and textures
+- [Wiro-Raycast](https://github.com/wiroai/Wiro-Raycast): Raycast extension for image and video generation, LLM chat and model search
+- [Wiro-Zed](https://github.com/wiroai/Wiro-Zed): Zed extension for the Wiro MCP server
+- [Wiro-Action](https://github.com/wiroai/Wiro-Action): GitHub Action that runs models, workflows and LLM prompts
+- [Wiro-Hermes](https://github.com/wiroai/Wiro-Hermes): Hermes Agent plugins: media tools and the LLM gateway as a model provider
+- [Wiro-Chromium-Extension](https://github.com/wiroai/Wiro-Chromium-Extension): extension for Chrome, Edge, Opera and Brave
+- [Wiro-Firefox-Extension](https://github.com/wiroai/Wiro-Firefox-Extension): add-on for Firefox
+- [Wiro-Safari-Extension](https://github.com/wiroai/Wiro-Safari-Extension): extension for Safari on the Mac

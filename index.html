@@ -2906,6 +2906,13 @@ cd /path/to/your/project &amp;&amp; claude --model "(Wiro) openai/gpt-5-nano"</c
                       </div>
                       <div class="mcp-setup-panel" id="llm-setup-hermes">
                         <h3>Hermes</h3>
+                        <h4>Install the Wiro AI plugin</h4>
+                        <p>On Hermes 0.22.6 or later, the <a href="https://github.com/wiroai/Wiro-Hermes/tree/main/wiro" class="docs-link"><code>wiro</code> plugin</a> adds the gateway as a model provider. Install it, set your key and pick a model:</p>
+                        <pre><code class="language-bash">hermes plugins install wiro
+hermes config set WIRO_API_KEY YOUR_API_KEY:YOUR_API_SECRET
+hermes model</code></pre>
+                        <p>Use <code>YOUR_API_KEY</code> alone for API Key Only. In <code>hermes model</code>, select <strong>Wiro AI</strong>; the list comes from <a href="#gateway-models" class="docs-link"><code>GET /v1/models</code></a>. For one run, <code>hermes chat --provider wiro -m claude/sonnet-5</code>. The <a href="https://github.com/wiroai/Wiro-Hermes/tree/main/wiro-media" class="docs-link"><code>wiro-media</code> plugin</a> in the same repository adds image, video, speech, music, transcription and 3D tools with the same key.</p>
+                        <h4>Or set it up as a custom provider</h4>
                         <p><a href="https://github.com/NousResearch/hermes-agent" class="docs-link">Hermes Agent</a>, from Nous Research, reaches the gateway as a custom provider. Its whole configuration is one file:</p>
                         <pre><code>~/.hermes/config.yaml</code></pre>
                         <p>Set <code>HERMES_HOME</code> to put it elsewhere; the project&rsquo;s own Docker image already points it at <code>/opt/data</code>. The file the repository ships as <code>cli-config.yaml.example</code> is read under the name <code>config.yaml</code>.</p>
@@ -3295,6 +3302,8 @@ console.log(providerMetadata.wiro.videos[0]); // { taskId, cost, url, mediaType 
                         <p>Video calls use the AI SDK's start and status flow, so the <code>poll</code> and <code>webhook</code> options, <code>experimental_startVideo</code> and <code>experimental_getVideoStatus</code> work with them.</p>
                         <h4>Tasks and cost</h4>
                         <p>Image, speech, transcription and video calls run as Wiro <a href="/docs/tasks" class="docs-link">tasks</a>: the provider starts the run, waits for the task and downloads the result. The task ID and what it cost, in USD, are in <code>providerMetadata.wiro</code>: for each image and video under <code>images</code> and <code>videos</code>, and at the top level for speech and transcription. Image, speech and transcription calls wait up to 10 minutes; <code>createWiro({ poll: { timeoutMs } })</code> changes that. A task that ends without a result throws a <code>WiroTaskError</code> with its <code>taskId</code> and a <code>reason</code>.</p>
+                        <h4>Start from a Next.js app</h4>
+                        <p><a href="https://github.com/wiroai/Wiro-Next-Starter" class="docs-link">Wiro-Next-Starter</a> is a Next.js app built on this provider: a Playground for any model in the catalog, image, video and audio tools, chat with the gateway&rsquo;s models and a run history. Deploy it on Vercel or Railway with your <code>WIRO_API_KEY</code>.</p>
                       </div>
                     </div>
                   </section>
@@ -7576,6 +7585,30 @@ if (!data.result) {
                     </div>
 
                     <div class="faq-item">
+                      <button class="faq-question">Which other apps have a Wiro AI add-on?</button>
+                      <div class="faq-answer">
+                        <div class="faq-answer-inner">
+                          <p>Wiro AI has open-source add-ons for these apps. Each repository has the install steps:</p>
+                          <ul>
+                            <li><a href="https://github.com/wiroai/Wiro-ComfyUI" target="_blank" rel="noopener">ComfyUI</a>: nodes that run image, video, audio, 3D and LLM models inside your graphs</li>
+                            <li><a href="https://github.com/wiroai/Wiro-Dify-Plugin" target="_blank" rel="noopener">Dify</a>: the LLM gateway and voice models as a model provider, plus tools for images, video, speech, music and 3D in workflows and agents</li>
+                            <li><a href="https://github.com/wiroai/Wiro-WordPress" target="_blank" rel="noopener">WordPress</a>: featured images, image edits, alt text, narration and SEO suggestions in the block editor</li>
+                            <li><a href="https://github.com/wiroai/Wiro-Obsidian" target="_blank" rel="noopener">Obsidian</a>: images, video, speech, music, transcription and text tools, saved into your notes</li>
+                            <li><a href="https://github.com/wiroai/Wiro-Figma" target="_blank" rel="noopener">Figma</a>: images, SVG vectors, image edits, background removal and text rewriting or translation on the canvas</li>
+                            <li><a href="https://github.com/wiroai/Wiro-Blender" target="_blank" rel="noopener">Blender</a>: text to 3D, image to 3D and textures, with any model in the catalog</li>
+                            <li><a href="https://github.com/wiroai/Wiro-Raycast" target="_blank" rel="noopener">Raycast</a>: image and video generation, LLM chat and model search from your launcher</li>
+                            <li><a href="https://github.com/wiroai/Wiro-Zed" target="_blank" rel="noopener">Zed</a>: the Wiro MCP server in Zed's Agent Panel</li>
+                            <li><a href="https://github.com/wiroai/Wiro-Action" target="_blank" rel="noopener">GitHub Actions</a>: run models, workflows and LLM prompts from a workflow step</li>
+                            <li><a href="https://github.com/wiroai/Wiro-Hermes" target="_blank" rel="noopener">Hermes Agent</a>: media tools, plus the LLM gateway as a model provider</li>
+                            <li><a href="https://github.com/wiroai/Wiro-LLM" target="_blank" rel="noopener">Vercel AI SDK</a>: chat, image, speech, transcription and video models, with a <a href="https://github.com/wiroai/Wiro-Next-Starter" target="_blank" rel="noopener">Next.js starter</a> for Vercel and Railway</li>
+                            <li><a href="https://github.com/wiroai/Wiro-Chromium-Extension" target="_blank" rel="noopener">Chrome, Edge, Opera and Brave</a>, <a href="https://github.com/wiroai/Wiro-Firefox-Extension" target="_blank" rel="noopener">Firefox</a> and <a href="https://github.com/wiroai/Wiro-Safari-Extension" target="_blank" rel="noopener">Safari</a>: right-click an image, video, audio clip, text or page to run a model</li>
+                          </ul>
+                          <p>AI assistants such as Claude, ChatGPT, Cursor and VS Code connect through the <a href="/docs/wiro-mcp-server">Wiro MCP server</a>.</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="faq-item">
                       <button class="faq-question">Can I use a webhook instead of polling?</button>
                       <div class="faq-answer">
                         <div class="faq-answer-inner">
@@ -7956,6 +7989,7 @@ if (!data.result) {
                         <pre><code>/plugin marketplace add wiroai/Wiro-Plugin
 /plugin install wiro-ai@wiro</code></pre>
                         <p>Then open <code>/mcp</code>, pick the Wiro server and choose <strong>Authenticate</strong> to sign in to Wiro in your browser. The plugin comes from the <a href="https://github.com/wiroai/Wiro-Plugin" target="_blank" rel="noopener">wiroai/Wiro-Plugin</a> repository.</p>
+                        <p>The plugin also adds slash commands, such as <code>/wiro-ai:image</code>, <code>/wiro-ai:video</code> and <code>/wiro-ai:speech</code>, and five agent skills. Each command picks a model from the catalog, shows the price before a paid run and can save the results into your project.</p>
                         <h4>Or add the server with your API key</h4>
                         <p>Run this command in your terminal:</p>
                         <pre><code class="language-bash">claude mcp add --transport http wiro \
@@ -8025,6 +8059,7 @@ if (!data.result) {
                         <p>Install Wiro as a Gemini CLI extension from the <a href="https://github.com/wiroai/Wiro-Plugin" target="_blank" rel="noopener">wiroai/Wiro-Plugin</a> repository. Run this in your terminal:</p>
                         <pre><code class="language-bash">gemini extensions install https://github.com/wiroai/Wiro-Plugin</code></pre>
                         <p>Then run <code>/mcp auth wiro</code> inside Gemini CLI and sign in to Wiro in your browser.</p>
+                        <p>The extension also adds slash commands such as <code>/wiro:image</code> and <code>/wiro:video</code>, and five agent skills.</p>
                       </div>
 
                       <div class="mcp-setup-panel" id="mcp-setup-devin">
@@ -8032,6 +8067,7 @@ if (!data.result) {
                         <p>Install Wiro as a Devin plugin from the <a href="https://github.com/wiroai/Wiro-Plugin" target="_blank" rel="noopener">wiroai/Wiro-Plugin</a> repository. With the Devin CLI, run:</p>
                         <pre><code class="language-bash">devin plugins install wiroai/Wiro-Plugin</code></pre>
                         <p>In the Devin web app, go to <strong>Customize &gt; Plugins &gt; Add plugin &gt; From repository</strong> and enter <code>wiroai/Wiro-Plugin</code>. Devin opens Wiro's sign-in page in your browser the first time it connects.</p>
+                        <p>The plugin also adds commands you call by name, such as <code>/wiro-ai:image</code> and <code>/wiro-ai:video</code>, plus five agent skills.</p>
                         <p>In the Devin web app you can also skip the plugin: open <a href="https://app.devin.ai/customize?tab=mcps" target="_blank" rel="noopener">Customize, MCPs</a>, add a custom MCP server with the URL <code>https://mcp.wiro.ai/v1</code> and sign in to Wiro in your browser.</p>
                       </div>
 

@@ -2108,6 +2108,27 @@ across as many turns as the task needs.
 
 ### Hermes
 
+#### Install the Wiro AI plugin
+
+On Hermes 0.22.6 or later, the
+[`wiro` plugin](https://github.com/wiroai/Wiro-Hermes/tree/main/wiro) adds the
+gateway as a model provider. Install it, set your key and pick a model:
+
+```bash
+hermes plugins install wiro
+hermes config set WIRO_API_KEY YOUR_API_KEY:YOUR_API_SECRET
+hermes model
+```
+
+Use `YOUR_API_KEY` alone for API Key Only. In `hermes model`, select
+**Wiro AI**; the list comes from `GET /v1/models`. For one run,
+`hermes chat --provider wiro -m claude/sonnet-5`. The
+[`wiro-media` plugin](https://github.com/wiroai/Wiro-Hermes/tree/main/wiro-media)
+in the same repository adds image, video, speech, music, transcription and 3D
+tools with the same key.
+
+#### Or set it up as a custom provider
+
 Hermes Agent, from Nous Research, reaches the gateway as a custom provider.
 Its whole configuration is one file:
 
@@ -2637,6 +2658,13 @@ image and video under `images` and `videos`, and at the top level for speech
 and transcription. Image, speech and transcription calls wait up to 10 minutes;
 `createWiro({ poll: { timeoutMs } })` changes that. A task that ends without a
 result throws a `WiroTaskError` with its `taskId` and a `reason`.
+
+#### Start from a Next.js app
+
+[Wiro-Next-Starter](https://github.com/wiroai/Wiro-Next-Starter) is a Next.js
+app built on this provider: a Playground for any model in the catalog, image,
+video and audio tools, chat with the gateway's models and a run history.
+Deploy it on Vercel or Railway with your `WIRO_API_KEY`.
 
 ## Discover models and capabilities
 
@@ -5923,6 +5951,11 @@ Then open `/mcp`, pick the Wiro server and choose **Authenticate** to sign in
 to Wiro in your browser. The plugin comes from the
 [wiroai/Wiro-Plugin](https://github.com/wiroai/Wiro-Plugin) repository.
 
+The plugin also adds slash commands, such as `/wiro-ai:image`,
+`/wiro-ai:video` and `/wiro-ai:speech`, and five agent skills. Each command
+picks a model from the catalog, shows the price before a paid run and can save
+the results into your project.
+
 #### Or add the server with your API key
 
 ```bash
@@ -6002,6 +6035,9 @@ gemini extensions install https://github.com/wiroai/Wiro-Plugin
 Then run `/mcp auth wiro` inside Gemini CLI and sign in to Wiro in your
 browser.
 
+The extension also adds slash commands such as `/wiro:image` and
+`/wiro:video`, and five agent skills.
+
 ### Devin
 
 Install Wiro as a Devin plugin from the
@@ -6019,6 +6055,9 @@ time it connects. In the Devin web app you can also skip the plugin: add
 `https://mcp.wiro.ai/v1` as a custom MCP server under
 [Customize, MCPs](https://app.devin.ai/customize?tab=mcps) and sign in to Wiro
 in your browser.
+
+The plugin also adds commands you call by name, such as `/wiro-ai:image` and
+`/wiro-ai:video`, plus five agent skills.
 
 ### Kiro
 
@@ -6444,6 +6483,8 @@ Common questions about using the Wiro API.
 **How do LLM responses work?** LLM models return their response in `outputs` (structured, with `contenttype: "raw"` containing `prompt`, `raw`, `thinking`, `answer`) and as merged text in `debugoutput`.
 
 **Can I send a URL instead of uploading a file?** Yes. For `fileinput` parameters, use the `{id}Url` suffix (e.g., `inputImageUrl`). For `multifileinput`, send comma-separated URLs in the field that puts `Url` before `Multiple` (e.g., `inputDocumentUrlMultiple`). For `combinefileinput`, pass URLs directly in the original parameter. The URL must be a public `http(s)` address. See Model Parameters.
+
+**Which other apps have a Wiro AI add-on?** ComfyUI, Dify, WordPress, Obsidian, Figma, Blender, Raycast, Zed, GitHub Actions, Hermes Agent, the Vercel AI SDK (with a Next.js starter for Vercel and Railway), and the Chrome, Edge, Opera, Brave, Firefox and Safari browsers. Each add-on is open source in the [wiroai](https://github.com/wiroai) GitHub organization, with its install steps in the repository. AI assistants connect through the [Wiro MCP server](/docs/wiro-mcp-server).
 
 **Can I use a webhook instead of polling?** Yes. All models support an optional `callbackUrl` parameter. It must be a public `http(s)` address.
 

@@ -58,6 +58,25 @@ No. The [Wiro MCP server](/docs/wiro-mcp-server) is free. You only pay for the m
 
 Yes. Install the [Wiro AI community node](/docs/n8n-wiro-integration) in your n8n instance to access all Wiro models as drag-and-drop nodes in your workflows. The same package can also run your Wiro workflows and send messages to Wiro agents.
 
+## Which other apps have a Wiro AI add-on?
+
+Wiro AI has open-source add-ons for these apps. Each repository has the install steps:
+
+- [ComfyUI](https://github.com/wiroai/Wiro-ComfyUI): nodes that run image, video, audio, 3D and LLM models inside your graphs
+- [Dify](https://github.com/wiroai/Wiro-Dify-Plugin): the LLM gateway and voice models as a model provider, plus tools for images, video, speech, music and 3D in workflows and agents
+- [WordPress](https://github.com/wiroai/Wiro-WordPress): featured images, image edits, alt text, narration and SEO suggestions in the block editor
+- [Obsidian](https://github.com/wiroai/Wiro-Obsidian): images, video, speech, music, transcription and text tools, saved into your notes
+- [Figma](https://github.com/wiroai/Wiro-Figma): images, SVG vectors, image edits, background removal and text rewriting or translation on the canvas
+- [Blender](https://github.com/wiroai/Wiro-Blender): text to 3D, image to 3D and textures, with any model in the catalog
+- [Raycast](https://github.com/wiroai/Wiro-Raycast): image and video generation, LLM chat and model search from your launcher
+- [Zed](https://github.com/wiroai/Wiro-Zed): the Wiro MCP server in Zed's Agent Panel
+- [GitHub Actions](https://github.com/wiroai/Wiro-Action): run models, workflows and LLM prompts from a workflow step
+- [Hermes Agent](https://github.com/wiroai/Wiro-Hermes): media tools, plus the LLM gateway as a model provider
+- [Vercel AI SDK](https://github.com/wiroai/Wiro-LLM): chat, image, speech, transcription and video models, with a [Next.js starter](https://github.com/wiroai/Wiro-Next-Starter) for Vercel and Railway
+- [Chrome, Edge, Opera and Brave](https://github.com/wiroai/Wiro-Chromium-Extension), [Firefox](https://github.com/wiroai/Wiro-Firefox-Extension) and [Safari](https://github.com/wiroai/Wiro-Safari-Extension): right-click an image, video, audio clip, text or page to run a model
+
+AI assistants such as Claude, ChatGPT, Cursor and VS Code connect through the [Wiro MCP server](/docs/wiro-mcp-server).
+
 ## Can I use a webhook instead of polling?
 
 Yes. All models support an optional `callbackUrl` parameter. When provided, Wiro will POST the task result to your URL when the task completes. It must be a public `http(s)` address. See [Webhook Callback](/docs/model-parameters) in Model Parameters.

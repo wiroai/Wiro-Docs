@@ -188,6 +188,11 @@ Then open `/mcp`, pick the Wiro server and choose **Authenticate** to sign in
 to Wiro in your browser. The plugin comes from the
 [wiroai/Wiro-Plugin](https://github.com/wiroai/Wiro-Plugin) repository.
 
+The plugin also adds slash commands, such as `/wiro-ai:image`,
+`/wiro-ai:video` and `/wiro-ai:speech`, and five agent skills. Each command
+picks a model from the catalog, shows the price before a paid run and can save
+the results into your project.
+
 #### Or add the server with your API key
 
 Run this command in your terminal:
@@ -317,6 +322,9 @@ gemini extensions install https://github.com/wiroai/Wiro-Plugin
 Then run `/mcp auth wiro` inside Gemini CLI and sign in to Wiro in your
 browser.
 
+The extension also adds slash commands such as `/wiro:image` and
+`/wiro:video`, and five agent skills.
+
 ### Devin
 
 Install Wiro as a Devin plugin from the
@@ -331,6 +339,9 @@ In the Devin web app, go to
 **Customize > Plugins > Add plugin > From repository** and enter
 `wiroai/Wiro-Plugin`. Devin opens Wiro's sign-in page in your browser the first
 time it connects.
+
+The plugin also adds commands you call by name, such as `/wiro-ai:image` and
+`/wiro-ai:video`, plus five agent skills.
 
 In the Devin web app you can also skip the plugin: open
 [Customize, MCPs](https://app.devin.ai/customize?tab=mcps), add a custom MCP

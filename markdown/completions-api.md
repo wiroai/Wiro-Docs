@@ -1378,6 +1378,27 @@ across as many turns as the task needs.
 
 ### Hermes
 
+#### Install the Wiro AI plugin
+
+On Hermes 0.22.6 or later, the
+[`wiro` plugin](https://github.com/wiroai/Wiro-Hermes/tree/main/wiro) adds the
+gateway as a model provider. Install it, set your key and pick a model:
+
+```bash
+hermes plugins install wiro
+hermes config set WIRO_API_KEY YOUR_API_KEY:YOUR_API_SECRET
+hermes model
+```
+
+Use `YOUR_API_KEY` alone for API Key Only. In `hermes model`, select
+**Wiro AI**; the list comes from `GET /v1/models`. For one run,
+`hermes chat --provider wiro -m claude/sonnet-5`. The
+[`wiro-media` plugin](https://github.com/wiroai/Wiro-Hermes/tree/main/wiro-media)
+in the same repository adds image, video, speech, music, transcription and 3D
+tools with the same key.
+
+#### Or set it up as a custom provider
+
 Hermes Agent, from Nous Research, reaches the gateway as a custom provider.
 Its whole configuration is one file:
 
@@ -1907,6 +1928,13 @@ image and video under `images` and `videos`, and at the top level for speech
 and transcription. Image, speech and transcription calls wait up to 10 minutes;
 `createWiro({ poll: { timeoutMs } })` changes that. A task that ends without a
 result throws a `WiroTaskError` with its `taskId` and a `reason`.
+
+#### Start from a Next.js app
+
+[Wiro-Next-Starter](https://github.com/wiroai/Wiro-Next-Starter) is a Next.js
+app built on this provider: a Playground for any model in the catalog, image,
+video and audio tools, chat with the gateway's models and a run history.
+Deploy it on Vercel or Railway with your `WIRO_API_KEY`.
 
 ## Discover models and capabilities
 
