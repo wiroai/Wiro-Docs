@@ -6494,27 +6494,19 @@ Common questions about using the Wiro API.
 
 # n8n Wiro Integration
 
-Run Wiro AI models, Wiro workflows and Wiro agents from your n8n workflows: video, image, audio, LLM, 3D, and more.
+Run any Wiro AI model from your n8n workflows: video, image, audio, LLM, 3D, and more.
 
-The **Wiro AI community node** (`@wiro-ai/n8n-nodes-wiroai`) gives you access to all Wiro AI models as individual nodes you can drag and drop into any workflow.
-
-Two more nodes are not tied to one model: **Wiro Workflow** runs the workflows you saved on Wiro (run, get and list workflows and runs), and **Wiro Agent** sends messages to Wiro Studio, the Workflow Agent or one of your deployed agents and returns the reply. Every node also works as a tool for an n8n AI Agent, and all of them take the same credentials: a **Wiro API** key, or, on n8n Cloud and on n8n running on your own computer, a **Wiro OAuth2 API** credential that signs in with your Wiro account.
-
-For one node that runs any model, install `@wiro-ai/n8n-nodes-wiro`. Its **Wiro AI** node lists the models in a searchable picker, loads the inputs of the model you pick, and can also read or wait for a task by its ID. It takes a **Wiro AI API** credential: your project's API key, and the API secret if the project uses signature authentication.
+The **Wiro AI** community node (`@wiro-ai/n8n-nodes-wiro`) runs any model in the Wiro AI catalog from a single node. Pick a model from a searchable list and its inputs load into the node with their default values. **Model > Run** starts a task and returns its output files (`url`, `urls`) or a text model's reply (`text`), with `taskId`, `status`, `costUsd` and `elapsedSeconds`. **Task > Get** and **Task > Wait** read a task by its ID. The node also works as a tool for an n8n AI Agent, and takes a **Wiro AI API** credential: your project's API key, plus the API secret if the project uses signature authentication.
 
 ## Installation
 
-Install via n8n UI: **Settings → Community Nodes → Install → `@wiro-ai/n8n-nodes-wiroai`**
+Install via n8n UI: **Settings → Community Nodes → Install → `@wiro-ai/n8n-nodes-wiro`**
 
-Or via command line: `npm install @wiro-ai/n8n-nodes-wiroai`
-
-For the Wiro AI node, use `@wiro-ai/n8n-nodes-wiro` in either place.
+Or via command line: `npm install @wiro-ai/n8n-nodes-wiro`
 
 ## Links
 
-- [npm: @wiro-ai/n8n-nodes-wiroai](https://www.npmjs.com/package/@wiro-ai/n8n-nodes-wiroai)
-- [GitHub: wiroai/n8n-nodes-wiroai](https://github.com/wiroai/n8n-nodes-wiroai)
-- [npm: @wiro-ai/n8n-nodes-wiro](https://www.npmjs.com/package/@wiro-ai/n8n-nodes-wiro) (the Wiro AI node)
+- [npm: @wiro-ai/n8n-nodes-wiro](https://www.npmjs.com/package/@wiro-ai/n8n-nodes-wiro)
 - [GitHub: wiroai/n8n-nodes-wiro](https://github.com/wiroai/n8n-nodes-wiro)
 
 ---

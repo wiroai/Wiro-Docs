@@ -7579,7 +7579,7 @@ if (!data.result) {
                       <button class="faq-question">Can I use Wiro with n8n?</button>
                       <div class="faq-answer">
                         <div class="faq-answer-inner">
-                          <p>Yes. Install the <a href="/docs/n8n-wiro-integration">Wiro AI community node</a> in your n8n instance to access all Wiro models as drag-and-drop nodes in your workflows. The same package can also run your Wiro workflows and send messages to Wiro agents. For one node that runs any model, install <code>@wiro-ai/n8n-nodes-wiro</code>.</p>
+                          <p>Yes. Install the <a href="/docs/n8n-wiro-integration">Wiro AI community node</a> (<code>@wiro-ai/n8n-nodes-wiro</code>) in your n8n instance to run any Wiro model from your workflows. Pick the model in the node and its inputs load with their defaults.</p>
                         </div>
                       </div>
                     </div>
@@ -10155,20 +10155,16 @@ import type {
                     <span class="docs-brand-separator" aria-hidden="true">&times;</span>
                     <img src="https://wiro.ai/images/logos/logo/logo-black.png" alt="Wiro" class="docs-brand-lockup-wiro" width="2998" height="901" />
                   </div>
-                  <p class="section-subtitle">Run Wiro AI models, Wiro workflows and Wiro agents from your n8n workflows: video, image, audio, LLM, 3D, and more.</p>
+                  <p class="section-subtitle">Run any Wiro AI model from your n8n workflows: video, image, audio, LLM, 3D, and more.</p>
 
                   <section id="n8n-overview">
                     <h2>Overview</h2>
-                    <p><a href="https://n8n.io" target="_blank">n8n</a> is a powerful workflow automation platform. The <strong>Wiro AI community node</strong> gives you access to all Wiro AI models as individual nodes you can drag and drop into any workflow.</p>
-                    <p>Each model is a <strong>separate node</strong>, so you get dedicated parameters, descriptions, and output handling for every model without any configuration hassle.</p>
-                    <p>Two more nodes are not tied to one model: <strong>Wiro Workflow</strong> runs the workflows you saved on Wiro, and <strong>Wiro Agent</strong> sends messages to Wiro Studio, the Workflow Agent or one of your deployed agents. Every node also works as a tool for an n8n AI Agent.</p>
-                    <p>For one node that runs any model, install <code>@wiro-ai/n8n-nodes-wiro</code>. Its <strong>Wiro AI</strong> node lists the models in a searchable picker and loads the inputs of the model you pick. See <strong>Wiro AI Node</strong> below.</p>
+                    <p><a href="https://n8n.io" target="_blank">n8n</a> is a powerful workflow automation platform. The <strong>Wiro AI</strong> community node, published on npm as <code>@wiro-ai/n8n-nodes-wiro</code>, runs any model in the Wiro AI catalog from a single node.</p>
+                    <p>Pick a model from a searchable list and its inputs load into the node with their default values. The node starts a task on Wiro, waits for it to finish and returns the output files, or the reply of a text model. It also works as a tool for an n8n AI Agent.</p>
 
                     <h3>Links</h3>
                     <ul>
-                      <li><a href="https://www.npmjs.com/package/@wiro-ai/n8n-nodes-wiroai" target="_blank">npm: @wiro-ai/n8n-nodes-wiroai</a></li>
-                      <li><a href="https://github.com/wiroai/n8n-nodes-wiroai" target="_blank">GitHub: wiroai/n8n-nodes-wiroai</a></li>
-                      <li><a href="https://www.npmjs.com/package/@wiro-ai/n8n-nodes-wiro" target="_blank">npm: @wiro-ai/n8n-nodes-wiro</a> (the Wiro AI node)</li>
+                      <li><a href="https://www.npmjs.com/package/@wiro-ai/n8n-nodes-wiro" target="_blank">npm: @wiro-ai/n8n-nodes-wiro</a></li>
                       <li><a href="https://github.com/wiroai/n8n-nodes-wiro" target="_blank">GitHub: wiroai/n8n-nodes-wiro</a></li>
                       <li><a href="https://docs.n8n.io/integrations/community-nodes/installation/" target="_blank">n8n Community Nodes Installation Guide</a></li>
                       <li><a href="https://wiro.ai/models" target="_blank">Wiro Model Catalog</a>: browse all available models</li>
@@ -10237,72 +10233,8 @@ import type {
                     </div>
                   </section>
 
-                  <section id="n8n-workflow-agent-nodes">
-                    <h2>Wiro Workflow and Wiro Agent</h2>
-                    <p>These two nodes are not tied to one model. They use the same credentials as the model nodes.</p>
-                    <div class="docs-comparison-table">
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>Node</th>
-                            <th>Use it for</th>
-                            <th>Operations</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr>
-                            <td>Wiro Workflow</td>
-                            <td>Run a saved Wiro workflow and get its outputs, follow its runs</td>
-                            <td>Workflow: Run, Get, Get Many. Workflow Run: Get, Get Many</td>
-                          </tr>
-                          <tr>
-                            <td>Wiro Agent: Wiro Studio</td>
-                            <td>Ask for what you need in plain words; Studio picks and runs the models</td>
-                            <td>Send Message, Get Message</td>
-                          </tr>
-                          <tr>
-                            <td>Wiro Agent: Workflow Agent</td>
-                            <td>Design or change a Wiro workflow in plain words</td>
-                            <td>Send Message, Get Message</td>
-                          </tr>
-                          <tr>
-                            <td>Wiro Agent: your agents</td>
-                            <td>Message an agent you deployed on Wiro</td>
-                            <td>Send Message, Get Message</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-
-                    <h3>Wiro Workflow</h3>
-                    <ul>
-                      <li><strong>Workflow &gt; Run</strong> starts a run of a workflow and waits for its outputs. Pick the workflow from the list, or paste its wiro.ai link or slug. The node loads the inputs of that workflow, so you can fill each one or map them from the incoming item. Inputs you leave empty use the values saved in the workflow.</li>
-                      <li><strong>Workflow &gt; Get</strong> returns a workflow with the inputs it takes. <strong>Workflow &gt; Get Many</strong> lists the workflows in your workspace or in the public gallery.</li>
-                      <li><strong>Workflow Run &gt; Get</strong> reads a run by its <code>workflowtoken</code> and can wait for it to end. <strong>Workflow Run &gt; Get Many</strong> lists recent runs, newest first.</li>
-                    </ul>
-                    <p>The node waits up to 20 minutes for a run by default (change it with <strong>Max Wait Time</strong>) and returns the run with its status, outputs and cost:</p>
-                    <pre><code class="language-json">{
-  "workflowtoken": "abc123",
-  "status": "completed",
-  "chargedUsd": 0.005,
-  "outputs": {
-    "image": [{ "url": "https://cdn1.wiro.ai/xyz/output_1.jpg", "mimeType": "image/jpeg" }]
-  }
-}</code></pre>
-                    <p>A run that is still going when the wait ends comes back with <code>status: "running"</code>. Read it later with <strong>Workflow Run &gt; Get</strong> and the same <code>workflowtoken</code> instead of starting it again.</p>
-
-                    <h3>Wiro Agent</h3>
-                    <ul>
-                      <li><strong>Send Message</strong> sends a message to Wiro Studio, which picks and runs AI models for the request, to the Workflow Agent, which designs Wiro workflows, or to one of your own deployed agents. Pass the same <strong>Session</strong>, for example a chat ID, to keep a conversation going.</li>
-                      <li><strong>Get Message</strong> reads a message and its reply again later.</li>
-                    </ul>
-                    <p>The reply is in <code>message.reply</code>, files the agent made are in <code>message.mediaUrls</code>, and the model runs Studio started are in <code>modelRuns</code>.</p>
-                    <p>Workflow runs and agent turns are billed to the wallet of your project's workspace, the same as model runs. To learn more, see <a href="/docs/workflows">Workflows</a> and <a href="/docs/agent-messaging">Agent Messaging</a>.</p>
-                  </section>
-
                   <section id="n8n-wiro-ai-node">
                     <h2>Wiro AI Node</h2>
-                    <p>The <code>@wiro-ai/n8n-nodes-wiro</code> package adds one <strong>Wiro AI</strong> node that runs any model in the catalog. It also works as a tool for an n8n AI Agent.</p>
                     <div class="docs-comparison-table">
                       <table>
                         <thead>
@@ -10333,7 +10265,7 @@ import type {
                     </div>
                     <ul>
                       <li><strong>Model</strong>: pick the model from the searchable list, paste its wiro.ai link, or type it as <code>owner/model</code>, such as <code>pruna/p-image</code>.</li>
-                      <li><strong>Inputs</strong>: the inputs of the model you picked load into the node with their default values. Fill them in or map them from the incoming item. File inputs take public URLs; separate several URLs with commas.</li>
+                      <li><strong>Inputs</strong>: the inputs of the model you picked load into the node with their default values. Required inputs are always shown; add advanced ones with <strong>Add input to send</strong>. Fill them in or map them from the incoming item. File inputs take public URLs; separate several URLs with commas.</li>
                       <li><strong>Wait for Completion</strong> is on by default, and the node waits up to 20 minutes (change it with <strong>Max Wait Time</strong>). Turn it off to get the task ID at once, then read the task later with <strong>Task &gt; Get</strong> or <strong>Task &gt; Wait</strong>.</li>
                     </ul>
                     <p>The node returns the task with its output files and cost:</p>
@@ -10346,7 +10278,27 @@ import type {
   "costUsd": 0.005,
   "elapsedSeconds": 3
 }</code></pre>
-                    <p>A text model's reply is in <code>text</code>. A task that fails or is cancelled stops the node with an error. To handle it in its own branch, set the node's <strong>On Error</strong> setting to <strong>Continue (using error output)</strong>.</p>
+                    <div class="docs-comparison-table">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Field</th>
+                            <th>What it holds</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr><td><code>taskId</code></td><td>The ID of the Wiro task</td></tr>
+                          <tr><td><code>status</code></td><td><code>queued</code>, <code>running</code>, <code>completed</code>, <code>failed</code> or <code>cancelled</code></td></tr>
+                          <tr><td><code>model</code></td><td>The model, as <code>owner/model</code></td></tr>
+                          <tr><td><code>url</code></td><td>The first output file</td></tr>
+                          <tr><td><code>urls</code></td><td>Every output file</td></tr>
+                          <tr><td><code>text</code></td><td>The reply of a text model</td></tr>
+                          <tr><td><code>costUsd</code></td><td>What the task cost, in US dollars</td></tr>
+                          <tr><td><code>elapsedSeconds</code></td><td>How long the task ran</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    <p>A task that fails or is cancelled stops the node with an error. To handle it in its own branch, set the node's <strong>On Error</strong> setting to <strong>Continue (using error output)</strong>. A task still running when the wait ends comes back with <code>status: "running"</code>: read it later with <strong>Task &gt; Wait</strong> and the same task ID instead of starting it again.</p>
                   </section>
 
                   <section id="n8n-installation">
@@ -10360,19 +10312,16 @@ import type {
                         <strong>Go to Settings</strong> <span>Open <strong style="font-size: 0.92rem">Settings → Community Nodes</strong></span>
                       </li>
                       <li>
-                        <strong>Install the node</strong> <span>Click <strong style="font-size: 0.92rem">Install a community node</strong> and enter: <code>@wiro-ai/n8n-nodes-wiroai</code></span>
+                        <strong>Install the node</strong> <span>Click <strong style="font-size: 0.92rem">Install a community node</strong> and enter: <code>@wiro-ai/n8n-nodes-wiro</code></span>
                       </li>
                       <li>
                         <strong>Confirm</strong> <span>Click <strong style="font-size: 0.92rem">Install</strong> and wait for completion</span>
                       </li>
                     </ol>
-                    <p>For the Wiro AI node, enter <code>@wiro-ai/n8n-nodes-wiro</code> in the third step.</p>
 
                     <h3>Via Command Line</h3>
-                    <pre><code class="language-bash">npm install @wiro-ai/n8n-nodes-wiroai</code></pre>
-                    <p>For the Wiro AI node:</p>
                     <pre><code class="language-bash">npm install @wiro-ai/n8n-nodes-wiro</code></pre>
-                    <p>Restart n8n after installation.</p>
+                    <p>Run it in <code>~/.n8n/nodes</code>, then restart n8n.</p>
                   </section>
 
                   <section id="n8n-authentication">
@@ -10380,83 +10329,44 @@ import type {
                     <p>The node supports both <a href="/docs/authentication">Wiro authentication methods</a>:</p>
                     <ol class="docs-steps">
                       <li>
-                        <strong>Add credentials</strong> <span>Go to <strong style="font-size: 0.92rem">Credentials → Add new → Wiro API</strong> in n8n</span>
+                        <strong>Add credentials</strong> <span>Go to <strong style="font-size: 0.92rem">Credentials → Add new → Wiro AI API</strong> in n8n</span>
                       </li>
                       <li>
-                        <strong>Select auth method</strong> <span><strong style="font-size: 0.92rem">Signature-Based</strong>: enter API key + secret (recommended) &nbsp;|&nbsp; <strong style="font-size: 0.92rem">API Key Only</strong>: enter API key only</span>
+                        <strong>Enter your keys</strong> <span>Paste the project's <strong style="font-size: 0.92rem">API Key</strong>. If the project uses signature authentication, also paste its <strong style="font-size: 0.92rem">API Secret</strong>: the node then signs every request with HMAC-SHA256 and never sends the secret.</span>
                       </li>
                       <li>
-                        <strong>Save</strong> <span>Click <strong style="font-size: 0.92rem">Save</strong> to store your credentials</span>
+                        <strong>Save</strong> <span>Click <strong style="font-size: 0.92rem">Save</strong>, and n8n checks the key</span>
                       </li>
                     </ol>
-                    <p>Get your credentials at <a href="https://wiro.ai/panel/project/new" target="_blank">wiro.ai/panel/project</a>.</p>
-
-                    <h3>Sign in with a Wiro account (OAuth2)</h3>
-                    <p>On n8n Cloud and on n8n running on your own computer, you can connect with your Wiro account instead of an API key:</p>
-                    <ol class="docs-steps">
-                      <li>
-                        <strong>Choose OAuth2</strong> <span>On a Wiro node, set <strong style="font-size: 0.92rem">Authentication</strong> to <strong style="font-size: 0.92rem">OAuth2</strong></span>
-                      </li>
-                      <li>
-                        <strong>Connect</strong> <span>Create a <strong style="font-size: 0.92rem">Wiro OAuth2 API</strong> credential and click <strong style="font-size: 0.92rem">Connect my account</strong></span>
-                      </li>
-                      <li>
-                        <strong>Allow</strong> <span>Sign in to Wiro, pick the project whose wallet pays for the runs, and click <strong style="font-size: 0.92rem">Allow</strong></span>
-                      </li>
-                    </ol>
-                    <p>Other n8n instances connect with the <strong>Wiro API</strong> credential above.</p>
-
-                    <h3>Wiro AI node</h3>
-                    <p>The Wiro AI node uses a <strong>Wiro AI API</strong> credential: paste your project's API key, and the API secret if the project uses signature authentication.</p>
+                    <p>Get your credentials at <a href="https://wiro.ai/panel/project/new" target="_blank">wiro.ai/panel/project</a>. Runs are billed to the wallet of the project's workspace.</p>
                   </section>
 
                   <section id="n8n-usage">
                     <h2>Usage</h2>
-                    <p>Each Wiro model appears as a separate node in the n8n node picker. Search for "Wiro" or the model name to find it.</p>
+                    <p>Search the node picker for "Wiro AI" and add the node with the <strong>Run a model</strong> action, then pick the model.</p>
 
-                    <h3>Example: Generate a Video with Kling V3</h3>
+                    <h3>Example: Generate an Image with P-Image</h3>
                     <ol>
-                      <li>Add the <strong>Wiro - Kling V3 Text-to-Video Generator</strong> node to your workflow</li>
-                      <li>Connect your Wiro credentials</li>
-                      <li>
-                        Set the parameters:
-                        <ul>
-                          <li><strong>Prompt:</strong> <code>A cat astronaut floating in space</code></li>
-                          <li><strong>Duration:</strong> <code>5 Seconds</code></li>
-                          <li><strong>Ratio:</strong> <code>16:9</code></li>
-                        </ul>
-                      </li>
-                      <li>Run the workflow</li>
-                    </ol>
-                    <p>The node returns the task result with output URLs:</p>
-                    <pre><code class="language-json">{
-  "taskid": "abc123",
-  "status": "completed",
-  "url": "https://cdn1.wiro.ai/xyz/0.mp4"
-}</code></pre>
-
-                    <h3>Example: Transcribe Audio with Whisper</h3>
-                    <ol>
-                      <li>Search the node picker for <code>Whisper</code> and add the <strong>Wiro - Speech to Text (Whisper Large v3)</strong> node</li>
-                      <li>Set <strong>Input Audio URL</strong> to a public link to the audio file. To use a file from an earlier node, map its URL with an expression.</li>
-                      <li>Pick a <strong>Language</strong>, or keep <strong>Auto</strong>. <strong>Chunk Length</strong>, <strong>Batch Size</strong> and <strong>Number Of Speakers</strong> start at <code>30</code>, <code>8</code> and <code>1</code>.</li>
-                      <li>Run the workflow: <code>url</code> in the output links to the transcript as a text file</li>
-                    </ol>
-
-                    <h3>Example: LLM Chat with GPT-5.2</h3>
-                    <ol>
-                      <li>Add the <strong>Wiro - GPT-5.2 AI Model</strong> node, or <strong>Wiro - GPT-5 Mini AI Model</strong> or <strong>Wiro - GPT-5 Nano AI Model</strong> for a smaller model</li>
-                      <li>Set <strong>Prompt</strong> and, if you need them, <strong>System Instructions</strong></li>
-                      <li>Run the workflow: the reply is in <code>message</code> in the output</li>
-                    </ol>
-
-                    <h3>Example: Run Any Model with the Wiro AI Node</h3>
-                    <ol>
-                      <li>Search the node picker for <code>Wiro AI</code> and add the <strong>Wiro AI</strong> node with the <strong>Run a model</strong> action</li>
+                      <li>Add the <strong>Wiro AI</strong> node with the <strong>Run a model</strong> action</li>
                       <li>In <strong>Model</strong>, search for <code>p-image</code> and pick <code>pruna/p-image</code></li>
                       <li>Under <strong>Inputs</strong>, set <strong>Prompt</strong> to <code>A red bicycle on a sunny street</code></li>
                       <li>Run the workflow: <code>url</code> in the output links to the image</li>
                     </ol>
+
+                    <h3>Example: Generate a Video with Kling V3</h3>
+                    <ol>
+                      <li>Add the <strong>Wiro AI</strong> node and pick <code>klingai/kling-v3</code> in <strong>Model</strong></li>
+                      <li>Set <strong>Prompt</strong> to <code>A cat astronaut floating in space</code>, and leave <strong>Duration</strong> and <strong>Ratio</strong> at their defaults or pick others</li>
+                      <li>Run the workflow: <code>url</code> in the output links to the video</li>
+                    </ol>
+
+                    <h3>Example: Turn an LLM Reply into an Image</h3>
+                    <ol>
+                      <li>Add a Wiro AI node with <code>openai/gpt-5-mini</code> and a <strong>Prompt</strong> that asks for one image prompt. Its reply is in <code>text</code></li>
+                      <li>Add a second Wiro AI node with <code>pruna/p-image</code> and map its <strong>Prompt</strong> to <code>{{ $json.text }}</code></li>
+                      <li>Run the workflow: <code>url</code> in the second node's output links to the image</li>
+                    </ol>
+                    <p>The <a href="https://github.com/wiroai/n8n-nodes-wiro#example-workflow" target="_blank">package README</a> has this workflow as JSON that you can paste into n8n.</p>
                   </section>
 
                   <section id="n8n-compatibility">
@@ -10475,15 +10385,7 @@ import type {
                             <td>v1.85.0+</td>
                           </tr>
                           <tr>
-                            <td>Node.js</td>
-                            <td>v18+</td>
-                          </tr>
-                          <tr>
                             <td>Package</td>
-                            <td><code>@wiro-ai/n8n-nodes-wiroai@latest</code></td>
-                          </tr>
-                          <tr>
-                            <td>Package (Wiro AI node)</td>
                             <td><code>@wiro-ai/n8n-nodes-wiro@latest</code></td>
                           </tr>
                         </tbody>
