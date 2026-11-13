@@ -548,7 +548,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   }'
 ```
 
-**Pricing:** like the App Store and Google Play review skills, `int-google-business-reviews` adds $1 and 100 credits per month to the agent's skill weights (`monthly_price_weight_usd: 1`, `monthly_credits_weight: 100`). Preview the result with [`POST /UserAgent/PricingPreview`](/docs/agent-overview#post-useragentpricingpreview) before you apply it. As with every agent turn, scans and replies are billed on the LLM tokens they use.
+**Pricing:** like every skill, `int-google-business-reviews` is included in every plan: turning it on costs nothing and keeps the plan's price and credits. As with every agent turn, scans and replies are billed on the LLM tokens they use.
 
 Adjust the scanner's schedule with `enabled` and `interval` only. The task body (`value`) is owned by the bundled integration skill and silently dropped on writes:
 

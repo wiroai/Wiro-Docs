@@ -4,7 +4,7 @@ Per-instance credit ledger: every credit deduction, renewal, purchase, refund, g
 
 ## Overview
 
-Wiro keeps a complete, append-only **agent transaction ledger** for every UserAgent instance. Whenever credits move (the agent runtime burns them on a chat turn, a subscription renews, a Pro user buys an extra-credit pack, the user disables a paid skill mid-period and gets a refund), a row is inserted into the ledger and surfaced through `POST /UserAgent/TransactionList`.
+Wiro keeps a complete, append-only **agent transaction ledger** for every UserAgent instance. Whenever credits move (the agent runtime burns them on a chat turn, a subscription renews, the user buys an extra-credit pack or moves to a higher plan mid-period), a row is inserted into the ledger and surfaced through `POST /UserAgent/TransactionList`.
 
 The ledger is the single source of truth for "where did my credits go?" and powers the **Transactions** view in your dashboard.
 
@@ -13,10 +13,10 @@ The ledger is the single source of truth for "where did my credits go?" and powe
 | `deduct` | Agent runtime | Per-turn LLM token charge (`action: "tokens"`) for every chat, cron, and voice post-call turn. Negative `amount`. |
 | `renewal` | Subscription cron | At each 30-day rollover when the wallet successfully covers the renewal. Positive `amount` = monthly credits granted. |
 | `purchase` | Extra-credit checkout | When `POST /UserAgent/CreateExtraCreditCheckout` (`useprepaid: true`) succeeds. Positive `amount` = pack credits. |
-| `grant` | Skill toggle / tier upgrade | When a skill is enabled mid-period and the credit pool grows, or when a tier upgrade lifts the monthly allocation. Positive `amount`: what this period gained. `metadata.creditsFromRenewal` is what each renewal grants. |
-| `expired` | Skill toggle / subscription end | Two cases share the type. Mid-period: when a skill is disabled and the credit pool shrinks (`action: "skill-toggle"` or `"skills-apply"`); `amount` is what this period lost, and `metadata.usedCreditsUsd` is what came off the credit for credits already used. End-of-period: when a cancelled subscription rolls past `currentperiodend` and the cron revokes any remaining monthly leftover (`action: "subscription"`). Negative `amount` in both cases. |
+| `grant` | Plan change | When a move to a higher plan lifts this period's credits. Positive `amount`: what this period gained. `metadata.creditsFromRenewal` is what each renewal grants. Rows from before skill changes became free can also come from a skill change (`action: "skill-toggle"` or `"skills-apply"`). |
+| `expired` | Subscription end | When a cancelled subscription rolls past `currentperiodend` and the cron revokes any remaining monthly leftover (`action: "subscription"`). Negative `amount`. Rows from before skill changes became free can also come from a skill turned off mid-period (`action: "skill-toggle"` or `"skills-apply"`, with `metadata.usedCreditsUsd`). |
 | `refund` | Server-side refund | Issued by Wiro support when a previous charge is reversed. Positive `amount`. |
-| `adjust` | Skill change / Wiro support | A record for Wiro support. `amount` is `0` on `action: "skill-change-not-undone"` (a failed change that could not be taken back) and `action: "skill-credit-failed"` (a credit that was not added to the wallet). |
+| `adjust` | Skill change / Wiro support | A record for Wiro support. `amount` is `0` on `action: "skill-change-not-undone"` (a failed change that could not be taken back) and on older `action: "skill-credit-failed"` rows (a skill credit that was not added to the wallet). |
 
 > **The ledger is append-only.** There is no delete endpoint. Each row carries a stable `guid` that the server uses for deduplication (so a duplicate retry of the same deduct event is a no-op).
 
@@ -49,11 +49,11 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
   "errors": [],
   "total": 312,
   "summary": {
-    "monthlycredits": 9000,
-    "extracredits": 45000,
+    "monthlycredits": 3000,
+    "extracredits": 5000,
     "usedcredits": 1450,
-    "remainingcredits": 52550,
-    "renewalcredits": 9000,
+    "remainingcredits": 6550,
+    "renewalcredits": 3000,
     "creditperiod": "2026-05",
     "creditsyncat": 1714694410,
     "byModel": [
@@ -98,10 +98,10 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
     {
       "guid": "3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e02",
       "type": "purchase",
-      "action": "small",
-      "amount": 45000,
-      "balanceafter": 52555,
-      "description": "Extra credits — small pack",
+      "action": "medium",
+      "amount": 5000,
+      "balanceafter": 6555,
+      "description": "Extra credits — medium (wallet)",
       "sessionkey": null,
       "messageguid": null,
       "inputtokens": null,
@@ -114,7 +114,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "model": null,
       "provider": "prepaid",
       "providerref": null,
-      "metadata": { "pack": "small", "priceUsd": 450 },
+      "metadata": { "price": 50, "currency": "usd" },
       "uuid": "ada-uuid",
       "user": {
         "uuid": "ada-uuid",
@@ -131,8 +131,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "guid": "3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e03",
       "type": "renewal",
       "action": "monthly",
-      "amount": 9000,
-      "balanceafter": 9000,
+      "amount": 3000,
+      "balanceafter": 3000,
       "description": "Subscription renewal",
       "sessionkey": null,
       "messageguid": null,
@@ -146,7 +146,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "model": null,
       "provider": "prepaid",
       "providerref": null,
-      "metadata": { "period": "2026-05", "priceUsd": 90 },
+      "metadata": { "period": "2026-05", "priceUsd": 30 },
       "uuid": "ada-uuid",
       "user": {
         "uuid": "ada-uuid",
@@ -162,10 +162,10 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
     {
       "guid": "3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e04",
       "type": "grant",
-      "action": "skill-toggle",
-      "amount": 667,
-      "balanceafter": 4717,
-      "description": "Skill enabled: int-instagram-post",
+      "action": "tier-change",
+      "amount": 1250,
+      "balanceafter": 1430,
+      "description": "Plan Starter to Pro",
       "sessionkey": null,
       "messageguid": null,
       "inputtokens": null,
@@ -179,13 +179,12 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
       "provider": "prepaid",
       "providerref": null,
       "metadata": {
-        "skill": "int-instagram-post",
-        "enabled": true,
-        "previousPriceUsd": 80,
-        "newPriceUsd": 90,
-        "proratedCharge": 6.67,
-        "usedCreditsUsd": 0,
-        "creditsFromRenewal": 9000
+        "fromTier": "starter",
+        "toTier": "pro",
+        "previousPriceUsd": 5,
+        "newPriceUsd": 30,
+        "proratedCharge": 12.5,
+        "creditsFromRenewal": 3000
       },
       "uuid": "ada-uuid",
       "user": {
@@ -225,7 +224,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 |-------|------|-------------|
 | `guid` | `string` | Stable id of the ledger row. Daemon retries reuse this guid for idempotency. |
 | `type` | `string` | One of `"deduct"`, `"renewal"`, `"purchase"`, `"grant"`, `"expired"`, `"refund"`, `"adjust"`. There is no `"cancel"` type: a user-initiated subscription cancel only flips auto-renew off; credits are not forfeited until `currentperiodend` is reached, at which point the cron writes the ledger row as `type: "expired"`, `action: "subscription"`. |
-| `action` | `string\|null` | Fine-grained detail. Values depend on `type`: `"tokens"` (deduct: the per-turn LLM token charge Wiro records for every chat, cron, and voice post-call turn); `"monthly"` (renewal); `"small"`, `"medium"`, `"large"` (purchase); `"skill-toggle"`, `"skills-apply"`, `"upgrade"`, `"tier-change"` (grant); `"skill-toggle"`, `"skills-apply"` (expired, mid-period skill disable); `"subscription"` (expired, end-of-period cancel rollover; refund); `"skill-change-not-undone"`, `"skill-credit-failed"` (adjust). Legacy deduct rows may also carry `"message"`, `"create"`, `"modify"`, or `"regenerate"`. |
+| `action` | `string\|null` | Fine-grained detail. Values depend on `type`: `"tokens"` (deduct: the per-turn LLM token charge Wiro records for every chat, cron, and voice post-call turn); `"monthly"` (renewal); `"small"`, `"medium"`, `"large"` (purchase); `"upgrade"`, `"tier-change"` (grant: a move to a higher plan); `"skill-toggle"`, `"skills-apply"` (grant or expired rows from before skill changes became free); `"subscription"` (expired, end-of-period cancel rollover; refund); `"skill-change-not-undone"`, `"skill-credit-failed"` (adjust). Legacy deduct rows may also carry `"message"`, `"create"`, `"modify"`, or `"regenerate"`. |
 | `amount` | `number` | Signed credit delta: negative for deductions, positive for grants. |
 | `balanceafter` | `number\|null` | Remaining credit balance snapshot written at the time of the event. `null` on per-turn `deduct` rows. |
 | `description` | `string\|null` | Human-readable label. On an `action: "tokens"` row it spells the counts out: `LLM <model> (uncached in N, cached in N, out N, cache write N, total N tokens)`, where `cached in` and `cache write` appear only above 0. |
@@ -242,7 +241,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 | `model` | `string\|null` | Model id that served the turn, e.g. `"openai/gpt-5.4"` (`action: "tokens"` rows only). |
 | `provider` | `string\|null` | `"agent"` (runtime deduct) or `"prepaid"` (wallet-backed change). API-deployed agents always run on the prepaid path. |
 | `providerref` | `string\|null` | Provider-side reference id. Always populated for `prepaid` rows (wallet transaction id); `null` for `agent` runtime deducts. |
-| `metadata` | `object\|null` | Arbitrary JSON context attached at write time (skill, tier, period, prorated charge, …). |
+| `metadata` | `object\|null` | Arbitrary JSON context attached at write time (plan change, period, prorated charge, …). |
 | `uuid` | `string\|null` | UUID of the account the row is recorded for: the user who acted, or the agent's owner for renewals and other automated rows. Never a `"system"` placeholder. |
 | `user` | `object\|null` | Resolved actor: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. `null` when the user record was deleted. |
 | `createdat` | `number` | Unix seconds. |
@@ -288,9 +287,9 @@ console.log('Granted:', lastRenewal.amount, 'credits');
 console.log('Now in period:', summary.creditperiod);
 ```
 
-### Reconcile a Pro tier upgrade
+### Reconcile a plan change
 
-When the user upgrades Starter → Pro mid-period, the ledger gets one `grant` row for the credits the upgrade added to this period. For a wallet-billed (prepaid) agent, `UpgradeTier` writes `action: "tier-change"` with those credits as `amount` (the monthly difference for the time left in the period), a description like `"Tier starter → pro"` and `metadata: { fromTier, toTier, previousPriceUsd, newPriceUsd, proratedCharge, creditsFromRenewal }`; a card-billed upgrade writes `action: "upgrade"`. Use these rows to render an upgrade history in your UI.
+When the user moves to a higher plan mid-period, the ledger gets one `grant` row for the credits the move added to this period. For a wallet-billed (prepaid) agent, `UpgradeTier` writes `action: "tier-change"` with those credits as `amount` (the monthly difference for the time left in the period), a description like `"Plan Pro to Max"` and `metadata: { fromTier, toTier, previousPriceUsd, newPriceUsd, proratedCharge, creditsFromRenewal }`; a card-billed upgrade writes `action: "upgrade"`. A move to a lower plan takes effect at the renewal, and that `renewal` row grants the lower plan's credits. Use these rows to render a plan history in your UI.
 
 ## Errors
 

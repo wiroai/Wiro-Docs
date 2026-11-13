@@ -1,6 +1,6 @@
 # Agent Skills
 
-Configure agent behavior with editable preferences, scheduled automation tasks, and skill toggles. Browse the platform's skill registry and inspect every skill's pricing, capabilities, and credential requirements.
+Configure agent behavior with editable preferences, scheduled automation tasks, and skill toggles. Browse the platform's skill registry and inspect every skill's capabilities and credential requirements.
 
 **Read & write paths at a glance:**
 
@@ -16,8 +16,8 @@ Configure agent behavior with editable preferences, scheduled automation tasks, 
 | Delete a user-created scheduled task | [`POST /UserAgent/CustomSkillDelete`](/docs/agent-overview#post-useragentcustomskilldelete) |
 | Read version history of a custom skill | [`POST /UserAgent/CustomSkillHistory`](/docs/agent-overview#post-useragentcustomskillhistory) |
 | Revert a custom skill to preset / a historical version | [`POST /UserAgent/CustomSkillRevert`](/docs/agent-overview#post-useragentcustomskillrevert) |
-| Toggle one or more integration skills (the top-level `skills` array, e.g. `int-instagram-post`) on/off, with optional tier change | [`POST /UserAgent/SkillsApply`](/docs/agent-overview#post-useragentskillsapply) |
-| Live tier-pricing preview for a hypothetical skill set | [`POST /UserAgent/PricingPreview`](/docs/agent-overview#post-useragentpricingpreview) |
+| Toggle one or more integration skills (the top-level `skills` array, e.g. `int-instagram-post`) on/off | [`POST /UserAgent/SkillsApply`](/docs/agent-overview#post-useragentskillsapply) |
+| Preview a skill set or a plan change without saving it | [`POST /UserAgent/PricingPreview`](/docs/agent-overview#post-useragentpricingpreview) |
 
 > Read responses from `POST /UserAgent/Detail` expose the composed `customskills[]` array (preference skills + non-cron user-created skills), the `scheduledskills[]` array (scheduled tasks), and the `skills[]` array as top-level fields on the useragent object. `skills[]` is an **object array**: each entry is `{ name, enabled, _edited?, _user_created? }` (e.g. `[{ "name": "int-instagram-post", "enabled": true }, { "name": "int-wiro-aimodels", "enabled": true }]`).
 
@@ -27,7 +27,7 @@ Two concepts share the word "skill" in the agent system. Keep them straight:
 
 | Concept | What it is | Where it lives | API surface |
 |---------|------------|----------------|-------------|
-| **Registry skills** | Platform-shipped capabilities: Wiro defines them, they have pricing recipes, credential requirements, and runtime tools. Examples: `int-instagram-post`, `int-gmail-check`, `int-wordpress-post`, `int-wiro-aimodels`. | Wiro's skill registry. | `POST /Skills/List` / `POST /Skills/Detail` (read), `POST /UserAgent/SkillsApply` (toggle on/off per useragent). |
+| **Registry skills** | Platform-shipped capabilities: Wiro defines them, they have credential requirements and runtime tools, and every plan includes them. Examples: `int-instagram-post`, `int-gmail-check`, `int-wordpress-post`, `int-wiro-aimodels`. | Wiro's skill registry. | `POST /Skills/List` / `POST /Skills/Detail` (read), `POST /UserAgent/SkillsApply` (toggle on/off per useragent). |
 | **Custom skills** | User-editable preference text (`cs-content-tone`) or scheduled tasks (`cs-cron-blog-scanner`) that live ON a useragent. They reference registry skills (e.g. a scheduled task calls into `int-wordpress-post`) but are scoped to one instance. | Per useragent on the Wiro platform. | `POST /UserAgent/CustomSkillUpsert` / `POST /UserAgent/CustomSkillRename` / `POST /UserAgent/CustomSkillDelete` / `POST /UserAgent/CustomSkillHistory` / `POST /UserAgent/CustomSkillRevert`. |
 
 The rest of this page documents both: the registry endpoints first (so you can discover what's possible), then the per-useragent endpoints (so you can configure them).
@@ -77,8 +77,8 @@ Lists all skills in the registry.
       "deprecated": false,
       "replacement": null,
       "pricing": {
-        "monthly_price_weight_usd": 1,
-        "monthly_credits_weight": 100,
+        "monthly_price_weight_usd": 0,
+        "monthly_credits_weight": 0,
         "billing_model": "tokens"
       }
     }
@@ -110,7 +110,7 @@ Lists all skills in the registry.
 |-------|------|-------------|
 | `name` | `string` | Canonical skill key, **including the registry prefix** (`int-*` for integration skills, `util-*` for utility skills). Use this exact value in `SkillsApply` and `Deploy.body.skills`. |
 | `category` | `string` | `"int"` (third-party integration) or `"util"` (utility, no credential to connect: rule sets, playbooks, and keyless tools such as weather and diagrams). |
-| `version` | `string` | Semver for the registry entry. Bumped when the skill's tool surface or pricing weights change. |
+| `version` | `string` | Semver for the registry entry. Bumped when the skill's tool surface changes. |
 | `title` | `string` | Display name shown on chips / filters / cards. |
 | `description` | `string` | One-line summary used on marketing surfaces. |
 | `icon` | `string` | Path or URL to the brand icon (relative paths are absolutized to `https://wiro.ai/...` on the wire). Utility skills carry a LineIcons class name instead, such as `lni lni-cloud-sun`. |
@@ -127,7 +127,7 @@ Lists all skills in the registry.
 | `user_invocable` | `boolean` | `true` when end users can call the skill via chat. Most user-facing skills (including `int-wiro-aimodels` and `int-calendarific`) are `true`; `false` marks supporting parts that come with another skill, such as `util-video-shots` and `util-video-docs`, which come with `util-video-creator`. |
 | `deprecated` | `boolean` | `true` for skills slated for removal, and `replacement` (if any) names the migration target. |
 | `replacement` | `string\|null` | When `deprecated: true`, the registry-recommended successor skill name. |
-| `pricing` | `object` | Per-skill pricing recipe (see below). |
+| `pricing` | `object` | `{ monthly_price_weight_usd, monthly_credits_weight, billing_model }`. Every plan includes every skill, so both weights are `0` (see below). |
 
 `channels[]` is a separate, unfiltered catalog returned alongside `skills[]`.
 Skill filters do not remove channel rows. Each channel includes its stable
@@ -142,11 +142,11 @@ complete. Channels are not skills and do not affect pricing.
 
 | Sub-field | Type | Description |
 |-----------|------|-------------|
-| `monthly_price_weight_usd` | `number` | Weight (USD) the skill contributes to the agent's Starter monthly price. Wiro sums weights across the agent's enabled-skill closure (incl. transitive `depends_on`); Pro multiplies the total by `tiermultiplier`. The platform applies a **$4/month minimum floor** on top of this sum (with credits scaled proportionally). See Pricing in the [Agent Overview](/docs/agent-overview#pricing-model-tiers-skills-token-billing). |
-| `monthly_credits_weight` | `number` | Weight (credits) the skill contributes to the Starter monthly credit allocation: 100 credits per $1 of `monthly_price_weight_usd`. Same closure + multiplier semantics as price. When the $4 starter floor is applied to `monthly_price_weight_usd`, this weight is scaled up by the same ratio so the user gets a proportional credit boost rather than a free upgrade. |
-| `billing_model` | `string` | Always `"tokens"`. Per-turn conversation cost is token-metered at the agent's per-model `tokenRates` (credits per 1M input / output / cached-input tokens). See [token billing in the Agent Overview](/docs/agent-overview#pricing-model-tiers-skills-token-billing). Voice skills stream realtime audio through the operator's own Wiro AI Models balance via `int-wiro-aimodels` (your own Wiro API key); the voice-prep and post-call text turns are normal token deducts. |
+| `monthly_price_weight_usd` | `number` | Always `0`: a skill adds nothing to the agent's price. |
+| `monthly_credits_weight` | `number` | Always `0`: a skill adds nothing to the agent's monthly credits. |
+| `billing_model` | `string` | Always `"tokens"`. Per-turn conversation cost is token-metered at the agent's per-model `tokenRates` (credits per 1M input / output / cached-input tokens). See [token billing in the Agent Overview](/docs/agent-overview#token-billing). Voice skills stream realtime audio through the operator's own Wiro AI Models balance via `int-wiro-aimodels` (your own Wiro API key); the voice-prep and post-call text turns are normal token deducts. |
 
-> **4 weight buckets in the skill registry.** Every skill's `monthly_price_weight_usd` / `monthly_credits_weight` pair but one lands in one of four buckets: `ZERO` (`$0` / `0`, utility skills), `LIGHT` (`$1` / `100` credits per month), `HEAVY` (`$2` / `200` credits per month), or `PREMIUM` (`$4` / `400` credits per month). The exception is `util-video-creator`, the Video Creator's playbook: it carries that agent's price, `$29` and `2900` credits a month on Starter, to any agent that turns it on. Every paid skill grants exactly 100 monthly credits per $1 of price weight, so `monthly_credits_weight` is always `100 × monthly_price_weight_usd`. The `(priceUsd, credits)` grid is a documentation convenience, **not** a named API constant; each pair emerges from the skill's own `monthly_price_weight_usd` / `monthly_credits_weight`. There are **no per-skill Pro overrides**: Pro is always derived as `Starter × tiermultiplier` (default `10`). The agent's Starter price = `Σ(enabled-skill weights)`, bumped to `$4` if the raw sum lands below the floor (with credits scaled proportionally to keep the per-credit ratio stable); Pro = `Starter × tiermultiplier`.
+> **Every plan includes every skill.** An agent's price and monthly credits come from its plan (Starter, Pro or Max), never from its skills, so turning a skill on or off changes neither. See [Pricing Model](/docs/agent-overview#pricing-model-plans-credits-token-billing).
 
 > **Optional filter `wiro_connect_pending`.** When you query with
 > `wiro_connect_pending: true` you get every skill whose connecting
@@ -192,8 +192,8 @@ Returns a single skill by name.
     "deprecated": false,
     "replacement": null,
     "pricing": {
-      "monthly_price_weight_usd": 1,
-      "monthly_credits_weight": 100,
+      "monthly_price_weight_usd": 0,
+      "monthly_credits_weight": 0,
       "billing_model": "tokens"
     }
   }
@@ -709,12 +709,13 @@ The response carries the post-revert state (`current_value`, `current_interval`,
 
 ## Toggling Integration Skills
 
-The top-level `skills[]` array on `UserAgent/Detail` lists every integration skill on the instance as an **object array**: `[{ name, enabled, _edited?, _user_created? }, ...]`. `enabled: false` entries are still returned (so a UI can show disabled rows); filter on `enabled: true` to get only the active set. Example: `[{ "name": "int-instagram-post", "enabled": true }, { "name": "int-googleads-manage", "enabled": false }, { "name": "int-wiro-aimodels", "enabled": true }]`. To enable, disable, or change tier in one shot, use **`POST /UserAgent/SkillsApply`**. Even when you only want to flip a single skill, send it as a one-entry `skills` map. The endpoint:
+The top-level `skills[]` array on `UserAgent/Detail` lists every integration skill on the instance as an **object array**: `[{ name, enabled, _edited?, _user_created? }, ...]`. `enabled: false` entries are still returned (so a UI can show disabled rows); filter on `enabled: true` to get only the active set. Example: `[{ "name": "int-instagram-post", "enabled": true }, { "name": "int-googleads-manage", "enabled": false }, { "name": "int-wiro-aimodels", "enabled": true }]`. To enable or disable several skills in one shot, use **`POST /UserAgent/SkillsApply`**. Even when you only want to flip a single skill, send it as a one-entry `skills` map. The endpoint:
 
-1. Charges the wallet (or prorates) **once**, not N times.
-2. Triggers exactly **one agent restart** after the new skill set lands.
-3. Uses **idempotency**: concurrent calls or client retries can't apply the change twice.
-4. Is **atomic**: a payment failure rolls back to the pre-call skill set.
+1. Triggers exactly **one agent restart** after the new skill set lands.
+2. Uses **idempotency**: concurrent calls or client retries can't apply the change twice.
+3. Is **atomic**: the whole batch lands, or none of it does.
+
+A skill change costs nothing: every plan includes every skill, so the agent's price and credits stay the same.
 
 **Single-skill enable:**
 
@@ -731,7 +732,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   }'
 ```
 
-**Batch toggle + tier upgrade in one call:**
+**Batch toggle in one call:**
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
@@ -739,7 +740,6 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
-    "tier": "pro",
     "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000",
     "skills": {
       "int-instagram-post": true,
@@ -755,9 +755,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
 
 > **Bundled crons follow the integration toggle.** When you disable an integration skill (e.g. `int-instagram-post`), every bundled cron it owns (`_source: "skill-bundle"`) is hidden from the top-level `customskills` / `scheduledskills` lists until the integration is re-enabled, so you don't need to touch them individually.
 
-## Live Pricing Preview
+## Preview a Skill Change
 
-Before you commit `SkillsApply` (or the user clicks Save in your UI), call `POST /UserAgent/PricingPreview` to see "if I save this, my new monthly price would be $X with Y monthly credits". No state is mutated. For an agent with an active plan, `planChange` also says what the change would do today: the charge or credit for the time left and the credits that come with it. See [`PricingPreview`](/docs/agent-overview#post-useragentpricingpreview) for the full response shape.
+Before you commit `SkillsApply` (or the user clicks Save in your UI), call `POST /UserAgent/PricingPreview` to see the skill set the change would leave, with its `depends_on` resolved. No state is mutated, and the price and credits stay the plan's: its `planChange` shows no charge and no credit change. See [`PricingPreview`](/docs/agent-overview#post-useragentpricingpreview) for the full response shape.
 
 ```bash
 curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
@@ -765,7 +765,6 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "your-useragent-guid",
-    "tier": "pro",
     "skillOverrides": {
       "int-twitterx-post": true,
       "int-wordpress-post": false
@@ -1001,13 +1000,13 @@ Agents can optionally forward operator notifications to a Telegram bot via the `
 
 ### Utility Skills
 
-`util-*` skills need no credential. Most are rule sets that come with an integration skill as one of its `depends_on`. These three can be added to any agent with [`SkillsApply`](#toggling-integration-skills):
+`util-*` skills need no credential. Most are rule sets that come with an integration skill as one of its `depends_on`. These three can be added to any agent with [`SkillsApply`](#toggling-integration-skills), on any plan and at no charge:
 
-| Skill | What it adds | Starter price weight |
-|-------|--------------|----------------------|
-| `util-weather` | Current weather and a 9-day forecast for any place: temperature, rain, wind and UV from MET Norway's open forecast data, with the place found on OpenStreetMap. | $0 |
-| `util-diagram` | Flowcharts, architecture and sequence diagrams, state machines, data models, mind maps, timelines, Gantt plans and concept drawings as PNG images with an editable SVG copy, checked for overlapping or cut-off text. | $0 |
-| `util-video-creator` | The Video Creator's playbook: finished videos with voice-over, music and captions from a website or web app (behind a login too), an app-store listing, a document, an article or product photos; 16:9 or 9:16, up to 3 minutes. It brings `util-video-shots`, `util-video-docs`, `util-motion-effects` and `int-wiro-aimodels` with it, so the agent needs your Wiro project key, which pays the video's model runs (see [Using Wiro AI Models from Your Agent](#using-wiro-ai-models-from-your-agent)). `util-motion-effects` and `util-video-creator` always come together, whichever one you turn on. | $29, plus $1 for `int-wiro-aimodels` when the agent doesn't have it yet |
+| Skill | What it adds |
+|-------|--------------|
+| `util-weather` | Current weather and a 9-day forecast for any place: temperature, rain, wind and UV from MET Norway's open forecast data, with the place found on OpenStreetMap. |
+| `util-diagram` | Flowcharts, architecture and sequence diagrams, state machines, data models, mind maps, timelines, Gantt plans and concept drawings as PNG images with an editable SVG copy, checked for overlapping or cut-off text. |
+| `util-video-creator` | The Video Creator's playbook: finished videos with voice-over, music and captions from a website or web app (behind a login too), an app-store listing, a document, an article or product photos; 16:9 or 9:16, up to 3 minutes. It brings `util-video-shots`, `util-video-docs`, `util-motion-effects` and `int-wiro-aimodels` with it, so the agent needs your Wiro project key, which pays the video's model runs (see [Using Wiro AI Models from Your Agent](#using-wiro-ai-models-from-your-agent)). `util-motion-effects` and `util-video-creator` always come together, whichever one you turn on. |
 
 `POST /Skills/List` with `{ "category": "util" }` returns every utility skill.
 

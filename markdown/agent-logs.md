@@ -139,13 +139,15 @@ A `token_usage` event records the token spend and credit deduction for one bille
 | `AGENT_SETTINGS_UPDATED` | `Agent settings updated: timezone Europe/Istanbul` |
 | `AGENT_TRANSFERRED` | `Agent moved to a team workspace`, `Agent moved to the personal workspace` |
 | `AGENT_INSTRUCTION_ADDED`, `AGENT_INSTRUCTION_UPDATED`, `AGENT_INSTRUCTION_RENAMED`, `AGENT_INSTRUCTION_DELETED`, `AGENT_INSTRUCTION_REVERTED` | `Custom skill added: cs-brand-voice`, `Scheduled task updated: cs-cron-blog-scanner (text, schedule 0 9 * * 1)`, `Custom skill renamed: cs-brand-voice to cs-house-style`, `Scheduled task deleted: cs-cron-blog-scanner`, `Custom skill reverted to its preset: cs-brand-voice` |
-| `AGENT_SKILLS_UPDATED` | `Connectors updated: int-gmail-check on`, `Skills updated: util-web-channel off`, `Connectors and skills updated: int-gmail-check on, util-web-channel off; $1.20 charged` |
+| `AGENT_SKILLS_UPDATED` | `Connectors updated: int-gmail-check on`, `Skills updated: util-web-channel off`, `Connectors and skills updated: int-gmail-check on, util-web-channel off` |
 | `AGENT_CREDENTIAL_SAVED` | `Connector setting saved: wiro.apikey` |
 | `AGENT_CREDENTIAL_REMOVED` | `Disconnected: serper` (a disconnect card from chat removed the connector's saved key) |
 | `AGENT_OAUTH_CONNECT_STARTED`, `AGENT_OAUTH_CONNECTED`, `AGENT_OAUTH_DISCONNECTED` | `Connection started: instagram (own)`, `Connected: instagram`, `Disconnected: instagram` |
-| `AGENT_PLAN_STARTED`, `AGENT_PLAN_RENEWED`, `AGENT_PLAN_CANCELLED`, `AGENT_PLAN_RESUMED` | `Plan started: $9.00 charged`, `Plan renewed: $9.00 charged`, `Plan cancelled, ends 2026-06-01`, `Plan cancellation undone` |
-| `AGENT_TIER_UPGRADED` | `Tier upgraded from starter to pro; $40.50 charged` |
-| `AGENT_CREDITS_PURCHASED` | `Extra credits bought: small pack, 4500 credits, $45.00 charged` |
+| `AGENT_PLAN_STARTED`, `AGENT_PLAN_RENEWED`, `AGENT_PLAN_CANCELLED`, `AGENT_PLAN_RESUMED` | `Starter plan started: $5.00 charged`, `Starter plan renewed: $5.00 charged`, `Plan cancelled, ends 2026-06-01`, `Plan cancellation undone` |
+| `AGENT_TIER_UPGRADED` | `Plan upgraded from Starter to Pro; $12.50 charged` |
+| `AGENT_PLAN_CHANGE_SCHEDULED`, `AGENT_PLAN_CHANGE_CANCELLED` | `Plan change scheduled: Pro to Starter on 2026-06-01`, `Scheduled plan change cancelled: stays on Pro` |
+| `AGENT_PLAN_MOVE_SCHEDULED` | `Moves to the Starter plan ($5.00 a month) on 2026-06-01` (an agent subscribed before the three plans) |
+| `AGENT_CREDITS_PURCHASED` | `Extra credits bought: small pack, 1000 credits, $10.00 charged` |
 | `AGENT_CHECKOUT_CREATED` | `Card checkout link created: plan` |
 | `AGENT_LOG_DAY_DELETED` | `Activity log day deleted: 2026-05-02` |
 
