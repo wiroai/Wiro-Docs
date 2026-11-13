@@ -2194,8 +2194,8 @@ When every entry in your `skills` map already matches the persisted state, the e
 |-------|------|-------------|
 | `noOp` | `boolean` | Present and `true` only on the no-op short-circuit response. Absent on the regular success path. When you see `noOp: true`, the rest of the field set (`tier`, `restartTriggered`, `pricing`) is omitted, because there was nothing to apply. |
 | `tier` | `string` | The agent's plan (`"starter"`, `"pro"` or `"max"`), which a skill change never moves. |
-| `restartTriggered` | `boolean` | `true` when the agent runtime was restarted to pick up the new skill set. `false` for stopped agents (no restart needed) or no-op batches. |
-| `restartedAt` | `number\|null` | Unix seconds when the restart trigger fired. `null` when `restartTriggered` is `false`. |
+| `restartTriggered` | `boolean` | `true` when the call changed the skill set: a starting or running agent restarts to load it, and a stopped one loads it at its next start. `false` when nothing on the agent changed. |
+| `restartedAt` | `number\|null` | Unix seconds when the change was saved and the restart was asked for. `null` when `restartTriggered` is `false`. |
 | `pricing.enabledSkills` | `array<string>` | Final enabled skill set including transitive `depends_on` closure, as a flat array of skill names. The matching `useragent.skills` array on the next `Detail` call is an object array (`{name, enabled, _edited?, _user_created?}`); take `.name` from each entry to compare. |
 | `pricing.delta` / `deltaUsd` / `deltaCredits` / `creditsNow` | `number` | Always `0`: a skill change moves no money and no credits. The rest of `pricing` is kept for older clients and repeats the plan as it stands: its price in `previousPriceUsd` and `newPriceUsd`, its credits in `previousMonthlyCredits`, `newMonthlyCredits`, `creditsThisPeriod` and `creditsFromRenewal`, and `periodEnd: null`. `stripeProrationApplied` is always `false`, `prepaidWalletDelta` `null` and `usedCreditsUsd` `0`, in `pricing` and at the top level. |
 

@@ -16435,12 +16435,12 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <tr>
 <td><code>restartTriggered</code></td>
 <td><code>boolean</code></td>
-<td><code>true</code> when the agent runtime was restarted to pick up the new skill set. <code>false</code> for stopped agents (no restart needed) or no-op batches.</td>
+<td><code>true</code> when the call changed the skill set: a starting or running agent restarts to load it, and a stopped one loads it at its next start. <code>false</code> when nothing on the agent changed.</td>
 </tr>
 <tr>
 <td><code>restartedAt</code></td>
 <td><code>number|null</code></td>
-<td>Unix seconds when the restart trigger fired. <code>null</code> when <code>restartTriggered</code> is <code>false</code>.</td>
+<td>Unix seconds when the change was saved and the restart was asked for. <code>null</code> when <code>restartTriggered</code> is <code>false</code>.</td>
 </tr>
 <tr>
 <td><code>pricing.enabledSkills</code></td>
@@ -20901,6 +20901,10 @@ Reply &quot;yes&quot; to apply exactly this change, or &quot;no&quot; to turn it
 <tr>
 <td><code>⚠️ Not saved: &lt;reason&gt;. Paste the key again as your reply.</code></td>
 <td>The pasted key was refused, for example because it is too short. Nothing was saved and the card stays pending. When the key was for an <code>add</code> card and its <code>connect</code> card, neither is applied.</td>
+</tr>
+<tr>
+<td><code>⚠️ Not saved: &lt;Title&gt; is still waiting. Reply "yes" to add it, or "no" to turn it down.</code></td>
+<td>In a chat over a project API key, a key came for an <code>add</code> card and its <code>connect</code> card after the <code>connect</code> card was applied, turned down or settled elsewhere. Nothing was saved, and the <code>add</code> card still waits for a <code>yes</code> or a <code>no</code>.</td>
 </tr>
 <tr>
 <td><code>That does not look like a &lt;Connector&gt; key, so it was not saved. Paste the &lt;Connector&gt; key as your reply.</code></td>
