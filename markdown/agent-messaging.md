@@ -67,7 +67,7 @@ Match the code in brackets, never the sentence after it, which can change. Turns
 
 ## **POST** /UserAgent/Message/Send
 
-Sends a user message to a deployed agent. The agent must be in running state (status `4`). Returns immediately with an `agenttoken` that you use to track the response via WebSocket, polling, or webhook.
+Sends a user message to a deployed agent. The agent must be in running state (status `4`), except for a setup reply that Wiro answers itself, such as a `yes` that applies a setup card, which works in any status (see [Replies Wiro handles itself](#handled-setup-replies)). Returns immediately with an `agenttoken` that you use to track the response via WebSocket, polling, or webhook.
 
 Accepts either `application/json` (text-only) or `multipart/form-data` (text + file attachments). When sending files, the `message` field can be empty. The agent receives the attachments and any accompanying text.
 
@@ -129,7 +129,7 @@ When `result: false`, the response shape is `{ result: false, errors: [{ code, m
 
 | Failure branch | Extra fields | Notes |
 |----------------|--------------|-------|
-| Agent not running (`status` ≠ 4) | `agentstatus: <int>` | Echoes the agent's current `status` so the caller can decide whether to wait, call `Start`, or surface "Setup Required" UI. Common codes: `0` initializing, `1` stopping, `2` starting, `3` starting (wait and retry), `5` upgrading, `6` setup required. |
+| Agent not running (`status` ≠ 4) | `agentstatus: <int>` | Returned for every message Wiro doesn't answer itself as a setup reply (see [Replies Wiro handles itself](#handled-setup-replies)). Echoes the agent's current `status` so the caller can decide whether to wait, call `Start`, or surface "Setup Required" UI: `0` Stopped (call `Start`), `1` Stopping, `2` Queued and `3` Starting (wait and retry), `5` Error (call `Start` to retry), `6` Setup Required. See [UserAgent Statuses](/docs/agent-overview#useragent-statuses). |
 | Out of credits | `agentstatus`, `agentbalance: { monthlycredits, extracredits, usedcredits, remainingcredits }` | Returned with the `Agent has no remaining credits…` error. `remainingcredits: 0` is the trigger; surface a "Renew or buy a credit pack" CTA. |
 
 ## **POST** /UserAgent/Message/Detail
@@ -841,7 +841,7 @@ Read a missing list as empty. An `add` card for Brevo Email, which brings two sk
 
 A `remove` card keeps a connector's saved key, as turning a connector off on the agent page does, so adding it back later needs no new key. To remove the key too, use a [`disconnect` card](#setup-disconnect-cards).
 
-**Adding a connector that takes a key.** When an `add` card's `needs` names a connector with `mode: "key"`, the agent proposes a `connect` card for that connector in the same reply. Wiro takes that `connect` card even though the connector isn't on yet, and checks it against the agent's setup as it will be once the `add` card is applied. The `add` card goes first: until it is applied, applying the `connect` card changes nothing and answers `Apply card <N> first: it turns on <Title>.`, where `<N>` is the `add` card's number on the reply, and the `connect` card stays pending. In a typed chat, a `yes` applies the `add` card as it does any card other than `connect` (see [Approving a setup card](#approving-setup-cards)). Wiro's answer then asks for the key (`A connector card still needs its key: paste the key as your reply.`), and the key pasted as the next reply applies the `connect` card. A connector with a sign-in, or one set up on the agent page, gets no `connect` card: once the `add` card is applied, Wiro's answer says `Connect <Title> on the agent page.`, naming each such connector by its `title` in `needs`.
+**Adding a connector that takes a key.** When an `add` card's `needs` names a connector with `mode: "key"`, Wiro adds a `connect` card for that connector to the same reply, right after the `add` card, so the person sees both cards at once. It leaves the `connect` card out when the reply already has a pending `connect` card for that connector, or has no room for another card (a reply holds at most three). A reply keeps one pending `connect` card per connector, so a `connect` card the agent proposes for that connector afterwards isn't stored again. Wiro checks the `connect` card against the agent's setup as it will be once the `add` card is applied, since the connector isn't on yet. The `add` card goes first: until it is applied, applying the `connect` card changes nothing and answers `Apply card <N> first: it turns on <Title>.`, where `<N>` is the `add` card's number on the reply, and the `connect` card stays pending. In a typed chat, a `yes` applies the `add` card as it does any card other than `connect` (see [Approving a setup card](#approving-setup-cards)). Wiro's answer then asks for the key (`A connector card still needs its key: paste the key as your reply.`), and the key pasted as the next reply applies the `connect` card. The key doesn't have to wait for the restart the `add` card started: Wiro saves it right away, whether it is pasted as the reply or entered on the `connect` card. A key saved while the agent is still stopping or queued for that restart loads with it, so adding and connecting the connector takes one restart; a key saved once the agent is starting or running again restarts it once more. A connector with a sign-in, or one set up on the agent page, gets no `connect` card: once the `add` card is applied, Wiro's answer says `Connect <Title> on the agent page.`, naming each such connector by its `title` in `needs`.
 
 Wiro checks an `add` or `remove` card when the agent proposes it and again when it is applied, and works out `with`, `pauses`, `resumes` and `needs` again. When the agent's connectors or skills changed in between, so that the card would now turn on more than it shows or turn off something else, nothing changes and the card fails with `This agent's connectors or skills changed after the card was made. Ask the agent again.` A dependency in `with` that was turned on in the meantime is not a change. An `add` card whose `key` itself was turned on in the meantime fails with `<Title> is already on.`, and a `remove` card whose `key` was turned off fails with `<Title> is not on this agent.`
 
@@ -881,9 +881,9 @@ What a `yes` does depends on where it is sent and how many cards are pending (`c
 | One, in a message sent with a project API key | The first `yes` applies nothing: Wiro answers with the card's exact content (the [card listing](#setup-card-listing)). A second `yes` applies that card. |
 | Several | The first `yes` gets the card listing, which numbers the cards. Then reply `yes` and a number, such as `yes 2`, to apply that card, one card per reply. A plain `yes` never applies one of several cards. In the web chat, the card's Apply button works too. |
 
-A number works only for a card Wiro has listed: `yes 2` sent before the listing gets the listing. A message that says more, such as `yes, but at 10`, is an ordinary message for the agent. A reply such as `no` or `cancel` dismisses every pending card of the latest reply and goes to the agent as usual. A `connect` card needs its key, so a `yes` never applies one: when only `connect` cards are pending, `yes` is an ordinary message.
+A number works only for a card Wiro has listed: `yes 2` sent before the listing gets the listing. A message that says more, such as `yes, but at 10`, is an ordinary message for the agent. A reply such as `no` or `cancel` dismisses every pending card of the latest reply and goes to the agent as usual. While the agent isn't running, Wiro answers such a reply itself when it turned cards down: `The setup change was turned down.` or `The <N> setup changes were turned down.`, with the cards' ids in `setupresult.dismissed`. A `connect` card needs its key, so a `yes` never applies one: when only `connect` cards are pending, `yes` is an ordinary message.
 
-Wiro applies the stored card, checked again against the agent's current setup, never anything written in the reply. A card is applied at most once. When a `connect` card is applied, the other `connect` cards for the same connector still pending on the same person's messages in that chat from the last 7 days are marked `applied` too. `setup` and `setupresult` name only the card you acted on; History and Detail show the others. Only an agent admin can apply a card: a reply from anyone else changes nothing and gets `Only an agent admin can apply setup changes.` When a change needs a restart, the agent restarts to load it: continue the chat in about a minute.
+Wiro applies the stored card, checked again against the agent's current setup, never anything written in the reply. A card is applied at most once. When a `connect` card is applied, the other `connect` cards for the same connector still pending on the same person's messages in that chat from the last 7 days are marked `applied` too. `setup` and `setupresult` name only the card you acted on; History and Detail show the others. Only an agent admin can apply a card: a reply from anyone else changes nothing and gets `Only an agent admin can apply setup changes.` When a change needs a restart, the agent restarts to load it: continue the chat in about a minute. Replies to setup cards don't have to wait for it; see [Replies Wiro handles itself](#handled-setup-replies).
 
 ### The card listing
 
@@ -915,7 +915,7 @@ While setup from chat is on for a message, Wiro keeps keys out of the agent's co
 
 ### Replies Wiro handles itself
 
-When Wiro handles a message itself (a `yes` that applies a card or gets the [card listing](#setup-card-listing), a key pasted as the reply, or a reply refused because the sender isn't an agent admin), no agent turn runs and no credits are used, even when the agent has no credits left. [`Message/Send`](#post-useragentmessagesend) answers at once with the result:
+When Wiro handles a message itself (a `yes` that applies a card or gets the [card listing](#setup-card-listing), a key pasted as the reply, a reply refused because the sender isn't an agent admin, or a `no` that turned cards down while the agent isn't running), no agent turn runs and no credits are used, even when the agent has no credits left. Wiro does this whatever the agent's status, so these replies also work while the agent is stopped or restarting. [`Message/Send`](#post-useragentmessagesend) answers at once with the result:
 
 ```json
 {
@@ -945,6 +945,8 @@ When Wiro handles a message itself (a `yes` that applies a card or gets the [car
 
 The message is stored like any finished exchange: Message/Detail and Message/History return it with `status: "agent_end"`, `metadata.type: "setup_result"` and `model: null`. When the Send has a `callbackurl`, Wiro posts the result to it right away with `status: "agent_end"`, as for a finished turn; see [Agent Webhooks](/docs/agent-webhooks).
 
+A card applied while the agent is stopped doesn't start it: the agent loads the change the next time it starts, and `restarting` is `false`. While the agent isn't running, every message Wiro doesn't answer itself gets the [not-running refusal](#failure-responses) with `agentstatus`, a message with attachments or over 2,000 characters included.
+
 ### Wiro's answers
 
 The lines Wiro writes in `response`:
@@ -953,9 +955,9 @@ The lines Wiro writes in `response`:
 |------|------|
 | `✅ Applied: <summary>.` | The card was applied. The summary says what changed, such as `Scheduled task Morning summary created`, `Custom skill Weekly report updated` (also for an `append` card), `Custom skill Weekly report restored`, `Custom skill Weekly report turned off`, `Time zone set to Europe/Istanbul`, `<Connector> connected`, `<Connector> disconnected`, `Brevo Email added` or `Weather removed`. An `add` card that brings a connector with a sign-in, or one set up on the agent page, goes on with `Connect <Title> on the agent page.`, naming each such connector by its `title` in `needs`. |
 | `⚠️ Not applied: <reason>` | The change failed. The card's `status` is now `failed`, with the same reason in `error`. For example, `This skill changed after the card was made. Ask the agent again.` means the skill's text changed after an `update`, `append` or `revert` card was made. |
-| `Your agent is restarting to load the change. Continue in about a minute.` | The change restarts the agent. |
+| `Your agent is restarting to load the change. Continue in about a minute.` | The change restarts the agent, or loads with a restart already under way, such as the one an `add` card started. |
 | `1 more setup change is still pending.` or `<N> more setup changes are still pending.` | Other cards of the same reply still wait. Reply `yes` and a card's number to apply the next one. |
-| `A connector card still needs its key: paste the key as your reply.` or `<N> connector cards still need their keys: add each key on its card.` | `connect` cards of the same reply still wait for their keys, such as the `connect` card that came with an `add` card just applied. |
+| `A connector card still needs its key: paste the key as your reply.` or `<N> connector cards still need their keys: add each key on its card.` | `connect` cards of the same reply still wait for their keys, such as the `connect` card that came with an `add` card just applied. A `connect` card whose connector still waits for an `add` card that failed or was turned down isn't counted. |
 | `Saved <fields> for <Connector>. Still needed: <fields>.` | The pasted key was saved, and the connector needs more fields. The card stays pending: add the rest on the card or on the agent page. When Wiro can't name the missing fields, the second sentence reads `It is not connected yet: finish it on the agent page.` |
 | `⚠️ Not saved: <reason>. Paste the key again as your reply.` | The pasted key was refused, for example because it is too short. Nothing was saved and the card stays pending. |
 | `That does not look like a <Connector> key, so it was not saved. Paste the <Connector> key as your reply.` | The reply holds a key in another service's format. Nothing was saved, the stored message reads `[key removed]` in its place, and the card stays pending. When Wiro knows the format, the sentence names it, such as `(it looks like <kind>)`. |
@@ -963,6 +965,7 @@ The lines Wiro writes in `response`:
 | `This setup change was already handled.` | The card was applied or dismissed before this reply arrived. |
 | `This card is older than 30 minutes. Use the card's button, or ask the agent again.` | The card turned 30 minutes old while the reply was handled. Apply it with its button or [`SetupCardApply`](#post-useragentmessagesetupcardapply). |
 | `Only an agent admin can apply setup changes.` | The sender isn't an agent admin. Nothing changed. |
+| `The setup change was turned down.` or `The <N> setup changes were turned down.` | A `no` or `cancel` sent while the agent isn't running turned the pending cards down. `setupresult.dismissed` holds their ids. While the agent runs, the agent answers a `no` itself. |
 | `The agent proposes this setup change. Nothing is applied yet.` | The start of the [card listing](#setup-card-listing). Nothing changed. |
 
 ## **POST** /UserAgent/Message/SetupCardApply
