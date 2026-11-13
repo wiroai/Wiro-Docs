@@ -12630,7 +12630,7 @@ Fields that don't apply to a card's kind are absent. More kinds and actions can 
 
 A `skill` card changes one of the agent's custom skills. `create` and `update` carry the skill's full text in `instructions`, and `disable` and `enable` turn the skill off and on. Two more actions keep a change to an existing skill small:
 
-- **`append`** adds text to the end of the skill. `instructions` holds only the text to add, so a new rule goes into a long skill without the whole skill being sent again. Once applied, the skill's text is `before` with the whitespace at its end removed, a blank line, then `instructions`. Wiro refuses the card when the skill already holds that text, or when the skill would get longer than a custom skill can be.
+- **`append`** adds text to the end of the skill. `instructions` holds only the text to add, so a new rule goes into a long skill without the whole skill being sent again. Once applied, the skill's text is `before` with the whitespace at its end removed, a blank line, then `instructions`. Wiro refuses the card when the skill already holds that text, or when the skill would get too long to change from chat.
 - **`revert`** undoes the skill's last change. The agent names only the skill, and Wiro puts the text to restore in `instructions`: the newest version in the skill's [version history](/docs/agent-overview#post-useragentcustomskillhistory) whose text differs from the current text. When the skill has no earlier version, Wiro refuses the card.
 
 An `update`, `append` or `revert` card also has `before`, the skill's text when Wiro checked the card. Wiro writes it; the agent never does. Show it next to the text after the change, which is `instructions` on `update` and `revert` cards and the joined text on `append` cards: on a pending card as the current and the proposed text, and on an applied card as the text before and after the change. Don't read the skill's live text for this, since it already holds the change once the card is applied. `before` can be absent on older cards.
@@ -12658,13 +12658,13 @@ Keep posts under 900 words.
 End every post with three questions readers ask, each with a two-sentence answer.
 ```
 
-Wiro applies these cards only to the text the approver saw. When the skill's text no longer matches `before` as the card is applied, for example because someone edited the skill on the agent page after the card was made, nothing changes and the card fails with `This skill changed after the card was made. Ask the agent again.`
+Wiro applies a card that has `before` only while the skill still holds that text. When the skill's text no longer matches `before` as the card is applied, for example because someone edited the skill on the agent page after the card was made, nothing changes and the card fails with `This skill changed after the card was made. Ask the agent again.`
 
 ### Disconnecting a connector
 
 A `disconnect` card removes a connector's saved key, as clearing it on the agent page does. It names the connector in `connector` and never holds a value. Once it is applied, the agent restarts without the connector, and skills that use it stop until it is connected again.
 
-Wiro takes a `disconnect` card only for a connector that meets all three: it is connected now, it is connected with a key (the kind a `connect` card saves), and the agent can run without it (`optional: true` in the `credentials` of [`UserAgent/Detail`](/docs/agent-overview#post-useragentdetail)). A connector that uses a sign-in (OAuth), a channel (Telegram, Slack or Discord), the Wiro project the agent runs models with and a connector the agent needs to start are disconnected on the agent page. A `yes` applies a `disconnect` card as it does any card other than `connect`.
+Wiro takes a `disconnect` card only for a connector that meets all three: it is connected now, it is connected with a key (the kind a `connect` card saves), and the agent can run without it (`optional: true` in the `credentials` of [`UserAgent/Detail`](/docs/agent-overview#post-useragentdetail)). Connectors that use a sign-in (OAuth), channels (Telegram, Slack or Discord), the Wiro project the agent runs models with and connectors the agent needs to start are disconnected on the agent page. A `yes` applies a `disconnect` card as it does any card other than `connect`.
 
 ### Approving a setup card
 
@@ -12700,7 +12700,7 @@ Instructions:
 Reply "yes" to apply exactly this change, or "no" to turn it down.
 ```
 
-An `append` card's first line reads `Card 1: Add to custom skill <key>.`, followed by only the text it adds. A `revert` card's reads `Card 1: Undo the last change to custom skill <key>.`, followed by the text it restores. A `disconnect` card has one line: `Card 1: Disconnect <Connector> (its saved key is removed).`
+An `append` card's first line reads `Card 1: Add to custom skill <key>.`, followed by only the text it adds. A `revert` card's first line reads `Card 1: Undo the last change to custom skill <key>.`, followed by the text it restores. A `disconnect` card has one line: `Card 1: Disconnect <Connector> (its saved key is removed).`
 
 With several cards, it starts with `The agent proposes these setup changes. Nothing is applied yet.` and ends with `To apply one, reply "yes" and its number, such as "yes 1", one card per reply, or press Apply on the card in the web chat. Reply "no" to turn them all down.` Show this text, as it is, to the person who approves. The listing is a reply Wiro handles itself (see [below](#handled-setup-replies)), and its `setupresult` lists no card.
 
