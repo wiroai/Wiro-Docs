@@ -18512,8 +18512,8 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <td><code>Message/Send</code>, <code>Message/History</code>, <code>Message/Sessions</code>, <code>Message/DeleteSession</code>, <code>Message/RenameSession</code> or <code>Message/Delete</code> called for an agent that has been deleted</td>
 </tr>
 <tr>
-<td><code>Agent is not running. Current status: {n}</code></td>
-<td><code>Message/Send</code> when not running. Response includes <code>agentstatus</code> (the integer) so your client can branch on it.</td>
+<td>The sentence for the agent's status: <code>Agent is stopped. Start it from the agent panel before sending messages.</code> (status <code>0</code>), <code>Agent is stopping. Please wait a moment and try again.</code> (status <code>1</code>), <code>Agent is starting up. Please wait a moment and try again.</code> (status <code>2</code> or <code>3</code>), <code>Agent is in error state. Restart it from the agent panel before sending messages.</code> (status <code>5</code>) or <code>Agent setup is incomplete. Complete the setup before sending messages.</code> (status <code>6</code>)</td>
+<td><code>Message/Send</code> while the agent isn't running (any status other than <code>4</code>), for every message Wiro doesn't answer itself as a setup reply (see <a href="/docs/agent-messaging#handled-setup-replies">Replies Wiro handles itself</a>). Response includes <code>agentstatus</code> (the integer) so your client can branch on it.</td>
 </tr>
 <tr>
 <td><code>Agent has no remaining credits. Renew your subscription or buy a credit pack to continue.</code></td>
