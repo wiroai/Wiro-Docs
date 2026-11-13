@@ -20350,7 +20350,7 @@ print(response.body);
 <p>When polling for the final state, check <code>status === "agent_cancel"</code>.</p>
 </blockquote>
 <h2 id="setup-from-chat">Setup From Chat</h2>
-<p>An agent can help the people who run it set it up in the chat: save a key for a connector or remove it, create or change a scheduled task, create or change a custom skill, add to one or undo its last change, or change its time zone. The agent never changes its own setup and never sees a key. It proposes the change as a <strong>setup card</strong>: Wiro checks the card against the agent's current setup and stores it on the message that asked for it, where it shows as a <code>setup</code> block in that message's <code>timeline[]</code>. Nothing changes until an agent admin (the owner, or an admin of the agent's team) approves the card.</p>
+<p>An agent can help the people who run it set it up in the chat: add or remove a connector or skill, save a key for a connector or remove it, create or change a scheduled task, create or change a custom skill, add to one or undo its last change, or change its time zone. The agent never changes its own setup and never sees a key. It proposes the change as a <strong>setup card</strong>: Wiro checks the card against the agent's current setup and stores it on the message that asked for it, where it shows as a <code>setup</code> block in that message's <code>timeline[]</code>. Nothing changes until an agent admin (the owner, or an admin of the agent's team) approves the card.</p>
 <p>Where cards can be proposed and approved is the agent's <code>chatsetup</code> setting. Set it with <a href="/docs/agent-overview#post-useragentupdatesettings"><code>UpdateSettings</code></a> or at <a href="/docs/agent-overview#post-useragentdeploy"><code>Deploy</code></a>, and read it back as <code>chatSetup</code> on <a href="/docs/agent-overview#post-useragentdetail"><code>UserAgent/Detail</code></a>:</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -20431,12 +20431,12 @@ print(response.body);
 <tr>
 <td><code>kind</code></td>
 <td><code>string</code></td>
-<td><code>connect</code> (save a key for a connector), <code>disconnect</code> (remove a connector's saved key), <code>schedule</code> (a scheduled task), <code>skill</code> (a custom skill) or <code>timezone</code>.</td>
+<td><code>add</code> (turn on a connector or skill), <code>remove</code> (turn one off), <code>connect</code> (save a key for a connector), <code>disconnect</code> (remove a connector's saved key), <code>schedule</code> (a scheduled task), <code>skill</code> (a custom skill) or <code>timezone</code>.</td>
 </tr>
 <tr>
 <td><code>action</code></td>
 <td><code>string</code></td>
-<td><code>schedule</code>: <code>create</code>, <code>update</code>, <code>pause</code>, <code>resume</code> or <code>delete</code>. <code>skill</code>: <code>create</code>, <code>update</code>, <code>append</code> (add text to the end), <code>revert</code> (undo the last change), <code>disable</code> or <code>enable</code>; see <a href="#setup-skill-cards">Changing a custom skill</a>. Absent on <code>connect</code>, <code>disconnect</code> and <code>timezone</code> cards.</td>
+<td><code>schedule</code>: <code>create</code>, <code>update</code>, <code>pause</code>, <code>resume</code> or <code>delete</code>. <code>skill</code>: <code>create</code>, <code>update</code>, <code>append</code> (add text to the end), <code>revert</code> (undo the last change), <code>disable</code> or <code>enable</code>; see <a href="#setup-skill-cards">Changing a custom skill</a>. Absent on <code>add</code>, <code>remove</code>, <code>connect</code>, <code>disconnect</code> and <code>timezone</code> cards.</td>
 </tr>
 <tr>
 <td><code>connector</code></td>
@@ -20446,7 +20446,7 @@ print(response.body);
 <tr>
 <td><code>key</code></td>
 <td><code>string</code></td>
-<td><code>schedule</code> and <code>skill</code> only. The scheduled task's key (<code>cs-cron-&lt;name&gt;</code>) or the custom skill's key (<code>cs-&lt;name&gt;</code>).</td>
+<td><code>add</code>, <code>remove</code>, <code>schedule</code> and <code>skill</code> only. On <code>add</code> and <code>remove</code>: the name of one connector (<code>int-&lt;name&gt;</code>) or skill (<code>util-&lt;name&gt;</code>) as <a href="/docs/agent-skills#post-skillslist"><code>POST /Skills/List</code></a> lists it, up to 64 characters, for example <code>int-brevo-email</code>; see <a href="#setup-add-remove-cards">Adding and removing connectors and skills</a>. On <code>schedule</code> and <code>skill</code>: the scheduled task's key (<code>cs-cron-&lt;name&gt;</code>) or the custom skill's key (<code>cs-&lt;name&gt;</code>).</td>
 </tr>
 <tr>
 <td><code>title</code></td>
@@ -20467,6 +20467,21 @@ print(response.body);
 <td><code>before</code></td>
 <td><code>string</code></td>
 <td><code>skill</code> cards with <code>update</code>, <code>append</code> or <code>revert</code> only. The skill's text when Wiro checked the card, written by Wiro, never by the agent. Show it as the text before the change; see <a href="#setup-skill-cards">Changing a custom skill</a>. It can be absent on older cards.</td>
+</tr>
+<tr>
+<td><code>with</code></td>
+<td><code>string[]</code></td>
+<td><code>add</code> and <code>remove</code> only, written by Wiro, never by the agent. The other connectors and skills the card turns on (<code>add</code>) or off (<code>remove</code>) together with <code>key</code>, by name, sorted, at most 12.</td>
+</tr>
+<tr>
+<td><code>pauses</code> / <code>resumes</code></td>
+<td><code>string[]</code></td>
+<td><code>add</code> and <code>remove</code> only, written by Wiro. The scheduled tasks (<code>cs-cron-&lt;name&gt;</code>) that pause, or run again, with this change, at most 20 each.</td>
+</tr>
+<tr>
+<td><code>needs</code></td>
+<td><code>object[]</code></td>
+<td><code>add</code> only, written by Wiro. The connectors the change brings that aren't connected yet, at most 3, each <code>{ connector, title, mode }</code>: <code>connector</code> is the connector's <code>key</code>, as a <code>connect</code> card names it, <code>title</code> is its name, and <code>mode</code> says how it is connected: <code>key</code> (with a key pasted in the chat, through a <code>connect</code> card), <code>signin</code> (with a sign-in on the agent page) or <code>page</code> (on the agent page).</td>
 </tr>
 <tr>
 <td><code>timezone</code></td>
@@ -20539,9 +20554,44 @@ Keep posts under 900 words.
 End every post with three questions readers ask, each with a two-sentence answer.
 </code></pre>
 <p>Wiro applies a card that has <code>before</code> only while the skill still holds that text. When the skill's text no longer matches <code>before</code> as the card is applied, for example because someone edited the skill on the agent page after the card was made, nothing changes and the card fails with <code>This skill changed after the card was made. Ask the agent again.</code></p>
+<h3 id="setup-add-remove-cards">Adding and removing connectors and skills</h3>
+<p>An <code>add</code> card turns on one connector (<code>int-&lt;name&gt;</code>) or skill (<code>util-&lt;name&gt;</code>) that the agent doesn't have, and a <code>remove</code> card turns off one it has, as the agent page does. <code>key</code> holds its name as <a href="/docs/agent-skills#post-skillslist"><code>POST /Skills/List</code></a> lists it, one name per card. A change costs nothing: every plan includes every connector and skill, so the plan's price and credits stay the same. Cards work on agents deployed from a template and on custom builds, and once a card is applied, the agent restarts to load the change.</p>
+<p>A change can turn on or off more than its <code>key</code>, so Wiro works out the rest and writes it on the card, and the person who approves sees the whole change. The agent never writes these fields: a proposal that sends them has them dropped.</p>
+<ul>
+<li><strong><code>with</code></strong>: on an <code>add</code>, the connectors and skills <code>key</code> depends on (<code>depends_on</code> in Skills/List) that aren't on yet, which are turned on with it. On a <code>remove</code>, the linked partners the agent page turns off together with it (removing <code>util-video-creator</code> also turns off <code>util-motion-effects</code>), and the supporting parts (<code>user_invocable: false</code>) that nothing left on still needs.</li>
+<li><strong><code>pauses</code></strong> and <strong><code>resumes</code></strong>: the scheduled tasks that stop running, or run again, because a connector or skill they use goes off or comes back on. A paused task keeps its text and schedule.</li>
+<li><strong><code>needs</code></strong>: on an <code>add</code>, the connectors it brings that aren't connected yet. A connector with <code>mode: "key"</code> can be connected in the chat, as below. One with <code>signin</code> or <code>page</code> is connected on the agent page.</li>
+</ul>
+<p>Read a missing list as empty. An <code>add</code> card for Brevo Email, which brings two skills it depends on and the Brevo connector:</p>
+<pre><code class="language-json">{
+  &quot;v&quot;: 1,
+  &quot;id&quot;: &quot;m5t8c2w6r3pe&quot;,
+  &quot;kind&quot;: &quot;add&quot;,
+  &quot;key&quot;: &quot;int-brevo-email&quot;,
+  &quot;with&quot;: [&quot;util-anti-ai-human-copy&quot;, &quot;util-chat-markdown-reporting&quot;],
+  &quot;needs&quot;: [{ &quot;connector&quot;: &quot;brevo&quot;, &quot;title&quot;: &quot;Brevo&quot;, &quot;mode&quot;: &quot;key&quot; }],
+  &quot;requestedby&quot;: &quot;ada-uuid&quot;,
+  &quot;createdat&quot;: 1743350406
+}
+</code></pre>
+<p>A <code>remove</code> card keeps a connector's saved key, as turning a connector off on the agent page does, so adding it back later needs no new key. To remove the key too, use a <a href="#setup-disconnect-cards"><code>disconnect</code> card</a>.</p>
+<p><strong>Adding a connector that takes a key.</strong> When an <code>add</code> card's <code>needs</code> names a connector with <code>mode: "key"</code>, the agent proposes a <code>connect</code> card for that connector in the same reply. Wiro takes that <code>connect</code> card even though the connector isn't on yet, and checks it against the agent's setup as it will be once the <code>add</code> card is applied. The <code>add</code> card goes first: until it is applied, applying the <code>connect</code> card changes nothing and answers <code>Apply card &lt;N&gt; first: it turns on &lt;Title&gt;.</code>, where <code>&lt;N&gt;</code> is the <code>add</code> card's number on the reply, and the <code>connect</code> card stays pending. In a typed chat, a <code>yes</code> applies the <code>add</code> card as it does any card other than <code>connect</code> (see <a href="#approving-setup-cards">Approving a setup card</a>). Wiro's answer then asks for the key (<code>A connector card still needs its key: paste the key as your reply.</code>), and the key pasted as the next reply applies the <code>connect</code> card. A connector with a sign-in, or one set up on the agent page, gets no <code>connect</code> card: once the <code>add</code> card is applied, Wiro's answer says <code>Connect &lt;Connector&gt; on the agent page.</code></p>
+<p>Wiro checks an <code>add</code> or <code>remove</code> card when the agent proposes it and again when it is applied, and works out <code>with</code>, <code>pauses</code>, <code>resumes</code> and <code>needs</code> again. When the agent's connectors or skills changed in between, so that the card would now turn on more than it shows or turn off something else, nothing changes and the card fails with <code>This agent's connectors or skills changed after the card was made. Ask the agent again.</code> A connector or skill the card turns on that was turned on in the meantime is not a change.</p>
+<p>Wiro refuses an <code>add</code> or <code>remove</code> card with one plain sentence when:</p>
+<ul>
+<li>the name isn't a connector or skill Wiro offers, or the <code>add</code> names one Wiro no longer offers (the sentence names its replacement when there is one);</li>
+<li>it names a channel (Telegram, Slack or Discord), which is connected on the agent page, or a connector's key, such as <code>brevo</code>, instead of the name that uses it, such as <code>int-brevo-email</code>;</li>
+<li>it names a custom skill (<code>cs-&lt;name&gt;</code>), which a <code>skill</code> card turns on and off;</li>
+<li>it names a supporting part (<code>user_invocable: false</code>), which comes with the connectors and skills that need it and isn't turned on or off by itself;</li>
+<li>nothing would change: the <code>add</code> names one that is already on, or the <code>remove</code> one the agent doesn't have;</li>
+<li>two connectors or skills that can't be on together (<code>conflicts_with</code>) would both be on;</li>
+<li>the <code>remove</code> would take away something that connectors or skills staying on need: remove those first, or keep it;</li>
+<li>voice calls would be left without a channel: with <code>util-voice-receptionist</code> on, Twilio Voice Channel (<code>int-twilio-channel</code>) or Web Voice Channel (<code>util-web-channel</code>) must be on.</li>
+</ul>
+<p>A card refused as the agent proposes it is never stored. A card refused as it is applied changes nothing and fails, with the sentence in <code>error</code>.</p>
 <h3 id="setup-disconnect-cards">Disconnecting a connector</h3>
-<p>A <code>disconnect</code> card removes a connector's saved key, as clearing it on the agent page does. It names the connector in <code>connector</code> and never holds a value. Once it is applied, the agent restarts without the connector, and skills that use it stop until it is connected again.</p>
-<p>Wiro takes a <code>disconnect</code> card only for a connector that meets all three: it is connected now, it is connected with a key (the kind a <code>connect</code> card saves), and the agent can run without it (<code>optional: true</code> in the <code>credentials</code> of <a href="/docs/agent-overview#post-useragentdetail"><code>UserAgent/Detail</code></a>). Connectors that use a sign-in (OAuth), channels (Telegram, Slack or Discord), the Wiro project the agent runs models with and connectors the agent needs to start are disconnected on the agent page. A <code>yes</code> applies a <code>disconnect</code> card as it does any card other than <code>connect</code>.</p>
+<p>A <code>disconnect</code> card removes a connector's saved key, as clearing it on the agent page does. It names the connector in <code>connector</code> and never holds a value. Once it is applied, the agent restarts without the connector, and skills that use it stop until it is connected again. The connector itself stays on the agent: to turn it off, use a <code>remove</code> card.</p>
+<p>Wiro takes a <code>disconnect</code> card only for a connector that meets all three: it is connected now, it is connected with a key (the kind a <code>connect</code> card saves), and the agent can run without it (<code>optional: true</code> in the <code>credentials</code> of <a href="/docs/agent-overview#post-useragentdetail"><code>UserAgent/Detail</code></a>). A connector turned off with a <code>remove</code> card counts too: its key stays saved, and a <code>disconnect</code> card can remove it even though nothing on the agent uses it any more. Connectors that use a sign-in (OAuth), channels (Telegram, Slack or Discord), the Wiro project the agent runs models with and connectors the agent needs to start are disconnected on the agent page. A <code>yes</code> applies a <code>disconnect</code> card as it does any card other than <code>connect</code>.</p>
 <h3 id="approving-setup-cards">Approving a setup card</h3>
 <p>After proposing a card, the agent asks in one short line whether to apply it, or, for a <code>connect</code> card, for the key. An agent admin approves one card at a time, in one of three ways:</p>
 <ol>
@@ -20589,6 +20639,7 @@ Instructions:
 Reply &quot;yes&quot; to apply exactly this change, or &quot;no&quot; to turn it down.
 </code></pre>
 <p>An <code>append</code> card's first line reads <code>Card 1: Add to custom skill &lt;key&gt;.</code>, followed by only the text it adds. A <code>revert</code> card's first line reads <code>Card 1: Undo the last change to custom skill &lt;key&gt;.</code>, followed by the text it restores. A <code>disconnect</code> card has one line: <code>Card 1: Disconnect &lt;Connector&gt; (its saved key is removed).</code></p>
+<p>An <code>add</code> or <code>remove</code> card names what it changes by title, never by key. Its first line is <code>Card 1: Add &lt;Title&gt; (connector).</code>, <code>Card 1: Add &lt;Title&gt; (skill).</code>, <code>Card 1: Remove &lt;Title&gt; (connector).</code> or <code>Card 1: Remove &lt;Title&gt; (skill).</code>, and only the lines that apply follow it: <code>Also turns on: &lt;titles&gt;.</code>, <code>Also turns off: &lt;titles&gt;.</code>, <code>Scheduled tasks that pause: &lt;titles&gt;.</code>, <code>Scheduled tasks that run again: &lt;titles&gt;.</code>, <code>Still to connect: &lt;titles&gt;.</code>, and <code>Its saved key stays saved.</code> for a connector removed while its key is saved. A <code>connect</code> card isn't listed: it waits for its key.</p>
 <p>With several cards, it starts with <code>The agent proposes these setup changes. Nothing is applied yet.</code> and ends with <code>To apply one, reply "yes" and its number, such as "yes 1", one card per reply, or press Apply on the card in the web chat. Reply "no" to turn them all down.</code> Show this text, as it is, to the person who approves. The listing is a reply Wiro handles itself (see <a href="#handled-setup-replies">below</a>), and its <code>setupresult</code> lists no card.</p>
 <h3 id="keys-in-chat">Keys in chat</h3>
 <p>While setup from chat is on for a message, Wiro keeps keys out of the agent's conversation:</p>
@@ -20670,7 +20721,7 @@ Reply &quot;yes&quot; to apply exactly this change, or &quot;no&quot; to turn it
 <tbody>
 <tr>
 <td><code>✅ Applied: &lt;summary&gt;.</code></td>
-<td>The card was applied. The summary says what changed, such as <code>Scheduled task Morning summary created</code>, <code>Custom skill Weekly report updated</code> (also for an <code>append</code> card), <code>Custom skill Weekly report restored</code>, <code>Custom skill Weekly report turned off</code>, <code>Time zone set to Europe/Istanbul</code>, <code>&lt;Connector&gt; connected</code> or <code>&lt;Connector&gt; disconnected</code>.</td>
+<td>The card was applied. The summary says what changed, such as <code>Scheduled task Morning summary created</code>, <code>Custom skill Weekly report updated</code> (also for an <code>append</code> card), <code>Custom skill Weekly report restored</code>, <code>Custom skill Weekly report turned off</code>, <code>Time zone set to Europe/Istanbul</code>, <code>&lt;Connector&gt; connected</code>, <code>&lt;Connector&gt; disconnected</code>, <code>Brevo Email added</code> or <code>Weather removed</code>. An <code>add</code> card that brings a connector with a sign-in, or one set up on the agent page, goes on with <code>Connect &lt;Connector&gt; on the agent page.</code></td>
 </tr>
 <tr>
 <td><code>⚠️ Not applied: &lt;reason&gt;</code></td>
@@ -20686,7 +20737,7 @@ Reply &quot;yes&quot; to apply exactly this change, or &quot;no&quot; to turn it
 </tr>
 <tr>
 <td><code>A connector card still needs its key: paste the key as your reply.</code> or <code>&lt;N&gt; connector cards still need their keys: add each key on its card.</code></td>
-<td><code>connect</code> cards of the same reply still wait for their keys.</td>
+<td><code>connect</code> cards of the same reply still wait for their keys, such as the <code>connect</code> card that came with an <code>add</code> card just applied.</td>
 </tr>
 <tr>
 <td><code>Saved &lt;fields&gt; for &lt;Connector&gt;. Still needed: &lt;fields&gt;.</code></td>
@@ -20702,7 +20753,7 @@ Reply &quot;yes&quot; to apply exactly this change, or &quot;no&quot; to turn it
 </tr>
 <tr>
 <td><code>This setup change is being applied right now. Try again in a moment.</code></td>
-<td>Someone is applying the same card at this moment. The card is still pending.</td>
+<td>Someone is applying the same card at this moment, or, for an <code>add</code> or <code>remove</code> card, another change to the agent's connectors and skills is going through. The card is still pending.</td>
 </tr>
 <tr>
 <td><code>This setup change was already handled.</code></td>
@@ -20831,7 +20882,7 @@ Reply &quot;yes&quot; to apply exactly this change, or &quot;no&quot; to turn it
 <tr>
 <td><code>summary</code></td>
 <td><code>string</code></td>
-<td>A short English phrase that says what changed, such as <code>Scheduled task Morning summary created</code>. Empty when nothing was applied.</td>
+<td>A short English phrase that says what changed, such as <code>Scheduled task Morning summary created</code> or <code>Brevo Email added</code>. Empty when nothing was applied.</td>
 </tr>
 </tbody>
 </table>
@@ -20870,6 +20921,14 @@ Reply &quot;yes&quot; to apply exactly this change, or &quot;no&quot; to turn it
 <tr>
 <td><code>This skill changed after the card was made. Ask the agent again.</code></td>
 <td>An <code>update</code>, <code>append</code> or <code>revert</code> card whose skill text no longer matches its <code>before</code>: someone changed the skill after the card was made. Nothing changed, and the card's <code>status</code> is now <code>failed</code>.</td>
+</tr>
+<tr>
+<td><code>This agent's connectors or skills changed after the card was made. Ask the agent again.</code></td>
+<td>An <code>add</code> or <code>remove</code> card whose change no longer matches the agent's connectors and skills: it would turn on more than it shows, or turn off something else. Nothing changed, and the card's <code>status</code> is now <code>failed</code>.</td>
+</tr>
+<tr>
+<td><code>Apply card &lt;N&gt; first: it turns on &lt;Title&gt;.</code></td>
+<td>A <code>connect</code> card whose connector comes with an <code>add</code> card on the same message that isn't applied yet. Nothing is saved and the card stays pending: apply the <code>add</code> card first.</td>
 </tr>
 <tr>
 <td>Another sentence in <code>errors[0].message</code></td>
