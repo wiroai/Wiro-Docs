@@ -712,7 +712,7 @@ On success, the message status changes to `agent_cancel` in the database.
 
 ## Setup From Chat
 
-An agent can help the people who run it set it up in the chat: save a key for a connector or remove it, create or change a scheduled task, create or change a custom skill, add to one or undo its last change, or change its time zone. The agent never changes its own setup and never sees a key. It proposes the change as a **setup card**: Wiro checks the card against the agent's current setup and stores it on the message that asked for it, where it shows as a `setup` block in that message's `timeline[]`. Nothing changes until an agent admin (the owner, or an admin of the agent's team) approves the card.
+An agent can help the people who run it set it up in the chat: add or remove a connector or skill, save a key for a connector or remove it, create or change a scheduled task, create or change a custom skill, add to one or undo its last change, or change its time zone. The agent never changes its own setup and never sees a key. It proposes the change as a **setup card**: Wiro checks the card against the agent's current setup and stores it on the message that asked for it, where it shows as a `setup` block in that message's `timeline[]`. Nothing changes until an agent admin (the owner, or an admin of the agent's team) approves the card.
 
 Where cards can be proposed and approved is the agent's `chatsetup` setting. Set it with [`UpdateSettings`](/docs/agent-overview#post-useragentupdatesettings) or at [`Deploy`](/docs/agent-overview#post-useragentdeploy), and read it back as `chatSetup` on [`UserAgent/Detail`](/docs/agent-overview#post-useragentdetail):
 
@@ -758,14 +758,17 @@ A setup block has `type: "setup"`, `text: null` and a `setup` object with the pr
 |-------|------|-------------|
 | `v` | `number` | Card format version, `1`. |
 | `id` | `string` | The card's id: 12 lower-case letters and digits. Send it as `cardid` to [`SetupCardApply`](#post-useragentmessagesetupcardapply). |
-| `kind` | `string` | `connect` (save a key for a connector), `disconnect` (remove a connector's saved key), `schedule` (a scheduled task), `skill` (a custom skill) or `timezone`. |
-| `action` | `string` | `schedule`: `create`, `update`, `pause`, `resume` or `delete`. `skill`: `create`, `update`, `append` (add text to the end), `revert` (undo the last change), `disable` or `enable`; see [Changing a custom skill](#setup-skill-cards). Absent on `connect`, `disconnect` and `timezone` cards. |
+| `kind` | `string` | `add` (turn on a connector or skill), `remove` (turn one off), `connect` (save a key for a connector), `disconnect` (remove a connector's saved key), `schedule` (a scheduled task), `skill` (a custom skill) or `timezone`. |
+| `action` | `string` | `schedule`: `create`, `update`, `pause`, `resume` or `delete`. `skill`: `create`, `update`, `append` (add text to the end), `revert` (undo the last change), `disable` or `enable`; see [Changing a custom skill](#setup-skill-cards). Absent on `add`, `remove`, `connect`, `disconnect` and `timezone` cards. |
 | `connector` | `string` | `connect` and `disconnect` only. The connector's `key`, as [`POST /Credentials/List`](/docs/agent-credentials#post-credentialslist) lists it, for example `serper`. A card never holds a key's value. |
-| `key` | `string` | `schedule` and `skill` only. The scheduled task's key (`cs-cron-<name>`) or the custom skill's key (`cs-<name>`). |
+| `key` | `string` | `add`, `remove`, `schedule` and `skill` only. On `add` and `remove`: the name of one connector (`int-<name>`) or skill (`util-<name>`) as [`POST /Skills/List`](/docs/agent-skills#post-skillslist) lists it, up to 64 characters, for example `int-brevo-email`; see [Adding and removing connectors and skills](#setup-add-remove-cards). On `schedule` and `skill`: the scheduled task's key (`cs-cron-<name>`) or the custom skill's key (`cs-<name>`). |
 | `title` | `string` | Optional. One line, up to 80 characters. |
 | `cron` | `string` | `schedule` only: always on `create`, optional on `update`. A 5-field cron in the agent's time zone. A task set up from chat runs at most once an hour. |
 | `instructions` | `string` | `schedule` and `skill` only. On `create` and `update`: the full text of the task or skill, up to 20,000 characters. On `append`: only the text to add, up to 20,000 characters. On `revert`: the text the skill goes back to, which Wiro takes from the skill's history; the agent never writes it. |
 | `before` | `string` | `skill` cards with `update`, `append` or `revert` only. The skill's text when Wiro checked the card, written by Wiro, never by the agent. Show it as the text before the change; see [Changing a custom skill](#setup-skill-cards). It can be absent on older cards. |
+| `with` | `string[]` | `add` and `remove` only, written by Wiro, never by the agent. The other connectors and skills the card turns on (`add`) or off (`remove`) together with `key`, by name, sorted, at most 12. |
+| `pauses` / `resumes` | `string[]` | `add` and `remove` only, written by Wiro. The scheduled tasks (`cs-cron-<name>`) that pause, or run again, with this change, at most 20 each. |
+| `needs` | `object[]` | `add` only, written by Wiro. The connectors the change brings that aren't connected yet, at most 3, each `{ connector, title, mode }`: `connector` is the connector's `key`, as a `connect` card names it, `title` is its name, and `mode` says how it is connected: `key` (with a key pasted in the chat, through a `connect` card), `signin` (with a sign-in on the agent page) or `page` (on the agent page). |
 | `timezone` | `string` | `timezone` only. The proposed IANA time zone, for example `Europe/Istanbul`. |
 | `note` | `string` | Optional. The agent's one-line note about the change, up to 300 characters. |
 | `status` | `string` | `pending`, `applied`, `dismissed` or `failed`. Absent means `pending`. |
@@ -811,11 +814,55 @@ End every post with three questions readers ask, each with a two-sentence answer
 
 Wiro applies a card that has `before` only while the skill still holds that text. When the skill's text no longer matches `before` as the card is applied, for example because someone edited the skill on the agent page after the card was made, nothing changes and the card fails with `This skill changed after the card was made. Ask the agent again.`
 
+### Adding and removing connectors and skills
+
+An `add` card turns on one connector (`int-<name>`) or skill (`util-<name>`) that the agent doesn't have, and a `remove` card turns off one it has, as the agent page does. `key` holds its name as [`POST /Skills/List`](/docs/agent-skills#post-skillslist) lists it, one name per card. A change costs nothing: every plan includes every connector and skill, so the plan's price and credits stay the same. Cards work on agents deployed from a template and on custom builds, and once a card is applied, the agent restarts to load the change.
+
+A change can turn on or off more than its `key`, so Wiro works out the rest and writes it on the card, and the person who approves sees the whole change. The agent never writes these fields: a proposal that sends them has them dropped.
+
+- **`with`**: on an `add`, the connectors and skills `key` depends on (`depends_on` in Skills/List) that aren't on yet, which are turned on with it. On a `remove`, the linked partners the agent page turns off together with it (removing `util-video-creator` also turns off `util-motion-effects`), and the supporting parts (`user_invocable: false`) that nothing left on still needs.
+- **`pauses`** and **`resumes`**: the scheduled tasks that stop running, or run again, because a connector or skill they use goes off or comes back on. A paused task keeps its text and schedule.
+- **`needs`**: on an `add`, the connectors it brings that aren't connected yet. A connector with `mode: "key"` can be connected in the chat, as below. One with `signin` or `page` is connected on the agent page.
+
+Read a missing list as empty. An `add` card for Brevo Email, which brings two skills it depends on and the Brevo connector:
+
+```json
+{
+  "v": 1,
+  "id": "m5t8c2w6r3pe",
+  "kind": "add",
+  "key": "int-brevo-email",
+  "with": ["util-anti-ai-human-copy", "util-chat-markdown-reporting"],
+  "needs": [{ "connector": "brevo", "title": "Brevo", "mode": "key" }],
+  "requestedby": "ada-uuid",
+  "createdat": 1743350406
+}
+```
+
+A `remove` card keeps a connector's saved key, as turning a connector off on the agent page does, so adding it back later needs no new key. To remove the key too, use a [`disconnect` card](#setup-disconnect-cards).
+
+**Adding a connector that takes a key.** When an `add` card's `needs` names a connector with `mode: "key"`, the agent proposes a `connect` card for that connector in the same reply. Wiro takes that `connect` card even though the connector isn't on yet, and checks it against the agent's setup as it will be once the `add` card is applied. The `add` card goes first: until it is applied, applying the `connect` card changes nothing and answers `Apply card <N> first: it turns on <Title>.`, where `<N>` is the `add` card's number on the reply, and the `connect` card stays pending. In a typed chat, a `yes` applies the `add` card as it does any card other than `connect` (see [Approving a setup card](#approving-setup-cards)). Wiro's answer then asks for the key (`A connector card still needs its key: paste the key as your reply.`), and the key pasted as the next reply applies the `connect` card. A connector with a sign-in, or one set up on the agent page, gets no `connect` card: once the `add` card is applied, Wiro's answer says `Connect <Connector> on the agent page.`
+
+Wiro checks an `add` or `remove` card when the agent proposes it and again when it is applied, and works out `with`, `pauses`, `resumes` and `needs` again. When the agent's connectors or skills changed in between, so that the card would now turn on more than it shows or turn off something else, nothing changes and the card fails with `This agent's connectors or skills changed after the card was made. Ask the agent again.` A connector or skill the card turns on that was turned on in the meantime is not a change.
+
+Wiro refuses an `add` or `remove` card with one plain sentence when:
+
+- the name isn't a connector or skill Wiro offers, or the `add` names one Wiro no longer offers (the sentence names its replacement when there is one);
+- it names a channel (Telegram, Slack or Discord), which is connected on the agent page, or a connector's key, such as `brevo`, instead of the name that uses it, such as `int-brevo-email`;
+- it names a custom skill (`cs-<name>`), which a `skill` card turns on and off;
+- it names a supporting part (`user_invocable: false`), which comes with the connectors and skills that need it and isn't turned on or off by itself;
+- nothing would change: the `add` names one that is already on, or the `remove` one the agent doesn't have;
+- two connectors or skills that can't be on together (`conflicts_with`) would both be on;
+- the `remove` would take away something that connectors or skills staying on need: remove those first, or keep it;
+- voice calls would be left without a channel: with `util-voice-receptionist` on, Twilio Voice Channel (`int-twilio-channel`) or Web Voice Channel (`util-web-channel`) must be on.
+
+A card refused as the agent proposes it is never stored. A card refused as it is applied changes nothing and fails, with the sentence in `error`.
+
 ### Disconnecting a connector
 
-A `disconnect` card removes a connector's saved key, as clearing it on the agent page does. It names the connector in `connector` and never holds a value. Once it is applied, the agent restarts without the connector, and skills that use it stop until it is connected again.
+A `disconnect` card removes a connector's saved key, as clearing it on the agent page does. It names the connector in `connector` and never holds a value. Once it is applied, the agent restarts without the connector, and skills that use it stop until it is connected again. The connector itself stays on the agent: to turn it off, use a `remove` card.
 
-Wiro takes a `disconnect` card only for a connector that meets all three: it is connected now, it is connected with a key (the kind a `connect` card saves), and the agent can run without it (`optional: true` in the `credentials` of [`UserAgent/Detail`](/docs/agent-overview#post-useragentdetail)). Connectors that use a sign-in (OAuth), channels (Telegram, Slack or Discord), the Wiro project the agent runs models with and connectors the agent needs to start are disconnected on the agent page. A `yes` applies a `disconnect` card as it does any card other than `connect`.
+Wiro takes a `disconnect` card only for a connector that meets all three: it is connected now, it is connected with a key (the kind a `connect` card saves), and the agent can run without it (`optional: true` in the `credentials` of [`UserAgent/Detail`](/docs/agent-overview#post-useragentdetail)). A connector turned off with a `remove` card counts too: its key stays saved, and a `disconnect` card can remove it even though nothing on the agent uses it any more. Connectors that use a sign-in (OAuth), channels (Telegram, Slack or Discord), the Wiro project the agent runs models with and connectors the agent needs to start are disconnected on the agent page. A `yes` applies a `disconnect` card as it does any card other than `connect`.
 
 ### Approving a setup card
 
@@ -852,6 +899,8 @@ Reply "yes" to apply exactly this change, or "no" to turn it down.
 ```
 
 An `append` card's first line reads `Card 1: Add to custom skill <key>.`, followed by only the text it adds. A `revert` card's first line reads `Card 1: Undo the last change to custom skill <key>.`, followed by the text it restores. A `disconnect` card has one line: `Card 1: Disconnect <Connector> (its saved key is removed).`
+
+An `add` or `remove` card names what it changes by title, never by key. Its first line is `Card 1: Add <Title> (connector).`, `Card 1: Add <Title> (skill).`, `Card 1: Remove <Title> (connector).` or `Card 1: Remove <Title> (skill).`, and only the lines that apply follow it: `Also turns on: <titles>.`, `Also turns off: <titles>.`, `Scheduled tasks that pause: <titles>.`, `Scheduled tasks that run again: <titles>.`, `Still to connect: <titles>.`, and `Its saved key stays saved.` for a connector removed while its key is saved. A `connect` card isn't listed: it waits for its key.
 
 With several cards, it starts with `The agent proposes these setup changes. Nothing is applied yet.` and ends with `To apply one, reply "yes" and its number, such as "yes 1", one card per reply, or press Apply on the card in the web chat. Reply "no" to turn them all down.` Show this text, as it is, to the person who approves. The listing is a reply Wiro handles itself (see [below](#handled-setup-replies)), and its `setupresult` lists no card.
 
@@ -901,15 +950,15 @@ The lines Wiro writes in `response`:
 
 | Line | When |
 |------|------|
-| `✅ Applied: <summary>.` | The card was applied. The summary says what changed, such as `Scheduled task Morning summary created`, `Custom skill Weekly report updated` (also for an `append` card), `Custom skill Weekly report restored`, `Custom skill Weekly report turned off`, `Time zone set to Europe/Istanbul`, `<Connector> connected` or `<Connector> disconnected`. |
+| `✅ Applied: <summary>.` | The card was applied. The summary says what changed, such as `Scheduled task Morning summary created`, `Custom skill Weekly report updated` (also for an `append` card), `Custom skill Weekly report restored`, `Custom skill Weekly report turned off`, `Time zone set to Europe/Istanbul`, `<Connector> connected`, `<Connector> disconnected`, `Brevo Email added` or `Weather removed`. An `add` card that brings a connector with a sign-in, or one set up on the agent page, goes on with `Connect <Connector> on the agent page.` |
 | `⚠️ Not applied: <reason>` | The change failed. The card's `status` is now `failed`, with the same reason in `error`. For example, `This skill changed after the card was made. Ask the agent again.` means the skill's text changed after an `update`, `append` or `revert` card was made. |
 | `Your agent is restarting to load the change. Continue in about a minute.` | The change restarts the agent. |
 | `1 more setup change is still pending.` or `<N> more setup changes are still pending.` | Other cards of the same reply still wait. Reply `yes` and a card's number to apply the next one. |
-| `A connector card still needs its key: paste the key as your reply.` or `<N> connector cards still need their keys: add each key on its card.` | `connect` cards of the same reply still wait for their keys. |
+| `A connector card still needs its key: paste the key as your reply.` or `<N> connector cards still need their keys: add each key on its card.` | `connect` cards of the same reply still wait for their keys, such as the `connect` card that came with an `add` card just applied. |
 | `Saved <fields> for <Connector>. Still needed: <fields>.` | The pasted key was saved, and the connector needs more fields. The card stays pending: add the rest on the card or on the agent page. When Wiro can't name the missing fields, the second sentence reads `It is not connected yet: finish it on the agent page.` |
 | `⚠️ Not saved: <reason>. Paste the key again as your reply.` | The pasted key was refused, for example because it is too short. Nothing was saved and the card stays pending. |
 | `That does not look like a <Connector> key, so it was not saved. Paste the <Connector> key as your reply.` | The reply holds a key in another service's format. Nothing was saved, the stored message reads `[key removed]` in its place, and the card stays pending. When Wiro knows the format, the sentence names it, such as `(it looks like <kind>)`. |
-| `This setup change is being applied right now. Try again in a moment.` | Someone is applying the same card at this moment. The card is still pending. |
+| `This setup change is being applied right now. Try again in a moment.` | Someone is applying the same card at this moment, or, for an `add` or `remove` card, another change to the agent's connectors and skills is going through. The card is still pending. |
 | `This setup change was already handled.` | The card was applied or dismissed before this reply arrived. |
 | `This card is older than 30 minutes. Use the card's button, or ask the agent again.` | The card turned 30 minutes old while the reply was handled. Apply it with its button or [`SetupCardApply`](#post-useragentmessagesetupcardapply). |
 | `Only an agent admin can apply setup changes.` | The sender isn't an agent admin. Nothing changed. |
@@ -973,7 +1022,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
 |-------|------|-------------|
 | `setup` | `object` | The card after the action, in the same shape as a [setup block](#setup-blocks)'s `setup`. |
 | `restarting` | `boolean` | `true` when the agent restarts to load the change. Continue the chat in about a minute. |
-| `summary` | `string` | A short English phrase that says what changed, such as `Scheduled task Morning summary created`. Empty when nothing was applied. |
+| `summary` | `string` | A short English phrase that says what changed, such as `Scheduled task Morning summary created` or `Brevo Email added`. Empty when nothing was applied. |
 
 | Error | When |
 |-------|------|
@@ -983,6 +1032,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
 | `Saved <fields> for <Connector>. Still needed: <fields>.` | A `connect` card's `values` were saved, and the connector needs more fields. The card stays pending and `restarting` can be `true`. Send the missing fields with the same card to finish it. |
 | `The change could not be applied. Try again from the agent page.` | The change failed on Wiro's side. The card's `status` is now `failed`. |
 | `This skill changed after the card was made. Ask the agent again.` | An `update`, `append` or `revert` card whose skill text no longer matches its `before`: someone changed the skill after the card was made. Nothing changed, and the card's `status` is now `failed`. |
+| `This agent's connectors or skills changed after the card was made. Ask the agent again.` | An `add` or `remove` card whose change no longer matches the agent's connectors and skills: it would turn on more than it shows, or turn off something else. Nothing changed, and the card's `status` is now `failed`. |
+| `Apply card <N> first: it turns on <Title>.` | A `connect` card whose connector comes with an `add` card on the same message that isn't applied yet. Nothing is saved and the card stays pending: apply the `add` card first. |
 | Another sentence in `errors[0].message` | The message or card wasn't found, the card is no longer pending, a value was refused (nothing is saved and the card stays pending), or the change no longer fits the agent's setup. When the change itself fails, the card's `status` becomes `failed` with the sentence in `error`. |
 
 ## Session Management
