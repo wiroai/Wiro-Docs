@@ -52,7 +52,7 @@ For conversational agents that don't need per-user credentials. One agent instan
 
 **Why:** No third-party accounts to connect. The agent answers questions using its built-in knowledge or pre-configured data sources.
 
-**How:** Deploy one instance via `POST /UserAgent/Deploy`, then send messages with different `sessionkey` values per user.
+**How:** Deploy one instance via `POST /UserAgent/Deploy`, then send messages with different `sessionkey` values per user. Deploy it with `"chatsetup": "off"`: your users' messages go out with your API key, which carries your rights, so with setup from chat on, a yes from one of them could change the agent's setup. See [Setup From Chat](/docs/agent-messaging#setup-from-chat).
 
 **About `sessionkey`:** This field is optional. If omitted, messages go into a shared `"default"` session. Reuse the same `sessionkey` to continue a conversation (the agent retrieves prior messages as context). Use a fresh UUID to start a new conversation. The common convention is one `sessionkey` per end-user (e.g. `"user-456"`), but you can also use it per-thread (e.g. `"ticket-2025-0817"`) for products that group conversations by topic. See the [Agent Messaging](/docs/agent-messaging) guide for how sessions work. The session key is a label, not a WebSocket channel: you follow a turn with its `agenttoken` and a session with the `sessiontoken` from `Message/History` (see [Agent WebSocket](/docs/agent-websocket)).
 
@@ -92,7 +92,7 @@ Build a fully branded chat experience with no Wiro UI visible to your users.
 
 The deploy flow has three stages: Deploy, Setup (only when the agent has connectors to set up), and Start.
 
-1. **Deploy** an agent via `POST /UserAgent/Deploy`: returns `useragents[0].guid` and starts the instance in `status: 6` (setup-required). A prepaid Deploy then queues it (`status: 2`) once its subscription is provisioned.
+1. **Deploy** an agent via `POST /UserAgent/Deploy`: returns `useragents[0].guid` and starts the instance in `status: 6` (setup-required). A prepaid Deploy then queues it (`status: 2`) once its subscription is provisioned. Send `"chatsetup": "off"` too, so your users' messages can't change the agent's setup; make setup changes from your own backend.
 2. **Setup** the connectors (only if the agent template requires them) via one or more `POST /UserAgent/CredentialUpsert` calls, `POST /UserAgent/CredentialProjectBind` for the Wiro project, and the matching OAuth flows (see [Agent Credentials & OAuth](/docs/agent-credentials)). These calls don't change `status`: on an agent still at `status: 6`, call `POST /UserAgent/Update` with `{ "guid": "<useragent-guid>" }` after the last one and check `setuprequired` on its response. While it's `true`, the agent cannot start. Once all required connectors are set up, that call flips `setuprequired` to `false` and `status` to `0`. For Pattern 2 (knowledge-base / chat-only agents) there are no connectors to set up, so this stage is skipped and the agent is ready to start right after Deploy.
 3. **Start**: a prepaid Deploy already queued the agent, and it goes through `status: 3` (starting) → `status: 4` (running). Call `POST /UserAgent/Start` when it is stopped (`status: 0`, for example after `Update` moved it out of `status: 6`) or errored (`status: 5`).
 4. Build your own chat UI.
@@ -111,7 +111,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
     "agentguid": "agent-template-guid",
     "title": "Customer Support Bot",
     "useprepaid": true,
-    "tier": "starter"
+    "tier": "starter",
+    "chatsetup": "off"
   }'
 
 # Pattern 1 only — fill any missing credentials, then verify setuprequired flipped to false
@@ -275,12 +276,18 @@ connect = requests.post(
 authorize_url = connect.json()["authorizeUrl"]
 # Redirect your user to authorize_url
 
-# Start the agent
-requests.post(
-    "https://api.wiro.ai/v1/UserAgent/Start",
+# A prepaid Deploy already queued the agent: start it only when it is stopped (0) or errored (5)
+instance = requests.post(
+    "https://api.wiro.ai/v1/UserAgent/Detail",
     headers=headers,
     json={"guid": useragent_guid}
-)
+).json()
+if instance["useragents"][0]["status"] in (0, 5):
+    requests.post(
+        "https://api.wiro.ai/v1/UserAgent/Start",
+        headers=headers,
+        json={"guid": useragent_guid}
+    )
 
 # Send a message
 message = requests.post(

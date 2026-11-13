@@ -14,6 +14,8 @@ The Studio API uses the message protocol of [Agent Messaging](/docs/agent-messag
 
 There is no agent guid to pass: every route talks to Studio. Studio is paid from your Wiro wallet, as described under [Costs](#costs).
 
+Studio runs on one setup shared by everyone who uses it, so it never changes that setup: it proposes no [setup cards](/docs/agent-messaging#setup-from-chat), and its connectors, skills and scheduled tasks are fixed. Asked to remember a rule or to repeat a job on a schedule, it helps with the request once, as a one-time task.
+
 ### Authentication
 
 Every `/Studio/*` route takes a project API key: `x-api-key`, plus `x-nonce` and `x-signature` for a project that uses signature authentication (see [Authentication](/docs/authentication)). A key acts as the person who created its project, in that project's workspace: a personal project works in the personal workspace and pays from the personal wallet, a team project works in the team and pays from the team wallet. For a team project, that person must still be a member of the team; otherwise every route answers HTTP 403 with `You must be a member of this team to perform this action`.

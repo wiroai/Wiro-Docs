@@ -13,6 +13,8 @@ email tools, CRMs) through three credential methods:
    `OAuthConnect` for server-side validation/discovery, then finalize any
    account picker without exposing provider tokens to the browser.
 
+> **From the agent's chat.** With [Setup From Chat](/docs/agent-messaging#setup-from-chat) on, the agent can propose a `connect` card, and an agent admin pastes the key as the reply or enters it on the card. Wiro saves it to the connector, and the agent never sees it. A connector that uses a sign-in, or one set up on the agent page, gets no `connect` card and is connected on the agent page.
+
 Each external service is documented as its own **integration page** with the complete setup walkthrough, API reference, troubleshooting, and multi-tenant architecture notes. Use the catalog below to jump to the one you need.
 
 **Read & write paths at a glance:**
@@ -23,6 +25,7 @@ Each external service is documented as its own **integration page** with the com
 | Inspect a single credential schema | [`POST /Credentials/Detail`](#post-credentialsdetail) (public) |
 | Find the credential a skill needs | [`POST /Skills/CredentialSchema`](/docs/agent-skills#post-skillscredentialschema) (public) |
 | Write one or more credential fields | [`POST /UserAgent/CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert) |
+| Save a key from the agent's chat | A `connect` card: the key pasted as the reply, or [`POST /UserAgent/Message/SetupCardApply`](/docs/agent-messaging#post-useragentmessagesetupcardapply) with `values` |
 | Connect the agent's Wiro project by its id | [`POST /UserAgent/CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind) |
 | Discover external communication channels | [`POST /Skills/List`](/docs/agent-skills#post-skillslist) → `channels[]` (public) |
 | Connect or disable an external channel | [`POST /UserAgent/CredentialUpsert`](/docs/agent-overview#post-useragentcredentialupsert) |
@@ -675,7 +678,7 @@ If you call `POST /UserAgent/Deploy` with `useprepaid: true`, you may pass `cred
 
 **Deploy body `customskills` semantics:**
 
-- Each entry must have a `key`. Server reads `value`, `interval`, `enabled`, `description`, and treats `_user_created: true` as an explicit user-created cron (auto-prefixing the key with `cron-` if missing).
+- Each entry must have a `key`. Server reads `value`, `interval`, `enabled` and `description`; `_user_created: true` marks the row as yours, so it can be renamed or deleted later. The key is stored in its full form, as `CustomSkillUpsert` stores it: a bare slug with an `interval` becomes `cs-cron-<slug>`, one without becomes `cs-<slug>`, and `cron-<slug>` becomes `cs-cron-<slug>`.
 - A scheduled task's `interval` is checked as in `CustomSkillUpsert`, and `"manual"` means no schedule. A schedule the agent can't run fails Deploy before anything is created or charged, with an error that starts with the skill's key, such as `cs-cron-daily-report: This schedule can't run. The hour field takes 0 to 23. A schedule has five fields: minute hour day month weekday, for example 0 9 * * 1-5.`
 - The request body accepts a single top-level `customskills` array; server-side values are merged onto any existing preset rows for the same key.
 - Up to 50 entries per Deploy. A longer list is refused before anything is created or charged; add the rest with `CustomSkillUpsert` once the agent is deployed.
