@@ -20579,7 +20579,7 @@ End every post with three questions readers ask, each with a two-sentence answer
 <p>Wiro checks an <code>add</code> or <code>remove</code> card when the agent proposes it and again when it is applied, and works out <code>with</code>, <code>pauses</code>, <code>resumes</code> and <code>needs</code> again. When the agent's connectors or skills changed in between, so that the card would now turn on more than it shows or turn off something else, nothing changes and the card fails with <code>This agent's connectors or skills changed after the card was made. Ask the agent again.</code> A connector or skill the card turns on that was turned on in the meantime is not a change.</p>
 <p>Wiro refuses an <code>add</code> or <code>remove</code> card with one plain sentence when:</p>
 <ul>
-<li>the name isn't a connector or skill Wiro offers, or the <code>add</code> names one Wiro no longer offers (the sentence names its replacement when there is one);</li>
+<li>the name isn't a connector or skill Wiro has, or the <code>add</code> names one Wiro no longer offers (the sentence names its replacement when there is one);</li>
 <li>it names a channel (Telegram, Slack or Discord), which is connected on the agent page, or a connector's key, such as <code>brevo</code>, instead of the name that uses it, such as <code>int-brevo-email</code>;</li>
 <li>it names a custom skill (<code>cs-&lt;name&gt;</code>), which a <code>skill</code> card turns on and off;</li>
 <li>it names a supporting part (<code>user_invocable: false</code>), which comes with the connectors and skills that need it and isn't turned on or off by itself;</li>

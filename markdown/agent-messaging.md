@@ -847,7 +847,7 @@ Wiro checks an `add` or `remove` card when the agent proposes it and again when 
 
 Wiro refuses an `add` or `remove` card with one plain sentence when:
 
-- the name isn't a connector or skill Wiro offers, or the `add` names one Wiro no longer offers (the sentence names its replacement when there is one);
+- the name isn't a connector or skill Wiro has, or the `add` names one Wiro no longer offers (the sentence names its replacement when there is one);
 - it names a channel (Telegram, Slack or Discord), which is connected on the agent page, or a connector's key, such as `brevo`, instead of the name that uses it, such as `int-brevo-email`;
 - it names a custom skill (`cs-<name>`), which a `skill` card turns on and off;
 - it names a supporting part (`user_invocable: false`), which comes with the connectors and skills that need it and isn't turned on or off by itself;
