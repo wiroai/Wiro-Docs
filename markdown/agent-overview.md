@@ -158,7 +158,7 @@ Every deployed agent instance has a numeric status that reflects its current sta
 | Status | Name | Description |
 |--------|------|-------------|
 | `0` | Stopped | Agent is not running. Call Start to launch it. |
-| `1` | Stopping | Agent is shutting down. Wait for it to reach Stopped before taking action. |
+| `1` | Stopping | Agent is shutting down. After a stop, wait for it to reach Stopped before taking action. During a [restart](#automatic-restart), it goes on to Queued and Starting by itself. |
 | `2` | Queued | Agent is queued and waiting to start. |
 | `3` | Starting | The agent is starting up. |
 | `4` | Running | Agent is live and ready to receive messages. |
