@@ -1330,7 +1330,7 @@ Writes per-agent preference toggles that are not credentials and not skill rows.
 
 **Permission**: owner or team admin only, as for `/UserAgent/Update`. Team members cannot change these settings.
 
-**Restart**: if the agent is **starting (status `3`)** or **running (status `4`)**, the call restarts it so the new timezone, session mode or model selection applies. For agents in status `0`/`1`/`2`/`5`/`6` the change applies on the next `Start`.
+**Restart**: if the agent is **starting (status `3`)** or **running (status `4`)**, the call restarts it so the new timezone, session mode or model selection applies. Moving `chatsetup` between `"all"` and `"webchat"` doesn't restart it: Wiro checks that difference on each message. For agents in status `0`/`1`/`2`/`5`/`6` the change applies on the next `Start`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
