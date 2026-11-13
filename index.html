@@ -19193,7 +19193,7 @@ print(response.body);
 </code></pre>
 <p>Match the code in brackets, never the sentence after it, which can change. Turns that failed before the codes existed are returned in the same form.</p>
 <h2 id="post-useragentmessagesend"><strong>POST</strong> /UserAgent/Message/Send</h2>
-<p>Sends a user message to a deployed agent. The agent must be in running state (status <code>4</code>). Returns immediately with an <code>agenttoken</code> that you use to track the response via WebSocket, polling, or webhook.</p>
+<p>Sends a user message to a deployed agent. The agent must be in running state (status <code>4</code>), except for a setup reply that Wiro answers itself, such as a <code>yes</code> that applies a setup card, which works in any status (see <a href="#handled-setup-replies">Replies Wiro handles itself</a>). Returns immediately with an <code>agenttoken</code> that you use to track the response via WebSocket, polling, or webhook.</p>
 <p>Accepts either <code>application/json</code> (text-only) or <code>multipart/form-data</code> (text + file attachments). When sending files, the <code>message</code> field can be empty. The agent receives the attachments and any accompanying text.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -19346,7 +19346,7 @@ print(response.body);
 <tr>
 <td>Agent not running (<code>status</code> ≠ 4)</td>
 <td><code>agentstatus: &lt;int&gt;</code></td>
-<td>Echoes the agent's current <code>status</code> so the caller can decide whether to wait, call <code>Start</code>, or surface "Setup Required" UI. Common codes: <code>0</code> initializing, <code>1</code> stopping, <code>2</code> starting, <code>3</code> starting (wait and retry), <code>5</code> upgrading, <code>6</code> setup required.</td>
+<td>Returned for every message Wiro doesn't answer itself as a setup reply (see <a href="#handled-setup-replies">Replies Wiro handles itself</a>). Echoes the agent's current <code>status</code> so the caller can decide whether to wait, call <code>Start</code>, or surface "Setup Required" UI: <code>0</code> Stopped (call <code>Start</code>), <code>1</code> Stopping, <code>2</code> Queued and <code>3</code> Starting (wait and retry), <code>5</code> Error (call <code>Start</code> to retry), <code>6</code> Setup Required. See <a href="/docs/agent-overview#useragent-statuses">UserAgent Statuses</a>.</td>
 </tr>
 <tr>
 <td>Out of credits</td>
@@ -20579,7 +20579,7 @@ End every post with three questions readers ask, each with a two-sentence answer
 }
 </code></pre>
 <p>A <code>remove</code> card keeps a connector's saved key, as turning a connector off on the agent page does, so adding it back later needs no new key. To remove the key too, use a <a href="#setup-disconnect-cards"><code>disconnect</code> card</a>.</p>
-<p><strong>Adding a connector that takes a key.</strong> When an <code>add</code> card's <code>needs</code> names a connector with <code>mode: "key"</code>, the agent proposes a <code>connect</code> card for that connector in the same reply. Wiro takes that <code>connect</code> card even though the connector isn't on yet, and checks it against the agent's setup as it will be once the <code>add</code> card is applied. The <code>add</code> card goes first: until it is applied, applying the <code>connect</code> card changes nothing and answers <code>Apply card &lt;N&gt; first: it turns on &lt;Title&gt;.</code>, where <code>&lt;N&gt;</code> is the <code>add</code> card's number on the reply, and the <code>connect</code> card stays pending. In a typed chat, a <code>yes</code> applies the <code>add</code> card as it does any card other than <code>connect</code> (see <a href="#approving-setup-cards">Approving a setup card</a>). Wiro's answer then asks for the key (<code>A connector card still needs its key: paste the key as your reply.</code>), and the key pasted as the next reply applies the <code>connect</code> card. A connector with a sign-in, or one set up on the agent page, gets no <code>connect</code> card: once the <code>add</code> card is applied, Wiro's answer says <code>Connect &lt;Title&gt; on the agent page.</code>, naming each such connector by its <code>title</code> in <code>needs</code>.</p>
+<p><strong>Adding a connector that takes a key.</strong> When an <code>add</code> card's <code>needs</code> names a connector with <code>mode: "key"</code>, Wiro adds a <code>connect</code> card for that connector to the same reply, right after the <code>add</code> card, so the person sees both cards at once. It leaves the <code>connect</code> card out when the reply already has a pending <code>connect</code> card for that connector, or has no room for another card (a reply holds at most three). A reply keeps one pending <code>connect</code> card per connector, so a <code>connect</code> card the agent proposes for that connector afterwards isn't stored again. Wiro checks the <code>connect</code> card against the agent's setup as it will be once the <code>add</code> card is applied, since the connector isn't on yet. The <code>add</code> card goes first: until it is applied, applying the <code>connect</code> card changes nothing and answers <code>Apply card &lt;N&gt; first: it turns on &lt;Title&gt;.</code>, where <code>&lt;N&gt;</code> is the <code>add</code> card's number on the reply, and the <code>connect</code> card stays pending. In a typed chat, a <code>yes</code> applies the <code>add</code> card as it does any card other than <code>connect</code> (see <a href="#approving-setup-cards">Approving a setup card</a>). Wiro's answer then asks for the key (<code>A connector card still needs its key: paste the key as your reply.</code>), and the key pasted as the next reply applies the <code>connect</code> card. The key doesn't have to wait for the restart the <code>add</code> card started: Wiro saves it right away, whether it is pasted as the reply or entered on the <code>connect</code> card. A key saved while the agent is still stopping or queued for that restart loads with it, so adding and connecting the connector takes one restart; a key saved once the agent is starting or running again restarts it once more. A connector with a sign-in, or one set up on the agent page, gets no <code>connect</code> card: once the <code>add</code> card is applied, Wiro's answer says <code>Connect &lt;Title&gt; on the agent page.</code>, naming each such connector by its <code>title</code> in <code>needs</code>.</p>
 <p>Wiro checks an <code>add</code> or <code>remove</code> card when the agent proposes it and again when it is applied, and works out <code>with</code>, <code>pauses</code>, <code>resumes</code> and <code>needs</code> again. When the agent's connectors or skills changed in between, so that the card would now turn on more than it shows or turn off something else, nothing changes and the card fails with <code>This agent's connectors or skills changed after the card was made. Ask the agent again.</code> A dependency in <code>with</code> that was turned on in the meantime is not a change. An <code>add</code> card whose <code>key</code> itself was turned on in the meantime fails with <code>&lt;Title&gt; is already on.</code>, and a <code>remove</code> card whose <code>key</code> was turned off fails with <code>&lt;Title&gt; is not on this agent.</code></p>
 <p>Wiro refuses an <code>add</code> or <code>remove</code> card with one plain sentence when:</p>
 <ul>
@@ -20631,8 +20631,8 @@ End every post with three questions readers ask, each with a two-sentence answer
 </table>
 </div>
 </div>
-<p>A number works only for a card Wiro has listed: <code>yes 2</code> sent before the listing gets the listing. A message that says more, such as <code>yes, but at 10</code>, is an ordinary message for the agent. A reply such as <code>no</code> or <code>cancel</code> dismisses every pending card of the latest reply and goes to the agent as usual. A <code>connect</code> card needs its key, so a <code>yes</code> never applies one: when only <code>connect</code> cards are pending, <code>yes</code> is an ordinary message.</p>
-<p>Wiro applies the stored card, checked again against the agent's current setup, never anything written in the reply. A card is applied at most once. When a <code>connect</code> card is applied, the other <code>connect</code> cards for the same connector still pending on the same person's messages in that chat from the last 7 days are marked <code>applied</code> too. <code>setup</code> and <code>setupresult</code> name only the card you acted on; History and Detail show the others. Only an agent admin can apply a card: a reply from anyone else changes nothing and gets <code>Only an agent admin can apply setup changes.</code> When a change needs a restart, the agent restarts to load it: continue the chat in about a minute.</p>
+<p>A number works only for a card Wiro has listed: <code>yes 2</code> sent before the listing gets the listing. A message that says more, such as <code>yes, but at 10</code>, is an ordinary message for the agent. A reply such as <code>no</code> or <code>cancel</code> dismisses every pending card of the latest reply and goes to the agent as usual. While the agent isn't running, Wiro answers such a reply itself when it turned cards down: <code>The setup change was turned down.</code> or <code>The &lt;N&gt; setup changes were turned down.</code>, with the cards' ids in <code>setupresult.dismissed</code>. A <code>connect</code> card needs its key, so a <code>yes</code> never applies one: when only <code>connect</code> cards are pending, <code>yes</code> is an ordinary message.</p>
+<p>Wiro applies the stored card, checked again against the agent's current setup, never anything written in the reply. A card is applied at most once. When a <code>connect</code> card is applied, the other <code>connect</code> cards for the same connector still pending on the same person's messages in that chat from the last 7 days are marked <code>applied</code> too. <code>setup</code> and <code>setupresult</code> name only the card you acted on; History and Detail show the others. Only an agent admin can apply a card: a reply from anyone else changes nothing and gets <code>Only an agent admin can apply setup changes.</code> When a change needs a restart, the agent restarts to load it: continue the chat in about a minute. Replies to setup cards don't have to wait for it; see <a href="#handled-setup-replies">Replies Wiro handles itself</a>.</p>
 <h3 id="setup-card-listing">The card listing</h3>
 <p>When a <code>yes</code> can't apply a card yet, Wiro answers it with the exact content of the pending cards and applies nothing. Each card has a number, its place on the agent's reply (1 to 3), a first line that says what it does, and the text it carries, each line starting with <code>&gt; </code>. For one card, <code>response</code> reads:</p>
 <pre><code class="language-text">The agent proposes this setup change. Nothing is applied yet.
@@ -20654,7 +20654,7 @@ Reply &quot;yes&quot; to apply exactly this change, or &quot;no&quot; to turn it
 <li>From your own backend, save keys with <a href="/docs/agent-overview#post-useragentcredentialupsert"><code>POST /UserAgent/CredentialUpsert</code></a> instead of sending them in a message.</li>
 </ul>
 <h3 id="handled-setup-replies">Replies Wiro handles itself</h3>
-<p>When Wiro handles a message itself (a <code>yes</code> that applies a card or gets the <a href="#setup-card-listing">card listing</a>, a key pasted as the reply, or a reply refused because the sender isn't an agent admin), no agent turn runs and no credits are used, even when the agent has no credits left. <a href="#post-useragentmessagesend"><code>Message/Send</code></a> answers at once with the result:</p>
+<p>When Wiro handles a message itself (a <code>yes</code> that applies a card or gets the <a href="#setup-card-listing">card listing</a>, a key pasted as the reply, a reply refused because the sender isn't an agent admin, or a <code>no</code> that turned cards down while the agent isn't running), no agent turn runs and no credits are used, even when the agent has no credits left. Wiro does this whatever the agent's status, so these replies also work while the agent is stopped or restarting. <a href="#post-useragentmessagesend"><code>Message/Send</code></a> answers at once with the result:</p>
 <pre><code class="language-json">{
   &quot;result&quot;: true,
   &quot;errors&quot;: [],
@@ -20712,6 +20712,7 @@ Reply &quot;yes&quot; to apply exactly this change, or &quot;no&quot; to turn it
 </div>
 </div>
 <p>The message is stored like any finished exchange: Message/Detail and Message/History return it with <code>status: "agent_end"</code>, <code>metadata.type: "setup_result"</code> and <code>model: null</code>. When the Send has a <code>callbackurl</code>, Wiro posts the result to it right away with <code>status: "agent_end"</code>, as for a finished turn; see <a href="/docs/agent-webhooks">Agent Webhooks</a>.</p>
+<p>A card applied while the agent is stopped doesn't start it: the agent loads the change the next time it starts, and <code>restarting</code> is <code>false</code>. While the agent isn't running, every message Wiro doesn't answer itself gets the <a href="#failure-responses">not-running refusal</a> with <code>agentstatus</code>, a message with attachments or over 2,000 characters included.</p>
 <h3 id="setup-reply-lines">Wiro's answers</h3>
 <p>The lines Wiro writes in <code>response</code>:</p>
 <div class="docs-param-table">
@@ -20734,7 +20735,7 @@ Reply &quot;yes&quot; to apply exactly this change, or &quot;no&quot; to turn it
 </tr>
 <tr>
 <td><code>Your agent is restarting to load the change. Continue in about a minute.</code></td>
-<td>The change restarts the agent.</td>
+<td>The change restarts the agent, or loads with a restart already under way, such as the one an <code>add</code> card started.</td>
 </tr>
 <tr>
 <td><code>1 more setup change is still pending.</code> or <code>&lt;N&gt; more setup changes are still pending.</code></td>
@@ -20742,7 +20743,7 @@ Reply &quot;yes&quot; to apply exactly this change, or &quot;no&quot; to turn it
 </tr>
 <tr>
 <td><code>A connector card still needs its key: paste the key as your reply.</code> or <code>&lt;N&gt; connector cards still need their keys: add each key on its card.</code></td>
-<td><code>connect</code> cards of the same reply still wait for their keys, such as the <code>connect</code> card that came with an <code>add</code> card just applied.</td>
+<td><code>connect</code> cards of the same reply still wait for their keys, such as the <code>connect</code> card that came with an <code>add</code> card just applied. A <code>connect</code> card whose connector still waits for an <code>add</code> card that failed or was turned down isn't counted.</td>
 </tr>
 <tr>
 <td><code>Saved &lt;fields&gt; for &lt;Connector&gt;. Still needed: &lt;fields&gt;.</code></td>
@@ -20771,6 +20772,10 @@ Reply &quot;yes&quot; to apply exactly this change, or &quot;no&quot; to turn it
 <tr>
 <td><code>Only an agent admin can apply setup changes.</code></td>
 <td>The sender isn't an agent admin. Nothing changed.</td>
+</tr>
+<tr>
+<td><code>The setup change was turned down.</code> or <code>The &lt;N&gt; setup changes were turned down.</code></td>
+<td>A <code>no</code> or <code>cancel</code> sent while the agent isn't running turned the pending cards down. <code>setupresult.dismissed</code> holds their ids. While the agent runs, the agent answers a <code>no</code> itself.</td>
 </tr>
 <tr>
 <td><code>The agent proposes this setup change. Nothing is applied yet.</code></td>
