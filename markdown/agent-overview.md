@@ -216,11 +216,16 @@ Lists available agents in the catalog. This is a **public endpoint**, so no auth
       "createdat": "1711929600",
       "updatedat": "1714521600"
     }
+  ],
+  "plans": [
+    { "key": "starter", "title": "Starter", "priceUsd": 5,   "monthlyCredits": 500 },
+    { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "monthlyCredits": 3000 },
+    { "key": "max",     "title": "Max",     "priceUsd": 100, "monthlyCredits": 10000 }
   ]
 }
 ```
 
-> `Agent/List` returns the catalog fields plus inlined `tiers`, so a catalog card can show the price without a per-row `Agent/Detail` call. Call `POST /Agent/Detail` with `type: "full"` when you need the full template (skills map, credential schema, custom skills, scheduled tasks).
+> `Agent/List` returns the catalog fields plus inlined `tiers`, so a catalog card can show the price without a per-row `Agent/Detail` call. The top-level `plans` lists the three plans in order with their names (`key`, `title`, `priceUsd`, `monthlyCredits`), the same for every agent. Call `POST /Agent/Detail` with `type: "full"` when you need the full template (skills map, credential schema, custom skills, scheduled tasks).
 
 #### **POST** /Agent/Detail
 
@@ -230,7 +235,7 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
 |-----------|------|----------|-------------|
 | `guid` | string | No* | Agent guid. |
 | `slug` | string | No* | Agent slug (e.g. `"instagram-manager"`). |
-| `type` | string | No | Pass `"full"` to also include `customskills` (the template's strategies a deployer can edit) and `scheduledskills` (every scheduled task) in the response. Without `type: "full"`, the response carries the catalog header + `tiers` + `tokenRates` + `credentials` + `skills` + `skillsmeta` only. |
+| `type` | string | No | Pass `"full"` to also include `customskills` (the template's strategies a deployer can edit) and `scheduledskills` (every scheduled task) in the response. Without `type: "full"`, the response carries the catalog header + `tiers` + `plans` + `tokenRates` + `credentials` + `skills` + `skillsmeta` + `communicationChannels` + `extracreditpacks` only. |
 
 > **Note:** You must provide either `guid` or `slug`. If both are provided, `slug` takes priority. Pass `type: "full"` when you need to preview custom skill keys and scheduled task cron expressions before deploying; omit it for a lightweight catalog detail call.
 
@@ -255,6 +260,11 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
         "pro":     { "priceUsd": 30,  "credits": 3000 },
         "max":     { "priceUsd": 100, "credits": 10000 }
       },
+      "plans": [
+        { "key": "starter", "title": "Starter", "priceUsd": 5,   "monthlyCredits": 500 },
+        { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "monthlyCredits": 3000 },
+        { "key": "max",     "title": "Max",     "priceUsd": 100, "monthlyCredits": 10000 }
+      ],
       "tokenRates": {
         "default_model": "openai/gpt-5.6-sol",
         "fallback_rate": { "input_per_1m": 625, "output_per_1m": 3750, "cached_input_per_1m": 62.5, "cache_write_per_1m": 781.25 },
@@ -348,7 +358,11 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
           }
         }
       },
-      "extracreditpacks": [],
+      "extracreditpacks": [
+        { "packkey": "small",  "credits": 1000,  "priceusd": 10,  "enabled": true },
+        { "packkey": "medium", "credits": 5000,  "priceusd": 50,  "enabled": true },
+        { "packkey": "large",  "credits": 20000, "priceusd": 200, "enabled": true }
+      ],
       "status": 1,
       "createdat": "1711929600",
       "updatedat": "1714521600"
@@ -357,7 +371,7 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
 }
 ```
 
-> `Agent/Detail` describes the **template**, so its `credentials` block only carries the `optional` / `extra` meta flags (when the template sets them) plus the registry-driven `_schema` (field labels / types) and `_editable` map. It holds no saved values, whoever calls it and whatever `type` is sent. The `_connected` flag is per-instance and appears on `UserAgent/Detail` and the `Deploy` and `Update` responses, not on the catalog endpoint. `extracreditpacks` is always `[]` here: the packs appear on a deployed agent's `UserAgent/Detail` (see [Extra Credit Packs](#extra-credit-packs)).
+> `Agent/Detail` describes the **template**, so its `credentials` block only carries the `optional` / `extra` meta flags (when the template sets them) plus the registry-driven `_schema` (field labels / types) and `_editable` map. It holds no saved values, whoever calls it and whatever `type` is sent. The `_connected` flag is per-instance and appears on `UserAgent/Detail` and the `Deploy` and `Update` responses, not on the catalog endpoint. `plans` lists the three plans with their names, and `extracreditpacks` the three extra credit packs every plan can buy, so a visitor sees both before deploying. A deployed agent's `UserAgent/Detail` carries the same lists under `agent` (see [Extra Credit Packs](#extra-credit-packs)).
 
 **Credential response flags** (on `UserAgent/Detail` and the `Deploy` and `Update` responses): every credential object in the top-level `credentials` tree on the per-instance endpoints carries:
 
@@ -1177,7 +1191,7 @@ Retrieves full details for a single deployed agent instance, including subscript
 | `nextplan` | `string\|null` | The plan the agent moves to at its next renewal, set by a move to a lower plan with [`UpgradeTier`](#post-useragentupgradetier). An agent subscribed before the three plans also shows here the plan it renews on. `null` when no change is scheduled. Also on `MyAgents` and `PinnedAgents` rows. |
 | `monthlypriceusd` | `number` | The monthly USD price the agent pays, set at deploy, at a plan change and at renewal. Mirrors `subscription.amount`. |
 | `monthlycredits` | `number` | The credits this period grants. After a move to a higher plan inside a period it reads below `renewalcredits` until the next renewal: the difference in credits comes only for the time left. |
-| `renewalcredits` | `number` | The credits each renewal grants. |
+| `renewalcredits` | `number` | The credits a renewal grants on the agent's current plan. When `nextplan` is set, the next renewal grants that plan's credits instead, as `planChange.creditsFromRenewal` on [`PricingPreview`](#post-useragentpricingpreview) shows. |
 | `extracredits` | `number` | Active extra-credit balance (sum of non-expired packs from `CreateExtraCreditCheckout`). |
 | `extracreditsexpiry` | `number\|null` | Unix timestamp when the earliest extra credit pack expires. `null` when no extras are active. |
 | `usedcredits` | `number` | Credits consumed during the current billing period, reported by the agent runtime. |
@@ -1331,7 +1345,16 @@ A changed `title` on a running agent:
           "pro":     { "priceUsd": 30,  "credits": 3000 },
           "max":     { "priceUsd": 100, "credits": 10000 }
         },
-        "extracreditpacks": []
+        "plans": [
+          { "key": "starter", "title": "Starter", "priceUsd": 5,   "monthlyCredits": 500 },
+          { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "monthlyCredits": 3000 },
+          { "key": "max",     "title": "Max",     "priceUsd": 100, "monthlyCredits": 10000 }
+        ],
+        "extracreditpacks": [
+          { "packkey": "small",  "credits": 1000,  "priceusd": 10,  "enabled": true },
+          { "packkey": "medium", "credits": 5000,  "priceusd": 50,  "enabled": true },
+          { "packkey": "large",  "credits": 20000, "priceusd": 200, "enabled": true }
+        ]
       },
       "createdat": 1714608000,
       "updatedat": 1714694500,
@@ -1346,7 +1369,7 @@ A changed `title` on a running agent:
 }
 ```
 
-> **`Update` returns the full composed useragent shape**: same composition path as `UserAgent/Detail`, so `credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `tokenRates`, `agentModel`, `communicationChannels`, `enabledChannels`, and the `agent` template summary (with `tiers` + `extracreditpacks`) are all included. The fields `Update` cannot safely populate without an extra round-trip (`subscription`, `extracreditsexpiry`, `lastactivityat`) stay omitted. Call `UserAgent/Detail` next if you need them. Otherwise the response is suitable for an in-place panel re-render without a follow-up call.
+> **`Update` returns the full composed useragent shape**: same composition path as `UserAgent/Detail`, so `credentials`, `customskills`, `scheduledskills`, `skills`, `skillsmeta`, `tokenRates`, `agentModel`, `communicationChannels`, `enabledChannels`, and the `agent` template summary (with `tiers`, `plans` and `extracreditpacks`) are all included. The fields `Update` cannot safely populate without an extra round-trip (`subscription`, `extracreditsexpiry`, `lastactivityat`) stay omitted. Call `UserAgent/Detail` next if you need them. Otherwise the response is suitable for an in-place panel re-render without a follow-up call.
 
 > **`restarting`.** `true` when this call restarts the agent, `false` otherwise. With `true`, the row shows the transition mid-flight: `status: 1` (Stopping) with a fresh `stoppingat` timestamp. Wiro re-queues the agent once it has stopped, so it comes back with the new title. A restart request that can't be carried out answers `Failed to restart user agent`; try again.
 
@@ -2158,8 +2181,8 @@ When every entry in your `skills` map already matches the persisted state, the e
 | `101` | `skillsapply-deps-violation`: a final enabled skill has unsatisfied `depends_on`. Body includes `deps[]`. |
 | `102` | `skillsapply-conflict`: two finally-enabled skills are mutually exclusive. Body includes `conflicts[]`. |
 | `104` | `skillsapply-in-progress`: another `SkillsApply` is already running on this useragent. Wait and retry. |
+| `105` | `Change the plan with UpgradeTier.`: the `tier` sent is not the agent's current plan. Nothing is changed. Change the plan with [`UpgradeTier`](#post-useragentupgradetier), and send skill changes without `tier`. |
 | `108` | `skillsapply-db-tx-failed`: DB transaction rolled back; safe to retry with a new idempotency key. |
-| `110` | The change failed and could not be taken back: the agent may still have the new skills. Check them with `UserAgent/Detail` before changing anything. The same idempotency key answers `110` again. |
 
 #### **POST** /UserAgent/PricingPreview
 
@@ -2906,7 +2929,7 @@ Rows are returned newest-first. Rejected sessions (`realtime_session_rejected`) 
 
 ### Extra Credit Packs
 
-An agent with an active plan can buy extra credits at any time, whatever its plan. Every agent gets the same three packs, listed at `agent.extracreditpacks` on `UserAgent/Detail`:
+An agent with an active plan can buy extra credits at any time, whatever its plan. Every agent gets the same three packs, listed at `agent.extracreditpacks` on `UserAgent/Detail` and, before deploying, at `extracreditpacks` on `Agent/Detail`:
 
 ```json
 "extracreditpacks": [
@@ -3184,7 +3207,7 @@ Called after the subscription has expired (daily cron flipped it to `status: "ex
 | Component | Source | Notes |
 |-----------|--------|-------|
 | **Plan price** | `tiers.{starter,pro,max}.priceUsd` | $5, $30 or $100 a month, the same for every template and custom build. The agent's own price is `monthlypriceusd`. |
-| **Monthly credits** | `tiers.{starter,pro,max}.credits` | 500, 3,000 or 10,000. Every renewal grants them in full (`renewalcredits`); `monthlycredits` is what the current period grants. |
+| **Monthly credits** | `tiers.{starter,pro,max}.credits` | 500, 3,000 or 10,000. Every renewal grants a plan's credits in full: the current plan's (`renewalcredits`), or the scheduled plan's when `nextplan` is set. `monthlycredits` is what the current period grants. |
 | **Skills** | `Skills/List` | Every plan includes every skill. Turning one on or off costs nothing. |
 | **Per-turn token cost** | `tokenRates` (per-model) | Each chat / cron / voice-prep turn deducts credits metered by the tokens its model consumes (1 credit = $0.01). The same on every plan: a larger plan buys a larger monthly credit pool. |
 | **Extra credit packs** | `agent.extracreditpacks[]` | The same on every plan: `small` 1,000 credits for $10, `medium` 5,000 for $50, `large` 20,000 for $200. They expire 6 months after purchase. |
