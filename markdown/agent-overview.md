@@ -146,8 +146,8 @@ Deploying and running an agent follows this flow:
 
 1. **Browse**: call `POST /Agent/List` to discover available agents in the catalog
 2. **Deploy**: call `POST /UserAgent/Deploy` with `useprepaid: true` and `tier` (`"starter"`, `"pro"` or `"max"`). The plan's price is debited from your prepaid wallet immediately and a 30-day subscription row is created.
-3. **Configure**: set integration and optional Telegram, Slack, or Discord credentials with `POST /UserAgent/CredentialUpsert`, connect the Wiro project the agent runs models with using `POST /UserAgent/CredentialProjectBind`, and set preferences with `POST /UserAgent/CustomSkillUpsert`. See [Agent Credentials](/docs/agent-credentials) for details
-4. **Start**: call `POST /UserAgent/Start` to queue the agent for launch
+3. **Configure**: set integration and optional Telegram, Slack, or Discord credentials with `POST /UserAgent/CredentialUpsert` or the OAuth flow, connect the Wiro project the agent runs models with using `POST /UserAgent/CredentialProjectBind`, and set preferences with `POST /UserAgent/CustomSkillUpsert`. An agent admin can also approve the setup cards the agent proposes in its chat (see [Setup From Chat](/docs/agent-messaging#setup-from-chat)). See [Agent Credentials](/docs/agent-credentials) for details
+4. **Start**: the prepaid Deploy already queued the agent, and Wiro starts it. Call `POST /UserAgent/Start` only for a stopped (status `0`) or errored (status `5`) agent
 5. **Running**: the agent starts and becomes available for conversation
 6. **Chat**: send messages via `POST /UserAgent/Message/Send`. See [Agent Messaging](/docs/agent-messaging) for the full messaging API
 
@@ -171,7 +171,9 @@ When you mutate an agent's configuration while it is **starting** (status `3`) o
 
 This means you can update credentials, toggle skills, or change a custom skill on a running agent without manually stopping and starting it.
 
-Endpoints that auto-trigger a restart on success: `CredentialUpsert`, `CredentialProjectBind` (when the project changes), `SkillsApply`, `CustomSkillUpsert` (when functional fields change), `CustomSkillRename`, `CustomSkillDelete`, `CustomSkillRevert`, `Update` (a changed `title`, or a body that names no field). A description, categories or cover edit through `Update` doesn't restart the agent.
+These calls restart a starting or running agent when they change something: `CredentialUpsert`, `CredentialFileUpload`, `CredentialProjectBind` (when the project changes), a finished OAuth sign-in or direct `OAuthConnect` probe, `SetPickerAccounts`, `OAuthDisconnect`, `SkillsApply`, `SkillToggle`, `CustomSkillUpsert` (a new custom skill or scheduled task, a new `interval`, an `enabled` change, or a change to `cs-approval-policy`), `CustomSkillRename`, `CustomSkillDelete`, `CustomSkillRevert`, `UpdateSettings` (a new time zone, Chat Mode, model, slash-command list or Wiro API path list, or turning `chatsetup` on or off), `Update` (a changed `title`, or a body that names no field), and a setup card applied from chat (see [Setup From Chat](/docs/agent-messaging#setup-from-chat)). A restart takes about a minute. A change saved while a restart is still stopping or queued loads with that restart instead of starting another one.
+
+A change to only the text or description of an existing custom skill or scheduled task, through `CustomSkillUpsert` or a setup card, reaches a running agent right away, without a restart. These never restart a running agent: a plan change, a credit pack, a renewal or a cancellation, moving `chatsetup` between `"all"` and `"webchat"`, and a description, categories or cover edit through `Update`.
 
 ## Endpoints
 
@@ -1116,6 +1118,7 @@ Retrieves full details for a single deployed agent instance, including subscript
         "voicePrepModel": "openai/gpt-5.4-mini",
         "voicePostcallModel": "openai/gpt-5.4"
       },
+      "chatSetup": "all",
       "subscription": {
         "plan": "agent",
         "status": "active",
@@ -1379,7 +1382,7 @@ Writes per-agent preference toggles that are not credentials and not skill rows.
 
 **Permission**: owner or team admin only, as for `/UserAgent/Update`. Team members cannot change these settings.
 
-**Restart**: if the agent is **starting (status `3`)** or **running (status `4`)**, the call restarts it so the new timezone, session mode or model selection applies. Moving `chatsetup` between `"all"` and `"webchat"` doesn't restart it: Wiro checks that difference on each message. For agents in status `0`/`1`/`2`/`5`/`6` the change applies on the next `Start`.
+**Restart**: if the agent is **starting (status `3`)** or **running (status `4`)** and the call changes a setting, the agent restarts so it applies: a new time zone, Chat Mode (`teamsessionmode`), model, slash-command list (`enabledcommands`) or Wiro API path list (`wiroapiallowedpaths`), or turning `chatsetup` on or off. Moving `chatsetup` between `"all"` and `"webchat"` doesn't restart it: Wiro checks that difference on each message. A call that changes nothing restarts nothing. For agents in status `0`/`1`/`2`/`5`/`6` the change applies on the next start.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -1770,13 +1773,13 @@ The endpoint auto-normalises the skillkey to its canonical form. Bare slugs beco
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Your UserAgent instance guid |
-| `skillkey` | string | Yes | The skill key. Strategies use bare names (e.g. `"content-tone"` → stored as `cs-content-tone`). For a scheduled task, send its full key (e.g. `"cs-cron-social-content-scanner"`), or a bare slug together with `interval` (`"weekly-report"` → `cs-cron-weekly-report`). Don't send a `cron-…` key with an `interval`: it becomes `cs-cron-cron-…`, a new task. |
+| `skillkey` | string | Yes | The skill key. Strategies use bare names (e.g. `"content-tone"` → stored as `cs-content-tone`). For a scheduled task, send its full key (e.g. `"cs-cron-social-content-scanner"`), or a bare slug together with `interval` (`"weekly-report"` → `cs-cron-weekly-report`). A `cron-<slug>` key becomes `cs-cron-<slug>` too, with or without `interval`. |
 | `value` | string | No | Strategy body / cron prompt text. Editable for preset strategies and user-created entries; bundled crons silently drop `value` writes. |
 | `interval` | string | No | Cron expression (e.g. `"0 */4 * * *"`). Only persisted on `cs-cron-*` rows. On a scheduled task it must be a schedule the agent can run (see below). |
 | `enabled` | boolean | No | Turn the skill on or off. **Writable for both strategies (`cs-*`) and crons (`cs-cron-*`)**. A disabled strategy is suppressed end-to-end (it still appears in the list, but the agent never loads it). Defaults to `true` on insert. |
 | `description` | string | No | Only persisted for user-created skills (preset descriptions are template-owned). On a preset row, sending the current description back unchanged is ignored; a different text is rejected with `customskill-preset-description-not-editable`. |
 
-> **Description-only edits skip the restart.** If you only change `description` and the row's functional fields (`value`, `interval`, `enabled`) stay the same, the agent is **not** restarted. Functional changes still trigger the standard auto-restart.
+> **Text edits reach a running agent without a restart.** A change to the `value` or `description` of an existing skill or task goes to a running agent right away, and the agent keeps running; a starting agent restarts to load it. A new skill or task, a new `interval`, or turning one on or off with `enabled` restarts a starting or running agent, and so does any change to `cs-approval-policy`. If the running agent can't take the new text, Wiro restarts it instead. `restarting` in the response says whether the call restarted the agent.
 
 > **Schedules the agent can't run are refused.** A scheduled task's `interval` is a cron expression with five fields, `minute hour day month weekday`, such as `0 9 * * 1-5`. A schedule the agent can't run, or one whose date never comes, such as 30 February, is refused before anything is saved, and the error says what is wrong and what to write: `0 25 * * *` gets `This schedule can't run. The hour field takes 0 to 23. A schedule has five fields: minute hour day month weekday, for example 0 9 * * 1-5.`, and `0 0 30 2 *` gets `This schedule never comes up: February has no 30th. Pick a day February has, such as 28.` Only a schedule sent in the request is checked, so a task that already has one can still be edited or turned on and off.
 
@@ -1796,8 +1799,12 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
 ##### Response
 
 ```json
-{ "result": true, "errors": [] }
+{ "result": true, "errors": [], "restarting": false }
 ```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `restarting` | `boolean` | `true` when the call restarted the agent to load the change. `false` when the agent wasn't starting or running, or got the new text without a restart. |
 
 #### **POST** /UserAgent/CustomSkillRename
 
@@ -1814,7 +1821,7 @@ Version history is migrated under the new key so the full audit chain stays cont
 | `newskillkey` | string | Yes | The new skill key. The server canonicalises bare slugs using the flavour of `oldskillkey`: if old is `cs-cron-*` the new slug lands on `cs-cron-*`; otherwise `cs-*`. |
 | `description` | string | No | New description. Omit to leave unchanged; pass an empty string to clear. |
 
-> **Restart.** The agent restarts on success so it uses the renamed key (same behaviour as `CustomSkillUpsert` functional edits).
+> **Restart.** A starting or running agent restarts on success so it uses the renamed key, as it does when a custom skill is added.
 
 ##### Request
 
@@ -2148,7 +2155,24 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   "tier": "pro",
   "restartTriggered": true,
   "restartedAt": 1714694520,
+  "stripeProrationApplied": false,
+  "prepaidWalletDelta": null,
+  "usedCreditsUsd": 0,
   "pricing": {
+    "previousPriceUsd": 30,
+    "newPriceUsd": 30,
+    "delta": 0,
+    "deltaUsd": 0,
+    "previousMonthlyCredits": 3000,
+    "newMonthlyCredits": 3000,
+    "deltaCredits": 0,
+    "creditsNow": 0,
+    "creditsThisPeriod": 3000,
+    "creditsFromRenewal": 3000,
+    "periodEnd": null,
+    "stripeProrationApplied": false,
+    "prepaidWalletDelta": null,
+    "usedCreditsUsd": 0,
     "enabledSkills": ["int-instagram-post", "int-twitterx-post", "int-wiro-aimodels"]
   }
 }
@@ -2173,6 +2197,7 @@ When every entry in your `skills` map already matches the persisted state, the e
 | `restartTriggered` | `boolean` | `true` when the agent runtime was restarted to pick up the new skill set. `false` for stopped agents (no restart needed) or no-op batches. |
 | `restartedAt` | `number\|null` | Unix seconds when the restart trigger fired. `null` when `restartTriggered` is `false`. |
 | `pricing.enabledSkills` | `array<string>` | Final enabled skill set including transitive `depends_on` closure, as a flat array of skill names. The matching `useragent.skills` array on the next `Detail` call is an object array (`{name, enabled, _edited?, _user_created?}`); take `.name` from each entry to compare. |
+| `pricing.delta` / `deltaUsd` / `deltaCredits` / `creditsNow` | `number` | Always `0`: a skill change moves no money and no credits. The rest of `pricing` is kept for older clients and repeats the plan as it stands: its price in `previousPriceUsd` and `newPriceUsd`, its credits in `previousMonthlyCredits`, `newMonthlyCredits`, `creditsThisPeriod` and `creditsFromRenewal`, and `periodEnd: null`. `stripeProrationApplied` is always `false`, `prepaidWalletDelta` `null` and `usedCreditsUsd` `0`, in `pricing` and at the top level. |
 
 ##### Common error codes
 
@@ -3031,7 +3056,7 @@ Moves an active subscription to another plan: `"starter"`, `"pro"` or `"max"`. D
 - **A lower plan starts at the next renewal**, when the request sends `allowDowngrade: true`. Without it, a lower `targetTier` is refused and nothing changes, so a client that only means to upgrade never moves an agent down. Nothing is charged or refunded now. The agent keeps its current plan, price and credits until the period ends, and `nextplan` on `UserAgent/Detail` reads the lower plan. The renewal then charges the lower plan's price and grants its credits. The flag is only for a lower plan: a higher `targetTier` sent with it, such as from a page that still shows a plan the agent has since left, is refused, and nothing is changed or charged.
 - **Asking for the agent's current plan** cancels a scheduled move to a lower plan: `nextplan` goes back to `null`. An agent that still pays a price from before the three plans gets its current plan scheduled instead: `nextplan` names that plan, and the renewal moves the agent to the plan's own price and credits.
 
-A move to a higher plan while a lower one is scheduled cancels the scheduled move first, then upgrades from the current plan. On a plan paid by card, a move to a higher plan returns a checkout `url` instead of charging the wallet, and nothing changes on the agent until it is paid: the answer's `tier` and `nextplan` are the agent's as they were. Once it is paid, the higher plan starts a new full period with its full credits, and a lower plan scheduled before is dropped. A lower plan on a card plan applies from the next card renewal. A scheduled move on a card plan can't be cancelled once it has started with the new billing period and its payment is going through: that payment moves the agent, and asking for the current plan is refused until the agent shows the new plan.
+A move to a higher plan while a lower one is scheduled cancels the scheduled move first, then upgrades from the current plan. On a plan paid by card, a move to a higher plan returns a checkout `url` instead of charging the wallet, and nothing changes on the agent until it is paid: the answer's `tier` and `nextplan` are the agent's as they were. Once it is paid, the higher plan starts a new full period with its full credits, and a lower plan scheduled before is dropped. A lower plan on a card plan applies from the next card renewal. A scheduled move on a card plan can't be cancelled once it has started with the new billing period and its payment is going through: that payment moves the agent, and asking for the current plan is refused until the agent shows the new plan. A team agent's card plan can't be changed with a project API key: the call answers `Card checkouts for a team agent are not available with an API key. Pay from the team wallet (useprepaid) or use the dashboard.` and changes nothing.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -3123,7 +3148,7 @@ Asking for the agent's current plan while a lower one is scheduled answers `chan
 Two distinct operations share this endpoint depending on the subscription's current state:
 
 1. **Undo-cancel**: active subscription with `pendingdowngrade: "cancel"` → clears the flag, **no wallet charge**.
-2. **Renew**: subscription in `"expired"` status → creates a brand-new 30-day subscription, charges the wallet for the full plan price, resets the useragent to `status: 0` (Stopped).
+2. **Renew**: subscription in `"expired"` status → renews the same subscription for a new 30-day period, charges the wallet the plan's price (a scheduled lower plan's when `nextplan` is set), and queues a stopped or errored agent so it starts again.
 
 The endpoint inspects the current subscription state and picks the right operation; the caller doesn't choose.
 
@@ -3160,6 +3185,7 @@ Called after the subscription has expired (daily cron flipped it to `status: "ex
   "result": true,
   "action": "renewed",
   "plan": "agent",
+  "tier": "starter",
   "amount": 5,
   "monthlycredits": 500,
   "errors": []
@@ -3168,6 +3194,7 @@ Called after the subscription has expired (daily cron flipped it to `status: "ex
 
 - Renews the subscription in place: `status` becomes `"active"`, a new 30-day period starts now (`currentperiodend` moves to now + 30 days), and `pendingdowngrade` is cleared to `null`.
 - Debits `amount`, the plan's price, from the wallet (caller's personal wallet, or the agent's team wallet if the agent is team-scoped).
+- `tier` names the plan the renewal charged, and `monthlycredits` the credits it granted.
 - Zeroes `usedcredits` and stamps the new `creditperiod`. Existing extra credits are preserved.
 - If the agent was in `status: 0` (Stopped) or `5` (Error), it's auto-queued back to `2` (Queued). It starts again without an extra `Start` call. Statuses `1`/`2`/`3`/`4` are already in progress and settle on their own.
 - A card checkout still open for the agent (for example, one started in the Wiro panel) is closed before the wallet is charged, so the agent is never paid for twice.
@@ -3212,12 +3239,12 @@ Called after the subscription has expired (daily cron flipped it to `status: "ex
               └───────────┬────────────┘    │
                           │                 │
                           │ RenewSubscription (wallet charged,
-                          │ new 30-day period, useragent stays 0)
+                          │ new 30-day period, agent queued to start)
                           ▼                 │
               ┌────────────────────────┐    │
-              │ NEW subscription row   │────┘
+              │ same subscription row  │────┘
               │ status: "active"       │
-              │ type: "renewal"        │
+              │ new 30-day period      │
               └────────────────────────┘
 ```
 
@@ -3233,7 +3260,7 @@ Called after the subscription has expired (daily cron flipped it to `status: "ex
 
 ### Payment Method
 
-All API subscriptions use your **prepaid wallet balance**. The cost is deducted immediately when you deploy, renew, move to a higher plan, or buy an extra credit pack. Always pass `useprepaid: true` on `Deploy`, `CreateSubscriptionCheckout`, and `CreateExtraCreditCheckout`. That's the only path designed for API consumers. Make sure your wallet balance covers the plan's price before calling these endpoints; otherwise you'll get an `Insufficient wallet balance` error.
+All API subscriptions use your **prepaid wallet balance**. The cost is deducted immediately when you deploy, renew, move to a higher plan, or buy an extra credit pack. Always pass `useprepaid: true` on `Deploy`, `CreateSubscriptionCheckout`, and `CreateExtraCreditCheckout`. That's the only path designed for API consumers. Make sure your wallet balance covers the plan's price before calling these endpoints; otherwise you'll get an `Insufficient wallet balance` error. In the Wiro dashboard, a new subscription is paid by card. A plan paid from the wallet starts only through the API, with `Deploy` or `CreateSubscriptionCheckout` and `useprepaid: true`, or from an MCP client.
 
 ### Credit Consumption
 
@@ -3283,6 +3310,7 @@ Agent-specific errors you may encounter:
 | `The agent's plan changed while this was asked for. Nothing was changed; please retry.` | `UpgradeTier` when the agent's plan ended or moved off the wallet after the call was made |
 | `Could not read the agent's plan. Nothing was changed; please retry.` | `UpgradeTier`: the agent's plan could not be read |
 | `Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.` | `Deploy` or `CreateSubscriptionCheckout` with `useprepaid: true`, `CreateExtraCreditCheckout`, `RenewSubscription` or `UpgradeTier` (code `104` on `UpgradeTier`) while another plan or credit pack payment from the same wallet is going through. A `Deploy` refused this way creates no agent |
+| `Card checkouts for a team agent are not available with an API key. Pay from the team wallet (useprepaid) or use the dashboard.` | A card payment for a team agent asked for with a project API key: `UpgradeTier` on a plan paid by card, `CreateExtraCreditCheckout` paid by card, or `CreateSubscriptionCheckout` without `useprepaid: true`. Nothing is charged or changed |
 | `Project not found. Send the id of one of your projects from Project/List: one you created, or any project of a team you are an admin of.` | `CredentialProjectBind` with a project that doesn't exist or that the caller can't bind. See its [other errors](#post-useragentcredentialprojectbind) |
 | `Agent not found or access denied` | Message endpoint with invalid useragentguid |
 | `User agent not found` (code `95`) | `Message/Send`, `Message/History`, `Message/Sessions`, `Message/DeleteSession`, `Message/RenameSession` or `Message/Delete` called for an agent that has been deleted |
@@ -3321,7 +3349,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
     "tier": "starter"
   }'
 
-# Deploy for an end user (unpinned, won't clutter your dashboard)
+# Deploy an agent your customers chat with (no setup changes from chat)
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
@@ -3329,7 +3357,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
     "agentguid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "title": "Customer #1234 Bot",
     "useprepaid": true,
-    "tier": "starter"
+    "tier": "starter",
+    "chatsetup": "off"
   }'
 
 # Build a custom agent (no template — pick your own skill set)
@@ -3459,12 +3488,18 @@ requests.post(
     }
 )
 
-# Start the agent
-requests.post(
-    "https://api.wiro.ai/v1/UserAgent/Start",
+# A prepaid Deploy already queued the agent: start it only when it is stopped (0) or errored (5)
+instance = requests.post(
+    "https://api.wiro.ai/v1/UserAgent/Detail",
     headers=headers,
     json={"guid": instance_guid}
-)
+).json()
+if instance["useragents"][0]["status"] in (0, 5):
+    requests.post(
+        "https://api.wiro.ai/v1/UserAgent/Start",
+        headers=headers,
+        json={"guid": instance_guid}
+    )
 
 # Check status
 import time
@@ -3563,12 +3598,19 @@ async function main() {
     { headers }
   );
 
-  // Start the agent
-  await axios.post(
-    'https://api.wiro.ai/v1/UserAgent/Start',
+  // A prepaid Deploy already queued the agent: start it only when it is stopped (0) or errored (5)
+  const current = await axios.post(
+    'https://api.wiro.ai/v1/UserAgent/Detail',
     { guid: instanceGuid },
     { headers }
   );
+  if ([0, 5].includes(current.data.useragents[0].status)) {
+    await axios.post(
+      'https://api.wiro.ai/v1/UserAgent/Start',
+      { guid: instanceGuid },
+      { headers }
+    );
+  }
 
   // Poll until running
   while (true) {
@@ -3666,16 +3708,23 @@ var deployResp = await client.PostAsync(
 var deployResult = await deployResp.Content.ReadAsStringAsync();
 Console.WriteLine(deployResult);
 
-// Start the agent
-var startContent = new StringContent(
-    JsonSerializer.Serialize(new {
-        guid = "f8e7d6c5-b4a3-2190-fedc-ba0987654321"
-    }),
-    Encoding.UTF8, "application/json");
+// A prepaid Deploy already queued the agent: start it only when it is stopped (0) or errored (5)
+var agentGuid = "f8e7d6c5-b4a3-2190-fedc-ba0987654321";
+var detailResp = await client.PostAsync(
+    "https://api.wiro.ai/v1/UserAgent/Detail",
+    new StringContent(JsonSerializer.Serialize(new { guid = agentGuid }), Encoding.UTF8, "application/json"));
+using var detail = JsonDocument.Parse(await detailResp.Content.ReadAsStringAsync());
+var status = detail.RootElement.GetProperty("useragents")[0].GetProperty("status").GetInt32();
+if (status == 0 || status == 5)
+{
+    var startContent = new StringContent(
+        JsonSerializer.Serialize(new { guid = agentGuid }),
+        Encoding.UTF8, "application/json");
 
-var startResp = await client.PostAsync(
-    "https://api.wiro.ai/v1/UserAgent/Start", startContent);
-Console.WriteLine(await startResp.Content.ReadAsStringAsync());
+    var startResp = await client.PostAsync(
+        "https://api.wiro.ai/v1/UserAgent/Start", startContent);
+    Console.WriteLine(await startResp.Content.ReadAsStringAsync());
+}
 ```
 
 ### Go

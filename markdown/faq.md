@@ -52,7 +52,7 @@ Yes. For `fileinput` parameters, use the `{id}Url` suffix (e.g., `inputImageUrl`
 
 ## Does the MCP server cost extra?
 
-No. The [Wiro MCP server](/docs/wiro-mcp-server) is free. You only pay for the model runs you trigger, at standard pricing.
+No. The [Wiro MCP server](/docs/wiro-mcp-server) is free. You pay the normal prices for the work its tools start: model runs, the model steps of workflow runs, Studio and Workflow Agent turns, and agent plans and credits.
 
 ## Can I use Wiro with n8n?
 
@@ -88,7 +88,11 @@ Wiro Agents are autonomous AI assistants that you deploy and manage via the API.
 
 ### How do I deploy an agent?
 
-Browse the [agent catalog](https://wiro.ai/agents), subscribe to a plan, and deploy via `POST /UserAgent/Deploy`. After deployment, configure credentials and start the agent. See [Agent Overview](/docs/agent-overview) for the full lifecycle.
+Pick a template in the [agent catalog](https://wiro.ai/agents) or build your own, then call `POST /UserAgent/Deploy` with `useprepaid: true` and a plan in `tier`: `starter` ($5 a month, 500 credits), `pro` ($30, 3,000) or `max` ($100, 10,000). Your wallet pays the plan, and Wiro queues the agent to start on its own. Then connect the services it uses. Every plan includes every skill and connector. See [Agent Overview](/docs/agent-overview) for the full lifecycle.
+
+### How much does an agent cost?
+
+Each agent runs on one of three monthly plans: Starter ($5 a month with 500 credits), Pro ($30 with 3,000) or Max ($100 with 10,000). Every plan includes every skill and connector, so turning one on or off costs nothing. Each turn the agent runs uses credits by the tokens its model uses, and extra credit packs add 1,000 credits for $10, 5,000 for $50 or 20,000 for $200. A higher plan starts at once; a lower plan starts at the next renewal. See [Pricing Model](/docs/agent-overview#pricing-model-plans-credits-token-billing).
 
 ### Can I build my own product with Wiro Agents?
 
@@ -96,4 +100,4 @@ Yes. Use the Agent Messaging API to send messages programmatically, receive stre
 
 ### How do I connect third-party services to an agent?
 
-Agents connect to services like Twitter, Instagram, Google Ads, and HubSpot via OAuth or API keys. Use `POST /UserAgentOAuth/OAuthConnect` with the provider's `credentialkey` to initiate OAuth flows, or set API keys via `/UserAgent/CredentialUpsert`. See [Agent Credentials & OAuth](/docs/agent-credentials).
+Agents connect to services like Twitter, Instagram, Google Ads, and HubSpot via OAuth or API keys. Use `POST /UserAgentOAuth/OAuthConnect` with the provider's `credentialkey` to initiate OAuth flows, or set API keys via `/UserAgent/CredentialUpsert`. See [Agent Credentials & OAuth](/docs/agent-credentials). You can also ask the agent in its chat: it proposes a setup card, and an agent admin approves it and gives the key, which the agent never sees. See [Setup From Chat](/docs/agent-messaging#setup-from-chat).

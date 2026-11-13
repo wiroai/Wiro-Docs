@@ -685,7 +685,7 @@ agents run on a monthly plan with credits (see
 | `list_my_agents` | List your agents with their status, plan and credits |
 | `get_my_agent` | Read one agent's setup, plan and credits; can wait until it is running |
 | `control_agent` | Start, stop or restart an agent |
-| `update_agent` | Change an agent's name, description, time zone, models and chat commands |
+| `update_agent` | Change an agent's name, description, time zone, models, chat commands and setup from chat |
 | `apply_agent_skills` | Turn skills on or off; every plan includes every skill, so a change costs nothing |
 | `set_agent_credentials` | Save the keys, tokens and settings an agent's skills and channels need, such as a Telegram bot token or a Gmail app password |
 | `connect_agent_oauth` | Connect sign-in accounts such as HubSpot or X for the services an agent's skills use; you approve the connection in your browser. Some services need your own app keys or a token first |
@@ -696,6 +696,21 @@ agents run on a monthly plan with credits (see
 | `manage_agent_billing` | Subscribe, move to another plan, cancel, renew or buy extra credits from your wallet, after your confirmation |
 | `get_agent_activity` | Read an agent's credit usage and activity logs, including who changed what on it |
 | `delete_agent` | Delete an agent, after your confirmation |
+
+**Setup changes from chat.** A reply from one of your agents can propose a
+change to its own setup, such as connecting a service, adding a connector or
+skill, or creating a scheduled task (see
+[Setup From Chat](/docs/agent-messaging#setup-from-chat)). The assistant shows
+you the proposal and never approves it on its own. When you agree, it sends
+your yes as the next message: Wiro answers the first yes with the exact
+change, and your next yes (or `yes 2` for the second of several changes)
+applies it. Keys never go in a chat message: the assistant saves them with
+`set_agent_credentials`. When the change adds a connector that takes a key,
+the assistant asks for the key together with your yes and saves it right
+after the change is applied, so one restart loads both. This works while the
+agent's setup from chat is `all`, the default, which `deploy_agent` and
+`update_agent` set with `chat_setup`. With `webchat`, apply the change in the
+agent's chat on wiro.ai; with `off`, the agent asks for it on the agent page.
 
 ### Account and guides
 
@@ -934,7 +949,8 @@ once you agree to the project it shows.
 
 The assistant finds the agent with `list_my_agents`, checks that it is running
 with `get_my_agent`, and sends the message with `send_agent_message`. The
-message uses the agent's credits.
+message uses the agent's credits. If the reply proposes a setup change, the
+assistant shows it and sends your yes only after you agree.
 
 ## How It Works
 
@@ -1189,11 +1205,11 @@ An agent is named by its guid, which `list_my_agents` returns. See
 | `list_agent_templates` | `search`, `category`, `sort` (`newest`, `popular` or `title`), `start`, `limit` |
 | `get_agent_template` | `template`, `include_tasks` |
 | `list_agent_skills` | `name`, `category`, `capability` |
-| `deploy_agent` | `template`, or `custom: true` with `skills`; `tier` (`starter`, `pro` or `max`), `title`, `credentials`, `confirm`, `confirm_charge_usd` |
+| `deploy_agent` | `template`, or `custom: true` with `skills`; `tier` (`starter`, `pro` or `max`), `title`, `credentials`, `chat_setup` (`all`, `webchat` or `off`), `confirm`, `confirm_charge_usd` |
 | `list_my_agents` | `sort`, `start`, `limit` |
 | `get_my_agent` | `agent_guid`, `wait_seconds` (wait until it is running) |
 | `control_agent` | `agent_guid`, `action` (`start`, `stop` or `restart`) |
-| `update_agent` | `agent_guid`, `title`, `description`, `timezone`, `team_session_mode`, `chat_model`, `cron_model`, `enabled_commands` |
+| `update_agent` | `agent_guid`, `title`, `description`, `timezone`, `team_session_mode`, `chat_model`, `cron_model`, `enabled_commands`, `chat_setup` (`all`, `webchat` or `off`; `null` goes back to `all`) |
 | `apply_agent_skills` | `agent_guid`, `skills`, `add_dependencies`, `idempotency_key` (only to repeat a change whose answer did not arrive) |
 | `set_agent_credentials` | `agent_guid`, `credential`, `fields` |
 | `connect_agent_oauth` | `agent_guid`, `credential`, `action` (`connect`, `status` or `select_accounts`), `mode` (`wiro`, `own` or `api_key`), `confirm` |

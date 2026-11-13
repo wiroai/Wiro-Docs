@@ -481,7 +481,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   }'
 ```
 
-Response: `{ "result": true, "errors": [] }`. If the agent was running it automatically restarts.
+Response: `{ "result": true, "errors": [], "restarting": false }`. A running agent gets the new text right away, without a restart.
 
 ### Example: Lead Generation Manager (ICP Definition)
 
@@ -545,7 +545,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert" \
   }'
 ```
 
-The server auto-prefixes `skillkey` with `cron-` on user-created crons, so the row above is stored with `key: "cs-cron-weekly-health-check"`. Subsequent upserts can use either form: `"weekly-health-check"`, `"cron-weekly-health-check"`, or `"cs-cron-weekly-health-check"`.
+The call sends an `interval`, so the server stores the key as `cs-cron-weekly-health-check`. Later upserts can name it `"cs-cron-weekly-health-check"` or `"cron-weekly-health-check"`, or `"weekly-health-check"` together with an `interval`. `"weekly-health-check"` without `interval` names a strategy, `cs-weekly-health-check`, and creates a new one.
 
 ### Example: Delete a user-created cron
 
@@ -1010,7 +1010,7 @@ Agents can optionally forward operator notifications to a Telegram bot via the `
 
 `POST /Skills/List` with `{ "category": "util" }` returns every utility skill.
 
-> **Restart behavior:** Calls to `CustomSkillUpsert`, `CustomSkillRename`, `CustomSkillDelete`, `CustomSkillRevert`, and `SkillsApply` on a running agent (status 3 or 4) each trigger an automatic restart so the new skill configuration is picked up. Same as credential updates. Description-only edits to `CustomSkillUpsert` skip the restart.
+> **Restart behavior:** On a starting or running agent (status 3 or 4), `SkillsApply`, `CustomSkillRename`, `CustomSkillDelete` and `CustomSkillRevert` restart it so the new skill configuration is picked up, as credential updates do. `CustomSkillUpsert` restarts it for a new skill or task, a new `interval` or an `enabled` change. A change to the text or description of an existing one reaches the running agent without a restart, except for `cs-approval-policy`. See [Automatic Restart](/docs/agent-overview#automatic-restart).
 
 ## Using Wiro AI Models from Your Agent
 

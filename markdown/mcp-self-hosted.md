@@ -224,7 +224,7 @@ The conversation tools call the matching `Message/*` route of [Studio](/docs/stu
 | `list_my_agents` | `POST /UserAgent/MyAgents` | List your agents with their status, plan and credits. |
 | `get_my_agent` | `POST /UserAgent/Detail` | Read one agent's setup, plan and credits; can wait until it is running. |
 | `control_agent` | `POST /UserAgent/Start`, `/UserAgent/Stop`, `/UserAgent/Update` (restart) | Start, stop or restart an agent. |
-| `update_agent` | `POST /UserAgent/Update`, `/UserAgent/UpdateSettings` | Change an agent's name, description, time zone, models and chat commands. |
+| `update_agent` | `POST /UserAgent/Update`, `/UserAgent/UpdateSettings` | Change an agent's name, description, time zone, models, chat commands and setup from chat. |
 | `apply_agent_skills` | `POST /UserAgent/PricingPreview`, `/UserAgent/SkillsApply` | Turn skills on or off; every plan includes every skill, so a change costs nothing. |
 | `set_agent_credentials` | `POST /UserAgent/CredentialUpsert`, `/UserAgent/CredentialFileUpload` | Save the keys, tokens and settings an agent's skills and channels need, such as a Telegram bot token or a Gmail app password. |
 | `connect_agent_oauth` | `POST /UserAgentOAuth/OAuthConnect`, `/UserAgentOAuth/OAuthStatus`, `/UserAgentOAuth/SetPickerAccounts` | Connect sign-in accounts such as HubSpot or X for the services an agent's skills use; you approve the connection in your browser. Some services need your own app keys or a token first. |

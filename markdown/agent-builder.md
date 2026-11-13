@@ -285,7 +285,7 @@ Notes on the response:
 
 - `agentguid: null` confirms this is a custom build with no marketplace template.
 - `agent.custom: true` is the synthesized template placeholder. Same shape as a template's `agent` block but no `slug` / `cover` / `categories` (custom builds aren't in the marketplace).
-- `scheduledskills` already contains the cron from the Deploy body. Deploy stores `customskills` keys exactly as sent, so give each entry its full key: `cs-<slug>` for a strategy, `cs-cron-<slug>` for a scheduled task.
+- `scheduledskills` already contains the cron from the Deploy body. Deploy stores each `customskills` key in its full form, as `CustomSkillUpsert` does: a bare slug with an `interval` becomes `cs-cron-<slug>`, one without becomes `cs-<slug>`, and a key that isn't a slug fails the deploy before anything is created or charged.
 - `status: 2` means Deploy auto-queued the instance because `useprepaid: true` provisioned a subscription in the same call. Wiro starts the agent from the queue; you do **not** need to call `POST /UserAgent/Start` after a prepaid deploy.
 - Communication-channel credentials are validated independently from `skills`. Every channel group present in `credentials` must contain all of its `required_fields` or Deploy fails without leaving a partial agent behind.
 
@@ -317,7 +317,24 @@ The response confirms the skill set and the restart:
   "tier": "pro",
   "restartTriggered": true,
   "restartedAt": 1714694520,
+  "stripeProrationApplied": false,
+  "prepaidWalletDelta": null,
+  "usedCreditsUsd": 0,
   "pricing": {
+    "previousPriceUsd": 30,
+    "newPriceUsd": 30,
+    "delta": 0,
+    "deltaUsd": 0,
+    "previousMonthlyCredits": 3000,
+    "newMonthlyCredits": 3000,
+    "deltaCredits": 0,
+    "creditsNow": 0,
+    "creditsThisPeriod": 3000,
+    "creditsFromRenewal": 3000,
+    "periodEnd": null,
+    "stripeProrationApplied": false,
+    "prepaidWalletDelta": null,
+    "usedCreditsUsd": 0,
     "enabledSkills": ["int-gmail-check", "int-wordpress-post", "int-wiro-aimodels", "int-instagram-post"]
   }
 }
@@ -407,7 +424,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
 }
 ```
 
-### C. Multi-channel social poster (Pro plan)
+### C. Multi-channel social poster
 
 ```json
 {
