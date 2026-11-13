@@ -86,10 +86,10 @@ Every skill and connector works on every plan. Turning a skill on or off with [`
 [`POST /UserAgent/UpgradeTier`](#post-useragentupgradetier) moves an agent to another plan:
 
 - **A higher plan starts now.** On a wallet plan, the wallet pays the monthly difference for the time left in the period, by the second, rounded up to the cent and at least one day's worth, and the period gains the difference in credits for that same time. Every renewal after that grants the new plan in full. Example: a Pro agent moving to Max with 15 days left of 30 pays $35.00 and gains 3,500 credits now, then renews at $100 with 10,000 credits.
-- **A lower plan starts at the next renewal.** Nothing is charged or refunded. The agent keeps its current plan, price and credits until the period ends, and its `nextplan` field names the plan it will renew on.
+- **A lower plan starts at the next renewal.** Ask for it with `allowDowngrade: true`: without it, a lower plan is refused and nothing changes. Nothing is charged or refunded. The agent keeps its current plan, price and credits until the period ends, and its `nextplan` field names the plan it will renew on.
 - **Asking for the agent's current plan** cancels a scheduled move to a lower plan.
 
-Moving to a higher plan while a lower one is scheduled cancels the scheduled move first, and cancelling the subscription clears it too. On a plan paid by card, a higher plan goes through a card checkout and starts a new full period with its full credits, and a lower plan applies from the next card renewal.
+Moving to a higher plan while a lower one is scheduled cancels the scheduled move first, and cancelling the subscription clears it too. On a plan paid by card, a higher plan goes through a card checkout: nothing changes until it is paid, and then a new full period starts with the plan's full credits. A lower plan on a card plan applies from the next card renewal.
 
 ### Extra Credits
 
@@ -1189,7 +1189,7 @@ Retrieves full details for a single deployed agent instance, including subscript
 |-------|------|-------------|
 | `tier` | `string` | The agent's plan: `"starter"`, `"pro"` or `"max"`. |
 | `nextplan` | `string\|null` | The plan the agent moves to at its next renewal, set by a move to a lower plan with [`UpgradeTier`](#post-useragentupgradetier). An agent subscribed before the three plans also shows here the plan it renews on. `null` when no change is scheduled. Also on `MyAgents` and `PinnedAgents` rows. |
-| `monthlypriceusd` | `number` | The monthly USD price the agent pays, set at deploy, at a plan change and at renewal. Mirrors `subscription.amount`. |
+| `monthlypriceusd` | `number` | The monthly USD price the agent pays, set at deploy, at a plan change and at renewal. Mirrors `subscription.amount`. Once a wallet plan has ended, it shows the price the plan renews at, with that plan in `tier`: [`RenewSubscription`](#post-useragentrenewsubscription) never charges more. |
 | `monthlycredits` | `number` | The credits this period grants. After a move to a higher plan inside a period it reads below `renewalcredits` until the next renewal: the difference in credits comes only for the time left. |
 | `renewalcredits` | `number` | The credits a renewal grants on the agent's current plan. When `nextplan` is set, the next renewal grants that plan's credits instead, as `planChange.creditsFromRenewal` on [`PricingPreview`](#post-useragentpricingpreview) shows. |
 | `extracredits` | `number` | Active extra-credit balance (sum of non-expired packs from `CreateExtraCreditCheckout`). |
@@ -3028,15 +3028,16 @@ A team agent subscribed by card from the Wiro panel is billed to the card of the
 Moves an active subscription to another plan: `"starter"`, `"pro"` or `"max"`. Despite its name, the endpoint moves an agent down as well as up:
 
 - **A higher plan starts now.** API-deployed agents pay through the wallet: the monthly difference for the time left in the current period, by the second, rounded up to the cent and at least one day's worth. The period gains the difference in credits for that same time, and every renewal grants the new plan in full. Existing extra credits and `usedcredits` are kept, and a running agent keeps running.
-- **A lower plan starts at the next renewal.** Nothing is charged or refunded now. The agent keeps its current plan, price and credits until the period ends, and `nextplan` on `UserAgent/Detail` reads the lower plan. The renewal then charges the lower plan's price and grants its credits.
-- **Asking for the agent's current plan** cancels a scheduled move to a lower plan: `nextplan` goes back to `null`.
+- **A lower plan starts at the next renewal**, when the request sends `allowDowngrade: true`. Without it, a lower `targetTier` is refused and nothing changes, so a client that only means to upgrade never moves an agent down. Nothing is charged or refunded now. The agent keeps its current plan, price and credits until the period ends, and `nextplan` on `UserAgent/Detail` reads the lower plan. The renewal then charges the lower plan's price and grants its credits.
+- **Asking for the agent's current plan** cancels a scheduled move to a lower plan: `nextplan` goes back to `null`. An agent that still pays a price from before the three plans gets its current plan scheduled instead: `nextplan` names that plan, and the renewal moves the agent to the plan's own price and credits.
 
-A move to a higher plan while a lower one is scheduled cancels the scheduled move first, then upgrades from the current plan. On a plan paid by card, a move to a higher plan returns a checkout `url` instead of charging the wallet: once it is paid, the higher plan starts a new full period with its full credits. A lower plan on a card plan applies from the next card renewal.
+A move to a higher plan while a lower one is scheduled cancels the scheduled move first, then upgrades from the current plan. On a plan paid by card, a move to a higher plan returns a checkout `url` instead of charging the wallet, and nothing changes on the agent until it is paid: the answer's `tier` and `nextplan` are the agent's as they were. Once it is paid, the higher plan starts a new full period with its full credits, and a lower plan scheduled before is dropped. A lower plan on a card plan applies from the next card renewal. A scheduled move on a card plan can't be cancelled once it has started with the new billing period and its payment is going through: that payment moves the agent, and asking for the current plan is refused until the agent shows the new plan.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `guid` | string | Yes | Your UserAgent instance guid |
 | `targetTier` | string | Yes | The plan to move to: `"starter"`, `"pro"` or `"max"`. The parameter name is `targetTier`. Passing it as `tier` returns `targetTier must be starter, pro or max`. |
+| `allowDowngrade` | boolean | No | `true` to move to a lower plan at the next renewal. Without it, a `targetTier` lower than the agent's plan is refused and nothing changes. A higher plan and the agent's current plan need no flag. |
 
 **Headers:** No extra header is needed. For team agents, use an API key from a project in the agent's team. Keys from another workspace are rejected.
 
@@ -3065,7 +3066,7 @@ A Pro agent moving to Max with 15 days left of 30:
 }
 ```
 
-A move to a lower plan keeps the agent where it is until the renewal:
+A move to a lower plan, sent with `"allowDowngrade": true`, keeps the agent where it is until the renewal:
 
 ```json
 {
@@ -3084,7 +3085,24 @@ A move to a lower plan keeps the agent where it is until the renewal:
 }
 ```
 
-Asking for the agent's current plan while a lower one is scheduled answers `change: "downgrade-cancelled"` with `nextplan: null`.
+Asking for the agent's current plan while a lower one is scheduled answers `change: "downgrade-cancelled"` with `nextplan: null`. For an agent that still pays a price from before the three plans, `nextplan` names its current plan instead, and `startsAt`, `newPriceUsd` and `newMonthlyCredits` give the renewal that moves it to that plan's own price:
+
+```json
+{
+  "result": true,
+  "change": "downgrade-cancelled",
+  "tier": "pro",
+  "previousTier": "pro",
+  "targetTier": "pro",
+  "nextplan": "pro",
+  "effectiveAt": 1715644800,
+  "periodEnd": 1716940800,
+  "startsAt": 1716940800,
+  "newPriceUsd": 30,
+  "newMonthlyCredits": 3000,
+  "errors": []
+}
+```
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -3093,12 +3111,12 @@ Asking for the agent's current plan while a lower one is scheduled answers `chan
 | `previousTier` / `targetTier` | `string` | The plan it was on and the plan asked for. |
 | `nextplan` | `string\|null` | The plan scheduled for the renewal after the call, or `null`. |
 | `effectiveAt` | `number\|null` | Unix seconds when the change takes effect: now for an upgrade on a wallet plan and for a cancelled downgrade, the renewal for a downgrade, `null` for an upgrade on a card plan, which starts once its checkout is paid. |
-| `newPriceUsd` / `newMonthlyCredits` | `number` | The new plan's monthly price and credits; for a downgrade, from the renewal on. |
+| `newPriceUsd` / `newMonthlyCredits` | `number` | The new plan's monthly price and credits; for a downgrade, from the renewal on. A cancelled downgrade has them only when `nextplan` names the current plan: that plan's price and credits from the renewal on. |
 | `creditsNow` / `creditsThisPeriod` / `creditsFromRenewal` | `number` | Upgrade on a wallet plan: what this period gained, what it grants in all, and what each renewal grants. |
 | `chargedUsd` | `number` | Upgrade on a wallet plan: what the wallet paid now, in USD. `proratedCharge` carries the same amount. |
-| `startsAt` | `number` | Downgrade: the moment the lower plan starts, the same as `effectiveAt`. |
+| `startsAt` | `number` | Downgrade: the moment the lower plan starts, the same as `effectiveAt`. Cancelled downgrade with `nextplan` set: the renewal that moves the agent to its plan's own price. |
 | `periodEnd` | `number` | Unix seconds when the current period ends. |
-| `url` / `targetPriceUsd` / `targetCredits` | `string` / `number` | Upgrade on a card plan: the checkout link, and the plan's price and credits once it is paid. |
+| `url` / `targetPriceUsd` / `targetCredits` | `string` / `number` | Upgrade on a card plan: the checkout link, and the plan's price and credits once it is paid. Nothing changes until then, so `tier` and `nextplan` are the agent's as they were. |
 
 #### **POST** /UserAgent/RenewSubscription
 
@@ -3115,7 +3133,7 @@ The endpoint inspects the current subscription state and picks the right operati
 
 **Headers:** No extra header is needed. For team agents, use an API key from a project in the agent's team. Keys from another workspace are rejected.
 
-> A renewal charges the agent's plan price and grants the plan's credits in full. When a lower plan is scheduled (`nextplan`), the renewal charges and grants that plan instead and clears `nextplan`. Skills never change what a renewal costs.
+> A renewal charges the agent's plan price and grants the plan's credits in full. When a lower plan is scheduled (`nextplan`), the renewal charges and grants that plan instead and clears `nextplan`. Once a wallet plan has ended, the agent shows the plan its renewal takes and that plan's price: `tier` names it, `nextplan` is `null` and `monthlypriceusd` is the price. A renewal never charges more than `monthlypriceusd` shows. Skills never change what a renewal costs.
 
 ##### Response: undo-cancel
 
@@ -3161,6 +3179,7 @@ Called after the subscription has expired (daily cron flipped it to `status: "ex
 | `Subscription is already active` | Called on an active subscription with **no** pending cancel (nothing to do) |
 | `No expired subscription found to renew` | No active sub and no expired sub: agent was never subscribed, or data is gone |
 | `Insufficient wallet balance. Required: $X.XX, Available: $Y.YY` | Wallet (personal or team) can't cover the renewal price |
+| `This plan now renews on the Max plan at $100.00 a month, not the $70.00 it showed. Nothing was charged. Renew again to pay the new price.` (the plan's name and prices) | The renewal costs more than the agent's `monthlypriceusd` showed. Nothing is charged, and the agent now shows the renewal's plan and price (`tier` and `monthlypriceusd`, with `nextplan` cleared). Show the new price, then call `RenewSubscription` again to pay it |
 | `A payment for this agent is already being processed. It usually finishes within a minute; refresh to see the subscription.` | A card payment for the agent has gone through and its subscription is still being set up; nothing is charged. The response also carries `checkoutpending: true` |
 | `A checkout for this agent is already being opened. Try again in a moment.` | Another subscription request for the same agent is in progress; nothing is charged |
 | `We couldn't confirm this agent's previous checkout. Please try again in a minute.` | The agent's previous card checkout couldn't be checked; nothing is charged |
@@ -3252,6 +3271,8 @@ Agent-specific errors you may encounter:
 | `tier must be starter, pro or max` | `Deploy` or `CreateSubscriptionCheckout` with a `tier` that names no plan. Nothing is created or charged. |
 | `targetTier must be starter, pro or max` | `UpgradeTier` with a `targetTier` outside the closed enum (typos, missing parameter name, etc.) |
 | `Already on the Pro plan.` (the plan's name) | `UpgradeTier` with the agent's current plan when no lower plan is scheduled: no-op |
+| `The Starter plan is smaller than this agent's Pro plan, so this is not an upgrade. Nothing was changed. A move to a smaller plan starts at the next renewal; to ask for it, send allowDowngrade: true.` (the plans' names) | `UpgradeTier` with a `targetTier` lower than the agent's plan and no `allowDowngrade: true`. Nothing is changed or charged |
+| `The move to the Starter plan started with this billing period, and its payment moves the agent there, so it can no longer be undone. Nothing was changed. Once the agent shows the Starter plan, change the plan again.` (the plan's name) | `UpgradeTier` with the agent's current plan on a card plan whose scheduled plan has already started with the new billing period. Its payment moves the agent there |
 | `No active plan. Use /UserAgent/CreateSubscriptionCheckout to start one on the plan you pick.` | `UpgradeTier` called without an active subscription |
 | `This plan is set to end at the end of its period, so there is no renewal to change. Renew it first.` | `UpgradeTier` to a lower plan while the subscription is cancelled at period end. Undo the cancel with `RenewSubscription` first |
 | `The plan change could not be scheduled. Nothing was changed; please try again in a minute.` | `UpgradeTier` to a lower plan on a card plan, when the change couldn't be set with the card payment provider |

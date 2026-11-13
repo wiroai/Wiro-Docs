@@ -435,7 +435,7 @@ Subscriptions for custom builds work exactly like template deploys:
 - A 30-day prepaid subscription row (`plan: "agent"`, `tier: <starter|pro|max>`, `provider: "prepaid"`) is inserted at Deploy.
 - `POST /UserAgent/CancelSubscription` schedules cancel-at-period-end.
 - `POST /UserAgent/RenewSubscription` either undoes a pending cancel (no charge) or creates a fresh 30-day period (wallet charged).
-- `POST /UserAgent/UpgradeTier` changes the plan: a higher plan starts now with a prorated wallet debit, a lower plan at the next renewal.
+- `POST /UserAgent/UpgradeTier` changes the plan: a higher plan starts now with a prorated wallet debit, a lower plan (sent with `allowDowngrade: true`) at the next renewal.
 
 Turning a skill on or off never changes the subscription: the plan's price and credits stay the same (see Step 4 above).
 
