@@ -883,7 +883,7 @@ What a `yes` does depends on where it is sent and how many cards are pending (`c
 
 A number works only for a card Wiro has listed: `yes 2` sent before the listing gets the listing. A message that says more, such as `yes, but at 10`, is an ordinary message for the agent. A reply such as `no` or `cancel` dismisses every pending card of the latest reply and goes to the agent as usual. While the agent isn't running, Wiro answers such a reply itself when it turned cards down: `The setup change was turned down.` or `The <N> setup changes were turned down.`, with the cards' ids in `setupresult.dismissed`. A `connect` card needs its key, so a `yes` never applies one: when only `connect` cards are pending, `yes` is an ordinary message.
 
-Wiro applies the stored card, checked again against the agent's current setup, never anything written in the reply. A card is applied at most once. When a `connect` card is applied, the other `connect` cards for the same connector still pending on the same person's messages in that chat from the last 7 days are marked `applied` too. `setup` and `setupresult` name only the card you acted on; History and Detail show the others. Only an agent admin can apply a card: a reply from anyone else changes nothing and gets `Only an agent admin can apply setup changes.` When a change needs a restart, the agent restarts to load it: continue the chat in about a minute. Replies to setup cards don't have to wait for it; see [Replies Wiro handles itself](#handled-setup-replies).
+Wiro applies the stored card, checked again against the agent's current setup, never anything written in the reply. A card is applied at most once. When a `connect` card is applied, the other `connect` cards for the same connector still pending on the same person's messages in that chat from the last 7 days are marked `applied` too. `setup` and `setupresult` name only the card you acted on; History and Detail show the others. Only an agent admin can apply a card: a reply from anyone else changes nothing and gets `Only an agent admin can apply setup changes.` When a change needs a restart, the agent restarts to load it: continue the chat in about a minute. Replies Wiro handles itself don't have to wait for it; see [Replies Wiro handles itself](#handled-setup-replies).
 
 ### The card listing
 
@@ -965,7 +965,7 @@ The lines Wiro writes in `response`:
 | `This setup change was already handled.` | The card was applied or dismissed before this reply arrived. |
 | `This card is older than 30 minutes. Use the card's button, or ask the agent again.` | The card turned 30 minutes old while the reply was handled. Apply it with its button or [`SetupCardApply`](#post-useragentmessagesetupcardapply). |
 | `Only an agent admin can apply setup changes.` | The sender isn't an agent admin. Nothing changed. |
-| `The setup change was turned down.` or `The <N> setup changes were turned down.` | A `no` or `cancel` sent while the agent isn't running turned the pending cards down. `setupresult.dismissed` holds their ids. While the agent runs, the agent answers a `no` itself. |
+| `The setup change was turned down.` or `The <N> setup changes were turned down.` | A `no` or `cancel` sent while the agent isn't running turned the pending cards down. `setupresult.dismissed` holds their ids. While the agent runs, the `no` goes on to the agent like any other message. |
 | `The agent proposes this setup change. Nothing is applied yet.` | The start of the [card listing](#setup-card-listing). Nothing changed. |
 
 ## **POST** /UserAgent/Message/SetupCardApply
