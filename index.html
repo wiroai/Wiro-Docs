@@ -20178,7 +20178,7 @@ print(response.body);
 <p>When polling for the final state, check <code>status === "agent_cancel"</code>.</p>
 </blockquote>
 <h2 id="setup-from-chat">Setup From Chat</h2>
-<p>An agent can help the people who run it set it up in the chat: save a key for a connector, create or change a scheduled task, add or change a custom skill, or change its time zone. The agent never changes its own setup and never sees a key. It proposes the change as a <strong>setup card</strong>: Wiro checks the card against the agent's current setup and stores it on the message that asked for it, where it shows as a <code>setup</code> block in that message's <code>timeline[]</code>. Nothing changes until an agent admin (the owner, or an admin of the agent's team) approves the card.</p>
+<p>An agent can help the people who run it set it up in the chat: save a key for a connector or remove it, create or change a scheduled task, create or change a custom skill, add to one or undo its last change, or change its time zone. The agent never changes its own setup and never sees a key. It proposes the change as a <strong>setup card</strong>: Wiro checks the card against the agent's current setup and stores it on the message that asked for it, where it shows as a <code>setup</code> block in that message's <code>timeline[]</code>. Nothing changes until an agent admin (the owner, or an admin of the agent's team) approves the card.</p>
 <p>Where cards can be proposed and approved is the agent's <code>chatsetup</code> setting. Set it with <a href="/docs/agent-overview#post-useragentupdatesettings"><code>UpdateSettings</code></a> or at <a href="/docs/agent-overview#post-useragentdeploy"><code>Deploy</code></a>, and read it back as <code>chatSetup</code> on <a href="/docs/agent-overview#post-useragentdetail"><code>UserAgent/Detail</code></a>:</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -20259,17 +20259,17 @@ print(response.body);
 <tr>
 <td><code>kind</code></td>
 <td><code>string</code></td>
-<td><code>connect</code> (save a key for a connector), <code>schedule</code> (a scheduled task), <code>skill</code> (a custom skill) or <code>timezone</code>.</td>
+<td><code>connect</code> (save a key for a connector), <code>disconnect</code> (remove a connector's saved key), <code>schedule</code> (a scheduled task), <code>skill</code> (a custom skill) or <code>timezone</code>.</td>
 </tr>
 <tr>
 <td><code>action</code></td>
 <td><code>string</code></td>
-<td><code>schedule</code>: <code>create</code>, <code>update</code>, <code>pause</code>, <code>resume</code> or <code>delete</code>. <code>skill</code>: <code>create</code>, <code>update</code>, <code>disable</code> or <code>enable</code>. Absent on <code>connect</code> and <code>timezone</code> cards.</td>
+<td><code>schedule</code>: <code>create</code>, <code>update</code>, <code>pause</code>, <code>resume</code> or <code>delete</code>. <code>skill</code>: <code>create</code>, <code>update</code>, <code>append</code> (add text to the end), <code>revert</code> (undo the last change), <code>disable</code> or <code>enable</code>; see <a href="#setup-skill-cards">Changing a custom skill</a>. Absent on <code>connect</code>, <code>disconnect</code> and <code>timezone</code> cards.</td>
 </tr>
 <tr>
 <td><code>connector</code></td>
 <td><code>string</code></td>
-<td><code>connect</code> only. The connector's <code>key</code>, as <a href="/docs/agent-credentials#post-credentialslist"><code>POST /Credentials/List</code></a> lists it, for example <code>serper</code>. A card never holds a key's value.</td>
+<td><code>connect</code> and <code>disconnect</code> only. The connector's <code>key</code>, as <a href="/docs/agent-credentials#post-credentialslist"><code>POST /Credentials/List</code></a> lists it, for example <code>serper</code>. A card never holds a key's value.</td>
 </tr>
 <tr>
 <td><code>key</code></td>
@@ -20289,7 +20289,12 @@ print(response.body);
 <tr>
 <td><code>instructions</code></td>
 <td><code>string</code></td>
-<td><code>schedule</code> and <code>skill</code> only, on <code>create</code> and <code>update</code>. The full text of the task or skill, up to 20,000 characters.</td>
+<td><code>schedule</code> and <code>skill</code> only. On <code>create</code> and <code>update</code>: the full text of the task or skill, up to 20,000 characters. On <code>append</code>: only the text to add, up to 20,000 characters. On <code>revert</code>: the text the skill goes back to, which Wiro takes from the skill's history; the agent never writes it.</td>
+</tr>
+<tr>
+<td><code>before</code></td>
+<td><code>string</code></td>
+<td><code>skill</code> cards with <code>update</code>, <code>append</code> or <code>revert</code> only. The skill's text when Wiro checked the card, written by Wiro, never by the agent. Show it as the text before the change; see <a href="#setup-skill-cards">Changing a custom skill</a>. It can be absent on older cards.</td>
 </tr>
 <tr>
 <td><code>timezone</code></td>
@@ -20335,7 +20340,36 @@ print(response.body);
 </table>
 </div>
 </div>
-<p>Fields that don't apply to a card's kind are absent. More kinds can be added later, so skip a card whose <code>kind</code> you don't know.</p>
+<p>Fields that don't apply to a card's kind are absent. More kinds and actions can be added later, so skip a card whose <code>kind</code> or <code>action</code> you don't know.</p>
+<h3 id="setup-skill-cards">Changing a custom skill</h3>
+<p>A <code>skill</code> card changes one of the agent's custom skills. <code>create</code> and <code>update</code> carry the skill's full text in <code>instructions</code>, and <code>disable</code> and <code>enable</code> turn the skill off and on. Two more actions keep a change to an existing skill small:</p>
+<ul>
+<li><strong><code>append</code></strong> adds text to the end of the skill. <code>instructions</code> holds only the text to add, so a new rule goes into a long skill without the whole skill being sent again. Once applied, the skill's text is <code>before</code> with the whitespace at its end removed, a blank line, then <code>instructions</code>. Wiro refuses the card when the skill already holds that text, or when the skill would get longer than a custom skill can be.</li>
+<li><strong><code>revert</code></strong> undoes the skill's last change. The agent names only the skill, and Wiro puts the text to restore in <code>instructions</code>: the newest version in the skill's <a href="/docs/agent-overview#post-useragentcustomskillhistory">version history</a> whose text differs from the current text. When the skill has no earlier version, Wiro refuses the card.</li>
+</ul>
+<p>An <code>update</code>, <code>append</code> or <code>revert</code> card also has <code>before</code>, the skill's text when Wiro checked the card. Wiro writes it; the agent never does. Show it next to the text after the change, which is <code>instructions</code> on <code>update</code> and <code>revert</code> cards and the joined text on <code>append</code> cards: on a pending card as the current and the proposed text, and on an applied card as the text before and after the change. Don't read the skill's live text for this, since it already holds the change once the card is applied. <code>before</code> can be absent on older cards.</p>
+<pre><code class="language-json">{
+  &quot;v&quot;: 1,
+  &quot;id&quot;: &quot;p7d2m4x9q1ka&quot;,
+  &quot;kind&quot;: &quot;skill&quot;,
+  &quot;action&quot;: &quot;append&quot;,
+  &quot;key&quot;: &quot;cs-blog-writing&quot;,
+  &quot;instructions&quot;: &quot;End every post with three questions readers ask, each with a two-sentence answer.&quot;,
+  &quot;before&quot;: &quot;Write each blog post in a friendly, plain tone.\nKeep posts under 900 words.&quot;,
+  &quot;requestedby&quot;: &quot;ada-uuid&quot;,
+  &quot;createdat&quot;: 1743350406
+}
+</code></pre>
+<p>Once this card is applied, the skill reads:</p>
+<pre><code class="language-text">Write each blog post in a friendly, plain tone.
+Keep posts under 900 words.
+
+End every post with three questions readers ask, each with a two-sentence answer.
+</code></pre>
+<p>Wiro applies these cards only to the text the approver saw. When the skill's text no longer matches <code>before</code> as the card is applied, for example because someone edited the skill on the agent page after the card was made, nothing changes and the card fails with <code>This skill changed after the card was made. Ask the agent again.</code></p>
+<h3 id="setup-disconnect-cards">Disconnecting a connector</h3>
+<p>A <code>disconnect</code> card removes a connector's saved key, as clearing it on the agent page does. It names the connector in <code>connector</code> and never holds a value. Once it is applied, the agent restarts without the connector, and skills that use it stop until it is connected again.</p>
+<p>Wiro takes a <code>disconnect</code> card only for a connector that meets all three: it is connected now, it is connected with a key (the kind a <code>connect</code> card saves), and the agent can run without it (<code>optional: true</code> in the <code>credentials</code> of <a href="/docs/agent-overview#post-useragentdetail"><code>UserAgent/Detail</code></a>). A connector that uses a sign-in (OAuth), a channel (Telegram, Slack or Discord), the Wiro project the agent runs models with and a connector the agent needs to start are disconnected on the agent page. A <code>yes</code> applies a <code>disconnect</code> card as it does any card other than <code>connect</code>.</p>
 <h3 id="approving-setup-cards">Approving a setup card</h3>
 <p>After proposing a card, the agent asks in one short line whether to apply it, or, for a <code>connect</code> card, for the key. An agent admin approves one card at a time, in one of three ways:</p>
 <ol>
@@ -20373,7 +20407,7 @@ print(response.body);
 <p>A number works only for a card Wiro has listed: <code>yes 2</code> sent before the listing gets the listing. A message that says more, such as <code>yes, but at 10</code>, is an ordinary message for the agent. A reply such as <code>no</code> or <code>cancel</code> dismisses every pending card of the latest reply and goes to the agent as usual. A <code>connect</code> card needs its key, so a <code>yes</code> never applies one: when only <code>connect</code> cards are pending, <code>yes</code> is an ordinary message.</p>
 <p>Wiro applies the stored card, checked again against the agent's current setup, never anything written in the reply. A card is applied at most once. When a <code>connect</code> card is applied, the other <code>connect</code> cards for the same connector still pending on the same person's messages in that chat from the last 7 days are marked <code>applied</code> too. <code>setup</code> and <code>setupresult</code> name only the card you acted on; History and Detail show the others. Only an agent admin can apply a card: a reply from anyone else changes nothing and gets <code>Only an agent admin can apply setup changes.</code> When a change needs a restart, the agent restarts to load it: continue the chat in about a minute.</p>
 <h3 id="setup-card-listing">The card listing</h3>
-<p>When a <code>yes</code> can't apply a card yet, Wiro answers it with the exact content of the pending cards and applies nothing. Each card has a number, its place on the agent's reply (1 to 3), a first line that says what it does, and its full instructions, each line starting with <code>&gt; </code>. For one card, <code>response</code> reads:</p>
+<p>When a <code>yes</code> can't apply a card yet, Wiro answers it with the exact content of the pending cards and applies nothing. Each card has a number, its place on the agent's reply (1 to 3), a first line that says what it does, and the text it carries, each line starting with <code>&gt; </code>. For one card, <code>response</code> reads:</p>
 <pre><code class="language-text">The agent proposes this setup change. Nothing is applied yet.
 
 Card 1: Create scheduled task cs-cron-morning-summary (title: Morning summary), schedule 0 9 * * 1-5.
@@ -20382,6 +20416,7 @@ Instructions:
 
 Reply &quot;yes&quot; to apply exactly this change, or &quot;no&quot; to turn it down.
 </code></pre>
+<p>An <code>append</code> card's first line reads <code>Card 1: Add to custom skill &lt;key&gt;.</code>, followed by only the text it adds. A <code>revert</code> card's reads <code>Card 1: Undo the last change to custom skill &lt;key&gt;.</code>, followed by the text it restores. A <code>disconnect</code> card has one line: <code>Card 1: Disconnect &lt;Connector&gt; (its saved key is removed).</code></p>
 <p>With several cards, it starts with <code>The agent proposes these setup changes. Nothing is applied yet.</code> and ends with <code>To apply one, reply "yes" and its number, such as "yes 1", one card per reply, or press Apply on the card in the web chat. Reply "no" to turn them all down.</code> Show this text, as it is, to the person who approves. The listing is a reply Wiro handles itself (see <a href="#handled-setup-replies">below</a>), and its <code>setupresult</code> lists no card.</p>
 <h3 id="keys-in-chat">Keys in chat</h3>
 <p>While setup from chat is on for a message, Wiro keeps keys out of the agent's conversation:</p>
@@ -20463,11 +20498,11 @@ Reply &quot;yes&quot; to apply exactly this change, or &quot;no&quot; to turn it
 <tbody>
 <tr>
 <td><code>✅ Applied: &lt;summary&gt;.</code></td>
-<td>The card was applied. The summary says what changed, such as <code>Scheduled task Morning summary created</code>, <code>Custom skill Weekly report turned off</code>, <code>Time zone set to Europe/Istanbul</code> or <code>&lt;Connector&gt; connected</code>.</td>
+<td>The card was applied. The summary says what changed, such as <code>Scheduled task Morning summary created</code>, <code>Custom skill Weekly report updated</code> (also for an <code>append</code> card), <code>Custom skill Weekly report restored</code>, <code>Custom skill Weekly report turned off</code>, <code>Time zone set to Europe/Istanbul</code>, <code>&lt;Connector&gt; connected</code> or <code>&lt;Connector&gt; disconnected</code>.</td>
 </tr>
 <tr>
 <td><code>⚠️ Not applied: &lt;reason&gt;</code></td>
-<td>The change failed. The card's <code>status</code> is now <code>failed</code>, with the same reason in <code>error</code>.</td>
+<td>The change failed. The card's <code>status</code> is now <code>failed</code>, with the same reason in <code>error</code>. For example, <code>This skill changed after the card was made. Ask the agent again.</code> means the skill's text changed after an <code>update</code>, <code>append</code> or <code>revert</code> card was made.</td>
 </tr>
 <tr>
 <td><code>Your agent is restarting to load the change. Continue in about a minute.</code></td>
@@ -20659,6 +20694,10 @@ Reply &quot;yes&quot; to apply exactly this change, or &quot;no&quot; to turn it
 <tr>
 <td><code>The change could not be applied. Try again from the agent page.</code></td>
 <td>The change failed on Wiro's side. The card's <code>status</code> is now <code>failed</code>.</td>
+</tr>
+<tr>
+<td><code>This skill changed after the card was made. Ask the agent again.</code></td>
+<td>An <code>update</code>, <code>append</code> or <code>revert</code> card whose skill text no longer matches its <code>before</code>: someone changed the skill after the card was made. Nothing changed, and the card's <code>status</code> is now <code>failed</code>.</td>
 </tr>
 <tr>
 <td>Another sentence in <code>errors[0].message</code></td>
