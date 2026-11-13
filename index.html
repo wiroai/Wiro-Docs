@@ -20579,7 +20579,7 @@ End every post with three questions readers ask, each with a two-sentence answer
 }
 </code></pre>
 <p>A <code>remove</code> card keeps a connector's saved key, as turning a connector off on the agent page does, so adding it back later needs no new key. To remove the key too, use a <a href="#setup-disconnect-cards"><code>disconnect</code> card</a>.</p>
-<p><strong>Adding a connector that takes a key.</strong> When an <code>add</code> card's <code>needs</code> names a connector with <code>mode: "key"</code>, Wiro adds a <code>connect</code> card for that connector to the same reply, right after the <code>add</code> card, so the person sees both cards at once. It leaves the <code>connect</code> card out when the reply already has a pending <code>connect</code> card for that connector, or has no room for another card (a reply holds at most three). A reply keeps one pending <code>connect</code> card per connector, so a <code>connect</code> card the agent proposes for that connector afterwards isn't stored again. Wiro checks the <code>connect</code> card against the agent's setup as it will be once the <code>add</code> card is applied, since the connector isn't on yet. The <code>add</code> card goes first: until it is applied, applying the <code>connect</code> card changes nothing and answers <code>Apply card &lt;N&gt; first: it turns on &lt;Title&gt;.</code>, where <code>&lt;N&gt;</code> is the <code>add</code> card's number on the reply, and the <code>connect</code> card stays pending. In a typed chat, a <code>yes</code> applies the <code>add</code> card as it does any card other than <code>connect</code> (see <a href="#approving-setup-cards">Approving a setup card</a>). Wiro's answer then ends by asking for the key, naming the connector by its <code>title</code> in <code>needs</code>: <code>Next: paste your &lt;Title&gt; key as your reply.</code> When the agent restarts to load the <code>add</code> card, that line goes on with <code>Send it now and it loads with this same restart.</code> The key pasted as the next reply applies the <code>connect</code> card. The key doesn't have to wait for the restart the <code>add</code> card started: Wiro saves it right away, whether it is pasted as the reply or entered on the <code>connect</code> card. A key saved while the agent is still stopping or queued for that restart loads with it, so adding and connecting the connector takes one restart; a key saved once the agent is starting or running again restarts it once more. A connector with a sign-in, or one set up on the agent page, gets no <code>connect</code> card: once the <code>add</code> card is applied, Wiro's answer says <code>Connect &lt;Title&gt; on the agent page.</code>, naming each such connector by its <code>title</code> in <code>needs</code>.</p>
+<p><strong>Adding a connector that takes a key.</strong> When an <code>add</code> card's <code>needs</code> names a connector with <code>mode: "key"</code>, Wiro adds a <code>connect</code> card for that connector to the same reply, right after the <code>add</code> card, so the person sees both cards at once. It leaves the <code>connect</code> card out when the reply already has a pending <code>connect</code> card for that connector, or has no room for another card (a reply holds at most three). A reply keeps one pending <code>connect</code> card per connector, so a <code>connect</code> card the agent proposes for that connector afterwards isn't stored again. Wiro checks the <code>connect</code> card against the agent's setup as it will be once the <code>add</code> card is applied, since the connector isn't on yet. The <code>add</code> card goes first: until it is applied, applying the <code>connect</code> card changes nothing and answers <code>Apply card &lt;N&gt; first: it turns on &lt;Title&gt;.</code>, where <code>&lt;N&gt;</code> is the <code>add</code> card's number on the reply, and the <code>connect</code> card stays pending. In a typed chat, a <code>yes</code> applies the <code>add</code> card as it does any card other than <code>connect</code> (see <a href="#approving-setup-cards">Approving a setup card</a>). Wiro's answer then ends by asking for the key, naming the connector by its <code>title</code> in <code>needs</code>: <code>Next: paste your &lt;Title&gt; key as your reply.</code> When the agent restarts to load the <code>add</code> card, that line goes on with <code>Send it now and it loads with this same restart.</code> The key pasted as the next reply applies the <code>connect</code> card. The key doesn't have to wait for the restart the <code>add</code> card started: Wiro saves it right away, whether it is pasted as the reply or entered on the <code>connect</code> card. A key saved while the agent is still stopping or queued for that restart loads with it, so adding and connecting the connector takes one restart; a key saved once the agent is starting or running again restarts it once more. The <code>add</code> card can also take the key itself and apply both cards in one step; see <a href="#setup-add-and-connect">Adding and connecting in one step</a>. A connector with a sign-in, or one set up on the agent page, gets no <code>connect</code> card: once the <code>add</code> card is applied, Wiro's answer says <code>Connect &lt;Title&gt; on the agent page.</code>, naming each such connector by its <code>title</code> in <code>needs</code>.</p>
 <p>Wiro checks an <code>add</code> or <code>remove</code> card when the agent proposes it and again when it is applied, and works out <code>with</code>, <code>pauses</code>, <code>resumes</code> and <code>needs</code> again. When the agent's connectors or skills changed in between, so that the card would now turn on more than it shows or turn off something else, nothing changes and the card fails with <code>This agent's connectors or skills changed after the card was made. Ask the agent again.</code> A dependency in <code>with</code> that was turned on in the meantime is not a change. An <code>add</code> card whose <code>key</code> itself was turned on in the meantime fails with <code>&lt;Title&gt; is already on.</code>, and a <code>remove</code> card whose <code>key</code> was turned off fails with <code>&lt;Title&gt; is not on this agent.</code></p>
 <p>Wiro refuses an <code>add</code> or <code>remove</code> card with one plain sentence when:</p>
 <ul>
@@ -20594,6 +20594,67 @@ End every post with three questions readers ask, each with a two-sentence answer
 <li>voice calls would be left without a channel: with <code>util-voice-receptionist</code> on, Twilio Voice Channel (<code>int-twilio-channel</code>) or Web Voice Channel (<code>util-web-channel</code>) must be on.</li>
 </ul>
 <p>A card refused as the agent proposes it is never stored. A card refused as it is applied changes nothing and fails, with the sentence in <code>error</code>.</p>
+<h3 id="setup-add-and-connect">Adding and connecting in one step</h3>
+<p>An <code>add</code> card can take a key itself when its <code>needs</code> names a connector with <code>mode: "key"</code> and the same reply has a pending <code>connect</code> card for that connector, such as the one Wiro adds right after the <code>add</code> card. Wiro then applies the <code>add</code> card and, right after it, the <code>connect</code> card with the key, so both load with one restart.</p>
+<p><strong>With SetupCardApply.</strong> Send the <code>add</code> card's id to <a href="#post-useragentmessagesetupcardapply"><code>SetupCardApply</code></a> with the key in <code>values</code>, as you would send it with the <code>connect</code> card:</p>
+<pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -H &quot;x-api-key: YOUR_API_KEY&quot; \
+  -d '{
+    &quot;useragentguid&quot;: &quot;a1b2c3d4-e5f6-7890-abcd-ef1234567890&quot;,
+    &quot;messageguid&quot;: &quot;c3d4e5f6-a7b8-9012-cdef-345678901234&quot;,
+    &quot;cardid&quot;: &quot;q4n7s1v8b2xd&quot;,
+    &quot;action&quot;: &quot;apply&quot;,
+    &quot;values&quot;: { &quot;apikey&quot;: &quot;YOUR_SERPER_API_KEY&quot; }
+  }'
+</code></pre>
+<p>Wiro checks the values first, as applying the <code>connect</code> card would, against the connector as it will be once the <code>add</code> card is applied. When a value is refused, nothing is applied: both cards stay pending, and <code>errors[0].message</code> is the <code>connect</code> card's sentence, such as <code>Serper API Key must be at least 20 characters</code>. When the values pass, Wiro applies both cards and marks each one <code>applied</code>, and clients subscribed to the message's <code>agenttoken</code> get both new blocks. <code>setup</code> is the <code>add</code> card after the call, <code>summary</code> names both changes, and <code>paired</code> holds the <code>connect</code> card:</p>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;setup&quot;: {
+    &quot;v&quot;: 1,
+    &quot;id&quot;: &quot;q4n7s1v8b2xd&quot;,
+    &quot;kind&quot;: &quot;add&quot;,
+    &quot;key&quot;: &quot;int-serper-search&quot;,
+    &quot;needs&quot;: [{ &quot;connector&quot;: &quot;serper&quot;, &quot;title&quot;: &quot;Serper Web Search&quot;, &quot;mode&quot;: &quot;key&quot; }],
+    &quot;requestedby&quot;: &quot;ada-uuid&quot;,
+    &quot;createdat&quot;: 1743350406,
+    &quot;status&quot;: &quot;applied&quot;,
+    &quot;actedat&quot;: 1743350460,
+    &quot;actedby&quot;: &quot;ada-uuid&quot;
+  },
+  &quot;restarting&quot;: true,
+  &quot;summary&quot;: &quot;Serper Web Search added. Serper Web Search connected.&quot;,
+  &quot;paired&quot;: [
+    {
+      &quot;setup&quot;: {
+        &quot;v&quot;: 1,
+        &quot;id&quot;: &quot;h6w3k9p2m5tc&quot;,
+        &quot;kind&quot;: &quot;connect&quot;,
+        &quot;connector&quot;: &quot;serper&quot;,
+        &quot;requestedby&quot;: &quot;ada-uuid&quot;,
+        &quot;createdat&quot;: 1743350406,
+        &quot;status&quot;: &quot;applied&quot;,
+        &quot;actedat&quot;: 1743350460,
+        &quot;actedby&quot;: &quot;ada-uuid&quot;
+      },
+      &quot;result&quot;: true,
+      &quot;error&quot;: null
+    }
+  ]
+}
+</code></pre>
+<p>When the <code>add</code> card fails as it is applied, for example with <code>Serper Web Search is already on.</code>, no key is saved. The <code>connect</code> card stays pending, and its <code>error</code> in <code>paired</code> reads <code>&lt;Connector title&gt; is not connected: &lt;Title&gt; was not added.</code> When the <code>add</code> card has no pending <code>connect</code> card to take the key, for example because its connector uses a sign-in or its <code>connect</code> card was turned down, Wiro answers <code>This card takes no key. Apply it without one.</code> When more than one of its connectors has a pending <code>connect</code> card, it answers <code>This card brings more than one key. Apply it, then add each key on its own card.</code> In both cases nothing changes and the card stays pending.</p>
+<p><strong>In messages sent with a project API key.</strong> When the only pending cards of the agent's latest reply are an <code>add</code> card and its <code>connect</code> card, the <a href="#setup-card-listing">card listing</a> ends by offering the key as the reply:</p>
+<pre><code class="language-text">The agent proposes this setup change. Nothing is applied yet.
+
+Card 1: Add Serper Web Search (connector).
+Still to connect: Serper Web Search.
+
+Reply with your Serper Web Search key to add Serper Web Search and connect it at once, &quot;yes&quot; to add it now and give the key later, or &quot;no&quot; to turn it down.
+</code></pre>
+<p>Once Wiro has listed the <code>add</code> card, the key pasted as the reply applies both cards at once. Wiro reads the key from the reply by the same rules as in <a href="#keys-in-chat">Keys in chat</a> and answers <code>✅ Applied: Serper Web Search added. Serper Web Search connected.</code>, followed by <code>Your agent is restarting to load the change. Continue in about a minute.</code> when the agent restarts. <code>setupresult.applied</code> holds both cards' ids, and the stored message reads <code>[key saved to Serper Web Search]</code> in the key's place. A key the check refuses applies neither card, and Wiro answers <code>⚠️ Not saved: &lt;reason&gt;. Paste the key again as your reply.</code> A <code>yes</code> after the listing applies the <code>add</code> card alone, and Wiro's answer ends by asking for the key with the <code>Next:</code> line. A key sent before Wiro has listed the <code>add</code> card saves nothing, since the person hasn't seen the change yet: the stored message reads <code>[key removed]</code> in its place, and Wiro answers with the listing. Send the key again after it. In the Wiro web chat, typed replies keep the two steps of <a href="#setup-add-remove-cards">adding a connector that takes a key</a>.</p>
 <h3 id="setup-disconnect-cards">Disconnecting a connector</h3>
 <p>A <code>disconnect</code> card removes a connector's saved key, as clearing it on the agent page does. It names the connector in <code>connector</code> and never holds a value. Once it is applied, the agent restarts without the connector's key, and skills that use the connector stop until it is connected again. The <code>int-&lt;name&gt;</code> connector that uses the key stays turned on: a <code>remove</code> card turns it off.</p>
 <p>Wiro takes a <code>disconnect</code> card only for a connector that meets all three: it is connected now, it is connected with a key (the kind a <code>connect</code> card saves), and the agent can run without it (<code>optional: true</code> in the <code>credentials</code> of <a href="/docs/agent-overview#post-useragentdetail"><code>UserAgent/Detail</code></a>). A connector turned off with a <code>remove</code> card counts too: its key stays saved, and a <code>disconnect</code> card can remove it even though nothing on the agent uses it any more. Connectors that use a sign-in (OAuth), channels (Telegram, Slack or Discord), the Wiro project the agent runs models with and connectors the agent needs to start are disconnected on the agent page. A <code>yes</code> applies a <code>disconnect</code> card as it does any card other than <code>connect</code>.</p>
@@ -20644,12 +20705,12 @@ Instructions:
 Reply &quot;yes&quot; to apply exactly this change, or &quot;no&quot; to turn it down.
 </code></pre>
 <p>An <code>append</code> card's first line reads <code>Card 1: Add to custom skill &lt;key&gt;.</code>, followed by only the text it adds. A <code>revert</code> card's first line reads <code>Card 1: Undo the last change to custom skill &lt;key&gt;.</code>, followed by the text it restores. A <code>disconnect</code> card has one line: <code>Card 1: Disconnect &lt;Connector&gt; (its saved key is removed).</code></p>
-<p>An <code>add</code> or <code>remove</code> card names what it changes by title, never by key. Its first line is <code>Card 1: Add &lt;Title&gt; (connector).</code>, <code>Card 1: Add &lt;Title&gt; (skill).</code>, <code>Card 1: Remove &lt;Title&gt; (connector).</code> or <code>Card 1: Remove &lt;Title&gt; (skill).</code>, and only the lines that apply follow it: <code>Also turns on: &lt;titles&gt;.</code>, <code>Also turns off: &lt;titles&gt;.</code>, <code>Scheduled tasks that pause: &lt;titles&gt;.</code>, <code>Scheduled tasks that run again: &lt;titles&gt;.</code>, <code>Still to connect: &lt;titles&gt;.</code>, and <code>Its saved key stays saved.</code> for a connector removed while its key is saved. A <code>connect</code> card isn't listed: it waits for its key.</p>
+<p>An <code>add</code> or <code>remove</code> card names what it changes by title, never by key. Its first line is <code>Card 1: Add &lt;Title&gt; (connector).</code>, <code>Card 1: Add &lt;Title&gt; (skill).</code>, <code>Card 1: Remove &lt;Title&gt; (connector).</code> or <code>Card 1: Remove &lt;Title&gt; (skill).</code>, and only the lines that apply follow it: <code>Also turns on: &lt;titles&gt;.</code>, <code>Also turns off: &lt;titles&gt;.</code>, <code>Scheduled tasks that pause: &lt;titles&gt;.</code>, <code>Scheduled tasks that run again: &lt;titles&gt;.</code>, <code>Still to connect: &lt;titles&gt;.</code>, and <code>Its saved key stays saved.</code> for a connector removed while its key is saved. A <code>connect</code> card isn't listed: it waits for its key. When a message sent with a project API key gets the listing while the only pending cards are an <code>add</code> card and its <code>connect</code> card, the listing's last line offers the key as the reply instead: <code>Reply with your &lt;Connector title&gt; key to add &lt;Title&gt; and connect it at once, "yes" to add it now and give the key later, or "no" to turn it down.</code> See <a href="#setup-add-and-connect">Adding and connecting in one step</a>.</p>
 <p>With several cards, it starts with <code>The agent proposes these setup changes. Nothing is applied yet.</code> and ends with <code>To apply one, reply "yes" and its number, such as "yes 1", one card per reply, or press Apply on the card in the web chat. Reply "no" to turn them all down.</code> Show this text, as it is, to the person who approves. The listing is a reply Wiro handles itself (see <a href="#handled-setup-replies">below</a>), and its <code>setupresult</code> lists no card.</p>
 <h3 id="keys-in-chat">Keys in chat</h3>
 <p>While setup from chat is on for a message, Wiro keeps keys out of the agent's conversation:</p>
 <ul>
-<li><strong>A key as the reply.</strong> When the agent's latest reply has one pending <code>connect</code> card and its connector takes one key (or has one required key field still empty), an agent admin can paste the key as the reply, a text message of up to 2,000 characters with no attachments. Wiro takes the reply as the key when it is in that connector's own key format, when the whole message is one key-like word, or when the key follows a word such as <code>key</code> or <code>token</code> (<code>my key is ...</code>). A sentence that only holds an id, a URL, an email address or a plain word is an ordinary message, and the card stays pending. Wiro saves the key to the connector and marks the card applied. The key never reaches the agent, and the stored message reads <code>[key saved to &lt;Connector title&gt;]</code> in its place. A key in another service's format is not saved, and when the connector needs more fields, the card stays pending and Wiro's answer names them; see <a href="#setup-reply-lines">Wiro's answers</a>.</li>
+<li><strong>A key as the reply.</strong> When the agent's latest reply has one pending <code>connect</code> card and its connector takes one key (or has one required key field still empty), an agent admin can paste the key as the reply, a text message of up to 2,000 characters with no attachments. Wiro takes the reply as the key when it is in that connector's own key format, when the whole message is one key-like word, or when the key follows a word such as <code>key</code> or <code>token</code> (<code>my key is ...</code>). A sentence that only holds an id, a URL, an email address or a plain word is an ordinary message, and the card stays pending. Wiro saves the key to the connector and marks the card applied. The key never reaches the agent, and the stored message reads <code>[key saved to &lt;Connector title&gt;]</code> in its place. A key in another service's format is not saved, and when the connector needs more fields, the card stays pending and Wiro's answer names them; see <a href="#setup-reply-lines">Wiro's answers</a>. In a message sent with a project API key, when the only pending cards are that <code>connect</code> card and the <code>add</code> card that brings its connector, the key applies both cards, but only after Wiro has listed the <code>add</code> card: a key sent before that gets the listing. See <a href="#setup-add-and-connect">Adding and connecting in one step</a>.</li>
 <li><strong>Keys in other messages.</strong> Wiro removes clear keys: a key format Wiro knows for a provider or connector, and a key written after a word such as <code>key</code>, <code>token</code>, <code>secret</code> or <code>password</code>. The stored text and the text the agent gets hold <code>[key removed]</code> in their place, and Send returns <code>contentmasked: true</code> with that text in <code>content</code>. The agent can then propose a <code>connect</code> card. Other ids, such as Google Sheet and Drive ids, commit hashes and order numbers, reach the agent unchanged. While a <code>connect</code> card of the latest reply waits for its key, every key-like word in any other text message of up to 2,000 characters is removed without being saved.</li>
 <li>From your own backend, save keys with <a href="/docs/agent-overview#post-useragentcredentialupsert"><code>POST /UserAgent/CredentialUpsert</code></a> instead of sending them in a message.</li>
 </ul>
@@ -20727,7 +20788,7 @@ Reply &quot;yes&quot; to apply exactly this change, or &quot;no&quot; to turn it
 <tbody>
 <tr>
 <td><code>✅ Applied: &lt;summary&gt;.</code></td>
-<td>The card was applied. The summary says what changed, such as <code>Scheduled task Morning summary created</code>, <code>Custom skill Weekly report updated</code> (also for an <code>append</code> card), <code>Custom skill Weekly report restored</code>, <code>Custom skill Weekly report turned off</code>, <code>Time zone set to Europe/Istanbul</code>, <code>&lt;Connector&gt; connected</code>, <code>&lt;Connector&gt; disconnected</code>, <code>Brevo Email added</code> or <code>Weather removed</code>. An <code>add</code> card that brings a connector with a sign-in, or one set up on the agent page, goes on with <code>Connect &lt;Title&gt; on the agent page.</code>, naming each such connector by its <code>title</code> in <code>needs</code>.</td>
+<td>The card was applied. The summary says what changed, such as <code>Scheduled task Morning summary created</code>, <code>Custom skill Weekly report updated</code> (also for an <code>append</code> card), <code>Custom skill Weekly report restored</code>, <code>Custom skill Weekly report turned off</code>, <code>Time zone set to Europe/Istanbul</code>, <code>&lt;Connector&gt; connected</code>, <code>&lt;Connector&gt; disconnected</code>, <code>Brevo Email added</code> or <code>Weather removed</code>. An <code>add</code> card applied together with its <code>connect</code> card's key names both, as in <code>✅ Applied: Serper Web Search added. Serper Web Search connected.</code> An <code>add</code> card that brings a connector with a sign-in, or one set up on the agent page, goes on with <code>Connect &lt;Title&gt; on the agent page.</code>, naming each such connector by its <code>title</code> in <code>needs</code>.</td>
 </tr>
 <tr>
 <td><code>⚠️ Not applied: &lt;reason&gt;</code></td>
@@ -20751,7 +20812,7 @@ Reply &quot;yes&quot; to apply exactly this change, or &quot;no&quot; to turn it
 </tr>
 <tr>
 <td><code>⚠️ Not saved: &lt;reason&gt;. Paste the key again as your reply.</code></td>
-<td>The pasted key was refused, for example because it is too short. Nothing was saved and the card stays pending.</td>
+<td>The pasted key was refused, for example because it is too short. Nothing was saved and the card stays pending. When the key was for an <code>add</code> card and its <code>connect</code> card, neither is applied.</td>
 </tr>
 <tr>
 <td><code>That does not look like a &lt;Connector&gt; key, so it was not saved. Paste the &lt;Connector&gt; key as your reply.</code></td>
@@ -20786,7 +20847,7 @@ Reply &quot;yes&quot; to apply exactly this change, or &quot;no&quot; to turn it
 </div>
 </div>
 <h2 id="post-useragentmessagesetupcardapply"><strong>POST</strong> /UserAgent/Message/SetupCardApply</h2>
-<p>Applies or dismisses one setup card; the card's buttons in the Wiro web chat call it too. Wiro applies the stored card, checked again against the agent's current setup. See <a href="#setup-from-chat">Setup From Chat</a>.</p>
+<p>Applies or dismisses one setup card, or applies an <code>add</code> card together with its <code>connect</code> card when the key comes with it; the card's buttons in the Wiro web chat call it too. Wiro applies the stored card, checked again against the agent's current setup. See <a href="#setup-from-chat">Setup From Chat</a>.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -20827,7 +20888,7 @@ Reply &quot;yes&quot; to apply exactly this change, or &quot;no&quot; to turn it
 <td><code>values</code></td>
 <td>object</td>
 <td>No</td>
-<td><code>connect</code> cards only: <code>{ "&lt;fieldname&gt;": "&lt;value&gt;" }</code> for the connector's fields, as <a href="/docs/agent-credentials#post-credentialsdetail"><code>POST /Credentials/Detail</code></a> lists them. Only text, password, URL and email fields, up to 4,096 characters each. Wiro saves them to the connector; they are never returned and never reach the agent.</td>
+<td><code>connect</code> cards, and <code>add</code> cards that bring a connector with a pending <code>connect</code> card: <code>{ "&lt;fieldname&gt;": "&lt;value&gt;" }</code> for the connector's fields, as <a href="/docs/agent-credentials#post-credentialsdetail"><code>POST /Credentials/Detail</code></a> lists them. Only text, password, URL and email fields, up to 4,096 characters each. On an <code>add</code> card they are the values of its <code>connect</code> card, and Wiro applies both cards in one step; see <a href="#setup-add-and-connect">Adding and connecting in one step</a>. Wiro saves them to the connector; they are never returned and never reach the agent.</td>
 </tr>
 </tbody>
 </table>
@@ -20892,7 +20953,12 @@ Reply &quot;yes&quot; to apply exactly this change, or &quot;no&quot; to turn it
 <tr>
 <td><code>summary</code></td>
 <td><code>string</code></td>
-<td>A short English phrase that says what changed, such as <code>Scheduled task Morning summary created</code> or <code>Brevo Email added</code>. Empty when nothing was applied.</td>
+<td>A short English phrase that says what changed, such as <code>Scheduled task Morning summary created</code> or <code>Brevo Email added</code>. An <code>add</code> card applied with its <code>connect</code> card names both: <code>Serper Web Search added. Serper Web Search connected.</code> Empty when nothing was applied.</td>
+</tr>
+<tr>
+<td><code>paired</code></td>
+<td><code>object[]</code></td>
+<td>Only when <code>values</code> are sent with a pending <code>add</code> card: its <code>connect</code> card after the call, as <code>[{ setup, result, error }]</code>. <code>setup</code> has the same shape as above, <code>result</code> is <code>true</code> when the card was applied with the key, and <code>error</code> is <code>null</code> or the sentence that says why not. Empty when there is no single <code>connect</code> card to take the key. See <a href="#setup-add-and-connect">Adding and connecting in one step</a>.</td>
 </tr>
 </tbody>
 </table>
@@ -20938,11 +21004,19 @@ Reply &quot;yes&quot; to apply exactly this change, or &quot;no&quot; to turn it
 </tr>
 <tr>
 <td><code>Apply card &lt;N&gt; first: it turns on &lt;Title&gt;.</code></td>
-<td>A <code>connect</code> card whose connector comes with an <code>add</code> card on the same message that isn't applied yet. Nothing is saved and the card stays pending: apply the <code>add</code> card first.</td>
+<td>A <code>connect</code> card whose connector comes with an <code>add</code> card on the same message that isn't applied yet. Nothing is saved and the card stays pending: apply the <code>add</code> card first, or send the values with the <code>add</code> card to apply both.</td>
+</tr>
+<tr>
+<td><code>This card takes no key. Apply it without one.</code></td>
+<td><code>values</code> sent with an <code>add</code> card that has no pending <code>connect</code> card to take them. Nothing changed and the card stays pending.</td>
+</tr>
+<tr>
+<td><code>This card brings more than one key. Apply it, then add each key on its own card.</code></td>
+<td><code>values</code> sent with an <code>add</code> card that brings more than one connector with a pending <code>connect</code> card. Nothing changed and the card stays pending.</td>
 </tr>
 <tr>
 <td>Another sentence in <code>errors[0].message</code></td>
-<td>The message or card wasn't found, the card is no longer pending, a value was refused (nothing is saved and the card stays pending), or the change no longer fits the agent's setup. When the change itself fails, the card's <code>status</code> becomes <code>failed</code> with the sentence in <code>error</code>.</td>
+<td>The message or card wasn't found, the card is no longer pending, a value was refused (nothing is saved and the card stays pending; on an <code>add</code> card, neither card is applied), or the change no longer fits the agent's setup. When the change itself fails, the card's <code>status</code> becomes <code>failed</code> with the sentence in <code>error</code>.</td>
 </tr>
 </tbody>
 </table>
