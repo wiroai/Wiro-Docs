@@ -12,7 +12,7 @@ The endpoints below cover the full programmatic surface. If you also want to see
 | **Learn About Agents** | [wiro.ai/agents/learn](https://wiro.ai/agents/learn) | Concept primer: pricing model, security model, deployment lifecycle, and the difference between marketplace templates and custom builds. |
 | **Anatomy of an Agent** | [wiro.ai/agents/anatomy](https://wiro.ai/agents/anatomy) | Fullscreen interactive walkthrough of the pieces that make a Wiro agent reason: system prompt, knowledge, skills, memory, guardrails, model, tools, scheduling, and observability. |
 | **Build Your Own Agent** | [wiro.ai/agents/build](https://wiro.ai/agents/build) | The web wizard for the same custom-build flow exposed by [`POST /UserAgent/Deploy`](#post-useragentdeploy) with `custom: true`. Useful for previewing the skill picker / pricing breakdown before scripting it. |
-| **Browse Agents** | [wiro.ai/agents/browse](https://wiro.ai/agents/browse) | Full marketplace catalog with categories, descriptions, screenshots, and per-agent tier prices, the visual mirror of [`POST /Agent/List`](#post-agentlist). Each row links to a dedicated agent page at `/agents/{slug}`. |
+| **Browse Agents** | [wiro.ai/agents/browse](https://wiro.ai/agents/browse) | Full marketplace catalog with categories, descriptions, screenshots, and plan prices, the visual mirror of [`POST /Agent/List`](#post-agentlist). Each row links to a dedicated agent page at `/agents/{slug}`. |
 | **Use Case Showcases** | [wiro.ai/agents/usecase/...](https://wiro.ai/agents) | Seven fullscreen, auto-looping product stories that show real businesses operated end-to-end by a Wiro agent. See [Agent Use Cases](/docs/agent-use-cases#see-these-use-cases-on-the-web) for the full list. |
 
 > All pages are public: no Wiro account required to browse. Sign-in becomes mandatory only when you click "Deploy" on a specific agent (which then drops you into the Wiro dashboard at [wiro.ai/panel/agents](https://wiro.ai/panel/agents)).
@@ -23,7 +23,7 @@ Wiro Agents are autonomous AI assistants that keep running on Wiro. Unlike one-s
 
 The system has two layers:
 
-- **Agent templates** (the catalog): Pre-built agent definitions published by Wiro. Each template defines the agent's default skill set, required credentials, the per-tier credit multiplier, and a per-instance pricing recipe. Browse the catalog with `POST /Agent/List`.
+- **Agent templates** (the catalog): Pre-built agent definitions published by Wiro. Each template defines the agent's default skill set and required credentials, and runs on any of the three plans. Browse the catalog with `POST /Agent/List`.
 - **UserAgent instances** (your deployments): When you deploy an agent template (or build a custom one), Wiro creates a personal instance tied to your account. Each instance runs in its own isolated environment with its own credentials, configuration, conversation history, billing, and per-model token-rate profile.
 
 Every instance is fully isolated. Your credentials, conversations, and data are never shared with other users.
@@ -51,41 +51,61 @@ Agents use the same authentication as the rest of the Wiro API. Include your key
 
 For full details, see [Authentication](/docs/authentication).
 
-## Pricing Model: Tiers, Skills & Token Billing
+## Pricing Model: Plans, Credits & Token Billing
 
-Agent pricing is **fully derived from the agent's enabled skill set** plus a per-template `tiermultiplier`. There is no fixed monthly base price per template and no per-agent rate override. The single source of truth is the skill registry, exposed via [`POST /Skills/List`](/docs/agent-skills#post-skillslist) and [`POST /Skills/Detail`](/docs/agent-skills#post-skillsdetail).
+Every agent runs on one of three monthly plans, and the plan alone sets its price and its monthly credits. Templates and custom builds use the same plans, and the skills an agent has never change the price. Each turn the agent runs then spends credits by the tokens its model uses.
 
-Pricing has **two layers**: a monthly **tier** (price + credit pool, set by the enabled skills) and **per-turn token billing** (each message / cron / voice-prep turn deducts credits from that pool, metered by the tokens the agent's model consumes).
+### Plans
 
-### Tiers
+| Plan | `tier` | Price | Monthly credits |
+|------|--------|-------|-----------------|
+| **Starter** | `"starter"` | $5 a month | 500 |
+| **Pro** | `"pro"` | $30 a month | 3,000 |
+| **Max** | `"max"` | $100 a month | 10,000 |
 
-Every agent ships with two tier presets: **Starter** and **Pro**. Each tier has its own `price` (USD/month) and `credits` (monthly credit allowance). The relationship between the two is fixed by the agent's `tiermultiplier`:
-
-```
-pro.price   = starter.price   × tiermultiplier
-pro.credits = starter.credits × tiermultiplier
-```
-
-`tiermultiplier` defaults to `10` if the template omits it. Each agent template's tier numbers (and the `tiermultiplier`) appear on every catalog response under the `tiers` object:
+Every plan carries 100 credits per dollar (1 credit = $0.01). A plan is bought per agent: pass `tier` to [`Deploy`](#post-useragentdeploy) or [`CreateSubscriptionCheckout`](#post-useragentcreatesubscriptioncheckout). Catalog and instance responses list the three plans under `tiers`:
 
 ```json
 "tiers": {
-  "starter": { "priceUsd": 9, "credits": 900 },
-  "pro":     { "priceUsd": 90, "credits": 9000 }
+  "starter": { "priceUsd": 5,   "credits": 500 },
+  "pro":     { "priceUsd": 30,  "credits": 3000 },
+  "max":     { "priceUsd": 100, "credits": 10000 }
 }
 ```
 
-Every paid skill adds 100 monthly credits for each $1 it adds to the price, so a tier always carries 100 credits per dollar (1 credit = $0.01): the $9 Starter above comes with 900 credits a month, and its $90 Pro with 9,000.
+Instance responses (`agent.plans`) and `PricingPreview` (`plans`) also list them with their names, as `{ key, title, priceUsd, monthlyCredits }`.
 
-> **Starter tier minimum: $4/month.** Every agent pays at least $4/month on Starter. When the raw sum of enabled-skill weights would land below $4, Wiro raises the Starter price to $4 **and** scales the credit pool up by the same ratio, so the user gets a proportional credit increase, not a free upgrade. An agent made only of free (`ZERO`-tier) skills pays the floor too: $4/month with 400 credits. Default Pro = Starter × `tiermultiplier` (default `10`), so an agent that lands on the $4 floor pays **$40/month on Pro** with the same credit pool × 10.
+A wallet plan renews every 30 days, and a plan paid by card in the Wiro dashboard renews on its monthly card cycle. Every renewal grants the plan's credits in full. Credits a period leaves unused don't carry over; credits from extra credit packs keep their own 6-month expiry.
 
-**Changing a plan inside a period.** Adding a skill or moving to Pro charges the monthly difference for the time left in the period, by the second and at least one day's worth on a wallet plan, and the added credits come for that same time. Every renewal gives the whole allowance. Example: a $4 Starter adds a $29 skill with 1 day left of 30: $0.97 now, 97 credits now, then $33 a month with 3,300 credits from the renewal. On a card plan the difference goes on the next invoice.
+### What a Plan Includes
 
-**Taking a skill off.** The skill's credits for the time left end at once; the credits the days already gone paid for stay until the next renewal. On a wallet plan, what the time left is worth goes back to the balances that paid for the period, less 1 cent for each credit already used above what the period keeps, never below zero. Extra credit packs are not counted. Example: a $4 Starter with the $29 skill on since the period began, 3 days into a 30-day period with 1,000 credits used: the period keeps 690 credits (the plan's 400 and 290 for the 3 days gone); $26.10 for the 27 days left, less $3.10 for the 310 credits used above those 690, comes to $23.00 back. With 3,300 used, nothing comes back. Each balance keeps the end date of the credit or deposit that paid; a part whose source has ended since lasts until the period ends. Turning the skill on again later gives credits for the time left then. On a card plan the difference for the time left comes off the next invoice.
+Every skill and connector works on every plan. Turning a skill on or off with [`SkillsApply`](#post-useragentskillsapply) is free: the plan's price and credits stay as they are. The work a skill does still uses credits, since its replies and scheduled tasks are agent turns billed by tokens like any other. A skill that runs Wiro models, such as `int-wiro-aimodels` or `util-video-creator`, pays for those runs from the wallet of the Wiro project you connect to the agent.
+
+### Changing Plans
+
+[`POST /UserAgent/UpgradeTier`](#post-useragentupgradetier) moves an agent to another plan:
+
+- **A higher plan starts now.** On a wallet plan, the wallet pays the monthly difference for the time left in the period, by the second, rounded up to the cent and at least one day's worth, and the period gains the difference in credits for that same time. Every renewal after that grants the new plan in full. Example: a Pro agent moving to Max with 15 days left of 30 pays $35.00 and gains 3,500 credits now, then renews at $100 with 10,000 credits.
+- **A lower plan starts at the next renewal.** Nothing is charged or refunded. The agent keeps its current plan, price and credits until the period ends, and its `nextplan` field names the plan it will renew on.
+- **Asking for the agent's current plan** cancels a scheduled move to a lower plan.
+
+Moving to a higher plan while a lower one is scheduled cancels the scheduled move first, and cancelling the subscription clears it too. On a plan paid by card, a higher plan goes through a card checkout and starts a new full period with its full credits, and a lower plan applies from the next card renewal.
+
+### Extra Credits
+
+An agent with an active plan can buy extra credits at any time, on every plan. The packs are the same for every agent:
+
+| Pack | Credits | Price |
+|------|---------|-------|
+| `small` | 1,000 | $10 |
+| `medium` | 5,000 | $50 |
+| `large` | 20,000 | $200 |
+
+Pack credits are spent after the month's plan credits and expire 6 months after purchase. See [Extra Credit Packs](#extra-credit-packs).
 
 ### Token Billing
 
-The monthly tier buys a **credit pool**; each turn the agent runs (a chat reply, a scheduled cron tick, or a voice-prep turn) deducts credits from that pool, **metered by the tokens its model consumes**. There are no flat per-action costs: what a turn costs depends on the model and how many input / output / cached tokens it used.
+The monthly plan buys a **credit pool**; each turn the agent runs (a chat reply, a scheduled cron tick, or a voice-prep turn) deducts credits from that pool, **metered by the tokens its model consumes**. There are no flat per-action costs: what a turn costs depends on the model and how many input / output / cached tokens it used.
 
 Per-model rates live in the `tokenRates` object, present on `Agent/Detail`, `UserAgent/Detail`, `MyAgents`, `PinnedAgents`, and `PricingPreview`. The marketplace catalog (`Agent/Detail`) and `PricingPreview` return only the **selectable** models; a deployed instance's `UserAgent/Detail` / `MyAgents` / `PinnedAgents` return the **full** model map (so historical model-change markers and token-usage tooltips can still resolve a model that was later marked non-selectable). Internal metadata (`$`-prefixed keys) is stripped from every response:
 
@@ -118,14 +138,14 @@ When the credit pool is exhausted, [`POST /UserAgent/Message/Send`](/docs/agent-
 
 ### Live Pricing Preview
 
-Before you commit a skill change or build a custom agent, fetch a live preview with [`POST /UserAgent/PricingPreview`](#post-useragentpricingpreview). The preview returns the post-toggle `tiers`, `tokenRates`, `starterFloorUsd`, and `enabledSkills` (with transitive `depends_on` resolved) without writing any state. For an agent with an active plan it also returns `planChange`: what the change would do today, in credits and in money.
+Before you deploy, change the plan or change skills, call [`POST /UserAgent/PricingPreview`](#post-useragentpricingpreview). It writes nothing and returns the three plans under `tiers`, the `tokenRates`, and `enabledSkills` with every transitive `depends_on` resolved. For an agent with an active plan it also returns `planChange`: what a different `tier` would charge now and when it starts. A skill change has no price, so its `planChange` shows no charge and no credit change.
 
 ## Agent Lifecycle
 
 Deploying and running an agent follows this flow:
 
 1. **Browse**: call `POST /Agent/List` to discover available agents in the catalog
-2. **Deploy**: call `POST /UserAgent/Deploy` with `useprepaid: true` and `tier` (`"starter"` or `"pro"`). The selected tier price is debited from your prepaid wallet immediately and a 30-day subscription row is created.
+2. **Deploy**: call `POST /UserAgent/Deploy` with `useprepaid: true` and `tier` (`"starter"`, `"pro"` or `"max"`). The plan's price is debited from your prepaid wallet immediately and a 30-day subscription row is created.
 3. **Configure**: set integration and optional Telegram, Slack, or Discord credentials with `POST /UserAgent/CredentialUpsert`, connect the Wiro project the agent runs models with using `POST /UserAgent/CredentialProjectBind`, and set preferences with `POST /UserAgent/CustomSkillUpsert`. See [Agent Credentials](/docs/agent-credentials) for details
 4. **Start**: call `POST /UserAgent/Start` to queue the agent for launch
 5. **Running**: the agent starts and becomes available for conversation
@@ -187,10 +207,10 @@ Lists available agents in the catalog. This is a **public endpoint**, so no auth
       "cover": "https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp",
       "categories": ["social-media", "marketing"],
       "samples": ["https://cdn.wiro.ai/uploads/agents/instagram-manager-sample-1.webp"],
-      "tiermultiplier": 10,
       "tiers": {
-        "starter": { "priceUsd": 9, "credits": 900 },
-        "pro":     { "priceUsd": 90, "credits": 9000 }
+        "starter": { "priceUsd": 5,   "credits": 500 },
+        "pro":     { "priceUsd": 30,  "credits": 3000 },
+        "max":     { "priceUsd": 100, "credits": 10000 }
       },
       "status": 1,
       "createdat": "1711929600",
@@ -230,10 +250,10 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
       "cover": "https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp",
       "categories": ["social-media", "marketing"],
       "samples": ["https://cdn.wiro.ai/uploads/agents/instagram-manager-sample-1.webp"],
-      "tiermultiplier": 10,
       "tiers": {
-        "starter": { "priceUsd": 9, "credits": 900 },
-        "pro":     { "priceUsd": 90, "credits": 9000 }
+        "starter": { "priceUsd": 5,   "credits": 500 },
+        "pro":     { "priceUsd": 30,  "credits": 3000 },
+        "max":     { "priceUsd": 100, "credits": 10000 }
       },
       "tokenRates": {
         "default_model": "openai/gpt-5.6-sol",
@@ -337,7 +357,7 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
 }
 ```
 
-> `Agent/Detail` describes the **template**, so its `credentials` block only carries the `optional` / `extra` meta flags (when the template sets them) plus the registry-driven `_schema` (field labels / types) and `_editable` map. It holds no saved values, whoever calls it and whatever `type` is sent. The `_connected` flag is per-instance and appears on `UserAgent/Detail` and the `Deploy` and `Update` responses, not on the catalog endpoint. `extracreditpacks` is always `[]` here, because packs are derived from the deployed instance's actual monthly allocation (see [Extra Credit Packs](#extra-credit-packs)) and only appear on `UserAgent/Detail`.
+> `Agent/Detail` describes the **template**, so its `credentials` block only carries the `optional` / `extra` meta flags (when the template sets them) plus the registry-driven `_schema` (field labels / types) and `_editable` map. It holds no saved values, whoever calls it and whatever `type` is sent. The `_connected` flag is per-instance and appears on `UserAgent/Detail` and the `Deploy` and `Update` responses, not on the catalog endpoint. `extracreditpacks` is always `[]` here: the packs appear on a deployed agent's `UserAgent/Detail` (see [Extra Credit Packs](#extra-credit-packs)).
 
 **Credential response flags** (on `UserAgent/Detail` and the `Deploy` and `Update` responses): every credential object in the top-level `credentials` tree on the per-instance endpoints carries:
 
@@ -389,7 +409,7 @@ Creates a new agent instance from a catalog template, **or** builds a brand-new 
 
 > **API agent deployment is prepaid-only.** Pass `useprepaid: true` + `tier`. The subscription cost is deducted from your prepaid wallet immediately and the instance is created server-side in one call. There is no API path that accepts a credit card directly; subscriptions from a card can only be created through the Wiro dashboard at [wiro.ai/panel/agents](https://wiro.ai/panel/agents). Top up your wallet on [wiro.ai/panel/billing](https://wiro.ai/panel/billing) before calling Deploy.
 
-Prepaid deploy (`useprepaid: true` + `tier`) charges your wallet for the chosen tier price immediately and inserts a 30-day subscription row (`plan: "agent"`, `provider: "prepaid"`). **Every fresh Deploy lands at `status: 6` first**. The row is then auto-queued to `status: 2` (Queued) once the prepaid subscription is provisioned. No manual `UserAgent/Start` is needed for prepaid deploys; Wiro starts the agent from the queue.
+Prepaid deploy (`useprepaid: true` + `tier`) charges your wallet for the chosen plan's price immediately and inserts a 30-day subscription row (`plan: "agent"`, `provider: "prepaid"`). **Every fresh Deploy lands at `status: 6` first**. The row is then auto-queued to `status: 2` (Queued) once the prepaid subscription is provisioned. No manual `UserAgent/Start` is needed for prepaid deploys; Wiro starts the agent from the queue.
 
 If you pass `credentials`, `skills`, or `customskills` at the top level of the
 Deploy body they are applied server-side in the same call. Chat Mode is not a
@@ -408,8 +428,8 @@ for the channel contract.
 | `title` | string | Yes | Display name for your instance. |
 | `description` | string | No | Optional description (custom builds: free-text describing what the agent does). |
 | `cover` | string | No | Optional cover image URL. Custom builds only. Template deploys clone the agent's cover automatically. |
-| `useprepaid` | boolean | Yes | Must be `true` for API deploys. Pays the tier price from your wallet balance in a single server-side call. |
-| `tier` | string | No | Tier selection: `"starter"` (default) or `"pro"`. Determines the price + credits debited to your wallet at deploy time. The param name is `tier`. Any other value (including typos) is silently coerced to `"starter"`, so a misspelled key yields a Starter-tier instance instead of an error. |
+| `useprepaid` | boolean | Yes | Must be `true` for API deploys. Pays the plan's price from your wallet balance in a single server-side call. |
+| `tier` | string | No | The plan: `"starter"` (default, $5 a month with 500 credits), `"pro"` ($30 with 3,000) or `"max"` ($100 with 10,000). It sets the price debited from your wallet at deploy time and the monthly credits. The param name is `tier`. Leave it out for Starter. Any other value is refused with `tier must be starter, pro or max`, and nothing is created or charged. |
 | `credentials` | object | No | Inline credential groups. If a communication-channel group is included, its matching `credentials[credential_key]` object must contain all channel `required_fields`; completeness activates that channel automatically. |
 | `skills` | object | No | Inline skill toggles `{ "skillname": true \| false }`. For custom builds this seeds the initial skill set; for template deploys it overlays the template defaults. |
 | `customskills` | array | No | Inline custom skill rows. Each entry: `{ key, value?, interval?, enabled?, description?, _user_created? }`. A scheduled task's `interval` must be a schedule the agent can run, as in [`CustomSkillUpsert`](#post-useragentcustomskillupsert), and `"manual"` means no schedule. Otherwise Deploy fails before anything is created or charged, and the error starts with the skill's key. Up to 50 entries; add more with [`CustomSkillUpsert`](#post-useragentcustomskillupsert) once the agent is deployed. |
@@ -465,7 +485,7 @@ for the channel contract.
 }
 ```
 
-> **Custom builds are skill-driven.** There is no marketplace template behind a custom agent: the price + credit allowance is computed live from the skills you toggle on. Use [`POST /UserAgent/PricingPreview`](#post-useragentpricingpreview) (with `draft: true`) to estimate the tier price before calling Deploy. Full walkthrough: [Agent Builder](/docs/agent-builder).
+> **Custom builds use the same plans.** There is no marketplace template behind a custom agent, and the skills you pick don't change the price: a custom build pays the plan you pass in `tier`, like a template deploy. [`POST /UserAgent/PricingPreview`](#post-useragentpricingpreview) with `draft: true` resolves the skill set (with `depends_on`) and lists the plans before you call Deploy. Full walkthrough: [Agent Builder](/docs/agent-builder).
 
 ##### Template deploy vs custom build: what differs server-side
 
@@ -476,12 +496,10 @@ Both paths hit the same endpoint, but a few server-side behaviours diverge:
 | Linked marketplace template | Snapshotted from the resolved template | None: no template back-reference |
 | `categories` | Cloned from the agent template | `null` (custom agents have no marketplace categories) |
 | `cover` | Cloned from `agent.cover` automatically | Optional: pass `cover` in the body if you want one |
-| `tiermultiplier` | **Snapshotted from `agent.tiermultiplier`** so future template tweaks don't retroactively change pricing on already-deployed instances | Fixed at the platform default (`10`) |
 | Bundled scheduled tasks | Cloned from the template's preset custom skills | Materialized from the standalone cron registry based on the enabled skill set |
 | Onboarding placeholders | None: the template ships its own preset strategies | One invocation-only `cs-my-custom-strategy` and one scheduled `cs-cron-my-scheduled-task` are seeded so the panel always has something to render under "Custom Skills" / "Scheduled Tasks" |
 | Platform-managed credentials | Set up by Wiro | Set up by Wiro |
 | Marketplace run counter | Bumped by 1 | Not touched (custom agents have no template to count against) |
-| `tiers` / `extracreditpacks` in the response | Read from the template definition | Pre-subscribe state: `tiers` reflects the live registry pricing for the toggled skills, `extracreditpacks: []` until the subscription provisions |
 
 ##### Response
 
@@ -498,7 +516,6 @@ Both paths hit the same endpoint, but a few server-side behaviours diverge:
       "title": "My Instagram Bot",
       "description": null,
       "tier": "starter",
-      "tiermultiplier": 10,
       "credentials": {
         "instagram": {
           "_connected": false,
@@ -514,12 +531,12 @@ Both paths hit the same endpoint, but a few server-side behaviours diverge:
       "skills": ["int-instagram-post", "int-wiro-aimodels"],
       "customskills": [],
       "scheduledskills": [],
-      "monthlycredits": 900,
-      "monthlypriceusd": 9,
+      "monthlycredits": 500,
+      "monthlypriceusd": 5,
       "extracredits": 0,
       "usedcredits": 0,
-      "remainingcredits": 900,
-      "renewalcredits": 900,
+      "remainingcredits": 500,
+      "renewalcredits": 500,
       "creditperiod": "2026-05",
       "creditsyncat": null,
       "tokenRates": {
@@ -551,15 +568,20 @@ Both paths hit the same endpoint, but a few server-side behaviours diverge:
         "slug": "instagram-manager",
         "cover": "https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp",
         "categories": ["social-media", "marketing"],
-        "tiermultiplier": 10,
         "tiers": {
-          "starter": { "priceUsd": 9, "credits": 900 },
-          "pro":     { "priceUsd": 90, "credits": 9000 }
+          "starter": { "priceUsd": 5,   "credits": 500 },
+          "pro":     { "priceUsd": 30,  "credits": 3000 },
+          "max":     { "priceUsd": 100, "credits": 10000 }
         },
+        "plans": [
+          { "key": "starter", "title": "Starter", "priceUsd": 5,   "monthlyCredits": 500 },
+          { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "monthlyCredits": 3000 },
+          { "key": "max",     "title": "Max",     "priceUsd": 100, "monthlyCredits": 10000 }
+        ],
         "extracreditpacks": [
-          { "packkey": "small",  "credits": 4500, "priceusd": 45,  "enabled": true },
-          { "packkey": "medium", "credits": 9000, "priceusd": 90,  "enabled": true },
-          { "packkey": "large",  "credits": 18000, "priceusd": 180, "enabled": true }
+          { "packkey": "small",  "credits": 1000,  "priceusd": 10,  "enabled": true },
+          { "packkey": "medium", "credits": 5000,  "priceusd": 50,  "enabled": true },
+          { "packkey": "large",  "credits": 20000, "priceusd": 200, "enabled": true }
         ]
       },
       "createdat": 1714608000,
@@ -642,13 +664,13 @@ Lists all agent instances deployed under your account.
       "cover": null,
       "categories": ["social-media", "marketing"],
       "tier": "pro",
-      "tiermultiplier": 10,
-      "monthlypriceusd": 90,
-      "monthlycredits": 9000,
-      "extracredits": 45000,
+      "nextplan": null,
+      "monthlypriceusd": 30,
+      "monthlycredits": 3000,
+      "extracredits": 5000,
       "usedcredits": 1450,
-      "remainingcredits": 52550,
-      "renewalcredits": 9000,
+      "remainingcredits": 6550,
+      "renewalcredits": 3000,
       "creditperiod": "2026-05",
       "creditsyncat": 1714694410,
       "status": 4,
@@ -658,7 +680,7 @@ Lists all agent instances deployed under your account.
       "subscription": {
         "plan": "agent",
         "status": "active",
-        "amount": 90,
+        "amount": 30,
         "currency": "usd",
         "currentperiodend": 1717200000,
         "renewaldate": "2026-06-01T00:00:00.000Z",
@@ -673,10 +695,10 @@ Lists all agent instances deployed under your account.
         "description": "An autonomous agent that manages your Instagram Business account.",
         "cover": "https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp",
         "categories": ["social-media", "marketing"],
-        "tiermultiplier": 10,
         "tiers": {
-          "starter": { "priceUsd": 9, "credits": 900 },
-          "pro":     { "priceUsd": 90, "credits": 9000 }
+          "starter": { "priceUsd": 5,   "credits": 500 },
+          "pro":     { "priceUsd": 30,  "credits": 3000 },
+          "max":     { "priceUsd": 100, "credits": 10000 }
         }
       },
       "enabledSkills": ["int-instagram-post", "int-twitterx-post", "int-wiro-aimodels"],
@@ -739,7 +761,7 @@ Retrieves full details for a single deployed agent instance, including subscript
       "categories": ["social-media", "marketing"],
       "cover": "https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp",
       "tier": "pro",
-      "tiermultiplier": 10,
+      "nextplan": null,
       "status": 4,
       "pinned": true,
       "setuprequired": true,
@@ -1057,12 +1079,12 @@ Retrieves full details for a single deployed agent instance, including subscript
           "description": "Universal access to every AI model on Wiro: text-to-image, text-to-video, image-to-image, image-to-video, audio/voice generation, realtime conversational AI, vision LLMs and more."
         }
       },
-      "monthlycredits": 9000,
-      "monthlypriceusd": 90,
-      "extracredits": 45000,
+      "monthlycredits": 3000,
+      "monthlypriceusd": 30,
+      "extracredits": 5000,
       "usedcredits": 1450,
-      "remainingcredits": 52550,
-      "renewalcredits": 9000,
+      "remainingcredits": 6550,
+      "renewalcredits": 3000,
       "creditperiod": "2026-05",
       "creditsyncat": 1714694410,
       "tokenRates": {
@@ -1083,7 +1105,7 @@ Retrieves full details for a single deployed agent instance, including subscript
       "subscription": {
         "plan": "agent",
         "status": "active",
-        "amount": 90,
+        "amount": 30,
         "currency": "usd",
         "currentperiodend": 1717200000,
         "renewaldate": "2026-06-01T00:00:00.000Z",
@@ -1100,15 +1122,20 @@ Retrieves full details for a single deployed agent instance, including subscript
         "cover": "https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp",
         "icon": "https://cdn.wiro.ai/uploads/agents/instagram-manager-icon.webp",
         "categories": ["social-media", "marketing"],
-        "tiermultiplier": 10,
         "tiers": {
-          "starter": { "priceUsd": 9,  "credits": 900 },
-          "pro":     { "priceUsd": 90, "credits": 9000 }
+          "starter": { "priceUsd": 5,   "credits": 500 },
+          "pro":     { "priceUsd": 30,  "credits": 3000 },
+          "max":     { "priceUsd": 100, "credits": 10000 }
         },
+        "plans": [
+          { "key": "starter", "title": "Starter", "priceUsd": 5,   "monthlyCredits": 500 },
+          { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "monthlyCredits": 3000 },
+          { "key": "max",     "title": "Max",     "priceUsd": 100, "monthlyCredits": 10000 }
+        ],
         "extracreditpacks": [
-          { "packkey": "small",  "credits": 45000, "priceusd": 450, "enabled": true },
-          { "packkey": "medium", "credits": 90000, "priceusd": 900, "enabled": true },
-          { "packkey": "large",  "credits": 180000, "priceusd": 1800, "enabled": true }
+          { "packkey": "small",  "credits": 1000,  "priceusd": 10,  "enabled": true },
+          { "packkey": "medium", "credits": 5000,  "priceusd": 50,  "enabled": true },
+          { "packkey": "large",  "credits": 20000, "priceusd": 200, "enabled": true }
         ]
       },
       "extracreditsexpiry": 1730419200,
@@ -1142,14 +1169,14 @@ Retrieves full details for a single deployed agent instance, including subscript
 | `categories` | `array<string>` | Inherited from the template at deploy; editable via `Update`. |
 | `pinned` | `boolean` | `true` when the user pinned this instance to the global header dropdown. Mutate via `Pin`. |
 
-**Tier & pricing**
+**Plan & credits**
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `tier` | `string` | `"starter"` or `"pro"`: the active tier for this instance. |
-| `tiermultiplier` | `number` | Per-instance Pro multiplier: snapshotted at deploy from the template (default `10`). Pro `monthlypriceusd` = Starter × `tiermultiplier`. The value is fixed for the life of the instance: it is captured at deploy time and is not refreshed when the platform default changes. |
-| `monthlypriceusd` | `number` | Monthly USD price snapshotted at deploy / renewal. Mirrors `subscription.amount`. |
-| `monthlycredits` | `number` | The credits this period grants. After a change inside a period it can differ from `renewalcredits` until the next renewal: a skill added or a move to Pro grants credits for the time left, so it reads below; a skill taken off keeps the credits the days already gone paid for, so it reads above. |
+| `tier` | `string` | The agent's plan: `"starter"`, `"pro"` or `"max"`. |
+| `nextplan` | `string\|null` | The plan the agent moves to at its next renewal, set by a move to a lower plan with [`UpgradeTier`](#post-useragentupgradetier). An agent subscribed before the three plans also shows here the plan it renews on. `null` when no change is scheduled. Also on `MyAgents` and `PinnedAgents` rows. |
+| `monthlypriceusd` | `number` | The monthly USD price the agent pays, set at deploy, at a plan change and at renewal. Mirrors `subscription.amount`. |
+| `monthlycredits` | `number` | The credits this period grants. After a move to a higher plan inside a period it reads below `renewalcredits` until the next renewal: the difference in credits comes only for the time left. |
 | `renewalcredits` | `number` | The credits each renewal grants. |
 | `extracredits` | `number` | Active extra-credit balance (sum of non-expired packs from `CreateExtraCreditCheckout`). |
 | `extracreditsexpiry` | `number\|null` | Unix timestamp when the earliest extra credit pack expires. `null` when no extras are active. |
@@ -1157,7 +1184,7 @@ Retrieves full details for a single deployed agent instance, including subscript
 | `remainingcredits` | `number` | Computed: `max(0, monthlycredits + extracredits - usedcredits)`. |
 | `creditperiod` | `string` | `'YYYY-MM'` tag of the current billing window. Rolls over on subscription renewal. |
 | `creditsyncat` | `number\|null` | Unix seconds of the last monthly usage reset, which starts the current credit period (`null` until the first reset). |
-| `tokenRates` | `object\|null` | Per-model token-billing rates (credits per 1,000,000 tokens). Shape: `{ default_model, fallback_rate, models: { "<slug>": { input_per_1m, output_per_1m, cached_input_per_1m?, cache_write_per_1m?, selectable?, label?, tier? } } }`. Each turn's cost is metered from these rates (1 credit = $0.01). See [Token Billing](#pricing-model-tiers-skills--token-billing). `null` only on registry-read failure. |
+| `tokenRates` | `object\|null` | Per-model token-billing rates (credits per 1,000,000 tokens). Shape: `{ default_model, fallback_rate, models: { "<slug>": { input_per_1m, output_per_1m, cached_input_per_1m?, cache_write_per_1m?, selectable?, label?, tier? } } }`. Each turn's cost is metered from these rates (1 credit = $0.01). See [Token Billing](#token-billing). `null` only on registry-read failure. |
 | `agentModel` | `object` | The resolved model slugs this instance runs: `{ chatModel, cronModel, voicePrepModel, voicePostcallModel }` (camelCase). Each falls back to the platform default when the operator hasn't overridden it. Change them via [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) using the lowercase keys `chatmodel` / `cronmodel` / `voiceprepmodel` / `voicepostcallmodel`. |
 | `enabledCommands` | `array<string>\|null` | The in-chat slash-command allowlist (camelCase read). `null` = the operator never customized it, so **all** slash commands are available. An array (including `[]`) is an explicit allowlist of command keys (no leading slash); `[]` hides the slash-command menu. Write it via [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) with the lowercase `enabledcommands` key. Also present on `MyAgents` / `PinnedAgents` rows. |
 | `wiroApiAllowedPaths` | `array<string>` | The Wiro API endpoints the agent may call with its own Wiro project key (camelCase read), for example `["POST /v1/Run/*/*", "POST /v1/Task/Detail"]`. Always the list that applies: the agent's own list or, when it has none, the default list described under [`UpdateSettings`](#post-useragentupdatesettings). `[]` blocks all of them. Write it via [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) or at Deploy with the lowercase `wiroapiallowedpaths` key. Also on the `Deploy` and `Update` responses; not on `MyAgents` / `PinnedAgents` rows. |
@@ -1191,7 +1218,7 @@ Retrieves full details for a single deployed agent instance, including subscript
 | Field | Type | Description |
 |-------|------|-------------|
 | `subscription` | `object\|null` | Active subscription info (see "Subscription object" below), or `null` when the agent has no active subscription. For API-deployed instances this is always `provider: "prepaid"`, `plan: "agent"`. |
-| `agent` | `object` | Parent template summary: `{ guid, title, slug, headline, description, cover, icon, categories, tiermultiplier, tiers, extracreditpacks }`. For custom builds (`agent.custom: true`) it's a synthesized placeholder instead: `{ custom: true, slug, cover: null, icon: null, tiermultiplier, tiers, extracreditpacks }`, with no `guid`, `title`, `headline`, `description` or `categories`. Read the agent's title and cover from the useragent itself. |
+| `agent` | `object` | Parent template summary: `{ guid, title, slug, headline, description, cover, icon, categories, tiers, plans, extracreditpacks }`. For custom builds (`agent.custom: true`) it's a synthesized placeholder instead: `{ custom: true, slug, cover: null, icon: null, tiers, plans, extracreditpacks }`, with no `guid`, `title`, `headline`, `description` or `categories`. Read the agent's title and cover from the useragent itself. |
 
 ##### Credential object shape
 
@@ -1214,14 +1241,14 @@ Every provider entry under `credentials.<key>` carries:
 
 | Sub-field | Type | Description |
 |-----------|------|-------------|
-| `plan` | `string` | Always `"agent"`. The Starter/Pro distinction lives on the useragent row's `tier` field, not on the subscription. |
+| `plan` | `string` | Always `"agent"`. The plan (Starter, Pro or Max) is the useragent's `tier` field, not the subscription's. |
 | `status` | `string` | `"active"`, `"expired"`, `"cancelled"`, or `"refunded"`. |
 | `amount` | `number` | The monthly USD price actually being charged. Mirrors `useragent.monthlypriceusd`. |
 | `currency` | `string` | Always `"usd"`. |
 | `currentperiodend` | `number\|null` | Unix seconds when the current billing period ends. |
 | `renewaldate` | `string\|null` | ISO-8601 string of the same period-end timestamp (convenience for display). |
 | `daysremaining` | `number` | Days until `currentperiodend`. |
-| `pendingdowngrade` | `string\|null` | `"cancel"` after `CancelSubscription`; `null` for normal active subs. |
+| `pendingdowngrade` | `string\|null` | `"cancel"` after `CancelSubscription`; `null` for normal active subs. A move to a lower plan shows in the agent's `nextplan`, not here. |
 | `provider` | `string` | `"prepaid"` for every API-deployed subscription. |
 
 #### **POST** /UserAgent/Update
@@ -1236,7 +1263,7 @@ Updates an agent instance's **scalar fields only** (title, description, categori
 | `categories` | array | No | Updated categories. Cannot be empty if provided. |
 | `cover` | string | No | New cover image URL (set to empty string or `null` to clear). For multipart upload, use [`POST /UserAgent/Cover`](#post-useragentcover) instead. |
 
-> **Scalar-only.** Credentials, custom skills, skill toggles, and tier upgrades use dedicated endpoints:
+> **Scalar-only.** Credentials, custom skills, skill toggles, and plan changes use dedicated endpoints:
 >
 > | What you want to change | Use |
 > |-------------------------|-----|
@@ -1247,8 +1274,8 @@ Updates an agent instance's **scalar fields only** (title, description, categori
 > | Rename a user-created custom skill (key + optional description) | [`POST /UserAgent/CustomSkillRename`](#post-useragentcustomskillrename) |
 > | Browse alternative templates for a custom skill | [`POST /UserAgent/CustomSkillAlternatives`](#post-useragentcustomskillalternatives) |
 > | Delete a user-created scheduled task | [`POST /UserAgent/CustomSkillDelete`](#post-useragentcustomskilldelete) |
-> | Toggle one or more integration skills on/off (with optional tier change) | [`POST /UserAgent/SkillsApply`](#post-useragentskillsapply) |
-> | Upgrade Starter → Pro | [`POST /UserAgent/UpgradeTier`](#post-useragentupgradetier) |
+> | Toggle one or more integration skills on/off | [`POST /UserAgent/SkillsApply`](#post-useragentskillsapply) |
+> | Change the plan (Starter, Pro or Max) | [`POST /UserAgent/UpgradeTier`](#post-useragentupgradetier) |
 > | Upload a cover image (multipart) | [`POST /UserAgent/Cover`](#post-useragentcover) |
 > | Per-agent timezone or unified Chat Mode | [`POST /UserAgent/UpdateSettings`](#post-useragentupdatesettings) |
 > | View / download / delete activity logs | [`POST /UserAgent/Logs`](#post-useragentlogs) · [`LogsList`](#post-useragentlogslist) · [`LogsFile`](#post-useragentlogsfile) · [`LogsDelete`](#post-useragentlogsdelete) |
@@ -1277,13 +1304,12 @@ A changed `title` on a running agent:
       "cover": "https://cdn.wiro.ai/uploads/useragents/f8e7d6c5-cover.webp",
       "categories": ["social-media", "marketing"],
       "tier": "starter",
-      "tiermultiplier": 10,
-      "monthlypriceusd": 9,
-      "monthlycredits": 900,
+      "monthlypriceusd": 5,
+      "monthlycredits": 500,
       "extracredits": 0,
       "usedcredits": 80,
-      "remainingcredits": 820,
-      "renewalcredits": 900,
+      "remainingcredits": 420,
+      "renewalcredits": 500,
       "creditperiod": "2026-05",
       "creditsyncat": 1714694400,
       "status": 1,
@@ -1300,10 +1326,10 @@ A changed `title` on a running agent:
         "cover": "https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp",
         "icon": "https://cdn.wiro.ai/uploads/agents/instagram-manager-icon.webp",
         "categories": ["social-media", "marketing"],
-        "tiermultiplier": 10,
         "tiers": {
-          "starter": { "priceUsd": 9,  "credits": 900 },
-          "pro":     { "priceUsd": 90, "credits": 9000 }
+          "starter": { "priceUsd": 5,   "credits": 500 },
+          "pro":     { "priceUsd": 30,  "credits": 3000 },
+          "max":     { "priceUsd": 100, "credits": 10000 }
         },
         "extracreditpacks": []
       },
@@ -1490,13 +1516,12 @@ If you already have a hosted URL, use `POST /UserAgent/Update` with `cover: "<ur
       "cover": "https://cdn.wiro.ai/uploads/useragents/f8e7d6c5-b4a3-2190-fedc-ba0987654321-cover.webp",
       "categories": ["social-media", "marketing"],
       "tier": "starter",
-      "tiermultiplier": 10,
-      "monthlypriceusd": 9,
-      "monthlycredits": 900,
+      "monthlypriceusd": 5,
+      "monthlycredits": 500,
       "extracredits": 0,
       "usedcredits": 80,
-      "remainingcredits": 820,
-      "renewalcredits": 900,
+      "remainingcredits": 420,
+      "renewalcredits": 500,
       "creditperiod": "2026-05",
       "creditsyncat": 1714694400,
       "status": 4,
@@ -1510,8 +1535,7 @@ If you already have a hosted URL, use `POST /UserAgent/Update` with `cover: "<ur
         "description": "An autonomous agent that manages your Instagram Business account.",
         "cover": "https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp",
         "icon": "https://cdn.wiro.ai/uploads/agents/instagram-manager-icon.webp",
-        "categories": ["social-media", "marketing"],
-        "tiermultiplier": 10
+        "categories": ["social-media", "marketing"]
       },
       "createdat": 1714608000,
       "updatedat": 1714694500,
@@ -2056,20 +2080,21 @@ Returns the per-field write history for one credential group on a useragent. Sen
 
 #### **POST** /UserAgent/SkillsApply
 
-Applies a batch of skill toggles + an optional tier change in a single transactional unit. **This is the only skill-toggle endpoint API consumers should use**. Even when you're flipping a single skill, send it as a one-entry `skills` map. The single-skill `SkillToggle` endpoint also exists, but `SkillsApply` is the one to use from the API.
+Applies a batch of skill toggles in a single transactional unit. **This is the only skill-toggle endpoint API consumers should use**. Even when you're flipping a single skill, send it as a one-entry `skills` map. The single-skill `SkillToggle` endpoint also exists, but `SkillsApply` is the one to use from the API.
+
+Every plan includes every skill, so a skill change never moves money: the plan's price and credits stay as they are, and the agent needs no active plan for it. Change the plan itself with [`UpgradeTier`](#post-useragentupgradetier).
 
 Designed for both the Skill Editor modal (multiple toggles in one save) and one-off API mutations:
 
-1. Charges the wallet (or proration) **once**, not N times.
-2. Triggers exactly **one agent restart** after all toggles land.
-3. Uses **idempotency**: concurrent calls or client retries can't apply the change twice.
-4. **Atomic**: a payment-side failure rolls back to the pre-call skill set.
+1. Triggers exactly **one agent restart** after all toggles land.
+2. Uses **idempotency**: concurrent calls or client retries can't apply the change twice.
+3. **Atomic**: the whole batch lands, or none of it does.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Your UserAgent instance guid (template deploy or custom build) |
 | `skills` | object | Yes | Map of `{ "skillname": true \| false }` for every skill you want to set. Skills not in the map keep their current state. |
-| `tier` | string | No | `"starter"` or `"pro"`: change the tier in the same call. **Pro → Starter downgrade is rejected** (cancel + re-subscribe instead). |
+| `tier` | string | No | Kept for older clients. Skills never change the plan: a value other than the agent's current plan is refused with `Change the plan with UpgradeTier.` |
 | `idempotencyKey` | string | Yes | Caller-generated unique key (UUID recommended). Replays of the same key return the cached response without applying the change again. |
 
 **Headers:** No extra header is needed. For team agents, use an API key from a project in the agent's team. Keys from another workspace are rejected.
@@ -2082,7 +2107,6 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   -H "Content-Type: application/json" \
   -d '{
     "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
-    "tier": "pro",
     "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000",
     "skills": {
       "int-instagram-post": true,
@@ -2099,21 +2123,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
   "result": true,
   "errors": [],
   "tier": "pro",
-  "prepaidWalletDelta": 18.00,
-  "usedCreditsUsd": 0,
   "restartTriggered": true,
   "restartedAt": 1714694520,
   "pricing": {
-    "previousPriceUsd": 4,
-    "newPriceUsd": 40,
-    "deltaUsd": 36,
-    "previousMonthlyCredits": 400,
-    "newMonthlyCredits": 4000,
-    "deltaCredits": 3600,
-    "creditsNow": 1800,
-    "creditsThisPeriod": 2200,
-    "creditsFromRenewal": 4000,
-    "periodEnd": 1715990520,
     "enabledSkills": ["int-instagram-post", "int-twitterx-post", "int-wiro-aimodels"]
   }
 }
@@ -2121,7 +2133,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/SkillsApply" \
 
 ##### Response (no-op short-circuit)
 
-When every entry in your `skills` map already matches the persisted state and the requested `tier` (if any) is unchanged, the endpoint returns a fast-path `noOp: true` reply with no DB writes, no wallet movement, and no restart. Use this signal to skip your own post-apply UI churn (toast, refresh) on detected no-op submissions.
+When every entry in your `skills` map already matches the persisted state, the endpoint returns a fast-path `noOp: true` reply with no DB writes and no restart. Use this signal to skip your own post-apply UI churn (toast, refresh) on detected no-op submissions.
 
 ```json
 {
@@ -2133,18 +2145,10 @@ When every entry in your `skills` map already matches the persisted state and th
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `noOp` | `boolean` | Present and `true` only on the no-op short-circuit response. Absent on the regular success path. When you see `noOp: true`, the rest of the field set (`tier`, `prepaidWalletDelta`, `restartTriggered`, `pricing`) is omitted, because there was nothing to apply. |
-| `tier` | `string` | The tier in effect after the call (`"starter"` or `"pro"`). Mirrors what was passed in `body.tier`, or the unchanged current tier if the request omitted it. |
-| `prepaidWalletDelta` | `number\|null` | USD charged to (positive) or credited back to (negative) the wallet for the time left in the period. `null` when no wallet money moved: on a card plan, when the price didn't change, or when the credits already used took the whole credit (then `usedCreditsUsd` is above `0`, and nothing failed). |
-| `usedCreditsUsd` | `number` | What came off a credit for credits already used: 1 cent for each credit used above what the period keeps (`pricing.creditsThisPeriod`). `0` when nothing came off. |
-| `prepaidCreditParts` | `object` | Present when a credit landed. How it split over the balances that paid: `couponUsd`, `storeUsd` and `depositUsd`, each keeping the end date of the credit or deposit that paid, and `couponUntilPeriodEndUsd`, `storeUntilPeriodEndUsd` and `depositUntilPeriodEndUsd`, the part of each whose source has ended since, which lasts until the period ends. |
-| `prepaidCreditFailedUsd` | `number` | Present when part of a credit was not added to the wallet. `warnings[]` says what to do next. |
+| `noOp` | `boolean` | Present and `true` only on the no-op short-circuit response. Absent on the regular success path. When you see `noOp: true`, the rest of the field set (`tier`, `restartTriggered`, `pricing`) is omitted, because there was nothing to apply. |
+| `tier` | `string` | The agent's plan (`"starter"`, `"pro"` or `"max"`), which a skill change never moves. |
 | `restartTriggered` | `boolean` | `true` when the agent runtime was restarted to pick up the new skill set. `false` for stopped agents (no restart needed) or no-op batches. |
 | `restartedAt` | `number\|null` | Unix seconds when the restart trigger fired. `null` when `restartTriggered` is `false`. |
-| `pricing.previousPriceUsd` / `newPriceUsd` / `deltaUsd` | `number` | USD totals before / after the apply, plus the signed delta. |
-| `pricing.previousMonthlyCredits` / `newMonthlyCredits` / `deltaCredits` | `number` | The credits each renewal grants, before / after, plus the signed delta. What this period gains is `creditsNow`. |
-| `pricing.creditsNow` / `creditsThisPeriod` / `creditsFromRenewal` | `number` | What this period gained (negative when it lost credits), what this period grants in all after the change, and what each renewal grants. |
-| `pricing.periodEnd` | `number\|null` | Unix seconds when the current period ends. `null` when the agent has no plan. |
 | `pricing.enabledSkills` | `array<string>` | Final enabled skill set including transitive `depends_on` closure, as a flat array of skill names. The matching `useragent.skills` array on the next `Detail` call is an object array (`{name, enabled, _edited?, _user_created?}`); take `.name` from each entry to compare. |
 
 ##### Common error codes
@@ -2153,17 +2157,13 @@ When every entry in your `skills` map already matches the persisted state and th
 |------|---------|
 | `101` | `skillsapply-deps-violation`: a final enabled skill has unsatisfied `depends_on`. Body includes `deps[]`. |
 | `102` | `skillsapply-conflict`: two finally-enabled skills are mutually exclusive. Body includes `conflicts[]`. |
-| `103` | `skillsapply-insufficient-wallet`: wallet can't cover the prorated charge. Body includes `requiredUsd` / `availableUsd`. |
-| `104` | `skillsapply-in-progress`: another `SkillsApply` is already running on this useragent. Wait and retry. The same code comes with `Another payment from this wallet is still going through, so this skill change was undone and nothing was charged. Please try again in a minute.` when another payment from the same wallet is still going through. |
-| `105` | `skillsapply-tier-downgrade`: Pro → Starter rejected. Cancel + re-subscribe instead. |
-| `106` | `skillsapply-subscription-inactive`: subscription must be `active` to mutate. |
+| `104` | `skillsapply-in-progress`: another `SkillsApply` is already running on this useragent. Wait and retry. |
 | `108` | `skillsapply-db-tx-failed`: DB transaction rolled back; safe to retry with a new idempotency key. |
-| `109` | `skillsapply-stripe-failed`: the payment for the change failed, and the change was taken back. Fix the billing, then retry with a new idempotency key. |
-| `110` | The change failed and could not be taken back: the agent may still have the new skills and price. Check them with `UserAgent/Detail` before changing anything. The same idempotency key answers `110` again. |
+| `110` | The change failed and could not be taken back: the agent may still have the new skills. Check them with `UserAgent/Detail` before changing anything. The same idempotency key answers `110` again. |
 
 #### **POST** /UserAgent/PricingPreview
 
-Live tier-pricing preview. Drives the Build Your Agent / Skill Editor UI: as the user toggles skills on/off, the frontend POSTs here with `skillOverrides` to see "if I save this, my new monthly price would be $X with Y monthly credits" without writing any state.
+Previews a plan or skill change without writing anything. It lists the three plans, resolves the skill set (with `depends_on`) and, for an agent with an active plan, says in `planChange` what the change would do today. The Build Your Agent and Skill Editor screens call it as the user picks a plan or toggles skills.
 
 Two body shapes:
 
@@ -2182,7 +2182,7 @@ Two body shapes:
 ```json
 {
   "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
-  "tier": "pro",
+  "tier": "max",
   "skillOverrides": {
     "int-instagram-post": true,
     "int-reddit-post":    false
@@ -2192,44 +2192,56 @@ Two body shapes:
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `draft` | boolean | A | When `true`, no useragent lookup happens; Wiro prices the `skills` array directly. Used by Build Your Agent. |
+| `draft` | boolean | A | When `true`, no useragent lookup happens; Wiro resolves the `skills` array directly. Used by Build Your Agent. |
 | `skills` | array<string> | A | Draft mode only: the proposed enabled skill set. |
 | `useragentguid` | string | B | Required for non-draft previews. |
 | `skillOverrides` | object | No | Override the persisted state with `{ skillname: boolean }` for the preview. Omit for "current state" preview. |
-| `tier` | string | No | `"starter"` or `"pro"`: preview a specific tier. The response also includes both tiers under `tiers.{starter,pro}`. |
+| `tier` | string | No | `"starter"`, `"pro"` or `"max"`: the plan to preview. Defaults to the agent's plan, or Starter in a draft. The response lists all three plans under `tiers`. |
 
 ##### Response
+
+A Pro agent on a wallet plan, previewing Max with 15 days left of 30:
 
 ```json
 {
   "result": true,
   "errors": [],
-  "tier": "pro",
-  "tiermultiplier": 10,
-  "totalPriceUsd": 40,
-  "totalMonthlyCredits": 4000,
-  "starterFloorUsd": 4,
+  "tier": "max",
+  "totalPriceUsd": 100,
+  "totalMonthlyCredits": 10000,
   "skillBreakdown": [
-    { "skill": "int-instagram-post", "priceUsd": 1, "credits": 100, "billing_model": "tokens" },
-    { "skill": "int-wiro-aimodels",  "priceUsd": 1, "credits": 100, "billing_model": "tokens" }
+    { "skill": "int-instagram-post", "priceUsd": 0, "credits": 0, "billing_model": "tokens" },
+    { "skill": "int-wiro-aimodels",  "priceUsd": 0, "credits": 0, "billing_model": "tokens" }
   ],
   "enabledSkills": ["int-instagram-post", "int-wiro-aimodels"],
   "directSkills":  ["int-instagram-post"],
-  "agentBase": { "priceUsd": 0, "credits": 0 },
   "tiers": {
-    "starter": { "priceUsd": 4,  "credits": 400 },
-    "pro":     { "priceUsd": 40, "credits": 4000 }
+    "starter": { "priceUsd": 5,   "credits": 500 },
+    "pro":     { "priceUsd": 30,  "credits": 3000 },
+    "max":     { "priceUsd": 100, "credits": 10000 }
   },
+  "plans": [
+    { "key": "starter", "title": "Starter", "priceUsd": 5,   "monthlyCredits": 500 },
+    { "key": "pro",     "title": "Pro",     "priceUsd": 30,  "monthlyCredits": 3000 },
+    { "key": "max",     "title": "Max",     "priceUsd": 100, "monthlyCredits": 10000 }
+  ],
+  "nextplan": null,
   "planChange": {
+    "change": "upgrade",
     "provider": "prepaid",
+    "fromTier": "pro",
+    "toTier": "max",
+    "nextplan": null,
+    "priceUsd": 100,
+    "monthlyCredits": 10000,
+    "effectiveAt": 1714694520,
+    "newPeriod": false,
     "periodEnd": 1715990520,
     "secondsLeft": 1296000,
-    "creditsNow": 1800,
-    "creditsThisPeriod": 2200,
-    "creditsFromRenewal": 4000,
-    "chargeNowUsd": 18,
-    "creditNowUsd": 0,
-    "usedCreditsUsd": 0
+    "creditsNow": 3500,
+    "creditsThisPeriod": 6500,
+    "creditsFromRenewal": 10000,
+    "chargeNowUsd": 35
   },
   "tokenRates": {
     "default_model": "openai/gpt-5.6-sol",
@@ -2243,23 +2255,25 @@ Two body shapes:
 }
 ```
 
-`enabledSkills` is the full closure (including transitive `depends_on`); `directSkills` is just what the user explicitly toggled. `agentBase` is always `{ priceUsd: 0, credits: 0 }`: pricing is fully skill-driven, and the field is kept on the response so callers don't have to null-check. `skillBreakdown[].billing_model` is always `"tokens"`; `tokenRates` carries the per-model rates used to meter each turn (see [Token Billing](#pricing-model-tiers-skills--token-billing)).
+`totalPriceUsd` and `totalMonthlyCredits` are the previewed plan's price and credits; the skills never change them. `plans` lists the three plans with their names. `enabledSkills` is the full closure (including transitive `depends_on`); `directSkills` is just what the user explicitly toggled. Every `skillBreakdown` entry reads `priceUsd: 0` and `credits: 0`, since every plan includes every skill. `tokenRates` carries the per-model rates used to meter each turn (see [Token Billing](#token-billing)). On an existing agent, `nextplan` is a lower plan already scheduled for its renewal, or `null`.
 
-`planChange` comes with a preview of an existing agent: what the change would do today on the plan the agent has now. It is `null` when the agent has no active plan. `totalMonthlyCredits` and `tiers` stay the monthly figures each renewal grants.
+`planChange` comes with a preview of an existing agent that has an active plan, and is `null` otherwise. `planChange.change` says what the previewed `tier` would do: `"upgrade"` shows the charge and the credits that come with a higher plan, `"downgrade"` a lower plan that starts at the renewal with nothing charged now, and `"none"` the agent's own plan or a preview that only changes skills, with no charge and no credit change.
 
 | Field | Type | Description |
 |-------|------|-------------|
+| `planChange.change` | `string` | `"upgrade"`, `"downgrade"` or `"none"`. |
 | `planChange.provider` | `string` | `"prepaid"` (wallet plan) or `"stripe"` (card plan). |
-| `planChange.periodEnd` | `number` | Unix seconds when the current period ends. |
+| `planChange.fromTier` / `toTier` | `string` | The agent's plan and the plan previewed. |
+| `planChange.nextplan` | `string\|null` | A lower plan already scheduled for the renewal. |
+| `planChange.priceUsd` / `monthlyCredits` | `number` | The previewed plan's monthly price and credits. |
+| `planChange.effectiveAt` | `number\|null` | Unix seconds when the change would take effect: now for a higher plan on a wallet plan, `periodEnd` for a lower plan. `null` for a higher plan on a card plan, which starts once its checkout is paid, and for `"none"`. |
+| `planChange.newPeriod` | `boolean` | `true` for a higher plan on a card plan: the paid checkout starts a new full period with the plan's full credits. |
+| `planChange.periodEnd` | `number` | Unix seconds when the current period ends, which is when a lower plan starts. |
 | `planChange.secondsLeft` | `number` | Seconds left in the current period. |
-| `planChange.creditsNow` | `number` | Credits this period gains now, negative when it loses them. |
+| `planChange.creditsNow` | `number` | Credits this period gains now. |
 | `planChange.creditsThisPeriod` | `number` | Credits this period grants in all after the change. |
 | `planChange.creditsFromRenewal` | `number` | Credits each renewal grants after the change. |
-| `planChange.chargeNowUsd` | `number` | The wallet charge for the time left, at list price before any discount. `0` on a card plan and when the price goes down. |
-| `planChange.creditNowUsd` | `number\|null` | What goes back to the balances that paid when the price goes down. `0` on a card plan. `null` when it can't be worked out yet: it is worked out when the change is applied. |
-| `planChange.usedCreditsUsd` | `number\|null` | What comes off that credit for credits already used. `null` together with `creditNowUsd`. |
-
-> **$4 starter floor.** When the raw weight sum lands below $4 (e.g. a single `LIGHT` skill at $1/100), Wiro raises `tiers.starter.priceUsd` to $4 **and** scales `tiers.starter.credits` up by the same ratio (100 → 400); the applied floor is echoed as `starterFloorUsd`. Pro derives from the post-floor starter via × `tiermultiplier` (default `10`), so a $1-weight agent becomes Starter `$4/400` and Pro `$40/4000`. See [Pricing Model: Tiers, Skills & Token Billing](#pricing-model-tiers-skills--token-billing) for the full rules.
+| `planChange.chargeNowUsd` | `number` | What a higher plan costs now, at list price before any discount: the prorated difference on a wallet plan, the plan's full price at the card checkout. `0` for `"downgrade"` and `"none"`. |
 
 #### **POST** /UserAgent/CreateSubscriptionCheckout
 
@@ -2269,7 +2283,7 @@ Subscribes a useragent that doesn't yet have an active subscription. Wallet is d
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Your UserAgent instance guid |
 | `useprepaid` | boolean | Yes | Must be `true` for API consumers. |
-| `tier` | string | No | `"starter"` or `"pro"`: overrides the useragent's persisted tier so the user can re-subscribe at a different tier without redeploying. |
+| `tier` | string | No | `"starter"`, `"pro"` or `"max"`: overrides the useragent's persisted plan so the user can re-subscribe on a different plan without redeploying. Leave it out for the agent's own plan; any other value is refused with `tier must be starter, pro or max`. |
 
 ##### Response
 
@@ -2278,8 +2292,8 @@ Subscribes a useragent that doesn't yet have an active subscription. Wallet is d
   "result": true,
   "errors": [],
   "subscriptionId": 8421,
-  "monthlypriceusd": 90,
-  "monthlycredits": 9000
+  "monthlypriceusd": 30,
+  "monthlycredits": 3000
 }
 ```
 
@@ -2670,13 +2684,13 @@ No request body fields are required: the workspace of your API key's project sco
       "cover": null,
       "categories": ["social-media", "marketing"],
       "tier": "pro",
-      "tiermultiplier": 10,
-      "monthlypriceusd": 90,
-      "monthlycredits": 9000,
-      "extracredits": 45000,
+      "nextplan": null,
+      "monthlypriceusd": 30,
+      "monthlycredits": 3000,
+      "extracredits": 5000,
       "usedcredits": 1450,
-      "remainingcredits": 52550,
-      "renewalcredits": 9000,
+      "remainingcredits": 6550,
+      "renewalcredits": 3000,
       "creditperiod": "2026-05",
       "creditsyncat": 1714694410,
       "status": 4,
@@ -2686,7 +2700,7 @@ No request body fields are required: the workspace of your API key's project sco
       "subscription": {
         "plan": "agent",
         "status": "active",
-        "amount": 90,
+        "amount": 30,
         "currency": "usd",
         "currentperiodend": 1717200000,
         "renewaldate": "2026-06-01T00:00:00.000Z",
@@ -2701,10 +2715,10 @@ No request body fields are required: the workspace of your API key's project sco
         "description": "An autonomous agent that manages your Instagram Business account.",
         "cover": "https://cdn.wiro.ai/uploads/agents/instagram-manager-cover.webp",
         "categories": ["social-media", "marketing"],
-        "tiermultiplier": 10,
         "tiers": {
-          "starter": { "priceUsd": 9,  "credits": 900 },
-          "pro":     { "priceUsd": 90, "credits": 9000 }
+          "starter": { "priceUsd": 5,   "credits": 500 },
+          "pro":     { "priceUsd": 30,  "credits": 3000 },
+          "max":     { "priceUsd": 100, "credits": 10000 }
         }
       },
       "enabledSkills": ["int-instagram-post", "int-twitterx-post", "int-wiro-aimodels"],
@@ -2892,15 +2906,13 @@ Rows are returned newest-first. Rejected sessions (`realtime_session_rejected`) 
 
 ### Extra Credit Packs
 
-Pro-tier instances can buy additional credits at any time. Pack catalogs are derived per-useragent (5x / 10x / 20x of the instance's monthly allocation), so the catalog auto-scales when the user upgrades from Starter → Pro or toggles paid skills.
-
-The catalog appears at `agent.extracreditpacks` on `UserAgent/Detail`:
+An agent with an active plan can buy extra credits at any time, whatever its plan. Every agent gets the same three packs, listed at `agent.extracreditpacks` on `UserAgent/Detail`:
 
 ```json
 "extracreditpacks": [
-  { "packkey": "small",  "credits": 45000, "priceusd": 450,  "enabled": true },
-  { "packkey": "medium", "credits": 90000, "priceusd": 900,  "enabled": true },
-  { "packkey": "large",  "credits": 180000, "priceusd": 1800, "enabled": true }
+  { "packkey": "small",  "credits": 1000,  "priceusd": 10,  "enabled": true },
+  { "packkey": "medium", "credits": 5000,  "priceusd": 50,  "enabled": true },
+  { "packkey": "large",  "credits": 20000, "priceusd": 200, "enabled": true }
 ]
 ```
 
@@ -2920,7 +2932,7 @@ Purchases additional credits for a useragent. The wallet is debited the pack pri
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Your UserAgent instance guid |
-| `pack` | string | Yes | Pack key from `agent.extracreditpacks[].key`: `"small"`, `"medium"`, or `"large"`. |
+| `pack` | string | Yes | Pack key from `agent.extracreditpacks[].packkey`: `"small"` (1,000 credits, $10), `"medium"` (5,000, $50) or `"large"` (20,000, $200). |
 | `useprepaid` | boolean | Yes | Must be `true` for API use. Pays the pack price from your wallet balance. |
 
 ##### Request
@@ -2966,6 +2978,7 @@ Schedules the subscription to end at the current billing period's expiry (a **ca
 
 - `cancelsAt` is the Unix timestamp when the subscription will finish.
 - Server-side, `subscription.pendingdowngrade` is flipped to `"cancel"` and `subscription.status` stays `"active"` until the period end. Subsequent `UserAgent/Detail` responses reflect this: `subscription.pendingdowngrade = "cancel"` and the usual `currentperiodend`.
+- A scheduled move to a lower plan is dropped: the agent's `nextplan` goes back to `null`.
 - To reverse the cancellation **before** the period ends, call `POST /UserAgent/RenewSubscription`. It clears the flag without charging the wallet again.
 - When the period actually ends, the daily cron marks the subscription `"expired"` and stops the agent (`status: 0`). At that point the user must call `POST /UserAgent/RenewSubscription` (or `CreateSubscriptionCheckout` for a fresh sub) to continue.
 
@@ -2989,38 +3002,80 @@ A team agent subscribed by card from the Wiro panel is billed to the card of the
 
 #### **POST** /UserAgent/UpgradeTier
 
-Upgrades the active subscription from **Starter → Pro**. The capability surface stays the same; the tier change just scales the credit pool and price by `tiermultiplier`.
+Moves an active subscription to another plan: `"starter"`, `"pro"` or `"max"`. Despite its name, the endpoint moves an agent down as well as up:
 
-**Upgrade-only.** Pro → Starter downgrades are rejected with an explicit error. Cancel and redeploy at the lower tier instead.
+- **A higher plan starts now.** API-deployed agents pay through the wallet: the monthly difference for the time left in the current period, by the second, rounded up to the cent and at least one day's worth. The period gains the difference in credits for that same time, and every renewal grants the new plan in full. Existing extra credits and `usedcredits` are kept, and a running agent keeps running.
+- **A lower plan starts at the next renewal.** Nothing is charged or refunded now. The agent keeps its current plan, price and credits until the period ends, and `nextplan` on `UserAgent/Detail` reads the lower plan. The renewal then charges the lower plan's price and grants its credits.
+- **Asking for the agent's current plan** cancels a scheduled move to a lower plan: `nextplan` goes back to `null`.
+
+A move to a higher plan while a lower one is scheduled cancels the scheduled move first, then upgrades from the current plan. On a plan paid by card, a move to a higher plan returns a checkout `url` instead of charging the wallet: once it is paid, the higher plan starts a new full period with its full credits. A lower plan on a card plan applies from the next card renewal.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `guid` | string | Yes | Your UserAgent instance guid |
-| `targetTier` | string | Yes | Must be `"pro"` (`"starter"` is rejected with the downgrade error). The parameter name is `targetTier`. Passing it as `tier` returns `"targetTier must be 'starter' or 'pro'"` instead of being silently coerced. |
+| `targetTier` | string | Yes | The plan to move to: `"starter"`, `"pro"` or `"max"`. The parameter name is `targetTier`. Passing it as `tier` returns `targetTier must be starter, pro or max`. |
 
 **Headers:** No extra header is needed. For team agents, use an API key from a project in the agent's team. Keys from another workspace are rejected.
 
-API-deployed agents always upgrade through the prepaid path. The endpoint debits the prorated upgrade fee from your wallet synchronously: the monthly price difference for the time left in the current period, by the second, rounded up to the cent, and at least one day's worth. It moves the subscription to Pro pricing right away and restarts the agent. The added credits come for the time left in the current period, and every renewal gives the whole Pro allowance. Existing extra credits and `usedcredits` are preserved.
-
 ##### Response
+
+A Pro agent moving to Max with 15 days left of 30:
 
 ```json
 {
   "result": true,
-  "tier": "pro",
-  "previousTier": "starter",
-  "newPriceUsd": 90,
-  "newMonthlyCredits": 9000,
-  "creditsNow": 4590,
-  "creditsThisPeriod": 5490,
-  "creditsFromRenewal": 9000,
+  "change": "upgrade",
+  "tier": "max",
+  "previousTier": "pro",
+  "targetTier": "max",
+  "nextplan": null,
+  "effectiveAt": 1715644800,
+  "newPriceUsd": 100,
+  "newMonthlyCredits": 10000,
+  "creditsNow": 3500,
+  "creditsThisPeriod": 6500,
+  "creditsFromRenewal": 10000,
   "periodEnd": 1716940800,
-  "proratedCharge": 45.90,
+  "chargedUsd": 35.00,
+  "proratedCharge": 35.00,
   "errors": []
 }
 ```
 
-`newMonthlyCredits` and `creditsFromRenewal` are what each renewal grants. `creditsNow` is what this period gained, `creditsThisPeriod` what it grants in all, and `periodEnd` when it ends (Unix seconds).
+A move to a lower plan keeps the agent where it is until the renewal:
+
+```json
+{
+  "result": true,
+  "change": "downgrade",
+  "tier": "pro",
+  "previousTier": "pro",
+  "targetTier": "starter",
+  "nextplan": "starter",
+  "effectiveAt": 1716940800,
+  "startsAt": 1716940800,
+  "newPriceUsd": 5,
+  "newMonthlyCredits": 500,
+  "periodEnd": 1716940800,
+  "errors": []
+}
+```
+
+Asking for the agent's current plan while a lower one is scheduled answers `change: "downgrade-cancelled"` with `nextplan: null`.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `change` | `string` | `"upgrade"`, `"downgrade"` or `"downgrade-cancelled"`. |
+| `tier` | `string` | The plan the agent is on after the call. |
+| `previousTier` / `targetTier` | `string` | The plan it was on and the plan asked for. |
+| `nextplan` | `string\|null` | The plan scheduled for the renewal after the call, or `null`. |
+| `effectiveAt` | `number\|null` | Unix seconds when the change takes effect: now for an upgrade on a wallet plan and for a cancelled downgrade, the renewal for a downgrade, `null` for an upgrade on a card plan, which starts once its checkout is paid. |
+| `newPriceUsd` / `newMonthlyCredits` | `number` | The new plan's monthly price and credits; for a downgrade, from the renewal on. |
+| `creditsNow` / `creditsThisPeriod` / `creditsFromRenewal` | `number` | Upgrade on a wallet plan: what this period gained, what it grants in all, and what each renewal grants. |
+| `chargedUsd` | `number` | Upgrade on a wallet plan: what the wallet paid now, in USD. `proratedCharge` carries the same amount. |
+| `startsAt` | `number` | Downgrade: the moment the lower plan starts, the same as `effectiveAt`. |
+| `periodEnd` | `number` | Unix seconds when the current period ends. |
+| `url` / `targetPriceUsd` / `targetCredits` | `string` / `number` | Upgrade on a card plan: the checkout link, and the plan's price and credits once it is paid. |
 
 #### **POST** /UserAgent/RenewSubscription
 
@@ -3037,7 +3092,7 @@ The endpoint inspects the current subscription state and picks the right operati
 
 **Headers:** No extra header is needed. For team agents, use an API key from a project in the agent's team. Keys from another workspace are rejected.
 
-> Renewal pricing is **snapshot-driven**: `monthlypriceusd` and the allowance each renewal grants (`renewalcredits`) are read straight off the agent (last touched by `Deploy`, `SkillsApply`, or `UpgradeTier`). Skill-registry weight changes between renewals do **not** propagate; the user keeps the price they last agreed to. To pick up new pricing, the user must explicitly call `SkillsApply` or `UpgradeTier` (both re-snapshot in the same transaction).
+> A renewal charges the agent's plan price and grants the plan's credits in full. When a lower plan is scheduled (`nextplan`), the renewal charges and grants that plan instead and clears `nextplan`. Skills never change what a renewal costs.
 
 ##### Response: undo-cancel
 
@@ -3064,14 +3119,14 @@ Called after the subscription has expired (daily cron flipped it to `status: "ex
   "result": true,
   "action": "renewed",
   "plan": "agent",
-  "amount": 9,
-  "monthlycredits": 900,
+  "amount": 5,
+  "monthlycredits": 500,
   "errors": []
 }
 ```
 
 - Renews the subscription in place: `status` becomes `"active"`, a new 30-day period starts now (`currentperiodend` moves to now + 30 days), and `pendingdowngrade` is cleared to `null`.
-- Debits `amount` (the snapshot `monthlypriceusd`) from the wallet (caller's personal wallet, or the agent's team wallet if the agent is team-scoped).
+- Debits `amount`, the plan's price, from the wallet (caller's personal wallet, or the agent's team wallet if the agent is team-scoped).
 - Zeroes `usedcredits` and stamps the new `creditperiod`. Existing extra credits are preserved.
 - If the agent was in `status: 0` (Stopped) or `5` (Error), it's auto-queued back to `2` (Queued). It starts again without an extra `Start` call. Statuses `1`/`2`/`3`/`4` are already in progress and settle on their own.
 - A card checkout still open for the agent (for example, one started in the Wiro panel) is closed before the wallet is charged, so the agent is never paid for twice.
@@ -3082,7 +3137,6 @@ Called after the subscription has expired (daily cron flipped it to `status: "ex
 |-------|------|
 | `Subscription is already active` | Called on an active subscription with **no** pending cancel (nothing to do) |
 | `No expired subscription found to renew` | No active sub and no expired sub: agent was never subscribed, or data is gone |
-| `Renewal pricing must be greater than $0. Add at least one paid skill or set agent base price.` | The persisted `monthlypriceusd` snapshot is $0 (custom build with all-free skills); add a paid skill via `SkillsApply` before renewing |
 | `Insufficient wallet balance. Required: $X.XX, Available: $Y.YY` | Wallet (personal or team) can't cover the renewal price |
 | `A payment for this agent is already being processed. It usually finishes within a minute; refresh to see the subscription.` | A card payment for the agent has gone through and its subscription is still being set up; nothing is charged. The response also carries `checkoutpending: true` |
 | `A checkout for this agent is already being opened. Try again in a moment.` | Another subscription request for the same agent is in progress; nothing is charged |
@@ -3129,15 +3183,15 @@ Called after the subscription has expired (daily cron flipped it to `status: "ex
 
 | Component | Source | Notes |
 |-----------|--------|-------|
-| **Tier price** | `agent.tiers.{starter,pro}.price` | Snapshotted on the useragent at deploy as `monthlypriceusd`. Pro = Starter × `tiermultiplier`. |
-| **Monthly credits** | `agent.tiers.{starter,pro}.credits` | Snapshotted on the useragent at deploy. Pro = Starter × `tiermultiplier`. Every renewal grants them in full (`renewalcredits`); `monthlycredits` is what the current period grants. |
-| **Per-turn token cost** | `tokenRates` (per-model) | Each chat / cron / voice-prep turn deducts credits metered by the tokens its model consumes (1 credit = $0.01). Tier-independent: Pro just buys a larger monthly credit pool. |
-| **Tier multiplier** | `agent.tiermultiplier` | Default `10`. Snapshotted on the useragent at deploy so later template changes don't retroactively change live instances (existing instances keep the multiplier they were deployed under). |
-| **Extra credit packs** | `agent.extracreditpacks[]` | Per-useragent: derived as 5x / 10x / 20x of the monthly allowance each renewal grants (`renewalcredits`). Listed on both tiers; buying a pack needs the Pro tier. |
+| **Plan price** | `tiers.{starter,pro,max}.priceUsd` | $5, $30 or $100 a month, the same for every template and custom build. The agent's own price is `monthlypriceusd`. |
+| **Monthly credits** | `tiers.{starter,pro,max}.credits` | 500, 3,000 or 10,000. Every renewal grants them in full (`renewalcredits`); `monthlycredits` is what the current period grants. |
+| **Skills** | `Skills/List` | Every plan includes every skill. Turning one on or off costs nothing. |
+| **Per-turn token cost** | `tokenRates` (per-model) | Each chat / cron / voice-prep turn deducts credits metered by the tokens its model consumes (1 credit = $0.01). The same on every plan: a larger plan buys a larger monthly credit pool. |
+| **Extra credit packs** | `agent.extracreditpacks[]` | The same on every plan: `small` 1,000 credits for $10, `medium` 5,000 for $50, `large` 20,000 for $200. They expire 6 months after purchase. |
 
 ### Payment Method
 
-All API subscriptions use your **prepaid wallet balance**. The cost is deducted immediately when you deploy, renew, upgrade, or buy an extra credit pack. Always pass `useprepaid: true` on `Deploy`, `CreateSubscriptionCheckout`, and `CreateExtraCreditCheckout`. That's the only path designed for API consumers. Make sure your wallet balance covers the upfront tier price before calling these endpoints; otherwise you'll get an `Insufficient wallet balance` error.
+All API subscriptions use your **prepaid wallet balance**. The cost is deducted immediately when you deploy, renew, move to a higher plan, or buy an extra credit pack. Always pass `useprepaid: true` on `Deploy`, `CreateSubscriptionCheckout`, and `CreateExtraCreditCheckout`. That's the only path designed for API consumers. Make sure your wallet balance covers the plan's price before calling these endpoints; otherwise you'll get an `Insufficient wallet balance` error.
 
 ### Credit Consumption
 
@@ -3171,17 +3225,17 @@ Agent-specific errors you may encounter:
 | `Subscription required — please subscribe to this agent before starting it.` | `Start` called on a row with no active subscription AND no spendable extras (`extracredits - usedcredits ≤ 0`). Most often hit after a subscription expires with empty extras. Call `RenewSubscription` (`useprepaid: true`) to continue. |
 | `No credits available. Please renew your subscription or purchase extra credits.` | Monthly and extra credits are both exhausted |
 | `Subscription already active for this useragent. Cancel or modify the existing subscription instead.` | `CreateSubscriptionCheckout` called when a sub already exists |
-| `Insufficient wallet balance for proration. Required: $X.XX, available: $Y.YY` | `SkillsApply`: wallet can't cover the prorated charge |
-| `Another payment from this wallet is still going through, so this skill change was undone and nothing was charged. Please try again in a minute.` | `SkillsApply` (code `104`) while another plan or credit pack payment from the same wallet is going through |
-| `targetTier must be 'starter' or 'pro'` | `UpgradeTier` with a `targetTier` outside the closed enum (typos, missing parameter name, etc.). Unlike `Deploy`'s silent coercion, `UpgradeTier` rejects invalid input explicitly. |
-| `Downgrading to Starter is not supported. /UserAgent/UpgradeTier is upgrade-only (Starter → Pro).` | `UpgradeTier` with `targetTier: "starter"` |
-| `Already on {tier} tier` | `UpgradeTier` when current tier matches the target: no-op |
-| `No active subscription — use /UserAgent/CreateSubscriptionCheckout to subscribe at the chosen tier` | `UpgradeTier` called without an active sub |
-| `Failed to compute target-tier pricing` | `UpgradeTier`: the Pro price could not be computed. Try again or contact support |
-| `Insufficient wallet balance. Required: $X.XX, Available: $Y.YY` | `UpgradeTier`: wallet can't cover the prorated upgrade charge |
+| `Change the plan with UpgradeTier.` | `SkillsApply` with a `tier` other than the agent's current plan |
+| `tier must be starter, pro or max` | `Deploy` or `CreateSubscriptionCheckout` with a `tier` that names no plan. Nothing is created or charged. |
+| `targetTier must be starter, pro or max` | `UpgradeTier` with a `targetTier` outside the closed enum (typos, missing parameter name, etc.) |
+| `Already on the Pro plan.` (the plan's name) | `UpgradeTier` with the agent's current plan when no lower plan is scheduled: no-op |
+| `No active plan. Use /UserAgent/CreateSubscriptionCheckout to start one on the plan you pick.` | `UpgradeTier` called without an active subscription |
+| `This plan is set to end at the end of its period, so there is no renewal to change. Renew it first.` | `UpgradeTier` to a lower plan while the subscription is cancelled at period end. Undo the cancel with `RenewSubscription` first |
+| `The plan change could not be scheduled. Nothing was changed; please try again in a minute.` | `UpgradeTier` to a lower plan on a card plan, when the change couldn't be set with the card payment provider |
+| `Insufficient wallet balance. Required: $X.XX, Available: $Y.YY` | `UpgradeTier`: wallet can't cover the charge for a higher plan |
 | `Wallet deduction failed: {error}` | `UpgradeTier`: wallet write itself failed (rare; transient backend error) |
-| `Another change to this agent's plan is going through. Nothing was changed; please try again in a minute.` | `UpgradeTier` (code `104`) while a skill change or another upgrade of the same agent is going through |
-| `The agent's plan changed while this upgrade was asked for. Nothing was changed; please retry.` | `UpgradeTier` when the agent's plan ended or moved off the wallet after the call was made |
+| `Another change to this agent's plan is going through. Nothing was changed; please try again in a minute.` | `UpgradeTier` (code `104`) while a skill change or another plan change of the same agent is going through |
+| `The agent's plan changed while this was asked for. Nothing was changed; please retry.` | `UpgradeTier` when the agent's plan ended or moved off the wallet after the call was made |
 | `Could not read the agent's plan. Nothing was changed; please retry.` | `UpgradeTier`: the agent's plan could not be read |
 | `Another payment from this wallet is still going through. Nothing was charged; please try again in a minute.` | `Deploy` or `CreateSubscriptionCheckout` with `useprepaid: true`, `CreateExtraCreditCheckout`, `RenewSubscription` or `UpgradeTier` (code `104` on `UpgradeTier`) while another plan or credit pack payment from the same wallet is going through. A `Deploy` refused this way creates no agent |
 | `Project not found. Send the id of one of your projects from Project/List: one you created, or any project of a team you are an admin of.` | `CredentialProjectBind` with a project that doesn't exist or that the caller can't bind. See its [other errors](#post-useragentcredentialprojectbind) |
@@ -3245,13 +3299,13 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
     "skills": { "int-gmail-check": true, "int-wiro-aimodels": true }
   }'
 
-# Live pricing preview before committing a skill change
+# Preview a plan change before you make it
 curl -X POST "https://api.wiro.ai/v1/UserAgent/PricingPreview" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{
     "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321",
-    "skillOverrides": { "int-twitterx-post": true }
+    "tier": "max"
   }'
 
 # Cancel a subscription (cancels at end of billing period)
@@ -3260,7 +3314,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CancelSubscription" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{"guid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321"}'
 
-# Upgrade Starter → Pro (prepaid, prorated charge)
+# Move up to Pro (prepaid: a prorated charge now)
 curl -X POST "https://api.wiro.ai/v1/UserAgent/UpgradeTier" \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
@@ -3324,7 +3378,7 @@ catalog = requests.post(
     json={"limit": 10}
 ).json()
 for agent in catalog["agents"]:
-    print(f"{agent['title']} ({agent['slug']}) — Starter ${agent['tiers']['starter']['price']}/mo")
+    print(f"{agent['title']} ({agent['slug']}): Starter ${agent['tiers']['starter']['priceUsd']}/mo")
 
 # Get agent details by slug
 detail = requests.post(
@@ -3334,7 +3388,7 @@ detail = requests.post(
 agent = detail["agents"][0]
 print(f"Credentials needed: {list(agent['credentials'].keys())}")
 
-# Deploy a new instance (prepaid wallet, Starter tier)
+# Deploy a new instance (prepaid wallet, Starter plan)
 deploy = requests.post(
     "https://api.wiro.ai/v1/UserAgent/Deploy",
     headers=headers,
@@ -3385,14 +3439,14 @@ while True:
         break
     time.sleep(5)
 
-# Upgrade Starter → Pro (prorated, debited from wallet)
+# Move up to Pro (prorated, debited from wallet)
 requests.post(
     "https://api.wiro.ai/v1/UserAgent/UpgradeTier",
     headers=headers,
     json={"guid": instance_guid, "targetTier": "pro"}
 )
 
-# Buy extra credits (Pro tier — prepaid wallet)
+# Buy extra credits (any plan, prepaid wallet)
 requests.post(
     "https://api.wiro.ai/v1/UserAgent/CreateExtraCreditCheckout",
     headers=headers,
@@ -3406,7 +3460,7 @@ my_agents = requests.post(
     json={"limit": 50}
 ).json()
 for ua in my_agents["useragents"]:
-    print(f"{ua['title']} - status: {ua['status']} - tier: {ua.get('tier')}")
+    print(f"{ua['title']} - status: {ua['status']} - plan: {ua.get('tier')}")
 
 # Stop the agent
 requests.post(
@@ -3433,7 +3487,7 @@ async function main() {
     { limit: 10 }
   );
   catalog.data.agents.forEach(a =>
-    console.log(`${a.title} (${a.slug}) — Starter $${a.tiers.starter.price}/mo`)
+    console.log(`${a.title} (${a.slug}): Starter $${a.tiers.starter.priceUsd}/mo`)
   );
 
   // Get agent details by slug
@@ -3443,7 +3497,7 @@ async function main() {
   );
   const agent = detail.data.agents[0];
 
-  // Deploy a new instance (prepaid wallet, Starter tier)
+  // Deploy a new instance (prepaid wallet, Starter plan)
   const deploy = await axios.post(
     'https://api.wiro.ai/v1/UserAgent/Deploy',
     { agentguid: agent.guid, title: 'My Instagram Bot', useprepaid: true, tier: 'starter' },
@@ -3485,7 +3539,7 @@ async function main() {
     await new Promise(r => setTimeout(r, 5000));
   }
 
-  // Upgrade Starter → Pro
+  // Move up to Pro
   await axios.post(
     'https://api.wiro.ai/v1/UserAgent/UpgradeTier',
     { guid: instanceGuid, targetTier: 'pro' },
@@ -3526,7 +3580,7 @@ curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 $catalog = json_decode(curl_exec($ch), true);
 curl_close($ch);
 
-// Deploy a new instance (prepaid wallet, Starter tier)
+// Deploy a new instance (prepaid wallet, Starter plan)
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, "https://api.wiro.ai/v1/UserAgent/Deploy");
 curl_setopt($ch, CURLOPT_POST, true);
@@ -3552,7 +3606,7 @@ echo "Deployed: " . $deploy["useragents"][0]["guid"];
 using var client = new HttpClient();
 client.DefaultRequestHeaders.Add("x-api-key", "YOUR_API_KEY");
 
-// Deploy a new instance (prepaid wallet, Starter tier)
+// Deploy a new instance (prepaid wallet, Starter plan)
 var deployContent = new StringContent(
     JsonSerializer.Serialize(new {
         agentguid = "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
@@ -3593,7 +3647,7 @@ import (
 )
 
 func main() {
-    // Deploy a new instance (prepaid wallet, Starter tier)
+    // Deploy a new instance (prepaid wallet, Starter plan)
     body, _ := json.Marshal(map[string]interface{}{
         "agentguid":  "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
         "title":      "My Instagram Bot",

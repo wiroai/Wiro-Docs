@@ -27,8 +27,8 @@ Instagram Login issues an Instagram User access token and publishes through
 
 - Social Manager
 - Video Creator: to post the videos it makes as Reels. Add `int-instagram-post` with
-  [`SkillsApply`](/docs/agent-skills#toggling-integration-skills); it adds $1 a month to the Starter
-  price. Video Creator then posts a Reel when the request asks for it or an `Instagram` line in its
+  [`SkillsApply`](/docs/agent-skills#toggling-integration-skills); like every skill, it is included in
+  every plan. Video Creator then posts a Reel when the request asks for it or an `Instagram` line in its
   `video-preferences` says to, and otherwise offers to.
 - Any custom agent that needs Instagram publishing
 

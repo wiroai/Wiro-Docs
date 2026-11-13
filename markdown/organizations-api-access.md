@@ -81,10 +81,10 @@ The following agent endpoints enforce context guards:
 - `UserAgent/CreateExtraCreditCheckout`: purchase extra credits
 - `UserAgent/CancelSubscription`: cancel subscription
 - `UserAgent/RenewSubscription`: renew subscription
-- `UserAgent/UpgradeTier`: upgrade tier (Starter → Pro)
+- `UserAgent/UpgradeTier`: change the plan (Starter, Pro or Max)
 - `UserAgent/CreateSubscriptionCheckout`: subscribe a not-yet-subscribed useragent
-- `UserAgent/PricingPreview`: pricing preview for an existing agent
-- `UserAgent/SkillsApply`: change skill set (single or batch, auto-prorates)
+- `UserAgent/PricingPreview`: preview a plan or skill change for an existing agent
+- `UserAgent/SkillsApply`: change skill set (single or batch, never charged)
 - `UserAgent/SkillToggle`: toggle a single skill
 - `UserAgent/CredentialProjectBind`: connect the agent's Wiro project
 - `UserAgent/Realtime/WebStart`: start a web voice session

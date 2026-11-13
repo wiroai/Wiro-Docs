@@ -23,7 +23,7 @@ Connect your agent to Roasit mobile attribution: creative, campaign and network 
 
 | Mode | Status | Notes |
 |------|--------|-------|
-| API Token (Roasit) | Available | One read-only Roasit API token per agent. It sees the apps your Roasit account can see and cannot change anything. No extra charge: the skill adds nothing to the agent's monthly price. |
+| API Token (Roasit) | Available | One read-only Roasit API token per agent. It sees the apps your Roasit account can see and cannot change anything. No extra charge: like every skill, it is included in every plan. |
 
 ## Prerequisites
 
@@ -145,7 +145,7 @@ Creative-level ROAS needs Roasit to pull spend at ad level for that network (**S
 
 ## Billing
 
-The integration adds nothing to the agent's monthly price or credit pool. Like every agent turn, the reports and the daily task are billed on the LLM tokens they use, from the agent's existing credits.
+Every plan includes the integration, so it changes neither the agent's price nor its credits. As with every agent turn, the reports and the daily task are billed on the LLM tokens they use, from the agent's existing credits.
 
 ## Recommendations & approval
 

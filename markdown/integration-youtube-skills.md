@@ -14,7 +14,7 @@ The YouTube integration uses Google OAuth 2.0 with:
 
 **Agents that typically enable this integration:**
 
-- Video Creator: to publish the videos it makes to your channel. Add `int-youtube-manage` with [`SkillsApply`](/docs/agent-skills#toggling-integration-skills); it adds $1 a month to the Starter price. Video Creator then publishes a finished video when the request asks for it or a `YouTube` line in its `video-preferences` says to, and otherwise offers to.
+- Video Creator: to publish the videos it makes to your channel. Add `int-youtube-manage` with [`SkillsApply`](/docs/agent-skills#toggling-integration-skills); like every skill, it is included in every plan. Video Creator then publishes a finished video when the request asks for it or a `YouTube` line in its `video-preferences` says to, and otherwise offers to.
 - Google Ads Manager: for creating Video and Demand Gen campaigns that reference existing YouTube videos
 
 ## Availability
