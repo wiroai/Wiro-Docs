@@ -12963,10 +12963,10 @@ import type {
 <p><a href="#post-useragentupgradetier"><code>POST /UserAgent/UpgradeTier</code></a> moves an agent to another plan:</p>
 <ul>
 <li><strong>A higher plan starts now.</strong> On a wallet plan, the wallet pays the monthly difference for the time left in the period, by the second, rounded up to the cent and at least one day's worth, and the period gains the difference in credits for that same time. Every renewal after that grants the new plan in full. Example: a Pro agent moving to Max with 15 days left of 30 pays $35.00 and gains 3,500 credits now, then renews at $100 with 10,000 credits.</li>
-<li><strong>A lower plan starts at the next renewal.</strong> Nothing is charged or refunded. The agent keeps its current plan, price and credits until the period ends, and its <code>nextplan</code> field names the plan it will renew on.</li>
+<li><strong>A lower plan starts at the next renewal.</strong> Ask for it with <code>allowDowngrade: true</code>: without it, a lower plan is refused and nothing changes. Nothing is charged or refunded. The agent keeps its current plan, price and credits until the period ends, and its <code>nextplan</code> field names the plan it will renew on.</li>
 <li><strong>Asking for the agent's current plan</strong> cancels a scheduled move to a lower plan.</li>
 </ul>
-<p>Moving to a higher plan while a lower one is scheduled cancels the scheduled move first, and cancelling the subscription clears it too. On a plan paid by card, a higher plan goes through a card checkout and starts a new full period with its full credits, and a lower plan applies from the next card renewal.</p>
+<p>Moving to a higher plan while a lower one is scheduled cancels the scheduled move first, and cancelling the subscription clears it too. On a plan paid by card, a higher plan goes through a card checkout: nothing changes until it is paid, and then a new full period starts with the plan's full credits. A lower plan on a card plan applies from the next card renewal.</p>
 <h3 id="extra-credits">Extra Credits</h3>
 <p>An agent with an active plan can buy extra credits at any time, on every plan. The packs are the same for every agent:</p>
 <div class="docs-param-table">
@@ -14454,7 +14454,7 @@ import type {
 <tr>
 <td><code>monthlypriceusd</code></td>
 <td><code>number</code></td>
-<td>The monthly USD price the agent pays, set at deploy, at a plan change and at renewal. Mirrors <code>subscription.amount</code>.</td>
+<td>The monthly USD price the agent pays, set at deploy, at a plan change and at renewal. Mirrors <code>subscription.amount</code>. Once a wallet plan has ended, it shows the price the plan renews at, with that plan in <code>tier</code>: <a href="#post-useragentrenewsubscription"><code>RenewSubscription</code></a> never charges more.</td>
 </tr>
 <tr>
 <td><code>monthlycredits</code></td>
@@ -18005,10 +18005,10 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <p>Moves an active subscription to another plan: <code>"starter"</code>, <code>"pro"</code> or <code>"max"</code>. Despite its name, the endpoint moves an agent down as well as up:</p>
 <ul>
 <li><strong>A higher plan starts now.</strong> API-deployed agents pay through the wallet: the monthly difference for the time left in the current period, by the second, rounded up to the cent and at least one day's worth. The period gains the difference in credits for that same time, and every renewal grants the new plan in full. Existing extra credits and <code>usedcredits</code> are kept, and a running agent keeps running.</li>
-<li><strong>A lower plan starts at the next renewal.</strong> Nothing is charged or refunded now. The agent keeps its current plan, price and credits until the period ends, and <code>nextplan</code> on <code>UserAgent/Detail</code> reads the lower plan. The renewal then charges the lower plan's price and grants its credits.</li>
-<li><strong>Asking for the agent's current plan</strong> cancels a scheduled move to a lower plan: <code>nextplan</code> goes back to <code>null</code>.</li>
+<li><strong>A lower plan starts at the next renewal</strong>, when the request sends <code>allowDowngrade: true</code>. Without it, a lower <code>targetTier</code> is refused and nothing changes, so a client that only means to upgrade never moves an agent down. Nothing is charged or refunded now. The agent keeps its current plan, price and credits until the period ends, and <code>nextplan</code> on <code>UserAgent/Detail</code> reads the lower plan. The renewal then charges the lower plan's price and grants its credits.</li>
+<li><strong>Asking for the agent's current plan</strong> cancels a scheduled move to a lower plan: <code>nextplan</code> goes back to <code>null</code>. An agent that still pays a price from before the three plans gets its current plan scheduled instead: <code>nextplan</code> names that plan, and the renewal moves the agent to the plan's own price and credits.</li>
 </ul>
-<p>A move to a higher plan while a lower one is scheduled cancels the scheduled move first, then upgrades from the current plan. On a plan paid by card, a move to a higher plan returns a checkout <code>url</code> instead of charging the wallet: once it is paid, the higher plan starts a new full period with its full credits. A lower plan on a card plan applies from the next card renewal.</p>
+<p>A move to a higher plan while a lower one is scheduled cancels the scheduled move first, then upgrades from the current plan. On a plan paid by card, a move to a higher plan returns a checkout <code>url</code> instead of charging the wallet, and nothing changes on the agent until it is paid: the answer's <code>tier</code> and <code>nextplan</code> are the agent's as they were. Once it is paid, the higher plan starts a new full period with its full credits, and a lower plan scheduled before is dropped. A lower plan on a card plan applies from the next card renewal. A scheduled move on a card plan can't be cancelled once it has started with the new billing period and its payment is going through: that payment moves the agent, and asking for the current plan is refused until the agent shows the new plan.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -18032,6 +18032,12 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <td>string</td>
 <td>Yes</td>
 <td>The plan to move to: <code>"starter"</code>, <code>"pro"</code> or <code>"max"</code>. The parameter name is <code>targetTier</code>. Passing it as <code>tier</code> returns <code>targetTier must be starter, pro or max</code>.</td>
+</tr>
+<tr>
+<td><code>allowDowngrade</code></td>
+<td>boolean</td>
+<td>No</td>
+<td><code>true</code> to move to a lower plan at the next renewal. Without it, a <code>targetTier</code> lower than the agent's plan is refused and nothing changes. A higher plan and the agent's current plan need no flag.</td>
 </tr>
 </tbody>
 </table>
@@ -18059,7 +18065,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
   &quot;errors&quot;: []
 }
 </code></pre>
-<p>A move to a lower plan keeps the agent where it is until the renewal:</p>
+<p>A move to a lower plan, sent with <code>"allowDowngrade": true</code>, keeps the agent where it is until the renewal:</p>
 <pre><code class="language-json">{
   &quot;result&quot;: true,
   &quot;change&quot;: &quot;downgrade&quot;,
@@ -18075,7 +18081,22 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
   &quot;errors&quot;: []
 }
 </code></pre>
-<p>Asking for the agent's current plan while a lower one is scheduled answers <code>change: "downgrade-cancelled"</code> with <code>nextplan: null</code>.</p>
+<p>Asking for the agent's current plan while a lower one is scheduled answers <code>change: "downgrade-cancelled"</code> with <code>nextplan: null</code>. For an agent that still pays a price from before the three plans, <code>nextplan</code> names its current plan instead, and <code>startsAt</code>, <code>newPriceUsd</code> and <code>newMonthlyCredits</code> give the renewal that moves it to that plan's own price:</p>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;change&quot;: &quot;downgrade-cancelled&quot;,
+  &quot;tier&quot;: &quot;pro&quot;,
+  &quot;previousTier&quot;: &quot;pro&quot;,
+  &quot;targetTier&quot;: &quot;pro&quot;,
+  &quot;nextplan&quot;: &quot;pro&quot;,
+  &quot;effectiveAt&quot;: 1715644800,
+  &quot;periodEnd&quot;: 1716940800,
+  &quot;startsAt&quot;: 1716940800,
+  &quot;newPriceUsd&quot;: 30,
+  &quot;newMonthlyCredits&quot;: 3000,
+  &quot;errors&quot;: []
+}
+</code></pre>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -18115,7 +18136,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <tr>
 <td><code>newPriceUsd</code> / <code>newMonthlyCredits</code></td>
 <td><code>number</code></td>
-<td>The new plan's monthly price and credits; for a downgrade, from the renewal on.</td>
+<td>The new plan's monthly price and credits; for a downgrade, from the renewal on. A cancelled downgrade has them only when <code>nextplan</code> names the current plan: that plan's price and credits from the renewal on.</td>
 </tr>
 <tr>
 <td><code>creditsNow</code> / <code>creditsThisPeriod</code> / <code>creditsFromRenewal</code></td>
@@ -18130,7 +18151,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <tr>
 <td><code>startsAt</code></td>
 <td><code>number</code></td>
-<td>Downgrade: the moment the lower plan starts, the same as <code>effectiveAt</code>.</td>
+<td>Downgrade: the moment the lower plan starts, the same as <code>effectiveAt</code>. Cancelled downgrade with <code>nextplan</code> set: the renewal that moves the agent to its plan's own price.</td>
 </tr>
 <tr>
 <td><code>periodEnd</code></td>
@@ -18140,7 +18161,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <tr>
 <td><code>url</code> / <code>targetPriceUsd</code> / <code>targetCredits</code></td>
 <td><code>string</code> / <code>number</code></td>
-<td>Upgrade on a card plan: the checkout link, and the plan's price and credits once it is paid.</td>
+<td>Upgrade on a card plan: the checkout link, and the plan's price and credits once it is paid. Nothing changes until then, so <code>tier</code> and <code>nextplan</code> are the agent's as they were.</td>
 </tr>
 </tbody>
 </table>
@@ -18177,7 +18198,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </div>
 <p><strong>Headers:</strong> No extra header is needed. For team agents, use an API key from a project in the agent's team. Keys from another workspace are rejected.</p>
 <blockquote>
-<p>A renewal charges the agent's plan price and grants the plan's credits in full. When a lower plan is scheduled (<code>nextplan</code>), the renewal charges and grants that plan instead and clears <code>nextplan</code>. Skills never change what a renewal costs.</p>
+<p>A renewal charges the agent's plan price and grants the plan's credits in full. When a lower plan is scheduled (<code>nextplan</code>), the renewal charges and grants that plan instead and clears <code>nextplan</code>. Once a wallet plan has ended, the agent shows the plan its renewal takes and that plan's price: <code>tier</code> names it, <code>nextplan</code> is <code>null</code> and <code>monthlypriceusd</code> is the price. A renewal never charges more than <code>monthlypriceusd</code> shows. Skills never change what a renewal costs.</p>
 </blockquote>
 <h5 id="response-undo-cancel">Response: undo-cancel</h5>
 <p>Called while the subscription is still <code>"active"</code> with a pending cancel flag set by <code>CancelSubscription</code>:</p>
@@ -18232,6 +18253,10 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <tr>
 <td><code>Insufficient wallet balance. Required: $X.XX, Available: $Y.YY</code></td>
 <td>Wallet (personal or team) can't cover the renewal price</td>
+</tr>
+<tr>
+<td><code>This plan now renews on the Max plan at $100.00 a month, not the $70.00 it showed. Nothing was charged. Renew again to pay the new price.</code> (the plan's name and prices)</td>
+<td>The renewal costs more than the agent's <code>monthlypriceusd</code> showed. Nothing is charged, and the agent now shows the renewal's plan and price (<code>tier</code> and <code>monthlypriceusd</code>, with <code>nextplan</code> cleared). Show the new price, then call <code>RenewSubscription</code> again to pay it</td>
 </tr>
 <tr>
 <td><code>A payment for this agent is already being processed. It usually finishes within a minute; refresh to see the subscription.</code></td>
@@ -18425,6 +18450,14 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <tr>
 <td><code>Already on the Pro plan.</code> (the plan's name)</td>
 <td><code>UpgradeTier</code> with the agent's current plan when no lower plan is scheduled: no-op</td>
+</tr>
+<tr>
+<td><code>The Starter plan is smaller than this agent's Pro plan, so this is not an upgrade. Nothing was changed. A move to a smaller plan starts at the next renewal; to ask for it, send allowDowngrade: true.</code> (the plans' names)</td>
+<td><code>UpgradeTier</code> with a <code>targetTier</code> lower than the agent's plan and no <code>allowDowngrade: true</code>. Nothing is changed or charged</td>
+</tr>
+<tr>
+<td><code>The move to the Starter plan started with this billing period, and its payment moves the agent there, so it can no longer be undone. Nothing was changed. Once the agent shows the Starter plan, change the plan again.</code> (the plan's name)</td>
+<td><code>UpgradeTier</code> with the agent's current plan on a card plan whose scheduled plan has already started with the new billing period. Its payment moves the agent there</td>
 </tr>
 <tr>
 <td><code>No active plan. Use /UserAgent/CreateSubscriptionCheckout to start one on the plan you pick.</code></td>
@@ -28483,7 +28516,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
 <li>A 30-day prepaid subscription row (<code>plan: "agent"</code>, <code>tier: &lt;starter|pro|max&gt;</code>, <code>provider: "prepaid"</code>) is inserted at Deploy.</li>
 <li><code>POST /UserAgent/CancelSubscription</code> schedules cancel-at-period-end.</li>
 <li><code>POST /UserAgent/RenewSubscription</code> either undoes a pending cancel (no charge) or creates a fresh 30-day period (wallet charged).</li>
-<li><code>POST /UserAgent/UpgradeTier</code> changes the plan: a higher plan starts now with a prorated wallet debit, a lower plan at the next renewal.</li>
+<li><code>POST /UserAgent/UpgradeTier</code> changes the plan: a higher plan starts now with a prorated wallet debit, a lower plan (sent with <code>allowDowngrade: true</code>) at the next renewal.</li>
 </ul>
 <p>Turning a skill on or off never changes the subscription: the plan's price and credits stay the same (see Step 4 above).</p>
 <h2 id="limits-notes">Limits &amp; Notes</h2>
