@@ -13172,11 +13172,16 @@ import type {
       &quot;createdat&quot;: &quot;1711929600&quot;,
       &quot;updatedat&quot;: &quot;1714521600&quot;
     }
+  ],
+  &quot;plans&quot;: [
+    { &quot;key&quot;: &quot;starter&quot;, &quot;title&quot;: &quot;Starter&quot;, &quot;priceUsd&quot;: 5,   &quot;monthlyCredits&quot;: 500 },
+    { &quot;key&quot;: &quot;pro&quot;,     &quot;title&quot;: &quot;Pro&quot;,     &quot;priceUsd&quot;: 30,  &quot;monthlyCredits&quot;: 3000 },
+    { &quot;key&quot;: &quot;max&quot;,     &quot;title&quot;: &quot;Max&quot;,     &quot;priceUsd&quot;: 100, &quot;monthlyCredits&quot;: 10000 }
   ]
 }
 </code></pre>
 <blockquote>
-<p><code>Agent/List</code> returns the catalog fields plus inlined <code>tiers</code>, so a catalog card can show the price without a per-row <code>Agent/Detail</code> call. Call <code>POST /Agent/Detail</code> with <code>type: "full"</code> when you need the full template (skills map, credential schema, custom skills, scheduled tasks).</p>
+<p><code>Agent/List</code> returns the catalog fields plus inlined <code>tiers</code>, so a catalog card can show the price without a per-row <code>Agent/Detail</code> call. The top-level <code>plans</code> lists the three plans in order with their names (<code>key</code>, <code>title</code>, <code>priceUsd</code>, <code>monthlyCredits</code>), the same for every agent. Call <code>POST /Agent/Detail</code> with <code>type: "full"</code> when you need the full template (skills map, credential schema, custom skills, scheduled tasks).</p>
 </blockquote>
 <h4 id="post-agentdetail"><strong>POST</strong> /Agent/Detail</h4>
 <p>Retrieves details for a single agent by guid or slug. This is a <strong>public endpoint</strong>, so no authentication is required.</p>
@@ -13208,7 +13213,7 @@ import type {
 <td><code>type</code></td>
 <td>string</td>
 <td>No</td>
-<td>Pass <code>"full"</code> to also include <code>customskills</code> (the template's strategies a deployer can edit) and <code>scheduledskills</code> (every scheduled task) in the response. Without <code>type: "full"</code>, the response carries the catalog header + <code>tiers</code> + <code>tokenRates</code> + <code>credentials</code> + <code>skills</code> + <code>skillsmeta</code> only.</td>
+<td>Pass <code>"full"</code> to also include <code>customskills</code> (the template's strategies a deployer can edit) and <code>scheduledskills</code> (every scheduled task) in the response. Without <code>type: "full"</code>, the response carries the catalog header + <code>tiers</code> + <code>plans</code> + <code>tokenRates</code> + <code>credentials</code> + <code>skills</code> + <code>skillsmeta</code> + <code>communicationChannels</code> + <code>extracreditpacks</code> only.</td>
 </tr>
 </tbody>
 </table>
@@ -13236,6 +13241,11 @@ import type {
         &quot;pro&quot;:     { &quot;priceUsd&quot;: 30,  &quot;credits&quot;: 3000 },
         &quot;max&quot;:     { &quot;priceUsd&quot;: 100, &quot;credits&quot;: 10000 }
       },
+      &quot;plans&quot;: [
+        { &quot;key&quot;: &quot;starter&quot;, &quot;title&quot;: &quot;Starter&quot;, &quot;priceUsd&quot;: 5,   &quot;monthlyCredits&quot;: 500 },
+        { &quot;key&quot;: &quot;pro&quot;,     &quot;title&quot;: &quot;Pro&quot;,     &quot;priceUsd&quot;: 30,  &quot;monthlyCredits&quot;: 3000 },
+        { &quot;key&quot;: &quot;max&quot;,     &quot;title&quot;: &quot;Max&quot;,     &quot;priceUsd&quot;: 100, &quot;monthlyCredits&quot;: 10000 }
+      ],
       &quot;tokenRates&quot;: {
         &quot;default_model&quot;: &quot;openai/gpt-5.6-sol&quot;,
         &quot;fallback_rate&quot;: { &quot;input_per_1m&quot;: 625, &quot;output_per_1m&quot;: 3750, &quot;cached_input_per_1m&quot;: 62.5, &quot;cache_write_per_1m&quot;: 781.25 },
@@ -13329,7 +13339,11 @@ import type {
           }
         }
       },
-      &quot;extracreditpacks&quot;: [],
+      &quot;extracreditpacks&quot;: [
+        { &quot;packkey&quot;: &quot;small&quot;,  &quot;credits&quot;: 1000,  &quot;priceusd&quot;: 10,  &quot;enabled&quot;: true },
+        { &quot;packkey&quot;: &quot;medium&quot;, &quot;credits&quot;: 5000,  &quot;priceusd&quot;: 50,  &quot;enabled&quot;: true },
+        { &quot;packkey&quot;: &quot;large&quot;,  &quot;credits&quot;: 20000, &quot;priceusd&quot;: 200, &quot;enabled&quot;: true }
+      ],
       &quot;status&quot;: 1,
       &quot;createdat&quot;: &quot;1711929600&quot;,
       &quot;updatedat&quot;: &quot;1714521600&quot;
@@ -13338,7 +13352,7 @@ import type {
 }
 </code></pre>
 <blockquote>
-<p><code>Agent/Detail</code> describes the <strong>template</strong>, so its <code>credentials</code> block only carries the <code>optional</code> / <code>extra</code> meta flags (when the template sets them) plus the registry-driven <code>_schema</code> (field labels / types) and <code>_editable</code> map. It holds no saved values, whoever calls it and whatever <code>type</code> is sent. The <code>_connected</code> flag is per-instance and appears on <code>UserAgent/Detail</code> and the <code>Deploy</code> and <code>Update</code> responses, not on the catalog endpoint. <code>extracreditpacks</code> is always <code>[]</code> here: the packs appear on a deployed agent's <code>UserAgent/Detail</code> (see <a href="#extra-credit-packs">Extra Credit Packs</a>).</p>
+<p><code>Agent/Detail</code> describes the <strong>template</strong>, so its <code>credentials</code> block only carries the <code>optional</code> / <code>extra</code> meta flags (when the template sets them) plus the registry-driven <code>_schema</code> (field labels / types) and <code>_editable</code> map. It holds no saved values, whoever calls it and whatever <code>type</code> is sent. The <code>_connected</code> flag is per-instance and appears on <code>UserAgent/Detail</code> and the <code>Deploy</code> and <code>Update</code> responses, not on the catalog endpoint. <code>plans</code> lists the three plans with their names, and <code>extracreditpacks</code> the three extra credit packs every plan can buy, so a visitor sees both before deploying. A deployed agent's <code>UserAgent/Detail</code> carries the same lists under <code>agent</code> (see <a href="#extra-credit-packs">Extra Credit Packs</a>).</p>
 </blockquote>
 <p><strong>Credential response flags</strong> (on <code>UserAgent/Detail</code> and the <code>Deploy</code> and <code>Update</code> responses): every credential object in the top-level <code>credentials</code> tree on the per-instance endpoints carries:</p>
 <div class="docs-param-table">
@@ -14450,7 +14464,7 @@ import type {
 <tr>
 <td><code>renewalcredits</code></td>
 <td><code>number</code></td>
-<td>The credits each renewal grants.</td>
+<td>The credits a renewal grants on the agent's current plan. When <code>nextplan</code> is set, the next renewal grants that plan's credits instead, as <code>planChange.creditsFromRenewal</code> on <a href="#post-useragentpricingpreview"><code>PricingPreview</code></a> shows.</td>
 </tr>
 <tr>
 <td><code>extracredits</code></td>
@@ -14928,7 +14942,16 @@ import type {
           &quot;pro&quot;:     { &quot;priceUsd&quot;: 30,  &quot;credits&quot;: 3000 },
           &quot;max&quot;:     { &quot;priceUsd&quot;: 100, &quot;credits&quot;: 10000 }
         },
-        &quot;extracreditpacks&quot;: []
+        &quot;plans&quot;: [
+          { &quot;key&quot;: &quot;starter&quot;, &quot;title&quot;: &quot;Starter&quot;, &quot;priceUsd&quot;: 5,   &quot;monthlyCredits&quot;: 500 },
+          { &quot;key&quot;: &quot;pro&quot;,     &quot;title&quot;: &quot;Pro&quot;,     &quot;priceUsd&quot;: 30,  &quot;monthlyCredits&quot;: 3000 },
+          { &quot;key&quot;: &quot;max&quot;,     &quot;title&quot;: &quot;Max&quot;,     &quot;priceUsd&quot;: 100, &quot;monthlyCredits&quot;: 10000 }
+        ],
+        &quot;extracreditpacks&quot;: [
+          { &quot;packkey&quot;: &quot;small&quot;,  &quot;credits&quot;: 1000,  &quot;priceusd&quot;: 10,  &quot;enabled&quot;: true },
+          { &quot;packkey&quot;: &quot;medium&quot;, &quot;credits&quot;: 5000,  &quot;priceusd&quot;: 50,  &quot;enabled&quot;: true },
+          { &quot;packkey&quot;: &quot;large&quot;,  &quot;credits&quot;: 20000, &quot;priceusd&quot;: 200, &quot;enabled&quot;: true }
+        ]
       },
       &quot;createdat&quot;: 1714608000,
       &quot;updatedat&quot;: 1714694500,
@@ -14943,7 +14966,7 @@ import type {
 }
 </code></pre>
 <blockquote>
-<p><strong><code>Update</code> returns the full composed useragent shape</strong>: same composition path as <code>UserAgent/Detail</code>, so <code>credentials</code>, <code>customskills</code>, <code>scheduledskills</code>, <code>skills</code>, <code>skillsmeta</code>, <code>tokenRates</code>, <code>agentModel</code>, <code>communicationChannels</code>, <code>enabledChannels</code>, and the <code>agent</code> template summary (with <code>tiers</code> + <code>extracreditpacks</code>) are all included. The fields <code>Update</code> cannot safely populate without an extra round-trip (<code>subscription</code>, <code>extracreditsexpiry</code>, <code>lastactivityat</code>) stay omitted. Call <code>UserAgent/Detail</code> next if you need them. Otherwise the response is suitable for an in-place panel re-render without a follow-up call.</p>
+<p><strong><code>Update</code> returns the full composed useragent shape</strong>: same composition path as <code>UserAgent/Detail</code>, so <code>credentials</code>, <code>customskills</code>, <code>scheduledskills</code>, <code>skills</code>, <code>skillsmeta</code>, <code>tokenRates</code>, <code>agentModel</code>, <code>communicationChannels</code>, <code>enabledChannels</code>, and the <code>agent</code> template summary (with <code>tiers</code>, <code>plans</code> and <code>extracreditpacks</code>) are all included. The fields <code>Update</code> cannot safely populate without an extra round-trip (<code>subscription</code>, <code>extracreditsexpiry</code>, <code>lastactivityat</code>) stay omitted. Call <code>UserAgent/Detail</code> next if you need them. Otherwise the response is suitable for an in-place panel re-render without a follow-up call.</p>
 <p><strong><code>restarting</code>.</strong> <code>true</code> when this call restarts the agent, <code>false</code> otherwise. With <code>true</code>, the row shows the transition mid-flight: <code>status: 1</code> (Stopping) with a fresh <code>stoppingat</code> timestamp. Wiro re-queues the agent once it has stopped, so it comes back with the new title. A restart request that can't be carried out answers <code>Failed to restart user agent</code>; try again.</p>
 </blockquote>
 <h4 id="post-useragentupdatesettings"><strong>POST</strong> /UserAgent/UpdateSettings</h4>
@@ -16401,12 +16424,12 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <td><code>skillsapply-in-progress</code>: another <code>SkillsApply</code> is already running on this useragent. Wait and retry.</td>
 </tr>
 <tr>
-<td><code>108</code></td>
-<td><code>skillsapply-db-tx-failed</code>: DB transaction rolled back; safe to retry with a new idempotency key.</td>
+<td><code>105</code></td>
+<td><code>Change the plan with UpgradeTier.</code>: the <code>tier</code> sent is not the agent's current plan. Nothing is changed. Change the plan with <a href="#post-useragentupgradetier"><code>UpgradeTier</code></a>, and send skill changes without <code>tier</code>.</td>
 </tr>
 <tr>
-<td><code>110</code></td>
-<td>The change failed and could not be taken back: the agent may still have the new skills. Check them with <code>UserAgent/Detail</code> before changing anything. The same idempotency key answers <code>110</code> again.</td>
+<td><code>108</code></td>
+<td><code>skillsapply-db-tx-failed</code>: DB transaction rolled back; safe to retry with a new idempotency key.</td>
 </tr>
 </tbody>
 </table>
@@ -16479,6 +16502,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </div>
 </div>
 <h5 id="response_15">Response</h5>
+<p>A Pro agent on a wallet plan, previewing Max with 15 days left of 30:</p>
 <pre><code class="language-json">{
   &quot;result&quot;: true,
   &quot;errors&quot;: [],
@@ -16649,7 +16673,6 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </div>
 </div>
 <h5 id="response_16">Response</h5>
-<p>A Pro agent on a wallet plan, previewing Max with 15 days left of 30:</p>
 <pre><code class="language-json">{
   &quot;result&quot;: true,
   &quot;errors&quot;: [],
@@ -17804,7 +17827,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 </div>
 <p>Rows are returned newest-first. Rejected sessions (<code>realtime_session_rejected</code>) are intermixed and carry <code>metadata.reason</code> (visible by reading the same <code>messageguid</code> via <code>Message/Detail</code>) with values: <code>concurrent_limit</code>, <code>agent_prep_timeout</code>, <code>realtime_ws_open_failed</code>, <code>realtime_stream_timeout</code>. Full field reference: <a href="/docs/integration-twiliovoice-skills#call-history">Twilio Voice, Call History</a>.</p>
 <h3 id="extra-credit-packs">Extra Credit Packs</h3>
-<p>An agent with an active plan can buy extra credits at any time, whatever its plan. Every agent gets the same three packs, listed at <code>agent.extracreditpacks</code> on <code>UserAgent/Detail</code>:</p>
+<p>An agent with an active plan can buy extra credits at any time, whatever its plan. Every agent gets the same three packs, listed at <code>agent.extracreditpacks</code> on <code>UserAgent/Detail</code> and, before deploying, at <code>extracreditpacks</code> on <code>Agent/Detail</code>:</p>
 <pre><code class="language-json">&quot;extracreditpacks&quot;: [
   { &quot;packkey&quot;: &quot;small&quot;,  &quot;credits&quot;: 1000,  &quot;priceusd&quot;: 10,  &quot;enabled&quot;: true },
   { &quot;packkey&quot;: &quot;medium&quot;, &quot;credits&quot;: 5000,  &quot;priceusd&quot;: 50,  &quot;enabled&quot;: true },
@@ -18283,7 +18306,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <tr>
 <td><strong>Monthly credits</strong></td>
 <td><code>tiers.{starter,pro,max}.credits</code></td>
-<td>500, 3,000 or 10,000. Every renewal grants them in full (<code>renewalcredits</code>); <code>monthlycredits</code> is what the current period grants.</td>
+<td>500, 3,000 or 10,000. Every renewal grants a plan's credits in full: the current plan's (<code>renewalcredits</code>), or the scheduled plan's when <code>nextplan</code> is set. <code>monthlycredits</code> is what the current period grants.</td>
 </tr>
 <tr>
 <td><strong>Skills</strong></td>
@@ -28521,8 +28544,8 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
                             </tr>
                             <tr>
                               <td><code>grant</code></td>
-                              <td>Plan change</td>
-                              <td>When a move to a higher plan lifts this period's credits. Positive <code>amount</code>: what this period gained. <code>metadata.creditsFromRenewal</code> is what each renewal grants. Rows from before skill changes became free can also come from a skill change (<code>action: "skill-toggle"</code> or <code>"skills-apply"</code>).</td>
+                              <td>Plan change / skill change</td>
+                              <td>When a move to a higher plan lifts this period's credits. Positive <code>amount</code>: what this period gained. <code>metadata.creditsFromRenewal</code> is what each renewal grants. A skill change through <code>SkillsApply</code> or <code>SkillToggle</code> also writes a <code>grant</code> row with <code>amount: 0</code>: <code>action: "skill-toggle"</code> (<code>metadata: { skill, enabled }</code>) or <code>"skills-apply"</code> (<code>metadata: { diff, idempotencyKey }</code>). A skill change row with a non-zero <code>amount</code> or a <code>metadata.usedCreditsUsd</code> is from before skill changes became free.</td>
                             </tr>
                             <tr>
                               <td><code>expired</code></td>
@@ -28536,8 +28559,8 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
                             </tr>
                             <tr>
                               <td><code>adjust</code></td>
-                              <td>Skill change / Wiro support</td>
-                              <td>A record for Wiro support. <code>amount</code> is <code>0</code> on <code>action: "skill-change-not-undone"</code> (a failed change that could not be taken back) and on older <code>action: "skill-credit-failed"</code> rows (a skill credit that was not added to the wallet).</td>
+                              <td>Wiro support</td>
+                              <td>A record for Wiro support. Rows with <code>amount: 0</code> and <code>action: "skill-change-not-undone"</code> (a failed skill change that could not be taken back) or <code>"skill-credit-failed"</code> (a skill credit that was not added to the wallet) are from before skill changes became free.</td>
                             </tr>
                           </tbody>
                         </table>
@@ -28759,7 +28782,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
                           </thead>
                           <tbody>
                             <tr><td><code>monthlycredits</code></td><td><code>number</code></td><td>The credits this period grants.</td></tr>
-                            <tr><td><code>renewalcredits</code></td><td><code>number</code></td><td>The credits each renewal grants.</td></tr>
+                            <tr><td><code>renewalcredits</code></td><td><code>number</code></td><td>The credits a renewal grants on the agent's current plan. When the agent has a <code>nextplan</code> (on <code>UserAgent/Detail</code>), the next renewal grants that plan's credits instead.</td></tr>
                             <tr><td><code>extracredits</code></td><td><code>number</code></td><td>Active extra-credit balance (sum of non-expired packs).</td></tr>
                             <tr><td><code>usedcredits</code></td><td><code>number</code></td><td>Consumed during the current period (reported by the runtime).</td></tr>
                             <tr><td><code>remainingcredits</code></td><td><code>number</code></td><td><code>max(0, monthlycredits + extracredits - usedcredits)</code>.</td></tr>
@@ -28782,7 +28805,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/Skills/List&quot; \
                           <tbody>
                             <tr><td><code>guid</code></td><td><code>string</code></td><td>Stable id of the ledger row. Daemon retries reuse this guid for idempotency.</td></tr>
                             <tr><td><code>type</code></td><td><code>string</code></td><td>One of <code>"deduct"</code>, <code>"renewal"</code>, <code>"purchase"</code>, <code>"grant"</code>, <code>"expired"</code>, <code>"refund"</code>, <code>"adjust"</code>. There is no <code>"cancel"</code> type: a user-initiated subscription cancel only flips auto-renew off; credits are not forfeited until <code>currentperiodend</code> is reached, at which point the cron writes the ledger row as <code>type: "expired"</code>, <code>action: "subscription"</code>.</td></tr>
-                            <tr><td><code>action</code></td><td><code>string|null</code></td><td>Fine-grained detail. Values depend on <code>type</code>: <code>"tokens"</code> (deduct: the per-turn LLM token charge Wiro records for every chat, cron, and voice post-call turn); <code>"monthly"</code> (renewal); <code>"small"</code>, <code>"medium"</code>, <code>"large"</code> (purchase); <code>"upgrade"</code>, <code>"tier-change"</code> (grant: a move to a higher plan); <code>"skill-toggle"</code>, <code>"skills-apply"</code> (grant or expired rows from before skill changes became free); <code>"subscription"</code> (expired, end-of-period cancel rollover; refund); <code>"skill-change-not-undone"</code>, <code>"skill-credit-failed"</code> (adjust). Legacy deduct rows may also carry <code>"message"</code>, <code>"create"</code>, <code>"modify"</code>, or <code>"regenerate"</code>.</td></tr>
+                            <tr><td><code>action</code></td><td><code>string|null</code></td><td>Fine-grained detail. Values depend on <code>type</code>: <code>"tokens"</code> (deduct: the per-turn LLM token charge Wiro records for every chat, cron, and voice post-call turn); <code>"monthly"</code> (renewal); <code>"small"</code>, <code>"medium"</code>, <code>"large"</code> (purchase); <code>"upgrade"</code>, <code>"tier-change"</code> (grant: a move to a higher plan); <code>"skill-toggle"</code>, <code>"skills-apply"</code> (grant: a skill change, with <code>amount: 0</code>; grant or expired rows with a non-zero <code>amount</code> are from before skill changes became free); <code>"subscription"</code> (expired, end-of-period cancel rollover; refund); <code>"skill-change-not-undone"</code>, <code>"skill-credit-failed"</code> (adjust, rows from before skill changes became free). Legacy deduct rows may also carry <code>"message"</code>, <code>"create"</code>, <code>"modify"</code>, or <code>"regenerate"</code>.</td></tr>
                             <tr><td><code>amount</code></td><td><code>number</code></td><td>Signed credit delta: negative for deductions, positive for grants.</td></tr>
                             <tr><td><code>balanceafter</code></td><td><code>number|null</code></td><td>Remaining credit balance snapshot written at the time of the event. <code>null</code> on per-turn <code>deduct</code> rows.</td></tr>
                             <tr><td><code>description</code></td><td><code>string|null</code></td><td>Human-readable label. On an <code>action: "tokens"</code> row it spells the counts out: <code>LLM &lt;model&gt; (uncached in N, cached in N, out N, cache write N, total N tokens)</code>, where <code>cached in</code> and <code>cache write</code> appear only above 0.</td></tr>

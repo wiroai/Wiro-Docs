@@ -13,10 +13,10 @@ The ledger is the single source of truth for "where did my credits go?" and powe
 | `deduct` | Agent runtime | Per-turn LLM token charge (`action: "tokens"`) for every chat, cron, and voice post-call turn. Negative `amount`. |
 | `renewal` | Subscription cron | At each 30-day rollover when the wallet successfully covers the renewal. Positive `amount` = monthly credits granted. |
 | `purchase` | Extra-credit checkout | When `POST /UserAgent/CreateExtraCreditCheckout` (`useprepaid: true`) succeeds. Positive `amount` = pack credits. |
-| `grant` | Plan change | When a move to a higher plan lifts this period's credits. Positive `amount`: what this period gained. `metadata.creditsFromRenewal` is what each renewal grants. Rows from before skill changes became free can also come from a skill change (`action: "skill-toggle"` or `"skills-apply"`). |
+| `grant` | Plan change / skill change | When a move to a higher plan lifts this period's credits. Positive `amount`: what this period gained. `metadata.creditsFromRenewal` is what each renewal grants. A skill change through `SkillsApply` or `SkillToggle` also writes a `grant` row with `amount: 0`: `action: "skill-toggle"` (`metadata: { skill, enabled }`) or `"skills-apply"` (`metadata: { diff, idempotencyKey }`). A skill change row with a non-zero `amount` or a `metadata.usedCreditsUsd` is from before skill changes became free. |
 | `expired` | Subscription end | When a cancelled subscription rolls past `currentperiodend` and the cron revokes any remaining monthly leftover (`action: "subscription"`). Negative `amount`. Rows from before skill changes became free can also come from a skill turned off mid-period (`action: "skill-toggle"` or `"skills-apply"`, with `metadata.usedCreditsUsd`). |
 | `refund` | Server-side refund | Issued by Wiro support when a previous charge is reversed. Positive `amount`. |
-| `adjust` | Skill change / Wiro support | A record for Wiro support. `amount` is `0` on `action: "skill-change-not-undone"` (a failed change that could not be taken back) and on older `action: "skill-credit-failed"` rows (a skill credit that was not added to the wallet). |
+| `adjust` | Wiro support | A record for Wiro support. Rows with `amount: 0` and `action: "skill-change-not-undone"` (a failed skill change that could not be taken back) or `"skill-credit-failed"` (a skill credit that was not added to the wallet) are from before skill changes became free. |
 
 > **The ledger is append-only.** There is no delete endpoint. Each row carries a stable `guid` that the server uses for deduplication (so a duplicate retry of the same deduct event is a no-op).
 
@@ -209,7 +209,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 | Field | Type | Description |
 |-------|------|-------------|
 | `monthlycredits` | `number` | The credits this period grants. |
-| `renewalcredits` | `number` | The credits each renewal grants. |
+| `renewalcredits` | `number` | The credits a renewal grants on the agent's current plan. When the agent has a `nextplan` (on `UserAgent/Detail`), the next renewal grants that plan's credits instead. |
 | `extracredits` | `number` | Active extra-credit balance (sum of non-expired packs). |
 | `usedcredits` | `number` | Consumed during the current period (reported by the runtime). |
 | `remainingcredits` | `number` | `max(0, monthlycredits + extracredits - usedcredits)`. |
@@ -224,7 +224,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/TransactionList" \
 |-------|------|-------------|
 | `guid` | `string` | Stable id of the ledger row. Daemon retries reuse this guid for idempotency. |
 | `type` | `string` | One of `"deduct"`, `"renewal"`, `"purchase"`, `"grant"`, `"expired"`, `"refund"`, `"adjust"`. There is no `"cancel"` type: a user-initiated subscription cancel only flips auto-renew off; credits are not forfeited until `currentperiodend` is reached, at which point the cron writes the ledger row as `type: "expired"`, `action: "subscription"`. |
-| `action` | `string\|null` | Fine-grained detail. Values depend on `type`: `"tokens"` (deduct: the per-turn LLM token charge Wiro records for every chat, cron, and voice post-call turn); `"monthly"` (renewal); `"small"`, `"medium"`, `"large"` (purchase); `"upgrade"`, `"tier-change"` (grant: a move to a higher plan); `"skill-toggle"`, `"skills-apply"` (grant or expired rows from before skill changes became free); `"subscription"` (expired, end-of-period cancel rollover; refund); `"skill-change-not-undone"`, `"skill-credit-failed"` (adjust). Legacy deduct rows may also carry `"message"`, `"create"`, `"modify"`, or `"regenerate"`. |
+| `action` | `string\|null` | Fine-grained detail. Values depend on `type`: `"tokens"` (deduct: the per-turn LLM token charge Wiro records for every chat, cron, and voice post-call turn); `"monthly"` (renewal); `"small"`, `"medium"`, `"large"` (purchase); `"upgrade"`, `"tier-change"` (grant: a move to a higher plan); `"skill-toggle"`, `"skills-apply"` (grant: a skill change, with `amount: 0`; grant or expired rows with a non-zero `amount` are from before skill changes became free); `"subscription"` (expired, end-of-period cancel rollover; refund); `"skill-change-not-undone"`, `"skill-credit-failed"` (adjust, rows from before skill changes became free). Legacy deduct rows may also carry `"message"`, `"create"`, `"modify"`, or `"regenerate"`. |
 | `amount` | `number` | Signed credit delta: negative for deductions, positive for grants. |
 | `balanceafter` | `number\|null` | Remaining credit balance snapshot written at the time of the event. `null` on per-turn `deduct` rows. |
 | `description` | `string\|null` | Human-readable label. On an `action: "tokens"` row it spells the counts out: `LLM <model> (uncached in N, cached in N, out N, cache write N, total N tokens)`, where `cached in` and `cache write` appear only above 0. |
