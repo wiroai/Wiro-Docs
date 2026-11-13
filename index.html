@@ -13057,7 +13057,7 @@ import type {
 <tr>
 <td><code>1</code></td>
 <td>Stopping</td>
-<td>Agent is shutting down. Wait for it to reach Stopped before taking action.</td>
+<td>Agent is shutting down. After a stop, wait for it to reach Stopped before taking action. During a <a href="#automatic-restart">restart</a>, it goes on to Queued and Starting by itself.</td>
 </tr>
 <tr>
 <td><code>2</code></td>
@@ -20743,7 +20743,7 @@ Reply &quot;yes&quot; to apply exactly this change, or &quot;no&quot; to turn it
 </tr>
 <tr>
 <td><code>Next: paste your &lt;Title&gt; key as your reply.</code> or <code>&lt;N&gt; connector cards still need their keys: add each key on its card.</code></td>
-<td><code>connect</code> cards of the same reply still wait for their keys, such as the <code>connect</code> card that came with an <code>add</code> card just applied. A <code>connect</code> card whose connector still waits for an <code>add</code> card that failed or was turned down isn't counted. With one such card, the <code>Next:</code> line ends the answer. <code>&lt;Title&gt;</code> is the connector's <code>title</code> in the <code>needs</code> of an <code>add</code> card on the same reply, or the <code>connect</code> card's <code>connector</code>, such as <code>serper</code>, when no <code>add</code> card names it. When the answer says the agent is restarting, the line goes on with <code>Send it now and it loads with this same restart.</code>, since a key saved while the agent is still stopping or queued for that restart loads with it.</td>
+<td><code>connect</code> cards of the same reply still wait for their keys, such as the <code>connect</code> card that came with an <code>add</code> card just applied. A <code>connect</code> card whose connector still waits for an <code>add</code> card that failed or was turned down isn't counted. When one card is counted, the <code>Next:</code> line ends the answer. <code>&lt;Title&gt;</code> is the connector's <code>title</code> in the <code>needs</code> of an <code>add</code> card on the same reply, or, when no <code>add</code> card names it, the connector's name in the agent's setup, such as <code>Serper Web Search</code>. When the answer says the agent is restarting, the line goes on with <code>Send it now and it loads with this same restart.</code>, since a key saved while the agent is still stopping or queued for that restart loads with it.</td>
 </tr>
 <tr>
 <td><code>Saved &lt;fields&gt; for &lt;Connector&gt;. Still needed: &lt;fields&gt;.</code></td>
