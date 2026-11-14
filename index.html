@@ -26891,6 +26891,7 @@ async function saveGoogleAdsPick(useragentguid, picked) {
 <p>The agent never changes its own setup and never sees a key. It proposes the change as a <strong>setup card</strong>. Wiro checks the card against the agent's current setup and stores it on the message that asked for it, where it shows as a <code>setup</code> block in that message's <code>timeline[]</code>. Nothing changes until an agent admin applies the card. Wiro then applies the stored card, checked again against the agent as it is at that moment, and never anything written in the chat.</p>
 <h3 id="your-product-shows-everything">Your product shows everything</h3>
 <p>Wiro's answers in a chat sent with a project API key name no site, page or link. When something still has to be connected, the answer says so in a plain sentence and returns the same information as data, the <code>next</code> array, so your product shows its own Connect button. Keys, app keys and tokens go into your own forms and reach Wiro through the API, never through the chat. The provider's consent screen, when a connector uses one, shows your app's name when you connect it with your own app keys, and the browser comes back to a page on your own site.</p>
+<p>A few fields are for your backend, not for your users: every message row and every card names your API key's owner as the person who sent, asked or applied (see <a href="#api-key">API key</a>), and the tokens and ids are your own references. Show your users your own names and words.</p>
 <h3 id="the-flow-at-a-glance">The flow at a glance</h3>
 <pre><code class="language-text">Your user types           Your backend                     Wiro
 --------------            ------------                     ----
@@ -26905,9 +26906,10 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <h2 id="before-you-start">Before You Start</h2>
 <h3 id="api-key">API key</h3>
 <p>Every call in this guide is authenticated with a project API key from your Wiro dashboard, sent as the <code>x-api-key</code> header (signature-based projects also send <code>x-nonce</code> and <code>x-signature</code>). See <a href="/docs/authentication">Authentication</a>. Call Wiro from your backend only: never put the key in browser or mobile app code.</p>
-<p>A call made with your API key acts as the key's owner: the person who created the project. Messages you send are stored as that person's messages, and setup cards are applied with that person's rights.</p>
+<p>Your app may hold two kinds of token, so that the browser follows a chat on the <a href="/docs/agent-websocket">Agent WebSocket</a> itself: a turn's <code>agenttoken</code> and a session's <code>sessiontoken</code>. The socket takes no API key, and each token reads only its own turn or session, so give a person only the tokens of their own chats. Or keep the socket on your backend and relay its events.</p>
+<p>A call made with your API key acts as the key's owner: the person who created the project. Messages you send are stored as that person's messages, and setup cards are applied with that person's rights. So every row your users write carries the owner's account: <code>uuid</code> and the <code>user</code> object (first and last name, email, username, avatar) of each message row, and <code>requestedby</code> and <code>actedby</code> of each card. Never show them as the sender. Keep your own record of who wrote what, for example by <code>sessionkey</code> and <code>messageguid</code>, and show your own names.</p>
 <h3 id="deploy-an-agent">Deploy an agent</h3>
-<p>Deploy one agent per customer of yours with <a href="/docs/agent-overview#post-useragentdeploy"><code>POST /UserAgent/Deploy</code></a>, with <code>useprepaid: true</code> and a plan in <code>tier</code>. The agent is queued and Wiro starts it: it is ready for messages when <a href="/docs/agent-overview#post-useragentdetail"><code>POST /UserAgent/Detail</code></a> reads <code>status: 4</code>. To show one customer's chats, give each conversation its own <code>sessionkey</code>.</p>
+<p>Deploy one agent per customer of yours with <a href="/docs/agent-overview#post-useragentdeploy"><code>POST /UserAgent/Deploy</code></a>, with <code>useprepaid: true</code> and a plan in <code>tier</code>. The answer's <code>useragents[0].guid</code> is the agent's id: the <code>useragentguid</code> of every other call. The agent is queued and Wiro starts it: it is ready for messages when <a href="/docs/agent-overview#post-useragentdetail"><code>POST /UserAgent/Detail</code></a> reads <code>status: 4</code>. Give each conversation its own <code>sessionkey</code>.</p>
 <pre><code class="language-json">{
   &quot;agentguid&quot;: &quot;a1b2c3d4-e5f6-7890-abcd-ef1234567890&quot;,
   &quot;title&quot;: &quot;Acme Marketing Agent&quot;,
@@ -26936,7 +26938,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 </tr>
 <tr>
 <td><code>webchat</code></td>
-<td>No: only the Wiro web chat gets cards</td>
+<td>No: only the Wiro web chat gets cards. In your product, the same as <code>off</code>.</td>
 <td>Refused: <code>Setup from chat is off for this agent.</code></td>
 </tr>
 <tr>
@@ -26948,7 +26950,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 </table>
 </div>
 </div>
-<p>So an integration that shows setup cards needs <code>"all"</code>. Set it at Deploy with <code>chatsetup</code>, or later with <a href="/docs/agent-overview#post-useragentupdatesettings"><code>POST /UserAgent/UpdateSettings</code></a>, and read it back as <code>chatSetup</code> on <code>UserAgent/Detail</code>:</p>
+<p>So an integration that shows setup cards needs <code>"all"</code>. Set it at Deploy with <code>chatsetup</code>, or later with <a href="/docs/agent-overview#post-useragentupdatesettings"><code>POST /UserAgent/UpdateSettings</code></a>, and read it back as <code>chatSetup</code> on <code>UserAgent/Detail</code>. A change from or to <code>"off"</code> restarts a starting or running agent once, and a change between <code>"all"</code> and <code>"webchat"</code> restarts nothing. <code>UpdateSettings</code> doesn't say whether it restarted the agent: read <code>UserAgent/Detail</code> after it, as in <a href="#showing-a-restart">Showing a restart</a>.</p>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
   -H &quot;Content-Type: application/json&quot; \
   -H &quot;x-api-key: YOUR_API_KEY&quot; \
@@ -26962,7 +26964,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <p>With <code>"webchat"</code> or <code>"off"</code>, the agent proposes no card in your chat and tells people that an agent admin makes the change in the agent's settings, which in your product are the settings screens you build on the same endpoints.</p>
 <h3 id="who-may-apply-a-card">Who may apply a card</h3>
 <p>Applying a card needs an agent admin: the agent's owner, or an admin of the agent's team. With your API key, that is the key's owner, so every apply your backend sends counts as that person's approval. Dismissing a card needs only that the caller can see the chat.</p>
-<p>Because of this, decide in your own product who may approve a change: show the Apply button, and pass a typed <code>yes</code> on to Wiro, only for the people allowed to change that agent. When people who must not change the agent talk to it through your app, set <code>chatsetup</code> to <code>"off"</code> for that agent and change its setup from your own settings screens instead.</p>
+<p>Because of this, decide in your own product who may approve a change: show the Apply button, and pass a typed approval on to Wiro, only for the people allowed to change that agent. Wiro reads many words as an approval, not only <code>yes</code>, and a key pasted while a <code>connect</code> card waits is saved to it: <a href="#typed-replies">Typed replies</a> has the whole list. When people who must not change the agent talk to it through your app, set <code>chatsetup</code> to <code>"off"</code> for that agent and change its setup from your own settings screens instead. That is the safe choice for any agent that several of your users share.</p>
 <h2 id="messages-and-answers">Messages and Answers</h2>
 <h3 id="send-a-message">Send a message</h3>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/Message/Send&quot; \
@@ -26982,7 +26984,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
   &quot;status&quot;: &quot;agent_queue&quot;
 }
 </code></pre>
-<p>Keep <code>messageguid</code> (the turn) and <code>agenttoken</code> (its live stream). The full parameter list, attachments and per-turn model choice are in <a href="/docs/agent-messaging#post-useragentmessagesend"><code>Message/Send</code></a>.</p>
+<p>Keep <code>messageguid</code> (the turn) and <code>agenttoken</code> (its live stream). The full parameter list, attachments and per-turn model choice are in <a href="/docs/agent-messaging#post-useragentmessagesend"><code>Message/Send</code></a>. <code>result: true</code> means the message was queued: follow the turn to its end, since a turn that couldn't be handed to the agent still ends as <code>agent_error</code> (see <a href="#when-a-turn-fails">When a turn fails</a>).</p>
 <p>When the agent isn't running, Send answers <code>result: false</code> with <code>agentstatus</code> and a sentence you can show as it is:</p>
 <pre><code class="language-json">{
   &quot;result&quot;: false,
@@ -26994,6 +26996,18 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 }
 </code></pre>
 <p>See <a href="#restarts">Restarts</a> for the other sentences.</p>
+<p>When the agent has used all its credits, Send answers <code>result: false</code> with <code>agentstatus</code> and <code>agentbalance</code>:</p>
+<pre><code class="language-json">{
+  &quot;result&quot;: false,
+  &quot;errors&quot;: [{ &quot;code&quot;: 0, &quot;message&quot;: &quot;Agent has no remaining credits. Renew your subscription or buy a credit pack to continue.&quot;, &quot;time&quot;: 1794654900 }],
+  &quot;messageguid&quot;: null,
+  &quot;agenttoken&quot;: null,
+  &quot;status&quot;: null,
+  &quot;agentstatus&quot;: 4,
+  &quot;agentbalance&quot;: { &quot;monthlycredits&quot;: 3000, &quot;extracredits&quot;: 0, &quot;usedcredits&quot;: 3000, &quot;remainingcredits&quot;: 0 }
+}
+</code></pre>
+<p>That sentence speaks to whoever pays for the agent, which is you. Detect the refusal by <code>agentbalance</code>, show your users your own words, and add credits from your backend: an <a href="/docs/agent-overview#extra-credit-packs">extra credit pack</a> with <code>useprepaid: true</code>, or a larger plan with <a href="/docs/agent-overview#post-useragentupgradetier"><code>UpgradeTier</code></a>. Setup replies that Wiro answers itself still work without credits: see <a href="#replies-the-api-answers-itself">Replies the API answers itself</a>.</p>
 <h3 id="follow-the-turn">Follow the turn</h3>
 <p>Use one of three ways:</p>
 <ol>
@@ -27035,6 +27049,50 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 }
 </code></pre>
 <p>When someone applies or dismisses the card later, the block comes again on the same <code>agenttoken</code> with <code>version: 2</code> and the new <code>status</code>, as long as your socket is still subscribed to that token. <code>Message/Detail</code> and <code>Message/History</code> always return the current state, so after a reconnect, read them again.</p>
+<p>To stop a reply that is still running, call <a href="/docs/agent-messaging#post-useragentmessagecancel"><code>POST /UserAgent/Message/Cancel</code></a> with its <code>messageguid</code>, and with its <code>sessionkey</code> when several of your users share the agent, so that one person can't stop another's reply. The turn ends as <code>agent_cancel</code>.</p>
+<h3 id="when-a-turn-fails">When a turn fails</h3>
+<p>A turn that fails ends with <code>status: "agent_error"</code>, and a cancelled one with <code>"agent_cancel"</code>. Its <code>response</code> and <code>debugoutput</code>, and the text of the <code>agent_error</code> or <code>agent_cancel</code> event and of the webhook, hold one code in brackets and a fixed sentence:</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Status</th>
+<th>What to show</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>[SECURITY_BLOCKED]</code></td>
+<td><code>agent_error</code></td>
+<td>The agent's security rules blocked the message: ask the person to change it.</td>
+</tr>
+<tr>
+<td><code>[SAFETY_POLICY_BLOCKED]</code></td>
+<td><code>agent_error</code></td>
+<td>The model's provider declined the request: ask the person to rephrase it.</td>
+</tr>
+<tr>
+<td><code>[TURN_INTERRUPTED]</code></td>
+<td><code>agent_error</code></td>
+<td>A restart cut the turn short: offer to send it again.</td>
+</tr>
+<tr>
+<td><code>[AGENT_UNAVAILABLE]</code></td>
+<td><code>agent_error</code></td>
+<td>Anything else, a message that couldn't be queued included: offer to try again shortly.</td>
+</tr>
+<tr>
+<td><code>[REQUEST_CANCELLED]</code></td>
+<td><code>agent_cancel</code></td>
+<td>The turn was cancelled.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Match the code and show your own words, or the sentence after it. The full texts are in <a href="/docs/agent-messaging#failed-turns">Failed turns</a>.</p>
 <h3 id="load-a-conversation">Load a conversation</h3>
 <p><a href="/docs/agent-messaging#post-useragentmessagehistory"><code>POST /UserAgent/Message/History</code></a> returns a session's messages, newest first, each with the same shape as <code>Message/Detail</code>:</p>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/Message/History&quot; \
@@ -27046,7 +27104,63 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
     &quot;limit&quot;: 50
   }'
 </code></pre>
-<p>Each row has the person's message in <code>content</code>, the reply in <code>response</code>, and the ordered blocks of the reply in <code>timeline[]</code>, setup blocks included, in their current state. Page back with <code>before</code> (the oldest <code>guid</code> you have) while <code>hasmore</code> is <code>true</code>. A row whose <code>status</code> is still <code>agent_queue</code>, <code>agent_start</code> or <code>agent_output</code> is a reply in progress: subscribe to its <code>agenttoken</code> to follow it.</p>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;data&quot;: {
+    &quot;messages&quot;: [
+      {
+        &quot;guid&quot;: &quot;c3d4e5f6-a7b8-9012-cdef-345678901234&quot;,
+        &quot;sessionkey&quot;: &quot;customer-42&quot;,
+        &quot;content&quot;: &quot;Can you report our website traffic every Monday?&quot;,
+        &quot;response&quot;: &quot;I can do that once Google Analytics 4 is on and connected. Approve the card below and connect your Google Analytics account.&quot;,
+        &quot;status&quot;: &quot;agent_end&quot;
+      }
+    ],
+    &quot;count&quot;: 1,
+    &quot;hasmore&quot;: false,
+    &quot;sessiontoken&quot;: &quot;Lp4vQ8sWn2KxT7cRb1YhZ6mDg9FjA3uEo5iNk0wXyHt&quot;
+  }
+}
+</code></pre>
+<p>Each row of <code>messages</code> is a full row, shortened here; the GA4 example in <a href="#worked-examples">Worked Examples</a> shows one whole. Page back with <code>before</code> (the oldest <code>guid</code> you have) while <code>hasmore</code> is <code>true</code>. A session holds four kinds of row:</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Row</th>
+<th>How you know it</th>
+<th>What your UI shows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A turn</td>
+<td><code>content</code> holds the message as stored (keys taken out, see <a href="#security-rules">Security Rules</a>), <code>response</code> the reply, <code>timeline[]</code> its blocks, setup blocks included, in their current state</td>
+<td>The person's message and the agent's reply. While <code>status</code> is <code>agent_queue</code>, <code>agent_start</code> or <code>agent_output</code>, the reply is in progress: subscribe to its <code>agenttoken</code> to follow it.</td>
+</tr>
+<tr>
+<td>A reply Wiro answered itself</td>
+<td><code>metadata.type</code> is <code>"setup_result"</code>, <code>agenttoken</code> is <code>null</code>, <code>timeline</code> is empty</td>
+<td>The message and <code>response</code> as plain text. See <a href="#replies-the-api-answers-itself">Replies the API answers itself</a>.</td>
+</tr>
+<tr>
+<td>A message added between turns</td>
+<td><code>content</code> is empty, the text is in <code>response</code>, <code>metadata.type</code> is <code>"subagent"</code> or <code>"system"</code></td>
+<td>The agent's message with no message of the person's above it: a scheduled task's report, files sent after an answer, or, for <code>"subagent"</code>, the result of work the agent finished in the background.</td>
+</tr>
+<tr>
+<td>A model switch</td>
+<td><code>status</code> is <code>"agent_done"</code>, <code>metadata.type</code> is <code>"model_change"</code></td>
+<td>A thin separator, or nothing. It comes only when you pick a per-turn <code>model</code>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>A message added between turns has no turn of its own: nothing streams on an <code>agenttoken</code> for it and no webhook is called. A scheduled task's report goes to the session the agent's latest message is in, so on an agent that several of your users share it can reach any of their chats. To get it live, follow the session with the <code>sessiontoken</code> above: send <code>{ "type": "agent_session_subscribe", "sessiontoken": "Lp4vQ8sWn2KxT7cRb1YhZ6mDg9FjA3uEo5iNk0wXyHt" }</code> on the socket, and each new row arrives as an <code>agent_message_inserted</code> frame. Follows end with the connection, so after a reconnect subscribe again and read History once. See <a href="/docs/agent-websocket#following-a-session">Following a session</a>. The weekly report of the GA4 example below reaches your chat this way.</p>
+<p>To list a customer's conversations, call <a href="/docs/agent-messaging#post-useragentmessagesessions"><code>POST /UserAgent/Message/Sessions</code></a> with the <code>useragentguid</code>: it answers each session's <code>sessionkey</code>, <code>messagecount</code>, <code>updatedat</code>, <code>lastmessage</code> and, once named with <code>RenameSession</code>, <code>name</code>. It lists every session of the agent that your key's owner can read, so on an agent that several of your users share, show each person only the sessions your own records give them.</p>
 <h3 id="render-the-timeline">Render the timeline</h3>
 <p>A reply is an ordered list of blocks. Keep a map keyed by <code>blockid</code>, keep a block only when its <code>version</code> is newer than the one you hold, and draw the blocks sorted by <code>callindex</code>, then <code>contentindex</code>, then <code>blockid</code>.</p>
 <div class="docs-param-table">
@@ -27078,15 +27192,16 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <tr>
 <td><code>setup</code></td>
 <td><code>setup</code>: a setup card; on a pending <code>connect</code> card, also <code>next</code></td>
-<td>A card with buttons. See <a href="#the-setup-block">The Setup Block</a>.</td>
+<td>A card with buttons. See <a href="#setup-cards">Setup Cards</a>.</td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
 <p>Setup blocks have <code>callindex: 1000000</code>, so they sort after the reply's other blocks, in the order the agent proposed them, at most three per message. Skip a block whose <code>type</code> you don't know. The block fields are listed in <a href="/docs/agent-messaging#public-timeline-block-fields">Public timeline block fields</a>.</p>
+<p>Wiro cleans the agent's text before it reaches you, in the blocks, in <code>response</code> and in every event: a link to a private address or into the agent's own system reads <code>[link removed]</code>, and a path inside the agent's system reads <code>[private detail removed]</code>. A turn in which the agent wrote nothing can read <code>No response from the agent.</code> Show these as they are, or your own words.</p>
 <h3 id="replies-the-api-answers-itself">Replies the API answers itself</h3>
-<p>Some messages are answered by Wiro itself, with no agent turn: a <code>yes</code> that applies a card or gets the card listing, a key typed as the reply for a <code>connect</code> card, and a few others listed in <a href="#chats-without-cards">Chats Without Cards</a>. <code>Message/Send</code> then answers at once with <code>status: "agent_end"</code>, <code>agenttoken: null</code>, the answer in <code>response</code> and the outcome in <code>setupresult</code>:</p>
+<p>Some messages are answered by Wiro itself, with no agent turn: a <code>yes</code> that applies a card or gets the card listing, a key typed as the reply for a <code>connect</code> card, and the others listed in <a href="#chats-without-cards">Chats Without Cards</a>. <code>Message/Send</code> then answers at once with <code>status: "agent_end"</code>, <code>agenttoken: null</code>, the answer in <code>response</code> and the outcome in <code>setupresult</code>:</p>
 <pre><code class="language-json">{
   &quot;result&quot;: true,
   &quot;errors&quot;: [],
@@ -27103,8 +27218,8 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
   }
 }
 </code></pre>
-<p>Show <code>response</code> as the reply, as plain text. There is nothing to follow on the WebSocket. In <code>Message/History</code> the row reads <code>status: "agent_end"</code>, <code>metadata: { "type": "setup_result" }</code> and an empty <code>timeline</code>. These replies work while the agent is stopped or restarting, and they use no credits.</p>
-<h2 id="the-setup-block">The Setup Block</h2>
+<p>Show <code>response</code> as the reply, as plain text. There is nothing to follow on the WebSocket. In <code>Message/History</code> the row reads <code>status: "agent_end"</code>, <code>metadata: { "type": "setup_result" }</code> and an empty <code>timeline</code>. These replies use no credits, and Wiro gives them while the agent is stopped or restarting too: see <a href="#messages-during-a-restart">Messages during a restart</a> for which ones.</p>
+<h2 id="setup-cards">Setup Cards</h2>
 <h3 id="block-fields">Block fields</h3>
 <p>A setup block has the usual block fields, <code>type: "setup"</code>, <code>text: null</code> and a <code>setup</code> object, the card:</p>
 <pre><code class="language-json">{
@@ -27152,7 +27267,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 </tr>
 <tr>
 <td><code>contentindex</code></td>
-<td>The card's place on the message: <code>0</code>, <code>1</code> or <code>2</code>. Add 1 for the card number a <a href="#the-card-listing">card listing</a> uses.</td>
+<td>The card's place on the message: <code>0</code>, <code>1</code> or <code>2</code>. Add 1 for the card number a <a href="#listing-the-cards">card listing</a> uses.</td>
 </tr>
 <tr>
 <td><code>text</code></td>
@@ -27180,7 +27295,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 </tr>
 <tr>
 <td><code>next</code></td>
-<td>Only on a pending <code>connect</code> card: how its own connector connects, as one entry <code>{ connector, title, mode }</code>. It is gone once the card is applied, dismissed or failed. See <a href="#your-own-connect-button">Your Own Connect Button</a>. An <code>add</code> card's block has no <code>next</code>: its <code>setup.needs</code> lists what it brings.</td>
+<td>Only on a pending <code>connect</code> card: how its own connector connects, as one entry <code>{ connector, title, mode }</code>. It is gone once the card is applied, dismissed or failed. See <a href="#your-own-connect-button">Your Own Connect Button</a>. An <code>add</code> card's block has no <code>next</code>: its <code>setup.needs</code> lists what it brings. A card stored before <code>next</code> existed has none: name its connector by <code>credentials.&lt;connector&gt;._schema.title</code> of <code>UserAgent/Detail</code> and send the person to your settings screen for it.</td>
 </tr>
 </tbody>
 </table>
@@ -27246,22 +27361,22 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <tr>
 <td><code>before</code></td>
 <td><code>skill</code> (<code>update</code>, <code>append</code>, <code>revert</code>)</td>
-<td>The skill's text when Wiro checked the card. Show it next to the text after the change. Can be absent on older cards.</td>
+<td>The skill's text when Wiro checked the card. Show it next to the text after the change: for <code>append</code>, that is <code>before</code> without the spaces and line breaks at its end, a blank line, then <code>instructions</code>. Can be absent on older cards.</td>
 </tr>
 <tr>
 <td><code>with</code></td>
 <td><code>add</code>, <code>remove</code></td>
-<td>Other connectors and skills turned on (<code>add</code>) or off (<code>remove</code>) together with <code>key</code>, by name, sorted, at most 12. Written by Wiro.</td>
+<td>Other connectors and skills turned on (<code>add</code>) or off (<code>remove</code>) together with <code>key</code>, by name, sorted, at most 12. Written by Wiro. An <code>add</code> names only the ones still off on this agent, so the same <code>key</code> can bring a different list, or none, on another agent.</td>
 </tr>
 <tr>
 <td><code>pauses</code>, <code>resumes</code></td>
 <td><code>add</code>, <code>remove</code></td>
-<td>Scheduled tasks (<code>cs-cron-&lt;name&gt;</code>) that stop, or run again, with this change, at most 20 each. Written by Wiro.</td>
+<td>Scheduled tasks (<code>cs-cron-&lt;name&gt;</code>) that stop, or run again, with this change, at most 20 each. Written by Wiro. Name each by the <code>description</code> of its entry in <code>customskills</code> of <code>UserAgent/Detail</code>, or by its key in words.</td>
 </tr>
 <tr>
 <td><code>needs</code></td>
 <td><code>add</code></td>
-<td>The connectors the change brings that aren't connected yet, at most 3, each <code>{ connector, title, mode }</code>. Written by Wiro. See <a href="#modes">Modes</a>.</td>
+<td>The connectors the change brings that aren't connected yet, at most 3, each <code>{ connector, title, mode }</code>. <code>title</code> can be absent: then use the connector's key. Written by Wiro. See <a href="#modes">Modes</a>.</td>
 </tr>
 <tr>
 <td><code>timezone</code></td>
@@ -27281,7 +27396,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <tr>
 <td><code>actedat</code>, <code>actedby</code></td>
 <td>all</td>
-<td>When the card was acted on (Unix seconds) and the account UUID of who did it. Absent while pending.</td>
+<td>When the card was acted on (Unix seconds) and the account UUID of who did it. Absent while pending. With your API key, <code>actedby</code> is your key's owner.</td>
 </tr>
 <tr>
 <td><code>error</code></td>
@@ -27291,7 +27406,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <tr>
 <td><code>requestedby</code></td>
 <td>all</td>
-<td>The account UUID of the person whose message asked for the change.</td>
+<td>The account UUID of the person whose message asked for the change: in your chats, your key's owner.</td>
 </tr>
 <tr>
 <td><code>createdat</code></td>
@@ -27435,13 +27550,14 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <tr>
 <td>Failed</td>
 <td><code>status: "failed"</code></td>
-<td>Wiro tried to apply it and couldn't: <code>error</code> says why, and nothing changed.</td>
+<td>Wiro tried to apply it and couldn't: <code>error</code> says why. Nothing changed, with one exception: a <code>disconnect</code> card fails with <code>&lt;Title&gt; is disconnected in the agent's settings.</code> when the connector still reads connected after the agent's own key was removed, because the agent's template holds one too. That removal stays, and <code>restarting</code> in the answer says whether the agent restarts for it.</td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
 <p>Two more states exist only in your interface, between a click and the answer: <strong>applying</strong> (your call is under way), and <strong>refused</strong>, when <code>SetupCardApply</code> answers <code>result: false</code> and the card is still pending, for example a key that is too short or a sign-in that isn't finished. A refused card keeps its buttons. While the agent restarts after a change, show the card as applied with a <strong>restarting</strong> note; see <a href="#restarts">Restarts</a>.</p>
+<p>Applying a <code>connect</code> card also marks the same person's other <code>connect</code> cards for that connector applied, when they are still pending on other messages of the same chat from the last 7 days. Their blocks come again on their own <code>agenttoken</code>s, and History shows them applied.</p>
 <h3 id="what-your-ui-shows-for-each-kind">What your UI shows for each kind</h3>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -27470,8 +27586,8 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <tr>
 <td><code>connect</code></td>
 <td>"Connect <code>&lt;next[0].title&gt;</code>"</td>
-<td>A form or a sign-in button, by <code>next[0].mode</code></td>
-<td>Save, or Connect and then Done; Dismiss</td>
+<td>By <code>next[0].mode</code>: a form for <code>key</code>, your Connect step for <code>signin</code>, <code>appkeys</code> and <code>token</code>, a link to your settings screen for <code>page</code></td>
+<td>Save for <code>key</code>; Connect, which runs your flow and then applies the card, for the sign-in modes; none for <code>page</code>; and Dismiss</td>
 </tr>
 <tr>
 <td><code>disconnect</code></td>
@@ -27566,11 +27682,12 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <li><code>mode</code> <code>key</code>: show the connector's fields and an <strong>Add and connect</strong> button: <code>SetupCardApply</code> on the <code>add</code> card with <code>values</code>.</li>
 <li><code>mode</code> <code>signin</code>, <code>appkeys</code> or <code>token</code>: show a <strong>Connect</strong> button that runs your connection flow, then <strong>Add</strong>: <code>SetupCardApply</code> on the <code>add</code> card with <code>signin: true</code>.</li>
 <li>Either way, offer <strong>Add now, connect later</strong> too: <code>SetupCardApply</code> on the <code>add</code> card alone. Its answer's <code>next</code> then names the <code>connect</code> card to finish later.</li>
+<li><code>values</code> go with the add card's one <code>key</code> card, and <code>signin: true</code> with its one sign-in card. With two <code>key</code> cards it takes no <code>values</code>, and with two sign-in cards no <code>signin: true</code>: offer <strong>Add</strong> alone, then each <code>connect</code> card's own button.</li>
 </ul>
 </li>
-<li><strong>A <code>connect</code> card alone</strong>: <code>mode</code> <code>key</code> shows the fields and <strong>Save</strong> (<code>SetupCardApply</code> with <code>values</code>). A sign-in mode shows <strong>Connect</strong>, which runs your connection flow, then calls <code>SetupCardApply</code> on the card.</li>
+<li><strong>A <code>connect</code> card alone</strong>: <code>mode</code> <code>key</code> shows the fields and <strong>Save</strong> (<code>SetupCardApply</code> with <code>values</code>). A sign-in mode shows <strong>Connect</strong>, which runs your connection flow, then calls <code>SetupCardApply</code> on the card. <code>mode</code> <code>page</code> shows a link to your settings screen: applying it is refused.</li>
 </ul>
-<p>A connector with <code>mode</code> <code>page</code> gets no <code>connect</code> card: its setup happens in your settings screens. See <a href="#page-set-up-outside-the-chat">Page</a>.</p>
+<p>A connector with <code>mode</code> <code>page</code> gets no <code>connect</code> card with its <code>add</code> card, and no card can connect it: its setup happens in your settings screens. See <a href="#page-set-up-outside-the-chat">Page</a>.</p>
 <h2 id="applying-and-dismissing">Applying and Dismissing</h2>
 <h3 id="request">Request</h3>
 <p><a href="/docs/agent-messaging#post-useragentmessagesetupcardapply"><code>POST /UserAgent/Message/SetupCardApply</code></a> acts on one card:</p>
@@ -27671,7 +27788,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <tbody>
 <tr>
 <td><code>result</code></td>
-<td><code>true</code> when the action went through. <code>false</code> when it was refused or failed: read <code>errors[0].message</code> and <code>setup.status</code>.</td>
+<td><code>true</code> when the action went through. <code>false</code> when it was refused or failed: read <code>errors[0].message</code>, and <code>setup.status</code> when <code>setup</code> isn't <code>null</code>.</td>
 </tr>
 <tr>
 <td><code>errors</code></td>
@@ -27679,11 +27796,11 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 </tr>
 <tr>
 <td><code>setup</code></td>
-<td>The card after the call. Still pending after a refusal, <code>applied</code>, <code>dismissed</code> or <code>failed</code> otherwise.</td>
+<td>The card after the call: still pending after a refusal, <code>applied</code>, <code>dismissed</code> or <code>failed</code> otherwise. <code>null</code> when the call was refused before the card was read: a missing parameter, an agent or message your key can't reach, setup from chat off, a reply still running, code <code>97</code>, a card someone is applying at that moment, or a card that isn't there.</td>
 </tr>
 <tr>
 <td><code>restarting</code></td>
-<td><code>true</code> when the agent restarts to load the change. See <a href="#restarts">Restarts</a>.</td>
+<td><code>true</code> when the agent restarts to load the change. See <a href="#restarts">Restarts</a>. It can be <code>true</code> with <code>result: false</code> too, when the call changed part of the setup before it was refused or failed: some fields saved while others are still needed, or the failed <code>disconnect</code> of <a href="#card-states">Card states</a>.</td>
 </tr>
 <tr>
 <td><code>summary</code></td>
@@ -27691,7 +27808,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 </tr>
 <tr>
 <td><code>paired</code></td>
-<td>Only when <code>values</code> or <code>signin: true</code> came with an <code>add</code> card: its <code>connect</code> card after the call, <code>[{ setup, result, error }]</code>. <code>result</code> is <code>true</code> when that card was applied too, and <code>error</code> is <code>null</code> or the sentence that says why not.</td>
+<td>Only when <code>values</code> or <code>signin: true</code> came with an <code>add</code> card: its <code>connect</code> card after the call, <code>[{ setup, result, error }]</code>. <code>result</code> is <code>true</code> when that card was applied too, and <code>error</code> is <code>null</code> or the sentence that says why not. <code>[]</code> when the <code>add</code> card has no single <code>connect</code> card to take them.</td>
 </tr>
 <tr>
 <td><code>next</code></td>
@@ -27714,7 +27831,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <li>The key's owner owns the agent or is a member of its team, and the key's project is in the agent's workspace: a team project's key for a team agent, a personal one for a personal agent. Otherwise: <code>Agent not found or access denied</code>, or a sentence that names the workspace to use.</li>
 <li>The message is one the key's owner can read with <code>Message/History</code>: not deleted, not hidden, and in a private chat their own. Otherwise: <code>This setup card was not found.</code></li>
 <li>To apply: the reply that holds the card has finished (otherwise <code>Wait until the agent finishes this reply, then apply it.</code>), and the key's owner is an agent admin (otherwise code <code>97</code>, <code>Only an agent admin can apply setup changes.</code>). Dismissing works at any time for anyone who can see the chat.</li>
-<li>The card is pending. A card is applied at most once: on one that was acted on, the answer says <code>This card was already applied.</code> or <code>This card was already dismissed.</code>, with the card in <code>setup</code>.</li>
+<li>The card is pending. A card is applied at most once: on one that was acted on, the answer says <code>This card was already applied.</code>, <code>This card was already dismissed.</code> or <code>This card was already failed.</code>, with the card in <code>setup</code>.</li>
 </ul>
 <p><code>SetupCardApply</code> takes no <code>sessionkey</code>. When several of your users share one agent, check in your backend that the <code>messageguid</code> belongs to the session of the person who clicked, for example with <a href="/docs/agent-messaging#post-useragentmessagedetail"><code>Message/Detail</code></a> and its <code>sessionkey</code>.</p>
 <h2 id="connecting-a-connector">Connecting a Connector</h2>
@@ -27758,7 +27875,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 </tr>
 <tr>
 <td><code>page</code></td>
-<td>Anything else: service account files, lists, the Wiro project the agent runs models with</td>
+<td>Anything else: service account files, lists, the project the agent runs AI models with</td>
 <td>A link to your settings screen for that connector</td>
 <td>The credential endpoints, with no card</td>
 </tr>
@@ -27766,8 +27883,12 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 </table>
 </div>
 </div>
-<p>Read a mode you don't know as <code>page</code>. <code>mode</code> is the connector's usual way. A connector can offer others, listed in <code>connection_modes</code> of <code>POST /Credentials/Detail</code>: any of them that connects the connector lets its card apply. Each mode below uses one example connector, and the same calls work for every connector of that mode.</p>
-<p>The fields of a connector are in <a href="/docs/agent-credentials#post-credentialsdetail"><code>POST /Credentials/Detail</code></a> (<code>credential_schema</code>), which needs no API key, and in <code>credentials.&lt;connector&gt;._schema.fields</code> of <code>UserAgent/Detail</code>.</p>
+<p>Read a mode you don't know as <code>page</code>. <code>mode</code> is the connector's usual way. A connector can offer others, listed in <code>connection_modes</code> of <code>POST /Credentials/Detail</code> by their <code>authmethod</code>: <code>wiro</code> is <code>signin</code>, <code>own</code> is <code>appkeys</code> and <code>api_key</code> is <code>token</code>. Any of them that connects the connector lets its card apply. <code>wiro</code> stays listed while <code>wiro_connect_pending</code> is <code>true</code>, and until that flag is <code>false</code>, <code>OAuthConnect</code> refuses it with <code>Sign-in with the platform's app is not enabled for &lt;Title&gt;</code>: don't offer it then. Each mode below uses one example connector, and the same calls work for every connector of that mode.</p>
+<p>The fields of a connector are in <a href="/docs/agent-credentials#post-credentialsdetail"><code>POST /Credentials/Detail</code></a> (<code>credential_schema</code>), which needs no API key, and in <code>credentials.&lt;connector&gt;._schema.fields</code> of <code>UserAgent/Detail</code>. Which of them a form shows:</p>
+<ul>
+<li><code>appkeys</code>, <code>token</code> and <code>signin</code>: the fields whose <code>only_in_modes</code> is absent or names the mode's <code>authmethod</code>, leaving out the ones marked <code>auto_filled_by_oauth</code>, <code>server_managed</code> or <code>platform_managed</code>, and any that isn't a <code>text</code>, <code>password</code>, <code>url</code> or <code>email</code> input. Every required one goes on the form: LinkedIn's app keys come with its organization ID, and Shopify's token check needs the shop domain besides the client ID and secret. For <code>token</code>, <code>oauth_provider.direct_probe.required_fields</code> names the fields the check reads.</li>
+<li><code>key</code>: the <code>text</code>, <code>password</code>, <code>url</code> and <code>email</code> fields, <code>required</code> marking the ones the connector needs.</li>
+</ul>
 <h3 id="key-serper-web-search">Key: Serper Web Search</h3>
 <p>A key connector takes its fields as <code>values</code>. Serper Web Search has one field, <code>apikey</code> (label "Serper API Key", at least 20 characters).</p>
 <p><strong>With its <code>add</code> card, in one step.</strong> Send the key with the <code>add</code> card that brings the connector. Wiro checks the key first, against the connector as the <code>add</code> card will leave it: a refused key applies nothing, and both cards stay pending. Otherwise both cards are applied, with one restart:</p>
@@ -27876,7 +27997,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
   &quot;summary&quot;: &quot;Serper Web Search connected&quot;
 }
 </code></pre>
-<p>A <code>connect</code> card sent before its <code>add</code> card is applied changes nothing and answers <code>Apply card 1 first: it turns on Serper Web Search.</code>. A connector with several fields, such as WordPress, is connected once all its required fields are saved: with only some of them, the fields you sent are saved, the card stays pending, and the answer is <code>result: false</code> with <code>Saved &lt;fields&gt; for &lt;Connector&gt;. Still needed: &lt;fields&gt;.</code>. Send the rest with the same card.</p>
+<p>A <code>connect</code> card sent before its <code>add</code> card is applied changes nothing and answers <code>Apply card 1 first: it turns on Serper Web Search.</code>. A connector with several fields, such as WordPress, is connected once all its required fields are saved: with only some of them, the fields you sent are saved, the card stays pending, and the answer is <code>result: false</code> with <code>Saved &lt;fields&gt; for &lt;Connector&gt;. Still needed: &lt;fields&gt;.</code>. Send the rest with the same card. The same values sent with the <code>add</code> card still apply the <code>add</code> card: the answer is <code>result: true</code>, <code>summary</code> names only the add, <code>paired[0]</code> has <code>result: false</code> and that sentence, and <code>next</code> names the <code>connect</code> card to finish. A save of some fields can restart the agent, so <code>restarting</code> can be <code>true</code> on either answer.</p>
 <h3 id="own-app-keys-google-analytics-4">Own app keys: Google Analytics 4</h3>
 <p>The person connects with their own Google Cloud OAuth client, so Google's consent screen shows their app's name. The steps, for a pending <code>add</code> card for <code>int-ga4-analytics</code> and its <code>connect</code> card for <code>ga4</code>:</p>
 <p><strong>1. Read what the form needs.</strong> <code>OAuthStatus</code> returns the redirect URI to register in the app and whether app keys are saved already:</p>
@@ -27899,7 +28020,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 }
 </code></pre>
 <p>Show a form with the app's fields (<code>clientid</code> and <code>clientsecret</code> for Google, listed in <code>credential_schema</code> with <code>only_in_modes: ["own"]</code>) and the <code>redirecturi</code> to copy into the app's authorized redirect URIs. When <code>appkeyssaved</code> is <code>true</code>, the keys are saved already: offer to use them or replace them. Saved app keys are never returned.</p>
-<p><strong>2. Save the app keys</strong> with <a href="/docs/agent-overview#post-useragentcredentialupsert"><code>CredentialUpsert</code></a>, with <code>authmethod: "own"</code>. This restarts nothing: the connection does, once.</p>
+<p><strong>2. Save the app keys</strong> with <a href="/docs/agent-overview#post-useragentcredentialupsert"><code>CredentialUpsert</code></a>, with <code>authmethod: "own"</code>. Saving app keys restarts nothing. In this flow the connection restarts nothing either, since nothing on the agent uses Google Analytics 4 until the <code>add</code> card is applied, and that apply restarts the agent once (step 8).</p>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CredentialUpsert&quot; \
   -H &quot;Content-Type: application/json&quot; \
   -H &quot;x-api-key: YOUR_API_KEY&quot; \
@@ -27935,17 +28056,17 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <p>Keep <code>flowid</code>: it names this sign-in. A new <code>OAuthConnect</code> for the same agent and connector replaces it.</p>
 <p><strong>4. Send the browser to <code>authorizeUrl</code>.</strong> Either redirect the tab, or open a popup from the click handler and let your return page tell the opener (for example with <code>postMessage</code>) and close itself. Google shows its account chooser and then the consent screen.</p>
 <p><strong>5. Read the return.</strong> The browser comes back to your <code>redirecturl</code>, with the result added to the query:</p>
-<pre><code class="language-text">https://app.example.com/connect/done?ref=conn_8812&amp;ga4_connected=true&amp;ga4_properties=%5B%7B%22id%22%3A%22123456789%22%2C%22displayName%22%3A%22Acme%20Web%22%2C%22account%22%3A%22Acme%22%2C%22propertyType%22%3A%22PROPERTY_TYPE_ORDINARY%22%7D%5D
+<pre><code class="language-text">https://app.example.com/connect/done?ref=conn_8812&amp;ga4_connected=true&amp;ga4_properties=%5B%7B%22id%22%3A%22123456789%22%2C%22displayName%22%3A%22Acme%20Web%22%2C%22account%22%3A%22Acme%22%2C%22propertyType%22%3A%22PROPERTY_TYPE_ORDINARY%22%7D%2C%7B%22id%22%3A%22987654321%22%2C%22displayName%22%3A%22Acme%20App%22%2C%22account%22%3A%22Acme%22%2C%22propertyType%22%3A%22PROPERTY_TYPE_ORDINARY%22%7D%5D
 </code></pre>
 <p>On failure it carries <code>ga4_error=&lt;code&gt;</code> instead; see <a href="#return-codes-on-your-redirect-url">Return codes</a>. Each connector has its own prefix (<code>ga4_</code>, <code>x_</code>, <code>fb_</code> and so on), listed in <a href="/docs/agent-credentials#callback-success-error-parameters">Callback success and error parameters</a>.</p>
-<p><strong>6. Read the accounts to pick</strong> from your backend with <code>OAuthStatus</code> and the <code>flowid</code>. This also works when you didn't read the return, such as after a popup:</p>
+<p><strong>6. Read the accounts to pick</strong> from your backend with <code>OAuthStatus</code>, called as in step 1. This also works when you didn't read the return, such as after a popup:</p>
 <pre><code class="language-json">{
   &quot;result&quot;: true,
   &quot;errors&quot;: [],
   &quot;connected&quot;: false,
   &quot;accounts&quot;: [],
-  &quot;connectedat&quot;: &quot;2026-11-14T08:21:30.000Z&quot;,
-  &quot;tokenexpiresat&quot;: &quot;2026-11-14T09:21:30.000Z&quot;,
+  &quot;connectedat&quot;: &quot;2026-11-14T11:14:50.000Z&quot;,
+  &quot;tokenexpiresat&quot;: &quot;2026-11-14T12:14:50.000Z&quot;,
   &quot;authmethod&quot;: &quot;own&quot;,
   &quot;redirecturi&quot;: &quot;https://api.wiro.ai/v1/UserAgentOAuth/GA4Callback&quot;,
   &quot;appkeyssaved&quot;: true,
@@ -27967,7 +28088,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
   ]
 }
 </code></pre>
-<p><code>flow.status</code> is <code>waiting</code> until the person comes back, then <code>candidates</code> (accounts to pick), <code>connected</code> (nothing to pick), or <code>failed</code> with <code>flow.errorcode</code>. Poll it every two seconds or so while you wait. Show <code>candidates</code> as a list with checkboxes.</p>
+<p><code>flow</code> is the agent's current sign-in or token check for this connector, whoever started it: <code>OAuthStatus</code> takes no <code>flowid</code>, so compare <code>flow.flowid</code> with the one you kept. Another <code>flowid</code> means a newer sign-in replaced yours. To anyone but the person who started it, <code>flow</code> holds only <code>mine</code>, <code>status</code> and <code>expiresat</code>, such as <code>{ "mine": false, "status": "candidates", "expiresat": 1794655790 }</code>, and <code>candidates</code> is absent. <code>flow.status</code> is <code>waiting</code> until the person comes back, then <code>candidates</code> (accounts to pick), <code>connected</code> (nothing to pick), <code>saved</code> (the accounts were saved and the list is used up), or <code>failed</code> with <code>flow.errorcode</code>. A flow lives 15 minutes from <code>OAuthConnect</code>, or 15 minutes from the moment its accounts were listed; after that <code>flow</code> is absent. Poll every two seconds or so while you wait. Show <code>candidates</code> as a list with checkboxes.</p>
 <p><strong>7. Save the accounts picked</strong> with <a href="/docs/agent-credentials#post-useragentoauthsetpickeraccounts"><code>SetPickerAccounts</code></a>, the <code>flowid</code> and their ids, within 15 minutes of the sign-in:</p>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts&quot; \
   -H &quot;Content-Type: application/json&quot; \
@@ -28020,7 +28141,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
   &quot;selections&quot;: [{ &quot;parentvalue&quot;: &quot;112233445566778899001&quot;, &quot;itemids&quot;: [&quot;9876543210987654321&quot;] }]
 }
 </code></pre>
-<p>See <a href="/docs/agent-credentials#both-steps-in-one-call">Both steps in one call</a> for the rules of that save.</p>
+<p>A group whose items couldn't be listed has an <code>errorcode</code> of its own, such as <code>provider_timeout</code>, instead of items: show it, and leave that account out of <code>selections</code>. See <a href="/docs/agent-credentials#both-steps-in-one-call">Both steps in one call</a> for the rules of that save.</p>
 <p><strong>8. Apply the cards.</strong> Send the <code>add</code> card with <code>signin: true</code>. Wiro checks that the connector reads connected, then applies the <code>add</code> card, which restarts the agent once, and its <code>connect</code> card:</p>
 <pre><code class="language-json">{
   &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;,
@@ -28117,7 +28238,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 </code></pre>
 <p><strong>4. Apply the cards:</strong> the <code>add</code> card with <code>signin: true</code>, as for Google Analytics 4. The answer's <code>summary</code> reads <code>Facebook Page Post added. Facebook connected.</code> The token never reaches the agent, and the Page tokens Wiro finds with it never leave the server.</p>
 <h3 id="sign-in-x-with-wiros-app">Sign-in: X with Wiro's app</h3>
-<p>A <code>signin</code> connector connects with Wiro's own app, so there are no app keys to collect: one button. The provider's consent screen then names Wiro's app, not yours. To show your own brand there, connect the same connector with your own app keys instead (<code>authmethod: "own"</code>, as in <a href="#own-app-keys-google-analytics-4">Own app keys</a>), where the connector offers it in <code>connection_modes</code>. For a pending <code>add</code> card for <code>int-twitterx-post</code> and its <code>connect</code> card for <code>twitter</code>:</p>
+<p>A <code>signin</code> connector connects with Wiro's own app, so there are no app keys to collect: one button. The provider's consent screen then names Wiro's app, not yours. To show your own brand there, connect the same connector with your own app keys instead (<code>authmethod: "own"</code>, as in <a href="#own-app-keys-google-analytics-4">Own app keys</a>), where the connector offers it in <code>connection_modes</code>: a product whose users never see Wiro's name does that wherever it can. For a pending <code>add</code> card for <code>int-twitterx-post</code> and its <code>connect</code> card for <code>twitter</code>:</p>
 <p><strong>1. Start the sign-in:</strong></p>
 <pre><code class="language-json">{
   &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;,
@@ -28142,8 +28263,8 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
   &quot;errors&quot;: [],
   &quot;connected&quot;: true,
   &quot;accounts&quot;: [{ &quot;id&quot;: &quot;acmeco&quot;, &quot;name&quot;: &quot;acmeco&quot; }],
-  &quot;connectedat&quot;: &quot;2026-11-14T08:25:02.000Z&quot;,
-  &quot;tokenexpiresat&quot;: &quot;2026-11-14T10:25:02.000Z&quot;,
+  &quot;connectedat&quot;: &quot;2026-11-14T11:15:25.000Z&quot;,
+  &quot;tokenexpiresat&quot;: &quot;2026-11-14T13:15:25.000Z&quot;,
   &quot;authmethod&quot;: &quot;wiro&quot;,
   &quot;redirecturi&quot;: &quot;https://api.wiro.ai/v1/UserAgentOAuth/XCallback&quot;,
   &quot;appkeyssaved&quot;: false,
@@ -28163,7 +28284,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 </code></pre>
 <p><strong>4. Apply the cards:</strong> the <code>add</code> card with <code>signin: true</code>. <code>summary</code> reads <code>Twitter / X Post added. Twitter / X connected.</code></p>
 <h3 id="page-set-up-outside-the-chat">Page: set up outside the chat</h3>
-<p>A connector with <code>mode</code> <code>page</code>, such as Google Drive with its service account file, has no <code>connect</code> card: no card can connect it. When its <code>add</code> card is applied, <code>summary</code> goes on with <code>Connect Google Drive in the agent's settings</code>, and <code>next</code> lists it with <code>mode: "page"</code> and no <code>cardid</code>. Send the person to your own settings screen for that connector, which saves it with the credential endpoints, as its integration page shows:</p>
+<p>A connector with <code>mode</code> <code>page</code>, such as Google Drive with its service account file, gets no <code>connect</code> card with its <code>add</code> card, and no card can connect it. When its <code>add</code> card is applied, <code>summary</code> goes on with <code>Connect Google Drive in the agent's settings</code>, and <code>next</code> lists it with <code>mode: "page"</code> and no <code>cardid</code>. The agent can still propose a <code>connect</code> card for it on its own: that block's <code>next</code> reads <code>mode: "page"</code>, and applying the card is refused with <code>Google Drive is connected in the agent's settings, not from chat.</code> while it stays pending. Show such a card as a link to your settings screen, with Dismiss. Send the person to your own settings screen for that connector, which saves it with the credential endpoints, as its integration page shows:</p>
 <pre><code class="language-json">{
   &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;,
   &quot;fields&quot;: [
@@ -28173,7 +28294,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 </code></pre>
 <pre><code class="language-json">{ &quot;result&quot;: true, &quot;applied&quot;: 1, &quot;errors&quot;: [] }
 </code></pre>
-<p>There is no card to apply afterwards. The save restarts a running agent once, so it loads the connector. Files go through <a href="/docs/agent-overview#post-useragentcredentialfileupload"><code>CredentialFileUpload</code></a>, and the Wiro project the agent runs models with through <a href="/docs/agent-overview#post-useragentcredentialprojectbind"><code>CredentialProjectBind</code></a>.</p>
+<p>There is no card to apply afterwards. The save restarts a running agent once, so it loads the connector, but its answer doesn't say so: see <a href="#showing-a-restart">Showing a restart</a>. Files go through <a href="/docs/agent-overview#post-useragentcredentialfileupload"><code>CredentialFileUpload</code></a>, and the AI Models connector, the project the agent runs AI models with, through <a href="/docs/agent-overview#post-useragentcredentialprojectbind"><code>CredentialProjectBind</code></a>, whose answer says in <code>restart</code> whether the agent restarts.</p>
 <h2 id="your-own-connect-button">Your Own Connect Button</h2>
 <h3 id="where-next-appears">Where next appears</h3>
 <p><code>next</code> is the list of connectors still to connect, as data for your own buttons. It comes in four places:</p>
@@ -28200,7 +28321,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 </tr>
 <tr>
 <td><code>setupresult.next</code> in a <code>Message/Send</code> answer</td>
-<td>A <code>yes</code> that applied a card while <code>connect</code> cards of the reply still wait, or whose <code>add</code> card leaves connectors to connect; a <code>yes</code> while only <code>connect</code> cards wait, one of them a sign-in card; a key typed for an <code>add</code> card and its <code>connect</code> card, when the <code>add</code> card brings other connectors too</td>
+<td>A <code>yes</code> that applied a card: the reply's <code>key</code> connect cards still waiting for their key, the sign-in <code>connect</code> cards of the <code>add</code> card it applied, and each connector that <code>add</code> card brings with no card to connect it. A <code>yes</code> while only <code>connect</code> cards wait, one of them a sign-in card: the waiting <code>connect</code> cards. A key typed for an <code>add</code> card and its <code>connect</code> card: the other connectors that <code>add</code> card brings.</td>
 <td>Same</td>
 </tr>
 <tr>
@@ -28251,24 +28372,30 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 <h3 id="from-next-to-a-button">From next to a button</h3>
 <pre><code class="language-javascript">// For each entry of next, show one button that runs the mode's flow,
 // then applies the card that records the connection.
-async function connectFromNext(entry, useragentguid) {
+// own: for an entry of a block's next, that block's card and message.
+async function connectFromNext(entry, useragentguid, own) {
+  const cardid = entry.cardid || (own &amp;&amp; own.cardid);
+  const messageguid = entry.messageguid || (own &amp;&amp; own.messageguid);
   if (entry.mode === &quot;page&quot;) {
     return openSettingsScreen(entry.connector); // your own screen; no card to apply
   }
   if (entry.mode === &quot;key&quot;) {
     const values = await askForFields(entry.connector); // your form, never the chat
-    if (!entry.cardid) return saveWithCredentialUpsert(entry.connector, values); // no card records it
-    return setupCardApply({ useragentguid, messageguid: entry.messageguid, cardid: entry.cardid, action: &quot;apply&quot;, values });
+    if (!cardid) return saveWithCredentialUpsert(entry.connector, values); // no card records it
+    return setupCardApply({ useragentguid, messageguid, cardid, action: &quot;apply&quot;, values });
   }
   // signin, appkeys, token: run the connection, then record it on its card when there is one.
   await runConnection(entry.connector, entry.mode); // OAuthConnect and the rest
-  if (!entry.cardid) return;
-  return setupCardApply({ useragentguid, messageguid: entry.messageguid, cardid: entry.cardid, action: &quot;apply&quot; });
+  if (!cardid) return;
+  return setupCardApply({ useragentguid, messageguid, cardid, action: &quot;apply&quot; });
 }
+
+// A pending connect card's block, on its Message/Detail or History row:
+// connectFromNext(block.next[0], useragentguid, { cardid: block.setup.id, messageguid: row.guid });
 </code></pre>
-<p>On a block's <code>next</code>, the card is the block's own: use its <code>setup.id</code> and the message's <code>guid</code>. An entry with no <code>cardid</code> and a mode other than <code>page</code> has no card left to record it, for example because its <code>connect</code> card was turned down: connect it the same way, with <code>CredentialUpsert</code> for a key, and there is nothing to apply. When the answer to a sign-in <code>connect</code> card is <code>errorcode: "not_connected"</code> with <code>next</code>, the connection isn't finished: run the flow again from that entry.</p>
+<p>A block's <code>next</code> names no card because the card is the block's own: pass its <code>setup.id</code> and the row's <code>guid</code>, as the last line shows. An entry of an answer with no <code>cardid</code> and a mode other than <code>page</code> has no card left to record it, for example because its <code>connect</code> card was turned down: connect it the same way, with <code>CredentialUpsert</code> for a key, and there is nothing to apply. When the answer to a sign-in <code>connect</code> card is <code>errorcode: "not_connected"</code> with <code>next</code>, the connection isn't finished: run the flow again from that entry.</p>
 <h2 id="errors-and-what-to-show">Errors and What to Show</h2>
-<p>Every refusal comes as <code>result: false</code> with one plain sentence in <code>errors[0].message</code>. Show it as it is, and match codes, not sentences, in your code: sentences can change.</p>
+<p>Every refusal comes as <code>result: false</code> with one plain sentence in <code>errors[0].message</code>. Show it as it is, or your own words for its code, and match codes, not sentences, in your code: sentences can change. A few sentences speak of the card's own sign-in or button, such as <code>Finish the sign-in on the card first.</code>: in your product, that is your Connect step.</p>
 <h3 id="setupcardapply-refusals">SetupCardApply refusals</h3>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -28283,7 +28410,7 @@ async function connectFromNext(entry, useragentguid) {
 <tbody>
 <tr>
 <td><code>not_connected</code></td>
-<td><code>&lt;Title&gt; is not connected yet. Finish the sign-in on the card first.</code> (a <code>token</code> connector says <code>token check</code>)</td>
+<td><code>&lt;Title&gt; is not connected yet. Finish the sign-in on the card first.</code></td>
 <td>Run the Connect step, then apply again. The card stays pending. On a <code>connect</code> card, <code>next</code> names it.</td>
 </tr>
 <tr>
@@ -28305,6 +28432,7 @@ async function connectFromNext(entry, useragentguid) {
 </table>
 </div>
 </div>
+<p>For a <code>token</code> connector, such as Facebook, Instagram, Meta Ads or Shopify, each of these sentences says <code>token check</code> where it says <code>sign-in</code>: <code>Facebook connects with its token check on the card, not with typed values.</code></p>
 <p>Refusals with no <code>errorcode</code>:</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -28317,8 +28445,16 @@ async function connectFromNext(entry, useragentguid) {
 </thead>
 <tbody>
 <tr>
+<td><code>Request parameter [&lt;name&gt;] required</code>, <code>action must be apply or dismiss</code>, <code>values must be an object of field names and text.</code></td>
+<td>Fix the request.</td>
+</tr>
+<tr>
 <td><code>Setup from chat is off for this agent.</code></td>
 <td>Set <code>chatsetup</code> to <code>"all"</code>, or change the setup from your settings screens.</td>
+</tr>
+<tr>
+<td><code>Agent not found or access denied</code>, or a sentence that names the workspace to use</td>
+<td>Your key can't reach this agent: see <a href="#who-may-call-it">Who may call it</a>.</td>
 </tr>
 <tr>
 <td><code>Only an agent admin can apply setup changes.</code> (code <code>97</code>)</td>
@@ -28333,12 +28469,12 @@ async function connectFromNext(entry, useragentguid) {
 <td>Wrong <code>messageguid</code> or <code>cardid</code>, or a message the key's owner can't see.</td>
 </tr>
 <tr>
-<td><code>This card was already applied.</code>, <code>This card was already dismissed.</code></td>
+<td><code>This card was already applied.</code>, <code>This card was already dismissed.</code>, <code>This card was already failed.</code></td>
 <td>Show the card from <code>setup</code> in its state.</td>
 </tr>
 <tr>
-<td><code>This card is being applied. Try again in a moment.</code>, <code>Another change to this agent's connectors or skills is being applied. Try again in a moment.</code></td>
-<td>Someone is acting on it right now. Retry after a few seconds.</td>
+<td><code>This card is being applied. Try again in a moment.</code>, <code>The card could not be applied right now. Try again in a moment.</code>, <code>Another change to this agent's connectors or skills is being applied. Try again in a moment.</code></td>
+<td>Someone is acting on this card, or on the agent's connectors and skills, right now. Let the person try again after a few seconds.</td>
 </tr>
 <tr>
 <td><code>Apply card &lt;N&gt; first: it turns on &lt;Title&gt;.</code></td>
@@ -28353,8 +28489,20 @@ async function connectFromNext(entry, useragentguid) {
 <td><code>values</code> on an <code>add</code> card that can't take them.</td>
 </tr>
 <tr>
+<td><code>&lt;Connector&gt; needs its key.</code></td>
+<td><code>values</code> held no field with a value.</td>
+</tr>
+<tr>
+<td><code>&lt;Connector&gt; takes only its own fields from a chat card.</code>, <code>&lt;Label&gt; must be text.</code>, <code>&lt;Label&gt; is too long.</code></td>
+<td>A field name the connector doesn't have, a value that isn't text, or one over 4,096 characters. Nothing was saved.</td>
+</tr>
+<tr>
 <td><code>Saved &lt;fields&gt; for &lt;Connector&gt;. Still needed: &lt;fields&gt;.</code></td>
 <td>Send the missing fields with the same card.</td>
+</tr>
+<tr>
+<td><code>Saved &lt;fields&gt; for &lt;Connector&gt;. It is not connected yet: finish it in the agent's settings.</code></td>
+<td>The fields are saved, and the connector still doesn't read connected: finish it in your settings screen for it.</td>
 </tr>
 <tr>
 <td>A field's sentence, such as <code>Serper API Key must be at least 20 characters</code></td>
@@ -28365,16 +28513,21 @@ async function connectFromNext(entry, useragentguid) {
 <td>A <code>page</code> connector: <code>next</code> names it with <code>mode: "page"</code>.</td>
 </tr>
 <tr>
-<td><code>The change could not be applied. Try again in a moment.</code></td>
-<td>Wiro couldn't make the change. The card is now <code>failed</code>; ask the agent again later.</td>
+<td><code>&lt;Connector&gt; is not connected: &lt;Add&gt; was not added.</code>, <code>&lt;Title&gt; is connected, but &lt;Add&gt; was not added.</code></td>
+<td>In <code>paired[0].error</code>: the <code>add</code> card failed, or waits for another change, so its <code>connect</code> card stays pending.</td>
+</tr>
+<tr>
+<td><code>The setup card could not be applied. Try again.</code></td>
+<td>Something went wrong. Read the card again with <code>Message/Detail</code> before you offer to try again.</td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
-<p>A card that fails as it is applied, for example because the agent's setup changed since the card was made, gets <code>status: "failed"</code> and the sentence in <code>setup.error</code>. Show it on the card. The person can ask the agent again for a new card.</p>
+<p>These refusals carry <code>code</code> <code>0</code>, except the rights refusal, whose <code>code</code> is <code>97</code>. Check what you can before you call: that the reply has ended, that <code>chatSetup</code> is <code>"all"</code>, and that the card is pending in your copy.</p>
+<p>A card that fails as it is applied gets <code>status: "failed"</code> and its sentence in <code>setup.error</code>, and the answer is <code>result: false</code> with the same sentence. The usual ones are <code>This agent's connectors or skills changed after the card was made. Ask the agent again.</code>, <code>This skill changed after the card was made. Ask the agent again.</code>, <code>&lt;Title&gt; is disconnected in the agent's settings.</code> and <code>The change could not be applied. Try again in a moment.</code>, when Wiro couldn't make the change. Show it on the card. A failed card can't be applied again: the person asks the agent for a new one.</p>
 <h3 id="account-list-codes">Account list codes</h3>
-<p><code>SetPickerAccounts</code> and <code>DiscoverPickerItems</code> answer these in <code>errorcode</code>, with a sentence in <code>errors[0].message</code>:</p>
+<p><code>SetPickerAccounts</code> and <code>DiscoverPickerItems</code> answer these in <code>errorcode</code>, with a sentence in <code>errors[0].message</code> that speaks of a sign-in or of a token check, as the list came from one or the other. <code>not_listed</code>, for example, reads <code>Choose accounts from the list the sign-in returned.</code> or <code>Choose accounts from the list the token check returned.</code> The sentences are listed under <a href="/docs/agent-credentials#post-useragentoauthsetpickeraccounts"><code>SetPickerAccounts</code></a>.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -28413,7 +28566,7 @@ async function connectFromNext(entry, useragentguid) {
 </tr>
 <tr>
 <td><code>not_listed</code></td>
-<td>An id you sent isn't on the list the sign-in gave.</td>
+<td>An id you sent isn't on the list the sign-in or check returned.</td>
 <td>Pick again from <code>candidates</code>.</td>
 </tr>
 <tr>
@@ -28435,6 +28588,47 @@ async function connectFromNext(entry, useragentguid) {
 </table>
 </div>
 </div>
+<h3 id="oauthconnect-refusals">OAuthConnect refusals</h3>
+<p>Before it starts a sign-in, <code>OAuthConnect</code> can refuse with one of these sentences. Nothing starts then, and a sign-in already under way stays as it is.</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Sentence</th>
+<th>What to do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Request parameter [redirecturl] required</code>, <code>Invalid redirect URL</code></td>
+<td>Send an https <code>redirecturl</code> you control, or an http one on <code>localhost</code> or <code>127.0.0.1</code> while you develop.</td>
+</tr>
+<tr>
+<td><code>&lt;Title&gt; credentials not configured</code></td>
+<td>The app keys of <code>authmethod: "own"</code> aren't saved: save them with <code>CredentialUpsert</code> first.</td>
+</tr>
+<tr>
+<td><code>Unsupported connection mode for &lt;Title&gt;</code></td>
+<td><code>authmethod</code> isn't in the connector's <code>connection_modes</code>.</td>
+</tr>
+<tr>
+<td><code>Sign-in with the platform's app is not enabled for &lt;Title&gt;</code></td>
+<td><code>authmethod: "wiro"</code>, sent or taken as the default, while the connector's <code>wiro_connect_pending</code> is <code>true</code>: use <code>own</code> or <code>api_key</code>.</td>
+</tr>
+<tr>
+<td><code>&lt;Field&gt; is required</code>, <code>Invalid &lt;Field&gt;</code></td>
+<td>A saved field the sign-in needs is missing or malformed, such as Shopify's shop domain: save it with <code>CredentialUpsert</code>.</td>
+</tr>
+<tr>
+<td><code>User agent not found or unauthorized</code></td>
+<td>Your key's owner can't manage this agent.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Reddit also refuses until Wiro has set the approvals it reviews, with sentences such as <code>The platform must verify Reddit Data API approval for this app before connecting.</code></p>
 <h3 id="return-codes-on-your-redirect-url">Return codes on your redirect URL</h3>
 <p>After a sign-in, the browser comes back to your <code>redirecturl</code> with <code>&lt;prefix&gt;_error=&lt;code&gt;</code> when it failed:</p>
 <div class="docs-param-table">
@@ -28473,7 +28667,7 @@ async function connectFromNext(entry, useragentguid) {
 </tr>
 <tr>
 <td><code>useragent_not_found</code></td>
-<td>The agent was deleted during the sign-in.</td>
+<td>Before the sign-in came back, the agent was deleted, or the person who started the sign-in, your key's owner, could no longer manage it. Nothing was saved.</td>
 </tr>
 <tr>
 <td><code>internal_error</code>, or any other code</td>
@@ -28483,9 +28677,10 @@ async function connectFromNext(entry, useragentguid) {
 </table>
 </div>
 </div>
-<p>Some connectors add their own codes, listed on their integration pages and in <a href="/docs/agent-credentials#callback-success-error-parameters">Callback success and error parameters</a>. A callback opened without its <code>state</code>, or more than 24 hours after <code>OAuthConnect</code>, can't be matched to your sign-in and lands on wiro.ai instead of your page.</p>
+<p>Some connectors add their own codes, listed on their integration pages and in <a href="/docs/agent-credentials#callback-success-error-parameters">Callback success and error parameters</a>, and Merchant Center can add <code>mc_error_detail</code> with the provider's status, such as <code>PERMISSION_DENIED</code>.</p>
+<p>A callback that can't be matched to a sign-in, because it came without its <code>state</code> or more than 24 hours after <code>OAuthConnect</code>, can't return to your page. It ends on a plain page of the API's own, <code>/v1/UserAgentOAuth/SignInNotFinished</code> on the API's host, which names no brand and links nowhere: it says the sign-in could not be finished and the window can be closed, and shows the code (<code>missing_params</code>, <code>session_expired</code> or <code>internal_error</code>). Your return page hears nothing then, so when a popup doesn't report back, read <code>OAuthStatus</code> and offer to connect again.</p>
 <h3 id="token-check-codes">Token check codes</h3>
-<p>A token check that fails answers <code>OAuthConnect</code> with <code>result: false</code>, a sentence, <code>flowid</code> and <code>errorcode</code>, such as <code>direct_token_missing</code> (the token or <code>authmethod: "api_key"</code> isn't saved), <code>direct_token_invalid</code>, <code>no_accounts</code>, <code>no_pages</code>, <code>provider_rejected_request</code> or <code>provider_timeout</code>. Show the sentence, and let the person paste a new token. Each integration page lists its codes.</p>
+<p>A token check that fails answers <code>OAuthConnect</code> with <code>result: false</code>, a sentence, <code>flowid</code>, <code>errorcode</code> and <code>restart</code>, such as <code>direct_token_missing</code> (the token or <code>authmethod: "api_key"</code> isn't saved), <code>direct_token_invalid</code>, <code>no_accounts</code>, <code>no_pages</code>, <code>too_many_pages</code>, <code>account_list_too_large</code>, <code>direct_picker_unavailable</code>, <code>provider_rejected_request</code>, <code>provider_request_failed</code> or <code>provider_timeout</code>. Show the sentence, and let the person paste a new token. <code>restart</code> is <code>"scheduled"</code> when the failed check removed a connection the agent was using. Each integration page lists its codes.</p>
 <h2 id="restarts">Restarts</h2>
 <h3 id="when-the-agent-restarts">When the agent restarts</h3>
 <p>An agent loads its setup when it starts, so most changes restart it:</p>
@@ -28530,9 +28725,41 @@ async function connectFromNext(entry, useragentguid) {
 </table>
 </div>
 </div>
-<p>A restart takes about a minute.</p>
+<p>A restart takes about a minute. If the poll reads <code>0</code> (stopped), <code>5</code> (error) or <code>6</code> (setup required) instead, the agent won't start by itself: stop polling and say so. <code>0</code> and <code>5</code> start again with <a href="/docs/agent-overview#post-useragentstart"><code>POST /UserAgent/Start</code></a>, and <code>6</code> needs its missing connector first; see <a href="/docs/agent-overview#useragent-statuses">UserAgent Statuses</a>.</p>
 <h3 id="showing-a-restart">Showing a restart</h3>
-<p>When an answer has <code>restarting: true</code>, show a line such as "Restarting to load the change, about a minute" above the message box, and poll <code>UserAgent/Detail</code> every five seconds until <code>status</code> is <code>4</code>. Then hide the line. You can leave the message box on: a message sent too early gets a clear refusal you can show.</p>
+<p>When an answer says the agent restarts, show a line such as "Restarting to load the change, about a minute" above the message box, and poll <code>UserAgent/Detail</code> every five seconds until <code>status</code> is <code>4</code>. Then hide the line. You can leave the message box on: a message sent too early gets a clear refusal you can show.</p>
+<p>Each call says it in its own field:</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Call</th>
+<th>Says the agent restarts with</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SetupCardApply</code>, and <code>Message/Send</code> in <code>setupresult</code></td>
+<td><code>restarting: true</code></td>
+</tr>
+<tr>
+<td><code>OAuthConnect</code> (a token check), <code>SetPickerAccounts</code>, <code>CredentialProjectBind</code></td>
+<td><code>restart: "scheduled"</code></td>
+</tr>
+<tr>
+<td><code>OAuthStatus</code>, after a sign-in came back</td>
+<td><code>flow.restart: "scheduled"</code></td>
+</tr>
+<tr>
+<td><code>CredentialUpsert</code>, <code>UpdateSettings</code></td>
+<td>Nothing. After a save that can restart the agent, such as a connector's key or fields, or <code>chatsetup</code> changed from or to <code>"off"</code>, poll <code>UserAgent/Detail</code> the same way.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>So when a sign-in <code>connect</code> card's connector is on already, the connection itself restarts the agent through these calls, and the card's apply then answers <code>restarting: false</code>.</p>
 <h3 id="messages-during-a-restart">Messages during a restart</h3>
 <p>While the agent isn't running, <code>Message/Send</code> answers <code>result: false</code> with <code>agentstatus</code> and one of these sentences, shown as they are:</p>
 <div class="docs-param-table">
@@ -28569,18 +28796,49 @@ async function connectFromNext(entry, useragentguid) {
 </table>
 </div>
 </div>
-<p>Setup replies still work during a restart: a <code>yes</code>, a <code>no</code> and a key typed as the reply are answered by Wiro itself. A turn that was running in another session when the restart began ends with <code>[TURN_INTERRUPTED]</code>: offer to send it again.</p>
+<p>Before this refusal, Wiro still answers the replies it handles itself: a <code>yes</code> that lists or applies a card other than a <code>connect</code> card, a <code>yes</code> while a sign-in <code>connect</code> card waits, a key for the one waiting <code>key</code> connect card, and a <code>no</code> that turned pending cards down, answered <code>The setup change was turned down.</code> or <code>The &lt;N&gt; setup changes were turned down.</code> Every other message gets the refusal, a <code>yes</code> while only <code>key</code> connect cards wait and a <code>yes</code> or <code>no</code> with no pending card included. A turn still running when the restart began, in another session for example, ends as <code>agent_error</code> with <code>[TURN_INTERRUPTED]</code>: offer to send it again.</p>
 <h2 id="chats-without-cards">Chats Without Cards</h2>
 <p>Your chat can work with text alone, or people may type <code>yes</code> even where you show cards. Wiro then reads the reply itself.</p>
 <h3 id="typed-replies">Typed replies</h3>
 <ul>
-<li><strong>Approve.</strong> A message that is only an approval, such as <code>yes</code>, <code>ok</code>, <code>approve</code>, <code>go ahead</code>, <code>evet</code> or <code>👍</code>, up to four words and with no question mark, acts on the pending cards of the agent's latest reply in the same <code>sessionkey</code>, when they are less than 30 minutes old. In a chat sent with your API key, the first <code>yes</code> applies nothing: Wiro answers with the card listing, the exact content of the cards. A second <code>yes</code> applies the one card listed. With several cards, <code>yes 2</code> applies card 2 once the listing has shown it, one card per reply.</li>
-<li><strong>Turn down.</strong> <code>no</code> or <code>cancel</code> dismisses every pending card of the latest reply, then goes to the agent as a normal message. While the agent isn't running, Wiro answers it itself: <code>The setup change was turned down.</code></li>
-<li><strong>A key as the reply.</strong> When the latest reply has one pending <code>connect</code> card for a key connector, an agent admin can paste the key as the reply. Wiro saves it and stores the message as <code>[key saved to &lt;Connector title&gt;]</code>. When the only pending cards are an <code>add</code> card and its <code>connect</code> card, and the key is all the connector needs, the key typed after the listing applies both cards at once.</li>
+<li><strong>Approve.</strong> A message that is only an approval, such as <code>yes</code>, <code>ok</code>, <code>approve</code>, <code>go ahead</code>, <code>evet</code> or <code>👍</code>, acts on the pending cards of the agent's latest reply in the same <code>sessionkey</code>, when they are less than 30 minutes old. In a chat sent with your API key, the first approval applies nothing: Wiro answers with the card listing, the exact content of the cards. A second one applies the one card listed. With several cards, <code>yes 2</code> applies card 2 once the listing has shown it, one card per reply.</li>
+<li><strong>Turn down.</strong> A message that is only a refusal, such as <code>no</code> or <code>cancel</code>, dismisses every pending card of the latest reply, then goes to the agent as a normal message. While the agent isn't running, Wiro answers it itself: <code>The setup change was turned down.</code>, or <code>The &lt;N&gt; setup changes were turned down.</code> for several cards. Anyone who can write in the chat can turn cards down.</li>
+<li><strong>A key as the reply.</strong> When the latest reply has one pending <code>connect</code> card for a key connector, a key pasted as the reply is saved to it with your key owner's rights, and the message is stored as <code>[key saved to &lt;Connector title&gt;]</code>. When the only pending cards are an <code>add</code> card and its <code>connect</code> card, and the key is all the connector needs, the key typed after the listing applies both cards at once. A key typed before that listing saves nothing: the message is stored with <code>[key removed]</code> in its place, and Wiro answers with the listing.</li>
 <li>A <code>yes</code> never applies a <code>connect</code> card: a key or a sign-in connects it.</li>
 </ul>
-<p>The full rules are in <a href="/docs/agent-messaging#approving-setup-cards">Approving a setup card</a>.</p>
-<h3 id="the-card-listing">The card listing</h3>
+<p>A message counts as an approval or a refusal when it is sent with no attachment and has at most four words, no question mark and nothing but these words. Case, accents and other punctuation don't matter:</p>
+<div class="docs-param-table">
+<div class="docs-param-table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Kind</th>
+<th>Words</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Approval</td>
+<td><code>yes</code>, <code>y</code>, <code>yeah</code>, <code>yep</code>, <code>yup</code>, <code>ok</code>, <code>okay</code>, <code>sure</code>, <code>approve</code>, <code>approved</code>, <code>confirm</code>, <code>confirmed</code>, <code>apply</code>, <code>lgtm</code>, <code>do it</code>, <code>go ahead</code>, <code>go for it</code>, <code>sounds good</code>, <code>looks good</code>, <code>please do</code>, <code>of course</code>, <code>evet</code>, <code>e</code>, <code>tamam</code>, <code>tamamdır</code>, <code>olur</code>, <code>onay</code>, <code>onayla</code>, <code>onaylıyorum</code>, <code>onayladım</code>, <code>uygula</code>, <code>kabul</code>, <code>kabul ediyorum</code>, <code>ja</code>, <code>oui</code>, <code>si</code>, <code>sim</code>, <code>da</code>, <code>hai</code>, <code>👍</code>, <code>✅</code>, <code>✔</code></td>
+</tr>
+<tr>
+<td>Refusal</td>
+<td><code>no</code>, <code>n</code>, <code>nope</code>, <code>nah</code>, <code>cancel</code>, <code>stop</code>, <code>don't</code>, <code>do not</code>, <code>never mind</code>, <code>not now</code>, <code>hayır</code>, <code>yok</code>, <code>iptal</code>, <code>vazgeç</code>, <code>vazgeçtim</code>, <code>istemiyorum</code>, <code>nein</code>, <code>non</code>, <code>não</code></td>
+</tr>
+<tr>
+<td>Courtesy, allowed next to either</td>
+<td><code>please</code>, <code>pls</code>, <code>plz</code>, <code>thanks</code>, <code>thx</code>, <code>ty</code>, <code>thank you</code>, <code>lütfen</code>, <code>teşekkürler</code>, <code>teşekkür ederim</code>, <code>sağol</code>, <code>sağolun</code>, <code>bitte</code>, <code>danke</code>, <code>merci</code>, <code>gracias</code>, <code>por favor</code></td>
+</tr>
+<tr>
+<td>A card number, with an approval</td>
+<td>One number from 1 to 3, as in <code>yes 2</code>, <code>apply #1</code>, <code>evet 3</code> or <code>yes card 2</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>If people who must not change the agent can write in your chat, hold back from Wiro the messages that are only these words, and a key sent while a <code>key</code> connect card waits, or set <code>chatsetup</code> to <code>"off"</code> for that agent. The full rules are in <a href="/docs/agent-messaging#approving-setup-cards">Approving a setup card</a>.</p>
+<h3 id="listing-the-cards">Listing the cards</h3>
 <p>The first <code>yes</code> in a chat sent with your API key gets the listing:</p>
 <pre><code class="language-json">{
   &quot;result&quot;: true,
@@ -28670,11 +28928,27 @@ async function connectFromNext(entry, useragentguid) {
 <tbody>
 <tr>
 <td><code>✅ Applied: &lt;summary&gt;.</code></td>
-<td>A card was applied. An <code>add</code> card that brings a <code>page</code> connector goes on with <code>Connect &lt;Title&gt; in the agent's settings.</code></td>
+<td>A card was applied. An <code>add</code> card that brings a <code>page</code> connector, or a sign-in connector with no <code>connect</code> card on the message, goes on with <code>Connect &lt;Title&gt; in the agent's settings.</code></td>
 </tr>
 <tr>
 <td><code>⚠️ Not applied: &lt;reason&gt;</code></td>
 <td>The change failed.</td>
+</tr>
+<tr>
+<td><code>1 more setup change is still pending.</code>, <code>&lt;N&gt; more setup changes are still pending.</code></td>
+<td>A <code>yes</code> applied one card while other cards of the reply wait.</td>
+</tr>
+<tr>
+<td><code>&lt;N&gt; connector cards still need their keys: add each key on its card.</code></td>
+<td>Several <code>key</code> connect cards wait.</td>
+</tr>
+<tr>
+<td><code>This setup change was already handled.</code></td>
+<td>Someone acted on the card first, or it is gone.</td>
+</tr>
+<tr>
+<td><code>This setup change is being applied right now. Try again in a moment.</code></td>
+<td>Another call is applying the card.</td>
 </tr>
 <tr>
 <td><code>Your agent is restarting to load the change. Continue in about a minute.</code></td>
@@ -28701,11 +28975,23 @@ async function connectFromNext(entry, useragentguid) {
 <td>The key was refused. Nothing was saved.</td>
 </tr>
 <tr>
+<td><code>That does not look like a &lt;Title&gt; key (it looks like &lt;kind&gt;), so it was not saved. Paste the &lt;Title&gt; key as your reply.</code></td>
+<td>The key pasted is another service's. The part in brackets is there only when Wiro knows the kind.</td>
+</tr>
+<tr>
+<td><code>⚠️ Not saved: &lt;Add title&gt; is still waiting. Reply "yes" to add it, or "no" to turn it down.</code></td>
+<td>A key typed for an <code>add</code> card whose <code>connect</code> card no longer waits.</td>
+</tr>
+<tr>
+<td><code>This card is older than 30 minutes. Use the card's button, or ask the agent again.</code></td>
+<td>The card turned 30 minutes old while the reply was read. In your product, offer your own button, or ask the agent again.</td>
+</tr>
+<tr>
 <td><code>Only an agent admin can apply setup changes.</code></td>
 <td>The sender can't apply changes.</td>
 </tr>
 <tr>
-<td><code>The setup change was turned down.</code></td>
+<td><code>The setup change was turned down.</code>, <code>The &lt;N&gt; setup changes were turned down.</code></td>
 <td>A <code>no</code> while the agent isn't running.</td>
 </tr>
 </tbody>
@@ -28713,18 +28999,19 @@ async function connectFromNext(entry, useragentguid) {
 </div>
 </div>
 <p>The full list is in <a href="/docs/agent-messaging#setup-reply-lines">Wiro's answers</a>.</p>
-<h2 id="security">Security</h2>
+<h2 id="security-rules">Security Rules</h2>
 <ul>
 <li><strong>Keys never go into chat messages.</strong> Collect keys, app keys and tokens in your own forms and send them with <code>SetupCardApply</code> <code>values</code> or <code>CredentialUpsert</code>. The agent never sees them. While setup from chat is on for a message, Wiro takes clear keys out of it before it is stored or reaches the agent: each one reads <code>[key removed]</code> in the stored text and in the text the agent gets, and Send answers <code>contentmasked: true</code> with that text in <code>content</code>. A key pasted as the reply for a waiting <code>connect</code> card is saved to the connector and stored as <code>[key saved to &lt;Connector title&gt;]</code>. This runs only while setup from chat is on for the message, so treat it as a safety net, never as a way to send keys. See <a href="/docs/agent-messaging#keys-in-chat">Keys in chat</a>.</li>
 <li><strong>Saved secrets read as a mask.</strong> <code>UserAgent/Detail</code> shows every saved <code>password</code> or <code>fileinput-base64</code> field as <code>"••••••••"</code>, for every caller, and returns no OAuth token and no OAuth app key at all. Show "Saved" instead of a value, and let people replace a secret, not read it.</li>
 <li><strong>The mask sent back keeps the saved value.</strong> A field sent to <code>CredentialUpsert</code> as <code>"••••••••"</code> isn't written, so a form saved as Detail showed it changes only the fields edited. In a list sent whole, such as <code>firebase.accounts</code>, an entry whose secret is the mask keeps the secret of the saved entry with the same values in its other fields. When no single saved entry matches, because those values changed or two saved entries share them, the request is refused and nothing is saved: send that entry's secret again. See <a href="/docs/agent-credentials#field-level-write-rules">Field-level write rules</a>.</li>
 <li><strong>Which service account a key file is.</strong> A saved Google service account file (Google Drive, Google Play and Google Calendar's <code>serviceaccountjson</code>, and each Firebase account's) reads as the mask too. So that you can show which account it is, the address people share a Drive folder, the Play Console or a calendar with, the agent's owner and team admins get <code>_service_account_email</code> in that connector's group of <code>credentials</code>, in <code>UserAgent/Detail</code> and in the <code>Deploy</code> and <code>Update</code> answers: <code>"_service_account_email": { "serviceaccountjson": "agent@acme-project.iam.gserviceaccount.com" }</code>, or for Firebase <code>"_service_account_email": { "accounts": [{ "serviceaccountjson": "push@acme-project.iam.gserviceaccount.com" }] }</code>, one item per account in the list's order. A value is <code>""</code> when nothing is saved or the file doesn't read as a service account key. Only the account's address leaves the file. Leave the key out of what you send back: field names that start with <code>_</code> are refused.</li>
-<li><strong>Approvals act with your key's rights.</strong> Show Apply only to the people allowed to change the agent, check that a <code>messageguid</code> belongs to the session of the person who clicked, and use <code>chatsetup: "off"</code> for agents whose users must not change them.</li>
-<li><strong>Your API key stays on your server.</strong> Your app calls your backend, and your backend calls Wiro.</li>
-<li><strong>Sign-ins come back to your page.</strong> The <code>redirecturl</code> receives only status parameters and the accounts to pick, never a token or a secret.</li>
+<li><strong>Approvals act with your key's rights.</strong> Show Apply only to the people allowed to change the agent, hold back their typed approvals (see <a href="#typed-replies">Typed replies</a>), check that a <code>messageguid</code> belongs to the session of the person who clicked, and use <code>chatsetup: "off"</code> for agents whose users must not change them.</li>
+<li><strong>Your key's owner stays in your backend.</strong> Message rows and cards carry your key owner's <code>uuid</code>, name, email and avatar, whoever of your users wrote: show your own names instead.</li>
+<li><strong>Your API key stays on your server.</strong> Your app calls your backend, and your backend calls Wiro. A browser holds at most the <code>agenttoken</code> and <code>sessiontoken</code> of its own person's chats.</li>
+<li><strong>Sign-ins come back to your page.</strong> The <code>redirecturl</code> receives only status parameters and the accounts to pick, never a token or a secret. A callback that can't be matched to a sign-in ends on the API's own neutral page instead (see <a href="#return-codes-on-your-redirect-url">Return codes</a>).</li>
 </ul>
 <h2 id="worked-examples">Worked Examples</h2>
-<p>Each example starts with a person's message in your chat and ends with the change applied. They use the same agent, <code>f8e7d6c5-b4a3-2190-fedc-ba0987654321</code>, and the person's account <code>5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f</code>. The agent's own words vary from turn to turn.</p>
+<p>Each example starts with a person's message in your chat and ends with the change applied. Each one starts from the same agent as it was before any of them: Chat Markdown Reporting is on, and none of the examples' connectors are. The ids are the same throughout: the agent <code>f8e7d6c5-b4a3-2190-fedc-ba0987654321</code>, and <code>5f0c9a2e-1b7d-4c3a-9e8f-2a6b7c8d9e0f</code>, your key owner's account, on every message and card. The agent's own words vary from turn to turn.</p>
 <h3 id="google-analytics-4-with-your-own-app-keys">Google Analytics 4 with your own app keys</h3>
 <p><strong>1. The person asks.</strong> <code>Message/Send</code> with <code>{ "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "sessionkey": "customer-42", "message": "Can you report our website traffic every Monday?" }</code> answers <code>{ "result": true, "errors": [], "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234", "agenttoken": "aB3xK9mR2pLqWzVn7tYhCd5sFgJkNb", "status": "agent_queue" }</code>.</p>
 <p><strong>2. The reply ends.</strong> <code>Message/Detail</code> with <code>{ "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234" }</code>:</p>
@@ -28809,9 +29096,7 @@ async function connectFromNext(entry, useragentguid) {
       &quot;speedType&quot;: &quot;words/s&quot;,
       &quot;elapsedTime&quot;: &quot;6.2s&quot;,
       &quot;tokenCount&quot;: 38,
-      &quot;wordCount&quot;: 23,
-      &quot;raw&quot;: &quot;I can do that once Google Analytics 4 is on and connected. Approve the card below and connect your Google Analytics account.&quot;,
-      &quot;answer&quot;: [&quot;I can do that once Google Analytics 4 is on and connected. Approve the card below and connect your Google Analytics account.&quot;]
+      &quot;wordCount&quot;: 23
     },
     &quot;attachments&quot;: [],
     &quot;deletestatus&quot;: 0,
@@ -28829,7 +29114,7 @@ async function connectFromNext(entry, useragentguid) {
   }
 }
 </code></pre>
-<p>The fields of the row are described in <a href="/docs/agent-messaging#post-useragentmessagedetail"><code>Message/Detail</code></a>.</p>
+<p>The row's <code>uuid</code> and <code>user</code> are your key owner's, whoever of your users wrote the message: show your own name for the sender. The fields of the row are described in <a href="/docs/agent-messaging#post-useragentmessagedetail"><code>Message/Detail</code></a>.</p>
 <p><strong>3. Your app shows one card</strong>, "Add Google Analytics 4", with a "Connect Google Analytics 4" step: the Client ID and Client Secret fields and the redirect URI from <code>OAuthStatus</code>, and an Add button that waits for the connection. The <code>connect</code> card is drawn inside the <code>add</code> card, not on its own.</p>
 <p><strong>4. The person connects.</strong> Your backend runs the calls of <a href="#own-app-keys-google-analytics-4">Own app keys</a>, compact here:</p>
 <pre><code class="language-text">OAuthStatus        { &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;, &quot;credentialkey&quot;: &quot;ga4&quot; }
@@ -28839,17 +29124,17 @@ CredentialUpsert   { &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba
 OAuthConnect       { &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;, &quot;credentialkey&quot;: &quot;ga4&quot;, &quot;authmethod&quot;: &quot;own&quot;, &quot;redirecturl&quot;: &quot;https://app.example.com/connect/done?ref=conn_8812&quot; }
                 -&gt; { &quot;result&quot;: true, &quot;errors&quot;: [], &quot;authorizeUrl&quot;: &quot;https://accounts.google.com/o/oauth2/v2/auth?...&quot;, &quot;flowid&quot;: &quot;9d2c41e07ab35f8e6c1d0b9a87f6e5d4&quot; }
 (browser)          Google account chooser and consent, then back to /connect/done?ref=conn_8812&amp;ga4_connected=true&amp;ga4_properties=[...]
-OAuthStatus        { &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;, &quot;credentialkey&quot;: &quot;ga4&quot;, &quot;flowid&quot;: &quot;9d2c41e07ab35f8e6c1d0b9a87f6e5d4&quot; }
+OAuthStatus        { &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;, &quot;credentialkey&quot;: &quot;ga4&quot; }
                 -&gt; { ..., &quot;flow&quot;: { &quot;flowid&quot;: &quot;9d2c41e07ab35f8e6c1d0b9a87f6e5d4&quot;, &quot;mine&quot;: true, &quot;mode&quot;: &quot;own&quot;, &quot;status&quot;: &quot;candidates&quot;, ... }, &quot;candidates&quot;: [{ &quot;id&quot;: &quot;123456789&quot;, &quot;name&quot;: &quot;Acme Web&quot; }, { &quot;id&quot;: &quot;987654321&quot;, &quot;name&quot;: &quot;Acme App&quot; }] }
 SetPickerAccounts  { &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;, &quot;credentialkey&quot;: &quot;ga4&quot;, &quot;flowid&quot;: &quot;9d2c41e07ab35f8e6c1d0b9a87f6e5d4&quot;, &quot;accountids&quot;: [&quot;123456789&quot;] }
                 -&gt; { &quot;result&quot;: true, &quot;errors&quot;: [], &quot;accounts&quot;: [{ &quot;id&quot;: &quot;123456789&quot;, &quot;name&quot;: &quot;Acme Web&quot; }], &quot;restart&quot;: &quot;none&quot; }
 </code></pre>
 <p><strong>5. The person presses Add.</strong> <code>SetupCardApply</code> with <code>{ "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234", "cardid": "71xb9zrcd1sb", "action": "apply", "signin": true }</code> answers as shown in <a href="#own-app-keys-google-analytics-4">step 8</a>: both cards <code>applied</code>, <code>summary</code> <code>Google Analytics 4 added. Google Analytics 4 connected.</code> and <code>restarting: true</code>.</p>
-<p><strong>6. The agent restarts.</strong> Your app shows "Restarting" and polls <code>UserAgent/Detail</code> until <code>status</code> is <code>4</code>. The person then asks again, and the agent proposes the scheduled task: a <code>schedule</code> card that your Apply button applies with <code>SetupCardApply</code>, as in <a href="#applying-and-dismissing">Applying and Dismissing</a>.</p>
+<p><strong>6. The agent restarts.</strong> Your app shows "Restarting" and polls <code>UserAgent/Detail</code> until <code>status</code> is <code>4</code>. The person then asks again, and the agent proposes the scheduled task: a <code>schedule</code> card that your Apply button applies with <code>SetupCardApply</code>, as in <a href="#applying-and-dismissing">Applying and Dismissing</a>. Each Monday's report then comes as a message added between turns, in the agent's most recent session: see <a href="#load-a-conversation">Load a conversation</a>.</p>
 <p>If the person typed <code>yes</code> instead of pressing Add, the first <code>yes</code> gets the listing and the second applies the <code>add</code> card alone; see <a href="#setupresult-and-next">setupresult and next</a>. Its <code>next</code> names the <code>connect</code> card: after the connection, apply it with <code>{ "useragentguid": "f8e7d6c5-b4a3-2190-fedc-ba0987654321", "messageguid": "c3d4e5f6-a7b8-9012-cdef-345678901234", "cardid": "ljehd9inazm4", "action": "apply" }</code>. Applied before the connection, it answers:</p>
 <pre><code class="language-json">{
   &quot;result&quot;: false,
-  &quot;errors&quot;: [{ &quot;code&quot;: 0, &quot;message&quot;: &quot;Google Analytics 4 is not connected yet. Finish the sign-in on the card first.&quot;, &quot;time&quot;: 1794654830 }],
+  &quot;errors&quot;: [{ &quot;code&quot;: 0, &quot;message&quot;: &quot;Google Analytics 4 is not connected yet. Finish the sign-in on the card first.&quot;, &quot;time&quot;: 1794654845 }],
   &quot;setup&quot;: {
     &quot;v&quot;: 1,
     &quot;id&quot;: &quot;ljehd9inazm4&quot;,
@@ -28996,7 +29281,7 @@ SetupCardApply     { &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba
 <pre><code class="language-text">OAuthConnect       { &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;, &quot;credentialkey&quot;: &quot;twitter&quot;, &quot;authmethod&quot;: &quot;wiro&quot;, &quot;redirecturl&quot;: &quot;https://app.example.com/connect/done?ref=conn_8813&quot; }
                 -&gt; { &quot;result&quot;: true, &quot;errors&quot;: [], &quot;authorizeUrl&quot;: &quot;https://x.com/i/oauth2/authorize?...&quot;, &quot;flowid&quot;: &quot;e1a2b3c4d5e6f708192a3b4c5d6e7f80&quot; }
 (browser)          X consent screen, then back to /connect/done?ref=conn_8813&amp;x_connected=true&amp;x_username=acmeco
-OAuthStatus        { &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;, &quot;credentialkey&quot;: &quot;twitter&quot;, &quot;flowid&quot;: &quot;e1a2b3c4d5e6f708192a3b4c5d6e7f80&quot; }
+OAuthStatus        { &quot;useragentguid&quot;: &quot;f8e7d6c5-b4a3-2190-fedc-ba0987654321&quot;, &quot;credentialkey&quot;: &quot;twitter&quot; }
                 -&gt; { &quot;result&quot;: true, &quot;errors&quot;: [], &quot;connected&quot;: true, &quot;accounts&quot;: [{ &quot;id&quot;: &quot;acmeco&quot;, &quot;name&quot;: &quot;acmeco&quot; }], ..., &quot;flow&quot;: { &quot;flowid&quot;: &quot;e1a2b3c4d5e6f708192a3b4c5d6e7f80&quot;, &quot;mine&quot;: true, &quot;mode&quot;: &quot;wiro&quot;, &quot;status&quot;: &quot;connected&quot;, &quot;account&quot;: &quot;acmeco&quot;, &quot;errorcode&quot;: &quot;&quot;, &quot;errordetail&quot;: &quot;&quot;, &quot;restart&quot;: &quot;none&quot;, &quot;expiresat&quot;: 1794655802 } }
 </code></pre>
 <p><strong>4. The person presses Add.</strong> <code>SetupCardApply</code> on <code>add</code> card <code>r8k2v6n4p1wa</code> with <code>signin: true</code>:</p>
@@ -29054,21 +29339,24 @@ Message/Send  &quot;&lt;the Serper API key&gt;&quot;
 <p>A second <code>yes</code> instead of the key applies the <code>add</code> card alone and answers <code>Next: paste your Serper Web Search key as your reply. Send it now and it loads with this same restart.</code>, with the <code>connect</code> card in <code>setupresult.next</code>. Even here, a form is safer than the chat: send the key from it with <code>SetupCardApply</code> <code>values</code>.</p>
 <h2 id="integration-checklist">Integration Checklist</h2>
 <ul>
-<li>Your backend holds the project API key, and your app talks only to your backend.</li>
+<li>Your backend holds the project API key, and your app talks only to your backend. A browser holds at most the <code>agenttoken</code> and <code>sessiontoken</code> of its own person's chats.</li>
 <li>One agent per customer, deployed with <code>useprepaid: true</code>, and <code>chatsetup</code> set: <code>"all"</code> for setup cards in your chat, <code>"off"</code> for agents whose users must not change them.</li>
 <li>Each conversation has its own <code>sessionkey</code>, and you check that every <code>messageguid</code> a person acts on is in their session.</li>
-<li>Messages go out with <code>Message/Send</code>; replies are followed on the WebSocket or with <code>Message/Detail</code>, and loaded with <code>Message/History</code>.</li>
+<li>Message rows and cards name your key's owner: your UI shows your own names for the sender.</li>
+<li>Messages go out with <code>Message/Send</code>; replies are followed on the WebSocket or with <code>Message/Detail</code>, and loaded with <code>Message/History</code>; rows added between turns arrive on the session's <code>sessiontoken</code>.</li>
+<li>Failed turns are told apart by their bracketed code, and an out-of-credits refusal by <code>agentbalance</code>.</li>
 <li>Timeline blocks are merged by <code>blockid</code> and newer <code>version</code>, sorted by <code>callindex</code>, <code>contentindex</code>, <code>blockid</code>, and drawn by <code>type</code>; unknown types and kinds are skipped.</li>
 <li>Replies Wiro answers itself (<code>agenttoken: null</code>, <code>status: "agent_end"</code>) show <code>response</code> as plain text.</li>
 <li>Setup cards show the right title, body and buttons for their kind and state, <code>add</code> cards together with their <code>connect</code> cards.</li>
-<li>Apply waits for the reply to finish; Apply and Dismiss call <code>SetupCardApply</code>, and the card updates from the answer's <code>setup</code> and from later <code>version</code> 2 blocks.</li>
-<li>Each connector mode has its flow: <code>key</code> (fields as <code>values</code>), <code>appkeys</code> (<code>CredentialUpsert</code>, <code>OAuthConnect</code> with <code>own</code>, the return page, <code>OAuthStatus</code>, <code>SetPickerAccounts</code>), <code>token</code> (<code>CredentialUpsert</code>, <code>OAuthConnect</code> with <code>api_key</code>, <code>SetPickerAccounts</code>), <code>signin</code> (<code>OAuthConnect</code> with <code>wiro</code>), and <code>page</code> (your settings screens).</li>
+<li>Apply waits for the reply to finish; Apply and Dismiss call <code>SetupCardApply</code>, and the card updates from the answer's <code>setup</code> (which can be <code>null</code>) and from later <code>version</code> 2 blocks.</li>
+<li>Each connector mode has its flow and its form fields: <code>key</code> (fields as <code>values</code>), <code>appkeys</code> (<code>CredentialUpsert</code>, <code>OAuthConnect</code> with <code>own</code>, the return page, <code>OAuthStatus</code>, <code>SetPickerAccounts</code>), <code>token</code> (<code>CredentialUpsert</code>, <code>OAuthConnect</code> with <code>api_key</code>, <code>SetPickerAccounts</code>), <code>signin</code> (<code>OAuthConnect</code> with <code>wiro</code>), and <code>page</code> (your settings screens).</li>
 <li>After connecting, the <code>add</code> card is applied with <code>signin: true</code> (one restart), or the <code>connect</code> card is applied.</li>
 <li><code>next</code> from blocks, <code>SetupCardApply</code> answers, <code>setupresult</code> and webhooks turns into your own Connect buttons.</li>
-<li>Every <code>result: false</code> shows its sentence; code branches on <code>errorcode</code>, <code>flow.status</code> and the return codes, never on sentences.</li>
-<li><code>restarting: true</code> shows a restarting line until <code>UserAgent/Detail</code> reads <code>status: 4</code>; Send refusals during a restart are shown as they are.</li>
+<li>Every <code>result: false</code> shows its sentence or your own words; code branches on <code>errorcode</code>, <code>flow.status</code> and the return codes, never on sentences.</li>
+<li>Every restart signal (<code>restarting</code>, <code>restart</code>, <code>flow.restart</code>, and the saves that answer none) shows a restarting line until <code>UserAgent/Detail</code> reads <code>status: 4</code>, and the poll stops at <code>0</code>, <code>5</code> or <code>6</code>; Send refusals during a restart are shown as they are.</li>
+<li>Typed approvals and pasted keys from people who must not change the agent never reach Wiro.</li>
 <li>Keys never go into chat messages; secrets show as "Saved", and the mask sent back is left alone.</li>
-<li>Your <code>redirecturl</code> page handles <code>&lt;prefix&gt;_connected=true</code> and <code>&lt;prefix&gt;_error=&lt;code&gt;</code>, inside a popup or as a full page.</li>
+<li>Your <code>redirecturl</code> page handles <code>&lt;prefix&gt;_connected=true</code> and <code>&lt;prefix&gt;_error=&lt;code&gt;</code>, inside a popup or as a full page, and a popup that never reports back is checked with <code>OAuthStatus</code>.</li>
 </ul>
 <h2 id="related">Related</h2>
 <ul>
