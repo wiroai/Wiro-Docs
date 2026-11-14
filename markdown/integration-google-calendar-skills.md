@@ -103,7 +103,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
   "_connected": true,
   "optional": false,
   "extra": false,
-  "serviceaccountjson": "***encrypted***",
+  "serviceaccountjson": "••••••••",
   "calendarid": "primary",
   "timezone": "Europe/Istanbul",
   "slotdurationminutes": 30

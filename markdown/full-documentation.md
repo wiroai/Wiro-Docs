@@ -8108,17 +8108,17 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
 
 **Field redaction in responses:**
 
+- **Saved secrets read as a mask.** A field of type `password` or `fileinput-base64` (an API key, token or password, or an uploaded key file or service account JSON) reads `"••••••••"`, eight `•` characters, once a value is saved on the agent, and `""` while none is. So does such a key in a list's entries, such as `firebase.accounts[].serviceaccountjson` and `adjust.apps[].apptoken`. This holds for every caller, the agent's owner and team admins included. A saved secret can't be read back with an API key, only replaced: send its new value with `CredentialUpsert`. A write that sends the mask back keeps the saved value (see [Field-level write rules](/docs/agent-credentials#field-level-write-rules)). `_connected`, `_filled` and `_required_missing` still count what is saved, and the agent receives the values as before. Other values, such as IDs, names, URLs and selections, show as saved, and so does `credentials.wiro.apikey`, the agent's project key.
 - `fieldstatus: "oauth_session"` fields (`accesstoken`, `refreshtoken`, `tokenexpiresat`, `pageAccessToken`, etc.) are always stripped from every response.
 - Schema fields marked `runtime_excluded: true`, such as the Instagram and
-  Facebook Pages `systemusertoken`, never reach the agent. The value you saved
-  comes back to the agent's owner and team admins, like your other connector
-  values.
-- `fieldstatus: "platform"` fields (Wiro-managed fields, such as Reddit's three approval flags `developerprofileverified`, `dataapiaccessapproved` and `commercialwrittenapproval`) are stripped from every API response. `credentials.wiro.apikey` and `credentials.calendarific.apikey` are operator-supplied user-input fields and appear in the response with `fieldstatus: "user"` like any other API-key credential.
+  Facebook Pages `systemusertoken`, never reach the agent. A saved one reads as
+  the mask, like every saved secret.
+- `fieldstatus: "platform"` fields (Wiro-managed fields, such as Reddit's three approval flags `developerprofileverified`, `dataapiaccessapproved` and `commercialwrittenapproval`) are stripped from every API response. `credentials.wiro.apikey` and `credentials.calendarific.apikey` are operator-supplied user-input fields and appear in the response with `fieldstatus: "user"` like any other API-key credential: `calendarific.apikey` reads as the mask once saved, and `wiro.apikey` shows as saved.
 - `fieldstatus: "oauth_app"` fields (`clientid` / `clientsecret`, `appid` / `appsecret`) are stripped from Detail responses, even after an own-mode OAuth setup writes them. History writes redact `clientsecret` to `[REDACTED]`.
-- A value the agent template holds on a secret field (one Wiro stores encrypted, such as a key, token, password or service account, or an `oauth_managed` OAuth app key) is not returned: the field reads empty, and a list entry keeps its place with an empty value, until you save your own. The agent still runs with the template's value, and the card's `_filled` and `_required_missing` count it. Values you save yourself come back to the agent's owner and team admins.
+- A value the agent template holds on a secret field (one Wiro stores encrypted, such as a key, token, password or service account, or an `oauth_managed` OAuth app key) is not returned: the field reads empty, and a list entry keeps its place with an empty value, until you save your own. The agent still runs with the template's value, and the card's `_filled` and `_required_missing` count it. Values you save yourself come back to the agent's owner and team admins, each secret as the mask.
 - Sentinel rows `_isoptional` / `_isextra`: never appear as fields; they're folded into the `optional` and `extra` flags above.
 
-A plain member of the agent's team gets the same answer with each saved value replaced by `[present]`, apart from display-only values such as `igusername` and the `authmethod` switch, which show as saved.
+A plain member of the agent's team gets the same answer with each saved value replaced by `[present]` and each saved secret by the mask, apart from display-only values such as `igusername` and the `authmethod` switch, which show as saved.
 
 **Communication channel fields** are returned separately from skill and
 integration credentials:
@@ -8602,7 +8602,7 @@ Retrieves full details for a single deployed agent instance, including subscript
           "_required_missing": false,
           "_filled": true,
           "authmethod": "api_key",
-          "systemusertoken": "your-system-user-token",
+          "systemusertoken": "••••••••",
           "accountId": "17841400000000000",
           "igusername": "mybrand",
           "connectedat": "2026-05-01T12:00:00.000Z",
@@ -8973,7 +8973,7 @@ Every provider entry under `credentials.<key>` carries:
 | `_filled` | `boolean` | `true` when the connector holds what the agent needs: its OAuth connection is made, or at least one field holds a value and no required field you fill in is empty. A value the agent template holds counts, even on a secret field that reads empty here. For `setuprequired`, an API-key connector counts only the values saved on this agent; see [Setup Required](/docs/agent-credentials#setup-required-state). |
 | `connectedat` | `string\|null` | OAuth and hybrid providers: ISO timestamp of the last successful connection. |
 | `tokenexpiresat` | `string\|null` | ISO timestamp when the current token expires, or an empty value when the provider reports no fixed expiry. |
-| `<fieldname>` | `string\|number\|boolean\|array` | The field value as you (or the OAuth callback) saved it, returned to the agent's owner and team admins. Field types match `_schema.fields[].type`. Never returned: OAuth tokens (`oauth_session`), OAuth app keys (`clientid` / `clientsecret`, `appid` / `appsecret`), Wiro-managed fields, and a value the agent template holds on a field Wiro stores encrypted or on an `oauth_managed` field: such a field reads empty until you save your own. |
+| `<fieldname>` | `string\|number\|boolean\|array` | The field value as you (or the OAuth callback) saved it, returned to the agent's owner and team admins. A saved secret (a `password` or `fileinput-base64` field, or such a key in a list's entries) reads `"••••••••"` instead, for every caller, and one with nothing saved reads `""`. Field types match `_schema.fields[].type`. Never returned: OAuth tokens (`oauth_session`), OAuth app keys (`clientid` / `clientsecret`, `appid` / `appsecret`), Wiro-managed fields, and a value the agent template holds on a field Wiro stores encrypted or on an `oauth_managed` field: such a field reads empty until you save your own. |
 
 ##### Subscription object
 
@@ -9348,7 +9348,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
 { "result": true, "applied": 3, "errors": [] }
 ```
 
-`applied` is the number of rows saved without an error; a row sent with its current value still counts. Every row is validated before anything is written. If any row fails validation (for example a reserved fieldname, a Wiro-managed field or an OAuth token field), the whole request is rejected and nothing is saved: the response has `result: false`, one `errors` entry per invalid row, and no `applied`. If a save fails after validation has passed, the other rows are still saved and the response has `result: false`, the `applied` count, and each failed row in `errors`. Re-sending the same request is safe.
+`applied` is the number of rows saved without an error; a row sent with its current value still counts. A secret sent as `"••••••••"`, the mask `UserAgent/Detail` shows for a saved one, keeps the saved value and isn't counted (see [Field-level write rules](/docs/agent-credentials#field-level-write-rules)). Every row is validated before anything is written. If any row fails validation (for example a reserved fieldname, a Wiro-managed field or an OAuth token field), the whole request is rejected and nothing is saved: the response has `result: false`, one `errors` entry per invalid row, and no `applied`. If a save fails after validation has passed, the other rows are still saved and the response has `result: false`, the `applied` count, and each failed row in `errors`. Re-sending the same request is safe.
 
 > **Twilio Voice: extra response fields.** When any `twilio-voice` field is touched, `CredentialUpsert` also auto-configures each Twilio phone number's `VoiceUrl` and surfaces the result on the response:
 >
@@ -11822,8 +11822,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
       "enabledChannels": ["telegram"],
       "teamsessionmode": "private",
       "credentials": {
-        "gmail":    { "_connected": false, "optional": false, "extra": false, "account": "agent@company.com", "apppassword": "xxxx xxxx xxxx xxxx" },
-        "telegram": { "_connected": false, "optional": false, "extra": false, "bottoken": "123456:ABC-DEF...", "allowedusers": ["123456789"] }
+        "gmail":    { "_connected": false, "optional": false, "extra": false, "account": "agent@company.com", "apppassword": "••••••••" },
+        "telegram": { "_connected": false, "optional": false, "extra": false, "bottoken": "••••••••", "allowedusers": ["123456789"] }
       },
       "agent": {
         "custom": true,
@@ -11856,6 +11856,7 @@ Notes on the response:
 - `scheduledskills` already contains the cron from the Deploy body. Deploy stores each `customskills` key in its full form, as `CustomSkillUpsert` does: a bare slug with an `interval` becomes `cs-cron-<slug>`, one without becomes `cs-<slug>`, and a key that isn't a slug fails the deploy before anything is created or charged.
 - `status: 2` means Deploy auto-queued the instance because `useprepaid: true` provisioned a subscription in the same call. Wiro starts the agent from the queue; you do **not** need to call `POST /UserAgent/Start` after a prepaid deploy.
 - Communication-channel credentials are validated independently from `skills`. Every channel group present in `credentials` must contain all of its `required_fields` or Deploy fails without leaving a partial agent behind.
+- The Gmail app password and the Telegram bot token you sent come back as `"••••••••"`: like `UserAgent/Detail`, the response shows a saved secret only as the mask.
 
 ## Step 4: Refine Skills After Deploy
 
@@ -16366,7 +16367,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialFieldHistory" \
 | `startdate` | number | No | UTC epoch seconds: return entries on/after this time |
 | `enddate` | number | No | UTC epoch seconds: return entries on/before this time |
 
-> **Sensitive values are redacted in history.** `oauth_session` rows (access/refresh tokens) **never** appear in history at all (they're stripped before persisting). `clientsecret` is stored as `[REDACTED]` in history rows; the live secret stays server-side. `POST /UserAgent/Detail` returns the current live values of the fields you can see; `CredentialFieldHistory` only shows the audit trail.
+> **Sensitive values are redacted in history.** `oauth_session` rows (access/refresh tokens) **never** appear in history at all (they're stripped before persisting). `clientsecret` is stored as `[REDACTED]` in history rows; the live secret stays server-side. `POST /UserAgent/Detail` returns the current values of the fields you can see, each saved secret as `"••••••••"`; `CredentialFieldHistory` only shows the audit trail.
 
 ## Setting API Key Credentials
 
@@ -16389,7 +16390,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   }'
 ```
 
-Response: `{ "result": true, "applied": 2, "errors": [] }`. `applied` is the count of fields saved without an error (a field sent with its current value still counts). All fields are validated before any is written: if one fails validation (for example a reserved fieldname prefixed with `_`), the whole request is rejected and nothing is saved; `result` is `false` and `errors` lists every invalid field. If a save fails after validation has passed, the other fields are still saved and each failed field is listed in `errors` with `result: false`. A starting or running agent restarts to apply the new values when the call changes a saved value. Saving only fields of a sign-in credential that isn't connected before or after the save, such as own-mode app keys, a System User token or `authmethod` before the sign-in or token check, restarts nothing: the connection that follows restarts the agent once.
+Response: `{ "result": true, "applied": 2, "errors": [] }`. `applied` is the count of fields saved without an error (a field sent with its current value still counts; a secret sent back as the mask isn't counted, see below). All fields are validated before any is written: if one fails validation (for example a reserved fieldname prefixed with `_`), the whole request is rejected and nothing is saved; `result` is `false` and `errors` lists every invalid field. If a save fails after validation has passed, the other fields are still saved and each failed field is listed in `errors` with `result: false`. A starting or running agent restarts to apply the new values when the call changes a saved value. Saving only fields of a sign-in credential that isn't connected before or after the save, such as own-mode app keys, a System User token or `authmethod` before the sign-in or token check, restarts nothing: the connection that follows restarts the agent once.
 
 ### Field-level write rules
 
@@ -16399,6 +16400,7 @@ Response: `{ "result": true, "applied": 2, "errors": [] }`. `applied` is the cou
   - `oauth_session`: the token fields `accesstoken`, `refreshtoken`, `connectedat`, `tokenexpiresat` and `refreshtokenexpiresat`, on any credential and in any letter case. They have no schema label, so the message reads, for example, `reddit.accesstoken is managed by the connection flow`.
   - These fields are rejected whatever status is stored. For any other field, the rejection check uses the schema's status when the registry schema declares it as a top-level field, even if a different status is stored, and the stored status otherwise; the write is rejected when that status is `platform` or `oauth_session`.
 - **Reserved fieldnames are rejected.** Any `fieldname` starting with `_` (e.g. `_isoptional`, `_isextra`) is a sentinel used by the template itself and cannot be set by API callers.
+- **A secret sent back as the mask keeps its saved value.** `UserAgent/Detail` shows a saved secret (a `password` or `fileinput-base64` field) as `"••••••••"`. A row whose `fieldvalue` is that mask, with or without spaces around it, keeps what is saved: it isn't written, isn't counted in `applied` and restarts nothing. So a card sent back as Detail showed it changes only the fields you edited. To change a secret, send its new value. In a list sent whole, such as `firebase.accounts` or `adjust.apps`, an entry whose secret is the mask keeps the secret of the saved entry with the same values in its other fields (lists inside the entry don't count). When no single saved entry matches, for example because you changed one of those values, the request is refused with `<Key label> in <List label> #<n> stands for a saved value, but this entry matches no single saved one. Enter the <Key label> again` and nothing is saved: send that entry's secret itself. The mask with other text beside it is refused too, with `<Field label> holds "••••••••", which stands for a saved value. Clear it and enter the full value`.
 - **Whitespace around a value is trimmed.** Text, password, email, URL and number values, and each entry of a list of strings, are saved without the spaces, tabs or line breaks around them and are validated after trimming, so a client ID pasted with a trailing newline is accepted. Spaces inside a value are kept (an app password with spaces keeps them), and multi-line text, selections, booleans, files and nested rows are saved as sent. The same applies to inline Deploy credentials.
 - Standard integration credential groups must be declared by the agent template. Communication-channel credentials are the exception: every useragent may create the channel groups published in `POST /Skills/List` → `channels[]`, using `CredentialUpsert` or inline Deploy credentials.
 - **Nested arrays** (`firebase.accounts[].apps[]`, `google-drive.folders[]`, `apple-appstore.apps[]`, etc.) are supported via the optional `parentfield` (the list field's key, e.g. `"accounts"`) and `ordinal` (array index) on each field row. An array `fieldvalue` (with no `parentfield`) replaces the whole stored list, so send the complete desired list. Per-row writes (a sub-field sent with `parentfield` and `ordinal`) change only that entry; indices you don't send are kept. To clear an optional top-level list (e.g. `google-drive.folders`, `apple-appstore.apps`), send `[]` as that field's `fieldvalue` with no `parentfield`. A nested list such as `firebase.accounts[].apps[]` is always sent whole: inside the parent `accounts` list, or as that entry's `apps` row (`parentfield: "accounts"` plus the entry's `ordinal`); `firebase.accounts` itself is required and can't be cleared.
@@ -16415,6 +16417,7 @@ If you call `POST /UserAgent/Deploy` with `useprepaid: true`, you may pass `cred
 - Fieldnames starting with `_` are reserved and ignored.
 - Each field's `fieldstatus` is assigned by the server, exactly as for `CredentialUpsert`.
 - Deploy never saves a `platform` or `oauth_session` field sent in `credentials`, such as one of Reddit's approval flags or `accesstoken`. This applies whether `credentials` is sent as an object or as a JSON string. In a communication-channel group (Telegram, Slack, Discord), such a field fails Deploy before the agent is created. In any other group, the field is dropped and Deploy continues.
+- A secret sent as the mask, `"••••••••"`, isn't saved: a new agent has no saved value for it to keep. `UserAgent/Detail` never returns a saved secret, so to copy one agent's setup to another, send each secret's value.
 - If `credentials` includes a communication-channel group, all of that channel's `required_fields` must be present. A missing or invalid activation credential fails Deploy instead of creating a partially configured channel.
 
 **Deploy body `customskills` semantics:**
@@ -17130,9 +17133,9 @@ The two branches are checked together: `setuprequired` stays `true` until every 
 
 ## Security
 
-- **OAuth access and refresh tokens are stored server-side** and are never returned by the customer-facing credential endpoints. A token you save yourself, such as a System User token or a bot token, comes back to the agent's owner and team admins like your other connector values.
+- **OAuth access and refresh tokens are stored server-side** and are never returned by the customer-facing credential endpoints. A token you save yourself, such as a System User token or a bot token, isn't returned either: `UserAgent/Detail` shows it as `"••••••••"`, as it shows every saved secret (see [Credential object shape](/docs/agent-overview#credential-object-shape)).
 - **`oauth_session` fields are always stripped** from Detail, `MyAgents`, and `CredentialUpsert` responses: `accesstoken`, `refreshtoken`, `pageAccessToken` and any similar token rows never leave the server. `OAuthStatus` returns only the `connectedat` and `tokenexpiresat` timestamps, never a token.
-- **`platform` fields are always stripped** from responses. In practice this affects Reddit's three approval flags and every other Wiro-managed field. `credentials.wiro.apikey` and `credentials.calendarific.apikey` are user-supplied and appear normally in the response.
+- **`platform` fields are always stripped** from responses. In practice this affects Reddit's three approval flags and every other Wiro-managed field. `credentials.wiro.apikey` and `credentials.calendarific.apikey` are user-supplied and appear in the response: `wiro.apikey` as saved, and `calendarific.apikey` as the mask once saved.
 - **`oauth_app` fields (`clientid` / `clientsecret`, `appid` / `appsecret`) are stripped from Detail responses**, even after an OAuth "own mode" setup writes them. The append-only credential history redacts `clientsecret` to `[REDACTED]` and always redacts `oauth_session` rows.
 - **`fieldstatus` is server-assigned.** A `fieldstatus` sent to `CredentialUpsert` is ignored; the server assigns the status itself.
   - Fields that the connection flow fills in, OAuth tokens included, are rejected with `<Field label> is managed by the connection flow` in `errors[]`. A token field has no schema label, so it is named `<credentialkey>.<fieldname>`.
@@ -19747,9 +19750,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
 
 Wiro validates the token against Meta and returns only active ad accounts whose
 effective `user_tasks` contain both `ADVERTISE` and `ANALYZE`. The token is
-encrypted at rest, and this answer never repeats it. Like your other connector
-values, it comes back on `UserAgent/Detail` only to the agent's owner and team
-admins. Wiro does not require or store an App ID/App Secret for this direct mode.
+encrypted at rest, and this answer never repeats it. Once saved, it reads
+`"••••••••"` on `UserAgent/Detail`, like every saved secret. Wiro does not require or store an App ID/App Secret for this direct mode.
 
 7. Persist one or more returned ad accounts with
    `POST /UserAgentOAuth/SetPickerAccounts` as shown in Step 10. API clients
@@ -20879,9 +20881,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   }'
 ```
 
-The token is stored encrypted and never reaches the agent. Like your other
-connector values, it comes back on `UserAgent/Detail` only to the agent's owner
-and team admins.
+The token is stored encrypted and never reaches the agent. Once saved, it reads
+`"••••••••"` on `UserAgent/Detail`, like every saved secret. To change it,
+save a new token.
 
 ### Step 3: Validate the token and discover Pages
 
@@ -21468,9 +21470,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   }'
 ```
 
-The System User token is stored encrypted and never reaches the agent. Like
-your other connector values, it comes back on `UserAgent/Detail` only to the
-agent's owner and team admins.
+The System User token is stored encrypted and never reaches the agent. Once
+saved, it reads `"••••••••"` on `UserAgent/Detail`, like every saved secret.
+To change it, save a new token.
 
 ### Step 3: Validate and discover Instagram accounts
 
@@ -21881,7 +21883,7 @@ do nothing. Connect an account (in System User mode, select it with
    not for Instagram API with Instagram Login.
 5. **Tokens are isolated per useragent** and are never returned to another
    customer. Access tokens are never returned at all, and a saved System User
-   token comes back only to the agent's owner and team admins.
+   token reads only as `"••••••••"`.
 
 ## Related
 
@@ -22458,7 +22460,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
   "_connected": true,
   "optional": true,
   "extra": true,
-  "apitoken": "***encrypted***",
+  "apitoken": "••••••••",
   "apps": [
     { "appname": "My Game", "platform": "ios", "apptoken": "a1b2c3d4e5f6", "storeid": "1234567890" },
     { "appname": "My Game", "platform": "android", "apptoken": "a1b2c3d4e5f6", "storeid": "com.example.game" }

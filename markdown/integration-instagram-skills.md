@@ -118,9 +118,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   }'
 ```
 
-The System User token is stored encrypted and never reaches the agent. Like
-your other connector values, it comes back on `UserAgent/Detail` only to the
-agent's owner and team admins.
+The System User token is stored encrypted and never reaches the agent. Once
+saved, it reads `"••••••••"` on `UserAgent/Detail`, like every saved secret.
+To change it, save a new token.
 
 ### Step 3: Validate and discover Instagram accounts
 
@@ -531,7 +531,7 @@ do nothing. Connect an account (in System User mode, select it with
    not for Instagram API with Instagram Login.
 5. **Tokens are isolated per useragent** and are never returned to another
    customer. Access tokens are never returned at all, and a saved System User
-   token comes back only to the agent's owner and team admins.
+   token reads only as `"••••••••"`.
 
 ## Related
 

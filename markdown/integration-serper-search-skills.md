@@ -94,7 +94,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
   "_connected": true,
   "optional": true,
   "extra": true,
-  "apikey": "***encrypted***"
+  "apikey": "••••••••"
 }
 ```
 

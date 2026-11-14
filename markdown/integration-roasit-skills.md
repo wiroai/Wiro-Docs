@@ -116,7 +116,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
   "_connected": true,
   "optional": true,
   "extra": true,
-  "apitoken": "***encrypted***",
+  "apitoken": "••••••••",
   "apps": [
     { "appname": "My Game", "platform": "ios", "apptoken": "a1b2c3d4e5f6", "storeid": "1234567890" },
     { "appname": "My Game", "platform": "android", "apptoken": "a1b2c3d4e5f6", "storeid": "com.example.game" }
