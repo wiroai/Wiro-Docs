@@ -719,6 +719,8 @@ Your App (Frontend)           Your Backend              Wiro API              Pr
 
 Steps 8 and 9 apply to credentials with an account picker; Meta Ads and Google Business Profile add a second picker step with `DiscoverPickerItems`. Call the Wiro endpoints (steps 2, 9 and 10) from your backend with your API key, not from the browser.
 
+Each `OAuthConnect` call starts a sign-in, or a token check in a direct mode, and answers its `flowid`. The accounts it lists stay on Wiro's server for 15 minutes, for the account that started it: [`OAuthStatus`](#post-useragentoauthoauthstatus) returns them as `candidates` until they are saved, so your backend can read them without the redirect.
+
 ### Auth Methods: `"wiro"` vs `"own"`
 
 |  | `"wiro"` | `"own"` |
@@ -778,7 +780,7 @@ Register this URL in your OAuth app settings on the provider's developer portal:
 https://api.wiro.ai/v1/UserAgentOAuth/{Provider}Callback
 ```
 
-Provider-specific paths: `XCallback`, `TikTokCallback`, `IGCallback`, `FBCallback`, `LICallback`, `GAdsCallback`, `MetaAdsCallback`, `MCCallback`, `YTCallback`, `GA4Callback`, `GBPCallback`, `HubSpotCallback`, `MailchimpCallback`, `ShopifyCallback`, `RedditCallback`. TikTok Ads uses `TikTokAdsCallback`, but it is Wiro-managed only, so there is no app of your own to register it in.
+Provider-specific paths: `XCallback`, `TikTokCallback`, `IGCallback`, `FBCallback`, `LICallback`, `GAdsCallback`, `MetaAdsCallback`, `MCCallback`, `YTCallback`, `GA4Callback`, `GBPCallback`, `HubSpotCallback`, `MailchimpCallback`, `ShopifyCallback`, `RedditCallback`. TikTok Ads uses `TikTokAdsCallback`, but it is Wiro-managed only, so there is no app of your own to register it in. [`OAuthStatus`](#post-useragentoauthoauthstatus) returns the exact URL to register for each credential as `redirecturi`.
 
 ### Callback success & error parameters
 
@@ -848,7 +850,7 @@ All OAuth integrations share five unified endpoints. The provider is selected vi
 | Endpoint | Purpose |
 |----------|---------|
 | `POST /UserAgentOAuth/OAuthConnect` | Start OAuth and return an authorize URL, or run a registry-declared direct credential probe and return discovered accounts. |
-| `POST /UserAgentOAuth/OAuthStatus` | Check whether a provider is connected and which accounts are selected. |
+| `POST /UserAgentOAuth/OAuthStatus` | Check whether a provider is connected and which accounts are selected, follow a sign-in or token check under way, and read the accounts it listed. |
 | `POST /UserAgentOAuth/OAuthDisconnect` | Clear stored credentials + tokens. |
 | `POST /UserAgentOAuth/DiscoverPickerItems` | Discover grouped child resources for a registry-declared chained picker after its parent accounts are selected. |
 | `POST /UserAgentOAuth/SetPickerAccounts` | Save the user's account selection after OAuth or direct discovery. |
@@ -884,11 +886,14 @@ without a browser redirect.
 {
   "result": true,
   "errors": [],
-  "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth?client_id=...&redirect_uri=...&scope=...&response_type=code&state=..."
+  "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth?client_id=...&redirect_uri=...&scope=...&response_type=code&state=...",
+  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19"
 }
 ```
 
-Direct probes return `{ "result": true, "errors": [], "accounts": [...] }` and no `authorizeUrl`. Meta Ads, Facebook Pages and Instagram return `{ id, name }` entries to pick from; Shopify has no picker, so it returns an empty `accounts` array and is connected right away. First save the mode's fields together with `authmethod: "api_key"` through `CredentialUpsert`, then call `OAuthConnect` with the same `authmethod`; without the saved `authmethod` the probe fails with `direct_token_missing`. Each direct call that finds the saved fields clears the credential's earlier connection and account selection before it checks them with the provider, so save the selection again afterwards. A failed probe returns `result: false`, a general message in `errors[]` and an `errorcode` that names the cause, such as `direct_token_missing`, `direct_token_invalid`, `no_accounts`, `no_pages`, `provider_rejected_request` or `provider_timeout`; each integration page lists its codes.
+`flowid` names this sign-in: 32 lowercase hex characters. A new `OAuthConnect` for the same agent and credential replaces it, whoever sends it. Follow the sign-in with [`OAuthStatus`](#post-useragentoauthoauthstatus), and send the `flowid` with [`SetPickerAccounts`](#post-useragentoauthsetpickeraccounts) when you save accounts from its list.
+
+Direct probes return `{ "result": true, "errors": [], "accounts": [...], "flowid": "...", "account": "...", "restart": "none" }` and no `authorizeUrl`. Meta Ads, Facebook Pages and Instagram return `{ id, name }` entries to pick from; Shopify has no picker, so it returns an empty `accounts` array and is connected right away. First save the mode's fields together with `authmethod: "api_key"` through `CredentialUpsert`, then call `OAuthConnect` with the same `authmethod`; without the saved `authmethod` the probe fails with `direct_token_missing`. Each direct call that finds the saved fields clears the credential's earlier connection and account selection before it checks them with the provider, so save the selection again afterwards. A failed probe returns `result: false`, a general message in `errors[]` and an `errorcode` that names the cause, such as `direct_token_missing`, `direct_token_invalid`, `no_accounts`, `no_pages`, `provider_rejected_request` or `provider_timeout`; each integration page lists its codes. The check has a `flowid` like a sign-in, and a failed answer carries it too. `account` names who the token belongs to when the provider says so, such as a Meta System User's name or the Shopify store's name, and is empty otherwise. `restart` is `"scheduled"` when the check restarted the agent, else `"none"`.
 
 ##### Common errors
 
@@ -911,12 +916,13 @@ Mailchimp's `api_key` mode needs no `OAuthConnect` call: save `apikey` and `auth
 
 ### POST /UserAgentOAuth/OAuthStatus
 
-Returns whether the credential is connected and lists every account/property/page selected via the picker. Use this to render an "Already connected: N accounts selected" UI.
+Returns whether the credential is connected and lists every account/property/page selected via the picker. Use this to render an "Already connected: N accounts selected" UI. It also says how the credential connects, and follows the sign-in or token check under way with the accounts it listed.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
 | `credentialkey` | string | Yes | OAuth credential key. |
+| `flowid` | string | No | The `flowid` your `OAuthConnect` returned. It filters nothing: the answer always describes the current sign-in or check, so compare `flow.flowid` with yours to tell whether a newer one replaced it. |
 
 ##### Response
 
@@ -930,7 +936,22 @@ Returns whether the credential is connected and lists every account/property/pag
     { "id": "0987654321", "name": "Acme Subsidiary" }
   ],
   "connectedat": "2026-05-25T12:00:00Z",
-  "tokenexpiresat": "2026-05-25T13:00:00Z"
+  "tokenexpiresat": "2026-05-25T13:00:00Z",
+  "authmethod": "own",
+  "redirecturi": "https://api.wiro.ai/v1/UserAgentOAuth/GAdsCallback",
+  "appkeyssaved": true,
+  "tokensaved": false,
+  "flow": {
+    "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
+    "mine": true,
+    "mode": "own",
+    "status": "saved",
+    "account": "",
+    "errorcode": "",
+    "errordetail": "",
+    "restart": "scheduled",
+    "expiresat": 1779711270
+  }
 }
 ```
 
@@ -940,6 +961,12 @@ Returns whether the credential is connected and lists every account/property/pag
 | `accounts` | `array<{id, name}>` | Picker credentials: one entry per selected account, Page or property, `[]` until something is saved. Credentials without a picker (X, TikTok, LinkedIn, HubSpot, Mailchimp, Reddit, Shopify): one entry while `connected` is `true`, with the connected account's display name in both `id` and `name` (for example the X username or the Shopify store name), and `[]` otherwise. |
 | `connectedat` | `string` | ISO timestamp of the last successful Connect. Automatic token refreshes do not change it. |
 | `tokenexpiresat` | `string` | ISO timestamp when the current access token expires. Empty for providers without a fixed expiry (e.g. Mailchimp). |
+| `authmethod` | `string` | The saved connection mode, such as `"own"` or `"api_key"`. Empty when none is saved. |
+| `redirecturi` | `string` | The callback URL to register in your own app for own mode, for this credential, such as `https://api.wiro.ai/v1/UserAgentOAuth/GA4Callback`. |
+| `appkeyssaved` | `boolean` | `true` when every required own-mode app key is saved on this agent, such as `clientid` and `clientsecret`, or `appid` and `appsecret`. `false` for a credential without own mode. |
+| `tokensaved` | `boolean` | `true` when every field of the credential's direct mode is saved, such as a Meta `systemusertoken`, or Shopify's `shopdomain`, `clientid` and `clientsecret`. `false` for a credential without a direct mode. |
+| `flow` | `object` | The sign-in or token check of this agent and credential, while there is one; see below. Absent when there is none. |
+| `candidates` | `array<{id, name}>` | The accounts the current sign-in or token check listed, only for the account that started it and only while `flow.status` is `candidates`. Save the ones to use with [`SetPickerAccounts`](#post-useragentoauthsetpickeraccounts). |
 
 Meta Ads and Google Business Profile also return their second picker step: `pickersteps.pages` and `pagemappings` (Meta Ads), `pickersteps.locations` and `locationmappings` (Google Business Profile). `optional` is `true` for Meta Ads Pages, which an agent can do without, and `false` for Business Profile locations. `configured` is `true` once at least one item is saved, and `groups` has one entry per selected account with its saved items:
 
@@ -961,6 +988,52 @@ Meta Ads and Google Business Profile also return their second picker step: `pick
   { "adaccountid": "123456789", "adaccountname": "Acme Ads", "pageid": "111222333", "pagename": "Acme" }
 ]
 ```
+
+`flow` follows one sign-in or token check, which `OAuthConnect` starts for one agent and credential. A new `OAuthConnect` for them replaces it, whoever sends it. While a sign-in waits for the pick, `connected` is still `false` and the list is in `candidates`:
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "connected": false,
+  "accounts": [],
+  "connectedat": "2026-05-25T12:00:00Z",
+  "tokenexpiresat": "2026-05-25T13:00:00Z",
+  "authmethod": "own",
+  "redirecturi": "https://api.wiro.ai/v1/UserAgentOAuth/GA4Callback",
+  "appkeyssaved": true,
+  "tokensaved": false,
+  "flow": {
+    "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
+    "mine": true,
+    "mode": "own",
+    "status": "candidates",
+    "account": "",
+    "errorcode": "",
+    "errordetail": "",
+    "restart": "none",
+    "expiresat": 1779711300
+  },
+  "candidates": [
+    { "id": "123456789", "name": "Acme Web" },
+    { "id": "987654321", "name": "Acme App" }
+  ]
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `flowid` | `string` | 32 lowercase hex characters, as `OAuthConnect` returned it. |
+| `mine` | `boolean` | `true` when the caller started it. For anyone else, `flow` holds only `mine: false`, `status` and `expiresat`. |
+| `mode` | `string` | The `authmethod` it runs in: `wiro`, `own` or `api_key`. |
+| `status` | `string` | `waiting`: the sign-in started and the provider hasn't sent the person back yet. `candidates`: the accounts are listed and none is saved yet. `connected`: finished, with nothing to pick. `saved`: the accounts were saved, and the list is used up. `failed`: see `errorcode`. |
+| `account` | `string` | Who signed in, when Wiro knows it: the X or TikTok username, the HubSpot portal, the Instagram username, the Shopify store, a Meta System User's name, or the name of the Facebook user after a Facebook or Meta Ads sign-in in own mode. Empty otherwise, for example after a Google sign-in. |
+| `errorcode` | `string` | With `status: "failed"`, the code the redirect carried (see [Callback success & error parameters](#callback-success-error-parameters)) or the token check's `errorcode`. Empty otherwise. |
+| `errordetail` | `string` | With `failed`, Merchant Center's `mc_error_detail` when there is one. Empty otherwise. |
+| `restart` | `string` | What the step that ended it did to the agent: `scheduled` (it restarted the agent) or `none`. |
+| `expiresat` | `number` | Unix seconds when it ends: 15 minutes after `OAuthConnect`, or 15 minutes after the accounts were listed. After that, `flow` is absent. |
+
+The list belongs to the Wiro account whose request started the sign-in or check (with an API key, the account the key belongs to). Another person who manages the agent, such as another admin of a team agent, sees that a sign-in is under way, but gets no `candidates` and can't save from it. `OAuthStatus` never returns a token, an app secret, the OAuth `state` or the authorize URL.
 
 > **Multi-account picker fields are JSON arrays.** Picker fields like
 > `customerid` (Google Ads), `adaccountid` (Meta Ads), `advertiserid` (TikTok Ads), `merchantid` (Merchant
@@ -1200,6 +1273,8 @@ again for a direct mode). The agent restarts automatically if it was running.
 
 For providers that publish a token-revocation endpoint (currently X, TikTok, TikTok Ads and Reddit), Wiro also calls the provider's revoke endpoint for OAuth connections as a non-critical best-effort step. Other providers only clear local credentials; the token remains valid on the provider side until it expires.
 
+A disconnect also ends a sign-in or token check under way for the credential: its account list is dropped, so `SetPickerAccounts` can't save from it.
+
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
@@ -1266,9 +1341,7 @@ The two branches are checked together: `setuprequired` stays `true` until every 
 - The `redirecturl` receives only connection status parameters: no tokens, no secrets.
 - OAuth state parameters use a 15-minute TTL cache to prevent replay attacks.
 - Redirect URLs must be https, on any host you control (or http on localhost/127.0.0.1 for development).
-- Facebook Page and direct Instagram discovery results remain server-side for
-  15 minutes while the user selects accounts. Clients receive only public
-  `{id, name}` pairs; the Page access tokens found during discovery never leave the server.
+- Every sign-in and token check keeps the accounts it listed on the server for 15 minutes, as `{id, name}` pairs, and gives them only to the account that started it. The Page access tokens found during Facebook Page and Instagram discovery never leave the server.
 
 ## For Third-Party Developers
 
@@ -1283,7 +1356,8 @@ If you're building a product on top of Wiro agents and need your customers to co
 3. **OAuth branch**: when `authorizeUrl` is returned, send the customer's
    browser there. Wiro brings it back to your `redirecturl` with
    `<prefix>_connected=true` and, for picker credentials, the account list, or
-   with `<prefix>_error=<code>`.
+   with `<prefix>_error=<code>`. Your backend can also follow the sign-in with
+   `OAuthStatus` and read the list there, as `candidates`.
 4. **Direct branch**: when `accounts` is returned, there is no redirect; the
    list is in the response.
 5. **Pick**: show the list in your own UI and save the choice with
@@ -1306,7 +1380,8 @@ Google Ads, Meta Ads, TikTok Ads, Merchant Center, YouTube, GA4, Google Business
    [Callback success & error parameters](#callback-success-error-parameters)).
    It is a JSON array that your query parser has already decoded, so parse it
    once with `JSON.parse`. In System User mode the list is in the
-   `OAuthConnect` response instead.
+   `OAuthConnect` response instead. Either way, `OAuthStatus` returns it as
+   `candidates` for 15 minutes, to the account that started the sign-in.
 2. **Show it.** Every item has an `id` and a name;
    [Picker data from the redirect](#picker-data-from-the-redirect) lists each
    credential's item fields and the keys to save them under.
@@ -1323,7 +1398,7 @@ Google Ads, Meta Ads, TikTok Ads, Merchant Center, YouTube, GA4, Google Business
    `<prefix>_error=no_accounts` (`fb_error=no_pages` for Facebook Pages) and
    Wiro saves nothing. Show the reason and let the customer connect again.
 
-Wiro sends the list only in that redirect or response. No endpoint lists it again: `OAuthStatus` shows only the saved selection. To offer changes later, keep the list or run `OAuthConnect` again.
+Wiro sends the list in that redirect or response, and `OAuthStatus` returns it as `candidates` for 15 minutes. After that, `OAuthStatus` shows only the saved selection. To offer changes later, keep the list or run `OAuthConnect` again.
 
 ### Handling the OAuth redirect in your app
 
