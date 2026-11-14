@@ -84,7 +84,9 @@ admins. Wiro does not require or store an App ID/App Secret for this direct mode
    must perform this request even when only one account is returned.
 8. Optionally discover and select Page mappings with
    `POST /UserAgentOAuth/DiscoverPickerItems`, then save them through the
-   chained `SetPickerAccounts` shape shown in Step 10b.
+   chained `SetPickerAccounts` shape shown in Step 10b. To save the ad accounts
+   and their Pages in one call, discover the Pages first, as the end of Step 10b
+   shows.
 
 ## Customer-owned app OAuth
 
@@ -356,6 +358,35 @@ shows Pages grouped by ad account and permits multiple selections. The Page
 step is optional, so reporting and non-Page operations remain available when
 no Page is selected.
 
+**Ad accounts and Pages in one call.** Steps 10 and 10b can restart a running agent twice. To restart it once, skip Step 10: call `DiscoverPickerItems` with the chosen ad accounts in `parents` and the `flowid` of the token check or sign-in, then save both with one `SetPickerAccounts` call that sends `accountids`, `flowid`, `pickerkey` and `selections`, with each parent's Pages in `itemids` or `items`. Both calls must name the same ad accounts within five minutes, or the save answers `next_expired` and you discover again. See [Both steps in one call](/docs/agent-credentials#both-steps-in-one-call).
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/DiscoverPickerItems" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "meta-ads",
+    "pickerkey": "pages",
+    "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
+    "parents": ["123456789"]
+  }'
+
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "meta-ads",
+    "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
+    "accountids": ["123456789"],
+    "pickerkey": "pages",
+    "selections": [
+      { "parentvalue": "123456789", "itemids": ["111222333"] }
+    ]
+  }'
+```
+
 ### Step 11: Verify the connection
 
 ```bash
@@ -508,21 +539,24 @@ Chained Page selection, after `DiscoverPickerItems`:
 | `useragentguid` | string | Yes | Agent instance GUID. |
 | `credentialkey` | string | Yes | `"meta-ads"`. |
 | `pickerkey` | string | Yes | `"pages"`. |
-| `selections` | array | Yes | One `{ parentvalue, items }` entry for every discovery group without an `errorcode`. `parentvalue` is the ad account ID; each item carries `pageid` and `pagename` exactly as discovered. Empty `items` is allowed because Pages are optional. |
+| `selections` | array | Yes | One `{ parentvalue, items }` entry for every discovery group without an `errorcode`. `parentvalue` is the ad account ID; each item carries `pageid` and `pagename` exactly as discovered, or `itemids` holds the Page IDs. Empty `items` is allowed because Pages are optional. |
 
 Response:
 `{ result, pickerkey: "pages", pagemappings: [{adaccountid, adaccountname, pageid, pagename}], errors }`.
 
+Both stages in one call: send `accountids` (or `accounts`), `flowid`, `pickerkey` and `selections` together, after `DiscoverPickerItems` with the same ad accounts in `parents`. Response: `{ result, accounts: [{id, name}, ...], pickerkey: "pages", pagemappings, restart, errors }`.
+
 ### POST /UserAgentOAuth/DiscoverPickerItems
 
-Discovers eligible Facebook Pages grouped under the already-selected ad
-accounts. This call must follow root ad-account `SetPickerAccounts`.
+Discovers eligible Facebook Pages grouped under the selected ad accounts: the saved ones, or, with `parents` and `flowid`, ad accounts of the current token check's or sign-in's list before they are saved.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
 | `credentialkey` | string | Yes | `"meta-ads"`. |
 | `pickerkey` | string | Yes | `"pages"`. |
+| `parents` | string[] | No | Ad account IDs from the list of the current token check or sign-in, before they are saved (at most 50). |
+| `flowid` | string | No | With `parents`: the `flowid` from `OAuthConnect`. |
 
 Response:
 `{ result, pickerkey: "pages", groups: [{parent: {adaccountid, adaccountname}, items: [{pageid, pagename}], errorcode?}], errors }`.
@@ -613,6 +647,7 @@ To change **what** the reporter includes (thresholds, reporting preferences, hol
 | `meta_token_expired` | The OAuth token or its data-access window has expired. | Reconnect customer-owned OAuth. Direct mode does not use `debug_token`; replace a rejected/expired System User token in Business Settings. |
 | `no_accounts` | No active account has both `ADVERTISE` and `ANALYZE` tasks. | Assign the connected principal those tasks on an active ad account in Business Settings, then reconnect. |
 | `Picker candidates expired. Discover them again.` | More than five minutes elapsed after Page discovery, or the parent account connection changed. | Call `DiscoverPickerItems` again, then resubmit the Page selection. |
+| `The list of pages expired. Load it again.` | `errorcode: "next_expired"`: ad accounts and Pages were saved in one call, but the Pages weren't discovered with `parents` for those ad accounts, from this sign-in, in the last five minutes. | Call `DiscoverPickerItems` with `parents` again, then save. |
 | `selections must include every available parent exactly once` | The Page selection omitted or duplicated a successful ad-account group. | Include one `selections[]` entry per successful `groups[]` entry; use `items: []` to select no Page for a parent. |
 | `internal_error` | Unexpected server error during callback processing. | Retry once. If it persists, contact Wiro support with the timestamp and your `useragentguid`. |
 
