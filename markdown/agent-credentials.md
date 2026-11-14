@@ -816,7 +816,7 @@ Provider-specific paths: `XCallback`, `TikTokCallback`, `IGCallback`, `FBCallbac
 
 > **Empty values are left out:** Wiro never sends a parameter with an empty value. `x_username`, `tiktok_username`, `ig_username`, `li_name`, `hubspot_portal`, `hubspot_name`, `mailchimp_account`, `shopify_shop` and `shopify_name` come from a profile lookup after the token exchange. When that lookup fails, the parameter is missing but `<prefix>_connected=true` is still sent, so read these with a fallback. `reddit_username` is always present on success: if Wiro cannot read the Reddit account, the callback returns `reddit_error=developer_profile_mismatch` instead.
 
-> **List size:** some lists hold only the provider's first page: Google Business Profile up to 20 accounts, Merchant Center up to 100 accounts, GA4 the properties of up to 200 accounts, YouTube up to 50 channels, and Facebook Pages through Facebook Login the first page Meta returns (25 Pages by default). Meta Ads and TikTok Ads list up to 500 and send `too_many_ad_accounts` or `account_list_too_large` above that. Google Ads lists every customer the user can access directly. The list travels in the query string, and each item adds about 90 to 110 bytes, so 200 ad accounts make a URL of about 20 KB. Make sure the server behind your `redirecturl` accepts URLs that long; many servers refuse them with their default limits.
+> **List size:** some lists hold only the provider's first page: Google Business Profile up to 20 accounts, Merchant Center up to 100 accounts, GA4 the properties of up to 200 accounts, YouTube up to 50 channels, and Facebook Pages through Facebook Login the first page Meta returns (25 Pages by default). Meta Ads and TikTok Ads list up to 500 and send `too_many_ad_accounts` or `account_list_too_large` above that. Google Ads lists every customer the user can access directly. A list of more than 2,000 accounts on any credential fails with `account_list_too_large`, and nothing is saved. The list travels in the query string, and each item adds about 90 to 110 bytes, so 200 ad accounts make a URL of about 20 KB. Make sure the server behind your `redirecturl` accepts URLs that long; many servers refuse them with their default limits.
 
 Common error codes across providers:
 
@@ -841,7 +841,7 @@ Provider-specific codes:
 | `meta_token_expired` | Meta Ads | The token or its data access has expired. |
 | `meta_app_mismatch` | Meta Ads | The token belongs to a different Meta app than the saved App ID. |
 | `too_many_ad_accounts` | Meta Ads | Meta returned more than 500 ad accounts. |
-| `account_list_too_large` | TikTok Ads | TikTok returned more than 500 advertisers. |
+| `account_list_too_large` | TikTok Ads, and any credential with an account picker | TikTok returned more than 500 advertisers, or the provider listed more than 2,000 accounts to pick from. Nothing is saved. |
 | `invalid_signature` | Shopify | The callback `hmac` is missing or does not match the one computed with the app's Client Secret. Nothing is saved. |
 | `invalid_shop` | Shopify | The callback `shop` is not the `shopdomain` saved on the agent. Nothing is saved. |
 | `developer_profile_mismatch` | Reddit | The Reddit account that approved access is not the saved `developerprofileusername`, or Wiro could not read that account. Nothing is saved. |
