@@ -303,6 +303,22 @@ Some messages are answered by Wiro itself, with no agent turn: a `yes` that appl
 
 Show `response` as the reply, as plain text. There is nothing to follow on the WebSocket. In `Message/History` the row reads `status: "agent_end"`, `metadata: { "type": "setup_result" }` and an empty `timeline`. These replies use no credits, and Wiro gives them while the agent is stopped or restarting too: see [Messages during a restart](#messages-during-a-restart) for which ones.
 
+Wiro also answers a slash command the agent doesn't run, such as `/status`, or one of its commands that is turned off, while the agent is running. It uses no credits, and the answer has no `setupresult`:
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "messageguid": "e5f6a7b8-c9d0-1234-ef56-789012345678",
+  "agenttoken": null,
+  "status": "agent_end",
+  "response": "⛔ Unknown or disabled command: /status\nSend /agent_help to see the available commands.",
+  "content": "/status"
+}
+```
+
+The second line comes only when the agent has `agent_help` on. Show `response` as the reply, and the row in History as you show the other replies Wiro answers itself. A command counts anywhere in the message, as in `Check the /pricing page`, but never inside a link or a quoted line. A message that holds one of the agent's [enabled commands](/docs/agent-overview#post-useragentupdatesettings) goes to the agent, which runs it, and so does a message whose first command is `/model`, `/models` or one of a few common words and paths, such as `/start`, `/help` or `/usr/bin/env`. While the agent isn't running, the message gets the refusal in [Messages during a restart](#messages-during-a-restart). The full rules are in [Unknown or disabled commands](/docs/agent-messaging#unknown-or-disabled-commands).
+
 ## Setup Cards
 
 ### Block fields

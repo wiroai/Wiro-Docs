@@ -12157,12 +12157,12 @@ Accepts either `application/json` (text-only) or `multipart/form-data` (text + f
 |-------|------|-------------|
 | `messageguid` | `string` | Unique identifier for this message. Use it with Detail, History, or Cancel. |
 | `agenttoken` | `string\|null` | Token for WebSocket subscription and polling. Equivalent to `tasktoken` in model runs. `null` when Wiro handled the message itself (see below). |
-| `status` | `string` | Initial status: `"agent_queue"` on success, or `"agent_end"` when Wiro handled the message itself as a setup reply; see [Replies Wiro handles itself](#handled-setup-replies). |
+| `status` | `string` | Initial status: `"agent_queue"` on success, or `"agent_end"` when Wiro handled the message itself: a setup reply (see [Replies Wiro handles itself](#handled-setup-replies)) or an [unknown or disabled command](#unknown-or-disabled-commands). |
 | `modelChangeMarker` | `object\|null` | Present **only** when this turn's `model` selects a different chat model than the session was running, i.e. it rotates the model mid-session. Shape: `{ guid, type: "model_change", fromModel, toModel, createdat }`. The platform also writes a matching marker row into history (see [Message/History](#post-useragentmessagehistory)). Absent on turns that keep the session's model. |
 | `content` | `string` | Present when Wiro handled the message itself or removed a key from it: the message text as stored. See [Keys in chat](#keys-in-chat). |
 | `contentmasked` | `boolean` | Present (`true`) when Wiro removed a key from the message before the agent saw it; `content` holds the text the agent got. |
 | `response` | `string` | Only when Wiro handled the message itself: its result text. |
-| `setupresult` | `object` | Only when Wiro handled the message itself: `{ applied, dismissed, failed, restarting, next? }`. See [Replies Wiro handles itself](#handled-setup-replies). |
+| `setupresult` | `object` | Only when Wiro handled the message itself as a setup reply: `{ applied, dismissed, failed, restarting, next? }`. See [Replies Wiro handles itself](#handled-setup-replies). |
 
 > **`model_change` marker.** When `model` rotates the session to a different chat model, the Send response carries a `modelChangeMarker` describing the switch, and a standalone marker row (status `agent_done`) is written into history at the same time:
 >
@@ -12186,6 +12186,33 @@ When `result: false`, the response shape is `{ result: false, errors: [{ code, m
 |----------------|--------------|-------|
 | Agent not running (`status` ≠ 4) | `agentstatus: <int>` | Returned for every message Wiro doesn't answer itself as a setup reply (see [Replies Wiro handles itself](#handled-setup-replies)). Echoes the agent's current `status` so the caller can decide whether to wait, call `Start`, or surface "Setup Required" UI: `0` Stopped (call `Start`), `1` Stopping, `2` Queued and `3` Starting (wait and retry), `5` Error (call `Start` to retry), `6` Setup Required. With status `1`, the error reads `Agent is stopping. Please wait a moment and try again.` when the agent is shutting down to stay stopped, and `Agent is restarting. Please wait a moment and try again.` when it is shutting down to start again, as in a [restart](/docs/agent-overview#automatic-restart). See [UserAgent Statuses](/docs/agent-overview#useragent-statuses). |
 | Out of credits | `agentstatus`, `agentbalance: { monthlycredits, extracredits, usedcredits, remainingcredits }` | Returned with the `Agent has no remaining credits…` error. `remainingcredits: 0` is the trigger; surface a "Renew or buy a credit pack" CTA. |
+
+### Unknown or disabled commands
+
+While the agent is running, Wiro answers a slash command the agent doesn't run, such as `/status`, or one of its commands that is turned off in [`enabledcommands`](/docs/agent-overview#post-useragentupdatesettings). No agent turn runs and no credits are used, even when the agent has no credits left. Send answers at once:
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "messageguid": "e5f6a7b8-c9d0-1234-ef56-789012345678",
+  "agenttoken": null,
+  "status": "agent_end",
+  "response": "⛔ Unknown or disabled command: /status\nSend /agent_help to see the available commands.",
+  "content": "/status"
+}
+```
+
+`response` names the command in lower case, and its second line comes only when the agent has `agent_help` on. There is no `setupresult`. The message is stored as a finished exchange, like a [reply Wiro handles itself](#handled-setup-replies): Message/Detail and Message/History return it with `status: "agent_end"`, `metadata.type: "setup_result"` and `model: null`. When the Send has a `callbackurl`, Wiro posts the answer to it right away with `status: "agent_end"`, and its `metadata` holds `type: "setup_result"`, `cards: []` and `command`, the command's name. Files sent with the message are not kept.
+
+Wiro finds the command this way:
+
+- A command is a `/` at the start of the message or after a space, tab or line break, followed by a letter or `_`. It counts anywhere in the text: `Check the /pricing page` gets the answer for `/pricing`. A `/` inside a word or before a digit, as in `and/or` or `/2fa`, is plain text.
+- Links (`http://` and `https://` addresses) and quoted lines (lines that start with `>`) are left out first, so `see https://example.com/pricing` holds no command.
+- A message with one of the agent's enabled commands anywhere in it goes to the agent, which runs the command. A command runs only when it is written in lower case and followed by a space, tab, line break or the end of the message: `/AGENT_STATUS` and `/agent_status.` get the answer.
+- Otherwise only the first command counts. When it is `/model` or `/models`, one of `/start`, `/help`, `/settings`, `/app`, `/tmp`, `/run`, `/usr`, `/bin`, `/etc`, `/home` and `/var`, or a name of more than 32 characters, the message goes to the agent as usual: `/usr/bin/env` and `/start /pricing` reach the agent. Any other first command gets the answer.
+
+While the agent isn't running, the message gets the [not-running refusal](#failure-responses) with `agentstatus`, as every message does that Wiro doesn't answer as a setup reply.
 
 ## **POST** /UserAgent/Message/Detail
 
@@ -17588,6 +17615,22 @@ Some messages are answered by Wiro itself, with no agent turn: a `yes` that appl
 ```
 
 Show `response` as the reply, as plain text. There is nothing to follow on the WebSocket. In `Message/History` the row reads `status: "agent_end"`, `metadata: { "type": "setup_result" }` and an empty `timeline`. These replies use no credits, and Wiro gives them while the agent is stopped or restarting too: see [Messages during a restart](#messages-during-a-restart) for which ones.
+
+Wiro also answers a slash command the agent doesn't run, such as `/status`, or one of its commands that is turned off, while the agent is running. It uses no credits, and the answer has no `setupresult`:
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "messageguid": "e5f6a7b8-c9d0-1234-ef56-789012345678",
+  "agenttoken": null,
+  "status": "agent_end",
+  "response": "⛔ Unknown or disabled command: /status\nSend /agent_help to see the available commands.",
+  "content": "/status"
+}
+```
+
+The second line comes only when the agent has `agent_help` on. Show `response` as the reply, and the row in History as you show the other replies Wiro answers itself. A command counts anywhere in the message, as in `Check the /pricing page`, but never inside a link or a quoted line. A message that holds one of the agent's [enabled commands](/docs/agent-overview#post-useragentupdatesettings) goes to the agent, which runs it, and so does a message whose first command is `/model`, `/models` or one of a few common words and paths, such as `/start`, `/help` or `/usr/bin/env`. While the agent isn't running, the message gets the refusal in [Messages during a restart](#messages-during-a-restart). The full rules are in [Unknown or disabled commands](/docs/agent-messaging#unknown-or-disabled-commands).
 
 ## Setup Cards
 

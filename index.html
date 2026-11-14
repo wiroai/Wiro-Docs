@@ -19390,7 +19390,7 @@ print(response.body);
 <tr>
 <td><code>status</code></td>
 <td><code>string</code></td>
-<td>Initial status: <code>"agent_queue"</code> on success, or <code>"agent_end"</code> when Wiro handled the message itself as a setup reply; see <a href="#handled-setup-replies">Replies Wiro handles itself</a>.</td>
+<td>Initial status: <code>"agent_queue"</code> on success, or <code>"agent_end"</code> when Wiro handled the message itself: a setup reply (see <a href="#handled-setup-replies">Replies Wiro handles itself</a>) or an <a href="#unknown-or-disabled-commands">unknown or disabled command</a>.</td>
 </tr>
 <tr>
 <td><code>modelChangeMarker</code></td>
@@ -19415,7 +19415,7 @@ print(response.body);
 <tr>
 <td><code>setupresult</code></td>
 <td><code>object</code></td>
-<td>Only when Wiro handled the message itself: <code>{ applied, dismissed, failed, restarting, next? }</code>. See <a href="#handled-setup-replies">Replies Wiro handles itself</a>.</td>
+<td>Only when Wiro handled the message itself as a setup reply: <code>{ applied, dismissed, failed, restarting, next? }</code>. See <a href="#handled-setup-replies">Replies Wiro handles itself</a>.</td>
 </tr>
 </tbody>
 </table>
@@ -19460,6 +19460,27 @@ print(response.body);
 </table>
 </div>
 </div>
+<h3 id="unknown-or-disabled-commands">Unknown or disabled commands</h3>
+<p>While the agent is running, Wiro answers a slash command the agent doesn't run, such as <code>/status</code>, or one of its commands that is turned off in <a href="/docs/agent-overview#post-useragentupdatesettings"><code>enabledcommands</code></a>. No agent turn runs and no credits are used, even when the agent has no credits left. Send answers at once:</p>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;messageguid&quot;: &quot;e5f6a7b8-c9d0-1234-ef56-789012345678&quot;,
+  &quot;agenttoken&quot;: null,
+  &quot;status&quot;: &quot;agent_end&quot;,
+  &quot;response&quot;: &quot;⛔ Unknown or disabled command: /status\nSend /agent_help to see the available commands.&quot;,
+  &quot;content&quot;: &quot;/status&quot;
+}
+</code></pre>
+<p><code>response</code> names the command in lower case, and its second line comes only when the agent has <code>agent_help</code> on. There is no <code>setupresult</code>. The message is stored as a finished exchange, like a <a href="#handled-setup-replies">reply Wiro handles itself</a>: Message/Detail and Message/History return it with <code>status: "agent_end"</code>, <code>metadata.type: "setup_result"</code> and <code>model: null</code>. When the Send has a <code>callbackurl</code>, Wiro posts the answer to it right away with <code>status: "agent_end"</code>, and its <code>metadata</code> holds <code>type: "setup_result"</code>, <code>cards: []</code> and <code>command</code>, the command's name. Files sent with the message are not kept.</p>
+<p>Wiro finds the command this way:</p>
+<ul>
+<li>A command is a <code>/</code> at the start of the message or after a space, tab or line break, followed by a letter or <code>_</code>. It counts anywhere in the text: <code>Check the /pricing page</code> gets the answer for <code>/pricing</code>. A <code>/</code> inside a word or before a digit, as in <code>and/or</code> or <code>/2fa</code>, is plain text.</li>
+<li>Links (<code>http://</code> and <code>https://</code> addresses) and quoted lines (lines that start with <code>&gt;</code>) are left out first, so <code>see https://example.com/pricing</code> holds no command.</li>
+<li>A message with one of the agent's enabled commands anywhere in it goes to the agent, which runs the command. A command runs only when it is written in lower case and followed by a space, tab, line break or the end of the message: <code>/AGENT_STATUS</code> and <code>/agent_status.</code> get the answer.</li>
+<li>Otherwise only the first command counts. When it is <code>/model</code> or <code>/models</code>, one of <code>/start</code>, <code>/help</code>, <code>/settings</code>, <code>/app</code>, <code>/tmp</code>, <code>/run</code>, <code>/usr</code>, <code>/bin</code>, <code>/etc</code>, <code>/home</code> and <code>/var</code>, or a name of more than 32 characters, the message goes to the agent as usual: <code>/usr/bin/env</code> and <code>/start /pricing</code> reach the agent. Any other first command gets the answer.</li>
+</ul>
+<p>While the agent isn't running, the message gets the <a href="#failure-responses">not-running refusal</a> with <code>agentstatus</code>, as every message does that Wiro doesn't answer as a setup reply.</p>
 <h2 id="post-useragentmessagedetail"><strong>POST</strong> /UserAgent/Message/Detail</h2>
 <p>Retrieves the current status and content of a single message. You can query by either <code>messageguid</code> or <code>agenttoken</code>.</p>
 <div class="docs-param-table">
@@ -27230,6 +27251,18 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 }
 </code></pre>
 <p>Show <code>response</code> as the reply, as plain text. There is nothing to follow on the WebSocket. In <code>Message/History</code> the row reads <code>status: "agent_end"</code>, <code>metadata: { "type": "setup_result" }</code> and an empty <code>timeline</code>. These replies use no credits, and Wiro gives them while the agent is stopped or restarting too: see <a href="#messages-during-a-restart">Messages during a restart</a> for which ones.</p>
+<p>Wiro also answers a slash command the agent doesn't run, such as <code>/status</code>, or one of its commands that is turned off, while the agent is running. It uses no credits, and the answer has no <code>setupresult</code>:</p>
+<pre><code class="language-json">{
+  &quot;result&quot;: true,
+  &quot;errors&quot;: [],
+  &quot;messageguid&quot;: &quot;e5f6a7b8-c9d0-1234-ef56-789012345678&quot;,
+  &quot;agenttoken&quot;: null,
+  &quot;status&quot;: &quot;agent_end&quot;,
+  &quot;response&quot;: &quot;⛔ Unknown or disabled command: /status\nSend /agent_help to see the available commands.&quot;,
+  &quot;content&quot;: &quot;/status&quot;
+}
+</code></pre>
+<p>The second line comes only when the agent has <code>agent_help</code> on. Show <code>response</code> as the reply, and the row in History as you show the other replies Wiro answers itself. A command counts anywhere in the message, as in <code>Check the /pricing page</code>, but never inside a link or a quoted line. A message that holds one of the agent's <a href="/docs/agent-overview#post-useragentupdatesettings">enabled commands</a> goes to the agent, which runs it, and so does a message whose first command is <code>/model</code>, <code>/models</code> or one of a few common words and paths, such as <code>/start</code>, <code>/help</code> or <code>/usr/bin/env</code>. While the agent isn't running, the message gets the refusal in <a href="#messages-during-a-restart">Messages during a restart</a>. The full rules are in <a href="/docs/agent-messaging#unknown-or-disabled-commands">Unknown or disabled commands</a>.</p>
 <h2 id="setup-cards">Setup Cards</h2>
 <h3 id="block-fields">Block fields</h3>
 <p>A setup block has the usual block fields, <code>type: "setup"</code>, <code>text: null</code> and a <code>setup</code> object, the card:</p>
