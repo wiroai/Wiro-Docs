@@ -16634,7 +16634,7 @@ without a browser redirect.
 }
 ```
 
-`flowid` names this sign-in: 32 lowercase hex characters. A new `OAuthConnect` for the same agent and credential replaces it, whoever sends it. Follow the sign-in with [`OAuthStatus`](#post-useragentoauthoauthstatus), and send the `flowid` with [`SetPickerAccounts`](#post-useragentoauthsetpickeraccounts) when you save accounts from its list.
+`flowid` names this sign-in: 32 lowercase hex characters. A new sign-in or token check for the same agent and credential replaces it, whoever starts it; an `OAuthConnect` that Wiro refuses before it starts one, such as one with an invalid `redirecturl`, leaves it as it is. Follow the sign-in with [`OAuthStatus`](#post-useragentoauthoauthstatus), and send the `flowid` with [`SetPickerAccounts`](#post-useragentoauthsetpickeraccounts) when you save accounts from its list.
 
 Direct probes return `{ "result": true, "errors": [], "accounts": [...], "flowid": "...", "account": "...", "restart": "none" }` and no `authorizeUrl`. Meta Ads, Facebook Pages and Instagram return `{ id, name }` entries to pick from; Shopify has no picker, so it returns an empty `accounts` array and is connected right away. First save the mode's fields together with `authmethod: "api_key"` through `CredentialUpsert`, then call `OAuthConnect` with the same `authmethod`; without the saved `authmethod` the probe fails with `direct_token_missing`. Each direct call that finds the saved fields clears the credential's earlier connection and account selection before it checks them with the provider, so save the selection again afterwards. A failed probe returns `result: false`, a general message in `errors[]` and an `errorcode` that names the cause, such as `direct_token_missing`, `direct_token_invalid`, `no_accounts`, `no_pages`, `provider_rejected_request` or `provider_timeout`; each integration page lists its codes. The check has a `flowid` like a sign-in, and a failed answer carries it too. `account` names who the token belongs to when the provider says so, such as a Meta System User's name or the Shopify store's name, and is empty otherwise. `restart` is `"scheduled"` when the check restarted the agent, else `"none"`: a check that leaves accounts to pick restarts nothing, and the account save does.
 
@@ -16732,7 +16732,7 @@ Meta Ads and Google Business Profile also return their second picker step: `pick
 ]
 ```
 
-`flow` follows one sign-in or token check, which `OAuthConnect` starts for one agent and credential. A new `OAuthConnect` for them replaces it, whoever sends it. While a sign-in waits for the pick, `connected` is still `false` and the list is in `candidates`:
+`flow` follows one sign-in or token check, which `OAuthConnect` starts for one agent and credential. A new sign-in or token check for them replaces it, whoever starts it. While a sign-in waits for the pick, `connected` is still `false` and the list is in `candidates`:
 
 ```json
 {
@@ -16862,7 +16862,7 @@ Save either the root account selection after an OAuth callback or direct discove
 **Accounts come from the sign-in's list.** Every sign-in and token check keeps the accounts it listed on Wiro's server for 15 minutes ([`OAuthStatus`](#post-useragentoauthoauthstatus) returns them as `candidates`), and `SetPickerAccounts` saves root accounts only from that list, for every picker:
 
 - **Who.** Only the account that called `OAuthConnect`. Another admin of a team agent can't save from someone else's sign-in; they connect again themselves.
-- **Which list.** The current one. A newer `OAuthConnect` for the same agent and credential replaces it. Send its `flowid` to save from the sign-in you showed: a different one is refused with `flow_replaced`.
+- **Which list.** The current one. A newer sign-in or token check for the same agent and credential replaces it. Send its `flowid` to save from the sign-in you showed: a different one is refused with `flow_replaced`.
 - **Which accounts.** Only IDs on the list. Wiro saves the name the list gives each account, never a name from the request.
 - **How often.** Once. The first successful save uses the list up (`flow.status` reads `saved`). To pick other accounts later, call `OAuthConnect` again and save from the new list.
 
