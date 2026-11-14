@@ -13388,7 +13388,7 @@ import type {
 <tr>
 <td><code>optional</code></td>
 <td>boolean</td>
-<td><code>true</code> when the template marks this credential as not required for the agent to run. Agents can start even if <code>optional: true</code> credentials are empty. On a custom build, each skill's own connector reads <code>false</code>, and a connector it lists in <code>additional_credential_keys</code> reads <code>true</code>, unless another skill on the agent has that connector as its own.</td>
+<td><code>true</code> when the template marks this credential as not required for the agent to run. Agents can start even if <code>optional: true</code> credentials are empty. On a custom build, each skill's own connector reads <code>false</code>, and a connector it lists in <code>additional_credential_keys</code> reads <code>true</code>, unless another skill on the agent has that connector as its own. A credential nothing on the agent asks for, such as one whose app keys or token were saved before its connector was added, or that stayed after its connector was removed, reads <code>true</code>, with <code>extra: false</code>.</td>
 </tr>
 <tr>
 <td><code>extra</code></td>
@@ -14685,7 +14685,7 @@ import type {
 <tr>
 <td><code>optional</code></td>
 <td><code>boolean</code></td>
-<td><code>true</code> when the agent template marks this credential as optional (the agent can run without it; the dependent skill just won't fire). <code>false</code> for required credentials. On a custom build, each skill's own connector reads <code>false</code>, and a connector it lists in <code>additional_credential_keys</code> reads <code>true</code>, unless another skill on the agent has that connector as its own.</td>
+<td><code>true</code> when the agent template marks this credential as optional (the agent can run without it; the dependent skill just won't fire). <code>false</code> for required credentials. On a custom build, each skill's own connector reads <code>false</code>, and a connector it lists in <code>additional_credential_keys</code> reads <code>true</code>, unless another skill on the agent has that connector as its own. A credential nothing on the agent asks for, such as one whose app keys or token were saved before its connector was added, or that stayed after its connector was removed, reads <code>true</code>, with <code>extra: false</code>.</td>
 </tr>
 <tr>
 <td><code>extra</code></td>
