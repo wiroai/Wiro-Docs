@@ -280,7 +280,7 @@ The merge contract is:
 
 The complete public block shape is `blockid`, `callindex`, `contentindex`, `type`, `text`, `phase`, `version`, `startedat`, and `updatedat`, and tool blocks also carry `toollabel`, `toolstatus`, `toolintegration`, and `toolaction`. Reasoning and answer blocks don't have these four fields. `phase` is `stream`, `end`, or `error`; timestamps can be `null` when unavailable. No additional internal correlation or execution metadata is emitted in this block.
 
-When the agent proposes a setup change, a `setup` block arrives the same way. It sorts after the turn's other blocks, its `text` is `null` and it carries a `setup` object instead of tool fields; see [Setup From Chat](/docs/agent-messaging#setup-from-chat). A pending card's block has `version` 1. When the card is applied, dismissed or fails, the block comes again with `version` 2 and the new `status`; `Message/Detail` and `Message/History` always have the current state.
+When the agent proposes a setup change, a `setup` block arrives the same way. It sorts after the turn's other blocks, its `text` is `null` and it carries a `setup` object instead of tool fields; see [Setup From Chat](/docs/agent-messaging#setup-from-chat). A pending card's block has `version` 1. When the card is applied, dismissed or fails, the block comes again with `version` 2 and the new `status`; `Message/Detail` and `Message/History` always have the current state. A pending `connect` card's block also carries `next`, the connector it connects, as `[{ connector, title, mode }]`.
 
 Tool blocks carry two closed-list words:
 
