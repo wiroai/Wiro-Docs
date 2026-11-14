@@ -17297,6 +17297,8 @@ A few fields are for your backend, not for your users: every message row and eve
 
 Connector titles name their vendors, such as Google Analytics 4 or WordPress. The connector the agent runs AI models with, key `wiro`, is titled `Wiro AI Models`, and so is its skill `int-wiro-aimodels` in `Skills/List`. That title comes wherever the API names it: in `needs` and `next[].title`, in the card listing and in `summary`, for every change that brings it, such as adding Video Creator or a voice channel. An agent that runs models through it can also write its public links in an answer, such as a model's page on wiro.ai or an output file on cdn1.wiro.ai. Your product may show its own label for the connector key `wiro`, as for any title the API gives.
 
+A connector that signs in with Wiro's own app (mode `signin`, such as X, HubSpot, Mailchimp and TikTok Ads) shows that app's name on the provider's consent screen, so a product that wants its own name there connects with its own app keys, where the connector offers them (`own` in its `connection_modes`, see [Modes](#modes)). Every sign-in passes through its redirect URI on the API host (`redirecturi` in `OAuthStatus`), as registered with the provider, before the browser comes back to your `redirecturl`.
+
 ### The flow at a glance
 
 ```text
