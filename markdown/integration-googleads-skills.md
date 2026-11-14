@@ -291,6 +291,7 @@ To change **what** the reporter includes (wasted-spend threshold, target ROAS, r
 | `missing_params` | The callback was opened without a `state`, so the browser lands on wiro.ai instead of your app. | Start a new flow from Step 5. |
 | `authorization_denied` | User cancelled, or consent screen in Testing and the user isn't a test user. | Add test user or publish consent screen. |
 | `session_expired` | State cache expired. | Restart. |
+| `flow_replaced` | A newer sign-in for the same agent and credential replaced this one, whoever started it, so nothing from it was saved. | Use the newer sign-in, or start again with `OAuthConnect`. |
 | `token_exchange_failed` | Google did not return an access token for the authorization code, usually because the saved Client Secret is wrong. | Re-copy the Client Secret (Step 4) and connect again. |
 | `no_accounts` | Sign-in worked, but Google listed no Google Ads customer for this user, and nothing was saved. A missing or refused developer token, or a Google Ads API that isn't enabled in your project, ends here too. | Check the `developertoken` from Step 4 and its access level, and that the Google Ads API is enabled, then connect again with a Google user who can open the account. |
 | `account_list_too_large` | Google listed more than 2,000 customers for this user, and nothing was saved. | Connect with a Google user who can open fewer customers directly. |

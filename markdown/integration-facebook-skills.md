@@ -334,8 +334,8 @@ restarts a running agent so the new selection takes effect.
 If the 15-minute window lapses before you call `SetPickerAccounts`, or an
 earlier call already saved a selection from it, you'll get
 `The sign-in expired. Sign in again to choose the accounts.` with
-`errorcode: "flow_expired"`. Repeat Step 3 for System User mode or Step 7 for
-OAuth.
+`errorcode: "flow_expired"` (the wording depends on whether it was a sign-in
+or a token check). Repeat Step 3 for System User mode or Step 7 for OAuth.
 
 Wiro saves each Page's name from its list (the `name` in `fb_pages` or in the `OAuthConnect` response), so `fbpagename` can be left out, and a name you send is not read. Only the Wiro account that started the sign-in or check can save from its list. The Facebook Pages picker accepts one or more entries: pass multiple `{ pageid, fbpagename }` objects to authorize the agent against several Pages at once.
 
@@ -497,6 +497,7 @@ makes links clickable, so a draft's page link goes into the post.
 |------------|---------|------------|
 | `missing_params` | The callback was opened without an OAuth `state`. This error lands on `https://wiro.ai`, not on your app. | Don't open the callback URL directly. Start a new flow from Step 7. |
 | `session_expired` | >15 min between `OAuthConnect` and the callback. | Call `OAuthConnect` again. |
+| `flow_replaced` | A newer sign-in or token check for the same agent and credential replaced this sign-in, whoever started it, so nothing from it was saved. | Use the newer sign-in or check, or start again with `OAuthConnect`. |
 | `authorization_denied` | User cancelled, or not listed in App Roles (Development Mode). | Add as Tester (Step 5), retry. |
 | `token_exchange_failed` | Wrong App Secret or redirect URI mismatch. | Re-copy App Secret; verify redirect URI exactly. |
 | `no_pages` | User has no administered Facebook Pages. | Ask the user to create/administer a Page first, retry. |
@@ -512,7 +513,7 @@ No discovery result is waiting: the 15-minute window expired, a previous `SetPic
 
 ### `SetPickerAccounts` returns `not_listed`
 
-The `pageid` you sent isn't in the latest discovery result (`Choose accounts from the list Wiro gave after the sign-in.`). Verify you're parsing `fb_pages` correctly and sending the exact ID string.
+The `pageid` you sent isn't in the latest discovery result (`Choose accounts from the list Wiro gave after the sign-in.`; the wording depends on whether it was a sign-in or a token check). Verify you're parsing `fb_pages` correctly and sending the exact ID string.
 
 ### Posts publish but as the wrong author
 

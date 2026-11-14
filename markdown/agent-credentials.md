@@ -825,6 +825,7 @@ Common error codes across providers:
 | `missing_params` | The callback was opened without an OAuth `state`. Wiro cannot tell which flow it belongs to, so the browser goes to `https://wiro.ai` with this code instead of to your app. Start a new flow with `OAuthConnect`. |
 | `authorization_denied` | The user cancelled, the provider returned an error or no authorization code, or (Meta Dev Mode) the user is not in App Roles. |
 | `session_expired` | More than 15 minutes passed between `OAuthConnect` and the callback. The browser returns to your `redirecturl` with this code; call `OAuthConnect` again. After 24 hours, or when the `state` is unknown, it goes to `https://wiro.ai` instead. A callback that the browser repeats after a completed one (for example when the provider's Continue button is clicked twice) is not an error: it lands where the first one did. |
+| `flow_replaced` | A newer sign-in or token check for the same agent and credential replaced this sign-in, whoever started it. Wiro saves nothing from it, and the newer one still works. |
 | `token_exchange_failed` | The provider returned no usable token for the authorization code, for example because the saved Client/App Secret is wrong. |
 | `useragent_not_found` | The agent was deleted, or is no longer owned by the account that started the flow, before the provider returned. A wrong `useragentguid` never gets this far: `OAuthConnect` refuses it with `User agent not found or unauthorized`. |
 | `<Provider> credentials not configured` | Agent's `credentials.<provider>` block is empty (typically `authmethod: "own"` but `clientid` / `clientsecret` missing). Returned in `errors[]` of `OAuthConnect` itself, not as a redirect-URL `*_error` code. Fix with `POST /UserAgent/CredentialUpsert`. |
@@ -1288,7 +1289,7 @@ Wiro writes the accounts and the mappings in one save. The discovery must be the
 
 ##### Common errors
 
-A refusal of the list rules also answers `errorcode`, as named below.
+A refusal of the list rules also answers `errorcode`, as named below. The wording of its message depends on whether the list came from a sign-in or a token check; the table shows a sign-in's.
 
 | Error message | Cause |
 |---------------|-------|

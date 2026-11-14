@@ -25566,6 +25566,10 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect&quot; \
 <td>More than 15 minutes passed between <code>OAuthConnect</code> and the callback. The browser returns to your <code>redirecturl</code> with this code; call <code>OAuthConnect</code> again. After 24 hours, or when the <code>state</code> is unknown, it goes to <code>https://wiro.ai</code> instead. A callback that the browser repeats after a completed one (for example when the provider's Continue button is clicked twice) is not an error: it lands where the first one did.</td>
 </tr>
 <tr>
+<td><code>flow_replaced</code></td>
+<td>A newer sign-in or token check for the same agent and credential replaced this sign-in, whoever started it. Wiro saves nothing from it, and the newer one still works.</td>
+</tr>
+<tr>
 <td><code>token_exchange_failed</code></td>
 <td>The provider returned no usable token for the authorization code, for example because the saved Client/App Secret is wrong.</td>
 </tr>
@@ -26496,7 +26500,7 @@ response (see <a href="/docs/integration-googlebusiness-skills#connect-through-t
 </code></pre>
 <p>Wiro writes the accounts and the mappings in one save. The discovery must be the one made with <code>parents</code> equal to <code>accountids</code>, for this sign-in, in the last five minutes; otherwise nothing is saved and the call answers <code>next_expired</code>, <code>The list of pages expired. Load it again.</code> (<code>locations</code> for Business Profile): call <code>DiscoverPickerItems</code> with <code>parents</code> again. Business Profile needs at least one location across the accounts; with none, the call answers <code>next_required</code>, <code>Choose at least one location to finish.</code> Meta Ads Pages stay optional. Later changes to the Pages or locations of saved accounts use the second step alone, as above.</p>
 <h5 id="common-errors_2" aria-level="4">Common errors</h5>
-<p>A refusal of the list rules also answers <code>errorcode</code>, as named below.</p>
+<p>A refusal of the list rules also answers <code>errorcode</code>, as named below. The wording of its message depends on whether the list came from a sign-in or a token check; the table shows a sign-in's.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -31080,6 +31084,11 @@ agent model.</p>
 <td>Call <code>OAuthConnect</code> again to refresh the state.</td>
 </tr>
 <tr>
+<td><code>flow_replaced</code></td>
+<td>A newer sign-in or token check for the same agent and credential replaced this sign-in, whoever started it, so nothing from it was saved.</td>
+<td>Use the newer sign-in or check, or start again with <code>OAuthConnect</code>.</td>
+</tr>
+<tr>
 <td><code>authorization_denied</code></td>
 <td>User clicked Cancel, or Facebook returned <code>error=access_denied</code>. In Development Mode this also happens when the user isn't listed under App Roles.</td>
 <td>Add the user as a Tester (Step 6), have them accept, retry.</td>
@@ -31753,6 +31762,11 @@ if (params.get(&quot;tiktokads_connected&quot;) === &quot;true&quot;) {
 <td><code>session_expired</code></td>
 <td>More than 15 minutes passed between <code>OAuthConnect</code> and the return from TikTok. A callback the browser repeats after a completed one is not an error: it lands where the first one did.</td>
 <td>Call <code>OAuthConnect</code> again.</td>
+</tr>
+<tr>
+<td><code>flow_replaced</code></td>
+<td>A newer sign-in for the same agent and credential replaced this one, whoever started it, so nothing from it was saved.</td>
+<td>Use the newer sign-in, or start again with <code>OAuthConnect</code>.</td>
 </tr>
 <tr>
 <td><code>authorization_denied</code></td>
@@ -32618,7 +32632,7 @@ if (params.get("fb_connected") === "true") {
   "errors": []
 }</code></pre>
                     <p>Wiro validates every requested Page against the server-side discovery result, stores its long-lived Page access token without returning it to the client, and restarts a running agent so the new selection takes effect.</p>
-                    <p>If the 15-minute window lapses before you call <code>SetPickerAccounts</code>, or an earlier call already saved a selection from it, you'll get <code>The sign-in expired. Sign in again to choose the accounts.</code> with <code>errorcode: "flow_expired"</code>. Repeat Step 3 for System User mode or Step 7 for OAuth.</p>
+                    <p>If the 15-minute window lapses before you call <code>SetPickerAccounts</code>, or an earlier call already saved a selection from it, you'll get <code>The sign-in expired. Sign in again to choose the accounts.</code> with <code>errorcode: "flow_expired"</code> (the wording depends on whether it was a sign-in or a token check). Repeat Step 3 for System User mode or Step 7 for OAuth.</p>
                     <p>Wiro saves each Page's name from its list (the <code>name</code> in <code>fb_pages</code> or in the <code>OAuthConnect</code> response), so <code>fbpagename</code> can be left out, and a name you send is not read. Only the Wiro account that started the sign-in or check can save from its list. The Facebook Pages picker accepts one or more entries: pass multiple <code>{ pageid, fbpagename }</code> objects to authorize the agent against several Pages at once.</p>
 
                     <h3>Step 10: Verify the connection</h3>
@@ -32820,6 +32834,11 @@ if (params.get("fb_connected") === "true") {
                             <td>Call <code>OAuthConnect</code> again.</td>
                           </tr>
                           <tr>
+                            <td><code>flow_replaced</code></td>
+                            <td>A newer sign-in or token check for the same agent and credential replaced this sign-in, whoever started it, so nothing from it was saved.</td>
+                            <td>Use the newer sign-in or check, or start again with <code>OAuthConnect</code>.</td>
+                          </tr>
+                          <tr>
                             <td><code>authorization_denied</code></td>
                             <td>User cancelled, or not listed in App Roles (Development Mode).</td>
                             <td>Add as Tester (Step 5), retry.</td>
@@ -32867,7 +32886,7 @@ if (params.get("fb_connected") === "true") {
                     <p>No discovery result is waiting: the 15-minute window expired, a previous <code>SetPickerAccounts</code> already used it, or a newer connection replaced it. Repeat Step 3 for System User mode or Step 7 for OAuth. <code>No pending Facebook connection. Please reconnect via OAuthConnect.</code> means the same: connect again.</p>
 
                     <h3><code>SetPickerAccounts</code> returns <code>not_listed</code></h3>
-                    <p>The <code>pageid</code> you sent isn't in the latest discovery result (<code>Choose accounts from the list Wiro gave after the sign-in.</code>). Verify you're parsing <code>fb_pages</code> correctly and sending the exact ID string.</p>
+                    <p>The <code>pageid</code> you sent isn't in the latest discovery result (<code>Choose accounts from the list Wiro gave after the sign-in.</code>; the wording depends on whether it was a sign-in or a token check). Verify you're parsing <code>fb_pages</code> correctly and sending the exact ID string.</p>
 
                     <h3>Posts publish but as the wrong author</h3>
                     <p>Check <code>POST /UserAgent/Detail</code> and verify <code>credentials.facebook-pages.pageid</code> is the Page you intended. If not, connect again (Step 3 or Step 7) and save the right Page from the new list within 15 minutes.</p>
@@ -33387,6 +33406,11 @@ if (params.get("ig_connected") === "true") {
                             <td>Call <code>OAuthConnect</code> again.</td>
                           </tr>
                           <tr>
+                            <td><code>flow_replaced</code></td>
+                            <td>A newer sign-in or token check for the same agent and credential replaced this sign-in, whoever started it, so nothing from it was saved.</td>
+                            <td>Use the newer sign-in or check, or start again with <code>OAuthConnect</code>.</td>
+                          </tr>
+                          <tr>
                             <td><code>authorization_denied</code></td>
                             <td>User cancelled, or not in App Roles (Development Mode).</td>
                             <td>Add as Tester (Step 6), retry.</td>
@@ -33777,6 +33801,11 @@ if (params.get("li_connected") === "true") {
                             <td>Call <code>OAuthConnect</code> again.</td>
                           </tr>
                           <tr>
+                            <td><code>flow_replaced</code></td>
+                            <td>A newer sign-in for the same agent and credential replaced this one, whoever started it, so nothing from it was saved.</td>
+                            <td>Use the newer sign-in, or start again with <code>OAuthConnect</code>.</td>
+                          </tr>
+                          <tr>
                             <td><code>authorization_denied</code></td>
                             <td>The user cancelled, or LinkedIn returned an error instead of an authorization code.</td>
                             <td>Verify all four scopes are enabled under Auth → OAuth 2.0 scopes.</td>
@@ -34151,6 +34180,11 @@ if (params.get("x_connected") === "true") {
                             <td>Call <code>OAuthConnect</code> again.</td>
                           </tr>
                           <tr>
+                            <td><code>flow_replaced</code></td>
+                            <td>A newer sign-in for the same agent and credential replaced this one, whoever started it, so nothing from it was saved.</td>
+                            <td>Use the newer sign-in, or start again with <code>OAuthConnect</code>.</td>
+                          </tr>
+                          <tr>
                             <td><code>token_exchange_failed</code></td>
                             <td>Wrong Client Secret, redirect URI mismatch, or lost PKCE verifier.</td>
                             <td>Re-copy Client Secret; verify URL; start over.</td>
@@ -34469,6 +34503,11 @@ if (params.get("x_connected") === "true") {
                             <td><code>session_expired</code></td>
                             <td>15-min state cache expired.</td>
                             <td>Restart OAuth.</td>
+                          </tr>
+                          <tr>
+                            <td><code>flow_replaced</code></td>
+                            <td>A newer sign-in for the same agent and credential replaced this one, whoever started it, so nothing from it was saved.</td>
+                            <td>Use the newer sign-in, or start again with <code>OAuthConnect</code>.</td>
                           </tr>
                           <tr>
                             <td><code>token_exchange_failed</code></td>
@@ -34888,6 +34927,11 @@ if (params.get("gads_connected") === "true") {
                             <td><code>session_expired</code></td>
                             <td>State cache expired.</td>
                             <td>Restart.</td>
+                          </tr>
+                          <tr>
+                            <td><code>flow_replaced</code></td>
+                            <td>A newer sign-in for the same agent and credential replaced this one, whoever started it, so nothing from it was saved.</td>
+                            <td>Use the newer sign-in, or start again with <code>OAuthConnect</code>.</td>
                           </tr>
                           <tr>
                             <td><code>token_exchange_failed</code></td>
@@ -36475,6 +36519,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
                             <tr><td><code>no_accounts</code></td><td>Sign-in worked, but no Business Profile account could be listed for this Google user. Right after setup this usually means the project is not approved yet (quota 0) or an API is disabled.</td><td>Check Steps 3 and 4 of the Google Cloud setup, then connect again. Otherwise connect with the Google account that owns or manages the business.</td></tr>
                             <tr><td><code>authorization_denied</code></td><td>The user cancelled on Google's consent screen, or Google returned an error instead of an authorization code.</td><td>Start again and approve the consent screen.</td></tr>
                             <tr><td><code>session_expired</code></td><td>More than 15 minutes passed between <code>OAuthConnect</code> and the return from Google. A repeated return after a completed one is not an error: it lands where the first one did.</td><td>Call <code>OAuthConnect</code> again.</td></tr>
+                            <tr><td><code>flow_replaced</code></td><td>A newer sign-in for the same agent and credential replaced this one, whoever started it, so nothing from it was saved.</td><td>Use the newer sign-in, or start again with <code>OAuthConnect</code>.</td></tr>
                             <tr><td><code>missing_params</code></td><td>The callback was opened without an OAuth <code>state</code>.</td><td>Don't open the callback URL directly. Start a new flow with <code>OAuthConnect</code>.</td></tr>
                             <tr><td><code>token_exchange_failed</code></td><td>Google did not return an access token for the authorization code, usually because of a wrong Client Secret or a redirect URI mismatch.</td><td>Re-copy the Client Secret, check the redirect URI, and connect again.</td></tr>
                             <tr><td><code>useragent_not_found</code></td><td>The agent was deleted, or is no longer owned by the account that started the flow, before Google returned.</td><td>Start again with <code>OAuthConnect</code> for an existing agent.</td></tr>
@@ -36817,6 +36862,11 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
                             <td>Restart the OAuth flow.</td>
                           </tr>
                           <tr>
+                            <td><code>flow_replaced</code></td>
+                            <td>A newer sign-in for the same agent and credential replaced this one, whoever started it, so nothing from it was saved.</td>
+                            <td>Use the newer sign-in, or start again with <code>OAuthConnect</code>.</td>
+                          </tr>
+                          <tr>
                             <td><code>token_exchange_failed</code></td>
                             <td>Wrong Client Secret or redirect URI mismatch.</td>
                             <td>Re-copy; verify URL.</td>
@@ -37149,6 +37199,11 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
                             <td><code>session_expired</code></td>
                             <td>State cache expired (15 min).</td>
                             <td>Restart.</td>
+                          </tr>
+                          <tr>
+                            <td><code>flow_replaced</code></td>
+                            <td>A newer sign-in for the same agent and credential replaced this one, whoever started it, so nothing from it was saved.</td>
+                            <td>Use the newer sign-in, or start again with <code>OAuthConnect</code>.</td>
                           </tr>
                           <tr>
                             <td><code>token_exchange_failed</code></td>
