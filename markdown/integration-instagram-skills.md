@@ -399,7 +399,7 @@ Used only by direct System User mode after `OAuthConnect` discovery.
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
 | `credentialkey` | string | Yes | `"instagram"`. |
-| `accounts` | array | Yes | One or more `{ accountId, igusername }` entries from the latest discovery response (`accountId` is its `id`, `igusername` its `name`; Wiro stores the name you send). Do not supply access tokens. |
+| `accounts` | array | Yes | One or more `{ accountId, igusername }` entries from the latest discovery response (`accountId` is its `id`; Wiro saves its `name` from the list as `igusername`, so a name you send is not read). Do not supply access tokens. |
 
 Call within 15 minutes of direct discovery. The response contains
 `{ result, accounts: [{id, name}], errors }` and restarts a running agent after

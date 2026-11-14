@@ -328,10 +328,11 @@ restarts a running agent so the new selection takes effect.
 
 If the 15-minute window lapses before you call `SetPickerAccounts`, or an
 earlier call already saved a selection from it, you'll get
-`No pending Facebook connection. Please reconnect via OAuthConnect.` Repeat
-Step 3 for System User mode or Step 7 for OAuth.
+`The sign-in expired. Sign in again to choose the accounts.` with
+`errorcode: "flow_expired"`. Repeat Step 3 for System User mode or Step 7 for
+OAuth.
 
-Send `fbpagename` with every Page, copied from the `name` in `fb_pages` or in the `OAuthConnect` response. Wiro stores the name you send; a Page sent without one is saved with an empty name. The Facebook Pages picker accepts one or more entries: pass multiple `{ pageid, fbpagename }` objects to authorize the agent against several Pages at once.
+Wiro saves each Page's name from its list (the `name` in `fb_pages` or in the `OAuthConnect` response), so `fbpagename` can be left out, and a name you send is not read. Only the Wiro account that started the sign-in or check can save from its list. The Facebook Pages picker accepts one or more entries: pass multiple `{ pageid, fbpagename }` objects to authorize the agent against several Pages at once.
 
 ### Step 10: Verify the connection
 
@@ -498,17 +499,17 @@ makes links clickable, so a draft's page link goes into the post.
 | Valid token but no assigned Facebook Page | The System User has no Page with the `CREATE_CONTENT` task. | Assign the Page in Business Settings and reconnect. |
 | `internal_error` | Unexpected server error. | Retry once. If persistent, contact support. |
 
-### `SetPickerAccounts` returns "No pending Facebook connection"
+### `SetPickerAccounts` returns `flow_expired`
 
-No discovery result is waiting: the 15-minute window expired, or a previous `SetPickerAccounts` already used it. Repeat Step 3 for System User mode or Step 7 for OAuth.
+No discovery result is waiting: the 15-minute window expired, a previous `SetPickerAccounts` already used it, or a newer connection replaced it. Repeat Step 3 for System User mode or Step 7 for OAuth. `No pending Facebook connection. Please reconnect via OAuthConnect.` means the same: connect again.
 
-### `SetPickerAccounts` returns "Selected pageid not found in pending list"
+### `SetPickerAccounts` returns `not_listed`
 
-The `pageid` you sent doesn't match any ID in the latest discovery result. Verify you're parsing `fb_pages` correctly and sending the exact ID string.
+The `pageid` you sent isn't in the latest discovery result (`Choose accounts from the list Wiro gave after the sign-in.`). Verify you're parsing `fb_pages` correctly and sending the exact ID string.
 
 ### Posts publish but as the wrong author
 
-Check `POST /UserAgent/Detail` and verify `credentials.facebook-pages.pageid` is the Page you intended. If not, disconnect and reconnect, or call `SetPickerAccounts` again within a fresh 15-minute window.
+Check `POST /UserAgent/Detail` and verify `credentials.facebook-pages.pageid` is the Page you intended. If not, connect again (Step 3 or Step 7) and save the right Page from the new list within 15 minutes.
 
 ### "App not verified" banner on consent
 

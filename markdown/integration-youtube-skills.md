@@ -103,7 +103,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
   }'
 ```
 
-Pass multiple `{ channelid, channeltitle }` entries to authorize the agent against several channels at once.
+Pass multiple `{ channelid, channeltitle }` entries to authorize the agent against several channels at once. Wiro saves only channels from this sign-in's list, under the names it lists, when the call comes from the same Wiro account within 15 minutes. The first save uses the list up: to change the selection later, connect again. See [SetPickerAccounts](/docs/agent-credentials#post-useragentoauthsetpickeraccounts).
 
 ## Disconnect
 
@@ -238,7 +238,7 @@ Agent → POST /youtubeAnalytics/v2/reports
 | `YouTube credentials not configured` | `authmethod: "own"` without a saved `clientid` and `clientsecret` | Save them (Step 3), then retry |
 | `yt_error=no_accounts` on your `redirecturl` | Google listed no YouTube channel for this account, and Wiro saved nothing: the account has no channel, or the YouTube Data API v3 is not enabled in your project | Enable the API (Step 1), or have the user create a channel, then call `OAuthConnect` again |
 | `quotaExceeded` | Daily quota hit | Wait 24h or request higher quota from Google |
-| `channelNotFound` | Channel deleted or moved | User re-selects via `SetPickerAccounts` |
+| `channelNotFound` | Channel deleted or moved | Connect again with `OAuthConnect`, then save the channel with `SetPickerAccounts` |
 | `invalid_grant` | Refresh token expired or revoked; a consent screen still in Testing expires it after 7 days | Publish the consent screen, then re-connect via `OAuthConnect` |
 | A video uploaded as public or unlisted stays private | The Google Cloud project hasn't passed the YouTube API audit | Request the audit; until then upload the video in YouTube Studio |
 

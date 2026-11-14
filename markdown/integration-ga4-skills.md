@@ -105,7 +105,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
   }'
 ```
 
-Pass several `{ propertyid, propertydisplayname }` entries to authorize the agent against several GA4 properties at once (`id` becomes `propertyid`, `displayName` becomes `propertydisplayname`). Only these two are saved. `account` is handy for grouping the list in your UI, but it is not stored.
+Pass several `{ propertyid, propertydisplayname }` entries to authorize the agent against several GA4 properties at once (`id` becomes `propertyid`). Wiro saves each property's `displayName` from its list as `propertydisplayname`, so a name you send is not read. `account` is handy for grouping the list in your UI, but it is not stored. Wiro saves only properties from this sign-in's list, under the names it lists, when the call comes from the same Wiro account within 15 minutes. The first save uses the list up: to change the selection later, connect again. See [SetPickerAccounts](/docs/agent-credentials#post-useragentoauthsetpickeraccounts).
 
 ## Disconnect
 

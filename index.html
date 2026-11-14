@@ -26137,14 +26137,14 @@ expires.</p>
 </div>
 </div>
 <h3 id="post-useragentoauthsetpickeraccounts">POST /UserAgentOAuth/SetPickerAccounts</h3>
-<p>Save either the root account selection after an OAuth callback/direct discovery,
-or a chained child-resource selection after <code>DiscoverPickerItems</code>. Clients never
-supply access tokens. Wiro checks Facebook Pages and System User Instagram picks
-against its server-side discovery result, and chained picks against
-<code>DiscoverPickerItems</code>. For the other root pickers it saves the IDs and names you
-send without checking them with the provider (non-digits are removed where noted
-below), so send only items from the list you received.</p>
-<p>Wiro sends the account list once, in the redirect (or in the <code>OAuthConnect</code> response in System User mode), and does not keep it. For Google Ads, Meta Ads, TikTok Ads, Merchant Center, YouTube, GA4 and Google Business Profile you can call <code>SetPickerAccounts</code> again at any time until the credential is disconnected, so keep the list if you want to offer changes later, or connect again to get a fresh one. Facebook Pages and System User Instagram keep their discovery result on the server for 15 minutes, and the first successful save uses it up; to pick other Pages later, call <code>OAuthConnect</code> again.</p>
+<p>Save either the root account selection after an OAuth callback or direct discovery, or a chained child-resource selection after <code>DiscoverPickerItems</code>. Clients never supply access tokens. Wiro saves root accounts only from the list the sign-in or token check gave, and chained picks only from <code>DiscoverPickerItems</code>.</p>
+<p><strong>Accounts come from the sign-in's list.</strong> Every sign-in and token check keeps the accounts it listed on Wiro's server for 15 minutes (<a href="#post-useragentoauthoauthstatus"><code>OAuthStatus</code></a> returns them as <code>candidates</code>), and <code>SetPickerAccounts</code> saves root accounts only from that list, for every picker:</p>
+<ul>
+<li><strong>Who.</strong> Only the account that called <code>OAuthConnect</code>. Another admin of a team agent can't save from someone else's sign-in; they connect again themselves.</li>
+<li><strong>Which list.</strong> The current one. A newer <code>OAuthConnect</code> for the same agent and credential replaces it. Send its <code>flowid</code> to save from the sign-in you showed: a different one is refused with <code>flow_replaced</code>.</li>
+<li><strong>Which accounts.</strong> Only IDs on the list. Wiro saves the name the list gives each account, never a name from the request.</li>
+<li><strong>How often.</strong> Once. The first successful save uses the list up (<code>flow.status</code> reads <code>saved</code>). To pick other accounts later, call <code>OAuthConnect</code> again and save from the new list.</li>
+</ul>
 <p>The registry declares each provider's picker shape. Multi-select pickers
 (Google Ads, Meta Ads, TikTok Ads, Merchant Center, YouTube, GA4, Google Business Profile, Facebook Pages, and direct
 Instagram) accept one or more entries.</p>
@@ -26173,10 +26173,22 @@ Instagram) accept one or more entries.</p>
 <td>Credential key with an <code>account_picker</code> defined.</td>
 </tr>
 <tr>
+<td><code>accountids</code></td>
+<td>array</td>
+<td>Root picker: this or <code>accounts</code></td>
+<td>The IDs of the accounts to save, as strings, taken from the list (<code>candidates</code>, or <code>id</code> in the redirect's list).</td>
+</tr>
+<tr>
 <td><code>accounts</code></td>
 <td>array</td>
-<td>Root picker only</td>
-<td>One or more account objects with the per-credential keys (see table below).</td>
+<td>Root picker: this or <code>accountids</code></td>
+<td>One or more account objects with the per-credential keys (see table below). Wiro reads only the ID key of each; the name comes from the list.</td>
+</tr>
+<tr>
+<td><code>flowid</code></td>
+<td>string</td>
+<td>No</td>
+<td>The <code>flowid</code> from <code>OAuthConnect</code>. When sent, it must be the current sign-in's or check's, or the save is refused with <code>flow_replaced</code>.</td>
 </tr>
 <tr>
 <td><code>pickerkey</code></td>
@@ -26195,7 +26207,7 @@ Instagram) accept one or more entries.</p>
 </div>
 </div>
 <h5 id="picker-data-from-the-redirect" aria-level="4">Picker data from the redirect</h5>
-<p>Each list parameter is a URL-encoded JSON array. Your query parser has already decoded it, so parse the value once with <code>JSON.parse</code>; decoding it a second time breaks names that contain <code>%</code>. IDs arrive without provider prefixes such as <code>customers/</code>, <code>act_</code> or <code>properties/</code>. Copy each chosen item into the <code>accounts[]</code> keys of <code>SetPickerAccounts</code>:</p>
+<p>Each list parameter is a URL-encoded JSON array. Your query parser has already decoded it, so parse the value once with <code>JSON.parse</code>; decoding it a second time breaks names that contain <code>%</code>. IDs arrive without provider prefixes such as <code>customers/</code>, <code>act_</code> or <code>properties/</code>. Send each chosen item's <code>id</code> in <code>accountids</code>, or copy the item into the <code>accounts[]</code> keys of <code>SetPickerAccounts</code>:</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -26260,7 +26272,7 @@ Instagram) accept one or more entries.</p>
 </table>
 </div>
 </div>
-<p>Merchant Center's <code>name</code> can be empty and its <code>websiteUrl</code> is always empty, so label those accounts with their ID when needed. Each integration page describes the other fields. In System User mode there is no redirect: <code>OAuthConnect</code> returns <code>{ id, name }</code> items in <code>accounts</code> for Meta Ads (<code>{ adaccountid: id, adaccountname: name }</code>), Facebook Pages (<code>{ pageid: id, fbpagename: name }</code>) and Instagram (<code>{ accountId: id, igusername: name }</code>). Instagram Login in own mode has no list: Wiro saves the authorized account itself. <code>POST /Credentials/Detail</code> carries the same mapping: <code>oauth_provider.account_picker.trigger_param</code> names the list parameter, and <code>url_item_fields</code> maps each <code>accounts[]</code> key to an item field.</p>
+<p>Merchant Center's <code>name</code> can be empty and its <code>websiteUrl</code> is always empty, so label those accounts with their ID when needed. In <code>candidates</code>, such an account's name is its ID. Each integration page describes the other fields. In System User mode there is no redirect: <code>OAuthConnect</code> returns <code>{ id, name }</code> items in <code>accounts</code> for Meta Ads (<code>{ adaccountid: id, adaccountname: name }</code>), Facebook Pages (<code>{ pageid: id, fbpagename: name }</code>) and Instagram (<code>{ accountId: id, igusername: name }</code>). Instagram Login in own mode has no list: Wiro saves the authorized account itself. <code>POST /Credentials/Detail</code> carries the same mapping: <code>oauth_provider.account_picker.trigger_param</code> names the list parameter, and <code>url_item_fields</code> maps each <code>accounts[]</code> key to an item field.</p>
 <h5 id="per-credential-accounts-shape" aria-level="4">Per-credential <code>accounts[]</code> shape</h5>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -26322,7 +26334,7 @@ Instagram) accept one or more entries.</p>
 </table>
 </div>
 </div>
-<p>The first key is required in every entry, and the same ID twice is refused. The name key is optional and saved empty when left out, so send it to get names back from <code>OAuthStatus</code>.</p>
+<p>The first key is required in every entry, and the same ID twice is refused. Wiro takes each account's name from the list, so the name key can be left out, and a name you send is not read.</p>
 <h5 id="example-google-ads-multi-select" aria-level="4">Example: Google Ads multi-select</h5>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts&quot; \
   -H &quot;Content-Type: application/json&quot; \
@@ -26330,12 +26342,11 @@ Instagram) accept one or more entries.</p>
   -d '{
     &quot;useragentguid&quot;: &quot;your-useragent-guid&quot;,
     &quot;credentialkey&quot;: &quot;google-ads&quot;,
-    &quot;accounts&quot;: [
-      { &quot;customerid&quot;: &quot;1234567890&quot;, &quot;customerdescriptivename&quot;: &quot;Acme Corp&quot; },
-      { &quot;customerid&quot;: &quot;0987654321&quot;, &quot;customerdescriptivename&quot;: &quot;Acme Subsidiary&quot; }
-    ]
+    &quot;flowid&quot;: &quot;4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19&quot;,
+    &quot;accountids&quot;: [&quot;1234567890&quot;, &quot;0987654321&quot;]
   }'
 </code></pre>
+<p>The <code>accounts</code> objects work too, for example <code>"accounts": [{ "customerid": "1234567890" }, { "customerid": "0987654321" }]</code>.</p>
 <h5 id="response_6" aria-level="4">Response</h5>
 <pre><code class="language-json">{
   &quot;result&quot;: true,
@@ -26343,10 +26354,11 @@ Instagram) accept one or more entries.</p>
   &quot;accounts&quot;: [
     { &quot;id&quot;: &quot;1234567890&quot;, &quot;name&quot;: &quot;Acme Corp&quot; },
     { &quot;id&quot;: &quot;0987654321&quot;, &quot;name&quot;: &quot;Acme Subsidiary&quot; }
-  ]
+  ],
+  &quot;restart&quot;: &quot;scheduled&quot;
 }
 </code></pre>
-<p>The agent restarts automatically if it was running.</p>
+<p><code>accounts</code> are the saved accounts, with the names from the list. <code>restart</code> is <code>"scheduled"</code> when the save restarted the agent, else <code>"none"</code>.</p>
 <h5 id="example-save-meta-ads-page-mappings" aria-level="4">Example: save Meta Ads Page mappings</h5>
 <p>Call this after <code>DiscoverPickerItems</code> and include every successful parent once:</p>
 <pre><code class="language-bash">curl -X POST &quot;https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts&quot; \
@@ -26366,14 +26378,15 @@ Instagram) accept one or more entries.</p>
     ]
   }'
 </code></pre>
-<p>The response includes <code>pickerkey: "pages"</code> and the persisted, flat
-<code>pagemappings[]</code> list. Sending an empty <code>items</code> array skips Pages for that ad
+<p>The response includes <code>pickerkey: "pages"</code>, the persisted, flat
+<code>pagemappings[]</code> list and <code>restart</code>. Sending an empty <code>items</code> array skips Pages for that ad
 account; Meta Ads reporting and other non-Page operations remain available.</p>
 <p>Google Business Profile uses the same chained shape with <code>pickerkey: "locations"</code>,
 <code>{ locationid, locationtitle }</code> items, and a <code>locationmappings[]</code> list in the
 response (see <a href="/docs/integration-googlebusiness-skills#connect-through-the-api">Google Business Profile → Connect through the API</a>).</p>
-<p>Saving the root accounts again replaces the selection. Pages or locations already chosen for accounts that stay selected are kept, those of removed accounts are dropped, and an open <code>DiscoverPickerItems</code> result is discarded, so discover again before saving the second step.</p>
+<p>Saving the root accounts again, from a new sign-in's list, replaces the selection. Pages or locations already chosen for accounts that stay selected are kept, those of removed accounts are dropped, and an open <code>DiscoverPickerItems</code> result is discarded, so discover again before saving the second step.</p>
 <h5 id="common-errors_2" aria-level="4">Common errors</h5>
+<p>A refusal of the list rules also answers <code>errorcode</code>, as named below.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -26385,8 +26398,36 @@ response (see <a href="/docs/integration-googlebusiness-skills#connect-through-t
 </thead>
 <tbody>
 <tr>
+<td><code>The sign-in expired. Sign in again to choose the accounts.</code></td>
+<td><code>errorcode: "flow_expired"</code>. No list is open for this agent and credential: no sign-in or check was started, the sign-in hasn't come back yet, it was more than 15 minutes ago, a save already used its list, or the credential was disconnected. Call <code>OAuthConnect</code> again.</td>
+</tr>
+<tr>
+<td><code>Another admin started this sign-in. Sign in again to choose the accounts yourself.</code></td>
+<td><code>errorcode: "flow_other_person"</code>. Another account started the current sign-in or check.</td>
+</tr>
+<tr>
+<td><code>A newer sign-in replaced this one. Sign in again.</code></td>
+<td><code>errorcode: "flow_replaced"</code>. The <code>flowid</code> you sent isn't the current one.</td>
+</tr>
+<tr>
+<td><code>The sign-in did not finish. Sign in again.</code></td>
+<td><code>errorcode: "flow_failed"</code>. The current sign-in or check failed; <code>flow.errorcode</code> in <code>OAuthStatus</code> says why.</td>
+</tr>
+<tr>
+<td><code>Choose accounts from the list Wiro gave after the sign-in.</code></td>
+<td><code>errorcode: "not_listed"</code>. An ID isn't on the list.</td>
+</tr>
+<tr>
+<td><code>The account list could not be read. Try again in a moment.</code></td>
+<td>A temporary failure. Try again.</td>
+</tr>
+<tr>
+<td><code>accountids must be a non-empty array</code> / <code>Each account id must be text</code></td>
+<td><code>accountids</code> is empty, or holds something other than strings and numbers.</td>
+</tr>
+<tr>
 <td><code>accounts must be a non-empty array</code></td>
-<td><code>accounts</code> missing or empty.</td>
+<td>Neither <code>accountids</code> nor a non-empty <code>accounts</code> was sent.</td>
 </tr>
 <tr>
 <td><code>Each account selection must be an object</code></td>
@@ -26406,15 +26447,15 @@ response (see <a href="/docs/integration-googlebusiness-skills#connect-through-t
 </tr>
 <tr>
 <td><code>&lt;Provider&gt; account not connected</code></td>
-<td>Standard picker (e.g. Google Ads) called before the OAuth callback wrote tokens. A chained step also returns it when no parent account is saved or the access token has expired. For an expired token, start the agent, or connect again with <code>OAuthConnect</code> in the same mode if it cannot start yet, then call <code>DiscoverPickerItems</code> again.</td>
+<td>A root save whose list is open but whose sign-in left no token in its mode, for example because <code>authmethod</code> was changed after the sign-in. A chained step alone returns it when no parent account is saved or the access token has expired. For an expired token, start the agent, or connect again with <code>OAuthConnect</code> in the same mode if it cannot start yet, then call <code>DiscoverPickerItems</code> again.</td>
 </tr>
 <tr>
 <td><code>No pending &lt;Provider&gt; connection. Please reconnect via OAuthConnect.</code></td>
-<td>Facebook Pages or System User Instagram: the 15-minute discovery window expired, or an earlier save already used it.</td>
+<td>Facebook Pages or System User Instagram: the list is open, but the Page tokens found with it are no longer on the server. Call <code>OAuthConnect</code> again.</td>
 </tr>
 <tr>
 <td><code>Selected &lt;field&gt; not found in pending list: &lt;value&gt;</code></td>
-<td>Deferred-token picker: the selected ID is not in the latest server-side discovery result.</td>
+<td>Facebook Pages or System User Instagram: an account on the list has no Page token. Call <code>OAuthConnect</code> again.</td>
 </tr>
 <tr>
 <td><code>Credential does not support account picker: &lt;key&gt;</code></td>
@@ -26591,10 +26632,10 @@ customer-facing token-refresh endpoint or manual refresh action.</p>
 <li><strong>Show it.</strong> Every item has an <code>id</code> and a name;
    <a href="#picker-data-from-the-redirect">Picker data from the redirect</a> lists each
    credential's item fields and the keys to save them under.</li>
-<li><strong>Save the choice.</strong> Send one or more chosen items in <code>accounts[]</code> to
-   <a href="#post-useragentoauthsetpickeraccounts"><code>SetPickerAccounts</code></a>. Every picker
-   accepts several items. Facebook Pages and System User Instagram must be
-   saved within 15 minutes, and that list can be saved only once.</li>
+<li><strong>Save the choice.</strong> Send the chosen IDs in <code>accountids</code>, or the items in
+   <code>accounts[]</code>, to <a href="#post-useragentoauthsetpickeraccounts"><code>SetPickerAccounts</code></a>
+   from the same Wiro account and within 15 minutes. Every picker accepts
+   several items, and each list can be saved once.</li>
 <li><strong>Second step.</strong> For Meta Ads Pages (optional) and Business Profile
    locations, call
    <a href="#post-useragentoauthdiscoverpickeritems"><code>DiscoverPickerItems</code></a>, show the
@@ -26604,7 +26645,7 @@ customer-facing token-refresh endpoint or manual refresh action.</p>
    <code>&lt;prefix&gt;_error=no_accounts</code> (<code>fb_error=no_pages</code> for Facebook Pages) and
    Wiro saves nothing. Show the reason and let the customer connect again.</li>
 </ol>
-<p>Wiro sends the list in that redirect or response, and <code>OAuthStatus</code> returns it as <code>candidates</code> for 15 minutes. After that, <code>OAuthStatus</code> shows only the saved selection. To offer changes later, keep the list or run <code>OAuthConnect</code> again.</p>
+<p>Wiro sends the list in that redirect or response, and <code>OAuthStatus</code> returns it as <code>candidates</code> for 15 minutes. After that, <code>OAuthStatus</code> shows only the saved selection. To offer changes later, run <code>OAuthConnect</code> again and save from the new list: a list that was saved once, or is older than 15 minutes, can't be saved from.</p>
 <h3 id="handling-the-oauth-redirect-in-your-app">Handling the OAuth redirect in your app</h3>
 <pre><code class="language-javascript">app.get('/settings/integrations', (req, res) =&gt; {
   // req.query values are already URL-decoded: parse each list once, without decodeURIComponent.
@@ -26637,7 +26678,7 @@ customer-facing token-refresh endpoint or manual refresh action.</p>
   res.redirect('/dashboard')
 })
 
-// After the customer picks, save the choice from your backend:
+// After the customer picks, save the choice from your backend within 15 minutes of the sign-in:
 async function saveGoogleAdsPick(useragentguid, picked) {
   const res = await fetch('https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts', {
     method: 'POST',
@@ -26645,10 +26686,10 @@ async function saveGoogleAdsPick(useragentguid, picked) {
     body: JSON.stringify({
       useragentguid,
       credentialkey: 'google-ads',
-      accounts: picked.map((c) =&gt; ({ customerid: c.id, customerdescriptivename: c.name })),
+      accountids: picked.map((c) =&gt; c.id),
     }),
   })
-  return res.json() // { result, errors, accounts: [{ id, name }] }
+  return res.json() // { result, errors, accounts: [{ id, name }], restart }
 }
 </code></pre>
                 </article>
@@ -30397,9 +30438,9 @@ must always call this endpoint explicitly.</p>
 <p>Behavior:</p>
 <ul>
 <li>Pass the ad account ID <strong>without</strong> the <code>act_</code> prefix. If you include it, Wiro strips it automatically.</li>
-<li><code>adaccountname</code> is optional but recommended: it surfaces in <code>OAuthStatus</code> responses and dashboards.</li>
+<li><code>adaccountname</code> is optional: Wiro saves the name from its list, which <code>OAuthStatus</code> responses and dashboards show.</li>
 <li>Pass multiple <code>{ adaccountid, adaccountname }</code> entries to authorize the agent against several ad accounts at once.</li>
-<li>Each call replaces the previous selection. Page mappings are kept only for ad accounts that stay selected, so run Step 10b again for ad accounts you add.</li>
+<li>A save replaces the previous selection. Wiro saves only ad accounts from the list of this token check or sign-in, from the same Wiro account within 15 minutes, and the first save uses the list up: to change the ad accounts later, connect again (step 6 of the System User path, or Step 8) and save from the new list. Page mappings are kept only for ad accounts that stay selected, so run Step 10b again for ad accounts you add.</li>
 <li>If the agent was running (status <code>3</code> or <code>4</code>), Wiro marks it <code>status: 1</code> and restarts it after the stop cycle, so the agent uses the new ad account. No manual Start needed.</li>
 </ul>
 <h3 id="step-10b-discover-and-select-facebook-pages-optional">Step 10b: Discover and select Facebook Pages (optional)</h3>
@@ -30652,7 +30693,7 @@ than running ads), that's a separate integration (see the
 <td><code>accounts</code></td>
 <td>array</td>
 <td>Yes</td>
-<td>One or more <code>{ adaccountid, adaccountname }</code> entries. <code>adaccountid</code> must be without the <code>act_</code> prefix (prefix stripped automatically if sent); <code>adaccountname</code> is the display name shown in dashboards and <code>OAuthStatus</code> responses.</td>
+<td>One or more <code>{ adaccountid, adaccountname }</code> entries. <code>adaccountid</code> must be without the <code>act_</code> prefix (prefix stripped automatically if sent); Wiro saves the name from its list as <code>adaccountname</code>, the display name shown in dashboards and <code>OAuthStatus</code> responses.</td>
 </tr>
 </tbody>
 </table>
@@ -31257,7 +31298,7 @@ if (params.get(&quot;tiktokads_connected&quot;) === &quot;true&quot;) {
 <p>Behavior:</p>
 <ul>
 <li>Send one or more <code>{ advertiserid, advertisername }</code> entries picked from <code>tiktokads_advertisers</code> (<code>id</code> becomes <code>advertiserid</code>, <code>name</code> becomes <code>advertisername</code>). Non-digits in <code>advertiserid</code> are stripped server-side.</li>
-<li>Each call replaces the previous selection.</li>
+<li>A save replaces the previous selection. Wiro saves only advertisers from this sign-in's list, under the names it lists, when the call comes from the same Wiro account within 15 minutes. The first save uses the list up: to change the selection later, connect again. See <a href="/docs/agent-credentials#post-useragentoauthsetpickeraccounts">SetPickerAccounts</a>.</li>
 <li>If the agent was running, Wiro restarts it so it picks up the selection. No manual Start needed.</li>
 </ul>
 <h3 id="step-4-verify-the-connection">Step 4: Verify the connection</h3>
@@ -31424,13 +31465,13 @@ if (params.get(&quot;tiktokads_connected&quot;) === &quot;true&quot;) {
 <td><code>accounts</code></td>
 <td>array</td>
 <td>Yes</td>
-<td>One or more <code>{ advertiserid, advertisername }</code> entries. <code>advertiserid</code> is the numeric advertiser ID (non-digits stripped); <code>advertisername</code> is the display name shown in dashboards and <code>OAuthStatus</code> responses.</td>
+<td>One or more <code>{ advertiserid, advertisername }</code> entries. <code>advertiserid</code> is the numeric advertiser ID (non-digits stripped); Wiro saves the name from its list as <code>advertisername</code>, the display name shown in dashboards and <code>OAuthStatus</code> responses.</td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
-<p>Response: <code>{ result, errors, accounts: [{id, name}, ...] }</code>. Replaces the previous selection and triggers an automatic agent restart if the agent was running. Returns <code>TikTok Ads account not connected</code> when no completed connection exists yet.</p>
+<p>Response: <code>{ result, errors, accounts: [{id, name}, ...] }</code>. Replaces the previous selection and triggers an automatic agent restart if the agent was running. Returns <code>The sign-in expired. Sign in again to choose the accounts.</code> (<code>errorcode: "flow_expired"</code>) when no sign-in's list is open: none was completed, it was more than 15 minutes ago, or a save already used it.</p>
 <h3 id="post-useragentoauthoauthstatus">POST /UserAgentOAuth/OAuthStatus</h3>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -32403,8 +32444,8 @@ if (params.get("fb_connected") === "true") {
   "errors": []
 }</code></pre>
                     <p>Wiro validates every requested Page against the server-side discovery result, stores its long-lived Page access token without returning it to the client, and restarts a running agent so the new selection takes effect.</p>
-                    <p>If the 15-minute window lapses before you call <code>SetPickerAccounts</code>, or an earlier call already saved a selection from it, you'll get <code>No pending Facebook connection. Please reconnect via OAuthConnect.</code> Repeat Step 3 for System User mode or Step 7 for OAuth.</p>
-                    <p>Send <code>fbpagename</code> with every Page, copied from the <code>name</code> in <code>fb_pages</code> or in the <code>OAuthConnect</code> response. Wiro stores the name you send; a Page sent without one is saved with an empty name. The Facebook Pages picker accepts one or more entries: pass multiple <code>{ pageid, fbpagename }</code> objects to authorize the agent against several Pages at once.</p>
+                    <p>If the 15-minute window lapses before you call <code>SetPickerAccounts</code>, or an earlier call already saved a selection from it, you'll get <code>The sign-in expired. Sign in again to choose the accounts.</code> with <code>errorcode: "flow_expired"</code>. Repeat Step 3 for System User mode or Step 7 for OAuth.</p>
+                    <p>Wiro saves each Page's name from its list (the <code>name</code> in <code>fb_pages</code> or in the <code>OAuthConnect</code> response), so <code>fbpagename</code> can be left out, and a name you send is not read. Only the Wiro account that started the sign-in or check can save from its list. The Facebook Pages picker accepts one or more entries: pass multiple <code>{ pageid, fbpagename }</code> objects to authorize the agent against several Pages at once.</p>
 
                     <h3>Step 10: Verify the connection</h3>
                     <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
@@ -32648,14 +32689,14 @@ if (params.get("fb_connected") === "true") {
                       </table>
                     </div>
 
-                    <h3><code>SetPickerAccounts</code> returns "No pending Facebook connection"</h3>
-                    <p>No discovery result is waiting: the 15-minute window expired, or a previous <code>SetPickerAccounts</code> already used it. Repeat Step 3 for System User mode or Step 7 for OAuth.</p>
+                    <h3><code>SetPickerAccounts</code> returns <code>flow_expired</code></h3>
+                    <p>No discovery result is waiting: the 15-minute window expired, a previous <code>SetPickerAccounts</code> already used it, or a newer connection replaced it. Repeat Step 3 for System User mode or Step 7 for OAuth. <code>No pending Facebook connection. Please reconnect via OAuthConnect.</code> means the same: connect again.</p>
 
-                    <h3><code>SetPickerAccounts</code> returns "Selected pageid not found in pending list"</h3>
-                    <p>The <code>pageid</code> you sent doesn't match any ID in the latest discovery result. Verify you're parsing <code>fb_pages</code> correctly and sending the exact ID string.</p>
+                    <h3><code>SetPickerAccounts</code> returns <code>not_listed</code></h3>
+                    <p>The <code>pageid</code> you sent isn't in the latest discovery result (<code>Choose accounts from the list Wiro gave after the sign-in.</code>). Verify you're parsing <code>fb_pages</code> correctly and sending the exact ID string.</p>
 
                     <h3>Posts publish but as the wrong author</h3>
-                    <p>Check <code>POST /UserAgent/Detail</code> and verify <code>credentials.facebook-pages.pageid</code> is the Page you intended. If not, disconnect and reconnect, or call <code>SetPickerAccounts</code> again within a fresh 15-minute window.</p>
+                    <p>Check <code>POST /UserAgent/Detail</code> and verify <code>credentials.facebook-pages.pageid</code> is the Page you intended. If not, connect again (Step 3 or Step 7) and save the right Page from the new list within 15 minutes.</p>
 
                     <h3>"App not verified" banner on consent</h3>
                     <p>Expected in Development Mode. Users in App Roles can click Continue.</p>
@@ -33102,7 +33143,7 @@ if (params.get("ig_connected") === "true") {
                             <td><code>accounts</code></td>
                             <td>array</td>
                             <td>Yes</td>
-                            <td>One or more <code>{ accountId, igusername }</code> entries from the latest discovery response (<code>accountId</code> is its <code>id</code>, <code>igusername</code> its <code>name</code>; Wiro stores the name you send). Do not supply access tokens.</td>
+                            <td>One or more <code>{ accountId, igusername }</code> entries from the latest discovery response (<code>accountId</code> is its <code>id</code>; Wiro saves its <code>name</code> from the list as <code>igusername</code>, so a name you send is not read). Do not supply access tokens.</td>
                           </tr>
                         </tbody>
                       </table>
@@ -34486,8 +34527,9 @@ if (params.get("gads_connected") === "true") {
   }'</code></pre>
                     <ul>
                       <li><code>customerid</code>: either 10-digit or <code>123-456-7890</code> format works, and non-digits are stripped automatically.</li>
-                      <li><code>customerdescriptivename</code> (optional): the account label shown next to the customer ID. Take both values from the <code>gads_accounts</code> entry: <code>id</code> becomes <code>customerid</code>, <code>name</code> becomes <code>customerdescriptivename</code>.</li>
+                      <li><code>customerdescriptivename</code> (optional): Wiro saves the name its list gives the customer, so you can leave it out. Take <code>customerid</code> from the <code>gads_accounts</code> entry's <code>id</code>.</li>
                       <li>Pass multiple <code>{ customerid, customerdescriptivename }</code> entries to authorize the agent against several customers at once.</li>
+                      <li>Wiro saves only customers from this sign-in's list, under the names it lists, when the call comes from the same Wiro account within 15 minutes. The first save uses the list up: to change the selection later, connect again. See <a href="/docs/agent-credentials#post-useragentoauthsetpickeraccounts">SetPickerAccounts</a>.</li>
                     </ul>
                     <p>Response:</p>
                     <pre><code>{
@@ -34603,7 +34645,7 @@ if (params.get("gads_connected") === "true") {
                             <td><code>accounts</code></td>
                             <td>array</td>
                             <td>Yes</td>
-                            <td>One or more <code>{ customerid, customerdescriptivename }</code> entries. <code>customerid</code> is 10 digits (dashes/letters stripped server-side); <code>customerdescriptivename</code> is the label, the <code>name</code> of the <code>gads_accounts</code> entry.</td>
+                            <td>One or more <code>{ customerid, customerdescriptivename }</code> entries. <code>customerid</code> is 10 digits (dashes/letters stripped server-side); Wiro saves the entry's <code>name</code> from its list as <code>customerdescriptivename</code>.</td>
                           </tr>
                         </tbody>
                       </table>
@@ -34852,7 +34894,7 @@ if (params.get("gads_connected") === "true") {
       { "channelid": "UC...", "channeltitle": "My Channel" }
     ]
   }'</code></pre>
-                    <p>Pass multiple <code>{ channelid, channeltitle }</code> entries to authorize the agent against several channels at once.</p>
+                    <p>Pass multiple <code>{ channelid, channeltitle }</code> entries to authorize the agent against several channels at once. Wiro saves only channels from this sign-in's list, under the names it lists, when the call comes from the same Wiro account within 15 minutes. The first save uses the list up: to change the selection later, connect again. See <a href="/docs/agent-credentials#post-useragentoauthsetpickeraccounts">SetPickerAccounts</a>.</p>
                   </section>
 
                   <section id="disconnect">
@@ -34991,7 +35033,7 @@ Agent → POST /youtubeAnalytics/v2/reports
                             <tr><td><code>YouTube credentials not configured</code></td><td><code>authmethod: "own"</code> without a saved <code>clientid</code> and <code>clientsecret</code></td><td>Save them (Step 3), then retry</td></tr>
                             <tr><td><code>yt_error=no_accounts</code> on your <code>redirecturl</code></td><td>Google listed no YouTube channel for this account, and Wiro saved nothing: the account has no channel, or the YouTube Data API v3 is not enabled in your project</td><td>Enable the API (Step 1), or have the user create a channel, then call <code>OAuthConnect</code> again</td></tr>
                             <tr><td><code>quotaExceeded</code></td><td>Daily quota hit</td><td>Wait 24h or request higher quota from Google</td></tr>
-                            <tr><td><code>channelNotFound</code></td><td>Channel deleted or moved</td><td>User re-selects via <code>SetPickerAccounts</code></td></tr>
+                            <tr><td><code>channelNotFound</code></td><td>Channel deleted or moved</td><td>Connect again with <code>OAuthConnect</code>, then save the channel with <code>SetPickerAccounts</code></td></tr>
                             <tr><td><code>invalid_grant</code></td><td>Refresh token expired or revoked; a consent screen still in Testing expires it after 7 days</td><td>Publish the consent screen, then re-connect via <code>OAuthConnect</code></td></tr>
                             <tr><td>A video uploaded as public or unlisted stays private</td><td>The Google Cloud project hasn't passed the YouTube API audit</td><td>Request the audit; until then upload the video in YouTube Studio</td></tr>
                           </tbody>
@@ -35123,7 +35165,7 @@ Agent → POST /youtubeAnalytics/v2/reports
       { "propertyid": "123456789", "propertydisplayname": "MyApp Production" }
     ]
   }'</code></pre>
-                    <p>Pass several <code>{ propertyid, propertydisplayname }</code> entries to authorize the agent against several GA4 properties at once (<code>id</code> becomes <code>propertyid</code>, <code>displayName</code> becomes <code>propertydisplayname</code>). Only these two are saved. <code>account</code> is handy for grouping the list in your UI, but it is not stored.</p>
+                    <p>Pass several <code>{ propertyid, propertydisplayname }</code> entries to authorize the agent against several GA4 properties at once (<code>id</code> becomes <code>propertyid</code>). Wiro saves each property's <code>displayName</code> from its list as <code>propertydisplayname</code>, so a name you send is not read. <code>account</code> is handy for grouping the list in your UI, but it is not stored. Wiro saves only properties from this sign-in's list, under the names it lists, when the call comes from the same Wiro account within 15 minutes. The first save uses the list up: to change the selection later, connect again. See <a href="/docs/agent-credentials#post-useragentoauthsetpickeraccounts">SetPickerAccounts</a>.</p>
                   </section>
 
                   <section id="disconnect">
@@ -35539,7 +35581,7 @@ Agent → POST /v1beta/properties/123456789:runReport
     ]
   }'</code></pre>
                     <p>This call is required, even when <code>mc_accounts</code> has one entry. Until it runs, <code>OAuthStatus</code> reports <code>connected: false</code>.</p>
-                    <p>Pass multiple <code>{ merchantid, accountname }</code> entries to authorize the agent against several merchant accounts at once.</p>
+                    <p>Pass multiple <code>{ merchantid, accountname }</code> entries to authorize the agent against several merchant accounts at once. Wiro saves only accounts from this sign-in's list, under the names it lists, when the call comes from the same Wiro account within 15 minutes. The first save uses the list up: to change the selection later, connect again. See <a href="/docs/agent-credentials#post-useragentoauthsetpickeraccounts">SetPickerAccounts</a>.</p>
                   </section>
 
                   <section id="disconnect">
@@ -35888,7 +35930,7 @@ if (params.get("gbp_connected") === "true") {
                     <p>Behavior:</p>
                     <ul>
                       <li>Send one or more <code>{ accountid, accountname }</code> entries picked from <code>gbp_accounts</code> (<code>id</code> becomes <code>accountid</code>, <code>name</code> becomes <code>accountname</code>). Non-digits in <code>accountid</code> are stripped server-side.</li>
-                      <li>Each call replaces the previous account selection. Locations already chosen for accounts that stay selected are kept; locations of removed accounts are dropped.</li>
+                      <li>A save replaces the previous account selection. Locations already chosen for accounts that stay selected are kept; locations of removed accounts are dropped. Wiro saves only accounts from this sign-in's list, under the names it lists, when the call comes from the same Wiro account within 15 minutes. The first save uses the list up: to change the selection later, connect again. See <a href="/docs/agent-credentials#post-useragentoauthsetpickeraccounts">SetPickerAccounts</a>.</li>
                       <li>If the agent was running, Wiro restarts it.</li>
                     </ul>
 
@@ -36086,7 +36128,7 @@ if (params.get("gbp_connected") === "true") {
                           <tbody>
                             <tr><td><code>useragentguid</code></td><td>string</td><td>Yes</td><td>Agent instance GUID.</td></tr>
                             <tr><td><code>credentialkey</code></td><td>string</td><td>Yes</td><td><code>"google-business"</code>.</td></tr>
-                            <tr><td><code>accounts</code></td><td>array</td><td>Yes</td><td>One or more <code>{ accountid, accountname }</code> entries. <code>accountid</code> is the numeric account ID (non-digits stripped); <code>accountname</code> is the display name shown in dashboards and <code>OAuthStatus</code> responses.</td></tr>
+                            <tr><td><code>accounts</code></td><td>array</td><td>Yes</td><td>One or more <code>{ accountid, accountname }</code> entries. <code>accountid</code> is the numeric account ID (non-digits stripped); Wiro saves the name from its list as <code>accountname</code>, the display name shown in dashboards and <code>OAuthStatus</code> responses.</td></tr>
                           </tbody>
                         </table>
                       </div>
