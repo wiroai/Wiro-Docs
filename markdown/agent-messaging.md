@@ -1134,7 +1134,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/SetupCardApply" \
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `setup` | `object` | The card after the action, in the same shape as a [setup block](#setup-blocks)'s `setup`. |
+| `setup` | `object\|null` | The card after the action, in the same shape as a [setup block](#setup-blocks)'s `setup`. `null` when the call is refused before the card is read: a missing parameter, an agent or message the caller can't reach, Setup From Chat off, a reply still being written, a caller who isn't an agent admin, a card someone else is applying at that moment, or a card that isn't there. |
 | `restarting` | `boolean` | `true` when the agent restarts to load the change. Continue the chat in about a minute. |
 | `summary` | `string` | A short English phrase that says what changed, such as `Scheduled task Morning summary created` or `Brevo Email added`. An `add` card applied with its `connect` card names both: `Serper Web Search added. Serper Web Search connected.` Empty when nothing was applied. |
 | `paired` | `object[]` | Only when `values` or `signin: true` are sent with a pending `add` card: its `connect` card after the call, as `[{ setup, result, error }]`. `setup` has the same shape as above, `result` is `true` when the card was applied with the key, and `error` is `null` or the sentence that says why not, such as `Saved <fields> for <Connector>. Still needed: <fields>.` when `values` held only some of the connector's fields. Empty when there is no single `connect` card to take the key. See [Adding and connecting in one step](#setup-add-and-connect). |
