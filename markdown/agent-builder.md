@@ -254,8 +254,8 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \
       "enabledChannels": ["telegram"],
       "teamsessionmode": "private",
       "credentials": {
-        "gmail":    { "_connected": false, "optional": false, "extra": false, "account": "agent@company.com", "apppassword": "xxxx xxxx xxxx xxxx" },
-        "telegram": { "_connected": false, "optional": false, "extra": false, "bottoken": "123456:ABC-DEF...", "allowedusers": ["123456789"] }
+        "gmail":    { "_connected": false, "optional": false, "extra": false, "account": "agent@company.com", "apppassword": "••••••••" },
+        "telegram": { "_connected": false, "optional": false, "extra": false, "bottoken": "••••••••", "allowedusers": ["123456789"] }
       },
       "agent": {
         "custom": true,
@@ -288,6 +288,7 @@ Notes on the response:
 - `scheduledskills` already contains the cron from the Deploy body. Deploy stores each `customskills` key in its full form, as `CustomSkillUpsert` does: a bare slug with an `interval` becomes `cs-cron-<slug>`, one without becomes `cs-<slug>`, and a key that isn't a slug fails the deploy before anything is created or charged.
 - `status: 2` means Deploy auto-queued the instance because `useprepaid: true` provisioned a subscription in the same call. Wiro starts the agent from the queue; you do **not** need to call `POST /UserAgent/Start` after a prepaid deploy.
 - Communication-channel credentials are validated independently from `skills`. Every channel group present in `credentials` must contain all of its `required_fields` or Deploy fails without leaving a partial agent behind.
+- The Gmail app password and the Telegram bot token you sent come back as `"••••••••"`: like `UserAgent/Detail`, the response shows a saved secret only as the mask.
 
 ## Step 4: Refine Skills After Deploy
 

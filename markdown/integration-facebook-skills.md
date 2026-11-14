@@ -87,9 +87,9 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   }'
 ```
 
-The token is stored encrypted and never reaches the agent. Like your other
-connector values, it comes back on `UserAgent/Detail` only to the agent's owner
-and team admins.
+The token is stored encrypted and never reaches the agent. Once saved, it reads
+`"••••••••"` on `UserAgent/Detail`, like every saved secret. To change it,
+save a new token.
 
 ### Step 3: Validate the token and discover Pages
 

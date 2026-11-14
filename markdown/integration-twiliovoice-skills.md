@@ -132,7 +132,7 @@ Once the agent is in status `4` (running), dial your Twilio number from any phon
   "optional": false,
   "extra": false,
   "accountsid": "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-  "authtoken": "***encrypted***",
+  "authtoken": "••••••••",
   "phonenumbers": ["+14155551234"],
   "maxcallseconds": 600,
   "whitelistedcallers": [],

@@ -115,7 +115,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/GoogleDriveListFolders" \
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
-| `serviceaccountjson` | string | No | Base64-encoded SA JSON. Useful for previewing before saving. If omitted, the endpoint uses whatever JSON was already saved to the agent via Step 5. |
+| `serviceaccountjson` | string | No | Base64-encoded SA JSON. Useful for previewing before saving. If omitted, or sent as `"••••••••"` (how `UserAgent/Detail` shows a saved one), the endpoint uses whatever JSON was already saved to the agent via Step 5. |
 | `parentid` | string | No | Parent folder ID for subfolder listing. Omit (or pass empty) to list folders shared at the root level with the service account (Drive's `sharedWithMe` filter). When provided, returns folders whose parent is the given id. Drive's permission cascade lets the service account see children of any root it has access to, even if those children aren't shared individually. |
 
 Response:
