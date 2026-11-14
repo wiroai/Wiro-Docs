@@ -13530,7 +13530,7 @@ import type {
 <td><code>chatsetup</code></td>
 <td>string</td>
 <td>No</td>
-<td>Setup From Chat: where people can change this agent's setup by approving setup cards in chat. <code>"all"</code> (the default) allows the Wiro web chat and messages sent with a project API key, <code>"webchat"</code> only the Wiro web chat, and <code>"off"</code> neither. Omit it, or send <code>null</code>, for <code>"all"</code>. Deploying an agent that your customers or many people will talk to? Send <code>"webchat"</code> or <code>"off"</code>. See <a href="/docs/agent-messaging#setup-from-chat">Setup From Chat</a>.</td>
+<td>Setup From Chat: where people can change this agent's setup by approving setup cards in chat. <code>"all"</code> (the default) allows the Wiro web chat and messages sent with a project API key, <code>"webchat"</code> only the Wiro web chat, and <code>"off"</code> neither. Omit it, or send <code>null</code>, for <code>"all"</code>. Deploying an agent that people who must not change it will talk to, such as your customers' own users? Send <code>"webchat"</code> or <code>"off"</code>. Keep <code>"all"</code> when the people in your chats may change the agent, and decide in your own product who may approve: see <a href="/docs/agent-chat-integration#who-may-apply-a-card">Agent Chat Integration</a>. See <a href="/docs/agent-messaging#setup-from-chat">Setup From Chat</a>.</td>
 </tr>
 </tbody>
 </table>
@@ -19409,7 +19409,7 @@ print(response.body);
 <tr>
 <td><code>setupresult</code></td>
 <td><code>object</code></td>
-<td>Only when Wiro handled the message itself: <code>{ applied, dismissed, failed, restarting }</code>.</td>
+<td>Only when Wiro handled the message itself: <code>{ applied, dismissed, failed, restarting, next? }</code>. See <a href="#handled-setup-replies">Replies Wiro handles itself</a>.</td>
 </tr>
 </tbody>
 </table>
@@ -19546,9 +19546,7 @@ print(response.body);
       &quot;speedType&quot;: &quot;words/s&quot;,
       &quot;elapsedTime&quot;: &quot;8.1s&quot;,
       &quot;tokenCount&quot;: 105,
-      &quot;wordCount&quot;: 118,
-      &quot;raw&quot;: &quot;Here are the key AI trends for 2026...&quot;,
-      &quot;answer&quot;: [&quot;Here are the key AI trends for 2026...&quot;]
+      &quot;wordCount&quot;: 118
     },
     &quot;attachments&quot;: [],
     &quot;deletestatus&quot;: 0,
@@ -19595,7 +19593,7 @@ print(response.body);
 <tr>
 <td><code>user</code></td>
 <td><code>object|null</code></td>
-<td>Resolved sender info: <code>{ uuid, firstname, lastname, email, username, avatar, avatarinitials }</code>. Decorated server-side from the message's <code>uuid</code> so the chat bubble can render avatar / hover-tooltip without an extra <code>User/Detail</code> round-trip. <code>null</code> when the row was written by automation (sentinel <code>uuid</code> like <code>"system"</code>) or when the user record was deleted.</td>
+<td>Resolved sender info: <code>{ uuid, firstname, lastname, email, username, avatar, avatarinitials }</code>. Decorated server-side from the message's <code>uuid</code> so the chat bubble can render avatar / hover-tooltip without an extra <code>User/Detail</code> round-trip. <code>null</code> when the row was written by automation (sentinel <code>uuid</code> like <code>"system"</code>) or when the user record was deleted. A message sent with a project API key is the key owner's, whoever typed it: a product of your own shows its own names, not this one.</td>
 </tr>
 <tr>
 <td><code>sessionkey</code></td>
@@ -19630,7 +19628,7 @@ print(response.body);
 <tr>
 <td><code>metadata</code></td>
 <td><code>object</code></td>
-<td>Parsed JSON object (API returns it already decoded). Populated from the agent bridge on <code>agent_end</code>. Fields produced by the bridge's final progress builder include <code>type</code>, <code>task</code>, <code>speed</code>, <code>speedType</code>, <code>elapsedTime</code>, <code>tokenCount</code>, <code>wordCount</code>, <code>raw</code>, and <code>answer</code>. Timeline blocks are intentionally not stored in metadata; read the top-level <code>timeline</code> field. Empty object <code>{}</code> for <code>agent_error</code>, <code>agent_cancel</code>, or when the bridge hasn't finished yet. Message status lives in the top-level <code>status</code> field, so don't read it from <code>metadata.type</code>.</td>
+<td>Parsed JSON object (API returns it already decoded). Populated from the agent bridge on <code>agent_end</code>. Only <code>type</code> and a few keys are returned: on a finished turn (<code>type: "progressGenerate"</code>) <code>task</code>, <code>speed</code>, <code>speedType</code>, <code>elapsedTime</code>, <code>tokenCount</code> and <code>wordCount</code>; on a <code>model_change</code> marker row <code>fromModel</code> and <code>toModel</code>; on other rows (<code>setup_result</code>, <code>system</code>, <code>subagent</code>) usually <code>type</code> alone, and in History <code>systemcost: true</code> on a row whose cost came from a scheduled or background run. The answer text is in <code>response</code> and <code>timeline</code>, never in metadata. Empty object <code>{}</code> for <code>agent_error</code>, <code>agent_cancel</code>, or when the bridge hasn't finished yet. Message status lives in the top-level <code>status</code> field, so don't read it from <code>metadata.type</code>.</td>
 </tr>
 <tr>
 <td><code>attachments</code></td>
@@ -19921,9 +19919,7 @@ print(response.body);
           &quot;speedType&quot;: &quot;words/s&quot;,
           &quot;elapsedTime&quot;: &quot;8.1s&quot;,
           &quot;tokenCount&quot;: 105,
-          &quot;wordCount&quot;: 118,
-          &quot;raw&quot;: &quot;Here are the key AI trends for 2026...&quot;,
-          &quot;answer&quot;: [&quot;Here are the key AI trends for 2026...&quot;]
+          &quot;wordCount&quot;: 118
         },
         &quot;attachments&quot;: [],
         &quot;deletestatus&quot;: 0,
@@ -19939,9 +19935,17 @@ print(response.body);
       },
       {
         &quot;guid&quot;: &quot;b2c3d4e5-f6a7-8901-bcde-f23456789012&quot;,
-        &quot;uuid&quot;: &quot;system&quot;,
+        &quot;uuid&quot;: &quot;ada-uuid&quot;,
         &quot;agenttoken&quot;: null,
-        &quot;user&quot;: null,
+        &quot;user&quot;: {
+          &quot;uuid&quot;: &quot;ada-uuid&quot;,
+          &quot;firstname&quot;: &quot;Ada&quot;,
+          &quot;lastname&quot;: &quot;Lovelace&quot;,
+          &quot;email&quot;: &quot;ada@example.com&quot;,
+          &quot;username&quot;: &quot;ada&quot;,
+          &quot;avatar&quot;: &quot;https://cdn.wiro.ai/avatars/ada.webp&quot;,
+          &quot;avatarinitials&quot;: &quot;AL&quot;
+        },
         &quot;content&quot;: &quot;&quot;,
         &quot;response&quot;: &quot;&quot;,
         &quot;debugoutput&quot;: &quot;&quot;,
