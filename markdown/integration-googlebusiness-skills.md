@@ -196,11 +196,11 @@ Response:
 {
   "result": true,
   "errors": [],
-  "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth?client_id=...&redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FUserAgentOAuth%2FGBPCallback&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fbusiness.manage&state=...&access_type=offline&prompt=consent"
+  "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth?client_id=...&redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FUserAgentOAuth%2FGBPCallback&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fbusiness.manage&state=...&access_type=offline&prompt=select_account+consent"
 }
 ```
 
-Redirect the user's browser to `authorizeUrl` with a full-page redirect rather than a popup. Wiro requests the `business.manage` scope with offline access, so Google issues a refresh token.
+Redirect the user's browser to `authorizeUrl` with a full-page redirect rather than a popup. Wiro requests the `business.manage` scope with offline access, so Google issues a refresh token. Google asks which Google account to connect, even when the browser is already signed in to one.
 
 Always send `authmethod: "own"`. Without it, or with `"wiro"`, `OAuthConnect` returns `Wiro-managed OAuth is not enabled for Google Business Profile`.
 
