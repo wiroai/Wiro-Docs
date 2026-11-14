@@ -121,12 +121,12 @@ Response:
 ```json
 {
   "result": true,
-  "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth?client_id=...&redirect_uri=...&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fadwords&state=...&access_type=offline&prompt=consent",
+  "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth?client_id=...&redirect_uri=...&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fadwords&state=...&access_type=offline&prompt=select_account+consent",
   "errors": []
 }
 ```
 
-Scope is a single string: `https://www.googleapis.com/auth/adwords`. `access_type=offline&prompt=consent` ensures a refresh token is issued.
+Scope is a single string: `https://www.googleapis.com/auth/adwords`. `access_type=offline` with `prompt=select_account consent` makes Google ask which Google account to connect and issue a refresh token every time.
 
 ### Step 6: Handle the callback
 

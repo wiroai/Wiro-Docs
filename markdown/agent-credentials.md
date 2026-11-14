@@ -721,6 +721,8 @@ Steps 8 and 9 apply to credentials with an account picker; Meta Ads and Google B
 
 Each `OAuthConnect` call starts a sign-in, or a token check in a direct mode, and answers its `flowid`. The accounts it lists stay on Wiro's server for 15 minutes, for the account that started it: [`OAuthStatus`](#post-useragentoauthoauthstatus) returns them as `candidates` until they are saved, so your backend can read them without the redirect. The connection restarts a starting or running agent once, when it is complete: at the account save for a credential with an account picker, at the end of the sign-in or token check otherwise. See [Automatic Restart](/docs/agent-overview#automatic-restart).
 
+Google sign-ins (Google Ads, Google Analytics 4, Google Business Profile, Merchant Center and YouTube) always open Google's account chooser and then its consent screen (`prompt=select_account consent`), so the person picks the Google account to connect even when the browser is already signed in to one, and Google issues a refresh token each time.
+
 ### Auth Methods: `"wiro"` vs `"own"`
 
 |  | `"wiro"` | `"own"` |

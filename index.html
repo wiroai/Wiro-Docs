@@ -25296,6 +25296,7 @@ pending provider review.</p>
 </code></pre>
 <p>Steps 8 and 9 apply to credentials with an account picker; Meta Ads and Google Business Profile add a second picker step with <code>DiscoverPickerItems</code>. Call the Wiro endpoints (steps 2, 9 and 10) from your backend with your API key, not from the browser.</p>
 <p>Each <code>OAuthConnect</code> call starts a sign-in, or a token check in a direct mode, and answers its <code>flowid</code>. The accounts it lists stay on Wiro's server for 15 minutes, for the account that started it: <a href="#post-useragentoauthoauthstatus"><code>OAuthStatus</code></a> returns them as <code>candidates</code> until they are saved, so your backend can read them without the redirect. The connection restarts a starting or running agent once, when it is complete: at the account save for a credential with an account picker, at the end of the sign-in or token check otherwise. See <a href="/docs/agent-overview#automatic-restart">Automatic Restart</a>.</p>
+<p>Google sign-ins (Google Ads, Google Analytics 4, Google Business Profile, Merchant Center and YouTube) always open Google's account chooser and then its consent screen (<code>prompt=select_account consent</code>), so the person picks the Google account to connect even when the browser is already signed in to one, and Google issues a refresh token each time.</p>
 <h3 id="auth-methods-wiro-vs-own">Auth Methods: <code>"wiro"</code> vs <code>"own"</code></h3>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -34601,10 +34602,10 @@ if (params.get("x_connected") === "true") {
                     <p>Response:</p>
                     <pre><code>{
   "result": true,
-  "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth?client_id=...&amp;redirect_uri=...&amp;response_type=code&amp;scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fadwords&amp;state=...&amp;access_type=offline&amp;prompt=consent",
+  "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth?client_id=...&amp;redirect_uri=...&amp;response_type=code&amp;scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fadwords&amp;state=...&amp;access_type=offline&amp;prompt=select_account+consent",
   "errors": []
 }</code></pre>
-                    <p>Scope is a single string: <code>https://www.googleapis.com/auth/adwords</code>. <code>access_type=offline&amp;prompt=consent</code> ensures a refresh token is issued.</p>
+                    <p>Scope is a single string: <code>https://www.googleapis.com/auth/adwords</code>. <code>access_type=offline</code> with <code>prompt=select_account consent</code> makes Google ask which Google account to connect and issue a refresh token every time.</p>
 
                     <h3>Step 6: Handle the callback</h3>
                     <p>After the token exchange, Wiro lists the customers the Google user can open directly (<code>customers:listAccessibleCustomers</code>) and looks up each one's descriptive name and status. A client account that the user reaches only through a manager (MCC) account is not listed.</p>
@@ -34991,7 +34992,7 @@ if (params.get("gads_connected") === "true") {
     "redirecturl": "https://your-app.com/settings/integrations",
     "authmethod": "own"
   }'</code></pre>
-                    <p>Send the user to the returned <code>authorizeUrl</code>.</p>
+                    <p>Send the user to the returned <code>authorizeUrl</code>. Google asks which Google account to connect, even when the browser is already signed in to one.</p>
 
                     <h3>Step 5: Save the channel selection</h3>
                     <p>After consent the user returns with <code>?yt_connected=true&amp;yt_channels=&lt;URL-encoded-JSON&gt;</code>. Each entry is <code>{ id, title, customUrl, subscriberCount }</code>: <code>id</code> is the channel ID, <code>title</code> the channel name, <code>customUrl</code> its custom URL or handle (empty when it has none), and <code>subscriberCount</code> a string (<code>"0"</code> when YouTube returns no count). When the Google account has a single channel, Wiro selects it for you. Otherwise map the user's choice to <code>{ channelid, channeltitle }</code> (<code>id</code> becomes <code>channelid</code>, <code>title</code> becomes <code>channeltitle</code>) and call <code>SetPickerAccounts</code>:</p>
@@ -35262,7 +35263,7 @@ Agent → POST /youtubeAnalytics/v2/reports
     "redirecturl": "https://your-app.com/settings/integrations",
     "authmethod": "own"
   }'</code></pre>
-                    <p>The response returns <code>{ result: true, authorizeUrl: "..." }</code>. Redirect the user to <code>authorizeUrl</code>.</p>
+                    <p>The response returns <code>{ result: true, authorizeUrl: "..." }</code>. Redirect the user to <code>authorizeUrl</code>. Google asks which Google account to connect, even when the browser is already signed in to one.</p>
 
                     <h3>Step 4: Property Picker</h3>
                     <p>After consent, the user returns with <code>?ga4_connected=true&amp;ga4_properties=&lt;URL-encoded-JSON&gt;</code>. Each entry is <code>{ id, displayName, account, propertyType }</code>: <code>id</code> is the property number, <code>displayName</code> the property name, <code>account</code> the name of the GA4 account that owns it, and <code>propertyType</code> Google's property type (for example <code>PROPERTY_TYPE_ORDINARY</code>). Map the user's choice to the picker shape and call <code>SetPickerAccounts</code>:</p>
@@ -35677,7 +35678,7 @@ Agent → POST /v1beta/properties/123456789:runReport
     "redirecturl": "https://your-app.com/settings/integrations",
     "authmethod": "own"
   }'</code></pre>
-                    <p>The response returns <code>{ result: true, authorizeUrl: "..." }</code>. Redirect the user to <code>authorizeUrl</code>.</p>
+                    <p>The response returns <code>{ result: true, authorizeUrl: "..." }</code>. Redirect the user to <code>authorizeUrl</code>. Google asks which Google account to connect, even when the browser is already signed in to one.</p>
 
                     <h3>Step 5: Save the account selection</h3>
                     <p>After consent the user returns with <code>?mc_connected=true&amp;mc_accounts=&lt;URL-encoded-JSON&gt;</code>. Each entry is <code>{ id, name, websiteUrl }</code>: <code>id</code> is the numeric Merchant Center ID, <code>name</code> is the account name and can be empty, and <code>websiteUrl</code> is always empty. When <code>name</code> is empty, label the account with its ID. Send the user's choice to <code>SetPickerAccounts</code> as <code>{ merchantid, accountname }</code> (<code>id</code> becomes <code>merchantid</code>, <code>name</code> becomes <code>accountname</code>):</p>
@@ -35992,9 +35993,9 @@ Agent → POST /v1beta/properties/123456789:runReport
                     <pre><code class="language-json">{
   "result": true,
   "errors": [],
-  "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth?client_id=...&amp;redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FUserAgentOAuth%2FGBPCallback&amp;response_type=code&amp;scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fbusiness.manage&amp;state=...&amp;access_type=offline&amp;prompt=consent"
+  "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth?client_id=...&amp;redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FUserAgentOAuth%2FGBPCallback&amp;response_type=code&amp;scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fbusiness.manage&amp;state=...&amp;access_type=offline&amp;prompt=select_account+consent"
 }</code></pre>
-                    <p>Redirect the user's browser to <code>authorizeUrl</code> with a full-page redirect rather than a popup. Wiro requests the <code>business.manage</code> scope with offline access, so Google issues a refresh token.</p>
+                    <p>Redirect the user's browser to <code>authorizeUrl</code> with a full-page redirect rather than a popup. Wiro requests the <code>business.manage</code> scope with offline access, so Google issues a refresh token. Google asks which Google account to connect, even when the browser is already signed in to one.</p>
                     <p>Always send <code>authmethod: "own"</code>. Without it, or with <code>"wiro"</code>, <code>OAuthConnect</code> returns <code>Wiro-managed OAuth is not enabled for Google Business Profile</code>.</p>
                     <div class="info-callout"><p><strong>State TTL:</strong> Wiro keeps the OAuth state for <strong>15 minutes</strong>. If the user takes longer on Google's consent screen, the connection fails with <code>gbp_error=session_expired</code>; call <code>OAuthConnect</code> again.</p></div>
 
