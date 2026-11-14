@@ -13,7 +13,7 @@ email tools, CRMs) through three credential methods:
    `OAuthConnect` for server-side validation/discovery, then finalize any
    account picker without exposing provider tokens to the browser.
 
-> **From the agent's chat.** With [Setup From Chat](/docs/agent-messaging#setup-from-chat) on, the agent can propose a `connect` card, and an agent admin pastes the key as the reply or enters it on the card. Wiro saves it to the connector, and the agent never sees it. A connector that uses a sign-in gets a `connect` card too: in the Wiro web chat the card takes its app keys or token and runs its sign-in with the endpoints below (see [Connecting a sign-in connector](/docs/agent-messaging#setup-signin-cards)). A connector set up only on the agent page gets no `connect` card.
+> **From the agent's chat.** With [Setup From Chat](/docs/agent-messaging#setup-from-chat) on, the agent can propose a `connect` card, and an agent admin pastes the key as the reply or enters it on the card. Wiro saves it to the connector, and the agent never sees it. A connector that uses a sign-in gets a `connect` card too: in the Wiro web chat the card takes its app keys or token and runs its sign-in with the endpoints below (see [Connecting a sign-in connector](/docs/agent-messaging#setup-signin-cards)). A connector set up only outside the chat gets no `connect` card. To run these steps from a chat in your own product, see [Agent Chat Integration](/docs/agent-chat-integration).
 
 Each external service is documented as its own **integration page** with the complete setup walkthrough, API reference, troubleshooting, and multi-tenant architecture notes. Use the catalog below to jump to the one you need.
 
@@ -1436,6 +1436,8 @@ If you're building a product on top of Wiro agents and need your customers to co
 `<prefix>_connected=true` means the provider authorized Wiro. A picker credential is ready only after `SetPickerAccounts` saves at least one account; until then `OAuthStatus` reports `connected: false`, and Facebook Pages stores nothing at all before that call. Two cases differ: when the Google user has exactly one YouTube channel, Wiro saves that channel during the callback, and a reconnect in the same mode keeps the earlier selection until you save a new one, so `OAuthStatus` may already show the old accounts.
 
 The Google Ads, Meta Ads, TikTok Ads, Facebook, Instagram, Google Business Profile, X, TikTok, LinkedIn, HubSpot and Mailchimp pages include a **Multi-Tenant Architecture** section with notes for running one agent per customer, such as token isolation, consent screen branding and provider rate limits.
+
+When the agent proposes a connection in a chat, connect it with these same calls, then record it on its setup card with `SetupCardApply`: see [Agent Chat Integration](/docs/agent-chat-integration#connecting-a-connector).
 
 ### Account picker in your own UI
 

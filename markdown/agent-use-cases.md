@@ -102,6 +102,8 @@ The deploy flow has three stages: Deploy, Setup (only when the agent has connect
 
 See [Agent Overview](/docs/agent-overview) for the full lifecycle state table (`status: 0, 1, 3, 4, 5, 6`).
 
+To let the people who manage an agent set it up from your chat, with setup cards, connect steps and restarts shown in your own UI, keep `chatsetup` at `"all"` and follow [Agent Chat Integration](/docs/agent-chat-integration).
+
 ```bash
 # Deploy — prepaid + tier are required for API users (credits debit from your wallet)
 curl -X POST "https://api.wiro.ai/v1/UserAgent/Deploy" \

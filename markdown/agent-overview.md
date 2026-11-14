@@ -3840,6 +3840,7 @@ print(response.body);
 - [Agent Skills](/docs/agent-skills): Configure preferences, scheduled tasks, and skill toggles. Includes the registry browser endpoints (`Skills/List`, `Skills/Detail`, `Skills/Capabilities`)
 - [Agent Credentials](/docs/agent-credentials): Integration catalog hub with 20+ dedicated per-provider setup guides (Meta Ads, Facebook, Instagram, LinkedIn, Twitter, and more) plus the registry endpoints (`Credentials/List`, `Credentials/Detail`)
 - [Agent Messaging](/docs/agent-messaging): Send messages and receive responses from running agents
+- [Agent Chat Integration](/docs/agent-chat-integration): Build your own chat for an agent, with setup cards, connections and restarts
 - [Agent WebSocket](/docs/agent-websocket): Real-time response streaming
 - [Agent Webhooks](/docs/agent-webhooks): Receive agent responses via HTTP callbacks
 - [Agent Transactions](/docs/agent-transactions): Per-instance credit ledger (deductions, renewals, purchases, grants, refunds)
