@@ -13037,7 +13037,7 @@ import type {
 <p>Cache-read and cache-write categories are charged only when the selected model rate defines them. <code>inputtokens</code> contains only uncached input; <code>totaltokens</code> is always the exact sum of input, output, cache-read, and cache-write tokens. For models with <code>long_context_threshold_tokens</code>, Wiro selects the long-context rate <strong>per LLM call</strong> using <code>input + cacheRead + cacheWrite</code>. You don't send anything. Each billed turn appears once as a ledger row with <code>action: "tokens"</code> (see <a href="/docs/agent-transactions#tx-transactionlist"><code>POST /UserAgent/TransactionList</code></a>). Per-turn token counts and cost also ride on each assistant message (<code>inputtokens</code> / <code>outputtokens</code> / <code>cachereadtokens</code> / <code>cachewritetokens</code> / <code>totaltokens</code> / <code>tokencost</code> / <code>model</code>, see <a href="/docs/agent-messaging">Agent Messaging</a>).</p>
 <p>When the credit pool is exhausted, <a href="/docs/agent-messaging#post-useragentmessagesend"><code>POST /UserAgent/Message/Send</code></a> and <a href="#post-useragentstart"><code>POST /UserAgent/Start</code></a> refuse with an <code>Agent has no remaining credits…</code> error plus an <code>agentbalance</code> snapshot; renew the subscription or buy an extra credit pack to continue.</p>
 <blockquote>
-<p><strong>Voice realtime audio is billed separately.</strong> Live voice-call audio (for <code>util-voice-receptionist</code> agents) is <strong>not</strong> charged to the platform credit pool. It is billed to the operator's own Wiro wallet through the <code>int-wiro-aimodels</code> skill, the AI Models connector (you bring your own Wiro API key). The voice-prep turn before the call and the post-call text turn are billed as normal token deducts.</p>
+<p><strong>Voice realtime audio is billed separately.</strong> Live voice-call audio (for <code>util-voice-receptionist</code> agents) is <strong>not</strong> charged to the platform credit pool. It is billed to the operator's own Wiro wallet through the <code>int-wiro-aimodels</code> skill, the Wiro AI Models connector (you bring your own Wiro API key). The voice-prep turn before the call and the post-call text turn are billed as normal token deducts.</p>
 </blockquote>
 <h3 id="live-pricing-preview">Live Pricing Preview</h3>
 <p>Before you deploy, change the plan or change skills, call <a href="#post-useragentpricingpreview"><code>POST /UserAgent/PricingPreview</code></a>. It writes nothing and returns the three plans under <code>tiers</code>, the <code>tokenRates</code>, and <code>enabledSkills</code> with every transitive <code>depends_on</code> resolved. For an agent with an active plan it also returns <code>planChange</code>: what a different <code>tier</code> would charge now and when it starts. A skill change has no price, so its <code>planChange</code> shows no charge and no credit change.</p>
@@ -13293,7 +13293,7 @@ import type {
         },
         &quot;int-wiro-aimodels&quot;: {
           &quot;name&quot;: &quot;int-wiro-aimodels&quot;,
-          &quot;title&quot;: &quot;AI Models&quot;,
+          &quot;title&quot;: &quot;Wiro AI Models&quot;,
           &quot;icon&quot;: &quot;https://wiro.ai/images/icons/skills/wiro.svg&quot;,
           &quot;brand_color&quot;: &quot;#33F2BC&quot;,
           &quot;brand_text_color&quot;: &quot;#0F1A24&quot;,
@@ -13306,7 +13306,7 @@ import type {
           &quot;user_invocable&quot;: true,
           &quot;deprecated&quot;: false,
           &quot;replacement&quot;: null,
-          &quot;description&quot;: &quot;Universal access to every AI model in the catalog: text-to-image, text-to-video, image-to-image, image-to-video, audio/voice generation, realtime conversational AI, vision LLMs and more.&quot;
+          &quot;description&quot;: &quot;Universal access to every AI model on Wiro: text-to-image, text-to-video, image-to-image, image-to-video, audio/voice generation, realtime conversational AI, vision LLMs and more.&quot;
         }
       },
       &quot;credentials&quot;: {
@@ -14296,7 +14296,7 @@ import type {
         },
         &quot;int-wiro-aimodels&quot;: {
           &quot;name&quot;: &quot;int-wiro-aimodels&quot;,
-          &quot;title&quot;: &quot;AI Models&quot;,
+          &quot;title&quot;: &quot;Wiro AI Models&quot;,
           &quot;icon&quot;: &quot;https://wiro.ai/images/icons/skills/wiro.svg&quot;,
           &quot;brand_color&quot;: &quot;#33f2bc&quot;,
           &quot;brand_text_color&quot;: &quot;#0f1a24&quot;,
@@ -14309,7 +14309,7 @@ import type {
           &quot;user_invocable&quot;: true,
           &quot;deprecated&quot;: false,
           &quot;replacement&quot;: null,
-          &quot;description&quot;: &quot;Universal access to every AI model in the catalog: text-to-image, text-to-video, image-to-image, image-to-video, audio/voice generation, realtime conversational AI, vision LLMs and more.&quot;
+          &quot;description&quot;: &quot;Universal access to every AI model on Wiro: text-to-image, text-to-video, image-to-image, image-to-video, audio/voice generation, realtime conversational AI, vision LLMs and more.&quot;
         }
       },
       &quot;monthlycredits&quot;: 3000,
@@ -15458,7 +15458,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/UpdateSettings&quot; \
 <p>Treat all four fields as best-effort: the credential write itself never depends on Twilio's API call succeeding. See <a href="/docs/integration-twiliovoice-skills">Twilio Voice Integration</a> for the full lifecycle.</p>
 </blockquote>
 <h4 id="post-useragentcredentialprojectbind"><strong>POST</strong> /UserAgent/CredentialProjectBind</h4>
-<p>Connects an agent's AI Models connector (<code>int-wiro-aimodels</code>, the <code>wiro</code> key under <code>credentials</code>) to one of your Wiro projects. You name the project, and Wiro saves that project's API key on the agent. The agent's model runs are paid from the wallet of the workspace that owns the project.</p>
+<p>Connects an agent's Wiro AI Models connector (<code>int-wiro-aimodels</code>, the <code>wiro</code> key under <code>credentials</code>) to one of your Wiro projects. You name the project, and Wiro saves that project's API key on the agent. The agent's model runs are paid from the wallet of the workspace that owns the project.</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
 <table>
@@ -25133,8 +25133,8 @@ pending provider review.</p>
 <td><a href="/docs/integration-twiliovoice-skills">Twilio Voice</a></td>
 </tr>
 <tr>
-<td>AI Models</td>
-<td>See <a href="/docs/agent-skills#using-ai-models-from-your-agent">Using AI Models from Your Agent</a></td>
+<td>Wiro AI Models</td>
+<td>See <a href="/docs/agent-skills#using-wiro-ai-models-from-your-agent">Using Wiro AI Models from Your Agent</a></td>
 </tr>
 <tr>
 <td>Calendarific</td>
@@ -25144,13 +25144,13 @@ pending provider review.</p>
 </table>
 </div>
 </div>
-<h2 id="ai-models-calendarific-user-provided">AI Models &amp; Calendarific (User-Provided)</h2>
+<h2 id="wiro-ai-models-calendarific-user-provided">Wiro AI Models &amp; Calendarific (User-Provided)</h2>
 <p>Two integrations are <strong>user-input credentials</strong> that ship in agent templates but require you (or your end users) to supply the key before the skill runs. They appear in <code>POST /UserAgent/Detail</code> <code>credentials[]</code> and accept writes via <code>POST /UserAgent/CredentialUpsert</code> like any other API-key integration.</p>
-<h3 id="ai-models-wiro-credential">AI Models: <code>wiro</code> credential</h3>
+<h3 id="wiro-ai-models-wiro-credential">Wiro AI Models: <code>wiro</code> credential</h3>
 <p>The <code>int-wiro-aimodels</code> skill lets an agent call Wiro's own AI models (image / video / audio / LLM generation, cover image creation, model discovery) using <strong>one of your Wiro projects</strong>. Each generated asset is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).</p>
 <ul>
 <li><strong>Credential key:</strong> <code>wiro</code></li>
-<li><strong>Field:</strong> <code>apikey</code> (single field, type <code>custom:wiro-project-picker</code> in the registry; the dashboard renders it as a project picker).</li>
+<li><strong>Field:</strong> <code>apikey</code> (label "Wiro Project"; single field, type <code>custom:wiro-project-picker</code> in the registry; the dashboard renders it as a project picker).</li>
 <li><strong>No secret to supply.</strong> Only the project is needed. Request signing for the agent's internal Wiro calls is handled automatically: Wiro derives the project's signing secret server-side from the key you pick, so there is no <code>apisecret</code> (or similar) field to paste.</li>
 <li><strong>Setup in the dashboard:</strong> open the agent's <strong>Connectors</strong> tab and pick a project, or create one on the <a href="https://wiro.ai/panel/project">Projects page</a>.</li>
 <li><strong>Setup through the API:</strong> take the project's <code>id</code> from <code>POST /Project/List</code> and call <a href="/docs/agent-overview#post-useragentcredentialprojectbind"><code>POST /UserAgent/CredentialProjectBind</code></a>. A request made with a project API key can leave <code>projectid</code> out to bind that key's own project:</li>
@@ -27879,7 +27879,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 </tr>
 <tr>
 <td><code>page</code></td>
-<td>Anything else: service account files, lists, the project the agent runs AI models with</td>
+<td>Anything else: service account files, lists, the Wiro project of Wiro AI Models</td>
 <td>A link to your settings screen for that connector</td>
 <td>The credential endpoints, with no card</td>
 </tr>
@@ -28298,7 +28298,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 </code></pre>
 <pre><code class="language-json">{ &quot;result&quot;: true, &quot;applied&quot;: 1, &quot;errors&quot;: [] }
 </code></pre>
-<p>There is no card to apply afterwards. The save restarts a running agent once, so it loads the connector, but its answer doesn't say so: see <a href="#showing-a-restart">Showing a restart</a>. Files go through <a href="/docs/agent-overview#post-useragentcredentialfileupload"><code>CredentialFileUpload</code></a>, and the AI Models connector, the project the agent runs AI models with, through <a href="/docs/agent-overview#post-useragentcredentialprojectbind"><code>CredentialProjectBind</code></a>, whose answer says in <code>restart</code> whether the agent restarts.</p>
+<p>There is no card to apply afterwards. The save restarts a running agent once, so it loads the connector, but its answer doesn't say so: see <a href="#showing-a-restart">Showing a restart</a>. Files go through <a href="/docs/agent-overview#post-useragentcredentialfileupload"><code>CredentialFileUpload</code></a>, and the Wiro AI Models connector, the Wiro project the agent runs models with, through <a href="/docs/agent-overview#post-useragentcredentialprojectbind"><code>CredentialProjectBind</code></a>, whose answer says in <code>restart</code> whether the agent restarts.</p>
 <h2 id="your-own-connect-button">Your Own Connect Button</h2>
 <h3 id="where-next-appears">Where next appears</h3>
 <p><code>next</code> is the list of connectors still to connect, as data for your own buttons. It comes in four places:</p>
@@ -29730,7 +29730,7 @@ Message/Send  &quot;&lt;the Serper API key&gt;&quot;
 <tr>
 <td><code>billing_model</code></td>
 <td><code>string</code></td>
-<td>Always <code>"tokens"</code>. Per-turn conversation cost is token-metered at the agent's per-model <code>tokenRates</code> (credits per 1M input / output / cached-input tokens). See <a href="/docs/agent-overview#token-billing">token billing in the Agent Overview</a>. Voice skills bill realtime audio to the operator's own Wiro wallet through <code>int-wiro-aimodels</code>, the AI Models connector (your own Wiro API key); the voice-prep and post-call text turns are normal token deducts.</td>
+<td>Always <code>"tokens"</code>. Per-turn conversation cost is token-metered at the agent's per-model <code>tokenRates</code> (credits per 1M input / output / cached-input tokens). See <a href="/docs/agent-overview#token-billing">token billing in the Agent Overview</a>. Voice skills bill realtime audio to the operator's own Wiro wallet through <code>int-wiro-aimodels</code>, the Wiro AI Models connector (your own Wiro API key); the voice-prep and post-call text turns are normal token deducts.</td>
 </tr>
 </tbody>
 </table>
@@ -29946,7 +29946,7 @@ Message/Send  &quot;&lt;the Serper API key&gt;&quot;
     { &quot;name&quot;: &quot;video_generation&quot;,         &quot;description&quot;: &quot;Generate videos&quot; },
     { &quot;name&quot;: &quot;motion_graphics&quot;,          &quot;description&quot;: &quot;Compose and render motion graphics (HTML/CSS/GSAP animations, sound effects, transitions) to video&quot; },
     { &quot;name&quot;: &quot;audio_generation&quot;,         &quot;description&quot;: &quot;Generate audio / voice clips (TTS, music, SFX)&quot; },
-    { &quot;name&quot;: &quot;realtime_conversation&quot;,    &quot;description&quot;: &quot;Bidirectional realtime audio/text conversation (the platform's realtime models, OpenAI realtime)&quot; },
+    { &quot;name&quot;: &quot;realtime_conversation&quot;,    &quot;description&quot;: &quot;Bidirectional realtime audio/text conversation (Wiro realtime, OpenAI realtime)&quot; },
     { &quot;name&quot;: &quot;vision&quot;,                   &quot;description&quot;: &quot;Vision LLM analysis of images (caption, describe, OCR, visual QA)&quot; },
     { &quot;name&quot;: &quot;human_copywriting&quot;,        &quot;description&quot;: &quot;Enforce anti-AI human copy rules&quot; },
     { &quot;name&quot;: &quot;anti_ai_tone&quot;,             &quot;description&quot;: &quot;Reject AI-generated tone patterns&quot; },
@@ -30978,7 +30978,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <tr>
 <td><code>int-wiro-aimodels</code></td>
 <td><code>wiro</code> (the Wiro project the agent runs models with)</td>
-<td>See <a href="#using-ai-models-from-your-agent">Using AI Models from Your Agent</a></td>
+<td>See <a href="#using-wiro-ai-models-from-your-agent">Using Wiro AI Models from Your Agent</a></td>
 </tr>
 <tr>
 <td><code>int-calendarific</code></td>
@@ -31012,7 +31012,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 </tr>
 <tr>
 <td><code>util-video-creator</code></td>
-<td>The Video Creator's playbook: finished videos with voice-over, music and captions from a website or web app (behind a login too), an app-store listing, a document, an article or product photos; 16:9 or 9:16, up to 3 minutes. It brings <code>util-video-shots</code>, <code>util-video-docs</code>, <code>util-motion-effects</code> and <code>int-wiro-aimodels</code> with it, so the agent needs your Wiro project key, which pays the video's model runs (see <a href="#using-ai-models-from-your-agent">Using AI Models from Your Agent</a>). <code>util-motion-effects</code> and <code>util-video-creator</code> always come together, whichever one you turn on.</td>
+<td>The Video Creator's playbook: finished videos with voice-over, music and captions from a website or web app (behind a login too), an app-store listing, a document, an article or product photos; 16:9 or 9:16, up to 3 minutes. It brings <code>util-video-shots</code>, <code>util-video-docs</code>, <code>util-motion-effects</code> and <code>int-wiro-aimodels</code> with it, so the agent needs your Wiro project key, which pays the video's model runs (see <a href="#using-wiro-ai-models-from-your-agent">Using Wiro AI Models from Your Agent</a>). <code>util-motion-effects</code> and <code>util-video-creator</code> always come together, whichever one you turn on.</td>
 </tr>
 </tbody>
 </table>
@@ -31022,7 +31022,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgent/CustomSkillUpsert&quot; \
 <blockquote>
 <p><strong>Restart behavior:</strong> On a starting or running agent (status 3 or 4), <code>SkillsApply</code>, <code>CustomSkillRename</code>, <code>CustomSkillDelete</code> and <code>CustomSkillRevert</code> restart it so the new skill configuration is picked up, as credential updates do. <code>CustomSkillUpsert</code> restarts it for a new skill or task, a new <code>interval</code> or an <code>enabled</code> change. A change to the text or description of an existing one reaches the running agent without a restart, except for <code>cs-approval-policy</code>. See <a href="/docs/agent-overview#automatic-restart">Automatic Restart</a>.</p>
 </blockquote>
-<h2 id="using-ai-models-from-your-agent">Using AI Models from Your Agent</h2>
+<h2 id="using-wiro-ai-models-from-your-agent">Using Wiro AI Models from Your Agent</h2>
 <p><code>int-wiro-aimodels</code> lets an agent call Wiro's own AI models (image / video / audio / LLM generation, cover image creation, model discovery) while it works. When it's enabled on an agent:</p>
 <ul>
 <li><code>credentials.wiro.apikey</code> is <strong>operator-supplied</strong>: pick or create a Wiro project at <a href="https://wiro.ai/panel/project">wiro.ai/panel/project</a> and connect it on the agent's <strong>Connectors</strong> tab, or through the API with <code>POST /UserAgent/CredentialProjectBind</code>. Each generated asset is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).</li>
@@ -33829,7 +33829,7 @@ agent model.</p>
 </tr>
 <tr>
 <td>Creatives</td>
-<td>Upload images and videos by URL, choose music, generate creatives with AI models (when the AI Models skill is set up), check creative fatigue, run video fix tasks, and preview ads.</td>
+<td>Upload images and videos by URL, choose music, generate creatives with Wiro AI models (when the Wiro AI Models skill is set up), check creative fatigue, run video fix tasks, and preview ads.</td>
 </tr>
 <tr>
 <td>Spark Ads</td>
@@ -42506,7 +42506,7 @@ Base URL: <code>https://api.sendgrid.com/v3</code>.</p>
                         </table>
                       </div>
                     </div>
-                    <div class="info-callout"><p><strong>Live call audio is billed through the <a href="/docs/agent-credentials" class="docs-link"><code>int-wiro-aimodels</code></a> skill, the AI Models connector, against your own Wiro wallet</strong>: you bring your own Wiro API key, and the voice cost is charged to the wallet of the workspace that owns that key. It is <strong>not</strong> charged to the agent's platform credit pool and writes <strong>no</strong> <code>POST /UserAgent/TransactionList</code> row. The agent's text turns around the call (the prep turn that briefs the voice model before the voice session starts, and the post-call turn where the agent summarizes and acts on the call) are billed as normal token deducts (<code>type: "deduct"</code>, <code>action: "tokens"</code>) and show up in TransactionList. Audit call-audio cost from your AI Models usage (the workspace wallet behind your <code>wiro</code> key); TransactionList accounts only for those text turns.</p></div>
+                    <div class="info-callout"><p><strong>Live call audio is billed through the <a href="/docs/agent-credentials" class="docs-link"><code>int-wiro-aimodels</code></a> skill, the Wiro AI Models connector, against your own Wiro wallet</strong>: you bring your own Wiro API key, and the voice cost is charged to the wallet of the workspace that owns that key. It is <strong>not</strong> charged to the agent's platform credit pool and writes <strong>no</strong> <code>POST /UserAgent/TransactionList</code> row. The agent's text turns around the call (the prep turn that briefs the voice model before the voice session starts, and the post-call turn where the agent summarizes and acts on the call) are billed as normal token deducts (<code>type: "deduct"</code>, <code>action: "tokens"</code>) and show up in TransactionList. Audit call-audio cost from your Wiro AI Models usage (the workspace wallet behind your <code>wiro</code> key); TransactionList accounts only for those text turns.</p></div>
                   </section>
 
                   <section id="pairing-with-other-skills">
@@ -42591,7 +42591,7 @@ Base URL: <code>https://api.sendgrid.com/v3</code>.</p>
                         </table>
                       </div>
                     </div>
-                    <div class="info-callout"><p>No third-party billing on this channel. The live call audio is billed through the <a href="/docs/agent-credentials"><code>int-wiro-aimodels</code></a> skill, the AI Models connector, against your own Wiro wallet (you bring your own Wiro API key). It is <strong>not</strong> charged to the agent's platform credit pool. The voice-prep turn and the post-call text turn are billed as normal token deducts (<code>action: "tokens"</code>) on <a href="/docs/agent-transactions#tx-transactionlist"><code>POST /UserAgent/TransactionList</code></a>.</p></div>
+                    <div class="info-callout"><p>No third-party billing on this channel. The live call audio is billed through the <a href="/docs/agent-credentials"><code>int-wiro-aimodels</code></a> skill, the Wiro AI Models connector, against your own Wiro wallet (you bring your own Wiro API key). It is <strong>not</strong> charged to the agent's platform credit pool. The voice-prep turn and the post-call text turn are billed as normal token deducts (<code>action: "tokens"</code>) on <a href="/docs/agent-transactions#tx-transactionlist"><code>POST /UserAgent/TransactionList</code></a>.</p></div>
                   </section>
 
                   <section id="availability">
@@ -43406,7 +43406,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Message/Send" \
                     <p>A richer variant of white-label chat: besides replying with text, the agent <strong>generates images, video, or audio</strong> through Wiro AI models and streams them into a live activity feed beside the conversation. This is the pattern behind Wiro's own Studio. It layers the realtime socket on top of the <strong>Session-Per-User</strong> model.</p>
                     <p><strong>Shape:</strong></p>
                     <ul>
-                      <li>One deployed agent that has the <code>int-wiro-aimodels</code> skill enabled, with its AI Models connector set to your Wiro project (see <a href="/docs/agent-credentials#ai-models-wiro-credential">Agent Credentials</a>). Media the agent generates is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).</li>
+                      <li>One deployed agent that has the <code>int-wiro-aimodels</code> skill enabled, with its Wiro AI Models connector set to your Wiro project (see <a href="/docs/agent-credentials#wiro-ai-models-wiro-credential">Agent Credentials</a>). Media the agent generates is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).</li>
                       <li>One <code>sessionkey</code> per end user (Pattern 2 above): the same agent instance serves everyone; each user's chat and media history is isolated by session.</li>
                       <li>A single WebSocket connection carries three things at once: the streaming chat reply, the per-turn token-usage report, and discovery of any model runs the agent launches.</li>
                     </ul>

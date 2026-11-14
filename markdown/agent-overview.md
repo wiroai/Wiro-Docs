@@ -134,7 +134,7 @@ Cache-read and cache-write categories are charged only when the selected model r
 
 When the credit pool is exhausted, [`POST /UserAgent/Message/Send`](/docs/agent-messaging#post-useragentmessagesend) and [`POST /UserAgent/Start`](#post-useragentstart) refuse with an `Agent has no remaining credits…` error plus an `agentbalance` snapshot; renew the subscription or buy an extra credit pack to continue.
 
-> **Voice realtime audio is billed separately.** Live voice-call audio (for `util-voice-receptionist` agents) is **not** charged to the platform credit pool. It is billed to the operator's own Wiro wallet through the `int-wiro-aimodels` skill, the AI Models connector (you bring your own Wiro API key). The voice-prep turn before the call and the post-call text turn are billed as normal token deducts.
+> **Voice realtime audio is billed separately.** Live voice-call audio (for `util-voice-receptionist` agents) is **not** charged to the platform credit pool. It is billed to the operator's own Wiro wallet through the `int-wiro-aimodels` skill, the Wiro AI Models connector (you bring your own Wiro API key). The voice-prep turn before the call and the post-call text turn are billed as normal token deducts.
 
 ### Live Pricing Preview
 
@@ -299,7 +299,7 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
         },
         "int-wiro-aimodels": {
           "name": "int-wiro-aimodels",
-          "title": "AI Models",
+          "title": "Wiro AI Models",
           "icon": "https://wiro.ai/images/icons/skills/wiro.svg",
           "brand_color": "#33F2BC",
           "brand_text_color": "#0F1A24",
@@ -312,7 +312,7 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
           "user_invocable": true,
           "deprecated": false,
           "replacement": null,
-          "description": "Universal access to every AI model in the catalog: text-to-image, text-to-video, image-to-image, image-to-video, audio/voice generation, realtime conversational AI, vision LLMs and more."
+          "description": "Universal access to every AI model on Wiro: text-to-image, text-to-video, image-to-image, image-to-video, audio/voice generation, realtime conversational AI, vision LLMs and more."
         }
       },
       "credentials": {
@@ -1081,7 +1081,7 @@ Retrieves full details for a single deployed agent instance, including subscript
         },
         "int-wiro-aimodels": {
           "name": "int-wiro-aimodels",
-          "title": "AI Models",
+          "title": "Wiro AI Models",
           "icon": "https://wiro.ai/images/icons/skills/wiro.svg",
           "brand_color": "#33f2bc",
           "brand_text_color": "#0f1a24",
@@ -1094,7 +1094,7 @@ Retrieves full details for a single deployed agent instance, including subscript
           "user_invocable": true,
           "deprecated": false,
           "replacement": null,
-          "description": "Universal access to every AI model in the catalog: text-to-image, text-to-video, image-to-image, image-to-video, audio/voice generation, realtime conversational AI, vision LLMs and more."
+          "description": "Universal access to every AI model on Wiro: text-to-image, text-to-video, image-to-image, image-to-video, audio/voice generation, realtime conversational AI, vision LLMs and more."
         }
       },
       "monthlycredits": 3000,
@@ -1645,7 +1645,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
 
 #### **POST** /UserAgent/CredentialProjectBind
 
-Connects an agent's AI Models connector (`int-wiro-aimodels`, the `wiro` key under `credentials`) to one of your Wiro projects. You name the project, and Wiro saves that project's API key on the agent. The agent's model runs are paid from the wallet of the workspace that owns the project.
+Connects an agent's Wiro AI Models connector (`int-wiro-aimodels`, the `wiro` key under `credentials`) to one of your Wiro projects. You name the project, and Wiro saves that project's API key on the agent. The agent's model runs are paid from the wallet of the workspace that owns the project.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|

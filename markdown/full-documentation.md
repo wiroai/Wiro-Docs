@@ -7854,7 +7854,7 @@ Cache-read and cache-write categories are charged only when the selected model r
 
 When the credit pool is exhausted, [`POST /UserAgent/Message/Send`](/docs/agent-messaging#post-useragentmessagesend) and [`POST /UserAgent/Start`](#post-useragentstart) refuse with an `Agent has no remaining credits…` error plus an `agentbalance` snapshot; renew the subscription or buy an extra credit pack to continue.
 
-> **Voice realtime audio is billed separately.** Live voice-call audio (for `util-voice-receptionist` agents) is **not** charged to the platform credit pool. It is billed to the operator's own Wiro wallet through the `int-wiro-aimodels` skill, the AI Models connector (you bring your own Wiro API key). The voice-prep turn before the call and the post-call text turn are billed as normal token deducts.
+> **Voice realtime audio is billed separately.** Live voice-call audio (for `util-voice-receptionist` agents) is **not** charged to the platform credit pool. It is billed to the operator's own Wiro wallet through the `int-wiro-aimodels` skill, the Wiro AI Models connector (you bring your own Wiro API key). The voice-prep turn before the call and the post-call text turn are billed as normal token deducts.
 
 ### Live Pricing Preview
 
@@ -8019,7 +8019,7 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
         },
         "int-wiro-aimodels": {
           "name": "int-wiro-aimodels",
-          "title": "AI Models",
+          "title": "Wiro AI Models",
           "icon": "https://wiro.ai/images/icons/skills/wiro.svg",
           "brand_color": "#33F2BC",
           "brand_text_color": "#0F1A24",
@@ -8032,7 +8032,7 @@ Retrieves details for a single agent by guid or slug. This is a **public endpoin
           "user_invocable": true,
           "deprecated": false,
           "replacement": null,
-          "description": "Universal access to every AI model in the catalog: text-to-image, text-to-video, image-to-image, image-to-video, audio/voice generation, realtime conversational AI, vision LLMs and more."
+          "description": "Universal access to every AI model on Wiro: text-to-image, text-to-video, image-to-image, image-to-video, audio/voice generation, realtime conversational AI, vision LLMs and more."
         }
       },
       "credentials": {
@@ -8801,7 +8801,7 @@ Retrieves full details for a single deployed agent instance, including subscript
         },
         "int-wiro-aimodels": {
           "name": "int-wiro-aimodels",
-          "title": "AI Models",
+          "title": "Wiro AI Models",
           "icon": "https://wiro.ai/images/icons/skills/wiro.svg",
           "brand_color": "#33f2bc",
           "brand_text_color": "#0f1a24",
@@ -8814,7 +8814,7 @@ Retrieves full details for a single deployed agent instance, including subscript
           "user_invocable": true,
           "deprecated": false,
           "replacement": null,
-          "description": "Universal access to every AI model in the catalog: text-to-image, text-to-video, image-to-image, image-to-video, audio/voice generation, realtime conversational AI, vision LLMs and more."
+          "description": "Universal access to every AI model on Wiro: text-to-image, text-to-video, image-to-image, image-to-video, audio/voice generation, realtime conversational AI, vision LLMs and more."
         }
       },
       "monthlycredits": 3000,
@@ -9365,7 +9365,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
 
 #### **POST** /UserAgent/CredentialProjectBind
 
-Connects an agent's AI Models connector (`int-wiro-aimodels`, the `wiro` key under `credentials`) to one of your Wiro projects. You name the project, and Wiro saves that project's API key on the agent. The agent's model runs are paid from the wallet of the workspace that owns the project.
+Connects an agent's Wiro AI Models connector (`int-wiro-aimodels`, the `wiro` key under `credentials`) to one of your Wiro projects. You name the project, and Wiro saves that project's API key on the agent. The agent's model runs are paid from the wallet of the workspace that owns the project.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -16245,19 +16245,19 @@ Returns `{ "result": false, "errors": [{ "code": 404, "message": "Credential not
 | Brevo | [Brevo Skills](/docs/integration-brevo-skills) |
 | SendGrid | [SendGrid Skills](/docs/integration-sendgrid-skills) |
 | Twilio Voice | [Twilio Voice](/docs/integration-twiliovoice-skills) |
-| AI Models | See [Using AI Models from Your Agent](/docs/agent-skills#using-ai-models-from-your-agent) |
+| Wiro AI Models | See [Using Wiro AI Models from Your Agent](/docs/agent-skills#using-wiro-ai-models-from-your-agent) |
 | Calendarific | See [Calendarific in your agent](#calendarific-in-your-agent) |
 
-## AI Models & Calendarific (User-Provided)
+## Wiro AI Models & Calendarific (User-Provided)
 
 Two integrations are **user-input credentials** that ship in agent templates but require you (or your end users) to supply the key before the skill runs. They appear in `POST /UserAgent/Detail` `credentials[]` and accept writes via `POST /UserAgent/CredentialUpsert` like any other API-key integration.
 
-### AI Models: `wiro` credential
+### Wiro AI Models: `wiro` credential
 
 The `int-wiro-aimodels` skill lets an agent call Wiro's own AI models (image / video / audio / LLM generation, cover image creation, model discovery) using **one of your Wiro projects**. Each generated asset is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).
 
 - **Credential key:** `wiro`
-- **Field:** `apikey` (single field, type `custom:wiro-project-picker` in the registry; the dashboard renders it as a project picker).
+- **Field:** `apikey` (label "Wiro Project"; single field, type `custom:wiro-project-picker` in the registry; the dashboard renders it as a project picker).
 - **No secret to supply.** Only the project is needed. Request signing for the agent's internal Wiro calls is handled automatically: Wiro derives the project's signing secret server-side from the key you pick, so there is no `apisecret` (or similar) field to paste.
 - **Setup in the dashboard:** open the agent's **Connectors** tab and pick a project, or create one on the [Projects page](https://wiro.ai/panel/project).
 - **Setup through the API:** take the project's `id` from `POST /Project/List` and call [`POST /UserAgent/CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind). A request made with a project API key can leave `projectid` out to bind that key's own project:
@@ -17924,7 +17924,7 @@ Each entry of `needs` and of `next` says how its connector connects in `mode`:
 | `appkeys` | The person's own app keys, then the provider's sign-in | A form for the app keys, the redirect URI to register, then a Connect button | `CredentialUpsert`, `OAuthConnect` (`own`), `OAuthStatus`, `SetPickerAccounts`, then `SetupCardApply` |
 | `token` | A token Wiro checks on the server, such as a Meta System User token | A form for the token, then the accounts to pick when the check lists some | `CredentialUpsert`, `OAuthConnect` (`api_key`), `SetPickerAccounts` when there are accounts to pick, then `SetupCardApply` |
 | `signin` | The provider's sign-in with Wiro's own app | A Connect button | `OAuthConnect` (`wiro`), `OAuthStatus`, `SetPickerAccounts` when there are accounts to pick, then `SetupCardApply` |
-| `page` | Anything else: service account files, lists, the project the agent runs AI models with | A link to your settings screen for that connector | The credential endpoints, with no card |
+| `page` | Anything else: service account files, lists, the Wiro project of Wiro AI Models | A link to your settings screen for that connector | The credential endpoints, with no card |
 
 Read a mode you don't know as `page`. `mode` is the connector's usual way. A connector can offer others, listed in `connection_modes` of `POST /Credentials/Detail` by their `authmethod`: `wiro` is `signin`, `own` is `appkeys` and `api_key` is `token`. Any of them that connects the connector lets its card apply. `wiro` stays listed while `wiro_connect_pending` is `true`, and until that flag is `false`, `OAuthConnect` refuses it with `Sign-in with the platform's app is not enabled for <Title>`: don't offer it then. Each mode below uses one example connector, and the same calls work for every connector of that mode.
 
@@ -18441,7 +18441,7 @@ A connector with `mode` `page`, such as Google Drive with its service account fi
 { "result": true, "applied": 1, "errors": [] }
 ```
 
-There is no card to apply afterwards. The save restarts a running agent once, so it loads the connector, but its answer doesn't say so: see [Showing a restart](#showing-a-restart). Files go through [`CredentialFileUpload`](/docs/agent-overview#post-useragentcredentialfileupload), and the AI Models connector, the project the agent runs AI models with, through [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind), whose answer says in `restart` whether the agent restarts.
+There is no card to apply afterwards. The save restarts a running agent once, so it loads the connector, but its answer doesn't say so: see [Showing a restart](#showing-a-restart). Files go through [`CredentialFileUpload`](/docs/agent-overview#post-useragentcredentialfileupload), and the Wiro AI Models connector, the Wiro project the agent runs models with, through [`CredentialProjectBind`](/docs/agent-overview#post-useragentcredentialprojectbind), whose answer says in `restart` whether the agent restarts.
 
 ## Your Own Connect Button
 
@@ -19329,7 +19329,7 @@ complete. Channels are not skills and do not affect pricing.
 |-----------|------|-------------|
 | `monthly_price_weight_usd` | `number` | Always `0`: a skill adds nothing to the agent's price. |
 | `monthly_credits_weight` | `number` | Always `0`: a skill adds nothing to the agent's monthly credits. |
-| `billing_model` | `string` | Always `"tokens"`. Per-turn conversation cost is token-metered at the agent's per-model `tokenRates` (credits per 1M input / output / cached-input tokens). See [token billing in the Agent Overview](/docs/agent-overview#token-billing). Voice skills bill realtime audio to the operator's own Wiro wallet through `int-wiro-aimodels`, the AI Models connector (your own Wiro API key); the voice-prep and post-call text turns are normal token deducts. |
+| `billing_model` | `string` | Always `"tokens"`. Per-turn conversation cost is token-metered at the agent's per-model `tokenRates` (credits per 1M input / output / cached-input tokens). See [token billing in the Agent Overview](/docs/agent-overview#token-billing). Voice skills bill realtime audio to the operator's own Wiro wallet through `int-wiro-aimodels`, the Wiro AI Models connector (your own Wiro API key); the voice-prep and post-call text turns are normal token deducts. |
 
 > **Every plan includes every skill.** An agent's price and monthly credits come from its plan (Starter, Pro or Max), never from its skills, so turning a skill on or off changes neither. See [Pricing Model](/docs/agent-overview#pricing-model-plans-credits-token-billing).
 
@@ -19529,7 +19529,7 @@ Returns the closed-set vocabulary of high-level capability tags. Use this to bui
     { "name": "video_generation",         "description": "Generate videos" },
     { "name": "motion_graphics",          "description": "Compose and render motion graphics (HTML/CSS/GSAP animations, sound effects, transitions) to video" },
     { "name": "audio_generation",         "description": "Generate audio / voice clips (TTS, music, SFX)" },
-    { "name": "realtime_conversation",    "description": "Bidirectional realtime audio/text conversation (the platform's realtime models, OpenAI realtime)" },
+    { "name": "realtime_conversation",    "description": "Bidirectional realtime audio/text conversation (Wiro realtime, OpenAI realtime)" },
     { "name": "vision",                   "description": "Vision LLM analysis of images (caption, describe, OCR, visual QA)" },
     { "name": "human_copywriting",        "description": "Enforce anti-AI human copy rules" },
     { "name": "anti_ai_tone",             "description": "Reject AI-generated tone patterns" },
@@ -20178,7 +20178,7 @@ Skills that depend on third-party credentials. Follow the linked integration pag
 | `int-apollo-sales` | `apollo` (API key) | [Apollo Skills](/docs/integration-apollo-skills) |
 | `int-lemlist-outreach` | `lemlist` (API key) | [Lemlist Skills](/docs/integration-lemlist-skills) |
 | `int-twilio-channel` | `twilio-voice` (API key) | [Twilio Voice](/docs/integration-twiliovoice-skills) |
-| `int-wiro-aimodels` | `wiro` (the Wiro project the agent runs models with) | See [Using AI Models from Your Agent](#using-ai-models-from-your-agent) |
+| `int-wiro-aimodels` | `wiro` (the Wiro project the agent runs models with) | See [Using Wiro AI Models from Your Agent](#using-wiro-ai-models-from-your-agent) |
 | `int-calendarific` | `calendarific` (API key) | [Calendarific in your agent](/docs/agent-credentials#calendarific-in-your-agent) |
 
 Agents can optionally forward operator notifications to a Telegram bot via the `telegram` credential (see [Telegram Skills](/docs/integration-telegram-skills)). This is never required; every agent remains fully usable over web chat and the [Messaging API](/docs/agent-messaging) without a bot configured.
@@ -20191,13 +20191,13 @@ Agents can optionally forward operator notifications to a Telegram bot via the `
 |-------|--------------|
 | `util-weather` | Current weather and a 9-day forecast for any place: temperature, rain, wind and UV from MET Norway's open forecast data, with the place found on OpenStreetMap. |
 | `util-diagram` | Flowcharts, architecture and sequence diagrams, state machines, data models, mind maps, timelines, Gantt plans and concept drawings as PNG images with an editable SVG copy, checked for overlapping or cut-off text. |
-| `util-video-creator` | The Video Creator's playbook: finished videos with voice-over, music and captions from a website or web app (behind a login too), an app-store listing, a document, an article or product photos; 16:9 or 9:16, up to 3 minutes. It brings `util-video-shots`, `util-video-docs`, `util-motion-effects` and `int-wiro-aimodels` with it, so the agent needs your Wiro project key, which pays the video's model runs (see [Using AI Models from Your Agent](#using-ai-models-from-your-agent)). `util-motion-effects` and `util-video-creator` always come together, whichever one you turn on. |
+| `util-video-creator` | The Video Creator's playbook: finished videos with voice-over, music and captions from a website or web app (behind a login too), an app-store listing, a document, an article or product photos; 16:9 or 9:16, up to 3 minutes. It brings `util-video-shots`, `util-video-docs`, `util-motion-effects` and `int-wiro-aimodels` with it, so the agent needs your Wiro project key, which pays the video's model runs (see [Using Wiro AI Models from Your Agent](#using-wiro-ai-models-from-your-agent)). `util-motion-effects` and `util-video-creator` always come together, whichever one you turn on. |
 
 `POST /Skills/List` with `{ "category": "util" }` returns every utility skill.
 
 > **Restart behavior:** On a starting or running agent (status 3 or 4), `SkillsApply`, `CustomSkillRename`, `CustomSkillDelete` and `CustomSkillRevert` restart it so the new skill configuration is picked up, as credential updates do. `CustomSkillUpsert` restarts it for a new skill or task, a new `interval` or an `enabled` change. A change to the text or description of an existing one reaches the running agent without a restart, except for `cs-approval-policy`. See [Automatic Restart](/docs/agent-overview#automatic-restart).
 
-## Using AI Models from Your Agent
+## Using Wiro AI Models from Your Agent
 
 `int-wiro-aimodels` lets an agent call Wiro's own AI models (image / video / audio / LLM generation, cover image creation, model discovery) while it works. When it's enabled on an agent:
 
@@ -21462,7 +21462,7 @@ A richer variant of white-label chat: besides replying with text, the agent **ge
 
 **Shape:**
 
-- One deployed agent that has the `int-wiro-aimodels` skill enabled, with its AI Models connector set to your Wiro project (see [Agent Credentials](/docs/agent-credentials#ai-models-wiro-credential)). Media the agent generates is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).
+- One deployed agent that has the `int-wiro-aimodels` skill enabled, with its Wiro AI Models connector set to your Wiro project (see [Agent Credentials](/docs/agent-credentials#wiro-ai-models-wiro-credential)). Media the agent generates is billed to the wallet of the workspace that owns that project (your personal wallet, or the team wallet for a team project).
 - One `sessionkey` per end user (Pattern 2 above): the same agent instance serves everyone; each user's chat and media history is isolated by session.
 - A single WebSocket connection carries three things at once: the streaming chat reply, the per-turn token-usage report, and discovery of any model runs the agent launches.
 
@@ -22359,7 +22359,7 @@ This integration covers **advertising only**. It does not post organic videos to
 | Campaign management | Create and update campaigns, ad groups, and ads; pause, enable, or delete them; change budgets and schedules; copy campaigns; run split tests; set up automated rules; manage search negative keywords. |
 | Upgraded Smart+ and GMV Max | Create, update, and change the status of Upgraded Smart+ campaigns. Update and report on existing GMV Max campaigns. |
 | Audiences | Custom and lookalike audiences, saved audiences, audience size estimates, and audience insights. |
-| Creatives | Upload images and videos by URL, choose music, generate creatives with AI models (when the AI Models skill is set up), check creative fatigue, run video fix tasks, and preview ads. |
+| Creatives | Upload images and videos by URL, choose music, generate creatives with Wiro AI models (when the Wiro AI Models skill is set up), check creative fatigue, run video fix tasks, and preview ads. |
 | Spark Ads | Promote posts from your own TikTok account linked to the advertiser, or authorize a creator's post with the Spark Ads code the creator sends you. |
 | Placement control | Pangle block lists and inventory filters. |
 | Diagnosis | TikTok's own diagnosis tools for delivery and performance issues (no spend, low spend, high CPA, creative fatigue). |

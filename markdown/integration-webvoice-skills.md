@@ -23,7 +23,7 @@ Toggle `util-web-channel` on a useragent and a single REST call (`POST /UserAgen
 | Web (this page) | Browser mic on **your** site | "Open mic" button on a product / support / sales page. No phone number, no per-minute Twilio bill. |
 | [Twilio](/docs/integration-twiliovoice-skills) | Inbound PSTN phone call | A real phone number ringing. Twilio bills per inbound minute. |
 
-> No third-party billing on this channel. The live call audio is billed through the [`int-wiro-aimodels`](/docs/agent-credentials) skill, the AI Models connector, against your own Wiro wallet (you bring your own Wiro API key). It is **not** charged to the agent's platform credit pool. The voice-prep turn and the post-call text turn are billed as normal token deducts (`action: "tokens"`) on [`POST /UserAgent/TransactionList`](/docs/agent-transactions#tx-transactionlist).
+> No third-party billing on this channel. The live call audio is billed through the [`int-wiro-aimodels`](/docs/agent-credentials) skill, the Wiro AI Models connector, against your own Wiro wallet (you bring your own Wiro API key). It is **not** charged to the agent's platform credit pool. The voice-prep turn and the post-call text turn are billed as normal token deducts (`action: "tokens"`) on [`POST /UserAgent/TransactionList`](/docs/agent-transactions#tx-transactionlist).
 
 ## Availability
 
