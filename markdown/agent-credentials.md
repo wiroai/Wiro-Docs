@@ -648,7 +648,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/CredentialUpsert" \
   }'
 ```
 
-Response: `{ "result": true, "applied": 2, "errors": [] }`. `applied` is the count of fields saved without an error (a field sent with its current value still counts). All fields are validated before any is written: if one fails validation (for example a reserved fieldname prefixed with `_`), the whole request is rejected and nothing is saved; `result` is `false` and `errors` lists every invalid field. If a save fails after validation has passed, the other fields are still saved and each failed field is listed in `errors` with `result: false`. If the agent was running, it is automatically restarted to apply the new values.
+Response: `{ "result": true, "applied": 2, "errors": [] }`. `applied` is the count of fields saved without an error (a field sent with its current value still counts). All fields are validated before any is written: if one fails validation (for example a reserved fieldname prefixed with `_`), the whole request is rejected and nothing is saved; `result` is `false` and `errors` lists every invalid field. If a save fails after validation has passed, the other fields are still saved and each failed field is listed in `errors` with `result: false`. A starting or running agent restarts to apply the new values when the call changes a saved value. Saving only fields of a sign-in credential that isn't connected before or after the save, such as own-mode app keys, a System User token or `authmethod` before the sign-in or token check, restarts nothing: the connection that follows restarts the agent once.
 
 ### Field-level write rules
 
@@ -719,7 +719,7 @@ Your App (Frontend)           Your Backend              Wiro API              Pr
 
 Steps 8 and 9 apply to credentials with an account picker; Meta Ads and Google Business Profile add a second picker step with `DiscoverPickerItems`. Call the Wiro endpoints (steps 2, 9 and 10) from your backend with your API key, not from the browser.
 
-Each `OAuthConnect` call starts a sign-in, or a token check in a direct mode, and answers its `flowid`. The accounts it lists stay on Wiro's server for 15 minutes, for the account that started it: [`OAuthStatus`](#post-useragentoauthoauthstatus) returns them as `candidates` until they are saved, so your backend can read them without the redirect.
+Each `OAuthConnect` call starts a sign-in, or a token check in a direct mode, and answers its `flowid`. The accounts it lists stay on Wiro's server for 15 minutes, for the account that started it: [`OAuthStatus`](#post-useragentoauthoauthstatus) returns them as `candidates` until they are saved, so your backend can read them without the redirect. The connection restarts a starting or running agent once, when it is complete: at the account save for a credential with an account picker, at the end of the sign-in or token check otherwise. See [Automatic Restart](/docs/agent-overview#automatic-restart).
 
 ### Auth Methods: `"wiro"` vs `"own"`
 
@@ -893,7 +893,7 @@ without a browser redirect.
 
 `flowid` names this sign-in: 32 lowercase hex characters. A new `OAuthConnect` for the same agent and credential replaces it, whoever sends it. Follow the sign-in with [`OAuthStatus`](#post-useragentoauthoauthstatus), and send the `flowid` with [`SetPickerAccounts`](#post-useragentoauthsetpickeraccounts) when you save accounts from its list.
 
-Direct probes return `{ "result": true, "errors": [], "accounts": [...], "flowid": "...", "account": "...", "restart": "none" }` and no `authorizeUrl`. Meta Ads, Facebook Pages and Instagram return `{ id, name }` entries to pick from; Shopify has no picker, so it returns an empty `accounts` array and is connected right away. First save the mode's fields together with `authmethod: "api_key"` through `CredentialUpsert`, then call `OAuthConnect` with the same `authmethod`; without the saved `authmethod` the probe fails with `direct_token_missing`. Each direct call that finds the saved fields clears the credential's earlier connection and account selection before it checks them with the provider, so save the selection again afterwards. A failed probe returns `result: false`, a general message in `errors[]` and an `errorcode` that names the cause, such as `direct_token_missing`, `direct_token_invalid`, `no_accounts`, `no_pages`, `provider_rejected_request` or `provider_timeout`; each integration page lists its codes. The check has a `flowid` like a sign-in, and a failed answer carries it too. `account` names who the token belongs to when the provider says so, such as a Meta System User's name or the Shopify store's name, and is empty otherwise. `restart` is `"scheduled"` when the check restarted the agent, else `"none"`.
+Direct probes return `{ "result": true, "errors": [], "accounts": [...], "flowid": "...", "account": "...", "restart": "none" }` and no `authorizeUrl`. Meta Ads, Facebook Pages and Instagram return `{ id, name }` entries to pick from; Shopify has no picker, so it returns an empty `accounts` array and is connected right away. First save the mode's fields together with `authmethod: "api_key"` through `CredentialUpsert`, then call `OAuthConnect` with the same `authmethod`; without the saved `authmethod` the probe fails with `direct_token_missing`. Each direct call that finds the saved fields clears the credential's earlier connection and account selection before it checks them with the provider, so save the selection again afterwards. A failed probe returns `result: false`, a general message in `errors[]` and an `errorcode` that names the cause, such as `direct_token_missing`, `direct_token_invalid`, `no_accounts`, `no_pages`, `provider_rejected_request` or `provider_timeout`; each integration page lists its codes. The check has a `flowid` like a sign-in, and a failed answer carries it too. `account` names who the token belongs to when the provider says so, such as a Meta System User's name or the Shopify store's name, and is empty otherwise. `restart` is `"scheduled"` when the check restarted the agent, else `"none"`: a check that leaves accounts to pick restarts nothing, and the account save does.
 
 ##### Common errors
 
@@ -1200,7 +1200,7 @@ The `accounts` objects work too, for example `"accounts": [{ "customerid": "1234
 }
 ```
 
-`accounts` are the saved accounts, with the names from the list. `restart` is `"scheduled"` when the save restarted the agent, else `"none"`.
+`accounts` are the saved accounts, with the names from the list. `restart` is `"scheduled"` when the save restarted the agent, else `"none"`. The save that completes a connection restarts a starting or running agent once, and a save that changes nothing, such as the same accounts again, restarts nothing. See [Automatic Restart](/docs/agent-overview#automatic-restart).
 
 ##### Example: save Meta Ads Page mappings
 
