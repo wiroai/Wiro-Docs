@@ -511,6 +511,10 @@ makes links clickable, so a draft's page link goes into the post.
 
 No discovery result is waiting: the 15-minute window expired, a previous `SetPickerAccounts` already used it, or a newer connection replaced it. Repeat Step 3 for System User mode or Step 7 for OAuth. `No pending Facebook connection. Please reconnect via OAuthConnect.` means the same: connect again.
 
+### `SetPickerAccounts` returns `flow_waiting`
+
+The OAuth sign-in of Step 7 hasn't come back yet, so it has no list to save from (`The sign-in is not finished yet. Finish it, then choose the accounts.`). Finish it, then save the Pages it lists. Don't call `OAuthConnect` again in the meantime: a new sign-in replaces the one under way. System User mode never returns this code.
+
 ### `SetPickerAccounts` returns `not_listed`
 
 The `pageid` you sent isn't in the latest discovery result (`Choose accounts from the list Wiro gave after the sign-in.`; the wording depends on whether it was a sign-in or a token check). Verify you're parsing `fb_pages` correctly and sending the exact ID string.
