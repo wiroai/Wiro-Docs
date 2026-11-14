@@ -28200,7 +28200,7 @@ Your app shows &quot;Restarting&quot;, then the agent answers again
 </tr>
 <tr>
 <td><code>setupresult.next</code> in a <code>Message/Send</code> answer</td>
-<td>A <code>yes</code> that applied an <code>add</code> card leaving connectors to connect; a <code>yes</code> while only <code>connect</code> cards wait, one of them a sign-in card</td>
+<td>A <code>yes</code> that applied a card while <code>connect</code> cards of the reply still wait, or whose <code>add</code> card leaves connectors to connect; a <code>yes</code> while only <code>connect</code> cards wait, one of them a sign-in card; a key typed for an <code>add</code> card and its <code>connect</code> card, when the <code>add</code> card brings other connectors too</td>
 <td>Same</td>
 </tr>
 <tr>
@@ -28257,14 +28257,16 @@ async function connectFromNext(entry, useragentguid) {
   }
   if (entry.mode === &quot;key&quot;) {
     const values = await askForFields(entry.connector); // your form, never the chat
+    if (!entry.cardid) return saveWithCredentialUpsert(entry.connector, values); // no card records it
     return setupCardApply({ useragentguid, messageguid: entry.messageguid, cardid: entry.cardid, action: &quot;apply&quot;, values });
   }
-  // signin, appkeys, token: run the connection, then record it on the card.
+  // signin, appkeys, token: run the connection, then record it on its card when there is one.
   await runConnection(entry.connector, entry.mode); // OAuthConnect and the rest
+  if (!entry.cardid) return;
   return setupCardApply({ useragentguid, messageguid: entry.messageguid, cardid: entry.cardid, action: &quot;apply&quot; });
 }
 </code></pre>
-<p>On a block's <code>next</code>, the card is the block's own: use its <code>setup.id</code> and the message's <code>guid</code>. When the answer to a sign-in <code>connect</code> card is <code>errorcode: "not_connected"</code> with <code>next</code>, the connection isn't finished: run the flow again from that entry.</p>
+<p>On a block's <code>next</code>, the card is the block's own: use its <code>setup.id</code> and the message's <code>guid</code>. An entry with no <code>cardid</code> and a mode other than <code>page</code> has no card left to record it, for example because its <code>connect</code> card was turned down: connect it the same way, with <code>CredentialUpsert</code> for a key, and there is nothing to apply. When the answer to a sign-in <code>connect</code> card is <code>errorcode: "not_connected"</code> with <code>next</code>, the connection isn't finished: run the flow again from that entry.</p>
 <h2 id="errors-and-what-to-show">Errors and What to Show</h2>
 <p>Every refusal comes as <code>result: false</code> with one plain sentence in <code>errors[0].message</code>. Show it as it is, and match codes, not sentences, in your code: sentences can change.</p>
 <h3 id="setupcardapply-refusals">SetupCardApply refusals</h3>

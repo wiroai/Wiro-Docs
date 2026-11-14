@@ -1097,7 +1097,7 @@ There is no card to apply afterwards. The save restarts a running agent once, so
 |-------|------|---------|
 | A setup block | On a pending `connect` card | One entry, its own connector: `{ connector, title, mode }`. No `cardid`: it is the block's own card. |
 | `SetupCardApply` answer | An `add` card applied, alone, with `values` or with `signin: true`, that leaves connectors not connected; a sign-in `connect` card refused with `not_connected` or `signin_values`; a `connect` card for a `page` connector | `{ connector, title, mode, cardid?, messageguid? }` |
-| `setupresult.next` in a `Message/Send` answer | A `yes` that applied an `add` card leaving connectors to connect; a `yes` while only `connect` cards wait, one of them a sign-in card | Same |
+| `setupresult.next` in a `Message/Send` answer | A `yes` that applied a card while `connect` cards of the reply still wait, or whose `add` card leaves connectors to connect; a `yes` while only `connect` cards wait, one of them a sign-in card; a key typed for an `add` card and its `connect` card, when the `add` card brings other connectors too | Same |
 | `metadata.next` in the webhook | The same answers as `setupresult.next`, posted to the message's `callbackurl` | Same |
 
 `next` is absent when nothing is left to connect: never an empty array.
@@ -1123,15 +1123,17 @@ async function connectFromNext(entry, useragentguid) {
   }
   if (entry.mode === "key") {
     const values = await askForFields(entry.connector); // your form, never the chat
+    if (!entry.cardid) return saveWithCredentialUpsert(entry.connector, values); // no card records it
     return setupCardApply({ useragentguid, messageguid: entry.messageguid, cardid: entry.cardid, action: "apply", values });
   }
-  // signin, appkeys, token: run the connection, then record it on the card.
+  // signin, appkeys, token: run the connection, then record it on its card when there is one.
   await runConnection(entry.connector, entry.mode); // OAuthConnect and the rest
+  if (!entry.cardid) return;
   return setupCardApply({ useragentguid, messageguid: entry.messageguid, cardid: entry.cardid, action: "apply" });
 }
 ```
 
-On a block's `next`, the card is the block's own: use its `setup.id` and the message's `guid`. When the answer to a sign-in `connect` card is `errorcode: "not_connected"` with `next`, the connection isn't finished: run the flow again from that entry.
+On a block's `next`, the card is the block's own: use its `setup.id` and the message's `guid`. An entry with no `cardid` and a mode other than `page` has no card left to record it, for example because its `connect` card was turned down: connect it the same way, with `CredentialUpsert` for a key, and there is nothing to apply. When the answer to a sign-in `connect` card is `errorcode: "not_connected"` with `next`, the connection isn't finished: run the flow again from that entry.
 
 ## Errors and What to Show
 
