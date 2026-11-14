@@ -109,7 +109,7 @@ Accepts either `application/json` (text-only) or `multipart/form-data` (text + f
 | `content` | `string` | Present when Wiro handled the message itself or removed a key from it: the message text as stored. See [Keys in chat](#keys-in-chat). |
 | `contentmasked` | `boolean` | Present (`true`) when Wiro removed a key from the message before the agent saw it; `content` holds the text the agent got. |
 | `response` | `string` | Only when Wiro handled the message itself: its result text. |
-| `setupresult` | `object` | Only when Wiro handled the message itself: `{ applied, dismissed, failed, restarting }`. |
+| `setupresult` | `object` | Only when Wiro handled the message itself: `{ applied, dismissed, failed, restarting, next? }`. See [Replies Wiro handles itself](#handled-setup-replies). |
 
 > **`model_change` marker.** When `model` rotates the session to a different chat model, the Send response carries a `modelChangeMarker` describing the switch, and a standalone marker row (status `agent_done`) is written into history at the same time:
 >
@@ -201,9 +201,7 @@ Retrieves the current status and content of a single message. You can query by e
       "speedType": "words/s",
       "elapsedTime": "8.1s",
       "tokenCount": 105,
-      "wordCount": 118,
-      "raw": "Here are the key AI trends for 2026...",
-      "answer": ["Here are the key AI trends for 2026..."]
+      "wordCount": 118
     },
     "attachments": [],
     "deletestatus": 0,
@@ -227,14 +225,14 @@ Retrieves the current status and content of a single message. You can query by e
 | `guid` | `string` | Message GUID. |
 | `uuid` | `string` | The account UUID of the user who sent the message. |
 | `agenttoken` | `string\|null` | The same token issued by `Message/Send` for this message. Lets callers that arrived at the row through `Message/Detail` (or `Message/History`) subscribe to the [Agent WebSocket](/docs/agent-websocket) and pick up an in-flight response. This is useful when a chat UI rehydrates after a reload and finds a message still in `agent_queue` / `agent_start` / `agent_output` status. `null` for very old rows that pre-date the column, and for replies Wiro handles itself (see [Replies Wiro handles itself](#handled-setup-replies)). |
-| `user` | `object\|null` | Resolved sender info: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. Decorated server-side from the message's `uuid` so the chat bubble can render avatar / hover-tooltip without an extra `User/Detail` round-trip. `null` when the row was written by automation (sentinel `uuid` like `"system"`) or when the user record was deleted. |
+| `user` | `object\|null` | Resolved sender info: `{ uuid, firstname, lastname, email, username, avatar, avatarinitials }`. Decorated server-side from the message's `uuid` so the chat bubble can render avatar / hover-tooltip without an extra `User/Detail` round-trip. `null` when the row was written by automation (sentinel `uuid` like `"system"`) or when the user record was deleted. A message sent with a project API key is the key owner's, whoever typed it: a product of your own shows its own names, not this one. |
 | `sessionkey` | `string` | The session this message belongs to. |
 | `content` | `string` | The original user message. |
 | `response` | `string` | The agent's full response text. Empty until the turn ends. After `agent_error` or `agent_cancel` it holds the failure message; see [Failed turns](#failed-turns). |
 | `debugoutput` | `string` | Accumulated output text. Updated during streaming, contains the full response after completion. |
 | `timeline` | `array` | Ordered turn blocks. Always an array; `[]` means no public blocks were persisted. Merge live deltas by `blockid` and per-block `version`, then sort by call/content order. |
 | `status` | `string` | Current message status (see Message Lifecycle). |
-| `metadata` | `object` | Parsed JSON object (API returns it already decoded). Populated from the agent bridge on `agent_end`. Fields produced by the bridge's final progress builder include `type`, `task`, `speed`, `speedType`, `elapsedTime`, `tokenCount`, `wordCount`, `raw`, and `answer`. Timeline blocks are intentionally not stored in metadata; read the top-level `timeline` field. Empty object `{}` for `agent_error`, `agent_cancel`, or when the bridge hasn't finished yet. Message status lives in the top-level `status` field, so don't read it from `metadata.type`. |
+| `metadata` | `object` | Parsed JSON object (API returns it already decoded). Populated from the agent bridge on `agent_end`. Only `type` and a few keys are returned: on a finished turn (`type: "progressGenerate"`) `task`, `speed`, `speedType`, `elapsedTime`, `tokenCount` and `wordCount`; on a `model_change` marker row `fromModel` and `toModel`; on other rows (`setup_result`, `system`, `subagent`) usually `type` alone, and in History `systemcost: true` on a row whose cost came from a scheduled or background run. The answer text is in `response` and `timeline`, never in metadata. Empty object `{}` for `agent_error`, `agent_cancel`, or when the bridge hasn't finished yet. Message status lives in the top-level `status` field, so don't read it from `metadata.type`. |
 | `attachments` | `array` | Always present as an array: empty `[]` for text-only messages. When the message was sent via multipart with files, each entry is a resolved `{url, name, type, size}` object (no further file-lookup needed). Identical shape in `Message/History` rows. |
 | `deletestatus` | `number` | Internal flag. `0` for normal messages. |
 | `createdat` | `number` | Unix timestamp (epoch seconds) when the message was created. |
@@ -393,9 +391,7 @@ Retrieves conversation history for a specific agent and session. Messages are re
           "speedType": "words/s",
           "elapsedTime": "8.1s",
           "tokenCount": 105,
-          "wordCount": 118,
-          "raw": "Here are the key AI trends for 2026...",
-          "answer": ["Here are the key AI trends for 2026..."]
+          "wordCount": 118
         },
         "attachments": [],
         "deletestatus": 0,
@@ -411,9 +407,17 @@ Retrieves conversation history for a specific agent and session. Messages are re
       },
       {
         "guid": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
-        "uuid": "system",
+        "uuid": "ada-uuid",
         "agenttoken": null,
-        "user": null,
+        "user": {
+          "uuid": "ada-uuid",
+          "firstname": "Ada",
+          "lastname": "Lovelace",
+          "email": "ada@example.com",
+          "username": "ada",
+          "avatar": "https://cdn.wiro.ai/avatars/ada.webp",
+          "avatarinitials": "AL"
+        },
         "content": "",
         "response": "",
         "debugoutput": "",
