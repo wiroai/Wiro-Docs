@@ -349,6 +349,35 @@ Response:
 
 The dashboard runs this step automatically after the account selection. If the agent was running, Wiro restarts it.
 
+**Accounts and locations in one call.** Steps 4 and 5 can restart a running agent twice. To restart it once, skip the save of Step 4: call `DiscoverPickerItems` with the chosen accounts in `parents` and the `flowid` from `OAuthConnect`, then save both with one `SetPickerAccounts` call that sends `accountids`, `flowid`, `pickerkey` and `selections`, with each account's locations in `itemids` or `items`. Choose at least one location across the accounts, or the save answers `Choose at least one location to finish.` (`errorcode: "next_required"`). Both calls must name the same accounts within five minutes, or the save answers `next_expired` and you discover again. See [Both steps in one call](/docs/agent-credentials#both-steps-in-one-call).
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/DiscoverPickerItems" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "google-business",
+    "pickerkey": "locations",
+    "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
+    "parents": ["112233445566778899001"]
+  }'
+
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "google-business",
+    "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
+    "accountids": ["112233445566778899001"],
+    "pickerkey": "locations",
+    "selections": [
+      { "parentvalue": "112233445566778899001", "itemids": ["9876543210987654321"] }
+    ]
+  }'
+```
+
 ### Step 6: Verify the connection
 
 ```bash
@@ -483,13 +512,15 @@ Response: `{ result, errors, pickerkey: "locations", locationmappings: [{account
 
 ### POST /UserAgentOAuth/DiscoverPickerItems
 
-Lists the locations of the selected Business Profile accounts, grouped by account. Call it after the account selection is saved.
+Lists the locations of the selected Business Profile accounts, grouped by account. Call it after the account selection is saved, or, with `parents` and `flowid`, before it, to save the accounts and their locations in one call.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
 | `credentialkey` | string | Yes | `"google-business"`. |
 | `pickerkey` | string | Yes | `"locations"`. |
+| `parents` | string[] | No | Account IDs from the sign-in's list, before they are saved (at most 20). |
+| `flowid` | string | No | With `parents`: the `flowid` from `OAuthConnect`. |
 
 Response: `{ result, errors, pickerkey: "locations", groups: [{parent: {accountid, accountname}, items: [{locationid, locationtitle}], errorcode?}] }`. Up to 100 locations per account. The access token stays server-side. Wiro keeps the discovered candidates for five minutes; save the location selection before they expire.
 
@@ -580,6 +611,8 @@ To change how replies read, edit `cs-review-preferences`; to change which replie
 | `Wiro-managed OAuth is not enabled for Google Business Profile` | Returned in `OAuthConnect`'s `errors[]` when `authmethod` is missing or `"wiro"`. | Send `authmethod: "own"`. |
 | `Google Business Profile credentials not configured` | Returned in `OAuthConnect`'s `errors[]` when the Client ID or Client Secret is not saved. | Save both with `POST /UserAgent/CredentialUpsert` (Step 1), then retry. |
 | `Picker candidates expired. Discover them again.` | More than five minutes passed after location discovery, or the account selection changed. | Call `DiscoverPickerItems` again, then resubmit the location selection. |
+| `Choose at least one location to finish.` | `errorcode: "next_required"`: the accounts and locations were saved in one call with no location chosen. | Choose at least one location and save again. |
+| `The list of locations expired. Load it again.` | `errorcode: "next_expired"`: the accounts and locations were saved in one call, but the locations weren't discovered with `parents` for those accounts, from this sign-in, in the last five minutes. | Call `DiscoverPickerItems` with `parents` again, then save. |
 | `selections must include every available parent exactly once` | The location selection left out or repeated an account group. | Send one `selections[]` entry per group returned without `errorcode`; use `items: []` to select no location for an account. |
 | `Google Business Profile account not connected` | Returned by `DiscoverPickerItems` or the location `SetPickerAccounts` call when no account is saved yet, or when the access token has run out: about an hour after the last renewal while the agent is stopped. | Save the account selection (Step 4). If it is saved, start the agent so Wiro renews the token, or connect again with Steps 2 and 3: the saved accounts stay selected. |
 

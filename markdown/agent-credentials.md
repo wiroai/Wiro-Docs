@@ -1044,19 +1044,15 @@ The list belongs to the Wiro account whose request started the sign-in or check 
 
 ### POST /UserAgentOAuth/DiscoverPickerItems
 
-Discover child resources for a chained picker after the root
-`SetPickerAccounts` selection has been saved. Two credentials have a chained
-flow: in Meta Ads, selected ad accounts are the parents and eligible Facebook
-Pages are returned under each account; in Google Business Profile, selected
-Business Profile accounts are the parents and their locations are returned
-under each account. Wiro reads the active credential server-side;
-clients never send or receive access tokens.
+Discover child resources for a chained picker. Two credentials have a chained flow: in Meta Ads, ad accounts are the parents and eligible Facebook Pages are returned under each account; in Google Business Profile, Business Profile accounts are the parents and their locations are returned under each account. Without `parents`, Wiro discovers for the root accounts already saved. With `parents`, it discovers for accounts of the current sign-in's list before they are saved, so one `SetPickerAccounts` call can save both steps (see [Both steps in one call](#both-steps-in-one-call)). Wiro reads the active credential server-side; clients never send or receive access tokens.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `useragentguid` | string | Yes | Agent instance GUID. |
 | `credentialkey` | string | Yes | Credential key with `account_picker.next` configured. Currently `"meta-ads"` or `"google-business"`. |
 | `pickerkey` | string | Yes | The chained picker key from the registry. Meta Ads uses `"pages"`; Google Business Profile uses `"locations"`. |
+| `parents` | string[] | No | Root account IDs from the current sign-in's or check's list (`candidates`), before they are saved: at most 50 Meta ad accounts or 20 Business Profile accounts. Only the account that started the sign-in can send them. |
+| `flowid` | string | No | With `parents`: the `flowid` from `OAuthConnect`. When sent, it must be the current one. |
 
 ##### Example: discover Meta Ads Pages
 
@@ -1097,7 +1093,7 @@ Each group corresponds to one selected parent account. A group may carry
 parent. Successful candidates are cached for the registry-declared selection
 window (five minutes for Meta Ads and Google Business Profile). Call `SetPickerAccounts` with `pickerkey`
 and one `selections[]` entry for every successful parent before that window
-expires.
+expires. A discovery with `parents` is kept for exactly those accounts and that sign-in: save them as the root accounts in the same call.
 
 A group's `errorcode` is a short code such as `too_many_pages` (more than 500 Pages for one ad account), `provider_rejected_request`, `provider_timeout` or `provider_request_failed`. Business Profile returns at most the first 100 locations of each account.
 
@@ -1108,8 +1104,11 @@ A group's `errorcode` is a short code such as `too_many_pages` (more than 500 Pa
 | `Request parameter [<name>] required` | `useragentguid`, `credentialkey` or `pickerkey` is missing. |
 | `Unknown credential picker` | `credentialkey` and `pickerkey` do not name a chained picker. |
 | `User agent not found or unauthorized` | `useragentguid` doesn't exist or doesn't belong to the caller. |
-| `<Provider> account not connected` | No parent account is saved yet, or `OAuthStatus` would report `connected: false`, for example because the access token expired while the agent was stopped. For an expired token, start the agent, or connect again with `OAuthConnect` in the same mode if it cannot start yet: the saved accounts stay selected. |
-| `Too many parent accounts selected for picker discovery` | More than 50 Meta ad accounts or more than 20 Business Profile accounts are selected. |
+| `<Provider> account not connected` | Without `parents`: no parent account is saved yet, or `OAuthStatus` would report `connected: false`, for example because the access token expired while the agent was stopped. For an expired token, start the agent, or connect again with `OAuthConnect` in the same mode if it cannot start yet: the saved accounts stay selected. With `parents`: the sign-in's token is no longer saved in its mode, for example because `authmethod` changed. |
+| `Too many parent accounts selected for picker discovery` | `errorcode: "too_many_parents"`. More than 50 Meta ad accounts or more than 20 Business Profile accounts are selected, or sent in `parents`. |
+| `parents must be a non-empty array of account ids` | `parents` was sent empty, or not as an array. |
+| The sentences of `flow_expired`, `flow_other_person`, `flow_replaced`, `flow_failed` and `not_listed` | With `parents`, as for [`SetPickerAccounts`](#post-useragentoauthsetpickeraccounts), with the same `errorcode`: no list is open, another account started it, `flowid` isn't the current one, the sign-in failed, or a parent isn't on the list. |
+| `The account list could not be read. Try again in a moment.` | With `parents`: a temporary failure. Try again. |
 | `Picker candidate limit exceeded` | Discovery found more than 2,000 items across all groups. |
 | `Picker candidates could not be secured for selection` / `Picker discovery failed` | Temporary failure. Try again. |
 
@@ -1135,8 +1134,8 @@ Instagram) accept one or more entries.
 | `accountids` | array | Root picker: this or `accounts` | The IDs of the accounts to save, as strings, taken from the list (`candidates`, or `id` in the redirect's list). |
 | `accounts` | array | Root picker: this or `accountids` | One or more account objects with the per-credential keys (see table below). Wiro reads only the ID key of each; the name comes from the list. |
 | `flowid` | string | No | The `flowid` from `OAuthConnect`. When sent, it must be the current sign-in's or check's, or the save is refused with `flow_replaced`. |
-| `pickerkey` | string | Chained picker only | Chained picker key returned by `DiscoverPickerItems`. |
-| `selections` | array | Chained picker only | One `{ parentvalue, items }` entry for every parent that `DiscoverPickerItems` returned without `errorcode`. Send each item exactly as discovered, ID and name (for example `{ pageid, pagename }`); an item whose name differs is rejected. Leave out parents that came back with `errorcode`; they keep the items saved before. An empty `items` array selects nothing for that parent: no Pages for a Meta Ads ad account, no locations for a Google Business Profile account. A successful save uses up the discovery result, so call `DiscoverPickerItems` again before the next change. |
+| `pickerkey` | string | Chained picker | Chained picker key returned by `DiscoverPickerItems`. Sent with `accountids` or `accounts`, the second step is saved together with the root accounts; see [Both steps in one call](#both-steps-in-one-call). |
+| `selections` | array | Chained picker only | One `{ parentvalue, items }` entry for every parent that `DiscoverPickerItems` returned without `errorcode`. Send each item exactly as discovered, ID and name (for example `{ pageid, pagename }`); an item whose name differs is rejected. Leave out parents that came back with `errorcode`; they keep the items saved before. An empty `items` array selects nothing for that parent: no Pages for a Meta Ads ad account, no locations for a Google Business Profile account. Each entry can name its items by ID in `itemids` instead of `items`, for example `{ "parentvalue": "123456789", "itemids": ["111222333"] }`. A successful save uses up the discovery result, so call `DiscoverPickerItems` again before the next change. |
 
 ##### Picker data from the redirect
 
@@ -1236,6 +1235,50 @@ response (see [Google Business Profile → Connect through the API](/docs/integr
 
 Saving the root accounts again, from a new sign-in's list, replaces the selection. Pages or locations already chosen for accounts that stay selected are kept, those of removed accounts are dropped, and an open `DiscoverPickerItems` result is discarded, so discover again before saving the second step.
 
+##### Both steps in one call
+
+Saving the accounts, then the Pages or locations, in two calls can restart a running agent twice. To save both in one call, so it restarts once:
+
+1. Call `DiscoverPickerItems` with `parents`, the chosen root IDs from the sign-in's list, and its `flowid`.
+2. Call `SetPickerAccounts` with the same IDs in `accountids`, the `flowid`, `pickerkey`, and `selections` for every parent that discovery returned without `errorcode`.
+
+```bash
+curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{
+    "useragentguid": "your-useragent-guid",
+    "credentialkey": "meta-ads",
+    "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
+    "accountids": ["123456789", "234567890"],
+    "pickerkey": "pages",
+    "selections": [
+      { "parentvalue": "123456789", "itemids": ["111222333"] },
+      { "parentvalue": "234567890", "itemids": [] }
+    ]
+  }'
+```
+
+Response:
+
+```json
+{
+  "result": true,
+  "errors": [],
+  "accounts": [
+    { "id": "123456789", "name": "Acme Ads" },
+    { "id": "234567890", "name": "Acme Retail" }
+  ],
+  "pickerkey": "pages",
+  "pagemappings": [
+    { "adaccountid": "123456789", "adaccountname": "Acme Ads", "pageid": "111222333", "pagename": "Acme" }
+  ],
+  "restart": "scheduled"
+}
+```
+
+Wiro writes the accounts and the mappings in one save. The discovery must be the one made with `parents` equal to `accountids`, for this sign-in, in the last five minutes; otherwise nothing is saved and the call answers `next_expired`, `The list of pages expired. Load it again.` (`locations` for Business Profile): call `DiscoverPickerItems` with `parents` again. Business Profile needs at least one location across the accounts; with none, the call answers `next_required`, `Choose at least one location to finish.` Meta Ads Pages stay optional. Later changes to the Pages or locations of saved accounts use the second step alone, as above.
+
 ##### Common errors
 
 A refusal of the list rules also answers `errorcode`, as named below.
@@ -1264,6 +1307,8 @@ A refusal of the list rules also answers `errorcode`, as named below.
 | `Selected parent is not available` | `parentvalue` is not a selected account, appears twice, or came back from discovery with `errorcode`. |
 | `Selected picker item is invalid` / `Selected picker item is not available` | An item is not an object, was not discovered for that parent, has a different name, or appears twice. |
 | `Picker candidates expired. Discover them again.` | Chained picker candidates expired or the parent connection changed. Call `DiscoverPickerItems` again. |
+| `The list of <items> expired. Load it again.` | `errorcode: "next_expired"`. Both steps in one call, but the second step's discovery wasn't made with `parents` for these accounts and this sign-in, or more than five minutes ago. Call `DiscoverPickerItems` with `parents` again. |
+| `Choose at least one <item> to finish.` | `errorcode: "next_required"`. Both steps in one call for Google Business Profile with no location chosen. |
 | `selections must include every available parent exactly once` | Chained picker request omitted or duplicated a successfully discovered parent. |
 | `Selected parent is no longer available` | The root selection changed while saving. Call `DiscoverPickerItems` again. |
 
@@ -1404,7 +1449,9 @@ Google Ads, Meta Ads, TikTok Ads, Merchant Center, YouTube, GA4, Google Business
    locations, call
    [`DiscoverPickerItems`](#post-useragentoauthdiscoverpickeritems), show the
    groups, and save the choice with `SetPickerAccounts`, `pickerkey` and
-   `selections[]` within five minutes.
+   `selections[]` within five minutes. To save both steps in one call,
+   discover with `parents` before the first save (see
+   [Both steps in one call](#both-steps-in-one-call)).
 5. **Nothing to pick.** When the provider lists nothing, the redirect carries
    `<prefix>_error=no_accounts` (`fb_error=no_pages` for Facebook Pages) and
    Wiro saves nothing. Show the reason and let the customer connect again.
