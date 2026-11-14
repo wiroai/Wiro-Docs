@@ -19950,6 +19950,7 @@ Response:
   "accounts": [
     { "id": "123456789", "name": "My Ad Account" }
   ],
+  "restart": "scheduled",
   "errors": []
 }
 ```
@@ -20201,7 +20202,7 @@ Root ad-account selection:
 | `credentialkey` | string | Yes | `"meta-ads"`. |
 | `accounts` | array | Yes | One or more `{ adaccountid, adaccountname }` entries. `adaccountid` must be without the `act_` prefix (prefix stripped automatically if sent); Wiro saves the name from its list as `adaccountname`, the display name shown in dashboards and `OAuthStatus` responses. |
 
-Response: `{ result, accounts: [{id, name}, ...], errors }`. Triggers an automatic agent restart if the agent was running.
+Response: `{ result, accounts: [{id, name}, ...], restart, errors }`. The save that completes the connection restarts a running agent once (`restart: "scheduled"`), and a save that changes nothing restarts nothing.
 
 Chained Page selection, after `DiscoverPickerItems`:
 
@@ -20213,7 +20214,7 @@ Chained Page selection, after `DiscoverPickerItems`:
 | `selections` | array | Yes | One `{ parentvalue, items }` entry for every discovery group without an `errorcode`. `parentvalue` is the ad account ID; each item carries `pageid` and `pagename` exactly as discovered, or `itemids` holds the Page IDs. Empty `items` is allowed because Pages are optional. |
 
 Response:
-`{ result, pickerkey: "pages", pagemappings: [{adaccountid, adaccountname, pageid, pagename}], errors }`.
+`{ result, pickerkey: "pages", pagemappings: [{adaccountid, adaccountname, pageid, pagename}], restart, errors }`.
 
 Both stages in one call: send `accountids` (or `accounts`), `flowid`, `pickerkey` and `selections` together, after `DiscoverPickerItems` with the same ad accounts in `parents`. Response: `{ result, accounts: [{id, name}, ...], pickerkey: "pages", pagemappings, restart, errors }`.
 
@@ -20569,7 +20570,8 @@ Response:
   "errors": [],
   "accounts": [
     { "id": "7012345678901234567", "name": "Brand X" }
-  ]
+  ],
+  "restart": "scheduled"
 }
 ```
 
@@ -20668,7 +20670,7 @@ Server-side endpoint invoked by TikTok. You don't call it. You only handle the f
 | `credentialkey` | string | Yes | `"tiktok-ads"`. |
 | `accounts` | array | Yes | One or more `{ advertiserid, advertisername }` entries. `advertiserid` is the numeric advertiser ID (non-digits stripped); Wiro saves the name from its list as `advertisername`, the display name shown in dashboards and `OAuthStatus` responses. |
 
-Response: `{ result, errors, accounts: [{id, name}, ...] }`. Replaces the previous selection and triggers an automatic agent restart if the agent was running. Returns `The sign-in expired. Sign in again to choose the accounts.` (`errorcode: "flow_expired"`) when no sign-in's list is open: none was completed, it was more than 15 minutes ago, or a save already used it.
+Response: `{ result, errors, accounts: [{id, name}, ...], restart }`. Replaces the previous selection. The save that completes the connection restarts a running agent once (`restart: "scheduled"`), and a save that changes nothing restarts nothing. Returns `The sign-in expired. Sign in again to choose the accounts.` (`errorcode: "flow_expired"`) when no sign-in's list is open: none was completed, it was more than 15 minutes ago, or a save already used it.
 
 ### POST /UserAgentOAuth/OAuthStatus
 
@@ -21103,6 +21105,7 @@ Response:
   "accounts": [
     { "id": "456", "name": "Page B" }
   ],
+  "restart": "scheduled",
   "errors": []
 }
 ```
@@ -21205,7 +21208,7 @@ The callback path is per-provider: Facebook's stays `FBCallback`.
 | `credentialkey` | string | Yes | `"facebook-pages"`. |
 | `accounts` | array | Yes | One or more `{ pageid, fbpagename }` entries. The per-page access token is resolved from the latest server-side OAuth or System User discovery result, so don't supply it. |
 
-Response: `{ result, accounts: [{id, name}, ...], errors }`. Triggers auto-restart if running.
+Response: `{ result, accounts: [{id, name}, ...], restart, errors }`. The save that completes the connection restarts a running agent once (`restart: "scheduled"`), and a save that changes nothing restarts nothing.
 
 > Call within **15 minutes** of the OAuth callback or direct
 > `OAuthConnect` discovery. A successful call uses up that discovery result, so
@@ -21737,8 +21740,8 @@ Used only by direct System User mode after `OAuthConnect` discovery.
 | `accounts` | array | Yes | One or more `{ accountId, igusername }` entries from the latest discovery response (`accountId` is its `id`; Wiro saves its `name` from the list as `igusername`, so a name you send is not read). Do not supply access tokens. |
 
 Call within 15 minutes of direct discovery. The response contains
-`{ result, accounts: [{id, name}], errors }` and restarts a running agent after
-the selection is persisted.
+`{ result, accounts: [{id, name}], restart, errors }`. The save that completes
+the connection restarts a running agent once (`restart: "scheduled"`).
 
 ### POST /UserAgentOAuth/OAuthStatus
 
@@ -22750,7 +22753,8 @@ Response:
   "errors": [],
   "accounts": [
     { "id": "112233445566778899001", "name": "Acme Bakery" }
-  ]
+  ],
+  "restart": "scheduled"
 }
 ```
 
@@ -22834,7 +22838,8 @@ Response:
       "locationid": "9876543210987654321",
       "locationtitle": "Acme Bakery Downtown"
     }
-  ]
+  ],
+  "restart": "scheduled"
 }
 ```
 
@@ -22988,7 +22993,7 @@ Account selection:
 | `credentialkey` | string | Yes | `"google-business"`. |
 | `accounts` | array | Yes | One or more `{ accountid, accountname }` entries. `accountid` is the numeric account ID (non-digits stripped); Wiro saves the name from its list as `accountname`, the display name shown in dashboards and `OAuthStatus` responses. |
 
-Response: `{ result, errors, accounts: [{id, name}, ...] }`. Replaces the previous account selection and restarts the agent if it was running.
+Response: `{ result, errors, accounts: [{id, name}, ...], restart }`. Replaces the previous account selection. The save that completes the connection restarts a running agent once (`restart: "scheduled"`), and a save that changes nothing restarts nothing.
 
 Location selection, after `DiscoverPickerItems`:
 
@@ -22999,7 +23004,7 @@ Location selection, after `DiscoverPickerItems`:
 | `pickerkey` | string | Yes | `"locations"`. |
 | `selections` | array | Yes | One `{ parentvalue, items }` entry for every group discovery returned without an `errorcode`. `parentvalue` is the account ID; each item carries `locationid` and `locationtitle`. Empty `items` selects no location for that account. Leave out groups that carry an `errorcode`: sending one fails with `Selected parent is not available`, and the locations already saved for that account stay as they are. |
 
-Response: `{ result, errors, pickerkey: "locations", locationmappings: [{accountid, accountname, locationid, locationtitle}] }`.
+Response: `{ result, errors, pickerkey: "locations", locationmappings: [{accountid, accountname, locationid, locationtitle}], restart }`.
 
 ### POST /UserAgentOAuth/DiscoverPickerItems
 

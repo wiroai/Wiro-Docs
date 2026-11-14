@@ -259,7 +259,8 @@ Response:
   "errors": [],
   "accounts": [
     { "id": "112233445566778899001", "name": "Acme Bakery" }
-  ]
+  ],
+  "restart": "scheduled"
 }
 ```
 
@@ -343,7 +344,8 @@ Response:
       "locationid": "9876543210987654321",
       "locationtitle": "Acme Bakery Downtown"
     }
-  ]
+  ],
+  "restart": "scheduled"
 }
 ```
 
@@ -497,7 +499,7 @@ Account selection:
 | `credentialkey` | string | Yes | `"google-business"`. |
 | `accounts` | array | Yes | One or more `{ accountid, accountname }` entries. `accountid` is the numeric account ID (non-digits stripped); Wiro saves the name from its list as `accountname`, the display name shown in dashboards and `OAuthStatus` responses. |
 
-Response: `{ result, errors, accounts: [{id, name}, ...] }`. Replaces the previous account selection and restarts the agent if it was running.
+Response: `{ result, errors, accounts: [{id, name}, ...], restart }`. Replaces the previous account selection. The save that completes the connection restarts a running agent once (`restart: "scheduled"`), and a save that changes nothing restarts nothing.
 
 Location selection, after `DiscoverPickerItems`:
 
@@ -508,7 +510,7 @@ Location selection, after `DiscoverPickerItems`:
 | `pickerkey` | string | Yes | `"locations"`. |
 | `selections` | array | Yes | One `{ parentvalue, items }` entry for every group discovery returned without an `errorcode`. `parentvalue` is the account ID; each item carries `locationid` and `locationtitle`. Empty `items` selects no location for that account. Leave out groups that carry an `errorcode`: sending one fails with `Selected parent is not available`, and the locations already saved for that account stay as they are. |
 
-Response: `{ result, errors, pickerkey: "locations", locationmappings: [{accountid, accountname, locationid, locationtitle}] }`.
+Response: `{ result, errors, pickerkey: "locations", locationmappings: [{accountid, accountname, locationid, locationtitle}], restart }`.
 
 ### POST /UserAgentOAuth/DiscoverPickerItems
 

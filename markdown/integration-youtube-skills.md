@@ -169,7 +169,7 @@ Server-side endpoint invoked by Google. You don't call it: you register it as th
 | `credentialkey` | string | Yes | `"youtube"`. |
 | `accounts` | array | Yes | One or more `{ channelid, channeltitle }` entries. |
 
-Response: `{ result, accounts: [{id, name}, ...], errors }`. Triggers agent restart if running.
+Response: `{ result, accounts: [{id, name}, ...], restart, errors }`. The save that completes the connection restarts a running agent once (`restart: "scheduled"`), and a save that changes nothing restarts nothing.
 
 ### POST /UserAgentOAuth/OAuthStatus
 

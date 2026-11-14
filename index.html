@@ -30554,6 +30554,7 @@ must always call this endpoint explicitly.</p>
   &quot;accounts&quot;: [
     { &quot;id&quot;: &quot;123456789&quot;, &quot;name&quot;: &quot;My Ad Account&quot; }
   ],
+  &quot;restart&quot;: &quot;scheduled&quot;,
   &quot;errors&quot;: []
 }
 </code></pre>
@@ -30847,7 +30848,7 @@ than running ads), that's a separate integration (see the
 </table>
 </div>
 </div>
-<p>Response: <code>{ result, accounts: [{id, name}, ...], errors }</code>. Triggers an automatic agent restart if the agent was running.</p>
+<p>Response: <code>{ result, accounts: [{id, name}, ...], restart, errors }</code>. The save that completes the connection restarts a running agent once (<code>restart: "scheduled"</code>), and a save that changes nothing restarts nothing.</p>
 <p>Chained Page selection, after <code>DiscoverPickerItems</code>:</p>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -30890,7 +30891,7 @@ than running ads), that's a separate integration (see the
 </div>
 </div>
 <p>Response:
-<code>{ result, pickerkey: "pages", pagemappings: [{adaccountid, adaccountname, pageid, pagename}], errors }</code>.</p>
+<code>{ result, pickerkey: "pages", pagemappings: [{adaccountid, adaccountname, pageid, pagename}], restart, errors }</code>.</p>
 <p>Both stages in one call: send <code>accountids</code> (or <code>accounts</code>), <code>flowid</code>, <code>pickerkey</code> and <code>selections</code> together, after <code>DiscoverPickerItems</code> with the same ad accounts in <code>parents</code>. Response: <code>{ result, accounts: [{id, name}, ...], pickerkey: "pages", pagemappings, restart, errors }</code>.</p>
 <h3 id="post-useragentoauthdiscoverpickeritems">POST /UserAgentOAuth/DiscoverPickerItems</h3>
 <p>Discovers eligible Facebook Pages grouped under the selected ad accounts: the saved ones, or, with <code>parents</code> and <code>flowid</code>, ad accounts of the current token check's or sign-in's list before they are saved.</p>
@@ -31457,7 +31458,8 @@ if (params.get(&quot;tiktokads_connected&quot;) === &quot;true&quot;) {
   &quot;errors&quot;: [],
   &quot;accounts&quot;: [
     { &quot;id&quot;: &quot;7012345678901234567&quot;, &quot;name&quot;: &quot;Brand X&quot; }
-  ]
+  ],
+  &quot;restart&quot;: &quot;scheduled&quot;
 }
 </code></pre>
 <p>Behavior:</p>
@@ -31636,7 +31638,7 @@ if (params.get(&quot;tiktokads_connected&quot;) === &quot;true&quot;) {
 </table>
 </div>
 </div>
-<p>Response: <code>{ result, errors, accounts: [{id, name}, ...] }</code>. Replaces the previous selection and triggers an automatic agent restart if the agent was running. Returns <code>The sign-in expired. Sign in again to choose the accounts.</code> (<code>errorcode: "flow_expired"</code>) when no sign-in's list is open: none was completed, it was more than 15 minutes ago, or a save already used it.</p>
+<p>Response: <code>{ result, errors, accounts: [{id, name}, ...], restart }</code>. Replaces the previous selection. The save that completes the connection restarts a running agent once (<code>restart: "scheduled"</code>), and a save that changes nothing restarts nothing. Returns <code>The sign-in expired. Sign in again to choose the accounts.</code> (<code>errorcode: "flow_expired"</code>) when no sign-in's list is open: none was completed, it was more than 15 minutes ago, or a save already used it.</p>
 <h3 id="post-useragentoauthoauthstatus">POST /UserAgentOAuth/OAuthStatus</h3>
 <div class="docs-param-table">
 <div class="docs-param-table-wrapper">
@@ -32606,6 +32608,7 @@ if (params.get("fb_connected") === "true") {
   "accounts": [
     { "id": "456", "name": "Page B" }
   ],
+  "restart": "scheduled",
   "errors": []
 }</code></pre>
                     <p>Wiro validates every requested Page against the server-side discovery result, stores its long-lived Page access token without returning it to the client, and restarts a running agent so the new selection takes effect.</p>
@@ -32750,7 +32753,7 @@ if (params.get("fb_connected") === "true") {
                         </tbody>
                       </table>
                     </div>
-                    <p>Response: <code>{ result, accounts: [{id, name}, ...], errors }</code>. Triggers auto-restart if running.</p>
+                    <p>Response: <code>{ result, accounts: [{id, name}, ...], restart, errors }</code>. The save that completes the connection restarts a running agent once (<code>restart: "scheduled"</code>), and a save that changes nothing restarts nothing.</p>
                     <div class="info-callout">
                       <p>Call within <strong>15 minutes</strong> of the OAuth callback or direct <code>OAuthConnect</code> discovery. A successful call uses up that discovery result, so to choose other Pages later, restart the selected connection flow.</p>
                     </div>
@@ -33313,7 +33316,7 @@ if (params.get("ig_connected") === "true") {
                         </tbody>
                       </table>
                     </div>
-                    <p>Call within 15 minutes of direct discovery. The response contains <code>{ result, accounts: [{id, name}], errors }</code> and restarts a running agent after the selection is persisted.</p>
+                    <p>Call within 15 minutes of direct discovery. The response contains <code>{ result, accounts: [{id, name}], restart, errors }</code>. The save that completes the connection restarts a running agent once (<code>restart: "scheduled"</code>).</p>
 
                     <h3>POST /UserAgentOAuth/OAuthStatus</h3>
                     <p>Body: <code>{ useragentguid, credentialkey: "instagram" }</code>. Response: <code>connected</code>, <code>accounts: [{id, name}]</code> where <code>id</code> is the numeric account ID and <code>name</code> is the username, <code>connectedat</code>, and <code>tokenexpiresat</code>.</p>
@@ -34702,9 +34705,10 @@ if (params.get("gads_connected") === "true") {
   "accounts": [
     { "id": "1234567890", "name": "Acme Corp Production" }
   ],
+  "restart": "scheduled",
   "errors": []
 }</code></pre>
-                    <p>Triggers agent restart if running.</p>
+                    <p>The save that completes the connection restarts a running agent once (<code>restart: "scheduled"</code>), and a save that changes nothing restarts nothing.</p>
 
                     <h3 id="step-8-verify-and-start">Step 8: Verify and Start</h3>
                     <pre><code>curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthStatus" \
@@ -34815,7 +34819,7 @@ if (params.get("gads_connected") === "true") {
                         </tbody>
                       </table>
                     </div>
-                    <p>Response: <code>{ result, accounts: [{id, name}, ...], errors }</code>. Triggers agent restart if running.</p>
+                    <p>Response: <code>{ result, accounts: [{id, name}, ...], restart, errors }</code>. The save that completes the connection restarts a running agent once (<code>restart: "scheduled"</code>), and a save that changes nothing restarts nothing.</p>
 
                     <h3>POST /UserAgentOAuth/OAuthStatus</h3>
                     <p>
@@ -35139,7 +35143,7 @@ if (params.get("gads_connected") === "true") {
                         </table>
                       </div>
                     </div>
-                    <p>Response: <code>{ result, accounts: [{id, name}, ...], errors }</code>. Triggers agent restart if running.</p>
+                    <p>Response: <code>{ result, accounts: [{id, name}, ...], restart, errors }</code>. The save that completes the connection restarts a running agent once (<code>restart: "scheduled"</code>), and a save that changes nothing restarts nothing.</p>
 
                     <h3>POST /UserAgentOAuth/OAuthStatus</h3>
                     <p>Body: <code>{ useragentguid, credentialkey: "youtube" }</code>. Response: <code>connected</code>, <code>accounts: [{id, name}, ...]</code> (one entry per selected channel: <code>id</code> = <code>channelid</code>, <code>name</code> = <code>channeltitle</code>), <code>connectedat</code>, <code>tokenexpiresat</code>.</p>
@@ -36095,7 +36099,8 @@ if (params.get("gbp_connected") === "true") {
   "errors": [],
   "accounts": [
     { "id": "112233445566778899001", "name": "Acme Bakery" }
-  ]
+  ],
+  "restart": "scheduled"
 }</code></pre>
                     <p>Behavior:</p>
                     <ul>
@@ -36162,7 +36167,8 @@ if (params.get("gbp_connected") === "true") {
       "locationid": "9876543210987654321",
       "locationtitle": "Acme Bakery Downtown"
     }
-  ]
+  ],
+  "restart": "scheduled"
 }</code></pre>
                     <p>The dashboard runs this step automatically after the account selection. If the agent was running, Wiro restarts it.</p>
                     <p><strong>Accounts and locations in one call.</strong> Steps 4 and 5 can restart a running agent twice. To restart it once, skip the save of Step 4: call <code>DiscoverPickerItems</code> with the chosen accounts in <code>parents</code> and the <code>flowid</code> from <code>OAuthConnect</code>, then save both with one <code>SetPickerAccounts</code> call that sends <code>accountids</code>, <code>flowid</code>, <code>pickerkey</code> and <code>selections</code>, with each account's locations in <code>itemids</code> or <code>items</code>. Choose at least one location across the accounts, or the save answers <code>Choose at least one location to finish.</code> (<code>errorcode: "next_required"</code>). Both calls must name the same accounts within five minutes, or the save answers <code>next_expired</code> and you discover again. See <a href="/docs/agent-credentials#both-steps-in-one-call">Both steps in one call</a>.</p>
@@ -36328,7 +36334,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
                         </table>
                       </div>
                     </div>
-                    <p>Response: <code>{ result, errors, accounts: [{id, name}, ...] }</code>. Replaces the previous account selection and restarts the agent if it was running.</p>
+                    <p>Response: <code>{ result, errors, accounts: [{id, name}, ...], restart }</code>. Replaces the previous account selection. The save that completes the connection restarts a running agent once (<code>restart: "scheduled"</code>), and a save that changes nothing restarts nothing.</p>
                     <p>Location selection, after <code>DiscoverPickerItems</code>:</p>
                     <div class="docs-param-table">
                       <div class="docs-param-table-wrapper">
@@ -36345,7 +36351,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
                         </table>
                       </div>
                     </div>
-                    <p>Response: <code>{ result, errors, pickerkey: "locations", locationmappings: [{accountid, accountname, locationid, locationtitle}] }</code>.</p>
+                    <p>Response: <code>{ result, errors, pickerkey: "locations", locationmappings: [{accountid, accountname, locationid, locationtitle}], restart }</code>.</p>
 
                     <h3>POST /UserAgentOAuth/DiscoverPickerItems</h3>
                     <p>Lists the locations of the selected Business Profile accounts, grouped by account. Call it after the account selection is saved, or, with <code>parents</code> and <code>flowid</code>, before it, to save the accounts and their locations in one call.</p>

@@ -183,11 +183,12 @@ Response:
   "accounts": [
     { "id": "1234567890", "name": "Acme Corp Production" }
   ],
+  "restart": "scheduled",
   "errors": []
 }
 ```
 
-Triggers agent restart if running.
+The save that completes the connection restarts a running agent once (`restart: "scheduled"`), and a save that changes nothing restarts nothing.
 
 ### Step 8: Verify and Start
 
@@ -250,7 +251,7 @@ Server-side endpoint invoked by Google. You don't call it: you register it as th
 | `credentialkey` | string | Yes | `"google-ads"`. |
 | `accounts` | array | Yes | One or more `{ customerid, customerdescriptivename }` entries. `customerid` is 10 digits (dashes/letters stripped server-side); Wiro saves the entry's `name` from its list as `customerdescriptivename`. |
 
-Response: `{ result, accounts: [{id, name}, ...], errors }`. Triggers agent restart if running.
+Response: `{ result, accounts: [{id, name}, ...], restart, errors }`. The save that completes the connection restarts a running agent once (`restart: "scheduled"`), and a save that changes nothing restarts nothing.
 
 ### POST /UserAgentOAuth/OAuthStatus
 
