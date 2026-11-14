@@ -20493,7 +20493,7 @@ print(response.body);
 </blockquote>
 <h3 id="setup-blocks">The setup block</h3>
 <p>A setup block has <code>type: "setup"</code>, <code>text: null</code> and a <code>setup</code> object with the proposed change and its state. Setup blocks sort after every other block of the turn, in the order the agent proposed them, and their <code>phase</code> is always <code>end</code>. A message holds at most three. The card's <code>status</code> changes when someone approves or dismisses it. A pending card's block has <code>version</code> <code>1</code>; once the card is applied, dismissed or failed, its block has <code>version</code> <code>2</code> with the new <code>status</code>, so keep the copy with the higher <code>version</code> whichever arrives first. Clients still subscribed to the message's <code>agenttoken</code> get the new block as an <code>agent_timeline_delta</code>, and <a href="#post-useragentmessagedetail">Message/Detail</a> and <a href="#post-useragentmessagehistory">Message/History</a> always return the current state.</p>
-<p>A pending <code>connect</code> card's block also has <code>next</code>, beside <code>setup</code>: one entry <code>{ connector, title, mode }</code> for the card's own connector, in the shape of an <code>add</code> card's <code>needs</code>, so a chat in your own product can show its own Connect button. It is gone from the block once the card is applied, dismissed or failed. An <code>add</code> card's block has no <code>next</code>: its <code>needs</code> lists what it brings.</p>
+<p>A pending <code>connect</code> card's block also has <code>next</code>, beside <code>setup</code>: one entry <code>{ connector, title, mode }</code> for the card's own connector, in the shape of an <code>add</code> card's <code>needs</code>, so a chat in your own product can show its own Connect button. It is gone from the block once the card is applied, dismissed or failed. A <code>connect</code> card stored before <code>next</code> existed may have none. It still gets one while a pending <code>add</code> card on the same message names its connector in <code>needs</code>. An <code>add</code> card's block has no <code>next</code>: its <code>needs</code> lists what it brings.</p>
 <pre><code class="language-json">&quot;next&quot;: [{ &quot;connector&quot;: &quot;serper&quot;, &quot;title&quot;: &quot;Serper Web Search&quot;, &quot;mode&quot;: &quot;key&quot; }]
 </code></pre>
 <pre><code class="language-json">{
@@ -20944,7 +20944,7 @@ Reply &quot;yes&quot; to apply exactly this change, or &quot;no&quot; to turn it
 </tr>
 <tr>
 <td><code>That does not look like a &lt;Connector&gt; key, so it was not saved. Paste the &lt;Connector&gt; key as your reply.</code></td>
-<td>The reply holds a key in another service's format. Nothing was saved, the stored message reads <code>[key removed]</code> in its place, and the card stays pending. When Wiro knows the format, the sentence names it, such as <code>(it looks like &lt;kind&gt;)</code>.</td>
+<td>The reply holds a key in another service's format, while the latest reply's only pending <code>connect</code> card is for a connector that takes a key and is already on the agent. Nothing was saved, the stored message reads <code>[key removed]</code> in its place, and the card stays pending. When Wiro knows the format, the sentence names it, such as <code>(it looks like &lt;kind&gt;)</code>. Before a name that starts with a vowel, <code>a</code> becomes <code>an</code>, as in <code>an Apollo key</code>. While the <code>add</code> card that brings the connector still waits, such a key is only removed, as in any other message.</td>
 </tr>
 <tr>
 <td><code>This setup change is being applied right now. Try again in a moment.</code></td>
@@ -28803,11 +28803,11 @@ async function connectFromNext(entry, useragentguid, own) {
 <p>Before this refusal, Wiro still answers the replies it handles itself:</p>
 <ul>
 <li>A <code>yes</code> that lists or applies a card other than a <code>connect</code> card, and a <code>yes</code> while a sign-in <code>connect</code> card waits.</li>
-<li>A key for the one waiting <code>key</code> connect card. Another service's key pasted while that card waits is answered too, and not saved: <code>That does not look like a &lt;Title&gt; key (it looks like &lt;kind&gt;), so it was not saved. Paste the &lt;Title&gt; key as your reply.</code>, the part in brackets only when Wiro knows the kind.</li>
+<li>A key for a <code>key</code> connect card that is the only <code>connect</code> card waiting. Another service's key is answered too once that card's connector is on the agent, and nothing is saved: <code>That does not look like a &lt;Title&gt; key (it looks like &lt;kind&gt;), so it was not saved. Paste the &lt;Title&gt; key as your reply.</code> The part in brackets comes only when Wiro knows the kind, and before a title that starts with a vowel, <code>a</code> becomes <code>an</code>, as in <code>an Apollo key</code>. While the <code>add</code> card that brings the connector still waits, another service's key is only taken out, and the message gets the refusal.</li>
 <li>Such a <code>yes</code> or key from a sender who isn't an agent admin, answered <code>Only an agent admin can apply setup changes.</code></li>
 <li>A <code>no</code> that turned pending cards down, answered <code>The setup change was turned down.</code> or <code>The &lt;N&gt; setup changes were turned down.</code></li>
 </ul>
-<p>Every other message gets the refusal, a <code>yes</code> while only <code>key</code> connect cards wait and a <code>yes</code> or <code>no</code> with no pending card included. A turn still running when the restart began, in another session for example, ends as <code>agent_error</code> with <code>[TURN_INTERRUPTED]</code>: offer to send it again.</p>
+<p>Every other message gets the refusal, a <code>yes</code> while only <code>key</code> connect cards wait, a key while more than one <code>connect</code> card waits, and a <code>yes</code> or <code>no</code> with no pending card included. A turn still running when the restart began, in another session for example, ends as <code>agent_error</code> with <code>[TURN_INTERRUPTED]</code>: offer to send it again.</p>
 <h2 id="chats-without-cards">Chats Without Cards</h2>
 <p>Your chat can work with text alone, or people may type <code>yes</code> even where you show cards. Wiro then reads the reply itself.</p>
 <h3 id="typed-replies">Typed replies</h3>
@@ -28988,7 +28988,7 @@ async function connectFromNext(entry, useragentguid, own) {
 </tr>
 <tr>
 <td><code>That does not look like a &lt;Title&gt; key (it looks like &lt;kind&gt;), so it was not saved. Paste the &lt;Title&gt; key as your reply.</code></td>
-<td>The key pasted is another service's. The part in brackets is there only when Wiro knows the kind.</td>
+<td>The key pasted is another service's, and the only <code>connect</code> card waiting is a <code>key</code> connect card whose connector is on the agent. The part in brackets is there only when Wiro knows the kind. Before a title that starts with a vowel, <code>a</code> becomes <code>an</code>, as in <code>an Apollo key</code>.</td>
 </tr>
 <tr>
 <td><code>⚠️ Not saved: &lt;Add title&gt; is still waiting. Reply "yes" to add it, or "no" to turn it down.</code></td>

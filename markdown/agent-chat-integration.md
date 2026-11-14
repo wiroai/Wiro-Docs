@@ -1373,11 +1373,11 @@ While the agent isn't running, `Message/Send` answers `result: false` with `agen
 Before this refusal, Wiro still answers the replies it handles itself:
 
 - A `yes` that lists or applies a card other than a `connect` card, and a `yes` while a sign-in `connect` card waits.
-- A key for the one waiting `key` connect card. Another service's key pasted while that card waits is answered too, and not saved: `That does not look like a <Title> key (it looks like <kind>), so it was not saved. Paste the <Title> key as your reply.`, the part in brackets only when Wiro knows the kind.
+- A key for a `key` connect card that is the only `connect` card waiting. Another service's key is answered too once that card's connector is on the agent, and nothing is saved: `That does not look like a <Title> key (it looks like <kind>), so it was not saved. Paste the <Title> key as your reply.` The part in brackets comes only when Wiro knows the kind, and before a title that starts with a vowel, `a` becomes `an`, as in `an Apollo key`. While the `add` card that brings the connector still waits, another service's key is only taken out, and the message gets the refusal.
 - Such a `yes` or key from a sender who isn't an agent admin, answered `Only an agent admin can apply setup changes.`
 - A `no` that turned pending cards down, answered `The setup change was turned down.` or `The <N> setup changes were turned down.`
 
-Every other message gets the refusal, a `yes` while only `key` connect cards wait and a `yes` or `no` with no pending card included. A turn still running when the restart began, in another session for example, ends as `agent_error` with `[TURN_INTERRUPTED]`: offer to send it again.
+Every other message gets the refusal, a `yes` while only `key` connect cards wait, a key while more than one `connect` card waits, and a `yes` or `no` with no pending card included. A turn still running when the restart began, in another session for example, ends as `agent_error` with `[TURN_INTERRUPTED]`: offer to send it again.
 
 ## Chats Without Cards
 
@@ -1481,7 +1481,7 @@ Wiro writes these lines in `response`, always in English. They name no site, pag
 | `A yes cannot connect <Title>. Its sign-in, app keys or token are entered outside this chat, never in it.` | A `yes` while only `connect` cards wait, one of them a sign-in card. |
 | `Saved <fields> for <Connector>. Still needed: <fields>.` | A key was saved and the connector needs more fields. |
 | `⚠️ Not saved: <reason>. Paste the key again as your reply.` | The key was refused. Nothing was saved. |
-| `That does not look like a <Title> key (it looks like <kind>), so it was not saved. Paste the <Title> key as your reply.` | The key pasted is another service's. The part in brackets is there only when Wiro knows the kind. |
+| `That does not look like a <Title> key (it looks like <kind>), so it was not saved. Paste the <Title> key as your reply.` | The key pasted is another service's, and the only `connect` card waiting is a `key` connect card whose connector is on the agent. The part in brackets is there only when Wiro knows the kind. Before a title that starts with a vowel, `a` becomes `an`, as in `an Apollo key`. |
 | `⚠️ Not saved: <Add title> is still waiting. Reply "yes" to add it, or "no" to turn it down.` | A key typed for an `add` card whose `connect` card no longer waits. |
 | `This card is older than 30 minutes. Use the card's button, or ask the agent again.` | The card turned 30 minutes old while the reply was read. In your product, offer your own button, or ask the agent again. |
 | `Only an agent admin can apply setup changes.` | The sender can't apply changes. |
