@@ -1291,7 +1291,7 @@ Wiro writes the accounts and the mappings in one save. The discovery must be the
 
 ##### Common errors
 
-A refusal of the list rules also answers `errorcode`, as named below. The wording of its message depends on whether the list came from a sign-in or a token check; the table shows a sign-in's.
+A refusal of the list rules also answers `errorcode`, as named below. The wording of its message depends on whether the list came from a sign-in or a token check. With no list, the mode saved in `authmethod` decides, and with none saved, the credential's default mode: a token check for Facebook Pages, Instagram and Meta Ads, a sign-in for the others. The table shows a sign-in's; a token check's reads, for example, `The token check expired. Check the token again to choose the accounts.`
 
 | Error message | Cause |
 |---------------|-------|
