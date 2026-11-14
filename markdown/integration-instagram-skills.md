@@ -143,6 +143,9 @@ Response:
   "accounts": [
     { "id": "17841400000000000", "name": "my_brand" }
   ],
+  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
+  "account": "Acme System User",
+  "restart": "none",
   "errors": []
 }
 ```
@@ -277,6 +280,7 @@ Response:
 {
   "result": true,
   "authorizeUrl": "https://www.instagram.com/oauth/authorize?client_id=...&redirect_uri=...&scope=instagram_business_basic%2Cinstagram_business_content_publish%2Cinstagram_business_manage_messages%2Cinstagram_business_manage_comments%2Cinstagram_business_manage_insights&response_type=code&state=...",
+  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
   "errors": []
 }
 ```
@@ -365,9 +369,11 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 | `redirecturl` | string | OAuth only | Any HTTPS URL you control (or localhost/127.0.0.1 for dev). Direct System User validation does not use it. |
 | `authmethod` | string | No | `"api_key"` for recommended System User mode, `"own"` for customer-owned Instagram OAuth, or `"wiro"` when Wiro-managed OAuth becomes available. Send the value explicitly. |
 
-OAuth response: `{ result, authorizeUrl, errors }`. Direct response:
-`{ result, accounts: [{id, name}], errors }` with no `authorizeUrl`. A failed
-direct check returns `{ result: false, errorcode, errors }`. Read `errorcode`,
+OAuth response: `{ result, authorizeUrl, flowid, errors }`. Direct response:
+`{ result, accounts: [{id, name}], flowid, account, restart, errors }` with no
+`authorizeUrl`, where `account` is the System User's name and `restart` is
+`"none"` until the accounts are saved. A failed direct check returns
+`{ result: false, errorcode, flowid, errors }`. Read `errorcode`,
 because most failures share one message: `no_accounts` (no assigned Page
 exposes a linked Instagram professional account with `CREATE_CONTENT`),
 `too_many_instagram_accounts` (Meta listed more than 500 Pages),

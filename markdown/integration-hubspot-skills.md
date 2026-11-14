@@ -118,6 +118,7 @@ Response:
 {
   "result": true,
   "authorizeUrl": "https://app.hubspot.com/oauth/authorize?client_id=...&redirect_uri=...&scope=...&state=...",
+  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
   "errors": []
 }
 ```

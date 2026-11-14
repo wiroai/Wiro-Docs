@@ -207,6 +207,7 @@ Response:
 {
   "result": true,
   "authorizeUrl": "https://www.facebook.com/v26.0/dialog/oauth?client_id=...&redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FUserAgentOAuth%2FMetaAdsCallback&state=...&scope=ads_management%2Cads_read%2Cbusiness_management%2Cpages_show_list%2Cpages_read_engagement%2Cpages_manage_ads",
+  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
   "errors": []
 }
 ```
@@ -505,7 +506,7 @@ All endpoints require Wiro authentication: see [Authentication](/docs/authentica
 | `redirecturl` | string | OAuth only | Any HTTPS URL you control (or `http://localhost` / `http://127.0.0.1` for dev) where users return after consent. Direct System User token validation does not use this field. |
 | `authmethod` | string | No | `"api_key"` for the recommended System User token mode or `"own"` for advanced customer-owned app OAuth. Always send it: without it the request runs in Wiro mode and fails with `Wiro-managed OAuth is not enabled for Meta Ads`. |
 
-OAuth response: `{ result, authorizeUrl, errors }`. Direct System User token response: `{ result, accounts: [{id, name}], errors }` with no `authorizeUrl`. A failed direct check returns `{ result: false, errorcode, errors }`: `no_accounts` (no active ad account with both `ADVERTISE` and `ANALYZE`), `too_many_ad_accounts` (Meta listed more than 500 ad accounts), `direct_token_missing`, `direct_token_invalid`, `provider_rejected_request`, `provider_timeout` or `provider_request_failed`. A check that finds a saved token first clears the saved ad account and Page selection.
+OAuth response: `{ result, authorizeUrl, flowid, errors }`. Direct System User token response: `{ result, accounts: [{id, name}], flowid, account, restart, errors }` with no `authorizeUrl`, where `account` is the System User's name and `restart` is `"none"` until the ad accounts are saved. A failed direct check returns `{ result: false, errorcode, flowid, errors }`: `no_accounts` (no active ad account with both `ADVERTISE` and `ANALYZE`), `too_many_ad_accounts` (Meta listed more than 500 ad accounts), `direct_token_missing`, `direct_token_invalid`, `provider_rejected_request`, `provider_timeout` or `provider_request_failed`. A check that finds a saved token first clears the saved ad account and Page selection.
 
 If `result: false`, inspect `errors[0].message`. Common messages: `Request parameter [useragentguid] required`, `Request parameter [credentialkey] required`, `Request parameter [redirecturl] required` (OAuth only), `Invalid redirect URL`, `User agent not found or unauthorized`, `Wiro-managed OAuth is not enabled for Meta Ads` (no `authmethod`, or `"wiro"`), `Unsupported connection mode for Meta Ads`, and `Meta Ads credentials not configured` (own mode before `appid` and `appsecret` are saved with `CredentialUpsert`).
 

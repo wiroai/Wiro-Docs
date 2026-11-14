@@ -144,7 +144,8 @@ Response:
 {
   "result": true,
   "errors": [],
-  "authorizeUrl": "https://business-api.tiktok.com/portal/mcp-tt4b-authorize?client_id=...&redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FUserAgentOAuth%2FTikTokAdsCallback&scope=mcp%3Att4b&response_type=code&state=...&code_challenge=...&code_challenge_method=S256&resource=..."
+  "authorizeUrl": "https://business-api.tiktok.com/portal/mcp-tt4b-authorize?client_id=...&redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FUserAgentOAuth%2FTikTokAdsCallback&scope=mcp%3Att4b&response_type=code&state=...&code_challenge=...&code_challenge_method=S256&resource=...",
+  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19"
 }
 ```
 
@@ -289,7 +290,7 @@ All endpoints require Wiro authentication: see [Authentication](/docs/authentica
 | `redirecturl` | string | Yes | HTTPS URL (or `http://localhost` / `http://127.0.0.1` for development) where the browser returns after TikTok. |
 | `authmethod` | string | No | `"wiro"`: the default and the only accepted value. |
 
-Response: `{ result, errors, authorizeUrl }`. If `result: false`, inspect `errors[0].message`. Common messages: `Request parameter [useragentguid] required`, `Request parameter [credentialkey] required`, `Request parameter [redirecturl] required`, `Invalid redirect URL`, `User agent not found or unauthorized`, `Unsupported connection mode for TikTok Ads`, and `TikTok Ads credentials not configured`.
+Response: `{ result, errors, authorizeUrl, flowid }`. If `result: false`, inspect `errors[0].message`. Common messages: `Request parameter [useragentguid] required`, `Request parameter [credentialkey] required`, `Request parameter [redirecturl] required`, `Invalid redirect URL`, `User agent not found or unauthorized`, `Unsupported connection mode for TikTok Ads`, and `TikTok Ads credentials not configured`.
 
 ### GET /UserAgentOAuth/TikTokAdsCallback
 

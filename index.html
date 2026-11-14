@@ -30496,6 +30496,7 @@ admins. Wiro does not require or store an App ID/App Secret for this direct mode
 <pre><code class="language-json">{
   &quot;result&quot;: true,
   &quot;authorizeUrl&quot;: &quot;https://www.facebook.com/v26.0/dialog/oauth?client_id=...&amp;redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FUserAgentOAuth%2FMetaAdsCallback&amp;state=...&amp;scope=ads_management%2Cads_read%2Cbusiness_management%2Cpages_show_list%2Cpages_read_engagement%2Cpages_manage_ads&quot;,
+  &quot;flowid&quot;: &quot;4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19&quot;,
   &quot;errors&quot;: []
 }
 </code></pre>
@@ -30781,7 +30782,7 @@ than running ads), that's a separate integration (see the
 </table>
 </div>
 </div>
-<p>OAuth response: <code>{ result, authorizeUrl, errors }</code>. Direct System User token response: <code>{ result, accounts: [{id, name}], errors }</code> with no <code>authorizeUrl</code>. A failed direct check returns <code>{ result: false, errorcode, errors }</code>: <code>no_accounts</code> (no active ad account with both <code>ADVERTISE</code> and <code>ANALYZE</code>), <code>too_many_ad_accounts</code> (Meta listed more than 500 ad accounts), <code>direct_token_missing</code>, <code>direct_token_invalid</code>, <code>provider_rejected_request</code>, <code>provider_timeout</code> or <code>provider_request_failed</code>. A check that finds a saved token first clears the saved ad account and Page selection.</p>
+<p>OAuth response: <code>{ result, authorizeUrl, flowid, errors }</code>. Direct System User token response: <code>{ result, accounts: [{id, name}], flowid, account, restart, errors }</code> with no <code>authorizeUrl</code>, where <code>account</code> is the System User's name and <code>restart</code> is <code>"none"</code> until the ad accounts are saved. A failed direct check returns <code>{ result: false, errorcode, flowid, errors }</code>: <code>no_accounts</code> (no active ad account with both <code>ADVERTISE</code> and <code>ANALYZE</code>), <code>too_many_ad_accounts</code> (Meta listed more than 500 ad accounts), <code>direct_token_missing</code>, <code>direct_token_invalid</code>, <code>provider_rejected_request</code>, <code>provider_timeout</code> or <code>provider_request_failed</code>. A check that finds a saved token first clears the saved ad account and Page selection.</p>
 <p>If <code>result: false</code>, inspect <code>errors[0].message</code>. Common messages: <code>Request parameter [useragentguid] required</code>, <code>Request parameter [credentialkey] required</code>, <code>Request parameter [redirecturl] required</code> (OAuth only), <code>Invalid redirect URL</code>, <code>User agent not found or unauthorized</code>, <code>Wiro-managed OAuth is not enabled for Meta Ads</code> (no <code>authmethod</code>, or <code>"wiro"</code>), <code>Unsupported connection mode for Meta Ads</code>, and <code>Meta Ads credentials not configured</code> (own mode before <code>appid</code> and <code>appsecret</code> are saved with <code>CredentialUpsert</code>).</p>
 <h3 id="get-useragentoauthmetaadscallback">GET /UserAgentOAuth/MetaAdsCallback</h3>
 <p>Server-side endpoint invoked by Meta. You don't call it. You only handle the final redirect back to your <code>redirecturl</code>. The callback path is per-provider: Meta Ads's stays <code>MetaAdsCallback</code>.</p>
@@ -31407,7 +31408,8 @@ agent model.</p>
 <pre><code class="language-json">{
   &quot;result&quot;: true,
   &quot;errors&quot;: [],
-  &quot;authorizeUrl&quot;: &quot;https://business-api.tiktok.com/portal/mcp-tt4b-authorize?client_id=...&amp;redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FUserAgentOAuth%2FTikTokAdsCallback&amp;scope=mcp%3Att4b&amp;response_type=code&amp;state=...&amp;code_challenge=...&amp;code_challenge_method=S256&amp;resource=...&quot;
+  &quot;authorizeUrl&quot;: &quot;https://business-api.tiktok.com/portal/mcp-tt4b-authorize?client_id=...&amp;redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FUserAgentOAuth%2FTikTokAdsCallback&amp;scope=mcp%3Att4b&amp;response_type=code&amp;state=...&amp;code_challenge=...&amp;code_challenge_method=S256&amp;resource=...&quot;,
+  &quot;flowid&quot;: &quot;4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19&quot;
 }
 </code></pre>
 <p>Redirect the user's browser to <code>authorizeUrl</code> with a full-page redirect rather than a popup. Wiro adds the PKCE challenge itself, so you never handle a code verifier or client secret. <code>authmethod</code> can be omitted: <code>"wiro"</code> is the default and the only accepted value.</p>
@@ -31574,7 +31576,7 @@ if (params.get(&quot;tiktokads_connected&quot;) === &quot;true&quot;) {
 </table>
 </div>
 </div>
-<p>Response: <code>{ result, errors, authorizeUrl }</code>. If <code>result: false</code>, inspect <code>errors[0].message</code>. Common messages: <code>Request parameter [useragentguid] required</code>, <code>Request parameter [credentialkey] required</code>, <code>Request parameter [redirecturl] required</code>, <code>Invalid redirect URL</code>, <code>User agent not found or unauthorized</code>, <code>Unsupported connection mode for TikTok Ads</code>, and <code>TikTok Ads credentials not configured</code>.</p>
+<p>Response: <code>{ result, errors, authorizeUrl, flowid }</code>. If <code>result: false</code>, inspect <code>errors[0].message</code>. Common messages: <code>Request parameter [useragentguid] required</code>, <code>Request parameter [credentialkey] required</code>, <code>Request parameter [redirecturl] required</code>, <code>Invalid redirect URL</code>, <code>User agent not found or unauthorized</code>, <code>Unsupported connection mode for TikTok Ads</code>, and <code>TikTok Ads credentials not configured</code>.</p>
 <h3 id="get-useragentoauthtiktokadscallback">GET /UserAgentOAuth/TikTokAdsCallback</h3>
 <p>Server-side endpoint invoked by TikTok. You don't call it. You only handle the final redirect back to your <code>redirecturl</code>. The callback path is per-provider: TikTok Ads's is <code>TikTokAdsCallback</code>, separate from the organic TikTok integration's <code>TikTokCallback</code>.</p>
 <div class="docs-param-table">
@@ -31910,7 +31912,7 @@ if (params.get(&quot;tiktokads_connected&quot;) === &quot;true&quot;) {
   }'
 </code></pre>
 <p>This is a server-side credential exchange and probe, not a browser redirect. Wiro submits the Shopify client-credentials form (<code>grant_type=client_credentials</code>, Client ID, and Client Secret) to the canonical shop, receives an access token whose <code>expires_in</code> is exactly <code>86399</code> seconds, verifies the shop identity, and stores the connection. Running agents re-exchange the client credentials before expiry; the Client Secret is never sent to the GraphQL Admin API.</p>
-<p>The response is <code>{ "result": true, "errors": [], "accounts": [] }</code>. Shopify has no account picker, so there is nothing to select; <code>OAuthStatus</code> then reports <code>connected: true</code> with the shop name in <code>accounts[0]</code>. If the check fails, the response has <code>result: false</code>, a message asking you to check the <code>myshopify.com</code> domain, the app's organization and its Admin API scopes, and an <code>errorcode</code>. <code>direct_token_missing</code> means <code>authmethod</code> is not saved as <code>"api_key"</code> or one of the three fields is empty. Any other code, such as <code>provider_rejected_request</code> or <code>direct_token_invalid</code>, means the exchange or the shop check failed, and any earlier Shopify connection on the agent is cleared too.</p>
+<p>The response is <code>{ "result": true, "errors": [], "accounts": [], "flowid": "...", "account": "...", "restart": "scheduled" }</code>, where <code>account</code> is the store's name and <code>restart</code> says whether the check restarted a running agent. Shopify has no account picker, so there is nothing to select; <code>OAuthStatus</code> then reports <code>connected: true</code> with the shop name in <code>accounts[0]</code>. If the check fails, the response has <code>result: false</code>, a message asking you to check the <code>myshopify.com</code> domain, the app's organization and its Admin API scopes, and an <code>errorcode</code>. <code>direct_token_missing</code> means <code>authmethod</code> is not saved as <code>"api_key"</code> or one of the three fields is empty. Any other code, such as <code>provider_rejected_request</code> or <code>direct_token_invalid</code>, means the exchange or the shop check failed, and any earlier Shopify connection on the agent is cleared too.</p>
 <h2 id="option-b-customer-owned-app-oauth">Option B: Customer-owned app OAuth</h2>
 <h3 id="1-configure-the-shopify-app">1. Configure the Shopify app</h3>
 <p>Create or select the customer's app in the Shopify Dev Dashboard and add this exact redirect URL:</p>
@@ -32408,6 +32410,9 @@ if (params.get(&quot;tiktokads_connected&quot;) === &quot;true&quot;) {
     { "id": "123", "name": "Main Page" },
     { "id": "456", "name": "Regional Page" }
   ],
+  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
+  "account": "Acme System User",
+  "restart": "none",
   "errors": []
 }</code></pre>
                     <p>Only Page IDs and names are returned. Wiro keeps the System User token and all derived Page access tokens server-side. A valid token with no assigned Page carrying <code>CREATE_CONTENT</code> returns an error instead of an empty successful connection.</p>
@@ -32536,6 +32541,7 @@ if (params.get(&quot;tiktokads_connected&quot;) === &quot;true&quot;) {
                     <pre><code>{
   "result": true,
   "authorizeUrl": "https://www.facebook.com/v26.0/dialog/oauth?client_id=...&amp;redirect_uri=...&amp;scope=pages_show_list%2Cpages_manage_posts%2Cpublish_video%2Cpages_manage_engagement%2Cpages_read_engagement%2Cpages_read_user_content%2Cpages_manage_metadata%2Cpages_messaging&amp;auth_type=rerequest&amp;response_type=code&amp;state=...",
+  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
   "errors": []
 }</code></pre>
                     <p>Redirect the user's browser to <code>authorizeUrl</code>. State has a 15-minute TTL.</p>
@@ -32690,7 +32696,7 @@ if (params.get("fb_connected") === "true") {
                         </tbody>
                       </table>
                     </div>
-                    <p>OAuth response: <code>{ result, authorizeUrl, errors }</code>. Direct response: <code>{ result, accounts: [{id, name}], errors }</code> with no <code>authorizeUrl</code>. A failed direct check returns <code>{ result: false, errorcode, errors }</code>. Read <code>errorcode</code>, because most failures share one message: <code>no_pages</code> (no assigned Page with <code>CREATE_CONTENT</code>), <code>too_many_pages</code> (Meta listed more than 500 Pages), <code>direct_token_missing</code> (no <code>systemusertoken</code> saved, or the saved <code>authmethod</code> is not <code>"api_key"</code>), <code>direct_token_invalid</code> or <code>provider_rejected_request</code> (Meta refused the token or the request), <code>provider_timeout</code> or <code>provider_request_failed</code> (Meta did not answer). Other codes mean the check could not finish; try again. A check that finds a saved token first clears the saved Page selection, so call <code>SetPickerAccounts</code> after every successful check.</p>
+                    <p>OAuth response: <code>{ result, authorizeUrl, flowid, errors }</code>. Direct response: <code>{ result, accounts: [{id, name}], flowid, account, restart, errors }</code> with no <code>authorizeUrl</code>, where <code>account</code> is the System User's name and <code>restart</code> is <code>"none"</code> until the Pages are saved. A failed direct check returns <code>{ result: false, errorcode, flowid, errors }</code>. Read <code>errorcode</code>, because most failures share one message: <code>no_pages</code> (no assigned Page with <code>CREATE_CONTENT</code>), <code>too_many_pages</code> (Meta listed more than 500 Pages), <code>direct_token_missing</code> (no <code>systemusertoken</code> saved, or the saved <code>authmethod</code> is not <code>"api_key"</code>), <code>direct_token_invalid</code> or <code>provider_rejected_request</code> (Meta refused the token or the request), <code>provider_timeout</code> or <code>provider_request_failed</code> (Meta did not answer). Other codes mean the check could not finish; try again. A check that finds a saved token first clears the saved Page selection, so call <code>SetPickerAccounts</code> after every successful check.</p>
 
                     <h3>GET /UserAgentOAuth/FBCallback</h3>
                     <p>Server-side. Query params appended to your <code>redirecturl</code>:</p>
@@ -33031,6 +33037,9 @@ if (params.get("fb_connected") === "true") {
   "accounts": [
     { "id": "17841400000000000", "name": "my_brand" }
   ],
+  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
+  "account": "Acme System User",
+  "restart": "none",
   "errors": []
 }</code></pre>
                     <p>Only public IDs and usernames are returned. The System User and derived Page tokens stay server-side.</p>
@@ -33158,6 +33167,7 @@ if (params.get("fb_connected") === "true") {
                     <pre><code>{
   "result": true,
   "authorizeUrl": "https://www.instagram.com/oauth/authorize?client_id=...&amp;redirect_uri=...&amp;scope=instagram_business_basic%2Cinstagram_business_content_publish%2Cinstagram_business_manage_messages%2Cinstagram_business_manage_comments%2Cinstagram_business_manage_insights&amp;response_type=code&amp;state=...",
+  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
   "errors": []
 }</code></pre>
 
@@ -33252,7 +33262,7 @@ if (params.get("ig_connected") === "true") {
                         </tbody>
                       </table>
                     </div>
-                    <p>OAuth response: <code>{ result, authorizeUrl, errors }</code>. Direct response: <code>{ result, accounts: [{id, name}], errors }</code> with no <code>authorizeUrl</code>. A failed direct check returns <code>{ result: false, errorcode, errors }</code>. Read <code>errorcode</code>, because most failures share one message: <code>no_accounts</code> (no assigned Page exposes a linked Instagram professional account with <code>CREATE_CONTENT</code>), <code>too_many_instagram_accounts</code> (Meta listed more than 500 Pages), <code>direct_token_missing</code> (no <code>systemusertoken</code> saved, or the saved <code>authmethod</code> is not <code>"api_key"</code>), <code>direct_token_invalid</code> or <code>provider_rejected_request</code> (Meta refused the token or the request), <code>provider_timeout</code> or <code>provider_request_failed</code> (Meta did not answer). Other codes mean the check could not finish; try again. A check that finds a saved token first clears the saved account selection, so call <code>SetPickerAccounts</code> after every successful check.</p>
+                    <p>OAuth response: <code>{ result, authorizeUrl, flowid, errors }</code>. Direct response: <code>{ result, accounts: [{id, name}], flowid, account, restart, errors }</code> with no <code>authorizeUrl</code>, where <code>account</code> is the System User's name and <code>restart</code> is <code>"none"</code> until the accounts are saved. A failed direct check returns <code>{ result: false, errorcode, flowid, errors }</code>. Read <code>errorcode</code>, because most failures share one message: <code>no_accounts</code> (no assigned Page exposes a linked Instagram professional account with <code>CREATE_CONTENT</code>), <code>too_many_instagram_accounts</code> (Meta listed more than 500 Pages), <code>direct_token_missing</code> (no <code>systemusertoken</code> saved, or the saved <code>authmethod</code> is not <code>"api_key"</code>), <code>direct_token_invalid</code> or <code>provider_rejected_request</code> (Meta refused the token or the request), <code>provider_timeout</code> or <code>provider_request_failed</code> (Meta did not answer). Other codes mean the check could not finish; try again. A check that finds a saved token first clears the saved account selection, so call <code>SetPickerAccounts</code> after every successful check.</p>
 
                     <h3>GET /UserAgentOAuth/IGCallback</h3>
                     <p>Server-side. Query params appended to your <code>redirecturl</code>:</p>
@@ -33620,6 +33630,7 @@ if (params.get("ig_connected") === "true") {
                     <pre><code>{
   "result": true,
   "authorizeUrl": "https://www.linkedin.com/oauth/v2/authorization?response_type=code&amp;client_id=...&amp;redirect_uri=...&amp;scope=openid%20profile%20w_organization_social%20r_organization_social&amp;state=...",
+  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
   "errors": []
 }</code></pre>
 
@@ -33990,6 +34001,7 @@ if (params.get("li_connected") === "true") {
                     <pre><code>{
   "result": true,
   "authorizeUrl": "https://x.com/i/oauth2/authorize?response_type=code&amp;client_id=...&amp;redirect_uri=...&amp;scope=tweet.read%20tweet.write%20users.read%20offline.access&amp;state=...&amp;code_challenge=...&amp;code_challenge_method=S256",
+  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
   "errors": []
 }</code></pre>
                     <div class="info-callout">
@@ -34330,6 +34342,7 @@ if (params.get("x_connected") === "true") {
                     <pre><code>{
   "result": true,
   "authorizeUrl": "https://www.tiktok.com/v2/auth/authorize/?client_key=...&amp;scope=user.info.basic,video.publish&amp;response_type=code&amp;redirect_uri=...&amp;state=...",
+  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
   "errors": []
 }</code></pre>
 
@@ -34659,6 +34672,7 @@ if (params.get("x_connected") === "true") {
                     <pre><code>{
   "result": true,
   "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth?client_id=...&amp;redirect_uri=...&amp;response_type=code&amp;scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fadwords&amp;state=...&amp;access_type=offline&amp;prompt=select_account+consent",
+  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
   "errors": []
 }</code></pre>
                     <p>Scope is a single string: <code>https://www.googleapis.com/auth/adwords</code>. <code>access_type=offline</code> with <code>prompt=select_account consent</code> makes Google ask which Google account to connect and issue a refresh token every time.</p>
@@ -35325,7 +35339,7 @@ Agent → POST /youtubeAnalytics/v2/reports
     "redirecturl": "https://your-app.com/settings/integrations",
     "authmethod": "own"
   }'</code></pre>
-                    <p>The response returns <code>{ result: true, authorizeUrl: "..." }</code>. Redirect the user to <code>authorizeUrl</code>. Google asks which Google account to connect, even when the browser is already signed in to one.</p>
+                    <p>The response returns <code>{ result: true, authorizeUrl: "...", flowid: "..." }</code>. Redirect the user to <code>authorizeUrl</code>. Google asks which Google account to connect, even when the browser is already signed in to one.</p>
 
                     <h3>Step 4: Property Picker</h3>
                     <p>After consent, the user returns with <code>?ga4_connected=true&amp;ga4_properties=&lt;URL-encoded-JSON&gt;</code>. Each entry is <code>{ id, displayName, account, propertyType }</code>: <code>id</code> is the property number, <code>displayName</code> the property name, <code>account</code> the name of the GA4 account that owns it, and <code>propertyType</code> Google's property type (for example <code>PROPERTY_TYPE_ORDINARY</code>). Map the user's choice to the picker shape and call <code>SetPickerAccounts</code>:</p>
@@ -35740,7 +35754,7 @@ Agent → POST /v1beta/properties/123456789:runReport
     "redirecturl": "https://your-app.com/settings/integrations",
     "authmethod": "own"
   }'</code></pre>
-                    <p>The response returns <code>{ result: true, authorizeUrl: "..." }</code>. Redirect the user to <code>authorizeUrl</code>. Google asks which Google account to connect, even when the browser is already signed in to one.</p>
+                    <p>The response returns <code>{ result: true, authorizeUrl: "...", flowid: "..." }</code>. Redirect the user to <code>authorizeUrl</code>. Google asks which Google account to connect, even when the browser is already signed in to one.</p>
 
                     <h3>Step 5: Save the account selection</h3>
                     <p>After consent the user returns with <code>?mc_connected=true&amp;mc_accounts=&lt;URL-encoded-JSON&gt;</code>. Each entry is <code>{ id, name, websiteUrl }</code>: <code>id</code> is the numeric Merchant Center ID, <code>name</code> is the account name and can be empty, and <code>websiteUrl</code> is always empty. When <code>name</code> is empty, label the account with its ID. Send the user's choice to <code>SetPickerAccounts</code> as <code>{ merchantid, accountname }</code> (<code>id</code> becomes <code>merchantid</code>, <code>name</code> becomes <code>accountname</code>):</p>
@@ -36055,7 +36069,8 @@ Agent → POST /v1beta/properties/123456789:runReport
                     <pre><code class="language-json">{
   "result": true,
   "errors": [],
-  "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth?client_id=...&amp;redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FUserAgentOAuth%2FGBPCallback&amp;response_type=code&amp;scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fbusiness.manage&amp;state=...&amp;access_type=offline&amp;prompt=select_account+consent"
+  "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth?client_id=...&amp;redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FUserAgentOAuth%2FGBPCallback&amp;response_type=code&amp;scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fbusiness.manage&amp;state=...&amp;access_type=offline&amp;prompt=select_account+consent",
+  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19"
 }</code></pre>
                     <p>Redirect the user's browser to <code>authorizeUrl</code> with a full-page redirect rather than a popup. Wiro requests the <code>business.manage</code> scope with offline access, so Google issues a refresh token. Google asks which Google account to connect, even when the browser is already signed in to one.</p>
                     <p>Always send <code>authmethod: "own"</code>. Without it, or with <code>"wiro"</code>, <code>OAuthConnect</code> returns <code>Wiro-managed OAuth is not enabled for Google Business Profile</code>.</p>
@@ -36298,7 +36313,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
                         </table>
                       </div>
                     </div>
-                    <p>Response: <code>{ result, errors, authorizeUrl }</code>. If <code>result: false</code>, inspect <code>errors[0].message</code>. Common messages: <code>Invalid redirect URL</code>, <code>User agent not found or unauthorized</code>, <code>Wiro-managed OAuth is not enabled for Google Business Profile</code> (no <code>authmethod</code>, or <code>"wiro"</code>), and <code>Google Business Profile credentials not configured</code> (the Client ID or Client Secret is not saved).</p>
+                    <p>Response: <code>{ result, errors, authorizeUrl, flowid }</code>. If <code>result: false</code>, inspect <code>errors[0].message</code>. Common messages: <code>Invalid redirect URL</code>, <code>User agent not found or unauthorized</code>, <code>Wiro-managed OAuth is not enabled for Google Business Profile</code> (no <code>authmethod</code>, or <code>"wiro"</code>), and <code>Google Business Profile credentials not configured</code> (the Client ID or Client Secret is not saved).</p>
 
                     <h3>GET /UserAgentOAuth/GBPCallback</h3>
                     <p>Server-side endpoint invoked by Google. You don't call it: you register it as the Authorized redirect URI of your OAuth client and handle the final redirect back to your <code>redirecturl</code>.</p>
@@ -36666,6 +36681,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
                     <pre><code>{
   "result": true,
   "authorizeUrl": "https://app.hubspot.com/oauth/authorize?client_id=...&amp;redirect_uri=...&amp;scope=...&amp;state=...",
+  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
   "errors": []
 }</code></pre>
 
@@ -36968,6 +36984,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/SetPickerAccounts" \
                     <pre><code>{
   "result": true,
   "authorizeUrl": "https://login.mailchimp.com/oauth2/authorize?response_type=code&amp;client_id=...&amp;redirect_uri=...&amp;state=...",
+  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
   "errors": []
 }</code></pre>
                     <p>No <code>scope</code> parameter: Mailchimp OAuth doesn't use scopes.</p>

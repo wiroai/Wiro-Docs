@@ -196,7 +196,8 @@ Response:
 {
   "result": true,
   "errors": [],
-  "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth?client_id=...&redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FUserAgentOAuth%2FGBPCallback&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fbusiness.manage&state=...&access_type=offline&prompt=select_account+consent"
+  "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth?client_id=...&redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FUserAgentOAuth%2FGBPCallback&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fbusiness.manage&state=...&access_type=offline&prompt=select_account+consent",
+  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19"
 }
 ```
 
@@ -475,7 +476,7 @@ All endpoints require Wiro authentication: see [Authentication](/docs/authentica
 | `redirecturl` | string | Yes | Any HTTPS URL you control (or `http://localhost` / `http://127.0.0.1` for development) where the browser returns after Google. |
 | `authmethod` | string | Yes | `"own"`, the only available mode. |
 
-Response: `{ result, errors, authorizeUrl }`. If `result: false`, inspect `errors[0].message`. Common messages: `Invalid redirect URL`, `User agent not found or unauthorized`, `Wiro-managed OAuth is not enabled for Google Business Profile` (no `authmethod`, or `"wiro"`), and `Google Business Profile credentials not configured` (the Client ID or Client Secret is not saved).
+Response: `{ result, errors, authorizeUrl, flowid }`. If `result: false`, inspect `errors[0].message`. Common messages: `Invalid redirect URL`, `User agent not found or unauthorized`, `Wiro-managed OAuth is not enabled for Google Business Profile` (no `authmethod`, or `"wiro"`), and `Google Business Profile credentials not configured` (the Client ID or Client Secret is not saved).
 
 ### GET /UserAgentOAuth/GBPCallback
 

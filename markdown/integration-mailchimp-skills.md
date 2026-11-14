@@ -86,6 +86,7 @@ Response:
 {
   "result": true,
   "authorizeUrl": "https://login.mailchimp.com/oauth2/authorize?response_type=code&client_id=...&redirect_uri=...&state=...",
+  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
   "errors": []
 }
 ```
