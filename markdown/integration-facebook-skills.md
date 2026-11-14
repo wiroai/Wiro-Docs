@@ -318,6 +318,7 @@ Response:
   "accounts": [
     { "id": "456", "name": "Page B" }
   ],
+  "restart": "scheduled",
   "errors": []
 }
 ```
@@ -420,7 +421,7 @@ The callback path is per-provider: Facebook's stays `FBCallback`.
 | `credentialkey` | string | Yes | `"facebook-pages"`. |
 | `accounts` | array | Yes | One or more `{ pageid, fbpagename }` entries. The per-page access token is resolved from the latest server-side OAuth or System User discovery result, so don't supply it. |
 
-Response: `{ result, accounts: [{id, name}, ...], errors }`. Triggers auto-restart if running.
+Response: `{ result, accounts: [{id, name}, ...], restart, errors }`. The save that completes the connection restarts a running agent once (`restart: "scheduled"`), and a save that changes nothing restarts nothing.
 
 > Call within **15 minutes** of the OAuth callback or direct
 > `OAuthConnect` discovery. A successful call uses up that discovery result, so

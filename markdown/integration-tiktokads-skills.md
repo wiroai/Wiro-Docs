@@ -209,7 +209,8 @@ Response:
   "errors": [],
   "accounts": [
     { "id": "7012345678901234567", "name": "Brand X" }
-  ]
+  ],
+  "restart": "scheduled"
 }
 ```
 
@@ -308,7 +309,7 @@ Server-side endpoint invoked by TikTok. You don't call it. You only handle the f
 | `credentialkey` | string | Yes | `"tiktok-ads"`. |
 | `accounts` | array | Yes | One or more `{ advertiserid, advertisername }` entries. `advertiserid` is the numeric advertiser ID (non-digits stripped); Wiro saves the name from its list as `advertisername`, the display name shown in dashboards and `OAuthStatus` responses. |
 
-Response: `{ result, errors, accounts: [{id, name}, ...] }`. Replaces the previous selection and triggers an automatic agent restart if the agent was running. Returns `The sign-in expired. Sign in again to choose the accounts.` (`errorcode: "flow_expired"`) when no sign-in's list is open: none was completed, it was more than 15 minutes ago, or a save already used it.
+Response: `{ result, errors, accounts: [{id, name}, ...], restart }`. Replaces the previous selection. The save that completes the connection restarts a running agent once (`restart: "scheduled"`), and a save that changes nothing restarts nothing. Returns `The sign-in expired. Sign in again to choose the accounts.` (`errorcode: "flow_expired"`) when no sign-in's list is open: none was completed, it was more than 15 minutes ago, or a save already used it.
 
 ### POST /UserAgentOAuth/OAuthStatus
 

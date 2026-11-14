@@ -402,8 +402,8 @@ Used only by direct System User mode after `OAuthConnect` discovery.
 | `accounts` | array | Yes | One or more `{ accountId, igusername }` entries from the latest discovery response (`accountId` is its `id`; Wiro saves its `name` from the list as `igusername`, so a name you send is not read). Do not supply access tokens. |
 
 Call within 15 minutes of direct discovery. The response contains
-`{ result, accounts: [{id, name}], errors }` and restarts a running agent after
-the selection is persisted.
+`{ result, accounts: [{id, name}], restart, errors }`. The save that completes
+the connection restarts a running agent once (`restart: "scheduled"`).
 
 ### POST /UserAgentOAuth/OAuthStatus
 

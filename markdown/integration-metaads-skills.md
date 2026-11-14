@@ -279,6 +279,7 @@ Response:
   "accounts": [
     { "id": "123456789", "name": "My Ad Account" }
   ],
+  "restart": "scheduled",
   "errors": []
 }
 ```
@@ -530,7 +531,7 @@ Root ad-account selection:
 | `credentialkey` | string | Yes | `"meta-ads"`. |
 | `accounts` | array | Yes | One or more `{ adaccountid, adaccountname }` entries. `adaccountid` must be without the `act_` prefix (prefix stripped automatically if sent); Wiro saves the name from its list as `adaccountname`, the display name shown in dashboards and `OAuthStatus` responses. |
 
-Response: `{ result, accounts: [{id, name}, ...], errors }`. Triggers an automatic agent restart if the agent was running.
+Response: `{ result, accounts: [{id, name}, ...], restart, errors }`. The save that completes the connection restarts a running agent once (`restart: "scheduled"`), and a save that changes nothing restarts nothing.
 
 Chained Page selection, after `DiscoverPickerItems`:
 
@@ -542,7 +543,7 @@ Chained Page selection, after `DiscoverPickerItems`:
 | `selections` | array | Yes | One `{ parentvalue, items }` entry for every discovery group without an `errorcode`. `parentvalue` is the ad account ID; each item carries `pageid` and `pagename` exactly as discovered, or `itemids` holds the Page IDs. Empty `items` is allowed because Pages are optional. |
 
 Response:
-`{ result, pickerkey: "pages", pagemappings: [{adaccountid, adaccountname, pageid, pagename}], errors }`.
+`{ result, pickerkey: "pages", pagemappings: [{adaccountid, adaccountname, pageid, pagename}], restart, errors }`.
 
 Both stages in one call: send `accountids` (or `accounts`), `flowid`, `pickerkey` and `selections` together, after `DiscoverPickerItems` with the same ad accounts in `parents`. Response: `{ result, accounts: [{id, name}, ...], pickerkey: "pages", pagemappings, restart, errors }`.
 
