@@ -559,7 +559,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthDisconnect" \
   }'
 ```
 
-Response: `{ "result": true, "errors": [] }`. Running agents restart automatically.
+Response: `{ "result": true, "errors": [] }`. A starting or running agent restarts when the disconnect removes a token or the connection was complete. Otherwise, for example with only the app keys saved, it restarts nothing.
 
 ### Token lifecycle
 
