@@ -79,6 +79,7 @@ One row per page, in sidebar order. Each path is live under `https://wiro.ai`.
 | Agent WebSocket | `/docs/agent-websocket` | [agent-websocket.md](./markdown/agent-websocket.md) |
 | Agent Webhooks | `/docs/agent-webhooks` | [agent-webhooks.md](./markdown/agent-webhooks.md) |
 | Agent Credentials & OAuth | `/docs/agent-credentials` | [agent-credentials.md](./markdown/agent-credentials.md) |
+| Agent Chat Integration | `/docs/agent-chat-integration` | [agent-chat-integration.md](./markdown/agent-chat-integration.md) |
 | Agent Skills | `/docs/agent-skills` | [agent-skills.md](./markdown/agent-skills.md) |
 | Agent Transactions | `/docs/agent-transactions` | [agent-transactions.md](./markdown/agent-transactions.md) |
 | Agent Logs | `/docs/agent-logs` | [agent-logs.md](./markdown/agent-logs.md) |
