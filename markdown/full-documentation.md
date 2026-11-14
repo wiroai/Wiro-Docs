@@ -17555,7 +17555,7 @@ A reply is an ordered list of blocks. Keep a map keyed by `blockid`, keep a bloc
 
 Setup blocks have `callindex: 1000000`, so they sort after the reply's other blocks, in the order the agent proposed them, at most three per message. Skip a block whose `type` you don't know. The block fields are listed in [Public timeline block fields](/docs/agent-messaging#public-timeline-block-fields).
 
-Wiro cleans the agent's text before it reaches you, in the blocks, in `response` and in every event: a link to a private address or into the agent's own system reads `[link removed]`, and a path inside the agent's system reads `[private detail removed]`. A turn in which the agent wrote nothing can read `No response from the agent.` Show these as they are, or your own words. Public links stay as written, the Wiro AI Models links of [Your product shows everything](#your-product-shows-everything) included.
+Wiro cleans the agent's text before it reaches you, in the blocks, in `response` and in every event: a link to a private address or into the agent's own system reads `[link removed]`, and a path inside the agent's system reads `[private detail removed]`. A turn in which the agent wrote nothing, older ones included, can read `No response from agent.` Show these as they are, or your own words. Public links stay as written, the Wiro AI Models links of [Your product shows everything](#your-product-shows-everything) included.
 
 ### Replies the API answers itself
 
