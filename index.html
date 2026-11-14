@@ -25540,7 +25540,7 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect&quot; \
 <p><code>mc_error_detail</code> is the only detail parameter. It comes with <code>mc_error=no_accounts</code> when Google answered the Merchant Center account list with an error, and holds Google's error status or code, such as <code>PERMISSION_DENIED</code> or <code>403</code>, never the message.</p>
 <p><strong>Picker lists:</strong> <code>fb_pages</code>, <code>gads_accounts</code>, <code>metaads_accounts</code>, <code>tiktokads_advertisers</code>, <code>mc_accounts</code>, <code>yt_channels</code>, <code>ga4_properties</code> and <code>gbp_accounts</code> are always present on success and hold at least one item. When the provider lists nothing to pick, Wiro saves nothing and the callback sends <code>&lt;prefix&gt;_error=no_accounts</code> instead (<code>fb_error=no_pages</code> for Facebook Pages). For example, the Google user has no Google Ads account, YouTube channel or GA4 property, or the Google Ads developer token is missing or not approved. <a href="#picker-data-from-the-redirect">Picker data from the redirect</a> lists the fields of each item.</p>
 <p><strong>Empty values are left out:</strong> Wiro never sends a parameter with an empty value. <code>x_username</code>, <code>tiktok_username</code>, <code>ig_username</code>, <code>li_name</code>, <code>hubspot_portal</code>, <code>hubspot_name</code>, <code>mailchimp_account</code>, <code>shopify_shop</code> and <code>shopify_name</code> come from a profile lookup after the token exchange. When that lookup fails, the parameter is missing but <code>&lt;prefix&gt;_connected=true</code> is still sent, so read these with a fallback. <code>reddit_username</code> is always present on success: if Wiro cannot read the Reddit account, the callback returns <code>reddit_error=developer_profile_mismatch</code> instead.</p>
-<p><strong>List size:</strong> some lists hold only the provider's first page: Google Business Profile up to 20 accounts, Merchant Center up to 100 accounts, GA4 the properties of up to 200 accounts, YouTube up to 50 channels, and Facebook Pages through Facebook Login the first page Meta returns (25 Pages by default). Meta Ads and TikTok Ads list up to 500 and send <code>too_many_ad_accounts</code> or <code>account_list_too_large</code> above that. Google Ads lists every customer the user can access directly. The list travels in the query string, and each item adds about 90 to 110 bytes, so 200 ad accounts make a URL of about 20 KB. Make sure the server behind your <code>redirecturl</code> accepts URLs that long; many servers refuse them with their default limits.</p>
+<p><strong>List size:</strong> some lists hold only the provider's first page: Google Business Profile up to 20 accounts, Merchant Center up to 100 accounts, GA4 the properties of up to 200 accounts, YouTube up to 50 channels, and Facebook Pages through Facebook Login the first page Meta returns (25 Pages by default). Meta Ads and TikTok Ads list up to 500 and send <code>too_many_ad_accounts</code> or <code>account_list_too_large</code> above that. Google Ads lists every customer the user can access directly. A list of more than 2,000 accounts on any credential fails with <code>account_list_too_large</code>, and nothing is saved. The list travels in the query string, and each item adds about 90 to 110 bytes, so 200 ad accounts make a URL of about 20 KB. Make sure the server behind your <code>redirecturl</code> accepts URLs that long; many servers refuse them with their default limits.</p>
 </blockquote>
 <p>Common error codes across providers:</p>
 <div class="docs-param-table">
@@ -25634,8 +25634,8 @@ curl -X POST &quot;https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect&quot; \
 </tr>
 <tr>
 <td><code>account_list_too_large</code></td>
-<td>TikTok Ads</td>
-<td>TikTok returned more than 500 advertisers.</td>
+<td>TikTok Ads, and any credential with an account picker</td>
+<td>TikTok returned more than 500 advertisers, or the provider listed more than 2,000 accounts to pick from. Nothing is saved.</td>
 </tr>
 <tr>
 <td><code>invalid_signature</code></td>
@@ -34880,6 +34880,11 @@ if (params.get("gads_connected") === "true") {
                             <td><code>no_accounts</code></td>
                             <td>Sign-in worked, but Google listed no Google Ads customer for this user, and nothing was saved. A missing or refused developer token, or a Google Ads API that isn't enabled in your project, ends here too.</td>
                             <td>Check the <code>developertoken</code> from Step 4 and its access level, and that the Google Ads API is enabled, then connect again with a Google user who can open the account.</td>
+                          </tr>
+                          <tr>
+                            <td><code>account_list_too_large</code></td>
+                            <td>Google listed more than 2,000 customers for this user, and nothing was saved.</td>
+                            <td>Connect with a Google user who can open fewer customers directly.</td>
                           </tr>
                           <tr>
                             <td><code>Wiro-managed OAuth is not enabled for Google Ads</code></td>
