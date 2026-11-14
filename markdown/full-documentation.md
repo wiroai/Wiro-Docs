@@ -19878,6 +19878,7 @@ Response:
 {
   "result": true,
   "authorizeUrl": "https://www.facebook.com/v26.0/dialog/oauth?client_id=...&redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FUserAgentOAuth%2FMetaAdsCallback&state=...&scope=ads_management%2Cads_read%2Cbusiness_management%2Cpages_show_list%2Cpages_read_engagement%2Cpages_manage_ads",
+  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
   "errors": []
 }
 ```
@@ -20176,7 +20177,7 @@ All endpoints require Wiro authentication: see [Authentication](/docs/authentica
 | `redirecturl` | string | OAuth only | Any HTTPS URL you control (or `http://localhost` / `http://127.0.0.1` for dev) where users return after consent. Direct System User token validation does not use this field. |
 | `authmethod` | string | No | `"api_key"` for the recommended System User token mode or `"own"` for advanced customer-owned app OAuth. Always send it: without it the request runs in Wiro mode and fails with `Wiro-managed OAuth is not enabled for Meta Ads`. |
 
-OAuth response: `{ result, authorizeUrl, errors }`. Direct System User token response: `{ result, accounts: [{id, name}], errors }` with no `authorizeUrl`. A failed direct check returns `{ result: false, errorcode, errors }`: `no_accounts` (no active ad account with both `ADVERTISE` and `ANALYZE`), `too_many_ad_accounts` (Meta listed more than 500 ad accounts), `direct_token_missing`, `direct_token_invalid`, `provider_rejected_request`, `provider_timeout` or `provider_request_failed`. A check that finds a saved token first clears the saved ad account and Page selection.
+OAuth response: `{ result, authorizeUrl, flowid, errors }`. Direct System User token response: `{ result, accounts: [{id, name}], flowid, account, restart, errors }` with no `authorizeUrl`, where `account` is the System User's name and `restart` is `"none"` until the ad accounts are saved. A failed direct check returns `{ result: false, errorcode, flowid, errors }`: `no_accounts` (no active ad account with both `ADVERTISE` and `ANALYZE`), `too_many_ad_accounts` (Meta listed more than 500 ad accounts), `direct_token_missing`, `direct_token_invalid`, `provider_rejected_request`, `provider_timeout` or `provider_request_failed`. A check that finds a saved token first clears the saved ad account and Page selection.
 
 If `result: false`, inspect `errors[0].message`. Common messages: `Request parameter [useragentguid] required`, `Request parameter [credentialkey] required`, `Request parameter [redirecturl] required` (OAuth only), `Invalid redirect URL`, `User agent not found or unauthorized`, `Wiro-managed OAuth is not enabled for Meta Ads` (no `authmethod`, or `"wiro"`), `Unsupported connection mode for Meta Ads`, and `Meta Ads credentials not configured` (own mode before `appid` and `appsecret` are saved with `CredentialUpsert`).
 
@@ -20505,7 +20506,8 @@ Response:
 {
   "result": true,
   "errors": [],
-  "authorizeUrl": "https://business-api.tiktok.com/portal/mcp-tt4b-authorize?client_id=...&redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FUserAgentOAuth%2FTikTokAdsCallback&scope=mcp%3Att4b&response_type=code&state=...&code_challenge=...&code_challenge_method=S256&resource=..."
+  "authorizeUrl": "https://business-api.tiktok.com/portal/mcp-tt4b-authorize?client_id=...&redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FUserAgentOAuth%2FTikTokAdsCallback&scope=mcp%3Att4b&response_type=code&state=...&code_challenge=...&code_challenge_method=S256&resource=...",
+  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19"
 }
 ```
 
@@ -20650,7 +20652,7 @@ All endpoints require Wiro authentication: see [Authentication](/docs/authentica
 | `redirecturl` | string | Yes | HTTPS URL (or `http://localhost` / `http://127.0.0.1` for development) where the browser returns after TikTok. |
 | `authmethod` | string | No | `"wiro"`: the default and the only accepted value. |
 
-Response: `{ result, errors, authorizeUrl }`. If `result: false`, inspect `errors[0].message`. Common messages: `Request parameter [useragentguid] required`, `Request parameter [credentialkey] required`, `Request parameter [redirecturl] required`, `Invalid redirect URL`, `User agent not found or unauthorized`, `Unsupported connection mode for TikTok Ads`, and `TikTok Ads credentials not configured`.
+Response: `{ result, errors, authorizeUrl, flowid }`. If `result: false`, inspect `errors[0].message`. Common messages: `Request parameter [useragentguid] required`, `Request parameter [credentialkey] required`, `Request parameter [redirecturl] required`, `Invalid redirect URL`, `User agent not found or unauthorized`, `Unsupported connection mode for TikTok Ads`, and `TikTok Ads credentials not configured`.
 
 ### GET /UserAgentOAuth/TikTokAdsCallback
 
@@ -20900,6 +20902,9 @@ Response:
     { "id": "123", "name": "Main Page" },
     { "id": "456", "name": "Regional Page" }
   ],
+  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
+  "account": "Acme System User",
+  "restart": "none",
   "errors": []
 }
 ```
@@ -21029,6 +21034,7 @@ Response:
 {
   "result": true,
   "authorizeUrl": "https://www.facebook.com/v26.0/dialog/oauth?client_id=...&redirect_uri=...&scope=pages_show_list%2Cpages_manage_posts%2Cpublish_video%2Cpages_manage_engagement%2Cpages_read_engagement%2Cpages_read_user_content%2Cpages_manage_metadata%2Cpages_messaging&auth_type=rerequest&response_type=code&state=...",
+  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
   "errors": []
 }
 ```
@@ -21176,9 +21182,11 @@ Agents already running at `SetPickerAccounts` time restart automatically to pick
 | `redirecturl` | string | OAuth only | Any HTTPS URL you control (or `http://localhost` / `http://127.0.0.1` for dev). Direct System User validation does not use it. |
 | `authmethod` | string | No | `"api_key"` for the recommended System User path, `"own"` for customer-owned OAuth, or `"wiro"` when Wiro-managed OAuth becomes available. Send the value explicitly. |
 
-OAuth response: `{ result, authorizeUrl, errors }`. Direct response:
-`{ result, accounts: [{id, name}], errors }` with no `authorizeUrl`. A failed
-direct check returns `{ result: false, errorcode, errors }`. Read `errorcode`,
+OAuth response: `{ result, authorizeUrl, flowid, errors }`. Direct response:
+`{ result, accounts: [{id, name}], flowid, account, restart, errors }` with no
+`authorizeUrl`, where `account` is the System User's name and `restart` is
+`"none"` until the Pages are saved. A failed direct check returns
+`{ result: false, errorcode, flowid, errors }`. Read `errorcode`,
 because most failures share one message: `no_pages` (no assigned Page with
 `CREATE_CONTENT`), `too_many_pages` (Meta listed more than 500 Pages),
 `direct_token_missing` (no `systemusertoken` saved, or the saved `authmethod` is
@@ -21481,6 +21489,9 @@ Response:
   "accounts": [
     { "id": "17841400000000000", "name": "my_brand" }
   ],
+  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
+  "account": "Acme System User",
+  "restart": "none",
   "errors": []
 }
 ```
@@ -21615,6 +21626,7 @@ Response:
 {
   "result": true,
   "authorizeUrl": "https://www.instagram.com/oauth/authorize?client_id=...&redirect_uri=...&scope=instagram_business_basic%2Cinstagram_business_content_publish%2Cinstagram_business_manage_messages%2Cinstagram_business_manage_comments%2Cinstagram_business_manage_insights&response_type=code&state=...",
+  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
   "errors": []
 }
 ```
@@ -21703,9 +21715,11 @@ curl -X POST "https://api.wiro.ai/v1/UserAgent/Start" \
 | `redirecturl` | string | OAuth only | Any HTTPS URL you control (or localhost/127.0.0.1 for dev). Direct System User validation does not use it. |
 | `authmethod` | string | No | `"api_key"` for recommended System User mode, `"own"` for customer-owned Instagram OAuth, or `"wiro"` when Wiro-managed OAuth becomes available. Send the value explicitly. |
 
-OAuth response: `{ result, authorizeUrl, errors }`. Direct response:
-`{ result, accounts: [{id, name}], errors }` with no `authorizeUrl`. A failed
-direct check returns `{ result: false, errorcode, errors }`. Read `errorcode`,
+OAuth response: `{ result, authorizeUrl, flowid, errors }`. Direct response:
+`{ result, accounts: [{id, name}], flowid, account, restart, errors }` with no
+`authorizeUrl`, where `account` is the System User's name and `restart` is
+`"none"` until the accounts are saved. A failed direct check returns
+`{ result: false, errorcode, flowid, errors }`. Read `errorcode`,
 because most failures share one message: `no_accounts` (no assigned Page
 exposes a linked Instagram professional account with `CREATE_CONTENT`),
 `too_many_instagram_accounts` (Meta listed more than 500 Pages),
@@ -21946,7 +21960,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
 
 This is a server-side credential exchange and probe, not a browser redirect. Wiro submits the Shopify client-credentials form (`grant_type=client_credentials`, Client ID, and Client Secret) to the canonical shop, receives an access token whose `expires_in` is exactly `86399` seconds, verifies the shop identity, and stores the connection. Running agents re-exchange the client credentials before expiry; the Client Secret is never sent to the GraphQL Admin API.
 
-The response is `{ "result": true, "errors": [], "accounts": [] }`. Shopify has no account picker, so there is nothing to select; `OAuthStatus` then reports `connected: true` with the shop name in `accounts[0]`. If the check fails, the response has `result: false`, a message asking you to check the `myshopify.com` domain, the app's organization and its Admin API scopes, and an `errorcode`. `direct_token_missing` means `authmethod` is not saved as `"api_key"` or one of the three fields is empty. Any other code, such as `provider_rejected_request` or `direct_token_invalid`, means the exchange or the shop check failed, and any earlier Shopify connection on the agent is cleared too.
+The response is `{ "result": true, "errors": [], "accounts": [], "flowid": "...", "account": "...", "restart": "scheduled" }`, where `account` is the store's name and `restart` says whether the check restarted a running agent. Shopify has no account picker, so there is nothing to select; `OAuthStatus` then reports `connected: true` with the shop name in `accounts[0]`. If the check fails, the response has `result: false`, a message asking you to check the `myshopify.com` domain, the app's organization and its Admin API scopes, and an `errorcode`. `direct_token_missing` means `authmethod` is not saved as `"api_key"` or one of the three fields is empty. Any other code, such as `provider_rejected_request` or `direct_token_invalid`, means the exchange or the shop check failed, and any earlier Shopify connection on the agent is cleared too.
 
 ## Option B: Customer-owned app OAuth
 
@@ -22690,7 +22704,8 @@ Response:
 {
   "result": true,
   "errors": [],
-  "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth?client_id=...&redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FUserAgentOAuth%2FGBPCallback&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fbusiness.manage&state=...&access_type=offline&prompt=select_account+consent"
+  "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth?client_id=...&redirect_uri=https%3A%2F%2Fapi.wiro.ai%2Fv1%2FUserAgentOAuth%2FGBPCallback&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fbusiness.manage&state=...&access_type=offline&prompt=select_account+consent",
+  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19"
 }
 ```
 
@@ -22969,7 +22984,7 @@ All endpoints require Wiro authentication: see [Authentication](/docs/authentica
 | `redirecturl` | string | Yes | Any HTTPS URL you control (or `http://localhost` / `http://127.0.0.1` for development) where the browser returns after Google. |
 | `authmethod` | string | Yes | `"own"`, the only available mode. |
 
-Response: `{ result, errors, authorizeUrl }`. If `result: false`, inspect `errors[0].message`. Common messages: `Invalid redirect URL`, `User agent not found or unauthorized`, `Wiro-managed OAuth is not enabled for Google Business Profile` (no `authmethod`, or `"wiro"`), and `Google Business Profile credentials not configured` (the Client ID or Client Secret is not saved).
+Response: `{ result, errors, authorizeUrl, flowid }`. If `result: false`, inspect `errors[0].message`. Common messages: `Invalid redirect URL`, `User agent not found or unauthorized`, `Wiro-managed OAuth is not enabled for Google Business Profile` (no `authmethod`, or `"wiro"`), and `Google Business Profile credentials not configured` (the Client ID or Client Secret is not saved).
 
 ### GET /UserAgentOAuth/GBPCallback
 

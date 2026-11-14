@@ -100,7 +100,7 @@ curl -X POST "https://api.wiro.ai/v1/UserAgentOAuth/OAuthConnect" \
   }'
 ```
 
-The response returns `{ result: true, authorizeUrl: "..." }`. Redirect the user to `authorizeUrl`. Google asks which Google account to connect, even when the browser is already signed in to one.
+The response returns `{ result: true, authorizeUrl: "...", flowid: "..." }`. Redirect the user to `authorizeUrl`. Google asks which Google account to connect, even when the browser is already signed in to one.
 
 ### Step 5: Save the account selection
 

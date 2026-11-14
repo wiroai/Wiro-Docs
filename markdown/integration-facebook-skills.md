@@ -113,6 +113,9 @@ Response:
     { "id": "123", "name": "Main Page" },
     { "id": "456", "name": "Regional Page" }
   ],
+  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
+  "account": "Acme System User",
+  "restart": "none",
   "errors": []
 }
 ```
@@ -242,6 +245,7 @@ Response:
 {
   "result": true,
   "authorizeUrl": "https://www.facebook.com/v26.0/dialog/oauth?client_id=...&redirect_uri=...&scope=pages_show_list%2Cpages_manage_posts%2Cpublish_video%2Cpages_manage_engagement%2Cpages_read_engagement%2Cpages_read_user_content%2Cpages_manage_metadata%2Cpages_messaging&auth_type=rerequest&response_type=code&state=...",
+  "flowid": "4b1f0c7a9e2d4c1b8a7f6e5d4c3b2a19",
   "errors": []
 }
 ```
@@ -389,9 +393,11 @@ Agents already running at `SetPickerAccounts` time restart automatically to pick
 | `redirecturl` | string | OAuth only | Any HTTPS URL you control (or `http://localhost` / `http://127.0.0.1` for dev). Direct System User validation does not use it. |
 | `authmethod` | string | No | `"api_key"` for the recommended System User path, `"own"` for customer-owned OAuth, or `"wiro"` when Wiro-managed OAuth becomes available. Send the value explicitly. |
 
-OAuth response: `{ result, authorizeUrl, errors }`. Direct response:
-`{ result, accounts: [{id, name}], errors }` with no `authorizeUrl`. A failed
-direct check returns `{ result: false, errorcode, errors }`. Read `errorcode`,
+OAuth response: `{ result, authorizeUrl, flowid, errors }`. Direct response:
+`{ result, accounts: [{id, name}], flowid, account, restart, errors }` with no
+`authorizeUrl`, where `account` is the System User's name and `restart` is
+`"none"` until the Pages are saved. A failed direct check returns
+`{ result: false, errorcode, flowid, errors }`. Read `errorcode`,
 because most failures share one message: `no_pages` (no assigned Page with
 `CREATE_CONTENT`), `too_many_pages` (Meta listed more than 500 Pages),
 `direct_token_missing` (no `systemusertoken` saved, or the saved `authmethod` is
